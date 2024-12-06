@@ -1,0 +1,4 @@
+FROM prom/prometheus
+ARG ENVIRONMENT=master
+
+COPY ${ENVIRONMENT}/prometheus/ /etc/prometheus/

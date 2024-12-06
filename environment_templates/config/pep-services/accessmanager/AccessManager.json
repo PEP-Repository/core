@@ -1,0 +1,33 @@
+{
+  "KeysFile":    "/secrets/AccessManagerKeys.json",
+
+  "StorageFile":    "/data/accessManagerStorage.sqlite",
+
+  "PublicKeyPseudonyms": "FC7D46F0C73B14D9E57D87FB81D46B4F9BEA0096767AE6E097E1DDED827EA239",
+  
+  "TLSPrivateKeyFile":  "/secrets/TLSAccessManager.key",
+  "TLSCertificateFile":   "/secrets/TLSAccessManager.chain",
+  
+  "PEPPrivateKeyFile":  "/secrets/PEPAccessManager.key",
+  "PEPCertificateFile":   "/secrets/PEPAccessManager.chain",
+  
+  "CACertificateFile":   "/config/rootCA.cert",
+  
+  "ListenAddress":  "0.0.0.0",
+  "ListenPort":    16501,
+  
+  "KeyServer":{
+    "Name":   "KeyServer",
+    "Address":  "@@SERVER_PLACEHOLDER@@",
+    "Port":   16511
+  },  
+  "Transcryptor": {
+    "Name":   "Transcryptor",
+    "Address":   "@@SERVER_PLACEHOLDER@@",
+    "Port":   16516
+  },
+  
+  "SystemKeysFile": "/secrets/SystemKeys.json",
+
+  "GlobalConfigurationFile": "/config/accessmanager/GlobalConfiguration.json"
+}

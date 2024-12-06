@@ -1,0 +1,8 @@
+{
+  "participant_identifier_formats": [
+    {"generable" : {"prefix" : "@@ACRONYM_PLACEHOLDER@@", "digits" : 10}}
+  ],
+  
+  "user_pseudonym_format":
+    {"prefix" : "@@ACRONYM_PLACEHOLDER@@U", "minLength" : 1, "length" : 16}
+}

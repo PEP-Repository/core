@@ -1,0 +1,9 @@
+transcryptorAddr: @@SERVER_PLACEHOLDER@@:16516
+keyServerAddr: @@SERVER_PLACEHOLDER@@:16511
+accessManagerAddr: @@SERVER_PLACEHOLDER@@:16501
+storageFacilityAddr: @@SERVER_PLACEHOLDER@@:16519
+registrationServerAddr: @@SERVER_PLACEHOLDER@@:16518
+authserverAddr: @@SERVER_PLACEHOLDER@@:16512
+rootCaPath: rootCA.cert
+dataPk: eMr-2RnRUzQU38wE9VuUpvyne5YfwaaSxORf9bqZmgA
+pseudonymPk: _H1G8Mc7FNnlfYf7gdRrT5vqAJZ2eubgl-Hd7YJ-ojk

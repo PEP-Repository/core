@@ -1,0 +1,15 @@
+include:
+  - project: 'pep/core'
+    file: '/ci_cd/pep-project-ci-settings.yml'
+    ref: release
+  - project: 'pep/ops'
+    file: '/ci_cd/pep-project-ci-settings.yml'
+    ref: release
+  - project: 'pep/core'
+    file: '/ci_cd/pep-project-ci-logic.yml'
+    ref: release
+  - project: 'pep/ops'
+    file: '/ci_cd/pep-project-ci-logic.yml'
+    ref: release
+    # The following line should be the last line, or the pipeline will fail. Edit awk in the script of the job add-keys-to-new-project if you change this.
+  - local: 'new-project-keys.yml'

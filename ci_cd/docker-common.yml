@@ -1,0 +1,15 @@
+variables:
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_TLS_CERTDIR: "" # Work around failing CI jobs: see https://gitlab.com/gitlab-org/gitlab-ce/issues/64959#note_194582424
+  DOCKER_DRIVER: overlay2 # faster docker builds, see https://gitlab.com/gitlab-org/gitlab-ce/issues/21374, https://docs.docker.com/storage/storagedriver/overlayfs-driver/
+
+  # This tag can be overwritten by the trigger in docker-build
+  # Plus it may be changed in a commit from docker-build, so keep in this format
+  RUNNER_IMAGE_TAG: sha-3ff99496603f53f12742b7f03e43082e8a9d8e95
+
+  DOCKER_BUILD_PROJECT: pep/docker-build
+
+  BUILDER_IMAGE_UBUNTU_LTS:     ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/builder-ubuntu-lts:${RUNNER_IMAGE_TAG}
+  RUNTIME_IMAGE_UBUNTU_LTS:     ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/runtime-ubuntu-lts:${RUNNER_IMAGE_TAG}
+  BUILDER_IMAGE_UBUNTU_ROLLING: ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/builder-ubuntu-rolling:${RUNNER_IMAGE_TAG}
+  BUILDER_IMAGE_FLATPAK:        ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/builder-flatpak:${RUNNER_IMAGE_TAG}

@@ -1,0 +1,5 @@
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(elevate_src main.cpp VersionInfo.rc)
+  add_cli_install_executable(${PROJECT_NAME}Elevate WIN32 ${elevate_src})
+  target_link_libraries(${PROJECT_NAME}Elevate ${PROJECT_NAME}Applicationlib)
+endif()
