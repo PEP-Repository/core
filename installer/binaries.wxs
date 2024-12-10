@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+		<!-- The binaries we have available for installation -->
+		<DirectoryRef Id="INSTALLDIR">
+			<Component Id="pepAssessor.exe" Guid="*">
+				<File Id="pepAssessor.exe" Source="$(var.ArtifactsDir)\pepAssessor.exe" KeyPath="yes" />
+			</Component>
+			<Component Id="pepElevate.exe" Guid="*">
+				<File Source="$(var.ArtifactsDir)\pepElevate.exe" KeyPath="yes" />
+			</Component>
+			<!-- GUID was previously auto-generated. Pulled from MSI using Orca -->
+			<Component Id="CommandPrompt" Guid="{CBE01A7E-7AB2-5E17-823F-15B03F3DB9B3}">
+				<File Id="PepShell.ps1" Source="$(var.ArtifactsDir)\PepShell.ps1" KeyPath="yes" />
+				<File Id="autocomplete_pep.ps1" Source="$(var.ArtifactsDir)\autocomplete_pep.ps1" />
+			</Component>
+
+			<Component Id="pepLogon.exe" Guid="*">
+				<File Source="$(var.ArtifactsDir)\pepLogon.exe" KeyPath="yes" />
+			</Component>
+			
+			<Component Id="pepcli.exe" Guid="*">
+				<File Source="$(var.ArtifactsDir)\pepcli.exe" KeyPath="yes" />
+			</Component>
+		</DirectoryRef>
+		
+		<!-- Which files should be installed together -->
+		<ComponentGroup Id="pepAssessor.exe">
+			<ComponentRef Id="pepAssessor.exe" />
+			<ComponentRef Id="pepElevate.exe" />
+			<ComponentGroupRef Id="binaryDependencies" /><!-- Require dependencies that are harvested (see createBinWixobjs.bat) -->
+		</ComponentGroup>
+		
+		<ComponentGroup Id="pepLogon.exe">
+			<ComponentRef Id="pepLogon.exe" />
+			<ComponentGroupRef Id="binaryDependencies" /><!-- Require dependencies that are harvested (see createBinWixobjs.bat) -->
+		</ComponentGroup>
+		
+		<ComponentGroup Id="pepcli.exe">
+			<ComponentRef Id="pepcli.exe" />
+			<ComponentGroupRef Id="binaryDependencies" /><!-- Require dependencies that are harvested (see createBinWixobjs.bat) -->
+		</ComponentGroup>
+	</Fragment>
+</Wix>

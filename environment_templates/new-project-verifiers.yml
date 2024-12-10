@@ -1,0 +1,33 @@
+variables:
+  GIT_STRATEGY: clone
+  GIT_SUBMODULE_STRATEGY: recursive
+ 
+add-verifiers-to-new-project-COPY-KEYS-TO-VM-FIRST:
+  only:
+    variables:
+      - $CI_COMMIT_BRANCH == @@BRANCH_PLACEHOLDER@@
+  stage: deploy
+  tags:
+    - docker
+  image: docker
+  needs:
+    job: deploy
+  services:
+    - docker:dind
+  interruptible: false
+  script:
+    - |
+      GA_TOKEN=$(cat "dtap/passwords/new-project-gitlab-group-token.txt")
+      git config --global user.email "support@@@DOMAIN_NAME_PLACEHOLDER@@"
+      git config --global user.name "Skynet"
+      git remote set-url origin "https://gitlab-ci-token:$GA_TOKEN@gitlab.@@DOMAIN_NAME_PLACEHOLDER@@/@@REPO_DIR_PLACEHOLDER@@.git"
+      git checkout @@BRANCH_PLACEHOLDER@@
+      echo $CI_JOB_TOKEN | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+      docker run --rm @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/client:latest /app/pepcli --client-working-directory /config verifiers | grep accessManager > config/@@BRANCH_PLACEHOLDER@@/pep-services/transcryptor/Verifiers.json
+      # Remove last two lines of the gitlab-ci, and remove the new project CI files.
+      awk 'NR > 2 {print last2} {last2 = last; last = $0}' .gitlab-ci.yml > .gitlab-ci.yml.tmp && mv .gitlab-ci.yml.tmp .gitlab-ci.yml
+      git rm README.md new-project-verifiers.yml new-project-keys.yml
+      git add config/@@BRANCH_PLACEHOLDER@@/pep-services/transcryptor/Verifiers.json .gitlab-ci.yml 
+      git commit -m "Skynet became self-aware on $(date +"%H:%M %B %d, %Y") and changed its own CI file."
+      git push
+  when: manual

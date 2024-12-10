@@ -1,0 +1,2 @@
+This is not an actual ShadowAdministration.pub, but a bogus file to allow (Gitlab) CI
+pipelines to add configuration to a docker image, to proceed with the pipeline.

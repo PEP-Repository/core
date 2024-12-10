@@ -1,0 +1,10 @@
+name: @@PROJECT_NAME_PLACEHOLDER@@
+bindAddr: 0.0.0.0:8082
+tokenFile: /secrets/token.yaml
+secretsFile: /secrets/secrets.json
+dbFile: /data/watchdog.db
+selfCheckAddr: @@SERVER_PLACEHOLDER@@:8082
+selfCheckBindAddr: 0.0.0.0:8082
+checkPipelines:
+  - project: @@REPO_DIR_PLACEHOLDER@@
+    branches: [@@BRANCH_PLACEHOLDER@@]

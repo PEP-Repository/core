@@ -1,0 +1,41 @@
+{
+  "KeysFile":      "/secrets/StorageFacilityKeys.json",
+  "TLSPrivateKeyFile":    "/secrets/TLSStorageFacility.key",
+  "TLSCertificateFile":     "/secrets/TLSStorageFacility.chain",  
+  "PEPPrivateKeyFile":    "/secrets/PEPStorageFacility.key",
+  "PEPCertificateFile":     "/secrets/PEPStorageFacility.chain",
+  "CACertificateFile":     "/config/rootCA.cert",
+  "ListenAddress":    "0.0.0.0",
+  "ListenPort":      16519,
+  "AccessManager":{
+    "Name":    "AccessManager",
+    "Address":  "@@SERVER_PLACEHOLDER@@",
+    "Port":   16501
+  },
+  "KeyServer":{
+    "Name":   "KeyServer",
+    "Address":  "@@SERVER_PLACEHOLDER@@",
+    "Port":   16511
+  },
+  "Transcryptor": {
+    "Name":   "Transcryptor",
+    "Address":   "@@SERVER_PLACEHOLDER@@",
+    "Port":   16516
+  },
+"EncIdKeyFile": "/secrets/StorageFacilityEncIdKey.json",
+"StoragePath": "/data/meta",
+"PageStore": {
+  "Type": "s3",
+      "EndPoint": {
+          "Address": "@@SERVER_PLACEHOLDER@@",
+          "Port": "9000",
+          "Name": "S3"
+      },
+      "Credentials": {
+        "Include": "/secrets/S3Credentials.json"
+      },
+      "Ca-Cert-Path": "/config/rootCA.cert",
+      "Write-To-Bucket": "myBucket",
+      "Read-From-Buckets": [ "myBucket" ]
+  }
+}

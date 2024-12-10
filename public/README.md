@@ -1,0 +1,1 @@
+Directory where GitLab Pages are published.

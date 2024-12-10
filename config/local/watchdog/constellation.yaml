@@ -1,0 +1,9 @@
+transcryptorAddr: localhost:16516
+keyServerAddr: localhost:16511
+accessManagerAddr: localhost:16501
+storageFacilityAddr: localhost:16519
+registrationServerAddr: localhost:16518
+authserverAddr: localhost:16512
+rootCaPath: rootCA.cert
+dataPk: wIkIRc_KLoparAeuHaiXdxTkfS9zBlMGsmuH0acJyzk
+pseudonymPk: yrl9fllLDcp5vfvbCQsIwVPnYc-WTNoy2Cm7dGk0s0s

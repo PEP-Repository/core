@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.0)
+project(@@PROJECT_FULL_SLUG_PLACEHOLDER@@)
+
+# Sets the default directory of CastorAPIKey.json
+if(NOT CASTOR_API_KEY_DIR)
+  set(CASTOR_API_KEY_DIR ${CMAKE_SOURCE_DIR}/dtap/keys)
+  message("Directory for CastorAPIKey.json is automatically defaulted to: ${CASTOR_API_KEY_DIR}")
+endif()
+
+add_subdirectory(pep)

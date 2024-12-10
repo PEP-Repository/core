@@ -1,0 +1,22 @@
+{
+  "TLSPrivateKeyFile": "/secrets/TLSAuthserver.key",
+  "TLSCertificateFile": "/secrets/TLSAuthserver.chain",
+
+  "PEPPrivateKeyFile": "/secrets/PEPAuthserver.key",
+  "PEPCertificateFile": "/secrets/PEPAuthserver.chain",
+  
+  "CACertificateFile": "/config/rootCA.cert",
+
+  "OAuthTokenSecretFile": "/secrets/OAuthTokenSecret.json",
+  "HTTPListenPort": 8080,
+  "ActiveGrantExpirationSeconds": 300,
+  "TokenExpirationSeconds": 60,
+
+  "UidHeader": "Shib-userprincipalname",
+  "SpoofKeyFile": "/secrets/spoofKey",
+ 
+  "ListenAddress": "0.0.0.0",
+  "ListenPort": 16512,
+  
+  "StorageFile": "/data/Authserver.sqlite"
+}

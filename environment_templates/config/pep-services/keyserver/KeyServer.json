@@ -1,0 +1,10 @@
+{
+  "TLSPrivateKeyFile":   "/secrets/TLSKeyServer.key",
+  "TLSCertificateFile":   "/secrets/TLSKeyServer.chain",
+  "ClientCAPrivateKeyFile": "/secrets/pepClientCA.key",
+  "ClientCACertificateChainFile": "/secrets/pepClientCA.chain",
+  "CACertificateFile":    "/config/rootCA.cert",
+  "OAuthTokenSecretFile":  "/secrets/OAuthTokenSecret.json",
+  "ListenAddress":  "0.0.0.0",
+  "ListenPort":    16511
+}
