@@ -1,0 +1,44 @@
+ARG ENVIRONMENT=master
+ARG BASE_IMAGE
+
+# Conditional execution based on two base images: see https://stackoverflow.com/a/54245466
+# Invoke with RSYSLOG_PREPOSITION set to either "with" or "without"
+ARG RSYSLOG_PREPOSITION
+
+
+# ##### Base image with just the PEP binaries
+
+FROM ${BASE_IMAGE} as base_without_rsyslog
+
+# Vanilla BASE_IMAGE: don't change/add anything
+
+
+# ##### Base image with (PEP binaries and) rsyslog integration
+
+FROM ${BASE_IMAGE} as base_with_rsyslog
+
+ONBUILD RUN apt-get update \
+    && apt-get install -y \
+    rsyslog rsyslog-gnutls logrotate \
+    && apt-get clean \
+    && rm -rf /var/cache/* /var/lib/{apt,dpkg,cache,log}/* /tmp/* /var/tmp/*
+
+ONBUILD COPY rsyslog/rsyslog.d /etc/rsyslog.d
+ONBUILD COPY rsyslog/logrotate.d /etc/logrotate.d
+ONBUILD COPY rsyslog/entrypoint.sh /
+
+ONBUILD ENTRYPOINT ["/entrypoint.sh"]
+
+
+# ##### Target image adds configuration to base image "with" or "without" rsyslog
+
+FROM base_${RSYSLOG_PREPOSITION}_rsyslog
+ARG ENVIRONMENT
+ARG PROJECT_DIR
+
+#We first copy ${PROJECT_DIR}, and then the other files, so that the second step may overwrite files in ${PROJECT_DIR}
+COPY ${PROJECT_DIR}/ /config/ 
+COPY ${ENVIRONMENT}/pep-services ${ENVIRONMENT}/rootCA.cert ${ENVIRONMENT}/configVersion.json ${ENVIRONMENT}/ShadowAdministration.pub /config/
+
+# Hard-link configVersion.json into subdirectories, placing copies next to all server config files.
+RUN find /config -type d ! -wholename /config -exec ln /config/configVersion.json {}/configVersion.json \;

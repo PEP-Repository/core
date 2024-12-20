@@ -1,0 +1,12 @@
+[
+  {
+    "name": "@@SERVER_PLACEHOLDER@@",
+    "ssh": {
+      "user": {
+        "name": "update",
+        "id_file": "../../dtap/keys/buildservers-linux-update"
+      }
+    },
+    "update": null
+  }
+]

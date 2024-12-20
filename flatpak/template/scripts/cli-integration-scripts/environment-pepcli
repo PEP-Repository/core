@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+flatpak run --command=pepcli "nl.ru.cs.pep.$ENVIRONMENT" "$@"

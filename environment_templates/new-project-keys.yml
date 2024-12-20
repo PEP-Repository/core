@@ -1,0 +1,41 @@
+variables:
+  GIT_STRATEGY: clone
+  GIT_SUBMODULE_STRATEGY: recursive
+
+add-keys-to-new-project:
+  stage: publish
+  tags:
+    - docker
+  needs:
+    - job: publish-docker-client
+  image: docker
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache bash
+  script:
+    - |
+      GA_TOKEN=$(cat "dtap/passwords/new-project-gitlab-group-token.txt")
+      git config --global user.email "support@@@DOMAIN_NAME_PLACEHOLDER@@"
+      git config --global user.name "Skynet"
+      git remote set-url origin "https://gitlab-ci-token:$GA_TOKEN@gitlab.@@DOMAIN_NAME_PLACEHOLDER@@/@@REPO_DIR_PLACEHOLDER@@.git"
+      git checkout @@BRANCH_PLACEHOLDER@@
+      mkdir keys && cd keys
+      CONFIGDIR="$(dirname $(pwd))/config/@@BRANCH_PLACEHOLDER@@"
+      IMAGEDIR="@@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/client:latest"
+      echo $CI_JOB_TOKEN | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+      S3_SECRET=$(../dtap/generateAllKeys.sh -d "$IMAGEDIR" "$CONFIGDIR" | tail -n 1)
+      if [ ${#S3_SECRET} -ne 44 ]; then
+          echo "Error generating or retrieving S3 Secret."
+          exit 1
+      fi
+      cd ..
+      sed "s,@@S3_PLACEHOLDER@@,$S3_SECRET,g" vm/@@SERVER_LOCATION_PLACEHOLDER@@-pep-@@PROJECT_FULL_SLUG_PLACEHOLDER@@.yaml > temp.yaml && mv temp.yaml vm/@@SERVER_LOCATION_PLACEHOLDER@@-pep-@@PROJECT_FULL_SLUG_PLACEHOLDER@@.yaml
+      awk 'NR > 1 {print last} {last = $0} END {print "  - local: '\''new-project-verifiers.yml'\''"}' .gitlab-ci.yml > .gitlab-ci.yml.tmp && mv .gitlab-ci.yml.tmp .gitlab-ci.yml
+      git add keys config vm .gitlab-ci.yml
+      git commit -m "Created keys. Move these to the VM."
+      git push
+  artifacts:
+    paths:
+      - keys
+    expire_in: 6 hours

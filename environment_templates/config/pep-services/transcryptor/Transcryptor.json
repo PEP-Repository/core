@@ -1,0 +1,28 @@
+{
+    "TLSPrivateKeyFile": "/secrets/TLSTranscryptor.key",
+    "TLSCertificateFile": "/secrets/TLSTranscryptor.chain",
+    "PEPPrivateKeyFile": "/secrets/PEPTranscryptor.key",
+    "PEPCertificateFile": "/secrets/PEPTranscryptor.chain",
+    "CACertificateFile": "/config/rootCA.cert",
+    "ListenAddress": "0.0.0.0",
+    "ListenPort": 16516,
+    "AccessManager": {
+        "Name": "AccessManager",
+        "Address": "@@SERVER_PLACEHOLDER@@",
+        "Port": 16501
+    },
+    "KeyServer": {
+        "Name": "KeyServer",
+        "Address": "@@SERVER_PLACEHOLDER@@",
+        "Port": 16511
+    },
+    "Transcryptor": {
+        "Name": "Transcryptor",
+        "Address": "@@SERVER_PLACEHOLDER@@",
+        "Port": 16516
+    },
+    "SystemKeysFile": "/secrets/SystemKeys.json",
+    "KeysFile": "/secrets/TranscryptorKeys.json",
+    "StorageFile": "/data/transcryptorStorage.sqlite",
+    "VerifiersFile": "/config/transcryptor/Verifiers.json"
+}

@@ -1,0 +1,38 @@
+{% extends "../common/page.html.j2" %}
+{% block head %}
+    {{ super() }}
+    <style>
+    @keyframes greenToBlack {
+      from {
+        color: green;
+      }
+      to {
+        color: black;
+      }
+    }
+    </style>
+    <script>
+        window.addEventListener("load", () => {
+          document.getElementById("copyButton").addEventListener("click", () => {
+              navigator.clipboard.writeText('{{ code }}')
+                  .then(() => {
+                      var msgBox=document.getElementById('message');
+                      msgBox.innerText='copied!';
+                      // We animate it, so that the user gets feedback if he presses the button multiple times
+                      // Reset animation, from https://stackoverflow.com/a/45036752:
+                      msgBox.style.animation = 'none';
+                      msgBox.offsetHeight; //trigger reflow
+                      msgBox.style.animation = '3s greenToBlack';
+                  });
+          });
+        });
+    </script>
+{% endblock %}
+{% block title %}PEP Login{% endblock %}
+{% block content %}
+    Please enter the following code on your PEP command line:
+    <pre>{{ code }}</pre>
+    <button id="copyButton">copy to clipboard</button>
+    <span style="margin-left: 1ex;" id="message"></span>
+    <p>This code is valid for {{ validity }}</p>
+{% endblock %}

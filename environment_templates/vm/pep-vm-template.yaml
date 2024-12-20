@@ -1,0 +1,421 @@
+#cloud-config
+
+package_update: true
+package_upgrade: true
+packages:
+  - sudo
+  - unattended-upgrades
+  - zfsutils-linux
+  - docker.io
+
+power_state:
+  mode: reboot
+  condition: test -f /var/run/reboot-required
+
+# disable password login (useful to disable the default user)
+ssh_pwauth: false
+
+ssh_keys:
+  ed25519_private: @@SSH_PRIVATE_KEY_PLACEHOLDER@@
+  ed25519_public: @@SSH_PUBLIC_KEY_PLACEHOLDER@@
+
+timezone: Europe/Amsterdam
+
+users:
+  - name: pep
+    ssh-authorized-keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXettqfoHNjCar/ykwNjrYhdJ40IdLlD8swfAHt2TFa3UOOmGJkbZyEbVVZP+y2DonRDsKM5Xfq4QG+UpFeT/q1Ad/Y1HgLZv+g/UxO6i0YsgI55QmLCx9iWk4p54OPtGR5+S8me9+ZaL1HDoC2wqTt1sFbmsNN0qq918HiPd8LjfFzz+Hkh7JsG3E6eJQCP33dv99xhibRIB2TmK2yq6m2kyAT0P4BEbqjUuxhfHb00UQgQDJQ4s8FQKvUBu1ODCJzEv24QFvgHOOCI/GhliqDHfBplZCxYAFI/Oh1hkAJJv/RqUUTsZRQZyScbskWJhChvcR8GBKrYkZIPG04Hbb admin@buildservers
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+  - name: update
+    ssh-authorized-keys:
+    - command="sudo /trigger_update.sh",no-port-forwarding,no-X11-forwarding ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCtEPXmMI/kmQSWMzayzdhwyGsGIhPkLwWX8aRQZsla7CgAUuE00OJmOT6k2bx5wDH1KeuWJLaBBpzg6v08j3ggMPq+yvViZwYsT9u2o3YA/1x2ssEh/24UEtSmmP7gM6IzElqLTVr7BXTz6ectiD1j4fsiehMW7xTp3F6bMTCiOONgg8vVe6Ack8tK+slFDZtO3ZcxS2NwDV1gkVYpeztzXdeN+N//ULsV4rT1g0VyUe3bp1MSGZsG+Ai3s5tqL6piWvTGDEMWQ1Dn4Psb3q3hOFTFJxnz75Pj7lp+BPqtfRylDhKu0orThwCzYpx2+D3pLOCHW285Wmxb1XnhbeB3 update@buildservers-linux
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+
+write_files:
+  - path: "/etc/modprobe.d/zfs.conf"
+    content: |
+      options zfs zfs_arc_max=2147483648
+
+  # Docker cleanup
+  - path: "/usr/lib/systemd/system/docker-prune.service"
+    content: |
+      [Unit]
+      Description=Cleanup old docker data
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      Restart=on-failure
+      RestartSec=1h
+      ExecStart=/usr/bin/docker volume prune --all --force
+      # Clean except for past ~8 days
+      ExecStart=/usr/bin/docker system prune --all --force --filter='until=200h'
+  - path: "/usr/lib/systemd/system/docker-prune.timer"
+    content: |
+      [Unit]
+      Description=Runs docker-prune every week
+
+      [Timer]
+      OnCalendar=weekly
+      # Catch up on a missed run
+      Persistent=true
+      Unit=docker-prune.service
+
+      [Install]
+      WantedBy=timers.target
+
+  - path: "/usr/lib/systemd/system/docker-watchdog.service"
+    content: |
+        [Unit]
+        Description=Watchdog container
+        After=docker.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-monitoring:latest
+        ExecStartPre=-/usr/bin/docker stop watchdog
+        ExecStartPre=-/usr/bin/docker rm -f watchdog
+        ExecStart=/usr/bin/docker run --rm --name watchdog -p 8082:8082 -v /data/volumes/data/watchdog:/data -v /data/volumes/secrets/watchdog:/secrets -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt -w /config/watchdog @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-monitoring:latest /app/pep-watchdog
+        ExecStop=/usr/bin/docker stop -t 5 watchdog
+
+        [Install]
+        WantedBy=multi-user.target
+# PEP Transcryptor service
+  - path: "/usr/lib/systemd/system/docker-transcryptor.service"
+    content: |
+        [Unit]
+        Description=Transcryptor container
+        After=docker.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest
+        ExecStartPre=-/usr/bin/docker stop pepTranscryptor
+        ExecStartPre=-/usr/bin/docker rm -f pepTranscryptor
+        ExecStart=/usr/bin/docker run --rm --name pepTranscryptor -p 16516:16516 -v /data/volumes/data/transcryptor:/data -v /data/volumes/secrets/transcryptor:/secrets:ro -w /data @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest /app/pepTranscryptor /config/transcryptor/Transcryptor.json
+        ExecStop=/usr/bin/docker stop -t 5 pepTranscryptor
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-restart.timer"
+    content: |
+        [Unit]
+        Description=Once a day, restart containers
+
+        [Timer]
+        OnUnitActiveSec=1d
+        Unit=docker-restart.service
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-restart.service"
+    content: |
+        [Unit]
+        Description=Restart containers to force update (in case triggers failed)
+
+        [Service]
+        Type=simple
+        ExecStart=/usr/bin/systemctl restart docker-transcryptor.service docker-keyserver.service docker-storagefacility.service docker-accessmanager.service docker-registrationserver.service docker-authserver.service docker-authserver-apache.service
+# PEP KeyServer service
+  - path: "/usr/lib/systemd/system/docker-keyserver.service"
+    content: |
+        [Unit]
+        Description=Key server container
+        After=docker.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest
+        ExecStartPre=-/usr/bin/docker stop pepKeyserver
+        ExecStartPre=-/usr/bin/docker rm -f pepKeyserver
+        ExecStart=/usr/bin/docker run --rm --name pepKeyserver -p 16511:16511 -v /data/volumes/data/keyserver:/data -v /data/volumes/secrets/keyserver:/secrets:ro -w /data @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest /app/pepKeyServer /config/keyserver/KeyServer.json
+        ExecStop=/usr/bin/docker stop -t 5 pepKeyserver
+
+        [Install]
+        WantedBy=multi-user.target
+# PEP StorageFacility service
+  - path: "/usr/lib/systemd/system/docker-storagefacility.service"
+    content: |
+        [Unit]
+        Description=Storage facility container
+        After=docker.service
+        After=docker-network.service
+        After=docker-s3proxy.service
+        Requires=docker-network.service
+        Requires=docker-s3proxy.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest
+        ExecStartPre=-/usr/bin/docker stop pepStorageFacility
+        ExecStartPre=-/usr/bin/docker rm -f pepStorageFacility
+        ExecStart=/usr/bin/docker run --rm --network pepnetwork --name pepStorageFacility -p 16519:16519 -v /data/volumes/data/storagefacility:/data  -v /data/volumes/secrets/storagefacility:/secrets:ro -w /data @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest /app/pepStorageFacility /config/storagefacility/StorageFacility.json
+        ExecStop=/usr/bin/docker stop -t 5 pepStorageFacility
+
+        [Install]
+        WantedBy=multi-user.target
+# PEP AccessManager service
+  - path: "/usr/lib/systemd/system/docker-accessmanager.service"
+    content: |
+        [Unit]
+        Description=Access manager container
+        After=docker-transcryptor.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest
+        ExecStartPre=-/usr/bin/docker stop pepAccessManager
+        ExecStartPre=-/usr/bin/docker rm -f pepAccessManager
+        ExecStart=/usr/bin/docker run --rm --name pepAccessManager -p 16501:16501 -v /data/volumes/data/accessmanager:/data -v /data/volumes/secrets/accessmanager:/secrets:ro -w /data @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest /app/pepAccessManager /config/accessmanager/AccessManager.json
+        ExecStop=/usr/bin/docker stop -t 5 pepAccessManager
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-s3proxy.service"
+    content: |
+        [Unit]
+        Description=S3Proxy container
+        After=docker.service
+        After=docker-network.service
+        Requires=docker-network.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull andrewgaul/s3proxy
+        ExecStartPre=-/usr/bin/docker stop s3proxy
+        ExecStartPre=-/usr/bin/docker rm -f s3proxy
+        ExecStart=/usr/bin/docker run --rm --name s3proxy --network pepnetwork -e S3PROXY_IDENTITY=AccessKey -e S3PROXY_CREDENTIAL=@@S3_PLACEHOLDER@@ -p 9001:80 -v /data/volumes/data/storagefacility/data:/data andrewgaul/s3proxy
+        ExecStop=/usr/bin/docker stop -t 5 s3proxy
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-network.service"
+    content: |
+        [Unit]
+        Description=Docker network
+        After=docker.service
+
+        [Service]
+        Type=oneshot
+        ExecStartPre=-/usr/bin/docker network rm pepnetwork
+        ExecStart=/usr/bin/docker network create pepnetwork
+        RemainAfterExit=true
+        ExecStop=/usr/bin/docker network rm pepnetwork
+
+        [Install]
+        WantedBy=multi-user.target
+# PEP RegistrationServer service
+  - path: "/usr/lib/systemd/system/docker-registrationserver.service"
+    content: |
+        [Unit]
+        Description=Registration server container
+        After=docker-accessmanager.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest
+        ExecStartPre=-/usr/bin/docker stop pepRegistrationServer
+        ExecStartPre=-/usr/bin/docker rm -f pepRegistrationServer
+        ExecStart=/usr/bin/docker run --rm --name pepRegistrationServer -p 16518:16518 -v /data/volumes/data/registrationserver:/data  -v /data/volumes/secrets/registrationserver:/secrets:ro -w /data @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest /app/pepRegistrationServer /config/registrationserver/RegistrationServer.json
+        ExecStop=/usr/bin/docker stop -t 5 pepRegistrationServer
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-prometheus-node-exporter.service"
+    content: |
+        [Unit]
+        Description=Prometheus node-exporter container
+        After=docker.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull quay.io/prometheus/node-exporter
+        ExecStartPre=-/usr/bin/docker stop prometheus-node-exporter
+        ExecStartPre=-/usr/bin/docker rm -f prometheus-node-exporter
+        ExecStart=/usr/bin/docker run --rm --name prometheus-node-exporter -p 9100:9100 quay.io/prometheus/node-exporter
+        ExecStop=/usr/bin/docker stop -t 5 prometheus-node-exporter
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-nginx.service"
+    content: |
+        [Unit]
+        Description=nginx
+        After=docker.service
+
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/nginx:latest
+        ExecStartPre=-/usr/bin/docker stop nginx
+        ExecStartPre=-/usr/bin/docker rm -f nginx
+        ExecStart=/usr/bin/docker run --rm --name nginx -p 9000:9000 -v /data/volumes/secrets/nginx/ssl:/etc/nginx/ssl -v /data/volumes/secrets/storagefacility/s3certs:/s3cert:ro @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/nginx:latest
+        ExecStop=/usr/bin/docker stop -t 5 nginx
+
+        [Install]
+        WantedBy=multi-user.target
+
+  - path: "/usr/lib/systemd/system/docker-acme.service"
+    content: |
+        [Unit]
+        Description=Acme.sh daemon, for requesting Let's Encrypt certificates
+        After=docker.service
+        
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull neilpang/acme.sh
+        ExecStartPre=-/usr/bin/docker stop acme
+        ExecStartPre=-/usr/bin/docker rm -f acme
+        ExecStart=/usr/bin/docker run --rm -p 80:80 -v /data/volumes/data/acme:/acme.sh -v /data/volumes/secrets/acme:/certs --name=acme neilpang/acme.sh daemon
+        ExecStop=/usr/bin/docker stop -t 5 acme
+        
+        [Install]
+        WantedBy=multi-user.target
+# PEP Authserver service
+  - path: "/usr/lib/systemd/system/docker-authserver-network.service"
+    content: |
+      [Unit]
+      Description=Docker authserver network
+      After=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=-/usr/bin/docker network rm authservernetwork
+      ExecStart=/usr/bin/docker network create authservernetwork
+      RemainAfterExit=true
+      ExecStop=/usr/bin/docker network rm authservernetwork
+
+      [Install]
+      WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-authserver.service"
+    content: |
+        [Unit]
+        Description=Authserver container
+        After=docker-authserver-network.service
+        Requires=docker-authserver-network.service
+
+        # Docker container name MUST be lowercase, otherwise apache cannot connect to it
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest
+        ExecStartPre=-/usr/bin/docker stop pep_authserver
+        ExecStartPre=-/usr/bin/docker rm -f pep_authserver
+        ExecStart=/usr/bin/docker run --rm --net authservernetwork --name pep_authserver -p 16512:16512 -v /data/volumes/data/authserver:/data  -v /data/volumes/secrets/authserver:/secrets:ro -w /data @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/pep-services:latest /app/pepAuthserver /config/authserver/Authserver.json
+        ExecStop=/usr/bin/docker stop -t 5 pep_authserver
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: "/usr/lib/systemd/system/docker-authserver-apache.service"
+    content: |
+        [Unit]
+        Description=Apache/Shibboleth container for authserver
+        After=docker-authserver-network.service
+        Requires=docker-authserver-network.service
+        # It is fine to start both at the same time, so no After=
+        Requires=docker-authserver.service
+
+        # Docker container name MUST be lowercase, otherwise apache cannot connect to it
+        [Service]
+        Restart=always
+        RestartSec=30s
+        ExecStartPre=-/usr/bin/docker pull @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/authserver_apache:latest
+        ExecStartPre=-/usr/bin/docker stop pep_authserver_apache
+        ExecStartPre=-/usr/bin/docker rm -f pep_authserver_apache
+        ExecStart=/usr/bin/docker run --rm --net authservernetwork --name pep_authserver_apache -p 443:443 -v /data/volumes/data/authserver:/data -v /data/volumes/secrets/authserver:/secrets:ro -v /data/volumes/secrets/acme:/cert:ro -v /data/volumes/data/authserver/apache_logs:/var/log/apache2 -w /data @@FULL_REPO_DIR_PLACEHOLDER@@/@@BRANCH_PLACEHOLDER@@/authserver_apache:latest
+        ExecStop=/usr/bin/docker stop -t 5 pep_authserver_apache
+
+        [Install]
+        WantedBy=multi-user.target
+  - path: /root/.docker/config.json
+    permissions: 0755
+    owner: root
+    group: root
+    content: |
+      {
+        "auths": {
+          "gitlabregistry.pep.cs.ru.nl": {
+            "auth": "@@GITLAB_ACCESS_B64_PLACEHOLDER@@"
+          }
+        }
+      }
+  - path: /trigger_update.sh
+    permissions: 0755
+    owner: root
+    group: update
+    content: |
+        #!/usr/bin/env bash
+        echo "Restarting Transcryptor"
+        /usr/bin/systemctl restart docker-transcryptor.service
+        echo "Restarting KeyServer"
+        /usr/bin/systemctl restart docker-keyserver.service
+        echo "Restarting StorageFacility"
+        /usr/bin/systemctl restart docker-storagefacility.service
+        echo "Restarting S3Proxy"
+        /usr/bin/systemctl restart docker-s3proxy.service
+        echo "Restarting AccessManager"
+        /usr/bin/systemctl restart docker-accessmanager.service
+        echo "Restarting RegistrationServer"
+        /usr/bin/systemctl restart docker-registrationserver.service
+        echo "Restarting Authserver"
+        /usr/bin/systemctl restart docker-authserver.service
+        echo "Restarting Authserver-apache"
+        /usr/bin/systemctl restart docker-authserver-apache.service
+        echo "Restarting Watchdog"
+        /usr/bin/systemctl restart docker-watchdog.service
+        echo "Restarting nginx"
+        /usr/bin/systemctl restart docker-nginx.service
+        echo "Done"    
+
+runcmd:
+  - [ passwd, -d, root ]
+  - [ update-initramfs, -u, -k, all ]
+  - [ zpool, import, -f, data ]
+  - [ systemctl, disable, snapd.service ]
+  - [ systemctl, daemon-reload ]
+  - [ systemctl, enable, docker.service ]
+  - [ systemctl, start, --no-block, docker.service ]
+  - [ systemctl, enable, docker-prune.service ]
+  - [ systemctl, start, --no-block, docker-prune.service ]
+  - [ systemctl, enable, docker-restart.timer ]
+  - [ systemctl, start, --no-block, docker-restart.timer ]
+  - [ systemctl, enable, docker-transcryptor.service ]
+  - [ systemctl, start, --no-block, docker-transcryptor.service ]
+  - [ systemctl, enable, docker-keyserver.service ]
+  - [ systemctl, start, --no-block, docker-keyserver.service ]
+  - [ systemctl, enable, docker-storagefacility.service ]
+  - [ systemctl, start, --no-block, docker-storagefacility.service ]
+  - [ systemctl, enable, docker-s3proxy.service ]
+  - [ systemctl, start, --no-block, docker-s3proxy.service ]
+  - [ systemctl, enable, docker-network.service ]
+  - [ systemctl, start, --no-block, docker-network.service ]
+  - [ systemctl, enable, docker-accessmanager.service ]
+  - [ systemctl, start, --no-block, docker-accessmanager.service ]
+  - [ systemctl, enable, docker-registrationserver.service ]
+  - [ systemctl, start, --no-block, docker-registrationserver.service ]
+  - [ systemctl, enable, docker-nginx.service ]
+  - [ systemctl, start, --no-block, docker-nginx.service ]
+  - [ systemctl, enable, docker-authserver.service ]
+  - [ systemctl, start, --no-block, docker-authserver.service ]
+  - [ systemctl, enable, docker-authserver-apache.service ]
+  - [ systemctl, start, --no-block, docker-authserver-apache.service ]
+  - [ systemctl, enable, docker-prometheus-node-exporter.service ]
+  - [ systemctl, start, --no-block, docker-prometheus-node-exporter.service ]
+  - [ systemctl, enable, docker-watchdog.service ]
+  - [ systemctl, start, --no-block, docker-watchdog.service ]
+  - [ systemctl, enable, docker-acme.service ]
+  - [ systemctl, start, --no-block, docker-acme.service ]

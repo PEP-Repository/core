@@ -1,0 +1,4 @@
+FROM docker/compose:1.29.2
+ARG ENVIRONMENT
+
+COPY ${ENVIRONMENT}/docker-compose/ /compose

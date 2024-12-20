@@ -1,0 +1,185 @@
+variables:
+  FORCE_BUILD_DOCS:
+    value: 'false'
+    options:
+      - 'false'
+      - 'true'
+    description: Force the build of the docs
+
+.base-copy-docs:
+  stage: publish
+  tags:
+    - docker-small
+  image: alpine:latest
+  interruptible: false
+  allow_failure: true
+  before_script:
+    - apk update -qq && apk add --no-cache bash git
+  script:
+    # Make sure we don't use any unset variables
+    - set -u
+
+    # Set the displayed user with the commits that are about to be made
+    - NAME_USER="Gitlab_CI_script"
+    - DOCS_PATH="docs/${DOCS_VISIBILITY_TYPE}"
+    - git config --global user.email "support@pep.cs.ru.nl"
+    - git config --global user.name "$NAME_USER"
+    - git config core.ignorecase false
+
+    # Clone the repository via HTTPS inside a new, unique directory
+    - git clone "https://${NAME_USER}:${DOCS_GROUP_ACCESS_TOKEN}@${CI_SERVER_HOST}/${DOCS_PATH}.git" "${CI_COMMIT_SHA}"
+
+    # change directory to docs/subgroup-repo/branch
+    - REPO_PATH_NOPEP="${CI_PROJECT_PATH#pep/}"
+    - NEW_DOCS_FOLDER="docs/${REPO_PATH_NOPEP//\//-}/$CI_COMMIT_REF_NAME"
+    # Copy the built documentation to the repository
+
+    - if [ -d "${CI_COMMIT_SHA}/$NEW_DOCS_FOLDER" ]; then
+    -   rm -rf "${CI_COMMIT_SHA}/$NEW_DOCS_FOLDER"
+    - fi
+    - mkdir -p "${CI_COMMIT_SHA}/$NEW_DOCS_FOLDER"
+    - cp -r docs/${DOCS_VISIBILITY_TYPE}/* "${CI_COMMIT_SHA}/$NEW_DOCS_FOLDER"
+
+    # Commit and push the changes
+    - cd "${CI_COMMIT_SHA}"
+    - git add "$NEW_DOCS_FOLDER"
+    - if git diff --cached --quiet; then
+    -   echo "No changes in the docs, nothing to push."
+    -   exit 0
+    - else
+    -   git commit -m "Update docs for $CI_PROJECT_PATH on branch $CI_COMMIT_REF_NAME"
+    -   git push -o ci.skip
+    - fi
+
+# Do not run on feature (and auto-created) branches, except when var FORCE_BUILD_DOCS is true
+.not-on-feature-branches: &not-on-feature-branches
+  if: '$CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH && 
+       $CI_COMMIT_REF_NAME != $PEP_FOSS_TESTING_BRANCH && 
+       $CI_COMMIT_REF_NAME != $PEP_FOSS_PRODUCTION_BRANCH && 
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_DEVELOPMENT_BRANCH &&
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_TESTING_BRANCH && 
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_ACCEPTANCE_BRANCH && 
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_PRODUCTION_BRANCH'
+  when: never
+
+copy-public-docs:
+  extends: .base-copy-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'public'
+  rules:
+    - *not-on-feature-branches
+      # Allow to force build the public docs outside of feature branches
+    - if: '$FORCE_BUILD_DOCS == "true"'
+      exists:
+        - docs/public/**/*
+      # In pipelines that are triggered, scheduled, gui started etc. 'changes:' always defaults to true. Explicitly make this manual.
+    - if: '$CI_PIPELINE_SOURCE != "push"'
+      exists:
+        - docs/public/**/*
+      when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+    - if: '$CI_PIPELINE_SOURCE != "push"'
+      when: never
+    - changes:
+        - docs/public/**/*
+      when: always
+    - exists:
+        - docs/public/**/*
+      when: manual
+
+copy-private-docs:
+  extends: .base-copy-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'private'
+  rules:
+      # Allow to force build the private docs
+    - if: '$FORCE_BUILD_DOCS == "true"'
+      exists:
+        - docs/private/**/*
+    - *not-on-feature-branches
+    - if: '$CI_PIPELINE_SOURCE != "push"'
+      exists:
+        - docs/private/**/*
+      when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+    - if: '$CI_PIPELINE_SOURCE != "push"'
+      when: never
+    - changes:
+        - docs/private/**/*
+      when: always
+    - exists:
+        - docs/private/**/*
+      when: manual
+
+.base-trigger-pages-deploy:
+  stage: publish
+  trigger:
+    strategy: depend
+
+trigger-pages-deploy-public:
+  extends: .base-trigger-pages-deploy
+  rules:
+    - *not-on-feature-branches
+    - exists:
+        - docs/public/**/*
+      when: on_success
+  needs:
+    - job: copy-public-docs
+  trigger:
+    project: docs/public
+
+trigger-pages-deploy-private:
+  extends: .base-trigger-pages-deploy
+  rules:
+    - *not-on-feature-branches
+    - exists:
+        - docs/private/**/*
+      when: on_success
+  needs:
+    - job: copy-private-docs
+  trigger:
+    project: docs/private
+
+depublish-feature-branch-private-docs:
+  stage: publish
+  tags:
+    - docker-small
+  rules:
+    - *not-on-feature-branches
+  needs:
+    - job: copy-private-docs
+  image: alpine:latest
+  interruptible: false
+  allow_failure: true
+  manual_confirmation: 'Are you sure you want to depublish the private docs for this branch?'
+  before_script:
+    - apk update -qq && apk add --no-cache bash git
+  script:
+    # Make sure we don't use any unset variables
+    - set -u
+
+    # Set the displayed user with the commits that are about to be made
+    - NAME_USER="Gitlab_CI_script"
+    - DOCS_PATH="docs/private"
+    - git config --global user.email "support@pep.cs.ru.nl"
+    - git config --global user.name "$NAME_USER"
+
+    # Clone the repository via HTTPS inside a new, unique directory
+    - git clone "https://${NAME_USER}:${DOCS_GROUP_ACCESS_TOKEN}@${CI_SERVER_HOST}/${DOCS_PATH}.git" "${CI_COMMIT_SHA}"
+
+    # change directory to docs/subgroup-repo/branch
+    - REPO_PATH_NOPEP="${CI_PROJECT_PATH#pep/}"
+    - NEW_DOCS_FOLDER="docs/${REPO_PATH_NOPEP//\//-}/$CI_COMMIT_REF_NAME"
+
+    - if [ -d "${CI_COMMIT_SHA}/$NEW_DOCS_FOLDER" ]; then
+    -   cd "${CI_COMMIT_SHA}"
+    -   git rm -rf "$NEW_DOCS_FOLDER"
+
+        # Commit and push the changes
+    -   git commit -m "Removed docs for $CI_PROJECT_PATH on branch $CI_COMMIT_REF_NAME"
+    -   git push
+    - else
+    -   echo "Branch not found in private docs repo, nothing to remove."
+    - fi

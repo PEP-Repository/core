@@ -1,0 +1,40 @@
+set(CASTOR_SOURCES
+    ApiKey.cpp ApiKey.hpp
+    CastorClient.cpp CastorClient.hpp
+    CastorConnection.cpp CastorConnection.hpp
+    CastorObject.cpp CastorObject.hpp
+    DataPoint.cpp DataPoint.hpp
+    Field.cpp Field.hpp
+    Form.cpp Form.hpp
+    ImportColumnNamer.cpp ImportColumnNamer.hpp
+    OptionGroup.cpp OptionGroup.hpp
+    Participant.cpp Participant.hpp
+    Ptree.cpp Ptree.hpp
+    RepeatingData.cpp RepeatingData.hpp
+    RepeatingDataForm.cpp RepeatingDataForm.hpp
+    RepeatingDataInstance.cpp RepeatingDataInstance.hpp
+    RepeatingDataPoint.cpp RepeatingDataPoint.hpp
+    Site.cpp Site.hpp
+    Study.cpp Study.hpp
+    StudyDataPoint.cpp StudyDataPoint.hpp
+    Survey.cpp Survey.hpp
+    SurveyDataPoint.cpp SurveyDataPoint.hpp
+    SurveyPackage.cpp SurveyPackage.hpp
+    SurveyPackageInstance.cpp SurveyPackageInstance.hpp
+    SurveyStep.cpp SurveyStep.hpp
+    Visit.cpp Visit.hpp
+)
+
+add_library(${PROJECT_NAME}Castorlib ${CASTOR_SOURCES})
+target_link_libraries(${PROJECT_NAME}Castorlib
+  ${PROJECT_NAME}Structurelib
+  ${PROJECT_NAME}Networkinglib
+  entities
+)
+
+if (WITH_TESTS)
+  add_unit_tests(Castor)
+
+  configure_executable_companion(${CMAKE_CURRENT_SOURCE_DIR}/tests/localhost.cert)
+  configure_executable_companion(${CMAKE_CURRENT_SOURCE_DIR}/tests/localhost.key)
+endif ()
