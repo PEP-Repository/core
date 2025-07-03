@@ -1,0 +1,4 @@
+tokenFile: token.yaml
+bindAddr: 0.0.0.0:8082
+selfCheckAddr: localhost:8082
+selfCheckBindAddr: 0.0.0.0:8082

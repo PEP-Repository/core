@@ -1,0 +1,30 @@
+{
+   memleak_on_linux_libc
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   ...
+   fun:pthread_create@@GLIBC_*
+}
+{
+   LibUnwind_Unwind_RaiseException
+   Memcheck:Param
+   msync(start)
+   ...
+   fun:_Unwind_RaiseException
+}
+{
+   Libunwind_Ux86_64_setcontext
+   Memcheck:Addr8
+   fun:_Ux86_64_setcontext
+}
+{
+   libunwind_unaddressable_or_uninitialized_bytes
+   Memcheck:Param
+   write(buf)
+   fun:syscall
+   ...
+   fun:_Unwind_RaiseException
+}

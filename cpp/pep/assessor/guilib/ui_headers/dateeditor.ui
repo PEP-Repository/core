@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DateEditor</class>
+ <widget class="QWidget" name="DateEditor">
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QDateEdit#dateEdit {
+        border: 0.05em solid black;
+        border-radius: 0.25em;
+        padding: 0.25em;
+        font-size: 14pt;
+        outline: none;
+}
+QDateEdit#dateEdit:focus {
+        border: 0.05em solid #CA0B5E;
+}
+QDateEdit#dateEdit[error=true] {
+        color: black;
+        background-color: rgb(255, 230, 230);
+}
+QDateEdit#dateEdit:drop-down {
+width: 20px; font-size: 10px;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="gridLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QVBoxLayout" name="formLayout_2">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetDefaultConstraint</enum>
+     </property>
+     <property name="horizontalSpacing" stdset="0">
+      <number>0</number>
+     </property>
+     <property name="verticalSpacing" stdset="0">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QDateEdit" name="dateEdit">
+       <property name="focusPolicy">
+        <enum>Qt::WheelFocus</enum>
+       </property>
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

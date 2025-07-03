@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  {% block head %}
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      background-color: #006097;
+    }
+
+    body.error {
+      background-color: #FF0000;
+    }
+
+    #content {
+      background-color: white;
+      margin: auto;
+      width: fit-content;
+      padding: 2em;
+      border-radius: 1em;
+    }
+  </style>
+  <title>{% block title %}{% endblock %}</title>
+  {% endblock %}
+</head>
+<body class="{% if exists("error") and error %}error{% endif %}">
+  <div id="content">
+    {% block content %}{{ content }}{% endblock %}
+  </div>
+</body>
+</html>

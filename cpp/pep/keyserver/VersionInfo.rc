@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepKeyServer"
+#define PEP_EXE_DESCRIPTION "PEP Key Server executable"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

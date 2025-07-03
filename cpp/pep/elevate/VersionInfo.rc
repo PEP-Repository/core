@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepElevate"
+#define PEP_EXE_DESCRIPTION "PEP Elevation utility"
+
+#include <pep/Windows.Exe.VersionInfo.rc>
