@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepbenchmark"
+#define PEP_EXE_DESCRIPTION "PEP (core library) benchmarking executable"
+
+#include <pep/Windows.Exe.VersionInfo.rc>
