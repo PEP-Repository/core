@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepPullCastor"
+#define PEP_EXE_DESCRIPTION "PEP PullCastor import utility"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

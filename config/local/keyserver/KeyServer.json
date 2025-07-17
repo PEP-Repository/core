@@ -1,0 +1,10 @@
+{
+  "TLSPrivateKeyFile": "TLSKeyServer.key",
+  "TLSCertificateFile": "TLSKeyServer.chain",
+  "ClientCAPrivateKeyFile": "pepClientCA.key",
+  "ClientCACertificateChainFile": "pepClientCA.chain",
+  "CACertificateFile": "rootCA.cert",
+  "OAuthTokenSecretFile": "OAuthTokenSecret.json",
+  "ListenPort": 16511,
+  "BlocklistStoragePath": "blocklist.sqlite"
+}

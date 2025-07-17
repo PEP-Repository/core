@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WixLocalization Culture="nl-NL" xmlns="http://schemas.microsoft.com/wix/2006/localization" Codepage="1252">
+	<String Id="LCID" Overridable="yes">1043</String>
+	<String Id="NewerVersionInstalled" Overridable="yes">Er is een nieuwere versie van PEP Assessor geïnstalleerd. Om deze te vervangen door een oudere versie, verwijdert u eerst de bestaande installatie.</String>
+	<String Id="LaunchPepAssessor" Overridable="yes">PEP Assessor starten</String>
+	<String Id="PepCommandPrompt" Overridable="yes">PEP Opdrachtregel</String>
+</WixLocalization>

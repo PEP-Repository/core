@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepAssessor"
+#define PEP_EXE_DESCRIPTION "PEP Assessor GUI application"
+
+#include <pep/Windows.Exe.VersionInfo.rc>
