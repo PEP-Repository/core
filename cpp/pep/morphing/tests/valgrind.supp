@@ -1,0 +1,8 @@
+# Metadata encryption test
+{
+   libcrypto_EVP_DecryptFinal_ex_conditional_depends_on_uninitialized
+   Memcheck:Cond
+   fun:ossl_gcm_cipher_final
+   ...
+   fun:EVP_DecryptFinal_ex
+}

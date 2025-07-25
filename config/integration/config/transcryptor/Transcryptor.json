@@ -1,0 +1,27 @@
+{
+  "KeysFile": "TranscryptorKeys.json",
+  "StorageFile": "transcryptorStorage.sqlite",
+  "VerifiersFile": "Verifiers.json",
+  "TLSPrivateKeyFile": "../../pki/TLSTranscryptor.key",
+  "TLSCertificateFile": "../../pki/TLSTranscryptor.chain",
+  "PEPPrivateKeyFile": "../../pki/PEPTranscryptor.key",
+  "PEPCertificateFile": "../../pki/PEPTranscryptor.chain",
+  "CACertificateFile": "../../pki/rootCA.cert",
+  "ListenPort": 16516,
+  "AccessManager": {
+    "Name": "AccessManager",
+    "Address": "localhost",
+    "Port": 16501
+  },
+  "KeyServer": {
+    "Name": "KeyServer",
+    "Address": "localhost",
+    "Port": 16511
+  },
+  "Transcryptor": {
+    "Name": "Transcryptor",
+    "Address": "localhost",
+    "Port": 16516
+  },
+  "SystemKeysFile": "SystemKeys.json"
+}

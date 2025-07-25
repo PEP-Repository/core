@@ -1,0 +1,159 @@
+{% extends "../common/page.html.j2" %}
+{% block head %}
+    {{ super() }}
+    <style>
+    /* Typography with web-safe fonts only */
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.6;
+        color: #333;
+    }
+    
+    .code-container {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 20px 0;
+        position: relative; /* For tooltip positioning */
+    }
+    
+    pre {
+        margin: 0;
+        margin-right: 8px;
+        font-family: "Courier New", Courier, monospace;
+        font-size: 14px;
+        background-color: #f5f7f9;
+        border-radius: 4px;
+        padding: 10px 12px;
+        border: 1px solid #e1e4e8;
+        overflow-x: auto;
+        letter-spacing: -0.5px; /* Improve readability of monospace font */
+    }
+    
+    .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 4px;
+        margin-left: 8px;
+        transition: all 0.2s;
+        vertical-align: middle;
+        position: relative; /* For tooltip positioning */
+    }
+    
+    .copy-btn:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .copy-btn:active {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    .copy-btn svg {
+        width: 18px;
+        height: 18px;
+        fill: #6e7781;
+        transition: fill 0.2s;
+    }
+    
+    .copy-btn:hover svg {
+        fill: #24292f;
+    }
+    
+    .copy-btn.success svg {
+        fill: #0366d6;
+    }
+    
+    /* Tooltip styling */
+    .tooltip {
+        position: absolute;
+        background-color: #0366d6;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .tooltip:after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #0366d6 transparent transparent transparent;
+    }
+    
+    .tooltip.show {
+        opacity: 1;
+    }
+    
+    h2 {
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bold;
+        margin-top: 0;
+        color: #24292f;
+    }
+    
+    p {
+        margin: 16px 0;
+        font-size: 16px;
+    }
+    
+    .validity-info {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+        margin: 20px 0;
+    }
+    </style>
+    <script>
+        window.addEventListener("load", () => {
+          document.getElementById("copyButton").addEventListener("click", () => {
+              const btn = document.getElementById("copyButton");
+              const tooltip = document.getElementById('tooltip');
+              
+              navigator.clipboard.writeText('{{ code }}')
+                  .then(() => {
+                      // Show tooltip
+                      tooltip.classList.add('show');
+                      
+                      // Add success style to button. We animate it, so that the user gets feedback if he presses the button multiple times
+                      btn.classList.add('success');
+                      
+                      // Reset after animation completes
+                      setTimeout(() => {
+                          tooltip.classList.remove('show');
+                          btn.classList.remove('success');
+                      }, 1500);
+                  });
+          });
+        });
+    </script>
+{% endblock %}
+{% block title %}PEP Login{% endblock %}
+{% block content %}
+    <p>Please enter the following code on your PEP command line:</p>
+    <div class="code-container">
+        <pre>{{ code }}</pre>
+        <button id="copyButton" class="copy-btn" aria-label="Copy code" title="Copy code">
+            <div id="tooltip" class="tooltip">Copied!</div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+        </button>
+    </div>
+    <p class="validity-info">This code is valid for {{ validity }}</p>
+{% endblock %}
