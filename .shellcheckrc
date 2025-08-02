@@ -1,0 +1,2 @@
+# Warns on useless use of cat, not necessarily a good use of time in practice, and rarely affects correctness. https://github.com/koalaman/shellcheck/wiki/SC2002#exceptions
+disable=SC2002

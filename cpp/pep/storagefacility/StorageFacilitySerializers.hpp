@@ -1,0 +1,41 @@
+#pragma once
+
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
+
+namespace pep {
+
+PEP_DEFINE_CODED_SERIALIZER(DataEnumerationRequest2);
+PEP_DEFINE_SIGNED_SERIALIZATION(DataEnumerationRequest2);
+PEP_DEFINE_CODED_SERIALIZER(DataEnumerationEntry2);
+PEP_DEFINE_CODED_SERIALIZER(DataEnumerationResponse2);
+
+PEP_DEFINE_CODED_SERIALIZER(MetadataReadRequest2);
+PEP_DEFINE_SIGNED_SERIALIZATION(MetadataReadRequest2);
+
+PEP_DEFINE_CODED_SERIALIZER(DataReadRequest2);
+PEP_DEFINE_SIGNED_SERIALIZATION(DataReadRequest2);
+
+PEP_DEFINE_CODED_SERIALIZER(MetadataUpdateRequest2);
+PEP_DEFINE_SIGNED_SERIALIZATION(MetadataUpdateRequest2);
+PEP_DEFINE_CODED_SERIALIZER(MetadataUpdateResponse2);
+
+PEP_DEFINE_CODED_SERIALIZER(DataStoreRequest2);
+PEP_DEFINE_SIGNED_SERIALIZATION(DataStoreRequest2);
+PEP_DEFINE_CODED_SERIALIZER(DataStoreEntry2);
+PEP_DEFINE_CODED_SERIALIZER(DataStoreResponse2);
+
+PEP_DEFINE_CODED_SERIALIZER(DataDeleteRequest2);
+PEP_DEFINE_SIGNED_SERIALIZATION(DataDeleteRequest2);
+PEP_DEFINE_CODED_SERIALIZER(DataRequestEntry2);
+PEP_DEFINE_CODED_SERIALIZER(DataDeleteResponse2);
+
+PEP_DEFINE_CODED_SERIALIZER(DataHistoryRequest2);
+PEP_DEFINE_SIGNED_SERIALIZATION(DataHistoryRequest2);
+PEP_DEFINE_CODED_SERIALIZER(DataHistoryEntry2);
+PEP_DEFINE_CODED_SERIALIZER(DataHistoryResponse2);
+
+PEP_DEFINE_CODED_SERIALIZER(DataPayloadPage);
+
+}
