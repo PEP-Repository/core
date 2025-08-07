@@ -1,0 +1,304 @@
+variables:
+  FORCE_PUBLISH_DOCS:
+    value: 'false'
+    options:
+      - 'false'
+      - 'true'
+    description: Force publishing of the docs
+
+.base-copy-docs:
+  tags:
+    - docker-small
+  image: alpine:latest
+  interruptible: false
+  before_script:
+    - apk update -qq && apk add --no-cache bash git
+  script:
+    # Make sure we don't use any unset variables
+    - set -u
+
+    # Set the displayed user with the commits that are about to be made
+    - NAME_USER="Gitlab_CI_script"
+    - DOCS_PATH="docs/${DOCS_VISIBILITY_TYPE}"
+    - git config --global user.email "support@pep.cs.ru.nl"
+    - git config --global user.name "$NAME_USER"
+
+    # Clone the repository via HTTPS inside a new, unique directory
+    - git clone "https://${NAME_USER}:${DOCS_GROUP_WRITE_REPOSITORY_TOKEN}@${CI_SERVER_HOST}/${DOCS_PATH}.git" "${CI_COMMIT_SHA}"
+
+    - cd "${CI_COMMIT_SHA}"
+
+    - base_commit_msg="docs for $CI_PROJECT_PATH on branch $CI_COMMIT_REF_NAME"
+    - if [ "$DOCS_JOB_TYPE" = "test" ]; then
+    # Create new branch from default branch
+    # Using IID (project pipeline id) because pipeline id does not work in the trigger job, and 
+    # explicitly not putting this string in a pipeline level variable as this also does not work
+    -   git checkout -b "test-for-${CI_PROJECT_PATH_SLUG}-${CI_PIPELINE_IID}"
+    -   git push -u origin "test-for-${CI_PROJECT_PATH_SLUG}-${CI_PIPELINE_IID}" -o ci.skip
+    -   commit_msg="Testing $base_commit_msg"
+    - elif [ "$DOCS_JOB_TYPE" = "publish" ]; then
+    -   commit_msg="Publishing $base_commit_msg"
+    - elif [ "$DOCS_JOB_TYPE" = "depublish" ]; then
+    -   commit_msg="Depublishing $base_commit_msg"
+    - else
+    -   echo "Unknown DOCS_JOB_TYPE $DOCS_JOB_TYPE"
+    -   exit 1
+    - fi
+
+    # Change directory to docs/subgroup-repo/branch
+    - REPO_PATH_NOPEP="${CI_PROJECT_PATH#pep/}"
+    - NEW_DOCS_FOLDER="docs/${REPO_PATH_NOPEP//\//-}/$CI_COMMIT_REF_NAME"
+
+    # Remove the old docs folder
+    - if [ -d "$NEW_DOCS_FOLDER" ]; then
+    -   rm -rf "$NEW_DOCS_FOLDER"
+    - fi
+
+    # Copy the built documentation to the repository for the test and publish jobs
+    - if [ "$DOCS_JOB_TYPE" != "depublish" ]; then
+    -   mkdir -p "$NEW_DOCS_FOLDER"
+    -   cp -r ../docs/${DOCS_VISIBILITY_TYPE}/* "$NEW_DOCS_FOLDER"
+    - fi
+
+    # Commit and push the changes
+    - git add "$NEW_DOCS_FOLDER"
+    - if git diff --cached --quiet; then
+    -   echo "No changes in the docs, nothing to push."
+    -   exit 0
+    - else
+    -   git commit -m "$commit_msg"
+    -   git push -o ci.skip
+    - fi
+
+###### Custom rules ########
+
+# Do not run on feature (and auto-created) branches
+.not-on-feature-branches: &not-on-feature-branches
+  if: '$CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH &&
+       $CI_COMMIT_REF_NAME != $PEP_FOSS_TESTING_BRANCH &&
+       $CI_COMMIT_REF_NAME !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN &&
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_DEVELOPMENT_BRANCH &&
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_TESTING_BRANCH &&
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_ACCEPTANCE_BRANCH &&
+       $CI_COMMIT_REF_NAME != $PEP_PROJECT_PRODUCTION_BRANCH'
+  when: never
+
+# Don't run on non-feature branches
+.not-on-non-feature-branches: &not-on-non-feature-branches
+  if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH &&
+       $CI_COMMIT_REF_NAME == $PEP_FOSS_TESTING_BRANCH &&
+       $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN &&
+       $CI_COMMIT_REF_NAME == $PEP_PROJECT_DEVELOPMENT_BRANCH &&
+       $CI_COMMIT_REF_NAME == $PEP_PROJECT_TESTING_BRANCH &&
+       $CI_COMMIT_REF_NAME == $PEP_PROJECT_ACCEPTANCE_BRANCH &&
+       $CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH'
+  when: never
+
+.if-force-publish-public: &if-force-publish-public
+  if: '$FORCE_PUBLISH_DOCS == "true"'
+  exists:
+    - docs/public/**/*
+
+.if-force-publish-private: &if-force-publish-private
+  if: '$FORCE_PUBLISH_DOCS == "true"'
+  exists:
+    - docs/private/**/*
+
+.if-docs-exist-public: &if-docs-exist-public
+  exists:
+    - docs/public/**/*
+
+.if-docs-exist-private: &if-docs-exist-private
+  exists:
+    - docs/private/**/*
+
+###### test docs ########
+
+.base-test-docs:
+  extends: .base-copy-docs
+  stage: build
+  needs: []
+  variables:
+    DOCS_JOB_TYPE: 'test'
+
+test-public-docs:
+  extends: .base-test-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'public'
+  rules:
+    - *if-force-publish-public
+    - *not-on-feature-branches
+    - *if-docs-exist-public
+
+test-private-docs:
+  extends: .base-test-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'private'
+  rules:
+    - *if-force-publish-private
+    - *not-on-feature-branches
+    - *if-docs-exist-private
+
+###### publish docs ########
+
+.base-publish-docs:
+  extends: .base-copy-docs
+  stage: publish
+  variables:
+    DOCS_JOB_TYPE: 'publish'
+
+# We'd prefer to have this job share `rules` code with publish-private-docs through DOCS_VISIBILITY_TYPE,
+# but unfortunately GitLab does not yet support job level variable expansion for `rules:``
+publish-public-docs:
+  extends: .base-publish-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'public'
+  # 'dependencies:' instead of 'needs:' to make sure the job doesnt ignore unleash stage
+  dependencies:
+    - trigger-test-public-docs
+  rules:
+      # Allow to force publish the public docs in feature branches
+    - *if-force-publish-public
+    - *not-on-feature-branches
+      # We want more control when publishing release docs, as the docs in core should not be published before the binaries are built.
+    - if: '$PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN && $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN'
+      exists:
+        - docs/public/**/*
+      when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+      # Always publishes for non-feature, non-release branches
+    - *if-docs-exist-public
+
+publish-private-docs:
+  extends: .base-publish-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'private'
+  # 'dependencies:' instead of 'needs:' to make sure the job doesnt ignore unleash stage
+  dependencies:
+    - trigger-test-private-docs
+  rules:
+      # Allow to force publish the private docs in feature branches
+    - *if-force-publish-private
+    - *not-on-feature-branches
+      # We want more control when publishing release docs, as the docs in core should not be published before the binaries are built.
+    - if: '$PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN && $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN'
+      exists:
+        - docs/private/**/*
+      when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+      # Always publishes for non-feature, non-release branches
+    - *if-docs-exist-private
+
+###### depublish docs ########
+
+.base-depublish-docs:
+  extends: .base-copy-docs
+  stage: publish
+  variables:
+    DOCS_JOB_TYPE: 'depublish'
+  when: manual
+
+depublish-feature-branch-public-docs:
+  extends: .base-depublish-docs
+  needs:
+    - job: publish-public-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'public'
+  manual_confirmation: 'Are you sure you want to depublish the public docs for this branch?'
+  rules:
+    - *not-on-non-feature-branches
+    - *if-force-publish-public
+
+depublish-feature-branch-private-docs:
+  extends: .base-depublish-docs
+  needs:
+    - job: publish-private-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'private'
+  manual_confirmation: 'Are you sure you want to depublish the private docs for this branch?'
+  rules:
+    - *not-on-non-feature-branches
+    - *if-force-publish-private
+
+###### Trigger jobs ######
+
+.base-trigger:
+  trigger:
+    project: docs/${DOCS_VISIBILITY_TYPE}
+    strategy: mirror
+
+trigger-test-public-docs:
+  extends: .base-trigger
+  stage: build
+  needs:
+    - job: test-public-docs
+  variables:
+    DOCS_VISIBILITY_TYPE: 'public'
+  rules:
+    - *if-force-publish-public
+    - *not-on-feature-branches
+    - *if-docs-exist-public
+  trigger:
+    branch: test-for-${CI_PROJECT_PATH_SLUG}-${CI_PIPELINE_IID}
+
+trigger-test-private-docs:
+  extends: .base-trigger
+  stage: build
+  variables:
+    DOCS_VISIBILITY_TYPE: 'private'
+  needs:
+    - job: test-private-docs
+  rules:
+    - *if-force-publish-private
+    - *not-on-feature-branches
+    - *if-docs-exist-private
+  trigger:
+    branch: test-for-${CI_PROJECT_PATH_SLUG}-${CI_PIPELINE_IID}
+
+trigger-publish-public-docs:
+  extends: .base-trigger
+  stage: publish
+  variables:
+    DOCS_VISIBILITY_TYPE: 'public'
+  needs:
+    - job: publish-public-docs
+  rules:
+    - *if-force-publish-public
+    - *not-on-feature-branches
+    - *if-docs-exist-public
+
+trigger-publish-private-docs:
+  extends: .base-trigger
+  stage: publish
+  variables:
+    DOCS_VISIBILITY_TYPE: 'private'
+  needs:
+    - job: publish-private-docs
+  rules:
+    - *if-force-publish-private
+    - *not-on-feature-branches
+    - *if-docs-exist-private
+
+trigger-depublish-feature-branch-public-docs:
+  extends: .base-trigger
+  variables:
+    DOCS_VISIBILITY_TYPE: 'public'
+  stage: publish
+  needs:
+    - job: depublish-feature-branch-public-docs
+  rules:
+    - *not-on-non-feature-branches
+    - *if-force-publish-public
+
+trigger-depublish-feature-branch-private-docs:
+  extends: .base-trigger
+  variables:
+    DOCS_VISIBILITY_TYPE: 'private'
+  stage: publish
+  needs:
+    - job: depublish-feature-branch-private-docs
+  rules:
+    - *not-on-non-feature-branches
+    - *if-force-publish-private

@@ -1,0 +1,70 @@
+include(pki.cmake)
+
+add_custom_target(
+    pki ALL
+    DEPENDS
+        PEPAccessManager.chain
+        PEPAccessManager.key
+        PEPAuthserver.chain
+        PEPAuthserver.key
+        PEPRegistrationServer.chain
+        PEPRegistrationServer.key
+        PEPStorageFacility.chain
+        PEPStorageFacility.key
+        PEPTranscryptor.chain
+        PEPTranscryptor.key
+        TLSAccessManager.chain
+        TLSAccessManager.key
+        TLSAuthserver.chain
+        TLSAuthserver.key
+        TLSKeyServer.chain
+        TLSKeyServer.key
+        TLSRegistrationServer.chain
+        TLSRegistrationServer.key
+        TLSStorageFacility.chain
+        TLSStorageFacility.key
+        TLSTranscryptor.chain
+        TLSTranscryptor.key
+        pepClientCA.chain
+        pepClientCA.key
+        rootCA.cert
+        s3certs/private.key
+        s3certs/public.crt
+)
+
+add_custom_command(
+	OUTPUT
+		PEPAccessManager.chain
+		PEPAccessManager.key
+		PEPAuthserver.chain
+		PEPAuthserver.key
+		PEPRegistrationServer.chain
+		PEPRegistrationServer.key
+		PEPStorageFacility.chain
+		PEPStorageFacility.key
+		PEPTranscryptor.chain
+		PEPTranscryptor.key
+		TLSAccessManager.chain
+		TLSAccessManager.key
+		TLSAuthserver.chain
+		TLSAuthserver.key
+		TLSKeyServer.chain
+		TLSKeyServer.key
+		TLSRegistrationServer.chain
+		TLSRegistrationServer.key
+		TLSStorageFacility.chain
+		TLSStorageFacility.key
+		TLSTranscryptor.chain
+		TLSTranscryptor.key
+		pepClientCA.chain
+		pepClientCA.key
+		rootCA.cert
+		s3certs/private.key
+		s3certs/public.crt
+	DEPENDS
+		pki.sh
+	DEPENDS
+		ca_ext.cnf
+	COMMAND
+		${INVOKE_SH} ${CMAKE_CURRENT_SOURCE_DIR}/pki.sh
+)

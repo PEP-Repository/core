@@ -1,0 +1,94 @@
+// Adapted from https://gist.githubusercontent.com/eladkarako/b2eba8ea8e8e6a2a54cc14a9a5f5a198/raw/a7520e3141b4a184158073eb6595d52ded6c38ce/VERSIONINFO.rc
+
+// This file is intended for inclusion from other .rc files: ensure required blanks have been filled in
+#ifndef PEP_EXE_FILENAME
+# error Define PEP_EXE_FILENAME before including this file.
+#endif
+#ifndef PEP_EXE_DESCRIPTION
+# error Define PEP_EXE_DESCRIPTION before including this file.
+#endif
+#ifndef BUILD_MAJOR_VERSION
+# error Define BUILD_MAJOR_VERSION before including this file.
+#endif
+#ifndef BUILD_MINOR_VERSION
+# error Define BUILD_MINOR_VERSION before including this file.
+#endif
+// Include headers required for the preprocessing in this file
+#include <pep/utils/BuildFlavor.hpp>
+#include <Windows.h> // Needed for some resource-related macros: see a.o. https://stackoverflow.com/a/17781224
+#include <boost/preprocessor/cat.hpp>
+#include <boost/preprocessor/stringize.hpp>
+
+/* Gitlab CI builds set (a.o.) the CI_COMMIT_REF_NAME and CI_PIPELINE_ID environment values,
+ * which we receive in our C++ build as the BUILD_REF and BUILD_PIPELINE_ID preprocessor symbols.
+ * But while WiX can test for the presence of CI_COMMIT_REF_NAME in the environment,
+ * we can't (conveniently) test for (non-)emptiness of the BUILD_REF string here, so we use the
+ * BUILD_PIPELINE_ID symbol instead. The assumption is that CI_COMMIT_REF_NAME and CI_PIPELINE_ID
+ * are both either set or not set in the environment (depending on whether this is a Gitlab CI build).
+ */
+
+// BOOST_PP_IS_EMPTY didn't work for me, so using the approach suggested by https://stackoverflow.com/a/13262601
+#if (BUILD_PIPELINE_ID -1 == -1) // Local development version
+# define VER_PIPELINE 0
+#else // Gitlab CI build
+// Keep this version number equal to the one in WiX installer logic.
+# define VER_PIPELINE BUILD_PIPELINE_ID
+#endif
+
+#if (BUILD_JOB_ID -1 == -1) // Local development version
+# define VER_JOB 0
+#else // Gitlab CI build
+// Keep this version number equal to the one in WiX installer logic.
+# define VER_JOB BUILD_JOB_ID
+
+#endif
+
+// XXXVERSION directives must be delimited by commas
+// We don't include the job number (400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits: see https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource
+// TODO: add job number (after subtracting some version-specific number): see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
+#define VERSION_NUM BUILD_MAJOR_VERSION,BUILD_MINOR_VERSION,VER_PIPELINE
+
+// "XxxVersion" strings must be delimited by full stops (periods)
+#define VERSION_STR BOOST_PP_STRINGIZE(BUILD_MAJOR_VERSION.BUILD_MINOR_VERSION.VER_PIPELINE.VER_JOB)
+
+// Settings related to localization
+#define LOC_LANGUAGE_ENGLISH        0409
+#define LOC_CHARSET_MULTILINGUAL    04E4
+#define LOC_LANGUAGE                LOC_LANGUAGE_ENGLISH
+#define LOC_CHARSET                 LOC_CHARSET_MULTILINGUAL
+
+// Define a VERSIONINFO resource as documented on https://docs.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     VERSION_NUM
+PRODUCTVERSION  VERSION_NUM // Note that "ProductVersion" string (below) is used for file -> Properties -> Details
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+#if BUILD_HAS_DEBUG_FLAVOR()
+FILEFLAGS       VS_FF_DEBUG
+#else
+FILEFLAGS       0x0L
+#endif
+FILEOS          VOS__WINDOWS32
+FILETYPE        VFT_APP
+{
+  BLOCK "StringFileInfo"
+  {
+    BLOCK BOOST_PP_STRINGIZE(BOOST_PP_CAT(LOC_LANGUAGE, LOC_CHARSET))
+    {
+      VALUE "CompanyName",      "Radboud University"
+      VALUE "FileDescription",  PEP_EXE_DESCRIPTION
+      VALUE "FileVersion",      VERSION_STR // Note that FILEVERSION fixed-info field (above) is used for file -> Properties -> Details
+      VALUE "InternalName",     PEP_EXE_FILENAME
+      VALUE "LegalCopyright",   "Copyright Radboud University. All rights reserved."
+      VALUE "ProductName",      "Polymorphic encryption and pseudonymisation for personalised healthcare"
+      VALUE "OriginalFilename", PEP_EXE_FILENAME ".exe"
+      VALUE "ProductVersion",   VERSION_STR
+      VALUE "CompanyShortName", "RU"
+      VALUE "ProductShortName", "PEP"
+    }
+  }
+
+  BLOCK "VarFileInfo"
+  {
+    VALUE "Translation", BOOST_PP_CAT(0x, LOC_LANGUAGE) BOOST_PP_CAT(0x, LOC_CHARSET)
+  }
+}

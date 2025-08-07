@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+install_dir="${1:-$HOME/bin}"
+
+install -Dm755 -t "$install_dir" /app/cli-integration-scripts/*
+mkdir -p "$HOME/.local/share/pep/$ENVIRONMENT"
+cp -r /app/share/autocomplete "$HOME/.local/share/pep/$ENVIRONMENT"
+
+echo "CLI integrations have been installed to \"$install_dir\". Make sure this is in your \$PATH, e.g. by setting it in your .bashrc or .zshrc."
+echo "Run '$ENVIRONMENT-activate' to activate PEP for the current environment."
