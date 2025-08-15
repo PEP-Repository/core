@@ -1,0 +1,55 @@
+*.a
+*.dSYM
+*.dir
+*.dylib
+*.kdev4
+*.log
+*.o
+*.orig
+*.solib
+*.sqlite
+*.swp
+.idea/*
+.pidfile
+/cmake-build-debug/
+/out
+/s3proxy-runtime/
+/temp/
+CmakeLists.txt.user
+GPATH
+GRTAGS
+GTAGS
+cache/
+lemon
+libs
+perf.data
+perf.data.old
+CMakeSettings.json
+/.flatpak-builder
+.cache/
+/s3proxy-runtime/
+
+# Build directories
+/bin
+/build
+
+# Generated documentation
+/doxygen
+Doxyfile
+
+# Python virtualenv
+/venv/
+
+# Python cache/build files
+__pycache__/
+*.pyc
+*.egg-info
+*.whl
+
+# macOS specific
+.DS_Store
+
+# Personal settings
+/CMakeUserPresets.json
+/.vs
+/.vscode

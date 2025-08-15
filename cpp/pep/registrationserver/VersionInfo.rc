@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepRegistrationServer"
+#define PEP_EXE_DESCRIPTION "PEP Registration Server executable"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

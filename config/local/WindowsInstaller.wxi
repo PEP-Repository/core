@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Include xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+<?define UpgradeCode = "{436991CD-8D20-4312-828B-5A2F8215EA1A}" ?>
+<?define AdditionalShortcutLocation = "[WindowsVolume]PEP $(var.VersionText) installed additional shortcuts" ?>
+
+</Include>
