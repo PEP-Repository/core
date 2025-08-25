@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepLogon"
+#define PEP_EXE_DESCRIPTION "PEP Logon utility"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

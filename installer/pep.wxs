@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+<?ifndef var.MajorVersion ?>
+    <?error Define MajorVersion before compiling pep.wxs?>
+<?endif ?>
+<?ifndef var.MinorVersion ?>
+    <?error Define MinorVersion before compiling pep.wxs?>
+<?endif ?>
+
+<?ifndef var.PipelineNumber ?>
+	<?define PipelineNumber = "0" ?>
+<?endif ?>
+<?ifndef var.JobNumber ?>
+	<!--
+		Since CI sets this to CI_JOB_ID, this will usually be a local build.
+		Only the first three parts (major, minor, pipeline) are used in the 
+		version comparison. Therefore, This number will not affect whether or 
+		not this build will be seen as newer than others. 
+		This number is purely used as a way to track back the specific
+		build job in order to trace back errors and bugs. 
+	-->
+	<?define JobNumber = "0" ?>
+<?endif ?>
+
+
+<!-- Keep this version number equal to the one in PEP's Windows.Exe.VersionInfo.rc file. -->
+<?define Version = "$(var.MajorVersion).$(var.MinorVersion).$(var.PipelineNumber).$(var.JobNumber)" ?>
+<?define Flavor = "$(var.ProjectCaption) $(var.EnvironmentName)" ?>
+<?define VersionText = "($(var.Flavor)) $(var.Version)" ?>
+
+<?include $(var.InfraWxiFile) ?>
+
+<!-- Determine which "Program Files" folder is appropriate for the installer's build architecture -->
+<?if $(sys.BUILDARCH) = x64 ?>
+	<?define TargetProgFilesFolder = "ProgramFiles64Folder" ?>
+<?else ?>
+	<?define TargetProgFilesFolder = "ProgramFilesFolder" ?>
+<?endif ?>
+
+<?define ProductCaption        = "PEP $(var.VersionText)" ?>
+<?define ProductDescription    = "$(var.ProductCaption) Installer" ?>
+<?define ProductRegKey         = "PEP ($(var.Flavor))" ?>
+<?define DefaultInstallDirName = "PEP-Client ($(var.Flavor))" ?>
+
+	<Product Name="$(var.ProductCaption)" Manufacturer="Radboud University" Id="*" UpgradeCode="$(var.UpgradeCode)" Language="!(loc.LCID)" Codepage="1252" Version="$(var.Version)">
+		<Package Id="*" Keywords="Installer" Description="$(var.ProductDescription)" Manufacturer="Radboud University" InstallerVersion="200" Languages="!(loc.LCID)" Compressed="yes" SummaryCodepage="1252" InstallScope="perMachine" Platform="$(sys.BUILDARCH)" />
+		<Media Id="1" Cabinet="pep.cab" EmbedCab="yes" />
+		
+		<Upgrade Id ="$(var.UpgradeCode)">
+			<UpgradeVersion Minimum="$(var.Version)" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
+			<UpgradeVersion Maximum="$(var.Version)" IncludeMaximum="no" Property="OLDERVERSIONBEINGUPGRADED"/>      
+		</Upgrade>
+		
+		<InstallExecuteSequence>
+			<!-- Work around DLLs being removed during upgrades: see https://stackoverflow.com/a/15139855 -->
+			<RemoveExistingProducts After="InstallExecute"/>
+			
+			<!-- Close application(s) before Windows Restart Manager displays its prompt. -->
+			<Custom Action="WixCloseApplications" Before="LaunchConditions" />
+		</InstallExecuteSequence>
+		
+		<!-- Close pepAssessor.exe if the installer was launched by it, as evidenced by it passing property UPGRADEFROMASSESSOR. -->
+		<!-- The RebootPrompt="no" setting allows us to schedule WixCloseApplications early in the installation sequence:
+		     see http://windows-installer-xml-wix-toolset.687559.n2.nabble.com/util-CloseApplication-how-do-I-use-it-td732809.html -->
+		<util:CloseApplication CloseMessage="yes" Target="pepAssessor.exe" Timeout="3" RebootPrompt="no">UPGRADEFROMASSESSOR</util:CloseApplication>
+		<!-- Also close pepElevate.exe, which pepAssessor.exe may have used to launch the installer. -->
+		<util:CloseApplication CloseMessage="yes" Target="pepElevate.exe" Timeout="3" RebootPrompt="no">UPGRADEFROMASSESSOR</util:CloseApplication>
+		
+		<Condition Message="!(loc.NewerVersionInstalled)">Not NEWERVERSIONDETECTED</Condition>
+		
+		<!-- Provide the PPP logo as an Icon -->
+		<!-- TODO: move to branded installer source: we only want this in the PPP installer -->
+		<Icon Id="appicon.ico" SourceFile="$(sys.SOURCEFILEDIR)\..\cpp\pep\assessor\guilib\appicon.ico" />
+		<!-- Use the PPP logo in the "Apps & Features" ("Add/Remove Programs"?) list -->
+		<Property Id="ARPPRODUCTICON" Value="appicon.ico" />
+		
+		<!-- Determine the directory where the software was previously installed. -->
+		<Property Id="PREVIOUSINSTALLFOLDER">
+			<RegistrySearch Id="GetPreviousInstallFolder" Root="HKLM" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="InstallLocation" Type="raw" />
+		</Property>
+		
+		<!-- Upgrades should go to the location where the software was previously installed. -->
+		<CustomAction Id="InstallToSameDirectory" Property="INSTALLDIR" Value="[PREVIOUSINSTALLFOLDER]" Execute="firstSequence" />
+		
+		<!-- Inject the appropriate INSTALLDIR-setting action into execution sequences. -->
+		<InstallExecuteSequence>
+			<Custom Action="InstallToSameDirectory" After="AppSearch">PREVIOUSINSTALLFOLDER</Custom>
+		</InstallExecuteSequence>
+		<InstallUISequence>
+			<Custom Action="InstallToSameDirectory" After="AppSearch">PREVIOUSINSTALLFOLDER</Custom>
+		</InstallUISequence>
+		
+		<!-- Allow the user to override the default install location -->
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+		<UIRef Id="WixUI_InstallDir" />
+		
+		<!-- Fix unformatted status updates: see https://stackoverflow.com/a/44182276 -->
+		<UIRef Id="WixUI_ErrorProgressText" />
+		
+		<!-- Set up launch of pepAssessor after installation: https://wixtoolset.org/documentation/manual/v3/howtos/ui_and_localization/run_program_after_install.html -->
+		<Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="!(loc.LaunchPepAssessor)" />
+		<Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" /><!-- Check the box by default -->
+		<Property Id="WixShellExecTarget" Value="[#pepAssessor.exe]" />
+		<CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+		
+		<!-- Re-launch pepAssessor after upgrades launched from it. -->
+		<!-- The "basic UI" (in MSIexec terminology) during upgrades apparently doesn't qualify as an InstallUISequence -->
+		<InstallExecuteSequence>
+			<Custom Action="LaunchApplication" OnExit="success">UPGRADEFROMASSESSOR and UPGRADEFROMASSESSORACCOUNT and NOT Installed</Custom>
+		</InstallExecuteSequence>
+
+		<UI>
+            <UIRef Id="WixUI_InstallDir" />
+			
+			<!-- Skip the license agreement dialog: https://stackoverflow.com/a/4948331 -->
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="2">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2">1</Publish>
+			
+			<!-- Launch pepAssessor if box checked: https://wixtoolset.org/documentation/manual/v3/howtos/ui_and_localization/run_program_after_install.html -->
+			<Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+		</UI>
+		
+		<!-- Get rid of warnings about shortcuts and Registry keypaths when installing for all users. See https://stackoverflow.com/a/3824949 -->
+		<Property Id="DISABLEADVTSHORTCUTS" Value="1" />
+		
+		<Directory Id="TARGETDIR" Name="SourceDir" ComponentGuidGenerationSeed="{ED614B29-FB04-409B-93F2-66579B984038}">
+			<!-- Directory where application files will go -->
+			<Directory Id="$(var.TargetProgFilesFolder)" Name="$(var.TargetProgFilesFolder)">
+				<Directory Id="INSTALLDIR" Name="$(var.DefaultInstallDirName)" />
+			</Directory>
+			
+			<!-- Create (on install) and remove (on uninstall) the Start Menu directory "PEP" -->
+			<Directory Id="ProgramMenuFolder" Name="Programs">
+				<Directory Id="ProgramMenuDir" Name="PEP ($(var.Flavor))">
+					<Component Id="ProgramMenuDir" Guid="*">
+						<RemoveFolder Id="ProgramMenuDir" On="uninstall" />
+						<RegistryValue Root="HKMU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Type="string" Value="" KeyPath="yes" />
+					</Component>
+					<Component Id="InstallLocation" Guid="*">
+						<RegistryValue Root="HKMU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="InstallLocation" Type="string" Value="[INSTALLDIR]" KeyPath="yes" />
+					</Component>
+				</Directory>
+			</Directory>
+			
+			<!-- Provide a directory (entry) where additional shortcuts will be placed if specified. -->
+			<Directory Id="AdditionalShortcuts" Name="AdditionalShortcuts" />
+		</Directory>
+		
+		<!-- Use specified directory to place additional shortcuts. -->
+		<!-- Adapted from https://stackoverflow.com/a/15924474 -->
+		<?ifdef AdditionalShortcutLocation ?>
+			<SetDirectory Id="AdditionalShortcuts" Value="$(var.AdditionalShortcutLocation)" />
+		<?endif ?>
+
+		<!-- The files we have available for installation -->
+		<DirectoryRef Id="INSTALLDIR">
+			<!-- The target for Log Folder-->
+			<Directory Id="AppDataFolder">
+				<Directory Id="LogFolder" Name="PEP">
+					<Component Id="CreateLogFolder" Guid="{1A413BEB-FF90-4CD7-8FFF-B78E2CC23ECB}" Permanent="yes">
+					    <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="LogFolderCreated" Type="string" Value="" KeyPath="yes"/>
+						<CreateFolder />
+						<!-- The RemoveFolder element puts the directory in the RemoveFile table, fixing error LGHT0204. However, we disabled the removal of the directory by marking it Permanent="yes". It will remain after uninstalling the PEP client. -->
+						<!-- See: https://stackoverflow.com/questions/2631063/how-to-make-wix-leave-files-after-uninstall -->
+						<!-- See: https://stackoverflow.com/questions/4627861/wix-the-directory-is-in-the-user-profile-but-is-not-listed-in-the-removefile-tab -->
+						<RemoveFolder Id="RemoveLogFolder" On="uninstall"/>
+					</Component>
+				</Directory>
+			</Directory>
+			<Component Id="LogFolderShortcut" Guid="*">
+				<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="LogFolderShortcut" Type="string" Value="" KeyPath="yes"/>
+				<Shortcut Id="LogFolderShortcut" Name="Log folder" Directory="ProgramMenuDir" Target="[AppDataFolder]PEP">
+					<!-- Ensure that shortcuts for different flavors are shown in the Start Menu. See https://gitlab.pep.cs.ru.nl/pep/ops/-/issues/161#note_31739 -->
+					<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).LogFolder" />
+				</Shortcut>
+			</Component>
+			<Component Id="PepAssessorShortcut" Guid="*">
+				<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="PepAssessorShortcut" Type="string" Value="" KeyPath="yes"/>
+				
+				<!-- Doesn't need a ShortcutProperty Key="System.AppUserModel.ID" because pepAssessor.exe lives at different paths for different flavors. -->
+				<Shortcut Id="PepAssessorShortcut" Name="PEP Assessor" Directory="ProgramMenuDir" Target="[#pepAssessor.exe]"/>
+				
+				<?ifdef AdditionalShortcutLocation ?>
+					<!-- Doesn't need a ShortcutProperty Key="System.AppUserModel.ID" because pepAssessor.exe lives at different paths for different flavors. -->
+					<Shortcut Id="PepAssessorShortcut_Additional" Name="PEP Assessor ($(var.Flavor))" Directory="AdditionalShortcuts" Target="[#pepAssessor.exe]"/>
+				<?endif ?>
+			</Component>
+			<Component Id="CommandPromptShortcut" Guid="*">
+				<?define PepPowershellArguments = "-NoLogo -NoExit -ExecutionPolicy Bypass -File "[#PepShell.ps1]" -PepProject "$(var.ProjectCaption)" -PepEnvironment "$(var.EnvironmentName)"" ?>
+				<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="CommandPromptShortcut" Type="string" Value="" KeyPath="yes"/>
+				<Shortcut Id="CommandPromptShortcut" Name="!(loc.PepCommandPrompt)" Directory="ProgramMenuDir"
+					Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepPowershellArguments)">
+					<!-- Ensure that shortcuts for different flavors are shown in the Start Menu. See https://gitlab.pep.cs.ru.nl/pep/ops/-/issues/161#note_31739 -->
+					<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).CommandPrompt" />
+				</Shortcut>
+				<?ifdef AdditionalShortcutLocation ?>
+					<Shortcut Id="CommandPromptShortcut_Additional" Name="!(loc.PepCommandPrompt) ($(var.Flavor))" Directory="AdditionalShortcuts"
+						Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepPowershellArguments)">
+						<!-- Ensure that shortcuts for different flavors are shown in the Start Menu. See https://gitlab.pep.cs.ru.nl/pep/ops/-/issues/161#note_31739 -->
+						<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).CommandPrompt" />
+					</Shortcut>
+				<?endif ?>
+			</Component>
+		</DirectoryRef>
+
+		<ComponentGroup Id="LogFolderAndShortcut">
+			<ComponentRef Id="CreateLogFolder" />
+			<ComponentRef Id="LogFolderShortcut" />
+		</ComponentGroup>
+
+		<ComponentGroup Id="pepAssessor">
+			<ComponentRef Id="ProgramMenuDir" />
+			<ComponentRef Id="InstallLocation" />
+			<ComponentRef Id="PepAssessorShortcut" />
+			
+			<ComponentGroupRef Id="pepAssessor.exe" />
+			<ComponentGroupRef Id="LogFolderAndShortcut" />
+			<ComponentGroupRef Id="configFiles" />
+		</ComponentGroup>
+		
+		<ComponentGroup Id="CommandPrompt">
+			<ComponentRef Id="CommandPrompt" />
+			<ComponentRef Id="CommandPromptShortcut" />
+		</ComponentGroup>
+		
+		<ComponentGroup Id="CommandLineUtilityDependencies">
+			<ComponentGroupRef Id="CommandPrompt" />
+			<ComponentGroupRef Id="configFiles" />
+		</ComponentGroup>
+		
+		<ComponentGroup Id="pepLogon">
+			<ComponentGroupRef Id="pepLogon.exe" />
+			<ComponentGroupRef Id="LogFolderAndShortcut" />
+			<ComponentGroupRef Id="CommandLineUtilityDependencies" />
+		</ComponentGroup>
+		
+		<ComponentGroup Id="pepcli">
+			<ComponentGroupRef Id="pepcli.exe" />
+			<ComponentGroupRef Id="LogFolderAndShortcut" />
+			<ComponentGroupRef Id="CommandLineUtilityDependencies" />
+		</ComponentGroup>
+		
+		<!-- Entries that the user can (de-)select for installation -->
+		<Feature Id="PepAssessor" Description="PEP Assessor" Level="1">
+			<ComponentGroupRef Id="pepAssessor" />
+		</Feature>
+		<Feature Id="CommandLineUtilities" Description="Command Line Utilities" Level="1">
+			<ComponentGroupRef Id="pepLogon" />
+			<ComponentGroupRef Id="pepcli" />
+		</Feature>
+	</Product>
+</Wix>

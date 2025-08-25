@@ -1,0 +1,1298 @@
+stages:
+  - static-analysis
+  - build
+  - runtime-analysis
+  - integration
+  - upload
+  - publish
+  - cleanup
+  - triggers
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  FF_SCRIPT_SECTIONS: 'true'  # Enable collapsible sections per script line, with timings
+  FF_TIMESTAMPS: true
+
+  # The after_script: cannot fail. However, since gitlab runner 17.1 AFTER_SCRIPT_IGNORE_ERRORS can be set
+  # to change this behaviour. See: https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/4758
+  AFTER_SCRIPT_IGNORE_ERRORS: 'false'
+
+  BUILD_DIRECTORY: build
+  STAGING_DIRECTORY: build/staging
+
+  DEBUG_MODE: Debug
+  RELEASE_MODE: Release
+
+  CCACHE_EXPIRATION_TIME: 7d
+
+  # For CI scripts
+  CLEAN_CONAN: 1
+
+  # When adding executables including unit tests below, also add them to /docker/services.Dockerfile
+
+  EXECUTABLES_BASE: >-
+    cpp/pep/apps/pepDumpShadowAdministration
+    cpp/pep/apps/pepEnrollment
+    cpp/pep/apps/pepGenerateSystemKeys
+    cpp/pep/apps/pepRegistration
+    cpp/pep/apps/pepToken
+    cpp/pep/accessmanager/pepAccessManager
+    cpp/pep/authserver/pepAuthserver
+    cpp/pep/keyserver/pepKeyServer
+    cpp/pep/registrationserver/pepRegistrationServer
+    cpp/pep/storagefacility/pepStorageFacility
+    cpp/pep/transcryptor/pepTranscryptor
+    cpp/pep/cli/pepcli
+    cpp/pep/logon/pepLogon
+    cpp/pep/benchmark/pepbenchmark
+
+  EXECUTABLE_CASTOR: >-
+    cpp/pep/pullcastor/pepPullCastor
+
+  EXECUTABLE_SERVERS: >-
+    cpp/pep/servers/pepServers
+
+  PATH_AUTOCOMPLETION: >-
+    autocomplete
+
+  EXECUTABLES_GO: >-
+    go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog
+
+  UNIT_TESTS_INTEGRATION: >-
+    cpp/pep/apps/pepClientTest
+    cpp/pep/storagefacility/pepStorageFacilityUnitTests
+
+  UNIT_TESTS_BASE: >-
+    cpp/pep/accessmanager/pepAccessManagerUnitTests
+    cpp/pep/archiving/pepArchivingUnitTests
+    cpp/pep/async/pepAsyncUnitTests
+    cpp/pep/auth/pepAuthUnitTests
+    cpp/pep/content/pepContentUnitTests
+    cpp/pep/crypto/pepCryptoUnitTests
+    cpp/pep/elgamal/pepElgamalUnitTests
+    cpp/pep/keyserver/pepKeyServerUnitTests
+    cpp/pep/morphing/pepMorphingUnitTests
+    cpp/pep/networking/pepNetworkingUnitTests
+    cpp/pep/rsk/pepRskUnitTests
+    cpp/pep/rsk-pep/pepRskPepUnitTests
+    cpp/pep/serialization/pepSerializationUnitTests
+    cpp/pep/structure/pepStructureUnitTests
+    cpp/pep/structuredoutput/pepStructuredOutputUnitTests
+    cpp/pep/utils/pepUtilsUnitTests
+    cpp/pep/versioning/pepVersioningUnitTests
+
+  UNIT_TESTS_CASTOR: >-
+    cpp/pep/castor/pepCastorUnitTests
+
+  UNIT_TESTS_CASTOR_KEYS: >-
+    cpp/pep/castor/localhost.cert
+    cpp/pep/castor/localhost.key
+
+  FORCE_BUILD_STABLE_RELEASE:
+    value: ''
+    options:
+      - ''
+      - 'yes'
+    description: Always build on stable/release
+
+  BUILD_ALL_TARGETS:
+    value: ''
+    options:
+      - ''
+      - 'yes'
+    description: Build all targets, specifically on Windows and MacOS
+
+  # These may be set by when built from docker-build pipeline
+  OVERRIDE_DOCKER_BUILD_REF:
+    value: ''
+    description: Override docker-build submodule commit
+  DOCKER_BUILD_LOCKFILE_JOB:
+    value: ''
+    description: docker-build job number to download conan-ci.lock artifact from
+  FAST_DEPLOY:
+    value: ''
+    options:
+      - ''
+      - 'yes'
+    description: Only build
+
+  RUN_CLEANUP:
+    value: 'no'
+    options:
+      - 'no'
+      - 'master'  # Run if on master branch
+      - 'dry'  # Dry run
+    description: Cleanup obsolete containers & packages
+
+  ENABLE_LINTER:
+    value: 'no'
+    options:
+      - 'no'
+      - 'yes'
+    description: Enable linter during compilation
+
+  LINTER_CONCURRENCY_LIMIT:
+    value: '20'
+    description: Limit the number of concurrent compiler jobs when linting
+
+  IMAGE_TAG: $CI_COMMIT_SHA
+  IMAGE_TAG_TEST: test-$CI_PIPELINE_ID-$CI_COMMIT_SHA
+
+  IMAGE_PEP_SERVICES:          ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-services
+  IMAGE_PEP_MONITORING:        ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-monitoring
+  IMAGE_PEP_CLIENT:            ${CI_REGISTRY}/${CI_PROJECT_PATH}/client
+  IMAGE_PEP_CONNECTOR:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-connector
+  # authserver itself is now part of the pep-services container, so we only need a separate apache/shibboleth container
+  IMAGE_PEP_AUTHSERVER_APACHE: ${CI_REGISTRY}/${CI_PROJECT_PATH}/authserver_apache
+
+  # Environment variables:
+  # Use color for gtest output
+  GTEST_COLOR: 1
+
+# Applies to whole pipeline
+workflow:
+  rules:
+    # Do not create MR pipelines (see https://docs.gitlab.com/ee/ci/pipelines/merge_request_pipelines.html ).
+    # As soon as we use one `rules:` tag in a job, that job would run on any MR pipeline, unless specified otherwise.
+    # Prevent that by disabling the whole pipeline in this case
+    - if: $CI_PIPELINE_SOURCE != 'merge_request_event'
+
+include:
+  - local: /ci_cd/pep-foss-ci-settings.yml
+  - local: /ci_cd/docker-common.yml
+  - local: /ci_cd/gitlab-pages-ci.yml
+  - local: /ci_cd/update-published-branch.yml
+  # Make jobs by default interruptible if we are not on a protected branch
+  # Workaround, see https://gitlab.com/gitlab-org/gitlab/-/issues/194023#note_1225906002
+  - local: /ci_cd/interruptible-jobs.yml
+    rules:
+      - if: $CI_COMMIT_REF_PROTECTED != "true"
+
+.docker_login: &docker_login
+  docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+
+.not-stable-release: &not-stable-release
+  # Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
+  if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN && $CI_COMMIT_BRANCH != $PEP_FOSS_LATEST_RELEASE_BRANCH)
+
+.skip-for-binaries-for-xyz:
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
+      when: never
+
+# Checkout the right docker-build commit, if overridden, but keep potentially modified conan-ci.lock. Requires git
+#language=sh
+.checkout-docker-build-script-sh-steps: &checkout-docker-build-script-sh-steps
+  - if [ -n "$OVERRIDE_DOCKER_BUILD_REF" ]; then
+  -   cd ./docker-build/
+  -   if [ -n "$DOCKER_BUILD_LOCKFILE_JOB" ]; then
+  -     cp ./builder/conan/conan-ci.lock ../conan-ci.lock
+  -     git reset --hard
+  -   fi
+  -   git fetch origin "$OVERRIDE_DOCKER_BUILD_REF"
+  -   git checkout FETCH_HEAD
+  -   if [ -n "$DOCKER_BUILD_LOCKFILE_JOB" ]; then
+  -     mv -f ../conan-ci.lock ./builder/conan/conan-ci.lock
+  -     git diff
+  -   fi
+  -   cd ../
+  - fi
+#language=powershell
+.checkout-docker-build-script-powershell-steps: &checkout-docker-build-script-powershell-steps
+  - $PSNativeCommandUseErrorActionPreference = $true
+  - if ($OVERRIDE_DOCKER_BUILD_REF) {
+  -   cd ./docker-build/
+  -   if ($DOCKER_BUILD_LOCKFILE_JOB) {
+  -     cp ./builder/conan/conan-ci.lock ../conan-ci.lock
+  -     git reset --hard
+  -   '}'
+  -   git fetch origin "$OVERRIDE_DOCKER_BUILD_REF"
+  -   git checkout FETCH_HEAD
+  -   if ($DOCKER_BUILD_LOCKFILE_JOB) {
+  -     mv -Force ../conan-ci.lock ./builder/conan/conan-ci.lock
+  -     git diff
+  -   '}'
+  -   cd ../
+  - '}'
+
+###############################################
+# Configuration for the static-analysis stage #
+###############################################
+
+# Do docker-build submodule and RUNNER_IMAGE_TAG match?
+check-docker-build-versions:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine
+  rules:
+    # Allow failure on feature branches for submodule updates where a new builder image is not immediately required
+    - if: $CI_COMMIT_BRANCH != $PEP_FOSS_DEVELOPMENT_BRANCH && $CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN && $CI_COMMIT_BRANCH != $PEP_FOSS_LATEST_RELEASE_BRANCH
+      allow_failure: true
+    - when: on_success
+  before_script:
+    - apk add --no-cache git
+  #language=sh
+  script:
+    - if [ -z "$OVERRIDE_DOCKER_BUILD_REF" ]; then
+    -   docker_build_sha="$(cd ./docker-build/ && git rev-parse HEAD)"
+    #   Check if $RUNNER_IMAGE_TAG contains $docker_build_sha (cannot use [[=~]] on bare alpine as it's a bash builtin)
+    -   |
+        if [ "${RUNNER_IMAGE_TAG#*"$docker_build_sha"}" == "$RUNNER_IMAGE_TAG" ]; then
+          >&2 echo "docker-build submodule is on a different commit ($docker_build_sha) than RUNNER_IMAGE_TAG ($RUNNER_IMAGE_TAG)"
+          exit 1
+    -   fi
+    - fi
+
+analyse-source:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine:latest
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+    GIT_DEPTH: 1
+  before_script:
+    - apk update -qq && apk add --no-cache bash git shellcheck
+  script:
+    - ./scripts/analyse-scripts.sh
+    - ./scripts/analyse-source.sh
+
+#######################################
+# Configuration for the cleanup stage #
+#######################################
+
+cleanup:
+  stage: cleanup
+  rules:
+    - if: $RUN_CLEANUP == 'dry'
+      # Run dry-run immediately
+      needs: []
+    - if: $RUN_CLEANUP == 'master' && $CI_COMMIT_BRANCH == $PEP_FOSS_DEVELOPMENT_BRANCH
+      interruptible: false
+  resource_group: cleanup  # Do not run multiple cleanup jobs concurrently
+  tags:
+    - docker-small
+  image: alpine
+  #language=sh
+  script:
+    - apk add --no-cache curl git jq yq
+    - *checkout-docker-build-script-sh-steps
+    - |
+      if [ "$RUN_CLEANUP" != dry ]; then
+        ./scripts/gitlab-cleanup.sh clean-foss --api-key="$PEP_GROUP_API_MAINTAINER_TOKEN" --unshallow --no-dry-run
+      else
+        ./scripts/gitlab-cleanup.sh clean-foss --api-key="$PEP_GROUP_READ_API_TOKEN" --unshallow
+      fi
+
+#################################################
+# Configuration for builds and associated tests #
+#################################################
+
+# You can set a tag `limit_concurrency:<VALUE>` on a gitlab runner if it runs out of memory.
+# Jobs can invoke this anchor to retrieve the configured <VALUE> (if any) into the "concurrency_limit" variable.
+.set_concurrency_limit: &set_concurrency_limit |
+  concurrency_limit=$(echo "$CI_RUNNER_TAGS" | jq -r '.[]' | sed -n 's/^limit_concurrency:\([0-9]\+\)$/\1/p')
+  if [ -z "$concurrency_limit" ]; then
+    >&2 echo "No concurrency limit specified"
+  else
+    >&2 echo "Concurrency limit is $concurrency_limit"
+  fi
+
+#language=sh
+# We don't want errors about [[deprecated]] library functions in stable/release branches
+.set-enable-deprecation-errors: &set-enable-deprecation-errors
+  # Is stable or release build?
+  - if [[ $CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$ ]]
+    || [ "$CI_COMMIT_BRANCH" = "$PEP_FOSS_TESTING_BRANCH" ]
+    || [[ $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN ]]
+    || [ "$CI_COMMIT_BRANCH" = "$PEP_FOSS_LATEST_RELEASE_BRANCH" ]
+  - then
+  -   enable_deprecation_errors=OFF
+  - else
+  -   enable_deprecation_errors=ON
+  - fi
+
+.ccache-configuration: &ccache-configuration
+  cache:
+    paths:
+      - ccache/
+    key: "ccache"
+
+  before_script:
+    # See https://ccache.dev/manual/4.9.1.html#config_base_dir
+    - export CCACHE_BASEDIR="$PWD"
+
+    # Instruct Ccache to use our cache directory (shared between jobs)
+    - export CCACHE_DIR="$PWD/ccache"
+
+    # Remove old(ish) cache entries, as the cache upload was taking longer than the job itself
+    - ccache --evict-older-than "$CCACHE_EXPIRATION_TIME" || true
+
+    # Print Ccache stats before each job
+    # The ternary part allows us to reference this config from images where Ccache is not available directly (eg flatpak)
+    - ccache --zero-stats 2> /dev/null || true
+    - ccache --show-stats --verbose 2> /dev/null || true
+
+# Print Ccache stats after each job, refer to this in after_script
+# We need to specify CCACHE_DIR explicitly because somehow CCACHE_DIR is wiped at this point
+.ccache-print: &ccache-print |
+  CCACHE_DIR="$PWD/ccache" ccache --show-stats --verbose 2> /dev/null || true
+
+.stage-artifacts: &stage-artifacts |
+  ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+
+.run-tests: &run-tests
+  - |
+    DID_JOB_FAIL=0
+    for TEST in $TESTS; do
+      if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
+        DID_JOB_FAIL=1
+      fi
+    done
+    exit $DID_JOB_FAIL
+
+# This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
+# See the ci_cd/windows-ci-runner.bat provisioning script.
+.run-tests-windows: &run-tests-windows
+  - |
+    $testsArray = $TESTS -split ' ';
+    $DID_JOB_FAIL = 0
+    foreach ($TEST in $testsArray) {
+      & "C:\Program Files\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
+      if ($LASTEXITCODE -ne 0) {
+          $DID_JOB_FAIL = 1
+      }
+    }
+    exit $DID_JOB_FAIL
+
+retrieve-lockfile:
+  stage: build
+  needs: []
+  rules:
+    - if: $DOCKER_BUILD_LOCKFILE_JOB
+  tags:
+    - docker-small
+  image: alpine
+  before_script:
+    - apk add --no-cache curl jq
+  #language=sh
+  script:
+    - echo "Retrieving lockfile from job ${CI_SERVER_URL}/${DOCKER_BUILD_PROJECT}/-/jobs/${DOCKER_BUILD_LOCKFILE_JOB}"
+    - docker_build_project_urlencode="$(printf %s "${DOCKER_BUILD_PROJECT}" | jq --slurp --raw-input --raw-output @uri)"
+    - >
+      curl --no-progress-meter --fail --location --header "PRIVATE-TOKEN: ${PEP_GROUP_READ_API_TOKEN}"
+      "${CI_API_V4_URL}/projects/${docker_build_project_urlencode}/jobs/${DOCKER_BUILD_LOCKFILE_JOB}/artifacts/conan-ci.lock"
+      --output ./docker-build/builder/conan/conan-ci.lock
+  artifacts:
+    paths:
+      - ./docker-build/builder/conan/conan-ci.lock
+
+.ubuntu-build-base:
+  <<: *ccache-configuration
+  stage: build
+  tags:
+    - docker
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  #language=bash
+  script:
+    - *checkout-docker-build-script-sh-steps
+    - *set_concurrency_limit
+    - if [ "$ENABLE_LINTER" = yes ]; then
+        # Cap to $LINTER_CONCURRENCY_LIMIT
+    -   if [ -z "$concurrency_limit" ] || [ "$concurrency_limit" -gt "$LINTER_CONCURRENCY_LIMIT" ]; then
+    -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
+    -   fi
+    - fi
+    - |
+      if [ -n "$concurrency_limit" ]; then
+        concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
+      fi
+    # Do not build dependencies, should already be built in docker-build
+    - >
+      conan install ./
+      --lockfile=./docker-build/builder/conan/conan-ci.lock
+      -s build_type=$CMAKE_BUILD_TYPE
+      $concurrency_option_conan
+      -o "&:with_assessor=False"
+      -o "&:with_castor=$WITH_CASTOR"
+      -o "&:with_tests=$WITH_TESTS"
+      -o "&:with_benchmark=$WITH_BENCHMARK"
+      -o "&:custom_build_folder=True"
+      --output-folder=./$BUILD_DIRECTORY/
+    - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
+    - *set-enable-deprecation-errors
+    - >
+      cmake --preset conan-$build_type_lower
+      -DCMAKE_C_COMPILER_LAUNCHER=ccache
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+      -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
+      -DENABLE_OAUTH_TEST_USERS=OFF
+      -DHTTPSERVER_WITH_TLS=Off
+      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
+      -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    - cmake --build --preset conan-$build_type_lower
+  after_script:
+    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    - *stage-artifacts
+    - *ccache-print
+
+.ubuntu-build-with-tests-base:
+  extends:
+    - .ubuntu-build-base
+  variables:
+    TESTS: "$UNIT_TESTS_BASE $UNIT_TESTS_CASTOR"
+    ARTIFACTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+      $UNIT_TESTS_CASTOR_KEYS
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+#################### Ubuntu LTS Debug ####################
+
+.ubuntu-lts-settings:
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  variables:
+    BUILD_GO_SERVERS: "on"
+    WITH_CASTOR: "True"
+    WITH_TESTS: "True"
+
+.ubuntu-lts-debug-settings:
+  extends: .ubuntu-lts-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    WITH_BENCHMARK: "False"
+    MEM_ANALYSIS_TOOL: "none"
+    VERIFY_HEADERS_STANDALONE: "off"
+
+ubuntu-lts-debug:
+  extends:
+    - .ubuntu-build-with-tests-base
+    - .ubuntu-lts-debug-settings
+
+#################### Ubuntu LTS Debug w/o Castor ####################
+
+ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    WITH_CASTOR: "False"
+    MEM_ANALYSIS_TOOL: "none"
+    ARTIFACTS: "$UNIT_TESTS_BASE"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+#################### Ubuntu LTS Release ####################
+
+.ubuntu-lts-release-settings:
+  extends: .ubuntu-lts-settings
+  variables:
+    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+    MEM_ANALYSIS_TOOL: "valgrind"
+    WITH_BENCHMARK: "True"
+    VERIFY_HEADERS_STANDALONE: "on"
+
+ubuntu-lts-release:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-release-settings
+  rules:
+    - *not-stable-release
+  variables:
+    ARTIFACTS: >-
+      $PATH_AUTOCOMPLETION
+      $EXECUTABLES_BASE
+      $EXECUTABLE_CASTOR
+      $EXECUTABLES_GO
+      $UNIT_TESTS_INTEGRATION
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+      $UNIT_TESTS_CASTOR_KEYS
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+ubuntu-lts-release-manual-lint:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-release-settings
+  rules:
+    # Redundant if we're already linting
+    - if: $ENABLE_LINTER == "yes"
+      when: never
+    - <<: *not-stable-release
+      when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+  variables:
+    ENABLE_LINTER: yes
+
+#################### Ubuntu Rolling Debug ####################
+
+.ubuntu-rolling-settings:
+  image: ${BUILDER_IMAGE_UBUNTU_ROLLING}
+  variables:
+    BUILD_GO_SERVERS: "off"
+    WITH_CASTOR: "True"
+    MEM_ANALYSIS_TOOL: "none"
+    WITH_TESTS: "True"
+    WITH_BENCHMARK: "False"
+
+.ubuntu-rolling-debug-settings:
+  extends: .ubuntu-rolling-settings
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "off"
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - *not-stable-release
+
+ubuntu-rolling-debug:
+  extends:
+    - .ubuntu-build-with-tests-base
+    - .ubuntu-rolling-debug-settings
+
+ubuntu-rolling-debug-manual-lint:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-rolling-debug-settings
+  rules:
+    # Redundant if we're already linting
+    - if: $ENABLE_LINTER == "yes"
+      when: never
+    - <<: *not-stable-release
+      when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+  variables:
+    ENABLE_LINTER: yes
+
+#################### Ubuntu Rolling Release ####################
+
+.ubuntu-rolling-release-settings:
+  extends: .ubuntu-rolling-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+    VERIFY_HEADERS_STANDALONE: "on"
+
+ubuntu-rolling-release:
+  extends:
+    - .ubuntu-build-with-tests-base
+    - .ubuntu-rolling-release-settings
+
+
+#################### Python Packages ####################
+
+build-pep-connector:
+  stage: build
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  tags:
+    - docker-small
+  rules:
+    - *not-stable-release
+  script:
+    # Get major and minor version from version.json
+    - MAJOR_VERSION=$(./scripts/parse-version.sh get-major version.json)
+    - MINOR_VERSION=$(./scripts/parse-version.sh get-minor version.json)
+    # Create dynamic version with pipeline ID and job ID for CI builds
+    - PACKAGE_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${CI_PIPELINE_ID}.${CI_JOB_ID}"
+    # Replace version in pyproject.toml, matches 'version ="any chars except double quotes", replaces it with the new version
+    - sed -i "s/version = \"[^\"]*\"/version = \"${PACKAGE_VERSION}\"/" python/pep/pep_connector/pyproject.toml
+    # The wheel will be picked up from this jobs artifacts to use in the pep-connector dockerfile
+    - pipx run build --wheel --outdir $STAGING_DIRECTORY/python/pep/pep_connector python/pep/pep_connector
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+#################### Flatpak ####################
+
+build-flatpak:
+  <<: *ccache-configuration
+  stage: build
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  rules:
+    - *not-stable-release
+  tags:
+    - docker
+    - fast
+  image: ${BUILDER_IMAGE_FLATPAK}
+  script:
+    - *set_concurrency_limit
+    - |
+      if [ -n "$concurrency_limit" ]; then
+        concurrency_option="--jobs=$concurrency_limit"
+      fi
+    # Install base image with dependencies from docker-build
+    - flatpak install -y /pep-base.flatpak
+    # Pass through environment variables used by ./cpp/pep/CMakeLists.txt
+    - |
+      rm -f ./flatpak.env
+      for env in CI_PROJECT_PATH CI_COMMIT_REF_NAME CI_COMMIT_SHA CI_PIPELINE_ID CI_JOB_ID CCACHE_EXPIRATION_TIME; do
+        echo "export $env=$(printf %q "${!env}")" >>./flatpak.env
+      done
+    - flatpak-builder $concurrency_option --ccache --repo ./flatpak-repo ./flatpak-build ./flatpak/nl.ru.cs.pep.client.yml
+    - flatpak build-bundle ./flatpak-repo ./pep.flatpak nl.ru.cs.pep.client --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
+  after_script:
+    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    - *ccache-print
+  artifacts:
+    paths:
+      - pep.flatpak
+
+#################### Windows ####################
+
+windows-client:
+  stage: build
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  tags:
+    - windows
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - *not-stable-release
+  #language=powershell
+  script:
+    - *checkout-docker-build-script-powershell-steps
+    # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
+    - cmd /c "call ./ci_cd/windows-ci-build.bat wixlib Release"
+  artifacts:
+    expire_in: 7d
+    paths:
+      - $BUILD_DIRECTORY/wix/artifacts
+      - $BUILD_DIRECTORY/wix/pepBinaries.wixlib
+
+windows-all-targets:
+  stage: build
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+  tags:
+    - windows
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - if: $BUILD_ALL_TARGETS
+      when: on_success
+    - when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+  #language=powershell
+  script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
+    - *checkout-docker-build-script-powershell-steps
+    - cmd /c "call ./ci_cd/windows-ci-build.bat all-targets $CMAKE_BUILD_TYPE"
+    - $EXECUTABLES = "$EXECUTABLES_BASE
+                      $EXECUTABLE_SERVERS
+                      $UNIT_TESTS_INTEGRATION
+                      $UNIT_TESTS_BASE"
+    - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
+                                                                          --dest-prefix "$STAGING_DIRECTORY"
+                                                                          --build-mode "$CMAKE_BUILD_TYPE"
+                                                                          --append-extension ".exe"
+                                                                          "$EXECUTABLES"'
+    # For some reason the go executables are not placed in a build mode subdirectory
+    - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
+                                                                          --dest-prefix "$STAGING_DIRECTORY"
+                                                                          --append-extension ".exe"
+                                                                          "$EXECUTABLES_GO"'
+  retry:
+    max: 1
+    when: job_execution_timeout
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+#################### MacOS ####################
+
+.macos-client-base:
+  <<: *ccache-configuration
+  stage: build
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  variables:
+    BUILD_GO_SERVERS: "off"
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - *not-stable-release
+  script:
+    - *checkout-docker-build-script-sh-steps
+    - *set-enable-deprecation-errors
+    - ENABLE_DEPRECATION_ERRORS="$enable_deprecation_errors" ./ci_cd/macos-ci-build-app-bins.sh
+  after_script:
+    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    - *ccache-print
+  artifacts:
+    expire_in: 7d
+
+macos-client-x86:
+  extends: .macos-client-base
+  tags:
+    - macos-intel
+  artifacts:
+    paths:
+      - $BUILD_DIRECTORY/macOS_x86_64_bins.zip
+
+macos-client-arm:
+  extends: .macos-client-base
+  tags:
+    - macos-arm64
+  artifacts:
+    paths:
+      - $BUILD_DIRECTORY/macOS_arm64_bins.zip
+
+.macos-all-targets-base:
+  stage: build
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - if: $BUILD_ALL_TARGETS
+      when: on_success
+    - when: manual
+      # Make pipeline still continue without manual action (default for when:manual outside of rules)
+      allow_failure: true
+  variables:
+    WITH_CASTOR: "False" # Currently castor does not compile on macOS
+    MEM_ANALYSIS_TOOL: "none"
+    ARTIFACTS: >-
+      $EXECUTABLES_BASE
+      $EXECUTABLE_SERVERS
+      $EXECUTABLES_GO
+      $UNIT_TESTS_INTEGRATION
+      $UNIT_TESTS_BASE
+  #language=bash
+  script:
+    - *checkout-docker-build-script-sh-steps
+    - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
+    - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
+    - >
+      conan install .
+      --lockfile="docker-build/builder/conan/conan-ci.lock"
+      --profile:all="docker-build/builder/conan/conan_profile"
+      --build=missing
+      -s:a os.version=13.3
+      -s:a build_type="Debug"
+      -o "&:with_assessor=True"
+      -o "&:with_servers=True"
+      -o "&:with_castor=$WITH_CASTOR"
+      -o "&:with_tests=True"
+      -o "&:with_benchmark=True"
+      -o "&:custom_build_folder=True"
+      --output-folder=./$BUILD_DIRECTORY/
+    - |
+      if [[ -n "$CLEAN_CONAN" ]]; then
+      echo 'Cleaning Conan cache.'
+      # Remove old packages
+      conan remove '*' --lru 4w --confirm
+      # Remove some temporary build files (excludes binaries)
+      conan cache clean --build --temp
+      fi
+    - *set-enable-deprecation-errors
+    - >
+      cmake --preset conan-debug
+      -DCMAKE_C_COMPILER_LAUNCHER=ccache
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      -DBUILD_GO_SERVERS=ON
+      -DENABLE_OAUTH_TEST_USERS=OFF
+      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
+      -DVERIFY_HEADERS_STANDALONE=ON
+    - cmake --build --preset conan-debug
+  after_script:
+    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    - *stage-artifacts
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+macos-all-targets-x86:
+  extends: .macos-all-targets-base
+  tags:
+    - macos-intel
+
+macos-all-targets-arm:
+  extends: .macos-all-targets-base
+  tags:
+    - macos-arm64
+
+#################### Docker ####################
+
+build-docker-images:
+  stage: build
+  extends: .dind
+  rules:
+    - *not-stable-release
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  needs:
+    - ubuntu-lts-release
+    - build-pep-connector
+  #language=sh
+  script:
+    - *docker_login
+    - docker buildx build --pull
+                          --push
+                          --file "docker/services.Dockerfile"
+                          --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
+                          --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
+                          --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
+    - docker buildx build --pull
+                          --push
+                          --file "docker/monitoring.Dockerfile"
+                          --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST"
+                          --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY" .
+    - docker buildx build --pull
+                          --push
+                          --file "docker/client.Dockerfile"
+                          --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST"
+                          --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
+                          --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
+    - docker buildx build --pull
+                          --push
+                          --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "docker/apache"
+      ### Build derived images, these should be built after the base images
+    - docker buildx build --pull
+                          --push --file "docker/pep-connector.Dockerfile"
+                          --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST"
+                          --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
+                          --build-arg "BASE_IMAGE=$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" .
+
+###############################################
+# Configuration for the runtime-analysis stage#
+###############################################
+
+#################### Ubuntu ###################
+
+.ubuntu-test-base:
+  stage: runtime-analysis
+  tags:
+    - docker
+  variables:
+    TESTS: "$UNIT_TESTS_BASE"
+  script:
+    - *run-tests
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+ubuntu-lts-debug-test:
+  extends:
+    - .ubuntu-test-base
+    - .ubuntu-lts-debug-settings
+  needs: [ubuntu-lts-debug]
+
+ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
+  extends: .ubuntu-lts-debug-settings
+  variables:
+    WITH_CASTOR: "False"
+    MEM_ANALYSIS_TOOL: "none"
+    TESTS: "$UNIT_TESTS_BASE"
+  needs: [ubuntu-lts-debug-without-castor]
+  stage: runtime-analysis
+  tags:
+    - docker
+  script:
+    - *run-tests
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+ubuntu-lts-release-test:
+  extends:
+    - .ubuntu-test-base
+    - .ubuntu-lts-release-settings
+  needs: [ubuntu-lts-release]
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - *not-stable-release
+
+ubuntu-rolling-debug-test:
+  extends:
+    - .ubuntu-test-base
+    - .ubuntu-rolling-debug-settings
+  needs: [ubuntu-rolling-debug]
+
+ubuntu-rolling-release-test:
+  extends:
+    - .ubuntu-test-base
+    - .ubuntu-rolling-release-settings
+  needs: [ubuntu-rolling-release]
+
+#################### Windows ##################
+
+windows-test:
+  stage: runtime-analysis
+  variables:
+    WITH_CASTOR: "True"
+    MEM_ANALYSIS_TOOL: "none"
+    TESTS: "$UNIT_TESTS_BASE"
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - when: on_success
+  tags:
+    - windows
+  needs: [windows-all-targets]
+  script:
+    - *run-tests-windows
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+#################### MacOS ####################
+
+.macos-test-base:
+  stage: runtime-analysis
+  variables:
+    WITH_CASTOR: "True"
+    MEM_ANALYSIS_TOOL: "leaks"
+    TESTS: "$UNIT_TESTS_BASE"
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - when: on_success
+  script:
+    - *run-tests
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+macos-x86-test:
+  extends:
+    - .macos-test-base
+  tags:
+    - macos-intel
+  needs: [macos-all-targets-x86]
+
+macos-arm-test:
+  extends:
+    - .macos-test-base
+  tags:
+    - macos-arm64
+  needs: [macos-all-targets-arm]
+
+#################### Docker ####################
+
+pep-services-image-test:
+  stage: runtime-analysis
+  extends: .dind
+  rules:
+    - *not-stable-release
+  variables:
+    TESTS: "$UNIT_TESTS_BASE"
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  needs:
+    - job: build-docker-images
+      artifacts: false
+  #language=sh
+  script:
+    - *docker_login
+    - |
+     for TEST in $TESTS; do
+       echo "Running test: $(basename $TEST)"
+       docker run --pull=always --rm -v "$CI_PROJECT_DIR/temp/:/app/test-results" "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" /bin/bash -c "mkdir -p /app/test-results && /app/$(basename $TEST) --gtest_output=xml:/app/test-results/"
+     done
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+##########################################
+# Configuration for the integration stage#
+##########################################
+
+#################### Windows ####################
+
+windows-local-integration:
+  stage: integration
+  tags:
+    - windows
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - when: on_success
+  needs:
+    - windows-all-targets
+  script:
+    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
+
+#################### MacOS ####################
+
+.macos-local-integration-base:
+  stage: integration
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - when: on_success
+  script:
+    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
+
+macos-local-integration-x86:
+  extends: .macos-local-integration-base
+  tags:
+    - macos-intel
+  needs:
+    - macos-all-targets-x86
+
+macos-local-integration-arm:
+  extends: .macos-local-integration-base
+  tags:
+    - macos-arm64
+  needs:
+    - macos-all-targets-arm
+
+#################### Docker ####################
+
+docker-integration:
+  stage: integration
+  extends: .dind
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - *not-stable-release
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  needs:
+    - job: build-docker-images
+      artifacts: false
+  script:
+    - *docker_login
+    # We only run the s3-roundtrip test on the second run, when we have already created the integration_data directory,
+    # because that test generates relatively large data, and the artifacts become too large to upload otherwise.
+    - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --tests-to-skip "s3-roundtrip"
+    - cp -r temp/integration ./integration_data
+    - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data
+  artifacts:
+    expire_in: 8h
+    paths:
+      - ./integration_data
+
+
+docker-integration-on-base-data:
+  stage: integration
+  extends: .dind
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - *not-stable-release
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  needs:
+    - job: build-docker-images
+      artifacts: false
+  script:
+    - *docker_login
+    - tar xzf tests/test_input/base_integration_data.tar.gz
+    - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir base_integration_data
+
+##########################################
+#   Configuration for the upload stage   #
+##########################################
+
+.upload-base:
+  stage: upload
+  tags:
+    - docker-small
+  variables:
+    GIT_STRATEGY: none # As these jobs only work on artifacts, we do not need the git repository
+  interruptible: false # We do not want to interrupt jobs that upload things, to prevent partial uploads
+
+.upload-curl-base:
+  extends: .upload-base
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - *not-stable-release
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+
+upload-wix-library:
+  extends: .upload-curl-base
+  needs: [windows-client]
+  # fully single quoted, as ':' token is used
+  script:
+    - 'curl --no-progress-meter --fail
+            --header "JOB-TOKEN: $CI_JOB_TOKEN"
+            --upload-file "$BUILD_DIRECTORY/wix/pepBinaries.wixlib"
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/wixlibrary/${CI_COMMIT_SHA}/pepBinaries.wixlib"'
+
+upload-macos-client-x86:
+  extends: .upload-curl-base
+  needs: [macos-client-x86]
+  script:
+    - 'curl --no-progress-meter --fail
+            --header "JOB-TOKEN: $CI_JOB_TOKEN"
+            --upload-file "$BUILD_DIRECTORY/macOS_x86_64_bins.zip"
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-x86-bins/${CI_COMMIT_SHA}/macOS_x86_64_bins.zip"'
+
+upload-macos-client-arm:
+  extends: .upload-curl-base
+  needs: [macos-client-arm]
+  script:
+    - 'curl --no-progress-meter --fail
+            --header "JOB-TOKEN: $CI_JOB_TOKEN"
+            --upload-file "$BUILD_DIRECTORY/macOS_arm64_bins.zip"
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-arm-bins/${CI_COMMIT_SHA}/macOS_arm64_bins.zip"'
+
+upload-flatpak:
+  extends: .upload-curl-base
+  needs: [build-flatpak]
+  script:
+    - 'curl --no-progress-meter --fail
+            --header "JOB-TOKEN: $CI_JOB_TOKEN"
+            --upload-file "pep.flatpak"
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/flatpak/${CI_COMMIT_SHA}/pep.flatpak"'
+
+retag-pep-docker-images:
+  extends: .upload-base
+  rules:
+    - *not-stable-release
+  image: docker
+  needs:
+    - job: pep-services-image-test
+      artifacts: false
+    - job: docker-integration
+      artifacts: false
+  #language=sh
+  script:
+    - *docker_login
+    - docker buildx imagetools create "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker buildx imagetools create "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker buildx imagetools create "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker buildx imagetools create "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker buildx imagetools create "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+
+##########################################
+# Configuration for the trigger stage    #
+##########################################
+
+update-foss-submodule-in-dtap:
+  stage: triggers
+  dependencies: []
+  rules:
+    - !reference [.skip-for-binaries-for-xyz, rules]
+    # Not for tag pipelines
+    - if: $CI_COMMIT_BRANCH
+  tags:
+    - docker-small
+  image: alpine:latest
+  interruptible: false
+  variables:
+    GIT_STRATEGY: none  # Do not fetch nor clean working tree
+  before_script:
+    - apk add --no-cache git
+  #language=sh
+  script:
+    # Set the displayed user with the commits that are about to be made
+    - NAME_USER="Gitlab_CI_script"
+    - DTAP_PROJ="pep/ops"
+    - git config --global user.email "support@pep.cs.ru.nl"
+    - git config --global user.name "$NAME_USER"
+
+    # Do not put token in the URL to prevent it from being printed on clone
+    - |
+      cat >./git-password.sh <<'EOF'
+      #!/usr/bin/env sh
+      exec echo "$PEP_GROUP_REPOSITORY_TOKEN"
+      EOF
+      chmod +x ./git-password.sh
+      git config --global core.askPass "$PWD/git-password.sh"
+
+    - rm -rf dtap
+    # Clone the dtap repository shallowly via HTTPS
+    - git clone
+      --sparse
+      --no-tags
+      --depth=1
+      --shallow-submodules
+      "$CI_SERVER_URL/$DTAP_PROJ.git" dtap
+
+    # Checkout the branch in dtap corresponding to current foss branch or create it
+    - cd dtap
+    - new_branch=''
+    # Make sure we actually create a tracking branch in this shallow clone
+    - git remote set-branches origin "$CI_COMMIT_BRANCH"
+    # Does the remote branch exist?
+    - if git fetch origin "$CI_COMMIT_BRANCH"; then
+    -   git switch "$CI_COMMIT_BRANCH"
+    - else
+    #   Create new branch from default branch
+    -   git checkout -b "$CI_COMMIT_BRANCH"
+    -   new_branch=yes
+    - fi
+
+    - git submodule update --init
+    - cd pep
+
+    # Check if the foss submodule is already on the commit we want to update it to
+    - if [ "$(git rev-parse HEAD)" != "$CI_COMMIT_SHA" ]; then
+    #   Update the pep/dtap repo's pep/foss submodule to this commit
+    -   git remote set-branches origin "$CI_COMMIT_BRANCH"
+    -   git fetch origin "$CI_COMMIT_BRANCH"
+    -   git switch "$CI_COMMIT_BRANCH"
+    #   Is the commit SHA from this pipeline still the tip of our branch?
+    -   |
+        tip="$(git rev-parse HEAD)"
+        if [ "$tip" != "$CI_COMMIT_SHA" ]; then
+          >&2 echo "This ($CI_COMMIT_SHA) is not the latest $CI_PROJECT_NAME commit for $CI_COMMIT_BRANCH, that is $tip"
+          >&2 echo 'Skipping dtap update'
+          exit 1 # Dont skip silently, so that follow-up ops pipeline wont run with wrong commit
+        fi
+
+    -   cd ..
+    -   git add pep
+    -   |
+        git commit -m "FOSS submodule update for pipeline ${CI_PIPELINE_ID}
+        ${CI_JOB_URL}"
+    -   git push origin "$CI_COMMIT_BRANCH" -o ci.skip
+    -   echo "Made commit at ${CI_SERVER_URL}/$DTAP_PROJ/-/commit/$(git rev-parse HEAD)"
+
+    - elif [ -n "$new_branch" ]; then
+    -   cd ..
+    #   Push new branch using existing commit
+    -   git push --set-upstream origin "$CI_COMMIT_BRANCH" -o ci.skip
+
+    - else
+    #   The dtap repo's pep/foss submodule is already on this commit
+    -   echo "No changes in the foss submodule, nothing to push, starting pipeline in dtap"
+    - fi
+
+trigger-dtap-pipeline:
+  stage: triggers
+  needs:
+    - job: update-foss-submodule-in-dtap
+  trigger:
+    project: pep/ops
+    branch: $CI_COMMIT_REF_NAME
+    strategy: mirror
+  variables:
+    RUN_CLEANUP: $RUN_CLEANUP
+  rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - if: $CI_COMMIT_BRANCH
+      when: on_success
