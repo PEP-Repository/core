@@ -1,0 +1,25 @@
+{
+  "TLSPrivateKeyFile": "../../pki/TLSAuthserver.key",
+  "TLSCertificateFile": "../../pki/TLSAuthserver.chain",
+
+  "PEPPrivateKeyFile": "../../pki/PEPAuthserver.key",
+  "PEPCertificateFile": "../../pki/PEPAuthserver.chain",
+  
+  "CACertificateFile": "../../pki/rootCA.cert",
+
+  "OAuthTokenSecretFile": "OAuthTokenSecret.json",
+  "HTTPListenPort": 8080,
+  "ActiveGrantExpirationSeconds": 300,
+  "TokenExpirationSeconds": 60,
+
+  "SpoofKeyFile": "spoofKey",
+ 
+  "ListenPort": 16512,
+
+  "StorageFile": "Authserver.sqlite",
+  "AccessManager": {
+    "Name":    "AccessManager",
+    "Address": "localhost",
+    "Port":    16501
+  }
+}

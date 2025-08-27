@@ -1,0 +1,13 @@
+{
+  "Branding": {
+    "ProjectName": "Bubble Gum Swallowing",
+    "ProjectLogo": "blowing-bubble.svg"
+  },
+  "SpareStickerCount": 2,
+  "AdminAccountSampleFormat": "manz123456@umcn.nl",
+  "VisitCaptions" : {
+    "BUGS": [
+      "Baseline",
+      "Followup"
+    ]}
+}

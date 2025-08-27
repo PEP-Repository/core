@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VisitWidget</class>
+ <widget class="QWidget" name="VisitWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>571</width>
+    <height>493</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <widget class="QScrollArea" name="scrollArea">
+     <property name="focusPolicy">
+      <enum>Qt::NoFocus</enum>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background: transparent;</string>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>545</width>
+        <height>467</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_7">
+       <item>
+        <widget class="QLabel" name="assessor_header">
+         <property name="styleSheet">
+          <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+         </property>
+         <property name="text">
+          <string>administering-assessor</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="assessorBar" stretch="0,0,0">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="currentAssessorLabel">
+           <property name="text">
+            <string>current-assessor</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="edit_assessor">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>13</pointsize>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QWidget {
+                      border: 0.05em solid #CA0B5E;
+                      border-radius: 0.25em;
+                      color: #CA0B5E;
+                      padding: 0.5em;
+                      font-size: 13pt;
+                      outline: none;
+                      }
+                      QWidget:focus {
+                      border: 0.1em solid #CA0B5E;
+                      }
+                      QWidget:hover {
+                      background-color: rgba(202,11,94,0.8);
+                      color: white;
+                      }
+                      QWidget:disabled {
+                      color: grey;
+                      border-color: grey;
+                      }
+                  </string>
+           </property>
+           <property name="text">
+            <string>edit-assessor</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="data_gathering_header">
+         <property name="styleSheet">
+          <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+         </property>
+         <property name="text">
+          <string>data-gathering</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="data_castorButtonBar_layout">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+        </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_1">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="preparation_header">
+         <property name="styleSheet">
+          <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+         </property>
+         <property name="text">
+          <string>prep</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="print_buttonBar_layout">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+        </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="pseudonyms_header">
+         <property name="styleSheet">
+          <string notr="true">color: #CA0B5E;
+                    font-size: 16pt;</string>
+         </property>
+         <property name="text">
+          <string>pseudo</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="pseudonymLabel">
+         <property name="text">
+          <string notr="true">pseudonyms</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_pseudonyms_other_visits">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="pseudonyms_header_other_visits">
+         <property name="styleSheet">
+          <string notr="true">color: #CA0B5E;
+                    font-size: 16pt;</string>
+         </property>
+         <property name="text">
+          <string>pseudo_other_visits</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="pseudonymLabel_other_visits">
+         <property name="text">
+          <string notr="true">pseudonyms other visits</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

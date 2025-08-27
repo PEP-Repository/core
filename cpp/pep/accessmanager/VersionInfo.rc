@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepAccessManager"
+#define PEP_EXE_DESCRIPTION "PEP Access Manager server executable"
+
+#include <pep/Windows.Exe.VersionInfo.rc>
