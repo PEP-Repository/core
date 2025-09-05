@@ -1,0 +1,53 @@
+#pragma once
+
+#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
+
+namespace pep {
+
+PEP_DEFINE_EMPTY_SERIALIZER(GlobalConfigurationRequest);
+
+PEP_DEFINE_CODED_SERIALIZER(IndexedTicket2);
+
+PEP_DEFINE_ENUM_SERIALIZER(KeyBlindMode);
+
+PEP_DEFINE_CODED_SERIALIZER(KeyRequestEntry);
+PEP_DEFINE_CODED_SERIALIZER(EncryptionKeyRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(EncryptionKeyRequest);
+PEP_DEFINE_CODED_SERIALIZER(EncryptionKeyResponse);
+
+PEP_DEFINE_CODED_SERIALIZER(ColumnAccessRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(ColumnAccessRequest);
+PEP_DEFINE_CODED_SERIALIZER(ColumnAccessResponse);
+
+PEP_DEFINE_CODED_SERIALIZER(ParticipantGroupAccessRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(ParticipantGroupAccessRequest);
+PEP_DEFINE_CODED_SERIALIZER(ParticipantGroupAccessResponse);
+
+PEP_DEFINE_ENUM_SERIALIZER(CrudAction);
+PEP_DEFINE_CODED_SERIALIZER(ColumnNameMappingRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(ColumnNameMappingRequest);
+PEP_DEFINE_CODED_SERIALIZER(ColumnNameMappingResponse);
+
+PEP_DEFINE_EMPTY_SERIALIZER(MigrateUserDbToAccessManagerRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(MigrateUserDbToAccessManagerRequest);
+PEP_DEFINE_EMPTY_SERIALIZER(MigrateUserDbToAccessManagerResponse);
+
+PEP_DEFINE_CODED_SERIALIZER(FindUserRequest);
+PEP_DEFINE_CODED_SERIALIZER(FindUserResponse);
+PEP_DEFINE_SIGNED_SERIALIZATION(FindUserRequest);
+
+PEP_DEFINE_CODED_SERIALIZER(StructureMetadataKey);
+PEP_DEFINE_CODED_SERIALIZER(StructureMetadataSubjectKey);
+PEP_DEFINE_CODED_SERIALIZER(StructureMetadataEntry);
+
+PEP_DEFINE_ENUM_SERIALIZER(StructureMetadataType);
+
+PEP_DEFINE_CODED_SERIALIZER(StructureMetadataRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(StructureMetadataRequest);
+
+PEP_DEFINE_CODED_SERIALIZER(SetStructureMetadataRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(SetStructureMetadataRequest);
+PEP_DEFINE_EMPTY_SERIALIZER(SetStructureMetadataResponse);
+
+}

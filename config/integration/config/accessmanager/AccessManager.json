@@ -1,0 +1,31 @@
+{
+    "PublicKeyPseudonyms": "",
+
+    "KeysFile":            "AccessManagerKeys.json",
+    
+    "TLSPrivateKeyFile":   "../../pki/TLSAccessManager.key",
+    "TLSCertificateFile":  "../../pki/TLSAccessManager.chain",
+    
+    "PEPPrivateKeyFile":   "../../pki/PEPAccessManager.key",
+    "PEPCertificateFile":  "../../pki/PEPAccessManager.chain",
+    
+    "CACertificateFile":   "../../pki/rootCA.cert",
+    
+    "ListenPort":    16501,
+    
+    "KeyServer":{
+        "Name":    "KeyServer",
+        "Address": "localhost",
+        "Port":    16511
+    },    
+    "Transcryptor": {
+        "Name":    "Transcryptor",
+        "Address": "localhost",
+        "Port":    16516
+    },
+    
+    "SystemKeysFile":  "SystemKeys.json",
+    
+    "StorageFile":             "accessManagerStorage.sqlite",
+    "GlobalConfigurationFile": "GlobalConfiguration.json"
+}
