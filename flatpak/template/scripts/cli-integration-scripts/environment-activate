@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+scriptdir="$(dirname -- "$0")"
+ln -s -f "$scriptdir/$ENVIRONMENT-pepcli" "$scriptdir/pepcli"
+ln -s -f "$scriptdir/$ENVIRONMENT-pepLogon" "$scriptdir/pepLogon"
+ln -s -f "$scriptdir/$ENVIRONMENT-pepAssessor" "$scriptdir/pepAssessor"
+echo "PEP commands for the $ENVIRONMENT environment have been activated. You can now use e.g. the pepcli command to work with $ENVIRONMENT"
+
+printf "Install shell completions? (this will use sudo) [y/N]: "
+read -r install_completions
+if [ "$install_completions" = "y" ] || [ "$install_completions" = "Y" ]; then
+  sudo bash "$HOME/.local/share/pep/$ENVIRONMENT/autocomplete/install_autocomplete_pep.sh"
+  echo "Shell completions have been installed. Please restart your shell to activate them."
+fi

@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepEnrollment"
+#define PEP_EXE_DESCRIPTION "PEP Enrollment utility"
+
+#include <pep/Windows.Exe.VersionInfo.rc>
