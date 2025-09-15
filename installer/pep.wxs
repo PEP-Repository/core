@@ -187,7 +187,7 @@
 				<?endif ?>
 			</Component>
 			<Component Id="CommandPromptShortcut" Guid="*">
-				<?define PepPowershellArguments = "-NoLogo -NoExit -ExecutionPolicy Bypass -File "[#PepShell.ps1]" -PepProject "$(var.ProjectCaption)" -PepEnvironment "$(var.EnvironmentName)"" ?>
+				<?define PepPowershellArguments = "-NoLogo -NoExit -ExecutionPolicy Bypass -File "[#PepShell.ps1]"" ?>
 				<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="CommandPromptShortcut" Type="string" Value="" KeyPath="yes"/>
 				<Shortcut Id="CommandPromptShortcut" Name="!(loc.PepCommandPrompt)" Directory="ProgramMenuDir"
 					Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepPowershellArguments)">
