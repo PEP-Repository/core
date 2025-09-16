@@ -55,8 +55,9 @@ try {
 	}
 	ShowNotification 'Please select the folder to place the downloaded data in, or select an existing download'
 	# Try to open dialog on foreground, but this may still fail
-	$null = $browser.ShowDialog(
+	$choice = $browser.ShowDialog(
 		(New-Object System.Windows.Forms.Form -Property @{TopMost = $true; TopLevel = $true }))
+	if ($choice -eq [DialogResult]::Cancel) { exit 1 }
 	$folder = $browser.SelectedPath
 	$browser.Dispose()
 	if (!$folder) { exit 1 }
