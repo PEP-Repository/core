@@ -202,6 +202,20 @@
 					</Shortcut>
 				<?endif ?>
 			</Component>
+			<Component Id="DownloadAllShortcut" Guid="*">
+				<?define PepDownloadAllPowershellArguments = "-NoLogo -ExecutionPolicy Bypass -WindowStyle Minimized -File "[#DownloadAll.ps1]"" ?>
+				<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="DownloadAllShortcut" Type="string" Value="" KeyPath="yes"/>
+				<Shortcut Id="DownloadAllShortcut" Name="!(loc.PepDownloadAll)" Directory="ProgramMenuDir"
+					Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepDownloadAllPowershellArguments)">
+					<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).DownloadAll" />
+				</Shortcut>
+				<?ifdef AdditionalShortcutLocation ?>
+					<Shortcut Id="DownloadAllShortcut_Additional" Name="!(loc.PepDownloadAll) ($(var.Flavor))" Directory="AdditionalShortcuts"
+						Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepDownloadAllPowershellArguments)">
+						<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).DownloadAll" />
+					</Shortcut>
+				<?endif ?>
+			</Component>
 		</DirectoryRef>
 
 		<ComponentGroup Id="LogFolderAndShortcut">
@@ -240,6 +254,13 @@
 			<ComponentGroupRef Id="LogFolderAndShortcut" />
 			<ComponentGroupRef Id="CommandLineUtilityDependencies" />
 		</ComponentGroup>
+
+		<ComponentGroup Id="DownloadAll">
+			<ComponentGroupRef Id="pepcli.exe" />
+			<ComponentGroupRef Id="pepLogon.exe" />
+			<ComponentGroupRef Id="LogFolderAndShortcut" />
+			<ComponentGroupRef Id="configFiles" />
+		</ComponentGroup>
 		
 		<!-- Entries that the user can (de-)select for installation -->
 		<Feature Id="PepAssessor" Description="PEP Assessor" Level="1">
@@ -248,6 +269,9 @@
 		<Feature Id="CommandLineUtilities" Description="Command Line Utilities" Level="1">
 			<ComponentGroupRef Id="pepLogon" />
 			<ComponentGroupRef Id="pepcli" />
+		</Feature>
+		<Feature Id="DownloadAll" Description="Download-All utility" Level="1">
+			<ComponentGroupRef Id="DownloadAll" />
 		</Feature>
 	</Product>
 </Wix>
