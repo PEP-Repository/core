@@ -256,7 +256,8 @@
 		</ComponentGroup>
 
 		<ComponentGroup Id="DownloadAll">
-			<ComponentGroupRef Id="DownloadAll.ps1" />
+			<Component Id="DownloadAll.ps1" />
+			<Component Id="DownloadAllShortcut" />
 			<ComponentGroupRef Id="pepcli.exe" />
 			<ComponentGroupRef Id="pepLogon.exe" />
 			<ComponentGroupRef Id="LogFolderAndShortcut" />
