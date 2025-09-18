@@ -129,7 +129,7 @@ try {
   explorer "$folder"
 }
 catch {
-  try { ShowError -ErrorAction Continue "Unexpected error occurred:`n$_" } catch {}
+  try { ShowError "Unexpected error occurred:`n$_" } catch {}
   Write-Error $_ -ErrorAction Continue
   pause
   exit 1
