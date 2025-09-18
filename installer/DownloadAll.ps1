@@ -1,4 +1,4 @@
-using namespace System.Windows.Forms
+using namespace System.Windows.Forms  # Avoid typing full names like [System.Windows.Forms.MessageBox]
 
 function ShowError {
   param ([string]$Message)
@@ -15,8 +15,8 @@ $logsFolder = Join-Path $pepWorkingDirectory 'rotated_logs'
 function ShowPepError {
   param ([string]$Message, [string]$Exe)
   Write-Output "Log folder: $logsFolder"
-  ShowError ($Message + "`nyou may find additional info in the log window, or in $logsFolder for $Exe`n" +
-    'You could try updating PEP by opening PEP Assessor or downloading the latest installer')
+  ShowError ($Message + "`nyou may find additional info in the log window on the taskbar, or in $logsFolder for $Exe.`n" +
+    'You could also try updating PEP by opening PEP Assessor or downloading the latest installer')
 }
 
 function ShowNotification {
@@ -30,6 +30,8 @@ function ShowNotification {
 
 $ErrorActionPreference = 'Stop'
 try {
+  Add-Type -AssemblyName System.Windows.Forms  # Load types MessageBox, FolderBrowserDialog, ...
+
   $config = Get-Content (Join-Path $PSScriptRoot 'configVersion.json') | ConvertFrom-Json
   $projectCaption = $config.projectCaption
   $reference = $config.reference
@@ -46,7 +48,6 @@ try {
   }
   Write-Output 'Login complete'
 
-  Add-Type -AssemblyName System.Windows.Forms
   Write-Output 'Select destination in dialog'
   # Note: dialog style & available properties differ between pwsh & Windows powershell
   $browser = New-Object System.Windows.Forms.FolderBrowserDialog -Property @{
@@ -128,9 +129,8 @@ try {
   explorer "$folder"
 }
 catch {
-  $ErrorActionPreference = 'Continue'
-  ShowError "Unexpected error occurred:`n$_"
-  Write-Error $_
+  try { ShowError -ErrorAction Continue "Unexpected error occurred:`n$_" } catch {}
+  Write-Error $_ -ErrorAction Continue
   pause
   exit 1
 }
