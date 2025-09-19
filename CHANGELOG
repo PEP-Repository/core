@@ -1,0 +1,2069 @@
+Changelog
+
+Note your text below, in the following format (with 42 the issue number of the change):
+- #42: description
+
+Changes in upcoming release (1.6):
+
+- #2682: It is now possible to make authserver_apache request certificates from Let's Encrypt, without having to use an external ACME client (such as acme.sh)
+  By default this is not enabled, so projects should not directly be affected by this.
+  This change did include a rename from the conf-available directory into conf-enabled. This makes it possible to add configuration to
+  the conf-available directory, which will not be automatically enabled. You can enable it at a later stage, e.g. in a CI job or manually.
+
+MANUAL CHANGES REQUIRED:
+
+- #2682: For all environments (except review) the conf-available directory needs to be renamed to conf-enabled. This change should already be in the master branch of all project repo's.
+  Make sure that these changes are merged forward, when deploying the release.
+
+---------------
+
+Past changes, do not edit (except by person doing release):
+
+Release 1.5 (started 2025-09-01):
+
+- #2638: Added `--export` option to `pepcli pull` which does a basic export to json or yaml after downloading the data.
+- #2320: Section 4 "Data Access" of Design Document updated
+
+- #366: Replaced networking code to make it more maintainable.
+
+MANUAL CHANGES REQUIRED:
+
+- As per verbal instruction by @smeis: redeploy the `pep-release` VM.
+
+- ops#229: Where applicable:
+        - change the lines `"id_file": "../../dtap/keys/buildservers-linux-update"` to `"id_file": "$GITLAB_GROUP_CI_BUILDSERVERS_LINUX_UPDATE_KEY_FILE"`
+          and `"id_file": "../../dtap/keys/buildservers"` to `"id_file": "$GITLAB_GROUP_CI_BUILDSERVERS_KEY_FILE"`
+          - config/<env>/constellation.json (for all <env>s)
+            - in ppp-config
+            - in hb-config
+            - in op-config
+            - in ops
+            - in nolai/sandbox
+            - in nolai/maichart
+            - in nolai/hhair
+        - and merge changes to all branches during normal release process.
+
+ - core!2225: In core/ci_cd/pep-project-ci-logic.yml, in branch master, change the values of the variables:
+
+  MACOS_LEGACY_ASSESSOR_APPCAST_PATH, MACOS_LEGACY_CLI_APPCAST_PATH and MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH to the values
+  of the non-legacy variant of the variable, namely:
+
+  `MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/app/AppCast.xml` to `MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml`
+  `MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli/AppCast.xml` to `MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml`
+  `MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/dt/AppCast.xml` to `MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml`
+
+
+Release 1.4 (started 2025-07-01):
+
+- #2434: Added command "pepcli export csv".
+  This command can be used to convert the results of a previously issued `pepcli pull` command to CSV.
+  The CSV file can then be imported into any external application that accepts this format,
+  such as a spreadsheet editor.
+- #2618: Added command "pepcli export json".
+  Similar to "pepcli export csv", but creates a JSON file instead.
+- #2579: The output for "pepcli token block" family of commands has changed.
+  All subcommands that produce a table in the output now use proper CSV formatting. The differences from the old output
+  are as follows:
+  - Individual fields are now surrounded by double quote characters (")
+  - Double quote characters (") *within* individual fields are properly escaped
+  - The delimiter between fields has changed from a comma (,) to a semicolon (;)
+  The following subcommands are affected by this change:
+  - "pepcli token block list"
+  - "pepcli token block create"
+  - "pepcli token block remove"
+
+- The minimum supported macOS version is now 13.3 (Ventura) instead of 11.0. Older versions are not supported by Apple anymore. In exceptional cases, one can still use the PEP Docker image.
+
+- #1642: The user and usergroup storage has been moved to the access manager. On startup, as long as the authserver has a StorageFile entry in its config, and the file exists,
+  it will send a migrationRequest to access manager. When migration finished successfully, authserver will log:
+    Migration successful
+  If migration has already happened, access manager will raise an error. If you know that migration has already happened, you can ignore the error:
+    Cannot perform userDb migration. There is already user data in the storage
+  as well as:
+    Error (handling Access Manager Listener): Unsupported message type <UNKNOWN MESSAGE TYPE: 1397836905>
+  After successful migration, and if you have verified that interactive login still works,
+  please remove the StorageFile entry from the authserver config, so it will stop attempting to migrate.
+  When access manager's storage has been backed up by the hosting partner, you can ask the hosting partner of the authserver to remove the authserver storage file.
+  Authserver now needs an AccessManager endpoint in its configuration. At the time of this release, this should already have been added
+  to all projects maintained by the PEP-team. But if I missed anything, you may get an error:
+    Dynamic exception type: boost::wrapexcept<boost::property_tree::ptree_bad_path>
+    std::exception::what: No such node (AccessManager)
+
+- ops#85: An ExplicitKey TrustEngine is configured in Shibboleth, as advised by Shibboleth: https://shibboleth.atlassian.net/wiki/spaces/SP3/pages/2065335693/ReleaseNotes#3.4.1.1-(February-8%2C-2023)
+
+- #2351: Add first version of column, column group, and participant group metadata, see the `pepcli structure-metadata` command.
+
+- Storing encrypted or bound metadata via the command line is disabled, for the time being
+
+MANUAL CHANGES REQUIRED:
+- #1642: Before upgrading: create an Access Administrator token. That way, if migration is unsuccessful, we'll still have access admin access to set things straight.
+         After/during upgrading: check the logs of Access Manager and Authserver if migration was successful. See above for details.
+         After upgrading: remove StorageFile entry from the authserver config file, and deploy the servers with updated config.
+
+
+Release 1.3 (started 2025-02-11):
+
+- #2553: The "pepcli ping" command no longer fails for servers that sign their responses (i.e. all except Key Server).
+
+- #2565: Removed (support for) unused configuration setting.
+
+- #469: Users can now postpone updates to PepAssessor. A warning popup is provided when the user tries to login
+        using an outdated version of PepAssessor.
+
+- #2088: Replaced outdated Mbed TLS 2.x library by OpenSSL, which was already (also) used in PEP.
+
+- #2548: Access Manager server no longer crashes if user specifies a filter when running `pepcli ama query`.
+
+MANUAL CHANGES REQUIRED:
+
+- #2565: Remove any "ListenAddress" settings from server configurations.
+
+
+Semver retrofitting (started 2025-02-05):
+
+- #2558: The PEP development team now maintains separate branches for every release (major+minor version) of the
+  software. Projects can/should be based on a specific release version.
+
+MANUAL CHANGES REQUIRED:
+
+- #2558: In every project repository, edit the `.gitlab-ci.yml` file in all branches. If it `include`s prefab CI
+  file(s) from the `pep/core` and/or `pep/ops` repository, update the `ref` of those `include` directives: replace the
+  hard-coded `release` by `release-X.Y`, where `X` is the major version and `Y` is the minor version of the PEP software
+  that your project is based on. If you last upgraded your project after 2024-12-17, this will most likely be 1.2.
+
+
+Release 1.2 (started 2024-11-26; finalized 2024-12-17):
+
+- PEP Command Prompt now displays project & environment and if the last command was successful.
+
+- In the pepcli command `asa token request` the names of some positional arguments were changed.
+  This only affects how the parameters are displayed in the help text.
+  - parameter 2: renamed from "group" to "user-group".
+  - parameter 3: renamed from "expiration-time" to "expiration-unixtime".
+
+- #2357: Token blocking functionality:
+  - Keyservers can be configured to maintain a blocklist via their json config files.
+    This is done by setting the "BlocklistStoragePath" property to the desired location for the blocklist data.
+    The blocklist is optional and the server will run without a blocklist when the property is not set.
+  - Added new pepcli commands to manage blocked authentication tokens:
+    - `pecli asa token block create` - to add new blocking rules
+    - `pecli asa token block remove` - to remove existing blocking rules
+    - `pecli asa token block list` - to list all existing blocking rules
+
+- #2505: PEP applications no longer produce duplicate logging for
+  - unexpected headers received from S3 servers.
+  - incompatible remote software versions attempting to establish a network connection.
+
+- #2494: PEP Assessor no longer scrolls automatically after editing a participant('s personalia).
+
+- #2490: Reduced level ("importance") of log message about the number of worker threads, by default preventing that
+  message from showing up in the console.
+
+- #2507: AccessManager no longer errors on a column access query when no access is granted.
+  The filters now have optional vectors to distinguish between a non set filter (do not filter, return everything) and a
+  vector set to be empty (filter everything, return nothing)
+
+- #567: Changed serialization of the user certificate for the derivation of the private key. Enrollment done with the old
+  version of PEP is not compatible with the new version. This means that a user has to run pepLogon again, or provide a token.
+  They will get a warning about this, similar to when there is no ClientKeys.json, or ClientKeys.json has expired.
+
+- #2486: Fixed outrageous bugs in the pepDumpShadowAdministration application.
+
+- #2513: Working in docker, it is no longer necessary to include the client-working-directory as a pepcli parameter. Instead, it is now given as a environment variable named PEP_CONFIG_DIR, defaulting to "/config".
+    It can still be overridden by manually setting the environment variable, or including the --client-working-directory in the pepcli command.
+    If neither the --client-working-directory switch nor environment variable are set, the client working directory will default to a platform
+    specific value, being:
+    - MacOS: directory-of-the-executable/../Resources
+    - other platforms: directory-of-the-executable
+
+- #1212: The serialization of local pseudonyms and polymorphic pseudonyms in the Access Manager storage is changed.
+  Access Manager will automatically convert the existing entries in the database.
+
+- #2472: Users can no longer use the login button multiple times in PEP Assessor (after which the application would
+  terminate).
+
+- #2088: The X509Certificates constructor now ignores any DER input, only certificates in PEM format will be read.
+         Certificate chains can however now contain text before the leaf certificate, for example as a comment.
+
+- #2190: Improved user notification from Windows GUI applications:
+  - To prevent applications from seemingly doing nothing, notifications are now (by default) displayed in a message box
+    instead of being sent to stdio, where they are likely to go unnoticed.
+  - Message box notifications are now also sent to stdio, allowing piping and redirection to pick them up.
+  - Users are now made aware that piping and redirection don't work when using the --bind-to-console switch.
+
+- ppp#127: During ticket requests, Transcryptor now performs its work in batches (instead of one fell swoop), keeping
+  the server more responsive for other clients.
+
+- ppp#127: Transcryptor now caches its checksum chain values (which are used in monitoring), allowing them to be
+  retrieved and updated more quickly, freeing up Transcryptor for other requests.
+
+- #2422: Added the "pepcli file-extension list" command.
+
+- #2458: Software releases are versioned semantically starting from this (1.2) release.
+
+MANUAL CHANGES REQUIRED:
+
+- #2513: Inform users that the --client-working-directory switch is no longer required.
+
+- #1212: The access manager will create a backup of accessManagerStorage.sqlite to accessManagerStorage_before_lp_and_pp_reserialization.sqlite.
+  If this fails for some reason (e.g. not enough space, or the backup file already exists), access manager will exit with
+  an error. So check the logs for any errors, especially if the access manager does not come online.
+  After the release, if there is a checksum chain error for the access manager, specifically in the chains
+  "select-start-pseud", "select-start-pseud-v2", "participant-group-participants" and "participant-group-participants-v2",
+  this is probably because the conversion has gone wrong. In that (unlikely) case: roll-back the release, or at least
+  the changes from #1212, and restore the backup.
+  When we are confident that the release has gone to plan, the backup file can be deleted by C&CZ.
+
+- #2217: Instead of combined with the watchdog in the pep-monitoring image, the watchdog-watchdog image is now built as
+  a separate docker image. When releasing, the release vm should be redeployed so that the correct image is pulled.
+  Afterwards, check whether all services are running smoothly.
+
+- #2357: Edit the KeyServer.json file for your environment and add a node reading
+    "BlocklistStoragePath": "/data/TokenBlocklist.sqlite"
+  Verify (with the hosting partner) that this file is included in the backup.
+
+- #567: Remove Watchdog's `secrets.json` file to force it to re-enroll, preventing "message authentication failed"
+  errors when using old (incompatible) enrollment data.
+
+
+Release (started) 2024-08-06:
+
+- #2324: More warnings have been enabled for GCC/Clang.
+
+- #2339, #2347, #2348, #2349, #2366: Performance improvements.
+
+- #2270: This repo now references Docker images from a specific commit of docker-build, making it possible to change images without affecting existing code. docker-pepservices-core is merged with docker-build and will become obsolete.
+
+- #2250, #2403: We now use C++20, and download & build dependencies via Conan. This also means that a lot of dependencies have been updated. For RxCpp, we are on the latest (unreleased) version, which offers a great performance benefit. Dependencies for Linux are now built in docker-build, and are automatically updated to newer versions in the weekly build. Working versions are automatically pinned using a lockfile. This repo is automatically updated when docker-build is updated. This way, any (security) fixes are automatically incorporated into the build in this repo.
+
+- #2269: Improved the output of `pepcli asa query`:
+  - The output of the command is now displayed differently:
+    - The names for each group of displayable data and corresponding filter options were changed to be more accurate:
+      - "Groups" and `--script-print groups` were changed to
+        "All User Groups" and `--script-print all-user-groups`.
+      - "User Groups" and `--script-print user-groups` were changed to
+        "User Groups per Interactive User" and `--script-print user-groups-per-user`)
+    - The output now uses standardized formats. The exact format can be selected with a new, optional, commandline parameter '--format'.
+      The options are:
+      - `yaml` (default): Use YAML formatting, which is very reader friendly.
+      - `json`: Use JSON formatting.
+
+- #2211: Pipelines now produce a .app of pepcli + peplogon, and a .app of pepAssessor, for use on MacOS.
+
+- #1933
+  - Columns can now be separately configured to require pseudonymisation and/or
+    a directory as input. Using the pepcli store command with the flag "--input-path",
+	the given path should lead to a directory, single files are then not accepted.
+
+- #2337: PEP no longer produces errors when attempting to download cells
+  for which no (data payload) page has been stored.
+
+- #2367: It's no longer possible to "pepcli delete" an empty cell, i.e. one
+  into which no data has been stored or that has already been deleted.
+
+- #2401: Added more unit tests.
+
+- #2443: PEP Assessor now works correctly when a dark theme is enabled, while the text used to be barely readable in this case.
+
+- #2272, #2280, ops#217, ops#218: Most obsolete images/packages/branches are now deleted weekly automatically.
+
+- #2429: ATL is not required anymore to build on Windows. Windows builds should now properly support unicode when interacting with the OS.
+
+- #2442: Removing column-groups is blocked when there are associated columns or access rules to that group.
+  The "--force" flag will override this blockage and remove the column-group, all column connections and all access rules.
+  The same goes for participant-groups.
+
+MANUAL CHANGES REQUIRED:
+
+
+- #2413: Wikis are migrated to the repository and published to GitLab Pages,
+    located at <https://docs.pages.pep.cs.ru.nl/public/> and
+    <https://docs.pages.pep.cs.ru.nl/private/>. After releasing, remove the
+    redundant "include" of "gitlab-pages-ci.yml" (marked by a comment) from
+    .gitlab-ci.yml in project repos. This change has already been applied to the
+    "acc" branches of several project repositories.
+
+- #1933
+  - Change the global configuration of the running projects. Speak with the Data Administrators on which columns have which specifications.
+	  - Configurating a column is done in the "accessmanager/GlobalConfiguration.json" file in the `column_specifications` section:
+		- Remove all `"plain_directory_pseudonymisation": {}` lines.
+		- If pseudonymisation is required, keep the `"associated_short_pseudonym_column"` line,
+		  if not, remove it.
+		- If a directory input is required, add the line `"requires_directory": true`
+
+		example:
+		"column_specifications": [
+		{ "column": "OnlyPseudonymise",
+		  "associated_short_pseudonym_column": "ShortPseudonym.OnlyPseudonymise",
+		},
+		{ "column": "OnlyDirectory",
+		  "requires_directory": true
+		},
+		{ "column": "BothPseudoAndDir",
+		  "associated_short_pseudonym_column": "ShortPseudonym.BothPseudoAndDir",
+		  "requires_directory": true
+		}
+		]
+
+- Verify that documentation links are correct, e.g. from `pepcli --help`.
+
+- ppp#126: In ClientConfig.json for all project environments, if there's a
+    "Castor.BaseURL" setting, update its value to
+    "https://data.castoredc.com/studies/%1/participants/%2/visits"
+
+
+Quickfix 2024-03-11:
+
+- #2300: Improved "pepcli file-extension" commands:
+  - Commands no longer fail due to network messages getting too large.
+  - Improved performance.
+  - Added "--report-progress" switch that outputs percentage done and
+    time remaining.
+
+
+Quickfix 2024-03-05:
+
+- #2315: Storage Facility no longer uses a fixed-size memory block to store
+  entries, allowing the number of entries to grow larger than before.
+
+
+Quickfix 2024-02-14:
+
+- #2303: The "pepcli query column-access" command no longer lists columns that
+  have been removed.
+
+- #2301: Metadata updates (such as file extension assignments) no longer cause
+  cells to become unreadable when the previous cell version was stored using a
+  legacy encryption scheme.
+
+
+Quickfix 2024-02-08:
+
+- #2301: Metadata updates (such as file extension assignments) no longer cause
+  cells to become unreadable when the previous cell version was stored using a
+  legacy encryption scheme.
+
+
+Release 2024-01-04:
+
+- #2109: The VisitAssessor columns are now exportable through the PEP Assessor
+  application.
+
+- #1917: Pipelines now produce a Flatpak of pepcli, pepLogon and pepAssessor,
+  for use on Linux
+
+- #2218: The "pepcli ama group auto-assign" command now sends its output to
+  stdout instead of stderr.
+
+- #2235: If an error occurs before pepAssessor can show its GUI, the application
+  now displays a box containing the error message instead of terminating without
+  notice.
+
+- #2227: Tab autocompletion is now available for options of PEP command line
+  tools such as pepcli on bash, zsh, and powershell/pwsh. See
+  /autocomplete/README.md for instructions. In the Windows installer the PEP
+  command line prompt now uses Windows Powershell and has a default working
+  directory of ~/Downloads instead of `%LOCALAPPDATA%`. Note that there are some
+  differences between Windows PowerShell and Command Prompt (cmd.exe), including
+  that Windows PowerShell prepends a Byte-Order Mark to files it creates,
+  such as when redirecting output to a file with `>`. If this poses a problem,
+  one can always switch back by typing `cmd`.
+
+- ops#111: It is now possible to configure multiple authentication sources for
+  an environment. e.g. Google as well as SURFconext.
+
+- nolai#3: To make it easier to track down misconfiguration, Watchdog now
+  reports missing configuration settings rather than sending invalid requests to
+  PEP servers to have the problem detected there.
+
+- #2215: Added "pepcli query token" command, which reports details on the
+  specified "--oauth-token".
+
+- #2225: Access Manager now also reports the implicit "*" participant group as
+  accessible to Data Administrator. This a.o. fixes failure to retrieve (all)
+  data when Data Administrator invokes "pepcli pull --all-accessible".
+
+- #2034:
+  - File extensions can now be stored alongside PEP data by specifying a
+    "--file-extension" when invoking "pepcli store". If "pepcli store" is
+    invoked without the "--file-extension" switch but with an "--input-path" (or
+    equivalently an "--input-file" or "-i"), the extension of the input file is
+    automatically stored with the data. Specify an empty string to prevent this:
+    --file-extension ""
+  - Data that has already (previously) been stored into PEP doesn't need to be
+    re-uploaded to assign a file extension. Instead an extension can be assigned
+    retroactively by invoking "pepcli file-extension assign". Cells in well-known
+    (predefined) columns can be automatically assigned the correct extension by
+    invoking "pepcli file-extension auto-assign".
+  - Apart from file extensions, metadata in general can also be updated without
+    uploading new (payload) data. Use the "pepcli store" command's
+    "--metadata-only" switch to do so. In this case, the "--file-extension"
+    switch can be used to assign a file extension.
+  - Data downloaded using "pepcli pull" will automatically be saved to files
+    whose names include the extensions stored in PEP. This can be prevented
+    by means of the "--suppress-file-extensions" switch.
+  - When invoking "pepcli pull --update", behavior depends on the download
+    directory:
+    - if the download was originally performed by an older PEP version (that
+      didn't support file extensions) or with the "--suppress-file-extensions"
+      switch, then no file extensions will be applied.
+    - if the download was originally performed by this or a later PEP version
+      (that does support file extensions) and the "--suppress-file-extensions"
+      was not used, then files will be renamed in the download directory
+      (without re-downloading the cell contents) if the cell has been assigned a
+      (new) file extension in PEP.
+
+- ops#108: Authserver now runs a cron-job to automatically download SURFconext metadata every week.
+  This accomodates the certificate rollover that will happen at SURFconext.
+
+- #1689: Windows 10 is now the minimum supported Windows version.
+
+MANUAL CHANGES REQUIRED:
+
+- ops#111: Merge https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/merge_requests/72 during PPP release
+  and https://gitlab.pep.cs.ru.nl/pep/hb-config/-/merge_requests/10 during HB release.
+  Make sure that you test the interactive logon. On acc and prod this should just work as normal.
+  On master and stable you get an extra screen where you can choose the authentication provider.
+
+- ops#14: deal with ops-related services that have moved to the pep-release VM:
+  - Update prod watchdog configuration's `watchdogWatchdogUrl` setting:
+    change `master` to `release`.
+  - Once all `prod` environments are running updated configuration, remove port
+    8083 forwarding from the `master` environment's nginx configuration: see
+    https://gitlab.pep.cs.ru.nl/pep/ops/-/blame/master/config/master/nginx/etc/nginx.conf#L36
+
+- #2034:
+  - Inform users that "pepcli pull" may/will produce files that include a file
+    extension.
+  - Coordinate the release with data administrators to have them assign file
+    extensions ASAP after deployment:
+    1. Grant data admins "write-meta" privileges on all column groups.
+    2. Have data admins invoke "pepcli file-extension auto-assign".
+    3. Have data admins invoke "pepcli file-extension assign" for "all" columns.
+    4. Revoke "write-meta" privileges from data admins.
+
+- #2034: Provide additional/sufficient disk space on Storage Facility. See e.g.
+  https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/issues/97 .
+
+
+Release 2023-07-12:
+
+- #2184: Users can now add the --all-accessible flag to their pull command,
+  instead of explicitly stating which columngroups and participants they would
+  like to download. The server will look up to which data the user has access
+  and provide it all.
+
+- #2090: The PEP Assessor application now shows its buttons wrapped. So instead
+  of the user having to use the horizontal scrollbar because the buttons go out
+  of frame, now the buttons that didn't fit appear on a new row.
+
+- #2165: Program no longer crashes when using the "--answer-set-count" switch
+  with the "pepcli castor" commands "list-import-columns" and/or
+  "create-import-columns".
+
+- #2146: Castor integration uses new API endpoints instead of the ones that have
+  been deprecated.
+
+- #2158: Replaced default behavior when Windows applications (such as
+  pepAssessor) are started from a command prompt. They used to write their stdio
+  output to the console unless "--no-console-binding" was specified. Now they
+  don't write their output to the console unless the "--bind-to-console" is
+  passed.
+
+- #2161: Added the new "read-meta" access type to column groups. Privileges can
+  be granted just like with the "read" and "write" access types that already
+  existed. Holders of only the "read-meta" privilege can retrieve information
+  *about* cells (such as whether they contain data and when those data have been
+  uploaded), but the "read" privilege is still required to access the *content*
+  of those cells.
+  - Having "read" access to a column group grants implicit "read-meta" access to
+    that column group.
+  - Data Administrators have implicit "read-meta" access to all column groups,
+    so they can perform the following actions without requiring explicitly
+    configured access:
+    - counting data points using "pepcli list --no-inline-data".
+    - retrieving cell history using "pepcli history".
+  - The "pepcli query column-access" and "pepcli ama query" commands only list
+    "read-meta" access that has been explicitly configured. (Both commands do
+    provide a help text blurb about implicitly granted access.)
+
+- #2173: (Most) external libraries are now linked dynamically on Windows
+  platforms. The installer deploys the required DLLs to the installation
+  directory; users should notice no difference with the old (statically linked)
+  approach.
+
+- #2168: Added the ability to create a new row with a generated PEP ID,
+  without entering data for the ParticipantInfo column.
+  You can do this by using the "pepcli register id" command in
+  the pepcli. It returns a participant ID, which is a cryptographically random
+  identifier.
+
+- #1348: Builds in project repositories now produce an Apptainer/Singularity
+  image on the basis of the "client" Docker image. Image files are called
+  "client.sif" and are published for download on the PEP Website, e.g. at
+  - https://pep.cs.ru.nl/ppp/acc/client.sif
+  - https://pep.cs.ru.nl/ppp/prod/client.sif
+  - https://pep.cs.ru.nl/hb/acc/client.sif
+  - https://pep.cs.ru.nl/hb/prod/client.sif
+  - https://pep.cs.ru.nl/nolai/acc/client.sif
+  - https://pep.cs.ru.nl/dtap/master/client.sif
+  - https://pep.cs.ru.nl/dtap/stable/client.sif
+  Note that these images are provided "as is". The PEP team does not provide
+  support for Apptainer/Singularity, nor for (problems arising from) running the
+  PEP software from an Apptainer/Singularity container.
+
+- #2107: PEP now uses a newer OpenSSL API for SHA-2 hashing instead of
+  deprecated functions. Also authentication no longer fails on (newly installed)
+  Windows machines that lack the root CA certificate for auth server's HTTP
+  endpoints.
+
+- #2171: Networking no longer (1) logs error messages twice or (2) counts
+  unhandled read exceptions twice.
+
+- #2159: Castor import now uses endpoint(URL)s that produce more data per call,
+  improving performance because
+  - fewer calls are needed in total, and consequently
+  - the Castor API's request rate limit isn't reached quite as often.
+
+- #1478: Retrieval of metadata and payload data now requires two individual
+  calls to Storage Facility. This simplifies Storage Facility's API as well as
+  client side processing of returned messages.
+
+MANUAL CHANGES REQUIRED:
+
+- #2184: Inform users of the --all-accessible flag of the cli pull command.
+
+- #2146: In the GlobalConfiguration.json file:
+  - change the names of "institute_abbreviation" nodes to "site_abbreviation".
+  - change the values of "study_type": "REPORT" nodes to "REPEATING_DATA".
+
+- #2134: Some changes where made in the CmakeList.txt files of master in ops,
+  ppp-config and hb-config. Make sure that in ops master is merged into stable,
+  and in ppp-config and hb-config, master is merged into acc.
+
+
+Release 2023-03-15:
+
+- #2131: When the version of PEP binaries is printed (e.g. on application
+  startup or when running `pepClientTest 5`), the reference (branch) name is no
+  longer included in the output to e.g. prevent release versions from reporting
+  themselves as having been built for a feature branch.
+
+- #2130: The "pepcli pull" now issues progress notifications (to stdout) if the
+  new "--report-progress" switch is passed.
+
+- #2033: The "pepcli list" now shows the total count of cells with data in them.
+
+- #1059: The "pepcli pull" command now uses the (shorter) participant alias
+  instead of the (longer) local pseudonym as the name for participant
+  directories. Existing download directories can be converted to the new format
+  by running "pepcli pull update-pseudonym-format".
+
+- #2147: Storage Facility now detects when (incoming) data isn't written to disk
+  correctly, preventing state corruption and data loss.
+
+- #2149: Fixed occasional faulty segmentation of incoming HTTP data, which a.o.
+  resulted in Castor import failure.
+
+- #2153: The "pepcli ama group removeFrom" command now actually removes
+  participants from (participant) groups instead of adding them.
+
+
+Hotfix 2023-02-09:
+
+- #2136: Instead of terminating with an error, Castor import now waits and
+  retries if it hits Castor's request rate limiting ("throttling").
+
+
+Release 2023-01-10:
+
+MANUAL CHANGES REQUIRED:
+
+- #2087: Notify users of existence of pepcli ... store ... --resolve-symlinks
+  flag. Adding this will explicitly allow symlinks to be resolved. Without this
+  flag, whenever symlinks are found, a runtime error will be raised and the
+  process terminated.
+
+SOFTWARE CHANGES:
+
+- #2087: Added --resolve-symlinks flag "pepcli store" command:
+  - flag is converted to a boolean and passed to the pseudonymiser.
+  - The pseudonymiser checks each path and when a symlink is found but the flag
+    is not set, a runtime error is raised.
+
+
+- #2091: In all cmakelists of external projects a newly required parameter
+  DOWNLOAD_EXTRACT_TIMESTAMP is added.
+    - This is required from cmake 3.25 onwards.
+    - Older versions (<3.23) do not accept this parameter, therefore the
+      addition of the parameter is conditional on the cmake version
+      (pep-paths.cmake ln.24)
+
+- #1912: Upon startup, Storage Facility now logs the number of file store
+  entries and the time taken to load them.
+
+- #1763: Synchronization of production data to the acceptance environment
+  ("data synchronization") is now based on (project specific) configuration
+  rather than being hard-coded against the PPP situation. The PPP project's
+  configuration has been updated to make their data sync work with the new
+  approach. The synchronization jobs are now available in "acc" pipelines rather
+  than being bound to a separate branch. Other projects can use the
+  configuration-based approach to also support data synchronization, but a bunch
+  of manual work will still be needed in every such project to get things to
+  work.
+
+- #2071: Programs now produce additional help text when it looks like a user
+  tried to pass a literal asterisk as a command line parameter but the shell has
+  globbed it to a list of file names.
+
+
+Hotfix 2022-11-14:
+
+- #2089: Results of "pepcli ama query" are split over more parts to prevent
+  network messages from becoming too large.
+
+
+Release 2022-09-22:
+
+MANUAL CHANGES REQUIRED:
+
+- #1791: Notify users of breaking changes in command line argument processing:
+  - switch values must be explicitly provided: implicit values are no longer
+    supported. Only "pepcli get"'s "--output-file" (-o) and "--metadata" (-m)
+    switches are affected: pass a "-" value to these for old behavior.
+  - switches for parent commands must be specified *before* any sub-command.
+  - positional parameters can no longer be specified with a "--named-switch"
+    announcer.
+
+- #2006: In the pep/play-config repo, merge `2006-aa-logon` into the `acc`
+  branch. Then use "pepcli asa" to
+  - create group "Access Administrator"
+  - add user "accessadmin@play.pep.cs.ru.nl" to group "Access Administrator"
+  - add user "multihat@play.pep.cs.ru.nl" to groups
+    - "Access Administrator"
+    - "Data Administrator"
+    - "Monitor"
+    - "Research Assessor"
+  - remove any remaining "triplehat@..." users.
+
+- #1943: In project repositories, remove any remaining "BartenderPath" settings
+  from ClientConfig.json files.
+
+- #2076: Notify users that pepAssessor's software upgrade may fail due to faulty
+  (checksum) validation of the new installer. If so, advise to download and
+  install by hand.
+
+SOFTWARE CHANGES:
+
+- #2005: Added switches to the "pepcli asa token request" command:
+  - "--json" to produce output in JSON format.
+  - "--expiration-yyyymmdd" for a more user friendly input format.
+
+- #2006: Added logon ability as Access Administrator to test versions of IDP and
+  auth server.
+
+- #1992: Prevented "Query out of scope of provided Ticket" error when requesting
+  data for empty column group(s) and/or empty participant group(s).
+
+- #2008: Windows (console) applications now process Ctrl+C quicker, preventing
+  them from doing (too much) stuff while they're being torn down.
+
+- #1791: Command line arguments are now processed consistently across
+  executables and (sub-)commands. All (published) commands and executables now
+  support the "--help" switch. Some corner cases are no longer supported:
+  - switch values must be explicitly provided: implicit values are no longer
+    supported. Only "pepcli get"'s "--output-file" (-o) and "--metadata" (-m)
+    switches are affected: pass a "-" value to these for old behavior.
+  - switches for parent commands must be specified *before* any sub-command.
+  - positional parameters can no longer be specified with a "--named-switch"
+    announcer.
+
+- #1943: The location of the Bartender sticker printing application is no longer
+  configured within PEP. First-time users will be prompted to locate the
+  application themselves.
+
+- #1764: Cells can now be cleared in the PEP storage: use the "pepcli delete"
+  command to do so. Downloading will then no longer produce data for cell that
+  are thusly cleared (but PEP will retain a historical copy of the previous
+  data).
+
+- #2036: The "pepcli list" command no longer supports the "--non-canonical"
+  switch that allowed Data Administrator to retrieve all versions of a cell's
+  contents. Cell histories including deletions can now be retrieved using the
+  new "pepcli history" command.
+
+- #2055: The `pepcli castor create-import-columns` command now also ensures
+  that pre-existing (e.g. manually created) import columns are added to the
+  `Castor` column group. The same applies to the
+  `pepcli castor list-import-columns` command when using the `--remaining`
+  switch.
+
+- #2060: Interactive logon now produces an error message when OAuth token cannot
+  be retrieved because no usable (Open)SSL library is found.
+
+- #2074: Fixed download corruption when using "pepcli get" on Windows systems.
+
+- #2076: Fixed faulty checksum validation on installers downloaded by
+  pepAssessor's software update mechanism. Since the fix won't be available
+  until this new version is deployed onto target machines, users may need to
+  (download and) install the new version by hand.
+
+
+Rushed mini-release 2022-08-24:
+
+- #2068: The pepAssessor GUI now supports sticker printing for short pseudonyms
+  that are associated with the participant (i.e. appear in the left part of the
+  window).
+
+
+Release 2022-04-06:
+
+MANUAL CHANGES REQUIRED:
+
+- #1569: Inform Data Administrators of the addition of the
+  "pepcli ama group auto-assign" command.
+
+- #1475:
+  - Grant (*nix/Docker) users access to appropriate Docker image registries.
+  - Have HB's hosting partners update Docker image locations.
+  - Have users upgrade to new version of client software.
+
+- #1982: Inform Data Administrators of the addition of the
+  "pepcli register ensure-complete" command.
+
+SOFTWARE CHANGES:
+
+- #1569: Added "pepcli ama group auto-assign" command, which assigns all
+  non-test participants to groups named "all" and (if study contexts are used)
+  "all-<studyContextName>". Participants will also be removed from groups if
+  they become test participants or have been removed from a study context. Also,
+  empty "all" and "all-<studyContextName>" groups will be removed. The command
+  accepts --mapname switches to translate study context IDs to different group
+  names. E.g. --mapname "pom=ppp" will assign participants of study context
+  "POM" to participant group "all-ppp" instead of "all-pom".
+
+- #1946: The "pepcli query participant-group-access" now also works for users in
+  the "Data Administrator" role, who have implicit full access to all
+  participant groups. The "pepcli ama query" command does not list these access
+  privileges, but now issues a notification about them.
+
+- #1950: Directory pseudonymization (e.g. when uploading MRI data) now raises an
+  error if the directory contains a symbolic link, to prevent users from
+  uploading data they didn't intend to upload.
+
+- #1475: Project setup, build procedure, and publication strategy has changed.
+  Users must perform manual actions to migrate to new situation.
+
+- #1982: Added "pepcli register ensure-complete" command, which ensures that
+  participant records have a complete set of short pseudonyms.
+
+
+Release 2022-02-17:
+
+MANUAL CHANGES REQUIRED:
+
+- #1918: For all environments: the directory authserver_apache/etc/httpd/conf.d
+  needs to be renamed to authserver_apache/etc/apache2/conf-available
+  this has been done for the environments that have their config in pep/core,
+  but needs to be done for all acceptance and production environments
+
+- #1545: When upgrading from a previous release, the "PEP Command Prompt" start
+  menu entry may disappear or not (re-)appear. In this case, try "repair"ing the
+  installation in Control Panel -> Programs -> Programs and Features.
+  Uninstalling and reinstalling should also fix things.
+
+SOFTWARE CHANGES:
+
+- #1832: Removed support for the unused "TokenFile" ClientConfig setting.
+  The pepLogon and pepcli utilities now (read and) write token files to the
+  working directory, preventing failure when ClientConfig.json is located
+  on a read-only file system.
+
+- #1545: The "PEP Command Prompt" start menu entry is now displayed for all
+  installed PEP flavors.
+
+- #1564: The pepAssessor UI can now also edit participant data when no
+  personalia (name and DoB) were previously stored.
+
+- #1616: Improved error message when a Castor study cannot be found for
+  a specified (e.g. configured) slug.
+
+- #1838: Fixed a bug where the last entry in an MRI directory was not correctly
+  closed and hashed. This solves Martin Johanson's problem of 'pepcli pull --update'
+  saying that files were changed, even though they were not.
+
+- #1119: Watchdog will now check authserver as well. Some config changes for the
+  watchdog are required for this. During release, you will have to merge the branch
+  `1119-make-watchdog-check-authserver` in ppp-infra/ops and hb-config repositories
+  into (hb_)acc and (hb_)prod branches. Play-config is already updated, but this is not
+  yet possible for HB and POM.
+  This change also upgraded CentOS, used as the base for the authserver_apache images,
+  from version 7 to version 8. This should not cause any problems.
+
+- #1892: Replaced pepcli's "validate-data" command by "validate <aspect>" command,
+  which supports sub-commands:
+  - "pepcli validate data" validates data stored in PEP (what "validate-data" did).
+  - "pepcli validate pseudonym <value>" validates pseudonym validity.
+  The <aspect> defaults to "data", so calls to "pepcli validate-data" should be
+  replaced by either "pepcli validate" or "pepcli validate data".
+
+- #1918: authserver_apache image now uses Ubuntu instead of CentOS
+
+- #1891: Path to Bartender sticker printing application can now be (re-)configured
+  on machines running pepAssessor application.
+
+- #1923: Data Administrator can now access any participant group without needing
+  explicitly granted privileges.
+
+Release 2021-10-01:
+
+MANUAL CHANGES REQUIRED:
+
+- #1722: For PPP/POM client software installed on Windows, uninstall PEP and
+  run the new installer by hand. If the (pre-filled) default installation
+  directory is not (a subdirectory of) "C:\Program Files":
+  - Cancel the installation.
+  - Start Registry Editor (regedit.exe) from an administrative account.
+  - Find registry key "HKLM\Software\Radboud University\PEP (<your-flavor>)".
+    Note that you need the key under HKLM, not the one under HKCU.
+  - Delete value "InstallLocation" (or the entire key).
+  - Start the installation again.
+  The new installation attempt should now default to (a subdirectory of)
+  "C:\Program Files". Leave the location at its default.
+  After installation, delete any shortcuts that were previously manually
+  created (or update them to the new installation location).
+
+- #1780: Instruct users to invoke PEP (command line) applications from a
+  writable directory, e.g. starting their shell by means of the
+  "PEP Command Prompt" shortcut.
+
+- #1353: Notify users that the ordering may have changed in the browser's
+  role selection combo box.
+
+SOFTWARE CHANGES:
+
+- #1639: When importing REPORTS data from a Castor study, no (empty JSON) data are now
+  stored for records that contain no reports.
+
+- #1686: The "--xml-structure-file" switch is no longer available (or needed) for
+  "pepcli castor list-import-columns" and "pepcli castor create-import-columns".
+
+- #1684: Added ability to list (without creating them) those Castor import columns that
+  remain to be created. Use one of
+  - pepcli castor list-import-columns --remaining
+  - pepcli castor create-import-columns --dry
+
+- #1310: Screen no longer blanks in pepAssessor after short pseudonym lookup failure.
+
+- #1700: When using the `pepcli list` command with the `--ticket-out` switch, ticket
+  files no longer get corrupted under Windows.
+
+- #1615: The "KeysFile" setting is now mandatory in ClientConfig(.json) files.
+
+- #1722: Windows installer now defaults to installation under "C:\Program Files"
+  instead of "C:\MyPrograms". Installer for PPP/POM also creates a pepAssessor
+  shortcut in "C:\Research", from where RadboudUMC's policy copies it to users'
+  start menus.
+
+- #1699: The "pepcli list" command can now be invoked with "--inline-data-size-limit 0"
+  to prevent any data from being inlined.
+
+- #1646: Enrollment details can now be inspected using "pepcli query enrollment".
+
+- #1705: Removed outdated "pepcli pseudonymise" command.
+
+- #1735: Warnings are now issued when retrieving data using the "pepcli list"
+  and/or "pepcli get" commands. Users are urged to use "pepcli pull" instead.
+
+- #1656: The printed overview is now translated to pepAssessor's UI language.
+
+- #1618: When visit numbering is inappropriate, visit descriptions can now be
+  configured/overridden in ProjectConfig.json on a per-context basis. Short
+  pseudonym descriptions in UI and print overview now only contain a visit
+  description (or number) when they contain SPs for multiple visits.
+
+- #1672: Fixed intermittent Registration Server deadlock during startup.
+
+- #1693: Archived report instances are no longer imported from Castor.
+
+- #1477: Only Data Administrator and Watchdog can retrieve non-canonical data anymore
+  (i.e. full item histories).
+
+- #1784: The "Open participant" window in pepAssessor no longer assumes that participant
+  IDs are (a maximum of) 15 characters long.
+
+- #1783: The "pepcli register" command no longer hangs when registration fails. Partial
+  record creation is also prevented under normal circumstances.
+
+- #1780: Added a "PEP Command Prompt" shortcut to the Start Menu.
+
+- #1786: The browser now shows an error page when authentication or authorization fails
+  instead of "You have been logged in".
+
+- #1807: Prevented applications from failing when invoked using the environment's path.
+
+- #1797: Applications now read ClientConfig.json file from the executable's directory,
+  and write ClientKeys.json file to the current working directory.
+
+- #1353: For users belonging to multiple access groups, the HTML combo for role
+  selection now shows roles in deterministic order. Also improved markup
+  validity of that page and the one that displays logon status.
+
+- #1828: Short pseudonym errata can now be defined in GlobalConfiguration instead of
+  program code.
+
+- #1502: User pseudonym or local pseudonym can now be used with the '-p' flag of pepcli.
+
+- #1648: Multiple participant groups can now be used in a single request.
+
+- #1648: It is no longer possible to combine participant groups and specific participants in a single request.
+
+
+Release 2021-03-09:
+
+MANUAL CHANGES REQUIRED:
+
+- #1645: we received a new sticker template for PPP, with the project label "POM" removed.
+  We cannot test this ourselves. Ask the person from POM who does the testing to verify
+  that the template is correctly updated.
+
+SOFTWARE CHANGES:
+
+- #1357: Improved performance of PullCastor import of survey data.
+
+
+Release 2021-02-24:
+
+MANUAL CHANGES REQUIRED:
+
+- #1454: For existing environments, create column group `IsTestParticipant` with new column
+  `IsTestParticipant`. Grant
+  - Read + write access to `Research Assessor`.
+  - Read access to `Monitor` and `Data Administrator`.
+
+- #1454: In existing environments, have a research assessor use the pepAssessor UI to
+  mark test participants as such.
+
+SOFTWARE CHANGES:
+
+- #1454: Assessors can now check (or uncheck) a box indicating that a participant is a
+  "test participant". This causes a value of `true` or `false` to be stored in the new
+  `IsTestParticipant` column, which is included in the new `IsTestParticipant` column group.
+  An absent (value in the) `IsTestParticipant` cell indicates that the participant is **not**
+  a test participant.
+
+- #1631: When multiple pieces of data are stored at the same time, they now have equal
+  storage timestamps. Prevents later retrieval of data sets that include partial updates.
+
+- #1430: Removed code related to the HSM and the old enrollment scheme. There were also
+  messages in messages.proto that have been removed, which means users will have to update
+  pepAssessor/pepcli
+
+- #1647: Fixed `pepcli store` command failure when using the `--sp` switch when the user
+  does not have access to the `*` participant group.
+
+
+Release 2021-01-26:
+
+MANUAL CHANGES REQUIRED:
+
+- #1435: Support import of multiple survey package instances from Castor:
+  - Add "week_offset_device_column" configuration settings to appropriate
+    SURVEY-type storage nodes in GlobalConfiguration.json.
+  - Grant PullCastor read access to (a column group containing) the column(s) specified
+    as "week_offset_device_column".
+  - Define (sufficient) import columns with ".AnswerSetNnn" and ".AnswerSetNnn.WeekNumber"
+    suffixes and add them to the "Castor" column group.
+
+- #1476: When ready to (attempt to) import reports from Castor, configure "storage" nodes
+  for POM's three "QAVideo" short pseudonyms.
+
+SOFTWARE CHANGES:
+
+- #1530: Added `pepcli castor create-import-columns` command, which ensures that all
+  columns required for Castor import are defined and included in the `Castor` column
+  group.
+
+- #1435: For appropriately configured (storage nodes of) SURVEY-type studies, PullCastor
+  can now import all survey package instances, even if they correspond with the same
+  survey package (definition). Data will then be imported into columns having
+  ".AnswerSetNnn" and ".AnswerSetNnn.WeekNumber" suffixes.
+
+- #1543: The `pepcli castor list-sp-columns` command now supports the `--imported-only`
+  switch, which causes output to include only those short pseudonyms that are processed
+  during the import of Castor data into PEP.
+
+- #1476: PEP can now import report data for appropriately configured (storage nodes of)
+  Castor studies.
+
+- #1614: If pepLogon cannot store enrollment data, it now stores the OAuth token instead,
+  making the logon result usable (at least by pepcli).
+
+Release 2020-10-14:
+
+SOFTWARE CHANGES:
+
+- #1486: Access Manager now automatically keeps the following column groups in sync
+  with GlobalConfiguration:
+  - VisitAssessors
+  - ShortPseudonyms
+  - CastorShortPseudonyms
+  - Device
+
+- #1434: Column names for Castor survey import data are now prefixed with the name of the
+  survey package.
+
+- #1436: PullCastor now imports data as soon as it's available (i.e. not requiring
+  record completion or a cooldown period) for STUDY-type Castor studies that are thusly
+  configured.
+
+- #1509: The `pepcli` utility no longer logs a warning when passing a (JSON) file path
+  to the `--oauth-token` switch.
+
+- #1510: The "storage" key, in CastorShortPseudonym defintions in the global config, now accepts an array. That way,
+  we can configure multiple storage defintions for a single study, e.g. one for "STUDY" and one for "SURVEY" data.
+
+- #1506: Data Administrator can now (use pepcli to) manage mappings defining how Castor names
+  translate to PEP column names during Castor import.
+
+- #1497: When editing device history entries on some machines, PEP would store timestamps
+  different from those entered into the UI. Eliminated faulty time zone conversion by QT:
+  PEP now uses conversion based on standard C functions instead.
+
+MANUAL CHANGES REQUIRED:
+
+- #1434 and #1506: Deal with changing/changed column names in Castor import of survey data:
+  - Have Data Administrator
+    - Define mappings using use `pepcli castor column-name-mapping`.
+    - Export a Castor structure (XML) file.
+    - Pass the structure file to `pepcli castor list-import-columns` to get a list of
+      updated import column names for affected short pseudonyms.
+    - Create columns with the names listed by `pepcli castor list-import-columns`, and
+      add these columns to the appropriate column group(s).
+    - Remove outdated colunmn names from affected column group(s).
+  - Inform downloaders that column names have changed and that they should
+    - Either perform a completely new download: `pepcli pull` without `--update`.
+    - Or remove outdated data files by hand from their downloads before using `--update`
+      with their `pepcli pull` commands.
+
+- #1436: When deploying to a PPP environment, merge ppp-infra/ops's
+  "1436-import-ecg-findings-immediately" branch into the corresponding (`acc` or `prod`)
+  branch.
+
+Release 2020-09-01:
+
+SOFTWARE CHANGES:
+
+- #1379: Placeholder of pseudonymisation is now stored in the unencrypted metadata.
+
+- #1189: Watchdog can now check TLS certificates. We could already do this for HTTPS, but now
+  we also have a more generic TLS certificate check, for e.g. the logger.
+
+- #1414: If the user manually enters administrative credentials during software upgrades,
+  pepAssessor is no longer automatically restarted after having been upgraded. This prevents
+  it from being run from an account that is unusable for assessor tasks.
+
+- #1440: Fixed failure to create temporary directory when invoking pepcli pull with the
+  --update switch.
+
+- #1369: Added "pepcli query column-access" command, which lists columns and column groups
+  that are accessible to the user.
+
+- #1356: Added ability to specify placeholder texts for device serial number text boxes.
+
+- #1342: Device (history) columns are now bound to a (single) study context.
+
+MANUAL CHANGES REQUIRED:
+
+- #1379: After ACC is updated, if Marcel Zwiers is still working on ACC, let him know that all MRIs have to be reuploaded.
+
+- #1356: In the `pep/hb-config` repository, merge branch `1356-device-serial-placeholders`
+  to `hb_acc` and `hb_prod` when deploying updates to these environments.
+
+- #1342: In the `ppp-infra/ops` repository, configure the `DENOVO` context by merging
+  the `1342-denovo-context` branch to the `acc` and `prod` branches as appropriate.
+
+
+Release 2020-07-17:
+
+<no changes logged>
+
+
+Release 2020-06-24:
+
+- #1256: Import of Castor data now deals correctly with multiple surveys of the same type
+  having been (sent and) completed for the same participant.
+
+- #1318: Added short pseudonym lookup capability to pepcli commands list, pull, and store.
+
+- #1338: Sticker print commands no longer interfere with each others' temporary files.
+
+
+Release 2020-06-09:
+
+NOTE THAT logging on through pepAssessor no longer produces a ClientKeys.json file,
+so this enrollment method can no longer be used to e.g. prepare for use of "pepcli"
+without an OAuth token. Users should enroll using pepEnrollment or pepLogon instead.
+
+- #1258: Fixed failure to reopen "Open participant" widget after lookup failure.
+- #1304: Corrected administrative account format sample for Healthy Brain Project.
+- #1311: On machines that are part of a Windows domain, a local administrative account
+  can now be used to upgrade client software.
+- #1295: Registration Server no longer keeps running in an unusable state if a (network)
+  error occurs during initial data retrieval.
+- #1241: The "pepcli ama query" command can now be invoked with the  "--script-print" switch,
+  which formats the output for easier consumption by automated processes.
+- #1210: The "pepcli pull" command can now be invoked with the "--resume" switch,
+  which restarts failed downloads.
+- #1242: The "pepcli" utility now deals better with invocations that ask for "--help".
+- #1290: The "pepcli ping" command can now be invoked with the "--print-drift" switch,
+  which outputs the difference between time on the local machine and on the pinged server.
+- #717: The pepAssessor application is now also available for Apple OSX machines.
+- #1298: The pepAssessor application now uses a dialog box when selecting the assessor
+  administering a visit.
+- #1310: After failing to find or open a participant, pepAssessor no longer shows a
+  blank screen.
+
+Release 2020-05-14:
+
+MANUAL CHANGES REQUIRED:
+
+- #1138:
+  - For existing projects (whose Access Manager has already been initialized):
+    define column group "VisitAssessors" and:
+    - Make it readable and writable to user group "Research Assessor".
+    - Make it readable to user group "Data Administrator".
+    - Make it readable to user group "Monitor".
+  - For the POM project's configuration in ppp-infra/ops:
+    add study context and assessor definitions to the GlobalConfiguration.json
+    file(s). The required changes have been prepared in branch
+    "1138-assessor-registration"; ensure the values are equal to the ones in
+    pep/core/config/projects/ppp.
+
+SOFTWARE CHANGES:
+
+- #1218: The Castor API key is no longer required to invoke
+  `pepcli castor list-import-columns`.
+
+- #1263: We can now automatically pseudonymise and tar directories before uploading, and when using `pepcli pull`
+  they will be untarred and depseudonymised with the local pseudonym. In order to do so, ColumnSpecifications can be
+  added for certain columns to the global config, with PlainDirectoryPseudonymisation as pseudonymisation.
+  See ppp/GlobalConfig.json
+
+- #1138: It is now possible to register the assessor that administered a
+  participant's visit.
+
+- #1206: The pepAssessor UI now remains responsive while downloading updates.
+
+- #1107: Shadow storage reinitialization now also picks up (short) pseudonyms
+  whose definitions have been deleted from GlobalConfiguration.json.
+
+- #1229: Made command line help for "pepcli castor" more readable.
+
+- #1227: Output of pepcli ama query is now sorted for ease of lookup.
+
+- #1114: Number of shadow storage entries is now validated when Registration
+  Server starts.
+
+- #1173: moves the certificates stored in ticket requests in the transcryptor
+         database to their own table.
+
+  The migration is performed automatically, but might take up to 5 minutes,
+  during which time the transcryptor will not open its port.  Progress of the
+  migration is written to the transcryptor's log.  If the migration fails then
+  the changes to the database are rolled back, and the transcryptor crashes.
+
+  After a succesful migration, the checksum chains of the transcryptor
+  should *not* have changed.  If they did, then something went horribly wrong.
+
+
+Release 2020-04-01:
+
+Note that different environments are running different versions of the PEP code base:
+- acc is running the code of the attempted 2020-02-12 release.
+- hb_acc is running the code of the 2019-12-10 release.
+- prod and hb_prod are running the code from the 2019-10-31 release.
+
+MANUAL CHANGES REQUIRED:
+
+- #1030: Ensure that automated processing (e.g. by Verily) takes the new
+  download directory metadata format into account.
+
+SOFTWARE CHANGES:
+
+- #1030: Improved performance of pepcli pull by changing metadata format for
+  download directories. Format will be upgraded automatically by
+  `pepcli pull --update`
+
+
+Release 2020-02-12:
+
+Note that the previous release (of 2019-12-10) was brought to the "acc" and "hb_acc"
+environments, but not to the "prod" and "hb_prod" environments. So the production
+environments are still running the code base of the release before that, i.e.
+2019-10-31.
+
+MANUAL CHANGES REQUIRED:
+
+- #1160:
+  Update token.yaml of the watchdog. This file is in /data/volumes/secrets/watchdog(-acc)/ of the VM the watchdog is running on.
+  For acc and prod this is release.pep.cs.ru.nl, for the other environments this is the same VM as the environment itself is running on.
+  For hb and hb_acc the file is in /data/docker/watchdog.
+  This file should contain (already added):
+  - OAuthToken
+  - gitlabAPIkey
+  You must remove:
+  - token (replaced by OAuthToken, which should have the same value)
+
+- #1160:
+  An updated config for acc and prod watchdogs is available in ppp-infra/ops, in the master branch. This should be merged to acc and prod.
+  The updated config will check whether pipelines for specified branches succeeded
+
+- #560:
+  DURING RELEASE once code in the pep/core project has been merged to "acc",
+  merge the "560-assessor-update" branch to "acc" in the ppp-infra/ops project.
+  This will ensure that the installer for "acc" is published to a central
+  download location.
+  DURING RELEASE TO PRODUCTION if installer deployment has been found to work
+  in the "acc" and/or "hb_acc" environments, enable it for the corresponding
+  production environment:
+  - uncomment the "hb_prod" clause in pep/core's "gitlab-ci.yml" job
+    "deploy-windows-installer-manually".
+  - uncomment the "prod" clause in ppp-infra/ops's "gitlab-ci.yml" job
+    "deploy-windows-installer".
+  ON CLIENT MACHINES the initial installation needs to be performed by hand:
+  1. Remove any existing pepAssessor binaries from your machine (POM: from
+     directory C:\MyPrograms).
+  2. Download the appropriate installer from its download location: one of
+     - https://pep.cs.ru.nl/master/pep.msi
+     - https://pep.cs.ru.nl/stable/pep.msi
+     - https://pep.cs.ru.nl/acc/pep.msi
+     - https://pep.cs.ru.nl/prod/pep.msi (POM production)
+     - https://pep.cs.ru.nl/hb_acc/pep.msi
+     - https://pep.cs.ru.nl/hb_prod/pep.msi (HB production)
+  3. Run the downloaded installer from an administrative account (POM: from
+     a MANZ account).
+  4. If applicable: update any existing shortcuts to the new location of
+     pepAssessor.exe.
+  5. Switch to your regular user account (POM: your Z account) and start
+     pepAssessor using the shortcut in the Windows Start Menu.
+  The pepAssessor application will check on startup if an update is available.
+  If so, it will provide a button to start the update process. When prompted,
+  provide administrative credentials (POM: MANZ credentials) to perform the
+  upgrade.
+
+- #1007:
+  - In the ppp-infra/ops project, in file
+    config/prod/pep-services/accessmanager/GlobalConfiguration.json, add a "storage"
+  node to ShortPseudonym.Visit1.Castor.HomeQuestionnaires and ShortPseudonym.Castor.ECG.
+  - Passing data administrator credentials to the `pepcli` utility, define the
+    following columns in the `prod` environment and add them to the `Castor`
+    column group:
+    - Castor.HomeQuestionnaires1.13_Stemming_BDI2.Stemming
+    - Castor.HomeQuestionnaires1.15_REMslaap_vragenlijst_REMSBDQ.REMslaap
+    - Castor.HomeQuestionnaires1.02_Kwaliteit_van_leven_PDQ39.Deel_1
+    - Castor.HomeQuestionnaires1.02_Kwaliteit_van_leven_PDQ39.Deel_3
+    - Castor.HomeQuestionnaires1.02_Kwaliteit_van_leven_PDQ39.Deel_2
+    - Castor.HomeQuestionnaires1.04_Vragenlijst_stoornissen_in_de_impulscontrole_bij_de_ziekte_van_Parkinson_QUIPRS.Aandrang_of_verlangen
+    - Castor.HomeQuestionnaires1.04_Vragenlijst_stoornissen_in_de_impulscontrole_bij_de_ziekte_van_Parkinson_QUIPRS.Voortzetten_van_gedrag
+    - Castor.HomeQuestionnaires1.04_Vragenlijst_stoornissen_in_de_impulscontrole_bij_de_ziekte_van_Parkinson_QUIPRS.Controle_over_gedragingen
+    - Castor.HomeQuestionnaires1.04_Vragenlijst_stoornissen_in_de_impulscontrole_bij_de_ziekte_van_Parkinson_QUIPRS.Denken_aan_gedragingen
+    - Castor.HomeQuestionnaires1.10_Lichamelijke_en_psychische_gezondheid_SF12.Algemene_kwaliteit_van_leven
+    - Castor.HomeQuestionnaires1.Vragenlijst_voor_de_naaste_CSI.Belasting
+    - Castor.HomeQuestionnaires1.05_Apathieschaal.Apathie
+    - Castor.HomeQuestionnaires1.01_Vraag_over_de_naaste.Belasting
+    - Castor.HomeQuestionnaires1.12_Spreekkklachten.Spreekklachten
+    - Castor.HomeQuestionnaires1.14_Problemen_met_het_zien.Problemen_met_het_zien
+    - Castor.HomeQuestionnaires1.05_Evaluatieschaal_voor_Apathie.Evaluatieschaal_voor_Apathie
+    - Castor.HomeQuestionnaires1.07_Lichamelijke_functies_SCOPAAUT.Plassen
+    - Castor.HomeQuestionnaires1.07_Lichamelijke_functies_SCOPAAUT.Algemene_functies
+    - Castor.HomeQuestionnaires1.07_Lichamelijke_functies_SCOPAAUT.Seksualiteit
+    - Castor.HomeQuestionnaires1.07_Lichamelijke_functies_SCOPAAUT.Spijsvertering
+    - Castor.HomeQuestionnaires1.07_Lichamelijke_functies_SCOPAAUT.Medicijnen
+    - Castor.HomeQuestionnaires1.17_Physical_Activity_Scale_for_the_Elderly_PASE.Geheel
+    - Castor.HomeQuestionnaires1.03_Ervaringen_in_uw_dagelijks_leven_UPDRS2.Deel_1__Niet_motorische_aspecten
+    - Castor.HomeQuestionnaires1.03_Ervaringen_in_uw_dagelijks_leven_UPDRS2.Deel_2__Motorische_aspecten_no_1
+    - Castor.HomeQuestionnaires1.03_Ervaringen_in_uw_dagelijks_leven_UPDRS2.Deel_3__Motorische_aspecten_no_2
+    - Castor.HomeQuestionnaires1.09_Slaapvragenlijst_SCOPASLEEP.Slapen_overdag
+    - Castor.HomeQuestionnaires1.09_Slaapvragenlijst_SCOPASLEEP.Nachtelijk_slapen
+    - Castor.HomeQuestionnaires1.16_Freezing_of_Gait_FOG.Geheel
+    - Castor.HomeQuestionnaires1.06_Zelfbeoordeling_STAI.Dispositie_Trait
+    - Castor.HomeQuestionnaires1.06_Zelfbeoordeling_STAI.Toestand_State
+    - Castor.HomeQuestionnaires1.08_Slaapneiging_ESS.Slaapneiging
+    - Castor.HomeQuestionnaires1.11_Effectiviteit_van_de_Parkinson_medicatie_WOQ.Medicatie_effectiviteit
+
+- #1137:
+  - Passing data administrator credentials to the `pepcli` utility, define the
+    following columns in the `prod` environment and add them to the `Castor`
+    column group:
+    - Castor.ECG.ElectroCardioGram.Visit_2
+    - Castor.ECG.ElectroCardioGram.Visit_3
+    - Castor.ECG.ElectroCardioGram.Visit_1
+
+SOFTWARE CHANGES:
+
+- #560: Made pep(Assessor) update work using .MSI installation. Follow the procedure
+  to switch from the previous (copied+pasted) version to the new installer-based
+  approach.
+
+- #1148, AW:  Changing std::string to std::shared_ptr<std::string> all-round
+  caused several bugs caught integration, which I fixed.  There are of course
+  undoubtedly more bugs in code not tested by integration (such as pull-castor.)
+  Expect bugs of the following two types:
+
+   i)   uninitialized shared pointers:  for example,
+        when "std::string ret;" was changed to
+        "std::shared_ptr<std::string> ret;" instead of
+        "auto ret = std::make_shared<std::string>();";
+
+   ii)  comparison of shared pointers instead of their contents:
+        for example, when "result.value == key" was not changed to
+        "result->value == *key" when value and key were changed
+        from strings to shared pointers.
+
+- #1160:
+  The watchdog can now check the success of pipelines for specified branches in specified projects.
+  The token.yaml file for the watchdog now also contains a gitlab API token. To make the distinction between the tokens in this file clear, 'token' is now renamed to 'OAuthToken'
+
+Release 2019-12-10:
+
+MANUAL CHANGES REQUIRED:
+
+- #1085: Remove (or temporarily rename) Registration Server's shadow storage file
+  (ShadowShortPseudonyms.sqlite) and restart Registration Server to have it regenerate
+  the database. Verify that a new, properly sized database file has been written.
+  The update will cause Watchdog to report a checksum chain failure. Eliminate it
+  with `pep-watchdog --clear-persistent-issues`. Note that you'll need to stop
+  any running Watchdog processes/containers to allow the database to be written.
+
+- #1098: Ensure that new configuration in the "ppp-infra/ops" repository's "master"
+  branch is merged to appropriate (acc or prod) branches during release.
+
+- #986, #1048, #1063: Adapt storage facility configuration to S3.
+  For stable, the procedure should be similar to that for master, see #1045.
+  For hb-prod:
+  - Rename the "pki" directory "pki_old" or the likes.
+  - Create a new "pki" directory and copy the "pki.sh" and "ca_ext.cnf" files
+    from git(lab)'s "core" repository there.
+  - Execute "pki.sh" to generate new PKI material, including a "minio_certs"
+    directory.
+  - Copy the newly generated "rootCA.cert" to Watchdog's configuration directory.
+  - Add a (correctly configured) "PageStore" node to "StorageFacility.json".
+  - Commit the newly generated "rootCA.cert" to git(lab)'s "config/hb_prod" directory.
+    Run a (new) pipeline to generate (pepAssessor) client binaries with the new
+    PKI material.
+  - Edit the "pep-build4-pep-hb.yaml" file in the "core/ops" repository's "config"
+    directory. Apply the same (types of) changes that were applied to file
+    "pep-build3-pep-hb-acc.yaml".
+  - Execute "deploy.sh pep-build4 pep-hb" to update the VM.
+  - Remove the "secrets.json" file from Watchdog's configuration directory
+    and "systemctl restart docker-watchdog".
+
+- #1036: Ensure that AccessManager.json contains a "StorageFile" setting that points
+  to the "accessManagerStorage.sqlite" file.
+
+- #1090: Move oauth token out of watchdog config file
+
+SOFTWARE CHANGES:
+
+- #1036: Access Manager's "StorageFile" setting is now mandatory (was optional).
+  Relative paths are now interpreted as relative to the "AccessManager.json" file
+  (where the setting is configured) instead of relative to the working directory.
+
+- #1055: Fixed failure to completely process binary files when using "pepcli store"
+  on Windows.
+
+- #1066: pepAssessor no longer crashes when processing (user-entered) dates later
+  than the year 2099.
+
+- #1073: The "Number of copies" specified in the printer selection dialog is now
+  taken into account when printing stickers.
+
+- #1007: PEP can now import data from Castor surveys.
+
+- #1085: Registration Server once again updates shadow storage during participant
+  registration. If shadow storage is absent, Registration Server now rebuilds it
+  upon startup.
+
+- #1098: The printing of additional (spare) stickers can now be suppressed per
+  configured short pseudonym.
+
+
+Release 2019-10-31:
+
+- #799: New pepLogon utility allows interactive authentication to enroll users.
+
+- #1019: Improved data retrieval performance in Storage Facility, a.o. (dramatically!)
+  improving response time when Registration Server retrieves its initial data set.
+
+- #536: Applications now support the --loglevel <level> and --suppress-version-info
+  command line switches.
+
+Release 2019-10-07:
+
+- #773: The storagefacility will now calculate a hash of the data that it stores, and
+  returns it. Client::storeData2 also calculates a hash, and throws an error if the
+  returned hash from the storage facility does not match. This means that pepcli will
+  not exit with return code 0 if the hash did not match.
+
+- #994: The number of spare stickers to print can now be configured per project.
+  PPP/POM has been configured to keep printing 2 more than nominally configured;
+  default settings (e.g. for Healthy Brain) will print no spare stickers.
+
+- #678: Registration Server now prevents corruption of shadow storage due to client and
+  server using different encryption keys.
+
+- #760: Improved error message when required arguments are omitted from invocations of
+  "pepcli ama".
+
+- #733: When attempting to start a second pepAssessor instance, the running application
+  is activated instead.
+
+- #995: The placeholder text for the "Voorvoegsels" text box is now (also) displayed
+  in a tooltip, since the text is too wide to fully display in the box itself.
+
+- #984: The "pepcli pull --update" invocation now supports the --assume-pristine switch,
+  which can be used to update download directories containing metadata files only, i.e.
+  when data files are stored elsewhere.
+
+
+Client release to HB 2019-07-18:
+
+- #970: All (configured) device history columns can now be exported by pepAssessor.
+
+- #969: Improved error message when attempting to deregister a device whose registration
+  takes place in the future.
+
+- #967: Button "Release participant from context" is no longer shown in environments
+  without study contexts.
+
+
+Release 2019-07-15:
+
+MANUAL CHANGES REQUIRED:
+
+- #915, #931, #935, #936: After the software has been updated, change Access Manager's
+  GlobalConfiguration.json file to the format and ordering of the version currently
+  stored in Git's core/config/projects/ppp/accessmanager directory.
+  This encompasses the following changes for POM/PPP:
+  - Add "devices" top level entry.
+  - **ACC ONLY**: add "import_study_slug" value for ShortPseudonym.Visit1.Castor.Visit.
+  - Replace "participant_identifier_prefix" top level entry by "participant_identifier_formats".
+  - Add entries for
+    - ShortPseudonym.Visit3.FMRI
+    - ShortPseudonym.Visit3.Castor.Visit
+    - ShortPseudonym.Visit3.FoodQuestionnaire
+    - ShortPseudonym.Visit3.Castor.HomeQuestionnaires
+  - Add ShortPseudonym.Visit2.Castor.StoolQuestionnaire to "additional_stickers" for visit 1.
+  - Keep SPs in specified order.
+  Environments for other (non-PPP) projects/clients require different configuration.
+
+SOFTWARE CHANGES:
+
+- #947: Visit-bound short pseudonyms are now rendered with the word "visit" (e.g. "Stool visit 1"),
+    to help disambiguate SP texts containing numbers (e.g. "Saliva 3 visit 2"). Castor button captions
+    no longer contain the visit number.
+
+- #960: Print overview now contains configured project name instead of hard-coded "Parkinson op Maat".
+
+- #931: Device types (and corresponding history storage columns) are now configured in
+    GlobalConfiguration.json rather than hard-coded.
+
+- #931: Device (de-)registration timestamps can now be changed to the future.
+
+- Due to a technical change, pepAssessor will not remember or preselect the study context chosen in
+    earlier versions.
+
+
+Release for Healthy Brain 2019-07-03: this release has been deployed to HB's test environment, but not yet to PPP's ACC or PROD environments.
+
+MANUAL CHANGES REQUIRED:
+
+- #935: After the software has been updated, replace the following line in Access Manager's GlobalConfiguration.json file:
+      "participant_identifier_prefix": "HB",
+    by the following data:
+      "participant_identifier_formats": [
+        {"generable" : {"prefix" : "HB", "digits" : 11}}
+      ],
+
+SOFTWARE CHANGES:
+- #918: It is now possible to set a castor study slug to import data from, that overrides the one that is used to create new records for new participants
+
+- #757: Test/development versions of pepAssessor no longer use the color for public release versions.
+
+- #915: The pepcli utility no longer uses (cached) authorization or enrollment data that don't match
+    command line parameters.
+
+- #919: PEP Assessor and its print summary use a separate header for short pseudonyms that belong
+    to a visit different from the one being displayed. Castor buttons are no longer provided for
+    such short pseudonyms.
+
+- #916: The pepcli utility now terminates with an error message if initialization fails.
+
+- #935: Participant identifier length can now be configured in GlobalConfiguration.json.
+
+- #923: The logo and logon window title in pepAssessor can now be configured from ClientConfig.json.
+    Absent or unusable configuration makes pepAssessor brand itself as "PEP Assessor" with the PEP logo.
+
+
+Release 2019-06-14:
+
+MANUAL CHANGES REQUIRED:
+- #907: After the software has been updated to the new version, add the following
+  top level entry to Access Manager's GlobalConfiguration.json file:
+    "participant_identifier_prefix": "POM",
+
+SOFTWARE CHANGES:
+- #904: Device history can now be exported from pepAssessor. When "Expand Details" is checked, each
+    entry's data are pretty-printed to separate cells in the CSV file.
+
+- #882: There is a new entry in constellation.yaml, in the configuration of the watchdog, to set the hostname of the watchdog. This is checked in order to
+  prevent running the watchdog with a copied configuration from a different environment. The config change is already in placeon all environments (including
+  the watchdog for acc & prod)
+
+- #882: There is now a -sync-canaries command line option for the watchdog, to fix missing/unknown canary file issues
+
+- #901: Entries in each participant's device history must now have unique timestamps.
+    (The next device can no longer be registered at the deregistration time of the previous device.)
+
+- #907: Participant identifier prefix and study contexts can now be configured for different studies.
+
+- #828: The pepcli utility's "pull" command now produces a different directory structure, and
+  can be used to update data to the latest version stored in PEP. (The "push" command has been disabled/removed
+  until such time when it is updated to deal with the altered directory structure.)
+
+
+Configuration change 2019-06-03:
+
+- #905: Add the following entry to the "additional_stickers" node in the Access Manager's GlobalConfiguration.json file:
+    {"visit": 2, "column": "ShortPseudonym.Visit3.Castor.StoolQuestionnaire", "stickers": 0}
+
+
+Release 2019-05-07:
+
+MANUAL CHANGES REQUIRED:
+- #n/a: Storage Facility exposes metrics.  Configure Prometheus to pull
+    new storage facility metrics from Watchdog at
+
+        <watchdog url>/metrics/storagefacility
+
+- #833: Add the following entry to Access Manager's GlobalConfiguration.json file.
+    THESE CHANGES HAVE ALREADY BEEN APPLIED TO THE ACC AND PROD ENVIRONMENTS on 2019-03-20.
+
+    {"column": "ShortPseudonym.Castor.DeviceDeficiency", "prefix": "POMDD", "length": 5, "description": "Device deficiency",
+      "castor": {
+        "study_slug": "pomdevidefa",
+        "institute_abbreviation": "umcn"}},
+
+- #498: migration of storage facility:
+	- new config option in storagefacility/StorageFacility.json:
+			"StoragePath": "meta",
+			"StorageDataPath": "data"
+	- migrate old data format:
+		docker exec pepStorageFacility /app/pepSFMigrate /data/storagefacility/DataStorage.sqlite /data/storagefacility/meta /data/storagefacility/data
+	- restart:
+		docker restart pepStorageFacility
+
+- #870: Ensure that the following (top level) configuration settings are present.
+  THESE SETTINGS HAVE ALREADY BEEN VERIFIED TO BE PRESENT IN THER ACC AND PROD ENVIRONMENTS.
+  If the setting is present, leave it at its current value. If not, locate the target file
+  and add the setting, preferably using an absolute path. Note that file names may differ
+  on different systems, but that setting names must be copied as specified.
+  - In Storage Facility configuration file "StorageFacility.json":
+    - Setting "EncIdKeyFile" must refer to the "StorageFacilityEncIdKey.json" file:
+			"EncIdKeyFile": "StorageFacilityEncIdKey.json",
+  - In Access Manager configuration file "AccessManager.json":
+    - Setting "GlobalConfigurationFile" must refer to the "GlobalConfiguration.json" file:
+			"GlobalConfigurationFile": "GlobalConfiguration.json"
+  - In Transcryptor configuration file "Transcryptor.json":
+    - Setting "KeysFile" must refer to the "TranscryptorKeys.json" file.
+    - Setting "StorageFile" must refer to the "transcryptorStorage.sqlite" file.
+    - Setting "VerifiersFile" must refer to the "Verifiers.json" file.
+		- total:
+			"KeysFile": "TranscryptorKeys.json",
+			"StorageFile": "transcryptorStorage.sqlite",
+			"VerifiersFile": "Verifiers.json",
+
+SOFTWARE CHANGES:
+- #498: New storage facility. Faster and scalable to more data (previous limit of SQLite was ~5-10 GiB, now the amount of free space on local file system)
+
+- #682: Support has been added for local pseudonyms for access groups.
+    To include these in a "pepcli list" command, add the "-l" flag.
+
+- #831: The TicketIssue table on the transcryptor changed.  This will cause the
+    ticket-issue checksum chain to change its checksum for which the
+    Watchdog will issue an error.  This error can be ignored.
+
+- #845: Relative paths in config files are now interpreted correctly by pepEnrollment utility.
+
+- #870: Servers no longer use (ambiguous relative) default paths for configuration settings.
+
+
+Hotfix for pepAssessor 2019-04-16:
+- #861: pepAssessor now writes logging when receiving empty or no participant personalia.
+
+
+Hotfix for pepAssessor 2019-03-27:
+- #856: Fixed inability to view participants with incomplete data (e.g. missing short pseudonyms).
+
+
+Configuration change 2019-03-20:
+
+- #833: Add the following entry to Access Manager's GlobalConfiguration.json file.
+    For the production environment, replace the value for study_slug by "pomdevidefp".
+
+    {"column": "ShortPseudonym.Castor.DeviceDeficiency", "prefix": "POMDD", "length": 5, "description": "Device deficiency",
+      "castor": {
+        "study_slug": "pomdevidefa",
+        "institute_abbreviation": "umcn"}},
+
+
+Release 2019-03-14:
+
+MANUAL CHANGES REQUIRED:
+- #846: ensure that Storage Facility has write access to the directory where it keeps its secrets.
+    Add the following top level entry to Storage Facility's "StorageFacility.json" configuration file:
+        "EncIdKeyFile": "/data/storagefacility/secrets/StorageFacilityEncIdKey.json"
+    (Re)start Storage Facility to have it generate the configured file. If the write location was
+    previously read-only, remove SF's write access and restart it.
+
+- #812: add the following entries to the "short_pseudonyms" section in
+    Access Manager's GlobalConfiguration.json file. For the "prod" environment,
+    replace the last 'a' in the "study_slug" value by a 'p':
+
+    {"column": "ShortPseudonym.Visit1.Castor.StoolQuestionnaire", "prefix": "POM1SQ", "length": 5, "description": "Stool questionnaire",
+      "castor": {
+        "study_slug": "pomsto1crfa",
+        "institute_abbreviation": "umcn"}},
+    {"column": "ShortPseudonym.Visit2.Castor.StoolQuestionnaire", "prefix": "POM2SQ", "length": 5, "description": "Stool questionnaire",
+      "castor": {
+        "study_slug": "pomsto2crfa",
+        "institute_abbreviation": "umcn"}},
+    {"column": "ShortPseudonym.Visit3.Castor.StoolQuestionnaire", "prefix": "POM3SQ", "length": 5, "description": "Stool questionnaire",
+      "castor": {
+        "study_slug": "pomsto3crfa",
+        "institute_abbreviation": "umcn"}},
+
+- Because of a key rollover from SURFconext, the Shibboleth configuration of the metadata should be updated for the authserver.
+Joost should know what this is about. Instructions are on https://wiki.surfnet.nl/display/surfconextdev/SURFconext+key+rollover+2019%3A+Procedure+voor+Service+Providers
+
+- #814: add the following entries to the "short_pseudonyms" section in
+    Access Manager's GlobalConfiguration.json file:
+
+    {"column": "ShortPseudonym.Visit1.FoodQuestionnaire", "prefix": "POM1FQ", "length": 5, "description": "Food Questionnaire"},
+    {"column": "ShortPseudonym.Visit2.FoodQuestionnaire", "prefix": "POM2FQ", "length": 5, "description": "Food Questionnaire"},
+
+- #798: assign group 'Data Administrator' to appropriate users in
+    Authentication Server's "groups.php" file.
+
+- Because of #688:
+    -  The Transcryptor has to be enrolled with a pseudonym key as follows.
+       First, it has to learn the addresses of the involved servers.
+       Add the following two entries to the root object of the
+       configuration file Transcryptor.json (with correct values for Address):
+
+            "AccessManager":{
+                "Name":		"AccessManager",
+                "Address":	"<domain>",
+                "Port": 	16501
+            },
+            "KeyServer":{
+                "Name": 	"KeyServer",
+                "Address":	"<domain>",
+                "Port": 	16511
+            },
+            "Transcryptor": {
+                "Name": 	"Transcryptor",
+                "Address": 	"<domain>",
+                "Port": 	16516
+            },
+
+       Enroll Transcryptor from its configuration directory:
+
+            /app/pepEnrollment Transcryptor.json 4 PEPTranscryptor.key PEPTranscryptor.chain TranscryptorKeys.json
+
+- Because of #769:
+    - The PublicKeyPseudonyms field has to be set in AccessManager.json
+      (to the same value as the ClientConfig.json of the environment).
+    - The Transcryptor has to be configured with the
+      "zero-knowledge proof verifiers" of the Access Manager.
+      To do this, retrieve the verifiers from the Access Manager as follows
+
+            pepcli verifiers > Verifiers.json
+
+      By default the Transcryptor will look for Verifiers.json in its
+      config directory (probably same place as Transcryptor.json).
+
+- Because of #699:
+    - Grant "enumerate" privileges to "RegistrationServer" for (participant) group "*":
+	/app/pepcli --oauth-token-secret=[...] --oauth-token-group=AccessAdministrator ama pgar create \* RegistrationServer enumerate
+    - Enroll Registration Server from its configuration directory:
+	/app/pepEnrollment RegistrationServer.json 5 PEPRegistrationServer.key PEPRegistrationServer.chain RegistrationServerKeys.json
+	- Add the following entry to the "RegistrationServer.json" configuration file:
+	"KeysFile":		"RegistrationServerKeys.json",
+	- Remove the "LocalStorageFile" entry from the "RegistrationServer.json" configuration file.
+    - Registration Server's "LocalStorage.sqlite" file can be deleted.
+
+- #755: In Access Manager's GlobalConfiguration.json file, add "description": "Castor" to
+    the entry for (column) "ShortPseudonym.Pit.Castor.Reports".
+
+- Storage Facility will generate a file called "StorageFacilityEncIdKey.json".
+    Ensure this file is backed up by the hosting party.
+
+- Transcryptor will produce a database file called "transcryptorStorage.sqlite".
+    Ensure that the hosting party provides sufficient storage space for this file,
+    and that the file is backed up.
+
+SOFTWARE CHANGES:
+- #565 Processes now refuses to establish network connections with parties whose
+       network communication is incompatible (i.e. older or newer software versions
+       with a different network protocol). Such situations are logged; pepAssessor also
+       displays error messages in the UI.
+
+- #798 When pepAssessor users log on as a Data Administrator, they can export multiple
+       values to a single file. The export file's format has changed slightly:
+       it's no longer sorted, and it ends with a line break.
+
+- #792 IDs returned by `pepcli store` are now encoded in the same way as
+       used in `get` and `list`.
+
+- #793 pepcli now accepts --no-inline-data.
+
+- #767 Signatures now include timestamps.
+
+- #569 File identifiers have chaged from uint64s to opaque blobs and are not
+       linkable anymore.
+
+- #774 Added "ping" command to CLI utility.
+
+- #778 Corrected Castor URL, fixing failure to access Castor studies from pepAssessor.
+
+- #779 Added "validate-data" command to CLI utility.
+
+- #699 Registration Server now retrieves existing (stored) pseudonyms on startup instead
+       of storing a local copy.
+
+- #699 The pepcli utility can now be used to administer (participant) group access.
+
+- #781 Added missing translation for pepAssessor.
+
+- #769 The AccessManager creates zero-knowledge proofs that it correctly
+       reshuffled and rekeyed the polymorphic pseudonyms.
+
+
+Release 2019-02-12:
+- #778 Corrected Castor URL, fixing failure to access Castor studies from pepAssessor.
+
+
+Release 2019-01-21:
+MANUAL CHANGES REQUIRED:
+- Due to #608 clients have to be updated.
+- For #742 and #497 the Watchdog has to be enrolled with commonname "Watchdog".
+- For #742, the functionality of pep-prometheus-exporter has been merged into
+  pep-watchdog.
+    - The old pep-prometheus-exporter[-prod] systemd unit files and
+      configuration can be removed.
+    - Prometheus jobs have to be updated in prometheus.yml.
+- For #108 and #735 the following has to be executed on the access manager.
+   1. Stop the access manager.
+   2. Drop all but the SelectStarPseudonyms table in the AM DB:
+	    $ sqlite3 ../path/to/accessManagerStorage.sqlite
+	    sqlite> DROP TABLE Columns;
+	    sqlite> DROP TABLE ColumnGroups;
+	    sqlite> DROP TABLE ColumnGroupColumns;
+	    sqlite> DROP TABLE GroupAccessRules;
+	    sqlite> DROP TABLE ColumnGroupAccessRules;
+  3. Start the access manager.  This will install default access rules.
+- For #718: In Access Manager’s GlobalConfiguration.json file, some
+  short pseudonym entries may have been inadvertently configured with
+  a "storage" node, e.g.
+        "storage": {
+          "study_type": "STUDY",
+          "data_column": "Castor.Visit1"
+        }
+  Remove all such "storage" nodes from non-development environments.
+- For #735, new short pseudonyms must be configured in Access Manager's
+  GlobalConfiguration.json file:
+    {"study_context": "PIT", "column": "ShortPseudonym.Pit.Visit1.FMRI", "prefix": "PIT1MR", "length": 5, "description": "fMRI"},
+    {"study_context": "PIT", "column": "ShortPseudonym.Pit.Visit1.SerialChoice", "prefix": "PIT1CH", "length": 5, "description": "Serial Choice Task"},
+    {"study_context": "PIT", "column": "ShortPseudonym.Pit.Visit2.FMRI", "prefix": "PIT2MR", "length": 5, "description": "fMRI"},
+    {"study_context": "PIT", "column": "ShortPseudonym.Pit.Castor.Reports", "prefix": "PITRE", "length": 5,
+      "castor": {
+        "study_slug": "pitreportsacceptance",
+        "institute_abbreviation": "DCCN"}}
+
+
+SOFTWARE CHANGES:
+- #794 `pepcli store` now support `--ticket-out` to allow for a quick
+       follow-up `pepcli get`.
+
+- #735 PEP Assessor now lets users choose to work from within a "POM" context or
+       a "PIT" context. The UI only displays information appropriate for the
+       selected context.
+
+- #736 PEP CLI will now, by default, look for configuration files in the
+       build directory such that one does not need to copy those to the
+       config/local folder in the sourcetree anymore.
+
+- #666 PEP CLI's "pull" command now accepts the --numbered-directories switch,
+       which causes output directories to be numbered sequentially rather than
+       named after the participant's polymorphic pseudonym. A.o., this allows the
+       "pull" command to work on Windows.
+
+- #692 PEP Assessor now disables the "Export..." button when server connection
+       is lost, preventing it from crashing when the button is clicked at such times.
+
+- #646 Registration server no longer crashes when clients close connections quickly,
+       e.g. when PEP CLI retrieves data.
+
+- #626 Fixed memory leak.
+
+- #108  Access rules have been overhauled:
+
+  1. They are now timestamped.
+  2. Access is granted to participant/column groups (instead of to queries).
+  3. The access rules are stored in the access manager sqlite database.
+
+- #608 To increase future backwards & forwards compatibility of the network
+       API, we reworked the way signed messages are serialized.
+       This breaks compatibility with old clients.
+
+- #691 Several expensive cryptographic operations have been moved into
+       separate worker threads.  This should increase short-pseudonym lookup
+       by ~2x (depending on the number of CPU cores on the servers).  This also
+       reduces starvation under load.
+
+- Error handling has been made more uniform.  Error conditions should receive
+  extra attention during testing.
+
+- #563 Server state is now initialized an kept track of once per process,
+       instead of once per (client) connection. This reduces connection
+       initialization latency and memory use.
+
+Release 2018-11-14:
+MANUAL CHANGES REQUIRED:
+- The way the Access Manager computes checksum chains has changed.  (Checkpoints
+  are shifted by one to account for empty chains.)  This will make the Watchdog
+  think data was lost the first time it checks after the release.
+- Make sure that the migration to the new polymorphic pseudonyms
+  *has already been* performed.  This release defaults to Elligator2.
+- Update Access Manager's `GlobalConfiguration.json` file as documented for #480.
+
+- #648  When searching by short pseudonym, PEP Assessor can now also find the participant
+        whose serum sample was mistakenly labeled with a "POM1ST" (stool) short pseudonym.
+
+- #644  PEP Assessor now checks short pseudonym presence by name instead of by count,
+        ensuring that new short pseudonyms are generated even if a participant has
+        short pseudonyms for columns that have since been discontinued
+        (e.g. misspellings).
+
+- #624  Specialized widgets are now used to display and edit dates and times, making
+        data entry and editing more convenient. Timestamps are now displayed and
+        edited in (the machine's) local time instead of UTC.
+
+- #625  The PEP ID can now be copied from PEP Assessor's participant overview.
+
+- #480  PEP Assessor now uses the short pseudonyms (SPs) defined in Access Manager's
+        `GlobalConfiguration.json` file instead of separate hard-coded definitions.
+        This causes the appearance of buttons to change slightly in PEP Assessor's UI.
+        The `GlobalConfiguration.json` file must be edited to include information on
+        stickers and (human-readable) SP descriptions:
+        - Edit the non-Castor SPs so that they read as follows:
+    {"column": "ShortPseudonym.Visit1.FMRI", "prefix": "POM1FM", "length": 5, "description": "fMRI"},
+    {"column": "ShortPseudonym.Visit1.PBMC", "prefix": "POM1PM", "length": 5, "stickers": 4},
+    {"column": "ShortPseudonym.Visit1.Plasma", "prefix": "POM1PL", "length": 5, "stickers": 4},
+    {"column": "ShortPseudonym.Visit1.DNA", "prefix": "POM1DN", "length": 5, "stickers": 1},
+    {"column": "ShortPseudonym.Visit1.RNA", "prefix": "POM1RN", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit1.Serum", "prefix": "POM1SE", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit1.CSF", "prefix": "POM1CS", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit1.Stool", "prefix": "POM1ST", "length": 5, "stickers": 2},
+    {"column": "ShortPseudonym.Visit1.QAVideo", "prefix": "POM1VD", "length": 5, "description": "QA Video"},
+    {"column": "ShortPseudonym.Visit2.Plasma", "prefix": "POM2PL", "length": 5, "stickers": 4},
+    {"column": "ShortPseudonym.Visit2.RNA", "prefix": "POM2RN", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit2.Serum", "prefix": "POM2SE", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit2.Stool", "prefix": "POM2ST", "length": 5, "stickers": 2},
+    {"column": "ShortPseudonym.Visit2.QAVideo", "prefix": "POM2VD", "length": 5, "description": "QA Video"},
+    {"column": "ShortPseudonym.Visit3.Plasma", "prefix": "POM3PL", "length": 5, "stickers": 4},
+    {"column": "ShortPseudonym.Visit3.RNA", "prefix": "POM3RN", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit3.Serum", "prefix": "POM3SE", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit3.PBMC", "prefix": "POM3PM", "length": 5, "stickers": 4},
+    {"column": "ShortPseudonym.Visit3.Stool", "prefix": "POM3ST", "length": 5, "stickers": 1},
+    {"column": "ShortPseudonym.Visit3.CSF", "prefix": "POM3CS", "length": 5, "stickers": 3},
+    {"column": "ShortPseudonym.Visit3.QAVideo", "prefix": "POM3VD", "length": 5, "description": "QA Video"},
+        - Add `"description": "Home questionnaires"` to the entry for `ShortPseudonym.Visit1.Castor.HomeQuestionnaires`.
+        - Add the following top level entry (i.e. as a sibling to the existing "short_pseudonyms" entry):
+  "additional_stickers": [
+    {"visit": 1, "column": "ShortPseudonym.Visit2.Stool", "stickers": 1},
+    {"visit": 2, "column": "ShortPseudonym.Visit3.Stool", "stickers": 1},
+  ]
+
+- #269  For Castor Short Pseudonyms, there is now also a `Storage` configuration
+        option in the GlobalConfiguration. This is optional, so no configuration
+        changes should be necessary.
+
+
+Release 2018-10-26:
+MANUAL CHANGES REQUIRED:
+- Set Access Mode 600 on /data/docker/authserver/keys/shibboleth/sp-key.pem for #609.
+- Update /data/docker/authserver/conf/shibboleth/shibboleth2.xml for #609 as documented.
+- Update Sqlite database for #108 as documented.
+- ONCE THE SYSTEM IS IN USE, verify that conversion has succeeded for #568.
+- DURING THE RELEASE WINDOW, update systemd unit "docker-prune" for #579 as documented.
+
+- #613  The Watchdog will only e-mail about issues when there are issues two
+        checks in a row.  This prevents e-mails about sporadic issues.
+
+- #610  The Watchdog now monitors the expiry of TLS and Signing certificates.
+        To check the signing key certificate, the servers now return a
+        SignedPingResponse.
+
+- #547  Tickets are now bound to the access group for which they were issued.
+        This requires several API calls to include signatures. Clients must
+        upgrade.
+
+- #609  Access Mode for /data/docker/authserver/keys/shibboleth/sp-key.pem can
+        be set to 600, which is recommended. A change is necessary to
+        /data/docker/authserver/conf/shibboleth/shibboleth2.xml. Find this line:
+
+          <CredentialResolver type="File" key="/keys/shibboleth/sp-key.pem" certificate="/keys/shibboleth/sp-cert.pem"/>
+
+        change it to:
+
+          <CredentialResolver type="File" key="/keys_copy/shibboleth/sp-key.pem" certificate="/keys_copy/shibboleth/sp-cert.pem"/>
+
+        (so change keys into keys_copy TWICE)
+
+
+- #517  Support for the old API has been removed server-side.  This means that
+        clients two releases ago will stop working.  (For different reasons,
+        clients from the previous release will also not work anymore).
+
+- #592  Curve basepoint multiplication is 15% faster by using Niels coordinates
+        instead of plain affine coordinates for the precomputed table.
+
+- #600  Encryption and decryption of stored data is 8x faster, by using openssl
+        for AES GCM instead of mbedtls.
+
+- #108  Replaced AccessManager storage backend with sqlite_orm instead of
+        sqlite3.  The old SELECT(*) table has to be migrated by hand
+        from SelectStarPseudonymsFile.sqlite to accessManagerStorage.sqlite
+        as follows.
+
+          1. Start the new AccessManager to create the new database file
+             accessManagerStorage.sqlite. Then stop the process:
+                  $ systemctl stop docker-accessmanager
+
+          2. Dump the old SelectStarPseudonymsFile.sqlite to a SQL file using
+
+                  $ sqlite3 SelectStarPseudonymsFile.sqlite
+                  sqlite> create table dumped as  select LocalPseudonym, PolymorphicPseudonym, id  from SelectStarPseudonyms GROUP BY LocalPseudonym;
+                  sqlite> .output tmp.sql
+                  sqlite> .dump dumped
+                  sqlite> drop table dumped;
+                  sqlite> .exit
+
+          3. Import data into the new database using
+
+                  $ sqlite3 accessManagerStorage.sqlite < tmp.sql
+                  $ sqlite3 accessManagerStorage.sqlite
+                  sqlite> create table newids(id integer primary key autoincrement, dumped_id integer);
+                  sqlite> insert into newids select null, id from dumped;
+                  sqlite> insert into SelectStarPseudonyms select LocalPseudonym, PolymorphicPseudonym, newids.id from dumped, newids where dumped.id = newids.dumped_id;
+                  sqlite> drop table newids;
+                  sqlite> drop table dumped;
+                  sqlite> .exit
+                  $ rm tmp.sql
+
+          4. Start AccessManager again:
+                  $ systemctl start docker-accessmanager
+
+        To test the success of the procedure, perform a short-pseudonym lookup.
+
+- #568: Device (de-)registration events are no longer stored in individual records.
+        Instead the entire device history for a participant is stored as a single
+        record. Existing storage is converted for all participants when pepAssessor
+        accesses a (single) participant requiring such a conversion. After successful
+        conversion, participants that have one or more entries in the "DeviceInfo"
+        column will have an entry in the "DeviceHistory" column.
+
+- #324: The timestamp of device (de-)registration records can now be edited/corrected.
+
+- #432: Authorization (OAuth) is now managed using the QT NetworkAuth library
+        instead of the (outdated) o2 library. The pepAssessor application is now
+        built for 64-bit systems and WILL NOT RUN ON 32-BIT SYSTEMS ANYMORE.
+
+- #560: PEP Assessor is now packaged as a downloadable installer. When a newer version
+        becomes available, the application prompts to be updated. This mechanism is
+        available in pre-release environments so that it can be tested.
+        To switch to the new mechanism, delete any (copied+pasted) PEP Assessor
+        installations from your machine, then download and run the installer from
+        - https://pep.cs.ru.nl/clientRepository/rc/pepInstaller.exe
+        - https://pep.cs.ru.nl/clientRepository/stable/pepInstaller.exe
+        - https://pep.cs.ru.nl/clientRepository/master/pepInstaller.exe
+        Once configured, the installer for the release environment will be at
+        - https://pep.cs.ru.nl/clientRepository/release/pepInstaller.exe .
+
+- #587: PEP Assessor can now partially register participants when Castor is
+        unavailable, e.g. because of misconfiguration. The Castor-related short
+        pseudonyms are then generated later, if the participant is accessed while
+        Castor _is_ available.
+
+- #557: When editing participant data (name and DoB), pepAssessor now pre-fills the
+        UI with the current values.
+
+- #578: When printing a single sticker, the user can/must now select which sticker
+        to print.
+
+- #579: The docker-prune systemd unit, in ops/config/pep-build2-pep-release.yaml,
+        should be changed. The necessary changes are available in the branch
+        `docker-prune`, in the ops repository. This branch should be merged into
+        master, and pep-build2-pep-release.yaml should be redeployed using deploy.sh
+
+        The docker-prune service will probably fail the first time it is started,
+        because not all preconditions are met. This is expected behaviour, and it
+        will retry after an hour. You can restart it manually if you want to check
+        if it is working correctly.
+
+Release 2018-09-18:
+MANUAL CHANGES REQUIRED:
+- Place GlobalConfiguration.json in the config directory for Access Manager.
+- Remove ShortPseudonyms.json from the config directory for Registration Server.
+
+- #559: Add GlobalConfiguration.json to Access Manager that supersedes
+        ShortPseudonyms.json on the Registration Server.
+- #532: Much faster shortpseudonym lookup.
+- #517: Enumeration of Polymorphic Pseudonyms uses the new API.  Export
+        functionality should be tested.
+- #517: The PepAssessorClient uses the new API to query information for
+        the main Participant-view.  This involves changes to the tricky
+        UI-code.  This involes many flows, including:
+
+            - device (de)registration
+            - opening participants with incomplete information
+            - user registration
+            - monitor role
+- #517: The PepAssessorClient and RegistrationServer use the new API to
+        store data.  Storage of data should be checked.
+- #512: Decoupled object model from serialization. Objects can no longer
+        (de)serialize themselves; use Serialization struct instead.
+
+Release 2018-08-21:
+- #451: PEP Assessor client can now list participant identifiers and short pseudonyms (given that the user has the required privileges). The lists are exported to (CSV text) files.
+- #303: The infrastructure should now use docker compose to run the key server itself and the HSM simulator in separate docker containers. The configuration for the key server needs to be updated for this (KeyServer.json and docker-compose.yml files in respective config directory in the repository). The VM needs to be updated and run the key server similar as master (pep-build1-pep).
+
+Release 2018-07-12:
+- Applied astyle to entire code base.
+- #422: Added watchdog watchdog.
+- #449: Participants are no longer registered using a user-supplied Salesforce ID. Instead a PEP ID is generated, which must be copied from the pepAssessor application to Salesforce during registration. This mechanism requires Registration Server to have READ and WRITE privileges for the PARTICIPANT_IDENTIFIER query. Grant these as follows:
+    1. View Registration Server's configuration file (usually called `RegistrationServer.json`) and find the `PEPCertificateFile` setting. Note the (path to the) file it refers to (usually `PEPRegistrationServer.chain` in the same directory).
+    2. View the (first) certificate in this file by issuing the following command (replacing the file name if necessary): `openssl x509 -in PEPRegistrationServer.chain -text`
+    3. Find the certificate's `Subject` field and note the `OU=` setting. This is the organizational unit that needs to be granted access. (The value in master and stable environments is `Institute for Computer and Information Sciences`.)
+    4. Edit the access rules file (referenced from Access Manager's configuration file; usually called `AccessRules.json`) and ensure the organizational unit has the appropriate privileges, e.g.:
+          "PARTICIPANT_IDENTIFIER": {
+            "READ": ["Research Assessor", "Monitor", "Institute for Computer and Information Sciences"],
+            "ENUMERATE": [],
+            "WRITE": ["Research Assessor", "Institute for Computer and Information Sciences"]
+          }
+- Refactored code.
+- #530: Reduced logging.
+- #500: Removed client's ability to learn local pseudonyms only server processes should know.

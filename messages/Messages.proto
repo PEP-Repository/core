@@ -1,0 +1,1329 @@
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+package pep.proto;
+// The "option go_package" is needed to get rid of breaking protoc change causing
+//   protoc-gen-go: unable to determine Go import path for "Messages.proto"
+// We specify package name "pep_proto" to retain backward compatibility.
+// See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2043#note_23745
+option go_package = "./pep_proto";
+
+//option cc_api_version = 2;
+
+enum KeyBlindMode {
+  BLIND_MODE_UNKNOWN = 0;
+  BLIND_MODE_BLIND = 1;
+  BLIND_MODE_UNBLIND = 2;
+}
+
+// Method by which pages are encrypted and how their metadata is
+// cryptographically bound.  Influences encryption/decryption on
+// pages, but also (un)blinding of keys.
+enum EncryptionScheme {
+  // Old scheme which uses protobuf to serialize metadata and
+  // does not bind page numbers.  See issue #566 and #460.
+  V1 = 0;
+
+  // New scheme which uses a stable serializer for metadata and
+  // binds page numbers.
+  V2 = 1;
+
+  // Moves inverse() from unblinding to blinding and binds participant
+  // to blinding.  See #719 and #720.
+  //
+  // Extra (possibly encrypted and bound-to-blinding) metadata fields
+  // have been added to the blinding without breaking backwards compatibility,
+  // see #1343.
+  V3 = 2;
+}
+
+// Scheme by which signatures are made.
+enum SignatureScheme {
+  SIGNATURE_SCHEME_V1 = 0; // deprecated
+
+  // RSA PKCS1v15(SHA256) with as hash the first 32 bytes of the SHA512
+  // of the object concatenated with the big endian encoded timestamp.
+  // Signature also includes the X509 certificate chains for the public key.
+  SIGNATURE_SCHEME_V3 = 2;
+
+  // Like V3 but with support for the is_log_copy field.
+  SIGNATURE_SCHEME_V4 = 3;
+}
+
+enum EnrollmentScheme {
+  // deprecated. Uses the protobuf serialization of the certificate of the user to derive keys.
+  // This is not guaranteed to be stable. See issue #567
+  ENROLLMENT_SCHEME_V1 = 0;
+
+  // Uses DER serialization of the certificate for key component derivation, which is guaranteed to be stable.
+  ENROLLMENT_SCHEME_V2 = 1;
+}
+
+
+enum FileOpenType {
+  FILE_OPEN_UNKNOWN = 0;
+  FILE_OPEN_CREATE = 1;
+  FILE_OPEN_EXISTING = 2;
+}
+
+message CurveScalar {
+  bytes curve_scalar = 1;
+}
+
+message CurvePoint {
+  bytes curve_point = 1;
+}
+
+message ElgamalEncryption {
+  CurvePoint b = 1;
+  CurvePoint c = 2;
+  CurvePoint y = 3;
+}
+
+message Timestamp {
+  int64 epoch_millis = 1;
+}
+
+message Metadata {
+  // hard-coded (legacy) entries:
+  string tag = 1; // i.e. column name
+  Timestamp timestamp = 2; // warning: not the one used for historical queries
+  EncryptionScheme encryption_scheme = 4;
+
+  map<string,MetadataXEntry> extra = 5;
+
+  // (Encrypted storage facility) Identifier of the file that contained the original payload.
+  // Empty if the original payload was stored with this entry.
+  bytes original_payload_entry_id = 6;
+}
+
+message MetadataXEntry {
+  bytes payload = 2;
+
+  bool encrypted = 3;
+  // Indicates whether the payload has been encrypted with the AES key
+  // that was used to encrypt the data pages.
+
+  bool bound = 4;
+  // Indicates whether this entry should be or has been included in the
+  // blinding that is applied by the access manager to the
+  // ElGamal-encrypted AES key.
+  // This effectively makes this metadata entry immutable.
+}
+
+// Used by the -x flag of pepcli store.
+message NamedMetadataXEntry {
+  string name = 1;
+  MetadataXEntry value = 2;
+}
+
+// MetadataXEntry's payload is encrypted using the following messages
+message EncryptedBytes {
+  bytes ciphertext = 1;
+  bytes iv = 2;
+  bytes tag = 3;
+}
+message Bytes {
+  bytes data = 1;
+}
+
+message X509Certificate {
+  bytes data = 1;
+}
+
+message X509CertificateChain {
+  repeated X509Certificate certificate = 1;
+}
+
+message X509CertificateSigningRequest {
+  bytes data = 1;
+}
+
+message Signature {
+  X509CertificateChain certificate_chain = 1;
+  bytes signature = 2;
+  SignatureScheme scheme = 3;
+  Timestamp timestamp = 4;
+
+  // If true, this is a second signature which is only to be used to store
+  // in a log (and should not be accepted to execute the request which this
+  // signature might certify).
+  bool is_log_copy = 5;
+}
+
+message KeyRequestEntry {
+  Metadata metadata = 1;
+  ElgamalEncryption polymorph_encryption_key = 2;
+  KeyBlindMode blind_mode = 3;
+
+  // In case this is an EncryptionKeyRequest with a Ticket2, then we have
+  // to specify which pseudonym this key belongs to.
+  uint32 pseudonym_index = 4;
+}
+
+message DataPayloadPage {
+  bytes payload_data = 2;
+  bytes crypto_nonce = 5;
+  bytes crypto_mac = 6;
+  uint64 page_number = 3;
+
+  // If this page is send as response to a DataEnumerationRequest2 message,
+  // this field contains the index of the corresponding entry in the
+  // DataEnumerationResponse2 message(s).
+  // If this page is send as response to a DataReadRequest2 message,
+  // this field contains the offset of the identifier of the file in the
+  // ids field of the DataReadRequest2 message.
+  // If this page is send as a follow-up to a DataStoreRequest2 message,
+  // this field contains the index of the corresponding entry in the
+  // DataStoreRequest2 message.
+  uint32 index = 7;
+}
+
+message EncryptionKeyRequest {
+  SignedTicket2 ticket2 = 3;
+
+  repeated KeyRequestEntry entries = 2;
+
+  // Add new members starting with field number 5
+}
+
+message SignedEncryptionKeyRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message EncryptionKeyResponse {
+  repeated ElgamalEncryption keys = 2;
+}
+
+message TranscryptorRequestEntry {
+  // Original PP
+  ElgamalEncryption polymorphic = 1;
+
+  // Partially RSKed encrypted local pseudonyms.
+  ElgamalEncryption access_manager = 2;
+  ElgamalEncryption storage_facility = 3;
+  ElgamalEncryption transcryptor = 4;
+  ElgamalEncryption user_group = 8; // optional
+
+  // Zero-knowledge proofs that the previous partially RSKed
+  // encrypted local pseudonyms were correctly RSKed by the AM.
+  // See https://docs.pages.pep.cs.ru.nl/private/ops/master/development/Design-logger/
+  RSKProof access_manager_proof = 5;
+  RSKProof storage_facility_proof = 6;
+  RSKProof transcryptor_proof = 7;
+  RSKProof user_group_proof = 9; // optional
+}
+
+// Separate container for entries, to be sent as "chunks" with a TranscryptorRequest.
+// Keep the number of entries low to keep the message below the maximum message size.
+// At the time of writing, message size was exceeded around the ~1000 entry mark.
+message TranscryptorRequestEntries {
+  repeated TranscryptorRequestEntry entries = 1;
+}
+
+// Request sent by the AM to the TS, to request it to RSK partially
+// RSKed pseudonyms into proper encrypted local pseudonyms, which is
+// an essential step in the creation of a Ticket.
+message TranscryptorRequest {
+  // The TicketRequest which caused this TranscryptorRequest.
+  SignedTicketRequest2 request = 4;
+}
+
+// Request sent by the AM to the TS, to request it to log the issuance
+// of the given ticket and return a signature to prove it to the SF.
+message LogIssuedTicketRequest {
+  SignedTicket2 ticket = 1;
+  bytes id = 2;
+}
+message LogIssuedTicketResponse {
+  Signature signature = 1;
+}
+
+message LocalPseudonyms {
+  ElgamalEncryption access_manager = 1;
+  ElgamalEncryption storage_facility = 2;
+  ElgamalEncryption polymorphic = 4;
+  ElgamalEncryption access_group = 5; // optional
+}
+
+message TranscryptorResponse {
+  repeated LocalPseudonyms entries = 1;
+
+  // Id required for follow-up request to get ticket signed
+  bytes id = 2;
+}
+
+message EnrollmentRequest {
+  X509CertificateSigningRequest certificate_signing_request = 1;
+  string oauth_token = 3;
+}
+
+message EnrollmentResponse {
+  X509CertificateChain certificate_chain = 2;
+  // field number 5 has already been used in the past
+}
+
+message KeyComponentRequest {
+  // field number 2 has already been used in the past
+}
+
+message SignedKeyComponentRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message KeyComponentResponse {
+  CurveScalar pseudonymisation_key_component = 2;
+  CurveScalar encryption_key_component = 3;
+  // field number 4 has already been used in the past
+}
+
+message RekeyRequest {
+  repeated ElgamalEncryption keys = 1;
+  X509CertificateChain client_certificate_chain = 3;
+}
+
+message RekeyResponse {
+  repeated ElgamalEncryption keys = 2;
+}
+
+message PEPIdRegistrationRequest {
+}
+
+message SignedPEPIdRegistrationRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message PEPIdRegistrationResponse {
+  string pep_id = 2;
+}
+
+message RegistrationRequest {
+  ElgamalEncryption polymorph_pseudonym = 1;
+  bytes encrypted_identifier = 2;
+  string encryption_public_key_pem = 3;
+}
+
+message SignedRegistrationRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message RegistrationResponse {
+}
+
+message ListCastorImportColumnsRequest {
+  string sp_column = 1;
+  uint32 answer_set_count = 3;
+}
+
+message ListCastorImportColumnsResponse {
+  repeated string import_columns = 1;
+}
+
+message SignedMetricsRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+message MetricsRequest {
+}
+
+message MetricsResponse {
+  bytes metrics = 1;
+}
+
+message PingRequest {
+  uint64 id = 1;
+}
+
+message PingResponse {
+  uint64 id = 1;
+  Timestamp timestamp = 2;
+}
+
+message SignedPingResponse {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message VersionRequest {
+}
+
+message ConfigVersion {
+  // Field indices were defined identically to VersionResponse because it may yield some benefit in the future.
+
+  // This message has never had a field with index 1
+  string reference = 2; // 'master', ... (git branches or tags)
+  string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
+  string job_id = 4; // '123', ... (GitLab CI job id)
+  string revision = 5; // git revision if available
+  // This message has never had a field with index 6
+  string project_path = 7; // "pep/foss", "pep/ppp", ...
+  // This message has never had a field with index 8
+  string project_caption = 9; // "dtap", "ppp", ...
+
+  string major_version = 10;
+  string minor_version = 11;
+}
+
+message VersionResponse {
+  // Backward compatible: store binary version values directly instead of encapsulating a GitlabVersion or the likes.
+
+  string target = 1; // 'mac', 'win', 'linux'
+  string reference = 2; // 'master', ... (git branches or tags)
+  string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
+  string job_id = 4; // '123', ... (GitLab CI job id)
+  string revision = 5; // git revision if available
+  string protocol_checksum = 6; // checksum for network protocol compatibility
+  string project_path = 7; // "pep/foss", "pep/ppp", ...
+
+  ConfigVersion config_version = 8;
+  // 9 is skipped to be consistent with the indices of ConfigVersion
+  string major_version = 10;
+  string minor_version = 11;
+}
+
+// Request the names of the available checksumchains
+message SignedChecksumChainNamesRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+message ChecksumChainNamesRequest {
+}
+message ChecksumChainNamesResponse {
+  repeated string names = 1;
+}
+
+// Request the XOR of all the checksums in the checksumchain up to and
+// including the given checkpoint.
+message SignedChecksumChainRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+message ChecksumChainRequest {
+  string name = 1;
+  /* optional */ bytes checkpoint = 2;
+}
+message ChecksumChainResponse {
+  bytes checkpoint = 1; // The last checkpoint included in the XOR
+  bytes xorredChecksums = 2;
+}
+
+
+
+// New API
+// ////////////////////////////////////////////////////////////////////////////
+
+message Error {
+  string description = 1;
+  string original_type_name = 2;
+}
+
+//
+// Access manager
+//
+
+// New message to request a ticket.
+// Important: the format of this message including contained fields should remain backward-compatible
+// (we should be able to deserialize old messages) as they are logged by the transcryptor in TicketRequestRecord
+message TicketRequest2 {
+  // Mode of access to request.  See Ticket2.modes.
+  repeated string modes = 1;
+
+  // Groups of participants to request access to.
+  repeated string participant_groups = 2;
+
+  // (Additional) polymorphic pseudonyms to request access to.
+  repeated ElgamalEncryption polymorphic_pseudonyms = 3;
+
+  // Column-groups to request access to.
+  repeated string column_groups = 4;
+
+  // (Additional) columns to request access to.
+  repeated string columns = 5;
+
+  // Whether to return an IndexedTicket2
+  bool request_indexed_ticket = 6;
+
+  // Whether to include local pseudonyms for the access group of the client.
+  bool include_user_group_pseudonyms = 7;
+}
+
+message SignedTicketRequest2 {
+  Signature signature = 3;
+  Signature log_signature = 5;   // signature to be stored at logger
+
+  bytes data = 4;
+}
+
+// A list of indices into some other list.
+// Used by Ticket2 and DataEnumerationRequest2.
+// We might want to optimize this data structure for the common case
+// of an increasing run of indices ([n,n+1,n+2,n+3,...,n+k]).
+message IndexList {
+  repeated uint32 indices = 1;
+}
+
+// A SignedTicket2 together with information about
+//  - which columns are contained in the queried column groups and
+//  - which participants are in the queryied participant groups.
+message IndexedTicket2 {
+  SignedTicket2 ticket = 1;
+
+  map<string,IndexList> column_groups = 2;
+  map<string,IndexList> groups = 3;
+}
+
+// A ticket which (when signed) grants access to data
+message Ticket2 {
+  // The time at which the ticket was granted.
+  Timestamp timestamp = 1;
+
+  // Modes of access granted.  Currently: read, write, enumerate.
+  repeated string modes = 2;
+
+  // The local pseudonyms of the participants to which access was granted.
+  repeated LocalPseudonyms pseudonyms = 3;
+
+  // The columns to which access was granted.
+  repeated string columns = 4;
+
+  // The access group to which this ticket was issued.
+  string user_group = 5;
+}
+
+message SignedTicket2 {
+  Signature signature = 3;
+  bytes data = 4;
+
+  // Signature to prove that the ticket has been logged on the Transcryptor.
+  Signature transcryptor_signature = 5;
+}
+
+//
+// Storage facility
+//
+
+// Return metadata of files to which access was granted by the ticket.
+message DataEnumerationRequest2 {
+  SignedTicket2 ticket = 1;
+
+  // If set, limits the query to the given columns from the ticket.
+  IndexList columns = 4;
+
+  // If set, limits the pseudonyms to the given pseudonyms from the ticket.
+  IndexList pseudonyms = 5;
+
+  // Add new members starting with field number 8
+}
+
+message SignedDataEnumerationRequest2 {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message DataEnumerationResponse2 {
+  repeated DataEnumerationEntry2 entries = 1;
+
+  // Set if there is another DataEnumerationResponse2 after this (because
+  // the remaining entries wouldn't fit in this message).
+  bool has_more = 2;
+}
+
+// Response to DataEnumerationRequest2 or MetadataReadRequest2
+message DataEnumerationEntry2 {
+  // (Encrypted storage facility) Identifier of the file.
+  bytes id = 1;
+
+  // Metadata of the file.  Required for decryption.
+  Metadata metadata = 2;
+
+  // Polymorphicly encrypted key
+  ElgamalEncryption polymorphic_key = 3;
+
+  // Size of the file
+  uint64 file_size = 4;
+
+  // The index of the column to which this file belongs inside the ticket
+  // used to perform the enumeration.
+  uint32 column_index = 5;
+
+  // The index of the polymorphic pseudonym to which the file belongs
+  // inside the ticket used to perform the enumeration.
+  uint32 pseudonym_index = 6;
+
+  // If this message is sent as response to a MetadataReadRequest2, this will
+  // include the index of the file in the ids field of the request.
+  uint32 index = 8;
+}
+
+// Requests retrieval of Metadata and keys of the given files,
+// which will be returned as DataEnumerationResponse2 messages.
+message MetadataReadRequest2 {
+  SignedTicket2 ticket = 1;
+  repeated bytes ids = 3;
+}
+
+message SignedMetadataReadRequest2 {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+// Requests retrieval of the given files.
+// Returns files in chunks via DataPayloadPages.
+message DataReadRequest2 {
+  SignedTicket2 ticket = 1;
+  repeated bytes ids = 3;
+
+  // Add new members starting with field number 5
+}
+
+message SignedDataReadRequest2 {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message DataRequestEntry2 {
+  // Index of the column in the ticket's column list.
+  uint32 column_index = 1;
+
+  // Index of the pseudonym in the ticket's pseudonyms list.
+  uint32 pseudonym_index = 2;
+}
+
+// Requests storage of new metadata in a(n existing) cell.
+//
+message MetadataUpdateRequest2 {
+  SignedTicket2 ticket = 1;
+
+  // Files to store.
+  repeated DataStoreEntry2 entries = 2;
+}
+
+message SignedMetadataUpdateRequest2 {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message MetadataUpdateResponse2 {
+  repeated bytes ids = 1; // Field number is identical to the one in DataStoreResponse2
+}
+
+// Doesn't encapsulate a DataRequestEntry2 to keep things backward compatible
+message DataStoreEntry2 {
+  // Index of the column in the ticket's column list under which to
+  // store this file.
+  uint32 column_index = 1;
+
+  // Index of the pseudonym in the ticket's pseudonyms list under which
+  // to store this file.
+  uint32 pseudonym_index = 2;
+
+  // Metadata to store with this file.
+  Metadata metadata = 3;
+
+  // Polymorphic key to store for this file.
+  ElgamalEncryption polymorphic_key = 4;
+}
+
+// Requests storage of a file.
+//
+// The client should send a DataStoreRequest2 message followed by several
+// DataPayloadPage messages containing the ciphertext for the files.
+// The index field of DataPayloadPage is used to link the page to the
+// to be uploaded file.  After the stream is closed, the Storage Facility
+// responds with a DataStoreResponse2.
+message DataStoreRequest2 {
+  SignedTicket2 ticket = 1;
+
+  // Files to store.
+  repeated DataStoreEntry2 entries = 2;
+}
+
+message SignedDataStoreRequest2 {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message DataStoreResponse2 {
+  repeated bytes ids = 1;
+  uint64 hash = 2;
+}
+
+// Requests deletion of a file.
+//
+// The Storage Facility responds with a DataDeleteResponse2.
+message DataDeleteRequest2 {
+  SignedTicket2 ticket = 1;
+
+  // Files to store.
+  repeated DataRequestEntry2 entries = 2;
+}
+
+message SignedDataDeleteRequest2 {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message DataDeleteResponse2 {
+  IndexList entries = 1;
+  Timestamp timestamp = 2;
+}
+
+// Requests history of (a) file(s).
+//
+// The Storage Facility responds with a DataHistoryResponse2.
+message DataHistoryRequest2 {
+  SignedTicket2 ticket = 1;
+
+  // If set, limits the query to the given columns from the ticket.
+  IndexList columns = 2;
+
+  // If set, limits the pseudonyms to the given pseudonyms from the ticket.
+  IndexList pseudonyms = 3;
+}
+
+message SignedDataHistoryRequest2 {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message DataHistoryEntry2 {
+  // The index of the column to which this file belongs inside the ticket
+  // used to perform the enumeration.
+  uint32 column_index = 1;
+
+  // The index of the polymorphic pseudonym to which the file belongs
+  // inside the ticket used to perform the enumeration.
+  uint32 pseudonym_index = 2;
+
+  // The moment at which Storage Facility recorded the change
+  Timestamp timestamp = 3;
+
+  // (Encrypted) storage facility ID. If empty, this history entry represents a deletion
+  bytes id = 4;
+}
+
+message DataHistoryResponse2 {
+  repeated DataHistoryEntry2 entries = 1;
+}
+
+// Protocol buffer definition behind the opaque identifiers used by the
+// storage facility.
+message EncryptedSFId {
+  bytes ciphertext = 1;
+  bytes iv = 2;
+  bytes tag = 3;
+}
+message SFId {
+  string path = 1;
+  uint64 time = 2;
+}
+
+//
+// Global configuration
+//
+
+// Sent to the accessmanager to request the global configuration.
+message GlobalConfigurationRequest {
+}
+
+message GlobalConfiguration {
+  repeated ShortPseudonymDefinition short_pseudonyms = 1;
+  repeated AdditionalStickerDefinition additional_stickers = 2;
+  // Nr. 3 has been removed
+
+  // First entry is required and must specify a prefix+digits
+  repeated PseudonymFormat participant_identifier_formats = 4;
+  repeated DeviceRegistrationDefinition devices = 5;
+  UserPseudonymFormat user_pseudonym_format = 6;
+  repeated AssessorDefinition assessors = 7;
+  repeated StudyContext study_contexts = 8;
+  repeated ColumnSpecification column_specifications = 9;
+  repeated ShortPseudonymErratum short_pseudonym_errata = 10;
+}
+
+// Definition of a short-pseudonym
+message ShortPseudonymDefinition {
+  string column = 1;
+  string prefix = 2;
+  uint32 length = 3;
+  CastorShortPseudonymDefinition castor = 4; // optional
+  uint32 stickers = 5; // optional
+  string description = 6; // optional
+  string study_context = 7;
+  bool suppress_additional_stickers = 8;
+}
+message UserPseudonymFormat {
+    string prefix = 1;
+    uint32 length = 3;
+}
+message CastorShortPseudonymDefinition {
+  string study_slug = 1;
+  string site_abbreviation = 2;
+
+  repeated CastorStorageDefinition storage = 3; // optional
+}
+enum CastorStudyType {
+  STUDY = 0;
+  SURVEY = 1;
+  REPEATING_DATA = 2;
+}
+message CastorStorageDefinition {
+  CastorStudyType study_type = 1;
+  string data_column = 2;
+  string import_study_slug = 3; //optional
+  bool immediate_partial_data = 4;
+  string week_offset_device_column = 5; //optional
+}
+message AdditionalStickerDefinition {
+  uint32 visit = 1;
+  string column = 2;
+  uint32 stickers = 3;
+  string study_context = 4;
+  bool suppress_additional_stickers = 5;
+}
+
+message GenerablePseudonymFormat {
+  string prefix = 1;
+  uint32 digits = 2; // Number of **generated** digits
+}
+
+message RegexPseudonymFormat {
+  string pattern = 1;
+}
+
+message PseudonymFormat {
+  oneof specification {
+    GenerablePseudonymFormat generable = 1; // Either (preferably) specify a prefix and (number of) digits...
+    RegexPseudonymFormat regex = 2; // ... or specify a regex for the format
+  }
+}
+
+message DeviceRegistrationDefinition {
+  string column = 1;
+  string serial_number_format = 2;
+  string description = 3;
+  string tooltip = 4;
+  string placeholder = 5;
+  string study_context = 6;
+}
+
+message AssessorDefinition {
+  uint32 id = 1;
+  string name = 2;
+  repeated string study_contexts = 3;
+}
+
+message StudyContext {
+  string id = 1;
+  // Add new members starting with field number 3
+}
+
+message ColumnSpecification {
+  string column = 1;
+  string associated_short_pseudonym_column  = 2; //optional. If provided, indicates pseudonymisation should be done.
+  bool requires_directory = 3;
+
+}
+message ShortPseudonymErratum {
+  string value = 1;
+  string column = 2;
+}
+
+message ColumnNameSection {
+  string value = 1;
+}
+
+message ColumnNameMapping {
+  ColumnNameSection original = 1;
+  ColumnNameSection mapped = 2;
+}
+
+enum CrudAction {
+  CRUD_ACTION_CREATE = 0;
+  CRUD_ACTION_READ = 1;
+  CRUD_ACTION_UPDATE = 2;
+  CRUD_ACTION_DELETE = 3;
+}
+
+message SignedColumnNameMappingRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message ColumnNameMappingRequest {
+  CrudAction action = 1;
+  ColumnNameSection original = 2;
+  ColumnNameSection mapped = 3;
+}
+
+message ColumnNameMappingResponse {
+  repeated ColumnNameMapping mappings = 1;
+}
+
+//
+// Access manager administration interface
+//
+// This interface is used by the access and data administrator using
+// "pepcli ama" commands.
+//
+
+message AmaCreateColumn {
+  string name = 1;
+}
+message AmaRemoveColumn {
+  string name = 1;
+}
+message AmaCreateColumnGroup {
+  string name = 1;
+}
+message AmaRemoveColumnGroup {
+  string name = 1;
+}
+message AmaAddColumnToGroup {
+  string column = 1;
+  string column_group = 2;
+}
+message AmaRemoveColumnFromGroup {
+  string column = 1;
+  string column_group = 2;
+}
+
+message AmaCreateParticipantGroup {
+  string name = 1;
+}
+message AmaRemoveParticipantGroup {
+  string name = 1;
+}
+
+message AmaAddParticipantToGroup {
+  string group = 1;
+  ElgamalEncryption participant = 2;
+}
+
+message AmaRemoveParticipantFromGroup {
+  string group = 1;
+  ElgamalEncryption participant = 2;
+}
+
+message AmaCreateColumnGroupAccessRule {
+  string column_group = 1;
+  string user_group = 2;
+  string mode = 3;
+}
+message AmaRemoveColumnGroupAccessRule {
+  string column_group = 1;
+  string user_group = 2;
+  string mode = 3;
+}
+message AmaCreateParticipantGroupAccessRule {
+  string participant_group = 1;
+  string user_group = 2;
+  string mode = 3;
+}
+message AmaRemoveParticipantGroupAccessRule {
+  string participant_group = 1;
+  string user_group = 2;
+  string mode = 3;
+}
+
+// Requests execution of the given mutations.
+//
+// Currently, mutations are executed in an unspecified order and a failed
+// mutation will cease processing of the others (but not rollback the ealier
+// successful mutations).
+//
+// Used by CoreClient::amaX functions and various "pepcli ama" subcommands.
+message SignedAmaMutationRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+message AmaMutationRequest {
+  // Data administrator
+  repeated AmaCreateColumn create_column = 1;
+  repeated AmaRemoveColumn remove_column = 2;
+  repeated AmaCreateColumnGroup create_column_group = 3;
+  repeated AmaRemoveColumnGroup remove_column_group = 4;
+  repeated AmaAddColumnToGroup add_column_to_group = 5;
+  repeated AmaRemoveColumnFromGroup remove_column_from_group = 6;
+
+  repeated AmaCreateParticipantGroup create_participant_group = 11;
+  repeated AmaRemoveParticipantGroup remove_participant_group = 12;
+  repeated AmaAddParticipantToGroup add_participant_to_group = 13;
+  repeated AmaRemoveParticipantFromGroup remove_participant_from_group = 14;
+
+  // Access administrator
+  repeated AmaCreateColumnGroupAccessRule create_column_group_access_rule = 7;
+  repeated AmaRemoveColumnGroupAccessRule remove_column_group_access_rule = 8;
+  repeated AmaCreateParticipantGroupAccessRule create_participant_group_access_rule = 9;
+  repeated AmaRemoveParticipantGroupAccessRule remove_participant_group_access_rule = 10;
+
+  bool force_column_group_removal = 15;
+  bool force_participant_group_removal = 16;
+}
+message AmaMutationResponse {
+}
+
+// Requests the state of the AM (which columns, groups, column groups,
+// group/column access rules, etc exist) at a given timestamp matching
+// the given (optional) filters.
+message AmaQuery {
+  Timestamp at = 1;
+
+  string column_filter = 2;
+  string column_group_filter = 3;
+  string participant_group_filter = 4;
+  string user_group_filter = 5;
+  string column_group_mode_filter = 6;
+  string participant_group_mode_filter = 7;
+}
+message SignedAmaQuery {
+  Signature signature = 3;
+  bytes data = 4;
+}
+message  AmaQRColumn {
+  string name = 1;
+}
+message  AmaQRColumnGroup {
+  string name = 1;
+  repeated string columns = 2;
+}
+message AmaQRColumnGroupAccessRule {
+  string column_group = 1;
+  string access_group = 2;
+  string mode = 3;
+}
+message AmaQRParticipantGroup {
+    string name = 1;
+}
+message AmaQRParticipantGroupAccessRule {
+  string participant_group = 1;
+  string user_group = 2;
+  string mode = 3;
+}
+message AmaQueryResponse {
+  repeated AmaQRColumn columns = 1;
+  repeated AmaQRColumnGroup column_groups = 2;
+  repeated AmaQRColumnGroupAccessRule column_group_access_rules = 3;
+  repeated AmaQRParticipantGroupAccessRule participant_group_access_rules = 4;
+  repeated AmaQRParticipantGroup participant_groups = 5;
+}
+
+// The actual data comes as a raw sqlite database, in chunks, in the tail of the message
+message MigrateUserDbToAccessManagerRequest {
+}
+message SignedMigrateUserDbToAccessManagerRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message MigrateUserDbToAccessManagerResponse{
+}
+
+//
+// User administration interface.
+//
+// This interface is used by access administrator via "pepcli user" and "pepcli token" commands
+//
+message TokenRequest {
+  string subject = 1;
+  string group = 2;
+  Timestamp expirationTime = 3;
+}
+message SignedTokenRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+message TokenResponse {
+  string token = 1;
+}
+
+message CreateUser {
+  string uid = 1;
+};
+
+message RemoveUser {
+  string uid = 1;
+};
+
+message AddUserIdentifier {
+  string existingUid = 1;
+  string newUid = 2;
+};
+
+message RemoveUserIdentifier {
+  string uid = 1;
+};
+
+message UserGroup {
+  string name = 1;
+  optional uint64 max_auth_validity_seconds = 2;
+}
+
+message CreateUserGroup {
+  UserGroup user_group = 3;
+}
+
+message ModifyUserGroup {
+  UserGroup user_group = 3;
+}
+
+message RemoveUserGroup {
+  string name = 1;
+}
+
+message AddUserToGroup {
+  string uid = 1;
+  string group = 2;
+}
+
+message RemoveUserFromGroup {
+  string uid = 1;
+  string group = 2;
+  bool block_tokens = 3;
+}
+
+message UserMutationRequest {
+  repeated CreateUser create_user = 6;
+  repeated RemoveUser remove_user = 7;
+  repeated AddUserIdentifier add_user_identifier = 8;
+  repeated RemoveUserIdentifier remove_user_identifier = 9;
+
+  repeated CreateUserGroup create_user_group = 1;
+  repeated RemoveUserGroup remove_user_group = 2;
+  repeated ModifyUserGroup modify_user_group = 5;
+
+  repeated AddUserToGroup add_user_to_group = 3;
+  repeated RemoveUserFromGroup remove_user_from_group = 4;
+}
+
+message SignedUserMutationRequest {
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message UserMutationResponse {
+}
+
+message UserQuery {
+  Timestamp at = 1;
+
+  string group_filter = 2;
+  string user_filter = 3;
+}
+message SignedUserQuery {
+  Signature signature = 3;
+  bytes data = 4;
+}
+message QRUser {
+  repeated string uids = 1;
+  repeated string groups = 2;
+}
+message UserQueryResponse {
+  repeated QRUser users = 3;
+  repeated UserGroup user_groups = 4;
+}
+
+message FindUserRequest {
+  string primary_id = 1;
+  repeated string alternative_ids = 2;
+}
+message SignedFindUserRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message FindUserResponse {
+  bool found = 1;
+  repeated UserGroup user_groups = 2; // If found=false there must not be any user_groups
+}
+
+//
+// Zero-knowledge proofs used by the Access Manager to show to the
+// Transcryptor that it correctlyRSKed the polymorphic pseudonyms.
+// See https://docs.pages.pep.cs.ru.nl/private/ops/master/development/Design-logger/
+//
+
+// A compositional zero-knowledge proof that curvepoints (A, M, N)
+// are in fact of the form (x B, M, x M).
+// It is implemented using the Fiat--Shamir transform of the EQ-composition
+// of two regular Schnorr zero-knowledge proofs.
+// Cf. §4 of "Lecture Notes Cryptographic Protocols" by Schoenmakers.
+message ScalarMultProof {
+  // The prover generates secret r and produces commitments
+  CurvePoint cb = 1; // Commitment r B
+  CurvePoint cm = 2; // Commitment r M
+
+  // From the challenge e, the prover generates responses s
+  CurveScalar s = 3; // s = r + e x
+}
+
+// A compositional zero-knowledge proof that an ElgamalEncryption (b, c, y)
+// has been (z,k)-RSKed to (b', c', y).
+message RSKProof {
+  CurvePoint ry = 1; // r y
+  CurvePoint rb = 2; // r B
+
+  ScalarMultProof rp = 3; // for (rb, y, ry)
+  ScalarMultProof bp = 4; // for ((z/k)B, b + rb, b')
+  ScalarMultProof cp = 5; // for (z B, c + ry, c')
+}
+
+message VerifiersRequest {
+}
+message VerifiersResponse {
+  RSKVerifiers access_manager = 1;
+  RSKVerifiers storage_facility = 2;
+  RSKVerifiers transcryptor = 3;
+}
+
+// Public information required to verify an RSK proof.
+message RSKVerifiers {
+  CurvePoint z_over_kb = 1;
+  CurvePoint zb = 2;
+  CurvePoint ky = 3;
+}
+
+message SignedColumnAccessRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message ColumnAccessRequest {
+  bool includeImplicitlyGranted = 1;
+  repeated string requireModes = 2;
+}
+
+message ColumnGroupAccess {
+  string name = 1;
+  repeated string modes = 2;
+}
+
+message ColumnAccessResponse {
+  repeated ColumnGroupAccess columnGroups = 1;
+  repeated IndexList columnGroupColumns = 2;
+  repeated string columns = 3;
+}
+
+// Structure metadata
+
+message StructureMetadataKey {
+  string metadata_group = 1;
+  string subkey = 2;
+}
+
+message StructureMetadataSubjectKey {
+  string subject = 1;
+  StructureMetadataKey key = 2;
+}
+
+message StructureMetadataEntry {
+  StructureMetadataSubjectKey subject_key = 1;
+  bytes value = 2;
+}
+
+message SignedStructureMetadataRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+enum StructureMetadataType {
+  Column = 0;
+  ColumnGroup = 1;
+  ParticipantGroup = 2;
+}
+
+message StructureMetadataRequest {
+  StructureMetadataType subject_type = 1;
+  repeated string subjects = 2;
+  repeated StructureMetadataKey keys = 3;
+}
+
+message SetStructureMetadataRequest {
+  StructureMetadataType subject_type = 1;
+  repeated StructureMetadataSubjectKey remove = 3;
+}
+
+message SignedSetStructureMetadataRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message SetStructureMetadataResponse {}
+
+//
+
+message SignedParticipantGroupAccessRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message ParticipantGroupAccessRequest {
+  bool includeImplicitlyGranted = 1;
+}
+
+message ParticipantGroupAccess {
+  string name = 1;
+  repeated string modes = 2;
+}
+
+message ParticipantGroupAccessResponse {
+  repeated ParticipantGroupAccess participantGroups = 1;
+}
+
+message TokenBlockingTokenIdentifier {
+  string subject = 1;
+  string userGroup = 2;
+  Timestamp issueDateTime = 3;
+}
+
+message TokenBlockingBlocklistEntry {
+  int64 id = 1;
+  TokenBlockingTokenIdentifier target = 2;
+  string metadataNote = 3;
+  string metadataIssuer = 4;
+  Timestamp metadataCreationDateTime = 5;
+}
+
+message TokenBlockingListRequest {
+}
+
+message SignedTokenBlockingListRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message TokenBlockingListResponse {
+  repeated TokenBlockingBlocklistEntry entries = 1;
+}
+
+message TokenBlockingCreateRequest {
+  TokenBlockingTokenIdentifier target = 1;
+  string note = 2;
+}
+
+message SignedTokenBlockingCreateRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message TokenBlockingCreateResponse {
+  TokenBlockingBlocklistEntry entry = 1;
+}
+
+message TokenBlockingRemoveRequest {
+  int64 id = 1;
+}
+
+message SignedTokenBlockingRemoveRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message TokenBlockingRemoveResponse {
+  TokenBlockingBlocklistEntry entry = 1;
+}

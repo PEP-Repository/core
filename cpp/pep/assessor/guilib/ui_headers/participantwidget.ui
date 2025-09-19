@@ -1,0 +1,657 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ParticipantWidget</class>
+ <widget class="QWidget" name="ParticipantWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>630</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>600</width>
+    <height>200</height>
+   </size>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>18</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel { font-size: 14pt; }</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_5" stretch="0,1">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="header" stretch="1,0">
+     <item>
+      <widget class="QLabel" name="participant">
+       <property name="styleSheet">
+        <string notr="true">font-size: 16pt;
+font-weight: bold;</string>
+       </property>
+       <property name="text">
+        <string notr="true">participant '%1'</string>
+       </property>
+       <property name="textInteractionFlags">
+        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exitParticipant">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>20</pointsize>
+        </font>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QWidget {
+	border-radius: 0.5em;
+	color: #CA0B5E;
+	padding: 0.5em;
+}
+QWidget:hover {
+	background-color: rgba(202,11,94,0.8);
+	color: white;
+}
+QWidget:disabled {
+	color: grey;
+	border-color: grey;
+}
+</string>
+       </property>
+       <property name="text">
+        <string>✕</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QStackedWidget" name="state">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="currentIndex">
+      <number>1</number>
+     </property>
+     <widget class="QWidget" name="acquire">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="sizeConstraint">
+        <enum>QLayout::SetNoConstraint</enum>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_8">
+         <item>
+          <spacer name="verticalSpacer_9">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_unavailable">
+           <property name="text">
+            <string>This participant is unavailable in the current (%1) context.</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="button_acquire">
+           <property name="minimumSize">
+            <size>
+             <width>150</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QWidget {
+	border: 0.05em solid #CA0B5E;
+	border-radius: 0.25em;
+	color: #CA0B5E;
+	padding: 0.5em;
+	font-size: 13pt;
+	outline: none;
+}
+QWidget:focus {
+	border: 0.1em solid #CA0B5E;
+}
+QWidget:hover {
+	background-color: rgba(202,11,94,0.8);
+	color: white;
+}
+QWidget:disabled {
+	color: grey;
+	border-color: grey;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>Add to context</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer_8">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="editor">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QTabWidget::pane {
+    border-radius: 0.25em;
+}
+
+QTabWidget::tab-bar {
+    left: 5px; /* move to the right by 5px */
+}
+
+QTabBar {
+	font-size: 14pt;
+}
+
+QTabBar::tab {
+    color: #CA0B5E;
+	border: 0.05em solid transparent;
+    border-top-left-radius: 0.25em;
+    border-top-right-radius: 0.25em;
+	min-width: 4em;
+	margin-right: 0.4em;
+	border-bottom: none;
+	padding: 0.5em;
+}
+QTabBar::tab:selected {
+    background-color: #CA0B5E;
+	color: white;
+    border: 0.05em solid #CA0B5E;
+	border-bottom: none;
+}
+
+QTabBar::tab:hover {
+    border: 0.05em solid #CA0B5E;
+	border-bottom: none;
+}</string>
+      </property>
+      <layout class="QHBoxLayout" name="content" stretch="1,0">
+       <property name="spacing">
+        <number>16</number>
+       </property>
+       <property name="sizeConstraint">
+        <enum>QLayout::SetNoConstraint</enum>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QTabWidget" name="tabWidget_left">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="overview">
+          <attribute name="title">
+           <string>overview</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QScrollArea" name="scrollArea">
+             <property name="focusPolicy">
+              <enum>Qt::NoFocus</enum>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background: transparent;</string>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="scrollAreaWidgetContents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>478</width>
+                <height>541</height>
+               </rect>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_6">
+               <item>
+                <widget class="QLabel" name="info_header">
+                 <property name="styleSheet">
+                  <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+                 </property>
+                 <property name="text">
+                  <string>info</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="info1">
+                 <property name="text">
+                  <string notr="true">participant-name</string>
+                 </property>
+                 <property name="textInteractionFlags">
+                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="info2">
+                 <property name="text">
+                  <string notr="true">participant-birthday</string>
+                 </property>
+                 <property name="textInteractionFlags">
+                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="infoIsTestParticipant">
+                 <property name="text">
+                  <string>This is a test participant</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="participant_buttonBar_layout"/>
+               </item>
+               <item>
+                <spacer name="info_spacer">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Fixed</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QLabel" name="devices_header">
+                 <property name="styleSheet">
+                  <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+                 </property>
+                 <property name="text">
+                  <string>devices</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <layout class="QVBoxLayout" name="verticalLayout_devices"/>
+               </item>
+               <item>
+                <spacer name="verticalSpacer_2">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Fixed</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QLabel" name="ops_header">
+                 <property name="styleSheet">
+                  <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+                 </property>
+                 <property name="text">
+                  <string>ops</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="ops_castorButtonBar_layout">
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                </layout>
+               </item>
+               <item>
+                <spacer name="verticalSpacer_3">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Fixed</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QLabel" name="preparation_header">
+                 <property name="styleSheet">
+                  <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+                 </property>
+                 <property name="text">
+                  <string>prep</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="print_buttonBar_layout">
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                </layout>
+               </item>
+               <item>
+                <spacer name="verticalSpacer_4">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Fixed</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QLabel" name="pseudo_header">
+                 <property name="styleSheet">
+                  <string notr="true">color: #CA0B5E;
+font-size: 16pt;</string>
+                 </property>
+                 <property name="text">
+                  <string>pseudo</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="pseudo_participant">
+                 <property name="text">
+                  <string notr="true">pseudo_participant</string>
+                 </property>
+                 <property name="textInteractionFlags">
+                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="verticalSpacer_6">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="devicehistory">
+          <attribute name="title">
+           <string>device-history</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_deviceHistories">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTabWidget" name="tabWidget_right">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+         <property name="currentIndex">
+          <number>-1</number>
+         </property>
+         <property name="tabBarAutoHide">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>exitParticipant</sender>
+   <signal>clicked()</signal>
+   <receiver>ParticipantWidget</receiver>
+   <slot>closeParticipant()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>970</x>
+     <y>22</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>499</x>
+     <y>314</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>button_acquire</sender>
+   <signal>clicked()</signal>
+   <receiver>ParticipantWidget</receiver>
+   <slot>acquireParticipant()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>499</x>
+     <y>344</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>499</x>
+     <y>314</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <signal>showPseudoAdverseEvents(QString)</signal>
+  <signal>showPseudoBlood(QString)</signal>
+  <signal>showPseudoFMRI(QString)</signal>
+  <signal>showPseudoCRF(QString)</signal>
+  <signal>showPseudoECG(QString)</signal>
+  <signal>showPseudoHome(QString)</signal>
+  <signal>participantInfo(std::string,std::string)</signal>
+  <signal>participantNotFound(std::string,pep::severity_level)</signal>
+  <signal>loaded()</signal>
+  <slot>closeParticipant()</slot>
+  <slot>acquireParticipant()</slot>
+  <slot>manageDevices()</slot>
+  <slot>openEditParticipant</slot>
+ </slots>
+</ui>
