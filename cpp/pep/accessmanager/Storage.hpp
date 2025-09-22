@@ -53,12 +53,15 @@ private:
   /* private methods related to user groups */
   int64_t getNextUserGroupId() const;
   bool hasUserGroup(std::string_view name) const;
-  /// Try to find the internalId for the userGroup with the given name. Throws if not found.
   bool userInGroup(int64_t internalUserId, int64_t userGroupId) const;
   std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = Timestamp()) const;
 
   std::optional<int64_t> findInternalId(StructureMetadataType subjectType, std::string_view subject, Timestamp at = Timestamp()) const;
+  /// Try to find the internalId for the userGroup with the given name. Throws if not found.
   int64_t getInternalId(StructureMetadataType subjectType, std::string_view subject, Timestamp at = Timestamp()) const;
+  /// Find a subject for the given internalId and subjectType. If there are multiple options for a given internalId (e.g. multiple UserIds for a single user), it picks one.
+  std::optional<std::string> getSomeSubjectForInternalId(StructureMetadataType subjectType, int64_t internalId,
+                                                         Timestamp at) const;
 
 public:
   Storage(const std::filesystem::path &path, std::shared_ptr<GlobalConfiguration> globalConf);
@@ -223,6 +226,7 @@ public:
   /// Try to find the internalId for the userGroup with the given name. Returns nullopt if not found.
   std::optional<int64_t> findUserGroupId(std::string_view name, Timestamp at = Timestamp()) const;
   int64_t getUserGroupId(std::string_view name, Timestamp at = Timestamp()) const;
+  std::optional<std::string> getUserGroupName(int64_t userGroupId, Timestamp at) const;
 
   /* Check user group membership */
   std::vector<UserGroup> getUserGroupsForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;

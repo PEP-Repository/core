@@ -1484,6 +1484,15 @@ int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, T
   return userGroupId.value();
 }
 
+std::optional<std::string> AccessManager::Backend::Storage::getUserGroupName(int64_t userGroupId, Timestamp at) const {
+  return RangeToOptional(
+    mImplementor->getCurrentRecords(
+      c(&UserGroupRecord::timestamp) <= at.getTime()
+      && c(&UserGroupRecord::userGroupId) == userGroupId,
+      &UserGroupRecord::name)
+  );
+}
+
 std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int64_t internalUserId, Timestamp at) const {
   using namespace std::ranges;
   std::vector<int64_t> groupIds = RangeToCollection<std::vector>(
@@ -1732,6 +1741,24 @@ int64_t AccessManager::Backend::Storage::getInternalId(StructureMetadataType sub
   }
 }
 
+std::optional<std::string> AccessManager::Backend::Storage::getSomeSubjectForInternalId(
+  StructureMetadataType subjectType, int64_t internalId, Timestamp at) const {
+  assert(HasInternalId(subjectType));
+  switch (subjectType) {
+  case StructureMetadataType::User: {
+    auto identifiers = getAllIdentifiersForUser(internalId, at);
+    if (identifiers.size() > 0) {
+      return *getAllIdentifiersForUser(internalId, at).begin();
+    }
+    return std::nullopt;
+  }
+  case StructureMetadataType::UserGroup:
+    return getUserGroupName(internalId, at);
+  default:
+    throw std::logic_error("Specificed subjectType does not have an internalId");
+  }
+}
+
 std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureMetadataKeys(
     const Timestamp timestamp,
     StructureMetadataType subjectType,
@@ -1801,7 +1828,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
       c(&StructureMetadataRecord::timestamp) <= timestamp.getTime()
       && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
       && (filter.subjects.empty() || !internalSubjectIds.empty() || in(&StructureMetadataRecord::subject, filter.subjects))
-      && (internalSubjectIds.empty() || in(&StructureMetadataRecord::internalSubjectId, RangeToVector(views::keys(internalSubjectIds))))
+      && ((internalSubjectIds.empty() && filter.subjects.empty()) || in(&StructureMetadataRecord::internalSubjectId, RangeToVector(views::keys(internalSubjectIds))))
       && ((metadataGroupFilters.empty() && metadataKeyFilters.empty())
         || in(&StructureMetadataRecord::metadataGroup, metadataGroupFilters)
         || in(conc(conc(&StructureMetadataRecord::metadataGroup, ":"), &StructureMetadataRecord::subkey), metadataKeyFilters)),
@@ -1810,10 +1837,22 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
       &StructureMetadataRecord::metadataGroup,
       &StructureMetadataRecord::subkey,
       &StructureMetadataRecord::value)
-    | views::transform([&internalSubjectIds](auto tuple) {
+    | views::transform([this, &internalSubjectIds, subjectType, timestamp](auto tuple) {
       auto& [subject, internalSubjectId, metadataGroup, subkey, value] = tuple;
-      if (internalSubjectId) {
-        subject=internalSubjectIds.at(*internalSubjectId);
+      if (HasInternalId(subjectType)) {
+        assert(internalSubjectId.has_value());
+        if (internalSubjectIds.size() > 0) {
+          // If internalSubjectIds is non-empty, the current internalSubjectId should be in the map.
+          subject=internalSubjectIds.at(*internalSubjectId);
+        }
+        else {
+          // otherwise, we had an empty filter. We'll need to look up a matching subject in the database.
+          auto foundSubject = getSomeSubjectForInternalId(subjectType, *internalSubjectId, timestamp);
+          if (!foundSubject) {
+            throw std::runtime_error("Encountered an internalSubjectId, for which no subject could be found.");
+          }
+          subject = *foundSubject;
+        }
       }
       return StructureMetadataEntry{
         .subjectKey = {
