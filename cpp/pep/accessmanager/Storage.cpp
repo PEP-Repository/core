@@ -1715,7 +1715,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalId(Structure
     return findUserGroupId(subject, at);
     break;
   default:
-    assert(false);
+    throw std::logic_error("Specificed subjectType does not have an internalId");
   }
 }
 
@@ -1728,7 +1728,7 @@ int64_t AccessManager::Backend::Storage::getInternalId(StructureMetadataType sub
     return getUserGroupId(subject, at);
     break;
   default:
-    assert(false);
+    throw std::logic_error("Specificed subjectType does not have an internalId");
   }
 }
 
