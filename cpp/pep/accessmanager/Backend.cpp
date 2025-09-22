@@ -26,6 +26,15 @@ void EnsureMapContains(std::unordered_map<std::string, TValue>& map, const std::
   });
 }
 
+void EnsureStructureMetadataAccess(StructureMetadataType subjectType, std::string_view userGroup) {
+  if (subjectType == StructureMetadataType::User || subjectType == StructureMetadataType::UserGroup) {
+    UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, userGroup);
+  }
+  else {
+    UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+  }
+}
+
 }
 
 AccessManager::Backend::Backend(const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf)
@@ -754,7 +763,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetad
 void AccessManager::Backend::handleSetStructureMetadataRequestHead(
     const SetStructureMetadataRequest& request,
     const std::string& userGroup) {
-  UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+  EnsureStructureMetadataAccess(request.subjectType, userGroup);
 
   for (const auto& [subject, key] : request.remove) {
     mStorage->removeStructureMetadata(request.subjectType, subject, key);
@@ -765,7 +774,7 @@ void AccessManager::Backend::handleSetStructureMetadataRequestEntry(
     StructureMetadataType subjectType,
     const StructureMetadataEntry& entry,
     const std::string& userGroup) {
-  UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+  EnsureStructureMetadataAccess(subjectType, userGroup);
 
   mStorage->setStructureMetadata(subjectType, entry.subjectKey.subject, entry.subjectKey.key, entry.value);
 }

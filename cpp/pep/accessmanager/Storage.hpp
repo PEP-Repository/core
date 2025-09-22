@@ -57,6 +57,9 @@ private:
   bool userInGroup(int64_t internalUserId, int64_t userGroupId) const;
   std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = Timestamp()) const;
 
+  std::optional<int64_t> findInternalId(StructureMetadataType subjectType, std::string_view subject, Timestamp at = Timestamp()) const;
+  int64_t getInternalId(StructureMetadataType subjectType, std::string_view subject, Timestamp at = Timestamp()) const;
+
 public:
   Storage(const std::filesystem::path &path, std::shared_ptr<GlobalConfiguration> globalConf);
 
@@ -241,12 +244,16 @@ public:
   /* Core operations on Metadata */
   /// Get the metadata keys for the specified \p subject (which is of type \p subjectType)
   std::vector<StructureMetadataKey> getStructureMetadataKeys(Timestamp timestamp, StructureMetadataType subjectType, std::string_view subject) const;
+  /// Get the metadata keys for the subject identified by the specified \p internalSubjectId (which is of type \p subjectType)
+  std::vector<StructureMetadataKey> getStructureMetadataKeys(Timestamp timestamp, StructureMetadataType subjectType, int64_t internalSubjectId) const;
   /// Get (filtered) metadata for the specified \p subject (which is of type \p subjectType)
   std::vector<StructureMetadataEntry> getStructureMetadata(Timestamp timestamp, StructureMetadataType subjectType, const StructureMetadataFilter& filter = {}) const;
   /// Create or overwrite a metadata entry for the specified \p subject (which is of type \p subjectType)
   void setStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key, std::string_view value);
   /// Remove a metadata entry for the specified \p subject (which is of type \p subjectType)
   void removeStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key);
+  /// Remove a metadata entry for the specified \p internalSubjectId (which is of type \p subjectType)
+  void removeStructureMetadata(StructureMetadataType subjectType, int64_t internalSubjectId, StructureMetadataKey key);
 };
 
 }

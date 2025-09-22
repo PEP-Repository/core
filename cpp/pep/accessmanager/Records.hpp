@@ -8,6 +8,10 @@ namespace pep {
 // All record types also have an acssociated struct type containing only the data about the columns, access modes, etc. So no tombstones, timestamps, seqno's, and other metadata.
 // This allows for sets of named structs that can be equality checked on only these datapoints.
 
+inline bool HasInternalId(StructureMetadataType subjectType) {
+  return subjectType == StructureMetadataType::User || subjectType == StructureMetadataType::UserGroup;
+}
+
 struct StructureMetadataFilter {
   /// Names of subjects to include (e.g. column names).
   /// Leave empty to include all subjects.
@@ -299,6 +303,13 @@ struct StructureMetadataRecord {
       std::string key,
       std::vector<char> value,
       bool tombstone = false);
+    StructureMetadataRecord(
+      StructureMetadataType subjectType,
+      int64_t internalSubjectId,
+      std::string metadataGroup,
+      std::string key,
+      std::vector<char> value,
+      bool tombstone = false);
   uint64_t checksum() const;
 
   int64_t seqno{};
@@ -308,11 +319,13 @@ struct StructureMetadataRecord {
 
   std::underlying_type_t<StructureMetadataType> subjectType{};
   std::string subject;
+  std::optional<int64_t> internalSubjectId;
   std::string metadataGroup;
   std::string subkey;
   static inline const std::tuple RecordIdentifier{
     &StructureMetadataRecord::subjectType,
     &StructureMetadataRecord::subject,
+    &StructureMetadataRecord::internalSubjectId,
     &StructureMetadataRecord::metadataGroup,
     &StructureMetadataRecord::subkey,
   };

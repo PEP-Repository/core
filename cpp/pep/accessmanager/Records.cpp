@@ -12,7 +12,6 @@
 #include <type_traits>
 
 namespace pep {
-
 SelectStarPseudonymRecord::SelectStarPseudonymRecord(LocalPseudonym lp, PolymorphicPseudonym pp) {
   localPseudonym = RangeToVector(lp.pack());
   polymorphicPseudonym = RangeToVector(pp.pack());
@@ -187,7 +186,25 @@ StructureMetadataRecord::StructureMetadataRecord(
     metadataGroup(std::move(metadataGroup)),
     subkey(std::move(key)),
     value(std::move(value)) {
-  assert((!this->tombstone || this->value.empty()) && "Tombstone with non-empty value");
+  assert(!HasInternalId(subjectType));
+  RandomBytes(checksumNonce, 16);
+}
+
+StructureMetadataRecord::StructureMetadataRecord(
+    StructureMetadataType subjectType,
+    int64_t internalSubjectId,
+    std::string metadataGroup,
+    std::string key,
+    std::vector<char> value,
+    bool tombstone)
+  : timestamp{Timestamp().getTime()},
+    tombstone{tombstone},
+    subjectType{ToUnderlying(subjectType)},
+    internalSubjectId(internalSubjectId),
+    metadataGroup(std::move(metadataGroup)),
+    subkey(std::move(key)),
+    value(std::move(value)) {
+  assert(HasInternalId(subjectType));
   RandomBytes(checksumNonce, 16);
 }
 
