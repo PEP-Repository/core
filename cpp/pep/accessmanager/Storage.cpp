@@ -1804,6 +1804,8 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
 std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructureMetadata(const Timestamp timestamp, StructureMetadataType subjectType, const StructureMetadataFilter& filter) const {
   using namespace std::ranges;
 
+  bool hasInternalId = HasInternalId(subjectType);
+
   std::vector<std::reference_wrapper<const std::string>> metadataGroupFilters;
   std::vector<std::string> metadataKeyFilters;
   for (const auto& key : filter.keys) {
@@ -1813,7 +1815,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
   }
 
   std::unordered_map<int64_t, std::string> internalSubjectIds; //This is a map, so we can translate the internalIds back to a subject, as specified in the filter.
-  if (HasInternalId(subjectType)) {
+  if (hasInternalId) {
     internalSubjectIds.reserve(filter.subjects.size());
     for (auto& subject : filter.subjects) {
       auto internalSubjectId = findInternalId(subjectType, subject, timestamp);
@@ -1827,8 +1829,11 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
     mImplementor->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= timestamp.getTime()
       && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
-      && (filter.subjects.empty() || !internalSubjectIds.empty() || in(&StructureMetadataRecord::subject, filter.subjects))
-      && ((internalSubjectIds.empty() && filter.subjects.empty()) || in(&StructureMetadataRecord::internalSubjectId, RangeToVector(views::keys(internalSubjectIds))))
+      // If we have no subject filters, we return all subjects. If we do have subject filters, we either need to check directly, or via internalId.
+      // If we have a non-empty filter, it is still possible that internalSubjectIds is empty. because no subjects match the filter.
+      // But in that case, we don't want to return everything. That is why we don't check the emptiness of internalSubjectIds.
+      && (filter.subjects.empty() || hasInternalId || in(&StructureMetadataRecord::subject, filter.subjects))
+      && (filter.subjects.empty() || !hasInternalId || in(&StructureMetadataRecord::internalSubjectId, RangeToVector(views::keys(internalSubjectIds))))
       && ((metadataGroupFilters.empty() && metadataKeyFilters.empty())
         || in(&StructureMetadataRecord::metadataGroup, metadataGroupFilters)
         || in(conc(conc(&StructureMetadataRecord::metadataGroup, ":"), &StructureMetadataRecord::subkey), metadataKeyFilters)),
