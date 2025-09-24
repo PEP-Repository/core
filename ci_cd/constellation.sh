@@ -128,7 +128,7 @@ get_user_json() {
     user_json=$(echo "$c_entry" | jq -c ".\"$custom_parent_node\".user | select(. != null)")
   fi
   if [ -z "$user_json" ]; then
-    user_json=$(echo "$c_entry" | jq -c ".ssh.user")
+    user_json=$(echo "$c_entry" | jq -c ".ssh.user | select(. != null)")
   fi
   
   echo "$user_json"
@@ -202,7 +202,10 @@ get_user_entries() {
     hosts=$(echo "$c_json" | jq -c "$entry_selector")
   fi
   echo "$hosts" | while read -r host; do
-    get_user_json "$host" "$custom_parent_node"
+    user_json=$(get_user_json "$host" "$custom_parent_node")
+    if [ -n "$user_json" ] && [ "$user_json" != "null" ]; then
+      echo "$user_json"
+    fi
   done | sort | uniq
 }
 
