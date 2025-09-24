@@ -460,8 +460,17 @@ get_deploy_compose_commands() {
     # Use the deploy-compose specific configuration or fall back to default ssh user
     ssh_cmd=$(get_ssh_command "$entry" "$c_file_dir" "" "deploy-compose")
     
-    # Pass the action and compose_image as separate arguments
-    echo "$ssh_cmd '$action $compose_image'"
+    # Extract the compose profiles (services) for this host
+    profiles=$(echo "$entry" | jq -r '.["deploy-compose"].profiles // empty | if type == "array" then join(",") else . end')
+    
+    # Build the remote command with profiles
+    if [ -n "$profiles" ]; then
+      remote_cmd="$action $compose_image $profiles"
+    else
+      remote_cmd="$action $compose_image"
+    fi
+    
+    echo "$ssh_cmd '$remote_cmd'"
   done
 }
 

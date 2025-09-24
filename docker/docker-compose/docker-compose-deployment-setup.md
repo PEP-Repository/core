@@ -27,8 +27,9 @@ Configure your constellation JSON file with the deploy-compose section:
     "deploy-compose": {
       "user": {
         "name": "update",
-        "id_file": "$GITLAB_GROUP_CI_BUILDSERVERS_LINUX_UPDATE_KEY_FILE"
-      }
+        "id_file": "$GITLAB_GROUP_CI_BUILDSERVERS_LINUX_COMPOSE_KEY_FILE"
+      },
+      "profiles": ["accessmanager", "registrationserver", "authserver", "nginx"]
     }
   }
 ]
@@ -47,6 +48,7 @@ set -e
 # Parse the action and image from the SSH command arguments
 ACTION="$1"
 IMAGE_COMPOSE="$2"
+COMPOSE_PROFILES="${3:-}"  # Optional comma-separated profiles, e.g. "transcryptor,keyserver"
 
 # Validate action
 if [ "$ACTION" != "pull" ] && [ "$ACTION" != "restart" ] && [ "$ACTION" != "pull-restart" ]; then
@@ -57,6 +59,15 @@ fi
 if [ -z "$IMAGE_COMPOSE" ]; then
     echo "Error: IMAGE_COMPOSE not provided"
     exit 1
+fi
+
+# Use profiles from argument if provided, otherwise let docker-compose use the profiles from .env
+if [ -n "$COMPOSE_PROFILES" ]; then
+    echo "Overriding compose profiles: $COMPOSE_PROFILES"
+    PROFILES_ENV_FLAG="--env COMPOSE_PROFILES=$COMPOSE_PROFILES"
+else
+    echo "Using compose profiles from .env file"
+    PROFILES_ENV_FLAG=""
 fi
 
 echo "Docker-compose action triggered: $ACTION"
@@ -75,6 +86,7 @@ case "$ACTION" in
                            --rm \
                            --volume /root/.docker/config.json:/root/.docker/config.json:ro \
                            --volume /var/run/docker.sock:/var/run/docker.sock \
+                           $PROFILES_ENV_FLAG \
                            "$IMAGE_COMPOSE" \
                            docker compose --file compose.yml \
                                           --file compose.override.yaml \
@@ -92,6 +104,7 @@ case "$ACTION" in
                            --rm \
                            --volume /root/.docker/config.json:/root/.docker/config.json:ro \
                            --volume /var/run/docker.sock:/var/run/docker.sock \
+                            $PROFILES_ENV_FLAG \
                            "$IMAGE_COMPOSE" \
                            docker compose --file compose.yml \
                                           --file compose.override.yaml \
