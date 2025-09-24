@@ -142,6 +142,7 @@ variables:
   IMAGE_PEP_MONITORING:        ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-monitoring
   IMAGE_PEP_CLIENT:            ${CI_REGISTRY}/${CI_PROJECT_PATH}/client
   IMAGE_PEP_CONNECTOR:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-connector
+  IMAGE_PEP_COMPOSE:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/docker-compose
   # authserver itself is now part of the pep-services container, so we only need a separate apache/shibboleth container
   IMAGE_PEP_AUTHSERVER_APACHE: ${CI_REGISTRY}/${CI_PROJECT_PATH}/authserver_apache
 
@@ -875,6 +876,9 @@ build-docker-images:
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
     - docker buildx build --pull
                           --push
+                          --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" "docker/docker-compose"
+    - docker buildx build --pull
+                          --push
                           --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "docker/apache"
       ### Build derived images, these should be built after the base images
     - docker buildx build --pull
@@ -1184,6 +1188,7 @@ retag-pep-docker-images:
     - docker buildx imagetools create "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker buildx imagetools create "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
 

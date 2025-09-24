@@ -511,7 +511,7 @@ class MailSender(Connector):
             "email_subject", "email_template", "max_reminders"
         ]
 
-        is_report = config.get("is_report_type", False)
+        is_report = "report_type" in config
 
         # Report types don't explicitly require these keys
         if not is_report:
@@ -962,6 +962,7 @@ class MailSender(Connector):
         recipient_name_column = config.get("pep_name_column")
         custom_html_file = config.get("custom_html_file")
 
+        custom_html = None
         if custom_html_file:
             custom_html = self._load_html_file(custom_html_file)
 
@@ -979,7 +980,23 @@ class MailSender(Connector):
         # Get conditions if specified
         conditions = config.get("conditions", [])
 
-        is_report = config.get("is_report_type", False)
+        report_type = config.get("report_type", False)
+
+        # variable is_report, boolean if report_type is set
+        is_report = report_type is not False
+
+        # Check if this is an expert report type that needs school-specific PDFs
+        is_expert_report = report_type == "expert"
+        pdf_paths = config.get("pdf_paths", {}) if is_expert_report else {}
+
+        # Add TeacherInfo.SchoolName and TeacherInfo.IsExpertTeacher to columns if expert report
+        if is_expert_report:
+            school_name_column = "TeacherInfo.SchoolName"
+            expert_teacher_column = "TeacherInfo.IsExpertTeacher"
+            if school_name_column not in pep_columns:
+                pep_columns.append(school_name_column)
+            if expert_teacher_column not in pep_columns:
+                pep_columns.append(expert_teacher_column)
 
         if is_report:
             # For reports we do not require any survey IDs, but if we want repeating reports,
@@ -1005,7 +1022,7 @@ class MailSender(Connector):
                 pep_columns.append(condition["column"])
 
         # Load config from PEP
-        subject_info = limesurvey_connector.read_short_pseudonym_and_associated_columns(short_pseudonym_column, pep_columns)
+        subject_info = limesurvey_connector.list_columndata_by_short_pseudonym(short_pseudonym_column, pep_columns)
 
         total_subjects = len(subject_info)
         subjects_emailed_count = 0
@@ -1030,6 +1047,32 @@ class MailSender(Connector):
                 self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping subject: Missing email.", 
                     level=logging.WARNING, tag=self.LOG_TAG)
                 continue
+
+            # For expert reports, get school name and prepare school-specific attachments
+            subject_attachments = attachments
+            if is_expert_report:
+                school_name = data["columns"].get("TeacherInfo.SchoolName")
+                is_expert_teacher = data["columns"].get("TeacherInfo.IsExpertTeacher")
+                
+                # Only add school-specific PDF if this is actually an expert teacher
+                if is_expert_teacher and school_name and pdf_paths.get("TeacherInfo.SchoolName", {}).get(school_name):
+                    # school_pdf is already a dict with path, filename, and mimetype
+                    school_pdf = pdf_paths["TeacherInfo.SchoolName"][school_name]
+                    
+                    # Combine existing attachments with school-specific PDF
+                    if subject_attachments:
+                        subject_attachments = subject_attachments + [school_pdf]
+                    else:
+                        subject_attachments = [school_pdf]
+                    
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Added school-specific PDF for expert teacher at {school_name}", 
+                            level=logging.DEBUG, tag=self.LOG_TAG)
+                elif school_name and not is_expert_teacher:
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Not an expert teacher, skipping school-specific PDF for {school_name}", 
+                            level=logging.DEBUG, tag=self.LOG_TAG)
+                elif is_expert_teacher and school_name:
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: No PDF found for expert teacher school: {school_name}", 
+                            level=logging.WARNING, tag=self.LOG_TAG)
 
             # Emails sent data is required to track email history
             emails_sent_data = data["columns"].get(emails_sent_column)
@@ -1156,7 +1199,7 @@ class MailSender(Connector):
                                 subject=email_subject,
                                 template=email_template,
                                 template_vars=template_vars,
-                                attachments=attachments,
+                                attachments=subject_attachments,
                                 footer_image=footer_image,
                                 use_html=True,
                                 is_reminder=is_reminder)

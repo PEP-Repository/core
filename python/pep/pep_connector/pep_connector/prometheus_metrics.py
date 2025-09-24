@@ -173,17 +173,10 @@ class PrometheusMetrics:
         if not os.path.exists(self.fatal_error_file):
             self.log(f"Fatal error metric file {self.fatal_error_file} not found. Initializing with value 0.", logging.INFO)
             try:
-                unix_timestamp = time.time()
                 metrics = {
                     "pep_fatal_error": {
                         'value': 0, # Initialize to 0
                         'help': "Indicates if a fatal error has occurred (1=yes, 0=no). Must be manually reset from 1.",
-                        'type': "gauge",
-                        'labels': {'job': self.job_name}
-                    },
-                    "pep_fatal_error_timestamp": {
-                        'value': unix_timestamp,
-                        'help': "Timestamp when the fatal error status was last set",
                         'type': "gauge",
                         'labels': {'job': self.job_name}
                     }
@@ -229,18 +222,10 @@ class PrometheusMetrics:
             error_message: Description of the fatal error
         """
         try:
-            unix_timestamp = time.time()
-
             metrics = {
                 "pep_fatal_error": {
                     'value': 1,
                     'help': "Indicates if a fatal error has occurred (1=yes, 0=no). Must be manually reset from 1.",
-                    'type': "gauge",
-                    'labels': {'job': self.job_name}
-                },
-                "pep_fatal_error_timestamp": {
-                    'value': unix_timestamp,
-                    'help': "Timestamp when the fatal error status was last set",
                     'type': "gauge",
                     'labels': {'job': self.job_name}
                 }

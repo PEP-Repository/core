@@ -686,7 +686,7 @@ class LimeSurveyConnector(Connector):
             self.log(f"Failed to upload data for short pseudonym {short_pseudonym}. Error: {e}", logging.ERROR)
             raise
 
-    def _validate_survey_config(self, survey_config, survey_type):
+    def _validate_survey_config(self, survey_config):
 
         required_keys = ["survey_ids_pep_column", "document_type", "sp_pep_column", "language_code"]
 
@@ -694,8 +694,10 @@ class LimeSurveyConnector(Connector):
             if key not in survey_config:
                 raise ValueError(f"Missing required config item: {key}")
 
+        config_item_type = survey_config.get("type", "survey")
+
         # Special requirement for consent surveys
-        if survey_type == "consent":
+        if config_item_type == "consent":
             if not survey_config.get("researcher_check_question_id"):
                 raise ValueError("researcher_check_question_id is required for consent surveys")
             if survey_config.get("document_type") != "json":
@@ -711,9 +713,11 @@ class LimeSurveyConnector(Connector):
         if not isinstance(overwrite, bool):
             raise ValueError("overwrite must be a boolean (true or false).")
 
-    def store_survey_responses_in_pep(self, survey_config, survey_type) -> tuple[int, int, int, int, int, int, int]:
+    def store_survey_responses_in_pep(self, survey_config, config_item_name) -> tuple[int, int, int, int, int, int, int]:
 
-        self._validate_survey_config(survey_config, survey_type)
+        self._validate_survey_config(survey_config)
+
+        config_item_type = survey_config.get("type", "survey")
 
         # Required fields
         survey_ids_column = survey_config.get("survey_ids_pep_column")
@@ -756,7 +760,7 @@ class LimeSurveyConnector(Connector):
         overwrite = survey_config.get("overwrite", True)
 
         # Load config from PEP
-        subject_info = self.read_short_pseudonym_and_associated_columns(short_pseudonym_column, pep_columns)
+        subject_info = self.list_columndata_by_short_pseudonym(short_pseudonym_column, pep_columns)
 
         total_subjects = len(subject_info)
         processed_count = 0
@@ -769,7 +773,7 @@ class LimeSurveyConnector(Connector):
 
         for index, (short_pseudonym, data) in enumerate(subject_info.items(), start=1):
 
-            self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Processing subject", logging.DEBUG)
+            self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Processing subject", logging.DEBUG)
 
             survey_ids_data = data["columns"].get(survey_ids_column)
             pep_survey_ids = {}
@@ -779,36 +783,36 @@ class LimeSurveyConnector(Connector):
                 except json.JSONDecodeError as e:
                     skipped_count += 1
                     
-                    self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Failed to load survey IDs data: {str(e)}.", 
-                    level=logging.WARNING)
+                    self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Failed to load survey IDs data: {str(e)}.", 
+                    level=logging.ERROR)
                     continue
 
-            if survey_type == "consent":
+            if config_item_type == "consent":
                 # For consent surveys, skip if consent already given
                 consent_bool = data["columns"].get(consent_bool_column)
                 if consent_bool:
                     skipped_count += 1
-                    self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Consent already given.", 
+                    self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Consent already given.", 
                         level=logging.INFO)
                     continue
 
-            if survey_type not in pep_survey_ids or pep_survey_ids.get(survey_type) is None:
+            if config_item_name not in pep_survey_ids or pep_survey_ids.get(config_item_name) is None:
                 skipped_count += 1
-                self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: No survey IDs found for {survey_type}.", 
+                self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: No survey IDs found for {config_item_name}.", 
                     level=logging.INFO)
                 continue
 
-            for i, survey_id in enumerate(pep_survey_ids[survey_type]):
+            for i, survey_id in enumerate(pep_survey_ids[config_item_name]):
 
 
                 survey_properties = self.get_survey_properties(survey_id)
 
                 if survey_properties.get("active") == "N":
-                    self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Survey {survey_id} is not active.", 
+                    self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Survey {survey_id} is not active.", 
                         level=logging.WARNING)
                     continue
                 if survey_properties.get("anonymized") == "Y":
-                    self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Cannot access token table, survey {survey_id} is anonymized.", 
+                    self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Cannot access token table, survey {survey_id} is anonymized.", 
                         level=logging.ERROR)
                     continue
 
@@ -849,7 +853,7 @@ class LimeSurveyConnector(Connector):
                         all_columns_to_check.extend(current_question_columns.values())
                     if current_file_upload_columns:
                         all_columns_to_check.extend(current_file_upload_columns.values())
-                    if survey_type == "consent" and consent_bool_column:
+                    if config_item_type == "consent" and consent_bool_column:
                         all_columns_to_check.append(consent_bool_column)
 
                     existence_results = self.check_data_existence_by_sp(short_pseudonym, all_columns_to_check)
@@ -857,28 +861,28 @@ class LimeSurveyConnector(Connector):
                 response = self.get_survey_response_by_token(survey_id, document_type=doc_type, token=short_pseudonym, language_code=language_code, completion_status=completion_status)
 
                 if response is None:
-                    self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: No response found or other limesurvey API problems for survey ID {survey_id}.", 
+                    self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: No response found or other limesurvey API problems for survey ID {survey_id}.", 
                         level=logging.INFO)
                     continue
 
-                if survey_type == "consent":
+                if config_item_type == "consent":
                     researcher_check = response.get(researcher_check_question_id)
 
                     if researcher_check == "":
                         skipped_count += 1
-                        self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher check not yet completed.", 
+                        self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher check not yet completed.", 
                         level=logging.INFO)
                         continue
 
                     if not researcher_check:
                         skipped_count += 1
-                        self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher check field '{researcher_check_question_id}' changed or nonexistent.", 
+                        self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher check field '{researcher_check_question_id}' changed or nonexistent.", 
                         level=logging.ERROR)
                         continue
 
                     if researcher_check == "N":
                         skipped_count += 1
-                        self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher marked no consent.", 
+                        self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher marked no consent.", 
                         level=logging.INFO)
                         continue
 
@@ -893,49 +897,49 @@ class LimeSurveyConnector(Connector):
                     should_upload_main = True
                     # Use pre-fetched existence_results
                     if existence_results and existence_results.get(current_survey_column, False):
-                        self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping main response upload for survey ID {survey_id}: Data already exists in {current_survey_column} and overwrite is false.", 
+                        self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping main response upload for survey ID {survey_id}: Data already exists in {current_survey_column} and overwrite is false.", 
                             level=logging.INFO)
                         should_upload_main = False
                     
                     if should_upload_main:
-                        self.log(f"{survey_type}: Processing main response for survey ID: {survey_id}", logging.DEBUG)
+                        self.log(f"{config_item_name}: Processing main response for survey ID: {survey_id}", logging.DEBUG)
                         processed_response = self.process_response(response, document_type=doc_type, answers_to_remove=answers_to_remove)
 
-                        self.log(f"{survey_type}: Uploading main response for survey ID: {survey_id}", logging.DEBUG)
+                        self.log(f"{config_item_name}: Uploading main response for survey ID: {survey_id}", logging.DEBUG)
                         self.upload_response(processed_response, short_pseudonym, current_survey_column, file_extension=f".{doc_type}")
                         uploaded_main_count += 1
-                        self.log(f"{survey_type}: Uploaded main response for survey ID: {survey_id}", logging.INFO)
+                        self.log(f"{config_item_name}: Uploaded main response for survey ID: {survey_id}", logging.INFO)
 
                 # Handle question-specific column mapping
                 if current_question_columns:
-                    self.log(f"{survey_type}: Processing specific question columns", logging.DEBUG)
+                    self.log(f"{config_item_name}: Processing specific question columns", logging.DEBUG)
                     question_uploads = self._process_question_columns(response=response,
                                                     short_pseudonym=short_pseudonym,
                                                     question_columns=current_question_columns,
                                                     document_type=doc_type,
                                                     existence_results=existence_results)
                     uploaded_question_count += question_uploads
-                    self.log(f"{survey_type}: Finished processing specific question columns for {short_pseudonym} (Uploaded: {question_uploads})", logging.INFO)
+                    self.log(f"{config_item_name}: Finished processing specific question columns for {short_pseudonym} (Uploaded: {question_uploads})", logging.INFO)
 
                 # Handle file uploads
                 if current_file_upload_columns:
-                    self.log(f"{survey_type}: Retrieving file uploads for survey ID: {survey_id}", logging.DEBUG)
+                    self.log(f"{config_item_name}: Retrieving file uploads for survey ID: {survey_id}", logging.DEBUG)
                     file_dict = self.get_uploaded_files(survey_id=survey_id, token=short_pseudonym)
 
-                    self.log(f"{survey_type}: Processing file uploads for survey ID: {survey_id}", logging.DEBUG)
+                    self.log(f"{config_item_name}: Processing file uploads for survey ID: {survey_id}", logging.DEBUG)
                     file_uploads = self._process_file_uploads(file_dict=file_dict,
                                                 short_pseudonym=short_pseudonym,
                                                 file_upload_columns=current_file_upload_columns,
                                                 existence_results=existence_results)
                     uploaded_file_count += file_uploads
-                    self.log(f"{survey_type}: Finished processing file uploads for {short_pseudonym} (Uploaded: {file_uploads})", logging.INFO)
+                    self.log(f"{config_item_name}: Finished processing file uploads for {short_pseudonym} (Uploaded: {file_uploads})", logging.INFO)
 
                 # Consent survey specific handling
-                if survey_type == "consent" and consent_bool_column:
+                if config_item_type == "consent" and consent_bool_column:
                     should_upload_consent = True
 
                     if existence_results and existence_results.get(consent_bool_column, False):
-                        self.log(f"{survey_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping consent status upload: Data already exists in {consent_bool_column} and overwrite is false.", 
+                        self.log(f"{config_item_name}: ({index}/{total_subjects}): {short_pseudonym}: Skipping consent status upload: Data already exists in {consent_bool_column} and overwrite is false.", 
                             level=logging.INFO)
                         should_upload_consent = False
                     
@@ -943,18 +947,18 @@ class LimeSurveyConnector(Connector):
                         # store consent bool, using string instead of bytes to make it printable
                         self.upload_data_by_short_pseudonym(short_pseudonym, consent_bool_column, "1")
                         uploaded_consent_count += 1
-                        self.log(f"{survey_type}: Set consent status for {short_pseudonym}", logging.INFO)
+                        self.log(f"{config_item_name}: Set consent status for {short_pseudonym}", logging.INFO)
 
             processed_count += 1
 
-        self.log(f"------ {survey_type.upper()} Upload Summary ------", logging.INFO, tag=self.LOG_TAG)
+        self.log(f"------ {config_item_name.upper()} Upload Summary ------", logging.INFO, tag=self.LOG_TAG)
         self.log(f"Total subjects found: {total_subjects}", logging.INFO, tag=self.LOG_TAG)
         self.log(f"Subjects skipped (no survey ID, consent given/denied, etc.): {skipped_count}", logging.INFO, tag=self.LOG_TAG)
         self.log(f"Subjects processed (attempted upload): {processed_count}", logging.INFO, tag=self.LOG_TAG)
         self.log(f"Successfully uploaded main responses: {uploaded_main_count}", logging.INFO, tag=self.LOG_TAG)
         self.log(f"Successfully uploaded question-specific values: {uploaded_question_count}", logging.INFO, tag=self.LOG_TAG)
         self.log(f"Successfully uploaded files: {uploaded_file_count}", logging.INFO, tag=self.LOG_TAG)
-        if survey_type == "consent":
+        if config_item_type == "consent":
             self.log(f"Successfully uploaded consent statuses: {uploaded_consent_count}", logging.INFO, tag=self.LOG_TAG)
         self.log("-----------------------------------------", logging.INFO, tag=self.LOG_TAG)
 
@@ -1151,14 +1155,14 @@ class LimeSurveyConnector(Connector):
         overall_uploaded_questions = 0
         overall_uploaded_files = 0
         overall_uploaded_consent = 0
-        processed_survey_types = []
+        processed_config_item_names = []
 
-        for survey_type, survey_config in config.items():
+        for config_item_name, survey_config in config.items():
             if survey_config.get("enabled", False):
-                self.log(f"Processing survey type for upload: {survey_type}", level=logging.INFO, tag=self.LOG_TAG)
+                self.log(f"Processing survey type for upload: {config_item_name}", level=logging.INFO, tag=self.LOG_TAG)
 
                 (total, skipped, processed, 
-                  uploaded_main, uploaded_questions, uploaded_files, uploaded_consent) = self.store_survey_responses_in_pep(survey_config, survey_type)
+                  uploaded_main, uploaded_questions, uploaded_files, uploaded_consent) = self.store_survey_responses_in_pep(survey_config, config_item_name)
 
                 # Aggregate overall counts
                 overall_total_subjects += total
@@ -1168,10 +1172,10 @@ class LimeSurveyConnector(Connector):
                 overall_uploaded_questions += uploaded_questions
                 overall_uploaded_files += uploaded_files
                 overall_uploaded_consent += uploaded_consent
-                processed_survey_types.append(survey_type)
+                processed_config_item_names.append(config_item_name)
 
         self.log("======== Overall Upload Summary ========", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Processed survey types for upload: {', '.join(processed_survey_types) if processed_survey_types else 'None'}", level=logging.INFO, tag=self.LOG_TAG)
+        self.log(f"Processed survey types for upload: {', '.join(processed_config_item_names) if processed_config_item_names else 'None'}", level=logging.INFO, tag=self.LOG_TAG)
         self.log(f"Overall total subjects considered: {overall_total_subjects}", level=logging.INFO, tag=self.LOG_TAG)
         self.log(f"Overall subjects skipped: {overall_skipped_count}", level=logging.INFO, tag=self.LOG_TAG)
         self.log(f"Overall subjects processed (upload attempted): {overall_processed_subjects}", level=logging.INFO, tag=self.LOG_TAG)

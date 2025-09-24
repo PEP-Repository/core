@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from .connectors import Connector
 
@@ -38,14 +39,15 @@ class DataMonitor(Connector):
             raise ValueError("Monitor columns must be a list of strings")
         if not isinstance(info_columns, list):
             raise ValueError("Info columns must be a list of strings")
-        # Get data info for the monitor columns
-        self.log("Getting data info for monitor columns", level=logging.DEBUG)
-        data_info = self.get_data_info(monitor_columns)
 
         # Get participant info from the info columns
         self.log("Getting participant info from info columns", level=logging.DEBUG)
-        participant_info = self.list_data_for_columns(info_columns)
+        participant_info = self.list_columndata_by_local_pseudonym(info_columns)
         self.log(f"Found {len(participant_info)} participants", level=logging.DEBUG)
+
+        # Get data info for the monitor columns
+        self.log("Getting data info for monitor (metadata only)", level=logging.DEBUG)
+        data_info = self.get_data_info(monitor_columns)
 
         missing_entries = []
 
@@ -223,40 +225,22 @@ class DataMonitor(Connector):
         self.log(f"Generated HTML for {len(timestamps)} prometheus components", level=logging.DEBUG)
         return html
 
-    def generate_html_report(self, monitor_columns: list[str], info_columns: list[str], output_path: str = None, 
-                            include_javascript: bool = True) -> str:
+    def _calculate_column_stats(self, monitor_columns: list[str], participant_info: dict, data_info: dict) -> dict:
         """
-        Generate an HTML report showing the status of monitored data columns.
+        Calculate column completion statistics.
         
         Args:
-            monitor_columns: List of columns to check for data
-            info_columns: List of columns to include as identifying information
-            output_path: Path where to save the HTML report (if None, returns HTML as string)
-            include_javascript: Whether to include sections with javascript (default: True)
+            monitor_columns: List of columns to calculate stats for
+            participant_info: Dictionary of participant information
+            data_info: Dictionary of data information
             
         Returns:
-            HTML file path that was saved, or the HTML content as a string if output_path is None
+            Dictionary with completion statistics for each column
         """
-        self.log(f"Generating HTML report. Monitor columns: {monitor_columns}, Info columns: {info_columns}", level=logging.INFO)
-        if not isinstance(monitor_columns, list):
-            raise ValueError("Monitor columns must be a list of strings")
-        if not isinstance(info_columns, list):
-            raise ValueError("Info columns must be a list of strings")
-
-        # Get all the data in one go to avoid redundant calls
-        self.log("Finding missing entries", level=logging.DEBUG)
-        missing_entries, data_info, participant_info = self.find_missing_entries(monitor_columns, info_columns)
-        
-        # Create a lookup of missing columns by local pseudonym for quick reference
-        missing_by_lp = {}
-        for entry in missing_entries:
-            lp = entry["local_pseudonym"]
-            missing_by_lp[lp] = entry["missing_columns"]
-        
-        # Calculate column completion statistics
         total_participants = len(participant_info)
         self.log(f"Calculating statistics for {total_participants} participants", level=logging.DEBUG)
         column_stats = {}
+        
         for col in monitor_columns:
             filled_count = 0
             for lp in participant_info:
@@ -268,19 +252,20 @@ class DataMonitor(Connector):
                 "percentage": round((filled_count / total_participants) * 100, 1) if total_participants > 0 else 0
             }
             self.log(f"Column {col}: {filled_count}/{total_participants} ({column_stats[col]['percentage']}%)", level=logging.DEBUG)
+        
+        return column_stats
 
-        prometheus_html = ""
-        if hasattr(self, 'prometheus_dir') and self.prometheus_dir and hasattr(self, 'env_prefix') and self.env_prefix:
-            if include_javascript:
-                prometheus_html = self.generate_prometheus_stats_html()
-            # No point in including metrics section if not using javascript
-            else:
-                self.log("Skipping Prometheus metrics section as JavaScript is not included", level=logging.INFO)
-
-        html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
+    def _generate_html_header(self, include_javascript: bool) -> str:
+        """
+        Generate HTML header with styles and optional JavaScript.
+        
+        Args:
+            include_javascript: Whether to include JavaScript functionality
+            
+        Returns:
+            HTML header string
+        """
+        html_head = """
             <title>Data Monitoring Report</title>
             <style>
                 body { font-family: Arial, sans-serif; margin: 20px; }
@@ -322,6 +307,19 @@ class DataMonitor(Connector):
                 }
                 .metrics-table th {
                     background-color: #f2f2f2;
+                }
+                /* PDF-specific styles for better text wrapping */
+                @media print {
+                    table {
+                        table-layout: fixed;
+                        width: 100%;
+                    }
+                    th, td {
+                        word-wrap: break-word;
+                        word-break: break-all;
+                        white-space: normal;
+                        overflow: hidden;
+                    }
                 }
                 .copy-btn {
                     display: inline-flex;
@@ -411,7 +409,7 @@ class DataMonitor(Connector):
         """
 
         if include_javascript:
-            html += """
+            html_head += """
             <script>
                 function copyToClipboard(text, btnId, msgId) {
                     const btn = document.getElementById(btnId);
@@ -444,18 +442,32 @@ class DataMonitor(Connector):
             </script>
             """
 
-        html += """
-        </head>
-        <body>
-            <h1>Data Monitoring Report</h1>
+        return html_head
+
+    def _generate_table_header(self, participant_info: dict, include_javascript: bool, statistics_only: bool = False) -> str:
         """
+        Generate table header with participant columns or statistics-only header.
+        
+        Args:
+            participant_info: Dictionary of participant information
+            include_javascript: Whether to include interactive elements
+            statistics_only: Whether to generate statistics-only header
+            
+        Returns:
+            HTML table header string
+        """
+        if statistics_only:
+            # Generate statistics-only table header
+            return """
+                <tr>
+                    <th>Data Field</th>
+                    <th>Filled</th>
+                    <th>Total</th>
+                    <th>Completion %</th>
+                </tr>
+            """
 
-        # Add prometheus metrics section if included
-        if prometheus_html:
-            html += prometheus_html
-
-        html += """
-            <table>
+        html = """
                 <tr>
                 <th>Data Field</th>
                 <th>Filled</th>
@@ -499,6 +511,21 @@ class DataMonitor(Connector):
             pp_index += 1
 
         html += "</tr>\n"
+        return html
+
+    def _generate_info_rows(self, info_columns: list[str], participant_info: dict) -> str:
+        """
+        Generate HTML rows for info columns including special handling for EmailsSent.
+        
+        Args:
+            info_columns: List of info column names
+            participant_info: Dictionary of participant information
+            
+        Returns:
+            HTML rows string
+        """
+        html = ""
+        lp_list = list(participant_info.keys())
 
         # Add rows for each info column
         for col in info_columns:
@@ -571,6 +598,50 @@ class DataMonitor(Connector):
 
             html += "</tr>\n"
 
+        return html
+
+    def _generate_monitor_rows(self, monitor_columns: list[str], column_stats: dict, 
+                              participant_info: dict, data_info: dict, missing_by_lp: dict,
+                              statistics_only: bool = False) -> str:
+        """
+        Generate HTML rows for monitor columns with completion stats.
+        
+        Args:
+            monitor_columns: List of monitor column names
+            column_stats: Dictionary with completion statistics
+            participant_info: Dictionary of participant information
+            data_info: Dictionary of data information
+            missing_by_lp: Dictionary mapping local pseudonyms to missing columns
+            statistics_only: Whether to generate statistics-only rows
+            
+        Returns:
+            HTML rows string
+        """
+        if statistics_only:
+            # Generate statistics-only rows
+            html = ""
+            for col in monitor_columns:
+                stats = column_stats[col]
+                percentage = stats["percentage"]
+
+                html += f"""
+                <tr>
+                    <td>{col}</td>
+                    <td>{stats["filled"]}</td>
+                    <td>{stats["total"]}</td>
+                    <td>
+                        {percentage}%
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: {percentage}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                """
+            return html
+
+        html = ""
+        lp_list = list(participant_info.keys())
+
         # Add rows for each monitor column with completion stats
         for col in monitor_columns:
             stats = column_stats[col]
@@ -604,11 +675,121 @@ class DataMonitor(Connector):
 
             html += "</tr>\n"
 
+        return html
+
+    def _generate_html_content(self, monitor_columns: list[str], info_columns: list[str], 
+                              participant_info: dict, data_info: dict, missing_by_lp: dict, 
+                              column_stats: dict, report_title: str, include_javascript: bool,
+                              statistics_only: bool = False) -> str:
+        """
+        Generate the actual HTML content for the report.
+        
+        Args:
+            monitor_columns: List of monitor column names
+            info_columns: List of info column names
+            participant_info: Dictionary of participant information
+            data_info: Dictionary of data information
+            missing_by_lp: Dictionary mapping local pseudonyms to missing columns
+            column_stats: Dictionary with completion statistics
+            report_title: Title for the HTML report
+            include_javascript: Whether to include JavaScript functionality
+            statistics_only: Whether to only show statistics without individual participant data
+            
+        Returns:
+            Complete HTML content as a string
+        """
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        """
+
+        html += self._generate_html_header(include_javascript)
+
+        html += f"""
+        </head>
+        <body>
+            <h1>{report_title}</h1>
+        """
+
+        # Generate prometheus metrics section if available
+        if hasattr(self, 'prometheus_dir') and self.prometheus_dir and hasattr(self, 'env_prefix') and self.env_prefix:
+            if include_javascript:
+                prometheus_html = self.generate_prometheus_stats_html()
+                if prometheus_html:
+                    html += prometheus_html
+                else:
+                    self.log("Error generating Prometheus metrics HTML", level=logging.ERROR)
+            else:
+                self.log("Skipping Prometheus metrics section as JavaScript is not included", level=logging.INFO)
+
+        html += """
+            <table>
+        """
+
+        html += self._generate_table_header(participant_info, include_javascript, statistics_only)
+
+        if not statistics_only:
+            html += self._generate_info_rows(info_columns, participant_info)
+
+        html += self._generate_monitor_rows(monitor_columns, column_stats, participant_info, data_info, missing_by_lp, statistics_only)
+
+        # Close table and HTML
         html += """
             </table>
         </body>
         </html>
         """
+
+        return html
+
+    def generate_html_report(self, monitor_columns: list[str], info_columns: list[str], output_path: str = None, 
+                            include_javascript: bool = True, report_title: str = "Data Monitoring Report",
+                            statistics_only: bool = False) -> str:
+        """
+        Generate an HTML report showing the status of monitored data columns for all participants.
+        
+        Args:
+            monitor_columns: List of columns to check for data
+            info_columns: List of columns to include as identifying information
+            output_path: Path where to save the HTML report (if None, returns HTML as string)
+            include_javascript: Whether to include sections with javascript (default: True)
+            report_title: Title for the HTML report
+            statistics_only: Whether to only show statistics without individual participant data
+            
+        Returns:
+            HTML file path that was saved, or the HTML content as a string if output_path is None
+        """
+        self.log(f"Generating HTML report. Monitor columns: {monitor_columns}, Info columns: {info_columns}", level=logging.INFO)
+        if not isinstance(monitor_columns, list):
+            raise ValueError("Monitor columns must be a list of strings")
+        if not isinstance(info_columns, list):
+            raise ValueError("Info columns must be a list of strings")
+
+        # Get all data using find_missing_entries
+        missing_entries, data_info, participant_info = self.find_missing_entries(monitor_columns, info_columns)
+        
+        # Create a lookup of missing columns by local pseudonym for quick reference
+        missing_by_lp = {}
+        for entry in missing_entries:
+            lp = entry["local_pseudonym"]
+            missing_by_lp[lp] = entry["missing_columns"]
+        
+        # Calculate column completion statistics
+        column_stats = self._calculate_column_stats(monitor_columns, participant_info, data_info)
+
+        # Generate the HTML content
+        html = self._generate_html_content(
+            monitor_columns=monitor_columns,
+            info_columns=info_columns,
+            participant_info=participant_info,
+            data_info=data_info,
+            missing_by_lp=missing_by_lp,
+            column_stats=column_stats,
+            report_title=report_title,
+            include_javascript=include_javascript,
+            statistics_only=statistics_only
+        )
 
         # If output_path is None, return the HTML directly
         if output_path is None:
@@ -622,3 +803,190 @@ class DataMonitor(Connector):
 
         self.log(f"HTML report saved to {output_path}", level=logging.INFO)
         return output_path
+
+    def generate_filtered_html_report(self, monitor_columns: list[str], info_columns: list[str], 
+                                     participant_info: dict, output_path: str = None, 
+                                     include_javascript: bool = True, 
+                                     report_title: str = "Data Monitoring Report",
+                                     statistics_only: bool = False) -> str:
+        """
+        Generate an HTML report showing the status of monitored data columns for pre-filtered participants.
+        
+        Args:
+            monitor_columns: List of columns to check for data
+            info_columns: List of columns to include as identifying information
+            participant_info: Pre-filtered participant info dictionary
+            output_path: Path where to save the HTML report (if None, returns HTML as string)
+            include_javascript: Whether to include sections with javascript (default: True)
+            report_title: Title for the HTML report
+            statistics_only: Whether to only show statistics without individual participant data
+            
+        Returns:
+            HTML file path that was saved, or the HTML content as a string if output_path is None
+        """
+        self.log(f"Generating filtered HTML report for {len(participant_info)} participants", level=logging.INFO)
+        if not isinstance(monitor_columns, list):
+            raise ValueError("Monitor columns must be a list of strings")
+        if not isinstance(info_columns, list):
+            raise ValueError("Info columns must be a list of strings")
+        if not isinstance(participant_info, dict):
+            raise ValueError("Participant info must be a dictionary")
+
+        # Get data info for the monitor columns
+        self.log("Getting data info for monitor columns", level=logging.DEBUG)
+        data_info = self.get_data_info(monitor_columns)
+        
+        # Filter data_info to only include participants in the participant_info
+        filtered_data_info = {lp: data for lp, data in data_info.items() if lp in participant_info}
+        
+        # Find missing entries for this filtered set
+        missing_entries = []
+        for lp, info_data in participant_info.items():
+            missing_columns = []
+
+            # Check if this local pseudonym exists in filtered_data_info
+            if lp not in filtered_data_info:
+                # All monitor columns are missing
+                missing_columns = monitor_columns.copy()
+                self.log(f"Participant {lp} is missing all monitor columns", level=logging.DEBUG)
+            else:
+                # Check each monitor column
+                for column in monitor_columns:
+                    if column not in filtered_data_info[lp] or "timestamp" not in filtered_data_info[lp][column]:
+                        missing_columns.append(column)
+                        self.log(f"Participant {lp} is missing column {column}", level=logging.DEBUG)
+
+            # If any columns are missing, add to the results
+            if missing_columns:
+                missing_entries.append({
+                    "local_pseudonym": lp,
+                    "info_data": info_data,
+                    "missing_columns": missing_columns
+                })
+        
+        # Create a lookup of missing columns by local pseudonym for quick reference
+        missing_by_lp = {}
+        for entry in missing_entries:
+            lp = entry["local_pseudonym"]
+            missing_by_lp[lp] = entry["missing_columns"]
+        
+        # Calculate column completion statistics for the filtered set
+        column_stats = self._calculate_column_stats(monitor_columns, participant_info, filtered_data_info)
+
+        # Generate the HTML content
+        html = self._generate_html_content(
+            monitor_columns=monitor_columns,
+            info_columns=info_columns,
+            participant_info=participant_info,
+            data_info=filtered_data_info,
+            missing_by_lp=missing_by_lp,
+            column_stats=column_stats,
+            report_title=report_title,
+            include_javascript=include_javascript,
+            statistics_only=statistics_only
+        )
+
+        # If output_path is None, return the HTML directly
+        if output_path is None:
+            self.log("Returning filtered HTML report as string", level=logging.DEBUG)
+            return html
+
+        # Otherwise write to the specified file
+        self.log(f"Writing filtered HTML report to {output_path}", level=logging.DEBUG)
+        with open(output_path, 'w') as f:
+            f.write(html)
+
+        self.log(f"Filtered HTML report saved to {output_path}", level=logging.INFO)
+        return output_path
+
+    def _group_participants_by_column(self, participant_info: dict, group_column: str) -> dict:
+        """
+        Group participants by a specific column value.
+        
+        Args:
+            participant_info: Dictionary of participant information
+            group_column: Column name to group by
+            
+        Returns:
+            Dictionary with group values as keys and participant info dictionaries as values
+        """
+        self.log(f"Grouping participants by column: {group_column}", level=logging.DEBUG)
+        groups = {}
+        
+        for lp, info_data in participant_info.items():
+            # Get the value from the specified column
+            group_value = info_data["columns"].get(group_column, "unknown")
+            
+            # Initialize group if it doesn't exist
+            if group_value not in groups:
+                groups[group_value] = {}
+                
+            # Add participant to the group
+            groups[group_value][lp] = info_data
+            
+        self.log(f"Created {len(groups)} groups", level=logging.DEBUG)
+        for group_value, group_participants in groups.items():
+            self.log(f"Group '{group_value}': {len(group_participants)} participants", level=logging.DEBUG)
+            
+        return groups
+
+    def generate_grouped_html_reports(self, monitor_columns: list[str], info_columns: list[str], 
+                                    group_column: str, include_javascript: bool = True,
+                                    statistics_only: bool = True) -> dict[str, str]:
+        """
+        Generate separate HTML reports for each group based on a shared info column value.
+        This is a convenience function that groups participants and calls generate_filtered_html_report for each group.
+        
+        Args:
+            monitor_columns: List of columns to check for data
+            info_columns: List of columns to include as identifying information
+            group_column: Column name to group participants by
+            include_javascript: Whether to include sections with javascript (default: True)
+            statistics_only: Whether to only show statistics without individual participant data
+            
+        Returns:
+            Dictionary with group names as keys and HTML content as values
+        """
+        self.log(f"Generating grouped HTML reports by column: {group_column}", level=logging.INFO)
+        
+        if not isinstance(monitor_columns, list):
+            raise ValueError("Monitor columns must be a list of strings")
+        if not isinstance(info_columns, list):
+            raise ValueError("Info columns must be a list of strings")
+        if group_column not in info_columns:
+            raise ValueError(f"Group column '{group_column}' must be included in info_columns")
+        
+        # Get all participant info first
+        self.log("Getting participant info from info columns", level=logging.DEBUG)
+        all_participant_info = self.list_columndata_by_local_pseudonym(info_columns)
+        
+        # Group participants by the specified column
+        groups = self._group_participants_by_column(all_participant_info, group_column)
+        
+        generated_reports = {}
+        
+        # Generate a report for each group using the filtered report function
+        for group_value, group_participant_info in groups.items():
+            self.log(f"Generating report for group '{group_value}' with {len(group_participant_info)} participants", level=logging.DEBUG)
+            
+            try:
+                report_title = f"Data Monitoring Report - {group_value}"
+                html_content = self.generate_filtered_html_report(
+                    monitor_columns=monitor_columns,
+                    info_columns=info_columns,
+                    participant_info=group_participant_info,
+                    output_path=None,  # Return HTML content instead of writing to file
+                    include_javascript=False,  # Disable JavaScript, as it's for email
+                    report_title=report_title,
+                    statistics_only=statistics_only
+                )
+                    
+                generated_reports[group_value] = html_content
+                self.log(f"Generated report for group '{group_value}'", level=logging.INFO)
+                
+            except Exception as e:
+                self.log(f"Error generating report for group '{group_value}': {e}", level=logging.ERROR)
+                raise
+                
+        self.log(f"Generated {len(generated_reports)} grouped HTML reports", level=logging.INFO)
+        return generated_reports

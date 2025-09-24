@@ -292,7 +292,7 @@ class ExcelConnector(Connector):
         self.log(f"Found {len(all_pseudonyms)} unique pseudonyms in the data", logging.INFO)
 
         # Get subject info from PEP
-        pep_pseudonyms = self.read_short_pseudonyms(sp_pep_column)
+        pep_pseudonyms = self.list_short_pseudonyms(sp_pep_column)
 
         total_subjects = len(pep_pseudonyms)
         processed_count = 0

@@ -43,7 +43,7 @@ class Connector(AccessGroup):
             columns: The column names to check
 
         Returns:
-            Dictionary with local pseudonyms as keys and column timestamps as values
+            Dictionary with local pseudonyms as keys and as values a dict of columns with timestamps
         """
         self.log(f"Getting data info for columns: {columns}", level=logging.DEBUG)
         if not isinstance(columns, list):

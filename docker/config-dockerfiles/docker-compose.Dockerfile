@@ -1,4 +1,6 @@
-FROM docker
+ARG ENVIRONMENT=master
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 ARG ENVIRONMENT
 
-COPY ${ENVIRONMENT}/docker-compose/ /compose
+COPY ${ENVIRONMENT}/docker-compose /compose/

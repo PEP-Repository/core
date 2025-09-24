@@ -37,12 +37,12 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def read_short_pseudonyms(self, column_name: str) -> list[str]:
+    def list_short_pseudonyms(self, column_name: str) -> list[str]:
         """
         Reads all short pseudonyms from a given (short pseudonym) column name and returns 
         a list of those short pseudonyms. Provide the column name without the prefix.
         """
-        command = ["list", "-c", f"ShortPseudonym.{column_name}", "-P", "*"]
+        command = ["list", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{column_name}", "-P", "*"]
         try:
             output = self.repository.run_command(command)
             self.log("Successfully obtained short pseudonyms from PEP")
@@ -64,17 +64,14 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def read_short_pseudonym_and_associated_column(self, short_pseudonym_column_name: str, column_name: str):
-        self.read_short_pseudonym_and_associated_columns(short_pseudonym_column_name, [column_name])
-
-    def read_short_pseudonym_and_associated_columns(self, short_pseudonym_column_name: str, columns: list[str]) -> dict:
+    def list_columndata_by_short_pseudonym(self, short_pseudonym_column_name: str, columns: list[str]) -> dict:
         if not isinstance(columns, list):
-            raise ValueError("Tokens must be a list of strings")
+            raise ValueError("Columns must be a list of strings, even if it is just one column")
         """
         Reads a set of short pseudonyms and data from a set of columns and returns a dictionary with
         the short pseudonym as key and a dict with the column name as key and the data as value.
         """
-        command = ["list", "-c", f"ShortPseudonym.{short_pseudonym_column_name}", "-P", "*"]
+        command = ["list", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{short_pseudonym_column_name}", "-P", "*"]
         for column in columns:
             command.extend(["-c", column])
         try:
@@ -101,14 +98,14 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def list_data_for_columns(self, columns: list[str]):
+    def list_columndata_by_local_pseudonym(self, columns: list[str]):
         if not isinstance(columns, list):
-            raise ValueError("Tokens must be a list of strings")
+            raise ValueError("Columns must be a list of strings, even if it is just one column.")
         """
         Lists the data for a set of columns and returns a dictionary with the local pseudonym as key
         and a dict with the column name as key and the data as value.
         """
-        command = ["list", "--local-pseudonyms", "-P", "*"]
+        command = ["list", "--inline-data-size-limit", "0", "--local-pseudonyms", "-P", "*"]
         for column in columns:
             command.extend(["-c", column])
         try:
@@ -125,6 +122,7 @@ class AccessGroup:
                             "columns": {column: item["data"].get(column) for column in columns},
                             "pp": polymorphic_pseudonym
                         }
+
             except json.JSONDecodeError as e:
                 self.log(f"Error decoding JSON: {e}", logging.ERROR)
                 raise

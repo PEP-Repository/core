@@ -84,7 +84,8 @@ get_host_port() {
 host_default_user_node="ssh"
 host_sync_pull_user_node="sync-pull"
 host_sync_push_user_node="sync-push"
-host_user_nodes="$host_default_user_node $host_sync_pull_user_node $host_sync_push_user_node"
+host_deploy_compose_user_node="deploy-compose"
+host_user_nodes="$host_default_user_node $host_sync_pull_user_node $host_sync_push_user_node $host_deploy_compose_user_node"
 
 get_known_host_line() {
   c_entry="$1"
@@ -446,6 +447,58 @@ sync_data() {
   fi
 }
 
+get_deploy_compose_commands() {
+  c_json="$1"
+  c_file_dir="${2:-.}"
+  compose_image="$3"
+  action="${4:-pull-restart}"  # pull, restart, or pull-restart
+  
+  echo "$c_json" \
+    | jq -c '.[] | select(has("deploy-compose"))' \
+    | while read -r entry
+  do
+    # Use the deploy-compose specific configuration or fall back to default ssh user
+    ssh_cmd=$(get_ssh_command "$entry" "$c_file_dir" "" "deploy-compose")
+    
+    # Pass the action and compose_image as separate arguments
+    echo "$ssh_cmd '$action $compose_image'"
+  done
+}
+
+deploy_compose() {
+  c_json="$1"
+  c_file_dir="${2:-.}"
+  compose_image="$3"
+  action="${4:-pull-restart}"  # pull, restart, or pull-restart
+  
+  deploy_compose_commands=$(get_deploy_compose_commands "$c_json" "$c_file_dir" "$compose_image" "$action")
+  
+  prepare_ssh_connectivity "$c_json" "$c_file_dir" '.[] | select(has("deploy-compose"))'
+  
+  if [ -n "$deploy_compose_commands" ]; then
+    case "$action" in
+      "pull")
+        action_verb="Pulling images"
+        ;;
+      "restart")
+        action_verb="Restarting services"
+        ;;
+      "pull-restart")
+        action_verb="Pulling and restarting"
+        ;;
+      *)
+        action_verb="Executing $action"
+        ;;
+    esac
+    echo "$action_verb with docker-compose on $(echo "$deploy_compose_commands" | wc -l) host(s)..."
+    echo "$deploy_compose_commands" | while read -r cmd; do
+      run_cmd "$cmd"
+    done
+  else
+    echo "No deploy-compose configuration found in constellation"
+  fi
+}
+
 # We're using envsubst to expand environment variables in the constellation file
 constellation_json=$(envsubst < "$constellation_file")
 constellation_file_dir="$(get_file_dir "$constellation_file")"
@@ -453,6 +506,16 @@ constellation_file_dir="$(get_file_dir "$constellation_file")"
 case $constellation_command in
   update)
     update "$constellation_json" "$constellation_file_dir"
+    ;;
+  deploy-compose)
+    compose_image="$3"
+    action="${4:-pull-restart}"
+    if [ -z "$compose_image" ]; then
+      echo "Error: compose image must be provided as third argument"
+      echo "Usage: $0 constellation.json deploy-compose [compose_image] [action]"
+      exit 1
+    fi
+    deploy_compose "$constellation_json" "$constellation_file_dir" "$compose_image" "$action"
     ;;
   update-data-sync)
     push_constellation_file="$3"
