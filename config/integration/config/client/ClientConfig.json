@@ -1,0 +1,44 @@
+{
+    "KeysFile":            "ClientKeys.json",
+    "CACertificateFile":   "../../pki/rootCA.cert",
+    "PublicKeyData":       "",
+    "PublicKeyPseudonyms": "",
+    "ShadowPublicKeyFile": "ShadowAdministration.pub",
+    "AuthenticationServer": {
+        "RequestURL": "https://localhost:8080/auth",
+        "TokenURL":   "https://localhost:8080/token"
+    },
+    "AccessManager": {
+        "Name":    "AccessManager",
+        "Address": "localhost",
+        "Port":    16501
+    },
+    "StorageFacility": {
+        "Name":    "StorageFacility",
+        "Address": "localhost",
+        "Port":    16519
+    },
+    "KeyServer": {
+        "Name":    "KeyServer",
+        "Address": "localhost",
+        "Port":    16511
+    },
+    "Transcryptor": {
+        "Name":    "Transcryptor",
+        "Address": "localhost",
+        "Port":    16516
+    },
+    "RegistrationServer": {
+        "Name":    "RegistrationServer",
+        "Address": "localhost",
+        "Port":    16518
+    },
+    "Authserver": {
+        "Name":    "Authserver",
+        "Address": "localhost",
+        "Port":    16512
+    },
+    "Castor": {
+        "BaseURL": "https://data.castoredc.com/studies/%1/participants/%2/visits"
+    }
+}

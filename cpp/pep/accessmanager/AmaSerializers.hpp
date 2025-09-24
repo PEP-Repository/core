@@ -1,0 +1,34 @@
+#pragma once
+
+#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/accessmanager/AmaMessages.hpp>
+
+namespace pep {
+
+PEP_DEFINE_CODED_SERIALIZER(AmaCreateColumn);
+PEP_DEFINE_CODED_SERIALIZER(AmaRemoveColumn);
+PEP_DEFINE_CODED_SERIALIZER(AmaCreateColumnGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaRemoveColumnGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaAddColumnToGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaRemoveColumnFromGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaCreateParticipantGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaRemoveParticipantGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaAddParticipantToGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaRemoveParticipantFromGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaMutationRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(AmaMutationRequest);
+PEP_DEFINE_CODED_SERIALIZER(AmaCreateColumnGroupAccessRule);
+PEP_DEFINE_CODED_SERIALIZER(AmaRemoveColumnGroupAccessRule);
+PEP_DEFINE_CODED_SERIALIZER(AmaCreateParticipantGroupAccessRule);
+PEP_DEFINE_CODED_SERIALIZER(AmaRemoveParticipantGroupAccessRule);
+PEP_DEFINE_EMPTY_SERIALIZER(AmaMutationResponse);
+PEP_DEFINE_CODED_SERIALIZER(AmaQRColumn);
+PEP_DEFINE_CODED_SERIALIZER(AmaQRColumnGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaQRColumnGroupAccessRule);
+PEP_DEFINE_CODED_SERIALIZER(AmaQRParticipantGroup);
+PEP_DEFINE_CODED_SERIALIZER(AmaQRParticipantGroupAccessRule);
+PEP_DEFINE_CODED_SERIALIZER(AmaQueryResponse);
+PEP_DEFINE_CODED_SERIALIZER(AmaQuery);
+PEP_DEFINE_SIGNED_SERIALIZATION(AmaQuery);
+
+}

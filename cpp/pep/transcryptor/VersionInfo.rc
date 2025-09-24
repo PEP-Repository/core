@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepTranscryptor"
+#define PEP_EXE_DESCRIPTION "PEP Transcryptor server executable"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

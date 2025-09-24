@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DateTimeEditor</class>
+ <widget class="QWidget" name="DateTimeEditor">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>303</width>
+    <height>107</height>
+   </rect>
+  </property>
+  <property name="focusPolicy">
+   <enum>Qt::WheelFocus</enum>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel#dateLabel, QLabel#timeLabel {
+	border: 0.05em solid transparent;
+	padding: 0.25em;
+	font-size: 14pt;
+}
+
+QDateEdit#dateEdit, QTimeEdit#timeEdit {
+        border: 0.05em solid black;
+        border-radius: 0.25em;
+        padding: 0.25em;
+        font-size: 14pt;
+        outline: none;
+}
+QDateEdit#dateEdit:focus, QTimeEdit#timeEdit:focus {
+        border: 0.05em solid #CA0B5E;
+}
+QDateEdit#dateEdit[error=true], QTimeEdit#timeEdit[error=true] {
+        color: black;
+        background-color: rgb(255, 230, 230);
+}
+QTimeEdit#timeEdit:up-button, QTimeEdit#timeEdit:down-button {
+width: 20px; font-size: 10px;
+}
+QDateEdit#dateEdit:drop-down {
+width: 20px; font-size: 10px;
+}</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
+    <layout class="QFormLayout" name="formLayout_2">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetDefaultConstraint</enum>
+     </property>
+     <property name="formAlignment">
+      <set>Qt::AlignJustify|Qt::AlignTop</set>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="dateLabel">
+       <property name="text">
+        <string>Date</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="timeLabel">
+       <property name="text">
+        <string>Time</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QTimeEdit" name="timeEdit">
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="displayFormat">
+        <string>HH:mm:ss</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="DateEditor" name="dateEdit" native="true">
+       <property name="focusPolicy">
+        <enum>Qt::WheelFocus</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DateEditor</class>
+   <extends>QWidget</extends>
+   <header location="global">dateeditor.hpp</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>dateEdit</tabstop>
+  <tabstop>timeEdit</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,31 @@
+{
+    "PublicKeyPseudonyms": "CAB97D7E594B0DCA79BDFBDB090B08C153E761CF964CDA32D829BB746934B34B",
+
+    "KeysFile":            "AccessManagerKeys.json",
+    
+    "TLSPrivateKeyFile":   "TLSAccessManager.key",
+    "TLSCertificateFile":  "TLSAccessManager.chain",
+    
+    "PEPPrivateKeyFile":   "PEPAccessManager.key",
+    "PEPCertificateFile":  "PEPAccessManager.chain",
+    
+    "CACertificateFile":   "rootCA.cert",
+    
+    "ListenPort":    16501,
+    
+    "KeyServer":{
+        "Name":    "KeyServer",
+        "Address": "localhost",
+        "Port":    16511
+    },    
+    "Transcryptor": {
+        "Name":    "Transcryptor",
+        "Address": "localhost",
+        "Port":    16516
+    },
+    
+    "SystemKeysFile":  "SystemKeys.json",
+    
+    "StorageFile":             "accessManagerStorage.sqlite",
+    "GlobalConfigurationFile": "GlobalConfiguration.json"
+}

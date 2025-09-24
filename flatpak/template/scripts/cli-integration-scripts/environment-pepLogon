@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+flatpak run --command=pepLogon "nl.ru.cs.pep.$ENVIRONMENT" "$@"

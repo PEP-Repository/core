@@ -1,0 +1,4 @@
+# Include this file from .gitlab-ci.yml to make jobs interruptible by default
+
+default:
+  interruptible: true

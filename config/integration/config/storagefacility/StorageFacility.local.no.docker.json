@@ -1,0 +1,46 @@
+{
+  "KeysFile": "StorageFacilityKeys.json",
+  "EncIdKeyFile": "StorageFacilityEncIdKey.json",
+  "TLSPrivateKeyFile": "../../pki/TLSStorageFacility.key",
+  "TLSCertificateFile": "../../pki/TLSStorageFacility.chain",
+  "PEPPrivateKeyFile": "../../pki/PEPStorageFacility.key",
+  "PEPCertificateFile": "../../pki/PEPStorageFacility.chain",
+  "CACertificateFile": "../../pki/rootCA.cert",
+  "ListenPort": 16519,
+  "StoragePath": "meta",
+  "AccessManager": {
+    "Name": "AccessManager",
+    "Address": "localhost",
+    "Port": 16501
+  },
+  "KeyServer": {
+    "Name": "KeyServer",
+    "Address": "localhost",
+    "Port": 16511
+  },
+  "Transcryptor": {
+    "Name": "Transcryptor",
+    "Address": "localhost",
+    "Port": 16516
+  },
+  "PageStore": {
+    "Type": "local",
+    "//--CONFIGURATION FOR THE": "LOCAL PAGE STORE--",
+    "EndPoint": {
+      "Address": "localhost",
+      "Port": "9000",
+      "Name": "S3"
+    },
+    "Credentials": {
+      "AccessKey": "MyAccessKey",
+      "Secret": "MySecret"
+    },
+    "Ca-Cert-Path": "../../pki/rootCA.cert",
+    "Write-To-Bucket": "myBucket",
+    "Read-From-Buckets": [
+      "myBucket"
+    ],
+    "DataDir": "localpagestoredata",
+    "Bucket": "myBucket"
+  }
+}

@@ -1,0 +1,105 @@
+# Also check all non-system headers
+HeaderFilterRegex: .*
+# Ref: https://clang.llvm.org/extra/clang-tidy/checks/list.html
+Checks:
+  # Prevent duplicate warnings that we already get when running clang
+  - -clang-diagnostic-*
+
+  - bugprone-*
+  - -bugprone-branch-clone
+  - -bugprone-crtp-constructor-accessibility
+  - -bugprone-easily-swappable-parameters
+  - -bugprone-exception-escape
+  #XXX Enable when IgnoreConstantIntExpr becomes generally available
+  - -bugprone-implicit-widening-of-multiplication-result
+  - -bugprone-reserved-identifier # Disable as it's slow and we have -Wreserved-identifier
+  - -bugprone-switch-missing-default-case
+  - -bugprone-unchecked-optional-access
+
+  - cert-dcl50-cpp
+  - cert-dcl58-cpp
+  - cert-err33-c
+  - cert-err34-c
+  - cert-err52-cpp
+  - cert-err60-cpp
+  - cert-msc50-cpp
+  - cert-msc51-cpp
+  - cert-oop57-cpp
+  - cert-oop58-cpp
+
+  - concurrency-*
+
+  - cppcoreguidelines-avoid-goto
+  - cppcoreguidelines-avoid-non-const-global-variables
+  - cppcoreguidelines-avoid-reference-coroutine-parameters
+  - cppcoreguidelines-interfaces-global-init
+  - cppcoreguidelines-missing-std-forward
+  - cppcoreguidelines-narrowing-conversions
+  - cppcoreguidelines-no-malloc
+  - cppcoreguidelines-no-suspend-with-lock
+  - cppcoreguidelines-pro-type-const-cast
+  - cppcoreguidelines-pro-type-cstyle-cast
+  - cppcoreguidelines-pro-type-member-init
+  - cppcoreguidelines-slicing
+  - cppcoreguidelines-virtual-class-destructor
+
+  - google-build-namespaces
+  - google-global-names-in-headers
+  - google-readability-casting
+  # Don't enable as it is really slow: https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/2176#note_51237
+  #- google-runtime-int # Prefer (sized) typedefs where possible
+  - google-upgrade-googletest-case
+  - hicpp-exception-baseclass
+
+  - misc-confusable-identifiers
+  - misc-coroutine-hostile-raii
+  - misc-definitions-in-headers
+  - misc-misleading-bidirectional
+  - misc-misleading-identifier
+  - misc-new-delete-overloads
+  - misc-non-copyable-objects
+  - misc-redundant-expression
+  - misc-static-assert
+  - misc-throw-by-value-catch-by-reference
+  - misc-unconventional-assign-operator
+  - misc-uniqueptr-reset-release
+  - misc-unused-alias-decls
+  - misc-unused-using-decls
+  - misc-use-internal-linkage
+
+  - modernize-deprecated-headers
+  - modernize-replace-auto-ptr
+  - modernize-shrink-to-fit
+  - modernize-use-bool-literals
+  - modernize-use-constraints
+  - modernize-use-equals-default
+  - modernize-use-equals-delete
+  - modernize-use-nullptr
+  - modernize-use-override
+  - modernize-use-starts-ends-with
+  - modernize-use-std-numbers
+
+  - performance-move-const-arg
+  - performance-move-constructor-init
+  - performance-no-automatic-move
+  - performance-type-promotion-in-math-fn
+
+  - readability-const-return-type
+  - readability-container-data-pointer
+  - readability-duplicate-include
+  - readability-misleading-indentation
+  - readability-misplaced-array-index
+  - readability-redundant-casting
+  - readability-redundant-control-flow
+  - readability-redundant-declaration
+  - readability-redundant-preprocessor
+  - readability-reference-to-constructed-temporary
+  - readability-static-accessed-through-instance
+  - readability-string-compare
+  - readability-redundant-string-cstr
+  - readability-suspicious-call-argument
+
+CheckOptions:
+  # Ignore empty catch when it contains a comment with the word 'ignore'
+  bugprone-empty-catch.IgnoreCatchWithKeywords: ignore
+  misc-throw-by-value-catch-by-reference.CheckThrowTemporaries: false

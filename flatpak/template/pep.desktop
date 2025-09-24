@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=PEP Assessor Client ($ENVIRONMENT)
+Exec=pepAssessor
+Type=Application
+Icon=nl.ru.cs.pep.$ENVIRONMENT

@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ParticipantSelector</class>
+ <widget class="QWidget" name="ParticipantSelector">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>610</width>
+    <height>372</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel { font-size: 14pt; }</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout_2">
+   <item>
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QWidget" name="widget_2" native="true">
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="2">
+         <widget class="QPushButton" name="openParticipantButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QWidget {
+	border: 0.05em solid #CA0B5E;
+	border-radius: 0.25em;
+	color: #CA0B5E;
+	padding: 0.5em;
+	font-size: 13pt;
+	outline: none;
+}
+QWidget:focus {
+	border: 0.1em solid #CA0B5E;
+}
+QWidget:hover {
+	background-color: rgba(202,11,94,0.8);
+	color: white;
+}
+QWidget:disabled {
+	color: grey;
+	border-color: grey;
+}
+</string>
+          </property>
+          <property name="text">
+           <string>open-participant</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="QPushButton" name="cancelButton">
+          <property name="styleSheet">
+           <string notr="true">QWidget {
+	border: 0.05em solid #CA0B5E;
+	border-radius: 0.25em;
+	color: #CA0B5E;
+	padding: 0.5em;
+	font-size: 13pt;
+	outline: none;
+}
+QWidget:focus {
+	border: 0.1em solid #CA0B5E;
+}
+QWidget:hover {
+	background-color: rgba(202,11,94,0.8);
+	color: white;
+}
+QWidget:disabled {
+	color: grey;
+	border-color: grey;
+}
+</string>
+          </property>
+          <property name="text">
+           <string>cancel</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QPushButton" name="findShortPseudonymButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QWidget {
+	border: 0.05em solid #CA0B5E;
+	border-radius: 0.25em;
+	color: #CA0B5E;
+	padding: 0.5em;
+	font-size: 13pt;
+	outline: none;
+}
+QWidget:focus {
+	border: 0.1em solid #CA0B5E;
+}
+QWidget:hover {
+	background-color: rgba(202,11,94,0.8);
+	color: white;
+}
+QWidget:disabled {
+	color: grey;
+	border-color: grey;
+}
+</string>
+          </property>
+          <property name="text">
+           <string>find-short-pseudonym</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="sidInput">
+          <property name="focusPolicy">
+           <enum>Qt::StrongFocus</enum>
+          </property>
+          <property name="toolTip">
+           <string>participant-id-tooltip</string>
+          </property>
+          <property name="autoFillBackground">
+           <bool>false</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QLineEdit {
+	border: 0.05em solid black;
+	border-radius: 0.25em;
+	padding: 0.25em;
+	font-size: 14pt;
+	outline: none;
+}
+QLineEdit:focus {
+	border: 0.05em solid #CA0B5E;
+}
+QLineEdit[error=true] {
+	color: black;
+	background-color: rgb(255, 230, 230);
+}</string>
+          </property>
+          <property name="frame">
+           <bool>false</bool>
+          </property>
+          <property name="placeholderText">
+           <string>participant-id</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="shortPseudonymLabel">
+          <property name="styleSheet">
+           <string notr="true">QWidget {
+	border: 0.05em solid transparent
+;
+	padding: 0.25em;
+	font-size: 14pt;
+}</string>
+          </property>
+          <property name="text">
+           <string>participant-short-pseudonym</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="openParticipantLabel">
+          <property name="styleSheet">
+           <string notr="true">QWidget {
+	border: 0.05em solid transparent
+;
+	padding: 0.25em;
+	font-size: 14pt;
+}</string>
+          </property>
+          <property name="text">
+           <string>participant-id</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="shortPseudonymInput">
+          <property name="focusPolicy">
+           <enum>Qt::StrongFocus</enum>
+          </property>
+          <property name="toolTip">
+           <string>participant-short-pseudonym-tooltip</string>
+          </property>
+          <property name="autoFillBackground">
+           <bool>false</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QLineEdit {
+	border: 0.05em solid black;
+	border-radius: 0.25em;
+	padding: 0.25em;
+	font-size: 14pt;
+	outline: none;
+}
+QLineEdit:focus {
+	border: 0.05em solid #CA0B5E;
+}
+QLineEdit[error=true] {
+	color: black;
+	background-color: rgb(255, 230, 230);
+}</string>
+          </property>
+          <property name="maxLength">
+           <number>15</number>
+          </property>
+          <property name="frame">
+           <bool>false</bool>
+          </property>
+          <property name="placeholderText">
+           <string>participant-short-pseudonym</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer name="horizontalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

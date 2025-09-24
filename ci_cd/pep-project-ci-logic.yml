@@ -1,0 +1,513 @@
+stages:
+  - static-analysis
+  - prerequisites
+  - build
+  - cleanup
+  - unleash
+  - publish
+  - deploy
+  - test
+  - data-sync
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  FF_SCRIPT_SECTIONS: 'true'  # Enable collapsible sections per script line, with timings
+  FF_TIMESTAMPS: true
+
+  BUILD_DIRECTORY: build
+  STAGING_DIRECTORY: build/staging
+
+  FORCE_REBUILD:
+    value: 'false'
+    options:
+      - 'false'
+      - 'true'
+    description: Force rebuilding of the PEP binaries
+
+  # macOS app directories and appcast paths with legacy support to keep autoupdater working in case of changes
+  MACOS_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml
+  MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/app/AppCast.xml
+  MACOS_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
+  MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli/AppCast.xml
+  MACOS_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
+  MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/dt/AppCast.xml
+
+  PEP_DEPLOYING_JSON_FILE: config/$CI_COMMIT_REF_NAME/constellation.json
+
+# Applies to whole pipeline
+workflow:
+  rules:
+    # Do not create MR pipelines (see https://docs.gitlab.com/ee/ci/pipelines/merge_request_pipelines.html ).
+    # As soon as we use one `rules:` tag in a job, that job would run on any MR pipeline, unless specified otherwise.
+    # Prevent that by disabling the whole pipeline in this case
+    - if: $CI_PIPELINE_SOURCE != 'merge_request_event'
+
+# Path must be absolute to work when included from other repos
+include:
+  - /ci_cd/docker-common.yml
+  - /ci_cd/gitlab-pages-ci.yml
+
+.on-production-branch:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $PEP_PROJECT_PRODUCTION_BRANCH
+      when: manual
+      allow_failure: true # Make sure that the pipeline still continues
+
+.unleash-manually:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $PEP_PROJECT_PRODUCTION_BRANCH
+      when: manual
+
+# A "deployed" branch is a branch for which a PEP environment is
+# (re-)provisioned
+.on-deployed-branches:
+  rules:
+    if: '$CI_COMMIT_REF_NAME == $PEP_PROJECT_TESTING_BRANCH ||
+        $CI_COMMIT_REF_NAME == $PEP_PROJECT_ACCEPTANCE_BRANCH ||
+        $CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH'
+
+###############################################
+# Configuration for the static-analysis stage #
+###############################################
+
+project-settings-foss:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine:latest
+  script:
+    - if [ -z "$PEP_FOSS_REPO_DIR" ]; then >&2 echo Variable PEP_FOSS_REPO_DIR not set; exit 1; fi
+    - if [ -z "$PEP_PROJECT_DEVELOPMENT_BRANCH" ]; then >&2 echo Variable PEP_PROJECT_DEVELOPMENT_BRANCH not set; exit 1; fi
+    - if [ -z "$PEP_PROJECT_TESTING_BRANCH" ]; then >&2 echo Variable PEP_PROJECT_TESTING_BRANCH not set; exit 1; fi
+    - if [ -z "$PEP_PROJECT_ACCEPTANCE_BRANCH" ]; then >&2 echo Variable PEP_PROJECT_ACCEPTANCE_BRANCH not set; exit 1; fi
+    - if [ -z "$PEP_PROJECT_PRODUCTION_BRANCH" ]; then >&2 echo Variable PEP_PROJECT_PRODUCTION_BRANCH not set; exit 1; fi
+    - if [ -z "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Variable PEP_PUBLISHING_JSON_FILE not set; exit 1; fi
+    - if [ ! -f "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Publishing specification JSON file not found at "$PEP_PUBLISHING_JSON_FILE"; exit 1; fi
+
+ci-yml-include-versions:
+  stage: static-analysis
+  tags: [docker-small]
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/check-ci-yml-include-versions.sh "$PEP_GROUP_READ_API_TOKEN" . "$CI_CONFIG_PATH"
+
+analyse-scripts:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine:latest
+  before_script:
+    - apk update -qq && apk add --no-cache bash git shellcheck
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/scripts/analyse-scripts.sh
+
+#############################################
+# Configuration for the prerequisites stage #
+#############################################
+load-version:
+  stage: prerequisites
+  tags: [docker-small]
+  image: alpine:latest
+  before_script:
+    - apk --update add --no-cache jq
+  script:
+  # Adds the following variables to version.env: MAJOR_VERSION; MINOR_VERSION;
+    - ./"$PEP_FOSS_REPO_DIR"/scripts/parse-version.sh env-var-assignments version.json > version.env
+    - cat version.env
+  artifacts:
+    reports:
+      dotenv: version.env
+
+provide-binaries:
+  stage: prerequisites
+  tags: [docker-small]
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  timeout: 1h 30m
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command provide-base-images
+                                                         --git-dir .
+                                                         --env "$CI_COMMIT_REF_NAME"
+                                                         --tag "$CI_PIPELINE_ID"
+                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
+                                                         --api-key "$PEP_GROUP_API_TOKEN"
+                                                         --force-rebuild "$FORCE_REBUILD"
+  artifacts:
+    paths:
+      # Mark the pepBinaries.wixlib, pep.flatpak and macOS_bins.zip as artifacts so we can (easily) retrieve them by depending on this job
+      - pepBinaries.wixlib
+      - pep.flatpak
+      - macOS_x86_64_bins.zip
+      - macOS_arm64_bins.zip
+
+##########################################
+# Configuration for the build stage      #
+##########################################
+
+# This base job is also extended in ops for review and release specific jobs
+.docker-add-config-base:
+  stage: build
+  extends: .dind-small
+  tags: [docker-small]
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  timeout: 1h 30m
+  variables:
+    WITH_RSYSLOG: true
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command build
+                                                         --git-dir .
+                                                         --env "$CI_COMMIT_REF_NAME"
+                                                         --tag "$CI_PIPELINE_ID"
+                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
+                                                         --api-key "$PEP_GROUP_API_TOKEN"
+                                                         --with-rsyslog "$WITH_RSYSLOG"
+                                                         --rsyslog-dir "$RSYSLOG_CONFIG_DIR"
+docker-add-config:
+  extends: .docker-add-config-base
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  artifacts:
+    paths:
+    - client.sif # Might not exist: client image is built depending on project repo contents
+
+windows-installer:
+  stage: build
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags:
+    - windows
+  needs: [provide-binaries, load-version]
+  timeout: 1h 30m
+  script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
+    - cmd /c "call `"./$env:PEP_FOSS_REPO_DIR/ci_cd/windows-ci-msi.bat`""
+  artifacts:
+    paths:
+    - ${BUILD_DIRECTORY}\wix\msi
+
+macos-x86-installer:
+  stage: build
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags:
+    - macos-intel
+  needs:
+    - job: provide-binaries
+  timeout: 1h 30m
+  before_script:
+    - source ${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-obtain-signing-certification.sh
+  script:
+    - ./${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-pkg.sh
+  artifacts:
+    paths:
+      - ${STAGING_DIRECTORY}/x86_64/macOS_artifacts/
+
+macos-arm-installer:
+  stage: build
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags:
+    - macos-arm64
+  needs:
+    - job: provide-binaries
+  timeout: 1h 30m
+  before_script:
+    - source ${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-obtain-signing-certification.sh
+  script:
+    - ./${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-pkg.sh
+  artifacts:
+    paths:
+      - ${STAGING_DIRECTORY}/arm64/macOS_artifacts/
+
+macos-universal-installer:
+  stage: build
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags:
+    - macos
+  needs:
+    - job: macos-x86-installer
+    - job: macos-arm-installer
+  timeout: 1h 30m
+  before_script:
+    - source ${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-obtain-signing-certification.sh
+  script:
+    - ./${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-universal-pkg.sh
+  artifacts:
+    paths:
+      - ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer
+
+macos-notarization:
+  stage: build
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags:
+    - macos
+  needs:
+    - job: macos-universal-installer
+  timeout: 1h 30m
+  before_script:
+    - source ${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-obtain-signing-certification.sh
+  script:
+    # Print with null terminator to avoid issues with spaces in filenames
+    - |
+      INSTALLERS_AND_UPDATES=$(mktemp)
+      find ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer -type f -name "*.pkg" -print0 > "$INSTALLERS_AND_UPDATES"
+      find ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer -type d -name "*.app" -prune -print0 >> "$INSTALLERS_AND_UPDATES"
+    - cat "$INSTALLERS_AND_UPDATES" | xargs -0 ./${PEP_FOSS_REPO_DIR}/installer/macOS/macos-notarize-app.sh
+
+    # Check notarization status
+    - echo "Checking notarization status..."
+    - if [ ! -s notarization_uuids.txt ]; then echo "No notarization UUIDs found"; exit 1; fi
+    - cat notarization_uuids.txt | xargs ./${PEP_FOSS_REPO_DIR}/installer/macOS/macos-check-notarization.sh
+
+    # Stapling the result
+    - cat "$INSTALLERS_AND_UPDATES" | xargs -0 ./${PEP_FOSS_REPO_DIR}/installer/macOS/macos-staple-result.sh
+    - rm -f "$INSTALLERS_AND_UPDATES"
+  artifacts:
+    paths:
+      - ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer
+
+macos-generate-appcast:
+  stage: build
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags:
+    - macos
+  needs:
+    - job: macos-notarization
+  before_script:
+    - source ${PEP_FOSS_REPO_DIR}/ci_cd/macos-ci-obtain-signing-certification.sh
+  script:
+    # Obtain project caption
+    - caption=$(cat config/"$CI_COMMIT_REF_NAME"/project/caption.txt)
+    - INSTALLER_BASE_DIR="${STAGING_DIRECTORY}/universal/macOS_artifacts/installer"
+    - |
+      generate_appcast_with_legacy_support() {
+        local full_appcast_path="$1"
+        local full_legacy_appcast_path="$2"
+        local app_path=$(find "$(dirname "$full_appcast_path")" -maxdepth 1 -type d -name "*.app")
+        if [ -z "$app_path" ] || [ $(echo "$app_path" | wc -l) -ne 1 ]; then
+          echo "No- or multiple .app found in $(dirname "$full_appcast_path")"
+          exit 1
+        fi
+
+        ./${PEP_FOSS_REPO_DIR}/installer/macOS/macos-generate-appcast.sh "$app_path" "$full_appcast_path"
+
+        if [ "$full_appcast_path" != "$full_legacy_appcast_path" ]; then
+          mkdir -p "$(dirname "$full_legacy_appcast_path")"
+          cp "$full_appcast_path" "$full_legacy_appcast_path"
+        fi
+      }
+    - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_ASSESSOR_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_ASSESSOR_APPCAST_PATH"
+    - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_CLI_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_CLI_APPCAST_PATH"
+    - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_DOWNLOAD_TOOL_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH"
+    # Also find .pkg and zip them with ditto, then remove the .pkg
+    - find "${INSTALLER_BASE_DIR}/macos/Universal" -type f -name "*.pkg" -exec ditto -c -k --sequesterRsrc "{}" "{}.zip" \; -exec rm -f "{}" \;
+  artifacts:
+    paths:
+      - ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer
+
+flatpak-add-config:
+  stage: build
+  tags: [docker-small]
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  needs: [provide-binaries]
+  image: $BUILDER_IMAGE_FLATPAK
+  script:
+    - caption=$(cat config/"$CI_COMMIT_REF_NAME"/project/caption.txt)
+    - environment="$caption-$CI_COMMIT_REF_NAME"
+    - cp -r -n -T "$PEP_FOSS_REPO_DIR/flatpak/template" "config/$CI_COMMIT_REF_NAME/flatpak" # -n -T makes sure that we can override these settings in project repo's
+    - | # replace "environment" in filenames with the value of $environment
+      find "config/$CI_COMMIT_REF_NAME/flatpak" -type f | while read -r FILE ; do
+        newname="${FILE//environment/$environment}"
+        if [ "$newname" != "$FILE" ]; then
+          mv "$FILE" "$newname"
+        fi
+      done
+    - > # The next line of code starts with a string that needs to be parsed as a command (bash script). Without the ">", the parser doesn't understand that.
+      "$PEP_FOSS_REPO_DIR/scripts/createConfigVersionJson.sh" . "config/$CI_COMMIT_REF_NAME/project/" > "config/$CI_COMMIT_REF_NAME/client/configVersion.json"
+    - find "config/$CI_COMMIT_REF_NAME/flatpak" -type f -exec sed -i -e "s/\\\$ENVIRONMENT/${environment}/g" {} \; # replace "$ENVIRONMENT" in the contents of files with the value of $environment
+    - flatpak install -y pep.flatpak
+    - flatpak-builder --repo=./flatpak-repo ./flatpak-build "config/$CI_COMMIT_REF_NAME/flatpak/nl.ru.cs.pep.$environment.yml"
+    - flatpak build-bundle ./flatpak-repo pep.flatpak "nl.ru.cs.pep.$environment" --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
+  artifacts:
+    paths:
+      - pep.flatpak
+
+##########################################
+# Configuration for the unleash stage    #
+##########################################
+
+confirm-manually:
+  stage: unleash
+  dependencies: []
+  tags: [docker-small]
+  variables:
+    GIT_STRATEGY: none
+  image: alpine
+  rules:
+    - !reference [.unleash-manually, rules]
+  script:
+  - echo "Pipeline was unleashed by $GITLAB_USER_LOGIN ($GITLAB_USER_NAME / $GITLAB_USER_EMAIL / ID $GITLAB_USER_ID)."
+
+##########################################
+# Configuration for the publish stage    #
+##########################################
+
+.publish-base:
+  stage: publish
+  tags: [docker-small]
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  artifacts:
+    paths:
+      - publish/
+
+publish-downloadables:
+  extends: .publish-base
+  dependencies:
+    - windows-installer
+    - docker-add-config
+    - flatpak-add-config
+  rules:
+    - !reference [.on-production-branch, rules]
+    - !reference [.on-deployed-branches, rules]
+  script:
+    - caption=$(cat config/"$CI_COMMIT_REF_NAME"/project/caption.txt)
+    - mkdir -p publish/"$caption"/"$CI_COMMIT_REF_NAME"
+    # Stage Windows installer to a directory
+    - cp ${BUILD_DIRECTORY}/wix/msi/* publish/"$caption"/"$CI_COMMIT_REF_NAME"
+    # Also stage Singularity/Apptainer image if it was built
+    - if [ -f client.sif ]; then cp client.sif publish/"$caption"/"$CI_COMMIT_REF_NAME"; fi
+    # Also stage flatpak if it was built
+    - if [ -f pep.flatpak ]; then cp pep.flatpak publish/"$caption"/"$CI_COMMIT_REF_NAME"; fi
+    # Update content at the download location
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_PUBLISHING_JSON_FILE" publish "publish/$caption"
+    # Print the published files with (some) URL encoding
+    - echo "Published files:"
+    - find publish/"$caption" -type f -print0 | xargs -0 -I {} sh -c 'echo "https://pep.cs.ru.nl${1#publish}" | sed "s/ /%20/g; s/(/%28/g; s/)/%29/g"' _ "{}"
+
+publish-downloadables-macos:
+  extends: .publish-base
+  needs:
+    - job: macos-generate-appcast
+  rules:
+    - !reference [.on-production-branch, rules]
+    - !reference [.on-deployed-branches, rules]
+  script:
+    - caption=$(cat config/"$CI_COMMIT_REF_NAME"/project/caption.txt)
+    - mkdir -p publish/"$caption"/"$CI_COMMIT_REF_NAME"
+    # Stage macOS installers
+    - cp -r ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer/* publish/"$caption"/"$CI_COMMIT_REF_NAME"
+    # Update content at the download location
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_PUBLISHING_JSON_FILE" publish "publish/$caption"
+    # Print the published files with (some) URL encoding
+    - echo "Published files:"
+    - find publish/"$caption"/"$CI_COMMIT_REF_NAME" -type f -print0 | xargs -0 -I {} sh -c 'echo "https://pep.cs.ru.nl${1#publish}" | sed "s/ /%20/g; s/(/%28/g; s/)/%29/g"' _ "{}"
+
+docker-update-latest:
+  extends: .publish-base
+  dependencies: []
+  environment: $CI_COMMIT_REF_NAME
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command update-latest
+                                                         --git-dir .
+                                                         --env "$CI_COMMIT_REF_NAME"
+                                                         --tag "$CI_PIPELINE_ID"
+                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
+
+publish-docker-client:
+  extends: .publish-base
+  dependencies: []
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command publish-client
+                                                         --git-dir .
+                                                         --env "$CI_COMMIT_REF_NAME"
+                                                         --tag "$CI_PIPELINE_ID"
+                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
+                                                         --api-key "$PEP_GROUP_REGISTRY_TOKEN"
+
+##########################################
+# Configuration for the deploy stage     #
+##########################################
+
+deploy:
+  stage: deploy
+  dependencies: []
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags: [docker-small]
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_DEPLOYING_JSON_FILE" update
+
+.data-sync-base:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $DATA_SYNC_TARGET_BRANCH'  # since it overwrites data in the target environment
+  tags: [docker-small]
+  dependencies: []
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  allow_failure: false
+
+# Deploy the data sync materials on constellation hosts
+deploy-data-sync:
+  extends: .data-sync-base
+  stage: deploy
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "config/$DATA_SYNC_TARGET_BRANCH/constellation.json" update-data-sync "config/$DATA_SYNC_SOURCE_BRANCH/constellation.json"
+
+###########################################
+## Configuration for the test stage       #
+###########################################
+
+test-deployment:
+  stage: test
+  dependencies: []
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  tags: [docker-small]
+  image: $CI_REGISTRY/$CI_PROJECT_PATH/$CI_COMMIT_REF_NAME/client:$CI_PIPELINE_ID
+  cache:
+    key: "nocache"
+  script:
+    - /app/pepClientTest /config/ClientConfig.json 5
+
+.check-downloadables-base: # Also extended in pep/ops
+  stage: test
+  tags: [docker-small]
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  timeout: 12 minutes # Downloadables should be synced every 5 minutes. No need to keep checking for much longer. 2 * (5 + a bit) minutes should be enough
+  script:
+    - ./$PEP_FOSS_REPO_DIR/ci_cd/check-downloadables.sh
+
+check-downloadables:
+  extends: .check-downloadables-base
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  needs:
+    - publish-downloadables
+    - publish-downloadables-macos
+
+##########################################
+## Configuration for the data-sync stage #
+##########################################
+
+.data-sync-run-base:
+  extends: .data-sync-base
+  stage: data-sync
+  when: manual
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "config/$DATA_SYNC_TARGET_BRANCH/constellation.json" sync-data --clean $SYNC_ARGS
+
+# Dry run of data sync
+data-sync-dry-run:
+  extends: .data-sync-run-base
+  variables:
+    SYNC_ARGS: "--settling-time 1"
+
+# Perform actual data synchronisation
+data-sync-OVERWRITE-ENVIRONMENT:
+  extends: .data-sync-run-base
+  variables:
+    SYNC_ARGS: "--no-dry-run"

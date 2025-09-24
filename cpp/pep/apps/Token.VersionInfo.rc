@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepToken"
+#define PEP_EXE_DESCRIPTION "PEP Token creation utility"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

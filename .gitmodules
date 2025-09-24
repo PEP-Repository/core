@@ -1,0 +1,3 @@
+[submodule "docker-build"]
+	path = docker-build
+	url = ../docker-build.git

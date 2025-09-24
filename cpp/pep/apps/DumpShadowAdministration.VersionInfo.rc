@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepDumpShadowAdministration"
+#define PEP_EXE_DESCRIPTION "PEP Shadow Administration dump utility"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

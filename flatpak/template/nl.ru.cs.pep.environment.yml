@@ -1,0 +1,31 @@
+id: nl.ru.cs.pep.$ENVIRONMENT
+runtime: org.kde.Platform
+runtime-version: '6.7'
+sdk: org.kde.Sdk
+base: nl.ru.cs.pep.client
+command: run.sh
+rename-icon: pep
+rename-desktop-file: pep.desktop
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --filesystem=host
+  - --device=dri
+  - --share=network
+modules:
+  - name: config
+    buildsystem: simple
+    build-commands:
+      - cp rootCA.cert ShadowAdministration.pub client/configVersion.json client/ClientConfig.json project/client/* /app/bin
+      - mkdir -p /app/share/icons/hicolor
+      - cp -r flatpak/icon/* /app/share/icons/hicolor/
+      - mkdir -p /app/share/applications
+      - cp -r flatpak/pep.desktop /app/share/applications
+      - cp -r flatpak/scripts/cli-integration-scripts /app
+      - install -Dm755 -t /app/bin/ flatpak/scripts/install-cli-integration
+    sources:
+      - type: dir
+        path: ..
+

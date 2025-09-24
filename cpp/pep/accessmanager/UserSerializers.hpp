@@ -1,0 +1,25 @@
+#pragma once
+
+#include <pep/accessmanager/UserMessages.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
+
+namespace pep {
+
+PEP_DEFINE_CODED_SERIALIZER(CreateUser);
+PEP_DEFINE_CODED_SERIALIZER(RemoveUser);
+PEP_DEFINE_CODED_SERIALIZER(AddUserIdentifier);
+PEP_DEFINE_CODED_SERIALIZER(RemoveUserIdentifier);
+PEP_DEFINE_CODED_SERIALIZER(CreateUserGroup);
+PEP_DEFINE_CODED_SERIALIZER(RemoveUserGroup);
+PEP_DEFINE_CODED_SERIALIZER(ModifyUserGroup);
+PEP_DEFINE_CODED_SERIALIZER(AddUserToGroup);
+PEP_DEFINE_CODED_SERIALIZER(RemoveUserFromGroup);
+PEP_DEFINE_CODED_SERIALIZER(UserMutationRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(UserMutationRequest);
+PEP_DEFINE_EMPTY_SERIALIZER(UserMutationResponse);
+PEP_DEFINE_CODED_SERIALIZER(UserQueryResponse);
+PEP_DEFINE_CODED_SERIALIZER(QRUser);
+PEP_DEFINE_CODED_SERIALIZER(UserQuery);
+PEP_DEFINE_SIGNED_SERIALIZATION(UserQuery);
+
+}

@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Run the download-surfconext-metadata.sh script, but redirect stdout and stderr so that it shows up in `docker logs`
+
+/usr/local/bin/download-surfconext-metadata.sh > /proc/1/fd/1 2>/proc/1/fd/2

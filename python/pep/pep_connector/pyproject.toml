@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=75.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pep_connector"
+version = "1.0.0.dev0"
+authors = [
+    {email = "support@pep.cs.ru.nl"}
+]
+description = "PEP Connector"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+google_forms_connector = [
+    "google-api-python-client==2.161.0",
+    "google-auth",
+    "google-auth-httplib2",
+    "google-auth-oauthlib"
+]
+excel_connector = ["pandas==2.2.3"]
+prometheus = ["prometheus_client==0.21.1"]
+
+[tool.setuptools]
+package-dir = {"pep_connector" = "pep_connector"}
+packages = ["pep_connector"]

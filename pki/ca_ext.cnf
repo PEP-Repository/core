@@ -1,0 +1,28 @@
+[ ca ]
+basicConstraints = critical, CA:true
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[ intermediate_ca ]
+basicConstraints = critical, CA:true, pathlen:0
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[ server_cert ]
+basicConstraints = CA:FALSE
+subjectAltName = @alt_names
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer:always
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+
+[ pep_cert ]
+basicConstraints = CA:FALSE
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, nonRepudiation, digitalSignature
+
+[alt_names]
+DNS.1 = localhost

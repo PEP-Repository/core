@@ -1,0 +1,6 @@
+{
+  "ClientConfigFile": "ClientConfig.json",
+  "OAuthTokenFile": "OAuthToken.json",
+  "CastorAPIKeyFile": "CastorAPIKey.json",
+  "WaitPeriodDays": 0
+}

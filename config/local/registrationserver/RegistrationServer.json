@@ -1,0 +1,36 @@
+{
+  "KeysFile": "RegistrationServerKeys.json",
+  "TLSPrivateKeyFile": "TLSRegistrationServer.key",
+  "TLSCertificateFile": "TLSRegistrationServer.chain",
+  "PEPPrivateKeyFile": "PEPRegistrationServer.key",
+  "PEPCertificateFile": "PEPRegistrationServer.chain",
+  "CACertificateFile": "rootCA.cert",
+  "ListenPort": 16518,
+  "ShadowStorageFile": "ShadowShortPseudonyms.sqlite",
+  "ShadowPublicKeyFile": "ShadowAdministration.pub",
+  "PublicKeyData": "C0890845CFCA2E8A5AAC07AE1DA8977714E47D2F73065306B26B87D1A709CB39",
+  "PublicKeyPseudonyms": "CAB97D7E594B0DCA79BDFBDB090B08C153E761CF964CDA32D829BB746934B34B",
+  "AccessManager": {
+    "Name": "AccessManager",
+    "Address": "localhost",
+    "Port": 16501
+  },
+  "StorageFacility": {
+    "Name": "StorageFacility",
+    "Address": "localhost",
+    "Port": 16519
+  },
+  "KeyServer": {
+    "Name": "KeyServer",
+    "Address": "localhost",
+    "Port": 16511
+  },
+  "Transcryptor": {
+    "Name": "Transcryptor",
+    "Address": "localhost",
+    "Port": 16516
+  },
+  "Castor": {
+    "APIKeyFile": "CastorAPIKey.json"
+  }
+}

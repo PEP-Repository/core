@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>800</width>
+    <height>300</height>
+   </size>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>18</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QStatusBar {
+	min-height: 14pt;
+}
+QStatusBar::item {
+	border: none;
+}
+QStatusBar QLabel {
+	font-size: 14pt;
+	color: white;
+}
+QStatusBar QPushButton {
+	border: 0.1em solid white;
+	border-radius: 0.25em;
+	outline: none;
+	font-size: 13pt;
+	min-height: 13pt;
+	background-color: rgba(0,0,0,0);
+	color: white;
+}
+QStatusBar QPushButton:hover {
+	background-color: rgba(255,255,255,0.9);
+}
+QStatusBar.info {
+	background-color: #5587A9;
+}
+QStatusBar.info QPushButton:hover {
+	color: #5587A9;
+}
+QStatusBar.warning {
+	background-color: rgba(177,104,31,0.8);
+}
+QStatusBar.warning QPushButton:hover {
+	color: rgba(177,104,31,0.8);
+}
+QStatusBar.error {
+	background-color: rgba(202,11,94,0.8);
+}
+QStatusBar.error QPushButton:hover {
+	color: rgba(202,11,94,0.8);
+}</string>
+  </property>
+  <widget class="QWidget" name="root">
+   <property name="font">
+    <font>
+     <pointsize>18</pointsize>
+    </font>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QWidget" name="topBar" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">
+         .QWidget {
+         border-bottom: 5px solid #CA0B5E;
+         }
+         QWidget { background-color: #8DB6D3; }QWidget[nonrelease=true] {background-color: #e67919;}</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0">
+       <property name="spacing">
+        <number>24</number>
+       </property>
+       <property name="sizeConstraint">
+        <enum>QLayout::SetMinimumSize</enum>
+       </property>
+       <property name="leftMargin">
+        <number>24</number>
+       </property>
+       <property name="topMargin">
+        <number>6</number>
+       </property>
+       <property name="rightMargin">
+        <number>12</number>
+       </property>
+       <property name="bottomMargin">
+        <number>6</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="icon">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>200</width>
+           <height>80</height>
+          </size>
+         </property>
+         <property name="baseSize">
+          <size>
+           <width>256</width>
+           <height>256</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: transparent;</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="scaledContents">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout" stretch="1">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>12</number>
+         </property>
+         <property name="bottomMargin">
+          <number>12</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayoutLogonState" stretch="1">
+		
+           <item>
+            <widget class="QLabel" name="user">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">color: white;
+font-weight: bold;
+font-size: 13pt;
+background-color: transparent;</string>
+             </property>
+             <property name="text">
+              <string>logged-in-as %1 (%2) for context</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+		   
+           <item>
+            <widget class="QComboBox" name="contextComboBox">
+             <property name="styleSheet">
+              <string notr="true">QWidget {
+	border: 0.1em solid white;
+	border-radius: 0.25em;
+	color: white;
+	padding: 0.5em;
+	outline: none;
+	font-size: 13pt;
+}
+QWidget:focus {
+	border: 0.2em solid white;
+}
+QWidget:hover {
+	background-color: rgba(255,255,255,0.9);
+	color: #8DB6D3;
+}
+QWidget:disabled {
+	color: grey;
+	border-color: grey;
+}
+QComboBox {
+	background-color: transparent;
+}
+QComboBox QAbstractItemView {
+    background-color: grey;
+}
+QComboBox QAbstractItemView:hover {
+    background-color: grey;
+}
+QComboBox::item:selected
+{
+    background-color: white;
+    color: black;
+}
+  </string>
+             </property>
+            </widget>
+           </item>
+		  
+          </layout>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QStackedWidget" name="root_content">
+      <property name="minimumSize">
+       <size>
+        <width>400</width>
+        <height>300</height>
+       </size>
+      </property>
+      <widget class="QWidget" name="root_content_widget">
+       <property name="minimumSize">
+        <size>
+         <width>400</width>
+         <height>300</height>
+        </size>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <widget class="QTabWidget" name="content_tabs">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>400</width>
+            <height>300</height>
+           </size>
+          </property>
+          <property name="baseSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QTabWidget::pane {
+             border-radius: 0.25em;
+             }
+
+             QTabWidget::tab-bar {
+             left: 5px; /* move to the right by 5px */
+             }
+
+             QTabBar {
+             font-size: 14pt;
+             }
+
+             QTabBar::tab {
+             color: #CA0B5E;
+             border: 0.05em solid transparent;
+             border-top-left-radius: 0.25em;
+             border-top-right-radius: 0.25em;
+             min-width: 4em;
+             margin-right: 0.4em;
+             border-bottom: none;
+             padding: 0.5em;
+             }
+             QTabBar::tab:selected {
+             background-color: #CA0B5E;
+             color: white;
+             border: 0.05em solid #CA0B5E;
+             border-bottom: none;
+             }
+
+             QTabBar::tab:hover {
+             border: 0.05em solid #CA0B5E;
+             border-bottom: none;
+             }</string>
+          </property>
+          <property name="currentIndex">
+           <number>0</number>
+          </property>
+          <widget class="QWidget" name="open_tab">
+           <attribute name="title">
+            <string>open-participant</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="QStackedWidget" name="open_content">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>400</width>
+                <height>300</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="register_tab">
+           <attribute name="title">
+            <string>register-participant</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QStackedWidget" name="register_content">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>400</width>
+                <height>300</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="export_tab">
+           <attribute name="title">
+            <string>export</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="QStackedWidget" name="export_content">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>400</width>
+                <height>300</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1024</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="sizeGripEnabled">
+    <bool>false</bool>
+   </property>
+  </widget>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>

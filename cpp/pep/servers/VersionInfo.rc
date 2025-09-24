@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepServers"
+#define PEP_EXE_DESCRIPTION "Unified PEP servers executable"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

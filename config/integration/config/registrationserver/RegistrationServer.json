@@ -1,0 +1,33 @@
+{
+  "KeysFile": "RegistrationServerKeys.json",
+  "TLSPrivateKeyFile": "../../pki/TLSRegistrationServer.key",
+  "TLSCertificateFile": "../../pki/TLSRegistrationServer.chain",
+  "PEPPrivateKeyFile": "../../pki/PEPRegistrationServer.key",
+  "PEPCertificateFile": "../../pki/PEPRegistrationServer.chain",
+  "CACertificateFile": "../../pki/rootCA.cert",
+  "ListenPort": 16518,
+  "ShadowStorageFile": "ShadowShortPseudonyms.sqlite",
+  "ShadowPublicKeyFile": "../ShadowAdministration.pub",
+  "PublicKeyData": "",
+  "PublicKeyPseudonyms": "",
+  "AccessManager": {
+    "Name": "AccessManager",
+    "Address": "localhost",
+    "Port": 16501
+  },
+  "StorageFacility": {
+    "Name": "StorageFacility",
+    "Address": "localhost",
+    "Port": 16519
+  },
+  "KeyServer": {
+    "Name": "KeyServer",
+    "Address": "localhost",
+    "Port": 16511
+  },
+  "Transcryptor": {
+    "Name": "Transcryptor",
+    "Address": "localhost",
+    "Port": 16516
+  }
+}

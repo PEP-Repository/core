@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ConfirmEnrollmentWidget</class>
+ <widget class="QWidget" name="ConfirmEnrollmentWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel {
+border: 0.05em solid transparent
+;
+padding: 0.25em;
+font-size: 14pt;
+}
+
+QPushButton {
+        border: 0.05em solid #CA0B5E;
+        border-radius: 0.25em;
+        color: #CA0B5E;
+        padding: 0.5em;
+        font-size: 14pt;
+        outline: none;
+}
+QPushButton:hover,QPushButton:focus {
+        background-color: rgba(202,11,94,0.8);
+        color: white;
+}
+QPushButton:disabled {
+        color: grey;
+        border-color: grey;
+}</string>
+  </property>
+  <layout class="QGridLayout" name="horizontalLayout">
+   <item row="0" column="1">
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="pepIdLabel">
+         <property name="styleSheet">
+          <string notr="true">QLabel {
+	font-size: 18pt;
+	font-weight: bold;
+}</string>
+         </property>
+         <property name="text">
+          <string>PEP Id</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="pepIdField">
+         <property name="styleSheet">
+          <string notr="true">QLabel {
+	font-size: 18pt;
+	font-weight: bold;
+}</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="participantNameLabel">
+         <property name="text">
+          <string>Participant name</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="participantNameField"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="dateOfBirthLabel">
+         <property name="text">
+          <string>Date of birth</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="dateOfBirthField"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QWidget" name="horizontalWidget" native="true">
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QPushButton" name="copyButton">
+          <property name="text">
+           <string>Copy PEP ID</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="continueButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Open participant</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item row="0" column="0">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="0" column="2">
+    <spacer name="horizontalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

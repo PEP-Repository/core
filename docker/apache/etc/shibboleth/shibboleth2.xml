@@ -1,0 +1,120 @@
+<SPConfig xmlns="urn:mace:shibboleth:3.0:native:sp:config"
+    xmlns:conf="urn:mace:shibboleth:3.0:native:sp:config"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+    xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+    xmlns:mdui="urn:oasis:names:tc:SAML:metadata:ui"
+    clockSkew="180">
+
+    <OutOfProcess tranLogFormat="%u|%s|%IDP|%i|%ac|%t|%attr|%n|%b|%E|%S|%SS|%L|%UA|%a" />
+    <InProcess spoofKey="${SPOOFKEY}" />
+  
+    <!--
+    By default, in-memory StorageService, ReplayCache, ArtifactMap, and SessionCache
+    are used. See example-shibboleth2.xml for samples of explicitly configuring them.
+    -->
+
+    <!-- The ApplicationDefaults element is where most of Shibboleth's SAML bits are defined. -->
+    <!--
+    entityID is a required attribute. But we overwrite it by setting the entityIDSelf content setting in the Apache configuration.
+    see https://shibboleth.atlassian.net/wiki/spaces/SP3/pages/2065334723/ContentSettings
+    -->
+    <ApplicationDefaults entityID="https://pep-demo.cs.ru.nl/shibboleth"
+        REMOTE_USER="eppn"
+        signing="true" signingAlg="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256">
+
+        <!--
+        Controls session lifetimes, address checks, cookie handling, and the protocol handlers.
+        Each Application has an effectively unique handlerURL, which defaults to "/Shibboleth.sso"
+        and should be a relative path, with the SP computing the full value based on the virtual
+        host. Using handlerSSL="true" will force the protocol to be https. You should also set
+        cookieProps to "https" for SSL-only sites. Note that while we default checkAddress to
+        "false", this makes an assertion stolen in transit easier for attackers to misuse.
+        -->
+        <Sessions lifetime="28800" timeout="3600" relayState="ss:mem"
+                  checkAddress="true" handlerSSL="true" cookieProps="https"
+                  redirectLimit="exact">
+
+            <!--
+            Configures SSO for a default IdP. To properly allow for >1 IdP, remove
+            entityID property and adjust discoveryURL to point to discovery service.
+            You can also override entityID on /Login query string, or in RequestMap/htaccess.
+            -->
+            <SSO>
+              SAML2
+            </SSO>
+
+            <!-- SAML and local-only logout. -->
+            <Logout>SAML2 Local</Logout>
+
+            <!-- Administrative logout. -->
+            <LogoutInitiator type="Admin" Location="/Logout/Admin" acl="127.0.0.1 ::1" />
+
+            <!-- Status reporting service. -->
+            <Handler type="Status" Location="/Status" acl="127.0.0.1 ::1"/>
+
+            <!-- Session diagnostic service. -->
+            <Handler type="Session" Location="/Session" showAttributeValues="false"/>
+
+            <!-- JSON feed of discovery information. -->
+            <Handler type="DiscoveryFeed" Location="/DiscoFeed"/>
+
+            <Handler type="MetadataGenerator" Location="/Metadata" signing="true">
+                <mdui:UIInfo>
+                    <mdui:DisplayName xml:lang="nl">PEP</mdui:DisplayName>
+                    <mdui:DisplayName xml:lang="en">PEP</mdui:DisplayName>
+                    <mdui:Description xml:lang="nl">Gevoelige data kunnen op een verantwoorde manier worden gedeeld met verwerkingsomgevingen, door PEP te gebruiken voor access management, beveiliging en pseudonymisatie.</mdui:Description>
+                    <mdui:Description xml:lang="en">Sensitive data can be shared to processing environments responsibly, using PEP for access management, security and pseudonymisation.</mdui:Description>
+                    <mdui:Logo height="95" width="200">https://pep.cs.ru.nl/img/PEPwit.png</mdui:Logo>
+                </mdui:UIInfo>
+                <md:Organization>
+                    <md:OrganizationName xml:lang="nl">Radboud Universiteit</md:OrganizationName>
+                    <md:OrganizationName xml:lang="en">Radboud University</md:OrganizationName>
+                    <md:OrganizationDisplayName xml:lang="nl">Radboud Universiteit</md:OrganizationDisplayName>
+                    <md:OrganizationDisplayName xml:lang="en">Radboud University</md:OrganizationDisplayName>
+                    <md:OrganizationURL xml:lang="nl">https://www.ru.nl</md:OrganizationURL>
+                    <md:OrganizationURL xml:lang="en">https://www.ru.nl/english/</md:OrganizationURL>
+                </md:Organization>
+                <md:ContactPerson contactType="support">
+                    <md:GivenName>PEP support</md:GivenName>
+                    <md:EmailAddress>support@pep.cs.ru.nl</md:EmailAddress>
+                </md:ContactPerson>
+                <md:ContactPerson contactType="technical">
+                    <md:GivenName>PEP support</md:GivenName>
+                    <md:EmailAddress>support@pep.cs.ru.nl</md:EmailAddress>
+                </md:ContactPerson>
+                <md:ContactPerson contactType="administrative">
+                    <md:GivenName>PEP support</md:GivenName>
+                    <md:EmailAddress>support@pep.cs.ru.nl</md:EmailAddress>
+                </md:ContactPerson>
+            </Handler>
+        </Sessions>
+
+        <!--
+        Allows overriding of error template information/filenames. You can
+        also add your own attributes with values that can be plugged into the
+        templates, e.g., helpLocation below.
+        -->
+        <Errors supportContact="support@pep.cs.ru.nl" />
+        
+        <MetadataProvider type="XML" path="/metadata/surfconext.xml" reloadChanges="true" />
+
+        <!-- Map to extract attributes from SAML assertions. -->
+        <AttributeExtractor type="XML" validate="true" reloadChanges="false" path="attribute-map.xml"/>
+
+        <!-- Default filtering policy for recognized attributes, lets other data pass. -->
+        <AttributeFilter type="XML" validate="true" path="attribute-policy.xml"/>
+
+        <!-- Simple file-based resolvers for separate signing/encryption keys. -->
+        <CredentialResolver type="File" use="signing" key="/secrets_copy/shibboleth/sp-key.pem" certificate="/secrets_copy/shibboleth/sp-cert.pem"/>
+
+        <TrustEngine type="ExplicitKey" />
+    </ApplicationDefaults>
+    
+    <!-- Policies that determine how to process and authenticate runtime messages. -->
+    <SecurityPolicyProvider type="XML" validate="true" path="security-policy.xml"/>
+
+    <!-- Low-level configuration about protocols and bindings available for use. -->
+    <ProtocolProvider type="XML" validate="true" reloadChanges="false" path="protocols.xml"/>
+
+</SPConfig>

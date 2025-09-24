@@ -1,0 +1,25 @@
+body {
+    background-color: #006097;
+}
+
+#content {
+    background-color: white;
+    margin: auto;
+    width: fit-content;
+    padding: 2em;
+    border-radius: 1em;
+}
+
+.authsource-button {
+    border: 1px solid #747775;
+    border-radius: 5px;
+    margin-top: 1ex;
+    margin-bottom: 1ex;
+    padding: 1ex;
+    display: flex;
+    align-items: center;
+}
+
+.authsource-button > * {
+    margin: 1ex;
+}

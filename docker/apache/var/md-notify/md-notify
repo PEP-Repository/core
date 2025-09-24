@@ -1,0 +1,1 @@
+When this file is touched, the md-monitor script knows that a new certificate has been installed, and apache must be reloaded

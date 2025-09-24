@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepStorageFacility"
+#define PEP_EXE_DESCRIPTION "PEP Storage Facility server executable"
+
+#include <pep/Windows.Exe.VersionInfo.rc>

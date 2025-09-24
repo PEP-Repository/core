@@ -1,0 +1,8 @@
+constellationFile: constellation.yaml
+
+tokenFile: token.yaml
+selfCheckAddr: localhost:8082
+selfCheckBindAddr: 0.0.0.0:8082
+stressor:
+    enabled: true
+    fileSize: 10485760 # 10 MB

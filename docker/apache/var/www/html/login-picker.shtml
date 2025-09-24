@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="login-picker.css" />
+  <title>How do you want to login?</title>
+</head>
+<body>
+  <div id="content">
+  <h1>How do you want to login?</h1>
+    <!--#if expr="v('TESTUSERS_LOGIN') == 'true'" -->
+    <h2>Test users</h2>
+    <ul>
+      <li><a href="/login/testusers/1/assessor%40testusers.pep.cs.ru.nl/?<!--#echo var="DOCUMENT_ARGS"  -->">Research Assessor</a></li>
+      <li><a href="/login/testusers/2/monitor%40testusers.pep.cs.ru.nl/?<!--#echo var="DOCUMENT_ARGS"  -->">Monitor</a></li>
+      <li><a href="/login/testusers/3/accessadmin%40testusers.pep.cs.ru.nl/?<!--#echo var="DOCUMENT_ARGS"  -->">Access Administrator</a></li>
+      <li><a href="/login/testusers/4/dataadmin%40testusers.pep.cs.ru.nl/?<!--#echo var="DOCUMENT_ARGS"  -->">Data Administrator</a></li>
+      <li><a href="/login/testusers/5/multihat%40testusers.pep.cs.ru.nl/?<!--#echo var="DOCUMENT_ARGS"  -->">Someone with multiple roles</a></li>
+      <li><a href="/login/testusers/6/eve%40universityofadversaries.nl/?<!--#echo var="DOCUMENT_ARGS"  -->">Someone without access</a></li>
+      <li>
+        <label for="uidfield">Custom: </label>
+        <input type="text" id="uidfield" />
+        <button onclick="window.location='/login/testusers/' + encodeURIComponent(document.getElementById('uidfield').value) + '?<!--#echo var="DOCUMENT_ARGS"  -->'">Go</button>
+      </li>
+    </ul>
+    <h2>External authentication sources</h2>
+    <!--#endif -->
+      <!--#if expr="v('SURFCONEXT_LOGIN') == 'true'" -->
+      <a class="authsource-button" href="/login/surfconext?<!--#echo var="DOCUMENT_ARGS"  -->"><img src="SURFconext-logo.svg" height="40" /> Universiteit of hogeschool in Nederland</a>
+      <!--#endif -->
+      <!--#if expr="v('GOOGLE_LOGIN') == 'true'" -->
+      <a href="/login/google/auth?<!--#echo var="DOCUMENT_ARGS"  -->"><img src="Google-signin.svg" height="80" /></a>
+      <!--#endif -->
+  </div>
+</body>
+</html>

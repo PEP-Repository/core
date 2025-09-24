@@ -1,0 +1,4 @@
+#define PEP_EXE_FILENAME    "pepClientTest"
+#define PEP_EXE_DESCRIPTION "PEP Client Test utility"
+
+#include <pep/Windows.Exe.VersionInfo.rc>
