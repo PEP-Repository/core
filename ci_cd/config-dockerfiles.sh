@@ -19,10 +19,13 @@
 # this script can also run a pipeline in the source repo to produce the required
 # base image.
 
-set -eu
+set -exu
 
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+
+# Portable envsubst replacement (But beware: also replaces shell variables and allows command injections)
+envsubst() { eval "echo \"$(sed 's/\\/\\\\/g; s/"/\\"/g')\""; }
 
 # Default values
 command=""
@@ -486,8 +489,34 @@ build_config_dockerfile() {
   else
     echo "Building $dest_image for dockerfile $dockerfile without a base image"
   fi
+
+  # Special handling for docker-compose image to expand CI variables in .env file
+  if [ "$image_name" = "docker-compose" ]; then
+    env_file="$env_config_dir/docker-compose/.env"
+
+    if [ -f "$env_file" ]; then
+      echo "Expanding variables in .env file..."
+
+      # Create expanded .env file
+      expanded_env_file=$(mktemp)
+      envsubst < "$env_file" > "$expanded_env_file"
+
+      # Copy the expanded .env file over the original for the Docker build
+      cp "$expanded_env_file" "$env_file"
+
+      echo "Variables expanded in .env file"
+    else
+      echo "No .env file found at $env_file"
+    fi
+  fi
+
+  docker build -t "$dest_image" -f "$dockerfile" --pull \
+    --build-arg "ENVIRONMENT=$environment" \
+    --build-arg "PROJECT_DIR=$environment/project" \
+    --build-arg "BASE_IMAGE=$base_image" \
+    --build-arg "RSYSLOG_PREPOSITION=$rsyslog_preposition" \
+    "$git_config_dir"
   
-  docker build -t "$dest_image" -f "$dockerfile" --pull --build-arg "ENVIRONMENT=$environment" --build-arg "PROJECT_DIR=$environment/project" --build-arg "BASE_IMAGE=$base_image" --build-arg "RSYSLOG_PREPOSITION=$rsyslog_preposition" "$git_config_dir"
   docker push "$dest_image"
 }
 

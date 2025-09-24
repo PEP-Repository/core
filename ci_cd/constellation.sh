@@ -11,6 +11,7 @@
 
 set -o errexit
 set -o nounset
+set -x
 
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
