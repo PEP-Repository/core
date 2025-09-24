@@ -502,7 +502,7 @@ build_config_dockerfile() {
       envsubst < "$env_file" > "$expanded_env_file"
 
       # Copy the expanded .env file over the original for the Docker build
-      cp "$expanded_env_file" "$env_file"
+      mv "$expanded_env_file" "$env_file"
 
       echo "Variables expanded in .env file"
     else
