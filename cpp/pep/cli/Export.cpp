@@ -94,7 +94,7 @@ int CommandExport::ChildCommand::execute() {
         return globalConfig->getUserPseudonymFormat().makeUserPseudonym(id.getLocalPseudonym());
       };
       const auto config = commonConfiguration(idToText);
-      const auto existingDownloadDir = DownloadDirectory::Create(config.inputDirectory, globalConfig);
+      const auto existingDownloadDir = DownloadDirectory::Create(config.inputDirectory, globalConfig, [](std::shared_ptr<const Progress>) {}); // TODO: report (instead of ignore) progress
       abortIfNotWritable(config.outputFile, config.allowOverwrite); // early check, before doing any work
       const auto table = pep::structuredOutput::TableFrom(*existingDownloadDir, config.conversion);
       safeWriteOutput(table, config.outputFile, config.allowOverwrite);
