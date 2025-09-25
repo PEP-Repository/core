@@ -499,10 +499,13 @@ build_config_dockerfile() {
 
       # Create expanded .env file
       expanded_env_file=$(mktemp)
-      envsubst < "$env_file" > "$expanded_env_file"
+      cat "$env_file" | envsubst > "$expanded_env_file"
 
       # Copy the expanded .env file over the original for the Docker build
       mv "$expanded_env_file" "$env_file"
+
+      echo "Env file now contains:"
+      cat "$env_file"
 
       echo "Variables expanded in .env file"
     else
