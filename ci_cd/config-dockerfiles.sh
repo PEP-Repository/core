@@ -19,7 +19,7 @@
 # this script can also run a pipeline in the source repo to produce the required
 # base image.
 
-set -exu
+set -eu
 
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
@@ -503,9 +503,6 @@ build_config_dockerfile() {
 
       # Copy the expanded .env file over the original for the Docker build
       mv "$expanded_env_file" "$env_file"
-
-      echo "Env file now contains:"
-      cat "$env_file"
 
       echo "Variables expanded in .env file"
     else
