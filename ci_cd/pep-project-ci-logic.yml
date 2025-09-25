@@ -454,7 +454,7 @@ deploy-compose:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   dependencies: []
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_DEPLOYING_JSON_FILE" deploy-compose "$IMAGE_COMPOSE" pull-restart
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_DEPLOYING_JSON_FILE" docker-compose "$IMAGE_COMPOSE" redeploy
 
 .data-sync-base:
   rules:

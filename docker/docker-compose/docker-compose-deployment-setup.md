@@ -2,13 +2,7 @@
 
 ## Install the trigger script on the server
 
-Copy the `example-trigger-compose.sh` script to your server at `/trigger-compose.sh`:
-
-```bash
-sudo cp example-trigger-compose.sh /trigger-compose.sh
-sudo chmod +x /trigger-compose.sh
-sudo chown root:root /trigger-compose.sh
-```
+make sure a `/trigger-compose.sh` script (example provided in this document) is on your server.
 
 ## Set up Constellation JSON Configuration
 
@@ -24,7 +18,7 @@ Configure your constellation JSON file with the deploy-compose section:
         "id_file": "$GITLAB_GROUP_CI_BUILDSERVERS_LINUX_UPDATE_KEY_FILE"
       }
     },
-    "deploy-compose": {
+    "docker-compose": {
       "user": {
         "name": "update",
         "id_file": "$GITLAB_GROUP_CI_BUILDSERVERS_LINUX_COMPOSE_KEY_FILE"
@@ -33,6 +27,33 @@ Configure your constellation JSON file with the deploy-compose section:
     }
   }
 ]
+```
+
+## Available Commands
+
+### redeploy (default)
+
+- Pulls latest image
+- Stops and removes existing containers  
+- Starts new containers with fresh images
+
+### pull (Manual)
+
+- Only pulls the latest docker-compose image
+- Does not affect running services
+
+### restart (Manual)
+
+- Restarts services without pulling new images
+- Can restart specific service with comma separated list of profiles
+
+### stop (Manual)
+
+- Stops services without removing containers
+- Can stop specific service with comma separated list of profiles e.g.
+
+```bash
+./constellation.sh config.json deploy-compose "$IMAGE" stop transcryptor,keyserver
 ```
 
 ## Example compose script server-side
@@ -45,14 +66,13 @@ Configure your constellation JSON file with the deploy-compose section:
 
 set -e
 
-# Parse the action and image from the SSH command arguments
 ACTION="$1"
 IMAGE_COMPOSE="$2"
-COMPOSE_PROFILES="${3:-}"  # Optional comma-separated profiles, e.g. "transcryptor,keyserver"
+COMPOSE_PROFILES="${3:-}"  # Optional third argument for profiles, e.g. "accessmanager,nginx"
 
 # Validate action
-if [ "$ACTION" != "pull" ] && [ "$ACTION" != "restart" ] && [ "$ACTION" != "pull-restart" ]; then
-    echo "Error: Unknown action: $ACTION (expected 'pull', 'restart', or 'pull-restart')"
+if [ "$ACTION" != "pull" ] && [ "$ACTION" != "restart" ] && [ "$ACTION" != "stop" ] && [ "$ACTION" != "redeploy" ]; then
+    echo "Error: Unknown action: $ACTION (expected 'pull', 'restart', 'stop', or 'redeploy')"
     exit 1
 fi
 
@@ -61,17 +81,36 @@ if [ -z "$IMAGE_COMPOSE" ]; then
     exit 1
 fi
 
-# Use profiles from argument if provided, otherwise let docker-compose use the profiles from .env
+echo "Docker-compose action triggered: $ACTION"
+echo "Using image: $IMAGE_COMPOSE"
+
+# Use profiles from argument if provided, otherwise let docker-compose use .env defaults
 if [ -n "$COMPOSE_PROFILES" ]; then
-    echo "Overriding compose profiles: $COMPOSE_PROFILES"
+    echo "Using compose profiles: $COMPOSE_PROFILES"
     PROFILES_ENV_FLAG="--env COMPOSE_PROFILES=$COMPOSE_PROFILES"
 else
     echo "Using compose profiles from .env file"
     PROFILES_ENV_FLAG=""
 fi
 
-echo "Docker-compose action triggered: $ACTION"
-echo "Using image: $IMAGE_COMPOSE"
+# Common function to run docker compose commands
+run_compose_command() {
+    local compose_command="$1"
+
+    /usr/bin/docker stop docker-compose || true
+
+    /usr/bin/docker run --privileged \
+                       --name "docker-compose" \
+                       --rm \
+                       --volume /root/.docker/config.json:/root/.docker/config.json:ro \
+                       --volume /var/run/docker.sock:/var/run/docker.sock \
+                       $PROFILES_ENV_FLAG \
+                       "$IMAGE_COMPOSE" \
+                       docker compose --file compose.yml \
+                                      --file compose.override.yaml \
+                                      --env-file .env \
+                                      $compose_command
+}
 
 case "$ACTION" in
     "pull")
@@ -80,37 +119,25 @@ case "$ACTION" in
         echo "Pull completed successfully"
         ;;
     "restart")
-        echo "Restarting docker-compose services..."
-        /usr/bin/docker run --privileged \
-                           --name compose-restart \
-                           --rm \
-                           --volume /root/.docker/config.json:/root/.docker/config.json:ro \
-                           --volume /var/run/docker.sock:/var/run/docker.sock \
-                           $PROFILES_ENV_FLAG \
-                           "$IMAGE_COMPOSE" \
-                           docker compose --file compose.yml \
-                                          --file compose.override.yaml \
-                                          --env-file .env \
-                                          up --force-recreate --detach --no-pull
-        echo "Restart completed successfully"
+        echo "Restarting services..."
+        run_compose_command "restart"
+        echo "Services restarted successfully"
         ;;
-    "pull-restart")
+    "stop")
+        echo "Stopping services..."
+        run_compose_command "stop"
+        echo "Services stopped successfully"
+        ;;
+    "redeploy")
+        echo "Redeploying services..."
+        
         echo "Pulling latest docker-compose image..."
         /usr/bin/docker pull "$IMAGE_COMPOSE"
         
-        echo "Restarting docker-compose services with new image..."
-        /usr/bin/docker run --privileged \
-                           --name compose-deploy \
-                           --rm \
-                           --volume /root/.docker/config.json:/root/.docker/config.json:ro \
-                           --volume /var/run/docker.sock:/var/run/docker.sock \
-                            $PROFILES_ENV_FLAG \
-                           "$IMAGE_COMPOSE" \
-                           docker compose --file compose.yml \
-                                          --file compose.override.yaml \
-                                          --env-file .env \
-                                          up --force-recreate --detach --pull always
-        echo "Pull and restart completed successfully"
+        echo "Force-recreating services with new images..."
+        run_compose_command "up --detach --pull always --force-recreate"
+
+        echo "Redeploy completed successfully"
         ;;
     *)
         echo "Error: Unknown action: $ACTION"
