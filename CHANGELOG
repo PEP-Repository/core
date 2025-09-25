@@ -10,6 +10,9 @@ Changes in upcoming release (1.6):
   This change did include a rename from the conf-available directory into conf-enabled. This makes it possible to add configuration to
   the conf-available directory, which will not be automatically enabled. You can enable it at a later stage, e.g. in a CI job or manually.
 
+- #2656: The "pepcli pull" command now also deals with unknown files and (sub)directories in the download directory, which
+  can a.o. prevent (resumed) downloads from failing because "Data storage path already exists".
+
 MANUAL CHANGES REQUIRED:
 
 - #2682: For all environments (except review) the conf-available directory needs to be renamed to conf-enabled. This change should already be in the master branch of all project repo's.
