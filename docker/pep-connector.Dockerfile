@@ -26,7 +26,9 @@ CRON_SCHEDULE="${CRON_SCHEDULE:-0 * * * *}"\n\
 case "$MODE" in\n\
     "cron")\n\
         echo "Starting in persistent cron mode with schedule: $CRON_SCHEDULE"\n\
-        echo "$CRON_SCHEDULE root python3 $SCRIPT_PATH $*" >> /etc/crontab\n\
+        echo "$CRON_SCHEDULE root python3 $SCRIPT_PATH $*" > /etc/cron.d/pep-connector\n\
+        echo "" >> /etc/cron.d/pep-connector\n\
+        chmod 644 /etc/cron.d/pep-connector\n\
         exec cron -f\n\
         ;;\n\
     "oneshot")\n\
