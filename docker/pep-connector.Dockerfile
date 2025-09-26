@@ -26,14 +26,8 @@ CRON_SCHEDULE="${CRON_SCHEDULE:-0 * * * *}"\n\
 case "$MODE" in\n\
     "cron")\n\
         echo "Starting in persistent cron mode with schedule: $CRON_SCHEDULE"\n\
-        # Remove quotes from CRON_SCHEDULE if present\n\
-        CLEAN_SCHEDULE=$(echo "$CRON_SCHEDULE" | sed '\''s/^"//;s/"$//'\'\')\n\
-        echo "Clean schedule: $CLEAN_SCHEDULE"\n\
-        echo "$CLEAN_SCHEDULE python3 $SCRIPT_PATH $*" | crontab -\n\
-        echo "Crontab installed:"\n\
-        crontab -l\n\
-        # Start cron in verbose mode\n\
-        exec cron -f -L 15\n\
+        echo "$CRON_SCHEDULE root python3 $SCRIPT_PATH $*" >> /etc/crontab\n\
+        exec cron -f\n\
         ;;\n\
     "oneshot")\n\
         echo "Running in oneshot mode"\n\
