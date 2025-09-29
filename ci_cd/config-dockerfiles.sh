@@ -330,7 +330,7 @@ run_foss_pipeline() {
   foss_project_path=$(gitlab_project_path "$foss_root")
 
   # Set descriptive pipeline name
-  foss_api put "pipelines/$foss_pipeline_id/metadata" --data "name=Providing binaries for $CI_PROJECT_NAME" > /dev/null || true
+  foss_api put "pipelines/$foss_pipeline_id/metadata" --data "name=Providing binaries for $CI_PROJECT_PATH/$CI_COMMIT_REF_NAME" > /dev/null || true
 
   echo "Running pipeline $foss_pipeline_id in project $foss_project_path for branch $branchname: "\
     "https://$foss_host/$foss_project_path/-/pipelines/$foss_pipeline_id"
