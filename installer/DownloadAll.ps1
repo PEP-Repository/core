@@ -1,5 +1,19 @@
 using namespace System.Windows.Forms  # Avoid typing full names like [System.Windows.Forms.MessageBox]
 
+[CmdletBinding()]
+# Optional parameter for development
+param (
+  [Parameter(HelpMessage = 'Explicitly set PEP install path to find config & binaries')]
+  [string]$InstallPath
+)
+
+if (!$InstallPath) {
+  $InstallPath = $PSScriptRoot
+}
+
+$pepWorkingDirectory = Join-Path $env:APPDATA 'PEP'
+$logsFolder = Join-Path $pepWorkingDirectory 'rotated_logs'
+
 function ShowError {
   param ([string]$Message)
   $null = [MessageBox]::Show(
@@ -8,9 +22,6 @@ function ShowError {
     [MessageBoxButtons]::OK,
     [MessageBoxIcon]::Error)
 }
-
-$pepWorkingDirectory = Join-Path $env:APPDATA 'PEP'
-$logsFolder = Join-Path $pepWorkingDirectory 'rotated_logs'
 
 function ShowPepError {
   param ([string]$Message, [string]$Exe)
@@ -32,12 +43,12 @@ $ErrorActionPreference = 'Stop'
 try {
   Add-Type -AssemblyName System.Windows.Forms  # Load types MessageBox, FolderBrowserDialog, ...
 
-  $config = Get-Content (Join-Path $PSScriptRoot 'configVersion.json') | ConvertFrom-Json
+  $config = Get-Content (Join-Path $InstallPath 'configVersion.json') | ConvertFrom-Json
   $projectCaption = $config.projectCaption
   $reference = $config.reference
 
   $host.ui.RawUI.WindowTitle = "PEP $projectCaption $reference one-click download log"
-  $env:Path = "$PSScriptRoot;$env:Path"
+  $env:Path = "$InstallPath;$env:Path"
 
   Write-Output 'Login: opening browser'
   $ret = Start-Process pepLogon -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
@@ -75,7 +86,31 @@ try {
     $folder = $folder.Substring(0, $folder.Length - '-pending'.Length)
   }
 
-  if (Get-Item -ErrorAction Ignore (Join-Path $folder 'pepData.specification.json')) {
+  Get-Item -ErrorAction Ignore (Join-Path $folder 'pepData.specification.json')
+  $downloadPresent = $?
+
+  Get-Item -ErrorAction Ignore (Join-Path "$folder-pending" 'pepData.specification.json')
+  $partialDownloadPresent = $?
+
+  if ($partialDownloadPresent) {
+    $msg = "Folder $folder-pending apparently already contains a partial download.`n"
+    $msgFolder = 'folder'
+    if ($downloadPresent) {
+      $msg += "Which seems to have been created while updating an existing download in $folder.`n"
+      $msgFolder += 's'
+    }
+    $msg += "To resume the download, press OK.`n" +
+      "Press Cancel and remove the $msgFolder to initiate a fresh download."
+
+    $choice = [MessageBox]::Show(
+      $msg,
+      'Resume partial download?',
+      [MessageBoxButtons]::OKCancel,
+      [MessageBoxIcon]::Question)
+    if ($choice -eq [DialogResult]::Cancel) { exit 1 }
+    $pullArgs += @('--update'; '--resume')
+
+  } elseif ($downloadPresent) {
     $choice = [MessageBox]::Show(
       "Folder $folder apparently already contains a completed download.`n" +
       'Do you want to update the existing download?',
@@ -85,18 +120,6 @@ try {
     if ($choice -eq [DialogResult]::Cancel) { exit 1 }
     $pullArgs += '--update'
 
-  }
-  elseif (Get-Item -ErrorAction Ignore (Join-Path "$folder-pending" 'pepData.specification.json')) {
-    $choice = [MessageBox]::Show(
-      "Folder $folder-pending apparently already contains a partial download.`n" +
-      'Do you want to resume (retry) the download or ignore the partial download and perform a fresh one?',
-      'Resume partial download?',
-      [MessageBoxButtons]::AbortRetryIgnore,
-      [MessageBoxIcon]::Question)
-    switch ($choice) {
-      [DialogResult]::Abort { exit 1 }
-      [DialogResult]::Retry { $pullArgs += '--resume' }
-    }
   }
 
   $choice = [MessageBox]::Show(
@@ -121,14 +144,35 @@ try {
   $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
   if ($ret.ExitCode -ne 0) {
     ShowPepError "An error occurred while downloading." pepcli
-    pause
-    exit $ret.ExitCode
+    $retry = $false
+    if ($downloadPresent -or $partialDownloadPresent) {
+      $choice = [MessageBox]::Show(
+        "Do you want to retry the download but enable overwriting any local changes?`n" +
+        'Depending on the error, this may or may not work.',
+        'Force download?',
+        [MessageBoxButtons]::YesNo,
+        [MessageBoxIcon]::Warning)
+      $retry = $choice -eq [DialogResult]::yes
+    }
+    if (!$retry) {
+      pause
+      exit $ret.ExitCode
+    }
+    $pullArgs = $pullArgs | where { $_ -ne '--resume' } # Remove incompatible flag
+    $pullArgs += '--force'
+    $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
+    if ($ret.ExitCode -ne 0) {
+      ShowPepError "An error occurred while retrying the download." pepcli
+      pause
+      exit $ret.ExitCode
+    }
   }
 
   ShowNotification 'Download complete!'
   explorer "$folder"
 }
-catch {
+catch { # Exception is in $_
+  # Extra try-catch in case dialog throws
   try { ShowError "Unexpected error occurred:`n$_" } catch {}
   Write-Error $_ -ErrorAction Continue
   pause
