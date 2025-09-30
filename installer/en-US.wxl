@@ -4,4 +4,5 @@
 	<String Id="NewerVersionInstalled" Overridable="yes">A newer version of PEP Assessor is already installed. To downgrade, please remove the existing installation first.</String>
 	<String Id="LaunchPepAssessor" Overridable="yes">Launch PEP Assessor</String>
 	<String Id="PepCommandPrompt" Overridable="yes">PEP Command Prompt</String>
+	<String Id="PepDownloadAll" Overridable="yes">PEP Download All</String>
 </WixLocalization>
