@@ -123,7 +123,8 @@ class MailSender(Connector):
                           start_dates: list[str] = None,
                           interval_days: int = 0,
                           position: int = 0,
-                          repetition_type: str = "once") -> tuple[bool, str | None]:
+                          repetition_type: str = "once",
+                          max_days_retroactive: int = None) -> tuple[bool, str | None]:
         """
         Determine if an email should be sent and return the reason if not
 
@@ -137,6 +138,7 @@ class MailSender(Connector):
             interval_days: Number of days between survey sends (for sequence type)
             position: Position of this survey in the sequence (0-based index)
             repetition_type: Type of repetition (once, sequence, schedule)
+            max_days_retroactive: Maximum days in the past to allow sending emails (None = send all past emails, minimum 1 day)
         """
         # Default to current date if no start_dates provided
         if not start_dates:
@@ -174,6 +176,12 @@ class MailSender(Connector):
         # If we haven't reached the effective start date yet
         if datetime.now() < effective_start_date:
             return False, f"Start date {effective_start_date.isoformat()} not yet reached"
+
+        # Check if the email is too far in the past based on max_days_retroactive
+        if max_days_retroactive is not None and max_days_retroactive >= 1:
+            days_since_start = (datetime.now() - effective_start_date).days
+            if days_since_start > max_days_retroactive:
+                return False, f"Start date {effective_start_date.isoformat()} is {days_since_start} days ago (maximum allowed: {max_days_retroactive} days)"
 
         # Check if emails_sent is empty or if survey_type key doesn't exist
         if not emails_sent or "survey_types" not in emails_sent:
@@ -543,6 +551,13 @@ class MailSender(Connector):
         elif "days_between_reminders" in config:
             # Optional check: Warn if days_between_reminders is provided when max_reminders is 0
             self.log("Warning: 'days_between_reminders' is provided but 'max_reminders' is 0. It will be ignored.", level=logging.WARNING, tag=self.LOG_TAG)
+
+        # Validate max_days_retroactive if present
+        max_days_retroactive = config.get("max_days_retroactive")
+        if max_days_retroactive is not None:
+            if not isinstance(max_days_retroactive, int) or max_days_retroactive < 1:
+                self.log("max_days_retroactive must be a positive integer (minimum 1 day)", level=logging.ERROR, tag=self.LOG_TAG)
+                raise ValueError("max_days_retroactive must be a positive integer (minimum 1 day)")
 
         repetition_type = config.get("repetition_type", "once")
         template_survey_ids = config.get("template_survey_ids")
@@ -949,6 +964,7 @@ class MailSender(Connector):
         # Load survey-specific reminder settings
         max_reminders = config.get("max_reminders", 1)
         days_between_reminders = config.get("days_between_reminders", 7)
+        max_days_retroactive = config.get("max_days_retroactive")
 
         # Get attachments and footer image if specified
         attachments = config.get("attachments")
@@ -1161,7 +1177,8 @@ class MailSender(Connector):
                                                               start_dates=start_dates,
                                                               interval_days=interval_days,
                                                               position=survey_index,
-                                                              repetition_type=repetition_type)
+                                                              repetition_type=repetition_type,
+                                                              max_days_retroactive=max_days_retroactive)
 
                 if not should_send:
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping survey {survey_index+1}: {reason}.", 
