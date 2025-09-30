@@ -50,6 +50,9 @@ try {
   $host.ui.RawUI.WindowTitle = "PEP $projectCaption $reference one-click download log"
   $env:Path = "$InstallPath;$env:Path"
 
+  pepcli --version
+  Write-Output ''
+
   Write-Output 'Login: opening browser'
   $ret = Start-Process pepLogon -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
   if ($ret.ExitCode -ne 0) {
