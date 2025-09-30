@@ -23,12 +23,6 @@ namespace {
 #  error Define BUILD_REF.
 #endif
 
-constexpr bool IS_GITLAB_BUILD =
-    (BUILD_PIPELINE_ID) > 0
-    && (BUILD_JOB_ID) > 0 //NOLINT(misc-redundant-expression) Macro
-    && !std::string_view(BUILD_REV).empty()
-    && !std::string_view(BUILD_REF).empty();
-
 }
 
 // Not checking mProjectPath because legacy servers will not report this field, making us think that they're development versions
@@ -49,7 +43,10 @@ GitlabVersion::GitlabVersion(
     mSemver(majorVersion, minorVersion, pipelineId, jobId) {}
 
 bool GitlabVersion::isGitlabBuild() const {
-  return IS_GITLAB_BUILD;
+  return mSemver.hasGitlabProperties()
+    // Not checking mProjectPath because legacy servers will not report this field, making us think that they're development versions
+    && !mRevision.empty()
+    && !mReference.empty();
 }
 
 std::string GitlabVersion::getSummary() const {
