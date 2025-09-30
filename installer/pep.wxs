@@ -227,41 +227,34 @@
 			<ComponentRef Id="ProgramMenuDir" />
 			<ComponentRef Id="InstallLocation" />
 			<ComponentRef Id="PepAssessorShortcut" />
-			
+
 			<ComponentGroupRef Id="pepAssessor.exe" />
 			<ComponentGroupRef Id="LogFolderAndShortcut" />
 			<ComponentGroupRef Id="configFiles" />
 		</ComponentGroup>
-		
+
 		<ComponentGroup Id="CommandPrompt">
 			<ComponentRef Id="CommandPrompt" />
 			<ComponentRef Id="CommandPromptShortcut" />
 		</ComponentGroup>
-		
-		<ComponentGroup Id="CommandLineUtilityDependencies">
-			<ComponentGroupRef Id="CommandPrompt" />
-			<ComponentGroupRef Id="configFiles" />
-		</ComponentGroup>
-		
+
 		<ComponentGroup Id="pepLogon">
 			<ComponentGroupRef Id="pepLogon.exe" />
 			<ComponentGroupRef Id="LogFolderAndShortcut" />
-			<ComponentGroupRef Id="CommandLineUtilityDependencies" />
+			<ComponentGroupRef Id="configFiles" />
 		</ComponentGroup>
-		
+
 		<ComponentGroup Id="pepcli">
 			<ComponentGroupRef Id="pepcli.exe" />
 			<ComponentGroupRef Id="LogFolderAndShortcut" />
-			<ComponentGroupRef Id="CommandLineUtilityDependencies" />
+			<ComponentGroupRef Id="configFiles" />
 		</ComponentGroup>
 
 		<ComponentGroup Id="DownloadAll">
 			<ComponentRef Id="DownloadAll.ps1" />
 			<ComponentRef Id="DownloadAllShortcut" />
-			<ComponentGroupRef Id="pepcli.exe" />
-			<ComponentGroupRef Id="pepLogon.exe" />
-			<ComponentGroupRef Id="LogFolderAndShortcut" />
-			<ComponentGroupRef Id="configFiles" />
+			<ComponentGroupRef Id="pepLogon" />
+			<ComponentGroupRef Id="pepcli" />
 		</ComponentGroup>
 		
 		<!-- Entries that the user can (de-)select for installation -->
@@ -271,6 +264,7 @@
 		<Feature Id="CommandLineUtilities" Description="Command Line Utilities" Level="1">
 			<ComponentGroupRef Id="pepLogon" />
 			<ComponentGroupRef Id="pepcli" />
+			<ComponentGroupRef Id="CommandPrompt" />
 		</Feature>
 		<Feature Id="DownloadAll" Description="Download-All utility" Level="1">
 			<ComponentGroupRef Id="DownloadAll" />
