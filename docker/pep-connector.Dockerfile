@@ -26,7 +26,8 @@ CRON_SCHEDULE="${CRON_SCHEDULE:-0 * * * *}"\n\
 case "$MODE" in\n\
     "cron")\n\
         echo "Starting in persistent cron mode with schedule: $CRON_SCHEDULE, and script: $SCRIPT_PATH"\n\
-        echo "$CRON_SCHEDULE root python3 $SCRIPT_PATH $* > /proc/1/fd/1 2>/proc/1/fd/2" > /etc/cron.d/pep-connector\n\
+        WORK_DIR=$(pwd)\n\
+        echo "$CRON_SCHEDULE root cd $WORK_DIR && python3 $SCRIPT_PATH $* > /proc/1/fd/1 2>/proc/1/fd/2" > /etc/cron.d/pep-connector\n\
         chmod 0644 /etc/cron.d/pep-connector\n\
         exec cron -f -L 15\n\
         ;;\n\
