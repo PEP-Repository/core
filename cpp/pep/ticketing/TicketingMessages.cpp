@@ -98,15 +98,15 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const
 SignedTicket2::SignedTicket2(Ticket2 ticket,
   const X509Identity& identity) {
   auto data = Serialization::ToString(std::move(ticket));
-  mSignature = Signature::create(data, identity);
+  mSignature = Signature::Make(data, identity);
   mData = std::move(data);
 }
 
 SignedTicketRequest2::SignedTicketRequest2(TicketRequest2 ticketRequest,
   const X509Identity& identity) {
   mData = Serialization::ToString(std::move(ticketRequest));
-  mSignature = Signature::create(mData, identity);
-  mLogSignature = Signature::create(mData, identity, true);
+  mSignature = Signature::Make(mData, identity);
+  mLogSignature = Signature::Make(mData, identity, true);
 }
 
 TicketRequest2 SignedTicketRequest2::openAsAccessManager(

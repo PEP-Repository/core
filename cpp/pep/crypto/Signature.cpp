@@ -7,7 +7,7 @@
 
 namespace pep {
 
-Signature Signature::create(const std::string& data, const X509Identity& identity, bool isLogCopy, SignatureScheme scheme) {
+Signature Signature::Make(const std::string& data, const X509Identity& identity, bool isLogCopy, SignatureScheme scheme) {
   auto timestamp = Timestamp();
 
   Sha512 hasher;

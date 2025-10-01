@@ -39,7 +39,7 @@ class Signature {
       mTimestamp(timestamp),
       mIsLogCopy(isLogCopy) { }
 
-  static Signature create(
+  static Signature Make(
       const std::string& data,
       const X509Identity& identity,
       bool isLogCopy=false,

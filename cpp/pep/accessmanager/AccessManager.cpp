@@ -861,7 +861,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     ticketRequest.mPolymorphicPseudonyms = list;
     TranscryptorRequest tsRequest;
     std::string data = Serialization::ToString(ticketRequest);
-    tsRequest.mRequest = SignedTicketRequest2(std::nullopt, Signature::create(data, *self->getSigningIdentity(), true), data);
+    tsRequest.mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data);
     TranscryptorRequestEntries tsRequestEntries;
     tsRequestEntries.mEntries.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
     for (size_t i = 0; i < list.size(); i++) {

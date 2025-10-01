@@ -3,7 +3,7 @@
 namespace pep {
 
 SignedBase::SignedBase(std::string data, const X509Identity& identity) : mData(std::move(data)) {
-  mSignature = Signature::create(mData, identity);
+  mSignature = Signature::Make(mData, identity);
 }
 
 void SignedBase::assertValid(
