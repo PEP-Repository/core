@@ -6,7 +6,6 @@ add_library(${PROJECT_NAME}ServerApilib
 )
 target_link_libraries(${PROJECT_NAME}ServerApilib
   ${PROJECT_NAME}Cryptolib
-  ${PROJECT_NAME}Serializationlib
 )
 verify_headers_standalone(${PROJECT_NAME}ServerApilib)
 
