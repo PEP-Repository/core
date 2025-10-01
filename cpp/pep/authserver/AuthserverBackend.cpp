@@ -53,20 +53,12 @@ void AuthserverBackend::Parameters::setAccessManager(
   this->accessManager = accessManager;
 }
 
-const X509CertificateChain& AuthserverBackend::Parameters::getCertificateChain() const {
-  return certificateChain;
+std::shared_ptr<const X509Identity> AuthserverBackend::Parameters::getSigningIdentity() const {
+  return signingIdentity;
 }
-void AuthserverBackend::Parameters::setCertificateChain(const X509CertificateChain &certificateChain) {
-  this->certificateChain = certificateChain;
+void AuthserverBackend::Parameters::setSigningIdentity(std::shared_ptr<const X509Identity> identity) {
+  this->signingIdentity = identity;
 }
-
-const AsymmetricKey& AuthserverBackend::Parameters::getPrivateKey() const {
-  return privateKey;
-}
-void AuthserverBackend::Parameters::setPrivateKey(const AsymmetricKey &privateKey) {
-  this->privateKey = privateKey;
-}
-
 
 std::chrono::seconds AuthserverBackend::Parameters::getTokenExpiration() const {
   return tokenExpiration;
@@ -89,14 +81,16 @@ void AuthserverBackend::Parameters::check() const {
   if(oauthTokenSecret.empty()) {
     throw std::runtime_error("oauthTokenSecret must be set");
   }
+  if (signingIdentity == nullptr) {
+    throw std::runtime_error("signingIdentity must be set");
+  }
 }
 const std::unordered_map<std::string, std::string> checksumNameMappings{
     {"groups", "user-groups"}, {"user-groups-v2", "user-group-users-legacy"}};
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : mAccessManager(params.getAccessManager()),
-      mCertificateChain(params.getCertificateChain()),
-      mPrivateKey(params.getPrivateKey()),
+      mSigningIdentity(params.getSigningIdentity()),
       mTokenExpiration(params.getTokenExpiration()),
       mOauthTokenSecret(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
@@ -123,7 +117,7 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
   request.mName = checksumMapping->second;
   return mAccessManager
           ->sendRequest<ChecksumChainResponse>(
-              Signed(request, mCertificateChain, mPrivateKey))
+              Signed(request, *mSigningIdentity))
           .op(RxGetOne("ChecksumChainResponse"));
 }
 
@@ -131,7 +125,7 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
     const std::string &primaryId,
     const std::vector<std::string> &alternativeIds) {
 
-  return mAccessManager->sendRequest<FindUserResponse>(Signed<FindUserRequest>(FindUserRequest(primaryId, alternativeIds), mCertificateChain, mPrivateKey))
+  return mAccessManager->sendRequest<FindUserResponse>(Signed<FindUserRequest>(FindUserRequest(primaryId, alternativeIds), *mSigningIdentity))
     .map([](FindUserResponse response) {
       return response.mUserGroups;
     });
@@ -194,12 +188,12 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
   mAccessManager->connectionStatus()
     .filter([](const ConnectionStatus& status){ return status.connected; })
     .first()
-    .flat_map([accessManager=this->mAccessManager, storageFile, certificateChain=mCertificateChain, privateKey=mPrivateKey](ConnectionStatus status) -> rxcpp::observable<std::string> {
+    .flat_map([accessManager=this->mAccessManager, storageFile, identity = mSigningIdentity](ConnectionStatus status) -> rxcpp::observable<std::string> {
       auto storageStream = std::make_shared<std::ifstream>(storageFile, std::ios::binary);
       if (!storageStream->is_open()) {
         throw std::runtime_error("Failed to open storageFile");
       }
-      auto request = SignedMigrateUserDbToAccessManagerRequest(MigrateUserDbToAccessManagerRequest(), certificateChain, privateKey);
+      auto request = SignedMigrateUserDbToAccessManagerRequest(MigrateUserDbToAccessManagerRequest(), *identity);
       return accessManager->sendRequest(std::make_shared<std::string>(Serialization::ToString(request)),
                                         messaging::IStreamToMessageBatches(storageStream));
     }).subscribe(

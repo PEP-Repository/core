@@ -21,8 +21,7 @@ public:
   SignedBase() = default;
   SignedBase(
     std::string data,
-    X509CertificateChain chain,
-    const AsymmetricKey& privateKey);
+    const X509Identity& identity);
 
   SignedBase(
     std::string data,
@@ -41,10 +40,8 @@ public:
   Signed() = default; // TODO get rid of default constructor
   Signed(std::string data, Signature signature)
     : SignedBase(std::move(data), std::move(signature)) { }
-  Signed(T o,
-    const X509CertificateChain& chain,
-    const AsymmetricKey& privateKey) :
-    SignedBase(Serialization::ToString(std::move(o)), chain, privateKey) { }
+  Signed(T o, const X509Identity& identity) :
+    SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
   [[nodiscard]] T open(
     const X509RootCertificates& rootCAs,

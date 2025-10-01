@@ -2,9 +2,8 @@
 
 namespace pep {
 
-SignedBase::SignedBase(std::string data, X509CertificateChain chain,
-  const AsymmetricKey& privateKey) : mData(std::move(data)) {
-  mSignature = Signature::create(mData, chain, privateKey);
+SignedBase::SignedBase(std::string data, const X509Identity& identity) : mData(std::move(data)) {
+  mSignature = Signature::create(mData, identity);
 }
 
 void SignedBase::assertValid(

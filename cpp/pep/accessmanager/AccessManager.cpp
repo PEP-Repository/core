@@ -376,7 +376,7 @@ void AccessManager::Parameters::check() const {
     throw std::runtime_error("dataTranslator must be set");
   if (!backend)
     throw std::runtime_error("backend must be set");
-  if (GetFacilityType(getCertificateChain()) != FacilityType::AccessManager)
+  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::AccessManager)
     throw std::runtime_error("Invalid certificate chain for Access Manager");
   SigningServer::Parameters::check();
 }
@@ -778,7 +778,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
             }
 
             // All seems fine: finally, we log the ticket at the transcryptor
-            ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), ctx->server->getCertificateChain(), ctx->server->getPrivateKey());
+            ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), *ctx->server->getSigningIdentity());
 
     LogIssuedTicketRequest logReq;
     logReq.mTicket = ctx->signedTicket;
@@ -861,7 +861,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     ticketRequest.mPolymorphicPseudonyms = list;
     TranscryptorRequest tsRequest;
     std::string data = Serialization::ToString(ticketRequest);
-    tsRequest.mRequest = SignedTicketRequest2(std::nullopt, Signature::create(data, self->getCertificateChain(), self->getPrivateKey(), true), data);
+    tsRequest.mRequest = SignedTicketRequest2(std::nullopt, Signature::create(data, *self->getSigningIdentity(), true), data);
     TranscryptorRequestEntries tsRequestEntries;
     tsRequestEntries.mEntries.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
     for (size_t i = 0; i < list.size(); i++) {

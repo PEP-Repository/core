@@ -368,8 +368,7 @@ Transcryptor::handleLogIssuedTicketRequest(
       LogIssuedTicketResponse(
         Signature::create(
           request->mTicket.mData,
-          this->getCertificateChain(),
-          this->getPrivateKey()
+          *this->getSigningIdentity()
         )
       )
     );

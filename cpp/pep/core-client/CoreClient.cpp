@@ -65,8 +65,8 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
 
 CoreClient::CoreClient(const Builder& builder):
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
-  caCertFilepath(builder.getCaCertFilepath()), privateKey(builder.getPrivateKey()),
-  rootCAs (X509RootCertificates{ReadFile(builder.getCaCertFilepath())}), certificateChain(builder.getCertificateChain()),
+  caCertFilepath(builder.getCaCertFilepath()), signingIdentity(builder.getSigningIdentity()),
+  rootCAs(X509RootCertificates{ReadFile(builder.getCaCertFilepath())}),
   privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
   publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
   accessManagerEndPoint(builder.getAccessManagerEndPoint()),
@@ -239,8 +239,9 @@ void CoreClient::Builder::initialize(
         if (enrollmentScheme && *enrollmentScheme == EnrollmentScheme::ENROLLMENT_SCHEME_CURRENT) {
           this->setPrivateKeyPseudonyms(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("PseudonymKey")));
           this->setPrivateKeyData(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("DataKey")));
-          this->setPrivateKey(AsymmetricKey(keysConfig.get<std::string>("PrivateKey")));
-          this->setCertificateChain(X509CertificateChain(keysConfig.get<std::string>("CertificateChain")));
+          this->setSigningIdentity(std::make_shared<X509Identity>(
+            AsymmetricKey(keysConfig.get<std::string>("PrivateKey")),
+            X509CertificateChain(keysConfig.get<std::string>("CertificateChain"))));
         }
         else {
           LOG(LOG_TAG, info) << "Skipped loading keys file because it is from an older version";
@@ -439,7 +440,7 @@ rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::updateColumnN
 rxcpp::observable<FakeVoid> CoreClient::deleteColumnNameMapping(const ColumnNameSection& original) {
   return clientAccessManager
       ->sendRequest<ColumnNameMappingResponse>(
-          SignedColumnNameMappingRequest({CrudAction::Delete, original, std::nullopt}, certificateChain, privateKey))
+          SignedColumnNameMappingRequest({CrudAction::Delete, original, std::nullopt}, *signingIdentity))
       .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); });
 }
 
@@ -472,7 +473,7 @@ rxcpp::observable<FakeVoid> CoreClient::setStructureMetadata(StructureMetadataTy
 rxcpp::observable<FakeVoid> CoreClient::removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) {
   return clientAccessManager
       ->sendRequest<SetStructureMetadataResponse>(
-          SignedSetStructureMetadataRequest({.subjectType = subjectType, .remove = std::move(subjectKeys)}, certificateChain, privateKey))
+          SignedSetStructureMetadataRequest({.subjectType = subjectType, .remove = std::move(subjectKeys)}, *signingIdentity))
       .map([](SetStructureMetadataResponse) { return FakeVoid(); });
 }
 

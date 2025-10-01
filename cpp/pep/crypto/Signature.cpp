@@ -7,8 +7,7 @@
 
 namespace pep {
 
-Signature Signature::create(const std::string& data, X509CertificateChain chain,
-      const AsymmetricKey& privateKey, bool isLogCopy, SignatureScheme scheme) {
+Signature Signature::create(const std::string& data, const X509Identity& identity, bool isLogCopy, SignatureScheme scheme) {
   auto timestamp = Timestamp();
 
   Sha512 hasher;
@@ -25,8 +24,8 @@ Signature Signature::create(const std::string& data, X509CertificateChain chain,
   }
 
   return Signature(
-    privateKey.signDigestSha256(hasher.digest().substr(0, 32)),
-    std::move(chain),
+    identity.getPrivateKey().signDigestSha256(hasher.digest().substr(0, 32)),
+    identity.getCertificateChain(),
     scheme,
     timestamp,
     isLogCopy

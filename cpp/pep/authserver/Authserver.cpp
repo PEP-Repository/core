@@ -25,8 +25,7 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
   }
 
   backendParams.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
-  backendParams.setCertificateChain(getCertificateChain());
-  backendParams.setPrivateKey(getPrivateKey());
+  backendParams.setSigningIdentity(getSigningIdentity());
 }
 
 const AuthserverBackend::Parameters& Authserver::Parameters::getBackendParams() const {

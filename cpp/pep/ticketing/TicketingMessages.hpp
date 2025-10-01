@@ -37,8 +37,7 @@ public:
   SignedTicket2() = default;
   SignedTicket2(
     Ticket2 ticket,
-    X509CertificateChain chain,
-    const AsymmetricKey& privateKey);
+    const X509Identity& identity);
   SignedTicket2(
     std::optional<Signature> mSignature,
     std::optional<Signature> mTranscryptorSignature,
@@ -81,8 +80,7 @@ class SignedTicketRequest2 {
 public:
   SignedTicketRequest2() = default;
   SignedTicketRequest2(TicketRequest2 ticketRequest,
-    const X509CertificateChain& chain,
-    const AsymmetricKey& privateKey);
+    const X509Identity& identity);
   SignedTicketRequest2(
     std::optional<Signature> mSignature,
     std::optional<Signature> mLogSignature,

@@ -19,8 +19,7 @@ static const std::string LOG_TAG ("CoreClient (enroll)");
 rxcpp::observable<EnrollmentResult> CoreClient::enrollServer() {
   LOG(LOG_TAG, debug) << "Enrolling server...";
   auto ctx = std::make_shared<EnrollmentContext>();
-  ctx->privateKey = std::make_shared<AsymmetricKey>(privateKey);
-  ctx->certificateChain = certificateChain;
+  ctx->identity = signingIdentity;
 
   return completeEnrollment(ctx);
 }
@@ -30,7 +29,7 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
   // Construct key component request for Access Manager and Transcryptor
   KeyComponentRequest kcReq;
 
-  ctx->keyComponentRequest = SignedKeyComponentRequest(kcReq, ctx->certificateChain, *ctx->privateKey);
+  ctx->keyComponentRequest = SignedKeyComponentRequest(kcReq, *ctx->identity);
 
   // Send request to access manager
   return clientAccessManager->sendRequest<KeyComponentResponse>(ctx->keyComponentRequest)
@@ -51,12 +50,11 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
       this->privateKeyPseudonyms = ctx->alpha.mult(ctx->gamma);
       this->privateKeyData = ctx->beta.mult(ctx->delta);
 
-      // Store certificate chain
-      privateKey = *ctx->privateKey;
-      certificateChain = ctx->certificateChain;
+      // Store identity
+      signingIdentity = ctx->identity;
 
       // First convert the certificate expiry in system time to a steady clock
-      auto durationUntilExpiry = certificateChain.front().getNotAfter() - std::chrono::system_clock::now();
+      auto durationUntilExpiry = signingIdentity->getCertificateChain().front().getNotAfter() - std::chrono::system_clock::now();
       std::chrono::time_point<std::chrono::steady_clock> steadyExpiry = std::chrono::steady_clock::now() + durationUntilExpiry;
 
       // Then fire a timer when our certificates expire in order to inform the user
@@ -64,11 +62,11 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
         registrationSubject.get_subscriber().on_next(1);
       });
 
-      EnrollmentResult result;
-      result.privateKeyData = privateKeyData;
-      result.privateKeyPseudonyms = privateKeyPseudonyms;
-      result.certificateChain = certificateChain;
-      result.privateKey = privateKey;
+      EnrollmentResult result{
+        .privateKeyData = privateKeyData,
+        .privateKeyPseudonyms = privateKeyPseudonyms,
+        .signingIdentity = *signingIdentity
+      };
 
       enrollmentSubject.get_subscriber().on_next(result);
       return result;
@@ -76,24 +74,24 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
 }
 
 std::string CoreClient::getEnrolledGroup() {
-  if (certificateChain.empty())
+  if (signingIdentity == nullptr)
     return "";
-  return certificateChain.front().getOrganizationalUnit().value_or("");
+  return signingIdentity->getCertificateChain().front().getOrganizationalUnit().value_or("");
 }
 
 std::string CoreClient::getEnrolledUser() const {
-  if (certificateChain.empty()) {
+  if (signingIdentity == nullptr) {
     return "";
   }
-  return certificateChain.front().getCommonName().value_or("");
+  return signingIdentity->getCertificateChain().front().getCommonName().value_or("");
 }
 
 
 bool CoreClient::getEnrolled() {
-  if (certificateChain.empty()) {
+  if (signingIdentity == nullptr) {
     return false;
   }
-  return certificateChain.front().isCurrentTimeInValidityPeriod();
+  return signingIdentity->getCertificateChain().front().isCurrentTimeInValidityPeriod();
 }
 
 void EnrollmentResult::writeJsonTo(std::ostream& os, bool writeDataKey, bool writePrivateKey, bool writeCertificateChain) const {
@@ -107,10 +105,10 @@ void EnrollmentResult::writeJsonTo(std::ostream& os, bool writeDataKey, bool wri
       boost::algorithm::hex(privateKeyData.pack()));
   }
   if (writePrivateKey) {
-    config.add<std::string>("PrivateKey", privateKey.toPem());
+    config.add<std::string>("PrivateKey", signingIdentity.getPrivateKey().toPem());
   }
   if (writeCertificateChain) {
-    config.add<std::string>("CertificateChain", certificateChain.toPem());
+    config.add<std::string>("CertificateChain", signingIdentity.getCertificateChain().toPem());
   }
 
   config.add<std::string>("EnrollmentScheme", Serialization::ToEnumString(ENROLLMENT_SCHEME_CURRENT));

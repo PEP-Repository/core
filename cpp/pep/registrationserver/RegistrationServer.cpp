@@ -156,8 +156,7 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   clientBuilder.setIoContext(getIoContext())
     .setCaCertFilepath(getRootCACertificatesFilePath())
-    .setPrivateKey(getPrivateKey())
-    .setCertificateChain(getCertificateChain())
+    .setSigningIdentity(getSigningIdentity())
     .setPrivateKeyData(ElgamalPrivateKey(strDataKey))
     .setPrivateKeyPseudonyms(ElgamalPrivateKey(strPseudonymKey));
   std::shared_ptr<CoreClient> client = clientBuilder.build();
@@ -243,7 +242,7 @@ void RegistrationServer::Parameters::check() const {
     throw std::runtime_error("shadowStorageFile must not be empty");
   if(!shadowPublicKey.isSet())
     throw std::runtime_error("shadowPublicKey must be set");
-  if (GetFacilityType(getCertificateChain()) != FacilityType::RegistrationServer)
+  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::RegistrationServer)
     throw std::runtime_error("Invalid certificate chain for Registration Server");
   SigningServer::Parameters::check();
 }

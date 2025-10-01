@@ -237,8 +237,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                         Serialization::ToString(
                           SignedDataReadRequest2(
                             readRequest,
-                            certificateChain,
-                            privateKey))))
+                            *signingIdentity))))
                     .map([](
                       std::string rawPage) {
                       return MakeSharedCopy(

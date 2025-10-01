@@ -41,8 +41,7 @@ namespace pep {
 struct EnrollmentResult {
   ElgamalPrivateKey privateKeyData;
   ElgamalPrivateKey privateKeyPseudonyms;
-  AsymmetricKey privateKey;
-  X509CertificateChain certificateChain;
+  X509Identity signingIdentity;
 
   void writeJsonTo(std::ostream& os, bool writeDataKey = true, bool writePrivateKey = true, bool writeCertificateChain = true) const;
 };
@@ -248,13 +247,12 @@ class CoreClient : boost::noncopyable {
   std::shared_ptr<boost::asio::io_context> io_context;
   std::optional<std::filesystem::path> keysFilePath;
   const std::filesystem::path caCertFilepath;
-  AsymmetricKey privateKey;
+  std::shared_ptr<const X509Identity> signingIdentity;
   std::shared_ptr<WorkerPool> mWorkerPool = nullptr;
 
   std::shared_ptr<WorkerPool> getWorkerPool();
 
   X509RootCertificates rootCAs;
-  X509CertificateChain certificateChain;
 
   ElgamalPrivateKey privateKeyData;
   const ElgamalPublicKey publicKeyData;
@@ -300,19 +298,11 @@ class CoreClient : boost::noncopyable {
       return caCertFilepath;
     }
 
-    const AsymmetricKey& getPrivateKey() const {
-      return privateKey;
+    std::shared_ptr<const X509Identity> getSigningIdentity() const {
+      return signingIdentity;
     }
-    Builder& setPrivateKey(const AsymmetricKey& privateKey) {
-      Builder::privateKey = privateKey;
-      return *this;
-    }
-
-    const X509CertificateChain& getCertificateChain() const {
-      return certificateChain;
-    }
-    Builder& setCertificateChain(const X509CertificateChain& certificateChain) {
-      Builder::certificateChain = certificateChain;
+    Builder& setSigningIdentity(std::shared_ptr<const X509Identity> identity) {
+      Builder::signingIdentity = identity;
       return *this;
     }
 
@@ -377,6 +367,9 @@ class CoreClient : boost::noncopyable {
                     bool persistKeysFile);
 
     std::shared_ptr<CoreClient> build() const {
+      if (signingIdentity == nullptr) {
+        throw std::runtime_error("signingIdentity must be set");
+      }
       return std::shared_ptr<CoreClient>(new CoreClient(*this));
     }
 
@@ -384,8 +377,7 @@ class CoreClient : boost::noncopyable {
     std::shared_ptr<boost::asio::io_context> io_context;
     std::optional<std::filesystem::path> keysFilePath;
     std::filesystem::path caCertFilepath;
-    AsymmetricKey privateKey;
-    X509CertificateChain certificateChain;
+    std::shared_ptr<const X509Identity> signingIdentity;
     ElgamalPrivateKey privateKeyData;
     ElgamalPrivateKey privateKeyPseudonyms;
     ElgamalPublicKey publicKeyData;
@@ -555,7 +547,7 @@ protected:
   template <typename MessageP, typename Message = std::remove_cvref_t<MessageP>>
   Signed<Message> sign(MessageP&& msg) {
     static_assert(std::is_same_v<Message, std::remove_cvref_t<MessageP>>); // enforce the default type for Message
-    return {std::forward<MessageP>(msg), certificateChain, privateKey};
+    return {std::forward<MessageP>(msg), *signingIdentity};
   }
 
   std::shared_ptr<messaging::ServerConnection> tryConnectTo(const EndPoint& endPoint);
@@ -563,8 +555,7 @@ protected:
   rxcpp::observable<SignedPingResponse> pingSigningServer(std::shared_ptr<messaging::ServerConnection> connection) const;
 
   struct EnrollmentContext {
-    std::shared_ptr<AsymmetricKey> privateKey;
-    X509CertificateChain certificateChain;
+    std::shared_ptr<const X509Identity> identity;
     CurveScalar alpha, beta;
     CurveScalar gamma, delta;
     SignedKeyComponentRequest keyComponentRequest;
@@ -721,7 +712,7 @@ public:
   /// Returns a signed copy of \p msg, using the details of the current interactive use
   /// @note This overload returns \c SignedTicketRequest2 and thus has a slightly different function signature.
   SignedTicketRequest2 sign(TicketRequest2 msg) {
-    return SignedTicketRequest2{std::move(msg), certificateChain, privateKey};
+    return SignedTicketRequest2{std::move(msg), *signingIdentity};
   }
 
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request);
