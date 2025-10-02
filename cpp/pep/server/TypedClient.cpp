@@ -1,3 +1,4 @@
+#include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/TypedClient.hpp>
 
@@ -7,6 +8,14 @@ TypedClient::TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, s
   : mUntyped(std::move(untyped)), mSigningIdentity(std::move(signingIdentity)) {
   assert(mUntyped != nullptr);
   assert(mSigningIdentity != nullptr);
+}
+
+rxcpp::observable<ConnectionStatus> TypedClient::connectionStatus() const {
+  return mUntyped->connectionStatus();
+}
+
+rxcpp::observable<VersionResponse> TypedClient::requestVersion() const {
+  return this->requestSingleResponse<VersionResponse>(VersionRequest());
 }
 
 rxcpp::observable<MetricsResponse> TypedClient::requestMetrics() const {

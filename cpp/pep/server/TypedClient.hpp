@@ -32,6 +32,9 @@ protected:
   }
 
 public:
+  rxcpp::observable<ConnectionStatus> connectionStatus() const;
+
+  rxcpp::observable<VersionResponse> requestVersion() const;
   rxcpp::observable<MetricsResponse> requestMetrics() const;
   rxcpp::observable<ChecksumChainNamesResponse> requestChecksumChainNames() const;
   rxcpp::observable<ChecksumChainResponse> requestChecksumChain(ChecksumChainRequest request) const;
