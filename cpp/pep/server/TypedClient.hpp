@@ -1,16 +1,10 @@
 #pragma once
 
+#include <pep/messaging/ServerConnection.hpp>
 #include <pep/server/MonitoringMessages.hpp>
 #include <rxcpp/rx-lite.hpp>
 
 namespace pep {
-
-namespace messaging {
-
-class ServerConnection;
-
-}
-
 
 class TypedClient {
 private:

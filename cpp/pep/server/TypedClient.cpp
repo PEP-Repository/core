@@ -1,4 +1,3 @@
-#include <pep/messaging/ServerConnection.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/TypedClient.hpp>
 
