@@ -6,7 +6,7 @@
 #include <pep/content/ParticipantPersonalia.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/registrationserver/RegistrationServerMessages.hpp>
-#include <pep/keyserver/KeyServerMessages.hpp>
+#include <pep/keyserver/KeyClient.hpp>
 
 namespace pep {
 
@@ -107,19 +107,16 @@ public:
 
   rxcpp::observable<std::string> requestToken(std::string subject, std::string group, Timestamp expirationTime);
 
-  rxcpp::observable<ConnectionStatus> getKeyServerStatus();
+  std::shared_ptr<const KeyClient> getKeyClient(bool require = true) const;
   rxcpp::observable<ConnectionStatus> getAuthserverStatus();
   rxcpp::observable<ConnectionStatus> getRegistrationServerStatus();
 
-  rxcpp::observable<VersionResponse> getKeyServerVersion();
   rxcpp::observable<VersionResponse> getAuthserverVersion();
   rxcpp::observable<VersionResponse> getRegistrationServerVersion();
 
-  rxcpp::observable<PingResponse> pingKeyServer() const;
   rxcpp::observable<SignedPingResponse> pingAuthserver() const;
   rxcpp::observable<SignedPingResponse> pingRegistrationServer() const;
 
-  rxcpp::observable<MetricsResponse> getKeyServerMetrics();
   rxcpp::observable<MetricsResponse> getAuthserverMetrics();
   rxcpp::observable<MetricsResponse> getRegistrationServerMetrics();
 
@@ -139,7 +136,7 @@ private:
   const EndPoint authserverEndPoint;
   const EndPoint registrationServerEndPoint;
 
-  std::shared_ptr<messaging::ServerConnection> clientKeyServer;
+  std::shared_ptr<KeyClient> clientKeyServer;
   std::shared_ptr<messaging::ServerConnection> clientAuthserver;
   std::shared_ptr<messaging::ServerConnection> clientRegistrationServer;
 

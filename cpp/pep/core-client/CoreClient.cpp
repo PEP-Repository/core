@@ -301,7 +301,7 @@ rxcpp::observable<ParticipantGroupAccess> CoreClient::getAccessibleParticipantGr
       includeImplicitlyGranted}));
 }
 
-std::shared_ptr<messaging::ServerConnection> CoreClient::tryConnectTo(const EndPoint& endPoint) {
+std::shared_ptr<messaging::ServerConnection> CoreClient::tryConnectTo(const EndPoint& endPoint) const {
   return messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
 }
 

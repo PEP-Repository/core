@@ -550,7 +550,10 @@ protected:
     return {std::forward<MessageP>(msg), *signingIdentity};
   }
 
-  std::shared_ptr<messaging::ServerConnection> tryConnectTo(const EndPoint& endPoint);
+  std::shared_ptr<messaging::ServerConnection> tryConnectTo(const EndPoint& endPoint) const;
+  template <typename TClient>
+  std::shared_ptr<TClient> tryConnectTypedClient(const EndPoint& endPoint) const;
+
   rxcpp::observable<VersionResponse> tryGetServerVersion(std::shared_ptr<messaging::ServerConnection> connection) const;
   rxcpp::observable<SignedPingResponse> pingSigningServer(std::shared_ptr<messaging::ServerConnection> connection) const;
 
@@ -741,5 +744,14 @@ public:
   std::shared_ptr<LocalPseudonyms> getLocalPseudonyms(uint32_t index) const { return mPseudonyms.at(index); }
   std::shared_ptr<LocalPseudonym> getAccessGroupPseudonym(uint32_t index) const; // Returns NULL if ticket didn't include access group pseudonyms
 };
+
+template <typename TClient>
+std::shared_ptr<TClient> CoreClient::tryConnectTypedClient(const EndPoint& endPoint) const {
+  auto untyped = this->tryConnectTo(endPoint);
+  if (untyped == nullptr) {
+    return nullptr;
+  }
+  return std::make_shared<TClient>(untyped, signingIdentity);
+}
 
 }

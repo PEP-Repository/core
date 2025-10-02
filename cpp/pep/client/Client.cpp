@@ -8,7 +8,6 @@
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/auth/OAuthToken.hpp>
-#include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/authserver/AuthserverSerializers.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
@@ -179,7 +178,7 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 
   EnrollmentRequest request(csr, oauthToken);
   LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
-  return clientKeyServer->sendRequest<EnrollmentResponse>(request)
+  return clientKeyServer->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
     auto ctx = std::make_shared<EnrollmentContext>();
     ctx->identity = std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain);
@@ -198,8 +197,12 @@ rxcpp::observable<std::string> Client::requestToken(std::string subject,
       .map([](TokenResponse response) { return response.mToken; });
 }
 
-rxcpp::observable<ConnectionStatus> Client::getKeyServerStatus() {
-  return clientKeyServer->connectionStatus();
+std::shared_ptr<const KeyClient> Client::getKeyClient(bool require) const {
+  auto result = clientKeyServer;
+  if (require && result == nullptr) {
+    throw std::runtime_error("Not connected to Key Server"); // TODO: refactor so that (CoreClient and Client) instances cannot exist without having established their respective connections
+  }
+  return result;
 }
 
 rxcpp::observable<ConnectionStatus> Client::getAuthserverStatus() {
@@ -210,10 +213,6 @@ rxcpp::observable<ConnectionStatus> Client::getRegistrationServerStatus() {
   return clientRegistrationServer->connectionStatus();
 }
 
-rxcpp::observable<VersionResponse> Client::getKeyServerVersion() {
-  return tryGetServerVersion(clientKeyServer);
-}
-
 rxcpp::observable<VersionResponse> Client::getAuthserverVersion() {
   return tryGetServerVersion(clientAuthserver);
 }
@@ -222,20 +221,12 @@ rxcpp::observable<VersionResponse> Client::getRegistrationServerVersion() {
   return tryGetServerVersion(clientRegistrationServer);
 }
 
-rxcpp::observable<PingResponse> Client::pingKeyServer() const {
-  return clientKeyServer->ping<PingResponse>([](const PingResponse& response) { return response; });
-}
-
 rxcpp::observable<SignedPingResponse> Client::pingAuthserver() const {
   return pingSigningServer(clientAuthserver);
 }
 
 rxcpp::observable<SignedPingResponse> Client::pingRegistrationServer() const {
   return pingSigningServer(clientRegistrationServer);
-}
-
-rxcpp::observable<MetricsResponse> Client::getKeyServerMetrics() {
-  return clientKeyServer->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
 }
 
 rxcpp::observable<MetricsResponse> Client::getAuthserverMetrics() {
@@ -260,7 +251,7 @@ Client::Client(const Builder& builder)
     keyServerEndPoint(builder.getKeyServerEndPoint()),
     authserverEndPoint(builder.getAuthserverEndPoint()),
     registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
-  clientKeyServer = tryConnectTo(keyServerEndPoint);
+  clientKeyServer = this->tryConnectTypedClient<KeyClient>(keyServerEndPoint);
   clientAuthserver = tryConnectTo(authserverEndPoint);
   clientRegistrationServer = tryConnectTo(registrationServerEndPoint);
 }

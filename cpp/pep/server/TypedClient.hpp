@@ -12,8 +12,6 @@ private:
   std::shared_ptr<const X509Identity> mSigningIdentity;
 
 protected:
-  TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, std::shared_ptr<const X509Identity> signingIdentity) noexcept;
-
   const std::shared_ptr<messaging::ServerConnection>& untyped() const noexcept { return mUntyped; }
 
   template <typename T>
@@ -32,7 +30,12 @@ protected:
   }
 
 public:
+  TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, std::shared_ptr<const X509Identity> signingIdentity) noexcept;
+  TypedClient(const TypedClient&) = delete;
+  TypedClient& operator=(const TypedClient&) = delete;
+
   rxcpp::observable<ConnectionStatus> connectionStatus() const;
+  rxcpp::observable<FakeVoid> shutdown();
 
   rxcpp::observable<VersionResponse> requestVersion() const;
   rxcpp::observable<MetricsResponse> requestMetrics() const;

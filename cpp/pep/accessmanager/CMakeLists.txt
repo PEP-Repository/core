@@ -27,6 +27,7 @@ if (WITH_SERVERS)
   target_link_libraries(${PROJECT_NAME}AccessManagerlib
     ${PROJECT_NAME}AccessManagerApilib
     ${PROJECT_NAME}Databaselib
+    ${PROJECT_NAME}KeyClientlib
     ${PROJECT_NAME}Serverlib
   )
 

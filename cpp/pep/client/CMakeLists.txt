@@ -8,7 +8,7 @@ add_library(${PROJECT_NAME}Clientlib STATIC
 target_link_libraries(${PROJECT_NAME}Clientlib
   ${PROJECT_NAME}CoreClientlib
   ${PROJECT_NAME}Contentlib
-  ${PROJECT_NAME}KeyServerApilib
+  ${PROJECT_NAME}KeyClientlib
   ${PROJECT_NAME}AuthserverApilib
   ${PROJECT_NAME}RegistrationServerApilib
 )

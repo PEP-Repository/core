@@ -7,7 +7,7 @@
 #include <pep/server/SigningServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/transcryptor/KeyComponentMessages.hpp>
-#include <pep/messaging/ServerConnection.hpp>
+#include <pep/keyserver/KeyClient.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 
 #include <filesystem>
@@ -49,11 +49,11 @@ public:
     /*!
     * \return The connection to the keyserver
     */
-    std::shared_ptr<messaging::ServerConnection> getKeyServer() const;
+    std::shared_ptr<KeyClient> getKeyClient() const;
     /*!
-    * \param keyserver The connection to the keyserver
+    * \param client The connection to the keyserver
     */
-    void setKeyServer(std::shared_ptr<messaging::ServerConnection> keyserver);
+    void setKeyClient(std::shared_ptr<KeyClient> client);
 
     std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
     std::shared_ptr<DataTranslator> getDataTranslator() const;
@@ -72,7 +72,7 @@ public:
     std::optional<ElgamalPrivateKey> pseudonymKey;
     std::optional<ElgamalPublicKey> publicKeyPseudonyms;
     std::shared_ptr<messaging::ServerConnection> transcryptor;
-    std::shared_ptr<messaging::ServerConnection> keyserver;
+    std::shared_ptr<KeyClient> keyClient;
     std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
     std::shared_ptr<DataTranslator> dataTranslator;
     std::shared_ptr<Backend> backend;
@@ -148,7 +148,7 @@ private:
   ElgamalPrivateKey mPseudonymKey;
   ElgamalPublicKey mPublicKeyPseudonyms;
   std::shared_ptr<messaging::ServerConnection> transcryptor;
-  std::shared_ptr<messaging::ServerConnection> mKeyserver;
+  std::shared_ptr<KeyClient> mKeyClient;
   std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
   std::shared_ptr<DataTranslator> mDataTranslator;
   std::shared_ptr<Backend> backend;

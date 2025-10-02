@@ -93,7 +93,7 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
     accessManagerConnectionStatus = accessManagerStatus;
   updateConnectionStatus();
     });
-  client->getKeyServerStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
+  client->getKeyClient()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
     keyServerConnectionStatus = keyServerStatus;
   updateConnectionStatus();
     });

@@ -233,7 +233,7 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
   setPublicKeyPseudonyms(publicKeyPseudonyms);
 
   setTranscryptor(messaging::ServerConnection::TryCreate(this->getIoContext(), transcryptorEndPoint, getRootCACertificatesFilePath()));
-  setKeyServer(messaging::ServerConnection::TryCreate(this->getIoContext(), keyserverEndPoint, getRootCACertificatesFilePath()));
+  setKeyClient(std::make_shared<KeyClient>(messaging::ServerConnection::TryCreate(this->getIoContext(), keyserverEndPoint, getRootCACertificatesFilePath()), getSigningIdentity()));
 
   auto globalConf = std::make_shared<GlobalConfiguration>(
     Serialization::FromJsonString<GlobalConfiguration>(
@@ -330,12 +330,12 @@ void AccessManager::Parameters::setTranscryptor(std::shared_ptr<messaging::Serve
   Parameters::transcryptor = transcryptor;
 }
 
-std::shared_ptr<messaging::ServerConnection> AccessManager::Parameters::getKeyServer() const {
-  return keyserver;
+std::shared_ptr<KeyClient> AccessManager::Parameters::getKeyClient() const {
+  return keyClient;
 }
 
-void AccessManager::Parameters::setKeyServer(std::shared_ptr<messaging::ServerConnection> keyserver) {
-  Parameters::keyserver = keyserver;
+void AccessManager::Parameters::setKeyClient(std::shared_ptr<KeyClient> client) {
+  Parameters::keyClient = client;
 }
 
 std::shared_ptr<PseudonymTranslator> AccessManager::Parameters::getPseudonymTranslator() const {
@@ -368,8 +368,8 @@ void AccessManager::Parameters::check() const {
     throw std::runtime_error("publicKeyPseudonyms must be set");
   if (!transcryptor)
     throw std::runtime_error("transcryptor must be set");
-  if (!keyserver)
-    throw std::runtime_error("keyserver must be set");
+  if (!keyClient)
+    throw std::runtime_error("keyClient must be set");
   if(!pseudonymTranslator)
     throw std::runtime_error("pseudonymTranslator must be set");
   if(!dataTranslator)
@@ -400,7 +400,7 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   mPseudonymKey(parameters->getPseudonymKey()),
   mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
   transcryptor(parameters->getTranscryptor()),
-  mKeyserver(parameters->getKeyServer()),
+  mKeyClient(parameters->getKeyClient()),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
   mDataTranslator(parameters->getDataTranslator()),
   backend(parameters->getBackend()),

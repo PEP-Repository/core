@@ -8,6 +8,8 @@ namespace pep {
 
 class KeyClient : public TypedClient {
 public:
+  using TypedClient::TypedClient;
+
   rxcpp::observable<PingResponse> requestPing() const;
   rxcpp::observable<EnrollmentResponse> requestUserEnrollment(EnrollmentRequest request) const;
 

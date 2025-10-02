@@ -190,7 +190,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
         tokenBlockRequest.target.subject=uid;
         tokenBlockRequest.target.userGroup=group;
         //tokenBlockRequest.target.issueDateTime defaults to current time
-        return accessManager->mKeyserver->sendRequest<TokenBlockingCreateResponse>(Signed(tokenBlockRequest, *accessManager->getSigningIdentity()));
+        return accessManager->mKeyClient->requestTokenBlockingCreate(std::move(tokenBlockRequest));
       }).op(RxInstead(FakeVoid()));
     }
     return rxcpp::rxs::just(FakeVoid());

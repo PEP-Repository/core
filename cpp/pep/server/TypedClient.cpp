@@ -14,6 +14,10 @@ rxcpp::observable<ConnectionStatus> TypedClient::connectionStatus() const {
   return mUntyped->connectionStatus();
 }
 
+rxcpp::observable<FakeVoid> TypedClient::shutdown() {
+  return mUntyped->shutdown();
+}
+
 rxcpp::observable<VersionResponse> TypedClient::requestVersion() const {
   return this->requestSingleResponse<VersionResponse>(VersionRequest());
 }

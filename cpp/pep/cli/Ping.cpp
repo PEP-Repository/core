@@ -21,10 +21,12 @@ public:
   using SendMethod = rxcpp::observable<TResponse>(TClient::*)() const;
 
 private:
-  SendMethod mSend;
+  using SendFunction = std::function<rxcpp::observable<TResponse>(const pep::Client&)>;
+  SendFunction mSend;
 
 protected:
-  TypedServerPinger(SendMethod send) : mSend(send) {}
+  TypedServerPinger(SendFunction send) : mSend(std::move(send)) {}
+  TypedServerPinger(SendMethod send) : TypedServerPinger(SendFunction(send)) {}
 
   virtual void handleResponse(const TResponse& response) const {
     std::cout << "Received response" << std::endl;
@@ -32,7 +34,7 @@ protected:
 
 public:
   rxcpp::observable<pep::FakeVoid> execute(const pep::Client& client) const override {
-    return (client.*mSend)()
+    return mSend(client)
       .map([this](const TResponse& response) {
       handleResponse(response);
       return pep::FakeVoid();
@@ -80,7 +82,7 @@ public:
 class KeyServerPinger : public TypedServerPinger<pep::Client, pep::PingResponse> {
 public:
   KeyServerPinger(bool printCertificateChain, bool printDrift) 
-      : TypedServerPinger<pep::Client, pep::PingResponse>(&pep::Client::pingKeyServer) {
+    : TypedServerPinger<pep::Client, pep::PingResponse>([](const pep::Client& client) { return client.getKeyClient()->requestPing(); }) {
     if (printCertificateChain) {
       throw std::runtime_error("This server does not produce a certificate chain to print");
     }

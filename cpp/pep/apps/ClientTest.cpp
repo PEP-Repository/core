@@ -129,6 +129,8 @@ class ClientTestApplication : public Application {
   };
 
   class Mode5Command : public ModeCommand<5> {
+  private:
+    rxcpp::observable<std::tuple<VersionResponse, std::string>> tryGetServerVersion(std::shared_ptr<const TypedClient> client, std::string name);
   protected:
     rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) override;
   public:
@@ -236,6 +238,17 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     .op(RxInstead(true));
 }
 
+rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::tryGetServerVersion(std::shared_ptr<const TypedClient> client, std::string name) {
+  rxcpp::observable<VersionResponse> version;
+  if (client == nullptr) {
+    version = rxcpp::observable<>::empty<VersionResponse>();
+  }
+  else {
+    version = client->requestVersion();
+  }
+  return version.zip(rxcpp::rxs::just(std::move(name)));
+}
+
 rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std::shared_ptr<Client> client) {
   std::shared_ptr<SemanticVersion> ownBinarySemver = std::make_shared<SemanticVersion>(BinaryVersion::current.getSemver());
   std::shared_ptr<SemanticVersion> ownConfigSemver{};
@@ -244,12 +257,12 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  return client->getAccessManagerVersion().zip(rxcpp::rxs::just("Access Manager")).merge(
-    client->getTranscryptorVersion().zip(rxcpp::rxs::just("Transcryptor")),
-    client->getKeyServerVersion().zip(rxcpp::rxs::just("Key Server")),
-    client->getStorageFacilityVersion().zip(rxcpp::rxs::just("Storage Facility")),
-    client->getRegistrationServerVersion().zip(rxcpp::rxs::just("Registration Server")),
-    client->getAuthserverVersion().zip(rxcpp::rxs::just("Auth Server"))
+  return client->getAccessManagerVersion().zip(rxcpp::rxs::just(std::string("Access Manager"))).merge(
+    client->getTranscryptorVersion().zip(rxcpp::rxs::just(std::string("Transcryptor"))),
+    this->tryGetServerVersion(client->getKeyClient(false), "Key Server"),
+    client->getStorageFacilityVersion().zip(rxcpp::rxs::just(std::string("Storage Facility"))),
+    client->getRegistrationServerVersion().zip(rxcpp::rxs::just(std::string("Registration Server"))),
+    client->getAuthserverVersion().zip(rxcpp::rxs::just(std::string("Auth Server")))
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
     const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
     std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;

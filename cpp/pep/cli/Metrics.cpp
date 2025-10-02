@@ -47,7 +47,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("keyserver") != serverFilter.end()) {
-        observables.push_back(client->getKeyServerMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getKeyClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ KeyServer ============================\n";
           oss << metrics.mMetrics;
