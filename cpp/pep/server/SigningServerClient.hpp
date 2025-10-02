@@ -5,11 +5,10 @@
 
 namespace pep {
 
-class SigningServerClient : public TypedClient{
-protected:
-  SigningServerClient(std::shared_ptr<messaging::ServerConnection> untyped, std::shared_ptr<const X509Identity> signingIdentity) noexcept;
-
+class SigningServerClient : public TypedClient {
 public:
+  using TypedClient::TypedClient;
+
   rxcpp::observable<SignedPingResponse> requestPing() const;
 };
 

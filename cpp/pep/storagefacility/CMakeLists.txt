@@ -11,6 +11,16 @@ target_link_libraries(${PROJECT_NAME}StorageFacilityApilib
 )
 verify_headers_standalone(${PROJECT_NAME}StorageFacilityApilib)
 
+add_library(${PROJECT_NAME}StorageClientlib
+  StorageClient.cpp StorageClient.hpp
+)
+target_link_libraries(${PROJECT_NAME}StorageClientlib
+  ${PROJECT_NAME}StorageFacilityApilib
+  ${PROJECT_NAME}TypedClientlib
+)
+verify_headers_standalone(${PROJECT_NAME}KeyClientlib)
+
+
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}StorageFacilitylib
       EntryContent.cpp EntryContent.hpp

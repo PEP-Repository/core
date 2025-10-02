@@ -1,10 +1,18 @@
 #pragma once
 
+#include <pep/async/RxUtils.hpp>
 #include <pep/messaging/ServerConnection.hpp>
 #include <pep/server/MonitoringMessages.hpp>
 #include <rxcpp/rx-lite.hpp>
 
 namespace pep {
+
+template <typename T>
+using TailSegment = rxcpp::observable<T>;
+
+template <typename T>
+using MessageTail = rxcpp::observable<TailSegment<T>>;
+
 
 class TypedClient {
 private:
@@ -22,6 +30,28 @@ protected:
   template <typename TResponse, typename TRequest>
   rxcpp::observable<TResponse> requestSingleResponse(TRequest request) const {
     return mUntyped->sendRequest<TResponse>(std::move(request));
+  }
+
+  template <typename TResponse, typename TRequest, typename TTail>
+  rxcpp::observable<TResponse> requestSingleResponse(TRequest request, MessageTail<TTail> tail) const {
+    auto batches = tail
+      .map([](const TailSegment<TTail>& segment) -> messaging::MessageSequence {
+      return segment
+        .op(RxGetOne("messages in tail segment"))
+        .map([](TTail single) {
+        return MakeSharedCopy(Serialization::ToString(std::move(single)));
+          });
+        });
+
+    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))), batches)
+      .op(RxGetOne("response messages from server"))
+      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
+  }
+
+  template <typename TResponse, typename TRequest>
+  rxcpp::observable<TResponse> requestResponseSequence(TRequest request) const {
+    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))))
+      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
   }
 
   template <typename TResponse>
