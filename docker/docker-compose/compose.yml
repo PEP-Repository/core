@@ -416,7 +416,6 @@ services:
     ports:
       - "443:443"
     volumes:
-      - datamonitor_shared_volume:/var/www/html/data_monitor
       - "${DATA_DIR_BASE}/authserver:/data"
       - "${SECRETS_DIR_BASE}/authserver:/secrets:ro"
       - "${SECRETS_DIR_BASE}/acme:/cert:ro"
