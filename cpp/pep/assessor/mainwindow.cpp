@@ -289,7 +289,7 @@ void MainWindow::showForToken(QString token) {
     .observe_on(observe_on_gui())
         .subscribe([this](const std::pair<std::shared_ptr<pep::EnrollmentResult>, std::shared_ptr<pep::GlobalConfiguration>> pair) {
         std::cout << "Received EnrollmentResult" << std::endl;
-      auto& cert = pair.first->certificateChain.front();
+      auto& cert = pair.first->signingIdentity.getCertificateChain().front();
 
       if(!cert.getCommonName().has_value()) {
         throw std::runtime_error("User certificate does not contain a username.");
