@@ -182,7 +182,6 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
   ElgamalPublicKey publicKeyPseudonyms;
 
   EndPoint transcryptorEndPoint;
-  EndPoint keyserverEndPoint;
 
   std::filesystem::path systemKeysFile;
 
@@ -196,7 +195,7 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
 
     publicKeyPseudonyms = config.get<ElgamalPublicKey>("PublicKeyPseudonyms");
     transcryptorEndPoint = config.get<EndPoint>("Transcryptor");
-    keyserverEndPoint = config.get<EndPoint>("KeyServer");
+    keyServerEndPoint = config.get<EndPoint>("KeyServer");
 
     if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
       systemKeysFile = optionalSystemKeysFile.value();
@@ -233,7 +232,6 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
   setPublicKeyPseudonyms(publicKeyPseudonyms);
 
   setTranscryptor(messaging::ServerConnection::TryCreate(this->getIoContext(), transcryptorEndPoint, getRootCACertificatesFilePath()));
-  setKeyClient(std::make_shared<KeyClient>(messaging::ServerConnection::TryCreate(this->getIoContext(), keyserverEndPoint, getRootCACertificatesFilePath()), getSigningIdentity()));
 
   auto globalConf = std::make_shared<GlobalConfiguration>(
     Serialization::FromJsonString<GlobalConfiguration>(
@@ -330,12 +328,8 @@ void AccessManager::Parameters::setTranscryptor(std::shared_ptr<messaging::Serve
   Parameters::transcryptor = transcryptor;
 }
 
-std::shared_ptr<KeyClient> AccessManager::Parameters::getKeyClient() const {
-  return keyClient;
-}
-
-void AccessManager::Parameters::setKeyClient(std::shared_ptr<KeyClient> client) {
-  Parameters::keyClient = client;
+const EndPoint& AccessManager::Parameters::getKeyServerEndPoint() const {
+  return keyServerEndPoint;
 }
 
 std::shared_ptr<PseudonymTranslator> AccessManager::Parameters::getPseudonymTranslator() const {
@@ -368,8 +362,6 @@ void AccessManager::Parameters::check() const {
     throw std::runtime_error("publicKeyPseudonyms must be set");
   if (!transcryptor)
     throw std::runtime_error("transcryptor must be set");
-  if (!keyClient)
-    throw std::runtime_error("keyClient must be set");
   if(!pseudonymTranslator)
     throw std::runtime_error("pseudonymTranslator must be set");
   if(!dataTranslator)
@@ -400,7 +392,7 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   mPseudonymKey(parameters->getPseudonymKey()),
   mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
   transcryptor(parameters->getTranscryptor()),
-  mKeyClient(parameters->getKeyClient()),
+  mKeyClient(messaging::ServerConnection::TryCreate(this->getIoContext(), parameters->getKeyServerEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
   mDataTranslator(parameters->getDataTranslator()),
   backend(parameters->getBackend()),

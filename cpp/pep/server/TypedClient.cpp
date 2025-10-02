@@ -4,10 +4,9 @@
 
 namespace pep {
 
-TypedClient::TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, std::shared_ptr<const X509Identity> signingIdentity) noexcept
-  : mUntyped(std::move(untyped)), mSigningIdentity(std::move(signingIdentity)) {
+TypedClient::TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept
+  : mUntyped(std::move(untyped)), mMessageSigner(messageSigner) {
   assert(mUntyped != nullptr);
-  assert(mSigningIdentity != nullptr);
 }
 
 rxcpp::observable<ConnectionStatus> TypedClient::connectionStatus() const {

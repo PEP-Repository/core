@@ -9,7 +9,7 @@
 
 namespace pep {
 
-class AuthserverBackend {
+class AuthserverBackend : public MessageSigner {
 public:
   class Parameters {
   public:
@@ -67,7 +67,6 @@ private:
   void migrateDatabase(const std::filesystem::path& storageFile);
 
   std::shared_ptr<messaging::ServerConnection> mAccessManager;
-  std::shared_ptr<const X509Identity> mSigningIdentity;
   std::chrono::seconds mTokenExpiration;
   std::string mOauthTokenSecret;
 };

@@ -63,6 +63,24 @@ public:
 
 };
 
+class MessageSigner {
+private:
+  std::shared_ptr<const X509Identity> mSigningIdentity;
+
+protected:
+  std::shared_ptr<const X509Identity> getSigningIdentity(bool require = true) const;
+
+public:
+  explicit MessageSigner(std::shared_ptr<const X509Identity> signingIdentity = nullptr) noexcept;
+
+  void setSigningIdentity(std::shared_ptr<const X509Identity> signingIdentity) noexcept;
+
+  template <typename T>
+  Signed<T> sign(T message) const {
+    return Signed<T>(std::move(message), *this->getSigningIdentity());
+  }
+};
+
 template <typename T>
 struct NormalizedTypeNamer<Signed<T>> : public BasicNormalizedTypeNamer {
   static inline std::string GetTypeName() { return "Signed" + GetNormalizedTypeName<T>(); }

@@ -9,14 +9,14 @@ namespace pep {
 class TypedClient {
 private:
   std::shared_ptr<messaging::ServerConnection> mUntyped;
-  std::shared_ptr<const X509Identity> mSigningIdentity;
+  const MessageSigner& mMessageSigner;
 
 protected:
   const std::shared_ptr<messaging::ServerConnection>& untyped() const noexcept { return mUntyped; }
 
   template <typename T>
   Signed<T> sign(T message) const {
-    return Signed(std::move(message), *mSigningIdentity);
+    return mMessageSigner.sign(std::move(message));
   }
 
   template <typename TResponse, typename TRequest>
@@ -30,7 +30,7 @@ protected:
   }
 
 public:
-  TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, std::shared_ptr<const X509Identity> signingIdentity) noexcept;
+  TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept;
   TypedClient(const TypedClient&) = delete;
   TypedClient& operator=(const TypedClient&) = delete;
 

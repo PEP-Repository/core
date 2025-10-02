@@ -7,19 +7,15 @@ namespace pep {
 /*!
 * \brief A Server that can cryptographically sign its messages.
 */
-class SigningServer : public Server {
+class SigningServer : public Server, protected MessageSigner {
 public:
   /// \copydoc Server::Parameters
   class Parameters;
-
-private:
-  std::shared_ptr<const X509Identity> mSigningIdentity;
 
 protected:
   explicit SigningServer(std::shared_ptr<Parameters> parameters);
 
   std::string makeSerializedPingResponse(const PingRequest& request) const override;
-  const std::shared_ptr<const X509Identity>& getSigningIdentity() const noexcept { return mSigningIdentity; }
 };
 
 

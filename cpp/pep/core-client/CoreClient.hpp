@@ -239,7 +239,7 @@ class ShortPseudonymContextError : public std::runtime_error {
   {}
 };
 
-class CoreClient : boost::noncopyable {
+class CoreClient : protected MessageSigner, boost::noncopyable {
  public:
   static constexpr size_t DATA_RETRIEVAL_BATCH_SIZE{4000};
 
@@ -247,7 +247,6 @@ class CoreClient : boost::noncopyable {
   std::shared_ptr<boost::asio::io_context> io_context;
   std::optional<std::filesystem::path> keysFilePath;
   const std::filesystem::path caCertFilepath;
-  std::shared_ptr<const X509Identity> signingIdentity;
   std::shared_ptr<WorkerPool> mWorkerPool = nullptr;
 
   std::shared_ptr<WorkerPool> getWorkerPool();
@@ -543,12 +542,7 @@ protected:
    */
   CoreClient(const Builder& builder);
 
-  /// Returns a signed copy of \p msg, using the details of the current interactive user
-  template <typename MessageP, typename Message = std::remove_cvref_t<MessageP>>
-  Signed<Message> sign(MessageP&& msg) {
-    static_assert(std::is_same_v<Message, std::remove_cvref_t<MessageP>>); // enforce the default type for Message
-    return {std::forward<MessageP>(msg), *signingIdentity};
-  }
+  using MessageSigner::sign;
 
   std::shared_ptr<messaging::ServerConnection> tryConnectTo(const EndPoint& endPoint) const;
   template <typename TClient>
@@ -713,9 +707,9 @@ public:
     const TicketPseudonyms& pseudonyms) const;
 
   /// Returns a signed copy of \p msg, using the details of the current interactive use
-  /// @note This overload returns \c SignedTicketRequest2 and thus has a slightly different function signature.
+  /// @note This overload returns \c SignedTicketRequest2 and thus has a slightly different function signature from MessageSigner::sign.
   SignedTicketRequest2 sign(TicketRequest2 msg) {
-    return SignedTicketRequest2{std::move(msg), *signingIdentity};
+    return SignedTicketRequest2{std::move(msg), *this->getSigningIdentity()};
   }
 
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request);
@@ -751,7 +745,7 @@ std::shared_ptr<TClient> CoreClient::tryConnectTypedClient(const EndPoint& endPo
   if (untyped == nullptr) {
     return nullptr;
   }
-  return std::make_shared<TClient>(untyped, signingIdentity);
+  return std::make_shared<TClient>(untyped, static_cast<const MessageSigner&>(*this));
 }
 
 }

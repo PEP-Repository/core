@@ -89,8 +89,8 @@ const std::unordered_map<std::string, std::string> checksumNameMappings{
     {"groups", "user-groups"}, {"user-groups-v2", "user-group-users-legacy"}};
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
-    : mAccessManager(params.getAccessManager()),
-      mSigningIdentity(params.getSigningIdentity()),
+    : MessageSigner(params.getSigningIdentity()),
+      mAccessManager(params.getAccessManager()),
       mTokenExpiration(params.getTokenExpiration()),
       mOauthTokenSecret(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
@@ -117,7 +117,7 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
   request.mName = checksumMapping->second;
   return mAccessManager
           ->sendRequest<ChecksumChainResponse>(
-              Signed(request, *mSigningIdentity))
+              this->sign(request))
           .op(RxGetOne("ChecksumChainResponse"));
 }
 
@@ -125,7 +125,7 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
     const std::string &primaryId,
     const std::vector<std::string> &alternativeIds) {
 
-  return mAccessManager->sendRequest<FindUserResponse>(Signed<FindUserRequest>(FindUserRequest(primaryId, alternativeIds), *mSigningIdentity))
+  return mAccessManager->sendRequest<FindUserResponse>(this->sign(FindUserRequest(primaryId, alternativeIds)))
     .map([](FindUserResponse response) {
       return response.mUserGroups;
     });
@@ -188,7 +188,7 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
   mAccessManager->connectionStatus()
     .filter([](const ConnectionStatus& status){ return status.connected; })
     .first()
-    .flat_map([accessManager=this->mAccessManager, storageFile, identity = mSigningIdentity](ConnectionStatus status) -> rxcpp::observable<std::string> {
+    .flat_map([accessManager=this->mAccessManager, storageFile, identity = this->getSigningIdentity()](ConnectionStatus status) -> rxcpp::observable<std::string> {
       auto storageStream = std::make_shared<std::ifstream>(storageFile, std::ios::binary);
       if (!storageStream->is_open()) {
         throw std::runtime_error("Failed to open storageFile");

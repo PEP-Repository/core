@@ -47,13 +47,9 @@ public:
     void setTranscryptor(std::shared_ptr<messaging::ServerConnection> transcryptor);
 
     /*!
-    * \return The connection to the keyserver
+    * \return The endpoint of the keyserver
     */
-    std::shared_ptr<KeyClient> getKeyClient() const;
-    /*!
-    * \param client The connection to the keyserver
-    */
-    void setKeyClient(std::shared_ptr<KeyClient> client);
+    const EndPoint& getKeyServerEndPoint() const;
 
     std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
     std::shared_ptr<DataTranslator> getDataTranslator() const;
@@ -72,7 +68,7 @@ public:
     std::optional<ElgamalPrivateKey> pseudonymKey;
     std::optional<ElgamalPublicKey> publicKeyPseudonyms;
     std::shared_ptr<messaging::ServerConnection> transcryptor;
-    std::shared_ptr<KeyClient> keyClient;
+    EndPoint keyServerEndPoint;
     std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
     std::shared_ptr<DataTranslator> dataTranslator;
     std::shared_ptr<Backend> backend;
@@ -148,7 +144,7 @@ private:
   ElgamalPrivateKey mPseudonymKey;
   ElgamalPublicKey mPublicKeyPseudonyms;
   std::shared_ptr<messaging::ServerConnection> transcryptor;
-  std::shared_ptr<KeyClient> mKeyClient;
+  KeyClient mKeyClient;
   std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
   std::shared_ptr<DataTranslator> mDataTranslator;
   std::shared_ptr<Backend> backend;

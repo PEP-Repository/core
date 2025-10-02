@@ -63,9 +63,10 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
 
 }
 
-CoreClient::CoreClient(const Builder& builder):
+CoreClient::CoreClient(const Builder& builder) :
+  MessageSigner(builder.getSigningIdentity()),
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
-  caCertFilepath(builder.getCaCertFilepath()), signingIdentity(builder.getSigningIdentity()),
+  caCertFilepath(builder.getCaCertFilepath()),
   rootCAs(X509RootCertificates{ReadFile(builder.getCaCertFilepath())}),
   privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
   publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
@@ -440,7 +441,7 @@ rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::updateColumnN
 rxcpp::observable<FakeVoid> CoreClient::deleteColumnNameMapping(const ColumnNameSection& original) {
   return clientAccessManager
       ->sendRequest<ColumnNameMappingResponse>(
-          SignedColumnNameMappingRequest({CrudAction::Delete, original, std::nullopt}, *signingIdentity))
+          this->sign(ColumnNameMappingRequest{CrudAction::Delete, original, std::nullopt}))
       .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); });
 }
 
@@ -473,7 +474,7 @@ rxcpp::observable<FakeVoid> CoreClient::setStructureMetadata(StructureMetadataTy
 rxcpp::observable<FakeVoid> CoreClient::removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) {
   return clientAccessManager
       ->sendRequest<SetStructureMetadataResponse>(
-          SignedSetStructureMetadataRequest({.subjectType = subjectType, .remove = std::move(subjectKeys)}, *signingIdentity))
+          this->sign(SetStructureMetadataRequest{.subjectType = subjectType, .remove = std::move(subjectKeys)}))
       .map([](SetStructureMetadataResponse) { return FakeVoid(); });
 }
 

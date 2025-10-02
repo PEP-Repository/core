@@ -5,11 +5,11 @@
 namespace pep {
 
 SigningServer::SigningServer(std::shared_ptr<Parameters> parameters)
-  : Server(parameters), mSigningIdentity(parameters->getSigningIdentity()) {
+  : Server(parameters), MessageSigner(parameters->getSigningIdentity()) {
 }
 
 std::string SigningServer::makeSerializedPingResponse(const PingRequest& request) const {
-  return Serialization::ToString(SignedPingResponse(PingResponse(request.mId), *mSigningIdentity));
+  return Serialization::ToString(this->sign(PingResponse(request.mId)));
 }
 
 SigningServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)

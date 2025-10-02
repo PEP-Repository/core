@@ -235,9 +235,8 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                   return clientStorageFacility->sendRequest(
                       std::make_shared<std::string>(
                         Serialization::ToString(
-                          SignedDataReadRequest2(
-                            readRequest,
-                            *signingIdentity))))
+                          this->sign(
+                            readRequest))))
                     .map([](
                       std::string rawPage) {
                       return MakeSharedCopy(
