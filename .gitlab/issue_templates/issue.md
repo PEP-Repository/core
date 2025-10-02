@@ -32,4 +32,4 @@ _not provided_
 _not provided_
 
 <!-- Default label, change to the required priority -->
-/label ~"4: Medium Priority" 
+/label ~"3: Medium Priority" 
