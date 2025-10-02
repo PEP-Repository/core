@@ -347,8 +347,6 @@ services:
     working_dir: /data
     command: ["/app/pepStorageFacility", "/config/storagefacility/StorageFacility.json"]
     stop_grace_period: 30s
-    depends_on:
-      - s3proxy
     logging:
       <<: *logging-pipeline-pep-services
     profiles: ["storagefacility"]
@@ -367,8 +365,6 @@ services:
     working_dir: /data
     command: ["/app/pepAccessManager", "/config/accessmanager/AccessManager.json"]
     stop_grace_period: 30s
-    depends_on:
-      - transcryptor
     logging:
       <<: *logging-pipeline-pep-services
     profiles: ["accessmanager"]
@@ -387,8 +383,6 @@ services:
     working_dir: /data
     command: ["/app/pepRegistrationServer", "/config/registrationserver/RegistrationServer.json"]
     stop_grace_period: 30s
-    depends_on:
-      - accessmanager
     logging:
       <<: *logging-pipeline-pep-services
     profiles: ["registrationserver"]
