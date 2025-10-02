@@ -5,7 +5,6 @@
 #include <pep/networking/EndPoint.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/WaitGroup.hpp>
-#include <pep/utils/Random.hpp>
 #include <utility>
 
 namespace pep::messaging {
@@ -101,12 +100,10 @@ public:
    */
   template <typename TResponse>
   rxcpp::observable<TResponse> ping(std::function<PingResponse(const TResponse& rawResponse)> getPlainResponse) {
-    uint64_t id;
-    RandomBytes(reinterpret_cast<uint8_t*>(&id), sizeof(id));
-
-    return this->whenConnected<TResponse>([id, getPlainResponse](std::shared_ptr<Connection> connection) -> rxcpp::observable<TResponse> {
-      return connection->sendRequest<TResponse>(PingRequest(id))
-        .map([getPlainResponse, id](const TResponse& rawResponse) {
+    return this->whenConnected<TResponse>([getPlainResponse](std::shared_ptr<Connection> connection) -> rxcpp::observable<TResponse> {
+      PingRequest request;
+      return connection->sendRequest<TResponse>(request)
+        .map([getPlainResponse, id = request.mId](const TResponse& rawResponse) {
         auto response = getPlainResponse(rawResponse);
         if (response.mId != id) {
           throw std::runtime_error("Received ping response with incorrect ID");

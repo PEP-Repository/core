@@ -11,7 +11,7 @@ add_library(${PROJECT_NAME}Messaginglib STATIC
     Connection.cpp Connection.hpp
     ConnectionFailureException.hpp
     ConnectionStatus.hpp
-    HousekeepingMessages.hpp
+    HousekeepingMessages.cpp HousekeepingMessages.hpp
     MessageHeader.cpp MessageHeader.hpp
     MessageProperties.cpp MessageProperties.hpp
     MessageSequence.cpp MessageSequence.hpp
