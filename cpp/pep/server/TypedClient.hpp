@@ -32,8 +32,8 @@ protected:
   }
 
 public:
-  rxcpp::observable<std::string> requestMetrics() const;
-  rxcpp::observable<std::vector<std::string>> requestChecksumChainNames() const;
+  rxcpp::observable<MetricsResponse> requestMetrics() const;
+  rxcpp::observable<ChecksumChainNamesResponse> requestChecksumChainNames() const;
   rxcpp::observable<ChecksumChainResponse> requestChecksumChain(ChecksumChainRequest request) const;
 };
 

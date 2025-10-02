@@ -9,14 +9,12 @@ TypedClient::TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, s
   assert(mSigningIdentity != nullptr);
 }
 
-rxcpp::observable<std::string> TypedClient::requestMetrics() const {
-  return this->requestSingleResponse<MetricsResponse>(this->sign(MetricsRequest()))
-    .map([](MetricsResponse response) { return std::move(response).mMetrics; });
+rxcpp::observable<MetricsResponse> TypedClient::requestMetrics() const {
+  return this->requestSingleResponse<MetricsResponse>(this->sign(MetricsRequest()));
 }
 
-rxcpp::observable<std::vector<std::string>> TypedClient::requestChecksumChainNames() const {
-  return this->requestSingleResponse<ChecksumChainNamesResponse>(this->sign(ChecksumChainNamesRequest()))
-    .map([](ChecksumChainNamesResponse response) { return std::move(response).mNames; });
+rxcpp::observable<ChecksumChainNamesResponse> TypedClient::requestChecksumChainNames() const {
+  return this->requestSingleResponse<ChecksumChainNamesResponse>(this->sign(ChecksumChainNamesRequest()));
 }
 
 rxcpp::observable<ChecksumChainResponse> TypedClient::requestChecksumChain(ChecksumChainRequest request) const {
