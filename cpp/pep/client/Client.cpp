@@ -11,6 +11,7 @@
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/authserver/AuthserverSerializers.hpp>
+#include <pep/messaging/MessagingSerializers.hpp>
 
 namespace pep {
 

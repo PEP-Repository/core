@@ -1,7 +1,6 @@
 #pragma once
 
 #include <pep/messaging/ConnectionStatus.hpp>
-#include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/messaging/Node.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/async/FakeVoid.hpp>
