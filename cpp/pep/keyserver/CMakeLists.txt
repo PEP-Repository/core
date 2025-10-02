@@ -4,12 +4,21 @@ add_library(${PROJECT_NAME}KeyServerApilib
   KeyServerMessages.hpp
   KeyServerSerializers.cpp KeyServerSerializers.hpp
 )
-
 target_link_libraries(${PROJECT_NAME}KeyServerApilib
   ${PROJECT_NAME}Serializationlib
 )
-
 verify_headers_standalone(${PROJECT_NAME}KeyServerApilib)
+
+
+add_library(${PROJECT_NAME}KeyClientlib
+  KeyClient.cpp KeyClient.hpp
+)
+target_link_libraries(${PROJECT_NAME}KeyClientlib
+  ${PROJECT_NAME}KeyServerApilib
+  ${PROJECT_NAME}TypedClientlib
+)
+verify_headers_standalone(${PROJECT_NAME}KeyClientlib)
+
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}KeyServerlib
@@ -17,13 +26,11 @@ if (WITH_SERVERS)
     tokenblocking/Blocklist.hpp
     tokenblocking/SqliteBlocklist.cpp tokenblocking/SqliteBlocklist.hpp
   )
-
   target_link_libraries(${PROJECT_NAME}KeyServerlib
     ${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}KeyServerApilib
     ${PROJECT_NAME}Databaselib
   )
-
   verify_headers_standalone(${PROJECT_NAME}KeyServerlib)
 
   add_cli_install_executable(${PROJECT_NAME}KeyServer Main.cpp)

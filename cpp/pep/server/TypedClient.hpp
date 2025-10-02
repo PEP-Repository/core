@@ -26,6 +26,11 @@ protected:
     return mUntyped->sendRequest<TResponse>(std::move(request));
   }
 
+  template <typename TResponse>
+  rxcpp::observable<TResponse> ping(std::function<PingResponse(const TResponse& rawResponse)> getPlainResponse) const {
+    return mUntyped->ping<TResponse>(std::move(getPlainResponse));
+  }
+
 public:
   rxcpp::observable<std::string> requestMetrics() const;
   rxcpp::observable<std::vector<std::string>> requestChecksumChainNames() const;
