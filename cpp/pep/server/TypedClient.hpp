@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/async/RxUtils.hpp>
 #include <pep/messaging/ServerConnection.hpp>
 #include <pep/server/MonitoringMessages.hpp>
 #include <rxcpp/rx-lite.hpp>
@@ -28,32 +27,27 @@ protected:
   }
 
   template <typename TResponse, typename TRequest>
-  rxcpp::observable<TResponse> requestSingleResponse(TRequest request) const {
-    return mUntyped->sendRequest<TResponse>(std::move(request));
+  rxcpp::observable<TResponse> sendRequest(TRequest request) const {
+    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))))
+      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
   }
 
   template <typename TResponse, typename TRequest, typename TTail>
-  rxcpp::observable<TResponse> requestSingleResponse(TRequest request, MessageTail<TTail> tail) const {
+  rxcpp::observable<TResponse> sendRequest(TRequest request, MessageTail<TTail> tail) const {
     auto batches = tail
       .map([](const TailSegment<TTail>& segment) -> messaging::MessageSequence {
       return segment
-        .op(RxGetOne("messages in tail segment"))
+        // TODO: ensure that tail is long rather than wide: see comment for MessageBatches
         .map([](TTail single) {
         return MakeSharedCopy(Serialization::ToString(std::move(single)));
           });
         });
 
     return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))), batches)
-      .op(RxGetOne("response messages from server"))
       .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
   }
 
-  template <typename TResponse, typename TRequest>
-  rxcpp::observable<TResponse> requestResponseSequence(TRequest request) const {
-    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))))
-      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
-  }
-
+  // TODO: remove
   template <typename TResponse>
   rxcpp::observable<TResponse> ping(std::function<PingResponse(const TResponse& rawResponse)> getPlainResponse) const {
     return mUntyped->ping<TResponse>(std::move(getPlainResponse));

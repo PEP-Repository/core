@@ -1,3 +1,4 @@
+#include <pep/async/RxUtils.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/TypedClient.hpp>
@@ -18,19 +19,23 @@ rxcpp::observable<FakeVoid> TypedClient::shutdown() {
 }
 
 rxcpp::observable<VersionResponse> TypedClient::requestVersion() const {
-  return this->requestSingleResponse<VersionResponse>(VersionRequest());
+  return this->sendRequest<VersionResponse>(VersionRequest())
+    .op(RxGetOne("VersionResponse"));
 }
 
 rxcpp::observable<MetricsResponse> TypedClient::requestMetrics() const {
-  return this->requestSingleResponse<MetricsResponse>(this->sign(MetricsRequest()));
+  return this->sendRequest<MetricsResponse>(this->sign(MetricsRequest()))
+    .op(RxGetOne("MetricsResponse"));
 }
 
 rxcpp::observable<ChecksumChainNamesResponse> TypedClient::requestChecksumChainNames() const {
-  return this->requestSingleResponse<ChecksumChainNamesResponse>(this->sign(ChecksumChainNamesRequest()));
+  return this->sendRequest<ChecksumChainNamesResponse>(this->sign(ChecksumChainNamesRequest()))
+    .op(RxGetOne("ChecksumChainNamesResponse"));
 }
 
 rxcpp::observable<ChecksumChainResponse> TypedClient::requestChecksumChain(ChecksumChainRequest request) const {
-  return this->requestSingleResponse<ChecksumChainResponse>(this->sign(std::move(request)));
+  return this->sendRequest<ChecksumChainResponse>(this->sign(std::move(request)))
+    .op(RxGetOne("ChecksumChainResponse"));
 }
 
 }

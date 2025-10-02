@@ -1,3 +1,4 @@
+#include <pep/async/RxUtils.hpp>
 #include <pep/keyserver/KeyClient.hpp>
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
@@ -9,19 +10,23 @@ rxcpp::observable<PingResponse> KeyClient::requestPing() const {
 }
 
 rxcpp::observable<EnrollmentResponse> KeyClient::requestUserEnrollment(EnrollmentRequest request) const {
-  return this->requestSingleResponse<EnrollmentResponse>(std::move(request));
+  return this->sendRequest<EnrollmentResponse>(std::move(request))
+    .op(RxGetOne("EnrollmentResponse"));
 }
 
 rxcpp::observable<TokenBlockingListResponse> KeyClient::requestTokenBlockingList() const {
-  return this->requestSingleResponse<TokenBlockingListResponse>(this->sign(TokenBlockingListRequest()));
+  return this->sendRequest<TokenBlockingListResponse>(this->sign(TokenBlockingListRequest()))
+    .op(RxGetOne("TokenBlockingListResponse"));
 }
 
 rxcpp::observable<TokenBlockingCreateResponse> KeyClient::requestTokenBlockingCreate(TokenBlockingCreateRequest request) const {
-  return this->requestSingleResponse<TokenBlockingCreateResponse>(this->sign(std::move(request)));
+  return this->sendRequest<TokenBlockingCreateResponse>(this->sign(std::move(request)))
+    .op(RxGetOne("TokenBlockingCreateResponse"));
 }
 
 rxcpp::observable<TokenBlockingRemoveResponse> KeyClient::requestTokenBlockingRemove(TokenBlockingRemoveRequest request) const {
-  return this->requestSingleResponse<TokenBlockingRemoveResponse>(this->sign(std::move(request)));
+  return this->sendRequest<TokenBlockingRemoveResponse>(this->sign(std::move(request)))
+    .op(RxGetOne("TokenBlockingRemoveResponse"));
 }
 
 }
