@@ -118,16 +118,16 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   assert(request->mEntries.size() == keys.size());
 
   // Use multiple KeyRequest instances as needed to keep message size down.
-  auto keyRequests = std::make_shared<std::unordered_map<size_t, EncryptionKeyRequest>>(); // Associate each KeyRequest with the corresponding offset in DataEntriesRequest2::mEntries
-  keyRequests->reserve(request->mEntries.size() / KEY_REQUEST_BATCH_SIZE + 1);
+  std::unordered_map<size_t, EncryptionKeyRequest> keyRequests; // Associate each KeyRequest with the corresponding offset in DataEntriesRequest2::mEntries
+  keyRequests.reserve(request->mEntries.size() / KEY_REQUEST_BATCH_SIZE + 1);
   for (size_t i = 0U; i < request->mEntries.size(); i++) {
     const auto& entry = request->mEntries[i];
 
     auto indexInKeyRequest = i % KEY_REQUEST_BATCH_SIZE;
     auto offset = i - indexInKeyRequest; // a multiple of KEY_REQUEST_BATCH_SIZE
     assert(offset % KEY_REQUEST_BATCH_SIZE == 0U);
-    assert((*keyRequests)[offset].mEntries.size() == indexInKeyRequest);
-    (*keyRequests)[offset].mEntries.emplace_back(
+    assert(keyRequests[offset].mEntries.size() == indexInKeyRequest);
+    keyRequests[offset].mEntries.emplace_back(
       entry.mMetadata,
       EncryptedKey(publicKeyData, keys[i].point),
       KeyBlindMode::BLIND_MODE_BLIND,
@@ -135,9 +135,9 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     );
   }
   // Give each KeyRequest a (reference to the) ticket
-  std::for_each(keyRequests->begin(), keyRequests->end(), [ticket = MakeSharedCopy(request->mTicket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
+  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->mTicket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
 
-  return RxIterate(keyRequests)
+  return rxcpp::observable<>::iterate(std::move(keyRequests))
     .flat_map([this, request](const std::pair<const size_t, EncryptionKeyRequest>& pair) {
     size_t offset = pair.first;
     const EncryptionKeyRequest& keyRequest = pair.second;
