@@ -1,4 +1,4 @@
-/label ~"3: Medium Priority"
+/label ~"3: Medium priority"
 <!-- Default priority label, change to the required priority -->
 
 ## User Story
