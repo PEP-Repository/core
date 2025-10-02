@@ -1,0 +1,509 @@
+# Reusable logging pipeline configurations
+x-logging-pipeline-pep-services: &logging-pipeline-pep-services
+  driver: loki
+  options:
+    loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
+    loki-retries: "5"
+    loki-batch-size: "400"
+    loki-external-labels: "service_name={{.Name}}"
+    loki-pipeline-stages: |
+      - docker: {}
+      - labeldrop:
+          - filename
+          - container_name
+      - regex:
+          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
+          source: host
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}): <(?P<level>\w+)> \[(?P<component>[^\]]+)\] (?P<message>.*)$'
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05'
+          location: 'Europe/Amsterdam'
+      - labels:
+          host: host_part
+          vm: vm_part
+          level:
+      - structured_metadata:
+          component:
+      - output:
+          source: message
+
+x-logging-pipeline-watchdog: &logging-pipeline-watchdog
+  driver: loki
+  options:
+    loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
+    loki-retries: "5"
+    loki-batch-size: "400"
+    loki-external-labels: "service_name={{.Name}}"
+    loki-pipeline-stages: |
+      - docker: {}
+      - labeldrop:
+          - filename
+          - container_name
+      - regex:
+          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
+          source: host
+      - regex:
+          expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) (?P<message>.*)$'
+      - timestamp:
+          source: timestamp
+          format: '2006/01/02 15:04:05'
+          location: 'Europe/Amsterdam'
+      - labels:
+          host: host_part
+          vm: vm_part
+      - output:
+          source: message
+
+x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
+  driver: loki
+  options:
+    loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
+    loki-retries: "5"
+    loki-batch-size: "400"
+    loki-external-labels: "service_name={{.Name}}"
+    loki-pipeline-stages: |
+      - docker: {}
+      - labeldrop:
+          - filename
+          - container_name
+      - regex:
+          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
+          source: host
+      # s3proxy standard logs
+      - match:
+          selector: '{service_name=~".+"} |~ "^\\[s3proxy\\]"'
+          stages:
+            - regex:
+                expression: '^\[s3proxy\] (?P<level>[FTEIDW]) (?P<timestamp>\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) (?P<thread>\S+) (?P<logger>[^\s:]+)(?::\d+)? \|::\] (?P<message>.+)'
+            - timestamp:
+                source: timestamp
+                format: '01-02 15:04:05.000'
+                location: 'Europe/Amsterdam'
+            - template:
+                source: level
+                template: '{{ if eq .Value "F" }}fatal{{ else if eq .Value "T" }}trace{{ else if eq .Value "E" }}error{{ else if eq .Value "I" }}info{{ else if eq .Value "D" }}debug{{ else if eq .Value "W" }}warn{{ else }}{{ .Value }}{{ end }}'
+            - labels:
+                level:
+            - structured_metadata:
+                thread:
+                logger:
+      # Logback-classic logs, date is not provided so we will just default to the timestamp set by docker
+      - match:
+          selector: '{service_name=~".+"} |~ "^\\d{2}:\\d{2}:\\d{2},\\d{3} \\|-"'
+          stages:
+            - regex:
+                expression: '^(?P<time>\d{2}:\d{2}:\d{2},\d{3}) \|-(?P<level>\w+) in (?P<logger>.+?) - (?P<message>.+)'
+            - template:
+                source: level
+                template: '{{ ToLower .Value }}'
+            - labels:
+                level:
+            - structured_metadata:
+                logger:
+      - labels:
+          host: host_part
+          vm: vm_part
+      - output:
+          source: message
+
+x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
+  driver: loki
+  options:
+    loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
+    loki-retries: "5"
+    loki-batch-size: "400"
+    loki-external-labels: "service_name={{.Name}}"
+    loki-pipeline-stages: |
+      - docker: {}
+      - labeldrop:
+          - filename
+          - container_name
+      - regex:
+          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
+          source: host
+      # Shibboleth logs - Format: 2025-05-09 11:36:56 INFO Shibboleth.Application : adding AssertionConsumerService for Binding (urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST) at (/SAML2/POST)
+      - match:
+          selector: '{service_name=~".+"} |~ "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} [A-Z]+ [\\w\\.]+ :"'
+          stages:
+            - regex:
+                expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (?P<level>[A-Z]+) (?P<component>[\w\.]+) : (?P<message>.+)$'
+            - timestamp:
+                source: timestamp
+                format: '2006-01-02 15:04:05'
+                location: 'Europe/Amsterdam'
+            - template:
+                source: level
+                template: '{{ ToLower .Value }}'
+            - labels:
+                level:
+            - structured_metadata:
+                component:
+      # Apache error logs - Format: [Fri Sep 09 10:42:29.902022 2011] [core:error] [pid 35708:tid 4328636416] [client 72.15.99.187] File does not exist: /usr/local/apache2/htdocs/favicon.ico
+      - match:
+          selector: '{service_name=~".+"} |~ "^\\[\\w{3} \\w{3} \\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\d{4}\\] \\[[^:]+:[^\\]]+\\]"'
+          stages:
+            - regex:
+                expression: '^\[(?P<timestamp>\w{3} \w{3} \d{2} \d{2}:\d{2}:\d{2}\.\d{6} \d{4})\] \[(?P<module>[^:]+):(?P<level>[^\]]+)\] \[pid (?P<pid>\d+)(?::tid (?P<tid>\d+))?\](?:\s+\[client (?P<client>[^\]]+)\])?\s*(?P<message>.*)$'
+            - timestamp:
+                source: timestamp
+                format: 'Mon Jan 02 15:04:05.000000 2006'
+                location: 'Europe/Amsterdam'
+            - template:
+                source: level
+                template: '{{ if eq .Value "emerg" }}fatal{{ else if eq .Value "alert" }}critical{{ else if eq .Value "crit" }}critical{{ else if eq .Value "error" }}error{{ else if eq .Value "warn" }}warn{{ else if eq .Value "notice" }}info{{ else if eq .Value "info" }}info{{ else if eq .Value "debug" }}debug{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
+            - labels:
+                level:
+            - structured_metadata:
+                module:
+                pid:
+                tid:
+                client:
+      - labels:
+          host: host_part
+          vm: vm_part
+      - output:
+          source: message
+
+x-logging-pipeline-prometheus-node-exporter: &logging-pipeline-prometheus-node-exporter
+  driver: loki
+  options:
+    loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
+    loki-retries: "5"
+    loki-batch-size: "400"
+    loki-external-labels: "service_name={{.Name}}"
+    loki-pipeline-stages: |
+      - docker: {}
+      - labeldrop:
+          - filename
+          - container_name
+      - regex:
+          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
+          source: host
+      - logfmt:
+          mapping:
+            time:
+            level:
+      - timestamp:
+          source: time
+          format: '2006-01-02T15:04:05.000Z'
+      - template:
+          source: level
+          template: '{{ ToLower .Value }}'
+      - labels:
+          level:
+          host: host_part
+          vm: vm_part
+      - output:
+          source: message
+
+x-logging-pipeline-nginx: &logging-pipeline-nginx
+  driver: loki
+  options:
+    loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
+    loki-retries: "5"
+    loki-batch-size: "400"
+    loki-external-labels: "service_name={{.Name}}"
+    loki-pipeline-stages: |
+      - docker: {}
+      - labeldrop:
+          - filename
+          - container_name
+      - regex:
+          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
+          source: host
+      # Normal Nginx access logs
+      - match:
+          selector: '{service_name=~".+"} |~ "^\\S+ \\S+ \\S+ \\["'
+          stages:
+            - regex:
+                expression: '^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<timestamp_str>[\w:/]+\s[+\-]\d{4})\] "(?P<request>[^"]*)" (?P<status>\d{3}) (?P<bytes_sent>\d+|-) "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)"'
+            - timestamp:
+                source: timestamp_str
+                format: '02/Jan/2006:15:04:05 -0700'
+            - regex:
+                source: request
+                expression: '^(?P<method>\S+)\s+(?P<path>\S+)'
+            - labels:
+                method:
+                status:
+            - static_labels:
+                level: "info"
+            - structured_metadata:
+                remote_addr:
+                remote_user:
+                referer:
+                user_agent:
+      # Nginx error logs
+      - match:
+          selector: '{service_name=~".+"} |~ "^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} \\[\\w+\\]"'
+          stages:
+            - regex:
+                expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?P<level>\w+)\] (?P<pid>\d+)(?:#(?P<tid>\d+))?: (?P<message>.+)'
+            - timestamp:
+                source: timestamp
+                format: '2006/01/02 15:04:05'
+                location: 'Europe/Amsterdam'
+            - labels:
+                level:
+            - structured_metadata:
+                pid:
+                tid:
+      # Nginx logs without timestamp
+      - match:
+          selector: '{service_name=~".+"} |~ "^nginx: \\[\\w+\\]"'
+          stages:
+            - regex:
+                expression: '^nginx: \[(?P<level>\w+)\] (?P<message>.+)'
+            - labels:
+                level:
+      - labels:
+          host: host_part
+          vm: vm_part
+      - output:
+          source: message
+
+networks:
+  pepnetwork:
+    name: pepnetwork
+    driver: bridge
+  authservernetwork:
+    name: authservernetwork
+    driver: bridge
+
+services:
+  # Core PEP Services
+  transcryptor:
+    image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
+    container_name: "pepTranscryptor"
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${PORT_NUMBER_PREFIX}16:${PORT_NUMBER_PREFIX}16"
+    volumes:
+      - "${DATA_DIR_BASE}/transcryptor:/data"
+      - "${SECRETS_DIR_BASE}/transcryptor:/secrets:ro"
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /data
+    command: ["/app/pepTranscryptor", "/config/transcryptor/Transcryptor.json"]
+    stop_grace_period: 30s
+    logging:
+      <<: *logging-pipeline-pep-services
+    profiles: ["transcryptor"]
+
+  keyserver:
+    image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
+    container_name: "pepKeyServer"
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${PORT_NUMBER_PREFIX}11:${PORT_NUMBER_PREFIX}11"
+    volumes:
+      - "${DATA_DIR_BASE}/keyserver:/data"
+      - "${SECRETS_DIR_BASE}/keyserver:/secrets:ro"
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /data
+    command: ["/app/pepKeyServer", "/config/keyserver/KeyServer.json"]
+    stop_grace_period: 30s
+    logging:
+      <<: *logging-pipeline-pep-services
+    profiles: ["keyserver"]
+
+  s3proxy:
+    image: andrewgaul/s3proxy
+    container_name: "s3proxy"
+    restart: unless-stopped
+    networks:
+      - pepnetwork
+    ports:
+      - "9001:80"
+    environment:
+      - S3PROXY_IDENTITY=${S3PROXY_IDENTITY}
+      - S3PROXY_CREDENTIAL=${S3PROXY_CREDENTIAL}
+      - LOG_LEVEL=debug
+      - JETTY_LOG_LEVEL=debug
+    volumes:
+      - "${DATA_DIR_BASE}/storagefacility/data:/data"
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    logging:
+      <<: *logging-pipeline-s3proxy
+    profiles: ["s3proxy"]
+
+  storagefacility:
+    image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
+    container_name: "pepStorageFacility"
+    restart: unless-stopped
+    init: true
+    networks:
+      - pepnetwork
+    ports:
+      - "${PORT_NUMBER_PREFIX}19:${PORT_NUMBER_PREFIX}19"
+    volumes:
+      - "${DATA_DIR_BASE}/storagefacility:/data"
+      - "${SECRETS_DIR_BASE}/storagefacility:/secrets:ro"
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /data
+    command: ["/app/pepStorageFacility", "/config/storagefacility/StorageFacility.json"]
+    stop_grace_period: 30s
+    depends_on:
+      - s3proxy
+    logging:
+      <<: *logging-pipeline-pep-services
+    profiles: ["storagefacility"]
+
+  accessmanager:
+    image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
+    container_name: "pepAccessManager"
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${PORT_NUMBER_PREFIX}01:${PORT_NUMBER_PREFIX}01"
+    volumes:
+      - "${DATA_DIR_BASE}/accessmanager:/data"
+      - "${SECRETS_DIR_BASE}/accessmanager:/secrets:ro"
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /data
+    command: ["/app/pepAccessManager", "/config/accessmanager/AccessManager.json"]
+    stop_grace_period: 30s
+    depends_on:
+      - transcryptor
+    logging:
+      <<: *logging-pipeline-pep-services
+    profiles: ["accessmanager"]
+
+  registrationserver:
+    image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
+    container_name: "pepRegistrationServer"
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${PORT_NUMBER_PREFIX}18:${PORT_NUMBER_PREFIX}18"
+    volumes:
+      - "${DATA_DIR_BASE}/registrationserver:/data"
+      - "${SECRETS_DIR_BASE}/registrationserver:/secrets:ro"
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /data
+    command: ["/app/pepRegistrationServer", "/config/registrationserver/RegistrationServer.json"]
+    stop_grace_period: 30s
+    depends_on:
+      - accessmanager
+    logging:
+      <<: *logging-pipeline-pep-services
+    profiles: ["registrationserver"]
+
+  authserver:
+    image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
+    container_name: "pep_authserver"
+    restart: unless-stopped
+    init: true
+    networks:
+      - authservernetwork
+    ports:
+      - "${PORT_NUMBER_PREFIX}12:${PORT_NUMBER_PREFIX}12"
+    volumes:
+      - "${DATA_DIR_BASE}/authserver:/data"
+      - "${SECRETS_DIR_BASE}/authserver:/secrets:ro"
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /data
+    command: ["/app/pepAuthserver", "/config/authserver/Authserver.json"]
+    stop_grace_period: 30s
+    logging:
+      <<: *logging-pipeline-pep-services
+    profiles: ["authserver"]
+
+  authserver-apache:
+    image: "${DOCKER_IMAGE_BASE}/authserver_apache:${DOCKER_IMAGE_TAG}"
+    container_name: "pep_authserver_apache"
+    restart: unless-stopped
+    networks:
+      - authservernetwork
+    ports:
+      - "443:443"
+    volumes:
+      - datamonitor_shared_volume:/var/www/html/data_monitor
+      - "${DATA_DIR_BASE}/authserver:/data"
+      - "${SECRETS_DIR_BASE}/authserver:/secrets:ro"
+      - "${SECRETS_DIR_BASE}/acme:/cert:ro"
+      - "${DATA_DIR_BASE}/authserver/apache_logs:/var/log/apache2"
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /data
+    depends_on:
+      - authserver
+    logging:
+      <<: *logging-pipeline-authserver-apache
+    profiles: ["authserver"]
+
+  # Supporting Services
+  watchdog:
+    image: "${DOCKER_IMAGE_BASE}/pep-monitoring:${DOCKER_IMAGE_TAG}"
+    container_name: "watchdog"
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    volumes:
+      - "${DATA_DIR_BASE}/watchdog:/data"
+      - "${SECRETS_DIR_BASE}/watchdog:/secrets"
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt
+      - /etc/localtime:/etc/localtime:ro
+    working_dir: /config/watchdog
+    command: ["/app/pep-watchdog"]
+    logging:
+      <<: *logging-pipeline-watchdog
+    profiles: ["watchdog"]
+
+  prometheus-node-exporter:
+    image: quay.io/prometheus/node-exporter
+    container_name: "prometheus-node-exporter"
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - "${DATA_DIR_BASE}/prometheus-node-exporter:/data"
+      - /etc/localtime:/etc/localtime:ro
+    command: [ "--collector.textfile.directory", "/data/textfiles/", "--no-collector.diskstats" ]
+    logging:
+      <<: *logging-pipeline-prometheus-node-exporter
+    profiles: ["prometheus-node-exporter"]
+
+  nginx:
+    image: "${DOCKER_IMAGE_BASE}/nginx:${DOCKER_IMAGE_TAG}"
+    container_name: "nginx"
+    restart: unless-stopped
+      # Environment-specific port mappings and volumes, use in override:
+      # release:
+      # --publish 8000:80
+      # --publish 80:80
+      # --publish 443:443
+      # --publish 5000:5000
+      # --volume /data/volumes/secrets/nginx/loki/.htpasswd:/etc/nginx/.htpasswd:ro
+      # --volume /data/volumes/secrets/acme:/cert:ro
+      # selfhosted:
+      # --publish 9000:9000
+      # --volume /data/volumes/secrets/storagefacility/s3certs:/s3cert:ro
+      # review:
+      #       nginx_docker_image: gitlabregistry.pep.cs.ru.nl/pep/ops/master/nginx-review:latest
+      # nginx_docker_flags:
+      #   --network nginx-network
+      #   --publish 80:80
+      #   --publish 8082:8082
+      #   --publish 443:443
+      #   --publish 16501:16501
+      #   --publish 16511:16511
+      #   --publish 16512:16512
+      #   --publish 16516:16516
+      #   --publish 16518:16518
+      #   --publish 16519:16519
+    volumes:
+      - "${SECRETS_DIR_BASE}/nginx/ssl:/etc/nginx/ssl"
+      - /etc/localtime:/etc/localtime:ro
+      # Environment-specific volumes:
+      # Release environment: .htpasswd, acme certs
+      # - "${DATA_DIR_BASE}/volumes/secrets/nginx/loki/.htpasswd:/etc/nginx/.htpasswd:ro"
+      # - "${DATA_DIR_BASE}/volumes/secrets/acme:/cert:ro"
+      # Other environments: s3cert for storage facility
+      # - "${DATA_DIR_BASE}/volumes/secrets/storagefacility/s3certs:/s3cert:ro"
+    logging:
+      <<: *logging-pipeline-nginx
+    profiles: ["nginx"]
