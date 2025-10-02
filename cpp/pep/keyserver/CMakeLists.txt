@@ -18,7 +18,6 @@ if (WITH_SERVERS)
     tokenblocking/SqliteBlocklist.cpp tokenblocking/SqliteBlocklist.hpp
   )
 
-  find_package(SqliteOrm REQUIRED)
   target_link_libraries(${PROJECT_NAME}KeyServerlib
     ${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}KeyServerApilib

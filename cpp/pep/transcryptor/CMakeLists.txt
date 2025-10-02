@@ -18,7 +18,6 @@ if (WITH_SERVERS)
       ChecksumChain.cpp ChecksumChain.hpp
   )
 
-  find_package(SqliteOrm REQUIRED)
   target_link_libraries(${PROJECT_NAME}Transcryptorlib
     ${PROJECT_NAME}TranscryptorApilib
     ${PROJECT_NAME}Serverlib
