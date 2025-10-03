@@ -14,7 +14,7 @@ push-published-branch-to-github:
   extends: .update-published-branch-base
   before_script:
     - apk update -qq && apk add --no-cache git
-    - git remote remove gitlab &>dev/null || true
+    - git remote remove gitlab &>/dev/null || true
     - git remote add gitlab "https://gitlab-ci-token:${PEP_GROUP_REPOSITORY_TOKEN}@gitlab.pep.cs.ru.nl/pep/core.git"
     - git remote remove github &>/dev/null || true
     - git remote add github "https://pep-team:${GITHUB_ACCESS_TOKEN}@github.com/PEP-Repository/core.git"
@@ -29,6 +29,8 @@ push-published-branch-to-github:
       git fetch gitlab "${PEP_FOSS_PUBLISHED_BRANCH}" &>/dev/null
       git checkout -b "${PEP_FOSS_PUBLISHED_BRANCH}" "gitlab/${PEP_FOSS_PUBLISHED_BRANCH}"
 
+    - echo 'Root commits:'
+    - git rev-list --max-parents=0 HEAD
     - |
       readonly NR_OF_ROOT_COMMITS="$(git rev-list --max-parents=0 HEAD | wc -l)"
       readonly TIMESTAMP_OF_EARLIEST_COMMIT="$(git log --reverse --format=%at -n 1 HEAD)"
