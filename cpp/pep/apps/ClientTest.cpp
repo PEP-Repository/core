@@ -257,7 +257,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  return client->getAccessManagerVersion().zip(rxcpp::rxs::just(std::string("Access Manager"))).merge(
+  return this->tryGetServerVersion(client->getAccessManagerClient(false), "Access Manager").merge(
     this->tryGetServerVersion(client->getTranscryptorClient(false), "Transcryptor"),
     this->tryGetServerVersion(client->getKeyClient(false), "Key Server"),
     this->tryGetServerVersion(client->getStorageClient(false), "Storage Facility"),

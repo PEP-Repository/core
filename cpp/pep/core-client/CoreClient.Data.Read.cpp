@@ -2,6 +2,10 @@
 #include <pep/async/RxUtils.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 
+#include <rxcpp/operators/rx-buffer_count.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
+
 namespace pep {
 
 namespace {
@@ -43,12 +47,12 @@ rxcpp::observable<std::vector<EnumerateResult>> CoreClient::enumerateData2(const
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
   return clientAccessManager
-      ->sendRequest<SignedTicket2>(sign(TicketRequest2{.mModes = {"read"},
-                                                       .mParticipantGroups = participantGroups,
-                                                       .mPolymorphicPseudonyms = pps,
-                                                       .mColumnGroups = columnGroups,
-                                                       .mColumns = columns,
-                                                       .mIncludeUserGroupPseudonyms = false}))
+      ->requestTicket(sign(TicketRequest2{.mModes = {"read"},
+                                          .mParticipantGroups = participantGroups,
+                                          .mPolymorphicPseudonyms = pps,
+                                          .mColumnGroups = columnGroups,
+                                          .mColumns = columns,
+                                          .mIncludeUserGroupPseudonyms = false}))
       .flat_map([this](SignedTicket2 ticket) { return this->enumerateData2(std::make_shared<SignedTicket2>(ticket)); });
 }
 

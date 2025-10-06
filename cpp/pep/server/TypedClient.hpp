@@ -22,6 +22,11 @@ MessageTail<T> MakeSingleMessageTail(T message) {
   return rxcpp::observable<>::just(MakeTailSegment(std::move(message)));
 }
 
+template <typename T>
+MessageTail<T> MakeEmptyMessageTail() {
+  return rxcpp::observable<>::empty<TailSegment<T>>();
+}
+
 
 class TypedClient {
 private:

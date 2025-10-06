@@ -89,7 +89,7 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   boost::property_tree::ptree keys;
 
   //Subscribe for network status updates from the pepClient
-  client->getAccessManagerConnectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
+  client->getAccessManagerClient()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
     accessManagerConnectionStatus = accessManagerStatus;
   updateConnectionStatus();
     });

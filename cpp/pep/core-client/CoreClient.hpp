@@ -2,7 +2,7 @@
 
 #include <pep/core-client/CoreClient_fwd.hpp>
 
-#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/accessmanager/AccessManagerClient.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/FakeVoid.hpp>
@@ -263,7 +263,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   const EndPoint storageFacilityEndPoint;
   const EndPoint transcryptorEndPoint;
 
-  std::shared_ptr<messaging::ServerConnection> clientAccessManager;
+  std::shared_ptr<AccessManagerClient> clientAccessManager;
   std::shared_ptr<StorageClient> clientStorageFacility;
   std::shared_ptr<TranscryptorClient> clientTranscryptor;
 
@@ -525,7 +525,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       StructureMetadataType subjectType,
       std::vector<std::string> subjects,
       std::vector<StructureMetadataKey> keys = {});
-  rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> entries);
+  rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries);
   rxcpp::observable<FakeVoid> removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys);
 
   static constexpr bool DEFAULT_PERSIST_KEYS_FILE = true;
@@ -581,11 +581,7 @@ public:
 
   std::shared_ptr<const StorageClient> getStorageClient(bool require = true) const;
   std::shared_ptr<const TranscryptorClient> getTranscryptorClient(bool require = true) const;
-
-  rxcpp::observable<ConnectionStatus> getAccessManagerConnectionStatus();
-  rxcpp::observable<VersionResponse> getAccessManagerVersion();
-  rxcpp::observable<SignedPingResponse> pingAccessManager() const;
-  rxcpp::observable<MetricsResponse> getAccessManagerMetrics();
+  std::shared_ptr<const AccessManagerClient> getAccessManagerClient(bool require = true) const;
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);

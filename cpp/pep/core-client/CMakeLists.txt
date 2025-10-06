@@ -14,7 +14,7 @@ add_library(${PROJECT_NAME}CoreClientlib STATIC
 )
 
 target_link_libraries(${PROJECT_NAME}CoreClientlib
-  ${PROJECT_NAME}AccessManagerApilib
+  ${PROJECT_NAME}AccessManagerClientlib
   ${PROJECT_NAME}StorageClientlib
   ${PROJECT_NAME}TranscryptorClientlib
 )

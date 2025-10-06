@@ -1,6 +1,8 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/async/RxUtils.hpp>
 
+#include <rxcpp/operators/rx-flat_map.hpp>
+
 namespace pep {
 
 namespace {

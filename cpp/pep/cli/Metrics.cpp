@@ -31,7 +31,7 @@ protected:
     return this->executeEventLoopFor([serverFilter](std::shared_ptr<pep::Client> client) {
       std::vector<rxcpp::observable<std::string>> observables;
       if(serverFilter.empty() || serverFilter.find("accessmanager") != serverFilter.end()) {
-        observables.push_back(client->getAccessManagerMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getAccessManagerClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ Access Manager ============================\n";
           oss << metrics.mMetrics;

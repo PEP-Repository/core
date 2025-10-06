@@ -3,20 +3,9 @@
 
 namespace pep {
 
-namespace {
-
-std::shared_ptr<messaging::ServerConnection> EnsureConnected(std::shared_ptr<messaging::ServerConnection> serverConnection, const std::string& serverName) {
-  if (!serverConnection) {
-    throw std::runtime_error("Connection to " + serverName + "is not initialized. Does the client configuration contain correct config for the " + serverName + " endpoint?");
-  }
-  return serverConnection;
-}
-
-} // namespace
-
 rxcpp::observable<FakeVoid> CoreClient::requestUserMutation(UserMutationRequest request) {
-  return EnsureConnected(clientAccessManager, "accessmanager")
-      ->sendRequest<UserMutationResponse>(sign(std::move(request))) // linebreak
+  return this->getAccessManagerClient()
+      ->requestUserMutation(std::move(request)) // linebreak
       .map([](UserMutationResponse resp) { return FakeVoid{}; });
 }
 
@@ -75,7 +64,7 @@ rxcpp::observable<FakeVoid> CoreClient::removeUserFromGroup(std::string uid, std
 }
 
 rxcpp::observable<UserQueryResponse> CoreClient::userQuery(UserQuery query) {
-  return EnsureConnected(clientAccessManager, "accessmanager")->sendRequest<UserQueryResponse>(sign(std::move(query)));
+  return this->getAccessManagerClient()->requestUserQuery(std::move(query));
 }
 
 } // namespace pep

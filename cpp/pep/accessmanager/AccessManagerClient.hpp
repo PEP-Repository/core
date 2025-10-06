@@ -15,8 +15,8 @@ public:
   using SigningServerClient::SigningServerClient;
 
   rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const;
-  rxcpp::observable<SignedTicket2> requestTicket(SignedTicketRequest2 request) const;
-  rxcpp::observable<IndexedTicket2> requestIndexedTicket(SignedTicketRequest2 request) const;
+  rxcpp::observable<SignedTicket2> requestTicket(SignedTicketRequest2 request) const; // TODO: don't require pre-signed
+  rxcpp::observable<IndexedTicket2> requestIndexedTicket(SignedTicketRequest2 request) const; // TODO: don't require pre-signed
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
   rxcpp::observable<AmaMutationResponse> requestAmaMutation(AmaMutationRequest request) const;
   rxcpp::observable<AmaQueryResponse> requestAmaQuery(AmaQuery request) const;
@@ -30,7 +30,7 @@ public:
   rxcpp::observable<MigrateUserDbToAccessManagerResponse> requestMigrateUserDbToAccessManager(MigrateUserDbToAccessManagerRequest request, messaging::MessageBatches parts) const;
   rxcpp::observable<FindUserResponse> requestFindUser(FindUserRequest request) const;
   rxcpp::observable<StructureMetadataEntry> requestStructureMetadata(StructureMetadataRequest request) const;
-  rxcpp::observable<SetStructureMetadataResponse> requestSetStructureMetadata(SetStructureMetadataRequest request, rxcpp::observable<StructureMetadataEntry> tail) const;
+  rxcpp::observable<SetStructureMetadataResponse> requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries = MakeEmptyMessageTail<StructureMetadataEntry>()) const;
 };
 
 }

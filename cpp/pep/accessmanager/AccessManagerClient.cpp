@@ -99,8 +99,8 @@ rxcpp::observable<StructureMetadataEntry> AccessManagerClient::requestStructureM
   return this->sendRequest<StructureMetadataEntry>(this->sign(std::move(request)));
 }
 
-rxcpp::observable<SetStructureMetadataResponse> AccessManagerClient::requestSetStructureMetadata(SetStructureMetadataRequest request, rxcpp::observable<StructureMetadataEntry> tail) const {
-  return this->sendRequest<SetStructureMetadataResponse>(this->sign(std::move(request)));
+rxcpp::observable<SetStructureMetadataResponse> AccessManagerClient::requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries) const {
+  return this->sendRequest<SetStructureMetadataResponse>(this->sign(std::move(request)), std::move(entries));
 }
 
 }

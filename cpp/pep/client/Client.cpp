@@ -12,6 +12,9 @@
 #include <pep/authserver/AuthserverSerializers.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+
 namespace pep {
 
 namespace {

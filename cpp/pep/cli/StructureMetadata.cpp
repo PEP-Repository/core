@@ -219,11 +219,11 @@ protected:
         value = std::move(ss).str();
       }
 
-      return client->setStructureMetadata(subjectType, rxcpp::observable<>::from(std::make_shared<StructureMetadataEntry>(
+      return client->setStructureMetadata(subjectType, MakeSingleMessageTail(
           StructureMetadataEntry{
             .subjectKey = {std::move(subject), std::move(key)},
             .value = std::move(*value),
-          })));
+          }));
     });
   }
 };
