@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/Shared.hpp>
 #include <pep/utils/VectorOfVectors.hpp>
 
 #include <cassert>
@@ -343,22 +344,21 @@ struct RxGetOne {
   /// \tparam SourceOperator The source operator type included in the observable type.
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
-    return items.reduce(
-      std::optional<TItem>(),
-      [errorText = this->errorText](std::optional<TItem> seed, TItem next) {
-        if(!seed) {
-          return next;
+    auto emitted = MakeSharedCopy(false);
+    return items.tap(
+      [emitted, errorText = this->errorText](const TItem&) {
+        if (*emitted) {
+          throw std::runtime_error("Encountered multiple " + errorText);
         }
-        else {
-          throw std::runtime_error("Encountered multiple "+ errorText);
-        }
+        *emitted = true;
       },
-      [errorText = this->errorText](std::optional<TItem> res) {
-        if(res) {
-          return *res;
+      [](std::exception_ptr) { /* let it escape */},
+      [emitted, errorText = this->errorText]() {
+        if (!*emitted) {
+          throw std::runtime_error("Encountered no " + errorText);
         }
-        throw std::runtime_error("Encountered no "+ errorText);
-      });
+      }
+    );
   }
 
   /// \param errorText Custom text to be displayed in the errors when no of multiple items are found.
