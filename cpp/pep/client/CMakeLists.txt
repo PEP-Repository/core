@@ -2,7 +2,6 @@
 
 add_library(${PROJECT_NAME}Clientlib STATIC
     Client.cpp Client.hpp Client_fwd.hpp
-    Client.TokenBlock.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}Clientlib

@@ -121,10 +121,6 @@ public:
   rxcpp::observable<MetricsResponse> getAuthserverMetrics();
   rxcpp::observable<MetricsResponse> getRegistrationServerMetrics();
 
-  rxcpp::observable<TokenBlockingCreateResponse> tokenBlockCreate(tokenBlocking::TokenIdentifier, std::string note);
-  rxcpp::observable<TokenBlockingRemoveResponse> tokenBlockRemove(int64_t id);
-  rxcpp::observable<TokenBlockingListResponse> tokenBlockList();
-
   rxcpp::observable<FakeVoid> shutdown() override;
 
   static std::shared_ptr<Client> OpenClient(const Configuration& config,
