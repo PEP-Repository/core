@@ -9,8 +9,6 @@
 #include <pep/async/RxUtils.hpp>
 #include <pep/utils/Shared.hpp>
 
-#include <pep/storagefacility/StorageFacilitySerializers.hpp>
-
 #include <algorithm>
 #include <exception>
 #include <memory>

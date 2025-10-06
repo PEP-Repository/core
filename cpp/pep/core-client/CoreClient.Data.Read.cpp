@@ -1,7 +1,6 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/async/RxUtils.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
 namespace pep {
 
