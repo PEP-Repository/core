@@ -28,6 +28,8 @@ variables:
   # For CI scripts
   CLEAN_CONAN: 1
 
+  EXECUTABLE_EXTENSION: ''
+
   # When adding executables including unit tests below, also add them to /docker/services.Dockerfile
 
   EXECUTABLES_BASE: >-
@@ -63,14 +65,12 @@ variables:
     cpp/pep/storagefacility/pepStorageFacilityUnitTests
 
   UNIT_TESTS_BASE: >-
-    cpp/pep/accessmanager/pepAccessManagerUnitTests
     cpp/pep/archiving/pepArchivingUnitTests
     cpp/pep/async/pepAsyncUnitTests
     cpp/pep/auth/pepAuthUnitTests
     cpp/pep/content/pepContentUnitTests
     cpp/pep/crypto/pepCryptoUnitTests
     cpp/pep/elgamal/pepElgamalUnitTests
-    cpp/pep/keyserver/pepKeyServerUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
     cpp/pep/rsk/pepRskUnitTests
@@ -80,6 +80,10 @@ variables:
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
+
+  UNIT_TESTS_SERVER: >-
+    cpp/pep/accessmanager/pepAccessManagerUnitTests
+    cpp/pep/keyserver/pepKeyServerUnitTests
 
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
@@ -337,14 +341,18 @@ cleanup:
 .ccache-print: &ccache-print |
   CCACHE_DIR="$PWD/ccache" ccache --show-stats --verbose 2> /dev/null || true
 
-.stage-artifacts: &stage-artifacts |
-  ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+.stage-artifacts: &stage-artifacts
+  ./ci_cd/stage-built-files.sh
+  --source-prefix "$BUILD_DIRECTORY"
+  --dest-prefix "$STAGING_DIRECTORY"
+  "$ARTIFACTS"
 
+#language=sh
 .run-tests: &run-tests
   - |
     DID_JOB_FAIL=0
     for TEST in $TESTS; do
-      if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
+      if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST$EXECUTABLE_EXTENSION" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
         DID_JOB_FAIL=1
       fi
     done
@@ -352,12 +360,13 @@ cleanup:
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
 # See the ci_cd/windows-ci-runner.bat provisioning script.
+#language=powershell
 .run-tests-windows: &run-tests-windows
   - |
     $testsArray = $TESTS -split ' ';
     $DID_JOB_FAIL = 0
     foreach ($TEST in $testsArray) {
-      & "C:\Program Files\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
+      & "C:\Program Files\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST$EXECUTABLE_EXTENSION" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
       if ($LASTEXITCODE -ne 0) {
           $DID_JOB_FAIL = 1
       }
@@ -394,8 +403,14 @@ retrieve-lockfile:
   needs:
     - job: retrieve-lockfile
       optional: true
+  variables:
+    CONAN_FLAGS:
+      -o &:with_assessor=False
+      -o &:with_castor=$WITH_CASTOR
   #language=bash
   script:
+    # Add stuff like emsdk to PATH (profile is not loaded for docker runners (https://docs.gitlab.com/runner/shells/index.html#shell-profile-loading )
+    - . ~/.profile
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
     - if [ "$ENABLE_LINTER" = yes ]; then
@@ -414,8 +429,7 @@ retrieve-lockfile:
       --lockfile=./docker-build/builder/conan/conan-ci.lock
       -s build_type=$CMAKE_BUILD_TYPE
       $concurrency_option_conan
-      -o "&:with_assessor=False"
-      -o "&:with_castor=$WITH_CASTOR"
+      $CONAN_FLAGS
       -o "&:with_tests=$WITH_TESTS"
       -o "&:with_benchmark=$WITH_BENCHMARK"
       -o "&:custom_build_folder=True"
@@ -442,9 +456,13 @@ retrieve-lockfile:
   extends:
     - .ubuntu-build-base
   variables:
-    TESTS: "$UNIT_TESTS_BASE $UNIT_TESTS_CASTOR"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
     ARTIFACTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
       $UNIT_TESTS_CASTOR_KEYS
   artifacts:
@@ -487,7 +505,9 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
   variables:
     WITH_CASTOR: "False"
     MEM_ANALYSIS_TOOL: "none"
-    ARTIFACTS: "$UNIT_TESTS_BASE"
+    ARTIFACTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
   artifacts:
     expire_in: 8h
     paths:
@@ -517,6 +537,7 @@ ubuntu-lts-release:
       $EXECUTABLES_GO
       $UNIT_TESTS_INTEGRATION
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
       $UNIT_TESTS_CASTOR_KEYS
   artifacts:
@@ -596,6 +617,63 @@ ubuntu-rolling-release:
     - .ubuntu-build-with-tests-base
     - .ubuntu-rolling-release-settings
 
+#################### Weblib Debug ####################
+
+.weblib-build-with-tests-base:
+  extends:
+    - .ubuntu-build-base
+  variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+    ARTIFACTS: >-
+      $UNIT_TESTS_BASE
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+      - weblib/pep-repo-client-wasm/package.json
+      - weblib/pep-repo-client-wasm/package-lock.json
+      - weblib/pep-repo-client-wasm/pepWeblib*
+
+.weblib-settings:
+  image: $BUILDER_IMAGE_WEBLIB
+  variables:
+    WITH_BENCHMARK: "False"
+    WITH_TESTS: "True"
+    MEM_ANALYSIS_TOOL: "none"
+    CONAN_FLAGS: --profile:host=./docker-build/builder/conan/conan_profile_wasm32
+    EXECUTABLE_EXTENSION: .js
+
+.weblib-settings-debug:
+  extends:
+    - .weblib-settings
+  rules:
+    - if: $FAST_DEPLOY
+      when: never
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - *not-stable-release
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+
+weblib-debug:
+  extends:
+    - .weblib-build-with-tests-base
+    - .weblib-settings-debug
+
+#################### Weblib Release ####################
+
+.weblib-settings-release:
+  extends:
+    - .weblib-settings
+  rules:
+    - *not-stable-release
+  variables:
+    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+
+weblib-release:
+  extends:
+    - .weblib-build-with-tests-base
+    - .weblib-settings-release
 
 #################### Python Packages ####################
 
@@ -689,6 +767,7 @@ windows-all-targets:
       optional: true
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    EXECUTABLE_EXTENSION: .exe
   tags:
     - windows
   rules:
@@ -706,16 +785,15 @@ windows-all-targets:
     - $EXECUTABLES = "$EXECUTABLES_BASE
                       $EXECUTABLE_SERVERS
                       $UNIT_TESTS_INTEGRATION
-                      $UNIT_TESTS_BASE"
+                      $UNIT_TESTS_BASE
+                      $UNIT_TESTS_SERVER"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
                                                                           --build-mode "$CMAKE_BUILD_TYPE"
-                                                                          --append-extension ".exe"
                                                                           "$EXECUTABLES"'
     # For some reason the go executables are not placed in a build mode subdirectory
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
-                                                                          --append-extension ".exe"
                                                                           "$EXECUTABLES_GO"'
   retry:
     max: 1
@@ -787,6 +865,7 @@ macos-client-arm:
       $EXECUTABLES_GO
       $UNIT_TESTS_INTEGRATION
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
@@ -894,7 +973,9 @@ build-docker-images:
   tags:
     - docker
   variables:
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
   script:
     - *run-tests
   artifacts:
@@ -912,7 +993,9 @@ ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template 
   variables:
     WITH_CASTOR: "False"
     MEM_ANALYSIS_TOOL: "none"
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
   needs: [ubuntu-lts-debug-without-castor]
   stage: runtime-analysis
   tags:
@@ -945,6 +1028,52 @@ ubuntu-rolling-release-test:
     - .ubuntu-rolling-release-settings
   needs: [ubuntu-rolling-release]
 
+#################### Weblib ##################
+
+.weblib-test-base:
+  stage: runtime-analysis
+  tags:
+    - docker
+  variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+  #language=sh
+  script:
+    # Add Node.js to PATH
+    - . ~/.profile
+    - *run-tests
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+weblib-debug-test:
+  extends:
+    - .weblib-test-base
+    - .weblib-settings-debug
+  needs: [weblib-debug]
+
+weblib-release-test:
+  extends:
+    - .weblib-test-base
+    - .weblib-settings-release
+  needs: [weblib-release]
+
+weblib-integration:
+  extends:
+    - .dind
+    - .weblib-settings-debug
+  needs:
+    - weblib-debug
+    - job: build-docker-images
+      artifacts: false
+  stage: integration
+  #language=sh
+  script:
+    - *docker_login
+    # Add Node.js to PATH
+    - . ~/.profile
+    - ./tests/integration.sh --image "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tests-to-run weblib
+
 #################### Windows ##################
 
 windows-test:
@@ -952,7 +1081,10 @@ windows-test:
   variables:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "none"
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+    EXECUTABLE_EXTENSION: .exe
   rules:
     - if: $FAST_DEPLOY
       when: never
@@ -973,7 +1105,9 @@ windows-test:
   variables:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "leaks"
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
   rules:
     - if: $FAST_DEPLOY
       when: never
@@ -1006,7 +1140,9 @@ pep-services-image-test:
   rules:
     - *not-stable-release
   variables:
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
     - job: build-docker-images

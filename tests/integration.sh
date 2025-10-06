@@ -14,7 +14,7 @@ git_root="$SCRIPTPATH/.."
 # shellcheck source=/dev/null
 . "$SCRIPTPATH/functions.bash"
 
-readonly default_skip=''
+readonly default_skip='weblib'
 
 usage() {
   echo "Usage:"
@@ -34,6 +34,7 @@ usage() {
   echo "                              - Subset of tests to skip, separated by spaces, see --tests-to-run. Default \"$default_skip\" unless included in --tests-to-run"
   echo " --local                      - Run the tests using your local build. Expects the working directory to be your build directory."
   echo " --no-docker                  - Run tests without using Docker at all (i.e. without s3proxy). Only possible in local mode; some unit tests will be skipped."
+  echo " --publish-ports              - Publish Docker container ports to host, automatic for weblib tests."
   echo " --reuse-secrets-and-data     - Reuse the secrets and data already present in --generated-data-dir. Configuration is still copied over."
   echo " -h|--help|-?                 - Display this help"
   exit 2
@@ -48,6 +49,7 @@ check_option_has_value() {
 
 LOCAL=false
 USE_DOCKER=true
+PUBLISH_PORTS=false
 REUSE_SECRETS_AND_DATA=false
 while [ ${#} -gt 0 ];
 do
@@ -90,6 +92,7 @@ do
     -h|--help|-\?) usage ;;
     --local) LOCAL=true ;;
     --no-docker) USE_DOCKER=false ;;
+    --publish-ports) PUBLISH_PORTS=true ;;
     --inline-server-log) ;; # Legacy: this is the only option now
     --reuse-secrets-and-data) REUSE_SECRETS_AND_DATA=true ;;
     -?*)
@@ -159,6 +162,10 @@ for test in $default_skip; do
 done
 readonly TESTS_TO_SKIP="$TESTS_TO_SKIP"
 echo "TESTS_TO_RUN: ${TESTS_TO_RUN:-<all>}; except TESTS_TO_SKIP: ${TESTS_TO_SKIP:-<none>}"
+
+if is_test_included weblib; then
+  PUBLISH_PORTS=true
+fi
 
 # Settings for pepStorageFacilityUnitTests
 export PEP_ROOT_CA=../pki/rootCA.cert
@@ -320,7 +327,24 @@ else
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" "$IMAGE" bash /app/config_servers.sh
   fi
-  trace docker run --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
+
+  #TODO what about EXPOSE?
+  publish_ports_flags=''
+  if $PUBLISH_PORTS; then
+    publish_ports_flags='
+      --publish 8080:8080
+      --publish 8082:8082
+      --publish 16501:16501
+      --publish 16511:16511
+      --publish 16512:16512
+      --publish 16516:16516
+      --publish 16518:16518
+      --publish 16519:16519
+    '
+  fi
+
+  # shellcheck disable=SC2086 # Split $publish_ports_flags
+  trace docker run --net pep-network $publish_ports_flags -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
   docker logs --follow pepservertest 2> >(sed -u "s/^/[pep-services]: /" >&2) > >(sed -u "s/^/[pep-services]: /") &
 fi
 
@@ -381,6 +405,28 @@ fi
 
 if should_run_test watchdog; then
   execute watchdog "$BUILD_DIR/go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog" -oneshot -instant-stressor
+fi
+
+####################
+
+if should_run_test weblib; then
+  trace cd "$CORE_DIR/weblib/pep-repo-client-lib/"
+
+  start_websocket_proxy_flags=()
+  if [ -n "${CI-}" ]; then
+    # Connect to docker:dind service container, see https://stackoverflow.com/a/48288560
+    start_websocket_proxy_flags+=(docker)
+  fi
+  printGreen "\$ ./start_websocket_proxy.sh ${start_websocket_proxy_flags[*]} &"
+  ./start_websocket_proxy.sh "${start_websocket_proxy_flags[@]}" &
+
+  trace mkdir -p ./test_config/
+  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR/rootCA.cert" ./test_config/
+  # If this fails, you may need to source the EMSDK activation script and forward the Node.js PATH when using sudo via 'sudo \"PATH=\$PATH\" ...'
+  trace npm install
+  trace npm test
+  trace kill % || true
+  trace wait -f % || true
 fi
 
 ####################

@@ -136,7 +136,10 @@ void TcpBasedProtocol::ClientComponent::onResolved(const ConnectionAttempt::Hand
           notify(BoostOperationResult<std::shared_ptr<Protocol::Socket>>(ec));
         }
         else {
+#ifndef __EMSCRIPTEN__  // Unsupported
           socket->basicSocket().set_option(boost::asio::socket_base::keep_alive(true));
+#endif
+
 #ifdef __linux__
           int keep_idle = 75; /* seconds */
           setsockopt(socket->basicSocket().native_handle(), SOL_TCP, TCP_KEEPIDLE, &keep_idle, sizeof(keep_idle));

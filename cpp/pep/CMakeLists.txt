@@ -34,12 +34,15 @@ endif()
 # Always enable certain compiler warnings if using either GCC or Clang
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   function(warn_no_error language)
+    include(CheckCompilerFlag)
+    # Speedup: skip linking
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY) # Set locally
+
     foreach(warn_name IN LISTS ARGN)
       set(flag "-W${warn_name}")
       set(supported_var "FLAG_SUPPORTED_${language}_${flag}")
       escape_cache_var_name(supported_var)
       if(NOT DEFINED ${supported_var})
-        include(CheckCompilerFlag)
         check_compiler_flag("${language}" "${flag}" ${supported_var})
       endif()
       if(${supported_var})
@@ -236,33 +239,42 @@ function(add_install_executable name)
   add_executable(${ARGV})
   add_windows_manifest(${name})
   include(GNUInstallDirs)
-  install(TARGETS ${name} COMPONENT ${name}
+  if(CMAKE_CROSSCOMPILING)
+    install(TARGETS ${name} COMPONENT ${name}
+      #TODO This may not be what we want
+      BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Required for MACOSX_BUNDLE
+      FRAMEWORK DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Also for macOS
+    )
+  else()
+    install(TARGETS ${name} COMPONENT ${name}
 
-    # Copy runtime dependencies.
-    # This calls a tool on the produced binary to list what shared library names it requires,
-    # and then finds these libraries in directories including ${CONAN_RUNTIME_LIB_DIRS}
-    RUNTIME_DEPENDENCIES
+      # Copy runtime dependencies.
+      # This calls a tool on the produced binary to list what shared library names it requires,
+      # and then finds these libraries in directories including ${CONAN_RUNTIME_LIB_DIRS}
+      RUNTIME_DEPENDENCIES
       # Exclude these names
       PRE_EXCLUDE_REGEXES
-        [[^api-ms-]]  # Skip Windows Universal C Runtime
-        [[^ext-ms-]]  # Skip Windows APIs
-        [[^libc\.so]] [[^libgcc_s\.so]] [[^libm\.so]] [[^libstdc\+\+\.so]]  # Skip Unix STL
+      [[^api-ms-]]  # Skip Windows Universal C Runtime
+      [[^ext-ms-]]  # Skip Windows APIs
+      [[^libc\.so]] [[^libgcc_s\.so]] [[^libm\.so]] [[^libstdc\+\+\.so]]  # Skip Unix STL
       # Exclude these paths
       POST_EXCLUDE_REGEXES
-        [[[/\\]system32[/\\].*\.dll$]]  # Skip Windows OS DLLs
-        [[^/lib]] [[^/usr/lib]] [[^/usr/local/lib]]  # Skip Unix system shared libs
+      [[[/\\]system32[/\\].*\.dll$]]  # Skip Windows OS DLLs
+      [[^/lib]] [[^/usr/lib]] [[^/usr/local/lib]]  # Skip Unix system shared libs
       DIRECTORIES ${CONAN_RUNTIME_LIB_DIRS}
 
-    #TODO This may not be what we want
-    BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Required for MACOSX_BUNDLE
-    FRAMEWORK DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Also for macOS
-  )
+      #TODO This may not be what we want
+      BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Required for MACOSX_BUNDLE
+      FRAMEWORK DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Also for macOS
+    )
+  endif()
 endfunction()
 
 # Add executable accepting our --autocomplete flag that should be installed
 function(add_cli_install_executable name)
   set_property(GLOBAL APPEND PROPERTY cli_executables ${name})
   add_install_executable(${ARGV})
+  make_js_executable(${name})
 endfunction()
 
 #
@@ -328,37 +340,39 @@ endfunction()
 
 set(CMAKE_LINK_LIBRARIES_ONLY_TARGETS ON)  # Check dependencies in target_link_libraries exist at config time
 
-# Retrieve value from legacy cache variable
-if(NOT DEFINED BUILD_CLIENT)
-  set(BUILD_CLIENT ON)
-endif()
-option(WITH_ASSESSOR "Build Assessor GUI software" ${BUILD_CLIENT})
-if(NOT WITH_ASSESSOR)
-  message(STATUS "WITH_ASSESSOR=${WITH_ASSESSOR}")
-endif()
+if(NOT DEFINED EMSCRIPTEN)
+  # Retrieve value from legacy cache variable
+  if(NOT DEFINED BUILD_CLIENT)
+    set(BUILD_CLIENT ON)
+  endif()
+  option(WITH_ASSESSOR "Build Assessor GUI software" ${BUILD_CLIENT})
+  if(NOT WITH_ASSESSOR)
+    message(STATUS "WITH_ASSESSOR=${WITH_ASSESSOR}")
+  endif()
 
-# Retrieve value from legacy cache variable
-if(NOT DEFINED BUILD_SERVERS)
-  set(BUILD_SERVERS ON)
-endif()
-option(WITH_SERVERS "Build the ${PROJECT_NAME} servers" ${BUILD_SERVERS})
-if(NOT WITH_SERVERS)
-  message(STATUS "WITH_SERVERS=${WITH_SERVERS}")
+  # Retrieve value from legacy cache variable
+  if(NOT DEFINED BUILD_SERVERS)
+    set(BUILD_SERVERS ON)
+  endif()
+  option(WITH_SERVERS "Build the ${PROJECT_NAME} servers" ${BUILD_SERVERS})
+  if(NOT WITH_SERVERS)
+    message(STATUS "WITH_SERVERS=${WITH_SERVERS}")
+  endif()
+
+  option(WITH_LOGON "Build ${PROJECT_NAME}Logon" ON)
+  if(NOT WITH_LOGON)
+    message(STATUS "WITH_LOGON=${WITH_LOGON}")
+  endif()
+
+  option(WITH_CASTOR "Enable Castor API functionality" ON)
+  if(NOT WITH_CASTOR)
+    message(STATUS "WITH_CASTOR=${WITH_CASTOR}")
+  endif()
 endif()
 
 option(WITH_BENCHMARK "Build benchmark" ON)
 if(NOT WITH_BENCHMARK)
   message(STATUS "WITH_BENCHMARK=${WITH_BENCHMARK}")
-endif()
-
-option(WITH_LOGON "Build ${PROJECT_NAME}Logon" ON)
-if(NOT WITH_LOGON)
-  message(STATUS "WITH_LOGON=${WITH_LOGON}")
-endif()
-
-option(WITH_CASTOR "Enable Castor API functionality" ON)
-if(NOT WITH_CASTOR)
-  message(STATUS "WITH_CASTOR=${WITH_CASTOR}")
 endif()
 
 # Sets directory for CastorAPIKey.json if it is found inside the projects repository
@@ -442,6 +456,10 @@ if(WITH_SERVERS)
   add_subdirectory(service-application)
 endif()
 
+if(DEFINED EMSCRIPTEN)
+  add_subdirectory(weblib)
+endif()
+
 ## Conditional dependencies required by multiple components
 # Please keep conditions in sync with conanfile.py
 
@@ -449,7 +467,7 @@ if(WITH_ASSESSOR OR WITH_LOGON OR WITH_SERVERS)
   add_subdirectory(httpserver)
 endif()
 
-if(WITH_ASSESSOR OR WITH_LOGON)
+if(WITH_ASSESSOR OR WITH_LOGON OR DEFINED EMSCRIPTEN)
   add_subdirectory(oauth-client)
 endif()
 

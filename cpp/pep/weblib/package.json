@@ -1,0 +1,20 @@
+{
+  "name": "pep-repo-client-wasm",
+  "version": "0.0.0",
+  "description": "PEP repository web client: WebAssembly module",
+  "private": true,
+  "type": "module",
+  "files": [
+    "./pepWeblib.mjs",
+    "./pepWeblib.d.mts",
+    "./pepWeblib.wasm",
+    "./pepWeblib.wasm.debug.wasm",
+    "./pepWeblib.wasm.map"
+  ],
+  "exports": "./pepWeblib.mjs",
+  "types": "./pepWeblib.d.mts",
+  "// dependencies.ws": "ws is for websockets on Node.js (without it you'd get `error: system:23(Host is unreachable)`)",
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

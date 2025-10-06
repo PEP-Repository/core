@@ -118,9 +118,11 @@ start_containers() {
   # See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2620
   >&2 printf "Starting s3proxy container..."
   "$docker" run --rm --detach --name s3proxy -e S3PROXY_IDENTITY=${S3_ACCESS_KEY} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY} -e LOG_LEVEL=TRACE -e JCLOUDS_PROVIDER=filesystem -p 9001:80 -v /"${DATADIR}":/data "${S3PROXY_IMAGE}"
+  "$docker" logs --follow s3proxy 2> >(sed -u "s/^/[s3proxy]: /" >&2) > >(sed -u "s/^/[s3proxy]: /") &
   >&2 printf "Starting nginx (s3proxyproxy) container..."
   # shellcheck disable=SC2086 # Don't quote possibly empty $network_switch variable so Docker won't interpret them as an empty image spec, causing "invalid reference format" errors
   "$docker" run --rm --detach --name s3proxyproxy $network_switch --add-host=host.docker.internal:host-gateway -p 9000:9000 -v /"${etc_nginx_dir}":/etc/nginx -v /"${SCRIPTDIR}"/s3certs:/s3cert:ro nginx
+  "$docker" logs --follow s3proxyproxy 2> >(sed -u "s/^/[s3proxyproxy]: /" >&2) > >(sed -u "s/^/[s3proxyproxy]: /") &
 
   # Set ENABLE_S3PROXY_LOG envvar to enable logging
   if [ -n "${ENABLE_S3PROXY_LOG-}" ]; then

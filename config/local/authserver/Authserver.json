@@ -4,18 +4,19 @@
 
   "PEPPrivateKeyFile": "PEPAuthserver.key",
   "PEPCertificateFile": "PEPAuthserver.chain",
-  
+
   "CACertificateFile": "rootCA.cert",
 
   "OAuthTokenSecretFile": "OAuthTokenSecret.json",
   "HTTPListenPort": 8080,
   "ActiveGrantExpirationSeconds": 300,
   "TokenExpirationSeconds": 60,
+  "ExtraRedirectUris": ["http://localhost:2280/weblib/pep-sample-client/pepWasmTest-auth-landing"],
 
   "SpoofKeyFile": "spoofKey",
- 
+
   "ListenPort": 16512,
-  
+
   "HTTPSCertificateFile": "AuthserverHTTPSCertificate.pem",
 
   "AccessManager": {

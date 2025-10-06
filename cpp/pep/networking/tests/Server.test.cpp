@@ -7,6 +7,15 @@
 
 namespace {
 
+class Server : public ::testing::Test {
+public:
+  static void SetUpTestSuite() {
+#ifdef __EMSCRIPTEN__
+    GTEST_SKIP() << "Server not supported on Emscripten";
+#endif
+  }
+};
+
 class FakeProtocol : public pep::networking::ProtocolImplementor<FakeProtocol> {
   using Base = pep::networking::ProtocolImplementor<FakeProtocol>;
 
@@ -74,7 +83,7 @@ size_t FakeProtocol::Socket::unclosed_ = 0U;
 }
 
 
-TEST(Server, DiscardsUnopenedSocket) {
+TEST_F(Server, DiscardsUnopenedSocket) {
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Can't reliably count sockets. Are other (concurrently executed) tests using FakeProtocol as well?";
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Can't reliably count unclosed sockets. Are other (concurrently executed) tests using FakeProtocol as well?";
 
@@ -91,7 +100,7 @@ TEST(Server, DiscardsUnopenedSocket) {
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Server didn't discard its socket(s) upon destruction";
 }
 
-TEST(Server, UnschedulesOnDestruction) {
+TEST_F(Server, UnschedulesOnDestruction) {
   pep::testing::Milliseconds SHORT_MSEC = 100;
   pep::testing::Milliseconds LONG_MSEC = 200;
 

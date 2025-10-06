@@ -96,7 +96,7 @@ protected:
 
 public:
   FileLogging(severity_level minimum_level)
-    : Logging(minimum_level), prefix(GetOutputBasePath().string()) {
+    : Logging(minimum_level), prefix(GetLogBasePath().string()) {
   }
 };
 

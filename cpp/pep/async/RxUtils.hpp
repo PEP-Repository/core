@@ -46,8 +46,9 @@ public:
     using Map = std::unordered_map<Key, TItem>;
     return items.reduce(
       std::make_shared<Map>(),
-      [getKey = mGetKey](std::shared_ptr<Map> map, const TItem& item) {
-      if (!map->emplace((*getKey)(item), item).second) {
+      [getKey = mGetKey](std::shared_ptr<Map> map, TItem item) {
+      auto key = (*getKey)(std::as_const(item));
+      if (!map->emplace(std::move(key), std::move(item)).second) {
         throw std::runtime_error("Could not insert duplicate key into unordered map");
       }
       return map;
@@ -128,8 +129,8 @@ struct RxToVector {
   rxcpp::observable<std::shared_ptr<std::vector<TItem>>> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.reduce(
       std::make_shared<std::vector<TItem>>(),
-      [](std::shared_ptr<std::vector<TItem>> result, const TItem& item) {
-      result->push_back(item);
+      [](std::shared_ptr<std::vector<TItem>> result, TItem item) {
+      result->push_back(std::move(item));
       return result;
     });
   }
@@ -183,7 +184,7 @@ public:
       return group.op(RxToVector())
         .map([key = group.get_key()](std::shared_ptr<ItemVector> items) {
         assert(!items->empty());
-        return std::make_pair(key, items);
+        return std::make_pair(key, std::move(items));
         });
       })
       .reduce(
@@ -218,8 +219,8 @@ public:
   rxcpp::observable<std::shared_ptr<std::set<TItem>>> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.reduce(
       std::make_shared<std::set<TItem>>(),
-      [throwOnDuplicate = mThrowOnDuplicate](std::shared_ptr<std::set<TItem>> set, const TItem& item) {
-        auto added = set->emplace(item).second;
+      [throwOnDuplicate = mThrowOnDuplicate](std::shared_ptr<std::set<TItem>> set, TItem item) {
+        auto added = set->emplace(std::move(item)).second;
         if (throwOnDuplicate && !added) {
           throw std::runtime_error("Could not insert duplicate item into set");
         }
@@ -242,9 +243,9 @@ struct RxConcatenateVectors {
   rxcpp::observable<std::shared_ptr<std::vector<TItem>>> operator()(rxcpp::observable<std::vector<TItem>, SourceOperator> chunks) const {
     return chunks.reduce(
       std::make_shared<std::vector<TItem>>(),
-      [](std::shared_ptr<std::vector<TItem>> result, const std::vector<TItem>& chunk) {
+      [](std::shared_ptr<std::vector<TItem>> result, std::vector<TItem> chunk) {
       result->reserve(result->size() + chunk.size());
-      result->insert(result->end(), chunk.cbegin(), chunk.cend());
+      result->insert(result->end(), std::move_iterator(chunk.begin()), std::move_iterator(chunk.end()));
       return result;
     });
   }

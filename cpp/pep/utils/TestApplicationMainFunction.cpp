@@ -25,6 +25,9 @@ int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   int retval = RUN_ALL_TESTS();
 
+  // getrusage not supported on Emscripten and
+  // even the stub is broken: https://github.com/emscripten-core/emscripten/issues/18083
+#ifndef __EMSCRIPTEN__
   uint64_t maxmem;
 #ifndef _WIN32
   rusage usage{};
@@ -43,6 +46,7 @@ int main(int argc, char* argv[]) {
 #endif
   std::cout << maxmem << " kilobytes of memory used at max" << std::endl;
   std::cout << (maxmem / 1024) << " megabytes of memory used at max" << std::endl;
+#endif
 
   return retval;
 }

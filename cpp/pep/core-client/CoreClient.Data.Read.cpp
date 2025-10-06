@@ -113,6 +113,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
       });
 }
 
+//TODO Should this be a sequence of observables instead, to prevent sending all requests at once?
 rxcpp::observable<std::shared_ptr<RetrieveResult>>
 CoreClient::retrieveData2(
   const rxcpp::observable<EnumerateResult>& subjects,

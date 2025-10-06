@@ -1,0 +1,27 @@
+html {
+  font-family: sans-serif;
+}
+
+#loading {
+  font-size: 1.5em;
+}
+#loading img {
+  height: 1em;
+}
+
+#working {
+  font-size: 1.5em;
+}
+#working img {
+  height: 1em;
+}
+
+#register-participant-form {
+  display: grid;
+  grid-template-columns: auto auto;
+}
+
+#output {
+  width: 80em;
+  height: 30em;
+}

@@ -24,8 +24,8 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                                                            bool isTestParticipant,
                                                            const std::string& studyContext,
                                                            bool complete) {
-  if ((personalia.getFirstName().empty() && personalia.getMiddleName().empty() && personalia.getLastName().empty())
-      || personalia.getDateOfBirth().empty()) {
+  if ((personalia.firstName.empty() && personalia.middleName.empty() && personalia.lastName.empty())
+      || personalia.dateOfBirth.empty()) {
     throw std::runtime_error("Personal data are needed to register a participant");
   }
 

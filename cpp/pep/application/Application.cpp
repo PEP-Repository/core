@@ -180,19 +180,24 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
+#ifdef __EMSCRIPTEN__
+  assert(getArgc() > 0);
+  return std::filesystem::path(getArgv()[0]).filename().string();
+#else
   return GetExecutablePath().filename().string();
+#endif
 }
 
 int Application::getArgc() const {
   if (mArgc < 0) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the execute() method is invoked");
+    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
   return mArgc;
 }
 
 char** Application::getArgv() const {
   if (mArgv == nullptr) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the execute() method is invoked");
+    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
   return mArgv;
 }

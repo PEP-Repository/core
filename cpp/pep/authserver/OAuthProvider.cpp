@@ -1,5 +1,6 @@
 #include <pep/authserver/OAuthProvider.hpp>
 
+#include <algorithm>
 #include <sstream>
 
 #include <boost/algorithm/hex.hpp>
@@ -9,6 +10,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/url/pct_string_view.hpp>
+#include <boost/url/url_view.hpp>
 
 #include <rxcpp/operators/rx-observe_on.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
@@ -16,6 +18,7 @@
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Sha.hpp>
@@ -41,6 +44,8 @@ namespace {
 }
 #endif
 
+using boost::urls::url;
+
 namespace pep {
 
 static const std::string LOG_TAG ("OAuthProvider");
@@ -63,7 +68,36 @@ const std::string OAuthProvider::ERROR_INVALID_GRANT = "invalid_grant";
 
 namespace {
 
+const std::string ClientId = "123";
+
 const std::string SERVER_ERROR_DESCRIPTION = "Internal server error";
+
+const std::initializer_list<url> DefaultRedirectUris{
+  // We use `?` to indicate that the query must be empty and cannot be varied by the client,
+  // see https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.2
+  url("http://localhost:16515/?"),
+  // Relative redirect URIs are not actually compliant with RFC6749,
+  // see https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2,
+  // but we interpret it as relative to the authserver domain
+  url("/code?"),
+};
+
+/// Validate provided redirect_uri according to https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3
+bool CompareRedirectUris(boost::urls::url_view providedRedirectUri, boost::urls::url_view registeredRedirectUri) {
+  // See also https://www.boost.org/doc/libs/1_87_0/doc/antora/url/urls/normalization.html
+
+  if (registeredRedirectUri.has_query()) {
+    // See note in DefaultRedirectUris
+    // Do simple string comparison
+    if (registeredRedirectUri.encoded_query().empty()) {
+      return boost::urls::url(registeredRedirectUri).remove_query().buffer() == providedRedirectUri.buffer();
+    }
+    return registeredRedirectUri.buffer() == providedRedirectUri.buffer();
+  }
+
+  // We currently skip scheme-based normalization and only do syntax-based normalization, allowing variance in the query
+  return registeredRedirectUri == boost::urls::url(providedRedirectUri).remove_query();
+}
 
 HTTPResponse MakeHttpResponse(const std::string& status, const std::string& body, std::string pageType, std::map<std::string, std::string, CaseInsensitiveCompare> headers = std::map<std::string, std::string, CaseInsensitiveCompare>()) {
   // Adds headers for all HTTP responses
@@ -119,6 +153,7 @@ OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     activeGrantExpiration = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
     spoofKeyFile = config.get<std::optional<std::filesystem::path>>("SpoofKeyFile");
     httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HTTPSCertificateFile");
+    extraRedirectUris = config.get<decltype(extraRedirectUris)>("ExtraRedirectUris");
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -185,6 +220,17 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
   httpServer->registerHandler("/token", true, std::bind_front(&OAuthProvider::handleTokenRequest, this), "POST");
   httpServer->registerHandler("/code", true, std::bind_front(&OAuthProvider::handleCodeRequest, this), "");
 
+  allowedRedirectUris.reserve(DefaultRedirectUris.size() + params.getExtraRedirectUris().size());
+  std::ranges::copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris));
+  std::ranges::transform(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris), [](std::string urlStr) {
+    return url(std::move(urlStr));
+  });
+
+  for (auto uri : allowedRedirectUris) {
+    if (auto origin = uri.normalize().encoded_origin(); !origin.empty()) {
+      allowedTokenRequestOrigins.emplace(origin);
+    }
+  }
 
   activeGrantsCleanupSubscription = rxcpp::rxs::interval(std::chrono::minutes(1))
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
@@ -306,11 +352,11 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   const std::string& clientId = (*clientIdIt).value;
   const std::string& redirectUriString = (*redirectUriIt).value;
 
-  std::unordered_set<std::string> registeredUris = getRegisteredRedirectURIs(clientId);
+  const auto& registeredUris = getRegisteredRedirectURIs(clientId);
   if(registeredUris.empty()) {
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("403 Forbidden", "client_id not registered"));
   }
-  if(registeredUris.find(redirectUriString) == registeredUris.end()) {
+  if (std::ranges::find_if(registeredUris, std::bind_front(CompareRedirectUris, redirectUriString)) == registeredUris.end()) {
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("403 Forbidden", "Specified redirect_uri is not registered"));
   }
 
@@ -462,7 +508,19 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     std::ostringstream responseStream;
     boost::property_tree::write_json(responseStream, responseData);
 
-    return MakeHttpResponse("200 OK", responseStream.str(), "application/json");
+    HTTPMessage::HeaderMap responseHeaders{
+      {"Vary", "Origin"},
+    };
+    const auto& requestHeaders = request.getHeaders();
+    if (auto originIt = requestHeaders.find("Origin"); originIt != requestHeaders.end()) {
+      url origin(originIt->second);
+      origin.normalize(); // Syntax-based normalization
+      const auto& allowedOrigins = getAllowedTokenRequestOrigins(clientId);
+      if (allowedOrigins.contains(origin.buffer())) {
+        responseHeaders.emplace("Access-Control-Allow-Origin", originIt->second);
+      }
+    }
+    return MakeHttpResponse("200 OK", responseStream.str(), "application/json", std::move(responseHeaders));
   }
   catch (const Error& err) {
     return MakeErrorJsonHttpResponse(ERROR_SERVER_ERROR, err.what());
@@ -513,12 +571,19 @@ HTTPResponse OAuthProvider::handleCodeRequest(HTTPRequest request, std::string r
   return MakeHttpResponse(status, result, "text/html");
 }
 
-std::unordered_set<std::string> OAuthProvider::getRegisteredRedirectURIs(const std::string& clientId) {
+const std::vector<url>& OAuthProvider::getRegisteredRedirectURIs(const std::string& clientId) {
   //We currently only support one client_id. There are no plans to change this, so no need to make this more complicated for now.
-  if(clientId == "123") {
-    return { "http://127.0.0.1:16515/", "http://localhost:16515/", "/code" };
+  if (clientId == ClientId) {
+    return allowedRedirectUris;
   }
-  return {};
+  return Default<std::vector<url>>;
+}
+
+const std::set<std::string>& OAuthProvider::getAllowedTokenRequestOrigins(const std::string& clientId) {
+  if (clientId == ClientId) {
+    return allowedTokenRequestOrigins;
+  }
+  return Default<std::set<std::string>>;
 }
 
 }

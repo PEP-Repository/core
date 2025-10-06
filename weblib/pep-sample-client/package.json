@@ -1,0 +1,22 @@
+{
+  "name": "pep-sample-client",
+  "version": "0.0.0",
+  "description": "PEP repository sample web client consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "webpack --mode=production",
+    "build-dev": "webpack --mode=development",
+    "build:watch": "webpack --watch --mode=development",
+    "types:check": "tsc --noEmit",
+    "types:check:watch": "tsc --watch --preserveWatchOutput --noEmit"
+  },
+  "dependencies": {
+    "pep-repo-client": "file:../pep-repo-client-lib"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "webpack": "^5.99.8",
+    "webpack-cli": "^6.0.1"
+  }
+}

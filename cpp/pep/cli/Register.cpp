@@ -21,7 +21,7 @@ public:
 
 private:
   std::optional<int> handleVerification(const pep::ParticipantPersonalia& personalia, bool isTestParticipant, bool force) {
-    if(!pep::Date::MatchesDdMmYyyyFormat(personalia.getDateOfBirth())) {
+    if(!pep::Date::MatchesDdMmYyyyFormat(personalia.dateOfBirth)) {
       throw std::runtime_error("Entered date was not valid, please use the dd-mm-yyyy format.");
     }
 
@@ -30,7 +30,7 @@ private:
       char input=0;
       std::cout << "Creating participant with the following details: \n"
                 << "Name: " << std::quoted(personalia.getFullName()) << "\n"
-                << "Birthdate: " << std::quoted(personalia.getDateOfBirth()) << "\n"
+                << "Birthdate: " << std::quoted(personalia.dateOfBirth) << "\n"
                 << "Test participant: " << (isTestParticipant ? "yes" : "no") << "\n\n"
                 <<"Enter 'y' if you want to create this participant, enter any other character if you want to cancel." << std::endl;
 
@@ -97,11 +97,12 @@ private:
     int execute() override {
       const auto& values = this->getParameterValues();
 
-      auto personalia = pep::ParticipantPersonalia(
-        values.get<std::string>("first-name"),
-        values.get<std::string>("middle-name"),
-        values.get<std::string>("last-name"),
-        values.get<std::string>("date-of-birth"));
+      auto personalia = pep::ParticipantPersonalia{
+        .firstName = values.get<std::string>("first-name"),
+        .middleName = values.get<std::string>("middle-name"),
+        .lastName = values.get<std::string>("last-name"),
+        .dateOfBirth = values.get<std::string>("date-of-birth"),
+      };
 
       auto isTestParticipant = values.has("test-participant");
 
@@ -175,11 +176,12 @@ private:
       } while (!isTestParticipant.has_value());
       std::cout << std::endl;
 
-      auto personalia = pep::ParticipantPersonalia(
-        firstName,
-        middleName,
-        lastName,
-        dateOfBirth);
+      auto personalia = pep::ParticipantPersonalia{
+        .firstName = firstName,
+        .middleName = middleName,
+        .lastName = lastName,
+        .dateOfBirth = dateOfBirth,
+      };
 
       //Ask the user for confirmation
       auto errorCode = this->getParent().handleVerification(personalia, *isTestParticipant, false);

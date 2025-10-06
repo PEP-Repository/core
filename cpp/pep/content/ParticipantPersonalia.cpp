@@ -7,10 +7,6 @@
 
 namespace pep {
 
-ParticipantPersonalia::ParticipantPersonalia(const std::string& firstName, const std::string& middleName, const std::string& lastName, const std::string& dateOfBirth)
-: mFirstName(firstName), mMiddleName(middleName), mLastName(lastName), mDateOfBirth(dateOfBirth) {
-}
-
 Date ParticipantPersonalia::ParseDateOfBirth(const std::string& value) {
   auto result = Date::TryParseHomebrewFormat(value);
   if (result == std::nullopt) {
@@ -25,7 +21,7 @@ Date ParticipantPersonalia::ParseDateOfBirth(const std::string& value) {
 
 std::string ParticipantPersonalia::getFullName() const {
   std::string result;
-  for (auto& part : { mFirstName, mMiddleName, mLastName }) {
+  for (auto& part : { firstName, middleName, lastName }) {
     if (!part.empty()) {
       if (!result.empty()) {
         result += " ";
@@ -38,10 +34,10 @@ std::string ParticipantPersonalia::getFullName() const {
 
 std::string ParticipantPersonalia::toJson() const {
   boost::property_tree::ptree properties;
-  properties.add<std::string>("FirstName", getFirstName());
-  properties.add<std::string>("MiddleName", getMiddleName());
-  properties.add<std::string>("LastName", getLastName());
-  properties.add<std::string>("DoB", getDateOfBirth());
+  properties.add<std::string>("FirstName", firstName);
+  properties.add<std::string>("MiddleName", middleName);
+  properties.add<std::string>("LastName", lastName);
+  properties.add<std::string>("DoB", dateOfBirth);
 
   std::stringstream result;
   boost::property_tree::write_json(result, properties);
@@ -53,18 +49,12 @@ ParticipantPersonalia ParticipantPersonalia::FromJson(const std::string& json) {
   boost::property_tree::ptree properties;
   boost::property_tree::read_json(ss, properties);
 
-  return ParticipantPersonalia(
-    properties.get<std::string>("FirstName"),
-    properties.get<std::string>("MiddleName"),
-    properties.get<std::string>("LastName"),
-    properties.get<std::string>("DoB"));
-}
-
-bool ParticipantPersonalia::operator ==(const ParticipantPersonalia& rhs) const {
-  return this->getFirstName() == rhs.getFirstName()
-    && this->getMiddleName() == rhs.getMiddleName()
-    && this->getLastName() == rhs.getLastName()
-    && this->getDateOfBirth() == rhs.getDateOfBirth();
+  return ParticipantPersonalia{
+    .firstName = properties.get<std::string>("FirstName"),
+    .middleName = properties.get<std::string>("MiddleName"),
+    .lastName = properties.get<std::string>("LastName"),
+    .dateOfBirth = properties.get<std::string>("DoB"),
+  };
 }
 
 }

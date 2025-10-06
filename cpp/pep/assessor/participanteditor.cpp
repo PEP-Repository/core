@@ -65,10 +65,10 @@ pep::ParticipantPersonalia ParticipantEditor::getPersonalia() const {
 }
 
 void ParticipantEditor::setPersonalia(const pep::ParticipantPersonalia& data) {
-  ui->firstnameInput->setText(QString::fromStdString(data.getFirstName()));
-  ui->tussenvoegselsInput->setText(QString::fromStdString(data.getMiddleName()));
-  ui->lastnameInput->setText(QString::fromStdString(data.getLastName()));
-  ui->dateOfBirthInput->setValue(GregorianToQDate(pep::ParticipantPersonalia::ParseDateOfBirth(data.getDateOfBirth()).gregorian()));
+  ui->firstnameInput->setText(QString::fromStdString(data.firstName));
+  ui->tussenvoegselsInput->setText(QString::fromStdString(data.middleName));
+  ui->lastnameInput->setText(QString::fromStdString(data.lastName));
+  ui->dateOfBirthInput->setValue(GregorianToQDate(pep::ParticipantPersonalia::ParseDateOfBirth(data.dateOfBirth).gregorian()));
 }
 
 bool ParticipantEditor::getIsTestParticipant() const {

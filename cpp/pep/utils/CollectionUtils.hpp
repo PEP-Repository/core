@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <functional>
 #include <iterator>
+#include <map>
 #include <optional>
 #include <vector>
 #include <ranges>
@@ -14,6 +15,8 @@
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
+#include <utility>
 
 namespace pep {
 
@@ -169,6 +172,19 @@ template <template <typename...> class ResultCollection>
 /// \endcode
 constexpr auto MoveElements = std::views::transform([](auto& elem) { return std::move(elem); });
 
+/// Copy src to dst, checking that it fits
+/// \param exact If \p dst should be required to be the exact same size as \p src
+constexpr auto CheckedCopy(
+  std::ranges::input_range auto&& src,
+  std::ranges::output_range<std::ranges::range_value_t<decltype(src)>> auto& dst,
+  bool exact = false) {
+  using namespace std::ranges;
+  if (exact ? size(dst) != size(src) : size(dst) < size(src)) {
+    throw std::out_of_range("src range does not fit in dst");
+  }
+  return copy(std::forward<decltype(src)>(src), begin(dst));
+}
+
 /// Returns optional with the single element in the range, if any.
 /// \throws std::out_of_range if the range contains multiple elements.
 [[nodiscard]] auto RangeToOptional(std::ranges::input_range auto&& range)
@@ -183,5 +199,8 @@ constexpr auto MoveElements = std::views::transform([](auto& elem) { return std:
   }
   return result;
 }
+
+template <typename T>
+concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecialization<T, std::unordered_map>;
 
 }

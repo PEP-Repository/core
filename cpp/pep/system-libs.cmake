@@ -7,7 +7,7 @@
 # ---------- Threads ----------
 
 find_package(Threads)
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if (CMAKE_SYSTEM_NAME MATCHES "Linux|Emscripten")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 

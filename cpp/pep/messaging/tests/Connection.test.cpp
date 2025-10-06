@@ -6,7 +6,7 @@
 
 namespace {
 
-void TestConnectionBasics(TestServerFactory& factory) {
+[[maybe_unused]] void TestConnectionBasics(TestServerFactory& factory) {
   boost::asio::io_context io_context;
   pep::messaging::RequestHandler handler;
 
@@ -23,7 +23,7 @@ void TestConnectionBasics(TestServerFactory& factory) {
         ASSERT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " server produced non-initialized connection";
       },
       [server, protocol](std::exception_ptr error) {
-        PEP_DEFER(server->shutdown()); // Ensure that the server is shut down even when FAIL() 
+        PEP_DEFER(server->shutdown()); // Ensure that the server is shut down even when FAIL()
         FAIL() << protocol << " server connectivity produced an error: " << pep::GetExceptionMessage(error);
       },
       []() { /* ignore */}
@@ -38,7 +38,7 @@ void TestConnectionBasics(TestServerFactory& factory) {
         ASSERT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " client produced non-initialized connection";
       },
       [client, protocol](std::exception_ptr error) {
-        PEP_DEFER(client->shutdown()); // Ensure that the client is shut down even when FAIL() 
+        PEP_DEFER(client->shutdown()); // Ensure that the client is shut down even when FAIL()
         FAIL() << protocol << " client connectivity produced an error: " << pep::GetExceptionMessage(error);
       },
       []() { /* ignore */}
@@ -47,17 +47,24 @@ void TestConnectionBasics(TestServerFactory& factory) {
   ASSERT_NO_FATAL_FAILURE(io_context.run());
 }
 
-} // End anonymous namespace
-
 TEST(Connection, Basics) {
+#ifdef __EMSCRIPTEN__
+  GTEST_SKIP() << "Server not supported on Emscripten";
+#else
+
   TcpTestServerFactory tcp;
   TestConnectionBasics(tcp);
 
   TlsTestServerFactory tls;
   TestConnectionBasics(tls);
+#endif
 }
 
 TEST(Connection, ClientReconnects) {
+#ifdef __EMSCRIPTEN__
+  GTEST_SKIP() << "Test hangs on Emscripten with Node.js";
+#else
+
   constexpr uint16_t PORT = 2022; // TODO: support port randomization?
 
   constexpr auto MAX_ATTEMPTS = 4U;
@@ -77,7 +84,7 @@ TEST(Connection, ClientReconnects) {
         }
       },
       [client](std::exception_ptr error) {
-        PEP_DEFER(client->shutdown()); // Ensure that the client is shut down even when FAIL() 
+        PEP_DEFER(client->shutdown()); // Ensure that the client is shut down even when FAIL()
         FAIL() << "Client connectivity produced an error: " << pep::GetExceptionMessage(error);
       },
       []() { /* ignore */}
@@ -85,4 +92,7 @@ TEST(Connection, ClientReconnects) {
 
   ASSERT_NO_FATAL_FAILURE(io_context.run());
   ASSERT_EQ(*attempts, MAX_ATTEMPTS) << "Client didn't make " << MAX_ATTEMPTS << " connection attempt(s)";
+#endif
 }
+
+} // End anonymous namespace

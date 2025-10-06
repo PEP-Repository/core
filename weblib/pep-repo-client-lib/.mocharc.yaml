@@ -1,0 +1,10 @@
+# Tests configuration
+spec: ./src/**/*.spec.*
+# Increase timeout
+timeout: 60000
+color: true
+node-option:
+  # Run TypeScript
+  - import=tsx
+  - trace-deprecation
+  - trace-warnings

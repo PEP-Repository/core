@@ -23,7 +23,7 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
        export PATH="$GOPATH/bin:$PATH"
        ```
 
-     - install the Go protobuf compiler:
+      - install the Go protobuf compiler:
 
        ```shell
        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest

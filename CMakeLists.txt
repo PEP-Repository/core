@@ -142,15 +142,18 @@ function(escape_cache_var_name var_containing_name)
   set(${var_containing_name} "${out}" PARENT_SCOPE)
 endfunction()
 
-# Adds provided flags to compile options for language if supported.
+# Adds provided flags to non-link compile options for language if supported.
 # Sets boolean cache variable FLAG_SUPPORTED_<language>_<escape_cache_var_name(flag)>.
 function(add_supported_compile_options language)
+    include(CheckCompilerFlag)
+    # Speedup: skip linking
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY) # Set locally
+
     foreach(flag IN LISTS ARGN)
         set(supported_var "FLAG_SUPPORTED_${language}_${flag}")
         # Escape '=' etc.
         escape_cache_var_name(supported_var)
 
-        include(CheckCompilerFlag)
         check_compiler_flag("${language}" "${flag}" ${supported_var})
 
         if(${supported_var})
@@ -188,6 +191,67 @@ endif()
 
 ##
 
+if(DEFINED EMSCRIPTEN)
+  if(NOT DEFINED CMAKE_CROSSCOMPILING_EMULATOR)
+    find_program(NODE_PROGRAM node)
+    set(CMAKE_CROSSCOMPILING_EMULATOR ${NODE_PROGRAM})
+  endif()
+
+  # Excludes weblib
+  option(EMSCRIPTEN_BROWSER "Build Emscripten executables for browser instead of Node.js")
+
+  define_property(TARGET PROPERTY PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG
+      BRIEF_DOCS "Do not add default config for Emscripten executables"
+  )
+
+  set(default_emscripten_exe_config
+      -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
+      -Wl,--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
+      -gsource-map
+      -sEXIT_RUNTIME  # Run global destructors after main()
+      # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
+      # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
+      "$<$<CONFIG:Debug>:-gseparate-dwarf>"
+      "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
+  )
+
+  if(EMSCRIPTEN_BROWSER)
+    set(CMAKE_EXECUTABLE_SUFFIX ".html")  # Create HTML shell
+    list(APPEND default_emscripten_exe_config
+        -sPROXY_TO_PTHREAD  # Put main thread in separate worker to prevent blocking UI thread
+    )
+  else()
+    file(SHA256 "${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js" node_emscripten_prejs_hash)
+    list(APPEND default_emscripten_exe_config
+        -sNODERAWFS # Use host file system
+
+        "--pre-js=${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js"
+        -sINCOMING_MODULE_JS_API=preRun
+        # Rebuild if file changes
+        "-DPEP_DUMMY_node_emscripten_prejs_hash=${node_emscripten_prejs_hash}"
+    )
+  endif()
+
+  add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG>>>:${default_emscripten_exe_config}>")
+endif()
+
+function(make_js_executable target)
+  get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
+  if(NOT skip)
+    if(CMAKE_HOST_LINUX AND DEFINED EMSCRIPTEN AND NOT EMSCRIPTEN_BROWSER)
+      add_custom_command(
+          TARGET ${target} POST_BUILD
+          # Add node shebang
+          COMMAND sed --in-place "1s;^;#!/usr/bin/env node\\n;" "$<TARGET_FILE:${target}>"
+          # Make file executable
+          COMMAND chmod +x "$<TARGET_FILE:${target}>"
+          VERBATIM
+          COMMENT "Make JS file executable"
+      )
+    endif()
+  endif()
+endfunction()
+
 option(ENABLE_TEST_DISCOVERY "Make tests discoverable, to be able to run them from e.g. Visual Studio Test Explorer" OFF)
 if(ENABLE_TEST_DISCOVERY)
   include(CTest) #This allows discovery of our tests with e.g. Visual Studio
@@ -217,26 +281,30 @@ endif(GENERATE_PKI)
 # Include C++ targets in our build
 add_subdirectory(cpp)
 
-# Include Go targets in our build (if applicable)
-option(BUILD_GO_SERVERS "Build the auxiliary servers written in Go" OFF)
-if(BUILD_GO_SERVERS)
+if(DEFINED EMSCRIPTEN)
+  add_subdirectory(weblib)
+
+else()
+  # Include Go targets in our build (if applicable)
+  option(BUILD_GO_SERVERS "Build the auxiliary servers written in Go" OFF)
+  if(BUILD_GO_SERVERS)
     add_subdirectory(go)
-endif(BUILD_GO_SERVERS)
+  endif(BUILD_GO_SERVERS)
 
+  # Replace binary name placeholders in autocompletion scripts
+  # cli_executables_list is populated by add_cli_executable
 
-# Replace binary name placeholders in autocompletion scripts
-# cli_executables_list is populated by add_cli_executable
+  get_property(cli_executables_list GLOBAL PROPERTY cli_executables)
+  list(JOIN cli_executables_list " " cli_executables)
 
-get_property(cli_executables_list GLOBAL PROPERTY cli_executables)
-list(JOIN cli_executables_list " " cli_executables)
+  configure_file(./autocomplete/autocomplete_pep.bash ./autocomplete/autocomplete_pep.bash @ONLY)
+  configure_file(./autocomplete/autocomplete_pep.zsh  ./autocomplete/autocomplete_pep.zsh @ONLY)
+  configure_file(./autocomplete/autocomplete_pep.fish ./autocomplete/autocomplete_pep.fish @ONLY)
+  configure_file(./autocomplete/autocomplete_pep.ps1  ./autocomplete/autocomplete_pep.ps1 @ONLY)
+  configure_file(./autocomplete/install_autocomplete_pep.sh  ./autocomplete/install_autocomplete_pep.sh @ONLY)
+  configure_file(./autocomplete/install_autocomplete_pep_windows.ps1  ./autocomplete/install_autocomplete_pep_windows.ps1 @ONLY)
 
-configure_file(./autocomplete/autocomplete_pep.bash ./autocomplete/autocomplete_pep.bash @ONLY)
-configure_file(./autocomplete/autocomplete_pep.zsh  ./autocomplete/autocomplete_pep.zsh @ONLY)
-configure_file(./autocomplete/autocomplete_pep.fish  ./autocomplete/autocomplete_pep.fish @ONLY)
-configure_file(./autocomplete/autocomplete_pep.ps1  ./autocomplete/autocomplete_pep.ps1 @ONLY)
-configure_file(./autocomplete/install_autocomplete_pep.sh  ./autocomplete/install_autocomplete_pep.sh @ONLY)
-configure_file(./autocomplete/install_autocomplete_pep_windows.ps1  ./autocomplete/install_autocomplete_pep_windows.ps1 @ONLY)
-
-if(UNIX)
-  install(CODE "execute_process(COMMAND \"${CMAKE_BINARY_DIR}/autocomplete/install_autocomplete_pep.sh\")")
+  if(UNIX)
+    install(CODE "execute_process(COMMAND \"${CMAKE_BINARY_DIR}/autocomplete/install_autocomplete_pep.sh\")")
+  endif()
 endif()
