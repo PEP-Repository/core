@@ -1,4 +1,5 @@
 #include <pep/utils/Filesystem.hpp>
+#include <cassert>
 #include <random>
 
 namespace pep::filesystem {
@@ -36,6 +37,17 @@ std::string RandomizedName(std::string str) {
     c = (c != SPECIAL_CHAR) ? c : randomChar();
   }
   return str;
+}
+
+std::pair<SetOfExistingPaths::const_iterator, bool> SetOfExistingPaths::insert(const std::filesystem::path& path) {
+  // Store _canonical_ paths (a.o.) to ensure that differences in cAsInG don't affect the comparison (if the file system is case insensitive, e.g. on Windows)
+  auto raw = mImplementor.insert(canonical(path));
+  return { raw.first, raw.second };
+}
+
+bool SetOfExistingPaths::contains(const std::filesystem::path& path) const {
+  // Use "weakly_canonical" to prevent exceptions if path doesn't exist on file system
+  return mImplementor.contains(weakly_canonical(path));
 }
 
 } // namespace pep::filesystem

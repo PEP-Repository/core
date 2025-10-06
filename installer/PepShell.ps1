@@ -1,7 +1,9 @@
 ﻿# This file starts with a UTF-8 BOM to make sure the emojis work
-param([string]$PepProject, [string]$PepEnvironment)
+$config = Get-Content (Join-Path $PSScriptRoot 'configVersion.json') | ConvertFrom-Json
+$projectCaption = $config.projectCaption
+$reference = $config.reference
 
-$host.ui.RawUI.WindowTitle = "PEP $PepProject $PepEnvironment Command Prompt"
+$host.ui.RawUI.WindowTitle = "PEP $projectCaption $reference Command Prompt"
 $env:Path = "$PSScriptRoot;$env:Path"
 
 # Load our autocompletions
@@ -16,7 +18,7 @@ Set-Location ~/Downloads
 
 function prompt {
   $prefix = if ($?) {'✔️'} else {'❌'}
-  "$prefix`n[$PepProject $PepEnvironment] $($executionContext.SessionState.Path.CurrentLocation)`n$('>' * ($nestedPromptLevel + 1)) ";
+  "$prefix`n[$projectCaption $reference] $($executionContext.SessionState.Path.CurrentLocation)`n$('>' * ($nestedPromptLevel + 1)) ";
 }
 
 Write-Output @"
@@ -24,3 +26,5 @@ Using PEP binaries at $PSScriptRoot
 Tab-completion is available
 
 "@
+
+pepcli --version

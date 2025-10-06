@@ -5,6 +5,7 @@
 #include <pep/utils/XxHasher.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/morphing/Metadata.hpp>
+#include <pep/utils/Progress.hpp>
 
 #include <filesystem>
 #include <optional>
@@ -78,7 +79,7 @@ private:
   void ensureFormatUpToDate();
 
 public:
-  explicit DownloadMetadata(const std::filesystem::path& downloadDirectory, std::shared_ptr<GlobalConfiguration> globalConfig);
+  explicit DownloadMetadata(const std::filesystem::path& downloadDirectory, std::shared_ptr<GlobalConfiguration> globalConfig, const Progress::OnCreation& onCreateProgress = [](std::shared_ptr<const Progress>) {});
 
   std::filesystem::path getDirectory() const;
   std::vector<RecordState> getRecords() const;

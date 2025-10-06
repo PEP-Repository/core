@@ -78,7 +78,7 @@ case $command in
   get-multipage)
     get_multipage "$rel_path" "$@"
     ;;
-  get|post|delete)
+  get|post|put|delete)
     request "$command" "$rel_path" "$@"
     ;;
   *)

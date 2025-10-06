@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <set>
 
 namespace pep::filesystem {
 /// Combines std::filesystem with our own filesystem extensions.
@@ -71,6 +72,39 @@ inline std::string RandomizedName(std::string_view pattern) {
 inline std::string RandomizedName(const char* pattern) {
   return RandomizedName(std::string{pattern});
 }
+
+/// @brief Set of std::filesystem::path instances that exist on the file system (at the time they are added)
+class SetOfExistingPaths {
+private:
+  std::set<std::filesystem::path> mImplementor;
+
+public:
+  /// @brief A const iterator into the set
+  using const_iterator = decltype(mImplementor)::const_iterator;
+
+  /// @brief Ensures that the set contains the specified path
+  /// @param path The path to include
+  /// @return A pair of (1) an iterator pointing to the path's position in the set and (2) a bool indicating whether the path was added as a result of the call
+  /// @remark Caller must ensure that the path actually does exist
+  std::pair<const_iterator, bool> insert(const std::filesystem::path& path);
+
+  /// @brief Produces a const_iterator positioned on the set's first item
+  /// @return A const_iterator positioned on the set's first item
+  const_iterator begin() const { return mImplementor.begin(); }
+
+  /// @brief Produces a const_iterator positioned beyond the set's last item
+  /// @return A const_iterator positioned beyond the set's last item
+  const_iterator end() const { return mImplementor.end(); }
+
+  /// @brief Returns the number of items in the set
+  /// @return The number of items in the set
+  size_t size() const { return mImplementor.size(); }
+
+  /// @brief Determines if the set contains the specified path
+  /// @param path The path to check
+  /// @return TRUE if the set contains the path; FALSE if not or if the specified path doesn't exist
+  bool contains(const std::filesystem::path& path) const;
+};
 
 // We deliberately put this at the end of the file so that we are forced to
 // fully qualify all references to std::filesystem in the definitions of our extensions.

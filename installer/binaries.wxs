@@ -15,6 +15,10 @@
 				<File Id="autocomplete_pep.ps1" Source="$(var.ArtifactsDir)\autocomplete_pep.ps1" />
 			</Component>
 
+			<Component Id="DownloadAll.ps1" Guid="*">
+				<File Source="$(var.ArtifactsDir)\DownloadAll.ps1" KeyPath="yes" />
+			</Component>
+
 			<Component Id="pepLogon.exe" Guid="*">
 				<File Source="$(var.ArtifactsDir)\pepLogon.exe" KeyPath="yes" />
 			</Component>

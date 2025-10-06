@@ -107,6 +107,7 @@ if "%WIX%" == "" (
 echo Copying installer support files
 copy "%OwnDir%\PepShell.ps1" "%artifactsdir%\" || exit /B 1
 copy "%builddir%\autocomplete\autocomplete_pep.ps1" "%artifactsdir%\" || exit /B 1
+copy "%OwnDir%\DownloadAll.ps1" "%artifactsdir%\" || exit /B 1
 
 echo Compiling WiX sources
 "%WIX%\bin\candle.exe" -nologo -dArtifactsDir="%artifactsdir%" -arch x64 -out "%wixdir%\binaryDependencies.wixobj" "%wixdir%\binaryDependencies.wxs" || exit /B 1

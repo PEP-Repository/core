@@ -157,13 +157,15 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, Enumerate
 
 void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads, bool assumePristine) {
   progress->advance("Preparing local data");
-  for (const auto& existing : mDestination->list()) {
-    auto position = std::find_if(downloads->begin(), downloads->end(), [&existing](const auto& pair) {
-      const RecordDescriptor& candidate = pair.first;
-      return candidate.getParticipant().getLocalPseudonym() == existing.getParticipant().getLocalPseudonym()
-        && candidate.getColumn() == existing.getColumn()
-        && candidate.getPayloadBlindingTimestamp() == existing.getPayloadBlindingTimestamp();
-      });
+  auto localRecords = mDestination->list();
+  if (localRecords.empty()) {
+    return;
+  }
+
+  auto ownProgress = pep::Progress::Create(localRecords.size(), progress->push());
+  for (const auto& existing : localRecords) {
+    ownProgress->advance(mDestination->getRecordFileName(existing, false)->string());
+    auto position = downloads->find(existing);
     if (position == downloads->cend()) {
       // Payload is not in the server's current data set: it has either been removed from the server,
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
@@ -203,6 +205,11 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
 }
 
 rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads) {
+  if (downloads->empty()) {
+    progress->advance("Nothing to retrieve");
+    return rxcpp::observable<>::empty<FakeVoid>();
+  }
+
   progress->advance("Retrieving from server");
   // Extract download properties into context and local variables
   auto subjects = std::make_shared<std::queue<EnumerateResult>>();
