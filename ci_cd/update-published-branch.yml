@@ -23,11 +23,6 @@ push-published-branch-to-github:
   script:
     - set -eu
 
-    #debug
-    - git branch
-    - git status
-    - git log --since 2025-09-01
-
     # Fetch the target branch at the start so that the final `git push --force-with-lease` fails if it changed
     - git fetch github "${PEP_FOSS_PUBLISHED_BRANCH}"
     # Make sure the local version of the published branch is up to date
@@ -36,13 +31,9 @@ push-published-branch-to-github:
       git fetch --unshallow gitlab "${PEP_FOSS_PUBLISHED_BRANCH}"
       git checkout -b "${PEP_FOSS_PUBLISHED_BRANCH}" "gitlab/${PEP_FOSS_PUBLISHED_BRANCH}"
 
-    #debug
-    - git branch
-    - git status
-    - git log --since 2025-09-01
-
-    - echo 'Root commits:'
-    - git rev-list --max-parents=0 HEAD
+    - |
+      echo 'Root commits:'
+      git rev-list --max-parents=0 HEAD
     - |
       readonly NR_OF_ROOT_COMMITS="$(git rev-list --max-parents=0 HEAD | wc -l)"
       readonly TIMESTAMP_OF_EARLIEST_COMMIT="$(git log --reverse --format=%at -n 1 HEAD)"
