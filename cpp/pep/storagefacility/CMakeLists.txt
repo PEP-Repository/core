@@ -18,7 +18,7 @@ target_link_libraries(${PROJECT_NAME}StorageClientlib
   ${PROJECT_NAME}StorageFacilityApilib
   ${PROJECT_NAME}TypedClientlib
 )
-verify_headers_standalone(${PROJECT_NAME}KeyClientlib)
+verify_headers_standalone(${PROJECT_NAME}StorageClientlib)
 
 
 if (WITH_SERVERS)
