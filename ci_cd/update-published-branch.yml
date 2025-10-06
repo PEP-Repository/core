@@ -29,11 +29,11 @@ push-published-branch-to-github:
     - git log --since 2025-09-01
 
     # Fetch the target branch at the start so that the final `git push --force-with-lease` fails if it changed
-    - git fetch github "${PEP_FOSS_PUBLISHED_BRANCH}" #&>/dev/null
+    - git fetch github "${PEP_FOSS_PUBLISHED_BRANCH}"
     # Make sure the local version of the published branch is up to date
     - |
-      git branch -D "${PEP_FOSS_PUBLISHED_BRANCH}" ||true #2>/dev/null || true
-      git fetch gitlab "${PEP_FOSS_PUBLISHED_BRANCH}" #&>/dev/null
+      git branch -D "${PEP_FOSS_PUBLISHED_BRANCH}" 2>/dev/null || true
+      git fetch --unshallow gitlab "${PEP_FOSS_PUBLISHED_BRANCH}"
       git checkout -b "${PEP_FOSS_PUBLISHED_BRANCH}" "gitlab/${PEP_FOSS_PUBLISHED_BRANCH}"
 
     #debug
