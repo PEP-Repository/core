@@ -11,6 +11,17 @@ target_link_libraries(${PROJECT_NAME}TranscryptorApilib
 )
 verify_headers_standalone(${PROJECT_NAME}TranscryptorApilib)
 
+
+add_library(${PROJECT_NAME}TranscryptorClientlib
+  TranscryptorClient.cpp TranscryptorClient.hpp
+)
+target_link_libraries(${PROJECT_NAME}TranscryptorClientlib
+  ${PROJECT_NAME}TranscryptorApilib
+  ${PROJECT_NAME}TypedClientlib
+)
+verify_headers_standalone(${PROJECT_NAME}TranscryptorClientlib)
+
+
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}Transcryptorlib
       Storage.cpp Storage.hpp
