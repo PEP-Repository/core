@@ -179,7 +179,7 @@ constexpr auto CheckedCopy(
   std::ranges::output_range<std::ranges::range_value_t<decltype(src)>> auto& dst,
   bool exact = false) {
   using namespace std::ranges;
-  if (exact ? size(dst) != size(src) : size(dst) < size(src)) {
+  if (exact ? std::cmp_not_equal(size(dst), size(src)) : std::cmp_less(size(dst), size(src))) {
     throw std::out_of_range("src range does not fit in dst");
   }
   return copy(std::forward<decltype(src)>(src), begin(dst));
