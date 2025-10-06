@@ -14,6 +14,7 @@ push-published-branch-to-github:
   extends: .update-published-branch-base
   before_script:
     - apk update -qq && apk add --no-cache git
+    - git config --global color.ui always
     - git remote remove gitlab &>/dev/null || true
     - git remote add gitlab "https://gitlab-ci-token:${PEP_GROUP_REPOSITORY_TOKEN}@gitlab.pep.cs.ru.nl/pep/core.git"
     - git remote remove github &>/dev/null || true
@@ -21,13 +22,24 @@ push-published-branch-to-github:
 
   script:
     - set -eu
+
+    #debug
+    - git branch
+    - git status
+    - git log --since 2025-09-01
+
     # Fetch the target branch at the start so that the final `git push --force-with-lease` fails if it changed
-    - git fetch github "${PEP_FOSS_PUBLISHED_BRANCH}" &>/dev/null
+    - git fetch github "${PEP_FOSS_PUBLISHED_BRANCH}" #&>/dev/null
     # Make sure the local version of the published branch is up to date
     - |
-      git branch -D "${PEP_FOSS_PUBLISHED_BRANCH}" 2>/dev/null || true
-      git fetch gitlab "${PEP_FOSS_PUBLISHED_BRANCH}" &>/dev/null
+      git branch -D "${PEP_FOSS_PUBLISHED_BRANCH}" ||true #2>/dev/null || true
+      git fetch gitlab "${PEP_FOSS_PUBLISHED_BRANCH}" #&>/dev/null
       git checkout -b "${PEP_FOSS_PUBLISHED_BRANCH}" "gitlab/${PEP_FOSS_PUBLISHED_BRANCH}"
+
+    #debug
+    - git branch
+    - git status
+    - git log --since 2025-09-01
 
     - echo 'Root commits:'
     - git rev-list --max-parents=0 HEAD
