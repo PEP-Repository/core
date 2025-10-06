@@ -2,13 +2,13 @@
 
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
+#include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/WorkerPool.hpp>
+#include <pep/keyserver/KeyClient.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
-#include <pep/keyserver/KeyClient.hpp>
-#include <pep/accessmanager/UserMessages.hpp>
+#include <pep/transcryptor/TranscryptorClient.hpp>
 
 #include <filesystem>
 
@@ -38,13 +38,9 @@ public:
     void setPublicKeyPseudonyms(const ElgamalPublicKey& pk);
 
     /*!
-    * \return The connection to the transcryptor
+    * \return The endpoint of the transcryptor
     */
-    std::shared_ptr<messaging::ServerConnection> getTranscryptor() const;
-    /*!
-    * \param transcryptor The connection to the transcryptor
-    */
-    void setTranscryptor(std::shared_ptr<messaging::ServerConnection> transcryptor);
+    const EndPoint& getTranscryptorEndPoint() const;
 
     /*!
     * \return The endpoint of the keyserver
@@ -67,7 +63,7 @@ public:
     std::shared_ptr<GlobalConfiguration> globalConf;
     std::optional<ElgamalPrivateKey> pseudonymKey;
     std::optional<ElgamalPublicKey> publicKeyPseudonyms;
-    std::shared_ptr<messaging::ServerConnection> transcryptor;
+    EndPoint transcryptorEndPoint;
     EndPoint keyServerEndPoint;
     std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
     std::shared_ptr<DataTranslator> dataTranslator;
@@ -143,7 +139,7 @@ public:
 private:
   ElgamalPrivateKey mPseudonymKey;
   ElgamalPublicKey mPublicKeyPseudonyms;
-  std::shared_ptr<messaging::ServerConnection> transcryptor;
+  TranscryptorClient mTranscryptorClient;
   KeyClient mKeyClient;
   std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
   std::shared_ptr<DataTranslator> mDataTranslator;

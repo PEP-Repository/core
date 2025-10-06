@@ -16,7 +16,7 @@ add_library(${PROJECT_NAME}CoreClientlib STATIC
 target_link_libraries(${PROJECT_NAME}CoreClientlib
   ${PROJECT_NAME}AccessManagerApilib
   ${PROJECT_NAME}StorageClientlib
-  ${PROJECT_NAME}Authlib
+  ${PROJECT_NAME}TranscryptorClientlib
 )
 
 verify_headers_standalone(${PROJECT_NAME}CoreClientlib)

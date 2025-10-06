@@ -258,7 +258,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
   }
 
   return client->getAccessManagerVersion().zip(rxcpp::rxs::just(std::string("Access Manager"))).merge(
-    client->getTranscryptorVersion().zip(rxcpp::rxs::just(std::string("Transcryptor"))),
+    this->tryGetServerVersion(client->getTranscryptorClient(false), "Transcryptor"),
     this->tryGetServerVersion(client->getKeyClient(false), "Key Server"),
     this->tryGetServerVersion(client->getStorageClient(false), "Storage Facility"),
     client->getRegistrationServerVersion().zip(rxcpp::rxs::just(std::string("Registration Server"))),

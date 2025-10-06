@@ -132,10 +132,11 @@ public:
 };
 
 std::shared_ptr<const pep::SigningServerClient> GetStorageClient(const pep::CoreClient& client) { return client.getStorageClient(false); }
+std::shared_ptr<const pep::SigningServerClient> GetTranscryptorClient(const pep::CoreClient& client) { return client.getTranscryptorClient(false); }
 
 using AccessManagerPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingAccessManager>;
 using StorageFacilityPinger = NewSigningServerPinger<pep::CoreClient, &GetStorageClient>;
-using TranscryptorPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingTranscryptor>;
+using TranscryptorPinger = NewSigningServerPinger<pep::CoreClient, &GetTranscryptorClient>;
 using AuthServerPinger = SigningServerPinger<pep::Client, &pep::Client::pingAuthserver>;
 using RegistrationServerPinger = SigningServerPinger<pep::Client, &pep::Client::pingRegistrationServer>;
 

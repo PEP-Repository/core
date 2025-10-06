@@ -20,7 +20,7 @@
 #include <pep/structure/ColumnName.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
+#include <pep/transcryptor/TranscryptorClient.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
 
 #include <cstddef>
@@ -265,7 +265,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   std::shared_ptr<messaging::ServerConnection> clientAccessManager;
   std::shared_ptr<StorageClient> clientStorageFacility;
-  std::shared_ptr<messaging::ServerConnection> clientTranscryptor;
+  std::shared_ptr<TranscryptorClient> clientTranscryptor;
 
   rxcpp::subjects::subject<int> registrationSubject;
   rxcpp::subjects::subject<EnrollmentResult> enrollmentSubject;
@@ -580,18 +580,12 @@ public:
   inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath; }
 
   std::shared_ptr<const StorageClient> getStorageClient(bool require = true) const;
+  std::shared_ptr<const TranscryptorClient> getTranscryptorClient(bool require = true) const;
 
   rxcpp::observable<ConnectionStatus> getAccessManagerConnectionStatus();
-  rxcpp::observable<ConnectionStatus> getTranscryptorStatus();
-
   rxcpp::observable<VersionResponse> getAccessManagerVersion();
-  rxcpp::observable<VersionResponse> getTranscryptorVersion();
-
   rxcpp::observable<SignedPingResponse> pingAccessManager() const;
-  rxcpp::observable<SignedPingResponse> pingTranscryptor() const;
-
   rxcpp::observable<MetricsResponse> getAccessManagerMetrics();
-  rxcpp::observable<MetricsResponse> getTranscryptorMetrics();
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);

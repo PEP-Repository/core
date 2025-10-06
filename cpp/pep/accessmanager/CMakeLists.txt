@@ -29,6 +29,7 @@ if (WITH_SERVERS)
     ${PROJECT_NAME}Databaselib
     ${PROJECT_NAME}KeyClientlib
     ${PROJECT_NAME}Serverlib
+    ${PROJECT_NAME}TranscryptorClientlib
   )
 
   option(AUTO_POPULATE_USER_DB "Should the user DB be automatically populated, when storage is empty?" ON)

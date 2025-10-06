@@ -10,7 +10,7 @@ class TranscryptorClient : public SigningServerClient {
 public:
   using SigningServerClient::SigningServerClient;
 
-  rxcpp::observable<KeyComponentResponse> requestKeyComponent() const;
+  rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const;
   rxcpp::observable<TranscryptorResponse> requestTranscryption(TranscryptorRequest request, MessageTail<TranscryptorRequestEntries> tail) const;
   rxcpp::observable<RekeyResponse> requestRekey(RekeyRequest request) const;
   rxcpp::observable<LogIssuedTicketResponse> requestLogIssuedTicket(LogIssuedTicketRequest request) const;

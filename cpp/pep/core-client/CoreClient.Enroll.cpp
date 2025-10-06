@@ -39,7 +39,7 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
       ctx->beta = lpResponse.mEncryptionKeyComponent;
 
       // Send request to Transcryptor
-        return clientTranscryptor->sendRequest<KeyComponentResponse>(ctx->keyComponentRequest);
+        return clientTranscryptor->requestKeyComponent(ctx->keyComponentRequest);
     })
     .map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context

@@ -12,6 +12,16 @@ using TailSegment = rxcpp::observable<T>;
 template <typename T>
 using MessageTail = rxcpp::observable<TailSegment<T>>;
 
+template <typename T>
+TailSegment<T> MakeTailSegment(T message) {
+  return rxcpp::observable<>::just(std::move(message));
+}
+
+template <typename T>
+MessageTail<T> MakeSingleMessageTail(T message) {
+  return rxcpp::observable<>::just(MakeTailSegment(std::move(message)));
+}
+
 
 class TypedClient {
 private:
@@ -19,7 +29,7 @@ private:
   const MessageSigner& mMessageSigner;
 
 protected:
-  const std::shared_ptr<messaging::ServerConnection>& untyped() const noexcept { return mUntyped; }
+  const std::shared_ptr<messaging::ServerConnection>& untyped() const noexcept { return mUntyped; } // TODO: remove
 
   template <typename T>
   Signed<T> sign(T message) const {

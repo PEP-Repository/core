@@ -63,7 +63,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("transcryptor") != serverFilter.end()) {
-        observables.push_back(client->getTranscryptorMetrics().map([](pep::MetricsResponse metrics){
+        observables.push_back(client->getTranscryptorClient()->requestMetrics().map([](pep::MetricsResponse metrics){
           std::ostringstream oss;
           oss << "============================ Transcryptor ============================\n";
           oss << metrics.mMetrics;

@@ -5,8 +5,8 @@
 
 namespace pep {
 
-rxcpp::observable<KeyComponentResponse> TranscryptorClient::requestKeyComponent() const {
-  return this->sendRequest<KeyComponentResponse>(this->sign(KeyComponentRequest()))
+rxcpp::observable<KeyComponentResponse> TranscryptorClient::requestKeyComponent(SignedKeyComponentRequest request) const {
+  return this->sendRequest<KeyComponentResponse>(std::move(request))
     .op(RxGetOne("KeyComponentResponse"));
 }
 
