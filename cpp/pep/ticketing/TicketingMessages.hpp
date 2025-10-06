@@ -72,7 +72,7 @@ public:
   std::vector<PolymorphicPseudonym> mPolymorphicPseudonyms;
   std::vector<std::string> mColumnGroups;
   std::vector<std::string> mColumns;
-  bool mRequestIndexedTicket = false;
+  bool mRequestIndexedTicket = false; // TODO: remove
   bool mIncludeUserGroupPseudonyms = false;
 };
 

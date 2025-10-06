@@ -7,12 +7,24 @@ add_library(${PROJECT_NAME}AccessManagerApilib
   AccessManagerSerializers.cpp AccessManagerSerializers.hpp
 )
 
+
 target_link_libraries(${PROJECT_NAME}AccessManagerApilib
   ${PROJECT_NAME}Structurelib
   ${PROJECT_NAME}TranscryptorApilib
   ${PROJECT_NAME}KeyServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}AccessManagerApilib)
+
+
+add_library(${PROJECT_NAME}AccessManagerClientlib
+  AccessManagerClient.cpp AccessManagerClient.hpp
+)
+target_link_libraries(${PROJECT_NAME}AccessManagerClientlib
+  ${PROJECT_NAME}AccessManagerApilib
+  ${PROJECT_NAME}TypedClientlib
+)
+verify_headers_standalone(${PROJECT_NAME}AccessManagerClientlib)
+
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}AccessManagerlib
