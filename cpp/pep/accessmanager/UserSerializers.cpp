@@ -19,13 +19,14 @@ void Serializer<RemoveUser>::moveIntoProtocolBuffer(proto::RemoveUser& dest, Rem
   *dest.mutable_uid() = std::move(value.mUid);
 }
 
-AddUserIdentifier Serializer<AddUserIdentifier>::fromProtocolBuffer(proto::AddUserIdentifier&& source) const {
-  return AddUserIdentifier(std::move(*source.mutable_existinguid()), std::move(*source.mutable_newuid()));
+AddOrUpdateUserIdentifier Serializer<AddOrUpdateUserIdentifier>::fromProtocolBuffer(proto::AddOrUpdateUserIdentifier&& source) const {
+  return AddOrUpdateUserIdentifier(std::move(*source.mutable_existinguid()), std::move(*source.mutable_newuid()), source.is_display_id());
 }
 
-void Serializer<AddUserIdentifier>::moveIntoProtocolBuffer(proto::AddUserIdentifier& dest, AddUserIdentifier value) const {
+void Serializer<AddOrUpdateUserIdentifier>::moveIntoProtocolBuffer(proto::AddOrUpdateUserIdentifier& dest, AddOrUpdateUserIdentifier value) const {
   *dest.mutable_existinguid() = std::move(value.mExistingUid);
   *dest.mutable_newuid() = std::move(value.mNewUid);
+  dest.set_is_display_id(value.isDisplayId);
 }
 
 RemoveUserIdentifier Serializer<RemoveUserIdentifier>::fromProtocolBuffer(proto::RemoveUserIdentifier&& source) const {
@@ -92,8 +93,8 @@ UserMutationRequest Serializer<UserMutationRequest>::fromProtocolBuffer(proto::U
     std::move(*source.mutable_create_user()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUser,
     std::move(*source.mutable_remove_user()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mAddUserIdentifier,
-    std::move(*source.mutable_add_user_identifier()));
+  Serialization::AssignFromRepeatedProtocolBuffer(result.mAddOrUpdateUserIdentifier,
+    std::move(*source.mutable_add_or_update_user_identifier()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUserIdentifier,
     std::move(*source.mutable_remove_user_identifier()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mCreateUserGroup,
@@ -114,8 +115,8 @@ void Serializer<UserMutationRequest>::moveIntoProtocolBuffer(proto::UserMutation
     std::move(value.mCreateUser));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user(),
     std::move(value.mRemoveUser));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_add_user_identifier(),
-    std::move(value.mAddUserIdentifier));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_add_or_update_user_identifier(),
+    std::move(value.mAddOrUpdateUserIdentifier));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user_identifier(),
     std::move(value.mRemoveUserIdentifier));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_create_user_group(),

@@ -178,7 +178,8 @@ auto am_create_db(const std::string& path) {
       make_column("timestamp", &UserIdRecord::timestamp),
       make_column("tombstone", &UserIdRecord::tombstone),
       make_column("internalUserId", &UserIdRecord::internalUserId),
-      make_column("identifier", &UserIdRecord::identifier)),
+      make_column("identifier", &UserIdRecord::identifier),
+      make_column("isDisplayId", &UserIdRecord::isDisplayId, default_value(false))),
 
     make_index("idx_UserGroups",
       &UserGroupRecord::userGroupId,
@@ -474,6 +475,37 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
     }
     transactionGuard.commit();
     LOG(LOG_TAG, info) << "all records have been updated";
+  }
+
+  LOG(LOG_TAG, info) << "Checking whether users have a displayId";
+  auto countDisplayIdentifers = [implementor=mImplementor]() {
+    return implementor->raw.count<UserIdRecord>(where(c(&UserIdRecord::isDisplayId) == true));
+  };
+  auto countUsers = [implementor=mImplementor]() {
+    auto result = implementor->raw.select(count(distinct(&UserIdRecord::internalUserId)));
+    assert(result.size() == 1);
+    return result[0];
+  };
+
+  if (countUsers() != 0 && countDisplayIdentifers() == 0) {
+    auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
+    std::unordered_set<int64_t> seenBefore;
+    for (auto& userIdRecord : mImplementor->raw.iterate<UserIdRecord>()) {
+      auto [_, inserted] = seenBefore.insert(userIdRecord.internalUserId);
+      if (inserted) {
+        userIdRecord.isDisplayId = true;
+        mImplementor->raw.update(userIdRecord);
+      }
+    }
+    if (countUsers() != countDisplayIdentifers()) {
+      throw std::runtime_error("Not all users have been assigned a displayId during database update.");
+    }
+    displayIdTransactionGuard.commit();
+    LOG(LOG_TAG, info) << seenBefore.size() << " records have been updated.";
+  }
+  else {
+    assert(countUsers() == countDisplayIdentifers());
+    LOG(LOG_TAG, info) << "Records have a displayId. No updates necessary.";
   }
 }
 
@@ -1352,7 +1384,7 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
 
 int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
   int64_t internalUserId = getNextInternalUserId();
-  addIdentifierForUser(internalUserId, std::move(identifier));
+  addOrUpdateIdentifierForUser(internalUserId, std::move(identifier), true, false);
   return internalUserId;
 }
 
@@ -1380,19 +1412,28 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
   }
 
   for(auto& uid : getAllIdentifiersForUser(internalUserId))
-    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, true));
+    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, false, true));
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier) {
+void AccessManager::Backend::Storage::addOrUpdateIdentifierForUser(std::string_view uid, std::string identifier, bool isDisplayId) {
   int64_t internalUserId = getInternalUserId(uid);
-  addIdentifierForUser(internalUserId, identifier);
+  addOrUpdateIdentifierForUser(internalUserId, identifier, isDisplayId, uid == identifier);
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier) {
-  if (findInternalUserId(identifier)) {
+void AccessManager::Backend::Storage::addOrUpdateIdentifierForUser(int64_t internalUserId, std::string identifier, bool isDisplayId, bool updateExisting) {
+  if (updateExisting && !isDisplayId) {
+    throw Error("Cannot update existing userId to not be the display id. Assign a different displayId instead.");
+  }
+  if (!updateExisting && findInternalUserId(identifier)) {
     throw Error("The user identifier already exists");
   }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier)));
+  if (updateExisting && !findInternalUserId(identifier)) {
+    throw Error("The user identifier does not exists");
+  }
+  if (updateExisting && getDisplayIdentifierForUser(internalUserId) == identifier ) {
+    throw Error("This user identifier is already the display identifier.");
+  }
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), isDisplayId));
 }
 
 void AccessManager::Backend::Storage::removeIdentifierForUser(std::string identifier) {
@@ -1412,7 +1453,11 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
     throw Error("The given identifier does not exist for the given internalUserId");
   }
 
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), true));
+  if (getDisplayIdentifierForUser(internalUserId) == identifier) {
+    throw Error("Cannot remove the display identifier for a user. First set a different display identifier, then you can remove this one.");
+  }
+
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), false, true));
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, Timestamp at) const {
@@ -1450,6 +1495,25 @@ std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifie
       c(&UserIdRecord::timestamp) <= at.getTime()
       && c(&UserIdRecord::internalUserId) == internalUserId,
       &UserIdRecord::identifier)
+  );
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+  using namespace sqlite_orm;
+  return RangeToOptional(
+    mImplementor->raw.iterate(select(
+      // SQLite will pick these columns from the row with the max() value:
+      // https://www.sqlite.org/lang_select.html#bareagg
+      columns(max(&UserIdRecord::seqno), &UserIdRecord::identifier),
+      where(c(&UserIdRecord::timestamp) <= at.getTime()
+        && c(&UserIdRecord::internalUserId) == internalUserId),
+      std::apply(PEP_WrapOverloadedFunction(group_by), UserIdRecord::RecordIdentifier)
+      .having(c(&UserIdRecord::tombstone) == false && c(&UserIdRecord::isDisplayId) == true),
+      order_by(&UserIdRecord::seqno), limit(1)
+    )) | std::views::transform([](auto tuple) {
+      auto& [seqno, identifier] = tuple;
+      return identifier;
+    })
   );
 }
 

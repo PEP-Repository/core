@@ -26,12 +26,13 @@ CommandUser::UserAddIdentifierSubCommand::UserAddIdentifierSubCommand(CommandUse
 pep::commandline::Parameters CommandUser::UserAddIdentifierSubCommand::getSupportedParameters() const {
   return ChildCommandOf<CommandUser>::getSupportedParameters()
          + pep::commandline::Parameter("existingUid", "Existing user identifier").value(pep::commandline::Value<std::string>().positional().required())
-         + pep::commandline::Parameter("newUid", "New user identifier to add").value(pep::commandline::Value<std::string>().positional().required());
+         + pep::commandline::Parameter("newUid", "New user identifier to add").value(pep::commandline::Value<std::string>().positional().required())
+         + pep::commandline::Parameter("displayId", "Whether the new user identifier should be the display identifier for the user.");
 }
 
 int CommandUser::UserAddIdentifierSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-    return client->addUserIdentifier(this->getParameterValues().get<std::string>("existingUid"), this->getParameterValues().get<std::string>("newUid"));
+    return client->addUserIdentifier(this->getParameterValues().get<std::string>("existingUid"), this->getParameterValues().get<std::string>("newUid"), this->getParameterValues().has("displayId"));
   });
 }
 

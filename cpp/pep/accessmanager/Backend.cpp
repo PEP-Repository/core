@@ -155,8 +155,8 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     mStorage->removeUser(x.mUid);
     LOG(LOG_TAG, info) << "Removed user " << Logging::Escape(x.mUid);
   }
-  for (auto& x : request.mAddUserIdentifier) {
-    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid);
+  for (auto& x : request.mAddOrUpdateUserIdentifier) {
+    mStorage->addOrUpdateIdentifierForUser(x.mExistingUid, x.mNewUid, x.isDisplayId);
     LOG(LOG_TAG, info) << "Added user identifier " << Logging::Escape(x.mNewUid) << " for user " << Logging::Escape(x.mExistingUid);
   }
   for (auto& x : request.mRemoveUserIdentifier) {
@@ -213,7 +213,7 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
   if (!userId) {
     userId = mStorage->findInternalUserId(request.mAlternativeIds);
     if (userId) {
-      mStorage->addIdentifierForUser(*userId, request.mPrimaryId);
+      mStorage->addOrUpdateIdentifierForUser(*userId, request.mPrimaryId, false, false);
     }
   }
   if (!userId) {

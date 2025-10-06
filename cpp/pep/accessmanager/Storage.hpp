@@ -203,8 +203,8 @@ public:
   int64_t createUser(std::string identifier);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
-  void addIdentifierForUser(std::string_view uid, std::string identifier);
-  void addIdentifierForUser(int64_t internalUserId, std::string identifier);
+  void addOrUpdateIdentifierForUser(std::string_view uid, std::string identifier, bool isDisplayId);
+  void addOrUpdateIdentifierForUser(int64_t internalUserId, std::string identifier, bool isDisplayId, bool updateExisting);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
 
@@ -215,6 +215,7 @@ public:
   int64_t getInternalUserId(std::string_view identifier, Timestamp at = Timestamp()) const;
   std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = Timestamp()) const;
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+  std::optional<std::string> getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
 
   /* Finding userGroupIds */
   /// Try to find the internalId for the userGroup with the given name. Returns nullopt if not found.

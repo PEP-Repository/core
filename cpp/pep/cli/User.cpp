@@ -18,6 +18,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CommandUser::createChild
     std::make_shared<CommandUserGroup>(*this),
     std::make_shared<UserSubCommand>("create", "Create a new user", &pep::CoreClient::createUser, *this),
     std::make_shared<UserSubCommand>("remove", "Remove a user", &pep::CoreClient::removeUser, *this),
+    std::make_shared<UserSubCommand>("setDisplayIdentifier", "Set the display identifier for user", &pep::CoreClient::setUserDisplayIdentifier, *this),
     std::make_shared<UserAddIdentifierSubCommand>(*this),
     std::make_shared<UserSubCommand>("removeIdentifier", "Remove identifier for a user", &pep::CoreClient::removeUserIdentifier, *this),
     std::make_shared<UserAddToSubCommand>(*this),
