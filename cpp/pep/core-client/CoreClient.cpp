@@ -75,7 +75,7 @@ CoreClient::CoreClient(const Builder& builder) :
   transcryptorEndPoint(builder.getTranscryptorEndPoint()) {
 
   clientAccessManager = tryConnectTo(accessManagerEndPoint);
-  clientStorageFacility = tryConnectTo(storageFacilityEndPoint);
+  clientStorageFacility = tryConnectTypedClient<StorageClient>(storageFacilityEndPoint);
   clientTranscryptor = tryConnectTo(transcryptorEndPoint);
 
   if (keysFilePath.has_value()) {
@@ -310,12 +310,12 @@ rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
 
-rxcpp::observable<ConnectionStatus> CoreClient::getAccessManagerConnectionStatus() {
-  return clientAccessManager->connectionStatus();
+std::shared_ptr<const StorageClient> CoreClient::getStorageClient(bool require) const {
+  return GetConstTypedClient(clientStorageFacility, "Storage Facility", require);
 }
 
-rxcpp::observable<ConnectionStatus> CoreClient::getStorageFacilityStatus() {
-  return clientStorageFacility->connectionStatus();
+rxcpp::observable<ConnectionStatus> CoreClient::getAccessManagerConnectionStatus() {
+  return clientAccessManager->connectionStatus();
 }
 
 rxcpp::observable<ConnectionStatus> CoreClient::getTranscryptorStatus() {
@@ -330,11 +330,6 @@ CoreClient::getAccessManagerVersion() {
 rxcpp::observable<VersionResponse>
 CoreClient::getTranscryptorVersion() {
   return tryGetServerVersion(clientTranscryptor);
-}
-
-rxcpp::observable<VersionResponse>
-CoreClient::getStorageFacilityVersion() {
-  return tryGetServerVersion(clientStorageFacility);
 }
 
 rxcpp::observable<SignedPingResponse> CoreClient::pingSigningServer(std::shared_ptr<messaging::ServerConnection> connection) const {
@@ -357,20 +352,12 @@ rxcpp::observable<SignedPingResponse> CoreClient::pingTranscryptor() const {
   return pingSigningServer(clientTranscryptor);
 }
 
-rxcpp::observable<SignedPingResponse> CoreClient::pingStorageFacility() const {
-  return pingSigningServer(clientStorageFacility);
-}
-
 rxcpp::observable<MetricsResponse> CoreClient::getAccessManagerMetrics() {
   return clientAccessManager->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
 }
 
 rxcpp::observable<MetricsResponse> CoreClient::getTranscryptorMetrics() {
   return clientTranscryptor->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
-}
-
-rxcpp::observable<MetricsResponse> CoreClient::getStorageFacilityMetrics() {
-  return clientStorageFacility->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {

@@ -97,8 +97,8 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
     keyServerConnectionStatus = keyServerStatus;
   updateConnectionStatus();
     });
-  client->getStorageFacilityStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus stroageFacilityStatus) {
-    storageFacilityConnectionStatus = stroageFacilityStatus;
+  client->getStorageClient()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus storageFacilityStatus) {
+    storageFacilityConnectionStatus = storageFacilityStatus;
   updateConnectionStatus();
     });
   client->getRegistrationExpiryObservable().observe_on(observe_on_gui()).subscribe([this](int) {

@@ -1,6 +1,8 @@
 #include <pep/async/RxUtils.hpp>
+#include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageClient.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
+#include <pep/utils/XxHasher.hpp>
 
 namespace pep {
 
@@ -13,8 +15,42 @@ rxcpp::observable<DataPayloadPage> StorageClient::requestDataRead(DataReadReques
 }
 
 rxcpp::observable<DataStoreResponse2> StorageClient::requestDataStore(DataStoreRequest2 request, MessageTail<DataPayloadPage> pages) const {
-  return this->sendRequest<DataStoreResponse2>(this->sign(std::move(request)), std::move(pages))
-    .op(RxGetOne("DataStoreResponse2"));
+  struct Context {
+    std::optional<uint64_t> file;
+    std::optional<uint64_t> page;
+    XxHasher hasher = XxHasher(0);
+  };
+  auto ctx = std::make_shared<Context>();
+
+  // Calculate hash of (serialized) pages as they are processed
+  messaging::MessageBatches batches = pages
+    .map([ctx](TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
+    return segment
+      .map([ctx](DataPayloadPage page) {
+      if (ctx->file.has_value() && *ctx->file > page.mIndex) { // Processing a lower file index than we did before
+        throw std::runtime_error("Data payload pages out of order: can't process file " + std::to_string(page.mIndex) + " after having processed file " + std::to_string(*ctx->file));
+      }
+      if (!ctx->file.has_value() || page.mIndex > *ctx->file) { // First page of the next file
+        ctx->file = page.mIndex;
+        ctx->page.reset();
+      }
+      if (ctx->page.has_value() && *ctx->page >= page.mPageNumber) { // Processing a lower (or equal) page index than we did before
+        throw std::runtime_error("Data payload pages out of order for file " + std::to_string(*ctx->file) + ": can't process page " + std::to_string(page.mPageNumber) + " after having processed page " + std::to_string(*ctx->page));
+      }
+      ctx->page = page.mPageNumber;
+      auto serialized = MakeSharedCopy(Serialization::ToString(std::move(page)));
+      ctx->hasher.update(PageHash(*serialized));
+      return serialized;
+        });
+      });
+
+  return this->sendRequest<DataStoreResponse2>(this->sign(std::move(request)), std::move(batches))
+    .op(RxGetOne("DataStoreResponse2"))
+    .tap([ctx](const DataStoreResponse2& response) {
+    if (response.mHash != ctx->hasher.digest()) {
+      throw std::runtime_error("Returned hash from the storage facility did not match the calculated hash for the data to be stored.");
+    }
+      });
 }
 
 rxcpp::observable<DataDeleteResponse2> StorageClient::requestDataDelete(DataDeleteRequest2 request) const {

@@ -260,7 +260,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
   return client->getAccessManagerVersion().zip(rxcpp::rxs::just(std::string("Access Manager"))).merge(
     client->getTranscryptorVersion().zip(rxcpp::rxs::just(std::string("Transcryptor"))),
     this->tryGetServerVersion(client->getKeyClient(false), "Key Server"),
-    client->getStorageFacilityVersion().zip(rxcpp::rxs::just(std::string("Storage Facility"))),
+    this->tryGetServerVersion(client->getStorageClient(false), "Storage Facility"),
     client->getRegistrationServerVersion().zip(rxcpp::rxs::just(std::string("Registration Server"))),
     client->getAuthserverVersion().zip(rxcpp::rxs::just(std::string("Auth Server")))
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {

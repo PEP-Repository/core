@@ -16,7 +16,7 @@
 #include <pep/networking/EndPoint.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/server/MonitoringMessages.hpp>
-#include <pep/storagefacility/StorageFacilityMessages.hpp>
+#include <pep/storagefacility/StorageClient.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
@@ -264,7 +264,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   const EndPoint transcryptorEndPoint;
 
   std::shared_ptr<messaging::ServerConnection> clientAccessManager;
-  std::shared_ptr<messaging::ServerConnection> clientStorageFacility;
+  std::shared_ptr<StorageClient> clientStorageFacility;
   std::shared_ptr<messaging::ServerConnection> clientTranscryptor;
 
   rxcpp::subjects::subject<int> registrationSubject;
@@ -560,6 +560,15 @@ protected:
 
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
 
+  template <typename T>
+  static std::shared_ptr<const T> GetConstTypedClient(std::shared_ptr<T> client, const std::string& serverName, bool require) {
+    if (require && client == nullptr) {
+      // TODO: refactor so that CoreClient and derived class instances cannot exist without instantiating their individual TypedClient fields
+      throw std::runtime_error("Not connected to " + serverName);
+    }
+    return client;
+  }
+
 public:
   virtual ~CoreClient() noexcept = default;
 
@@ -570,21 +579,19 @@ public:
   rxcpp::observable<int> getRegistrationExpiryObservable();
   inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath; }
 
+  std::shared_ptr<const StorageClient> getStorageClient(bool require = true) const;
+
   rxcpp::observable<ConnectionStatus> getAccessManagerConnectionStatus();
-  rxcpp::observable<ConnectionStatus> getStorageFacilityStatus();
   rxcpp::observable<ConnectionStatus> getTranscryptorStatus();
 
   rxcpp::observable<VersionResponse> getAccessManagerVersion();
   rxcpp::observable<VersionResponse> getTranscryptorVersion();
-  rxcpp::observable<VersionResponse> getStorageFacilityVersion();
 
   rxcpp::observable<SignedPingResponse> pingAccessManager() const;
   rxcpp::observable<SignedPingResponse> pingTranscryptor() const;
-  rxcpp::observable<SignedPingResponse> pingStorageFacility() const;
 
   rxcpp::observable<MetricsResponse> getAccessManagerMetrics();
   rxcpp::observable<MetricsResponse> getTranscryptorMetrics();
-  rxcpp::observable<MetricsResponse> getStorageFacilityMetrics();
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);

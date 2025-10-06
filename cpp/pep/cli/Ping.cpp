@@ -79,6 +79,43 @@ public:
       mPrintDrift(printDrift) {}
 };
 
+template <typename TClient, std::shared_ptr<const pep::SigningServerClient> (*GetSigningServerClientFunction)(const TClient& client)>
+class NewSigningServerPinger : public TypedServerPinger<TClient, pep::SignedPingResponse> {
+private:
+  bool mPrintCertificateChain;
+  bool mPrintDrift;
+
+  void handleResponse(const pep::SignedPingResponse& response) const override {
+    if (mPrintDrift) {
+      std::cout
+        << pep::Timestamp().getTime()
+        - response.openWithoutCheckingSignature().mTimestamp.getTime()
+        << std::endl;
+      return;
+    }
+
+    if (!mPrintCertificateChain) {
+      return TypedServerPinger<TClient, pep::SignedPingResponse>::handleResponse(response);
+    }
+
+    auto printed = false;
+    for (const auto& certificate : response.mSignature.mCertificateChain) {
+      std::cout << certificate.toPem();
+      printed = true;
+    }
+    if (!printed) {
+      throw std::runtime_error("Server signed its ping response with an empty certificate chain?!?");
+    }
+    std::cout << std::endl;
+  }
+
+public:
+  NewSigningServerPinger(bool printCertificateChain, bool printDrift)
+    : TypedServerPinger<TClient, pep::SignedPingResponse>([](const pep::Client& client) { return (*GetSigningServerClientFunction)(client)->requestPing(); }),
+    mPrintCertificateChain(printCertificateChain),
+    mPrintDrift(printDrift) {}
+};
+
 class KeyServerPinger : public TypedServerPinger<pep::Client, pep::PingResponse> {
 public:
   KeyServerPinger(bool printCertificateChain, bool printDrift) 
@@ -94,8 +131,10 @@ public:
   }
 };
 
+std::shared_ptr<const pep::SigningServerClient> GetStorageClient(const pep::CoreClient& client) { return client.getStorageClient(false); }
+
 using AccessManagerPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingAccessManager>;
-using StorageFacilityPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingStorageFacility>;
+using StorageFacilityPinger = NewSigningServerPinger<pep::CoreClient, &GetStorageClient>;
 using TranscryptorPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingTranscryptor>;
 using AuthServerPinger = SigningServerPinger<pep::Client, &pep::Client::pingAuthserver>;
 using RegistrationServerPinger = SigningServerPinger<pep::Client, &pep::Client::pingRegistrationServer>;

@@ -169,12 +169,10 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
               colIdxs.begin(), colIdxs.end()));
           }
 
-          return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-              sign(enumRequest))))
+          return clientStorageFacility->requestDataEnumeration(std::move(enumRequest))
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
-              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, std::string rawResponse) {
-                auto response = Serialization::FromString<DataEnumerationResponse2>(std::move(rawResponse));
+              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, const DataEnumerationResponse2& response) {
                 for (auto& entry: response.mEntries) {
                   if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.mFileSize <= ctx->dataSizeLimit)) {
                     // This entry will include data: save it for data retrieval
@@ -232,18 +230,8 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                   DataReadRequest2 readRequest;
                   readRequest.mIds = ids;
                   readRequest.mTicket = *ticket;
-                  return clientStorageFacility->sendRequest(
-                      std::make_shared<std::string>(
-                        Serialization::ToString(
-                          this->sign(
-                            readRequest))))
-                    .map([](
-                      std::string rawPage) {
-                      return MakeSharedCopy(
-                        Serialization::FromString<DataPayloadPage>(
-                          std::move(
-                            rawPage)));
-                    });
+                  return clientStorageFacility->requestDataRead(std::move(readRequest))
+                    .map([](DataPayloadPage page) { return MakeSharedCopy(std::move(page)); });
                 })
                 .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->mIndex; }))
                 .map([ctx](std::shared_ptr<IndexedPages> pages) {

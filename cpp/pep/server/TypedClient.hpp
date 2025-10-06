@@ -32,19 +32,24 @@ protected:
       .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
   }
 
+  template <typename TResponse, typename TRequest>
+  rxcpp::observable<TResponse> sendRequest(TRequest request, messaging::MessageBatches tail) const {
+    // TODO: ensure that tail is long rather than wide: see comment for MessageBatches
+    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))), tail)
+      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
+  }
+
   template <typename TResponse, typename TRequest, typename TTail>
   rxcpp::observable<TResponse> sendRequest(TRequest request, MessageTail<TTail> tail) const {
     auto batches = tail
       .map([](const TailSegment<TTail>& segment) -> messaging::MessageSequence {
       return segment
-        // TODO: ensure that tail is long rather than wide: see comment for MessageBatches
         .map([](TTail single) {
         return MakeSharedCopy(Serialization::ToString(std::move(single)));
           });
         });
 
-    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))), batches)
-      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
+    return this->sendRequest<TResponse>(std::move(request), std::move(batches));
   }
 
   // TODO: remove

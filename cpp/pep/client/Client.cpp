@@ -198,11 +198,7 @@ rxcpp::observable<std::string> Client::requestToken(std::string subject,
 }
 
 std::shared_ptr<const KeyClient> Client::getKeyClient(bool require) const {
-  auto result = clientKeyServer;
-  if (require && result == nullptr) {
-    throw std::runtime_error("Not connected to Key Server"); // TODO: refactor so that (CoreClient and Client) instances cannot exist without having established their respective connections
-  }
-  return result;
+  return GetConstTypedClient(clientKeyServer, "Key Server", require);
 }
 
 rxcpp::observable<ConnectionStatus> Client::getAuthserverStatus() {

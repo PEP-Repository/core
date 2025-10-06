@@ -71,7 +71,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("storagefacility") != serverFilter.end()) {
-        observables.push_back(client->getStorageFacilityMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getStorageClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ Storage Facility ============================\n";
           oss << metrics.mMetrics;

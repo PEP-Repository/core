@@ -108,6 +108,7 @@ public:
   rxcpp::observable<std::string> requestToken(std::string subject, std::string group, Timestamp expirationTime);
 
   std::shared_ptr<const KeyClient> getKeyClient(bool require = true) const;
+
   rxcpp::observable<ConnectionStatus> getAuthserverStatus();
   rxcpp::observable<ConnectionStatus> getRegistrationServerStatus();
 
