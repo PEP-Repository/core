@@ -98,10 +98,10 @@ public:
   }
 };
 
-using ServerPingerFactoryMethod = std::function<std::shared_ptr<ServerPinger>(bool printCertificateChain, bool printDrift)>;
+using ServerPingerFactory = std::function<std::shared_ptr<ServerPinger>(bool printCertificateChain, bool printDrift)>;
 
-const std::unordered_map<std::string, ServerPingerFactoryMethod> pingerFactoryMethods = []() { // Using a factory method to allow const initialization
-  std::unordered_map<std::string, ServerPingerFactoryMethod> result;
+const std::unordered_map<std::string, ServerPingerFactory> pingerFactories = []() { // Using a factory method to allow const initialization
+  std::unordered_map<std::string, ServerPingerFactory> result;
 
   result["keyserver"]           = [](bool printCertificateChain, bool printDrift) { return std::make_shared<KeyServerPinger>(printCertificateChain, printDrift); };
 
@@ -125,9 +125,9 @@ public:
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     std::vector<std::string> serverIds;
-    serverIds.reserve(pingerFactoryMethods.size());
-    std::transform(pingerFactoryMethods.cbegin(), pingerFactoryMethods.cend(), std::back_inserter(serverIds),
-      [](const std::pair<const std::string, ServerPingerFactoryMethod>& pair) {return pair.first; });
+    serverIds.reserve(pingerFactories.size());
+    std::transform(pingerFactories.cbegin(), pingerFactories.cend(), std::back_inserter(serverIds),
+      [](const std::pair<const std::string, ServerPingerFactory>& pair) {return pair.first; });
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Server to ping").value(pep::commandline::Value<std::string>().required().allow(serverIds))
@@ -138,8 +138,8 @@ protected:
   int execute() override {
     const auto& parameterValues = this->getParameterValues();
 
-    auto factory = pingerFactoryMethods.find(parameterValues.get<std::string>("server"));
-    assert(factory != pingerFactoryMethods.cend());
+    auto factory = pingerFactories.find(parameterValues.get<std::string>("server"));
+    assert(factory != pingerFactories.cend());
 
     auto printCertificateChain = parameterValues.has("print-certificate-chain");
     auto printDrift = parameterValues.has("print-drift");
