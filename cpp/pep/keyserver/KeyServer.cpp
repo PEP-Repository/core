@@ -8,6 +8,7 @@
 #include <pep/auth/FacilityType.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
 
 namespace pep {
@@ -115,6 +116,10 @@ void KeyServer::Parameters::check() const {
   Server::Parameters::check();
 }
 
+messaging::MessageBatches KeyServer::handlePingRequest(std::shared_ptr<PingRequest> request) {
+  return messaging::BatchSingleMessage(Serialization::ToString(PingResponse(request->mId)));
+}
+
 messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
     std::shared_ptr<EnrollmentRequest> enrollmentRequest) {
   checkValid(*enrollmentRequest);
@@ -172,6 +177,7 @@ KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
     mBlocklist(CreateBlocklist(*parameters)) {
   RegisterRequestHandlers(
       *this,
+      &KeyServer::handlePingRequest,
       &KeyServer::handleUserEnrollmentRequest,
       &KeyServer::handleTokenBlockingListRequest,
       &KeyServer::handleTokenBlockingCreateRequest,

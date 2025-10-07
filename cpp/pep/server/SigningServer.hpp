@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
 namespace pep {
@@ -12,10 +13,10 @@ public:
   /// \copydoc Server::Parameters
   class Parameters;
 
+  messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
+
 protected:
   explicit SigningServer(std::shared_ptr<Parameters> parameters);
-
-  std::string makeSerializedPingResponse(const PingRequest& request) const override;
 };
 
 

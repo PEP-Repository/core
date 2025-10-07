@@ -10,7 +10,6 @@
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
-#include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/messaging/ServerConnection.hpp>
 #include <pep/networking/EndPoint.hpp>

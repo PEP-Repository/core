@@ -3,6 +3,7 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/server/MonitoringSerializers.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 
