@@ -67,12 +67,6 @@ protected:
     return this->sendRequest<TResponse>(std::move(request), std::move(batches));
   }
 
-  // TODO: remove
-  template <typename TResponse>
-  rxcpp::observable<TResponse> ping(std::function<PingResponse(const TResponse& rawResponse)> getPlainResponse) const {
-    return mUntyped->ping<TResponse>(std::move(getPlainResponse));
-  }
-
 public:
   TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept;
   TypedClient(const TypedClient&) = delete;

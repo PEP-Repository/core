@@ -92,26 +92,6 @@ public:
       return connection->sendRequest<response_type>(request);
       });
   }
-
-  /**
-   * @brief Sends a PingRequest to the server, returning the server's response ("pong") message.
-   * @param getPlainResponse A function that produces a (plain) PingResponse instance from the server's raw response message (e.g. a SignedPingResponse).
-   * @return An observable that emits the server's response.
-   */
-  template <typename TResponse>
-  rxcpp::observable<TResponse> ping(std::function<PingResponse(const TResponse& rawResponse)> getPlainResponse) {
-    return this->whenConnected<TResponse>([getPlainResponse](std::shared_ptr<Connection> connection) -> rxcpp::observable<TResponse> {
-      PingRequest request;
-      return connection->sendRequest<TResponse>(request)
-        .map([getPlainResponse, id = request.mId](const TResponse& rawResponse) {
-        auto response = getPlainResponse(rawResponse);
-        if (response.mId != id) {
-          throw std::runtime_error("Received ping response with incorrect ID");
-        }
-        return rawResponse;
-          });
-      });
-  }
 };
 
 }

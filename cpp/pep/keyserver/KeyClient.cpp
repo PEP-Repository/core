@@ -6,7 +6,10 @@
 namespace pep {
 
 rxcpp::observable<PingResponse> KeyClient::requestPing() const {
-  return this->ping<PingResponse>([](PingResponse response) { return response; });
+  PingRequest request;
+  return this->sendRequest<PingResponse>(request)
+    .op(RxGetOne("PingResponse"))
+    .tap([request](const PingResponse& response) { response.validate(request); });
 }
 
 rxcpp::observable<EnrollmentResponse> KeyClient::requestUserEnrollment(EnrollmentRequest request) const {
