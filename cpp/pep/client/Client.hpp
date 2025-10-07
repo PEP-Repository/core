@@ -5,9 +5,9 @@
 #include <pep/authserver/AuthClient.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/content/ParticipantPersonalia.hpp>
-#include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/registrationserver/RegistrationServerMessages.hpp>
 #include <pep/keyserver/KeyClient.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/registrationserver/RegistrationClient.hpp>
 
 namespace pep {
 
@@ -110,11 +110,7 @@ public:
 
   std::shared_ptr<const KeyClient> getKeyClient(bool require = true) const;
   std::shared_ptr<const AuthClient> getAuthClient(bool require = true) const;
-
-  rxcpp::observable<ConnectionStatus> getRegistrationServerStatus();
-  rxcpp::observable<VersionResponse> getRegistrationServerVersion();
-  rxcpp::observable<SignedPingResponse> pingRegistrationServer() const;
-  rxcpp::observable<MetricsResponse> getRegistrationServerMetrics();
+  std::shared_ptr<const RegistrationClient> getRegistrationClient(bool require = true) const;
 
   rxcpp::observable<FakeVoid> shutdown() override;
 
@@ -130,7 +126,7 @@ private:
 
   std::shared_ptr<KeyClient> clientKeyServer;
   std::shared_ptr<AuthClient> clientAuthserver;
-  std::shared_ptr<messaging::ServerConnection> clientRegistrationServer;
+  std::shared_ptr<RegistrationClient> clientRegistrationServer;
 
   Client(const Builder& builder);
 

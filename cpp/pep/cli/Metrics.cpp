@@ -55,7 +55,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("registrationserver") != serverFilter.end()) {
-        observables.push_back(client->getRegistrationServerMetrics().map([](pep::MetricsResponse metrics){
+        observables.push_back(client->getRegistrationClient()->requestMetrics().map([](pep::MetricsResponse metrics){
           std::ostringstream oss;
           oss << "============================ Registration Server ============================\n";
           oss << metrics.mMetrics;

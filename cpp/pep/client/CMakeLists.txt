@@ -9,7 +9,7 @@ target_link_libraries(${PROJECT_NAME}Clientlib
   ${PROJECT_NAME}CoreClientlib
   ${PROJECT_NAME}Contentlib
   ${PROJECT_NAME}KeyClientlib
-  ${PROJECT_NAME}RegistrationServerApilib
+  ${PROJECT_NAME}RegistrationClientlib
 )
 
 verify_headers_standalone(${PROJECT_NAME}Clientlib)

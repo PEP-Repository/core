@@ -103,7 +103,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
 
 // Generates a Participant ID and returns it
 rxcpp::observable<std::string> Client::generatePEPID() {
-  return clientRegistrationServer->sendRequest<PEPIdRegistrationResponse>(sign(PEPIdRegistrationRequest{}))
+  return clientRegistrationServer->requestIdRegistration()
       .map([](PEPIdRegistrationResponse result) { return result.mPepId; });
 }
 
@@ -140,8 +140,7 @@ rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::completePartici
 rxcpp::observable<std::string> Client::listCastorImportColumns(const std::string& spColumnName,
                                                                const std::optional<unsigned>& answerSetCount) {
   return clientRegistrationServer
-      ->sendRequest<ListCastorImportColumnsResponse>(ListCastorImportColumnsRequest{spColumnName,
-                                                                                    answerSetCount.value_or(0U)})
+      ->requestListCastorImportColumns(ListCastorImportColumnsRequest{spColumnName, answerSetCount.value_or(0U)})
       .flat_map([](const ListCastorImportColumnsResponse& response) {
         return rxcpp::observable<>::iterate(response.mImportColumns);
       });
@@ -158,7 +157,7 @@ rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::generateShortPs
 
   LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
 
-  return clientRegistrationServer->sendRequest<RegistrationResponse>(sign(std::move(request)))
+  return clientRegistrationServer->requestRegistration(std::move(request))
       .map([](RegistrationResponse result) { return std::make_shared<RegistrationResponse>(result); });
 }
 
@@ -202,23 +201,11 @@ std::shared_ptr<const KeyClient> Client::getKeyClient(bool require) const {
 }
 
 std::shared_ptr<const AuthClient> Client::getAuthClient(bool require) const {
-  return GetConstTypedClient(clientAuthserver, "Authserver", require);
+  return GetConstTypedClient(clientAuthserver, "Auth Server", require);
 }
 
-rxcpp::observable<ConnectionStatus> Client::getRegistrationServerStatus() {
-  return clientRegistrationServer->connectionStatus();
-}
-
-rxcpp::observable<VersionResponse> Client::getRegistrationServerVersion() {
-  return tryGetServerVersion(clientRegistrationServer);
-}
-
-rxcpp::observable<SignedPingResponse> Client::pingRegistrationServer() const {
-  return pingSigningServer(clientRegistrationServer);
-}
-
-rxcpp::observable<MetricsResponse> Client::getRegistrationServerMetrics() {
-  return clientRegistrationServer->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
+std::shared_ptr<const RegistrationClient> Client::getRegistrationClient(bool require) const {
+  return GetConstTypedClient(clientRegistrationServer, "Registration Server", require);
 }
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
@@ -237,7 +224,7 @@ Client::Client(const Builder& builder)
     registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
   clientKeyServer = this->tryConnectTypedClient<KeyClient>(keyServerEndPoint);
   clientAuthserver = this->tryConnectTypedClient<AuthClient>(authserverEndPoint);
-  clientRegistrationServer = tryConnectTo(registrationServerEndPoint);
+  clientRegistrationServer = this->tryConnectTypedClient<RegistrationClient>(registrationServerEndPoint);
 }
 
 

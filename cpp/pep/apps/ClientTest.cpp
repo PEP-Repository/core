@@ -238,7 +238,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     .op(RxInstead(true));
 }
 
-rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::tryGetServerVersion(std::shared_ptr<const TypedClient> client, std::string name) {
+rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::tryGetServerVersion(std::shared_ptr<const TypedClient> client, std::string name) { // TODO: make static
   rxcpp::observable<VersionResponse> version;
   if (client == nullptr) {
     version = rxcpp::observable<>::empty<VersionResponse>();
@@ -261,7 +261,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     this->tryGetServerVersion(client->getTranscryptorClient(false), "Transcryptor"),
     this->tryGetServerVersion(client->getKeyClient(false), "Key Server"),
     this->tryGetServerVersion(client->getStorageClient(false), "Storage Facility"),
-    client->getRegistrationServerVersion().zip(rxcpp::rxs::just(std::string("Registration Server"))),
+    this->tryGetServerVersion(client->getRegistrationClient(false), "Registration Server"),
     this->tryGetServerVersion(client->getAuthClient(false), "Auth Server")
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
     const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
