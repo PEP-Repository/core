@@ -43,7 +43,7 @@ public:
 };
 
 template <typename TClient, std::shared_ptr<const pep::SigningServerClient> (*GetSigningServerClientFunction)(const TClient& client)>
-class NewSigningServerPinger : public TypedServerPinger<TClient, pep::SignedPingResponse> {
+class SigningServerPinger : public TypedServerPinger<TClient, pep::SignedPingResponse> {
 private:
   bool mPrintCertificateChain;
   bool mPrintDrift;
@@ -73,7 +73,7 @@ private:
   }
 
 public:
-  NewSigningServerPinger(bool printCertificateChain, bool printDrift)
+  SigningServerPinger(bool printCertificateChain, bool printDrift)
     : TypedServerPinger<TClient, pep::SignedPingResponse>([](const pep::Client& client) { return (*GetSigningServerClientFunction)(client)->requestPing(); }),
     mPrintCertificateChain(printCertificateChain),
     mPrintDrift(printDrift) {}
@@ -101,11 +101,11 @@ std::shared_ptr<const pep::SigningServerClient> GetAccessManagerClient(const pep
 std::shared_ptr<const pep::SigningServerClient> GetAuthClient(const pep::Client& client) { return client.getAuthClient(false); }
 std::shared_ptr<const pep::SigningServerClient> GetRegistrationClient(const pep::Client& client) { return client.getRegistrationClient(false); }
 
-using AccessManagerPinger = NewSigningServerPinger<pep::CoreClient, &GetAccessManagerClient>;
-using StorageFacilityPinger = NewSigningServerPinger<pep::CoreClient, &GetStorageClient>;
-using TranscryptorPinger = NewSigningServerPinger<pep::CoreClient, &GetTranscryptorClient>;
-using AuthServerPinger = NewSigningServerPinger<pep::Client, &GetAuthClient>;
-using RegistrationServerPinger = NewSigningServerPinger<pep::Client, &GetRegistrationClient>;
+using AccessManagerPinger = SigningServerPinger<pep::CoreClient, &GetAccessManagerClient>;
+using StorageFacilityPinger = SigningServerPinger<pep::CoreClient, &GetStorageClient>;
+using TranscryptorPinger = SigningServerPinger<pep::CoreClient, &GetTranscryptorClient>;
+using AuthServerPinger = SigningServerPinger<pep::Client, &GetAuthClient>;
+using RegistrationServerPinger = SigningServerPinger<pep::Client, &GetRegistrationClient>;
 
 template <typename TPinger>
 std::shared_ptr<ServerPinger> CreateServerPinger(bool printCertificateChain, bool printDrift) {
