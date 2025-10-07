@@ -7,6 +7,17 @@ target_link_libraries(${PROJECT_NAME}RegistrationServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}RegistrationServerApilib)
 
+
+add_library(${PROJECT_NAME}RegistrationClientlib
+  RegistrationClient.cpp RegistrationClient.hpp
+)
+target_link_libraries(${PROJECT_NAME}RegistrationClientlib
+  ${PROJECT_NAME}RegistrationServerApilib
+  ${PROJECT_NAME}TypedClientlib
+)
+verify_headers_standalone(${PROJECT_NAME}RegistrationClientlib)
+
+
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}RegistrationServerlib
       RegistrationServer.cpp RegistrationServer.hpp
