@@ -33,6 +33,14 @@ private:
   std::shared_ptr<messaging::ServerConnection> mUntyped;
   const MessageSigner& mMessageSigner;
 
+  static void ValidateResponse(MessageMagic magic, const std::string& response, const std::type_info& responseInfo, const std::type_info& requestInfo);
+
+  template <typename TResponse, typename TRequest>
+  static TResponse DeserializeResponse(std::string serialized) {
+    ValidateResponse(MessageMagician<TResponse>::GetMagic(), serialized, typeid(TResponse), typeid(TRequest));
+    return Serialization::FromString<TResponse>(std::move(serialized));
+  }
+
 protected:
   const std::shared_ptr<messaging::ServerConnection>& untyped() const noexcept { return mUntyped; } // TODO: remove
 
@@ -44,14 +52,14 @@ protected:
   template <typename TResponse, typename TRequest>
   rxcpp::observable<TResponse> sendRequest(TRequest request) const {
     return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))))
-      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
+      .map(&DeserializeResponse<TResponse, TRequest>);
   }
 
   template <typename TResponse, typename TRequest>
   rxcpp::observable<TResponse> sendRequest(TRequest request, messaging::MessageBatches tail) const {
     // TODO: ensure that tail is long rather than wide: see comment for MessageBatches
     return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))), tail)
-      .map([](std::string serialized) { return Serialization::FromString<TResponse>(std::move(serialized)); });
+      .map(&DeserializeResponse<TResponse, TRequest>);
   }
 
   template <typename TResponse, typename TRequest, typename TTail>

@@ -5,6 +5,26 @@
 
 namespace pep {
 
+namespace {
+
+[[noreturn]] void ThrowInvalidResponse(const std::string& error, const std::type_info& requestInfo, const std::type_info& responseInfo, const std::string& epilogue = std::string()) {
+  throw std::runtime_error(error
+    + " in response to request " + boost::core::demangle(requestInfo.name())
+    + ": expected " + boost::core::demangle(responseInfo.name())
+    + epilogue);
+}
+
+}
+
+void TypedClient::ValidateResponse(MessageMagic magic, const std::string& response, const std::type_info& responseInfo, const std::type_info& requestInfo) {
+  if (response.size() < sizeof(MessageMagic)) {
+    ThrowInvalidResponse("Unexpected short message", requestInfo, responseInfo);
+  }
+  else if (GetMessageMagic(response) != magic) {
+    ThrowInvalidResponse("Unexpected response message type", requestInfo, responseInfo, ", but got " + DescribeMessageMagic(response));
+  }
+}
+
 TypedClient::TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept
   : mUntyped(std::move(untyped)), mMessageSigner(messageSigner) {
   assert(mUntyped != nullptr);

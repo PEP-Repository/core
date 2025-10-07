@@ -11,7 +11,6 @@
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
 #include <pep/messaging/MessageSequence.hpp>
-#include <pep/messaging/ServerConnection.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/server/MonitoringMessages.hpp>

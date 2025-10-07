@@ -79,19 +79,6 @@ public:
    * @return An observable that finishes when shutdown is complete.
    */
   rxcpp::observable<FakeVoid> shutdown();
-
-  /**
-   * @brief Sends a request to the server, returning the server's (single) response message.
-   * @param request The request to send.
-   * @return An observable that emits the server's response.
-   * @remark Usable only for requests (without tail messages) for which the server returns a single response message.
-   */
-  template <typename response_type, typename request_type>
-  rxcpp::observable<response_type> sendRequest(request_type&& request) {
-    return this->whenConnected<response_type>([request = std::forward<request_type>(request)](std::shared_ptr<Connection> connection) {
-      return connection->sendRequest<response_type>(request);
-      });
-  }
 };
 
 }
