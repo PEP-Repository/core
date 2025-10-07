@@ -12,7 +12,7 @@ namespace pep {
 
 namespace {
 
-bool RequestsIndexedTicket(const SignedTicketRequest2& request) { // TODO: remove
+[[maybe_unused]] bool RequestsIndexedTicket(const SignedTicketRequest2& request) { // TODO: remove
   return Serialization::FromString<TicketRequest2>(request.mData).mRequestIndexedTicket;
 }
 
