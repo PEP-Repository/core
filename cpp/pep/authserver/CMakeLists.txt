@@ -19,7 +19,7 @@ if (WITH_SERVERS)
     ${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}Httpserverlib
     ${PROJECT_NAME}AuthserverApilib
-    ${PROJECT_NAME}AccessManagerApilib
+    ${PROJECT_NAME}AccessManagerClientlib
     ${PROJECT_NAME}Templatinglib
   )
 

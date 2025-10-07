@@ -90,7 +90,7 @@ const std::unordered_map<std::string, std::string> checksumNameMappings{
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
-      mAccessManager(params.getAccessManager()),
+      mAccessManager(params.getAccessManager(), *this),
       mTokenExpiration(params.getTokenExpiration()),
       mOauthTokenSecret(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
@@ -115,17 +115,14 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
     throw Error("Checksum chain " + request.mName + " not found");
   }
   request.mName = checksumMapping->second;
-  return mAccessManager
-          ->sendRequest<ChecksumChainResponse>(
-              this->sign(request))
-          .op(RxGetOne("ChecksumChainResponse"));
+  return mAccessManager.requestChecksumChain(std::move(request));
 }
 
 rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::findUserGroupsAndStorePrimaryIdIfMissing(
     const std::string &primaryId,
     const std::vector<std::string> &alternativeIds) {
 
-  return mAccessManager->sendRequest<FindUserResponse>(this->sign(FindUserRequest(primaryId, alternativeIds)))
+  return mAccessManager.requestFindUser(FindUserRequest(primaryId, alternativeIds))
     .map([](FindUserResponse response) {
       return response.mUserGroups;
     });
@@ -185,20 +182,18 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
   // Because we send the database as a multi-part message, it will not be retried automatically
   // when the connection to the access manager fails. Therefore, we first wait for the connection
   // to succeed, before starting the migration.
-  mAccessManager->connectionStatus()
+  mAccessManager.connectionStatus()
     .filter([](const ConnectionStatus& status){ return status.connected; })
     .first()
-    .flat_map([accessManager=this->mAccessManager, storageFile, identity = this->getSigningIdentity()](ConnectionStatus status) -> rxcpp::observable<std::string> {
+    .flat_map([&accessManager=this->mAccessManager, storageFile](ConnectionStatus status) {
       auto storageStream = std::make_shared<std::ifstream>(storageFile, std::ios::binary);
       if (!storageStream->is_open()) {
         throw std::runtime_error("Failed to open storageFile");
       }
-      auto request = SignedMigrateUserDbToAccessManagerRequest(MigrateUserDbToAccessManagerRequest(), *identity);
-      return accessManager->sendRequest(std::make_shared<std::string>(Serialization::ToString(request)),
+      return accessManager.requestMigrateUserDbToAccessManager(MigrateUserDbToAccessManagerRequest(),
                                         messaging::IStreamToMessageBatches(storageStream));
     }).subscribe(
-      [](const std::string& rawResponse) {
-        Error::ThrowIfDeserializable(rawResponse);
+      [](const MigrateUserDbToAccessManagerResponse& response) {
         LOG(LOG_TAG, info) << "Migration successful";
       },
       [](std::exception_ptr e) {
