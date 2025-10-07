@@ -5,7 +5,6 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxUtils.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
@@ -302,10 +301,6 @@ rxcpp::observable<ParticipantGroupAccess> CoreClient::getAccessibleParticipantGr
       includeImplicitlyGranted});
 }
 
-std::shared_ptr<messaging::ServerConnection> CoreClient::tryConnectTo(const EndPoint& endPoint) const {
-  return messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
-}
-
 rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
@@ -320,18 +315,6 @@ std::shared_ptr<const TranscryptorClient> CoreClient::getTranscryptorClient(bool
 
 std::shared_ptr<const AccessManagerClient> CoreClient::getAccessManagerClient(bool require) const {
   return GetConstTypedClient(clientAccessManager, "Access Manager", require);
-}
-
-rxcpp::observable<SignedPingResponse> CoreClient::pingSigningServer(std::shared_ptr<messaging::ServerConnection> connection) const {
-  return connection->ping<SignedPingResponse>([this](const SignedPingResponse& signedResponse) { return signedResponse.open(rootCAs); });
-}
-
-rxcpp::observable<VersionResponse> CoreClient::tryGetServerVersion(std::shared_ptr<messaging::ServerConnection> connection)
-    const {
-  if (connection == nullptr) {
-    return rxcpp::observable<>::empty<VersionResponse>();
-  }
-  return connection->sendRequest<VersionResponse>(VersionRequest{});
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {

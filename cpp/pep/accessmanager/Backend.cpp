@@ -1,7 +1,6 @@
 #include <pep/accessmanager/Storage.hpp>
 #include <pep/accessmanager/AccessManager.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp>
-#include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/async/RxUtils.hpp>
 #include <pep/crypto/CPRNG.hpp>

@@ -544,12 +544,8 @@ protected:
 
   using MessageSigner::sign;
 
-  std::shared_ptr<messaging::ServerConnection> tryConnectTo(const EndPoint& endPoint) const;
   template <typename TClient>
   std::shared_ptr<TClient> tryConnectTypedClient(const EndPoint& endPoint) const;
-
-  rxcpp::observable<VersionResponse> tryGetServerVersion(std::shared_ptr<messaging::ServerConnection> connection) const;
-  rxcpp::observable<SignedPingResponse> pingSigningServer(std::shared_ptr<messaging::ServerConnection> connection) const;
 
   struct EnrollmentContext {
     std::shared_ptr<const X509Identity> identity;
@@ -710,7 +706,6 @@ public:
   }
 
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request);
-
 };
 
 struct CoreClient::AESKey {
@@ -738,7 +733,7 @@ public:
 
 template <typename TClient>
 std::shared_ptr<TClient> CoreClient::tryConnectTypedClient(const EndPoint& endPoint) const {
-  auto untyped = this->tryConnectTo(endPoint);
+  auto untyped = messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
   if (untyped == nullptr) {
     return nullptr;
   }
