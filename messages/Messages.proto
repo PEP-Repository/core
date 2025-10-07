@@ -1050,10 +1050,17 @@ message RemoveUser {
   string uid = 1;
 };
 
-message AddOrUpdateUserIdentifier {
+message AddUserIdentifier {
   string existingUid = 1;
   string newUid = 2;
-  bool is_display_id = 3;
+  bool is_primary_id = 3;
+  bool is_display_id = 4;
+};
+
+message UpdateUserIdentifier {
+  string uid = 1;
+  optional bool is_primary_id = 2;
+  optional bool is_display_id = 3;
 };
 
 message RemoveUserIdentifier {
@@ -1091,8 +1098,9 @@ message RemoveUserFromGroup {
 message UserMutationRequest {
   repeated CreateUser create_user = 6;
   repeated RemoveUser remove_user = 7;
-  repeated AddOrUpdateUserIdentifier add_or_update_user_identifier = 8;
+  repeated AddUserIdentifier add_user_identifier = 8;
   repeated RemoveUserIdentifier remove_user_identifier = 9;
+  repeated UpdateUserIdentifier update_user_identifier = 10;
 
   repeated CreateUserGroup create_user_group = 1;
   repeated RemoveUserGroup remove_user_group = 2;

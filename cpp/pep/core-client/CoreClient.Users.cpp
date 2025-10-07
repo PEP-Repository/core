@@ -32,16 +32,22 @@ rxcpp::observable<FakeVoid> CoreClient::removeUser(std::string uid) {
   return requestUserMutation(std::move(request));
 }
 
-rxcpp::observable<FakeVoid> CoreClient::addUserIdentifier(std::string existingUid, std::string newUid, bool isDisplayId) {
+rxcpp::observable<FakeVoid> CoreClient::addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) {
   assert(existingUid != newUid);
   UserMutationRequest request;
-  request.mAddOrUpdateUserIdentifier.emplace_back(std::move(existingUid), std::move(newUid), isDisplayId);
+  request.mAddUserIdentifier.emplace_back(std::move(existingUid), std::move(newUid), isPrimaryId, isDisplayId);
   return requestUserMutation(std::move(request));
 }
 
-rxcpp::observable<FakeVoid> CoreClient::setUserDisplayIdentifier(std::string uid) {
+rxcpp::observable<FakeVoid> CoreClient::setUserPrimaryId(std::string uid) {
   UserMutationRequest request;
-  request.mAddOrUpdateUserIdentifier.emplace_back(uid, std::move(uid), true);
+  request.mUpdateUserIdentifier.emplace_back(uid, true, std::nullopt);
+  return requestUserMutation(std::move(request));
+}
+
+rxcpp::observable<FakeVoid> CoreClient::setUserDisplayId(std::string uid) {
+  UserMutationRequest request;
+  request.mUpdateUserIdentifier.emplace_back(uid, std::nullopt, true);
   return requestUserMutation(std::move(request));
 }
 

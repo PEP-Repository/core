@@ -20,13 +20,25 @@ public:
   std::string mUid;
 };
 
-class AddOrUpdateUserIdentifier {
+class AddUserIdentifier {
 public:
-  AddOrUpdateUserIdentifier() = default;
-  AddOrUpdateUserIdentifier(std::string existingUid, std::string newUid, bool isDisplayId) : mExistingUid(std::move(existingUid)), mNewUid(std::move(newUid)), isDisplayId(isDisplayId) { }
+  AddUserIdentifier() = default;
+  AddUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId)
+    : mExistingUid(std::move(existingUid)), mNewUid(std::move(newUid)), mIsPrimaryId(isPrimaryId),mIsDisplayId(isDisplayId) { }
   std::string mExistingUid;
   std::string mNewUid;
-  bool isDisplayId;
+  bool mIsPrimaryId;
+  bool mIsDisplayId;
+};
+
+class UpdateUserIdentifier {
+public:
+  UpdateUserIdentifier() = default;
+  UpdateUserIdentifier(std::string uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId)
+    : mUid(std::move(uid)), mIsPrimaryId(isPrimaryId),mIsDisplayId(isDisplayId) { }
+  std::string mUid;
+  std::optional<bool> mIsPrimaryId;
+  std::optional<bool> mIsDisplayId;
 };
 
 class RemoveUserIdentifier {
@@ -80,8 +92,10 @@ public:
   std::vector<CreateUser> mCreateUser;
   std::vector<RemoveUser> mRemoveUser;
 
-  std::vector<AddOrUpdateUserIdentifier> mAddOrUpdateUserIdentifier;
+  std::vector<AddUserIdentifier> mAddUserIdentifier;
   std::vector<RemoveUserIdentifier> mRemoveUserIdentifier;
+  std::vector<UpdateUserIdentifier> mUpdateUserIdentifier;
+
 
   std::vector<CreateUserGroup> mCreateUserGroup;
   std::vector<RemoveUserGroup> mRemoveUserGroup;

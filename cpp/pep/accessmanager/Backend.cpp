@@ -155,13 +155,17 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     mStorage->removeUser(x.mUid);
     LOG(LOG_TAG, info) << "Removed user " << Logging::Escape(x.mUid);
   }
-  for (auto& x : request.mAddOrUpdateUserIdentifier) {
-    mStorage->addOrUpdateIdentifierForUser(x.mExistingUid, x.mNewUid, x.isDisplayId);
+  for (auto& x : request.mAddUserIdentifier) {
+    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid, x.mIsPrimaryId, x.mIsDisplayId);
     LOG(LOG_TAG, info) << "Added user identifier " << Logging::Escape(x.mNewUid) << " for user " << Logging::Escape(x.mExistingUid);
   }
   for (auto& x : request.mRemoveUserIdentifier) {
     mStorage->removeIdentifierForUser(x.mUid);
     LOG(LOG_TAG, info) << "Removed user identifier " << Logging::Escape(x.mUid);
+  }
+  for (auto& x : request.mUpdateUserIdentifier) {
+    mStorage->updateIdentifierForUser(x.mUid, x.mIsPrimaryId, x.mIsDisplayId);
+    LOG(LOG_TAG, info) << "Updated user identifier " << Logging::Escape(x.mUid);
   }
   for (auto& x : request.mCreateUserGroup) {
     mStorage->createUserGroup(x.mUserGroup);
@@ -210,10 +214,29 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
     const std::string& userGroup) {
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
   std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId);
-  if (!userId) {
+  if (userId) {
+    auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
+    if (!primary) {
+      mStorage->updateIdentifierForUser(*userId, request.mPrimaryId, true, std::nullopt);
+    }
+    else if (primary != request.mPrimaryId) {
+      LOG(LOG_TAG, warning) << "Found a user based on the primary ID we received from the authentication source, but according to our storage a different id for this user is the primary ID.";
+    }
+  }
+  else {
     userId = mStorage->findInternalUserId(request.mAlternativeIds);
     if (userId) {
-      mStorage->addOrUpdateIdentifierForUser(*userId, request.mPrimaryId, false, false);
+      auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
+      if (!primary) {
+        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, true, false);
+      }
+      else if (std::ranges::find(request.mAlternativeIds, *primary) == request.mAlternativeIds.end()) {
+        LOG(LOG_TAG, warning) << "A user tried to login as a user for which we already have a primary ID, which did not match any of the IDs we received from the authentication source.";
+        return FindUserResponse(std::nullopt);
+      }
+      else {
+        LOG(LOG_TAG, warning) << "Found a user, for which the primary ID was not received as primary ID from the authentication source, but as an alternative ID";
+      }
     }
   }
   if (!userId) {

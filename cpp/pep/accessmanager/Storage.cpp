@@ -179,6 +179,7 @@ auto am_create_db(const std::string& path) {
       make_column("tombstone", &UserIdRecord::tombstone),
       make_column("internalUserId", &UserIdRecord::internalUserId),
       make_column("identifier", &UserIdRecord::identifier),
+      make_column("isPrimaryId", &UserIdRecord::isPrimaryId, default_value(false)),
       make_column("isDisplayId", &UserIdRecord::isDisplayId, default_value(false))),
 
     make_index("idx_UserGroups",
@@ -1384,7 +1385,7 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
 
 int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
   int64_t internalUserId = getNextInternalUserId();
-  addOrUpdateIdentifierForUser(internalUserId, std::move(identifier), true, false);
+  addIdentifierForUser(internalUserId, std::move(identifier), true, false);
   return internalUserId;
 }
 
@@ -1412,28 +1413,19 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
   }
 
   for(auto& uid : getAllIdentifiersForUser(internalUserId))
-    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, false, true));
+    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, false, false, true));
 }
 
-void AccessManager::Backend::Storage::addOrUpdateIdentifierForUser(std::string_view uid, std::string identifier, bool isDisplayId) {
+void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, bool isPrimaryId, bool isDisplayId) {
   int64_t internalUserId = getInternalUserId(uid);
-  addOrUpdateIdentifierForUser(internalUserId, identifier, isDisplayId, uid == identifier);
+  addIdentifierForUser(internalUserId, identifier, isPrimaryId, isDisplayId);
 }
 
-void AccessManager::Backend::Storage::addOrUpdateIdentifierForUser(int64_t internalUserId, std::string identifier, bool isDisplayId, bool updateExisting) {
-  if (updateExisting && !isDisplayId) {
-    throw Error("Cannot update existing userId to not be the display id. Assign a different displayId instead.");
-  }
-  if (!updateExisting && findInternalUserId(identifier)) {
+void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier, bool isPrimaryId, bool isDisplayId) {
+  if (findInternalUserId(identifier)) {
     throw Error("The user identifier already exists");
   }
-  if (updateExisting && !findInternalUserId(identifier)) {
-    throw Error("The user identifier does not exists");
-  }
-  if (updateExisting && getDisplayIdentifierForUser(internalUserId) == identifier ) {
-    throw Error("This user identifier is already the display identifier.");
-  }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), isDisplayId));
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), isPrimaryId, isDisplayId));
 }
 
 void AccessManager::Backend::Storage::removeIdentifierForUser(std::string identifier) {
@@ -1457,7 +1449,28 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
     throw Error("Cannot remove the display identifier for a user. First set a different display identifier, then you can remove this one.");
   }
 
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), false, true));
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), false, false, true));
+}
+
+void AccessManager::Backend::Storage::updateIdentifierForUser(std::string_view uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId) {
+  int64_t internalUserId = getInternalUserId(uid);
+  updateIdentifierForUser(internalUserId, uid, isPrimaryId, isDisplayId);
+}
+
+void AccessManager::Backend::Storage::updateIdentifierForUser(int64_t internalUserId, std::string_view uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId) {
+  assert(getInternalUserId(uid) == internalUserId);
+  if (isDisplayId.has_value()) {
+    if (!*isDisplayId && getDisplayIdentifierForUser(internalUserId) == uid) {
+      throw Error("Cannot update existing user identifier to not be the display id. Assign a different displayId instead.");
+    }
+    if (*isDisplayId && getDisplayIdentifierForUser(internalUserId) == uid) {
+      throw Error("This user identifier is already the display identifier.");
+    }
+  }
+
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::string(uid),
+    isPrimaryId.value_or(getPrimaryIdentifierForUser(internalUserId) == uid),
+    isDisplayId.value_or(getDisplayIdentifierForUser(internalUserId) == uid)));
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, Timestamp at) const {
@@ -1498,23 +1511,14 @@ std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifie
   );
 }
 
+std::optional<std::string> AccessManager::Backend::Storage::getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+  return mImplementor->getLastMatchingRecord(c(&UserIdRecord::timestamp) <= at.getTime()
+        && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isPrimaryId) == true, &UserIdRecord::identifier);
+}
+
 std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
-  using namespace sqlite_orm;
-  return RangeToOptional(
-    mImplementor->raw.iterate(select(
-      // SQLite will pick these columns from the row with the max() value:
-      // https://www.sqlite.org/lang_select.html#bareagg
-      columns(max(&UserIdRecord::seqno), &UserIdRecord::identifier),
-      where(c(&UserIdRecord::timestamp) <= at.getTime()
-        && c(&UserIdRecord::internalUserId) == internalUserId),
-      std::apply(PEP_WrapOverloadedFunction(group_by), UserIdRecord::RecordIdentifier)
-      .having(c(&UserIdRecord::tombstone) == false && c(&UserIdRecord::isDisplayId) == true),
-      order_by(&UserIdRecord::seqno), limit(1)
-    )) | std::views::transform([](auto tuple) {
-      auto& [seqno, identifier] = tuple;
-      return identifier;
-    })
-  );
+  return mImplementor->getLastMatchingRecord(c(&UserIdRecord::timestamp) <= at.getTime()
+        && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isDisplayId) == true, &UserIdRecord::identifier);
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {

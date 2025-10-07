@@ -81,6 +81,22 @@ struct Storage : public BasicStorage {
   ///   (or single values if a single column was specified)
   template <Record RecordType, typename... ColTypes>
   [[nodiscard]] auto getCurrentRecords(auto whereCondition, ColTypes RecordType::*... selectColumns);
+
+  /// Return last non-tombstone record, that matches the where- and having-clauses.
+  /// The where-clause is evaluated for all records, the having-clause only for the last record for that RecordIdentifier
+  ///
+  /// Example: get the current primary identifier for a given internalUserId.
+  /// \code
+  ///   myStorage->getLastMatchingRecord( //We are only interested in the last record, matching our criteria. That is the one that is currently the primary ID.
+  ///     c(&UserIdRecord::timestamp) <= at.getTime() && c(&UserIdRecord::internalUserId) == internalUserId, //We first select all userIds for the given internalUserId
+  ///     c(&UserIdRecord::isPrimaryId) == true, //For each userId, we check that the last record has isPrimaryId set to true.
+  ///     &UserIdRecord::identifier);
+  /// \endcode
+  ///
+  /// \returns optional tuple with columns from \p selectColumns
+  ///   (or optional single value if a single column was specified)
+  template <Record RecordType, typename... ColTypes>
+  [[nodiscard]] auto getLastMatchingRecord(auto whereCondition, auto havingCondition, ColTypes RecordType::*... selectColumns);
 };
 
 template <auto MakeRaw> template <Record RecordType>
@@ -110,6 +126,21 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
+}
+
+template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
+[[nodiscard]] auto Storage<MakeRaw>::getLastMatchingRecord(auto whereCondition, auto havingCondition, ColTypes RecordType::*... selectColumns) {
+  static_assert(sizeof...(ColTypes) > 0, "No columns specified");
+  using namespace sqlite_orm;
+  return RangeToOptional(raw.iterate(select(
+    // SQLite will pick these columns from the row with the max() value:
+    // https://www.sqlite.org/lang_select.html#bareagg
+    columns(max(&RecordType::seqno), selectColumns...),
+    where(whereCondition),
+    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    .having(c(&RecordType::tombstone) == false && havingCondition),
+    order_by(&RecordType::seqno).desc(), limit(1)
+  )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); }));
 }
 
 }

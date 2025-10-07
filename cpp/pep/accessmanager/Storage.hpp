@@ -203,10 +203,12 @@ public:
   int64_t createUser(std::string identifier);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
-  void addOrUpdateIdentifierForUser(std::string_view uid, std::string identifier, bool isDisplayId);
-  void addOrUpdateIdentifierForUser(int64_t internalUserId, std::string identifier, bool isDisplayId, bool updateExisting);
+  void addIdentifierForUser(std::string_view uid, std::string identifier, bool isPrimaryId, bool isDisplayId);
+  void addIdentifierForUser(int64_t internalUserId, std::string identifier, bool isPrimaryId, bool isDisplayId);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
+  void updateIdentifierForUser(std::string_view uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId);
+  void updateIdentifierForUser(int64_t internalUserId, std::string_view uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId);
 
   /* Finding user identifiers */
   /// Try to find the internalId for the user that has the given identifier. Returns nullopt if not found.
@@ -215,6 +217,7 @@ public:
   int64_t getInternalUserId(std::string_view identifier, Timestamp at = Timestamp()) const;
   std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = Timestamp()) const;
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+  std::optional<std::string> getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
   std::optional<std::string> getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
 
   /* Finding userGroupIds */
