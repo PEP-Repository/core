@@ -24,6 +24,7 @@ public:
     Credentials credentials; // accessKey, secret, ...
     std::shared_ptr<boost::asio::io_context> io_context;
     std::optional<std::filesystem::path> ca_cert_path; // ignored if not set
+    bool use_https = true;
   };
 
   static std::shared_ptr<Client> Create(const Parameters& params);
