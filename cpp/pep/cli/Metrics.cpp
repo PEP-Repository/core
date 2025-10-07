@@ -39,7 +39,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("authserver") != serverFilter.end()) {
-        observables.push_back(client->getAuthserverMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getAuthClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ AuthServer ============================\n";
           oss << metrics.mMetrics;

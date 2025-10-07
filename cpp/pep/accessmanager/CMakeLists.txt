@@ -6,8 +6,6 @@ add_library(${PROJECT_NAME}AccessManagerApilib
   AccessManagerMessages.cpp AccessManagerMessages.hpp
   AccessManagerSerializers.cpp AccessManagerSerializers.hpp
 )
-
-
 target_link_libraries(${PROJECT_NAME}AccessManagerApilib
   ${PROJECT_NAME}Structurelib
   ${PROJECT_NAME}TranscryptorApilib

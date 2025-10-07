@@ -2,6 +2,7 @@
 
 #include <pep/client/Client_fwd.hpp>
 
+#include <pep/authserver/AuthClient.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/content/ParticipantPersonalia.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
@@ -108,17 +109,11 @@ public:
   rxcpp::observable<std::string> requestToken(std::string subject, std::string group, Timestamp expirationTime);
 
   std::shared_ptr<const KeyClient> getKeyClient(bool require = true) const;
+  std::shared_ptr<const AuthClient> getAuthClient(bool require = true) const;
 
-  rxcpp::observable<ConnectionStatus> getAuthserverStatus();
   rxcpp::observable<ConnectionStatus> getRegistrationServerStatus();
-
-  rxcpp::observable<VersionResponse> getAuthserverVersion();
   rxcpp::observable<VersionResponse> getRegistrationServerVersion();
-
-  rxcpp::observable<SignedPingResponse> pingAuthserver() const;
   rxcpp::observable<SignedPingResponse> pingRegistrationServer() const;
-
-  rxcpp::observable<MetricsResponse> getAuthserverMetrics();
   rxcpp::observable<MetricsResponse> getRegistrationServerMetrics();
 
   rxcpp::observable<FakeVoid> shutdown() override;
@@ -134,7 +129,7 @@ private:
   const EndPoint registrationServerEndPoint;
 
   std::shared_ptr<KeyClient> clientKeyServer;
-  std::shared_ptr<messaging::ServerConnection> clientAuthserver;
+  std::shared_ptr<AuthClient> clientAuthserver;
   std::shared_ptr<messaging::ServerConnection> clientRegistrationServer;
 
   Client(const Builder& builder);

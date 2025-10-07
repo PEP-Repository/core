@@ -262,7 +262,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     this->tryGetServerVersion(client->getKeyClient(false), "Key Server"),
     this->tryGetServerVersion(client->getStorageClient(false), "Storage Facility"),
     client->getRegistrationServerVersion().zip(rxcpp::rxs::just(std::string("Registration Server"))),
-    client->getAuthserverVersion().zip(rxcpp::rxs::just(std::string("Auth Server")))
+    this->tryGetServerVersion(client->getAuthClient(false), "Auth Server")
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
     const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
     std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;

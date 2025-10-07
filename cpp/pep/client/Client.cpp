@@ -193,10 +193,7 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 rxcpp::observable<std::string> Client::requestToken(std::string subject,
                                                        std::string group,
                                                        Timestamp expirationTime) {
-  if (!clientAuthserver) {
-    throw std::runtime_error("Connection to authserver is not initialized. Does the client configuration contain correct config for the authserver endpoint?");
-  }
-  return clientAuthserver->sendRequest<TokenResponse>(sign(TokenRequest(subject, group, expirationTime))) // linebreak
+  return this->getAuthClient()->requestToken(TokenRequest(subject, group, expirationTime)) // linebreak
       .map([](TokenResponse response) { return response.mToken; });
 }
 
@@ -204,32 +201,20 @@ std::shared_ptr<const KeyClient> Client::getKeyClient(bool require) const {
   return GetConstTypedClient(clientKeyServer, "Key Server", require);
 }
 
-rxcpp::observable<ConnectionStatus> Client::getAuthserverStatus() {
-  return clientAuthserver->connectionStatus();
+std::shared_ptr<const AuthClient> Client::getAuthClient(bool require) const {
+  return GetConstTypedClient(clientAuthserver, "Authserver", require);
 }
 
 rxcpp::observable<ConnectionStatus> Client::getRegistrationServerStatus() {
   return clientRegistrationServer->connectionStatus();
 }
 
-rxcpp::observable<VersionResponse> Client::getAuthserverVersion() {
-  return tryGetServerVersion(clientAuthserver);
-}
-
 rxcpp::observable<VersionResponse> Client::getRegistrationServerVersion() {
   return tryGetServerVersion(clientRegistrationServer);
 }
 
-rxcpp::observable<SignedPingResponse> Client::pingAuthserver() const {
-  return pingSigningServer(clientAuthserver);
-}
-
 rxcpp::observable<SignedPingResponse> Client::pingRegistrationServer() const {
   return pingSigningServer(clientRegistrationServer);
-}
-
-rxcpp::observable<MetricsResponse> Client::getAuthserverMetrics() {
-  return clientAuthserver->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
 }
 
 rxcpp::observable<MetricsResponse> Client::getRegistrationServerMetrics() {
@@ -251,7 +236,7 @@ Client::Client(const Builder& builder)
     authserverEndPoint(builder.getAuthserverEndPoint()),
     registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
   clientKeyServer = this->tryConnectTypedClient<KeyClient>(keyServerEndPoint);
-  clientAuthserver = tryConnectTo(authserverEndPoint);
+  clientAuthserver = this->tryConnectTypedClient<AuthClient>(authserverEndPoint);
   clientRegistrationServer = tryConnectTo(registrationServerEndPoint);
 }
 
