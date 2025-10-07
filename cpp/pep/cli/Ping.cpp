@@ -42,7 +42,7 @@ public:
   }
 };
 
-template <typename TClient, std::shared_ptr<const pep::SigningServerClient> (*GetSigningServerClientFunction)(const TClient& client)>
+template <typename TClient>
 class SigningServerPinger : public TypedServerPinger<TClient, pep::SignedPingResponse> {
 private:
   bool mPrintCertificateChain;
@@ -73,8 +73,12 @@ private:
   }
 
 public:
-  SigningServerPinger(bool printCertificateChain, bool printDrift)
-    : TypedServerPinger<TClient, pep::SignedPingResponse>([](const pep::Client& client) { return (*GetSigningServerClientFunction)(client)->requestPing(); }),
+  template <typename TSingleServerClient>
+  using GetSingleServerClientMethod = std::shared_ptr<const TSingleServerClient>(TClient::*)(bool) const;
+
+  template <typename TSingleServerClient>
+  SigningServerPinger(bool printCertificateChain, bool printDrift, GetSingleServerClientMethod<TSingleServerClient> method)
+    : TypedServerPinger<TClient, pep::SignedPingResponse>([method](const pep::Client& client) { return (client.*method)(true)->requestPing(); }),
     mPrintCertificateChain(printCertificateChain),
     mPrintDrift(printDrift) {}
 };
@@ -94,35 +98,19 @@ public:
   }
 };
 
-std::shared_ptr<const pep::SigningServerClient> GetStorageClient(const pep::CoreClient& client) { return client.getStorageClient(false); }
-std::shared_ptr<const pep::SigningServerClient> GetTranscryptorClient(const pep::CoreClient& client) { return client.getTranscryptorClient(false); }
-std::shared_ptr<const pep::SigningServerClient> GetAccessManagerClient(const pep::CoreClient& client) { return client.getAccessManagerClient(false); }
-
-std::shared_ptr<const pep::SigningServerClient> GetAuthClient(const pep::Client& client) { return client.getAuthClient(false); }
-std::shared_ptr<const pep::SigningServerClient> GetRegistrationClient(const pep::Client& client) { return client.getRegistrationClient(false); }
-
-using AccessManagerPinger = SigningServerPinger<pep::CoreClient, &GetAccessManagerClient>;
-using StorageFacilityPinger = SigningServerPinger<pep::CoreClient, &GetStorageClient>;
-using TranscryptorPinger = SigningServerPinger<pep::CoreClient, &GetTranscryptorClient>;
-using AuthServerPinger = SigningServerPinger<pep::Client, &GetAuthClient>;
-using RegistrationServerPinger = SigningServerPinger<pep::Client, &GetRegistrationClient>;
-
-template <typename TPinger>
-std::shared_ptr<ServerPinger> CreateServerPinger(bool printCertificateChain, bool printDrift) {
-  return std::make_shared<TPinger>(printCertificateChain, printDrift);
-}
-
-using ServerPingerFactoryMethod = std::shared_ptr<ServerPinger> (*)(bool printCertificateChain, bool printDrift);
+using ServerPingerFactoryMethod = std::function<std::shared_ptr<ServerPinger>(bool printCertificateChain, bool printDrift)>;
 
 const std::unordered_map<std::string, ServerPingerFactoryMethod> pingerFactoryMethods = []() { // Using a factory method to allow const initialization
   std::unordered_map<std::string, ServerPingerFactoryMethod> result;
 
-  result["accessmanager"] = &CreateServerPinger<AccessManagerPinger>;
-  result["keyserver"] = &CreateServerPinger<KeyServerPinger>;
-  result["registrationserver"] = &CreateServerPinger<RegistrationServerPinger>;
-  result["storagefacility"] = &CreateServerPinger<StorageFacilityPinger>;
-  result["transcryptor"] = &CreateServerPinger<TranscryptorPinger>;
-  result["authserver"] = &CreateServerPinger<AuthServerPinger>;
+  result["keyserver"]           = [](bool printCertificateChain, bool printDrift) { return std::make_shared<KeyServerPinger>(printCertificateChain, printDrift); };
+
+  result["accessmanager"]       = [](bool printCertificateChain, bool printDrift) { return std::make_shared<SigningServerPinger<pep::CoreClient>>(printCertificateChain, printDrift, &pep::CoreClient::getAccessManagerClient); };
+  result["storagefacility"]     = [](bool printCertificateChain, bool printDrift) { return std::make_shared<SigningServerPinger<pep::CoreClient>>(printCertificateChain, printDrift, &pep::CoreClient::getStorageClient); };
+  result["transcryptor"]        = [](bool printCertificateChain, bool printDrift) { return std::make_shared<SigningServerPinger<pep::CoreClient>>(printCertificateChain, printDrift, &pep::CoreClient::getTranscryptorClient); };
+
+  result["authserver"]          = [](bool printCertificateChain, bool printDrift) { return std::make_shared<SigningServerPinger<pep::Client>>(printCertificateChain, printDrift, &pep::Client::getAuthClient); };
+  result["registrationserver"]  = [](bool printCertificateChain, bool printDrift) { return std::make_shared<SigningServerPinger<pep::Client>>(printCertificateChain, printDrift, &pep::Client::getRegistrationClient); };
 
   return result;
 }();
