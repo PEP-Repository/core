@@ -68,6 +68,7 @@ void TestIterationNumberOfCopies(const std::function<rxcpp::observable<TestConta
 
 TEST(RxIterate, NumberOfCopies)
 {
+  // Check that rxcpp::observable<>::iterate does not copy (it did in the past)
   TestIterationNumberOfCopies([](const TestContainer& container) {return rxcpp::observable<>::iterate(container); });
 }
 
