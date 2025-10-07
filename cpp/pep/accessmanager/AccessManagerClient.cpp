@@ -37,7 +37,7 @@ rxcpp::observable<IndexedTicket2> AccessManagerClient::requestIndexedTicket(Sign
 }
 
 rxcpp::observable<EncryptionKeyResponse> AccessManagerClient::requestEncryptionKey(EncryptionKeyRequest request) const {
-  return this->sendRequest<EncryptionKeyResponse>(std::move(request))
+  return this->sendRequest<EncryptionKeyResponse>(this->sign(std::move(request)))
     .op(RxGetOne("EncryptionKeyResponse"));
 }
 
