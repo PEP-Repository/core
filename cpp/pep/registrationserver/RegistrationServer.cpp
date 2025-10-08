@@ -767,10 +767,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       return rxcpp::observable<>::empty<DataStorageResult2>();
     });
   })
-    .reduce( // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
-      RegistrationResponse(),
-      [](RegistrationResponse response, DataStorageResult2) {return response; }
-    )
+    .op(RxInstead(RegistrationResponse())) // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
     .map([first_error](RegistrationResponse response) { // Serialize RegistrationResponse
     if (*first_error) {
       std::rethrow_exception(*first_error);
