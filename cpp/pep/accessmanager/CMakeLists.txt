@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME}AccessManagerApilib
   AccessManagerMessages.cpp AccessManagerMessages.hpp
   AccessManagerProxy.cpp AccessManagerProxy.hpp
   AccessManagerProxy.Ama.cpp
+  AccessManagerProxy.Users.cpp
   AccessManagerSerializers.cpp AccessManagerSerializers.hpp
 )
 target_link_libraries(${PROJECT_NAME}AccessManagerApilib

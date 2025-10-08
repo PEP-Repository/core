@@ -36,7 +36,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
-    return client->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
+    return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
       if (config.preferredFormat == so::Format::json) {
         so::json::append(std::cout, res, config) << std::endl;
       }

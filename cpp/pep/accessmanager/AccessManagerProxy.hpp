@@ -12,7 +12,8 @@ namespace pep {
 
 class AccessManagerProxy : public SigningServerProxy {
 private:
-  rxcpp::observable<FakeVoid> amaRequestMutation(AmaMutationRequest request) const;
+  rxcpp::observable<FakeVoid> requestAmaMutation(AmaMutationRequest request) const;
+  rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request) const;
 
 public:
   using SigningServerProxy::SigningServerProxy;
@@ -21,8 +22,6 @@ public:
   rxcpp::observable<SignedTicket2> requestTicket(SignedTicketRequest2 request) const; // TODO: don't require pre-signed
   rxcpp::observable<IndexedTicket2> requestIndexedTicket(SignedTicketRequest2 request) const; // TODO: don't require pre-signed
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
-  rxcpp::observable<UserQueryResponse> requestUserQuery(UserQuery request) const;
-  rxcpp::observable<UserMutationResponse> requestUserMutation(UserMutationRequest request) const;
   rxcpp::observable<GlobalConfiguration> requestGlobalConfiguration() const;
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
   rxcpp::observable<ColumnAccessResponse> requestColumnAccess(ColumnAccessRequest request) const;
@@ -35,24 +34,30 @@ public:
 
   rxcpp::observable<FakeVoid> amaCreateColumn(std::string name) const;
   rxcpp::observable<FakeVoid> amaRemoveColumn(std::string name) const;
-
   rxcpp::observable<FakeVoid> amaCreateColumnGroup(std::string name) const;
   rxcpp::observable<FakeVoid> amaRemoveColumnGroup(std::string name, bool force) const;
   rxcpp::observable<FakeVoid> amaAddColumnToGroup(std::string column, std::string group) const;
   rxcpp::observable<FakeVoid> amaRemoveColumnFromGroup(std::string column, std::string group) const;
-
   rxcpp::observable<FakeVoid> amaCreateParticipantGroup(std::string name) const;
   rxcpp::observable<FakeVoid> amaRemoveParticipantGroup(std::string name, bool force) const;
   rxcpp::observable<FakeVoid> amaAddParticipantToGroup(std::string group, const PolymorphicPseudonym& participant) const;
   rxcpp::observable<FakeVoid> amaRemoveParticipantFromGroup(std::string group, const PolymorphicPseudonym& participant) const;
-
   rxcpp::observable<FakeVoid> amaCreateColumnGroupAccessRule(std::string columnGroup, std::string accessGroup, std::string mode) const;
   rxcpp::observable<FakeVoid> amaRemoveColumnGroupAccessRule(std::string columnGroup, std::string accessGroup, std::string mode) const;
-
   rxcpp::observable<FakeVoid> amaCreateGroupAccessRule(std::string group, std::string accessGroup, std::string mode) const;
   rxcpp::observable<FakeVoid> amaRemoveGroupAccessRule(std::string group, std::string accessGroup, std::string mode) const;
-
   rxcpp::observable<AmaQueryResponse> amaQuery(AmaQuery query) const;
+
+  rxcpp::observable<FakeVoid> createUser(std::string uid) const;
+  rxcpp::observable<FakeVoid> removeUser(std::string uid) const;
+  rxcpp::observable<FakeVoid> addUserIdentifier(std::string existingUid, std::string newUid) const;
+  rxcpp::observable<FakeVoid> removeUserIdentifier(std::string uid) const;
+  rxcpp::observable<FakeVoid> createUserGroup(UserGroup userGroup) const;
+  rxcpp::observable<FakeVoid> modifyUserGroup(UserGroup userGroup) const;
+  rxcpp::observable<FakeVoid> removeUserGroup(std::string name) const;
+  rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group) const;
+  rxcpp::observable<FakeVoid> removeUserFromGroup(std::string uid, std::string group, bool blockTokens) const;
+  rxcpp::observable<UserQueryResponse> userQuery(UserQuery query) const;
 
 };
 

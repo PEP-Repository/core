@@ -8,7 +8,6 @@ add_library(${PROJECT_NAME}CoreClientlib STATIC
     CoreClient.Data.Read.cpp
     CoreClient.Data.Write.cpp
     CoreClient.Enroll.cpp
-    CoreClient.Users.cpp
     CoreClient.cpp CoreClient.hpp CoreClient_fwd.hpp
 )
 

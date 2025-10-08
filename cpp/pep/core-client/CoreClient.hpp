@@ -584,29 +584,6 @@ public:
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const;
   virtual rxcpp::observable<FakeVoid> shutdown();
 
-  //
-  // User administration API
-  //
-  rxcpp::observable<FakeVoid> createUser(std::string uid);
-
-  rxcpp::observable<FakeVoid> removeUser(std::string uid);
-
-  rxcpp::observable<FakeVoid> addUserIdentifier(std::string existingUid, std::string newUid);
-
-  rxcpp::observable<FakeVoid> removeUserIdentifier(std::string uid);
-
-  rxcpp::observable<FakeVoid> createUserGroup(UserGroup userGroup);
-
-  rxcpp::observable<FakeVoid> modifyUserGroup(UserGroup userGroup);
-
-  rxcpp::observable<FakeVoid> removeUserGroup(std::string name);
-
-  rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group);
-
-  rxcpp::observable<FakeVoid> removeUserFromGroup(std::string uid, std::string group, bool blockTokens);
-
-  rxcpp::observable<UserQueryResponse> userQuery(UserQuery query);
-
   // Private helpers
  private:
   struct AESKey;
