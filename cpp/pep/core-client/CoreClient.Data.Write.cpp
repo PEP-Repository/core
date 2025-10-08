@@ -1,5 +1,9 @@
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxConcatenateVectors.hpp>
+#include <pep/async/RxGetOne.hpp>
+#include <pep/utils/XxHasher.hpp>
+#include <pep/storagefacility/PageHash.hpp>
+#include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 

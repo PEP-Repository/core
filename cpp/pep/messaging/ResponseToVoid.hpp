@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/async/FakeVoid.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxGetOne.hpp>
 #include <boost/core/demangle.hpp>
 
 namespace pep::messaging {

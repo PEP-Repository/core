@@ -2,6 +2,8 @@
 #include <pep/registrationserver/RegistrationServerProxy.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 
+#include <rxcpp/operators/rx-flat_map.hpp>
+
 namespace pep {
 
 rxcpp::observable<std::string> RegistrationServerProxy::registerPepId() const {

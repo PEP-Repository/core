@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <pep/client/Client.hpp>
 #include <pep/async/IoContextThread.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/utils/Configuration.hpp>
 
 #include <boost/asio/io_context.hpp>

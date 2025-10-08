@@ -2,7 +2,7 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/auth/OAuthToken.hpp>
@@ -11,6 +11,10 @@
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 namespace pep {
 

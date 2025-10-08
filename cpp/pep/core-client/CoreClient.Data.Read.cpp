@@ -1,8 +1,14 @@
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxConcatenateVectors.hpp>
+#include <pep/async/RxIndexed.hpp>
+#include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
 #include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-group_by.hpp>
+#include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {

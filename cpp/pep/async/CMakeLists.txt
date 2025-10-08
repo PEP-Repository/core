@@ -8,16 +8,30 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     IoContext_fwd.hpp
     IoContextThread.cpp IoContextThread.hpp
     OnAsio.cpp OnAsio.hpp
+    RxBeforeCompletion.hpp
+    RxBeforeTermination.hpp
     RxButFirst.hpp
     RxCache.hpp
     RxCartesianProduct.hpp
+    RxConcatenateStrings.hpp
+    RxConcatenateVectors.hpp
+    RxDistinct.hpp
     RxDrain.hpp
     RxEnsureProgress.hpp
     RxFinallyExhaust.hpp
+    RxGetOne.hpp
+    RxGroupToVectors.hpp
+    RxIndexed.hpp
+    RxInstead.hpp
     RxLazy.hpp
     RxParallelConcat.hpp
+    RxRequireNonEmpty.hpp RxRequireNonEmpty.cpp
+    RxSharedPtrCast.hpp
     RxTimeout.cpp RxTimeout.hpp
-    RxUtils.cpp RxUtils.hpp
+    RxToSet.hpp
+    RxToUnorderedMap.hpp
+    RxToVector.hpp
+    RxToVectorOfVectors.hpp
     SingleWorker.cpp SingleWorker.hpp
     WaitGroup.cpp WaitGroup.hpp
     WorkerPool.cpp WorkerPool.hpp
