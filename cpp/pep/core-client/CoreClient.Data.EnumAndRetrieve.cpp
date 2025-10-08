@@ -4,9 +4,11 @@
 #include <pep/core-client/CoreClient.hpp>
 
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxGroupToVectors.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/async/RxUtils.hpp>
 #include <pep/utils/Shared.hpp>
 
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>

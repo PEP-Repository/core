@@ -1,8 +1,10 @@
 #include <pep/cli/DownloadProcessor.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxDrain.hpp>
-#include <pep/async/RxUtils.hpp>
-#include <pep/utils/VectorOfVectors.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxToVector.hpp>
+#include <pep/async/RxToVectorOfVectors.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>

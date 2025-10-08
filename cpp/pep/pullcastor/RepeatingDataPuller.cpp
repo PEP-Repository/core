@@ -1,9 +1,15 @@
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/castor/RepeatingDataPoint.hpp>
 #include <pep/castor/RepeatingDataForm.hpp>
 #include <pep/pullcastor/FieldValue.hpp>
 #include <pep/pullcastor/StudyPuller.hpp>
 
 #include <boost/property_tree/ptree.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
 
 namespace pep {
 namespace castor {

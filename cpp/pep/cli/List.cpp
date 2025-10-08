@@ -1,7 +1,8 @@
 #include <pep/application/Application.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/async/RxUtils.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 
@@ -18,6 +19,8 @@
 #include <boost/lexical_cast.hpp>
 
 #include <google/protobuf/util/json_util.h>
+
+#include <rxcpp/operators/rx-flat_map.hpp>
 
 using namespace pep::cli;
 namespace pt = boost::property_tree;

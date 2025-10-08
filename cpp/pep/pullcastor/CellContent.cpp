@@ -1,5 +1,5 @@
+#include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/pullcastor/CellContent.hpp>
-#include <pep/async/RxUtils.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>

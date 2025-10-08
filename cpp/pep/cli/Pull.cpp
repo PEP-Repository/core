@@ -11,6 +11,8 @@
 #include <fstream>
 #include <thread>
 
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/cli/DownloadDirectory.hpp>
 #include <pep/cli/Export.hpp>
 #include <pep/cli/structuredoutput/TableFromDownloadDirectory.hpp>
@@ -19,7 +21,6 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
-#include <pep/async/RxUtils.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>

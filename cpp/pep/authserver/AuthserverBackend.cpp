@@ -1,9 +1,9 @@
 #include <pep/authserver/AuthserverBackend.hpp>
 
+#include <pep/async/RxGetOne.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/async/RxUtils.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 
@@ -13,6 +13,7 @@
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-take.hpp>
 
 namespace pep {
 
