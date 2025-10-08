@@ -121,8 +121,7 @@ private:
 
   Client(const Builder& builder);
 
-  rxcpp::observable<FakeVoid> generateShortPseudonyms(const PolymorphicPseudonym& pp,
-                                                                                   const std::string& identifier);
+  rxcpp::observable<FakeVoid> generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier);
   rxcpp::observable<std::string> getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns);
 };
 

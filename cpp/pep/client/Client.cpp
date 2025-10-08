@@ -151,18 +151,9 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
       .flat_map([this, pp, identifier](DataStorageResult2 result) { return generateShortPseudonyms(pp, identifier); });
 }
 
-rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(
-    const PolymorphicPseudonym& pp, const std::string& identifier) {
-  LOG(LOG_TAG, debug) << "Start generating short pseudonyms";
-
-  RegistrationRequest request(pp);
-  std::string encryptedIdentifier = publicKeyShadowAdministration.encrypt(identifier);
-  request.mEncryptedIdentifier = encryptedIdentifier;
-  request.mEncryptionPublicKeyPem = publicKeyShadowAdministration.toPem();
-
+rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
   LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
-
-  return registrationServerProxy->requestRegistration(std::move(request));
+  return registrationServerProxy->completeShortPseudonyms(std::move(pp), identifier, publicKeyShadowAdministration);
 }
 
 rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthToken) {

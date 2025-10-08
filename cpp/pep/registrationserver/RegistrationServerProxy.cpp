@@ -10,7 +10,11 @@ rxcpp::observable<std::string> RegistrationServerProxy::registerPepId() const {
     .map([](const PEPIdRegistrationResponse& response) {return response.mPepId; });
 }
 
-rxcpp::observable<FakeVoid> RegistrationServerProxy::requestRegistration(RegistrationRequest request) const {
+rxcpp::observable<FakeVoid> RegistrationServerProxy::completeShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier, const pep::AsymmetricKey& publicKeyShadowAdministration) const {
+  RegistrationRequest request(std::move(pp));
+  request.mEncryptedIdentifier = publicKeyShadowAdministration.encrypt(identifier);
+  request.mEncryptionPublicKeyPem = publicKeyShadowAdministration.toPem();
+
   return this->sendRequest<RegistrationResponse>(this->sign(std::move(request)))
     .op(messaging::ResponseToVoid());
 }
