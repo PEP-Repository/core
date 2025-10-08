@@ -1,0 +1,19 @@
+#pragma once
+
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/RxUtils.hpp>
+
+namespace pep::messaging {
+
+struct ResponseToVoid {
+  template <typename TResponse, typename SourceOperator>
+  rxcpp::observable<FakeVoid> operator()(rxcpp::observable<TResponse, SourceOperator> items) const {
+    static_assert(sizeof(TResponse) == sizeof(FakeVoid), "Discarding information from non-empty response message");
+
+    return items
+      .op(RxGetOne(boost::core::demangle(typeid(TResponse).name())))
+      .map([](const TResponse&) {return FakeVoid(); });
+  }
+};
+
+}

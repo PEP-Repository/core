@@ -1,6 +1,6 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/messaging/ResponseToVoid.hpp>
 #include <utility>
 
 namespace pep {
@@ -28,7 +28,7 @@ void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std
 
 rxcpp::observable<FakeVoid> CoreClient::amaRequestMutation(AmaMutationRequest request) {
   return accessManagerProxy->requestAmaMutation(std::move(request))
-      .map([](AmaMutationResponse resp) { return FakeVoid{}; });
+    .op(messaging::ResponseToVoid());
 }
 
 rxcpp::observable<FakeVoid>
