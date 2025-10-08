@@ -10,15 +10,15 @@ target_link_libraries(${PROJECT_NAME}ServerApilib
 verify_headers_standalone(${PROJECT_NAME}ServerApilib)
 
 
-add_library(${PROJECT_NAME}TypedClientlib
-  SigningServerClient.cpp SigningServerClient.hpp
-  TypedClient.cpp TypedClient.hpp
+add_library(${PROJECT_NAME}ServerProxylib
+  SigningServerProxy.cpp SigningServerProxy.hpp
+  ServerProxy.cpp ServerProxy.hpp
 )
-target_link_libraries(${PROJECT_NAME}TypedClientlib
+target_link_libraries(${PROJECT_NAME}ServerProxylib
   ${PROJECT_NAME}Messaginglib
   ${PROJECT_NAME}ServerApilib
 )
-verify_headers_standalone(${PROJECT_NAME}TypedClientlib)
+verify_headers_standalone(${PROJECT_NAME}ServerProxylib)
 
 
 if (WITH_SERVERS)

@@ -41,10 +41,10 @@ private:
   bool mPrintDrift;
 
 protected:
-  virtual std::shared_ptr<const pep::SigningServerClient> getSigningServerClient(const pep::Client& client) const = 0;
+  virtual std::shared_ptr<const pep::SigningServerProxy> getSigningServerProxy(const pep::Client& client) const = 0;
 
   rxcpp::observable<pep::SignedPingResponse> send(const pep::Client& client) const override {
-    return this->getSigningServerClient(client)->requestPing();
+    return this->getSigningServerProxy(client)->requestPing();
   }
 
   void handleResponse(const pep::SignedPingResponse& response) const override {
@@ -76,23 +76,23 @@ protected:
   }
 };
 
-template <typename TClient, typename TSigningServerClient>
+template <typename TClient, typename TSigningServerProxy>
 class TypedSigningServerPinger : public SigningServerPinger {
   static_assert(std::is_base_of_v<TClient, pep::Client>, "TClient must be pep::Client or one of its public ancestors");
 
 public:
-  using GetSigningServerClientMethod = std::shared_ptr<const TSigningServerClient>(TClient::*)(bool) const;
+  using GetSigningServerProxyMethod = std::shared_ptr<const TSigningServerProxy>(TClient::*)(bool) const;
 
 private:
-  GetSigningServerClientMethod mGetSigningServer;
+  GetSigningServerProxyMethod mGetSigningServer;
 
 protected:
-  std::shared_ptr<const pep::SigningServerClient> getSigningServerClient(const pep::Client& client) const override {
+  std::shared_ptr<const pep::SigningServerProxy> getSigningServerProxy(const pep::Client& client) const override {
     return (client.*mGetSigningServer)(true);
   }
 
 public:
-  TypedSigningServerPinger(GetSigningServerClientMethod getSigningServer, bool printCertificateChain, bool printDrift)
+  TypedSigningServerPinger(GetSigningServerProxyMethod getSigningServer, bool printCertificateChain, bool printDrift)
     : SigningServerPinger(printCertificateChain, printDrift), mGetSigningServer(getSigningServer) {
   }
 };
@@ -118,10 +118,10 @@ public:
 
 using ServerPingerFactory = std::function<std::shared_ptr<ServerPinger>(bool printCertificateChain, bool printDrift)>;
 
-template <typename TClient, typename TSigningServerClient>
-ServerPingerFactory MakeSigningServerPingerFactory(std::shared_ptr<const TSigningServerClient>(TClient::*getSigningServerClient)(bool) const) {
-  return [getSigningServerClient](bool printCertificateChain, bool printDrift) {
-    return std::make_shared<TypedSigningServerPinger<TClient, TSigningServerClient>>(getSigningServerClient, printCertificateChain, printDrift);
+template <typename TClient, typename TSigningServerProxy>
+ServerPingerFactory MakeSigningServerPingerFactory(std::shared_ptr<const TSigningServerProxy>(TClient::*getSigningServerProxy)(bool) const) {
+  return [getSigningServerProxy](bool printCertificateChain, bool printDrift) {
+    return std::make_shared<TypedSigningServerPinger<TClient, TSigningServerProxy>>(getSigningServerProxy, printCertificateChain, printDrift);
     };
 }
 

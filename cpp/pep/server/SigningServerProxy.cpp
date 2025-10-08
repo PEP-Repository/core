@@ -1,10 +1,10 @@
 #include <pep/async/RxUtils.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
-#include <pep/server/SigningServerClient.hpp>
+#include <pep/server/SigningServerProxy.hpp>
 
 namespace pep {
 
-rxcpp::observable<SignedPingResponse> SigningServerClient::requestPing() const {
+rxcpp::observable<SignedPingResponse> SigningServerProxy::requestPing() const {
   PingRequest request;
   return this->sendRequest<SignedPingResponse>(request)
     .op(RxGetOne("SignedPingResponse"))

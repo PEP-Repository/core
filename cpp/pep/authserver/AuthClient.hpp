@@ -1,13 +1,13 @@
 #pragma once
 
 #include <pep/authserver/AuthserverMessages.hpp>
-#include <pep/server/SigningServerClient.hpp>
+#include <pep/server/SigningServerProxy.hpp>
 
 namespace pep {
 
-class AuthClient : public SigningServerClient {
+class AuthClient : public SigningServerProxy {
 public:
-  using SigningServerClient::SigningServerClient;
+  using SigningServerProxy::SigningServerProxy;
 
   rxcpp::observable<TokenResponse> requestToken(TokenRequest request) const;
 };

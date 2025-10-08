@@ -17,7 +17,7 @@ add_library(${PROJECT_NAME}TranscryptorClientlib
 )
 target_link_libraries(${PROJECT_NAME}TranscryptorClientlib
   ${PROJECT_NAME}TranscryptorApilib
-  ${PROJECT_NAME}TypedClientlib
+  ${PROJECT_NAME}ServerProxylib
 )
 verify_headers_standalone(${PROJECT_NAME}TranscryptorClientlib)
 

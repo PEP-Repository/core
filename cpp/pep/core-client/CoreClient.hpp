@@ -543,7 +543,7 @@ protected:
   using MessageSigner::sign;
 
   template <typename TClient>
-  std::shared_ptr<TClient> tryConnectTypedClient(const EndPoint& endPoint) const;
+  std::shared_ptr<TClient> tryConnectServerProxy(const EndPoint& endPoint) const;
 
   struct EnrollmentContext {
     std::shared_ptr<const X509Identity> identity;
@@ -555,9 +555,9 @@ protected:
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
 
   template <typename T>
-  static std::shared_ptr<const T> GetConstTypedClient(std::shared_ptr<T> client, const std::string& serverName, bool require) {
+  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> client, const std::string& serverName, bool require) {
     if (require && client == nullptr) {
-      // TODO: refactor so that CoreClient and derived class instances cannot exist without instantiating their individual TypedClient fields
+      // TODO: refactor so that CoreClient and derived class instances cannot exist without instantiating their individual ServerProxy fields
       throw std::runtime_error("Not connected to " + serverName);
     }
     return client;
@@ -730,7 +730,7 @@ public:
 };
 
 template <typename TClient>
-std::shared_ptr<TClient> CoreClient::tryConnectTypedClient(const EndPoint& endPoint) const {
+std::shared_ptr<TClient> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {
   auto untyped = messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
   if (untyped == nullptr) {
     return nullptr;

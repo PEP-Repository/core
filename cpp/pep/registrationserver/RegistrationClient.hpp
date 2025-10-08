@@ -1,13 +1,13 @@
 #pragma once
 
 #include <pep/registrationserver/RegistrationServerMessages.hpp>
-#include <pep/server/SigningServerClient.hpp>
+#include <pep/server/SigningServerProxy.hpp>
 
 namespace pep {
 
-class RegistrationClient : public SigningServerClient {
+class RegistrationClient : public SigningServerProxy {
 public:
-  using SigningServerClient::SigningServerClient;
+  using SigningServerProxy::SigningServerProxy;
 
   rxcpp::observable<PEPIdRegistrationResponse> requestIdRegistration() const;
   rxcpp::observable<RegistrationResponse> requestRegistration(RegistrationRequest request) const;

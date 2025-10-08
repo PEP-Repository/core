@@ -1,7 +1,7 @@
 #include <pep/async/RxUtils.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
-#include <pep/server/TypedClient.hpp>
+#include <pep/server/ServerProxy.hpp>
 
 namespace pep {
 
@@ -16,7 +16,7 @@ namespace {
 
 }
 
-void TypedClient::ValidateResponse(MessageMagic magic, const std::string& response, const std::type_info& responseInfo, const std::type_info& requestInfo) {
+void ServerProxy::ValidateResponse(MessageMagic magic, const std::string& response, const std::type_info& responseInfo, const std::type_info& requestInfo) {
   if (response.size() < sizeof(MessageMagic)) {
     ThrowInvalidResponse("Unexpected short message", requestInfo, responseInfo);
   }
@@ -25,35 +25,35 @@ void TypedClient::ValidateResponse(MessageMagic magic, const std::string& respon
   }
 }
 
-TypedClient::TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept
+ServerProxy::ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept
   : mUntyped(std::move(untyped)), mMessageSigner(messageSigner) {
   assert(mUntyped != nullptr);
 }
 
-rxcpp::observable<ConnectionStatus> TypedClient::connectionStatus() const {
+rxcpp::observable<ConnectionStatus> ServerProxy::connectionStatus() const {
   return mUntyped->connectionStatus();
 }
 
-rxcpp::observable<FakeVoid> TypedClient::shutdown() {
+rxcpp::observable<FakeVoid> ServerProxy::shutdown() {
   return mUntyped->shutdown();
 }
 
-rxcpp::observable<VersionResponse> TypedClient::requestVersion() const {
+rxcpp::observable<VersionResponse> ServerProxy::requestVersion() const {
   return this->sendRequest<VersionResponse>(VersionRequest())
     .op(RxGetOne("VersionResponse"));
 }
 
-rxcpp::observable<MetricsResponse> TypedClient::requestMetrics() const {
+rxcpp::observable<MetricsResponse> ServerProxy::requestMetrics() const {
   return this->sendRequest<MetricsResponse>(this->sign(MetricsRequest()))
     .op(RxGetOne("MetricsResponse"));
 }
 
-rxcpp::observable<ChecksumChainNamesResponse> TypedClient::requestChecksumChainNames() const {
+rxcpp::observable<ChecksumChainNamesResponse> ServerProxy::requestChecksumChainNames() const {
   return this->sendRequest<ChecksumChainNamesResponse>(this->sign(ChecksumChainNamesRequest()))
     .op(RxGetOne("ChecksumChainNamesResponse"));
 }
 
-rxcpp::observable<ChecksumChainResponse> TypedClient::requestChecksumChain(ChecksumChainRequest request) const {
+rxcpp::observable<ChecksumChainResponse> ServerProxy::requestChecksumChain(ChecksumChainRequest request) const {
   return this->sendRequest<ChecksumChainResponse>(this->sign(std::move(request)))
     .op(RxGetOne("ChecksumChainResponse"));
 }

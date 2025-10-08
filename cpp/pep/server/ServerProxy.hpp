@@ -28,7 +28,7 @@ MessageTail<T> MakeEmptyMessageTail() {
 }
 
 
-class TypedClient {
+class ServerProxy {
 private:
   std::shared_ptr<messaging::ServerConnection> mUntyped;
   const MessageSigner& mMessageSigner;
@@ -74,9 +74,9 @@ protected:
   }
 
 public:
-  TypedClient(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept;
-  TypedClient(const TypedClient&) = delete;
-  TypedClient& operator=(const TypedClient&) = delete;
+  ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept;
+  ServerProxy(const ServerProxy&) = delete;
+  ServerProxy& operator=(const ServerProxy&) = delete;
 
   rxcpp::observable<ConnectionStatus> connectionStatus() const;
   rxcpp::observable<FakeVoid> shutdown();

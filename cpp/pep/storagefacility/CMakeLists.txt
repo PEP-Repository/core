@@ -17,7 +17,7 @@ add_library(${PROJECT_NAME}StorageClientlib
 )
 target_link_libraries(${PROJECT_NAME}StorageClientlib
   ${PROJECT_NAME}StorageFacilityApilib
-  ${PROJECT_NAME}TypedClientlib
+  ${PROJECT_NAME}ServerProxylib
 )
 verify_headers_standalone(${PROJECT_NAME}StorageClientlib)
 

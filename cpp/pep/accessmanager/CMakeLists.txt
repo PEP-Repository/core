@@ -19,7 +19,7 @@ add_library(${PROJECT_NAME}AccessManagerClientlib
 )
 target_link_libraries(${PROJECT_NAME}AccessManagerClientlib
   ${PROJECT_NAME}AccessManagerApilib
-  ${PROJECT_NAME}TypedClientlib
+  ${PROJECT_NAME}ServerProxylib
 )
 verify_headers_standalone(${PROJECT_NAME}AccessManagerClientlib)
 

@@ -2,13 +2,13 @@
 
 #include <pep/keyserver/KeyServerMessages.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
-#include <pep/server/TypedClient.hpp>
+#include <pep/server/ServerProxy.hpp>
 
 namespace pep {
 
-class KeyClient : public TypedClient {
+class KeyClient : public ServerProxy {
 public:
-  using TypedClient::TypedClient;
+  using ServerProxy::ServerProxy;
 
   rxcpp::observable<PingResponse> requestPing() const;
   rxcpp::observable<EnrollmentResponse> requestUserEnrollment(EnrollmentRequest request) const;

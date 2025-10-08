@@ -13,7 +13,7 @@ add_library(${PROJECT_NAME}RegistrationClientlib
 )
 target_link_libraries(${PROJECT_NAME}RegistrationClientlib
   ${PROJECT_NAME}RegistrationServerApilib
-  ${PROJECT_NAME}TypedClientlib
+  ${PROJECT_NAME}ServerProxylib
 )
 verify_headers_standalone(${PROJECT_NAME}RegistrationClientlib)
 

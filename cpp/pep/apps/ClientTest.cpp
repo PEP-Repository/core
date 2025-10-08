@@ -130,7 +130,7 @@ class ClientTestApplication : public Application {
 
   class Mode5Command : public ModeCommand<5> {
   private:
-    rxcpp::observable<std::tuple<VersionResponse, std::string>> tryGetServerVersion(std::shared_ptr<const TypedClient> client, std::string name);
+    rxcpp::observable<std::tuple<VersionResponse, std::string>> tryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name);
   protected:
     rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) override;
   public:
@@ -238,13 +238,13 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     .op(RxInstead(true));
 }
 
-rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::tryGetServerVersion(std::shared_ptr<const TypedClient> client, std::string name) { // TODO: make static
+rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::tryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name) { // TODO: make static
   rxcpp::observable<VersionResponse> version;
-  if (client == nullptr) {
+  if (proxy == nullptr) {
     version = rxcpp::observable<>::empty<VersionResponse>();
   }
   else {
-    version = client->requestVersion();
+    version = proxy->requestVersion();
   }
   return version.zip(rxcpp::rxs::just(std::move(name)));
 }

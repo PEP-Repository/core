@@ -1,13 +1,13 @@
 #pragma once
 
 #include <pep/messaging/HousekeepingMessages.hpp>
-#include <pep/server/TypedClient.hpp>
+#include <pep/server/ServerProxy.hpp>
 
 namespace pep {
 
-class SigningServerClient : public TypedClient {
+class SigningServerProxy : public ServerProxy {
 public:
-  using TypedClient::TypedClient;
+  using ServerProxy::ServerProxy;
 
   rxcpp::observable<SignedPingResponse> requestPing() const;
 };

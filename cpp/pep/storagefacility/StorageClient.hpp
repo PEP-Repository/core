@@ -1,14 +1,14 @@
 #pragma once
 
-#include <pep/server/SigningServerClient.hpp>
+#include <pep/server/SigningServerProxy.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 
 namespace pep {
 
-class StorageClient : public SigningServerClient {
+class StorageClient : public SigningServerProxy {
 public:
-  using SigningServerClient::SigningServerClient;
+  using SigningServerProxy::SigningServerProxy;
 
   rxcpp::observable<DataEnumerationResponse2> requestMetadataRead(MetadataReadRequest2 request) const;
   rxcpp::observable<DataPayloadPage> requestDataRead(DataReadRequest2 request) const;

@@ -73,9 +73,9 @@ CoreClient::CoreClient(const Builder& builder) :
   storageFacilityEndPoint(builder.getStorageFacilityEndPoint()),
   transcryptorEndPoint(builder.getTranscryptorEndPoint()) {
 
-  clientAccessManager = tryConnectTypedClient<AccessManagerClient>(accessManagerEndPoint);
-  clientStorageFacility = tryConnectTypedClient<StorageClient>(storageFacilityEndPoint);
-  clientTranscryptor = tryConnectTypedClient<TranscryptorClient>(transcryptorEndPoint);
+  clientAccessManager = tryConnectServerProxy<AccessManagerClient>(accessManagerEndPoint);
+  clientStorageFacility = tryConnectServerProxy<StorageClient>(storageFacilityEndPoint);
+  clientTranscryptor = tryConnectServerProxy<TranscryptorClient>(transcryptorEndPoint);
 
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
@@ -306,15 +306,15 @@ rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
 }
 
 std::shared_ptr<const StorageClient> CoreClient::getStorageClient(bool require) const {
-  return GetConstTypedClient(clientStorageFacility, "Storage Facility", require);
+  return GetConstServerProxy(clientStorageFacility, "Storage Facility", require);
 }
 
 std::shared_ptr<const TranscryptorClient> CoreClient::getTranscryptorClient(bool require) const {
-  return GetConstTypedClient(clientTranscryptor, "Transcryptor", require);
+  return GetConstServerProxy(clientTranscryptor, "Transcryptor", require);
 }
 
 std::shared_ptr<const AccessManagerClient> CoreClient::getAccessManagerClient(bool require) const {
-  return GetConstTypedClient(clientAccessManager, "Access Manager", require);
+  return GetConstServerProxy(clientAccessManager, "Access Manager", require);
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {

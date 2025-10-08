@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/server/SigningServerClient.hpp>
+#include <pep/server/SigningServerProxy.hpp>
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
@@ -10,9 +10,9 @@
 
 namespace pep {
 
-class AccessManagerClient : public SigningServerClient {
+class AccessManagerClient : public SigningServerProxy {
 public:
-  using SigningServerClient::SigningServerClient;
+  using SigningServerProxy::SigningServerProxy;
 
   rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const;
   rxcpp::observable<SignedTicket2> requestTicket(SignedTicketRequest2 request) const; // TODO: don't require pre-signed

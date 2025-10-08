@@ -196,15 +196,15 @@ rxcpp::observable<std::string> Client::requestToken(std::string subject,
 }
 
 std::shared_ptr<const KeyClient> Client::getKeyClient(bool require) const {
-  return GetConstTypedClient(clientKeyServer, "Key Server", require);
+  return GetConstServerProxy(clientKeyServer, "Key Server", require);
 }
 
 std::shared_ptr<const AuthClient> Client::getAuthClient(bool require) const {
-  return GetConstTypedClient(clientAuthserver, "Auth Server", require);
+  return GetConstServerProxy(clientAuthserver, "Auth Server", require);
 }
 
 std::shared_ptr<const RegistrationClient> Client::getRegistrationClient(bool require) const {
-  return GetConstTypedClient(clientRegistrationServer, "Registration Server", require);
+  return GetConstServerProxy(clientRegistrationServer, "Registration Server", require);
 }
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
@@ -221,9 +221,9 @@ Client::Client(const Builder& builder)
     keyServerEndPoint(builder.getKeyServerEndPoint()),
     authserverEndPoint(builder.getAuthserverEndPoint()),
     registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
-  clientKeyServer = this->tryConnectTypedClient<KeyClient>(keyServerEndPoint);
-  clientAuthserver = this->tryConnectTypedClient<AuthClient>(authserverEndPoint);
-  clientRegistrationServer = this->tryConnectTypedClient<RegistrationClient>(registrationServerEndPoint);
+  clientKeyServer = this->tryConnectServerProxy<KeyClient>(keyServerEndPoint);
+  clientAuthserver = this->tryConnectServerProxy<AuthClient>(authserverEndPoint);
+  clientRegistrationServer = this->tryConnectServerProxy<RegistrationClient>(registrationServerEndPoint);
 }
 
 
