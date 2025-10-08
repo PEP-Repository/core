@@ -14,9 +14,9 @@ add_library(${PROJECT_NAME}CoreClientlib STATIC
 )
 
 target_link_libraries(${PROJECT_NAME}CoreClientlib
-  ${PROJECT_NAME}AccessManagerProxylib
-  ${PROJECT_NAME}StorageFacilityProxylib
-  ${PROJECT_NAME}TranscryptorProxylib
+  ${PROJECT_NAME}AccessManagerApilib
+  ${PROJECT_NAME}StorageFacilityApilib
+  ${PROJECT_NAME}TranscryptorApilib
 )
 
 verify_headers_standalone(${PROJECT_NAME}CoreClientlib)

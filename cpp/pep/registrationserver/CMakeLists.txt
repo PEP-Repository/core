@@ -1,21 +1,13 @@
 add_library(${PROJECT_NAME}RegistrationServerApilib
-    RegistrationServerMessages.hpp
-    RegistrationServerSerializers.cpp RegistrationServerSerializers.hpp
+  RegistrationServerMessages.hpp
+  RegistrationServerProxy.cpp RegistrationServerProxy.hpp
+  RegistrationServerSerializers.cpp RegistrationServerSerializers.hpp
 )
 target_link_libraries(${PROJECT_NAME}RegistrationServerApilib
   ${PROJECT_NAME}RskPeplib
-)
-verify_headers_standalone(${PROJECT_NAME}RegistrationServerApilib)
-
-
-add_library(${PROJECT_NAME}RegistrationServerProxylib
-  RegistrationServerProxy.cpp RegistrationServerProxy.hpp
-)
-target_link_libraries(${PROJECT_NAME}RegistrationServerProxylib
-  ${PROJECT_NAME}RegistrationServerApilib
   ${PROJECT_NAME}ServerApilib
 )
-verify_headers_standalone(${PROJECT_NAME}RegistrationServerProxylib)
+verify_headers_standalone(${PROJECT_NAME}RegistrationServerApilib)
 
 
 if (WITH_SERVERS)

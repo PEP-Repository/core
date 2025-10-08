@@ -3,23 +3,15 @@ add_library(${PROJECT_NAME}StorageFacilityApilib
   DataPayloadPage.cpp DataPayloadPage.hpp
   PageHash.cpp PageHash.hpp
   StorageFacilityMessages.hpp
+  StorageFacilityProxy.cpp StorageFacilityProxy.hpp
   StorageFacilitySerializers.cpp StorageFacilitySerializers.hpp
 )
 target_link_libraries(${PROJECT_NAME}StorageFacilityApilib
   ${PROJECT_NAME}Morphinglib
+  ${PROJECT_NAME}ServerApilib
   ${PROJECT_NAME}Ticketinglib
 )
 verify_headers_standalone(${PROJECT_NAME}StorageFacilityApilib)
-
-
-add_library(${PROJECT_NAME}StorageFacilityProxylib
-  StorageFacilityProxy.cpp StorageFacilityProxy.hpp
-)
-target_link_libraries(${PROJECT_NAME}StorageFacilityProxylib
-  ${PROJECT_NAME}StorageFacilityApilib
-  ${PROJECT_NAME}ServerApilib
-)
-verify_headers_standalone(${PROJECT_NAME}StorageFacilityProxylib)
 
 
 if (WITH_SERVERS)

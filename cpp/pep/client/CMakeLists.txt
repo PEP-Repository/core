@@ -5,11 +5,11 @@ add_library(${PROJECT_NAME}Clientlib STATIC
 )
 
 target_link_libraries(${PROJECT_NAME}Clientlib
-  ${PROJECT_NAME}AuthServerProxylib
+  ${PROJECT_NAME}AuthserverApilib
   ${PROJECT_NAME}CoreClientlib
   ${PROJECT_NAME}Contentlib
-  ${PROJECT_NAME}KeyServerProxylib
-  ${PROJECT_NAME}RegistrationServerProxylib
+  ${PROJECT_NAME}KeyServerApilib
+  ${PROJECT_NAME}RegistrationServerApilib
 )
 
 verify_headers_standalone(${PROJECT_NAME}Clientlib)

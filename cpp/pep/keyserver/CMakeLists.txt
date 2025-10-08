@@ -2,22 +2,13 @@ add_library(${PROJECT_NAME}KeyServerApilib
   tokenblocking/BlocklistEntry.hpp
   tokenblocking/TokenIdentifier.hpp
   KeyServerMessages.hpp
+  KeyServerProxy.cpp KeyServerProxy.hpp
   KeyServerSerializers.cpp KeyServerSerializers.hpp
 )
 target_link_libraries(${PROJECT_NAME}KeyServerApilib
-  ${PROJECT_NAME}Serializationlib
-)
-verify_headers_standalone(${PROJECT_NAME}KeyServerApilib)
-
-
-add_library(${PROJECT_NAME}KeyServerProxylib
-  KeyServerProxy.cpp KeyServerProxy.hpp
-)
-target_link_libraries(${PROJECT_NAME}KeyServerProxylib
-  ${PROJECT_NAME}KeyServerApilib
   ${PROJECT_NAME}ServerApilib
 )
-verify_headers_standalone(${PROJECT_NAME}KeyServerProxylib)
+verify_headers_standalone(${PROJECT_NAME}KeyServerApilib)
 
 
 if (WITH_SERVERS)

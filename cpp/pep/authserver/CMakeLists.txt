@@ -1,21 +1,12 @@
 add_library(${PROJECT_NAME}AuthserverApilib
   AuthserverMessages.hpp
+  AuthServerProxy.cpp AuthServerProxy.hpp
   AuthserverSerializers.cpp AuthserverSerializers.hpp
 )
 target_link_libraries(${PROJECT_NAME}AuthserverApilib
-  ${PROJECT_NAME}Cryptolib
-)
-verify_headers_standalone(${PROJECT_NAME}AuthserverApilib)
-
-
-add_library(${PROJECT_NAME}AuthServerProxylib
-  AuthServerProxy.cpp AuthServerProxy.hpp
-)
-target_link_libraries(${PROJECT_NAME}AuthServerProxylib
-  ${PROJECT_NAME}AuthserverApilib
   ${PROJECT_NAME}ServerApilib
 )
-verify_headers_standalone(${PROJECT_NAME}AuthServerProxylib)
+verify_headers_standalone(${PROJECT_NAME}AuthserverApilib)
 
 
 if (WITH_SERVERS)
@@ -28,7 +19,7 @@ if (WITH_SERVERS)
     ${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}Httpserverlib
     ${PROJECT_NAME}AuthserverApilib
-    ${PROJECT_NAME}AccessManagerProxylib
+    ${PROJECT_NAME}AccessManagerApilib
     ${PROJECT_NAME}Templatinglib
   )
   verify_headers_standalone(${PROJECT_NAME}Authserverlib)
