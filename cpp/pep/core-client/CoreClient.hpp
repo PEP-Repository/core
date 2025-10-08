@@ -588,7 +588,6 @@ public:
  private:
   struct AESKey;
 
-  rxcpp::observable<FakeVoid> amaRequestMutation(AmaMutationRequest request);
   // Unblinds and decrypt keys for entries.  The provided ticket should be
   // the same as used to retrieve the entries.
   rxcpp::observable<std::vector<AESKey>>
