@@ -35,7 +35,6 @@
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
-#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 
@@ -268,39 +267,6 @@ void CoreClient::Builder::initialize(
 }
 
 
-rxcpp::observable<ColumnAccess> CoreClient::getAccessibleColumns(bool includeImplicitlyGranted,
-                                                             const std::vector<std::string>& requireModes) {
-  return accessManagerProxy->requestColumnAccess(ColumnAccessRequest{includeImplicitlyGranted,
-                                                                                         requireModes});
-}
-
-rxcpp::observable<std::string> CoreClient::getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns) {
-  return columns.op(RxToSet()) // Create a set of columns we still need to check
-    .zip(this->getAccessibleColumns(true)) // Combine it with "the stuff we have access to"
-    .flat_map([mode](const auto& context) {
-    // Extract named variables from the context tuple
-    std::shared_ptr<std::set<std::string>> remaining = std::get<0>(context);
-    const ColumnAccess& access = std::get<1>(context);
-    // For every column group...
-    for (const auto& cg : access.columnGroups) {
-      const auto& cgAccess = cg.second;
-      if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
-        for (auto index : cgAccess.columns.mIndices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
-          remaining->erase(access.columns[index]);
-        }
-      }
-    }
-
-    // Columns that haven't been checked are inaccessible: return them
-    return rxcpp::observable<>::iterate(*remaining);
-      });
-}
-
-rxcpp::observable<ParticipantGroupAccess> CoreClient::getAccessibleParticipantGroups(bool includeImplicitlyGranted) {
-  return accessManagerProxy->requestParticipantGroupAccess(ParticipantGroupAccessRequest{
-      includeImplicitlyGranted});
-}
-
 rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
@@ -440,7 +406,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
       columns->emplace(definition->getColumn().getFullName());
     }
 
-    return this->getAccessibleParticipantGroups(true)
+    return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
       pep::enumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
@@ -484,7 +450,7 @@ rxcpp::observable<PolymorphicPseudonym> CoreClient::findPPforShortPseudonym(std:
 
 rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 {
-  return getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
+  return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
     requestTicket2Opts tOpts;
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;

@@ -49,12 +49,14 @@ rxcpp::observable<VerifiersResponse> AccessManagerProxy::requestVerifiers() cons
     .op(RxGetOne("VerifiersResponse"));
 }
 
-rxcpp::observable<ColumnAccessResponse> AccessManagerProxy::requestColumnAccess(ColumnAccessRequest request) const {
+rxcpp::observable<ColumnAccess> AccessManagerProxy::getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes) const {
+  ColumnAccessRequest request{ includeImplicitlyGranted, requireModes };
   return this->sendRequest<ColumnAccessResponse>(this->sign(std::move(request)))
     .op(RxGetOne("ColumnAccessResponse"));
 }
 
-rxcpp::observable<ParticipantGroupAccessResponse> AccessManagerProxy::requestParticipantGroupAccess(ParticipantGroupAccessRequest request) const {
+rxcpp::observable<ParticipantGroupAccess> AccessManagerProxy::getAccessibleParticipantGroups(bool includeImplicitlyGranted) const {
+  ParticipantGroupAccessRequest request{ includeImplicitlyGranted };
   return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request)))
     .op(RxGetOne("ParticipantGroupAccessResponse"));
 }

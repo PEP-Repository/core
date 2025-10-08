@@ -24,13 +24,14 @@ public:
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
   rxcpp::observable<GlobalConfiguration> requestGlobalConfiguration() const;
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
-  rxcpp::observable<ColumnAccessResponse> requestColumnAccess(ColumnAccessRequest request) const;
-  rxcpp::observable<ParticipantGroupAccessResponse> requestParticipantGroupAccess(ParticipantGroupAccessRequest request) const;
   rxcpp::observable<ColumnNameMappingResponse> requestColumnNameMapping(ColumnNameMappingRequest request) const;
   rxcpp::observable<MigrateUserDbToAccessManagerResponse> requestMigrateUserDbToAccessManager(MigrateUserDbToAccessManagerRequest request, messaging::MessageBatches parts) const;
   rxcpp::observable<FindUserResponse> requestFindUser(FindUserRequest request) const;
   rxcpp::observable<StructureMetadataEntry> requestStructureMetadata(StructureMetadataRequest request) const;
   rxcpp::observable<SetStructureMetadataResponse> requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries = MakeEmptyMessageTail<StructureMetadataEntry>()) const;
+
+  rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {}) const;
+  rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted) const;
 
   rxcpp::observable<FakeVoid> amaCreateColumn(std::string name) const;
   rxcpp::observable<FakeVoid> amaRemoveColumn(std::string name) const;

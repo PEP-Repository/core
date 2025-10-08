@@ -132,6 +132,7 @@ private:
 
   rxcpp::observable<std::shared_ptr<RegistrationResponse>> generateShortPseudonyms(const PolymorphicPseudonym& pp,
                                                                                    const std::string& identifier);
+  rxcpp::observable<std::string> getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns);
 };
 
 }

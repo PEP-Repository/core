@@ -565,10 +565,6 @@ protected:
 public:
   virtual ~CoreClient() noexcept = default;
 
-  rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {});
-  rxcpp::observable<std::string> getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns);
-  rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted);
-
   rxcpp::observable<int> getRegistrationExpiryObservable();
   inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath; }
 

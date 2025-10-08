@@ -13,6 +13,7 @@
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 
@@ -20,6 +21,28 @@ namespace {
 
 const std::string LOG_TAG("Client");
 
+}
+
+rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns) {
+  return columns.op(RxToSet()) // Create a set of columns we still need to check
+    .zip(this->getAccessManagerProxy()->getAccessibleColumns(true)) // Combine it with "the stuff we have access to"
+    .flat_map([mode](const auto& context) {
+    // Extract named variables from the context tuple
+    std::shared_ptr<std::set<std::string>> remaining = std::get<0>(context);
+    const ColumnAccess& access = std::get<1>(context);
+    // For every column group...
+    for (const auto& cg : access.columnGroups) {
+      const auto& cgAccess = cg.second;
+      if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
+        for (auto index : cgAccess.columns.mIndices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
+          remaining->erase(access.columns[index]);
+        }
+      }
+    }
+
+    // Columns that haven't been checked are inaccessible: return them
+    return rxcpp::observable<>::iterate(*remaining);
+      });
 }
 
 rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPersonalia& personalia,
