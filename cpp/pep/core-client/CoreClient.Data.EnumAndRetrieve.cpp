@@ -116,7 +116,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
     [this, ctx](rxcpp::subscriber<EnumerateAndRetrieveResult> subscriber) {
       ctx->subscriber = subscriber;
       this->requestTicket2(*ctx->requestTicketOpts) // Get (indexed) ticket
-          // .op(RxGetOne("ticket")) // Doesn't compile: see https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/1690#note_29119
+        .op(RxGetOne("ticket"))
         .flat_map([this, ctx](const IndexedTicket2& indexedTicket) {
           ctx->signedTicket = indexedTicket.getTicket();
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());
