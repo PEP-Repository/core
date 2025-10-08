@@ -219,7 +219,7 @@ protected:
         value = std::move(ss).str();
       }
 
-      return client->getAccessManagerProxy()->setStructureMetadata(subjectType, MakeSingleMessageTail(
+      return client->getAccessManagerProxy()->setStructureMetadata(subjectType, pep::messaging::MakeSingletonTail(
           StructureMetadataEntry{
             .subjectKey = {std::move(subject), std::move(key)},
             .value = std::move(*value),
