@@ -710,7 +710,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     return i;
   }).flat_map([ctx](std::vector<size_t> is) {
     // Send request to transcrypor
-    auto tail = CreateObservable<TailSegment<TranscryptorRequestEntries>>([ctx](rxcpp::subscriber<TailSegment<TranscryptorRequestEntries>> subscriber) {
+    auto tail = CreateObservable<messaging::TailSegment<TranscryptorRequestEntries>>([ctx](rxcpp::subscriber<messaging::TailSegment<TranscryptorRequestEntries>> subscriber) {
       size_t ibatch = 0U;
       for (size_t i = 0; i < ctx->tsReqEntries.mEntries.size(); i += TS_REQUEST_BATCH_SIZE) {
         ++ibatch;
@@ -721,7 +721,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
         batch.mEntries.reserve(count);
         std::copy(ctx->tsReqEntries.mEntries.cbegin() + first, ctx->tsReqEntries.mEntries.cbegin() + end, std::back_inserter(batch.mEntries));
         LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request entry batch " << ibatch << " containing entries " << first << " through " << end;
-        subscriber.on_next(MakeTailSegment(batch));
+        subscriber.on_next(messaging::MakeTailSegment(batch));
       }
       subscriber.on_completed();
       LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sent " << ctx->tsReqEntries.mEntries.size() << " transcryptor request entries in " << ibatch << " batch(es)";
@@ -844,7 +844,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
       entry.mPolymorphic = list[i];
           FillTranscryptorRequestEntry(entry, *self->mPseudonymTranslator);
     }
-    return self->mTranscryptorProxy.requestTranscryption(std::move(tsRequest), MakeSingleMessageTail(tsRequestEntries))
+    return self->mTranscryptorProxy.requestTranscryption(std::move(tsRequest), messaging::MakeSingletonTail(tsRequestEntries))
       .map([server = SharedFrom(*self), participantGroup = participantGroup, performRemove](TranscryptorResponse resp) -> FakeVoid {
               LocalPseudonym localPseudonym = resp.mEntries[0].mAccessManager.decrypt(server->mPseudonymKey);
              if (performRemove)

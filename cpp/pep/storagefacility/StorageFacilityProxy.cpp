@@ -14,7 +14,7 @@ rxcpp::observable<DataPayloadPage> StorageFacilityProxy::requestDataRead(DataRea
   return this->sendRequest<DataPayloadPage>(this->sign(std::move(request)));
 }
 
-rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(DataStoreRequest2 request, MessageTail<DataPayloadPage> pages) const {
+rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(DataStoreRequest2 request, messaging::Tail<DataPayloadPage> pages) const {
   struct Context {
     std::optional<uint64_t> file;
     std::optional<uint64_t> page;
@@ -24,7 +24,7 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
 
   // Calculate hash of (serialized) pages as they are processed
   messaging::MessageBatches batches = pages
-    .map([ctx](TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
+    .map([ctx](messaging::TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
     return segment
       .map([ctx](DataPayloadPage page) {
       if (ctx->file.has_value() && *ctx->file > page.mIndex) { // Processing a lower file index than we did before

@@ -78,7 +78,7 @@ rxcpp::observable<FindUserResponse> AccessManagerProxy::findUser(std::string pri
     .op(RxGetOne("FindUserResponse"));
 }
 
-rxcpp::observable<FakeVoid> AccessManagerProxy::requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries) const {
+rxcpp::observable<FakeVoid> AccessManagerProxy::requestSetStructureMetadata(SetStructureMetadataRequest request, messaging::Tail<StructureMetadataEntry> entries) const {
   return this->sendRequest<SetStructureMetadataResponse>(this->sign(std::move(request)), std::move(entries))
     .op(messaging::ResponseToVoid());
 }
@@ -134,7 +134,7 @@ rxcpp::observable<StructureMetadataEntry> AccessManagerProxy::getStructureMetada
   return this->sendRequest<StructureMetadataEntry>(this->sign(std::move(request)));
 }
 
-rxcpp::observable<FakeVoid> AccessManagerProxy::setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries) const {
+rxcpp::observable<FakeVoid> AccessManagerProxy::setStructureMetadata(StructureMetadataType subjectType, messaging::Tail<StructureMetadataEntry> entries) const {
   return this->requestSetStructureMetadata(SetStructureMetadataRequest{ subjectType }, std::move(entries));
 }
 

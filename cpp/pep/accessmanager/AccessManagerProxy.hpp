@@ -15,7 +15,7 @@ private:
   rxcpp::observable<FakeVoid> requestAmaMutation(AmaMutationRequest request) const;
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request) const;
   rxcpp::observable<ColumnNameMappingResponse> requestColumnNameMapping(ColumnNameMappingRequest request) const;
-  rxcpp::observable<FakeVoid> requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries = MakeEmptyMessageTail<StructureMetadataEntry>()) const;
+  rxcpp::observable<FakeVoid> requestSetStructureMetadata(SetStructureMetadataRequest request, messaging::Tail<StructureMetadataEntry> entries = messaging::MakeEmptyTail<StructureMetadataEntry>()) const;
 
 public:
   using SigningServerProxy::SigningServerProxy;
@@ -64,7 +64,7 @@ public:
   rxcpp::observable<FakeVoid> deleteColumnNameMapping(const ColumnNameSection& original) const;
 
   rxcpp::observable<StructureMetadataEntry> getStructureMetadata(StructureMetadataType subjectType, std::vector<std::string> subjects, std::vector<StructureMetadataKey> keys = {}) const;
-  rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries) const;
+  rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, messaging::Tail<StructureMetadataEntry> entries) const;
   rxcpp::observable<FakeVoid> removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) const;
 
   rxcpp::observable<FakeVoid> migrateUserDbToAccessManager(messaging::MessageBatches fileParts) const;

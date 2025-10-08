@@ -128,9 +128,9 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     // we need a obs^2(string)
     // we use a outer merge of obs^2 here, as the inner obs^2's should not be merge (because of ordering that needs to be intact due to the lambda used below)
     // (no a concat on the ineer obs^2 can also NOT be used, due to loading the file at once)
-    auto pages = CreateObservable<MessageTail<DataPayloadPage>>([ctx](rxcpp::subscriber<MessageTail<DataPayloadPage>> subscriber) {
+    auto pages = CreateObservable<messaging::Tail<DataPayloadPage>>([ctx](rxcpp::subscriber<messaging::Tail<DataPayloadPage>> subscriber) {
       for (size_t i = 0; i < ctx->request->mEntries.size(); ++i) {
-        subscriber.on_next(ctx->data[i].map([i, ctx, fileContext = std::make_shared<uint64_t>()](messaging::MessageSequence obs) -> TailSegment<DataPayloadPage> {
+        subscriber.on_next(ctx->data[i].map([i, ctx, fileContext = std::make_shared<uint64_t>()](messaging::MessageSequence obs) -> messaging::TailSegment<DataPayloadPage> {
           return obs.map([i, ctx, fileContext](std::shared_ptr<std::string> in) {
             DataPayloadPage page;
             page.mPageNumber = (*fileContext)++;

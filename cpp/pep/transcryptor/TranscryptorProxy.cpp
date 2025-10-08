@@ -10,7 +10,7 @@ rxcpp::observable<KeyComponentResponse> TranscryptorProxy::requestKeyComponent(S
     .op(RxGetOne("KeyComponentResponse"));
 }
 
-rxcpp::observable<TranscryptorResponse> TranscryptorProxy::requestTranscryption(TranscryptorRequest request, MessageTail<TranscryptorRequestEntries> entries) const {
+rxcpp::observable<TranscryptorResponse> TranscryptorProxy::requestTranscryption(TranscryptorRequest request, messaging::Tail<TranscryptorRequestEntries> entries) const {
   return this->sendRequest<TranscryptorResponse>(std::move(request), std::move(entries))
     .op(RxGetOne("TranscryptorResponse"));
 }

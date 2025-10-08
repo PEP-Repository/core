@@ -22,6 +22,7 @@ add_library(${PROJECT_NAME}Messaginglib STATIC
     ResponseToVoid.hpp
     Scheduler.cpp Scheduler.hpp
     ServerConnection.cpp ServerConnection.hpp
+    Tail.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}Messaginglib

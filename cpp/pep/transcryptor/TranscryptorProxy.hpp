@@ -11,7 +11,7 @@ public:
   using SigningServerProxy::SigningServerProxy;
 
   rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const;
-  rxcpp::observable<TranscryptorResponse> requestTranscryption(TranscryptorRequest request, MessageTail<TranscryptorRequestEntries> entries) const;
+  rxcpp::observable<TranscryptorResponse> requestTranscryption(TranscryptorRequest request, messaging::Tail<TranscryptorRequestEntries> entries) const;
   rxcpp::observable<RekeyResponse> requestRekey(RekeyRequest request) const;
   rxcpp::observable<LogIssuedTicketResponse> requestLogIssuedTicket(LogIssuedTicketRequest request) const;
 };
