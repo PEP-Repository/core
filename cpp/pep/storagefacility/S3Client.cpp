@@ -66,13 +66,15 @@ namespace
   // Client::Parameters values to HttpClient::Create
   std::shared_ptr<networking::HttpClient> create_http_client(const Client::Parameters& params) {
 
-    if (params.use_https && params.ca_cert_path.has_value()) {
+    bool use_https = params.use_https.value_or(true);
+    
+    if (use_https && params.ca_cert_path.has_value()) {
       LOG(LOG_TAG, info) << "Using " << params.ca_cert_path->string()
         << " to verify TLS certificate of " << params.endpoint.hostname
         << ":" << params.endpoint.port;
     }
 
-    networking::HttpClient::Parameters httpParameters(*params.io_context, params.use_https, params.endpoint);
+    networking::HttpClient::Parameters httpParameters(*params.io_context, use_https, params.endpoint);
     httpParameters.caCertFilepath(params.ca_cert_path);
     return networking::HttpClient::Create(std::move(httpParameters));
   }
