@@ -42,8 +42,6 @@ private:
   }
 
 protected:
-  const std::shared_ptr<messaging::ServerConnection>& untyped() const noexcept { return mUntyped; } // TODO: remove
-
   template <typename T>
   Signed<T> sign(T message) const {
     return mMessageSigner.sign(std::move(message));
