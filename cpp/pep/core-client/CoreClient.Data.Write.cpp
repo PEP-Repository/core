@@ -1,6 +1,6 @@
+#include <pep/core-client/CoreClient.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxGetOne.hpp>
-#include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/XxHasher.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>

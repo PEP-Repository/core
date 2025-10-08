@@ -1,5 +1,5 @@
-#include <pep/async/RxDistinct.hpp>
 #include <pep/cli/MultiCellQuery.hpp>
+#include <pep/async/RxDistinct.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>

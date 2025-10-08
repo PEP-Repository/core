@@ -2,11 +2,11 @@
 #include <pep/cli/Commands.hpp>
 
 #include <pep/application/Application.hpp>
+#include <pep/client/Client.hpp>
+#include <pep/utils/Exceptions.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxGetOne.hpp>
 #include <pep/async/RxInstead.hpp>
-#include <pep/client/Client.hpp>
-#include <pep/utils/Exceptions.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 
 #include <boost/property_tree/json_parser.hpp>

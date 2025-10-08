@@ -1,7 +1,7 @@
+#include <pep/core-client/CoreClient.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxIndexed.hpp>
-#include <pep/core-client/CoreClient.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
