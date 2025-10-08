@@ -2,6 +2,7 @@
 
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxUtils.hpp>
+#include <boost/core/demangle.hpp>
 
 namespace pep::messaging {
 
