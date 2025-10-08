@@ -82,6 +82,24 @@ struct Storage : public BasicStorage {
   template <Record RecordType, typename... ColTypes>
   [[nodiscard]] auto getCurrentRecords(auto whereCondition, ColTypes RecordType::*... selectColumns);
 
+  /// Return non-tombstone records.
+  ///
+  /// Example: enumerate all metadata for a specific subject type
+  /// \code
+  ///   myStorage->getCurrentRecords(storage,
+  ///     c(&MetadataRecord::timestamp) <= timestamp.getTime()
+  ///     && c(&MetadataRecord::subjectType) == subjectType,
+  ///     &MetadataRecord::subject,
+  ///     &MetadataRecord::metadataGroup,
+  ///     &MetadataRecord::subkey,
+  ///     &MetadataRecord::value)
+  /// \endcode
+  ///
+  /// \returns Collection of tuples with columns from \p selectColumns
+  ///   (or single values if a single column was specified)
+  template <Record RecordType, typename... ColTypes>
+  [[nodiscard]] auto getCurrentRecordsHaving(auto whereCondition, auto havingCondition, ColTypes RecordType::*... selectColumns);
+
   /// Return last non-tombstone record, that matches the where- and having-clauses.
   /// The where-clause is evaluated for all records, the having-clause only for the last record for that RecordIdentifier
   ///
@@ -116,6 +134,11 @@ template <auto MakeRaw> template <Record RecordType>
 
 template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
 [[nodiscard]] auto Storage<MakeRaw>::getCurrentRecords(auto whereCondition, ColTypes RecordType::*... selectColumns) {
+  return getCurrentRecordsHaving(whereCondition, true, selectColumns...);
+}
+
+template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
+[[nodiscard]] auto Storage<MakeRaw>::getCurrentRecordsHaving(auto whereCondition, auto havingCondition, ColTypes RecordType::*... selectColumns) {
   static_assert(sizeof...(ColTypes) > 0, "No columns specified");
   using namespace sqlite_orm;
   return raw.iterate(select(
@@ -124,7 +147,7 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
     std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
-    .having(c(&RecordType::tombstone) == false)
+    .having(c(&RecordType::tombstone) == false && havingCondition)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 }
 

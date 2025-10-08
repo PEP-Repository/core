@@ -40,6 +40,7 @@ private:
  */
   std::set<std::string> ensureSynced();
   void checkConfig(const std::set<std::string>& allColumns) const;
+  void assertAllUsersHaveDisplayId();
   void ensureUpToDate();
   void syncColumnGroupContents(const std::string& group, const std::set<std::string>& requiredColumns);
 

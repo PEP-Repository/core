@@ -188,22 +188,30 @@ void Serializer<UserQuery>::moveIntoProtocolBuffer(proto::UserQuery& dest, UserQ
 }
 
 QRUser Serializer<QRUser>::fromProtocolBuffer(proto::QRUser&& source) const {
-  std::vector<std::string> uids;
-  uids.reserve(static_cast<size_t>(source.uids().size()));
-  for (auto& x : *source.mutable_uids())
-    uids.push_back(std::move(x));
+  std::optional<std::string> primaryId;
+  if (source.has_primaryid()) {
+    primaryId = std::move(*source.mutable_primaryid());
+  }
+  std::vector<std::string> otherUids;
+  otherUids.reserve(static_cast<size_t>(source.otheruids().size()));
+  for (auto& x : *source.mutable_otheruids())
+    otherUids.push_back(std::move(x));
 
   std::vector<std::string> groups;
   groups.reserve(static_cast<size_t>(source.groups().size()));
   for (auto& x : *source.mutable_groups())
     groups.push_back(std::move(x));
-  return QRUser(std::move(uids), std::move(groups));
+
+  return QRUser(std::move(*source.mutable_displayid()), primaryId, std::move(otherUids), std::move(groups));
 }
 
 void Serializer<QRUser>::moveIntoProtocolBuffer(proto::QRUser& dest, QRUser value) const {
-  dest.mutable_uids()->Reserve(static_cast<int>(value.mUids.size()));
-  for (auto& x : value.mUids)
-    dest.add_uids(std::move(x));
+  *dest.mutable_displayid() = std::move(value.mDisplayId);
+  if (value.mPrimaryId)
+    *dest.mutable_primaryid() = std::move(*value.mPrimaryId);
+  dest.mutable_otheruids()->Reserve(static_cast<int>(value.mOtherUids.size()));
+  for (auto& x : value.mOtherUids)
+    dest.add_otheruids(std::move(x));
 
   dest.mutable_groups()->Reserve(static_cast<int>(value.mGroups.size()));
   for (auto& x : value.mGroups)

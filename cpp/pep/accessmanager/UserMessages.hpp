@@ -118,17 +118,23 @@ public:
 class QRUser {
 public:
   QRUser() = default;
-  QRUser(std::vector<std::string> uids, std::vector<std::string> groups)
-    : mUids(std::move(uids)), mGroups(std::move(groups)) { }
+  QRUser(std::string displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<std::string> groups)
+    : mDisplayId(std::move(displayId)), mPrimaryId(std::move(primaryId)), mOtherUids(std::move(otherUids)), mGroups(std::move(groups)) { }
 
-  std::vector<std::string> mUids;
+  std::string mDisplayId;
+  std::optional<std::string> mPrimaryId;
+  std::vector<std::string> mOtherUids;
   std::vector<std::string> mGroups;
 
   [[nodiscard]] auto operator<=>(const QRUser&) const = default;
 
   friend std::ostream& operator<<(std::ostream& out, const QRUser& user) {
+    out << user.mDisplayId << ":{";
     out << "uids:{";
-    for (bool first = true; const auto& uid : user.mUids) {
+    if (user.mPrimaryId) {
+      out << "*" << *user.mPrimaryId;
+    }
+    for (bool first = !user.mPrimaryId; const auto& uid : user.mOtherUids) {
       if (!std::exchange(first, false)) { out << ", "; }
       out << uid;
     }
@@ -139,6 +145,7 @@ public:
       if (!std::exchange(first, false)) { out << ", "; }
       out << group;
     }
+    out << '}';
     out << '}';
     return out;
   }

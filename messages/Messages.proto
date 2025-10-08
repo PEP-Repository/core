@@ -1129,8 +1129,11 @@ message SignedUserQuery {
   bytes data = 4;
 }
 message QRUser {
-  repeated string uids = 1;
+  string displayId = 3;
+  optional string primaryId = 4;
+  repeated string otherUids = 5;
   repeated string groups = 2;
+
 }
 message UserQueryResponse {
   repeated QRUser users = 3;

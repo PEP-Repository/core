@@ -22,11 +22,11 @@ void PrepareSortedMine(UserQueryResponse& response) {
     return !group.mName.starts_with("My");
   });
   erase_if(response.mUsers, [](const QRUser& user) {
-    return find_if(user.mUids, [](const std::string& uid) { return uid.starts_with("My"); }) == user.mUids.end();
+    return !user.mDisplayId.starts_with("My");
   });
   for (QRUser& user : response.mUsers) {
     sort(user.mGroups);
-    sort(user.mUids);
+    sort(user.mOtherUids);
   }
   sort(response.mUserGroups);
   sort(response.mUsers);
@@ -377,8 +377,16 @@ TEST_F(AccessManagerStorageTest, cannotRemoveLastUserIdentifier) {
   storage->addIdentifierForUser(originalId, "firstAlternativeName", false, false);
   storage->addIdentifierForUser(originalId, "secondAlternativeName", false, false);
   storage->removeIdentifierForUser(originalId, "firstAlternativeName");
-  storage->removeIdentifierForUser(originalId, "user");
-  EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "secondAlternativeName"));
+  storage->removeIdentifierForUser(originalId, "secondAlternativeName");
+  EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
+}
+
+TEST_F(AccessManagerStorageTest, cannotRemoveDisplayIdentifier) {
+  int64_t originalId = storage->createUser("user"); //this will be the display identifier
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", false, false);
+  EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
+  storage->updateIdentifierForUser(originalId, "firstAlternativeName", {}, true);
+  EXPECT_NO_THROW(storage->removeIdentifierForUser(originalId, "user"));
 }
 
 TEST_F(AccessManagerStorageTest, cannotRemoveUidStillInGroups) {
@@ -489,8 +497,8 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users) {
   auto response = storage->executeUserQuery({Timestamp{}, "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1}, {}},
-      {{user2}, {}},
+      {user1, {}, {}, {}},
+      {user2, {}, {}, {}},
     })) << "should return all users";
 }
 
@@ -504,7 +512,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users_alt_ids) {
   auto response = storage->executeUserQuery({Timestamp{}, "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {}},
+      {user1, {}, {user1Alt}, {}},
     })) << "should return alternative identifiers";
 }
 
@@ -530,8 +538,8 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
   auto response = storage->executeUserQuery({Timestamp{}, "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}},
-      {{user2}, {group2}},
+      {user1, {}, {user1Alt}, {group1}},
+      {user2, {}, {}, {group2}},
     })) << "should return user-group memberships";
 }
 
@@ -565,8 +573,8 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return filtered group names";
 
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}},
-      {{user3}, {group1}}, // Note: we don't return group2 for user3
+      {user1, {}, {user1Alt}, {group1}},
+      {user3, {}, {}, {group1}}, // Note: we don't return group2 for user3
     })) << "should return group-filtered users with group memberships";
 }
 
@@ -597,7 +605,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   PrepareSortedMine(response);
 
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}}, // Note: we also want to see alternative IDs
+      {user1, {}, {user1Alt}, {group1}}, // Note: we also want to see alternative IDs
     })) << "should return filtered users with all alt IDs with group memberships";
 
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
@@ -626,7 +634,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
   auto response = storage->executeUserQuery({Timestamp{}, "", "-alt"});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}},
+      {user1, {}, {user1Alt}, {group1}},
     })) << "should return filtered users with all alt IDs with group memberships";
 
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
@@ -662,7 +670,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_and_group) {
   auto response = storage->executeUserQuery({Timestamp{}, "GroupA", "UserA"});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{userA1}, {groupA1}},
+      {userA1, {}, {}, {groupA1}},
     })) << "should return double-filtered users with group memberships";
 
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));

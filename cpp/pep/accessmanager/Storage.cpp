@@ -418,6 +418,14 @@ void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& a
   }
 }
 
+void AccessManager::Backend::Storage::assertAllUsersHaveDisplayId() {
+  for (int64_t userId : mImplementor->raw.iterate(select(distinct(&UserIdRecord::internalUserId)))) {
+    if (!getDisplayIdentifierForUser(userId)) {
+      throw std::runtime_error("Not all users have been assigned a displayId during database update.");
+    }
+  }
+}
+
 void AccessManager::Backend::Storage::ensureUpToDate() {
   LOG(LOG_TAG, info) << "Checking whether to remove participant-group-access-rules ...";
   // Remove explicit PGARs for Data Administrator: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1923#note_22224
@@ -479,16 +487,10 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
   }
 
   LOG(LOG_TAG, info) << "Checking whether users have a displayId";
-  auto countDisplayIdentifers = [implementor=mImplementor]() {
-    return implementor->raw.count<UserIdRecord>(where(c(&UserIdRecord::isDisplayId) == true));
-  };
-  auto countUsers = [implementor=mImplementor]() {
-    auto result = implementor->raw.select(count(distinct(&UserIdRecord::internalUserId)));
-    assert(result.size() == 1);
-    return result[0];
-  };
+  auto displayIdRecordCount = mImplementor->raw.count<UserIdRecord>(where(c(&UserIdRecord::isDisplayId) == true));
+  auto userCount = mImplementor->raw.select(count(distinct(&UserIdRecord::internalUserId)))[0];
 
-  if (countUsers() != 0 && countDisplayIdentifers() == 0) {
+  if (userCount != 0 && displayIdRecordCount == 0) {
     auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
     std::unordered_set<int64_t> seenBefore;
     for (auto& userIdRecord : mImplementor->raw.iterate<UserIdRecord>()) {
@@ -498,14 +500,12 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
         mImplementor->raw.update(userIdRecord);
       }
     }
-    if (countUsers() != countDisplayIdentifers()) {
-      throw std::runtime_error("Not all users have been assigned a displayId during database update.");
-    }
+    assertAllUsersHaveDisplayId();
     displayIdTransactionGuard.commit();
     LOG(LOG_TAG, info) << seenBefore.size() << " records have been updated.";
   }
   else {
-    assert(countUsers() == countDisplayIdentifers());
+    assertAllUsersHaveDisplayId();
     LOG(LOG_TAG, info) << "Records have a displayId. No updates necessary.";
   }
 }
@@ -1385,7 +1385,7 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
 
 int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
   int64_t internalUserId = getNextInternalUserId();
-  addIdentifierForUser(internalUserId, std::move(identifier), true, false);
+  addIdentifierForUser(internalUserId, std::move(identifier), false, true);
   return internalUserId;
 }
 
@@ -1750,10 +1750,18 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   for (auto tuple: mImplementor->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= query.mAt.getTime()
          && in(&UserIdRecord::internalUserId, RangeToVector(views::keys(usersInfo))),
-         &UserIdRecord::internalUserId,
-         &UserIdRecord::identifier)) {
-    auto& [internalId, identifier] = tuple;
-    usersInfo.at(internalId).mUids.push_back(std::move(identifier));
+         &UserIdRecord::internalUserId, &UserIdRecord::identifier, &UserIdRecord::isDisplayId, &UserIdRecord::isPrimaryId)) {
+    auto& [internalId, identifier, isDisplayId, isPrimaryId] = tuple;
+
+    if (isDisplayId) {
+      usersInfo.at(internalId).mDisplayId = identifier;
+    }
+    if (isPrimaryId) {
+      usersInfo.at(internalId).mPrimaryId = identifier;
+    }
+    if (!isPrimaryId && !isDisplayId) {
+      usersInfo.at(internalId).mOtherUids.push_back(std::move(identifier));
+    }
   }
 
   return UserQueryResponse{

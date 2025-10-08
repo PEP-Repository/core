@@ -101,19 +101,30 @@ std::ostream& append(std::ostream& stream, const pep::QRUser& user, DisplayConfi
   const auto ind = [&config]() { return indentations(config.indent); };
   const auto printUserGroups = config.flags & DisplayConfig::Flags::printUserGroups;
 
-  stream << "{\n";
+  stream << Literal{user.mDisplayId} << ": {\n";
   ++config.indent;
-  stream << ind() << Literal{stringConstants::identifiersKey} << ": [\n";
-  ++config.indent;
-  interweave(user.mUids, [&](const std::string& i) { stream << ind() << Literal{i}; }, [&] { stream << ",\n"; });
-  --config.indent;
-  stream << "\n" << ind() << "],\n";
-  if(printUserGroups) {
-    stream << ind() << Literal{stringConstants::groupsKey} << ": [\n";
+  if (user.mPrimaryId) {
+    stream << ind() << Literal{stringConstants::primaryIdKey} << ": " << *user.mPrimaryId << ",\n";
+  }
+  stream << ind() << Literal{stringConstants::otherIdentifiersKey} << ": [";
+  if (!user.mOtherUids.empty()) {
+    stream << "\n";
     ++config.indent;
-    interweave(user.mGroups, [&](const std::string& g) { stream << ind() << Literal{g}; }, [&] { stream << ",\n"; });
+    interweave(user.mOtherUids, [&](const std::string& i) { stream << ind() << Literal{i}; }, [&] { stream << ",\n"; });
     --config.indent;
-    stream << "\n" << ind() << "]\n";
+    stream << "\n" << ind();
+  }
+  stream << "],\n";
+  if(printUserGroups) {
+    stream << ind() << Literal{stringConstants::groupsKey} << ": [";
+    if (!user.mGroups.empty()) {
+      stream << "\n";
+      ++config.indent;
+      interweave(user.mGroups, [&](const std::string& g) { stream << ind() << Literal{g}; }, [&] { stream << ",\n"; });
+      --config.indent;
+      stream << "\n" << ind();
+    }
+    stream << "]\n";
   }
   --config.indent;
   stream << ind() << "}";

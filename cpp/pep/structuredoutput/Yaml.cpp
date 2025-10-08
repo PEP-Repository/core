@@ -41,20 +41,24 @@ std::ostream& appendYaml(std::ostream& stream,
   const auto printUserGroups = flags & DisplayConfig::Flags::printUserGroups;
   const auto withHeader = flags & DisplayFlags::printHeaders;
   const auto userOffset = indentations(withHeader ? 1 : 0);
-  const auto uidAndGroupOffset = indentations(withHeader ? 3 : 2);
+  const auto userInnerOffset = indentations(withHeader ? 3 : 2);
+  const auto uidAndGroupOffset = indentations(withHeader ? 4 : 3);
 
   if (withHeader) {
     appendYamlListHeader(stream, stringConstants::users.descriptive, users.size());
   }
   for (auto& user : users) {
-    stream << userOffset << "- ";
-    appendYamlListHeader(stream, stringConstants::identifiersKey, user.mUids.size());
-    for (auto& uid : user.mUids) {
+    stream << userOffset << "- " << user.mDisplayId << ":\n";
+    if (user.mPrimaryId) {
+      stream << userInnerOffset <<  stringConstants::primaryIdKey << ": " << *user.mPrimaryId << "\n";
+    }
+    stream << userInnerOffset;
+    appendYamlListHeader(stream, stringConstants::otherIdentifiersKey, user.mOtherUids.size());
+    for (auto& uid : user.mOtherUids) {
       stream << uidAndGroupOffset << "- " << uid << "\n";
     }
     if(printUserGroups) {
-      // We explicitly use 2 spaces (and not just a call to indentations with a certain indentation level),  so it aligns with "- " for the mUids header, even if we change the indentation size in indentations()
-      stream << userOffset << "  ";
+      stream << userInnerOffset;
       appendYamlListHeader(stream, stringConstants::groupsKey, user.mGroups.size());
       for (auto& group : user.mGroups) {
         stream << uidAndGroupOffset << "- " << group << "\n";
