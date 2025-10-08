@@ -102,7 +102,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
 
 // Generates a Participant ID and returns it
 rxcpp::observable<std::string> Client::generatePEPID() {
-  return clientRegistrationServer->requestIdRegistration()
+  return registrationServerProxy->requestIdRegistration()
       .map([](PEPIdRegistrationResponse result) { return result.mPepId; });
 }
 
@@ -138,7 +138,7 @@ rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::completePartici
 
 rxcpp::observable<std::string> Client::listCastorImportColumns(const std::string& spColumnName,
                                                                const std::optional<unsigned>& answerSetCount) {
-  return clientRegistrationServer
+  return registrationServerProxy
       ->requestListCastorImportColumns(ListCastorImportColumnsRequest{spColumnName, answerSetCount.value_or(0U)})
       .flat_map([](const ListCastorImportColumnsResponse& response) {
         return rxcpp::observable<>::iterate(response.mImportColumns);
@@ -156,7 +156,7 @@ rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::generateShortPs
 
   LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
 
-  return clientRegistrationServer->requestRegistration(std::move(request))
+  return registrationServerProxy->requestRegistration(std::move(request))
       .map([](RegistrationResponse result) { return std::make_shared<RegistrationResponse>(result); });
 }
 
@@ -179,7 +179,7 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 
   EnrollmentRequest request(csr, oauthToken);
   LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
-  return clientKeyServer->requestUserEnrollment(std::move(request))
+  return keyServerProxy->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
     auto ctx = std::make_shared<EnrollmentContext>();
     ctx->identity = std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain);
@@ -191,27 +191,27 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 rxcpp::observable<std::string> Client::requestToken(std::string subject,
                                                        std::string group,
                                                        Timestamp expirationTime) {
-  return this->getAuthClient()->requestToken(TokenRequest(subject, group, expirationTime)) // linebreak
+  return this->getAuthServerProxy()->requestToken(TokenRequest(subject, group, expirationTime)) // linebreak
       .map([](TokenResponse response) { return response.mToken; });
 }
 
-std::shared_ptr<const KeyClient> Client::getKeyClient(bool require) const {
-  return GetConstServerProxy(clientKeyServer, "Key Server", require);
+std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
+  return GetConstServerProxy(keyServerProxy, "Key Server", require);
 }
 
-std::shared_ptr<const AuthClient> Client::getAuthClient(bool require) const {
-  return GetConstServerProxy(clientAuthserver, "Auth Server", require);
+std::shared_ptr<const AuthServerProxy> Client::getAuthServerProxy(bool require) const {
+  return GetConstServerProxy(authServerProxy, "Auth Server", require);
 }
 
-std::shared_ptr<const RegistrationClient> Client::getRegistrationClient(bool require) const {
-  return GetConstServerProxy(clientRegistrationServer, "Registration Server", require);
+std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProxy(bool require) const {
+  return GetConstServerProxy(registrationServerProxy, "Registration Server", require);
 }
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
   return CoreClient::shutdown()
-    .merge(clientKeyServer->shutdown())
-    .merge(clientRegistrationServer->shutdown())
-    .merge(clientAuthserver ? clientAuthserver->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(keyServerProxy->shutdown())
+    .merge(registrationServerProxy->shutdown())
+    .merge(authServerProxy ? authServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }
 
@@ -221,9 +221,9 @@ Client::Client(const Builder& builder)
     keyServerEndPoint(builder.getKeyServerEndPoint()),
     authserverEndPoint(builder.getAuthserverEndPoint()),
     registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
-  clientKeyServer = this->tryConnectServerProxy<KeyClient>(keyServerEndPoint);
-  clientAuthserver = this->tryConnectServerProxy<AuthClient>(authserverEndPoint);
-  clientRegistrationServer = this->tryConnectServerProxy<RegistrationClient>(registrationServerEndPoint);
+  keyServerProxy = this->tryConnectServerProxy<KeyServerProxy>(keyServerEndPoint);
+  authServerProxy = this->tryConnectServerProxy<AuthServerProxy>(authserverEndPoint);
+  registrationServerProxy = this->tryConnectServerProxy<RegistrationServerProxy>(registrationServerEndPoint);
 }
 
 

@@ -6,7 +6,7 @@
 
 namespace pep {
 
-class KeyClient : public ServerProxy {
+class KeyServerProxy : public ServerProxy {
 public:
   using ServerProxy::ServerProxy;
 

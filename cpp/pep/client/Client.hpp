@@ -2,12 +2,12 @@
 
 #include <pep/client/Client_fwd.hpp>
 
-#include <pep/authserver/AuthClient.hpp>
+#include <pep/authserver/AuthServerProxy.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/content/ParticipantPersonalia.hpp>
-#include <pep/keyserver/KeyClient.hpp>
+#include <pep/keyserver/KeyServerProxy.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/registrationserver/RegistrationClient.hpp>
+#include <pep/registrationserver/RegistrationServerProxy.hpp>
 
 namespace pep {
 
@@ -108,9 +108,9 @@ public:
 
   rxcpp::observable<std::string> requestToken(std::string subject, std::string group, Timestamp expirationTime);
 
-  std::shared_ptr<const KeyClient> getKeyClient(bool require = true) const;
-  std::shared_ptr<const AuthClient> getAuthClient(bool require = true) const;
-  std::shared_ptr<const RegistrationClient> getRegistrationClient(bool require = true) const;
+  std::shared_ptr<const KeyServerProxy> getKeyServerProxy(bool require = true) const;
+  std::shared_ptr<const AuthServerProxy> getAuthServerProxy(bool require = true) const;
+  std::shared_ptr<const RegistrationServerProxy> getRegistrationServerProxy(bool require = true) const;
 
   rxcpp::observable<FakeVoid> shutdown() override;
 
@@ -124,9 +124,9 @@ private:
   const EndPoint authserverEndPoint;
   const EndPoint registrationServerEndPoint;
 
-  std::shared_ptr<KeyClient> clientKeyServer;
-  std::shared_ptr<AuthClient> clientAuthserver;
-  std::shared_ptr<RegistrationClient> clientRegistrationServer;
+  std::shared_ptr<KeyServerProxy> keyServerProxy;
+  std::shared_ptr<AuthServerProxy> authServerProxy;
+  std::shared_ptr<RegistrationServerProxy> registrationServerProxy;
 
   Client(const Builder& builder);
 

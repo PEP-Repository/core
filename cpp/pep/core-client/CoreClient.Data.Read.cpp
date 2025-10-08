@@ -46,7 +46,7 @@ rxcpp::observable<std::vector<EnumerateResult>> CoreClient::enumerateData2(const
                                                                        const std::vector<PolymorphicPseudonym>& pps,
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestTicket(sign(TicketRequest2{.mModes = {"read"},
                                           .mParticipantGroups = participantGroups,
                                           .mPolymorphicPseudonyms = pps,
@@ -62,7 +62,7 @@ rxcpp::observable<std::vector<EnumerateResult>> CoreClient::enumerateData2(std::
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
   auto enumRequest = std::make_shared<DataEnumerationRequest2>();
   enumRequest->mTicket = *ticket;
-  return clientStorageFacility->requestDataEnumeration(std::move(*enumRequest))
+  return storageFacilityProxy->requestDataEnumeration(std::move(*enumRequest))
     .map([this, pseudonyms](const DataEnumerationResponse2& response) {
       return convertDataEnumerationEntries(response.mEntries, *pseudonyms);
     });
@@ -96,7 +96,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
     MetadataReadRequest2 readRequest;
     readRequest.mIds = std::move(batch);
     readRequest.mTicket = *ticket;
-    return this->clientStorageFacility->requestMetadataRead(std::move(readRequest))
+    return this->storageFacilityProxy->requestMetadataRead(std::move(readRequest))
       .map([](DataEnumerationResponse2 response) {
       return std::move(response.mEntries);
         })
@@ -152,7 +152,7 @@ CoreClient::retrieveData2(
             std::transform(ctx->subjects.cbegin(), ctx->subjects.cend(), std::back_inserter(readRequest.mIds),
                            [](const EnumerateResult& subject) { return subject.mId; });
             readRequest.mTicket = *ticket;
-            return clientStorageFacility->requestDataRead(std::move(readRequest))
+            return storageFacilityProxy->requestDataRead(std::move(readRequest))
               .group_by([](const DataPayloadPage& page) { return page.mIndex; })
               .map([ctx, offset](const rxcpp::grouped_observable<uint32_t, DataPayloadPage>& groupedPages) {
                 const auto index = groupedPages.get_key();
@@ -217,7 +217,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   FillHistoryRequestIndices<std::string, std::string>(
     request->mTicket, unsignedTicket, &Ticket2::mColumns, columns, request->mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
-  return clientStorageFacility->requestDataHistory(std::move(*request))
+  return storageFacilityProxy->requestDataHistory(std::move(*request))
     .map([](const DataHistoryResponse2& response) {
       return response.mEntries;
     })

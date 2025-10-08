@@ -10,7 +10,7 @@
 
 namespace pep {
 
-class AccessManagerClient : public SigningServerProxy {
+class AccessManagerProxy : public SigningServerProxy {
 public:
   using SigningServerProxy::SigningServerProxy;
 

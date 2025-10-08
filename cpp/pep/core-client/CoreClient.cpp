@@ -73,9 +73,9 @@ CoreClient::CoreClient(const Builder& builder) :
   storageFacilityEndPoint(builder.getStorageFacilityEndPoint()),
   transcryptorEndPoint(builder.getTranscryptorEndPoint()) {
 
-  clientAccessManager = tryConnectServerProxy<AccessManagerClient>(accessManagerEndPoint);
-  clientStorageFacility = tryConnectServerProxy<StorageClient>(storageFacilityEndPoint);
-  clientTranscryptor = tryConnectServerProxy<TranscryptorClient>(transcryptorEndPoint);
+  accessManagerProxy = tryConnectServerProxy<AccessManagerProxy>(accessManagerEndPoint);
+  storageFacilityProxy = tryConnectServerProxy<StorageFacilityProxy>(storageFacilityEndPoint);
+  transcryptorProxy = tryConnectServerProxy<TranscryptorProxy>(transcryptorEndPoint);
 
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
@@ -270,7 +270,7 @@ void CoreClient::Builder::initialize(
 
 rxcpp::observable<ColumnAccess> CoreClient::getAccessibleColumns(bool includeImplicitlyGranted,
                                                              const std::vector<std::string>& requireModes) {
-  return clientAccessManager->requestColumnAccess(ColumnAccessRequest{includeImplicitlyGranted,
+  return accessManagerProxy->requestColumnAccess(ColumnAccessRequest{includeImplicitlyGranted,
                                                                                          requireModes});
 }
 
@@ -297,7 +297,7 @@ rxcpp::observable<std::string> CoreClient::getInaccessibleColumns(const std::str
 }
 
 rxcpp::observable<ParticipantGroupAccess> CoreClient::getAccessibleParticipantGroups(bool includeImplicitlyGranted) {
-  return clientAccessManager->requestParticipantGroupAccess(ParticipantGroupAccessRequest{
+  return accessManagerProxy->requestParticipantGroupAccess(ParticipantGroupAccessRequest{
       includeImplicitlyGranted});
 }
 
@@ -305,16 +305,16 @@ rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
 
-std::shared_ptr<const StorageClient> CoreClient::getStorageClient(bool require) const {
-  return GetConstServerProxy(clientStorageFacility, "Storage Facility", require);
+std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
+  return GetConstServerProxy(storageFacilityProxy, "Storage Facility", require);
 }
 
-std::shared_ptr<const TranscryptorClient> CoreClient::getTranscryptorClient(bool require) const {
-  return GetConstServerProxy(clientTranscryptor, "Transcryptor", require);
+std::shared_ptr<const TranscryptorProxy> CoreClient::getTranscryptorProxy(bool require) const {
+  return GetConstServerProxy(transcryptorProxy, "Transcryptor", require);
 }
 
-std::shared_ptr<const AccessManagerClient> CoreClient::getAccessManagerClient(bool require) const {
-  return GetConstServerProxy(clientAccessManager, "Access Manager", require);
+std::shared_ptr<const AccessManagerProxy> CoreClient::getAccessManagerProxy(bool require) const {
+  return GetConstServerProxy(accessManagerProxy, "Access Manager", require);
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {
@@ -324,15 +324,15 @@ const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const
 rxcpp::observable<FakeVoid> CoreClient::shutdown() {
   return rxcpp::observable<>::iterate(
     std::vector<rxcpp::observable<FakeVoid>> {
-      clientAccessManager->shutdown(),
-      clientStorageFacility->shutdown(),
-      clientTranscryptor->shutdown()
+      accessManagerProxy->shutdown(),
+      storageFacilityProxy->shutdown(),
+      transcryptorProxy->shutdown()
     }
   ).merge().last();
 }
 
 rxcpp::observable<VerifiersResponse> CoreClient::getRSKVerifiers() {
-  return clientAccessManager->requestVerifiers();
+  return accessManagerProxy->requestVerifiers();
 }
 
 rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalConfiguration() {
@@ -340,12 +340,12 @@ rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalCon
     return rxcpp::observable<>::just(mGlobalConf);
   }
 
-  return clientAccessManager->requestGlobalConfiguration()
+  return accessManagerProxy->requestGlobalConfiguration()
     .map([this](const GlobalConfiguration& gc) {return mGlobalConf = MakeSharedCopy(gc); });
 }
 
 rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::getColumnNameMappings() {
-  return clientAccessManager->requestColumnNameMapping(ColumnNameMappingRequest{})
+  return accessManagerProxy->requestColumnNameMapping(ColumnNameMappingRequest{})
       .map([](const ColumnNameMappingResponse& response) {
         return std::make_shared<ColumnNameMappings>(response.mappings);
       });
@@ -353,7 +353,7 @@ rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::getColumnName
 
 rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::readColumnNameMapping(const ColumnNameSection&
                                                                                          original) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestColumnNameMapping(ColumnNameMappingRequest{CrudAction::Read, original, std::nullopt})
       .map([](const ColumnNameMappingResponse& response) {
         return std::make_shared<ColumnNameMappings>(response.mappings);
@@ -362,7 +362,7 @@ rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::readColumnNam
 
 rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::createColumnNameMapping(const ColumnNameMapping&
                                                                                            mapping) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestColumnNameMapping(ColumnNameMappingRequest{
           CrudAction::Create, mapping.original, mapping.mapped})
       .map([](const ColumnNameMappingResponse& response) {
@@ -373,7 +373,7 @@ rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::createColumnN
 
 rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::updateColumnNameMapping(const ColumnNameMapping&
                                                                                            mapping) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestColumnNameMapping(ColumnNameMappingRequest{
           CrudAction::Update, mapping.original, mapping.mapped})
       .map([](const ColumnNameMappingResponse& response) {
@@ -383,7 +383,7 @@ rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::updateColumnN
 }
 
 rxcpp::observable<FakeVoid> CoreClient::deleteColumnNameMapping(const ColumnNameSection& original) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestColumnNameMapping(
           ColumnNameMappingRequest{CrudAction::Delete, original, std::nullopt})
       .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); });
@@ -393,13 +393,13 @@ rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> CoreClient::getStruct
     StructureMetadataType subjectType,
     std::vector<std::string> subjects,
     std::vector<StructureMetadataKey> keys) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestStructureMetadata(StructureMetadataRequest{ subjectType, std::move(subjects), std::move(keys) })
       .map([](StructureMetadataEntry entry) { return MakeSharedCopy(std::move(entry)); });
 }
 
 rxcpp::observable<FakeVoid> CoreClient::setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestSetStructureMetadata(SetStructureMetadataRequest{subjectType}, std::move(entries))
       .map([](SetStructureMetadataResponse response) {
         return FakeVoid();
@@ -407,7 +407,7 @@ rxcpp::observable<FakeVoid> CoreClient::setStructureMetadata(StructureMetadataTy
 }
 
 rxcpp::observable<FakeVoid> CoreClient::removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) {
-  return clientAccessManager
+  return accessManagerProxy
       ->requestSetStructureMetadata(SetStructureMetadataRequest{.subjectType = subjectType, .remove = std::move(subjectKeys)})
       .map([](SetStructureMetadataResponse) { return FakeVoid(); });
 }
@@ -515,7 +515,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
     return rxcpp::observable<>::error<IndexedTicket2>(std::runtime_error("Query out of scope of provided Ticket"));
   }
   assert(ContainsUniqueValues(opts.pps));
-  return clientAccessManager->requestIndexedTicket(sign(TicketRequest2{
+  return accessManagerProxy->requestIndexedTicket(sign(TicketRequest2{
       .mModes = opts.modes,
       .mParticipantGroups = opts.participantGroups,
       .mPolymorphicPseudonyms = opts.pps,

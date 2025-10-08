@@ -6,7 +6,7 @@
 
 namespace pep {
 
-class StorageClient : public SigningServerProxy {
+class StorageFacilityProxy : public SigningServerProxy {
 public:
   using SigningServerProxy::SigningServerProxy;
 

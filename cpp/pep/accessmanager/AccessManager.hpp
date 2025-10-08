@@ -4,11 +4,11 @@
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/WorkerPool.hpp>
-#include <pep/keyserver/KeyClient.hpp>
+#include <pep/keyserver/KeyServerProxy.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/transcryptor/TranscryptorClient.hpp>
+#include <pep/transcryptor/TranscryptorProxy.hpp>
 
 #include <filesystem>
 
@@ -139,8 +139,8 @@ public:
 private:
   ElgamalPrivateKey mPseudonymKey;
   ElgamalPublicKey mPublicKeyPseudonyms;
-  TranscryptorClient mTranscryptorClient;
-  KeyClient mKeyClient;
+  TranscryptorProxy mTranscryptorProxy;
+  KeyServerProxy mKeyServerProxy;
   std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
   std::shared_ptr<DataTranslator> mDataTranslator;
   std::shared_ptr<Backend> backend;

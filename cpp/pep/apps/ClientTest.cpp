@@ -257,12 +257,12 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  return this->tryGetServerVersion(client->getAccessManagerClient(false), "Access Manager").merge(
-    this->tryGetServerVersion(client->getTranscryptorClient(false), "Transcryptor"),
-    this->tryGetServerVersion(client->getKeyClient(false), "Key Server"),
-    this->tryGetServerVersion(client->getStorageClient(false), "Storage Facility"),
-    this->tryGetServerVersion(client->getRegistrationClient(false), "Registration Server"),
-    this->tryGetServerVersion(client->getAuthClient(false), "Auth Server")
+  return this->tryGetServerVersion(client->getAccessManagerProxy(false), "Access Manager").merge(
+    this->tryGetServerVersion(client->getTranscryptorProxy(false), "Transcryptor"),
+    this->tryGetServerVersion(client->getKeyServerProxy(false), "Key Server"),
+    this->tryGetServerVersion(client->getStorageFacilityProxy(false), "Storage Facility"),
+    this->tryGetServerVersion(client->getRegistrationServerProxy(false), "Registration Server"),
+    this->tryGetServerVersion(client->getAuthServerProxy(false), "Auth Server")
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
     const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
     std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;

@@ -10,14 +10,14 @@ target_link_libraries(${PROJECT_NAME}KeyServerApilib
 verify_headers_standalone(${PROJECT_NAME}KeyServerApilib)
 
 
-add_library(${PROJECT_NAME}KeyClientlib
-  KeyClient.cpp KeyClient.hpp
+add_library(${PROJECT_NAME}KeyServerProxylib
+  KeyServerProxy.cpp KeyServerProxy.hpp
 )
-target_link_libraries(${PROJECT_NAME}KeyClientlib
+target_link_libraries(${PROJECT_NAME}KeyServerProxylib
   ${PROJECT_NAME}KeyServerApilib
   ${PROJECT_NAME}ServerProxylib
 )
-verify_headers_standalone(${PROJECT_NAME}KeyClientlib)
+verify_headers_standalone(${PROJECT_NAME}KeyServerProxylib)
 
 
 if (WITH_SERVERS)

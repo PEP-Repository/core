@@ -8,14 +8,14 @@ target_link_libraries(${PROJECT_NAME}AuthserverApilib
 verify_headers_standalone(${PROJECT_NAME}AuthserverApilib)
 
 
-add_library(${PROJECT_NAME}AuthClientlib
-  AuthClient.cpp AuthClient.hpp
+add_library(${PROJECT_NAME}AuthServerProxylib
+  AuthServerProxy.cpp AuthServerProxy.hpp
 )
-target_link_libraries(${PROJECT_NAME}AuthClientlib
+target_link_libraries(${PROJECT_NAME}AuthServerProxylib
   ${PROJECT_NAME}AuthserverApilib
   ${PROJECT_NAME}ServerProxylib
 )
-verify_headers_standalone(${PROJECT_NAME}AuthClientlib)
+verify_headers_standalone(${PROJECT_NAME}AuthServerProxylib)
 
 
 if (WITH_SERVERS)
@@ -28,7 +28,7 @@ if (WITH_SERVERS)
     ${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}Httpserverlib
     ${PROJECT_NAME}AuthserverApilib
-    ${PROJECT_NAME}AccessManagerClientlib
+    ${PROJECT_NAME}AccessManagerProxylib
     ${PROJECT_NAME}Templatinglib
   )
   verify_headers_standalone(${PROJECT_NAME}Authserverlib)

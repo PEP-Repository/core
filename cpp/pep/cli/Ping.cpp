@@ -100,7 +100,7 @@ public:
 class KeyServerPinger : public ServerPingerWithResponse<pep::PingResponse> {
 protected:
   rxcpp::observable<pep::PingResponse> send(const pep::Client& client) const override {
-    return client.getKeyClient()->requestPing();
+    return client.getKeyServerProxy()->requestPing();
   }
 
 public:
@@ -130,12 +130,12 @@ const std::unordered_map<std::string, ServerPingerFactory> pingerFactories = [](
 
   result["keyserver"]           = [](bool printCertificateChain, bool printDrift) { return std::make_shared<KeyServerPinger>(printCertificateChain, printDrift); };
 
-  result["accessmanager"]       = MakeSigningServerPingerFactory(&pep::CoreClient::getAccessManagerClient);
-  result["storagefacility"]     = MakeSigningServerPingerFactory(&pep::CoreClient::getStorageClient);
-  result["transcryptor"]        = MakeSigningServerPingerFactory(&pep::CoreClient::getTranscryptorClient);
+  result["accessmanager"]       = MakeSigningServerPingerFactory(&pep::CoreClient::getAccessManagerProxy);
+  result["storagefacility"]     = MakeSigningServerPingerFactory(&pep::CoreClient::getStorageFacilityProxy);
+  result["transcryptor"]        = MakeSigningServerPingerFactory(&pep::CoreClient::getTranscryptorProxy);
 
-  result["authserver"]          = MakeSigningServerPingerFactory(&pep::Client::getAuthClient);
-  result["registrationserver"]  = MakeSigningServerPingerFactory(&pep::Client::getRegistrationClient);
+  result["authserver"]          = MakeSigningServerPingerFactory(&pep::Client::getAuthServerProxy);
+  result["registrationserver"]  = MakeSigningServerPingerFactory(&pep::Client::getRegistrationServerProxy);
 
   return result;
 }();

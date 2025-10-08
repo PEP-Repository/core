@@ -12,14 +12,14 @@ target_link_libraries(${PROJECT_NAME}TranscryptorApilib
 verify_headers_standalone(${PROJECT_NAME}TranscryptorApilib)
 
 
-add_library(${PROJECT_NAME}TranscryptorClientlib
-  TranscryptorClient.cpp TranscryptorClient.hpp
+add_library(${PROJECT_NAME}TranscryptorProxylib
+  TranscryptorProxy.cpp TranscryptorProxy.hpp
 )
-target_link_libraries(${PROJECT_NAME}TranscryptorClientlib
+target_link_libraries(${PROJECT_NAME}TranscryptorProxylib
   ${PROJECT_NAME}TranscryptorApilib
   ${PROJECT_NAME}ServerProxylib
 )
-verify_headers_standalone(${PROJECT_NAME}TranscryptorClientlib)
+verify_headers_standalone(${PROJECT_NAME}TranscryptorProxylib)
 
 
 if (WITH_SERVERS)

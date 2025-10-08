@@ -2,7 +2,7 @@
 
 #include <pep/core-client/CoreClient_fwd.hpp>
 
-#include <pep/accessmanager/AccessManagerClient.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/FakeVoid.hpp>
@@ -14,11 +14,11 @@
 #include <pep/networking/EndPoint.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/server/MonitoringMessages.hpp>
-#include <pep/storagefacility/StorageClient.hpp>
+#include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
-#include <pep/transcryptor/TranscryptorClient.hpp>
+#include <pep/transcryptor/TranscryptorProxy.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
 
 #include <cstddef>
@@ -261,9 +261,9 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   const EndPoint storageFacilityEndPoint;
   const EndPoint transcryptorEndPoint;
 
-  std::shared_ptr<AccessManagerClient> clientAccessManager;
-  std::shared_ptr<StorageClient> clientStorageFacility;
-  std::shared_ptr<TranscryptorClient> clientTranscryptor;
+  std::shared_ptr<AccessManagerProxy> accessManagerProxy;
+  std::shared_ptr<StorageFacilityProxy> storageFacilityProxy;
+  std::shared_ptr<TranscryptorProxy> transcryptorProxy;
 
   rxcpp::subjects::subject<int> registrationSubject;
   rxcpp::subjects::subject<EnrollmentResult> enrollmentSubject;
@@ -573,9 +573,9 @@ public:
   rxcpp::observable<int> getRegistrationExpiryObservable();
   inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath; }
 
-  std::shared_ptr<const StorageClient> getStorageClient(bool require = true) const;
-  std::shared_ptr<const TranscryptorClient> getTranscryptorClient(bool require = true) const;
-  std::shared_ptr<const AccessManagerClient> getAccessManagerClient(bool require = true) const;
+  std::shared_ptr<const StorageFacilityProxy> getStorageFacilityProxy(bool require = true) const;
+  std::shared_ptr<const TranscryptorProxy> getTranscryptorProxy(bool require = true) const;
+  std::shared_ptr<const AccessManagerProxy> getAccessManagerProxy(bool require = true) const;
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);

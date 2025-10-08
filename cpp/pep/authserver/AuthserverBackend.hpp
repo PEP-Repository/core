@@ -5,7 +5,7 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/authserver/AuthserverMessages.hpp>
-#include <pep/accessmanager/AccessManagerClient.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 
 namespace pep {
 
@@ -66,7 +66,7 @@ public:
 private:
   void migrateDatabase(const std::filesystem::path& storageFile);
 
-  AccessManagerClient mAccessManager;
+  AccessManagerProxy mAccessManager;
   std::chrono::seconds mTokenExpiration;
   std::string mOauthTokenSecret;
 };

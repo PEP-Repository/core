@@ -121,7 +121,7 @@ protected:
 
     return executeEventLoopFor(
         [&, config = Configuration::From(this->getParameterValues())](std::shared_ptr<pep::Client> client) {
-        return client->getKeyClient()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message }).map(printResponse);
+        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message }).map(printResponse);
         });
   }
 };
@@ -157,7 +157,7 @@ protected:
 
     return executeEventLoopFor(
         [&, config = Configuration::From(this->getParameterValues())](std::shared_ptr<pep::Client> client) {
-        return client->getKeyClient()->requestTokenBlockingRemove(TokenBlockingRemoveRequest{ config.entryId }).map(printResponse);
+        return client->getKeyServerProxy()->requestTokenBlockingRemove(TokenBlockingRemoveRequest{ config.entryId }).map(printResponse);
         });
   }
 };
@@ -175,7 +175,7 @@ protected:
     };
 
     return executeEventLoopFor(
-        [&](std::shared_ptr<pep::Client> client) { return client->getKeyClient()->requestTokenBlockingList().map(printResponse); });
+        [&](std::shared_ptr<pep::Client> client) { return client->getKeyServerProxy()->requestTokenBlockingList().map(printResponse); });
   }
 };
 

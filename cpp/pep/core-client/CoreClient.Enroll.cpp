@@ -32,14 +32,14 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
   ctx->keyComponentRequest = SignedKeyComponentRequest(kcReq, *ctx->identity);
 
   // Send request to access manager
-  return clientAccessManager->requestKeyComponent(ctx->keyComponentRequest)
+  return accessManagerProxy->requestKeyComponent(ctx->keyComponentRequest)
     .flat_map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context
       ctx->alpha = lpResponse.mPseudonymKeyComponent;
       ctx->beta = lpResponse.mEncryptionKeyComponent;
 
       // Send request to Transcryptor
-        return clientTranscryptor->requestKeyComponent(ctx->keyComponentRequest);
+        return transcryptorProxy->requestKeyComponent(ctx->keyComponentRequest);
     })
     .map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context

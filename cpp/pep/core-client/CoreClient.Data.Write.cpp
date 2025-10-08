@@ -147,7 +147,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
       subscriber.on_completed();
     }).merge(); // look at comment above for reasoning about the location of this merge
 
-    return clientStorageFacility->requestDataStore(*ctx->request, pages);
+    return storageFacilityProxy->requestDataStore(*ctx->request, pages);
   }).map([ctx](DataStoreResponse2 response) {
     DataStorageResult2 result;
     result.mIds = response.mIds;
@@ -231,7 +231,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     enumRequest.mPseudonyms->mIndices.reserve(ctx->pps.size());
     std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.mPseudonyms->mIndices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
 
-    return this->clientStorageFacility->requestDataEnumeration(std::move(enumRequest))
+    return this->storageFacilityProxy->requestDataEnumeration(std::move(enumRequest))
       .map([ctx](const DataEnumerationResponse2& response) { return response.mEntries; })
       .op(RxConcatenateVectors())
       .flat_map([this, ctx, signedTicket](std::shared_ptr<std::vector<DataEnumerationEntry2>> enumEntries) {
@@ -312,7 +312,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           .flat_map([this](const std::pair<const size_t, std::shared_ptr<MetadataUpdateRequest2>>& pair) {
           size_t offset = pair.first;
           std::shared_ptr<MetadataUpdateRequest2> request = pair.second;
-          return clientStorageFacility->requestMetadataStore(*request)
+          return storageFacilityProxy->requestMetadataStore(*request)
             .map([offset](MetadataUpdateResponse2 response) {
               return std::make_pair(offset, std::move(response));
             })
@@ -407,7 +407,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
       throw std::runtime_error(msg.str());
     }
 
-    return clientStorageFacility->requestDataDelete(*ctx->request)
+    return storageFacilityProxy->requestDataDelete(*ctx->request)
       .flat_map([this, ctx](const DataDeleteResponse2& response) {
       auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
       // TODO: use CreateObservable instead of rxcpp::iterate over a vector<> that we just create for this purpose

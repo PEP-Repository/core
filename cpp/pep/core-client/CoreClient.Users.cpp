@@ -4,7 +4,7 @@
 namespace pep {
 
 rxcpp::observable<FakeVoid> CoreClient::requestUserMutation(UserMutationRequest request) {
-  return this->getAccessManagerClient()
+  return this->getAccessManagerProxy()
       ->requestUserMutation(std::move(request)) // linebreak
       .map([](UserMutationResponse resp) { return FakeVoid{}; });
 }
@@ -64,7 +64,7 @@ rxcpp::observable<FakeVoid> CoreClient::removeUserFromGroup(std::string uid, std
 }
 
 rxcpp::observable<UserQueryResponse> CoreClient::userQuery(UserQuery query) {
-  return this->getAccessManagerClient()->requestUserQuery(std::move(query));
+  return this->getAccessManagerProxy()->requestUserQuery(std::move(query));
 }
 
 } // namespace pep

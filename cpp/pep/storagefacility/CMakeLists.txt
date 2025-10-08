@@ -12,14 +12,14 @@ target_link_libraries(${PROJECT_NAME}StorageFacilityApilib
 verify_headers_standalone(${PROJECT_NAME}StorageFacilityApilib)
 
 
-add_library(${PROJECT_NAME}StorageClientlib
-  StorageClient.cpp StorageClient.hpp
+add_library(${PROJECT_NAME}StorageFacilityProxylib
+  StorageFacilityProxy.cpp StorageFacilityProxy.hpp
 )
-target_link_libraries(${PROJECT_NAME}StorageClientlib
+target_link_libraries(${PROJECT_NAME}StorageFacilityProxylib
   ${PROJECT_NAME}StorageFacilityApilib
   ${PROJECT_NAME}ServerProxylib
 )
-verify_headers_standalone(${PROJECT_NAME}StorageClientlib)
+verify_headers_standalone(${PROJECT_NAME}StorageFacilityProxylib)
 
 
 if (WITH_SERVERS)

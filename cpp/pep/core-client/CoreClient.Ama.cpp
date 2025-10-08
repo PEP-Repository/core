@@ -27,7 +27,7 @@ void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std
 }
 
 rxcpp::observable<FakeVoid> CoreClient::amaRequestMutation(AmaMutationRequest request) {
-  return clientAccessManager->requestAmaMutation(std::move(request))
+  return accessManagerProxy->requestAmaMutation(std::move(request))
       .map([](AmaMutationResponse resp) { return FakeVoid{}; });
 }
 
@@ -141,7 +141,7 @@ CoreClient::amaRemoveGroupAccessRule(std::string group,
 
 rxcpp::observable<AmaQueryResponse>
 CoreClient::amaQuery(AmaQuery query) {
-  return clientAccessManager->requestAmaQuery(std::move(query)) // Send the query to AM
+  return accessManagerProxy->requestAmaQuery(std::move(query)) // Send the query to AM
     .op(pep::RxRequireNonEmpty()) // Ensure we don't return an AmaQueryResponse if we didn't receive one from AM
     .reduce( // Concatenate all parts into a single AmaQueryResponse instance
       std::make_shared<AmaQueryResponse>(),

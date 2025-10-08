@@ -8,14 +8,14 @@ target_link_libraries(${PROJECT_NAME}RegistrationServerApilib
 verify_headers_standalone(${PROJECT_NAME}RegistrationServerApilib)
 
 
-add_library(${PROJECT_NAME}RegistrationClientlib
-  RegistrationClient.cpp RegistrationClient.hpp
+add_library(${PROJECT_NAME}RegistrationServerProxylib
+  RegistrationServerProxy.cpp RegistrationServerProxy.hpp
 )
-target_link_libraries(${PROJECT_NAME}RegistrationClientlib
+target_link_libraries(${PROJECT_NAME}RegistrationServerProxylib
   ${PROJECT_NAME}RegistrationServerApilib
   ${PROJECT_NAME}ServerProxylib
 )
-verify_headers_standalone(${PROJECT_NAME}RegistrationClientlib)
+verify_headers_standalone(${PROJECT_NAME}RegistrationServerProxylib)
 
 
 if (WITH_SERVERS)

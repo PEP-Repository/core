@@ -5,7 +5,7 @@
 
 namespace pep {
 
-class AuthClient : public SigningServerProxy {
+class AuthServerProxy : public SigningServerProxy {
 public:
   using SigningServerProxy::SigningServerProxy;
 

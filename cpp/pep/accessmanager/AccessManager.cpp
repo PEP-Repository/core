@@ -375,8 +375,8 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   : SigningServer(parameters),
   mPseudonymKey(parameters->getPseudonymKey()),
   mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
-  mTranscryptorClient(messaging::ServerConnection::TryCreate(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
-  mKeyClient(messaging::ServerConnection::TryCreate(this->getIoContext(), parameters->getKeyServerEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
+  mTranscryptorProxy(messaging::ServerConnection::TryCreate(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
+  mKeyServerProxy(messaging::ServerConnection::TryCreate(this->getIoContext(), parameters->getKeyServerEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
   mDataTranslator(parameters->getDataTranslator()),
   backend(parameters->getBackend()),
@@ -534,7 +534,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     rkReq.mKeys.push_back(entry.mPolymorphEncryptionKey);
                   }
 
-                  return server->mTranscryptorClient.requestRekey(std::move(rkReq)).flat_map(
+                  return server->mTranscryptorProxy.requestRekey(std::move(rkReq)).flat_map(
                     [server, rkIndices, start_time, request, signedRequest, recipient, lpResponse, localPseudonyms
                     ](RekeyResponse transRespOnStack) {
 
@@ -728,7 +728,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
       });
 
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
-    return ctx->server->mTranscryptorClient.requestTranscryption(ctx->tsReq, tail);
+    return ctx->server->mTranscryptorProxy.requestTranscryption(ctx->tsReq, tail);
   }).flat_map([ctx](TranscryptorResponse resp) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
     // Now we have local pseudonyms for the orignal PPs.
@@ -759,7 +759,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     logReq.mTicket = ctx->signedTicket;
     logReq.mId = resp.mId;
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
-    return ctx->server->mTranscryptorClient.requestLogIssuedTicket(std::move(logReq));
+    return ctx->server->mTranscryptorProxy.requestLogIssuedTicket(std::move(logReq));
   }).map([ctx](LogIssuedTicketResponse resp) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
     ctx->signedTicket.mTranscryptorSignature = std::move(resp.mSignature);
@@ -844,7 +844,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
       entry.mPolymorphic = list[i];
           FillTranscryptorRequestEntry(entry, *self->mPseudonymTranslator);
     }
-    return self->mTranscryptorClient.requestTranscryption(std::move(tsRequest), MakeSingleMessageTail(tsRequestEntries))
+    return self->mTranscryptorProxy.requestTranscryption(std::move(tsRequest), MakeSingleMessageTail(tsRequestEntries))
       .map([server = SharedFrom(*self), participantGroup = participantGroup, performRemove](TranscryptorResponse resp) -> FakeVoid {
               LocalPseudonym localPseudonym = resp.mEntries[0].mAccessManager.decrypt(server->mPseudonymKey);
              if (performRemove)

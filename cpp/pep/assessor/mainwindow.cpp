@@ -89,15 +89,15 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   boost::property_tree::ptree keys;
 
   //Subscribe for network status updates from the pepClient
-  client->getAccessManagerClient()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
+  client->getAccessManagerProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
     accessManagerConnectionStatus = accessManagerStatus;
   updateConnectionStatus();
     });
-  client->getKeyClient()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
+  client->getKeyServerProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
     keyServerConnectionStatus = keyServerStatus;
   updateConnectionStatus();
     });
-  client->getStorageClient()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus storageFacilityStatus) {
+  client->getStorageFacilityProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus storageFacilityStatus) {
     storageFacilityConnectionStatus = storageFacilityStatus;
   updateConnectionStatus();
     });

@@ -31,7 +31,7 @@ protected:
     return this->executeEventLoopFor([serverFilter](std::shared_ptr<pep::Client> client) {
       std::vector<rxcpp::observable<std::string>> observables;
       if(serverFilter.empty() || serverFilter.find("accessmanager") != serverFilter.end()) {
-        observables.push_back(client->getAccessManagerClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getAccessManagerProxy()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ Access Manager ============================\n";
           oss << metrics.mMetrics;
@@ -39,7 +39,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("authserver") != serverFilter.end()) {
-        observables.push_back(client->getAuthClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getAuthServerProxy()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ AuthServer ============================\n";
           oss << metrics.mMetrics;
@@ -47,7 +47,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("keyserver") != serverFilter.end()) {
-        observables.push_back(client->getKeyClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getKeyServerProxy()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ KeyServer ============================\n";
           oss << metrics.mMetrics;
@@ -55,7 +55,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("registrationserver") != serverFilter.end()) {
-        observables.push_back(client->getRegistrationClient()->requestMetrics().map([](pep::MetricsResponse metrics){
+        observables.push_back(client->getRegistrationServerProxy()->requestMetrics().map([](pep::MetricsResponse metrics){
           std::ostringstream oss;
           oss << "============================ Registration Server ============================\n";
           oss << metrics.mMetrics;
@@ -63,7 +63,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("transcryptor") != serverFilter.end()) {
-        observables.push_back(client->getTranscryptorClient()->requestMetrics().map([](pep::MetricsResponse metrics){
+        observables.push_back(client->getTranscryptorProxy()->requestMetrics().map([](pep::MetricsResponse metrics){
           std::ostringstream oss;
           oss << "============================ Transcryptor ============================\n";
           oss << metrics.mMetrics;
@@ -71,7 +71,7 @@ protected:
         }));
       }
       if(serverFilter.empty() || serverFilter.find("storagefacility") != serverFilter.end()) {
-        observables.push_back(client->getStorageClient()->requestMetrics().map([](pep::MetricsResponse metrics) {
+        observables.push_back(client->getStorageFacilityProxy()->requestMetrics().map([](pep::MetricsResponse metrics) {
           std::ostringstream oss;
           oss << "============================ Storage Facility ============================\n";
           oss << metrics.mMetrics;
