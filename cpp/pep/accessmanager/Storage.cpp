@@ -491,7 +491,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
       countUpdated++;
     }
   }
-  for (int64_t userId : mImplementor->raw.iterate(select(distinct(&UserIdRecord::internalUserId)))) {
+  for (int64_t userId : mImplementor->getCurrentRecords(true, &UserIdRecord::internalUserId)) {
     if (!getOptionalDisplayIdentifierForUser(userId)) {
       throw std::runtime_error("Not all users have gotten a displayId in database upgrade");
     }
