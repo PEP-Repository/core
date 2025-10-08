@@ -4,9 +4,10 @@
 
 namespace pep {
 
-rxcpp::observable<PEPIdRegistrationResponse> RegistrationServerProxy::requestIdRegistration() const {
+rxcpp::observable<std::string> RegistrationServerProxy::registerPepId() const {
   return this->sendRequest<PEPIdRegistrationResponse>(this->sign(PEPIdRegistrationRequest()))
-    .op(RxGetOne("PEPIdRegistrationResponse"));
+    .op(RxGetOne("PEPIdRegistrationResponse"))
+    .map([](const PEPIdRegistrationResponse& response) {return response.mPepId; });
 }
 
 rxcpp::observable<RegistrationResponse> RegistrationServerProxy::requestRegistration(RegistrationRequest request) const {

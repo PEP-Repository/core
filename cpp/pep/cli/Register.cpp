@@ -72,7 +72,7 @@ private:
   int generateParticipantID() {
     return this->executeEventLoopFor(
     [](std::shared_ptr<pep::Client> client) {
-      return client->generatePEPID()
+      return client->getRegistrationServerProxy()->registerPepId()
         .op(ProcessGeneratedID);
     });
   }

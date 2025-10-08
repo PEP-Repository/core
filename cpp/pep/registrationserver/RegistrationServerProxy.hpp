@@ -9,9 +9,10 @@ class RegistrationServerProxy : public SigningServerProxy {
 public:
   using SigningServerProxy::SigningServerProxy;
 
-  rxcpp::observable<PEPIdRegistrationResponse> requestIdRegistration() const;
   rxcpp::observable<RegistrationResponse> requestRegistration(RegistrationRequest request) const;
   rxcpp::observable<ListCastorImportColumnsResponse> requestListCastorImportColumns(ListCastorImportColumnsRequest request) const;
+
+  rxcpp::observable<std::string> registerPepId() const;
 };
 
 }

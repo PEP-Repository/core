@@ -80,7 +80,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
         }
       })
       .as_dynamic() // Reduce compiler memory usage
-      .concat_map([this](std::shared_ptr<std::set<std::string>> inaccessible) { return generatePEPID(); })
+      .concat_map([this](std::shared_ptr<std::set<std::string>> inaccessible) { return this->getRegistrationServerProxy()->registerPepId(); })
       .as_dynamic() // Reduce compiler memory usage
       .flat_map([this, values, complete](std::string identifier) {
         // Generate polymorphic pseudonym
@@ -121,12 +121,6 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
             .as_dynamic() // Reduce compiler memory usage
             .map([identifier](std::shared_ptr<RegistrationResponse> lpResponse) { return identifier; });
       });
-}
-
-// Generates a Participant ID and returns it
-rxcpp::observable<std::string> Client::generatePEPID() {
-  return registrationServerProxy->requestIdRegistration()
-      .map([](PEPIdRegistrationResponse result) { return result.mPepId; });
 }
 
 rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::completeParticipantRegistration(

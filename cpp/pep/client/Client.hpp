@@ -77,12 +77,6 @@ public:
                                                      bool complete = true);
 
   /*!
-   * \brief Generate and store a PEP ID
-   * \return rxcpp::observable< std::string > producing the (generated) participant ID
-   */
-  rxcpp::observable<std::string> generatePEPID();
-
-  /*!
    * \brief Completes a participant's registration. Should be called for participants whose initial registration was
    * (possibly) incomplete, i.e. registerParticipant was called with complete == false, or the participant has been
    * registered from an earlier code base, or additional short pseudonyms need to be generated.
