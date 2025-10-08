@@ -4,7 +4,6 @@
 
 add_library(${PROJECT_NAME}CoreClientlib STATIC
     CoreClient.AesKeys.cpp
-    CoreClient.Ama.cpp
     CoreClient.Data.EnumAndRetrieve.cpp
     CoreClient.Data.Read.cpp
     CoreClient.Data.Write.cpp

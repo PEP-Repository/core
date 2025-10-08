@@ -3,7 +3,6 @@
 #include <pep/core-client/CoreClient_fwd.hpp>
 
 #include <pep/accessmanager/AccessManagerProxy.hpp>
-#include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/WorkerPool.hpp>
@@ -584,72 +583,6 @@ public:
 
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const;
   virtual rxcpp::observable<FakeVoid> shutdown();
-
-  //
-  // Access manager administration API
-  //
-  rxcpp::observable<FakeVoid>
-  amaCreateColumn(std::string name);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumn(std::string name);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateColumnGroup(std::string name);
-
-  /*!
-   * Removes the column group named \a name
-   * @param force determines how associated columns and access rules
-   *        are handled\n
-   *        \c false - the removal of the group is aborted\n
-   *        \c true - the associated data is also removed
-   */
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumnGroup(std::string name, bool force);
-
-  rxcpp::observable<FakeVoid>
-  amaAddColumnToGroup(std::string column, std::string group);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumnFromGroup(std::string column, std::string group);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateParticipantGroup(std::string name);
-
-  /*!
-   * Removes the participant group named \a name
-   * @param force determines how associated participant connections and access rules
-   *        are handled\n
-   *        \c false - the removal of the group is aborted\n
-   *        \c true - the associated data is also removed
-   */
-  rxcpp::observable<FakeVoid>
-  amaRemoveParticipantGroup(std::string name, bool force);
-
-  rxcpp::observable<FakeVoid>
-  amaAddParticipantToGroup(std::string group, const PolymorphicPseudonym& participant);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveParticipantFromGroup(std::string group, const PolymorphicPseudonym& participant);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateColumnGroupAccessRule(std::string columnGroup,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumnGroupAccessRule(std::string columnGroup,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateGroupAccessRule(std::string group,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveGroupAccessRule(std::string group,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<AmaQueryResponse>
-  amaQuery(AmaQuery query);
 
   //
   // User administration API

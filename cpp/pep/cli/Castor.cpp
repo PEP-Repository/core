@@ -281,7 +281,7 @@ private:
             std::unordered_set<std::string> grouped;
           };
 
-          process = client->amaQuery(pep::AmaQuery())
+          process = client->getAccessManagerProxy()->amaQuery(pep::AmaQuery())
             .op(pep::RxGetOne("AMA query response"))
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();
@@ -319,10 +319,10 @@ private:
               created = rxcpp::observable<>::just(pep::FakeVoid());
             }
             else {
-              created = client->amaCreateColumn(column.name);
+              created = client->getAccessManagerProxy()->amaCreateColumn(column.name);
             }
             return created
-              .flat_map([client, name = column.name](pep::FakeVoid) {return client->amaAddColumnToGroup(name, "Castor"); })
+              .flat_map([client, name = column.name](pep::FakeVoid) {return client->getAccessManagerProxy()->amaAddColumnToGroup(name, "Castor"); })
               .map([column](pep::FakeVoid) { return column; });
               });
         }

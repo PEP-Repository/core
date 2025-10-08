@@ -1,6 +1,5 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
-#include <pep/accessmanager/AmaSerializers.hpp>
 #include <pep/accessmanager/UserSerializers.hpp>
 #include <pep/async/RxUtils.hpp>
 #include <pep/rsk/RskSerializers.hpp>
@@ -39,15 +38,6 @@ rxcpp::observable<IndexedTicket2> AccessManagerProxy::requestIndexedTicket(Signe
 rxcpp::observable<EncryptionKeyResponse> AccessManagerProxy::requestEncryptionKey(EncryptionKeyRequest request) const {
   return this->sendRequest<EncryptionKeyResponse>(this->sign(std::move(request)))
     .op(RxGetOne("EncryptionKeyResponse"));
-}
-
-rxcpp::observable<AmaMutationResponse> AccessManagerProxy::requestAmaMutation(AmaMutationRequest request) const {
-  return this->sendRequest<AmaMutationResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("AmaMutationResponse"));
-}
-
-rxcpp::observable<AmaQueryResponse> AccessManagerProxy::requestAmaQuery(AmaQuery request) const {
-  return this->sendRequest<AmaQueryResponse>(this->sign(std::move(request))); // TODO: recompose to a single message here
 }
 
 rxcpp::observable<UserQueryResponse> AccessManagerProxy::requestUserQuery(UserQuery request) const {
