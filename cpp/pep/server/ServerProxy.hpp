@@ -31,7 +31,7 @@ MessageTail<T> MakeEmptyMessageTail() {
 class ServerProxy {
 private:
   std::shared_ptr<messaging::ServerConnection> mUntyped;
-  const MessageSigner& mMessageSigner;
+  const MessageSigner& mClientMessageSigner;
 
   static void ValidateResponse(MessageMagic magic, const std::string& response, const std::type_info& responseInfo, const std::type_info& requestInfo);
 
@@ -44,7 +44,7 @@ private:
 protected:
   template <typename T>
   Signed<T> sign(T message) const {
-    return mMessageSigner.sign(std::move(message));
+    return mClientMessageSigner.sign(std::move(message));
   }
 
   template <typename TResponse, typename TRequest>
@@ -74,7 +74,7 @@ protected:
   }
 
 public:
-  ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept;
+  ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner) noexcept;
   ServerProxy(const ServerProxy&) = delete;
   ServerProxy& operator=(const ServerProxy&) = delete;
 

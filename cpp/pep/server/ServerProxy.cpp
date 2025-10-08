@@ -25,8 +25,8 @@ void ServerProxy::ValidateResponse(MessageMagic magic, const std::string& respon
   }
 }
 
-ServerProxy::ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& messageSigner) noexcept
-  : mUntyped(std::move(untyped)), mMessageSigner(messageSigner) {
+ServerProxy::ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner) noexcept
+  : mUntyped(std::move(untyped)), mClientMessageSigner(clientMessageSigner) {
   assert(mUntyped != nullptr);
 }
 

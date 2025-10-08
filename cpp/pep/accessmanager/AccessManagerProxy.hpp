@@ -20,7 +20,7 @@ private:
 public:
   using SigningServerProxy::SigningServerProxy;
 
-  rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const;
+  rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const; // Must be pre-signed because caller (who is presumably our MessageSigner) is enrolling
   rxcpp::observable<SignedTicket2> requestTicket(SignedTicketRequest2 request) const; // TODO: don't require pre-signed
   rxcpp::observable<IndexedTicket2> requestIndexedTicket(SignedTicketRequest2 request) const; // TODO: don't require pre-signed
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
