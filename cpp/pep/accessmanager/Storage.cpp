@@ -418,14 +418,6 @@ void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& a
   }
 }
 
-void AccessManager::Backend::Storage::assertAllUsersHaveDisplayId() {
-  for (int64_t userId : mImplementor->raw.iterate(select(distinct(&UserIdRecord::internalUserId)))) {
-    if (!getDisplayIdentifierForUser(userId)) {
-      throw std::runtime_error("Not all users have been assigned a displayId during database update.");
-    }
-  }
-}
-
 void AccessManager::Backend::Storage::ensureUpToDate() {
   LOG(LOG_TAG, info) << "Checking whether to remove participant-group-access-rules ...";
   // Remove explicit PGARs for Data Administrator: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1923#note_22224
@@ -486,28 +478,26 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
     LOG(LOG_TAG, info) << "all records have been updated";
   }
 
-  LOG(LOG_TAG, info) << "Checking whether users have a displayId";
-  auto displayIdRecordCount = mImplementor->raw.count<UserIdRecord>(where(c(&UserIdRecord::isDisplayId) == true));
-  auto userCount = mImplementor->raw.select(count(distinct(&UserIdRecord::internalUserId)))[0];
+  LOG(LOG_TAG, info) << "Checking whether all users have a displayId";
 
-  if (userCount != 0 && displayIdRecordCount == 0) {
-    auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
-    std::unordered_set<int64_t> seenBefore;
-    for (auto& userIdRecord : mImplementor->raw.iterate<UserIdRecord>()) {
-      auto [_, inserted] = seenBefore.insert(userIdRecord.internalUserId);
-      if (inserted) {
-        userIdRecord.isDisplayId = true;
-        mImplementor->raw.update(userIdRecord);
-      }
+  auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
+  std::unordered_set<int64_t> seenBefore;
+  size_t countUpdated = 0;
+  for (auto& userIdRecord : mImplementor->raw.iterate<UserIdRecord>()) {
+    auto [_, inserted] = seenBefore.insert(userIdRecord.internalUserId);
+    if (inserted && !userIdRecord.isDisplayId) { //The first added userId for a user should always be the displayId at that point in time.
+      userIdRecord.isDisplayId = true;
+      mImplementor->raw.update(userIdRecord);
+      countUpdated++;
     }
-    assertAllUsersHaveDisplayId();
-    displayIdTransactionGuard.commit();
-    LOG(LOG_TAG, info) << seenBefore.size() << " records have been updated.";
   }
-  else {
-    assertAllUsersHaveDisplayId();
-    LOG(LOG_TAG, info) << "Records have a displayId. No updates necessary.";
+  for (int64_t userId : mImplementor->raw.iterate(select(distinct(&UserIdRecord::internalUserId)))) {
+    if (!getOptionalDisplayIdentifierForUser(userId)) {
+      throw std::runtime_error("Not all users have gotten a displayId in database upgrade");
+    }
   }
+  displayIdTransactionGuard.commit();
+  LOG(LOG_TAG, info) << countUpdated << " records have been updated.";
 }
 
 void AccessManager::Backend::Storage::removeOrphanedRecords() {
@@ -1516,10 +1506,15 @@ std::optional<std::string> AccessManager::Backend::Storage::getPrimaryIdentifier
         && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isPrimaryId) == true, &UserIdRecord::identifier);
 }
 
-std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+std::optional<std::string> AccessManager::Backend::Storage::getOptionalDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
   return mImplementor->getLastMatchingRecord(c(&UserIdRecord::timestamp) <= at.getTime()
         && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isDisplayId) == true, &UserIdRecord::identifier);
 }
+
+std::string AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+  return *getOptionalDisplayIdentifierForUser(internalUserId, at);
+}
+
 
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
   auto records = mImplementor->getCurrentRecords(
