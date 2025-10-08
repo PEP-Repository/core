@@ -14,6 +14,7 @@ class AccessManagerProxy : public SigningServerProxy {
 private:
   rxcpp::observable<FakeVoid> requestAmaMutation(AmaMutationRequest request) const;
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request) const;
+  rxcpp::observable<ColumnNameMappingResponse> requestColumnNameMapping(ColumnNameMappingRequest request) const;
 
 public:
   using SigningServerProxy::SigningServerProxy;
@@ -24,7 +25,6 @@ public:
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
   rxcpp::observable<GlobalConfiguration> requestGlobalConfiguration() const;
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
-  rxcpp::observable<ColumnNameMappingResponse> requestColumnNameMapping(ColumnNameMappingRequest request) const;
   rxcpp::observable<MigrateUserDbToAccessManagerResponse> requestMigrateUserDbToAccessManager(MigrateUserDbToAccessManagerRequest request, messaging::MessageBatches parts) const;
   rxcpp::observable<FindUserResponse> requestFindUser(FindUserRequest request) const;
   rxcpp::observable<StructureMetadataEntry> requestStructureMetadata(StructureMetadataRequest request) const;
@@ -59,6 +59,12 @@ public:
   rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group) const;
   rxcpp::observable<FakeVoid> removeUserFromGroup(std::string uid, std::string group, bool blockTokens) const;
   rxcpp::observable<UserQueryResponse> userQuery(UserQuery query) const;
+
+  rxcpp::observable<ColumnNameMappings> getColumnNameMappings() const;
+  rxcpp::observable<ColumnNameMappings> readColumnNameMapping(const ColumnNameSection& original) const;
+  rxcpp::observable<ColumnNameMappings> createColumnNameMapping(const ColumnNameMapping& mapping) const;
+  rxcpp::observable<ColumnNameMappings> updateColumnNameMapping(const ColumnNameMapping& mapping) const;
+  rxcpp::observable<FakeVoid> deleteColumnNameMapping(const ColumnNameSection& original) const;
 
 };
 

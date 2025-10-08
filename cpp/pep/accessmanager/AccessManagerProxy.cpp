@@ -84,4 +84,47 @@ rxcpp::observable<SetStructureMetadataResponse> AccessManagerProxy::requestSetSt
   return this->sendRequest<SetStructureMetadataResponse>(this->sign(std::move(request)), std::move(entries));
 }
 
+rxcpp::observable<ColumnNameMappings> AccessManagerProxy::getColumnNameMappings() const {
+  return this->requestColumnNameMapping(ColumnNameMappingRequest{})
+    .map([](const ColumnNameMappingResponse& response) {
+    return ColumnNameMappings(response.mappings);
+      });
+}
+
+rxcpp::observable<ColumnNameMappings> AccessManagerProxy::readColumnNameMapping(const ColumnNameSection&
+  original) const {
+  return this
+    ->requestColumnNameMapping(ColumnNameMappingRequest{ CrudAction::Read, original, std::nullopt })
+    .map([](const ColumnNameMappingResponse& response) {
+    return ColumnNameMappings(response.mappings);
+      });
+}
+
+rxcpp::observable<ColumnNameMappings> AccessManagerProxy::createColumnNameMapping(const ColumnNameMapping&
+  mapping) const {
+  return this
+    ->requestColumnNameMapping(ColumnNameMappingRequest{
+        CrudAction::Create, mapping.original, mapping.mapped })
+        .map([](const ColumnNameMappingResponse& response) {
+    assert(response.mappings.size() == 1U);
+    return ColumnNameMappings(response.mappings);
+          });
+}
+
+rxcpp::observable<ColumnNameMappings> AccessManagerProxy::updateColumnNameMapping(const ColumnNameMapping&
+  mapping) const {
+  return this
+    ->requestColumnNameMapping(ColumnNameMappingRequest{
+        CrudAction::Update, mapping.original, mapping.mapped })
+        .map([](const ColumnNameMappingResponse& response) {
+    assert(response.mappings.size() == 1U);
+    return ColumnNameMappings(response.mappings);
+          });
+}
+
+rxcpp::observable<FakeVoid> AccessManagerProxy::deleteColumnNameMapping(const ColumnNameSection& original) const {
+  return this->requestColumnNameMapping(ColumnNameMappingRequest{ CrudAction::Delete, original, std::nullopt })
+    .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); }); // Can't use ResponseToVoid because ColumnNameMappingResponse is a non-empty class
+}
+
 }

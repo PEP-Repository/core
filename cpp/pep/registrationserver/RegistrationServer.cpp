@@ -798,8 +798,8 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
     return sps->front();
   })
     .flat_map([castor = getCastorConnection(), answerSetCount, client = pClient](const ShortPseudonymDefinition& sp) { // Get import column names for the SP
-    return client->getColumnNameMappings()
-      .flat_map([castor, sp, answerSetCount](std::shared_ptr<ColumnNameMappings> colMappings) {return castor::ImportColumnNamer(*colMappings).getImportableColumnNames(castor, sp, answerSetCount); });
+    return client->getAccessManagerProxy()->getColumnNameMappings()
+      .flat_map([castor, sp, answerSetCount](const ColumnNameMappings& colMappings) {return castor::ImportColumnNamer(colMappings).getImportableColumnNames(castor, sp, answerSetCount); });
   })
     .on_error_resume_next([](std::exception_ptr ep) -> rxcpp::observable<std::string> {throw Error(GetExceptionMessage(ep)); }) // Convert exceptions to network-portable Error instances
     .op(RxToVector()) // Aggregate column names into a vector<>

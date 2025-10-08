@@ -510,12 +510,6 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   rxcpp::observable<std::shared_ptr<GlobalConfiguration>> getGlobalConfiguration();
 
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> getColumnNameMappings();
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> readColumnNameMapping(const ColumnNameSection& original);
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> createColumnNameMapping(const ColumnNameMapping& mapping);
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> updateColumnNameMapping(const ColumnNameMapping& mapping);
-  rxcpp::observable<FakeVoid> deleteColumnNameMapping(const ColumnNameSection& original);
-
   // Get/set non-cell metadata
   rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> getStructureMetadata(
       StructureMetadataType subjectType,

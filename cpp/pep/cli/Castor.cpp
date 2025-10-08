@@ -429,8 +429,8 @@ private:
   private:
     class ColumnNameMappingSubCommand : public ChildCommandOf<CommandCastorColumnNameMapping> {
     private:
-      static pep::FakeVoid ReportColumnNameMappings(std::shared_ptr<pep::ColumnNameMappings> mappings) {
-        auto entries = mappings->getEntries();
+      static pep::FakeVoid ReportColumnNameMappings(const pep::ColumnNameMappings& mappings) {
+        auto entries = mappings.getEntries();
         std::sort(entries.begin(), entries.end(), [](const pep::ColumnNameMapping& lhs, const pep::ColumnNameMapping& rhs) { return lhs.original.getValue() < rhs.original.getValue(); });
         for (const auto& entry : entries) {
           std::cout << std::quoted(entry.original.getValue()) << " --> " << std::quoted(entry.mapped.getValue()) << std::endl;
@@ -443,11 +443,11 @@ private:
         : ChildCommandOf<CommandCastorColumnNameMapping>(name, description, parent) {
       }
 
-      virtual rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) = 0;
+      virtual rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) = 0;
 
       int execute() override {
         return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-          return this->getAffectedMappings(client)
+          return this->getAffectedMappings(*client->getAccessManagerProxy())
             .map(ReportColumnNameMappings)
             .op(pep::RxBeforeCompletion(
               []() {
@@ -464,8 +464,8 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->getColumnNameMappings();
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.getColumnNameMappings();
       }
     };
 
@@ -492,8 +492,8 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->readColumnNameMapping(this->getSpecifiedCastorColumnNameSection());
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.readColumnNameMapping(this->getSpecifiedCastorColumnNameSection());
       }
     };
 
@@ -504,9 +504,9 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->deleteColumnNameMapping(this->getSpecifiedCastorColumnNameSection())
-          .map([](pep::FakeVoid) {return std::make_shared<pep::ColumnNameMappings>(pep::ColumnNameMappings({})); });
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.deleteColumnNameMapping(this->getSpecifiedCastorColumnNameSection())
+          .map([](pep::FakeVoid) {return pep::ColumnNameMappings({}); });
       }
     };
 
@@ -535,8 +535,8 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->createColumnNameMapping(this->getSpecifiedColumnNameMapping());
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.createColumnNameMapping(this->getSpecifiedColumnNameMapping());
       }
     };
 
@@ -547,8 +547,8 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->updateColumnNameMapping(this->getSpecifiedColumnNameMapping());
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.updateColumnNameMapping(this->getSpecifiedColumnNameMapping());
       }
     };
 

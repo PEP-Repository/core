@@ -306,51 +306,6 @@ rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalCon
     .map([this](const GlobalConfiguration& gc) {return mGlobalConf = MakeSharedCopy(gc); });
 }
 
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::getColumnNameMappings() {
-  return accessManagerProxy->requestColumnNameMapping(ColumnNameMappingRequest{})
-      .map([](const ColumnNameMappingResponse& response) {
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::readColumnNameMapping(const ColumnNameSection&
-                                                                                         original) {
-  return accessManagerProxy
-      ->requestColumnNameMapping(ColumnNameMappingRequest{CrudAction::Read, original, std::nullopt})
-      .map([](const ColumnNameMappingResponse& response) {
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::createColumnNameMapping(const ColumnNameMapping&
-                                                                                           mapping) {
-  return accessManagerProxy
-      ->requestColumnNameMapping(ColumnNameMappingRequest{
-          CrudAction::Create, mapping.original, mapping.mapped})
-      .map([](const ColumnNameMappingResponse& response) {
-        assert(response.mappings.size() == 1U);
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::updateColumnNameMapping(const ColumnNameMapping&
-                                                                                           mapping) {
-  return accessManagerProxy
-      ->requestColumnNameMapping(ColumnNameMappingRequest{
-          CrudAction::Update, mapping.original, mapping.mapped})
-      .map([](const ColumnNameMappingResponse& response) {
-        assert(response.mappings.size() == 1U);
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<FakeVoid> CoreClient::deleteColumnNameMapping(const ColumnNameSection& original) {
-  return accessManagerProxy
-      ->requestColumnNameMapping(
-          ColumnNameMappingRequest{CrudAction::Delete, original, std::nullopt})
-      .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); });
-}
-
 rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> CoreClient::getStructureMetadata(
     StructureMetadataType subjectType,
     std::vector<std::string> subjects,
