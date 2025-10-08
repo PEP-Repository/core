@@ -26,7 +26,6 @@ public:
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
   rxcpp::observable<GlobalConfiguration> requestGlobalConfiguration() const;
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
-  rxcpp::observable<FindUserResponse> requestFindUser(FindUserRequest request) const;
 
   rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {}) const;
   rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted) const;
@@ -69,6 +68,7 @@ public:
   rxcpp::observable<FakeVoid> removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) const;
 
   rxcpp::observable<FakeVoid> migrateUserDbToAccessManager(messaging::MessageBatches fileParts) const;
+  rxcpp::observable<FindUserResponse> findUser(std::string primaryId, std::vector<std::string> alternativeIds) const;
 };
 
 }

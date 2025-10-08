@@ -72,7 +72,8 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::migrateUserDbToAccessManager(mes
     .op(messaging::ResponseToVoid());
 }
 
-rxcpp::observable<FindUserResponse> AccessManagerProxy::requestFindUser(FindUserRequest request) const {
+rxcpp::observable<FindUserResponse> AccessManagerProxy::findUser(std::string primaryId, std::vector<std::string> alternativeIds) const {
+  FindUserRequest request(std::move(primaryId), std::move(alternativeIds));
   return this->sendRequest<FindUserResponse>(this->sign(std::move(request)))
     .op(RxGetOne("FindUserResponse"));
 }

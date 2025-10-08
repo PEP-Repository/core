@@ -122,7 +122,7 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
     const std::string &primaryId,
     const std::vector<std::string> &alternativeIds) {
 
-  return mAccessManager.requestFindUser(FindUserRequest(primaryId, alternativeIds))
+  return mAccessManager.findUser(primaryId, alternativeIds)
     .map([](FindUserResponse response) {
       return response.mUserGroups;
     });
