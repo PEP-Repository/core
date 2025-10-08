@@ -297,10 +297,6 @@ rxcpp::observable<FakeVoid> CoreClient::shutdown() {
   ).merge().last();
 }
 
-rxcpp::observable<VerifiersResponse> CoreClient::getRSKVerifiers() {
-  return accessManagerProxy->requestVerifiers();
-}
-
 rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalConfiguration() {
   if (mGlobalConf != nullptr) {
     return rxcpp::observable<>::just(mGlobalConf);

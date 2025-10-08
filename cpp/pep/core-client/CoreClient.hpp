@@ -509,7 +509,6 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       const std::optional<std::vector<std::string>>& columns = std::nullopt);
 
   rxcpp::observable<std::shared_ptr<GlobalConfiguration>> getGlobalConfiguration();
-  rxcpp::observable<VerifiersResponse> getRSKVerifiers();
 
   rxcpp::observable<std::shared_ptr<ColumnNameMappings>> getColumnNameMappings();
   rxcpp::observable<std::shared_ptr<ColumnNameMappings>> readColumnNameMapping(const ColumnNameSection& original);
