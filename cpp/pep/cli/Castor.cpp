@@ -271,7 +271,7 @@ private:
       };
 
       return this->executeEventLoopFor([provide, remaining, studySp, answerSetCount](std::shared_ptr<pep::Client> client) {
-        auto required = client->listCastorImportColumns(studySp, answerSetCount)
+        auto required = client->getRegistrationServerProxy()->listCastorImportColumns(studySp, answerSetCount)
           .map([](const std::string& name) {return ColumnStatus{ name, std::nullopt, std::nullopt }; });
         rxcpp::observable<ColumnStatus> process = required;
 

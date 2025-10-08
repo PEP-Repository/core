@@ -151,15 +151,6 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
       .flat_map([this, pp, identifier](DataStorageResult2 result) { return generateShortPseudonyms(pp, identifier); });
 }
 
-rxcpp::observable<std::string> Client::listCastorImportColumns(const std::string& spColumnName,
-                                                               const std::optional<unsigned>& answerSetCount) {
-  return registrationServerProxy
-      ->requestListCastorImportColumns(ListCastorImportColumnsRequest{spColumnName, answerSetCount.value_or(0U)})
-      .flat_map([](const ListCastorImportColumnsResponse& response) {
-        return rxcpp::observable<>::iterate(response.mImportColumns);
-      });
-}
-
 rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(
     const PolymorphicPseudonym& pp, const std::string& identifier) {
   LOG(LOG_TAG, debug) << "Start generating short pseudonyms";

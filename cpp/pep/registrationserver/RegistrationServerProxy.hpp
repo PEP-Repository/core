@@ -10,9 +10,9 @@ public:
   using SigningServerProxy::SigningServerProxy;
 
   rxcpp::observable<FakeVoid> requestRegistration(RegistrationRequest request) const;
-  rxcpp::observable<ListCastorImportColumnsResponse> requestListCastorImportColumns(ListCastorImportColumnsRequest request) const;
 
   rxcpp::observable<std::string> registerPepId() const;
+  rxcpp::observable<std::string> listCastorImportColumns(const std::string& spColumnName, const std::optional<unsigned>& answerSetCount) const;
 };
 
 }

@@ -15,9 +15,14 @@ rxcpp::observable<FakeVoid> RegistrationServerProxy::requestRegistration(Registr
     .op(messaging::ResponseToVoid());
 }
 
-rxcpp::observable<ListCastorImportColumnsResponse> RegistrationServerProxy::requestListCastorImportColumns(ListCastorImportColumnsRequest request) const {
+rxcpp::observable<std::string> RegistrationServerProxy::listCastorImportColumns(const std::string& spColumnName, const std::optional<unsigned>& answerSetCount) const {
+  ListCastorImportColumnsRequest request{ spColumnName, answerSetCount.value_or(0U) };
   return this->sendRequest<ListCastorImportColumnsResponse>(std::move(request))
-    .op(RxGetOne("ListCastorImportColumnsResponse"));
+    .op(RxGetOne("ListCastorImportColumnsResponse"))
+    .flat_map([](const ListCastorImportColumnsResponse& response) {
+    return rxcpp::observable<>::iterate(response.mImportColumns);
+      });
 }
+
 
 }

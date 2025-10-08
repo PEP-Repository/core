@@ -87,9 +87,6 @@ public:
   rxcpp::observable<FakeVoid> completeParticipantRegistration(
       const std::string& identifier, bool skipIdentifierStorage = false);
 
-  rxcpp::observable<std::string> listCastorImportColumns(const std::string& spColumnName,
-                                                         const std::optional<unsigned>& answerSetCount);
-
   /*!
    * \brief Enroll a user. A key pair is generated and, using a provided OAuth token, a certificate and PEP key
    * components are requested. If the enrollment is successful, the following variables are update: privateKey,
