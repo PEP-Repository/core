@@ -3,22 +3,13 @@
 add_library(${PROJECT_NAME}ServerApilib
   MonitoringMessages.hpp
   MonitoringSerializers.cpp MonitoringSerializers.hpp
+  ServerProxy.cpp ServerProxy.hpp
+  SigningServerProxy.cpp SigningServerProxy.hpp
 )
 target_link_libraries(${PROJECT_NAME}ServerApilib
-  ${PROJECT_NAME}Cryptolib
+  ${PROJECT_NAME}Messaginglib
 )
 verify_headers_standalone(${PROJECT_NAME}ServerApilib)
-
-
-add_library(${PROJECT_NAME}ServerProxylib
-  SigningServerProxy.cpp SigningServerProxy.hpp
-  ServerProxy.cpp ServerProxy.hpp
-)
-target_link_libraries(${PROJECT_NAME}ServerProxylib
-  ${PROJECT_NAME}Messaginglib
-  ${PROJECT_NAME}ServerApilib
-)
-verify_headers_standalone(${PROJECT_NAME}ServerProxylib)
 
 
 if (WITH_SERVERS)

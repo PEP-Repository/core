@@ -19,7 +19,7 @@ add_library(${PROJECT_NAME}AccessManagerProxylib
 )
 target_link_libraries(${PROJECT_NAME}AccessManagerProxylib
   ${PROJECT_NAME}AccessManagerApilib
-  ${PROJECT_NAME}ServerProxylib
+  ${PROJECT_NAME}ServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}AccessManagerProxylib)
 

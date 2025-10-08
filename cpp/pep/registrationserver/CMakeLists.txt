@@ -13,7 +13,7 @@ add_library(${PROJECT_NAME}RegistrationServerProxylib
 )
 target_link_libraries(${PROJECT_NAME}RegistrationServerProxylib
   ${PROJECT_NAME}RegistrationServerApilib
-  ${PROJECT_NAME}ServerProxylib
+  ${PROJECT_NAME}ServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}RegistrationServerProxylib)
 

@@ -15,7 +15,7 @@ add_library(${PROJECT_NAME}KeyServerProxylib
 )
 target_link_libraries(${PROJECT_NAME}KeyServerProxylib
   ${PROJECT_NAME}KeyServerApilib
-  ${PROJECT_NAME}ServerProxylib
+  ${PROJECT_NAME}ServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}KeyServerProxylib)
 

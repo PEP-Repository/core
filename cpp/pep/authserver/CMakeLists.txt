@@ -13,7 +13,7 @@ add_library(${PROJECT_NAME}AuthServerProxylib
 )
 target_link_libraries(${PROJECT_NAME}AuthServerProxylib
   ${PROJECT_NAME}AuthserverApilib
-  ${PROJECT_NAME}ServerProxylib
+  ${PROJECT_NAME}ServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}AuthServerProxylib)
 
