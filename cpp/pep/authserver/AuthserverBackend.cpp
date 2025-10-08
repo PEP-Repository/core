@@ -190,10 +190,9 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
       if (!storageStream->is_open()) {
         throw std::runtime_error("Failed to open storageFile");
       }
-      return accessManager.requestMigrateUserDbToAccessManager(MigrateUserDbToAccessManagerRequest(),
-                                        messaging::IStreamToMessageBatches(storageStream));
+      return accessManager.migrateUserDbToAccessManager(messaging::IStreamToMessageBatches(storageStream));
     }).subscribe(
-      [](const MigrateUserDbToAccessManagerResponse& response) {
+      [](FakeVoid) {
         LOG(LOG_TAG, info) << "Migration successful";
       },
       [](std::exception_ptr e) {

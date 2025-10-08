@@ -67,9 +67,9 @@ rxcpp::observable<ColumnNameMappingResponse> AccessManagerProxy::requestColumnNa
     .op(RxGetOne("ColumnNameMappingResponse"));
 }
 
-rxcpp::observable<MigrateUserDbToAccessManagerResponse> AccessManagerProxy::requestMigrateUserDbToAccessManager(MigrateUserDbToAccessManagerRequest request, messaging::MessageBatches parts) const {
-  return this->sendRequest<MigrateUserDbToAccessManagerResponse>(this->sign(std::move(request)), std::move(parts))
-    .op(RxGetOne("MigrateUserDbToAccessManagerResponse"));
+rxcpp::observable<FakeVoid> AccessManagerProxy::migrateUserDbToAccessManager(messaging::MessageBatches fileParts) const {
+  return this->sendRequest<MigrateUserDbToAccessManagerResponse>(this->sign(MigrateUserDbToAccessManagerRequest()), std::move(fileParts))
+    .op(messaging::ResponseToVoid());
 }
 
 rxcpp::observable<FindUserResponse> AccessManagerProxy::requestFindUser(FindUserRequest request) const {
