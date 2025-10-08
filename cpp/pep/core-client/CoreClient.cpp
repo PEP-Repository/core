@@ -1,4 +1,3 @@
-#include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxCache.hpp>
@@ -8,11 +7,7 @@
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
-#include <pep/server/MonitoringSerializers.hpp>
-#include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/structure/StructureSerializers.hpp>
-#include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/utils/Compare.hpp>
 #include <pep/utils/Configuration.hpp>

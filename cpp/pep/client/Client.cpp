@@ -5,11 +5,8 @@
 #include <pep/async/RxUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/registrationserver/RegistrationServerSerializers.hpp>
-#include <pep/server/MonitoringSerializers.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/authserver/AuthserverSerializers.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
