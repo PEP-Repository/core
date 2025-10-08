@@ -11,7 +11,7 @@ namespace pep {
  * \param queue: The queue whose items will be produced by the observable.
  * \return An observable that produces the queue's items, clearing the queue as items are being produced.
  *
- * \remark If you still need a container after converting it to an observable<>, use RxIterate<> instead (with an appropriate container type).
+ * \remark If you still need a container after converting it to an observable<>, use rxcpp::observable<>::iterate instead (with an appropriate container type).
  */
 template <typename TItem>
 rxcpp::observable<TItem> RxDrain(std::shared_ptr<std::queue<TItem>> queue) {

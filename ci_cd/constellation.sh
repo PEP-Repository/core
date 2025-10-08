@@ -11,6 +11,7 @@
 
 set -o errexit
 set -o nounset
+set -x
 
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
@@ -84,7 +85,8 @@ get_host_port() {
 host_default_user_node="ssh"
 host_sync_pull_user_node="sync-pull"
 host_sync_push_user_node="sync-push"
-host_user_nodes="$host_default_user_node $host_sync_pull_user_node $host_sync_push_user_node"
+host_docker_compose_user_node="docker-compose"
+host_user_nodes="$host_default_user_node $host_sync_pull_user_node $host_sync_push_user_node $host_docker_compose_user_node"
 
 get_known_host_line() {
   c_entry="$1"
@@ -127,7 +129,7 @@ get_user_json() {
     user_json=$(echo "$c_entry" | jq -c ".\"$custom_parent_node\".user | select(. != null)")
   fi
   if [ -z "$user_json" ]; then
-    user_json=$(echo "$c_entry" | jq -c ".ssh.user")
+    user_json=$(echo "$c_entry" | jq -c ".ssh.user | select(. != null)")
   fi
   
   echo "$user_json"
@@ -201,7 +203,10 @@ get_user_entries() {
     hosts=$(echo "$c_json" | jq -c "$entry_selector")
   fi
   echo "$hosts" | while read -r host; do
-    get_user_json "$host" "$custom_parent_node"
+    user_json=$(get_user_json "$host" "$custom_parent_node")
+    if [ -n "$user_json" ] && [ "$user_json" != "null" ]; then
+      echo "$user_json"
+    fi
   done | sort | uniq
 }
 
@@ -446,6 +451,82 @@ sync_data() {
   fi
 }
 
+get_docker_compose_commands() {
+  c_json="$1"
+  c_file_dir="${2:-.}"
+  compose_image="$3"
+  action="${4:-redeploy}"  # pull, restart, stop, or redeploy
+  override_profiles="${5:-}"  # Optional profiles override
+  
+  echo "$c_json" \
+    | jq -c '.[] | select(has("docker-compose"))' \
+    | while read -r entry
+  do
+    # Use the docker-compose specific configuration or fall back to default ssh user
+    ssh_cmd=$(get_ssh_command "$entry" "$c_file_dir" "" "docker-compose")
+    
+    # Use override profiles if provided, otherwise extract from constellation config
+    if [ -n "$override_profiles" ]; then
+      profiles="$override_profiles"
+    else
+      profiles=$(echo "$entry" | jq -r '.["docker-compose"].profiles // empty | if type == "array" then join(",") else . end')
+    fi
+    
+    # Build the remote command with profiles
+    if [ -n "$profiles" ]; then
+      remote_cmd="$action $compose_image $profiles"
+    else
+      remote_cmd="$action $compose_image"
+    fi
+    
+    echo "$ssh_cmd '$remote_cmd'"
+  done
+}
+
+docker_compose() {
+  c_json="$1"
+  c_file_dir="${2:-.}"
+  compose_image="$3"
+  action="${4:-redeploy}"  # pull, restart, stop, or redeploy
+  override_profiles="${5:-}"  # Optional profiles override
+  
+  docker_compose_commands=$(get_docker_compose_commands "$c_json" "$c_file_dir" "$compose_image" "$action" "$override_profiles")
+  
+  prepare_ssh_connectivity "$c_json" "$c_file_dir" '.[] | select(has("docker-compose"))'
+  
+  if [ -n "$docker_compose_commands" ]; then
+    case "$action" in
+      "pull")
+        action_verb="Pulling images"
+        ;;
+      "restart")
+        action_verb="Restarting services"
+        ;;
+      "stop")
+        action_verb="Stopping services"
+        ;;
+      "redeploy")
+        action_verb="Redeploying (pull, stop, and start)"
+        ;;
+      *)
+        action_verb="Executing $action"
+        ;;
+    esac
+    
+    if [ -n "$override_profiles" ]; then
+      echo "$action_verb with docker-compose using profiles [$override_profiles] on $(echo "$docker_compose_commands" | wc -l) host(s)..."
+    else
+      echo "$action_verb with docker-compose on $(echo "$docker_compose_commands" | wc -l) host(s)..."
+    fi
+    
+    echo "$docker_compose_commands" | while read -r cmd; do
+      run_cmd "$cmd"
+    done
+  else
+    echo "No docker-compose configuration found in constellation"
+  fi
+}
+
 # We're using envsubst to expand environment variables in the constellation file
 constellation_json=$(envsubst < "$constellation_file")
 constellation_file_dir="$(get_file_dir "$constellation_file")"
@@ -453,6 +534,17 @@ constellation_file_dir="$(get_file_dir "$constellation_file")"
 case $constellation_command in
   update)
     update "$constellation_json" "$constellation_file_dir"
+    ;;
+  docker-compose)
+    compose_image="${3:-}"
+    action="${4:-redeploy}"
+    override_profiles="${5:-}"
+    if [ -z "$compose_image" ]; then
+      echo "Error: compose image must be provided as third argument"
+      echo "Usage: $0 constellation.json docker-compose <compose_image> [<action>] [<profiles>]"
+      exit 1
+    fi
+    docker_compose "$constellation_json" "$constellation_file_dir" "$compose_image" "$action" "$override_profiles"
     ;;
   update-data-sync)
     push_constellation_file="$3"

@@ -34,6 +34,8 @@ variables:
 
   PEP_DEPLOYING_JSON_FILE: config/$CI_COMMIT_REF_NAME/constellation.json
 
+  PROJECT_IMAGE_COMPOSE: "$CI_REGISTRY_IMAGE/$CI_COMMIT_BRANCH/docker-compose:$CI_PIPELINE_ID"
+
 # Applies to whole pipeline
 workflow:
   rules:
@@ -434,11 +436,25 @@ deploy:
   stage: deploy
   dependencies: []
   rules:
+    - if: '$USE_DOCKER_COMPOSE_DEPLOYMENT == "true"'
+      when: never
     - !reference [.on-deployed-branches, rules]
   tags: [docker-small]
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   script:
     - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_DEPLOYING_JSON_FILE" update
+
+deploy-compose:
+  stage: deploy
+  rules:
+    - if: '$USE_DOCKER_COMPOSE_DEPLOYMENT != "true"'
+      when: never
+    - !reference [.on-deployed-branches, rules]
+  tags: [docker-small]
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  dependencies: []
+  script:
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_DEPLOYING_JSON_FILE" docker-compose "$PROJECT_IMAGE_COMPOSE" redeploy
 
 .data-sync-base:
   rules:

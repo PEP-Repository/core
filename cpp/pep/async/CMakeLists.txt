@@ -14,7 +14,6 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     RxDrain.hpp
     RxEnsureProgress.hpp
     RxFinallyExhaust.hpp
-    RxIterate.hpp
     RxLazy.hpp
     RxParallelConcat.hpp
     RxTimeout.cpp RxTimeout.hpp

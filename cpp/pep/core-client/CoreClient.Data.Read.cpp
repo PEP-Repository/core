@@ -75,7 +75,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
     return rxcpp::observable<>::empty<EnumerateResult>();
   }
 
-  auto batches = std::make_shared<std::vector<std::vector<std::string>>>();
+  std::vector<std::vector<std::string>> batches;
   for (size_t i = 0U; i < ids.size(); i += DATA_RETRIEVAL_BATCH_SIZE) {
     auto batchSize = std::min(ids.size() - i, DATA_RETRIEVAL_BATCH_SIZE);
 
@@ -85,11 +85,11 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
     static_assert(DATA_RETRIEVAL_BATCH_SIZE <= static_cast<size_t>(std::numeric_limits<ptrdiff_t>::max())); // Ensure that we don't lose data in static_cast. We don't need a run time "assert(batchSize <= ...)" because batchSize <= DATA_RETRIEVAL_BATCH_SIZE
     auto end = begin + static_cast<ptrdiff_t>(batchSize);
 
-    batches->emplace_back(std::vector<std::string>(begin, end));
+    batches.emplace_back(std::vector<std::string>(begin, end));
   }
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
-  return RxIterate(batches)
+  return rxcpp::observable<>::iterate(std::move(batches))
     .flat_map([this, ticket, pseudonyms](std::vector<std::string> batch) {
     auto entryCount = batch.size();
     MetadataReadRequest2 readRequest;

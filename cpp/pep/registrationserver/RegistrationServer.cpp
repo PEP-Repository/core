@@ -371,7 +371,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       if (rebuild) {
         LOG(LOG_TAG, info) << "Initializing shadow storage with short pseudonyms retrieved from Storage Facility";
       }
-      return RxIterate(pps);
+      return rxcpp::observable<>::iterate(std::move(*pps));
     })
       .flat_map([this, rebuild, count](const PseudonymsByPp::value_type& ppAndPseudonyms) { // Process each participant
       const auto& pseudonyms = ppAndPseudonyms.second;
