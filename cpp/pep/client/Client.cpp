@@ -184,13 +184,6 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
       });
 }
 
-rxcpp::observable<std::string> Client::requestToken(std::string subject,
-                                                       std::string group,
-                                                       Timestamp expirationTime) {
-  return this->getAuthServerProxy()->requestToken(TokenRequest(subject, group, expirationTime)) // linebreak
-      .map([](TokenResponse response) { return response.mToken; });
-}
-
 std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
   return GetConstServerProxy(keyServerProxy, "Key Server", require);
 }

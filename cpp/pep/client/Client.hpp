@@ -97,8 +97,6 @@ public:
    */
   rxcpp::observable<EnrollmentResult> enrollUser(const std::string& oauthToken);
 
-  rxcpp::observable<std::string> requestToken(std::string subject, std::string group, Timestamp expirationTime);
-
   std::shared_ptr<const KeyServerProxy> getKeyServerProxy(bool require = true) const;
   std::shared_ptr<const AuthServerProxy> getAuthServerProxy(bool require = true) const;
   std::shared_ptr<const RegistrationServerProxy> getRegistrationServerProxy(bool require = true) const;
