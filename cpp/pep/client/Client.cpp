@@ -106,24 +106,22 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
         return storeData2(entries)
             .last()       // Ensure further actions are executed only once
             .as_dynamic() // Reduce compiler memory usage
-            .flat_map([this, identifier, complete](DataStorageResult2 result) {
+            .flat_map([this, identifier, complete](DataStorageResult2 result) -> rxcpp::observable<FakeVoid> {
               if (complete) {
                 return completeParticipantRegistration(identifier, true);
               }
               else {
-                auto response = std::make_shared<RegistrationResponse>();
-                rxcpp::observable<std::shared_ptr<RegistrationResponse>> result = rxcpp::observable<>::from(response);
-                return result;
+                return rxcpp::observable<>::just(FakeVoid());
               }
             })
             .as_dynamic() // Reduce compiler memory usage
             .last()       // Ensure further actions are executed only once
             .as_dynamic() // Reduce compiler memory usage
-            .map([identifier](std::shared_ptr<RegistrationResponse> lpResponse) { return identifier; });
+            .map([identifier](FakeVoid) { return identifier; });
       });
 }
 
-rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::completeParticipantRegistration(
+rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
     const std::string& identifier, bool skipIdentifierStorage) {
   auto pp = generateParticipantPolymorphicPseudonym(identifier);
 
@@ -162,7 +160,7 @@ rxcpp::observable<std::string> Client::listCastorImportColumns(const std::string
       });
 }
 
-rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::generateShortPseudonyms(
+rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(
     const PolymorphicPseudonym& pp, const std::string& identifier) {
   LOG(LOG_TAG, debug) << "Start generating short pseudonyms";
 
@@ -173,8 +171,7 @@ rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::generateShortPs
 
   LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
 
-  return registrationServerProxy->requestRegistration(std::move(request))
-      .map([](RegistrationResponse result) { return std::make_shared<RegistrationResponse>(result); });
+  return registrationServerProxy->requestRegistration(std::move(request));
 }
 
 rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthToken) {

@@ -84,7 +84,7 @@ public:
    * \param skipIdentifierStorage Pass true if you're sure the participant ID has already been stored, i.e. this method
    * is called after a call to registerParticipant. \return rxcpp::observable< RegistrationResponse >
    */
-  rxcpp::observable<std::shared_ptr<RegistrationResponse>> completeParticipantRegistration(
+  rxcpp::observable<FakeVoid> completeParticipantRegistration(
       const std::string& identifier, bool skipIdentifierStorage = false);
 
   rxcpp::observable<std::string> listCastorImportColumns(const std::string& spColumnName,
@@ -124,7 +124,7 @@ private:
 
   Client(const Builder& builder);
 
-  rxcpp::observable<std::shared_ptr<RegistrationResponse>> generateShortPseudonyms(const PolymorphicPseudonym& pp,
+  rxcpp::observable<FakeVoid> generateShortPseudonyms(const PolymorphicPseudonym& pp,
                                                                                    const std::string& identifier);
   rxcpp::observable<std::string> getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns);
 };

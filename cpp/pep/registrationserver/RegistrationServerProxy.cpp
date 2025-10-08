@@ -1,4 +1,4 @@
-#include <pep/async/RxUtils.hpp>
+#include <pep/messaging/ResponseToVoid.hpp>
 #include <pep/registrationserver/RegistrationServerProxy.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 
@@ -10,9 +10,9 @@ rxcpp::observable<std::string> RegistrationServerProxy::registerPepId() const {
     .map([](const PEPIdRegistrationResponse& response) {return response.mPepId; });
 }
 
-rxcpp::observable<RegistrationResponse> RegistrationServerProxy::requestRegistration(RegistrationRequest request) const {
+rxcpp::observable<FakeVoid> RegistrationServerProxy::requestRegistration(RegistrationRequest request) const {
   return this->sendRequest<RegistrationResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("RegistrationResponse"));
+    .op(messaging::ResponseToVoid());
 }
 
 rxcpp::observable<ListCastorImportColumnsResponse> RegistrationServerProxy::requestListCastorImportColumns(ListCastorImportColumnsRequest request) const {
