@@ -306,29 +306,6 @@ rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalCon
     .map([this](const GlobalConfiguration& gc) {return mGlobalConf = MakeSharedCopy(gc); });
 }
 
-rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> CoreClient::getStructureMetadata(
-    StructureMetadataType subjectType,
-    std::vector<std::string> subjects,
-    std::vector<StructureMetadataKey> keys) {
-  return accessManagerProxy
-      ->requestStructureMetadata(StructureMetadataRequest{ subjectType, std::move(subjects), std::move(keys) })
-      .map([](StructureMetadataEntry entry) { return MakeSharedCopy(std::move(entry)); });
-}
-
-rxcpp::observable<FakeVoid> CoreClient::setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries) {
-  return accessManagerProxy
-      ->requestSetStructureMetadata(SetStructureMetadataRequest{subjectType}, std::move(entries))
-      .map([](SetStructureMetadataResponse response) {
-        return FakeVoid();
-      });
-}
-
-rxcpp::observable<FakeVoid> CoreClient::removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) {
-  return accessManagerProxy
-      ->requestSetStructureMetadata(SetStructureMetadataRequest{.subjectType = subjectType, .remove = std::move(subjectKeys)})
-      .map([](SetStructureMetadataResponse) { return FakeVoid(); });
-}
-
 std::shared_ptr<WorkerPool> CoreClient::getWorkerPool() {
   if (mWorkerPool == nullptr)
     mWorkerPool = WorkerPool::getShared();

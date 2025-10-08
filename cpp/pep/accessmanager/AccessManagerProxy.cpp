@@ -1,6 +1,7 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/async/RxUtils.hpp>
+#include <pep/messaging/ResponseToVoid.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
@@ -76,12 +77,9 @@ rxcpp::observable<FindUserResponse> AccessManagerProxy::requestFindUser(FindUser
     .op(RxGetOne("FindUserResponse"));
 }
 
-rxcpp::observable<StructureMetadataEntry> AccessManagerProxy::requestStructureMetadata(StructureMetadataRequest request) const {
-  return this->sendRequest<StructureMetadataEntry>(this->sign(std::move(request)));
-}
-
-rxcpp::observable<SetStructureMetadataResponse> AccessManagerProxy::requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries) const {
-  return this->sendRequest<SetStructureMetadataResponse>(this->sign(std::move(request)), std::move(entries));
+rxcpp::observable<FakeVoid> AccessManagerProxy::requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries) const {
+  return this->sendRequest<SetStructureMetadataResponse>(this->sign(std::move(request)), std::move(entries))
+    .op(messaging::ResponseToVoid());
 }
 
 rxcpp::observable<ColumnNameMappings> AccessManagerProxy::getColumnNameMappings() const {
@@ -125,6 +123,22 @@ rxcpp::observable<ColumnNameMappings> AccessManagerProxy::updateColumnNameMappin
 rxcpp::observable<FakeVoid> AccessManagerProxy::deleteColumnNameMapping(const ColumnNameSection& original) const {
   return this->requestColumnNameMapping(ColumnNameMappingRequest{ CrudAction::Delete, original, std::nullopt })
     .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); }); // Can't use ResponseToVoid because ColumnNameMappingResponse is a non-empty class
+}
+
+rxcpp::observable<StructureMetadataEntry> AccessManagerProxy::getStructureMetadata(
+  StructureMetadataType subjectType,
+  std::vector<std::string> subjects,
+  std::vector<StructureMetadataKey> keys) const {
+  StructureMetadataRequest request{ subjectType, std::move(subjects), std::move(keys) };
+  return this->sendRequest<StructureMetadataEntry>(this->sign(std::move(request)));
+}
+
+rxcpp::observable<FakeVoid> AccessManagerProxy::setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries) const {
+  return this->requestSetStructureMetadata(SetStructureMetadataRequest{ subjectType }, std::move(entries));
+}
+
+rxcpp::observable<FakeVoid> AccessManagerProxy::removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) const {
+  return this->requestSetStructureMetadata(SetStructureMetadataRequest{ .subjectType = subjectType, .remove = std::move(subjectKeys) });
 }
 
 }

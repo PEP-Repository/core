@@ -510,14 +510,6 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   rxcpp::observable<std::shared_ptr<GlobalConfiguration>> getGlobalConfiguration();
 
-  // Get/set non-cell metadata
-  rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> getStructureMetadata(
-      StructureMetadataType subjectType,
-      std::vector<std::string> subjects,
-      std::vector<StructureMetadataKey> keys = {});
-  rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries);
-  rxcpp::observable<FakeVoid> removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys);
-
   static constexpr bool DEFAULT_PERSIST_KEYS_FILE = true;
 
   static std::shared_ptr<CoreClient> OpenClient(

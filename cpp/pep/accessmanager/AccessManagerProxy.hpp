@@ -15,6 +15,7 @@ private:
   rxcpp::observable<FakeVoid> requestAmaMutation(AmaMutationRequest request) const;
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request) const;
   rxcpp::observable<ColumnNameMappingResponse> requestColumnNameMapping(ColumnNameMappingRequest request) const;
+  rxcpp::observable<FakeVoid> requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries = MakeEmptyMessageTail<StructureMetadataEntry>()) const;
 
 public:
   using SigningServerProxy::SigningServerProxy;
@@ -27,8 +28,6 @@ public:
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
   rxcpp::observable<MigrateUserDbToAccessManagerResponse> requestMigrateUserDbToAccessManager(MigrateUserDbToAccessManagerRequest request, messaging::MessageBatches parts) const;
   rxcpp::observable<FindUserResponse> requestFindUser(FindUserRequest request) const;
-  rxcpp::observable<StructureMetadataEntry> requestStructureMetadata(StructureMetadataRequest request) const;
-  rxcpp::observable<SetStructureMetadataResponse> requestSetStructureMetadata(SetStructureMetadataRequest request, MessageTail<StructureMetadataEntry> entries = MakeEmptyMessageTail<StructureMetadataEntry>()) const;
 
   rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {}) const;
   rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted) const;
@@ -66,6 +65,9 @@ public:
   rxcpp::observable<ColumnNameMappings> updateColumnNameMapping(const ColumnNameMapping& mapping) const;
   rxcpp::observable<FakeVoid> deleteColumnNameMapping(const ColumnNameSection& original) const;
 
+  rxcpp::observable<StructureMetadataEntry> getStructureMetadata(StructureMetadataType subjectType, std::vector<std::string> subjects, std::vector<StructureMetadataKey> keys = {}) const;
+  rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, MessageTail<StructureMetadataEntry> entries) const;
+  rxcpp::observable<FakeVoid> removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) const;
 };
 
 }
