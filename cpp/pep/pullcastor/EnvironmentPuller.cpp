@@ -157,7 +157,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
   mColumnNamer = CreateRxCache([client = mClient, token = mOauthToken]() {
     return EnsureEnrolled(client, token)
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getAccessManagerProxy()->getColumnNameMappings(); })
-      .map([](const ColumnNameMappings& mappings) { return std::make_shared<ImportColumnNamer>(mappings); });
+      .map([](ColumnNameMappings mappings) { return std::make_shared<ImportColumnNamer>(std::move(mappings)); });
     });
 
   mStudiesBySlug = CreateRxCache([castor = mCastor]() {
