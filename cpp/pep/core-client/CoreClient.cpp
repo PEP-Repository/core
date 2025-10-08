@@ -2,7 +2,8 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxCache.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>

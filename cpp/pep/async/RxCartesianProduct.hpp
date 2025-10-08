@@ -1,7 +1,6 @@
 #pragma once
 
-#include <pep/async/RxUtils.hpp>
-
+#include <pep/async/RxToVector.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace pep {

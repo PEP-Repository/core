@@ -1,7 +1,16 @@
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireNonEmpty.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/castor/RepeatingDataPoint.hpp>
 #include <pep/pullcastor/CastorParticipant.hpp>
 #include <pep/pullcastor/StudyAspectPuller.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-group_by.hpp>
+#include <rxcpp/operators/rx-on_error_resume_next.hpp>
+#include <rxcpp/operators/rx-take.hpp>
 
 namespace pep {
 namespace castor {

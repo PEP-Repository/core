@@ -7,7 +7,6 @@
 
 #include <pep/castor/CastorConnection.hpp>
 #include <pep/utils/Shared.hpp>
-#include <pep/async/RxUtils.hpp>
 
 namespace pep {
 namespace castor {
