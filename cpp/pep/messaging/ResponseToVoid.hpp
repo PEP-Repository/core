@@ -5,10 +5,11 @@
 
 namespace pep::messaging {
 
+template <bool lossy = false>
 struct ResponseToVoid {
   template <typename TResponse, typename SourceOperator>
   rxcpp::observable<FakeVoid> operator()(rxcpp::observable<TResponse, SourceOperator> items) const {
-    static_assert(sizeof(TResponse) == sizeof(FakeVoid), "Discarding information from non-empty response message");
+    static_assert(lossy || sizeof(TResponse) == sizeof(FakeVoid), "Losing information from non-empty response message");
 
     return items
       .op(RxGetOne(boost::core::demangle(typeid(TResponse).name())))

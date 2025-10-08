@@ -122,7 +122,7 @@ rxcpp::observable<ColumnNameMappings> AccessManagerProxy::updateColumnNameMappin
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::deleteColumnNameMapping(const ColumnNameSection& original) const {
   return this->requestColumnNameMapping(ColumnNameMappingRequest{ CrudAction::Delete, original, std::nullopt })
-    .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); }); // Can't use ResponseToVoid because ColumnNameMappingResponse is a non-empty class
+    .op(messaging::ResponseToVoid<true>());
 }
 
 rxcpp::observable<StructureMetadataEntry> AccessManagerProxy::getStructureMetadata(
