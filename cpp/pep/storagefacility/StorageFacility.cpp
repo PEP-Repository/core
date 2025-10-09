@@ -575,7 +575,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
             // PEP_DEFER ensures that the outer observable keeps going even if we raise an exception (on the inner observable) from this lambda
             PEP_DEFER(self->emitNextPage());
 
-            auto page = Serialization::FromString<DataPayloadPage>(*contents); // TODO: prevent string copy. E.g. either std::move, or change signature of Serialization::FromString<> to accept an std::string_view
+            auto page = Serialization::FromString<DataPayloadPage>(*contents);
             page.mIndex = fileIndex;
             page.mPageNumber = pageIndex;
 

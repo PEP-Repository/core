@@ -103,7 +103,7 @@ struct TicketRequestRecord {
 
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
-    this->request = Serialization::ToCharVector(ticketRequest);
+    this->request = RangeToVector(Serialization::ToString(ticketRequest));
     this->timestamp = Timestamp().getTime();
     this->certificateChain = certificateChain;
   }
@@ -252,7 +252,7 @@ struct PseudonymSetRecord {
 struct PseudonymSetPseudonymRecord {
   PseudonymSetPseudonymRecord() = default;
   PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set) : set(set) {
-    this->pseudonym = Serialization::ToCharVector(pseudonym.getValidCurvePoint());
+    this->pseudonym = RangeToVector(Serialization::ToString(pseudonym.getValidCurvePoint()));
     RandomBytes(this->checksumNonce, 16);
   }
 
@@ -689,7 +689,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
     // store old checksum before we modify record
     uint64_t old_checksum = record.checksum_v1();
 
-    auto request = Serialization::FromCharVector<SignedTicketRequest2>(record.request);
+    auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
 
     if (!request.mLogSignature) {
       LOG(LOG_TAG, warning) << "Ticket request record number "
@@ -705,7 +705,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
     if (chainId)
       record.certificateChain = chainId;
 
-    record.request = Serialization::ToCharVector(std::move(request));
+    record.request = RangeToVector(Serialization::ToString(std::move(request)));
 
     // and, finally, compensate for the checksum change:
     record.checksumCorrection = old_checksum ^ record.checksum();

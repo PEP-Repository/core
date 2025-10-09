@@ -449,8 +449,8 @@ rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> CoreClient::getStruct
     std::vector<StructureMetadataKey> keys) {
   return clientAccessManager
       ->sendRequest(std::make_shared<std::string>(Serialization::ToString(sign(StructureMetadataRequest{subjectType, std::move(subjects), std::move(keys)}))))
-      .map([](std::string chunk) {
-        return std::make_shared<StructureMetadataEntry>(Serialization::FromString<StructureMetadataEntry>(std::move(chunk)));
+      .map([](std::string_view chunk) {
+        return std::make_shared<StructureMetadataEntry>(Serialization::FromString<StructureMetadataEntry>(chunk));
       });
 }
 
@@ -462,9 +462,9 @@ rxcpp::observable<FakeVoid> CoreClient::setStructureMetadata(StructureMetadataTy
           return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(*entry)))
               .as_dynamic();
         }))
-      .map([](std::string response) {
+      .map([](std::string_view response) {
         // Check we got the right response type
-        (void) Serialization::FromString<SetStructureMetadataResponse>(std::move(response));
+        (void) Serialization::FromString<SetStructureMetadataResponse>(response);
         return FakeVoid();
       });
 }

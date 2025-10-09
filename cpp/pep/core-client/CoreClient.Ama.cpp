@@ -143,7 +143,7 @@ rxcpp::observable<AmaQueryResponse>
 CoreClient::amaQuery(AmaQuery query) {
   return clientAccessManager->sendRequest(MakeSharedCopy(Serialization::ToString(sign(std::move(query))))) // Send the query to AM
     .op(pep::RxRequireNonEmpty()) // Ensure we don't return an AmaQueryResponse if we didn't receive one from AM
-    .map([](std::string serialized) { return Serialization::FromString<AmaQueryResponse>(std::move(serialized)); }) // Deserialize the response part
+    .map([](std::string_view serialized) { return Serialization::FromString<AmaQueryResponse>(serialized); }) // Deserialize the response part
     .reduce( // Concatenate all parts into a single AmaQueryResponse instance
       std::make_shared<AmaQueryResponse>(),
       [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {

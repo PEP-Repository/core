@@ -69,9 +69,9 @@ rxcpp::observable<std::vector<EnumerateResult>> CoreClient::enumerateData2(std::
   enumRequest->mTicket = *ticket;
   return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
     sign(*enumRequest))))
-    .map([this, pseudonyms](std::string rawResponse) {
+    .map([this, pseudonyms](std::string_view rawResponse) {
       auto response = Serialization::FromString<
-        DataEnumerationResponse2>(std::move(rawResponse));
+        DataEnumerationResponse2>(rawResponse);
       return convertDataEnumerationEntries(response.mEntries, *pseudonyms);
     });
 }
@@ -106,9 +106,9 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
     readRequest.mTicket = *ticket;
     return this->clientStorageFacility->sendRequest(
       std::make_shared<std::string>(Serialization::ToString(sign( readRequest))))
-      .map([](std::string rawResponse) {
+      .map([](std::string_view rawResponse) {
       auto response = Serialization::FromString<
-        DataEnumerationResponse2>(std::move(rawResponse));
+        DataEnumerationResponse2>(rawResponse);
       return std::move(response.mEntries);
         })
       .op(RxConcatenateVectors())
@@ -165,9 +165,9 @@ CoreClient::retrieveData2(
             readRequest.mTicket = *ticket;
             return clientStorageFacility->sendRequest(std::make_shared<std::string>(
                   Serialization::ToString(sign(readRequest))))
-              .map([](std::string rawPage) {
+              .map([](std::string_view rawPage) {
                 // Deserialize page
-                return Serialization::FromString<DataPayloadPage>(std::move(rawPage));
+                return Serialization::FromString<DataPayloadPage>(rawPage);
               })
               .group_by([](const DataPayloadPage& page) { return page.mIndex; })
               .map([ctx, offset](const rxcpp::grouped_observable<uint32_t, DataPayloadPage>& groupedPages) {
@@ -235,8 +235,8 @@ CoreClient::getHistory2(SignedTicket2 ticket,
 
   return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
     sign(*request))))
-    .map([](std::string rawResponse) {
-      auto response = Serialization::FromString<DataHistoryResponse2>(std::move(rawResponse));
+    .map([](std::string_view rawResponse) {
+      auto response = Serialization::FromString<DataHistoryResponse2>(rawResponse);
       return response.mEntries;
     })
     .op(RxConcatenateVectors())

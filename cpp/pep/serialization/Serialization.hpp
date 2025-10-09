@@ -63,26 +63,12 @@ public:
   }
 
   template <typename T>
-  static std::vector<char> ToCharVector(T value, bool withMagic = true) {
-    auto s = Serializer<T>().toString(std::move(value), withMagic);
-    return std::vector<char>(s.begin(), s.end());
+  static T FromString(std::string_view source, bool withMagic = true) {
+    return Serializer<T>().fromString(source, withMagic);
   }
 
   template <typename T>
-  static T FromCharVector(const std::vector<char>& source, bool withMagic = true) {
-    return Serializer<T>().fromString(
-      std::string(source.begin(), source.end()),
-      withMagic
-    );
-  }
-
-  template <typename T>
-  static T FromString(std::string source, bool withMagic = true) {
-    return Serializer<T>().fromString(std::move(source), withMagic);
-  }
-
-  template <typename T>
-  static T FromStringOrRaiseError(std::string source) {
+  static T FromStringOrRaiseError(std::string_view source) {
     static_assert(!std::is_same_v<T, Error>, "Ambiguous: should Error instance be raised or deserialized?");
     Error::ThrowIfDeserializable(source);
     return FromString<T>(source);

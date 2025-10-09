@@ -752,9 +752,9 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
     return ctx->server->transcryptor->sendRequest(std::make_shared<std::string>(Serialization::ToString(ctx->tsReq)), tail);
-  }).flat_map([ctx](std::string rawResponse) {
+  }).flat_map([ctx](std::string_view rawResponse) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
-    auto resp = Serialization::FromStringOrRaiseError<TranscryptorResponse>(std::move(rawResponse));
+    auto resp = Serialization::FromStringOrRaiseError<TranscryptorResponse>(rawResponse);
     // Now we have local pseudonyms for the orignal PPs.
     if (resp.mEntries.size() != ctx->pps.size())
       throw std::runtime_error(
@@ -870,8 +870,8 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     }
     return self->transcryptor->sendRequest(std::make_shared<std::string>(Serialization::ToString(std::move(tsRequest))),
                                            rxcpp::observable<>::just(rxcpp::observable<>::just(std::make_shared<std::string>(Serialization::ToString(tsRequestEntries))).as_dynamic()))
-      .map([](std::string rawResponse) {
-      return Serialization::FromStringOrRaiseError<TranscryptorResponse>(std::move(rawResponse));
+      .map([](std::string_view rawResponse) {
+      return Serialization::FromStringOrRaiseError<TranscryptorResponse>(rawResponse);
            })
       .map([server = SharedFrom(*self), participantGroup = participantGroup, performRemove](TranscryptorResponse resp) -> FakeVoid {
               LocalPseudonym localPseudonym = resp.mEntries[0].mAccessManager.decrypt(server->mPseudonymKey);
@@ -1060,7 +1060,7 @@ messaging::MessageBatches AccessManager::handleSetStructureMetadataRequest(
   return
       chunks.map([backend = backend, subjectType = request.subjectType, userGroup
         ](const std::shared_ptr<std::string>& chunk) {
-          StructureMetadataEntry entry = Serialization::FromString<StructureMetadataEntry>(std::move(*chunk));
+          StructureMetadataEntry entry = Serialization::FromString<StructureMetadataEntry>(*chunk);
 
           backend->handleSetStructureMetadataRequestEntry(subjectType, entry, userGroup);
           return FakeVoid{};

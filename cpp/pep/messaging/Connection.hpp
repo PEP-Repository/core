@@ -155,7 +155,7 @@ rxcpp::observable<response_type>
 Connection::sendRequest(request_type request) {
   std::shared_ptr<bool> done = std::make_shared<bool>(false);
   return this->sendRequest(std::make_shared<std::string>(Serialization::ToString(std::move(request)))).map(
-    [done](std::string msg) {
+    [done](std::string_view msg) {
       if (*done) {
         std::ostringstream message;
         message
@@ -185,7 +185,7 @@ Connection::sendRequest(request_type request) {
           << DescribeMessageMagic(msg);
         throw std::runtime_error(message.str());
       }
-      return Serialization::FromString<response_type>(std::move(msg));
+      return Serialization::FromString<response_type>(msg);
     }).last();
 }
 

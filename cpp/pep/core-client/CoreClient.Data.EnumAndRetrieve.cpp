@@ -175,8 +175,8 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
               sign(enumRequest))))
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
-              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, std::string rawResponse) {
-                auto response = Serialization::FromString<DataEnumerationResponse2>(std::move(rawResponse));
+              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, std::string_view rawResponse) {
+                auto response = Serialization::FromString<DataEnumerationResponse2>(rawResponse);
                 for (auto& entry: response.mEntries) {
                   if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.mFileSize <= ctx->dataSizeLimit)) {
                     // This entry will include data: save it for data retrieval
