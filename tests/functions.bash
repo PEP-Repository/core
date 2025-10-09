@@ -110,6 +110,9 @@ should_run_test() {
   fi
 }
 
+url_encode() {
+  echo "$1" | jq --slurp --raw-input --raw-output @uri
+}
 
 #execute a command either in docker or locally.
 #Arguments:
