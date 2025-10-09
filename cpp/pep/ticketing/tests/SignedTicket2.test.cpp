@@ -33,7 +33,7 @@ TEST(SignedTicket2, ClassesHaveBackwardCompatibleProperties) {
    * To allow all SignedXyz classes to be processed by unspecialized templated code, the SignedTicket2 and
    * SignedTicketRequest2 classes were later turned into aliases for (explicit specializations of) the corresponding
    * Signed<T> templates. This unit test verifies that the aliases behave the same as the original classes.
-   * The hard-coded names and MessageMagic values were extracted from the original classes in commit d9e9581.
+   * The expected names and MessageMagic values were extracted from the original classes in commit d9e9581.
    */
   VerifyBackwardCompatibleProperties<SignedTicket2>("SignedTicket2", 3936116042);
   VerifyBackwardCompatibleProperties<SignedTicketRequest2>("SignedTicketRequest2", 1911144167);
