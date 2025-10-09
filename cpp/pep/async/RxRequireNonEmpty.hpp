@@ -47,8 +47,7 @@ public:
 /// \endcode
 struct RxRequireNonEmpty : public detail::RxProvideCount {
 public:
-  /// \param assertOnly Whether to validate the source observable using an assertion (true) or a run time check (false).
-  explicit RxRequireNonEmpty(bool assertOnly = false);
+  RxRequireNonEmpty();
 };
 
 }
