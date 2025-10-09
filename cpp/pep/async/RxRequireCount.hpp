@@ -1,7 +1,11 @@
 #pragma once
 
+#include <pep/async/FakeVoid.hpp>
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <cassert>
 
 namespace pep {
 
@@ -15,7 +19,7 @@ private:
   size_t mMax;
 
   static void ValidateMax(size_t count, size_t max);
-  static void ValidateMin(size_t count, size_t min);
+  static rxcpp::observable<FakeVoid> ValidateMin(std::shared_ptr<size_t> count, size_t min);
 
 public:
   RxRequireCount(size_t min, size_t max) noexcept : mMin(min), mMax(max) {}
@@ -30,10 +34,15 @@ public:
     auto count = std::make_shared<size_t>(0U);
     return items
       .tap(
-        [count, max = mMax](const TItem&) { ValidateMax(++*count, max); },
-        [](std::exception_ptr) { /* ignore */ },
-        [count, min = mMin] { ValidateMin(*count, min); }
-      );
+        [count, max = mMax](const TItem&) { ValidateMax(++*count, max); } // We can just throw an exception from on_next...
+        // ... but throwing from on_complete produces weird behavior, so we...
+      )
+      .concat(ValidateMin(count, mMin) // ... append an empty observable that performs the validation instead
+        .concat_map([](FakeVoid) { // TODO: use RxToEmpty<TItem> instead
+          assert(false);
+          return rxcpp::observable<>::empty<TItem>();
+          })
+        );
   }
 };
 
