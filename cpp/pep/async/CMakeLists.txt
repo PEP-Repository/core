@@ -28,6 +28,7 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     RxRequireCount.hpp RxRequireCount.cpp
     RxSharedPtrCast.hpp
     RxTimeout.cpp RxTimeout.hpp
+    RxToEmpty.hpp
     RxToSet.hpp
     RxToUnorderedMap.hpp
     RxToVector.hpp

@@ -1,11 +1,9 @@
 #pragma once
 
 #include <pep/async/FakeVoid.hpp>
-#include <rxcpp/rx-lite.hpp>
+#include <pep/async/RxToEmpty.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
-#include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
-#include <cassert>
 
 namespace pep {
 
@@ -37,12 +35,8 @@ public:
         [count, max = mMax](const TItem&) { ValidateMax(++*count, max); } // We can just throw an exception from on_next...
         // ... but throwing from on_complete produces weird behavior, so we...
       )
-      .concat(ValidateMin(count, mMin) // ... append an empty observable that performs the validation instead
-        .concat_map([](FakeVoid) { // TODO: use RxToEmpty<TItem> instead
-          assert(false);
-          return rxcpp::observable<>::empty<TItem>();
-          })
-        );
+      .concat(ValidateMin(count, mMin) // ... append an empty observable<FakeVoid> that performs the validation instead...
+        .op(RxToEmpty<TItem>())); // ... and convert that observable<FakeVoid> to an observable<TItem> that we can append
   }
 };
 
