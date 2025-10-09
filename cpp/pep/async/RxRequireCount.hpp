@@ -4,6 +4,7 @@
 #include <pep/async/RxToEmpty.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <optional>
 
 namespace pep {
 
@@ -15,13 +16,14 @@ struct RxRequireCount {
 private:
   size_t mMin;
   size_t mMax;
+  std::string mErrorText;
 
-  static void ValidateMax(size_t count, size_t max);
-  static rxcpp::observable<FakeVoid> ValidateMin(std::shared_ptr<size_t> count, size_t min);
+  static void ValidateMax(size_t count, size_t max, const std::string& errorText);
+  static rxcpp::observable<FakeVoid> ValidateMin(std::shared_ptr<size_t> count, size_t min, const std::string& errorText);
 
 public:
-  RxRequireCount(size_t min, size_t max) noexcept : mMin(min), mMax(max) {}
-  explicit RxRequireCount(size_t exact) noexcept : RxRequireCount(exact, exact) {}
+  RxRequireCount(size_t min, size_t max, std::optional<std::string> errorText = std::nullopt);
+  explicit RxRequireCount(size_t exact, std::optional<std::string> errorText = std::nullopt);
 
   /// \param items The observable emitting the items.
   /// \return An observable emitting the source observable's items.
@@ -32,10 +34,10 @@ public:
     auto count = std::make_shared<size_t>(0U);
     return items
       .tap(
-        [count, max = mMax](const TItem&) { ValidateMax(++*count, max); } // We can just throw an exception from on_next...
+        [count, max = mMax, errorText = mErrorText](const TItem&) { ValidateMax(++*count, max, errorText); } // We can just throw an exception from on_next...
         // ... but throwing from on_complete produces weird behavior, so we...
       )
-      .concat(ValidateMin(count, mMin) // ... append an empty observable<FakeVoid> that performs the validation instead...
+      .concat(ValidateMin(count, mMin, mErrorText) // ... append an empty observable<FakeVoid> that performs the validation instead...
         .op(RxToEmpty<TItem>())); // ... and convert that observable<FakeVoid> to an observable<TItem> that we can append
   }
 };

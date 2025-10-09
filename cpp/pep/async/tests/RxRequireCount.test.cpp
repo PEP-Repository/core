@@ -1,4 +1,4 @@
-#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxGetOne.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
 
 TEST(RxRequireCount, Works) {
@@ -16,4 +16,13 @@ TEST(RxRequireCount, Works) {
 
   EXPECT_NO_THROW(testutils::exhaust(io_context, rxcpp::observable<>::just(1).op(RxRequireNonEmpty())));
   EXPECT_ANY_THROW(testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxRequireNonEmpty())));
+
+  constexpr auto item_name = "floober in the goober";
+  try {
+    testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxGetOne(item_name)));
+  }
+  catch (const std::exception& exception) {
+    std::string what = exception.what();
+    EXPECT_TRUE(what.find(item_name) != std::string::npos);
+  }
 }
