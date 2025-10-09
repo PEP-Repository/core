@@ -112,7 +112,8 @@ namespace pep
       config->get<EndPoint>("EndPoint"),
       config->get<s3::Credentials>("Credentials"),
       io_context,
-      config->get<std::optional<std::filesystem::path>>("Ca-Cert-Path")
+      config->get<std::optional<std::filesystem::path>>("Ca-Cert-Path"),
+      config->get<std::optional<bool>>("Use-Https")
     };
 
     unsigned int conn_count = config->get<unsigned int>("Connections", 5);
