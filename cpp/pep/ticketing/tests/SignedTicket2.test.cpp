@@ -32,7 +32,7 @@ TEST(SignedTicket2, ClassesHaveBackwardCompatibleProperties) {
    * 
    * To correct this, the SignedTicket2 and SignedTicketRequest2 classes were later turned into aliases for
    * (explicit specializations of) the corresponding Signed<T> templates. This unit test verifies that the aliases
-   * are compatible with the original classes, e.g. so that previously serialized (and possibly stored) SignedTicket2
+   * are compatible with the original classes, so that previously serialized (and possibly stored) SignedTicket2
    * instances can be deserialized to the new Signed<Ticket2> type.
    * 
    * The expected names and MessageMagic values were extracted from the original classes in commit d9e9581.
