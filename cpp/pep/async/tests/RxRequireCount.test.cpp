@@ -1,4 +1,4 @@
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
 
 TEST(RxRequireCount, Works) {

@@ -19,7 +19,6 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     RxDrain.hpp
     RxEnsureProgress.hpp
     RxFinallyExhaust.hpp
-    RxGetOne.hpp
     RxGroupToVectors.hpp
     RxIndexed.hpp
     RxInstead.hpp

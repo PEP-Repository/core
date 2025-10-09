@@ -5,7 +5,7 @@
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 

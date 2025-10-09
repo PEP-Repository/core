@@ -1,6 +1,6 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/utils/Sha.hpp>
 

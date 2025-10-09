@@ -8,7 +8,7 @@
 #include <pep/utils/Log.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/utils/Shared.hpp>
 
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>

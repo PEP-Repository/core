@@ -7,7 +7,7 @@
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
 #include <pep/async/RxEnsureProgress.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>

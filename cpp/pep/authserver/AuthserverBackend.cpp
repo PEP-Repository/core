@@ -3,7 +3,7 @@
 #include <pep/auth/UserGroup.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 

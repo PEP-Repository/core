@@ -1,4 +1,3 @@
-#include <pep/async/RxGetOne.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxSharedPtrCast.hpp>

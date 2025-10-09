@@ -50,4 +50,10 @@ struct RxRequireNonEmpty : public RxRequireCount {
   RxRequireNonEmpty() noexcept : RxRequireCount(1U, std::numeric_limits<size_t>::max()) {}
 };
 
+/// Makes sure you get one and only one item back from an RX call.
+struct RxGetOne : public RxRequireCount {
+  /// \param errorText Custom text to be displayed in the errors when no of multiple items are found.
+  RxGetOne(std::string errorText) noexcept : RxRequireCount(1U, 1U, std::move(errorText)) {}
+};
+
 }
