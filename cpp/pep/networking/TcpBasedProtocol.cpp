@@ -155,6 +155,7 @@ std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ClientComponent::openSocket(
   result->setConnectivityStatus(Socket::ConnectivityStatus::connecting);
 
   auto portString = MakeSharedCopy(std::to_string(mEndPoint.port));
+  // Likely spawns a background thread, see https://www.boost.org/doc/libs/latest/doc/html/boost_asio/overview/implementation.html
   mResolver.async_resolve(boost::asio::ip::tcp::v4(), mEndPoint.hostname, *portString, [self = SharedFrom(*this), notify, result, portString](const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results) {
     self->onResolved(notify, self->tcp().downcastSocket(result), ec, results);
     });
