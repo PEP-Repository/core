@@ -1,8 +1,7 @@
 #pragma once
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Signature.hpp>
-#include <pep/crypto/X509Certificate.hpp>
+#include <pep/crypto/Signed.hpp>
 
 namespace pep {
 
@@ -32,13 +31,14 @@ public:
   std::vector<PolymorphicPseudonym> getPolymorphicPseudonyms() const;
 };
 
-class SignedTicket2 {
+template <>
+class Signed<Ticket2> {
 public:
-  SignedTicket2() = default;
-  SignedTicket2(
+  Signed() = default;
+  Signed(
     Ticket2 ticket,
     const X509Identity& identity);
-  SignedTicket2(
+  Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mTranscryptorSignature,
     std::string mData)
@@ -76,12 +76,13 @@ public:
   bool mIncludeUserGroupPseudonyms = false;
 };
 
-class SignedTicketRequest2 {
+template <>
+class Signed<TicketRequest2> {
 public:
-  SignedTicketRequest2() = default;
-  SignedTicketRequest2(TicketRequest2 ticketRequest,
+  Signed() = default;
+  Signed(TicketRequest2 ticketRequest,
     const X509Identity& identity);
-  SignedTicketRequest2(
+  Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mLogSignature,
     std::string mData)
@@ -96,5 +97,8 @@ public:
   std::optional<Signature> mLogSignature;
   std::string mData;
 };
+
+using SignedTicket2 = Signed<Ticket2>;
+using SignedTicketRequest2 = Signed<TicketRequest2>;
 
 }

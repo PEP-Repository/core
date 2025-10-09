@@ -78,6 +78,7 @@ variables:
     cpp/pep/serialization/pepSerializationUnitTests
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
+    cpp/pep/ticketing/pepTicketingUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
 

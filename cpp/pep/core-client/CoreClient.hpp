@@ -524,8 +524,6 @@ protected:
    */
   CoreClient(const Builder& builder);
 
-  using MessageSigner::sign;
-
   template <typename TClient>
   std::shared_ptr<TClient> tryConnectServerProxy(const EndPoint& endPoint) const;
 
@@ -586,12 +584,6 @@ public:
   std::vector<EnumerateResult> convertDataEnumerationEntries(
     const std::vector<DataEnumerationEntry2>& entries,
     const TicketPseudonyms& pseudonyms) const;
-
-  /// Returns a signed copy of \p msg, using the details of the current interactive use
-  /// @note This overload returns \c SignedTicketRequest2 and thus has a slightly different function signature from MessageSigner::sign.
-  SignedTicketRequest2 sign(TicketRequest2 msg) {
-    return SignedTicketRequest2{std::move(msg), *this->getSigningIdentity()};
-  }
 
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request);
 };
