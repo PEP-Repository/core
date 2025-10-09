@@ -584,8 +584,6 @@ public:
   std::vector<EnumerateResult> convertDataEnumerationEntries(
     const std::vector<DataEnumerationEntry2>& entries,
     const TicketPseudonyms& pseudonyms) const;
-
-  rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request);
 };
 
 struct CoreClient::AESKey {
