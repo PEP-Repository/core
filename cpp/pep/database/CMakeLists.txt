@@ -11,3 +11,5 @@ target_link_libraries(${PROJECT_NAME}Databaselib
   sqlite_orm::sqlite_orm
 )
 verify_headers_standalone(${PROJECT_NAME}Databaselib)
+
+add_unit_tests(Database)

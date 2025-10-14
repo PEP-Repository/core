@@ -10,6 +10,13 @@
 
 namespace pep::database {
 
+struct SchemaError : std::logic_error {
+  SchemaError(std::string table, sqlite_orm::sync_schema_result result);
+
+  std::string mTable;
+  sqlite_orm::sync_schema_result mResult;
+};
+
 /// @brief Non-template base class for Storage<> (defined below).
 struct BasicStorage {
   /// @brief Whether the storage is stored on a persistent medium (TRUE) or in memory (FALSE)
@@ -59,7 +66,7 @@ struct Storage : public BasicStorage {
 
   /// \brief Sync the database schema if that causes no data loss. Throws an error otherwise.
   /// \param allow_old_column_removal Whether removal of old columns is allowed. When set to true, columns that are in the database, but not in the `make_storage` call, will be removed. If set to false, this will produce an error
-  /// \throws std::runtime_error if syncing the schema would cause a table being dropped, or if \p allow_old_column_removal is false and one or more columns would be dropped.
+  /// \throws std::logic_error if syncing the schema would cause a table being dropped, or if \p allow_old_column_removal is false and one or more columns would be dropped.
   /// \throws std::system_error if sqlite produces errors
   /// \returns true if changes have been made, false if the whole database schema was already in sync.
   bool syncSchema(bool allow_old_column_removal = false) {
@@ -73,12 +80,12 @@ struct Storage : public BasicStorage {
         case sqlite_orm::sync_schema_result::new_columns_added:
           break;
         case sqlite_orm::sync_schema_result::dropped_and_recreated:
-          throw std::runtime_error(std::format("Schema synchronization for table {} will drop and recreate the table, resulting in data loss", tableName));
+          throw SchemaError(tableName, result);
         case sqlite_orm::sync_schema_result::old_columns_removed:
         case sqlite_orm::sync_schema_result::new_columns_added_and_old_columns_removed:
           if (allow_old_column_removal)
             break;
-          throw std::runtime_error(std::format("Schema synchronization for table {} will remove old columns", tableName));
+          throw SchemaError(tableName, result);
         }
       }
       auto syncResults  = raw.sync_schema(true);
