@@ -94,7 +94,7 @@ TEST_F(StorageTest, syncSchema_with_new_column_fails_without_default_value) {
     }
     catch (pep::database::SchemaError& e) {
       EXPECT_EQ(e.mTable, "MyTable");
-      EXPECT_EQ(e.mResult, sqlite_orm::sync_schema_result::dropped_and_recreated);
+      EXPECT_EQ(e.mReason, pep::database::SchemaError::Reason::dropped_and_recreated);
     }
   }
 }
@@ -125,7 +125,7 @@ TEST_F(StorageTest, syncSchema_with_removed_column_depends_on_parameter) {
     }
     catch (pep::database::SchemaError& e) {
       EXPECT_EQ(e.mTable, "MyTable");
-      EXPECT_EQ(e.mResult, sqlite_orm::sync_schema_result::old_columns_removed);
+      EXPECT_EQ(e.mReason, pep::database::SchemaError::Reason::old_columns_removed);
     }
   }
   {

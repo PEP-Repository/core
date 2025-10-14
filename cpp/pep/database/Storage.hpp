@@ -11,10 +11,14 @@
 namespace pep::database {
 
 struct SchemaError : std::logic_error {
-  SchemaError(std::string table, sqlite_orm::sync_schema_result result);
+  enum class Reason {
+    dropped_and_recreated,
+    old_columns_removed,
+  };
+  SchemaError(std::string table, Reason reason);
 
   std::string mTable;
-  sqlite_orm::sync_schema_result mResult;
+  Reason mReason;
 };
 
 /// @brief Non-template base class for Storage<> (defined below).
@@ -80,12 +84,12 @@ struct Storage : public BasicStorage {
         case sqlite_orm::sync_schema_result::new_columns_added:
           break;
         case sqlite_orm::sync_schema_result::dropped_and_recreated:
-          throw SchemaError(tableName, result);
+          throw SchemaError(tableName, SchemaError::Reason::dropped_and_recreated);
         case sqlite_orm::sync_schema_result::old_columns_removed:
         case sqlite_orm::sync_schema_result::new_columns_added_and_old_columns_removed:
           if (allow_old_column_removal)
             break;
-          throw SchemaError(tableName, result);
+          throw SchemaError(tableName, SchemaError::Reason::old_columns_removed);
         }
       }
       auto syncResults  = raw.sync_schema(true);
