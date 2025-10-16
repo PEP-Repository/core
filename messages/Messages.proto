@@ -1129,9 +1129,9 @@ message SignedUserQuery {
   bytes data = 4;
 }
 message QRUser {
-  string displayId = 3;
-  optional string primaryId = 4;
-  repeated string otherUids = 5;
+  optional string display_id = 3;
+  optional string primary_id = 4;
+  repeated string other_uids = 5;
   repeated string groups = 2;
 
 }

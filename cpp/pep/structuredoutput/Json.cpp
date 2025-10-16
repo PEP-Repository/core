@@ -101,10 +101,13 @@ std::ostream& append(std::ostream& stream, const pep::QRUser& user, DisplayConfi
   const auto ind = [&config]() { return indentations(config.indent); };
   const auto printUserGroups = config.flags & DisplayConfig::Flags::printUserGroups;
 
-  stream << Literal{user.mDisplayId} << ": {\n";
+  stream << "{\n";
   ++config.indent;
+  if (user.mDisplayId) {
+    stream << ind() << Literal{stringConstants::displayIdKey} << ": " << Literal{*user.mDisplayId} << ",\n";
+  }
   if (user.mPrimaryId) {
-    stream << ind() << Literal{stringConstants::primaryIdKey} << ": " << *user.mPrimaryId << ",\n";
+    stream << ind() << Literal{stringConstants::primaryIdKey} << ": " << Literal{*user.mPrimaryId} << ",\n";
   }
   stream << ind() << Literal{stringConstants::otherIdentifiersKey} << ": [";
   if (!user.mOtherUids.empty()) {

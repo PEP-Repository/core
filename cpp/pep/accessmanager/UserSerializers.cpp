@@ -189,33 +189,29 @@ void Serializer<UserQuery>::moveIntoProtocolBuffer(proto::UserQuery& dest, UserQ
 
 QRUser Serializer<QRUser>::fromProtocolBuffer(proto::QRUser&& source) const {
   std::optional<std::string> primaryId;
-  if (source.has_primaryid()) {
-    primaryId = std::move(*source.mutable_primaryid());
+  if (source.has_primary_id()) {
+    primaryId = std::move(*source.mutable_primary_id());
   }
-  std::vector<std::string> otherUids;
-  otherUids.reserve(static_cast<size_t>(source.otheruids().size()));
-  for (auto& x : *source.mutable_otheruids())
-    otherUids.push_back(std::move(x));
+  std::optional<std::string> displayId;
+  if (source.has_display_id()) {
+    displayId = std::move(*source.mutable_display_id());
+  }
+  std::vector<std::string> otherUids = RangeToVector(MoveElements(*source.mutable_other_uids()));
+  std::vector<std::string> groups = RangeToVector(MoveElements(*source.mutable_groups()));
 
-  std::vector<std::string> groups;
-  groups.reserve(static_cast<size_t>(source.groups().size()));
-  for (auto& x : *source.mutable_groups())
-    groups.push_back(std::move(x));
-
-  return QRUser(std::move(*source.mutable_displayid()), primaryId, std::move(otherUids), std::move(groups));
+  return QRUser(std::move(displayId), std::move(primaryId), std::move(otherUids), std::move(groups));
 }
 
 void Serializer<QRUser>::moveIntoProtocolBuffer(proto::QRUser& dest, QRUser value) const {
-  *dest.mutable_displayid() = std::move(value.mDisplayId);
+  if (value.mDisplayId)
+    *dest.mutable_display_id() = std::move(*value.mDisplayId);
   if (value.mPrimaryId)
-    *dest.mutable_primaryid() = std::move(*value.mPrimaryId);
-  dest.mutable_otheruids()->Reserve(static_cast<int>(value.mOtherUids.size()));
-  for (auto& x : value.mOtherUids)
-    dest.add_otheruids(std::move(x));
+    *dest.mutable_primary_id() = std::move(*value.mPrimaryId);
+  auto moveOtherUids = MoveElements(value.mOtherUids);
+  dest.mutable_other_uids()->Assign(moveOtherUids.begin(), moveOtherUids.end());
 
-  dest.mutable_groups()->Reserve(static_cast<int>(value.mGroups.size()));
-  for (auto& x : value.mGroups)
-    dest.add_groups(std::move(x));
+  auto moveGroups = MoveElements(value.mGroups);
+  dest.mutable_groups()->Assign(moveGroups.begin(), moveGroups.end());
 }
 
 }

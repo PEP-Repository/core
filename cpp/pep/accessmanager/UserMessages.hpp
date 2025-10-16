@@ -118,10 +118,10 @@ public:
 class QRUser {
 public:
   QRUser() = default;
-  QRUser(std::string displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<std::string> groups)
+  QRUser(std::optional<std::string> displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<std::string> groups)
     : mDisplayId(std::move(displayId)), mPrimaryId(std::move(primaryId)), mOtherUids(std::move(otherUids)), mGroups(std::move(groups)) { }
 
-  std::string mDisplayId;
+  std::optional<std::string> mDisplayId;
   std::optional<std::string> mPrimaryId;
   std::vector<std::string> mOtherUids;
   std::vector<std::string> mGroups;
@@ -129,7 +129,7 @@ public:
   [[nodiscard]] auto operator<=>(const QRUser&) const = default;
 
   friend std::ostream& operator<<(std::ostream& out, const QRUser& user) {
-    out << user.mDisplayId << ":{";
+    out << user.mDisplayId.value_or("[NO DISPLAY ID]") << ":{";
     out << "uids:{";
     if (user.mPrimaryId) {
       out << "*" << *user.mPrimaryId;

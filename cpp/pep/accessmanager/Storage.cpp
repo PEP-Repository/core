@@ -1749,8 +1749,8 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   for (auto tuple: mImplementor->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= query.mAt.getTime()
          && in(&UserIdRecord::internalUserId, RangeToVector(views::keys(usersInfo))),
-         &UserIdRecord::internalUserId, &UserIdRecord::identifier, &UserIdRecord::isDisplayId, &UserIdRecord::isPrimaryId)) {
-    auto& [internalId, identifier, isDisplayId, isPrimaryId] = tuple;
+         &UserIdRecord::internalUserId, &UserIdRecord::identifier, &UserIdRecord::isPrimaryId, &UserIdRecord::isDisplayId)) {
+    auto& [internalId, identifier, isPrimaryId, isDisplayId] = tuple;
 
     if (isDisplayId) {
       usersInfo.at(internalId).mDisplayId = identifier;

@@ -41,18 +41,27 @@ std::ostream& appendYaml(std::ostream& stream,
   const auto printUserGroups = flags & DisplayConfig::Flags::printUserGroups;
   const auto withHeader = flags & DisplayFlags::printHeaders;
   const auto userOffset = indentations(withHeader ? 1 : 0);
-  const auto userInnerOffset = indentations(withHeader ? 3 : 2);
-  const auto uidAndGroupOffset = indentations(withHeader ? 4 : 3);
+  const auto userInnerOffset = userOffset + "  "; //We don't use indentations(), but hardcode the extra indent to two spaces, so it matches the "- " of the first line of the user output.
+  const auto uidAndGroupOffset = indentations(withHeader ? 3 : 2);
 
   if (withHeader) {
     appendYamlListHeader(stream, stringConstants::users.descriptive, users.size());
   }
   for (auto& user : users) {
-    stream << userOffset << "- " << user.mDisplayId << ":\n";
-    if (user.mPrimaryId) {
-      stream << userInnerOffset <<  stringConstants::primaryIdKey << ": " << *user.mPrimaryId << "\n";
+    stream << userOffset << "- ";
+    bool hasWritten = false;
+    if (user.mDisplayId) {
+      hasWritten = true;
+      stream << stringConstants::displayIdKey << ": " << *user.mDisplayId << "\n";
     }
-    stream << userInnerOffset;
+    if (user.mPrimaryId) {
+      if (hasWritten)
+        stream << userInnerOffset;
+      hasWritten = true;
+      stream << stringConstants::primaryIdKey << ": " << *user.mPrimaryId << "\n";
+    }
+    if (hasWritten)
+      stream << userInnerOffset;
     appendYamlListHeader(stream, stringConstants::otherIdentifiersKey, user.mOtherUids.size());
     for (auto& uid : user.mOtherUids) {
       stream << uidAndGroupOffset << "- " << uid << "\n";
