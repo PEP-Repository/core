@@ -13,6 +13,7 @@
 #include <boost/date_time/local_time/local_date_time.hpp>
 #include <boost/date_time/local_time/local_time_io.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 
 using namespace std::chrono;
 
