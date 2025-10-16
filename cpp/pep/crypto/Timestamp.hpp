@@ -63,7 +63,7 @@ public:
     return TimeNow<time_point>();
   }
 
-  [[nodiscard]] static constexpr Timestamp from_time_t(const std::time_t t) noexcept {
+  [[nodiscard]] static Timestamp from_time_t(const std::time_t t) noexcept {
     return time_point_cast<duration>(clock::from_time_t(t));
   }
 
