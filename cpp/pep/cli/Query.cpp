@@ -211,8 +211,8 @@ private:
     }
 
   private:
-    static void ReportTimestamp(std::ostream& destination, const std::string& announce, time_t timestamp) {
-      destination << '\n' << announce << ' ' << timestamp << ", i.e. " << pep::Timestamp::FromTimeT(timestamp).toString();
+    static void ReportTimestamp(std::ostream& destination, const std::string& announce, pep::Timestamp timestamp) {
+      destination << '\n' << announce << ' ' << timestamp << ", i.e. " << timestamp.to_xml_date_time();
     }
 
   protected:

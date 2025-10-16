@@ -5,7 +5,6 @@
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Sha.hpp>
-#include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/async/RxGetOne.hpp>
@@ -253,7 +252,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     client->getRegistrationServerVersion().zip(rxcpp::rxs::just("Registration Server")),
     client->getAuthserverVersion().zip(rxcpp::rxs::just("Auth Server"))
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
-    const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
+    const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary;
     std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;
 
     const std::string& server = std::get<1>(response);

@@ -1,95 +1,94 @@
 #pragma once
 
+#include <pep/utils/TypeTraits.hpp>
+
 #include <chrono>
-#include <cstdint>
 #include <ctime>
-#include <limits>
 #include <string>
-#include <boost/date_time/posix_time/ptime.hpp>
+#include <string_view>
+
+// Forward declarations
+namespace boost::posix_time { class ptime; };
+namespace boost::gregorian { class date; }
 
 namespace pep {
 
-/// Represents a point in time with a resolution of milliseconds.
-/// @note The C standard does define how time is represented time_t.
-///       In practise, time_t almost always has a resolution of whole seconds,
-///       making it less precise then our custom type.
-class Timestamp final {
+using UnixMillis = std::chrono::milliseconds::rep;
+
+// Same as STL does for system_clock
+template<class Duration>
+using steady_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
+using steady_seconds = steady_time<std::chrono::seconds>;
+
+template<DerivedFromSpecialization<std::chrono::time_point> TTimePoint>
+[[nodiscard]] auto TimeNow() noexcept {
+  return std::chrono::time_point_cast<typename TTimePoint::duration>(TTimePoint::clock::now());
+}
+
+/// Representation of a timezone that is used as parameter in some functions of the Timestamp class
+class TimeZone final {
 public:
-  /// Representation of a timezone that is used as parameter in some functions of the Timestamp class
-  class TimeZone final {
-  public:
-    static TimeZone Utc() { return TimeZone{"UTC"}; }
-    static TimeZone Local();  ///< The system's current time zone
-    static TimeZone PosixTimezone(std::string str) { return TimeZone{std::move(str)}; }
+  [[nodiscard]] static TimeZone Utc() { return TimeZone{"UTC"}; }
+  [[nodiscard]] static TimeZone Local();  ///< The system's current time zone
+  [[nodiscard]] static TimeZone PosixTimezone(std::string str) { return TimeZone{std::move(str)}; }
 
-  private:
-    friend Timestamp;
-    TimeZone(std::string str) : mStr(std::move(str)) {}
-    std::string mStr;
-  };
+private:
+  friend class Timestamp;
+  TimeZone(std::string str) : mStr(std::move(str)) {}
+  std::string mStr;
+};
 
-  /// The largest (latest) representable point in time.
-  static Timestamp Max();
+/// Wall clock timestamp with a precision of milliseconds.
+/// Use steady_time instead if monotonicity is desired.
+class Timestamp final : public std::chrono::sys_time<std::chrono::milliseconds> {
+public:
+  using time_point = std::chrono::sys_time<std::chrono::milliseconds>;
+  using time_point::time_point;
 
-  /// The smallest (earliest) representable point in time, which is the epoch.
-  static constexpr Timestamp Min() {
-    return Timestamp(0);
+  /// Use \c Timestamp::zero or \c Timestamp::now instead
+  Timestamp() = delete;
+
+  constexpr Timestamp(const time_point inner) noexcept : time_point(inner) {}
+
+  template<DerivedFromSpecialization<std::chrono::duration> Duration>
+  [[nodiscard]] constexpr Duration::rep ticks_since_epoch() const noexcept {
+    return duration_cast<Duration>(time_since_epoch()).count();
   }
 
-  /// Constructs a time point representing the current date and time.
-  Timestamp();
-
-  /// Construct a time point from a unix timestamp value.
-  /// @param value the number of milliseconds that have elapsed since the epoch, not counting leap seconds.
-  constexpr explicit Timestamp(const int64_t value) : mValue(value) {}
-
-  /// Returns the number of milliseconds that have elapsed since the epoch, not counting leap seconds.
-  constexpr int64_t getTime() const {
-    return mValue;
+  [[nodiscard]] static constexpr Timestamp zero() noexcept {
+    return Timestamp(duration::zero());
   }
 
-  /// Converts to an time_t value, by discarding the milliseconds.
-  time_t toTime_t() const;
+  [[nodiscard]] static Timestamp now() noexcept {
+    return TimeNow<time_point>();
+  }
 
-  /// Converts to a Boost ptime
-  boost::posix_time::ptime toPtime() const;
+  [[nodiscard]] static constexpr Timestamp from_time_t(const std::time_t t) noexcept {
+    return time_point_cast<duration>(clock::from_time_t(t));
+  }
 
-  /// Converts to an ISO 8601 datetime string, with a resolution in seconds.
-  /// This uses the UTC form with separators between the components.
-  /// @example "2024-05-06T08:52:21Z"
-  std::string toString() const;
+  [[nodiscard]] static Timestamp from_boost_ptime(boost::posix_time::ptime);
 
-  /// Constructs a pep::Timestamp from a time_t value.
-  static Timestamp FromTimeT(::time_t ts);
-
-  /// Constructs a pep::Timestamp from a Boost ptime value.
-  static Timestamp FromPtime(boost::posix_time::ptime ts);
-
-  /// Parses a pep::Timestamp value from a XML datetime string (=ISO 8061).
-  static Timestamp FromXmlDateTime(const std::string& xml);
+  /// Parses a timestamp value from an XML (ISO 8061) datetime string (yyyy-mm-ddThh:mm:ss(+-hh:mm))
+  [[nodiscard]] static Timestamp from_xml_date_time(std::string_view xml);
 
   /// Parses a pep::Timestamp value from a yyyyMmDd string, such as "20240523"
   /// @returns the timestamp matching zero milliseconds into the iso date, depending on the timezone
-  static Timestamp FromIsoDate(const std::string& yyyyMmDd, TimeZone = TimeZone::Local());
+  [[nodiscard]] static Timestamp from_yyyymmdd(std::string_view yyyyMmDd, const TimeZone& = TimeZone::Local());
 
-  /// Comparing Timestamps is equivalent to comparing their values.
-  auto operator<=>(const Timestamp&) const = default;
+  [[nodiscard]] std::time_t to_time_t() const noexcept {
+    return clock::to_time_t(*this);
+  }
 
-private:
-  /// milliseconds since UNIX timestamp epoch (only counting non-leap seconds)
-  /// Should always be a positive value.
-  int64_t mValue;
+  [[nodiscard]] boost::posix_time::ptime to_boost_ptime() const;
+
+  /// Converts to an XML (ISO 8601) datetime string, with a resolution in seconds.
+  /// This uses the UTC form with separators between the components.
+  /// @example "2024-05-06T08:52:21Z"
+  [[nodiscard]] std::string to_xml_date_time() const;
 };
 
-
-/*
- * \brief Parses (the UTC offset of) the XML time zone specification at the end of a string.
- * \param source The string that may end with the XML time zone specification. If present, the specification is dropped from (the end of) the string.
- * \return The number of minutes east (positive) or west (negative) of UTC that the time zone represents, or std::nullopt if the string doesn't end with a time zone specification.
- * \remark E.g. for a string containing "2025-08-21T15:03:54+02:00" value, this function would return a value of 120,
- *         indicating that the time zone is 2 hours east of UTC (e.g. Amsterdam during DST).
- *         (The "2025-08-21T15:03:54" value that remains in the string represents a wall clock time _within_ the time zone.)
- */
-std::optional<std::chrono::minutes> TryExtractXmlTimeZone(std::string& source);
+[[nodiscard]] std::chrono::year_month_day BoostDateToStd(const boost::gregorian::date& date);
+[[nodiscard]] boost::gregorian::date BoostDateFromStd(const std::chrono::year_month_day& date);
 
 } // namespace pep

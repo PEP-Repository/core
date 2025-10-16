@@ -1,6 +1,7 @@
 #include <pep/storagefacility/FileStore.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/utils/MiscUtil.hpp>
 
 namespace pep {
 
@@ -14,7 +15,7 @@ const std::string ORIGINAL_PAYLOAD_TIMESTAMP_KEY = "original-payload-timestamp";
 
 } // anonymous namespace
 
-EntryContent::EntryContent( Metadata metadata, PayloadData payload, std::optional<EpochMillis> originalPayloadEntryTimestamp)
+EntryContent::EntryContent( Metadata metadata, PayloadData payload, std::optional<Timestamp> originalPayloadEntryTimestamp)
   : mMetadata(std::move(metadata)),
   mPayload(std::move(payload)) {
   if (originalPayloadEntryTimestamp.has_value()) {
@@ -31,12 +32,12 @@ EntryContent::PayloadData& EntryContent::PayloadData::operator= (const PayloadDa
   return *this;
 }
 
-EntryContent::EntryContent(const EntryContent& other, EpochMillis originalEntryValidFrom)
+EntryContent::EntryContent(const EntryContent& other, Timestamp originalEntryValidFrom)
   : EntryContent(other.mMetadata,
       other.mPayload,
       other.getOriginalPayloadEntryTimestamp().value_or(originalEntryValidFrom)) {}
 
-std::optional<EpochMillis> EntryContent::getOriginalPayloadEntryTimestamp() const {
+std::optional<Timestamp> EntryContent::getOriginalPayloadEntryTimestamp() const {
   if (mOriginalPayloadEntryTimestamp == NO_PREVIOUS_PAYLOAD_ENTRY) {
     return std::nullopt;
   }
@@ -54,11 +55,11 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
 
   if (content != nullptr) {
     SetPersistedEntryProperty(properties, POLYMORPHIC_KEY_KEY, content->getPolymorphicKey());
-    SetPersistedEntryProperty(properties, BLINDING_TIMESTAMP_KEY, content->getBlindingTimestamp());
+    SetPersistedEntryProperty(properties, BLINDING_TIMESTAMP_KEY, static_cast<std::uint64_t>(content->getBlindingTimestamp().ticks_since_epoch<std::chrono::milliseconds>()));
     SetPersistedEntryProperty(properties, ENCRYPTION_SCHEME_KEY, content->getEncryptionScheme());
     auto original = content->getOriginalPayloadEntryTimestamp();
     if (original.has_value()) {
-      SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, *original);
+      SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, static_cast<std::uint64_t>(original->ticks_since_epoch<std::chrono::milliseconds>()));
     }
 
     std::transform(content->mMetadata.cbegin(), content->mMetadata.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {
@@ -74,7 +75,10 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
 
 std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, PersistedEntryProperties& properties, std::vector<PageId>& pages) {
   auto polymorphicKey = TryExtractPersistedEntryProperty<EncryptedKey>(properties, POLYMORPHIC_KEY_KEY);
-  auto blindingTimestamp = TryExtractPersistedEntryProperty<EpochMillis>(properties, BLINDING_TIMESTAMP_KEY);
+  auto blindingTimestamp =
+    GetOptionalValue(
+      TryExtractPersistedEntryProperty<std::uint64_t>(properties, BLINDING_TIMESTAMP_KEY),
+      [](std::uint64_t ms) { return Timestamp(std::chrono::milliseconds{ms}); });
   auto encryptionScheme = TryExtractPersistedEntryProperty<EncryptionScheme>(properties, ENCRYPTION_SCHEME_KEY);
 
   assert(polymorphicKey.has_value() == blindingTimestamp.has_value());
@@ -84,7 +88,10 @@ std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, Persisted
     return nullptr;
   }
 
-  auto originalPayloadTimestamp = TryExtractPersistedEntryProperty<uint64_t>(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY);
+  auto originalPayloadTimestamp =
+    GetOptionalValue(
+          TryExtractPersistedEntryProperty<uint64_t>(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY),
+          [](std::uint64_t ms) { return Timestamp(std::chrono::milliseconds{ms}); });
   auto payload = EntryPayload::Load(properties, pages);
   assert(pages.empty());
 

@@ -17,6 +17,8 @@
 #include <pep/castor/tests/Responses.hpp>
 #include <pep/crypto/Timestamp.hpp>
 
+using namespace std::literals;
+
 namespace {
 
 const auto TIMEOUT = std::chrono::seconds(5);
@@ -152,7 +154,7 @@ TEST_F(CastorClientTest, MultiPage) {
 
 TEST_F(CastorClientTest, RateLimited) {
   //First, make the FakeCastorApi return a "Too Many Requests" response, telling the client to retry after 2 seconds
-  auto after = Timestamp::FromTimeT(std::time(nullptr) + 2).toString();
+  auto after = Timestamp(Timestamp::now() + 2s).to_xml_date_time();
   options->responses.emplace("/api/throttle?page_size=1000",
     FakeCastorApi::Response(
       R"({"success":false,"errors":[{"id":"fa420c23","code":"CODE_QUOTA_EXCEEDED","message":"Too many requests, retry after: )" + after + R"(","data":[]}]})",

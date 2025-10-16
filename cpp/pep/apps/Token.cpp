@@ -1,16 +1,15 @@
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/Timestamp.hpp>
 #include <pep/application/CommandLineUtility.hpp>
-#include <pep/utils/Sha.hpp>
-#include <pep/utils/Base64.hpp>
 #include <pep/auth/OAuthToken.hpp>
 
-#include <ctime>
 #include <iostream>
 
 #include <boost/algorithm/hex.hpp>
-#include <boost/lexical_cast.hpp> // numbers to strings
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+
+using namespace std::chrono;
 
 namespace pt = boost::property_tree;
 
@@ -26,8 +25,9 @@ class TokenApplication : public pep::commandline::Utility {
   }
 
   pep::commandline::Parameters getSupportedParameters() const override {
-    std::time_t now(std::time(nullptr)); // for the issued-at default
-    std::time_t a_year_later(now + 356 * 24 * 60 * 60);
+    const pep::Timestamp now = pep::Timestamp::now();
+    const auto nowSecs = now.ticks_since_epoch<seconds>();
+    const auto yearLaterSecs = pep::Timestamp(now + years{1}).ticks_since_epoch<seconds>();
 
     return pep::commandline::Utility::getSupportedParameters()
       + pep::commandline::Parameter("json", "Output as json")
@@ -35,8 +35,8 @@ class TokenApplication : public pep::commandline::Utility {
       + pep::commandline::Parameter("secret", "Passes the token secret directly").value(pep::commandline::Value<std::string>())
       + pep::commandline::Parameter("subject", "Specifies the \"sub\" field of the token").value(pep::commandline::Value<std::string>().defaultsTo("assessor"))
       + pep::commandline::Parameter("group", "Specifies the \"group\" field of the token").value(pep::commandline::Value<std::string>().defaultsTo(pep::UserGroup::ResearchAssessor))
-      + pep::commandline::Parameter("issued-at", "Specifies the \"iat\" field of the token").value(pep::commandline::Value<time_t>().defaultsTo(now, "now"))
-      + pep::commandline::Parameter("expiration-time", "Specifies the \"exp\" field of the token").value(pep::commandline::Value<time_t>().defaultsTo(a_year_later, "a year from now"));
+      + pep::commandline::Parameter("issued-at", "Specifies the \"iat\" field of the token").value(pep::commandline::Value<seconds::rep>().defaultsTo(nowSecs, "now"))
+      + pep::commandline::Parameter("expiration-time", "Specifies the \"exp\" field of the token").value(pep::commandline::Value<seconds::rep>().defaultsTo(yearLaterSecs, "a year from now"));
   }
 
   int execute() override {
@@ -105,8 +105,8 @@ class TokenApplication : public pep::commandline::Utility {
       secret,
       subject,
       group,
-      values.get<time_t>("issued-at"),
-      values.get<time_t>("expiration-time"));
+      sys_seconds(seconds(values.get<seconds::rep>("issued-at"))),
+      sys_seconds(seconds(values.get<seconds::rep>("expiration-time"))));
 
     // check whether the created token is valid
     if (!token.verify(secret, subject, group)) {

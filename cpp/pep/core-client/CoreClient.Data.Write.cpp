@@ -97,7 +97,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     entry2.mColumnIndex = ctx->columns[entry.mColumn];
     entry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
     entry2.mMetadata = Metadata(entry.mColumn,
-      entry.mTimestamp ? *entry.mTimestamp : Timestamp());
+      entry.mTimestamp ? *entry.mTimestamp : Timestamp::now());
 
     // set extra metadata entries, encrypting them with the entry's key
     // when requested.
@@ -214,7 +214,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     storeEntry2.mColumnIndex = ctx->columns[entry.mColumn];
     storeEntry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
     storeEntry2.mMetadata = Metadata(entry.mColumn,
-      entry.mTimestamp ? *entry.mTimestamp : Timestamp());
+      entry.mTimestamp ? *entry.mTimestamp : Timestamp::now());
     // storeEntry2.mPolymorphicKey is set later, once we have retrieved it
     storeEntry2.mMetadata.extra() = entry.mXMetadata; // These are encrypted later, once we have retrieved the keys
 
@@ -459,15 +459,17 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
       ress.reserve(response.mEntries.mIndices.size());
       for (auto i : response.mEntries.mIndices) {
         const auto& requestEntry = ctx->request->mEntries[i];
-        HistoryResult& res = ress.emplace_back();
-        assert(!res.mId.has_value());
-        res.mTimestamp = response.mTimestamp;
-        res.mLocalPseudonyms = pseudonyms[requestEntry.mPseudonymIndex];
-        res.mLocalPseudonymsIndex = requestEntry.mPseudonymIndex;
-        res.mColumn = ticket.mColumns[requestEntry.mColumnIndex];
-        if (includeAccessGroupPseudonyms.value_or(false)) {
-          res.mAccessGroupPseudonym = agPseuds[requestEntry.mPseudonymIndex];
-        }
+        ress.push_back(HistoryResult{
+          DataCellResult{
+            .mLocalPseudonyms = pseudonyms[requestEntry.mPseudonymIndex],
+            .mLocalPseudonymsIndex = requestEntry.mPseudonymIndex,
+            .mColumn = ticket.mColumns[requestEntry.mColumnIndex],
+            .mAccessGroupPseudonym = includeAccessGroupPseudonyms.value_or(false)
+                                       ? agPseuds[requestEntry.mPseudonymIndex]
+                                       : nullptr,
+          },
+          response.mTimestamp,
+        });
       }
       return rxcpp::observable<>::iterate(ress);
     });

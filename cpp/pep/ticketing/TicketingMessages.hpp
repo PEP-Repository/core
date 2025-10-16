@@ -20,7 +20,7 @@ public:
 
 class Ticket2 {
 public:
-  inline Ticket2() : mTimestamp(0) { }
+  inline Ticket2() : mTimestamp(Timestamp::zero()) { }
 
   Timestamp mTimestamp;
   std::vector<std::string> mModes;

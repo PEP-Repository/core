@@ -170,12 +170,12 @@ class AmaMutationResponse {
 class AmaQuery {
 public:
   Timestamp mAt;
-  std::string mColumnFilter;
-  std::string mColumnGroupFilter;
-  std::string mParticipantGroupFilter;
-  std::string mUserGroupFilter;
-  std::string mColumnGroupModeFilter;
-  std::string mParticipantGroupModeFilter;
+  std::string mColumnFilter{};
+  std::string mColumnGroupFilter{};
+  std::string mParticipantGroupFilter{};
+  std::string mUserGroupFilter{};
+  std::string mColumnGroupModeFilter{};
+  std::string mParticipantGroupModeFilter{};
 };
 
 class AmaQRColumn {

@@ -3,6 +3,7 @@
 #include <boost/optional.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -94,5 +95,22 @@ boost::property_tree::path RawPtreePath(const std::string& path);
   ([](auto&&... args) -> decltype(auto) { \
     return (fun)(std::forward<decltype(args)>(args)...); \
   })
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(TClass&)> MethodAsFree(TReturn (TClass::* fun)()) { return fun; }
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(const TClass&)> MethodAsFree(TReturn (TClass::* fun)() const) { return fun; }
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(TClass&&)> MethodAsFree(TReturn (TClass::* fun)() &&) { return fun; }
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(const TClass&&)> MethodAsFree(TReturn (TClass::* fun)() const &&) { return fun; }
+
+/// Generic version of \c std::abs
+[[nodiscard]] constexpr auto Abs(auto v) {
+  return v < decltype(v){} ? -std::move(v) : std::move(v);
+}
 
 }

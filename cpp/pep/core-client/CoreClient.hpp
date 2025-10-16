@@ -114,7 +114,7 @@ struct EnumerateAndRetrieveResult : public EnumerateResult {
 // Result of a getHistory2 or deleteData2 call
 struct HistoryResult : public DataCellResult {
   Timestamp mTimestamp;
-  std::optional<std::string> mId;
+  std::optional<std::string> mId{};
 };
 
 // Used as parameter to CoreClient::deleteData2

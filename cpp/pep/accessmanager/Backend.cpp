@@ -185,11 +185,14 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Removed user from user group " << Logging::Escape(x.mGroup);
     if (x.mBlockTokens) {
       return rxcpp::rxs::iterate(storage->getAllIdentifiersForUser(internalUserId)).concat_map([group=x.mGroup, accessManager](const std::string& uid) {
-        TokenBlockingCreateRequest tokenBlockRequest;
-        tokenBlockRequest.note="User removed from user group";
-        tokenBlockRequest.target.subject=uid;
-        tokenBlockRequest.target.userGroup=group;
-        //tokenBlockRequest.target.issueDateTime defaults to current time
+        TokenBlockingCreateRequest tokenBlockRequest{
+          .target = {
+            .subject = uid,
+            .userGroup = group,
+            .issueDateTime = Timestamp::now(),
+          },
+          .note = "User removed from user group",
+        };
         return accessManager->mKeyserver->sendRequest<TokenBlockingCreateResponse>(Signed(tokenBlockRequest, accessManager->getCertificateChain(), accessManager->getPrivateKey()));
       }).op(RxInstead(FakeVoid()));
     }
@@ -586,7 +589,7 @@ UserQueryResponse AccessManager::Backend::performUserQuery(const UserQuery& quer
 ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAccessRequest& request,
                                                              const std::string& userGroup) {
   ColumnAccess result;
-  auto now = Timestamp();
+  auto now = Timestamp::now();
 
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit "read-meta" access to all
@@ -656,7 +659,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
 ParticipantGroupAccess AccessManager::Backend::handleParticipantGroupAccessRequest(
     const ParticipantGroupAccessRequest& request, const std::string& userGroup) {
   ParticipantGroupAccess result;
-  auto now = Timestamp();
+  auto now = Timestamp::now();
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit full access to all participant
                                                        // groups
@@ -741,7 +744,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetad
     [[maybe_unused]] const std::string& userGroup) {
   (void) userGroup; // Currently, any user group can read metadata
 
-  const Timestamp now;
+  const Timestamp now = Timestamp::now();
   return {mStorage->getStructureMetadata(
       now,
       request.subjectType,

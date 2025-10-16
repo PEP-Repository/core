@@ -26,7 +26,7 @@ std::optional<std::function<void(ExportDataTable&, const std::optional<std::stri
 
         row.emplace_back(entry.type);
         row.emplace_back(entry.serial);
-        row.emplace_back(pep::Timestamp(entry.time).toString());
+        row.emplace_back(pep::Timestamp(entry.time).to_xml_date_time());
 
         assert(row.size() == CELLS);
       }

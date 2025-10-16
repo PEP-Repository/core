@@ -284,7 +284,7 @@ private:
             std::unordered_set<std::string> grouped;
           };
 
-          process = client->amaQuery(pep::AmaQuery())
+          process = client->amaQuery(pep::AmaQuery{.mAt = pep::Timestamp::max()})
             .op(pep::RxGetOne("AMA query response"))
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();

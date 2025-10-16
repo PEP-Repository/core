@@ -62,7 +62,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
 }
 
 EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config, bool dry, const std::optional<std::vector<std::string>>& spColumns, const std::optional<std::vector<std::string>>& sps)
-  : mDry(dry), mSps(sps) {
+  : mDry(dry), mSps(sps), mCooldownThreshold{Timestamp::zero() /*placeholder, initialized below*/} {
   std::filesystem::path oauthTokenFile;
   std::filesystem::path castorAPIKeyFile;
   std::filesystem::path clientConfigFile;
@@ -72,8 +72,8 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     oauthTokenFile = std::filesystem::canonical(config.get<std::filesystem::path>("OAuthTokenFile"));
     castorAPIKeyFile = std::filesystem::canonical(config.get<std::filesystem::path>("CastorAPIKeyFile"));
 
-    auto waitPeriod = config.get<int64_t>("WaitPeriodDays") * 24 * 60 * 60 * 1000;
-    mCooldownThreshold = pep::Timestamp{Timestamp().getTime() - waitPeriod};
+    auto waitPeriod = std::chrono::days{config.get<std::chrono::days::rep>("WaitPeriodDays")};
+    mCooldownThreshold = Timestamp::now() - waitPeriod;
 
     auto metricsFile = config.get<std::optional<std::filesystem::path>>("Metrics.TargetFile");
     if (metricsFile) {

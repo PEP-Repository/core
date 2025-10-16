@@ -361,7 +361,7 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
 void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   std::string serial = deviceId.toStdString();
   std::string type;
-  auto timestamp = pep::Timestamp().getTime();
+  auto timestamp = pep::Timestamp::now();
 
   const pep::ParticipantDeviceRecord* current = nullptr;
   std::vector<pep::ParticipantDeviceRecord> records;
@@ -1170,14 +1170,14 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
   assert(index < history.size());
   auto record = *std::next(history.begin(), static_cast<ptrdiff_t>(index));
 
-  auto timestamp = pep::DateTime::FromDeviceRecordTimestamp(record.time);
-  std::optional<pep::DateTime> previousEntry;
+  auto timestamp = record.time;
+  std::optional<pep::Timestamp> previousEntry;
   if (index > 0) {
-    previousEntry = pep::DateTime::FromDeviceRecordTimestamp(std::next(history.begin(), static_cast<ptrdiff_t>(index) - 1)->time);
+    previousEntry = std::next(history.begin(), static_cast<ptrdiff_t>(index) - 1)->time;
   }
-  std::optional<pep::DateTime> nextEntry;
+  std::optional<pep::Timestamp> nextEntry;
   if (!isLastRecord) {
-    nextEntry = pep::DateTime::FromDeviceRecordTimestamp(std::next(history.begin(), static_cast<ptrdiff_t>(index) + 1)->time);
+    nextEntry = std::next(history.begin(), static_cast<ptrdiff_t>(index) + 1)->time;
   }
 
   auto dialog = new QDialog(this);
@@ -1215,7 +1215,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
   auto editor = new DateTimeEditor();
   layout->addRow(editor);
-  editor->setValue(TimeTToLocalQDateTime(timestamp.toTimeT()));
+  editor->setValue(LocalQDateTimeFromStdTimestamp(timestamp));
 
   auto nowButton = new QPushButton(tr("set-timestamp-to-now"), this);
   nowButton->setObjectName("nowButton");
@@ -1242,10 +1242,10 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
     auto entered = editor->getValue();
     auto valid = entered.isValid(); // Valid timestamp was entered
     if (previousEntry) {
-      valid &= (entered > TimeTToLocalQDateTime(previousEntry->toTimeT())); // Is not earlier than the previous entry
+      valid &= (entered > LocalQDateTimeFromStdTimestamp(*previousEntry)); // Is not earlier than the previous entry
     }
     if (nextEntry) {
-      valid &= (entered < TimeTToLocalQDateTime(nextEntry->toTimeT())); // Is not later than the next entry
+      valid &= (entered < LocalQDateTimeFromStdTimestamp(*nextEntry)); // Is not later than the next entry
     }
 
     okButton->setEnabled(valid);
@@ -1258,7 +1258,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
     pep::ParticipantDeviceHistory history;
     try {
-      records[index].time = pep::DateTime(LocalQDateTimeToTimeT(editor->getValue())).toDeviceRecordTimestamp();
+      records[index].time = QDateTimeToStdTimestamp(editor->getValue());
       history = pep::ParticipantDeviceHistory(records, true);
     }
     catch (const std::exception& error) {

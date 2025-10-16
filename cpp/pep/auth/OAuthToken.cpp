@@ -1,4 +1,6 @@
 #include <pep/auth/OAuthToken.hpp>
+
+#include <pep/crypto/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Sha.hpp>
@@ -10,6 +12,9 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/archive/iterators/dataflow_exception.hpp>
+
+using namespace std::chrono;
+using namespace std::literals;
 
 namespace {
 
@@ -86,17 +91,16 @@ bool OAuthToken::verifyGroup(const std::string& required) const {
 }
 
 bool OAuthToken::verifyValidityPeriod() const {
-  //TODO does this work, or will it break with different timezones?
-  std::time_t currentTime = std::time(nullptr);
+  Timestamp now = Timestamp::now();
 
   // Check time of issuance
-  if (mIssuedAt >= currentTime + 60) { // Account for clock drift.  See #677
+  if (mIssuedAt >= now + 1min) { // Account for clock drift.  See #677
     LOG("OAuthToken::verifyValidityPeriod", info) << "Token issued after current time";
     return false;
   }
 
   // Check whether token already expired
-  if (mExpiresAt <= currentTime) {
+  if (mExpiresAt <= now) {
     LOG("OAuthToken::verifyValidityPeriod", info) << "Token expired";
     return false;
   }
@@ -108,8 +112,8 @@ OAuthToken OAuthToken::Generate(
     const std::string& secret,
     const std::string& subject,
     const std::string& group,
-    time_t issuedAt,
-    time_t expirationTime) {
+    sys_seconds issuedAt,
+    sys_seconds expirationTime) {
 
     // create the token
     std::ostringstream stream;
@@ -119,8 +123,8 @@ OAuthToken OAuthToken::Generate(
 
     root.put("sub", subject);
     root.put("group", group);
-    root.put("iat", issuedAt);
-    root.put("exp", expirationTime);
+    root.put("iat", seconds{issuedAt.time_since_epoch()}.count());
+    root.put("exp", seconds{expirationTime.time_since_epoch()}.count());
 
     boost::property_tree::write_json(stream, root);
     std::string payload(stream.str());
@@ -166,16 +170,16 @@ OAuthToken::OAuthToken(const std::string& serialized)
 
     mSubject = root.get<std::string>("sub");
     mGroup = root.get<std::string>("group");
-    mIssuedAt = root.get<std::time_t>("iat");
-    mExpiresAt = root.get<std::time_t>("exp");
+    mIssuedAt = sys_seconds(seconds{root.get<seconds::rep>("iat")});
+    mExpiresAt = sys_seconds(seconds{root.get<seconds::rep>("exp")});
 
     /* Legacy: the "exp" field was filled with milliseconds-since-epoch under some circumstances.
      * For affected tokens, we convert the faulty value to the intended seconds-since-epoch.
      * See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2649#note_50424
      */
-    if (mIssuedAt   <  2'000'000'000    // Issued by a code base affected by the bug
-      && mExpiresAt > 10'000'000'000) { // Issued for a period longer than was (likely) intended
-      mExpiresAt /= 1000;
+    if (mIssuedAt   < sys_days(2025y / October / 1d)  // Issued by a code base affected by the bug
+      && mExpiresAt > sys_days(2100y / January / 1d)) { // Issued for a period longer than was (likely) intended
+      mExpiresAt = sys_seconds(mExpiresAt.time_since_epoch() /= 1'000);
     }
   }
   catch(const boost::archive::iterators::dataflow_exception& e) {

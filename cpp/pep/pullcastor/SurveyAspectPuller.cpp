@@ -19,18 +19,14 @@ namespace castor {
 namespace {
 
 int GetWeekNumber(Timestamp moment, Timestamp offset) {
-  auto seconds = difftime(moment.toTime_t(), offset.toTime_t());
-  if (seconds < 0) {
+  using namespace std::chrono;
+  auto diff = moment - offset;
+  if (diff < decltype(diff)::zero()) {
     PULLCASTOR_LOG(warning) << "Returning negative week number for timestamp that's before the offset";
   }
-  auto weeks = seconds
-    / 60 // minutes
-    / 60 // hours
-    / 24 // days
-    / 7; // weeks
   // Explicit floor to handle negative numbers, which may occur,
   //  see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1654
-  return static_cast<int>(std::floor(weeks));
+  return floor<duration<int, weeks::period>>(diff).count();
 }
 
 using StudyStartTimestamp = decltype(ParticipantDeviceRecord::time);
@@ -282,7 +278,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::La
 
     PULLCASTOR_LOG(info) << "Out of " << tspis->size() << " finished Survey Package Instances"
       << " for survey package " << spi->getSurveyPackageName()
-      << " we'll only consider the one finished at " << latest.getTimestamp().toString();
+      << " we'll only consider the one finished at " << latest.getTimestamp().to_xml_date_time();
   }
 
   auto self = SharedFrom(*this);

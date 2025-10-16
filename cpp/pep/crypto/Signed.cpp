@@ -10,12 +10,12 @@ SignedBase::SignedBase(std::string data, X509CertificateChain chain,
 void SignedBase::assertValid(
   const X509RootCertificates& rootCAs,
   std::optional<std::string> expectedCommonName,
-  uint64_t timestampLeewaySeconds) const {
+  std::chrono::seconds timestampLeeway) const {
   mSignature.assertValid(
     mData,
     rootCAs,
     expectedCommonName,
-    timestampLeewaySeconds
+    timestampLeeway
   );
 }
 

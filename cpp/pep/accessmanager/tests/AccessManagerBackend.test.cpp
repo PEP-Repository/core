@@ -140,7 +140,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
 
   const std::vector<std::string> columngroups{constants.r_cg1};
   const std::vector<std::string> modes{"read"};
-  Timestamp timestamp{};
+  Timestamp timestamp = Timestamp::now();
   std::vector<std::string> columns;
   std::unordered_map<std::string, IndexList> columnGroupMap{};
 
@@ -163,7 +163,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
-  Timestamp timestamp{};
+  Timestamp timestamp = Timestamp::now();
   std::vector<std::string> columns{constants.double_col};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
@@ -179,7 +179,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_no_column_acc
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
-  Timestamp timestamp{};
+  Timestamp timestamp = Timestamp::now();
   std::vector<std::string> columns{constants.w_col};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
 
@@ -261,14 +261,14 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
 
   std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp;
+  Timestamp timestamp = Timestamp::now();
   backend->checkParticipantGroupAccess({constants.pg1}, constants.userGroup1, modes, timestamp);
   // No thrown exceptions means correct behaviour.
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
   std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp;
+  Timestamp timestamp = Timestamp::now();
   try {
     backend->checkParticipantGroupAccess({constants.pg2}, constants.userGroup1, modes, timestamp);
     FAIL() << "This should not have run without exceptions.";
@@ -355,22 +355,19 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  auto now = Timestamp();
-  backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, now);
+  backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, Timestamp::now());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
 
-  auto now = Timestamp();
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  backend->assertParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, now);
+  backend->assertParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, Timestamp::now());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
-  auto now = Timestamp();
   try {
     // Act
-    backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, now);
+    backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, Timestamp::now());
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {
@@ -381,7 +378,7 @@ TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_noFilter){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 65U);
@@ -392,7 +389,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_noFilter){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneColumnGroup){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   request.mColumnGroupFilter = constants.r_cg1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -404,7 +401,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneColumnGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneParticipantGroup){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   request.mParticipantGroupFilter = constants.pg1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -416,7 +413,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneParticipantGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneUserGroup){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   request.mUserGroupFilter = constants.userGroup1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -428,7 +425,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneUserGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_MultipleFilters){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   request.mUserGroupFilter = constants.userGroup1;
   request.mParticipantGroupFilter = constants.pg1;
   request.mColumnFilter = constants.r_col1;
@@ -442,7 +439,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_MultipleFilters){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_NonExistingUserGroup){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   request.mUserGroupFilter = "non-existing";
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -454,7 +451,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_NonExistingUserGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_PartialColumnFilter){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   request.mColumnFilter = "star";
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -466,7 +463,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_PartialColumnFilter){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_ColumnOnlyInStarFilter){
-  auto request = AmaQuery();
+  auto request = AmaQuery{.mAt = Timestamp::max()};
   request.mColumnFilter = constants.star_col;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 

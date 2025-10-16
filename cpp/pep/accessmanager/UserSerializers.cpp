@@ -147,12 +147,11 @@ void Serializer<UserQueryResponse>::moveIntoProtocolBuffer(proto::UserQueryRespo
 }
 
 UserQuery Serializer<UserQuery>::fromProtocolBuffer(proto::UserQuery&& source) const {
-  UserQuery result;
-  result.mAt = Serialization::FromProtocolBuffer(
-    std::move(*source.mutable_at()));
-  result.mGroupFilter = std::move(*source.mutable_group_filter());
-  result.mUserFilter = std::move(*source.mutable_user_filter());
-  return result;
+  return {
+    .mAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_at())),
+    .mGroupFilter = std::move(*source.mutable_group_filter()),
+    .mUserFilter = std::move(*source.mutable_user_filter()),
+  };
 }
 
 void Serializer<UserQuery>::moveIntoProtocolBuffer(proto::UserQuery& dest, UserQuery value) const {

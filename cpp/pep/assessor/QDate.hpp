@@ -1,12 +1,14 @@
 #pragma once
 
-#include <pep/content/Date.hpp>
 #include <QDate>
 
-QDateTime MakeLocalQDateTime(QDate date, QTime time);
+// Forward declaration
+namespace pep { class Timestamp; }
 
-QDate GregorianToQDate(const boost::gregorian::date& gregorian);
-boost::gregorian::date QDateToGregorian(const QDate& date);
+[[nodiscard]] QDateTime MakeLocalQDateTime(const QDate& date, const QTime& time);
 
-time_t LocalQDateTimeToTimeT(const QDateTime& local);
-QDateTime TimeTToLocalQDateTime(time_t value);
+[[nodiscard]] QDate QDateFromStd(const std::chrono::year_month_day& date);
+[[nodiscard]] std::chrono::year_month_day QDateToStd(const QDate& date);
+
+[[nodiscard]] pep::Timestamp QDateTimeToStdTimestamp(const QDateTime& value);
+[[nodiscard]] QDateTime LocalQDateTimeFromStdTimestamp(pep::Timestamp value);

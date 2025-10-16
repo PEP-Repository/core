@@ -165,7 +165,9 @@ void DownloadMetadata::ensureFormatUpToDate() {
 
           auto position = std::find_if(states.cbegin(), states.cend(), [&descriptor](const RecordState& candidate) {return candidate.descriptor == descriptor; });
           if (position == states.cend()) {
-            throw std::runtime_error("Could not find pristine state for participant " + local.text() + ", column " + column + ", timestamp " + std::to_string(timestamp.getTime()));
+            throw std::runtime_error("Could not find pristine state for participant " + local.text()
+                + ", column " + column
+                + ", timestamp " + std::to_string(timestamp.ticks_since_epoch<std::chrono::milliseconds>()));
           }
 
           if (position->hash) {
@@ -180,7 +182,9 @@ void DownloadMetadata::ensureFormatUpToDate() {
 
     if (!states.empty()) {
       const auto& first = states.front().descriptor;
-      throw std::runtime_error("Could not find file name information for " + std::to_string(states.size()) + " record(s), the first of which is for participant " + first.getParticipant().getLocalPseudonym().text() + ", column " + first.getColumn() + ", blinding timestamp " + std::to_string(first.getBlindingTimestamp().getTime()));
+      throw std::runtime_error("Could not find file name information for " + std::to_string(states.size()) + " record(s), the first of which is for participant " + first.getParticipant().getLocalPseudonym().text()
+          + ", column " + first.getColumn()
+          + ", blinding timestamp " + std::to_string(first.getBlindingTimestamp().ticks_since_epoch<std::chrono::milliseconds>()));
     }
     std::filesystem::remove(legacyPristineFile);
     LOG(LOG_TAG, warning) << "Download directory metadata format upgraded. Please update your (offline) copies.";

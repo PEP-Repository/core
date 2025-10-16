@@ -20,7 +20,7 @@ struct LegacyUserGroupUserRecord  {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  int64_t timestamp{};
+  UnixMillis timestamp{};
   bool tombstone{};
 
   /// The ID of the user group the user is to be a member of. A UserGroupRecord must exist for the group.

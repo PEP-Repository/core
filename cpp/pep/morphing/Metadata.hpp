@@ -104,7 +104,7 @@ struct KeyBlindingAdditionalData {
 
 class Metadata {
  public:
-  inline Metadata(): mBlindingTimestamp(0) {}
+  inline Metadata(): mBlindingTimestamp(Timestamp::zero()) {}
   inline Metadata(std::string tag, Timestamp date)
     : mBlindingTimestamp(date), mTag(std::move(tag)) { }
   inline Metadata(std::string tag, Timestamp date, EncryptionScheme scheme)

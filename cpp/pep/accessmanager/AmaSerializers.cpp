@@ -259,16 +259,15 @@ void Serializer<AmaQueryResponse>::moveIntoProtocolBuffer(proto::AmaQueryRespons
 }
 
 AmaQuery Serializer<AmaQuery>::fromProtocolBuffer(proto::AmaQuery&& source) const {
-  AmaQuery result;
-  result.mAt = Serialization::FromProtocolBuffer(
-    std::move(*source.mutable_at()));
-  result.mColumnFilter = std::move(*source.mutable_column_filter());
-  result.mColumnGroupFilter = std::move(*source.mutable_column_group_filter());
-  result.mParticipantGroupFilter = std::move(*source.mutable_participant_group_filter());
-  result.mUserGroupFilter = std::move(*source.mutable_user_group_filter());
-  result.mColumnGroupModeFilter = std::move(*source.mutable_column_group_mode_filter());
-  result.mParticipantGroupModeFilter = std::move(*source.mutable_participant_group_mode_filter());
-  return result;
+  return {
+    .mAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_at())),
+    .mColumnFilter = std::move(*source.mutable_column_filter()),
+    .mColumnGroupFilter = std::move(*source.mutable_column_group_filter()),
+    .mParticipantGroupFilter = std::move(*source.mutable_participant_group_filter()),
+    .mUserGroupFilter = std::move(*source.mutable_user_group_filter()),
+    .mColumnGroupModeFilter = std::move(*source.mutable_column_group_mode_filter()),
+    .mParticipantGroupModeFilter = std::move(*source.mutable_participant_group_mode_filter())
+  };
 }
 
 void Serializer<AmaQuery>::moveIntoProtocolBuffer(proto::AmaQuery& dest, AmaQuery value) const {

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <cstdint>
+#include <pep/crypto/Timestamp.hpp>
+
 #include <string>
 #include <tuple>
 #include <vector>
@@ -14,13 +15,12 @@ struct ParticipantDeviceRecord {
   std::string type;
   std::string serial;
   std::string note;
-  int64_t time = 0;
+  Timestamp time;
 
-  inline bool isSet() const { return time != 0; }
+  bool isSet() const { return time != Timestamp::zero(); }
   inline bool isActive() const { return type == "start"; }
 
-  ParticipantDeviceRecord() = default;
-  inline ParticipantDeviceRecord(std::string type, std::string serial, std::string note, int64_t time) :
+  ParticipantDeviceRecord(std::string type, std::string serial, std::string note, Timestamp time) :
     type(std::move(type)),
     serial(std::move(serial)),
     note(std::move(note)),
