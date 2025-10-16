@@ -149,7 +149,7 @@ TicketRequest2 SignedTicketRequest2::openAsTranscryptor(
   if (!mLogSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
-  mLogSignature->assertValid(mData, rootCAs, std::nullopt, 1min, true);
+  mLogSignature->assertValid(mData, rootCAs, std::nullopt, 1h, true);
 
   return Serialization::FromString<TicketRequest2>(mData);
 }
