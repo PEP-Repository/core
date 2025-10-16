@@ -50,8 +50,6 @@ private:
 
   int64_t getNextInternalUserId() const;
 
-  std::optional<std::string> getOptionalDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
-
   /* private methods related to user groups */
   int64_t getNextUserGroupId() const;
   bool hasUserGroup(std::string_view name) const;
@@ -220,7 +218,7 @@ public:
   std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = Timestamp()) const;
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
   std::optional<std::string> getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
-  std::string getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+  std::optional<std::string> getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
 
   /* Finding userGroupIds */
   /// Try to find the internalId for the userGroup with the given name. Returns nullopt if not found.

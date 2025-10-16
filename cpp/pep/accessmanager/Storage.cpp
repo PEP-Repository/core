@@ -478,26 +478,35 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
     LOG(LOG_TAG, info) << "all records have been updated";
   }
 
-  LOG(LOG_TAG, info) << "Checking whether all users have a displayId";
-
-  auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
-  std::unordered_set<int64_t> seenBefore;
-  size_t countUpdated = 0;
-  for (auto& userIdRecord : mImplementor->raw.iterate<UserIdRecord>()) {
-    auto [_, inserted] = seenBefore.insert(userIdRecord.internalUserId);
-    if (inserted && !userIdRecord.isDisplayId) { //The first added userId for a user should always be the displayId at that point in time.
-      userIdRecord.isDisplayId = true;
-      mImplementor->raw.update(userIdRecord);
-      countUpdated++;
+  //DisplayIds and PrimaryIds where introduced at the same time. So if there are primaryIds already in the DB, we can also assume that the upgrade already happened before.
+  //Furthermore, because we check that there are no primaryIds, in the auto-assignment we don't have to worry about whether identifiers are primaryIds or not.
+  if (mImplementor->raw.select(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)).empty()) {
+    LOG(LOG_TAG, info) << "There are no displayIds in the database yet. Auto-assigning...";
+    size_t countAssigned = 0;
+    size_t countUnassigned = 0;
+    auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
+    if (auto maxUserId = mImplementor->raw.max(&UserIdRecord::internalUserId)) {
+      for (int64_t userId = 1; userId < *maxUserId; ++userId) {
+        auto firstIdentifier = RangeToOptional(
+          mImplementor->raw.select(&UserIdRecord::identifier,
+          where(c(&UserIdRecord::internalUserId) == userId),
+          order_by(&UserIdRecord::seqno).asc(),
+          limit(1)));
+        if (firstIdentifier) {
+          if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
+            mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, false, true));
+            countAssigned++;
+          }
+          else if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
+            countUnassigned++;
+          }
+        }
+      }
     }
+    displayIdTransactionGuard.commit();
+    LOG(LOG_TAG, info) << "A displayId has been assigned to " << countAssigned << " records.";
+    LOG(LOG_TAG, warning) << "No displayId could be automatically assigned to " << countUnassigned;
   }
-  for (int64_t userId : mImplementor->getCurrentRecords(true, &UserIdRecord::internalUserId)) {
-    if (!getOptionalDisplayIdentifierForUser(userId)) {
-      throw std::runtime_error("Not all users have gotten a displayId in database upgrade");
-    }
-  }
-  displayIdTransactionGuard.commit();
-  LOG(LOG_TAG, info) << countUpdated << " records have been updated.";
 }
 
 void AccessManager::Backend::Storage::removeOrphanedRecords() {
@@ -1506,15 +1515,10 @@ std::optional<std::string> AccessManager::Backend::Storage::getPrimaryIdentifier
         && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isPrimaryId) == true, &UserIdRecord::identifier);
 }
 
-std::optional<std::string> AccessManager::Backend::Storage::getOptionalDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
   return mImplementor->getLastMatchingRecord(c(&UserIdRecord::timestamp) <= at.getTime()
         && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isDisplayId) == true, &UserIdRecord::identifier);
 }
-
-std::string AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
-  return *getOptionalDisplayIdentifierForUser(internalUserId, at);
-}
-
 
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
   auto records = mImplementor->getCurrentRecords(
