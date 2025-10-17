@@ -1,5 +1,7 @@
 #include <pep/database/Storage.hpp>
 
+#include <format>
+
 namespace {
 std::string generateSchemaErrorMessage(std::string_view table, pep::database::SchemaError::Reason reason) {
   using namespace pep::database;

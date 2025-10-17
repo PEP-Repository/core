@@ -1,7 +1,5 @@
 #pragma once
 
-#include <format>
-
 #include <pep/database/Record.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
