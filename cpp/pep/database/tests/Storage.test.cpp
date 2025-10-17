@@ -71,11 +71,11 @@ pep::filesystem::Temporary StorageTest::Tempdir;
 TEST_F(StorageTest, syncSchema_returns_whether_changes_have_been_made) {
   std::filesystem::path dbPath = getDbPath();
   {
-    pep::database::Storage<MakeStorageBase> storage(dbPath);
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
   }
   {
-    pep::database::Storage<MakeStorageBase> storage(dbPath);
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
     EXPECT_FALSE(storage.syncSchema());
   }
 }
@@ -83,11 +83,11 @@ TEST_F(StorageTest, syncSchema_returns_whether_changes_have_been_made) {
 TEST_F(StorageTest, syncSchema_with_new_column_fails_without_default_value) {
   std::filesystem::path dbPath = getDbPath();
   {
-    pep::database::Storage<MakeStorageBase> storage(dbPath);
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
   }
   {
-    pep::database::Storage<MakeStorageWithExtraColumn> storage(dbPath);
+    pep::database::Storage<MakeStorageWithExtraColumn> storage(dbPath.string());
     try {
       storage.syncSchema();
       FAIL() << "syncShema should have thrown";
@@ -102,11 +102,11 @@ TEST_F(StorageTest, syncSchema_with_new_column_fails_without_default_value) {
 TEST_F(StorageTest, syncSchema_with_new_column_succeeds_with_default_value) {
   std::filesystem::path dbPath = getDbPath();
   {
-    pep::database::Storage<MakeStorageBase> storage(dbPath);
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
   }
   {
-    pep::database::Storage<MakeStorageWithExtraColumnWithDefaultValue> storage(dbPath);
+    pep::database::Storage<MakeStorageWithExtraColumnWithDefaultValue> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
   }
 }
@@ -114,11 +114,11 @@ TEST_F(StorageTest, syncSchema_with_new_column_succeeds_with_default_value) {
 TEST_F(StorageTest, syncSchema_with_removed_column_depends_on_parameter) {
   std::filesystem::path dbPath = getDbPath();
   {
-    pep::database::Storage<MakeStorageWithExtraColumn> storage(dbPath);
+    pep::database::Storage<MakeStorageWithExtraColumn> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
   }
   {
-    pep::database::Storage<MakeStorageBase> storage(dbPath);
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
     try {
       storage.syncSchema();
       FAIL() << "syncShema should have thrown";
@@ -129,7 +129,7 @@ TEST_F(StorageTest, syncSchema_with_removed_column_depends_on_parameter) {
     }
   }
   {
-    pep::database::Storage<MakeStorageBase> storage(dbPath);
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema(true));
   }
 }
@@ -137,11 +137,11 @@ TEST_F(StorageTest, syncSchema_with_removed_column_depends_on_parameter) {
 TEST_F(StorageTest, syncSchema_with_new_table_succeeds) {
   std::filesystem::path dbPath = getDbPath();
   {
-    pep::database::Storage<MakeStorageBase> storage(dbPath);
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
   }
   {
-    pep::database::Storage<MakeStorageWithExtraTable> storage(dbPath);
+    pep::database::Storage<MakeStorageWithExtraTable> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
   }
 }
