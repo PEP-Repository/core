@@ -69,6 +69,13 @@ class MailSender(Connector):
             self.log("SMTP port must be an integer", level=logging.ERROR, tag=self.LOG_TAG)
             raise ValueError("SMTP port must be an integer")
 
+        # Validate rate_limit_seconds if present
+        if "rate_limit_seconds" in email_config:
+            rate_limit = email_config["rate_limit_seconds"]
+            if not isinstance(rate_limit, int) or rate_limit < 0:
+                self.log("rate_limit_seconds must be a non-negative integer", level=logging.ERROR, tag=self.LOG_TAG)
+                raise ValueError("rate_limit_seconds must be a non-negative integer")
+
     def set_debug_mode(self, debug_mode=True) -> None:
         """Set debug mode (prevents actually sending emails)"""
         self.debug_mode = debug_mode
@@ -440,9 +447,10 @@ class MailSender(Connector):
                 self.log(f"Email sending failed: {str(e)}", level=logging.ERROR, tag=self.LOG_TAG)
                 raise
             
-            # Make sure to sleep for 100 sec to avoid rate limit
-            self.log("Sleeping for 100 seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
-            time.sleep(100)
+            # Make sure to sleep for rate limit avoidance
+            rate_limit_seconds = self.email_config.get("rate_limit_seconds", 100)
+            self.log(f"Sleeping for {rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
+            time.sleep(rate_limit_seconds)
             self.log("Waking up from sleep", level=logging.INFO, tag=self.LOG_TAG)
 
     def record_email_send(self, short_pseudonym: str, column: str, emails_sent: dict, email: str, survey_id: int, survey_type: str) -> None:
