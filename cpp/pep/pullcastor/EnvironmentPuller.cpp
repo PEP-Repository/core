@@ -54,7 +54,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
         }
       }
     }
-    return rxcpp::observable<>::iterate(result);
+    return rxcpp::observable<>::iterate(std::move(result));
     })
     .distinct();
 }

@@ -2,6 +2,7 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -144,7 +145,7 @@ rxcpp::observable<std::string> Client::listCastorImportColumns(const std::string
       ->sendRequest<ListCastorImportColumnsResponse>(ListCastorImportColumnsRequest{spColumnName,
                                                                                     answerSetCount.value_or(0U)})
       .flat_map([](const ListCastorImportColumnsResponse& response) {
-        return rxcpp::observable<>::iterate(response.mImportColumns);
+        return RxMoveIterate(response.mImportColumns);
       });
 }
 

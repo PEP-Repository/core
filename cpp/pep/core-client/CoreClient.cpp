@@ -291,7 +291,7 @@ rxcpp::observable<std::string> CoreClient::getInaccessibleColumns(const std::str
     }
 
     // Columns that haven't been checked are inaccessible: return them
-    return rxcpp::observable<>::iterate(*remaining);
+    return rxcpp::observable<>::iterate(std::move(*remaining));
       });
 }
 

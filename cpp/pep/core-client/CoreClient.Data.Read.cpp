@@ -11,6 +11,8 @@
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
+#include "pep/async/RxMoveIterate.hpp"
+
 namespace pep {
 
 namespace {
@@ -98,7 +100,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
   }
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
-  return rxcpp::observable<>::iterate(std::move(batches))
+  return RxMoveIterate(std::move(batches))
     .flat_map([this, ticket, pseudonyms](std::vector<std::string> batch) {
     auto entryCount = batch.size();
     MetadataReadRequest2 readRequest;
@@ -116,7 +118,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
       if (entries->size() != entryCount) {
         throw std::runtime_error("Storage facility return an unexpected number of entries");
       }
-      return rxcpp::observable<>::iterate(convertDataEnumerationEntries(*entries, *pseudonyms));
+      return RxMoveIterate(convertDataEnumerationEntries(*entries, *pseudonyms));
         });
       });
 }

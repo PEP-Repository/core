@@ -6,6 +6,8 @@
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 
+#include "pep/async/RxMoveIterate.hpp"
+
 namespace pep {
 
 namespace {
@@ -140,13 +142,13 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   // Give each KeyRequest a (reference to the) ticket
   std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->mTicket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
 
-  return rxcpp::observable<>::iterate(std::move(keyRequests))
-    .flat_map([this, request](const std::pair<const size_t, EncryptionKeyRequest>& pair) {
-    size_t offset = pair.first;
-    const EncryptionKeyRequest& keyRequest = pair.second;
-    return clientAccessManager->sendRequest<EncryptionKeyResponse>(sign(pair.second))
+  return RxMoveIterate(std::move(keyRequests))
+    .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
+    auto [offset, keyRequest] = std::move(pair);
+    const size_t count = keyRequest.mEntries.size();
+    return clientAccessManager->sendRequest<EncryptionKeyResponse>(sign(std::move(keyRequest)))
       .op(RxGetOne("encryption key response"))
-      .map([request, offset, count = keyRequest.mEntries.size()](EncryptionKeyResponse keyResponse) {
+      .map([request, offset, count](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {
           std::ostringstream ss;
           ss << "EncryptionKeyResponse contains " << keyResponse.mKeys.size()

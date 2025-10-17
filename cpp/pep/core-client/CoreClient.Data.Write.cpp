@@ -7,6 +7,8 @@
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 
+#include "pep/async/RxMoveIterate.hpp"
+
 namespace pep {
 
 namespace {
@@ -322,12 +324,11 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         }
 
         // Send individual MetadataUpdateRequest2 instances to Storage Facility
-        return rxcpp::observable<>::iterate(batches)
+        return rxcpp::observable<>::iterate(std::move(batches))
           .flat_map([this](const std::pair<const size_t, std::shared_ptr<MetadataUpdateRequest2>>& pair) {
           size_t offset = pair.first;
-          std::shared_ptr<MetadataUpdateRequest2> request = pair.second;
           return clientStorageFacility->sendRequest(
-            std::make_shared<std::string>(Serialization::ToString(sign(*request))))
+            std::make_shared<std::string>(Serialization::ToString(sign(std::move(*pair.second)))))
             .map([offset](std::string_view rawResponse) {
               return std::make_pair(offset, Serialization::FromStringOrRaiseError<MetadataUpdateResponse2>(rawResponse));
             })
@@ -466,7 +467,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
           res.mAccessGroupPseudonym = agPseuds[requestEntry.mPseudonymIndex];
         }
       }
-      return rxcpp::observable<>::iterate(ress);
+      return RxMoveIterate(std::move(ress));
     });
   });
 }

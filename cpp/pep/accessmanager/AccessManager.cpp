@@ -4,6 +4,7 @@
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/auth/FacilityType.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
@@ -1042,7 +1043,7 @@ messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::sha
 
   auto entries = backend->handleStructureMetadataRequest(request, userGroup);
   return
-      rxcpp::observable<>::iterate(std::move(entries))
+      RxMoveIterate(std::move(entries))
       .map([](StructureMetadataEntry entry) {
         return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(std::move(entry))))
             .as_dynamic();

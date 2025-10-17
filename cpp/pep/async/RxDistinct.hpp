@@ -19,7 +19,7 @@ struct RxDistinct {
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items
       .op(RxToSet(false))
-      .flat_map([](std::shared_ptr<std::set<TItem>> set) {return rxcpp::observable<>::iterate(*set); });
+      .flat_map([](std::shared_ptr<std::set<TItem>> set) {return rxcpp::observable<>::iterate(std::move(*set)); });
   }
 };
 

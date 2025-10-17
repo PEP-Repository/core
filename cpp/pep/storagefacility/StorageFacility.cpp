@@ -420,7 +420,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       }
 
       server->mMetrics->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
-      return rxcpp::observable<>::iterate(response);
+      return rxcpp::observable<>::iterate(std::move(response));
       });
 }
 

@@ -67,7 +67,7 @@ rxcpp::observable<FakeVoid> RepeatingDataPuller::addMatchingInstancesTo(std::sha
       return lhs->getId().compare(rhs->getId()) < 0;
     });
 
-    return rxcpp::observable<>::iterate(*instances) // Iterate over repeating data instances
+    return rxcpp::observable<>::iterate(std::move(*instances)) // Iterate over repeating data instances
       .concat_map([self, sp, destination](std::shared_ptr<RepeatingDataInstance> rdi) { // Get a ptree for each repeating data instance
       return FieldValue::Aggregate(self->getRepeatingDataInstanceFieldValues(sp, rdi));
       })

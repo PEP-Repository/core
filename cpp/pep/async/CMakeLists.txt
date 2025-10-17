@@ -24,6 +24,7 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     RxIndexed.hpp
     RxInstead.hpp
     RxLazy.hpp
+    RxMoveIterate.hpp
     RxParallelConcat.hpp
     RxRequireNonEmpty.hpp RxRequireNonEmpty.cpp
     RxSharedPtrCast.hpp

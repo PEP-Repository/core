@@ -6,6 +6,7 @@
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
@@ -96,7 +97,7 @@ protected:
               result.emplace(group.first);
             }
           }
-          return rxcpp::observable<>::iterate(result);
+          return rxcpp::observable<>::iterate(std::move(result));
             })
           .distinct()
           .op(pep::RxToSet())
@@ -104,7 +105,7 @@ protected:
           if (groups->find("*") != groups->cend()) {
             return rxcpp::observable<>::just(std::string("*"));
           }
-          return rxcpp::observable<>::iterate(*groups);
+          return rxcpp::observable<>::iterate(std::move(*groups));
           });
         });
       if (mClient.lock() == nullptr) {
@@ -118,7 +119,7 @@ protected:
 
   rxcpp::observable<std::string> getMetaReadableColumns(std::shared_ptr<pep::CoreClient> client) {
     return this->getMetaReadableColumnGroups(client)
-      .flat_map([](std::shared_ptr<pep::ColumnAccess> access) { return rxcpp::observable<>::iterate(access->columns); })
+      .flat_map([](std::shared_ptr<pep::ColumnAccess> access) { return pep::RxMoveIterate(access->columns); })
       .distinct();
   }
 
@@ -137,7 +138,7 @@ protected:
           columns.emplace_back(access->columns[i]);
         }
       }
-      return rxcpp::observable<>::iterate(columns);
+      return pep::RxMoveIterate(std::move(columns));
         });
   }
 
@@ -605,7 +606,7 @@ protected:
   }
 
   rxcpp::observable<std::string> getParticipantGroupsToProcess(std::shared_ptr<pep::CoreClient> client) override {
-    return rxcpp::observable<>::iterate(this->getParameterValues().getOptionalMultiple<std::string>("participant-group"));
+    return pep::RxMoveIterate(this->getParameterValues().getOptionalMultiple<std::string>("participant-group"));
   }
 
   rxcpp::observable<std::shared_ptr<std::vector<pep::PolymorphicPseudonym>>> getPpsToProcess(std::shared_ptr<pep::CoreClient> client) override {

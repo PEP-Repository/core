@@ -30,7 +30,7 @@ protected:
         }
       };
       std::sort(results->begin(), results->end(), CompareHistoryResults());
-      return rxcpp::observable<>::iterate(*results);
+      return rxcpp::observable<>::iterate(std::move(*results));
         });
     return WriteJson(std::cout, entries);
   }

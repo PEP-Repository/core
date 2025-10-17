@@ -318,7 +318,7 @@ private:
             .concat_map([client](std::shared_ptr<pep::enumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
             .as_dynamic() // Reduce compiler memory usage
             .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.mLocalPseudonymsIndex; })) // Group by participant
-            .concat_map([](auto participants) { return rxcpp::observable<>::iterate(*participants); }) // Iterate over participants
+            .concat_map([](auto participants) { return rxcpp::observable<>::iterate(std::move(*participants)); }) // Iterate over participants
             .map([](const std::pair<const uint32_t, std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>>>& pair) {return pair.second; }) // Keep only (shared_ptr to) vector of fields
             .concat_map([client, id, spCount](std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>> fields) -> rxcpp::observable<std::shared_ptr<pep::RegistrationResponse>> {
             auto idField = std::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.mColumn == "ParticipantIdentifier"; });
