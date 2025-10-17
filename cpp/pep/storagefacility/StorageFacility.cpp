@@ -1019,15 +1019,15 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
-std::string StorageFacility::encryptId(const std::string& path, uint64_t time) {
+std::string StorageFacility::encryptId(std::string path, uint64_t time) {
   return Serialization::ToString(
     EncryptedSFId(
       mEncIdKey,
-      SFId(path, time)),
+      SFId(std::move(path), time)),
     false);
 }
 
-SFId StorageFacility::decryptId(const std::string& encId) {
+SFId StorageFacility::decryptId(std::string_view encId) {
   return Serialization::FromString<EncryptedSFId>(encId, false).decrypt(mEncIdKey);
 }
 
@@ -1039,7 +1039,7 @@ Metadata StorageFacility::compileMetadata(
   assert(content != nullptr);
 
   Metadata result = Metadata(
-    column,
+    std::move(column),
     pep::Timestamp{static_cast<int64_t>(content->getBlindingTimestamp())},
     content->getEncryptionScheme());
 

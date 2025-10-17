@@ -158,9 +158,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     return clientStorageFacility->sendRequest(
         std::make_shared<std::string>(Serialization::ToString(sign(*ctx->request))),
         pages);
-  }).map([ctx](std::string rawResponse) {
-    auto response = Serialization::FromStringOrRaiseError<DataStoreResponse2>(
-      std::move(rawResponse));
+  }).map([ctx](std::string_view rawResponse) {
+    auto response = Serialization::FromStringOrRaiseError<DataStoreResponse2>(rawResponse);
     if (response.mHash != ctx->hasher.digest()) {
       throw std::runtime_error("Returned hash from the storage facility did not match the calculated hash for the data to be stored.");
     }
@@ -247,7 +246,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.mPseudonyms->mIndices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
 
     return this->clientStorageFacility->sendRequest(MakeSharedCopy(Serialization::ToString(sign(enumRequest))))
-      .map([ctx](const std::string& rawResponse) { return Serialization::FromString<DataEnumerationResponse2>(rawResponse).mEntries; })
+      .map([ctx](std::string_view rawResponse) { return Serialization::FromString<DataEnumerationResponse2>(rawResponse).mEntries; })
       .op(RxConcatenateVectors())
       .flat_map([this, ctx, signedTicket](std::shared_ptr<std::vector<DataEnumerationEntry2>> enumEntries) {
       if (enumEntries->size() < ctx->request->mEntries.size()) {
@@ -329,9 +328,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           std::shared_ptr<MetadataUpdateRequest2> request = pair.second;
           return clientStorageFacility->sendRequest(
             std::make_shared<std::string>(Serialization::ToString(sign(*request))))
-            .map([offset](std::string rawResponse) {
-              return std::make_pair(offset, Serialization::FromStringOrRaiseError<MetadataUpdateResponse2>(
-                std::move(rawResponse)));
+            .map([offset](std::string_view rawResponse) {
+              return std::make_pair(offset, Serialization::FromStringOrRaiseError<MetadataUpdateResponse2>(rawResponse));
             })
             .as_dynamic(); // Reduce compiler memory usage
           })
@@ -426,9 +424,8 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 
     return clientStorageFacility->sendRequest(
       std::make_shared<std::string>(Serialization::ToString(sign(*ctx->request))))
-      .flat_map([this, ctx](std::string rawResponse) {
-      auto response = Serialization::FromStringOrRaiseError<DataDeleteResponse2>(
-        std::move(rawResponse));
+      .flat_map([this, ctx](std::string_view rawResponse) {
+      auto response = Serialization::FromStringOrRaiseError<DataDeleteResponse2>(rawResponse);
       auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
       // TODO: use CreateObservable instead of rxcpp::iterate over a vector<> that we just create for this purpose
       std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms;

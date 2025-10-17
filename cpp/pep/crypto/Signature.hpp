@@ -40,14 +40,14 @@ class Signature {
       mIsLogCopy(isLogCopy) { }
 
   static Signature create(
-      const std::string& data,
+      std::string_view data,
       X509CertificateChain chain,
       const AsymmetricKey& privateKey,
       bool isLogCopy=false,
       SignatureScheme scheme=SIGNATURE_SCHEME_V4);
 
   void assertValid(
-      const std::string& data,
+      std::string_view data,
       const X509RootCertificates& rootCAs,
       std::optional<std::string> expectedCommonName,
       uint64_t timestampLeewaySeconds,
@@ -55,7 +55,7 @@ class Signature {
 
   template<typename T>
   T open(
-      const std::string& data,
+      std::string_view data,
       const X509RootCertificates& rootCAs,
       std::optional<std::string> expectedCommonName=std::nullopt,
       uint64_t timestampLeewaySeconds=60*60) const {

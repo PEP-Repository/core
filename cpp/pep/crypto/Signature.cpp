@@ -7,7 +7,7 @@
 
 namespace pep {
 
-Signature Signature::create(const std::string& data, X509CertificateChain chain,
+Signature Signature::create(std::string_view data, X509CertificateChain chain,
       const AsymmetricKey& privateKey, bool isLogCopy, SignatureScheme scheme) {
   auto timestamp = Timestamp();
 
@@ -34,7 +34,7 @@ Signature Signature::create(const std::string& data, X509CertificateChain chain,
 }
 
 void Signature::assertValid(
-    const std::string& data,
+    std::string_view data,
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName,
     uint64_t timestampLeewaySeconds,

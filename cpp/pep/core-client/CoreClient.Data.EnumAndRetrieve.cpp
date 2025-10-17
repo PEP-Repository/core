@@ -241,12 +241,9 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                             readRequest,
                             certificateChain,
                             privateKey))))
-                    .map([](
-                      std::string rawPage) {
+                    .map([](std::string_view rawPage) {
                       return MakeSharedCopy(
-                        Serialization::FromString<DataPayloadPage>(
-                          std::move(
-                            rawPage)));
+                        Serialization::FromString<DataPayloadPage>(rawPage));
                     });
                 })
                 .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->mIndex; }))
