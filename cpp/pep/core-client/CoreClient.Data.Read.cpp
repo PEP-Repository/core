@@ -2,6 +2,7 @@
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxIndexed.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
@@ -10,8 +11,6 @@
 #include <rxcpp/operators/rx-group_by.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
-
-#include "pep/async/RxMoveIterate.hpp"
 
 namespace pep {
 
