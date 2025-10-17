@@ -9,6 +9,7 @@ std::string generateSchemaErrorMessage(std::string_view table, pep::database::Sc
   case SchemaError::Reason::old_columns_removed:
     return std::format("Schema synchronization for table {} will remove old columns", table);
   }
+  throw std::invalid_argument("Unknown SchemaError::Reason");
 }
 }
 
