@@ -40,7 +40,7 @@ add_library(${PROJECT_NAME}Asynclib STATIC
 
 target_link_libraries(${PROJECT_NAME}Asynclib
   ${PROJECT_NAME}Utilslib
-  rxcpp  # This will be rxcpp::rxcpp if RxCpp will ever support C++20
+  rxcpp::rxcpp
 )
 
 verify_headers_standalone(${PROJECT_NAME}Asynclib)

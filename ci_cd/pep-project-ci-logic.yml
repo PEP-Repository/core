@@ -436,7 +436,7 @@ deploy:
   stage: deploy
   dependencies: []
   rules:
-    - if:  $CI_COMMIT_REF_NAME == $PEP_PROJECT_DEVELOPMENT_BRANCH
+    - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_DEVELOPMENT_BRANCH) && ($DEPLOYMENT_TYPE_DEV == "standard" || $DEPLOYMENT_TYPE_DEV == "both")'
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_TESTING_BRANCH) && ($DEPLOYMENT_TYPE_TEST == "standard" || $DEPLOYMENT_TYPE_TEST == "both")'
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_ACCEPTANCE_BRANCH) && ($DEPLOYMENT_TYPE_ACC == "standard" || $DEPLOYMENT_TYPE_ACC == "both")'
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH) && ($DEPLOYMENT_TYPE_PROD == "standard" || $DEPLOYMENT_TYPE_PROD == "both")'
