@@ -478,20 +478,6 @@ auto ts_create_db(const std::string& path) {
   );
 }
 
-[[nodiscard]] bool RemovesDatabaseElement(sync_schema_result result) {
-  switch (result) {
-    case sync_schema_result::old_columns_removed:
-    case sync_schema_result::new_columns_added_and_old_columns_removed:
-    case sync_schema_result::dropped_and_recreated:
-      return true;
-    case sync_schema_result::new_table_created:
-    case sync_schema_result::already_in_sync:
-    case sync_schema_result::new_columns_added:
-      return false; // fine, no removal here
-  }
-  throw std::runtime_error("Unknown sync_schema_result: Cannot verify that no data was lost during synchronization of database schemas.");
-}
-
 }
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
@@ -575,39 +561,7 @@ void TranscryptorStorage::ensureInitialized() {
 }
 
 void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
-  bool all_in_sync = true;
-
-  try {
-    bool printed_header = false;
-    for(auto&& p : mStorage->raw.sync_schema(true)) {
-      if (p.second != sync_schema_result::already_in_sync) {
-        if (!printed_header) {
-          printed_header = true;
-          LOG(LOG_TAG, warning) << "Synchronizing database schemas ... ";
-        }
-        LOG(LOG_TAG, warning) << "  " << p.first
-            << ": " << p.second;
-      }
-
-      // Currently, no migration step should remove tables or columns,
-      // so let's make sure it doesn't!
-      if (RemovesDatabaseElement(p.second)) {
-        LOG(LOG_TAG, error) << "Cannot synchronise transcryptor "
-             "database for doing "
-             "so would lead to unforeseen data loss, probably by an"
-             "oversight in our SQL ORM code.";
-        throw Error("Transcryptor database initialization failed.");
-      }
-
-      if (p.second != sync_schema_result::already_in_sync)
-        all_in_sync = false;
-    }
-  } catch (const std::system_error& e) {
-    LOG(LOG_TAG, error) << "Database synchronization failed: " << e.what();
-    throw;
-  }
-
-  if (all_in_sync) {
+  if (!mStorage->syncSchema()) {
     LOG(LOG_TAG, info) << "All database schemas in sync;"
       << " checking whether migration has been performed.";
 
