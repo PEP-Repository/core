@@ -34,7 +34,7 @@ COPY \
     ${STAGING_DIRECTORY}/cpp/pep/storagefacility/pepStorageFacilityUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/structure/pepStructureUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/structuredoutput/pepStructuredOutputUnitTests \
-	${STAGING_DIRECTORY}/cpp/pep/ticketing/pepTicketingUnitTests \
+    ${STAGING_DIRECTORY}/cpp/pep/ticketing/pepTicketingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/transcryptor/pepTranscryptor \
     ${STAGING_DIRECTORY}/cpp/pep/utils/pepUtilsUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/versioning/pepVersioningUnitTests \
