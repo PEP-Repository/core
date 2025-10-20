@@ -18,6 +18,17 @@ Metadata Metadata::decrypt(const std::string& aeskey) const {
   return result;
 }
 
+Metadata Metadata::getBound() const {
+  using namespace std::ranges;
+  Metadata result;
+  result.mBlindingTimestamp = mBlindingTimestamp;
+  result.mTag = mTag;
+  result.mEncryptionScheme = mEncryptionScheme;
+  result.mExtra = RangeToCollection<std::map<std::string, MetadataXEntry>>(mExtra
+      | views::filter([](const std::pair<const std::string, MetadataXEntry>& entry) { return entry.second.bound(); }));
+  return result;
+}
+
 KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const LocalPseudonym& localPseudonym) const {
   auto scheme = this->getEncryptionScheme();
   if (scheme == EncryptionScheme::V1) {
