@@ -656,7 +656,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
       { participant->pp },          // pps
       {},                        // columnGroups
       { "ParticipantIdentifier" }) // columns
-      .map([](const std::vector<EnumerateResult>& result) { // Raise an exception if (the row for) our generated ID already existed
+      .map([](const std::vector<std::shared_ptr<EnumerateResult>>& result) { // Raise an exception if (the row for) our generated ID already existed
       if (!result.empty()) {
         throw Error("Generated a duplicate participant ID. Please retry"); // TODO retry automatically instead
       }
@@ -704,8 +704,8 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       { *ctx->pp },                 // pps
       { "ShortPseudonyms" },        // columnGroups
       {})                           // columns
-    .flat_map([](std::vector<EnumerateResult> results) { return rxcpp::observable<>::iterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
-    .map([](const EnumerateResult& result) {return result.mMetadata.getTag(); }) // Extract the column name
+    .flat_map([](std::vector<std::shared_ptr<EnumerateResult>> results) { return rxcpp::observable<>::iterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
+    .map([](const std::shared_ptr<EnumerateResult>& result) {return result->mMetadata.getTag(); }) // Extract the column name
     .op(RxToVector()) // Convert to a single vector<> containing column names
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs
     .filter([](std::pair<std::shared_ptr<std::vector<std::string>>, ShortPseudonymDefinition> pair) { // Keep only defined SPs that the participant does not have

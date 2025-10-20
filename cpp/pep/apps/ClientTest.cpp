@@ -173,13 +173,22 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         tOpts.columns = {"ParticipantInfo"};
         return client->requestTicket2(tOpts).flat_map(
           [client, id](IndexedTicket2 ticket) {
-            return client->retrieveData2(client->getMetadata({id}, ticket.getTicket()), ticket.getTicket(), true);
+            return client->retrieveData2(
+                client->getKeys(
+                    client->enumerateDataByIds({id},
+                        ticket.getTicket()).concat(),
+                    ticket.getTicket()),
+                ticket.getTicket());
           });
       })
-      .flat_map([](std::shared_ptr<RetrieveResult> result) {
-        return result->mContent->op(RxConcatenateStrings());
+      .concat()
+      .map([](RetrievePage page) {
+        if (page.fileIndex != 0) {
+          throw std::runtime_error("Unexpected file index");
+        }
+        return std::move(page.mContent);
       })
-      .op(RxGetOne("result"))
+      .op(RxConcatenateStrings())
       .map(
         [strPayload](const std::string& szResult) {
           std::cout << "Received data : " << szResult << std::endl;
@@ -253,7 +262,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     client->getRegistrationServerVersion().zip(rxcpp::rxs::just("Registration Server")),
     client->getAuthserverVersion().zip(rxcpp::rxs::just("Auth Server"))
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
-    const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
+    const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary;
     std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;
 
     const std::string& server = std::get<1>(response);

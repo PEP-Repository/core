@@ -410,12 +410,12 @@ protected:
           return client->requestTicket2(ticketRequest)
             .flat_map([client](const pep::IndexedTicket2& ticket) {return client->enumerateData2(ticket.getTicket()); })
             .op(pep::RxConcatenateVectors())
-            .flat_map([this, client, ownResult, columnExtensions, counts](std::shared_ptr<std::vector<pep::EnumerateResult>> enumResults) {
+            .flat_map([this, client, ownResult, columnExtensions, counts](std::shared_ptr<std::vector<std::shared_ptr<pep::EnumerateResult>>> enumResults) {
             counts->processingCells(enumResults->size());
             std::vector<Update> updates;
             updates.reserve(enumResults->size());
             for (const auto& enumResult : *enumResults) {
-              auto update = this->getUpdateFor(enumResult, *columnExtensions);
+              auto update = this->getUpdateFor(*enumResult, *columnExtensions);
               if (update.has_value()) {
                 updates.emplace_back(*update);
               }
@@ -740,8 +740,9 @@ protected:
           .flat_map([client](pep::IndexedTicket2 indexed) {
           return client->enumerateData2(indexed.getTicket());
             })
-          .map([this, specs](const std::vector<pep::EnumerateResult>& result) {
-          for (const auto& entry : result) {
+          .map([this, specs](const std::vector<std::shared_ptr<pep::EnumerateResult>>& result) {
+          for (const auto& entryPtr : result) {
+            const auto& entry = *entryPtr;
             auto position = specs->find(entry.mLocalPseudonyms->mPolymorphic);
             if (position != specs->cend()) { // If this participant was identified by the user on the command line, report back using that identifier
               for (auto spec : position->second) {

@@ -6,9 +6,9 @@
 #include <pep/async/RxToVector.hpp>
 #include <pep/async/RxToVectorOfVectors.hpp>
 
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
-#include <rxcpp/operators/rx-reduce.hpp>
 
 using namespace pep;
 using namespace pep::cli;
@@ -17,14 +17,14 @@ namespace {
 
 const std::string LOG_TAG("DownloadProcessor");
 
-rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPayloadEntryBlindingTimestamps(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const VectorOfVectors<EnumerateResult>& metaEntries) {
+rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPayloadEntryBlindingTimestamps(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const VectorOfVectors<std::shared_ptr<EnumerateResult>>& metaEntries) {
   // Collect (IDs of) entries containing original payload
   std::vector<std::string> payloadIds;
   auto metaIndices = std::make_shared<std::vector<size_t>>(); // positions correspond with payload(Id)s; values are indices in "metaEntries"
   auto m = metaEntries.begin();
   for (size_t i = 0U; i < metaEntries.size(); ++i, ++m) {
     assert(m != metaEntries.end());
-    const auto& metadata = m->mMetadata;
+    const auto& metadata = (*m)->mMetadata;
     if (metadata.getOriginalPayloadEntryId().has_value()) {
       payloadIds.emplace_back(*metadata.getOriginalPayloadEntryId());
       metaIndices->emplace_back(i);
@@ -41,12 +41,13 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
 
   // If we're here, the "metaEntries" contains at least one entry that represents a metadata-only update, so we
   // retrieve original payload entries from the server and extract their timestamps.
-  return client->getMetadata(payloadIds, ticket)
-    .map([](const EnumerateResult& payloadEntry) {
-    if (payloadEntry.mMetadata.getOriginalPayloadEntryId().has_value()) {
+  return client->enumerateDataByIds(payloadIds, ticket)
+    .concat()
+    .map([](const std::shared_ptr<EnumerateResult>& payloadEntry) {
+    if (payloadEntry->mMetadata.getOriginalPayloadEntryId().has_value()) {
       throw std::runtime_error("Received a metadata-only update entry from server, but expected a payload-bearing entry");
     }
-    return payloadEntry.mMetadata.getBlindingTimestamp();
+    return payloadEntry->mMetadata.getBlindingTimestamp();
       })
     .op(RxToVector())
     .map([metaCount = metaEntries.size(), metaIndices](std::shared_ptr<std::vector<Timestamp>> payloadTimestamps) { // Match timestamps to items in "metaEntries" vector
@@ -91,9 +92,9 @@ rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient
 
   return this->requestTicket(progress, ctx)
     .flat_map([self, progress, ctx](std::shared_ptr<IndexedTicket2> ticket) { return self->listFiles(progress, ctx); })
-    .flat_map([self, progress, ctx](std::shared_ptr<VectorOfVectors<EnumerateResult>> metas) { return self->locateFileContents(progress, ctx, metas); })
-    .tap([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads) { self->prepareLocalData(progress, downloads, ctx->options.assumePristine); })
-    .flat_map([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads) {return self->retrieveFromServer(progress, ctx, downloads); })
+    .flat_map([self, progress, ctx](std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>> metas) { return self->locateFileContents(progress, ctx, metas); })
+    .tap([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads) { self->prepareLocalData(progress, downloads, ctx->options.assumePristine); })
+    .flat_map([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads) {return self->retrieveFromServer(progress, ctx, downloads); })
     .op(RxBeforeCompletion([progress]() {progress->advanceToCompletion(); }))
     .op(RxInstead(FakeVoid())); // Return a single FakeVoid for the entire operation
 }
@@ -115,17 +116,18 @@ rxcpp::observable<std::shared_ptr<IndexedTicket2>> DownloadProcessor::requestTic
       });
 }
 
-rxcpp::observable<std::shared_ptr<VectorOfVectors<EnumerateResult>>> DownloadProcessor::listFiles(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx) {
+rxcpp::observable<std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>>> DownloadProcessor::listFiles(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx) {
   progress->advance("Listing files");
   return ctx->client->enumerateData2(ctx->ticket->getTicket())
     .op(RxToVectorOfVectors());
 }
 
-rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>>> DownloadProcessor::locateFileContents(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<VectorOfVectors<EnumerateResult>> metas) {
+rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>>> DownloadProcessor::locateFileContents(
+  std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>> metas) {
   progress->advance("Locating file contents");
   return GetPayloadEntryBlindingTimestamps(ctx->client, ctx->ticket->getTicket(), *metas) // Get (blinding) timestamps when payloads for these EnumerateResults were originally uploaded
     .map([metas](std::shared_ptr<std::vector<std::optional<Timestamp>>> payloadTimestamps) { // Convert vector<>s to unordered_map<> for speedy lookup
-    auto mapped = std::make_shared<std::unordered_map<RecordDescriptor, EnumerateResult>>();
+    auto mapped = std::make_shared<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>>();
     mapped->reserve(metas->size());
 
     assert(metas->size() == payloadTimestamps->size());
@@ -134,15 +136,15 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, Enumerate
 
     while (m != mend) {
       assert(t != payloadTimestamps->end());
-      const EnumerateResult& entry = *m;
+      std::shared_ptr<EnumerateResult> entry = *m;
       const std::optional<Timestamp>& payloadTimestamp = *t;
 
       ParticipantIdentifier id(
-        entry.mLocalPseudonyms->mPolymorphic,
-        *entry.mAccessGroupPseudonym);
+        entry->mLocalPseudonyms->mPolymorphic,
+        *entry->mAccessGroupPseudonym);
       [[maybe_unused]] auto emplaced = mapped->emplace(
-        RecordDescriptor(id, entry.mColumn, entry.mMetadata.getBlindingTimestamp(), entry.mMetadata.extra(), payloadTimestamp),
-        entry);
+        RecordDescriptor(id, entry->mColumn, entry->mMetadata.getBlindingTimestamp(), entry->mMetadata.extra(), payloadTimestamp),
+        std::move(entry));
       assert(emplaced.second);
 
       ++m;
@@ -157,7 +159,8 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, Enumerate
       });
 }
 
-void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads, bool assumePristine) {
+void DownloadProcessor::prepareLocalData(
+  std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads, bool assumePristine) {
   progress->advance("Preparing local data");
   auto localRecords = mDestination->list();
   if (localRecords.empty()) {
@@ -173,9 +176,9 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
       if (!mDestination->remove(existing)) {
         if (assumePristine) {
-          auto update = std::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, EnumerateResult>& enumerated) {
-            return *enumerated.second.mAccessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
-              && enumerated.second.mColumn == existing.getColumn();
+          auto update = std::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
+            return *enumerated.second->mAccessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
+              && enumerated.second->mColumn == existing.getColumn();
             });
           if (update == downloads->cend()) {
             // Data should have been removed from the local copy, but it wasn't there
@@ -206,7 +209,8 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
   }
 }
 
-rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads) {
+rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
+  std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads) {
   if (downloads->empty()) {
     progress->advance("Nothing to retrieve");
     return rxcpp::observable<>::empty<FakeVoid>();
@@ -214,13 +218,13 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(std::shared_pt
 
   progress->advance("Retrieving from server");
   // Extract download properties into context and local variables
-  auto subjects = std::make_shared<std::queue<EnumerateResult>>();
+  auto subjects = std::make_shared<std::queue<std::shared_ptr<EnumerateResult>>>();
   ctx->descriptors.reserve(downloads->size());
   ctx->sizes.reserve(downloads->size());
   while (!downloads->empty()) {
     auto position = downloads->begin();
     ctx->descriptors.emplace_back(MakeSharedCopy(position->first));
-    ctx->sizes.emplace_back(position->second.mFileSize);
+    ctx->sizes.emplace_back(position->second->mFileSize);
     subjects->push(std::move(position->second));
 
     downloads->erase(position); // Discard source value to reduce memory use
@@ -230,41 +234,35 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(std::shared_pt
   // Retrieve data for fields that we're updating
   auto retrieveProgress = Progress::Create(subjects->size(), progress->push());
   auto self = SharedFrom(*this);
-  return ctx->client->retrieveData2(RxDrain(subjects), ctx->ticket->getTicket(), true)
-    .flat_map([self, ctx, retrieveProgress](std::shared_ptr<RetrieveResult> result) {
-    return self->processDataChunk(retrieveProgress, ctx, result);
+  return ctx->client->retrieveData2(ctx->client->getKeys(RxDrain(subjects), ctx->ticket->getTicket()), ctx->ticket->getTicket())
+      .flat_map([self, ctx, retrieveProgress](const rxcpp::observable<RetrievePage>& batch) {
+        return batch
+          .map([self, ctx, retrieveProgress](const RetrievePage& page) {
+            self->processDataChunk(retrieveProgress, ctx, page);
+            return FakeVoid{};
+          });
       })
-    .op(RxBeforeCompletion([self, ctx, retrieveProgress]() {
-    self->processEmptyFiles(retrieveProgress, ctx);
-    retrieveProgress->advanceToCompletion();
+      .op(RxBeforeCompletion([self, ctx, retrieveProgress]() {
+        self->processEmptyFiles(retrieveProgress, ctx);
+        retrieveProgress->advanceToCompletion();
       }));
 }
 
-rxcpp::observable<FakeVoid> DownloadProcessor::processDataChunk(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx, std::shared_ptr<RetrieveResult> result) {
-  auto stream = ctx->streams.at(result->mIndex);
+void DownloadProcessor::processDataChunk(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx, const RetrievePage& result) {
+  auto stream = ctx->streams.at(result.fileIndex);
   if (stream == nullptr) {
     // Receiving the first part of the record: open stream now
-    auto& descriptor = ctx->descriptors.at(result->mIndex);
+    auto& descriptor = ctx->descriptors.at(result.fileIndex);
     assert(descriptor != nullptr);
-    stream = this->openStorageStream(std::move(*descriptor), ctx->sizes.at(result->mIndex), *retrieveProgress);
+    stream = this->openStorageStream(std::move(*descriptor), ctx->sizes.at(result.fileIndex), *retrieveProgress);
     descriptor.reset();
-    ctx->streams[result->mIndex] = stream;
+    ctx->streams[result.fileIndex] = stream;
   } else {
-    assert(ctx->descriptors.at(result->mIndex) == nullptr);
+    assert(ctx->descriptors.at(result.fileIndex) == nullptr);
   }
 
-  assert(result->mContent);
-
   auto self = SharedFrom(*this);
-  return result->mContent
-    ->map([self, stream](const std::string& chunk) {
-    if (stream->isCommitted() && chunk.empty()) { //stream->write will throw an error if it has already been commited, but we want to allow an empty chunk
-      LOG(LOG_TAG, warning) << "Trying to write empty chunk to record that has already been committed.";
-    } else {
-      stream->write(chunk, self->mGlobalConfig);
-    }
-    return FakeVoid();
-      });
+  stream->write(result.mContent, self->mGlobalConfig);
 }
 
 void DownloadProcessor::processEmptyFiles(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx) {
