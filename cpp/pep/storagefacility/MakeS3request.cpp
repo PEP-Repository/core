@@ -17,7 +17,7 @@ private:
 
 public:
   std::string getName() const override { return "MakeS3request"; }
-  std::string getDescription() const { return "Produces an S3 HTTP PUT request"; }
+  std::string getDescription() const override { return "Produces an S3 HTTP PUT request"; }
 
   commandline::Parameters getSupportedParameters() const override {
     return Application::getSupportedParameters()
