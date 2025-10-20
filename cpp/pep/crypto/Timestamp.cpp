@@ -80,9 +80,9 @@ protected:
   }
 };
 
-class YyyyMmmDdDateParser final : public TimestampParser {
+class YyyyMmDdDateParser final : public TimestampParser {
 public:
-  explicit YyyyMmmDdDateParser(std::string timeZone)
+  explicit YyyyMmDdDateParser(std::string timeZone)
     : TimestampParser{"yyyymmdd"}, mTimeZone{std::move(timeZone)} {}
 
 protected:
@@ -171,7 +171,7 @@ Timestamp Timestamp::from_xml_date_time(std::string_view xml) {
 }
 
 Timestamp Timestamp::from_yyyymmdd(std::string_view yyyymmdd, const TimeZone& timeZone) {
-  return YyyyMmmDdDateParser{timeZone.mStr}.parse(yyyymmdd);
+  return YyyyMmDdDateParser{timeZone.mStr}.parse(yyyymmdd);
 }
 
 
