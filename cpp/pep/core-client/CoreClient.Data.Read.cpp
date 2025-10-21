@@ -52,12 +52,12 @@ rxcpp::observable<std::vector<EnumerateResult>> CoreClient::enumerateData2(const
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
   return accessManagerProxy
-      ->requestTicket(sign(TicketRequest2{.mModes = {"read"},
-                                          .mParticipantGroups = participantGroups,
-                                          .mPolymorphicPseudonyms = pps,
-                                          .mColumnGroups = columnGroups,
-                                          .mColumns = columns,
-                                          .mIncludeUserGroupPseudonyms = false}))
+      ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
+                                               .mParticipantGroups = participantGroups,
+                                               .mPolymorphicPseudonyms = pps,
+                                               .mColumnGroups = columnGroups,
+                                               .mColumns = columns,
+                                               .mIncludeUserGroupPseudonyms = false})
       .flat_map([this](SignedTicket2 ticket) { return this->enumerateData2(std::make_shared<SignedTicket2>(ticket)); });
 }
 

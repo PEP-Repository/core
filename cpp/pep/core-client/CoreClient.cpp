@@ -404,14 +404,13 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
     return rxcpp::observable<>::error<IndexedTicket2>(std::runtime_error("Query out of scope of provided Ticket"));
   }
   assert(ContainsUniqueValues(opts.pps));
-  return accessManagerProxy->requestIndexedTicket(sign(TicketRequest2{
+  return accessManagerProxy->requestIndexedTicket(ClientSideTicketRequest2{
       .mModes = opts.modes,
       .mParticipantGroups = opts.participantGroups,
       .mPolymorphicPseudonyms = opts.pps,
       .mColumnGroups = opts.columnGroups,
       .mColumns = opts.columns,
-      .mRequestIndexedTicket = true,
-      .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms}));
+      .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
 }
 
 

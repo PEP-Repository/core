@@ -8,29 +8,27 @@
 
 namespace pep {
 
-namespace {
-
-[[maybe_unused]] bool RequestsIndexedTicket(const SignedTicketRequest2& request) { // TODO: remove
-  return Serialization::FromString<TicketRequest2>(request.mData).mRequestIndexedTicket;
-}
-
-} // End anonymous namespace
-
 rxcpp::observable<KeyComponentResponse> AccessManagerProxy::requestKeyComponent(SignedKeyComponentRequest request) const {
   // TODO: consolidate duplicate code with TranscryptorProxy::requestKeyComponent
   return this->sendRequest<KeyComponentResponse>(std::move(request))
     .op(RxGetOne());
 }
 
-rxcpp::observable<SignedTicket2> AccessManagerProxy::requestTicket(SignedTicketRequest2 request) const {
-  assert(!RequestsIndexedTicket(request));
-  return this->sendRequest<SignedTicket2>(std::move(request))
+rxcpp::observable<SignedTicket2> AccessManagerProxy::requestTicket(ClientSideTicketRequest2 request) const {
+  TicketRequest2 sendable{
+    std::move(request),
+    false // mRequestIndexedTicket
+  };
+  return this->sendRequest<SignedTicket2>(this->sign(std::move(sendable)))
     .op(RxGetOne());
 }
 
-rxcpp::observable<IndexedTicket2> AccessManagerProxy::requestIndexedTicket(SignedTicketRequest2 request) const {
-  assert(RequestsIndexedTicket(request));
-  return this->sendRequest<IndexedTicket2>(std::move(request))
+rxcpp::observable<IndexedTicket2> AccessManagerProxy::requestIndexedTicket(ClientSideTicketRequest2 request) const {
+  TicketRequest2 sendable{
+    std::move(request),
+    true // mRequestIndexedTicket
+  };
+  return this->sendRequest<IndexedTicket2>(this->sign(std::move(sendable)))
     .op(RxGetOne());
 }
 

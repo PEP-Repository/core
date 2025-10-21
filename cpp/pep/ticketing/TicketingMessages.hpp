@@ -65,15 +65,19 @@ public:
     : DeserializableDerivedError<SignedTicket2ValidityPeriodError>(description) { }
 };
 
-class TicketRequest2 {
+class ClientSideTicketRequest2 {
 public:
   std::vector<std::string> mModes;
   std::vector<std::string> mParticipantGroups;
   std::vector<PolymorphicPseudonym> mPolymorphicPseudonyms;
   std::vector<std::string> mColumnGroups;
   std::vector<std::string> mColumns;
-  bool mRequestIndexedTicket = false; // TODO: remove
   bool mIncludeUserGroupPseudonyms = false;
+};
+
+class TicketRequest2 : public ClientSideTicketRequest2 {
+public:
+  bool mRequestIndexedTicket;
 };
 
 template <>
