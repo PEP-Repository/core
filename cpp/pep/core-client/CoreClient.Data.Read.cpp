@@ -203,6 +203,7 @@ CoreClient::retrieveData2(
                       throw std::runtime_error(std::format("Received out-of-order page for file {}: expected {} but got {}",
                           file.nextPage, page->mPageNumber, index));
                     }
+                    ++file.nextPage;
 
                     const EnumerateResult& entry = *file.fileKey.entry;
                     RetrievePage retrievedPage{
