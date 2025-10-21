@@ -132,7 +132,7 @@ class ClientTestApplication : public Application {
 
   class Mode5Command : public ModeCommand<5> {
   private:
-    rxcpp::observable<std::tuple<VersionResponse, std::string>> tryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name);
+    static rxcpp::observable<std::tuple<VersionResponse, std::string>> TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name);
   protected:
     rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) override;
   public:
@@ -240,7 +240,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     .op(RxInstead(true));
 }
 
-rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::tryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name) { // TODO: make static
+rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name) {
   rxcpp::observable<VersionResponse> version;
   if (proxy == nullptr) {
     version = rxcpp::observable<>::empty<VersionResponse>();
@@ -259,12 +259,12 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  return this->tryGetServerVersion(client->getAccessManagerProxy(false), "Access Manager").merge(
-    this->tryGetServerVersion(client->getTranscryptorProxy(false), "Transcryptor"),
-    this->tryGetServerVersion(client->getKeyServerProxy(false), "Key Server"),
-    this->tryGetServerVersion(client->getStorageFacilityProxy(false), "Storage Facility"),
-    this->tryGetServerVersion(client->getRegistrationServerProxy(false), "Registration Server"),
-    this->tryGetServerVersion(client->getAuthServerProxy(false), "Auth Server")
+  return TryGetServerVersion(client->getAccessManagerProxy(false), "Access Manager").merge(
+    TryGetServerVersion(client->getTranscryptorProxy(false), "Transcryptor"),
+    TryGetServerVersion(client->getKeyServerProxy(false), "Key Server"),
+    TryGetServerVersion(client->getStorageFacilityProxy(false), "Storage Facility"),
+    TryGetServerVersion(client->getRegistrationServerProxy(false), "Registration Server"),
+    TryGetServerVersion(client->getAuthServerProxy(false), "Auth Server")
   ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
     const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
     std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;
