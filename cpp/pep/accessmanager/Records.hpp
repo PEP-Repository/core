@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/database/Record.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/ColumnName.hpp>
 
@@ -46,7 +47,7 @@ struct ColumnRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::string name;
@@ -82,7 +83,7 @@ struct ColumnGroupRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::string name;
@@ -114,7 +115,7 @@ struct ColumnGroupColumnRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::string columnGroup;
@@ -153,7 +154,7 @@ struct ColumnGroupAccessRuleRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::string columnGroup;
@@ -190,7 +191,7 @@ struct ParticipantGroupRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::string name;
@@ -225,7 +226,7 @@ struct ParticipantGroupParticipantRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::string participantGroup;
@@ -267,7 +268,7 @@ struct ParticipantGroupAccessRuleRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::string participantGroup;
@@ -303,7 +304,7 @@ struct StructureMetadataRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   std::underlying_type_t<StructureMetadataType> subjectType{};

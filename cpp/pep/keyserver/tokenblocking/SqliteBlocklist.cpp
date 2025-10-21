@@ -17,10 +17,10 @@ struct FlatEntry final {
   int64_t id = 0;
   std::string targetSubject;
   std::string targetUserGroup;
-  UnixMillis targetIssueDateTime = 0;
+  database::UnixMillis targetIssueDateTime = 0;
   std::string metadataNote;
   std::string metadataIssuer;
-  UnixMillis metaCreationDateTime = 0;
+  database::UnixMillis metaCreationDateTime = 0;
 };
 
 /// Consumes a FlatEntry to build a Blocklist::Entry

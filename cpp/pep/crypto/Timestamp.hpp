@@ -13,8 +13,6 @@ namespace boost::gregorian { class date; }
 
 namespace pep {
 
-using UnixMillis = std::chrono::milliseconds::rep;
-
 // Same as STL does for system_clock
 template<class Duration>
 using steady_time = std::chrono::time_point<std::chrono::system_clock, Duration>;

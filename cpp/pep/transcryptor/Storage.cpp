@@ -82,7 +82,7 @@ struct MigrationRecord {
 
   int64_t seqno{};
   uint64_t toVersion{};
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
   std::vector<char> checksumNonce;
 };
 
@@ -158,7 +158,7 @@ struct TicketRequestRecord {
 
   std::string id;
   std::string accessGroup;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
 
   std::vector<char> request; // SignedTicketRequest
   int64_t pseudonymSet{};
@@ -223,7 +223,7 @@ struct TicketIssueRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  UnixMillis timestamp{};
+  database::UnixMillis timestamp{};
 
   int64_t request{}; // seqno of related TicketRequestRecord
   int64_t columnSet{}; // seqno of ColumnSetRecord granted access to
