@@ -145,7 +145,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     size_t offset = pair.first;
     const EncryptionKeyRequest& keyRequest = pair.second;
     return clientAccessManager->sendRequest<EncryptionKeyResponse>(sign(pair.second))
-      .op(RxGetOne("encryption key response"))
+      .op(RxGetOne())
       .map([request, offset, count = keyRequest.mEntries.size()](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {
           std::ostringstream ss;

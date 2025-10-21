@@ -1,15 +1,10 @@
 #include <pep/serialization/NormalizedTypeNaming.hpp>
-
-#include <boost/algorithm/string/erase.hpp>
+#include <cassert>
 
 namespace pep {
 
-std::string BasicNormalizedTypeNamer::GetTypeName(const std::string& rawPrettyTypeName) {
-  std::string name = rawPrettyTypeName;
-
-  // Remove "class " or "struct " which some compilers prepend
-  boost::erase_all(name, "class ");
-  boost::erase_all(name, "struct ");
+std::string BasicNormalizedTypeNamer::GetTypeName(const std::string& plain) {
+  std::string name = plain;
 
   // Backward compatible: "normalized" means "no template brackets"
   // This a.o. makes the name (more) portable to other languages

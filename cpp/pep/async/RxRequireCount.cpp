@@ -4,7 +4,7 @@
 namespace pep {
 
 RxRequireCount::RxRequireCount(size_t min, size_t max, std::optional<std::string> errorText)
-  : mMin(min), mMax(max), mErrorText(errorText.value_or("item(s)")) {
+  : mMin(min), mMax(max), mErrorText(std::move(errorText)) {
 }
 
 RxRequireCount::RxRequireCount(size_t exact, std::optional<std::string> errorText)

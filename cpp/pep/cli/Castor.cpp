@@ -285,7 +285,7 @@ private:
           };
 
           process = client->amaQuery(pep::AmaQuery())
-            .op(pep::RxGetOne("AMA query response"))
+            .op(pep::RxGetOne())
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();
             for (const auto& column : response.mColumns) {

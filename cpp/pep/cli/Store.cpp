@@ -381,7 +381,7 @@ protected:
     }
 
     return store
-      .op(pep::RxGetOne("storage result"))
+      .op(pep::RxGetOne())
       .map([](pep::DataStorageResult2 res) {
         pt::ptree out;
         out.put("id", boost::algorithm::hex(res.mIds[0]));

@@ -143,7 +143,7 @@ protected:
 
   static rxcpp::observable<std::shared_ptr<ColumnExtensions>> GetGlobalConfigurationColumnExtensions(std::shared_ptr<pep::CoreClient> client) {
     return client->getGlobalConfiguration()
-      .op(pep::RxGetOne("global configuration"))
+      .op(pep::RxGetOne("global configuration")) // TODO: use default type name (and let RxGetOne deal with the shared_ptr)
       .map([](std::shared_ptr<pep::GlobalConfiguration> config) {
       auto result = std::make_shared<ColumnExtensions>();
       for (const auto& sp : config->getShortPseudonyms()) {

@@ -125,7 +125,7 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
   return mAccessManager
           ->sendRequest<ChecksumChainResponse>(
               Signed(request, mCertificateChain, mPrivateKey))
-          .op(RxGetOne("ChecksumChainResponse"));
+          .op(RxGetOne());
 }
 
 rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::findUserGroupsAndStorePrimaryIdIfMissing(

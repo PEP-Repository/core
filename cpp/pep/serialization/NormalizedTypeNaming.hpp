@@ -1,9 +1,7 @@
 #pragma once
 
+#include <pep/utils/PlainTypeName.hpp>
 #include <memory>
-#include <string>
-
-#include <boost/type_index.hpp>
 
 namespace pep {
 
@@ -15,12 +13,12 @@ class BasicNormalizedTypeNamer {
   friend struct NormalizedTypeNamer;
 
 private:
-  static std::string GetTypeName(const std::string& rawPrettyTypeName);
+  static std::string GetTypeName(const std::string& plain);
 };
 
 template <typename T>
 struct NormalizedTypeNamer : public BasicNormalizedTypeNamer {
-  static inline std::string GetTypeName() { return BasicNormalizedTypeNamer::GetTypeName(boost::typeindex::type_id<T>().pretty_name()); }
+  static inline std::string GetTypeName() { return BasicNormalizedTypeNamer::GetTypeName(GetPlainTypeName<T>()); }
 };
 
 template <typename T>
