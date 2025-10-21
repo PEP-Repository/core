@@ -142,10 +142,14 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shar
       ParticipantIdentifier id(
         entry->mLocalPseudonyms->mPolymorphic,
         *entry->mAccessGroupPseudonym);
-      [[maybe_unused]] auto emplaced = mapped->emplace(
+      auto emplaced = mapped->emplace(
         RecordDescriptor(id, entry->mColumn, entry->mMetadata.getBlindingTimestamp(), entry->mMetadata.extra(), payloadTimestamp),
         std::move(entry));
-      assert(emplaced.second);
+      if (!emplaced.second) {
+        const RecordDescriptor& key = emplaced.first->first;
+        throw std::runtime_error(std::format("Received duplicate entry for participant {}, column {}",
+          key.getParticipant().getLocalPseudonym().text(), key.getColumn()));
+      }
 
       ++m;
       ++t;

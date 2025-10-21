@@ -128,7 +128,7 @@ CoreClient::getKeys(
             if (keys->size() != subjects->size()) {
               throw std::runtime_error("KeyResponse contains the wrong number of entries");
             }
-            return rxcpp::observable<>::range(std::size_t{}, subjects->size())
+            return rxcpp::observable<>::range(std::size_t{}, subjects->size() - 1)
               .map([fileOffset, subjects, keys](std::size_t index) {
                 return FileKey{
                   .fileIndex = static_cast<std::uint32_t>(fileOffset + index),
@@ -327,11 +327,12 @@ std::vector<std::shared_ptr<EnumerateResult>> CoreClient::ConvertDataEnumeration
   std::vector<std::shared_ptr<EnumerateResult>> ress;
   ress.reserve(entries.size());
   for (DataEnumerationEntry2& entry : entries) {
-    EnumerateResult& r = *ress.emplace_back();
+    EnumerateResult& r = *ress.emplace_back(std::make_shared<EnumerateResult>());
+    r.mColumn = entry.mMetadata.getTag();
+
     r.mId = std::move(entry.mId);
     r.mMetadata = std::move(entry.mMetadata);
     r.mPolymorphicKey = entry.mPolymorphicKey;
-    r.mColumn = entry.mMetadata.getTag();
     r.mLocalPseudonymsIndex = entry.mPseudonymIndex;
     r.mFileSize = entry.mFileSize;
     r.mAccessGroupPseudonym = pseudonyms.getAccessGroupPseudonym(entry.mPseudonymIndex);
