@@ -51,7 +51,7 @@ protected:
     if (mPrintDrift) {
       std::cout
         << pep::Timestamp().getTime()
-        - response.openWithoutCheckingSignature().mTimestamp.getTime()
+             - response.openWithoutCheckingSignature().mTimestamp.getTime()
         << std::endl;
       return;
     }
