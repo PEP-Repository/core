@@ -15,6 +15,7 @@ private:
 
   template <typename TResponse, typename TRequest>
   static TResponse DeserializeResponse(std::string serialized) {
+    static_assert(!std::is_same_v<TResponse, Error>, "Ambiguous: should Error instance be raised or deserialized?");
     ValidateResponse(MessageMagician<TResponse>::GetMagic(), serialized, typeid(TResponse), typeid(TRequest));
     return Serialization::FromString<TResponse>(std::move(serialized));
   }
