@@ -62,7 +62,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
 }
 
 EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config, bool dry, const std::optional<std::vector<std::string>>& spColumns, const std::optional<std::vector<std::string>>& sps)
-  : mDry(dry), mSps(sps), mCooldownThreshold{/*zero* /*placeholder, initialized below*/} {
+  : mDry(dry), mSps(sps) {
   std::filesystem::path oauthTokenFile;
   std::filesystem::path castorAPIKeyFile;
   std::filesystem::path clientConfigFile;
