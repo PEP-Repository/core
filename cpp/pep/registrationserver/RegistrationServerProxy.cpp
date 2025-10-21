@@ -8,7 +8,7 @@ namespace pep {
 
 rxcpp::observable<std::string> RegistrationServerProxy::registerPepId() const {
   return this->sendRequest<PEPIdRegistrationResponse>(this->sign(PEPIdRegistrationRequest()))
-    .op(RxGetOne("PEPIdRegistrationResponse"))
+    .op(RxGetOne())
     .map([](const PEPIdRegistrationResponse& response) {return response.mPepId; });
 }
 
@@ -24,7 +24,7 @@ rxcpp::observable<FakeVoid> RegistrationServerProxy::completeShortPseudonyms(Pol
 rxcpp::observable<std::string> RegistrationServerProxy::listCastorImportColumns(const std::string& spColumnName, const std::optional<unsigned>& answerSetCount) const {
   ListCastorImportColumnsRequest request{ spColumnName, answerSetCount.value_or(0U) };
   return this->sendRequest<ListCastorImportColumnsResponse>(std::move(request))
-    .op(RxGetOne("ListCastorImportColumnsResponse"))
+    .op(RxGetOne())
     .flat_map([](const ListCastorImportColumnsResponse& response) {
     return rxcpp::observable<>::iterate(response.mImportColumns);
       });

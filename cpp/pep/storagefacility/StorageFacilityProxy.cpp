@@ -1,4 +1,4 @@
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
@@ -45,7 +45,7 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
       });
 
   return this->sendRequest<DataStoreResponse2>(this->sign(std::move(request)), std::move(batches))
-    .op(RxGetOne("DataStoreResponse2"))
+    .op(RxGetOne())
     .tap([ctx](const DataStoreResponse2& response) {
     if (response.mHash != ctx->hasher.digest()) {
       throw std::runtime_error("Returned hash from the storage facility did not match the calculated hash for the data to be stored.");
@@ -55,12 +55,12 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
 
 rxcpp::observable<DataDeleteResponse2> StorageFacilityProxy::requestDataDelete(DataDeleteRequest2 request) const {
   return this->sendRequest<DataDeleteResponse2>(this->sign(std::move(request)))
-    .op(RxGetOne("DataDeleteResponse2"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<MetadataUpdateResponse2> StorageFacilityProxy::requestMetadataStore(MetadataUpdateRequest2 request) const {
   return this->sendRequest<MetadataUpdateResponse2>(this->sign(std::move(request)))
-    .op(RxGetOne("MetadataUpdateResponse2"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<DataEnumerationResponse2> StorageFacilityProxy::requestDataEnumeration(DataEnumerationRequest2 request) const {
@@ -69,7 +69,7 @@ rxcpp::observable<DataEnumerationResponse2> StorageFacilityProxy::requestDataEnu
 
 rxcpp::observable<DataHistoryResponse2> StorageFacilityProxy::requestDataHistory(DataHistoryRequest2 request) const {
   return this->sendRequest<DataHistoryResponse2>(this->sign(std::move(request)))
-    .op(RxGetOne("DataHistoryResponse2"));
+    .op(RxGetOne());
 }
 
 }

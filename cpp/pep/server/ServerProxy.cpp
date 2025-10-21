@@ -1,4 +1,4 @@
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/ServerProxy.hpp>
@@ -40,22 +40,22 @@ rxcpp::observable<FakeVoid> ServerProxy::shutdown() {
 
 rxcpp::observable<VersionResponse> ServerProxy::requestVersion() const {
   return this->sendRequest<VersionResponse>(VersionRequest())
-    .op(RxGetOne("VersionResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<MetricsResponse> ServerProxy::requestMetrics() const {
   return this->sendRequest<MetricsResponse>(this->sign(MetricsRequest()))
-    .op(RxGetOne("MetricsResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<ChecksumChainNamesResponse> ServerProxy::requestChecksumChainNames() const {
   return this->sendRequest<ChecksumChainNamesResponse>(this->sign(ChecksumChainNamesRequest()))
-    .op(RxGetOne("ChecksumChainNamesResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<ChecksumChainResponse> ServerProxy::requestChecksumChain(ChecksumChainRequest request) const {
   return this->sendRequest<ChecksumChainResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("ChecksumChainResponse"));
+    .op(RxGetOne());
 }
 
 }

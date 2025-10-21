@@ -19,51 +19,51 @@ namespace {
 rxcpp::observable<KeyComponentResponse> AccessManagerProxy::requestKeyComponent(SignedKeyComponentRequest request) const {
   // TODO: consolidate duplicate code with TranscryptorProxy::requestKeyComponent
   return this->sendRequest<KeyComponentResponse>(std::move(request))
-    .op(RxGetOne("KeyComponentResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<SignedTicket2> AccessManagerProxy::requestTicket(SignedTicketRequest2 request) const {
   assert(!RequestsIndexedTicket(request));
   return this->sendRequest<SignedTicket2>(std::move(request))
-    .op(RxGetOne("SignedTicket2"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<IndexedTicket2> AccessManagerProxy::requestIndexedTicket(SignedTicketRequest2 request) const {
   assert(RequestsIndexedTicket(request));
   return this->sendRequest<IndexedTicket2>(std::move(request))
-    .op(RxGetOne("IndexedTicket2"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<EncryptionKeyResponse> AccessManagerProxy::requestEncryptionKey(EncryptionKeyRequest request) const {
   return this->sendRequest<EncryptionKeyResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("EncryptionKeyResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<GlobalConfiguration> AccessManagerProxy::requestGlobalConfiguration() const {
   return this->sendRequest<GlobalConfiguration>(GlobalConfigurationRequest())
-    .op(RxGetOne("GlobalConfiguration"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<VerifiersResponse> AccessManagerProxy::requestVerifiers() const {
   return this->sendRequest<VerifiersResponse>(VerifiersRequest())
-    .op(RxGetOne("VerifiersResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<ColumnAccess> AccessManagerProxy::getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes) const {
   ColumnAccessRequest request{ includeImplicitlyGranted, requireModes };
   return this->sendRequest<ColumnAccessResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("ColumnAccessResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<ParticipantGroupAccess> AccessManagerProxy::getAccessibleParticipantGroups(bool includeImplicitlyGranted) const {
   ParticipantGroupAccessRequest request{ includeImplicitlyGranted };
   return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("ParticipantGroupAccessResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<ColumnNameMappingResponse> AccessManagerProxy::requestColumnNameMapping(ColumnNameMappingRequest request) const {
   return this->sendRequest<ColumnNameMappingResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("ColumnNameMappingResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::migrateUserDbToAccessManager(messaging::MessageBatches fileParts) const {
@@ -74,7 +74,7 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::migrateUserDbToAccessManager(mes
 rxcpp::observable<FindUserResponse> AccessManagerProxy::findUser(std::string primaryId, std::vector<std::string> alternativeIds) const {
   FindUserRequest request(std::move(primaryId), std::move(alternativeIds));
   return this->sendRequest<FindUserResponse>(this->sign(std::move(request)))
-    .op(RxGetOne("FindUserResponse"));
+    .op(RxGetOne());
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::requestSetStructureMetadata(SetStructureMetadataRequest request, messaging::Tail<StructureMetadataEntry> entries) const {

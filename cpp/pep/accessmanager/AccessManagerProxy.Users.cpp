@@ -66,7 +66,7 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserFromGroup(std::string 
 
 rxcpp::observable<UserQueryResponse> AccessManagerProxy::userQuery(UserQuery query) const {
   return this->sendRequest<UserQueryResponse>(this->sign(std::move(query)))
-    .op(RxGetOne("UserQueryResponse"));
+    .op(RxGetOne());
 }
 
 } // namespace pep
