@@ -50,7 +50,7 @@ private:
     if (mPrintDrift) {
       std::cout
           << duration_cast<std::chrono::milliseconds>(
-              pep::Timestamp::now() - response.openWithoutCheckingSignature().mTimestamp
+              pep::TimeNow() - response.openWithoutCheckingSignature().mTimestamp
               ).count()
           << std::endl;
       return;

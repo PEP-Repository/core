@@ -91,7 +91,7 @@ bool OAuthToken::verifyGroup(const std::string& required) const {
 }
 
 bool OAuthToken::verifyValidityPeriod() const {
-  Timestamp now = Timestamp::now();
+  Timestamp now = TimeNow();
 
   // Check time of issuance
   if (mIssuedAt >= now + 1min) { // Account for clock drift.  See #677
@@ -123,8 +123,8 @@ OAuthToken OAuthToken::Generate(
 
     root.put("sub", subject);
     root.put("group", group);
-    root.put("iat", seconds{issuedAt.time_since_epoch()}.count());
-    root.put("exp", seconds{expirationTime.time_since_epoch()}.count());
+    root.put("iat", TicksSinceEpoch<seconds>(issuedAt));
+    root.put("exp", TicksSinceEpoch<seconds>(expirationTime));
 
     boost::property_tree::write_json(stream, root);
     std::string payload(stream.str());

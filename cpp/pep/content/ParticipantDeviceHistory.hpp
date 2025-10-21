@@ -17,7 +17,7 @@ struct ParticipantDeviceRecord {
   std::string note;
   Timestamp time;
 
-  bool isSet() const { return time != Timestamp::zero(); }
+  bool isSet() const { return time != Timestamp{/*zero*/}; }
   inline bool isActive() const { return type == "start"; }
 
   ParticipantDeviceRecord(std::string type, std::string serial, std::string note, Timestamp time) :

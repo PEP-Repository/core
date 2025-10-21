@@ -56,7 +56,7 @@ struct AuthenticationStatus {
    * \param expiresIn The number of seconds until expiration of the token
    */
   AuthenticationStatus(const std::string& token, std::chrono::seconds expiresIn)
-    : state(AUTHENTICATED), token(token), expires(Timestamp::now() + expiresIn) {}
+    : state(AUTHENTICATED), token(token), expires(TimeNow() + expiresIn) {}
 
   /*!
    * \brief Construct an AUTHENTICATION_ERROR AuthenticationStatus

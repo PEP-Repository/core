@@ -76,7 +76,7 @@ protected:
       }
     }
 
-    return Timestamp::from_boost_ptime(parsed.utc_time());
+    return TimestampFromBoostPtime(parsed.utc_time());
   }
 };
 
@@ -104,7 +104,7 @@ protected:
 
     if (mTimeZone == SYSTEM_LOCAL_TIME_ZONE) {
       using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
-      return Timestamp::from_boost_ptime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
+      return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
     }
 
     const auto localTime = blt::local_date_time{
@@ -113,7 +113,7 @@ protected:
       boost::make_shared<blt::posix_time_zone>(mTimeZone),
       blt::local_date_time::EXCEPTION_ON_ERROR};
 
-    return Timestamp::from_boost_ptime(UtcTimeFromIncorrectPTime(localTime));
+    return TimestampFromBoostPtime(UtcTimeFromIncorrectPTime(localTime));
   }
 
 private:
@@ -137,41 +137,41 @@ private:
 
 TimeZone TimeZone::Local() { return {SYSTEM_LOCAL_TIME_ZONE}; }
 
-bpt::ptime Timestamp::to_boost_ptime() const {
-  if (*this == min()) { return boost::date_time::neg_infin; }
-  if (*this == max()) { return boost::date_time::pos_infin; }
+bpt::ptime TimestampToBoostPtime(Timestamp time) {
+  if (time == Timestamp::min()) { return boost::date_time::neg_infin; }
+  if (time == Timestamp::max()) { return boost::date_time::pos_infin; }
   // Note: Range checking would be of limited use,
   //  because the STL already allows implicit conversion to higher-precision durations even if there could be data loss,
   //  e.g. sys_time<milliseconds>::max() can be converted to system_clock::time_point even if they are both int64_t and
   //  system_clock::time_point is in nanoseconds.
   //  Other things like dates also start to break down at large values, with years overflowing etc.
-  return UnixEpochPtime + bpt::milliseconds{ticks_since_epoch<milliseconds>()};
+  return UnixEpochPtime + bpt::milliseconds{TicksSinceEpoch<milliseconds>(time)};
 }
 
-Timestamp Timestamp::from_boost_ptime(bpt::ptime ts) {
+Timestamp TimestampFromBoostPtime(bpt::ptime ts) {
   if (ts.is_not_a_date_time()) { throw std::invalid_argument("Cannot convert not_a_date_time"); }
   // Only map infinities, not min & max Boost time, as there is no reason to use the latter when the former exist
-  if (ts.is_neg_infinity()) return min();
-  if (ts.is_pos_infinity()) return max();
+  if (ts.is_neg_infinity()) return Timestamp::min();
+  if (ts.is_pos_infinity()) return Timestamp::max();
   // See note about range checking above
   return Timestamp(milliseconds{(ts - UnixEpochPtime).total_milliseconds()});
 }
 
-std::string Timestamp::to_xml_date_time() const {
+std::string TimestampToXmlDateTime(Timestamp time) {
   std::ostringstream ss;
   ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
   auto facet = new bpt::time_facet("%Y-%m-%dT%H:%M:%S%FZ");
   ss.imbue(std::locale(ss.getloc(), facet));
-  ss << to_boost_ptime();
+  ss << TimestampToBoostPtime(time);
   return std::move(ss).str();
 }
 
-Timestamp Timestamp::from_xml_date_time(std::string_view xml) {
+Timestamp TimestampFromXmlDataTime(std::string_view xml) {
   return XmlDateTimeParser{}.parse(xml);
 }
 
-Timestamp Timestamp::from_yyyymmdd(std::string_view yyyymmdd, const TimeZone& timeZone) {
-  return YyyyMmDdDateParser{timeZone.mStr}.parse(yyyymmdd);
+Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {
+  return YyyyMmDdDateParser{mStr}.parse(yyyyMmDd);
 }
 
 

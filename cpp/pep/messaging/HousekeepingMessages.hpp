@@ -23,7 +23,7 @@ public:
 
 class PingResponse {
 public:
-  explicit PingResponse(uint64_t id) : mId(id), mTimestamp(Timestamp::now()) { }
+  explicit PingResponse(uint64_t id) : mId(id), mTimestamp(TimeNow()) { }
 
   uint64_t mId;
   Timestamp mTimestamp;

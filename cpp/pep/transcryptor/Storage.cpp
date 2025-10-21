@@ -68,7 +68,7 @@ struct MigrationRecord {
 
     RandomBytes(this->checksumNonce, 16);
     this->toVersion = toVersion;
-    this->timestamp = Timestamp::now().ticks_since_epoch<milliseconds>();
+    this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   }
 
   uint64_t checksum() const {
@@ -108,7 +108,7 @@ struct TicketRequestRecord {
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
     this->request = Serialization::ToCharVector(ticketRequest);
-    this->timestamp = Timestamp::now().ticks_since_epoch<milliseconds>();
+    this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
     this->certificateChain = certificateChain;
   }
 
@@ -210,7 +210,7 @@ struct CertificateChainRecord {
 struct TicketIssueRecord {
   TicketIssueRecord() = default;
   TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts)
-  : timestamp(ts.ticks_since_epoch<milliseconds>()), request(request), columnSet(columnSet) {
+  : timestamp(TicksSinceEpoch<milliseconds>(ts)), request(request), columnSet(columnSet) {
     RandomBytes(this->checksumNonce, 16);
   }
 
@@ -1002,7 +1002,7 @@ void TranscryptorStorage::logIssuedTicket(
     throw Error(os.str());
   }
 
-  auto drift = Abs(timestamp - Timestamp::now());
+  auto drift = Abs(timestamp - TimeNow());
   if (drift > 5min) {
     throw Error("Timestamp on ticket too far from current time");
   }

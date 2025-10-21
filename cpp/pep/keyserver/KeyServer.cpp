@@ -149,7 +149,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
       .metadata{
           .note = std::move(request.note),
           .issuer = signedRequest->getLeafCertificateCommonName(),
-          .creationDateTime = Timestamp::now()}};
+          .creationDateTime = TimeNow()}};
   entry.id = mBlocklist->add(entry.target, entry.metadata);
   return messaging::BatchSingleMessage(TokenBlockingCreateResponse{std::move(entry)});
 }

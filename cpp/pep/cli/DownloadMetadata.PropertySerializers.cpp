@@ -18,7 +18,7 @@ Timestamp PropertySerializer<Timestamp>::read(const boost::property_tree::ptree&
 
 void PropertySerializer<Timestamp>::write(boost::property_tree::ptree& destination, const Timestamp& value) const {
   using namespace std::chrono;
-  SerializeProperties(destination, value.ticks_since_epoch<milliseconds>());
+  SerializeProperties(destination, TicksSinceEpoch<milliseconds>(value));
 }
 
 cli::ParticipantIdentifier PropertySerializer<cli::ParticipantIdentifier>::read(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const {

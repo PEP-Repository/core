@@ -111,7 +111,7 @@ std::vector<Blocklist::Entry> SqliteBlocklist::allEntries() const {
 std::vector<Blocklist::Entry> SqliteBlocklist::allEntriesMatching(const TokenIdentifier& t) const {
   return InflateAll(mData->raw.get_all<FlatEntry>(where(
       c(&FlatEntry::targetSubject) == t.subject && c(&FlatEntry::targetUserGroup) == t.userGroup
-      && c(&FlatEntry::targetIssueDateTime) >= t.issueDateTime.ticks_since_epoch<milliseconds>())));
+      && c(&FlatEntry::targetIssueDateTime) >= TicksSinceEpoch<milliseconds>(t.issueDateTime))));
 }
 
 std::optional<Blocklist::Entry> SqliteBlocklist::entryById(int64_t id) const {
@@ -123,10 +123,10 @@ int64_t SqliteBlocklist::add(const TokenIdentifier& t, const Entry::Metadata& m)
       .id = 0, // overwritten in storage
       .targetSubject = t.subject,
       .targetUserGroup = t.userGroup,
-      .targetIssueDateTime = t.issueDateTime.ticks_since_epoch<milliseconds>(),
+      .targetIssueDateTime = TicksSinceEpoch<milliseconds>(t.issueDateTime),
       .metadataNote = m.note,
       .metadataIssuer = m.issuer,
-      .metaCreationDateTime = m.creationDateTime.ticks_since_epoch<milliseconds>()});
+      .metaCreationDateTime = TicksSinceEpoch<milliseconds>(m.creationDateTime)});
 }
 
 std::optional<Blocklist::Entry> SqliteBlocklist::removeById(int64_t id) {

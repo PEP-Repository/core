@@ -20,9 +20,7 @@ public:
 
 class Ticket2 {
 public:
-  inline Ticket2() : mTimestamp(Timestamp::zero()) { }
-
-  Timestamp mTimestamp;
+  Timestamp mTimestamp{/*zero*/};
   std::vector<std::string> mModes;
   std::vector<LocalPseudonyms> mPseudonyms;
   std::vector<std::string> mColumns;

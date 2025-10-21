@@ -12,15 +12,15 @@ namespace pep {
 
 Signature Signature::create(const std::string& data, X509CertificateChain chain,
       const AsymmetricKey& privateKey, bool isLogCopy, SignatureScheme scheme) {
-  auto timestamp = Timestamp::now();
+  auto timestamp = TimeNow();
 
   Sha512 hasher;
   hasher.update(PackUint32BE(static_cast<uint32_t>(scheme)));
   if (scheme == SIGNATURE_SCHEME_V3) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(timestamp.ticks_since_epoch<milliseconds>())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp))));
     hasher.update(data);
   } else if (scheme == SIGNATURE_SCHEME_V4) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(timestamp.ticks_since_epoch<milliseconds>())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp))));
     hasher.update(PackUint8(static_cast<uint8_t>(isLogCopy)));
     hasher.update(data);
   } else {
@@ -56,7 +56,7 @@ void Signature::assertValid(
   if (mCertificateChain.begin()->hasTLSServerEKU())
     throw Error("Invalid signature: TLS certificate used instead of Signing certficiate");
 
-  auto drift = Abs(mTimestamp - Timestamp::now());
+  auto drift = Abs(mTimestamp - TimeNow());
   if (drift > timestampLeeway) {
     std::ostringstream msg;
     msg << "Invalid signature: timestamp differs by "
@@ -76,10 +76,10 @@ void Signature::assertValid(
   Sha512 hasher;
   hasher.update(PackUint32BE(static_cast<uint32_t>(mScheme)));
   if (mScheme == SIGNATURE_SCHEME_V3) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(mTimestamp.ticks_since_epoch<milliseconds>())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
     hasher.update(data);
   } else if (mScheme == SIGNATURE_SCHEME_V4) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(mTimestamp.ticks_since_epoch<milliseconds>())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
     hasher.update(PackUint8(static_cast<uint8_t>(mIsLogCopy)));
     hasher.update(data);
   } else {

@@ -55,11 +55,11 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
 
   if (content != nullptr) {
     SetPersistedEntryProperty(properties, POLYMORPHIC_KEY_KEY, content->getPolymorphicKey());
-    SetPersistedEntryProperty(properties, BLINDING_TIMESTAMP_KEY, static_cast<std::uint64_t>(content->getBlindingTimestamp().ticks_since_epoch<std::chrono::milliseconds>()));
+    SetPersistedEntryProperty(properties, BLINDING_TIMESTAMP_KEY, static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(content->getBlindingTimestamp())));
     SetPersistedEntryProperty(properties, ENCRYPTION_SCHEME_KEY, content->getEncryptionScheme());
     auto original = content->getOriginalPayloadEntryTimestamp();
     if (original.has_value()) {
-      SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, static_cast<std::uint64_t>(original->ticks_since_epoch<std::chrono::milliseconds>()));
+      SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(*original)));
     }
 
     std::transform(content->mMetadata.cbegin(), content->mMetadata.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {

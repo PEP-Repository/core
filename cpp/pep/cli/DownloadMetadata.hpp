@@ -102,7 +102,7 @@ namespace std {
     size_t operator()(const pep::cli::RecordDescriptor& k) const {
       return std::hash<pep::cli::ParticipantIdentifier>()(k.getParticipant())
         ^ std::hash<std::string>()(k.getColumn())
-        ^ std::hash<int64_t>()(k.getBlindingTimestamp().ticks_since_epoch<std::chrono::milliseconds>());
+        ^ std::hash<int64_t>()(pep::TicksSinceEpoch<std::chrono::milliseconds>(k.getBlindingTimestamp()));
     }
   };
 }

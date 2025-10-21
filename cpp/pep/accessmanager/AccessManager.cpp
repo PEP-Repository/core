@@ -638,7 +638,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   backend->checkTicketRequest(request);
 
-  auto timestamp = Timestamp::now();
+  auto timestamp = TimeNow();
   std::vector<std::string> modes{"access"};
   backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
 
@@ -652,7 +652,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // Prepare ticket
 
   Ticket2 ticket;
-  ticket.mTimestamp = Timestamp::now();
+  ticket.mTimestamp = TimeNow();
   ticket.mModes = request.mModes;
   ticket.mColumns = request.mColumns;
   ticket.mUserGroup = userGroup;

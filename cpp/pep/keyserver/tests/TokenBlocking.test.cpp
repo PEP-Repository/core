@@ -95,7 +95,7 @@ TYPED_TEST_SUITE(TokenBlocking_Blocklist_Implementations, BlocklistImplementatio
 const Blocklist::Entry::Metadata emptyMetadata{
   .note{},
   .issuer{},
-  .creationDateTime = pep::Timestamp::zero(),
+  .creationDateTime{/*zero*/},
 };
 
 

@@ -97,7 +97,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     entry2.mColumnIndex = ctx->columns[entry.mColumn];
     entry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
     entry2.mMetadata = Metadata(entry.mColumn,
-      entry.mTimestamp ? *entry.mTimestamp : Timestamp::now());
+      entry.mTimestamp ? *entry.mTimestamp : TimeNow());
 
     // set extra metadata entries, encrypting them with the entry's key
     // when requested.
@@ -214,7 +214,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     storeEntry2.mColumnIndex = ctx->columns[entry.mColumn];
     storeEntry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
     storeEntry2.mMetadata = Metadata(entry.mColumn,
-      entry.mTimestamp ? *entry.mTimestamp : Timestamp::now());
+      entry.mTimestamp ? *entry.mTimestamp : TimeNow());
     // storeEntry2.mPolymorphicKey is set later, once we have retrieved it
     storeEntry2.mMetadata.extra() = entry.mXMetadata; // These are encrypted later, once we have retrieved the keys
 

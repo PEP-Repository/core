@@ -46,7 +46,7 @@ bool AuthenticationStatus::authenticated() const {
     return false;
   }
   assert(expires.has_value());
-  return Timestamp::now() < *expires - EXPIRY_MARGIN;
+  return TimeNow() < *expires - EXPIRY_MARGIN;
 }
 
 CastorClient::CastorClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::string clientId, std::string clientSecret, std::optional<std::filesystem::path> caCertFilepath)
@@ -207,11 +207,11 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     auto xml = message.substr(CASTOR_429_RESPONSE_MESSAGE_HEADER.size());
 
     // Calculate the time to wait before retrying
-    auto retryWhen = Timestamp::from_xml_date_time(xml);
+    auto retryWhen = TimestampFromXmlDataTime(xml);
 
     // An observable that'll emit a FakeVoid when we can retry the request
     rxcpp::observable<FakeVoid> wait;
-    if (Timestamp::now() > retryWhen) { // No need to wait: e.g. processing or transmission took a while, or we've been sitting on a breakpoint
+    if (TimeNow() > retryWhen) { // No need to wait: e.g. processing or transmission took a while, or we've been sitting on a breakpoint
       wait = rxcpp::observable<>::just(FakeVoid());
     }
     else {
@@ -220,7 +220,7 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
       LOG(LOG_TAG, info) << "Castor requests throttled until " << xml;
 
       // We need to use a duration instead of a time_point as Rx wants a steady_clock time
-      wait = rxcpp::observable<>::timer(retryWhen - Timestamp::now())
+      wait = rxcpp::observable<>::timer(retryWhen - TimeNow())
         .op(RxGetOne("emissions from RX timer"))
         .op(RxInstead(FakeVoid()));
     }
@@ -236,7 +236,7 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     std::string info = "in CastorClient::sendCastorRequest.";
     auto expires = this->authenticationSubject.get_value().expires;
     if (expires.has_value()) {
-      info += " OAuth2 expires at: " + expires->to_xml_date_time();
+      info += " OAuth2 expires at: " + TimestampToXmlDateTime(*expires);
     }
     info += "\nRequest:\n" + request->toString();
     throw CastorException::FromErrorResponse(response, info);

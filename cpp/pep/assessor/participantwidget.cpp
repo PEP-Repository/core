@@ -361,7 +361,7 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
 void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   std::string serial = deviceId.toStdString();
   std::string type;
-  auto timestamp = pep::Timestamp::now();
+  auto timestamp = pep::TimeNow();
 
   const pep::ParticipantDeviceRecord* current = nullptr;
   std::vector<pep::ParticipantDeviceRecord> records;
@@ -1215,7 +1215,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
   auto editor = new DateTimeEditor();
   layout->addRow(editor);
-  editor->setValue(LocalQDateTimeFromStdTimestamp(timestamp));
+  editor->setValue(pep::LocalQDateTimeFromStdTimestamp(timestamp));
 
   auto nowButton = new QPushButton(tr("set-timestamp-to-now"), this);
   nowButton->setObjectName("nowButton");
@@ -1242,10 +1242,10 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
     auto entered = editor->getValue();
     auto valid = entered.isValid(); // Valid timestamp was entered
     if (previousEntry) {
-      valid &= (entered > LocalQDateTimeFromStdTimestamp(*previousEntry)); // Is not earlier than the previous entry
+      valid &= (entered > pep::LocalQDateTimeFromStdTimestamp(*previousEntry)); // Is not earlier than the previous entry
     }
     if (nextEntry) {
-      valid &= (entered < LocalQDateTimeFromStdTimestamp(*nextEntry)); // Is not later than the next entry
+      valid &= (entered < pep::LocalQDateTimeFromStdTimestamp(*nextEntry)); // Is not later than the next entry
     }
 
     okButton->setEnabled(valid);
@@ -1258,7 +1258,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
     pep::ParticipantDeviceHistory history;
     try {
-      records[index].time = QDateTimeToStdTimestamp(editor->getValue());
+      records[index].time = pep::QDateTimeToStdTimestamp(editor->getValue());
       history = pep::ParticipantDeviceHistory(records, true);
     }
     catch (const std::exception& error) {

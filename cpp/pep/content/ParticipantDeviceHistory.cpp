@@ -28,7 +28,7 @@ void ParticipantDeviceRecord::serialize(boost::property_tree::ptree& destination
   if (!note.empty()) {
     destination.put("note", note);
   }
-  destination.put("date", time.ticks_since_epoch<std::chrono::milliseconds>());
+  destination.put("date", TicksSinceEpoch<std::chrono::milliseconds>(time));
 }
 
 void ParticipantDeviceHistory::onInvalid(const std::string& reason, bool throwException) {

@@ -356,7 +356,7 @@ void AccessManager::Backend::Storage::ensureInitialized() {
 std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
   LOG(LOG_TAG, info) << "Checking whether to create/remove columns ...";
   std::set<std::string> allColumns;
-  for (auto& col : this->getColumns(Timestamp::now())) {
+  for (auto& col : this->getColumns(TimeNow())) {
     allColumns.insert(col.name);
   }
   auto ensureColumnExists = [implementor = mImplementor, &allColumns](const std::string& column) {
@@ -420,7 +420,7 @@ void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& a
 void AccessManager::Backend::Storage::ensureUpToDate() {
   LOG(LOG_TAG, info) << "Checking whether to remove participant-group-access-rules ...";
   // Remove explicit PGARs for Data Administrator: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1923#note_22224
-  auto pgars = getParticipantGroupAccessRules(Timestamp::now(), {.userGroups = std::vector<std::string>{UserGroup::DataAdministrator}});
+  auto pgars = getParticipantGroupAccessRules(TimeNow(), {.userGroups = std::vector<std::string>{UserGroup::DataAdministrator}});
   for (const auto& pgar : pgars) {
     LOG(LOG_TAG, info) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup);
     this->removeParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);
@@ -479,7 +479,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
 }
 
 void AccessManager::Backend::Storage::removeOrphanedRecords() {
-  const Timestamp now = Timestamp::now();
+  const Timestamp now = TimeNow();
 
   auto cgars = getColumnGroupAccessRules(now);
   for (auto& cgar : cgars) {
@@ -715,7 +715,7 @@ std::set<ParticipantGroup> AccessManager::Backend::Storage::getParticipantGroups
   using namespace std::ranges;
   return RangeToCollection<std::set>(
     mImplementor->getCurrentRecords(
-      c(&ParticipantGroupRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>() &&
+      c(&ParticipantGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp) &&
       (!filter.participantGroups.has_value()
         || in(&ParticipantGroupRecord::name, filter.participantGroups.value_or(emptyVector))),
       &ParticipantGroupRecord::name)
@@ -743,7 +743,7 @@ void AccessManager::Backend::Storage::removeParticipantGroup(const std::string& 
 
   auto guard = mImplementor->raw.transaction_guard();
 
-  const Timestamp now = Timestamp::now();
+  const Timestamp now = TimeNow();
 
   auto associatedLocalPseudonyms = getParticipantGroupParticipants(now, {.participantGroups = std::vector<std::string>{name}});
   auto associatedAccessRules = getParticipantGroupAccessRules(now, {.participantGroups = std::vector<std::string>{name}});
@@ -808,7 +808,7 @@ std::set<ParticipantGroupParticipant> AccessManager::Backend::Storage::getPartic
 
   return RangeToCollection<std::set>(
     mImplementor->getCurrentRecords(
-      c(&ParticipantGroupParticipantRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&ParticipantGroupParticipantRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.participantGroups.has_value()
         || in(&ParticipantGroupParticipantRecord::participantGroup, filter.participantGroups.value_or(emptyVector)))
       && (!filter.localPseudonyms.has_value()
@@ -869,7 +869,7 @@ std::set<ParticipantGroupAccessRule> AccessManager::Backend::Storage::getPartici
   using namespace std::ranges;
   return RangeToCollection<std::set>(
     mImplementor->getCurrentRecords(
-      c(&ParticipantGroupAccessRuleRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&ParticipantGroupAccessRuleRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.participantGroups.has_value()
         || in(&ParticipantGroupAccessRuleRecord::participantGroup, filter.participantGroups.value_or(emptyVector)))
       && (!filter.userGroups.has_value()
@@ -940,7 +940,7 @@ std::set<Column> AccessManager::Backend::Storage::getColumns(const Timestamp& ti
   using namespace std::ranges;
   return RangeToCollection<std::set>(
     mImplementor->getCurrentRecords(
-      c(&ColumnRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&ColumnRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columns.has_value()
         || in(&ColumnRecord::name, filter.columns.value_or(emptyVector))),
       &ColumnRecord::name)
@@ -968,7 +968,7 @@ void AccessManager::Backend::Storage::removeColumn(const std::string& name) {
   }
   auto guard = mImplementor->raw.transaction_guard();
 
-  const Timestamp now = Timestamp::now();
+  const Timestamp now = TimeNow();
 
   //get associated columnGroups
   auto cgcs = getColumnGroupColumns(now, {.columns = std::vector<std::string>{name}});
@@ -998,7 +998,7 @@ std::set<ColumnGroup> AccessManager::Backend::Storage::getColumnGroups(const Tim
   using namespace std::ranges;
   return RangeToCollection<std::set>(
     mImplementor->getCurrentRecords(
-      c(&ColumnGroupRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&ColumnGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
         || in(&ColumnGroupRecord::name, filter.columnGroups.value_or(emptyVector))),
       &ColumnGroupRecord::name)
@@ -1025,7 +1025,7 @@ void AccessManager::Backend::Storage::removeColumnGroup(const std::string& name,
   }
   auto guard = mImplementor->raw.transaction_guard();
 
-  const Timestamp now = Timestamp::now();
+  const Timestamp now = TimeNow();
 
   auto associatedColumns = getColumnGroupColumns(now, {.columnGroups = std::vector<std::string>{name}});
   auto associatedAccessRules = getColumnGroupAccessRules(now, {.columnGroups = std::vector<std::string>{name}});
@@ -1082,7 +1082,7 @@ std::set<ColumnGroupColumn> AccessManager::Backend::Storage::getColumnGroupColum
   using namespace std::ranges;
   return RangeToCollection<std::set>(
     mImplementor->getCurrentRecords(
-      c(&ColumnGroupColumnRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&ColumnGroupColumnRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
         || in(&ColumnGroupColumnRecord::columnGroup, filter.columnGroups.value_or(emptyVector)))
       && (!filter.columns.has_value()
@@ -1141,7 +1141,7 @@ std::set<ColumnGroupAccessRule> AccessManager::Backend::Storage::getColumnGroupA
   using namespace std::ranges;
   return RangeToCollection<std::set>(
     mImplementor->getCurrentRecords(
-      c(&ColumnGroupAccessRuleRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&ColumnGroupAccessRuleRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
         || in(&ColumnGroupAccessRuleRecord::columnGroup, filter.columnGroups.value_or(emptyVector)))
       && (!filter.userGroups.has_value()
@@ -1419,7 +1419,7 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, Timestamp at) const {
   return RangeToOptional(
     mImplementor->getCurrentRecords(
-      c(&UserIdRecord::timestamp) <= at.ticks_since_epoch<milliseconds>()
+      c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
       && c(&UserIdRecord::identifier) == identifier,
       &UserIdRecord::internalUserId)
   );
@@ -1438,7 +1438,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
   return RangeToOptional(
     RangeToCollection<std::unordered_set>( // Merge duplicates
       mImplementor->getCurrentRecords(
-        c(&UserIdRecord::timestamp) <= at.ticks_since_epoch<milliseconds>()
+        c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
         && in(&UserIdRecord::identifier, identifiers),
         &UserIdRecord::internalUserId)
     )
@@ -1448,7 +1448,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
 std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifiersForUser(int64_t internalUserId, Timestamp at) const {
   return RangeToCollection<std::unordered_set>(
     mImplementor->getCurrentRecords(
-      c(&UserIdRecord::timestamp) <= at.ticks_since_epoch<milliseconds>()
+      c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
       && c(&UserIdRecord::internalUserId) == internalUserId,
       &UserIdRecord::identifier)
   );
@@ -1457,7 +1457,7 @@ std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifie
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
   auto records = mImplementor->getCurrentRecords(
       c(&UserGroupRecord::name) == name
-      && c(&UserGroupRecord::timestamp) <= at.ticks_since_epoch<milliseconds>(),
+      && c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
       &UserGroupRecord::seqno, &UserGroupRecord::userGroupId);
 
   if (records.begin() == records.end()) {
@@ -1484,14 +1484,14 @@ std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int
   std::vector<int64_t> groupIds = RangeToCollection<std::vector>(
     mImplementor->getCurrentRecords(
       c(&UserGroupUserRecord::internalUserId) == internalUserId
-      && c(&UserGroupUserRecord::timestamp) <= at.ticks_since_epoch<milliseconds>(),
+      && c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
       &UserGroupUserRecord::userGroupId)
   );
 
   return RangeToCollection<std::vector>(
     mImplementor->getCurrentRecords(
       in(&UserGroupRecord::userGroupId, groupIds)
-      && c(&UserGroupRecord::timestamp) <= at.ticks_since_epoch<milliseconds>(),
+      && c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
         &UserGroupRecord::name, &UserGroupRecord::maxAuthValiditySeconds)
   | views::transform([](auto tuple) {
     auto& [name, maxAuthValiditySeconds] = tuple;
@@ -1623,7 +1623,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // Select groups matching group filter
   auto groups = RangeToCollection<std::map<int64_t, UserGroup>>(
     mImplementor->getCurrentRecords(
-      c(&UserGroupRecord::timestamp) <= query.mAt.ticks_since_epoch<milliseconds>()
+      c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
       && instr(&UserGroupRecord::name, query.mGroupFilter) /*true if filter is empty*/,
       &UserGroupRecord::userGroupId,
       &UserGroupRecord::name,
@@ -1637,7 +1637,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   std::map<int64_t, QRUser> usersInfo;
   // List users matching user filter
   for (auto internalId: mImplementor->getCurrentRecords(
-         c(&UserIdRecord::timestamp) <= query.mAt.ticks_since_epoch<milliseconds>()
+         c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
          && instr(&UserIdRecord::identifier, query.mUserFilter) /*true if filter is empty*/,
          &UserIdRecord::internalUserId)) {
     // Add internalId, we add all identifiers below
@@ -1647,7 +1647,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   std::unordered_set<int64_t> groupsWithUsers;
   // List group memberships for filtered groups & users
   for (auto tuple: mImplementor->getCurrentRecords(
-         c(&UserGroupUserRecord::timestamp) <= query.mAt.ticks_since_epoch<milliseconds>()
+         c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
          && (query.mGroupFilter.empty()
            || in(&UserGroupUserRecord::userGroupId,
              // Avoid passing list to query when not filtered
@@ -1681,7 +1681,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // Fetch all identifiers for the selected users,
   //  not just the ones that satisfy the specific user identifier filter
   for (auto tuple: mImplementor->getCurrentRecords(
-         c(&UserIdRecord::timestamp) <= query.mAt.ticks_since_epoch<milliseconds>()
+         c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
          && in(&UserIdRecord::internalUserId, RangeToVector(views::keys(usersInfo))),
          &UserIdRecord::internalUserId,
          &UserIdRecord::identifier)) {
@@ -1703,7 +1703,7 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
   using namespace std::ranges;
   return RangeToVector(
     mImplementor->getCurrentRecords(
-      c(&StructureMetadataRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
       && c(&StructureMetadataRecord::subject) == subject,
       &StructureMetadataRecord::metadataGroup,
@@ -1728,7 +1728,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
 
   return RangeToVector(
     mImplementor->getCurrentRecords(
-      c(&StructureMetadataRecord::timestamp) <= timestamp.ticks_since_epoch<milliseconds>()
+      c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
       && (filter.subjects.empty() || in(&StructureMetadataRecord::subject, filter.subjects))
       && ((metadataGroupFilters.empty() && metadataKeyFilters.empty())
@@ -1773,7 +1773,7 @@ void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType
 }
 
 void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key) {
-  const auto keys = getStructureMetadataKeys(Timestamp::now(), subjectType, subject);
+  const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, subject);
   if (std::ranges::find(keys, key) == keys.end()) {
     std::ostringstream msg;
     msg << Logging::Escape(subject) << " does not exist or does not contain metadata key "

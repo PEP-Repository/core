@@ -25,9 +25,9 @@ class TokenApplication : public pep::commandline::Utility {
   }
 
   pep::commandline::Parameters getSupportedParameters() const override {
-    const pep::Timestamp now = pep::Timestamp::now();
-    const auto nowSecs = now.ticks_since_epoch<seconds>();
-    const auto yearLaterSecs = pep::Timestamp(now + years{1}).ticks_since_epoch<seconds>();
+    const pep::Timestamp now = pep::TimeNow();
+    const auto nowSecs = pep::TicksSinceEpoch<seconds>(now);
+    const auto yearLaterSecs = pep::TicksSinceEpoch<seconds>(now + years{1});
 
     return pep::commandline::Utility::getSupportedParameters()
       + pep::commandline::Parameter("json", "Output as json")

@@ -239,7 +239,7 @@ std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& 
 
 FileStore::EntryChange::EntryChange(Cell& cell)
   : EntryBase(cell, GenerateChecksumSubstitute(), nullptr),
-    mLastEntryValidFrom(Timestamp::zero()) {
+    mLastEntryValidFrom{/*zero*/} {
 }
 
 FileStore::EntryChange::EntryChange(const Entry& overwrites)
@@ -247,7 +247,7 @@ FileStore::EntryChange::EntryChange(const Entry& overwrites)
 }
 
 std::filesystem::path FileStore::Entry::getFilePath(const std::string& extension) const {
-  auto filename = std::to_string(this->getValidFrom().ticks_since_epoch<milliseconds>()) + extension;
+  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(this->getValidFrom())) + extension;
   return this->getCell().path() / filename;
 }
 
@@ -291,7 +291,7 @@ void FileStore::Entry::save() const {
 
   out << ENTRY_FILE_TYPE;
   WriteBinary(out, this->getName().string());
-  WriteBinary(out, static_cast<std::uint64_t>(mValidFrom.ticks_since_epoch<milliseconds>()));
+  WriteBinary(out, static_cast<std::uint64_t>(TicksSinceEpoch<milliseconds>(mValidFrom)));
 
   std::vector<PageId> pages;
   PersistedEntryProperties properties;
@@ -335,7 +335,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   // - check that last item on time of modify() is still the last item at time of commit()
   if (this->getCell().entryHeaders().find(availableFrom) != this->getCell().entryHeaders().cend()) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
-        + " and timestamp " + std::to_string(availableFrom.ticks_since_epoch<milliseconds>());
+        + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
     LOG(LOG_TAG, error) << msg;
     throw std::runtime_error(msg);
   }
@@ -368,11 +368,11 @@ void FileStore::EntryChange::cancel() && {
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp timestamp) {
-  auto filename = std::to_string(timestamp.ticks_since_epoch<milliseconds>()) + FILE_EXTENSION;
+  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FILE_EXTENSION;
   auto result = TryLoad(cell, cell.path() / filename);
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
-        + " at timestamp " + std::to_string(timestamp.ticks_since_epoch<milliseconds>()));
+        + " at timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(timestamp)));
   }
   return result;
 }
@@ -481,7 +481,7 @@ void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
   auto emplaced = mEntryHeaders.emplace(entry->header()).second;
   if (!emplaced) {
     auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
-        + " and timestamp " + std::to_string(entry->getValidFrom().ticks_since_epoch<milliseconds>());
+        + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
     LOG(LOG_TAG, error) << msg;
     throw std::runtime_error(msg);
   }

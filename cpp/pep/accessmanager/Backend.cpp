@@ -189,7 +189,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
           .target = {
             .subject = uid,
             .userGroup = group,
-            .issueDateTime = Timestamp::now(),
+            .issueDateTime = TimeNow(),
           },
           .note = "User removed from user group",
         };
@@ -589,7 +589,7 @@ UserQueryResponse AccessManager::Backend::performUserQuery(const UserQuery& quer
 ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAccessRequest& request,
                                                              const std::string& userGroup) {
   ColumnAccess result;
-  auto now = Timestamp::now();
+  auto now = TimeNow();
 
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit "read-meta" access to all
@@ -659,7 +659,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
 ParticipantGroupAccess AccessManager::Backend::handleParticipantGroupAccessRequest(
     const ParticipantGroupAccessRequest& request, const std::string& userGroup) {
   ParticipantGroupAccess result;
-  auto now = Timestamp::now();
+  auto now = TimeNow();
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit full access to all participant
                                                        // groups
@@ -744,7 +744,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetad
     [[maybe_unused]] const std::string& userGroup) {
   (void) userGroup; // Currently, any user group can read metadata
 
-  const Timestamp now = Timestamp::now();
+  const Timestamp now = TimeNow();
   return {mStorage->getStructureMetadata(
       now,
       request.subjectType,

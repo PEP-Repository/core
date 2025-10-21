@@ -11,7 +11,7 @@ namespace pep {
 /// Users can have multiple known IDs
 struct UserIdRecord {
   UserIdRecord() = default;
-  UserIdRecord(int64_t internalUserId, std::string identifier, bool tombstone = false, Timestamp timestamp = Timestamp::now());
+  UserIdRecord(int64_t internalUserId, std::string identifier, bool tombstone = false, Timestamp timestamp = TimeNow());
   uint64_t checksum() const;
 
   int64_t seqno{};

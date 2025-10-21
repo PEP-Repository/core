@@ -4,7 +4,7 @@
 namespace pep {
 
 void Serializer<Timestamp>::moveIntoProtocolBuffer(proto::Timestamp& dest, Timestamp value) const {
-  dest.set_epoch_millis(value.ticks_since_epoch<std::chrono::milliseconds>());
+  dest.set_epoch_millis(TicksSinceEpoch<std::chrono::milliseconds>(value));
 }
 
 Timestamp Serializer<Timestamp>::fromProtocolBuffer(proto::Timestamp&& source) const {

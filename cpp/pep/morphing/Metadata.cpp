@@ -32,7 +32,7 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
   if (scheme == EncryptionScheme::V2) {
     std::ostringstream ss;
     ss << PackUint64BE(ToUnderlying(EncryptionScheme::V2));
-    ss << PackUint64BE(static_cast<uint64_t>(this->getBlindingTimestamp().ticks_since_epoch<std::chrono::milliseconds>()));
+    ss << PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(this->getBlindingTimestamp())));
     ss << PackUint64BE(this->getTag().size());
     ss << this->getTag();
     return { ss.str(), false };
@@ -41,7 +41,7 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
   if (scheme == EncryptionScheme::V3) {
     std::ostringstream ss;
     ss << PackUint64BE(ToUnderlying(EncryptionScheme::V3));
-    ss << PackUint64BE(static_cast<uint64_t>(this->getBlindingTimestamp().ticks_since_epoch<std::chrono::milliseconds>()));
+    ss << PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(this->getBlindingTimestamp())));
     ss << PackUint64BE(this->getTag().size());
     ss << this->getTag();
     ss << localPseudonym.pack();

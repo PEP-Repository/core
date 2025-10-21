@@ -25,7 +25,7 @@ class Signature {
   Timestamp mTimestamp;
   bool mIsLogCopy = false;
 
-  Signature() : mTimestamp(Timestamp::zero()) {}
+  Signature() : mTimestamp{/*zero*/} {}
 
   Signature(
       std::string signature,

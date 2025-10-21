@@ -279,11 +279,11 @@ void StorageFacility::computeChecksumChainChecksum(
 
   if (!maxCheckpoint) {
     // The Storage Facility uses a timestamp as checkpoint
-    maxCheckpoint = Timestamp(Timestamp::now() - 1min).ticks_since_epoch<std::chrono::milliseconds>();
+    maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
   }
 
   mFileStore->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
-    std::uint64_t validFromMs{static_cast<std::uint64_t>(header.validFrom.ticks_since_epoch<std::chrono::milliseconds>())};
+    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(header.validFrom))};
     if (validFromMs <= max) {
       checkpoint = std::max(checkpoint, validFromMs);
       add(header);
@@ -757,7 +757,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               subscriber.on_error(e);
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
-              auto time = Timestamp::now(); // Make all entries available/valid at the same moment: see #1631
+              auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
               for (size_t i = 0; i < ctx->entries.size(); i++) {
                 auto& entry = ctx->entries[i];
                 try {
@@ -879,7 +879,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     changes.push_back(entryChange);
   }
 
-  auto time = Timestamp::now(); // Make all entries available/valid at the same moment: see #1631
+  auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
   MetadataUpdateResponse2 response;
   for (const auto& change : changes) {
     auto id = this->encryptId(change->getName().string(), time);

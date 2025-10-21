@@ -278,7 +278,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::La
 
     PULLCASTOR_LOG(info) << "Out of " << tspis->size() << " finished Survey Package Instances"
       << " for survey package " << spi->getSurveyPackageName()
-      << " we'll only consider the one finished at " << latest.getTimestamp().to_xml_date_time();
+      << " we'll only consider the one finished at " << TimestampToXmlDateTime(latest.getTimestamp());
   }
 
   auto self = SharedFrom(*this);

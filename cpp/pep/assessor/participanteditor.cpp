@@ -61,7 +61,7 @@ pep::ParticipantPersonalia ParticipantEditor::getPersonalia() const {
     ui->firstnameInput->text().toStdString(),
     ui->tussenvoegselsInput->text().toStdString(),
     ui->lastnameInput->text().toStdString(),
-    pep::ToDdMonthAbbrevYyyyDate(QDateToStd(ui->dateOfBirthInput->getValue())));
+    pep::ToDdMonthAbbrevYyyyDate(pep::QDateToStd(ui->dateOfBirthInput->getValue())));
 
   return result;
 }
@@ -70,7 +70,7 @@ void ParticipantEditor::setPersonalia(const pep::ParticipantPersonalia& data) {
   ui->firstnameInput->setText(QString::fromStdString(data.getFirstName()));
   ui->tussenvoegselsInput->setText(QString::fromStdString(data.getMiddleName()));
   ui->lastnameInput->setText(QString::fromStdString(data.getLastName()));
-  ui->dateOfBirthInput->setValue(QDateFromStd(pep::ParticipantPersonalia::ParseDateOfBirth(data.getDateOfBirth())));
+  ui->dateOfBirthInput->setValue(pep::QDateFromStd(pep::ParticipantPersonalia::ParseDateOfBirth(data.getDateOfBirth())));
 }
 
 bool ParticipantEditor::getIsTestParticipant() const {

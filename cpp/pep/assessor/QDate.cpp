@@ -1,8 +1,8 @@
 #include <pep/assessor/QDate.hpp>
 
-#include <pep/crypto/Timestamp.hpp>
+using namespace pep;
 
-QDateTime MakeLocalQDateTime(const QDate& date, const QTime& time) {
+QDateTime pep::MakeLocalQDateTime(const QDate& date, const QTime& time) {
 #if QT_VERSION >= 0x060500
   return QDateTime(date, time); // Exists since QT 6.5
 #else
@@ -10,7 +10,7 @@ QDateTime MakeLocalQDateTime(const QDate& date, const QTime& time) {
 #endif
 }
 
-std::chrono::year_month_day QDateToStd(const QDate& date) {
+std::chrono::year_month_day pep::QDateToStd(const QDate& date) {
 #if __cpp_lib_chrono >= 201907L
   return date.toStdSysDays(); // Get days since epoch for UTC date
 #else
@@ -20,7 +20,7 @@ std::chrono::year_month_day QDateToStd(const QDate& date) {
 #endif
 }
 
-QDate QDateFromStd(const std::chrono::year_month_day& date) {
+QDate pep::QDateFromStd(const std::chrono::year_month_day& date) {
 #if __cpp_lib_chrono >= 201907L
   return QDate(date);
 #else
@@ -33,11 +33,11 @@ QDate QDateFromStd(const std::chrono::year_month_day& date) {
 }
 
 
-pep::Timestamp QDateTimeToStdTimestamp(const QDateTime& value) {
+Timestamp pep::QDateTimeToStdTimestamp(const QDateTime& value) {
   return pep::Timestamp(std::chrono::milliseconds{value.toMSecsSinceEpoch()});
 }
 
-QDateTime LocalQDateTimeFromStdTimestamp(pep::Timestamp value) {
+QDateTime pep::LocalQDateTimeFromStdTimestamp(Timestamp value) {
   // Contrary to QDateTime::fromStdTimePoint, this returns a local time.
-  return QDateTime::fromMSecsSinceEpoch(value.ticks_since_epoch<std::chrono::milliseconds>());
+  return QDateTime::fromMSecsSinceEpoch(TicksSinceEpoch<std::chrono::milliseconds>(value));
 }

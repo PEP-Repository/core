@@ -212,7 +212,7 @@ private:
 
   private:
     static void ReportTimestamp(std::ostream& destination, const std::string& announce, pep::Timestamp timestamp) {
-      destination << '\n' << announce << ' ' << timestamp << ", i.e. " << timestamp.to_xml_date_time();
+      destination << '\n' << announce << ' ' << timestamp << ", i.e. " << pep::TimestampToXmlDateTime(timestamp);
     }
 
   protected:

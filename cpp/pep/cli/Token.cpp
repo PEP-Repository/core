@@ -41,7 +41,7 @@ protected:
 
     Timestamp expiration = values.has("expiration-unixtime")
         ? Timestamp(std::chrono::seconds{values.get<std::chrono::seconds::rep>("expiration-unixtime")})
-        : Timestamp::from_yyyymmdd(values.get<std::string>("expiration-yyyymmdd"));
+        : TimeZone::Local().timestampFromYyyyMmDd(values.get<std::string>("expiration-yyyymmdd"));
 
     return executeEventLoopFor([&values, expiration](std::shared_ptr<pep::Client> client) {
       return client
