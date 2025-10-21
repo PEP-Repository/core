@@ -23,6 +23,6 @@ TEST(RxRequireCount, Works) {
   }
   catch (const std::exception& exception) {
     std::string what = exception.what();
-    EXPECT_TRUE(what.find(item_name) != std::string::npos);
+    EXPECT_NE(what.find(item_name), std::string::npos);
   }
 }
