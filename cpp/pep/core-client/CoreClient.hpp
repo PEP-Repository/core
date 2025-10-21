@@ -524,8 +524,8 @@ protected:
    */
   CoreClient(const Builder& builder);
 
-  template <typename TClient>
-  std::shared_ptr<TClient> tryConnectServerProxy(const EndPoint& endPoint) const;
+  template <typename TProxy>
+  std::shared_ptr<TProxy> tryConnectServerProxy(const EndPoint& endPoint) const;
 
   struct EnrollmentContext {
     std::shared_ptr<const X509Identity> identity;
@@ -537,12 +537,12 @@ protected:
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
 
   template <typename T>
-  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> client, const std::string& serverName, bool require) {
-    if (require && client == nullptr) {
+  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> proxy, const std::string& serverName, bool require) {
+    if (require && proxy == nullptr) {
       // TODO: refactor so that CoreClient and derived class instances cannot exist without instantiating their individual ServerProxy fields
       throw std::runtime_error("Not connected to " + serverName);
     }
-    return client;
+    return proxy;
   }
 
 public:
@@ -609,13 +609,13 @@ public:
   std::shared_ptr<LocalPseudonym> getAccessGroupPseudonym(uint32_t index) const; // Returns NULL if ticket didn't include access group pseudonyms
 };
 
-template <typename TClient>
-std::shared_ptr<TClient> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {
+template <typename TProxy>
+std::shared_ptr<TProxy> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {
   auto untyped = messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
   if (untyped == nullptr) {
     return nullptr;
   }
-  return std::make_shared<TClient>(untyped, static_cast<const MessageSigner&>(*this));
+  return std::make_shared<TProxy>(untyped, static_cast<const MessageSigner&>(*this));
 }
 
 }
