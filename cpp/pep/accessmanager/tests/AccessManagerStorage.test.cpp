@@ -385,7 +385,7 @@ TEST_F(AccessManagerStorageTest, cannotRemoveDisplayIdentifier) {
   int64_t originalId = storage->createUser("user"); //this will be the display identifier
   storage->addIdentifierForUser(originalId, "firstAlternativeName", false, false);
   EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
-  storage->updateIdentifierForUser(originalId, "firstAlternativeName", {}, true);
+  storage->setDisplayIdentifierForUser(originalId, "firstAlternativeName");
   EXPECT_NO_THROW(storage->removeIdentifierForUser(originalId, "user"));
 }
 

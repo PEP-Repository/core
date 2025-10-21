@@ -207,8 +207,6 @@ public:
   void addIdentifierForUser(int64_t internalUserId, std::string identifier, bool isPrimaryId, bool isDisplayId);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
-  void updateIdentifierForUser(std::string_view uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId);
-  void updateIdentifierForUser(int64_t internalUserId, std::string_view uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId);
 
   /* Finding user identifiers */
   /// Try to find the internalId for the user that has the given identifier. Returns nullopt if not found.
@@ -219,6 +217,17 @@ public:
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
   std::optional<std::string> getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
   std::optional<std::string> getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+
+  /* Updating user identifiers */
+  void setPrimaryIdentifierForUser(std::string uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void setPrimaryIdentifierForUser(int64_t internalUserId, std::string uid);
+  void unsetPrimaryIdentifierForUser(std::string_view uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void unsetPrimaryIdentifierForUser(int64_t internalUserId, std::string_view uid);
+  void setDisplayIdentifierForUser(std::string uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void setDisplayIdentifierForUser(int64_t internalUserId, std::string uid);
 
   /* Finding userGroupIds */
   /// Try to find the internalId for the userGroup with the given name. Returns nullopt if not found.

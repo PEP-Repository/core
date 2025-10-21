@@ -1057,12 +1057,6 @@ message AddUserIdentifier {
   bool is_display_id = 4;
 };
 
-message UpdateUserIdentifier {
-  string uid = 1;
-  optional bool is_primary_id = 2;
-  optional bool is_display_id = 3;
-};
-
 message RemoveUserIdentifier {
   string uid = 1;
 };
@@ -1100,7 +1094,9 @@ message UserMutationRequest {
   repeated RemoveUser remove_user = 7;
   repeated AddUserIdentifier add_user_identifier = 8;
   repeated RemoveUserIdentifier remove_user_identifier = 9;
-  repeated UpdateUserIdentifier update_user_identifier = 10;
+  repeated string set_primary_identifier = 10;
+  repeated string unset_primary_identifier = 11;
+  repeated string set_display_identifier = 12;
 
   repeated CreateUserGroup create_user_group = 1;
   repeated RemoveUserGroup remove_user_group = 2;

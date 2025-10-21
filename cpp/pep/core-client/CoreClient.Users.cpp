@@ -41,13 +41,13 @@ rxcpp::observable<FakeVoid> CoreClient::addUserIdentifier(std::string existingUi
 
 rxcpp::observable<FakeVoid> CoreClient::setUserPrimaryId(std::string uid) {
   UserMutationRequest request;
-  request.mUpdateUserIdentifier.emplace_back(uid, true, std::nullopt);
+  request.mSetPrimaryId.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> CoreClient::setUserDisplayId(std::string uid) {
   UserMutationRequest request;
-  request.mUpdateUserIdentifier.emplace_back(uid, std::nullopt, true);
+  request.mSetDisplayId.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 

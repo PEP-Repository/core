@@ -163,9 +163,17 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     mStorage->removeIdentifierForUser(x.mUid);
     LOG(LOG_TAG, info) << "Removed user identifier " << Logging::Escape(x.mUid);
   }
-  for (auto& x : request.mUpdateUserIdentifier) {
-    mStorage->updateIdentifierForUser(x.mUid, x.mIsPrimaryId, x.mIsDisplayId);
-    LOG(LOG_TAG, info) << "Updated user identifier " << Logging::Escape(x.mUid);
+  for (auto& x : request.mSetPrimaryId) {
+    mStorage->setPrimaryIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Set identifier " << Logging::Escape(x) << " as primary identifier.";
+  }
+  for (auto& x : request.mUnsetPrimaryId) {
+    mStorage->unsetPrimaryIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Unset identifier " << Logging::Escape(x) << " as primary identifier.";
+  }
+  for (auto& x : request.mSetDisplayId) {
+    mStorage->setDisplayIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Set identifier " << Logging::Escape(x) << " as display identifier.";
   }
   for (auto& x : request.mCreateUserGroup) {
     mStorage->createUserGroup(x.mUserGroup);
@@ -217,7 +225,7 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
   if (userId) {
     auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
     if (!primary) {
-      mStorage->updateIdentifierForUser(*userId, request.mPrimaryId, true, std::nullopt);
+      mStorage->setPrimaryIdentifierForUser(*userId, request.mPrimaryId);
     }
     else if (primary != request.mPrimaryId) {
       LOG(LOG_TAG, warning) << "Found a user based on the primary ID we received from the authentication source, but according to our storage a different id for this user is the primary ID.";

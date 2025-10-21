@@ -31,16 +31,6 @@ public:
   bool mIsDisplayId;
 };
 
-class UpdateUserIdentifier {
-public:
-  UpdateUserIdentifier() = default;
-  UpdateUserIdentifier(std::string uid, std::optional<bool> isPrimaryId, std::optional<bool> isDisplayId)
-    : mUid(std::move(uid)), mIsPrimaryId(isPrimaryId),mIsDisplayId(isDisplayId) { }
-  std::string mUid;
-  std::optional<bool> mIsPrimaryId;
-  std::optional<bool> mIsDisplayId;
-};
-
 class RemoveUserIdentifier {
 public:
   RemoveUserIdentifier() = default;
@@ -94,8 +84,9 @@ public:
 
   std::vector<AddUserIdentifier> mAddUserIdentifier;
   std::vector<RemoveUserIdentifier> mRemoveUserIdentifier;
-  std::vector<UpdateUserIdentifier> mUpdateUserIdentifier;
-
+  std::vector<std::string> mSetPrimaryId;
+  std::vector<std::string> mUnsetPrimaryId;
+  std::vector<std::string> mSetDisplayId;
 
   std::vector<CreateUserGroup> mCreateUserGroup;
   std::vector<RemoveUserGroup> mRemoveUserGroup;
