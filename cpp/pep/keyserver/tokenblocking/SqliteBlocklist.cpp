@@ -62,7 +62,6 @@ auto MakeStorage(const std::filesystem::path& dbFile) {
           make_column("metadataNote", &FlatEntry::metadataNote),
           make_column("metadataIssuer", &FlatEntry::metadataIssuer),
           make_column("creationDateTime", &FlatEntry::metaCreationDateTime)));
-  storage.sync_schema();
   return storage;
 }
 
@@ -78,6 +77,7 @@ struct SqliteBlocklist::Data final : database::Storage<MakeStorage> {
   explicit Data(const std::filesystem::path& path)
     : Storage(path.string()) {
     assert(IsPlainPath(path) || !isPersistent); // Rule out other non-plain paths
+    syncSchema();
   }
 };
 

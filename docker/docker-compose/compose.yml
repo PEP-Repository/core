@@ -418,7 +418,7 @@ services:
     volumes:
       - "${DATA_DIR_BASE}/authserver:/data"
       - "${SECRETS_DIR_BASE}/authserver:/secrets:ro"
-      - "${SECRETS_DIR_BASE}/acme:/cert:ro"
+      # - "${SECRETS_DIR_BASE}/acme:/cert:ro" # Only when acme.sh is used
       - "${DATA_DIR_BASE}/authserver/apache_logs:/var/log/apache2"
       - /etc/localtime:/etc/localtime:ro
     working_dir: /data

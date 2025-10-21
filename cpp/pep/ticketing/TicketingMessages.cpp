@@ -99,14 +99,14 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const
   return ticket;
 }
 
-SignedTicket2::SignedTicket2(Ticket2 ticket, X509CertificateChain chain,
+Signed<Ticket2>::Signed(Ticket2 ticket, X509CertificateChain chain,
   const AsymmetricKey& privateKey) {
   auto data = Serialization::ToString(std::move(ticket));
   mSignature = Signature::create(data, chain, privateKey);
   mData = std::move(data);
 }
 
-SignedTicketRequest2::SignedTicketRequest2(TicketRequest2 ticketRequest,
+Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
   const X509CertificateChain& chain,
   const AsymmetricKey& privateKey) {
   mData = Serialization::ToString(std::move(ticketRequest));
@@ -114,7 +114,7 @@ SignedTicketRequest2::SignedTicketRequest2(TicketRequest2 ticketRequest,
   mLogSignature = Signature::create(mData, chain, privateKey, true);
 }
 
-TicketRequest2 SignedTicketRequest2::openAsAccessManager(
+TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
   const X509RootCertificates& rootCAs) {
   if (!mSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature");
@@ -142,7 +142,7 @@ TicketRequest2 SignedTicketRequest2::openAsAccessManager(
   return Serialization::FromString<TicketRequest2>(mData);
 }
 
-TicketRequest2 SignedTicketRequest2::openAsTranscryptor(
+TicketRequest2 Signed<TicketRequest2>::openAsTranscryptor(
   const X509RootCertificates& rootCAs) {
   if (mSignature)
     throw Error("Invalid SignedTicketRequest2: signature for AM shouldn't be set");

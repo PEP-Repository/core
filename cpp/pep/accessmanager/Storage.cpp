@@ -237,17 +237,7 @@ struct AccessManager::Backend::Storage::Implementor : database::Storage<am_creat
 };
 
 void AccessManager::Backend::Storage::ensureInitialized() {
-  LOG(LOG_TAG, info) << "Synching database schema ...";
-  try {
-    for(const auto& p : mImplementor->raw.sync_schema(true)) {
-      if (p.second == sync_schema_result::already_in_sync)
-        continue;
-      LOG(LOG_TAG, warning) << "  " << p.first << ": " << p.second;
-    }
-  } catch (const std::system_error& e) {
-    LOG(LOG_TAG, error) << "  failed: " << e.what();
-    throw;
-  }
+  mImplementor->syncSchema();
 
   if (mImplementor->raw.count<ColumnGroupRecord>(limit(1)) != 0)
     return;
