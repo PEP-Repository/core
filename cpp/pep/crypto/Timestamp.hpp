@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/serialization/NormalizedTypeNaming.hpp>
 #include <pep/utils/TypeTraits.hpp>
 
 #include <chrono>
@@ -63,5 +64,11 @@ private:
 
 [[nodiscard]] std::chrono::year_month_day BoostDateToStd(const boost::gregorian::date& date);
 [[nodiscard]] boost::gregorian::date BoostDateFromStd(const std::chrono::year_month_day& date);
+
+// Make sure serialization remains backward-compatible with the class we used to have, for stored messages
+template <>
+struct NormalizedTypeNamer<Timestamp> : BasicNormalizedTypeNamer {
+  static std::string GetTypeName() { return "Timestamp"; }
+};
 
 } // namespace pep

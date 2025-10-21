@@ -90,6 +90,7 @@ if (WITH_TESTS)
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
+    TestCompatibleMessageMagic.hpp
     TestTiming.hpp
   )
   find_package(GTest REQUIRED)

@@ -1,7 +1,10 @@
-#include <gtest/gtest.h>
-#include <chrono>
-#include <boost/date_time/posix_time/conversion.hpp>
 #include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/TestCompatibleMessageMagic.hpp>
+
+#include <boost/date_time/posix_time/conversion.hpp>
+#include <gtest/gtest.h>
+
+#include <chrono>
 
 using namespace std::chrono;
 using namespace std::literals;
@@ -162,6 +165,10 @@ TEST(BoostDate, FromStd) {
       << "leap-day converted incorrectly";
   EXPECT_THROW((void) pep::BoostDateFromStd(0y / month{0} / 0d), std::logic_error)
       << "invalid std to Boost date conversion should fail";
+}
+
+TEST(Timestamp, ClassHasBackwardCompatibleSerialization) {
+  pep::VerifyBackwardCompatibleSerialization<pep::Timestamp>("Timestamp", 2154686979 /*taken from before commit 21fbce07*/);
 }
 
 }
