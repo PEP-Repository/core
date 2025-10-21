@@ -1610,10 +1610,12 @@ void AccessManager::Backend::Storage::removeUserFromGroup(int64_t internalUserId
 UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQuery& query) {
   using namespace std::ranges;
 
+  auto timestamp = query.mAt ? *query.mAt : TimeNow();
+
   // Select groups matching group filter
   auto groups = RangeToCollection<std::map<int64_t, UserGroup>>(
     mImplementor->getCurrentRecords(
-      c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
+      c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && instr(&UserGroupRecord::name, query.mGroupFilter) /*true if filter is empty*/,
       &UserGroupRecord::userGroupId,
       &UserGroupRecord::name,
@@ -1627,7 +1629,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   std::map<int64_t, QRUser> usersInfo;
   // List users matching user filter
   for (auto internalId: mImplementor->getCurrentRecords(
-         c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
+         c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
          && instr(&UserIdRecord::identifier, query.mUserFilter) /*true if filter is empty*/,
          &UserIdRecord::internalUserId)) {
     // Add internalId, we add all identifiers below
@@ -1637,7 +1639,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   std::unordered_set<int64_t> groupsWithUsers;
   // List group memberships for filtered groups & users
   for (auto tuple: mImplementor->getCurrentRecords(
-         c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
+         c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
          && (query.mGroupFilter.empty()
            || in(&UserGroupUserRecord::userGroupId,
              // Avoid passing list to query when not filtered
@@ -1671,7 +1673,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // Fetch all identifiers for the selected users,
   //  not just the ones that satisfy the specific user identifier filter
   for (auto tuple: mImplementor->getCurrentRecords(
-         c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(query.mAt)
+         c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
          && in(&UserIdRecord::internalUserId, RangeToVector(views::keys(usersInfo))),
          &UserIdRecord::internalUserId,
          &UserIdRecord::identifier)) {

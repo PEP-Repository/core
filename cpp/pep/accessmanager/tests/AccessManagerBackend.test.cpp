@@ -378,7 +378,7 @@ TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_noFilter){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 65U);
@@ -389,7 +389,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_noFilter){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneColumnGroup){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   request.mColumnGroupFilter = constants.r_cg1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -401,7 +401,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneColumnGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneParticipantGroup){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   request.mParticipantGroupFilter = constants.pg1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -413,7 +413,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneParticipantGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneUserGroup){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   request.mUserGroupFilter = constants.userGroup1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -425,7 +425,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneUserGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_MultipleFilters){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   request.mUserGroupFilter = constants.userGroup1;
   request.mParticipantGroupFilter = constants.pg1;
   request.mColumnFilter = constants.r_col1;
@@ -439,7 +439,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_MultipleFilters){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_NonExistingUserGroup){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   request.mUserGroupFilter = "non-existing";
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -451,7 +451,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_NonExistingUserGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_PartialColumnFilter){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   request.mColumnFilter = "star";
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -463,7 +463,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_PartialColumnFilter){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_ColumnOnlyInStarFilter){
-  auto request = AmaQuery{.mAt = Timestamp::max()};
+  AmaQuery request;
   request.mColumnFilter = constants.star_col;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 

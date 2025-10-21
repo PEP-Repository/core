@@ -195,7 +195,7 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetR
 }
 
 rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetExisting(std::shared_ptr<pep::CoreClient> client) {
-  return client->amaQuery(pep::AmaQuery{.mAt = pep::Timestamp::max()})
+  return client->amaQuery(pep::AmaQuery{})
     .concat_map([](const pep::AmaQueryResponse& response) {return rxcpp::observable<>::iterate(response.mParticipantGroups); })
     .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.mName); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
@@ -392,8 +392,8 @@ private:
       return ChildCommandOf<CommandAma>::getSupportedParameters()
         + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
           .allow(std::vector<std::string>({ "columns", "column-groups", "column-group-access-groups", "groups", "group-access-rules" })))
-        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC)")
-            .value(pep::commandline::Value<milliseconds::rep>().defaultsTo(milliseconds::max().count(), "most recent"))
+        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
+            .value(pep::commandline::Value<milliseconds::rep>())
         + pep::commandline::Parameter("column", "Match these columns").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
         + pep::commandline::Parameter("column-group", "Match these column groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
         + pep::commandline::Parameter("user-group", "Match these user groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
@@ -411,7 +411,9 @@ private:
 
       return executeEventLoopFor([&vm, scriptPrintFilter](std::shared_ptr<pep::CoreClient> client) {
         pep::AmaQuery query{
-          .mAt = pep::Timestamp(milliseconds{vm.get<milliseconds::rep>("at")}),
+          .mAt = pep::GetOptionalValue(vm.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
+            return pep::Timestamp(milliseconds{ms});
+          }),
           .mColumnFilter = vm.get<std::string>("column"),
           .mColumnGroupFilter = vm.get<std::string>("column-group"),
           .mParticipantGroupFilter = vm.get<std::string>("participant-group"),

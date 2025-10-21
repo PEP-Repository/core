@@ -169,7 +169,8 @@ class AmaMutationResponse {
 
 class AmaQuery {
 public:
-  Timestamp mAt;
+  // Use nullopt for current server time, such that a wrong client time does not influence query
+  std::optional<Timestamp> mAt{};
   std::string mColumnFilter{};
   std::string mColumnGroupFilter{};
   std::string mParticipantGroupFilter{};

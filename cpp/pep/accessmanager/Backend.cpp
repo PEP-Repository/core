@@ -495,15 +495,16 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     cgFilter.columnGroups = std::vector<std::string>{query.mColumnGroupFilter};
   }
 
+  auto timestamp = query.mAt ? *query.mAt : TimeNow();
   // All columns in the system have a explicit relation to columnGroup '*', so they will be included here.
-  auto foundColumnGroupColumns = mStorage->getColumnGroupColumns(query.mAt, cgcFilter);
+  auto foundColumnGroupColumns = mStorage->getColumnGroupColumns(timestamp, cgcFilter);
 
   // Keep track of which columns are in which columnGroup. This map will contain all info necessary for further steps.
   std::map<std::string, std::vector<std::string>> columnsByColumnGroup;
   if(query.mColumnFilter.empty()) {
     // If we do not filter on columns, we want to find columnGroups that have no columns assigned to them.
     // These would not show up in foundColumnGroupColumns, so add them explicitly.
-    auto columngroups = mStorage->getColumnGroups(query.mAt, cgFilter);
+    auto columngroups = mStorage->getColumnGroups(timestamp, cgFilter);
     for (auto& cg : columngroups){
       columnsByColumnGroup[cg.name] = {};
     }
@@ -523,7 +524,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   if(!query.mColumnFilter.empty() || !query.mColumnGroupFilter.empty()){
     cgarFilter.columnGroups = RangeToVector(std::views::keys(columnsByColumnGroup));
   }
-  auto cgars = mStorage->getColumnGroupAccessRules(query.mAt, cgarFilter);
+  auto cgars = mStorage->getColumnGroupAccessRules(timestamp, cgarFilter);
 
   if(!query.mUserGroupFilter.empty() || !query.mColumnGroupModeFilter.empty()) {
     // If there were additional cgar filters in place, we need to go back on the found columngroups and columns and apply another narrowing filter, showing only those
@@ -561,14 +562,14 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   }
 
   std::set<std::string> foundParticipantGroups{};
-  auto pgars = mStorage->getParticipantGroupAccessRules(query.mAt, pgarFilter);
+  auto pgars = mStorage->getParticipantGroupAccessRules(timestamp, pgarFilter);
 
   if(!query.mParticipantGroupModeFilter.empty() || !query.mUserGroupFilter.empty()){
     // The pgar filters are narrowing the found participants as well, only show pgs with pgars
     transform(pgars, foundParticipantGroups, [](const auto& pgar) { return pgar.participantGroup;});
   } else{
     // Get the participantgroups as normal.
-    auto pgs = mStorage->getParticipantGroups(query.mAt, pgFilter);
+    auto pgs = mStorage->getParticipantGroups(timestamp, pgFilter);
     transform(pgs, foundParticipantGroups,[](const auto& pg) { return pg.name;});
   }
 

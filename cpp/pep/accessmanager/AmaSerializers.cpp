@@ -260,7 +260,9 @@ void Serializer<AmaQueryResponse>::moveIntoProtocolBuffer(proto::AmaQueryRespons
 
 AmaQuery Serializer<AmaQuery>::fromProtocolBuffer(proto::AmaQuery&& source) const {
   return {
-    .mAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_at())),
+    .mAt = source.has_at()
+        ? std::optional(Serialization::FromProtocolBuffer(std::move(*source.mutable_at())))
+        : std::nullopt,
     .mColumnFilter = std::move(*source.mutable_column_filter()),
     .mColumnGroupFilter = std::move(*source.mutable_column_group_filter()),
     .mParticipantGroupFilter = std::move(*source.mutable_participant_group_filter()),
@@ -271,7 +273,9 @@ AmaQuery Serializer<AmaQuery>::fromProtocolBuffer(proto::AmaQuery&& source) cons
 }
 
 void Serializer<AmaQuery>::moveIntoProtocolBuffer(proto::AmaQuery& dest, AmaQuery value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_at(), value.mAt);
+  if (value.mAt) {
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_at(), *value.mAt);
+  }
   *dest.mutable_column_filter() = std::move(value.mColumnFilter);
   *dest.mutable_column_group_filter() = std::move(value.mColumnGroupFilter);
   *dest.mutable_participant_group_filter() = std::move(value.mParticipantGroupFilter);
