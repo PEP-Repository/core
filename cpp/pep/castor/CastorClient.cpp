@@ -1,7 +1,7 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/async/FakeVoid.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/castor/Study.hpp>

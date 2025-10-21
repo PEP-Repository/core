@@ -1,6 +1,6 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxRequireNonEmpty.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 #include <utility>
 
