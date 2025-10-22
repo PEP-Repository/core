@@ -633,8 +633,8 @@ clean_dtap_container_repositories() {
 # This command deletes branches in DTAP that:
 # - Are not protected or the main branch
 # - Have no corresponding branch in PEP FOSS with the same name
-# - Have commit(s) since master that only update the FOSS submodule
-# - Have a FOSS submodule at the tip of which the commit is also in FOSS master
+# - Have commit(s) since main that only update the FOSS submodule
+# - Have a FOSS submodule at the tip of which the commit is also in FOSS main
 
 # Command to clean DTAP git branches
 clean_dtap_branches() {
@@ -696,8 +696,9 @@ clean_dtap_branches() {
         continue
       fi
 
-      files_changed_since_master="$(git diff --name-only --merge-base refs/remotes/origin/HEAD "$refname")"
-      if [ "$files_changed_since_master" != "$dtap_foss_submodule" ] && [ "$files_changed_since_master" != '' ]; then
+      merge_base="$(git merge-base refs/remotes/origin/HEAD "$refname")"
+      files_changed_since_main="$(git diff --name-only "$merge_base" "$refname")"
+      if [ "$files_changed_since_main" != "$dtap_foss_submodule" ] && [ "$files_changed_since_main" != '' ]; then
         >&2 echo 'Skipping: More files than FOSS submodule changed since main branch'
         continue
       fi
