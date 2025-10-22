@@ -71,15 +71,13 @@ pep-services
 client
 pep-scheduler
 pep-connector
+docker-compose
 '
 dtap_container_image_names="$foss_container_image_names
-backup-tool
 nginx
 prometheus
-testidp
 logger
 nginx-review
-docker-compose
 watchdog-watchdog
 loki
 gitlab-ci-pipelines-exporter
