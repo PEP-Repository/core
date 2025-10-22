@@ -38,11 +38,48 @@ request() {
   shift
   shift
   url="https://$gitlab_host/api/v4/projects/$project_id/$path"
-  # >&2 echo "Sending $method request to $url" "$@"
-  if ! curl --no-progress-meter --fail --request "$method" -H "PRIVATE-TOKEN: $api_key" -H "Cache-Control: no-cache" "$url" "$@"; then
-    >&2 echo "Error while sending $method request to $url" "$@"
-    return 1
-  fi
+
+  max_retries=3
+  retry_delay=5
+  attempt=1
+  
+  while [ $attempt -le $max_retries ]; do
+    set +e  # To be able to check curl exit code
+    response=$(curl --no-progress-meter \
+                    --request "$method" \
+                    --header "PRIVATE-TOKEN: $api_key" \
+                    --header "Cache-Control: no-cache" \
+                    "$url" "$@")
+    curl_exit=$?
+    set -e  # Re-enable errexit
+    
+    if [ $curl_exit -eq 0 ]; then
+      echo "$response"
+      return 0
+    fi
+
+    # Only retry on curl exit code 22 (HTTP error code 400+)
+    if [ $curl_exit -eq 22 ]; then
+      if [ $attempt -lt $max_retries ]; then
+        >&2 echo "Request failed (attempt $attempt/$max_retries), retrying in ${retry_delay}s..."
+        sleep $retry_delay
+        retry_delay=$((retry_delay * 2))
+        attempt=$((attempt + 1))
+      else
+        >&2 echo "Request failed after $max_retries attempts"
+        # Print full response with headers for debugging
+        curl --no-progress-meter -i \
+          --request "$method" -H "PRIVATE-TOKEN: $api_key" -H "Cache-Control: no-cache" \
+          "$url" "$@" >&2 || true
+        >&2 echo "Error while sending $method request to $url" "$@"
+        return 1
+      fi
+    else
+      >&2 echo "Request failed with curl exit code $curl_exit"
+      >&2 echo "Error while sending $method request to $url" "$@"
+      return 1
+    fi
+  done
 }
 
 get_multipage() {
