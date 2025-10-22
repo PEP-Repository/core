@@ -53,7 +53,7 @@ protected:
   }
 
 public:
-  ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner) noexcept;
+  ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner);
   ServerProxy(const ServerProxy&) = delete;
   ServerProxy& operator=(const ServerProxy&) = delete;
 

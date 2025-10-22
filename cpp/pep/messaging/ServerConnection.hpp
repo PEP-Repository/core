@@ -52,6 +52,15 @@ private:
 
 public:
   /**
+   * @brief Creates a new instance.
+   * @param io_context The I/O context associated with the connection.
+   * @param endPoint The endpoint at which the server lives.
+   * @param caCertFilepath The path to the file containing the (PEM-encoded) CA certificate.
+   * @return A freshly created ServerConnection instance.
+   */
+  static std::shared_ptr<ServerConnection> Create(std::shared_ptr<boost::asio::io_context> io_context, const EndPoint& endPoint, const std::filesystem::path& caCertFilepath);
+
+  /**
    * @brief Creates a new instance if the endpoint's host name is set.
    * @param io_context The I/O context associated with the connection.
    * @param endPoint The endpoint at which the server lives. If the host name is not set, no connection will be created (and a NULL pointer returned).

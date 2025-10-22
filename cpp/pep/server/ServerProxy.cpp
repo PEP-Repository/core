@@ -26,9 +26,11 @@ void ServerProxy::ValidateResponse(MessageMagic magic, const std::string& respon
   }
 }
 
-ServerProxy::ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner) noexcept
+ServerProxy::ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner)
   : mUntyped(std::move(untyped)), mClientMessageSigner(clientMessageSigner) {
-  assert(mUntyped != nullptr);
+  if (mUntyped == nullptr) {
+    throw std::runtime_error("Can't create server proxy without a connection");
+  }
 }
 
 rxcpp::observable<ConnectionStatus> ServerProxy::connectionStatus() const {
