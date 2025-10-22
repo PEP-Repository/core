@@ -1417,7 +1417,7 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
 
 void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, bool isPrimaryId, bool isDisplayId) {
   int64_t internalUserId = getInternalUserId(uid);
-  addIdentifierForUser(internalUserId, identifier, isPrimaryId, isDisplayId);
+  addIdentifierForUser(internalUserId, std::move(identifier), isPrimaryId, isDisplayId);
 }
 
 void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier, bool isPrimaryId, bool isDisplayId) {
@@ -1461,7 +1461,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::
 }
 
 int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, Timestamp at) const {
-  std::optional<int64_t> internalUserId = findInternalUserId(identifier);
+  std::optional<int64_t> internalUserId = findInternalUserId(identifier, at);
   if(!internalUserId) {
     throw Error("Could not find user id");
   }
@@ -1794,14 +1794,15 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
          &UserIdRecord::internalUserId, &UserIdRecord::identifier, &UserIdRecord::isPrimaryId, &UserIdRecord::isDisplayId)) {
     auto& [internalId, identifier, isPrimaryId, isDisplayId] = tuple;
 
+    QRUser& user = usersInfo.at(internalId);
     if (isDisplayId) {
-      usersInfo.at(internalId).mDisplayId = identifier;
+      user.mDisplayId = identifier;
     }
     if (isPrimaryId) {
-      usersInfo.at(internalId).mPrimaryId = identifier;
+      user.mPrimaryId = identifier;
     }
     if (!isPrimaryId && !isDisplayId) {
-      usersInfo.at(internalId).mOtherUids.push_back(std::move(identifier));
+      user.mOtherUids.push_back(std::move(identifier));
     }
   }
 

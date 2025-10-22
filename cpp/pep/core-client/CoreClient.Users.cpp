@@ -33,7 +33,6 @@ rxcpp::observable<FakeVoid> CoreClient::removeUser(std::string uid) {
 }
 
 rxcpp::observable<FakeVoid> CoreClient::addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) {
-  assert(existingUid != newUid);
   UserMutationRequest request;
   request.mAddUserIdentifier.emplace_back(std::move(existingUid), std::move(newUid), isPrimaryId, isDisplayId);
   return requestUserMutation(std::move(request));
