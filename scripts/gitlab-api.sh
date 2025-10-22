@@ -68,9 +68,12 @@ request() {
       else
         >&2 echo "Request failed after $max_retries attempts"
         # Print full response with headers for debugging
-        curl --no-progress-meter -i \
-          --request "$method" -H "PRIVATE-TOKEN: $api_key" -H "Cache-Control: no-cache" \
-          "$url" "$@" >&2 || true
+        curl --no-progress-meter \
+             --include \
+             --request "$method" \
+             --header "PRIVATE-TOKEN: $api_key" \
+             --header "Cache-Control: no-cache" \
+             "$url" "$@" >&2 || true
         >&2 echo "Error while sending $method request to $url" "$@"
         return 1
       fi
