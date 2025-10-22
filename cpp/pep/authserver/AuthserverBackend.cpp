@@ -3,7 +3,7 @@
 #include <pep/auth/UserGroup.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 
@@ -125,7 +125,7 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
   return mAccessManager
           ->sendRequest<ChecksumChainResponse>(
               Signed(request, mCertificateChain, mPrivateKey))
-          .op(RxGetOne("ChecksumChainResponse"));
+          .op(RxGetOne());
 }
 
 rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::findUserGroupsAndStorePrimaryIdIfMissing(

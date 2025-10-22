@@ -1,5 +1,5 @@
 #include <pep/async/RxDistinct.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxSharedPtrCast.hpp>
 #include <pep/core-client/CoreClient.hpp>
