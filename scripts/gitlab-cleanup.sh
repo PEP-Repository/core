@@ -605,8 +605,11 @@ list_dtap_container_repositories() {
     # Select repos with names ending in /img_name
     local repos
     repos="$(raw_echo "$all_image_repos" | jq --compact-output '.[] | select(.name | endswith("/\($img_name)"))' --arg img_name "$img_name")"
-    [ -z "$repos" ] && fail "No container repos found for $img_name"
-    raw_echo_trailing_newline "$repos"
+    if [ -n "$repos" ]; then
+      raw_echo_trailing_newline "$repos"
+    else
+      >&2 echo "No container repos found for $img_name"
+    fi
   done
 }
 
