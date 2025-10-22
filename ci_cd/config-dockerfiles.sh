@@ -139,7 +139,7 @@ if [ "$with_rsyslog" = "true" ] && [ -z "$rsyslog_dir" ]; then
   usage 1
 fi
 
-foss_image_names="docker-compose authserver_apache pep-monitoring pep-services client pep-connector"
+foss_image_names="docker-compose authserver_apache pep-monitoring pep-services client pep-scheduler pep-connector"
 
 git_root=$(cd "$git_dir" && pwd)
 git_config_dir="$git_root/config"

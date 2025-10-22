@@ -2,7 +2,7 @@
 # shellcheck disable=SC3043  # `local` may not be defined in POSIX sh
 
 set_opts() {
-  set -eux -o noglob
+  set -eu -o noglob
 }
 set_opts
 
@@ -69,6 +69,8 @@ foss_container_image_names=\
 authserver_apache
 pep-services
 client
+pep-scheduler
+pep-connector
 '
 dtap_container_image_names="$foss_container_image_names
 backup-tool
@@ -79,6 +81,10 @@ logger
 nginx-review
 docker-compose
 watchdog-watchdog
+loki
+gitlab-ci-pipelines-exporter
+proxmox-exporter
+blackbox-exporter
 "
 
 # Also keep docker-build images for n commits in FOSS before the latest commit.
@@ -150,10 +156,8 @@ prepare_git_repo() {
       # Convert shallow clone into regular one
       >&2 echo "Unshallowing shallow repository $PWD"
       git remote set-branches origin '*' >&2
-      set +e
       fetch_err="$(git fetch --unshallow 2>&1)"
       fetch_status=$?
-      set -e
       echo "git fetch --unshallow exited with status $fetch_status" >&2
       if [ $fetch_status -ne 0 ]; then
         fail "git fetch --unshallow failed: $fetch_err"
