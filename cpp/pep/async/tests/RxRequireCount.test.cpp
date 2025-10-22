@@ -20,6 +20,7 @@ TEST(RxRequireCount, Works) {
   constexpr auto item_name = "floober in the goober";
   try {
     testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxGetOne(item_name)));
+    FAIL() << "Previous statement should have thrown an exception";
   }
   catch (const std::exception& exception) {
     std::string what = exception.what();
