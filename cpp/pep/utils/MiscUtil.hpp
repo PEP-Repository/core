@@ -1,5 +1,7 @@
 #pragma once
 
+#include <pep/utils/TypeTraits.hpp>
+
 #include <boost/optional.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -44,19 +46,19 @@ std::string BoolToString(bool value);
 * \param value The string to convert.
 * \return The boolean written out in the specified string.
 */
-bool StringToBool(const std::string& value);
+bool StringToBool(std::string_view value);
 
+//XXX This may be removed in favor of optional::transform when we move to C++23
 /* \brief Gets an optional<Value> from an optional<Owner>.
  * \param owner The (possibly nullopt) value from which to retrieve a value.
  * \param getValue A function that returns a value when invoked with an Owner instance.
  * \return std::nullopt if owner is nullopt; otherwise the result of invoking the the getValue function on the owner.
  */
-template <typename T, typename TGetValue>
-auto GetOptionalValue(const std::optional<T>& owner, const TGetValue& getValue) -> std::optional<decltype(getValue(*owner))> {
+auto GetOptionalValue(DerivedFromSpecialization<std::optional> auto&& owner, std::invocable<decltype(*owner)> auto&& getValue) -> std::optional<decltype(getValue(*owner))> {
   if (!owner) {
     return std::nullopt;
   }
-  return getValue(*owner);
+  return getValue(*std::forward<decltype(owner)>(owner));
 }
 
 template<typename T>
