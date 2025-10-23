@@ -57,7 +57,7 @@ bool StringToBool(std::string_view value);
  */
 template <SpecializationOf<std::optional> TOptional>
 auto GetOptionalValue(TOptional&& owner, auto&& getValue)
-    -> std::optional<decltype(std::forward<decltype(getValue)>(getValue)(*owner))> {
+    -> std::optional<std::decay_t<decltype(std::forward<decltype(getValue)>(getValue)(*owner))>> {
   if (!owner) {
     return std::nullopt;
   }
