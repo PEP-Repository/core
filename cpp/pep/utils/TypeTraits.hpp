@@ -37,18 +37,4 @@ concept DerivedFromSpecialization = requires(const T& t) {
   detail::DerivedFromSpecializationImpl<Template>(t);
 };
 
-namespace detail {
-template <class T, template <class...> class TTemplate>
-constexpr bool is_specialization_of_v = false;
-template <class... Args, template <class...> class TTemplate>
-constexpr bool is_specialization_of_v<TTemplate<Args...>, TTemplate> = true;
-}
-
-/// Usage:
-/// \code
-/// void myFun(SpecializationOf<std::optional> auto&& someOptional);
-/// \endcode
-template <class T, template <class...> class TTemplate>
-concept SpecializationOf = detail::is_specialization_of_v<T, TTemplate>;
-
 }

@@ -55,7 +55,7 @@ bool StringToBool(std::string_view value);
  * \param getValue A function that returns a value when invoked with an Owner instance.
  * \return std::nullopt if owner is nullopt; otherwise the result of invoking the the getValue function on the owner.
  */
-template <SpecializationOf<std::optional> TOptional>
+template <DerivedFromSpecialization<std::optional> TOptional>
 auto GetOptionalValue(TOptional&& owner, auto&& getValue)
     -> std::optional<std::decay_t<decltype(std::forward<decltype(getValue)>(getValue)(*owner))>> {
   if (!owner) {
