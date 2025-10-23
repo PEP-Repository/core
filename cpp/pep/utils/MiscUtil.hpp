@@ -110,7 +110,7 @@ std::function<TReturn(const TClass&&)> MethodAsFree(TReturn (TClass::* fun)() co
 
 /// Generic version of \c std::abs
 [[nodiscard]] constexpr auto Abs(auto v) {
-  return v < decltype(v){} ? -std::move(v) : std::move(v);
+  return v < decltype(v){/*default*/} ? -std::move(v) : std::move(v);
 }
 
 }
