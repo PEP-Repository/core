@@ -347,8 +347,6 @@ services:
     working_dir: /data
     command: ["/app/pepStorageFacility", "/config/storagefacility/StorageFacility.json"]
     stop_grace_period: 30s
-    depends_on:
-      - s3proxy
     logging:
       <<: *logging-pipeline-pep-services
     profiles: ["storagefacility"]
@@ -367,8 +365,6 @@ services:
     working_dir: /data
     command: ["/app/pepAccessManager", "/config/accessmanager/AccessManager.json"]
     stop_grace_period: 30s
-    depends_on:
-      - transcryptor
     logging:
       <<: *logging-pipeline-pep-services
     profiles: ["accessmanager"]
@@ -387,8 +383,6 @@ services:
     working_dir: /data
     command: ["/app/pepRegistrationServer", "/config/registrationserver/RegistrationServer.json"]
     stop_grace_period: 30s
-    depends_on:
-      - accessmanager
     logging:
       <<: *logging-pipeline-pep-services
     profiles: ["registrationserver"]
@@ -422,10 +416,9 @@ services:
     ports:
       - "443:443"
     volumes:
-      - datamonitor_shared_volume:/var/www/html/data_monitor
       - "${DATA_DIR_BASE}/authserver:/data"
       - "${SECRETS_DIR_BASE}/authserver:/secrets:ro"
-      - "${SECRETS_DIR_BASE}/acme:/cert:ro"
+      # - "${SECRETS_DIR_BASE}/acme:/cert:ro" # Only when acme.sh is used
       - "${DATA_DIR_BASE}/authserver/apache_logs:/var/log/apache2"
       - /etc/localtime:/etc/localtime:ro
     working_dir: /data
@@ -482,19 +475,6 @@ services:
       # selfhosted:
       # --publish 9000:9000
       # --volume /data/volumes/secrets/storagefacility/s3certs:/s3cert:ro
-      # review:
-      #       nginx_docker_image: gitlabregistry.pep.cs.ru.nl/pep/ops/master/nginx-review:latest
-      # nginx_docker_flags:
-      #   --network nginx-network
-      #   --publish 80:80
-      #   --publish 8082:8082
-      #   --publish 443:443
-      #   --publish 16501:16501
-      #   --publish 16511:16511
-      #   --publish 16512:16512
-      #   --publish 16516:16516
-      #   --publish 16518:16518
-      #   --publish 16519:16519
     volumes:
       - "${SECRETS_DIR_BASE}/nginx/ssl:/etc/nginx/ssl"
       - /etc/localtime:/etc/localtime:ro

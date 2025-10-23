@@ -4,8 +4,12 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/registrationserver/RegistrationServer.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
 #include <pep/async/RxEnsureProgress.hpp>
+#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
 #include <pep/auth/FacilityType.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
@@ -20,6 +24,7 @@
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
+#include <rxcpp/operators/rx-take.hpp>
 
 #include <iostream>
 
@@ -372,7 +377,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       if (rebuild) {
         LOG(LOG_TAG, info) << "Initializing shadow storage with short pseudonyms retrieved from Storage Facility";
       }
-      return RxIterate(pps);
+      return rxcpp::observable<>::iterate(std::move(*pps));
     })
       .flat_map([this, rebuild, count](const PseudonymsByPp::value_type& ppAndPseudonyms) { // Process each participant
       const auto& pseudonyms = ppAndPseudonyms.second;
@@ -651,7 +656,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
       { participant->pp },          // pps
       {},                        // columnGroups
       { "ParticipantIdentifier" }) // columns
-      .map([](const std::vector<EnumerateResult>& result) { // Raise an exception if (the row for) our generated ID already existed
+      .map([](const std::vector<std::shared_ptr<EnumerateResult>>& result) { // Raise an exception if (the row for) our generated ID already existed
       if (!result.empty()) {
         throw Error("Generated a duplicate participant ID. Please retry"); // TODO retry automatically instead
       }
@@ -699,8 +704,8 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       { *ctx->pp },                 // pps
       { "ShortPseudonyms" },        // columnGroups
       {})                           // columns
-    .flat_map([](std::vector<EnumerateResult> results) { return rxcpp::observable<>::iterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
-    .map([](const EnumerateResult& result) {return result.mMetadata.getTag(); }) // Extract the column name
+    .flat_map([](std::vector<std::shared_ptr<EnumerateResult>> results) { return rxcpp::observable<>::iterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
+    .map([](const std::shared_ptr<EnumerateResult>& result) {return result->mMetadata.getTag(); }) // Extract the column name
     .op(RxToVector()) // Convert to a single vector<> containing column names
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs
     .filter([](std::pair<std::shared_ptr<std::vector<std::string>>, ShortPseudonymDefinition> pair) { // Keep only defined SPs that the participant does not have

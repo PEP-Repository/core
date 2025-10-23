@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/messaging/Scheduler.hpp>
-#include <pep/async/RxIterate.hpp>
 #include <pep/serialization/Error.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <numeric>
@@ -42,7 +41,7 @@ private:
   void handleError(const pep::messaging::MessageId& id, std::exception_ptr error) {
     ASSERT_NE(error, nullptr) << "Scheduler sent notification of a NULL error";
     ASSERT_FALSE(id.type() == pep::messaging::MessageType::REQUEST && pep::Error::IsSerializable(error)) << "Request streams shouldn't produce exceptions of type Error (or derived)";
-    
+
     ASSERT_EQ(mStreams[id].exception, nullptr) << "Scheduler sent multiple error notifications";
     mStreams[id].exception = error;
   }
@@ -115,7 +114,7 @@ public:
 struct Stream {
   pep::messaging::StreamId id;
   std::unique_ptr<size_t> exhausted = std::make_unique<size_t>(0U);
-  std::shared_ptr<std::vector<pep::messaging::MessageSequence>> batches = std::make_shared<std::vector<pep::messaging::MessageSequence>>();
+  std::vector<pep::messaging::MessageSequence> batches;
 
   Stream(const Stream&) = delete;
   Stream& operator=(const Stream&) = delete;
@@ -125,12 +124,12 @@ struct Stream {
 
   Stream(boost::asio::io_context& ioContext, pep::messaging::StreamId& previousStreamId, size_t batchCount)
     : id(previousStreamId = pep::messaging::StreamId::MakeNext(previousStreamId)) {
-    while (batches->size() != batchCount) {
-      batches->emplace_back(Emitter::MakeBatch(ioContext, *exhausted, batches->size()));
+    while (batches.size() != batchCount) {
+      batches.emplace_back(Emitter::MakeBatch(ioContext, *exhausted, batches.size()));
     }
   }
 
-  size_t itemCount() const { return ItemCount(batches->size()) - 1U; } // Powers of 2: the next batch would have held one item more than all previous batches combined
+  size_t itemCount() const { return ItemCount(batches.size()) - 1U; } // Powers of 2: the next batch would have held one item more than all previous batches combined
 };
 
 
@@ -149,13 +148,13 @@ void TestStreams(const std::vector<size_t> sizes) {
   FakeSender sender(scheduler);
 
   for (const auto& stream : streams) {
-    scheduler->push(stream.id, pep::RxIterate(stream.batches));
+    scheduler->push(stream.id, rxcpp::observable<>::iterate(stream.batches));
   }
   ASSERT_NO_FATAL_FAILURE(ioContext.run());
 
   ASSERT_FALSE(sender.error()) << "Error occurred during scheduling";
   for (const auto& stream : streams) {
-    ASSERT_EQ(stream.batches->size(), *stream.exhausted) << "Batches weren't exhausted";
+    ASSERT_EQ(stream.batches.size(), *stream.exhausted) << "Batches weren't exhausted";
   }
   ASSERT_GE(sender.count(), items) << "Stream items weren't exhausted";
   ASSERT_LE(sender.count(), items + 1U) << "Scheduler produced more than just stream messages plus a(n optional) final close message";

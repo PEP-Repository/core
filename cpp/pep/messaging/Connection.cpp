@@ -1,5 +1,5 @@
 #include <pep/async/OnAsio.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
 #include <pep/messaging/Node.hpp>
 #include <pep/messaging/ConnectionFailureException.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>

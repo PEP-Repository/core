@@ -35,22 +35,7 @@ LegacyAuthserverStorage::LegacyAuthserverStorage(const std::filesystem::path& pa
 
 // Checks whether the database has been initialized
 void LegacyAuthserverStorage::ensureInitialized() {
-  LOG(LOG_TAG, info) << "Syncing legacy authserver database schema ...";
-  try {
-    for(const auto& p : mStorage->raw.sync_schema_simulate(true)) {
-      if (p.second == sync_schema_result::dropped_and_recreated)
-        throw std::runtime_error("Legacy authserver database schema changed for table " + p.first + ", in a way that would drop the table");
-    }
-    for(const auto& p : mStorage->raw.sync_schema(true)) {
-      if (p.second == sync_schema_result::already_in_sync)
-        continue;
-      LOG(LOG_TAG, warning) << "  " << p.first << ": " << p.second;
-    }
-  } catch (const std::system_error& e) {
-    LOG(LOG_TAG, error) << "  failed for legacy authserver storage: " << e.what();
-    throw;
-  }
-
+  mStorage->syncSchema();
   if(mStorage->raw.count<UserIdRecord>() == 0) {
     LOG(LOG_TAG, info) << "UserId table empty in legacy authserver storage. Initializing based on existing UserGroupRecords";
 

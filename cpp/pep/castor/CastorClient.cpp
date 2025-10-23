@@ -1,6 +1,8 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/async/FakeVoid.hpp>
+#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/castor/Study.hpp>
 #include <pep/castor/Ptree.hpp>
@@ -13,6 +15,7 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 

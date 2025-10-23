@@ -1,7 +1,9 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/application/Application.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxGroupToVectors.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
 

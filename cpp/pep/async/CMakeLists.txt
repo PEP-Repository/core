@@ -18,17 +18,31 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     IoContextThread.cpp IoContextThread.hpp
     ObservableAwaiter.hpp
     OnAsio.cpp OnAsio.hpp
+    RxBeforeCompletion.hpp
+    RxBeforeTermination.hpp
     RxButFirst.hpp
     RxCache.hpp
     RxCartesianProduct.hpp
+    RxConcatenateStrings.hpp
+    RxConcatenateVectors.hpp
+    RxDistinct.hpp
     RxDrain.hpp
     RxEnsureProgress.hpp
+    RxFilterNullopt.hpp
     RxFinallyExhaust.hpp
-    RxIterate.hpp
+    RxGetOne.hpp
+    RxGroupToVectors.hpp
+    RxIndexed.hpp
+    RxInstead.hpp
     RxLazy.hpp
     RxParallelConcat.hpp
+    RxRequireNonEmpty.hpp RxRequireNonEmpty.cpp
+    RxSharedPtrCast.hpp
     RxTimeout.cpp RxTimeout.hpp
-    RxUtils.cpp RxUtils.hpp
+    RxToSet.hpp
+    RxToUnorderedMap.hpp
+    RxToVector.hpp
+    RxToVectorOfVectors.hpp
     SingleWorker.cpp SingleWorker.hpp
     WaitGroup.cpp WaitGroup.hpp
     WorkerPool.cpp WorkerPool.hpp
@@ -38,7 +52,7 @@ add_library(${PROJECT_NAME}Asynclib STATIC
 
 target_link_libraries(${PROJECT_NAME}Asynclib
   ${PROJECT_NAME}Utilslib
-  rxcpp  # This will be rxcpp::rxcpp if RxCpp will ever support C++20
+  rxcpp::rxcpp
 )
 
 verify_headers_standalone(${PROJECT_NAME}Asynclib)

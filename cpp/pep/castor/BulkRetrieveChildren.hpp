@@ -1,7 +1,10 @@
 #pragma once
 
+#include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/castor/CastorObject.hpp>
 #include <boost/property_tree/ptree.hpp>
+
+#include <rxcpp/operators/rx-filter.hpp>
 
 namespace pep {
 namespace castor {

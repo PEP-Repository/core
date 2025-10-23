@@ -1,8 +1,17 @@
+#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxGroupToVectors.hpp>
+#include <pep/async/RxRequireNonEmpty.hpp>
+#include <pep/async/RxSharedPtrCast.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/content/ParticipantDeviceHistory.hpp>
 #include <pep/castor/SurveyDataPoint.hpp>
 #include <pep/pullcastor/SurveyPackageInstancePuller.hpp>
 #include <pep/pullcastor/SurveyAspectPuller.hpp>
 #include <cmath>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 namespace castor {

@@ -1,7 +1,9 @@
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/pullcastor/PepParticipant.hpp>
 #include <pep/pullcastor/PullCastorUtils.hpp>
+
+#include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace pep {
 namespace castor {

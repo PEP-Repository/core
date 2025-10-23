@@ -13,6 +13,6 @@ target_link_libraries(${PROJECT_NAME}Guilib
   Qt6::PrintSupport
   Qt6::Svg
   Qt6::Widgets
-  rxcpp  # This will be rxcpp::rxcpp if RxCpp will ever support C++20
+  rxcpp::rxcpp
 )
 verify_headers_standalone(${PROJECT_NAME}Guilib)

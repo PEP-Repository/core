@@ -9,7 +9,7 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
 1. Install required packages (ubuntu packages in monospace)
    - `git`
    - conan (e.g. via `pipx`)
-   - `cmake`, preferably 3.23 or newer (see https://apt.kitware.com/ for how to get this for older versions of debian-based OSs)
+   - `cmake` 3.28 or newer (see https://apt.kitware.com/ for how to get this for older versions of debian-based OSs)
    - ninja (`ninja-build`)
    - `clang` (v18 is known to work (01-2024); see https://apt.llvm.org/ for how to get recent versions for older versions of debian-based OSs) (`g++` supported but not recommended for compiler performance reasons related to templates & RxCpp)
    - C++ STL, e.g. `libstdc++-dev` (v13 is known to work (01-2024), see <https://launchpad.net/~ubuntu-toolchain-r/+archive/ubuntu/test> for how to get recent versions like `libstdc++-13-dev` on older Ubuntu-based OSs)

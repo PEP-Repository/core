@@ -2,6 +2,9 @@
 #include <pep/castor/SurveyDataPoint.hpp>
 #include <pep/castor/Ptree.hpp>
 
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
+
 namespace pep {
 namespace castor {
 

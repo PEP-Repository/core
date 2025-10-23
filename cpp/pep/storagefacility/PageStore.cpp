@@ -14,7 +14,7 @@
 #include <pep/utils/Sha.hpp>
 #include <pep/async/RxLazy.hpp>
 #include <pep/async/RxButFirst.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/utils/Defer.hpp>
@@ -112,7 +112,8 @@ namespace pep
       config->get<EndPoint>("EndPoint"),
       config->get<s3::Credentials>("Credentials"),
       io_context,
-      config->get<std::optional<std::filesystem::path>>("Ca-Cert-Path")
+      config->get<std::optional<std::filesystem::path>>("Ca-Cert-Path"),
+      config->get<std::optional<bool>>("Use-Https")
     };
 
     unsigned int conn_count = config->get<unsigned int>("Connections", 5);

@@ -11,3 +11,4 @@ FetchContent_Declare(
   SYSTEM
 )
 FetchContent_MakeAvailable(rxcpp)
+add_library(rxcpp::rxcpp ALIAS rxcpp)

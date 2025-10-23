@@ -2,7 +2,7 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
@@ -11,6 +11,10 @@
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/authserver/AuthserverSerializers.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 namespace pep {
 
@@ -117,7 +121,7 @@ rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::completePartici
                         {pp},                      // pps
                         {},                        // columnGroups
                         {"ParticipantIdentifier"}) // columns
-      .flat_map([this, identifier, pp](std::vector<EnumerateResult> result) -> rxcpp::observable<DataStorageResult2> {
+      .flat_map([this, identifier, pp](std::vector<std::shared_ptr<EnumerateResult>> result) -> rxcpp::observable<DataStorageResult2> {
         if (!result.empty()) {
           LOG(LOG_TAG, info) << "Participant identifier already present in PEP";
           // We do not store the participant ID again, but continue with the storage of other stuff in case this failed

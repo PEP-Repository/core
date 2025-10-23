@@ -7,6 +7,7 @@
 #include <rxcpp/operators/rx-timeout.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-reduce.hpp>
 
 #include <gtest/gtest.h>
 

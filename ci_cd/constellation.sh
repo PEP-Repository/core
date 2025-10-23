@@ -263,7 +263,7 @@ get_update_host_commands() {
   c_file_dir="${2:-.}"
 
   echo "$c_json" \
-    | jq -c '.[] | select(.update | type=="string" or type=="null")' \
+    | jq -c '.[] | select(.update | type=="string" or type=="null") | select(has("docker-compose") | not)' \
     | while read -r entry
   do
     get_ssh_command "$entry" "$c_file_dir" ".update"
@@ -291,7 +291,7 @@ get_restart_service_command() {
   service_name="$3"
   
   echo "$c_json" \
-    | jq -c '.[]' \
+    | jq -c '.[] | select(has("docker-compose") | not)' \
     | while read -r entry
   do
     get_service_cmd "$entry" "update" "$service_name" "$c_file_dir"
@@ -320,7 +320,7 @@ update() {
   update_hosts=$(get_update_host_commands "$c_json" "$c_file_dir")
   restart_services=$(get_service_restart_commands "$c_json" "$c_file_dir")
   
-  prepare_ssh_connectivity "$c_json" "$c_file_dir" ".[]"
+  prepare_ssh_connectivity "$c_json" "$c_file_dir" '.[] | select(has("docker-compose") | not)'
   
   if [ -n "$update_hosts" ]; then
     echo "Updating $(echo "$update_hosts" | wc -l) host(s)..."
@@ -458,6 +458,7 @@ get_docker_compose_commands() {
   action="${4:-redeploy}"  # pull, restart, stop, or redeploy
   override_profiles="${5:-}"  # Optional profiles override
   
+  # Use jq selector to filter docker-compose hosts directly
   echo "$c_json" \
     | jq -c '.[] | select(has("docker-compose"))' \
     | while read -r entry

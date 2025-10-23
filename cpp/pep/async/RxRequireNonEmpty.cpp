@@ -1,4 +1,5 @@
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxRequireNonEmpty.hpp>
+#include <cassert>
 
 namespace pep {
 

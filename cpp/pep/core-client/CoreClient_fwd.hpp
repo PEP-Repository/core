@@ -7,7 +7,7 @@ struct requestTicket2Opts;
 struct storeData2Opts;
 struct EnumerateResult;
 struct EnumerateAndRetrieveResult;
-struct RetrieveResult;
+struct RetrievePage;
 struct StoreData2Entry;
 
 class CoreClient;

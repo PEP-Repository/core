@@ -1,6 +1,5 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/SingleCellCommand.hpp>
-#include <pep/async/RxUtils.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 using namespace pep::cli;

@@ -1,7 +1,7 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/SingleCellCommand.hpp>
 #include <pep/utils/Defer.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>

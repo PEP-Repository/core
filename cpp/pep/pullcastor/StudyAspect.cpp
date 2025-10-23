@@ -1,7 +1,8 @@
-#include <pep/async/RxUtils.hpp>
 #include <pep/pullcastor/StudyAspect.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-map.hpp>
 
 namespace pep {
 namespace castor {
