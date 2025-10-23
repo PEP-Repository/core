@@ -58,8 +58,8 @@ public:
         });
   }
 
-  void cancel() {
-    LOG(LOG_TAG, debug) << "cancel() called";
+  void cancel(val reason) {
+    LOG(LOG_TAG, debug) << "cancel() called, reason: " << val::global("String")(std::move(reason)).as<std::string>();
     subscription_.unsubscribe();
     deleteSelf();
   }
