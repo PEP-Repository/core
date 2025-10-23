@@ -7,7 +7,7 @@
 #include <pep/utils/Sha.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>

@@ -41,6 +41,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
     Paths.cpp Paths.hpp
+    PlainTypeName.hpp PlainTypeName.cpp
     Platform.cpp Platform.hpp
     Progress.cpp Progress.hpp
     PropertyBasedContainer.hpp

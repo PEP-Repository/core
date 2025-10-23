@@ -8,7 +8,7 @@
 #include <pep/utils/Log.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/utils/Shared.hpp>
 
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
@@ -118,7 +118,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
     [this, ctx](rxcpp::subscriber<EnumerateAndRetrieveResult> subscriber) {
       ctx->subscriber = subscriber;
       this->requestTicket2(*ctx->requestTicketOpts) // Get (indexed) ticket
-        .op(RxGetOne("ticket"))
+        .op(RxGetOne())
         .flat_map([this, ctx](const IndexedTicket2& indexedTicket) {
           ctx->signedTicket = indexedTicket.getTicket();
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());

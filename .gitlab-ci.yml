@@ -271,6 +271,9 @@ cleanup:
       needs: []
     - if: $RUN_CLEANUP == 'master' && $CI_COMMIT_BRANCH == $PEP_FOSS_DEVELOPMENT_BRANCH
       interruptible: false
+  variables:
+    GIT_STRATEGY: clone
+  dependencies: []
   resource_group: cleanup  # Do not run multiple cleanup jobs concurrently
   tags:
     - docker-small

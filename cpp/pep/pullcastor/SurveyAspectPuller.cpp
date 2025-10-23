@@ -1,6 +1,5 @@
-#include <pep/async/RxGetOne.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
-#include <pep/async/RxRequireNonEmpty.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxSharedPtrCast.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/content/ParticipantDeviceHistory.hpp>
@@ -212,7 +211,7 @@ SurveyAspectPuller::AllSpisPuller::AllSpisPuller(std::shared_ptr<StudyPuller> sp
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::SpisPuller::loadContentForSpi(std::shared_ptr<SurveyPackageInstancePuller> spiPuller, rxcpp::observable<std::shared_ptr<SurveyDataPoint>> sdps) {
   return sdps
     .op(RxSharedPtrCast<DataPointBase>())
-    .flat_map([sp = this->getStudyPuller()](std::shared_ptr<DataPointBase> dp) {return sp->toFieldValue(dp).op(RxGetOne("survey field value")); })
+    .flat_map([sp = this->getStudyPuller()](std::shared_ptr<DataPointBase> dp) {return sp->toFieldValue(dp).op(RxGetOne()); })
     .group_by([](std::shared_ptr<FieldValue> fv) {return fv->getField()->getParentId(); })
     .flat_map([self = SharedFrom(*this), spiPuller](const auto& stepIdAndFvs) {
     return stepIdAndFvs
@@ -240,7 +239,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::Al
   return sp->getDataPoints(spis)
     .zip(
       this->getWeekNumberOffsetForParticipant(tspis->front().getSpi()->getParticipantId()),
-      this->getStudyPuller()->getEnvironmentPuller()->getImportColumnNamer().op(RxGetOne("import column namer"))
+      this->getStudyPuller()->getEnvironmentPuller()->getImportColumnNamer().op(RxGetOne())
     )
     .concat_map([self = SharedFrom(*this), tspis](const auto& context) {
     std::shared_ptr<SdpsBySpi> sdpsBySpi = std::get<0>(context);
