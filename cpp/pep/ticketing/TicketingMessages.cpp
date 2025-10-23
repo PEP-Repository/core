@@ -51,6 +51,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     throw Error("Transcryptor signature is missing");
 
   try {
+    // A longer leeway is used for long downloads etc.
     mSignature->assertValid(
       mData,
       rootCAs,

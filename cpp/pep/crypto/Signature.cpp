@@ -56,11 +56,11 @@ void Signature::assertValid(
   if (mCertificateChain.begin()->hasTLSServerEKU())
     throw Error("Invalid signature: TLS certificate used instead of Signing certficiate");
 
-  auto drift = Abs(mTimestamp - TimeNow());
-  if (drift > timestampLeeway) {
+  auto diff = Abs(mTimestamp - TimeNow());
+  if (diff > timestampLeeway) {
     std::ostringstream msg;
     msg << "Invalid signature: timestamp differs by "
-        << drift << " with current time; only a drift of "
+        << diff << " with current time; only a difference of "
         << timestampLeeway << " is allowed";
     throw SignatureValidityPeriodError(msg.str());
   }
