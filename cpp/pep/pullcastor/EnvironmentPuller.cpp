@@ -72,8 +72,8 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     oauthTokenFile = std::filesystem::canonical(config.get<std::filesystem::path>("OAuthTokenFile"));
     castorAPIKeyFile = std::filesystem::canonical(config.get<std::filesystem::path>("CastorAPIKeyFile"));
 
-    auto waitPeriod = config.get<int64_t>("WaitPeriodDays") * 24 * 60 * 60 * 1000;
-    mCooldownThreshold = pep::Timestamp{Timestamp().getTime() - waitPeriod};
+    auto waitPeriod = std::chrono::days{config.get<std::chrono::days::rep>("WaitPeriodDays")};
+    mCooldownThreshold = TimeNow() - waitPeriod;
 
     auto metricsFile = config.get<std::optional<std::filesystem::path>>("Metrics.TargetFile");
     if (metricsFile) {

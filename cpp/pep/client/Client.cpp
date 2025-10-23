@@ -198,7 +198,7 @@ rxcpp::observable<std::string> Client::requestToken(std::string subject,
   if (!clientAuthserver) {
     throw std::runtime_error("Connection to authserver is not initialized. Does the client configuration contain correct config for the authserver endpoint?");
   }
-  return clientAuthserver->sendRequest<TokenResponse>(sign(TokenRequest(subject, group, expirationTime))) // linebreak
+  return clientAuthserver->sendRequest<TokenResponse>(sign(TokenRequest{subject, group, expirationTime})) // linebreak
       .map([](TokenResponse response) { return response.mToken; });
 }
 

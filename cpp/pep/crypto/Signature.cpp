@@ -2,22 +2,25 @@
 #include <pep/utils/Sha.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/MiscUtil.hpp>
 
 #include <sstream>
+
+using namespace std::chrono;
 
 namespace pep {
 
 Signature Signature::create(const std::string& data, X509CertificateChain chain,
       const AsymmetricKey& privateKey, bool isLogCopy, SignatureScheme scheme) {
-  auto timestamp = Timestamp();
+  auto timestamp = TimeNow();
 
   Sha512 hasher;
   hasher.update(PackUint32BE(static_cast<uint32_t>(scheme)));
   if (scheme == SIGNATURE_SCHEME_V3) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(timestamp.getTime())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp))));
     hasher.update(data);
   } else if (scheme == SIGNATURE_SCHEME_V4) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(timestamp.getTime())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp))));
     hasher.update(PackUint8(static_cast<uint8_t>(isLogCopy)));
     hasher.update(data);
   } else {
@@ -37,7 +40,7 @@ void Signature::assertValid(
     const std::string& data,
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName,
-    uint64_t timestampLeewaySeconds,
+    seconds timestampLeeway,
     bool expectLogCopy) const {
   if (mCertificateChain.begin() == mCertificateChain.end())
     throw Error("Invalid signature: empty certificate chain");
@@ -53,13 +56,12 @@ void Signature::assertValid(
   if (mCertificateChain.begin()->hasTLSServerEKU())
     throw Error("Invalid signature: TLS certificate used instead of Signing certficiate");
 
-  int64_t drift = (mTimestamp.getTime() - Timestamp().getTime());
-  drift = drift > 0 ? drift : -drift; // make drift positive
-  if (static_cast<uint64_t>(drift) / 1000 > timestampLeewaySeconds) {
+  auto diff = Abs(mTimestamp - TimeNow());
+  if (diff > timestampLeeway) {
     std::ostringstream msg;
     msg << "Invalid signature: timestamp differs by "
-        << (static_cast<uint64_t>(drift) / 1000) << "s with current time; only a drift of "
-        << timestampLeewaySeconds << "s is allowed";
+        << diff << " with current time; only a difference of "
+        << timestampLeeway << " is allowed";
     throw SignatureValidityPeriodError(msg.str());
   }
 
@@ -74,10 +76,10 @@ void Signature::assertValid(
   Sha512 hasher;
   hasher.update(PackUint32BE(static_cast<uint32_t>(mScheme)));
   if (mScheme == SIGNATURE_SCHEME_V3) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(mTimestamp.getTime())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
     hasher.update(data);
   } else if (mScheme == SIGNATURE_SCHEME_V4) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(mTimestamp.getTime())));
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
     hasher.update(PackUint8(static_cast<uint8_t>(mIsLogCopy)));
     hasher.update(data);
   } else {

@@ -11,7 +11,7 @@ ParticipantDeviceRecord ParticipantDeviceRecord::Deserialize(const boost::proper
     source.get<std::string>("type"),
     source.get<std::string>("serial"),
     source.get_optional<std::string>("note").value_or(""),
-    source.get<int64_t>("date")
+    Timestamp(std::chrono::milliseconds{source.get<std::chrono::milliseconds::rep>("date")})
   );
 }
 
@@ -28,7 +28,7 @@ void ParticipantDeviceRecord::serialize(boost::property_tree::ptree& destination
   if (!note.empty()) {
     destination.put("note", note);
   }
-  destination.put("date", time);
+  destination.put("date", TicksSinceEpoch<std::chrono::milliseconds>(time));
 }
 
 void ParticipantDeviceHistory::onInvalid(const std::string& reason, bool throwException) {
@@ -55,7 +55,7 @@ ParticipantDeviceHistory::ParticipantDeviceHistory(const std::vector<Participant
   : mRecords(records) {
   std::sort(mRecords.begin(), mRecords.end());
   const ParticipantDeviceRecord *active = nullptr;
-  std::optional<int64_t> lastTimestamp;
+  std::optional<Timestamp> lastTimestamp;
   for (auto i = begin(); i != end(); ++i) {
     if (i->isActive()) {
       if (active != nullptr) {

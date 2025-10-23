@@ -20,7 +20,6 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/Platform.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>

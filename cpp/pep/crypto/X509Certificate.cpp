@@ -108,7 +108,7 @@ bool VerifyKeyIdentifier(const ASN1_OCTET_STRING* ki, const X509* cert) {
   return kiView == hashView;
 }
 
-std::chrono::system_clock::time_point ConvertASN1TimeToTimePoint(const ASN1_TIME* asn1Time) {
+std::chrono::sys_seconds ConvertASN1TimeToTimePoint(const ASN1_TIME* asn1Time) {
   // Convert ASN1_TIME to struct tm
   std::tm timeTm{};
   if (ASN1_TIME_to_tm(asn1Time, &timeTm) <= 0) {
@@ -116,8 +116,8 @@ std::chrono::system_clock::time_point ConvertASN1TimeToTimePoint(const ASN1_TIME
   }
 
   // Convert std::tm to time_point
-  std::time_t time_in_time_t = timegm(&timeTm); // Use timegm to get time in UTC
-  return std::chrono::system_clock::from_time_t(time_in_time_t);
+  std::time_t time_in_time_t = ::timegm(&timeTm); // Use timegm to get time in UTC
+  return time_point_cast<std::chrono::seconds>(std::chrono::system_clock::from_time_t(time_in_time_t));
 }
 
 } // namespace
@@ -298,7 +298,7 @@ bool X509Certificate::isPEPServerCertificate() const {
   return (issuerCn == intermediateServerCaCommonName);
 }
 
-std::chrono::system_clock::time_point X509Certificate::getNotBefore() const {
+std::chrono::sys_seconds X509Certificate::getNotBefore() const {
   if (!mInternal) {
     throw std::runtime_error("Invalid X509 structure");
   }
@@ -307,7 +307,7 @@ std::chrono::system_clock::time_point X509Certificate::getNotBefore() const {
   return ConvertASN1TimeToTimePoint(notBefore);
 }
 
-std::chrono::system_clock::time_point X509Certificate::getNotAfter() const {
+std::chrono::sys_seconds X509Certificate::getNotAfter() const {
   if (!mInternal) {
     throw std::runtime_error("Invalid X509 structure");
   }
