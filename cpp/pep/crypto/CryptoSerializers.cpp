@@ -4,11 +4,11 @@
 namespace pep {
 
 void Serializer<Timestamp>::moveIntoProtocolBuffer(proto::Timestamp& dest, Timestamp value) const {
-  dest.set_epoch_millis(value.getTime());
+  dest.set_epoch_millis(TicksSinceEpoch<std::chrono::milliseconds>(value));
 }
 
 Timestamp Serializer<Timestamp>::fromProtocolBuffer(proto::Timestamp&& source) const {
-  return Timestamp(source.epoch_millis());
+  return Timestamp(std::chrono::milliseconds{source.epoch_millis()});
 }
 
 Signature Serializer<Signature>::fromProtocolBuffer(proto::Signature&& source) const {

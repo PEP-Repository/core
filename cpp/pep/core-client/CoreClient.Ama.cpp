@@ -1,6 +1,6 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxRequireNonEmpty.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <utility>
 
 namespace pep {

@@ -22,6 +22,21 @@ using CopyConstness = std::conditional_t<std::is_const_v<Ref>, const T, T>;
 //XXX Replace by auto(v) in C++23
 [[nodiscard]] auto decay_copy(auto v) { return v; }
 
+// See https://stackoverflow.com/a/70130881
+namespace detail {
+template<template<typename...> typename Template, typename... Args>
+void DerivedFromSpecializationImpl(const Template<Args...>&);
+}
+
+/// Usage:
+/// \code
+/// void myFun(DerivedFromSpecialization<std::chrono::duration> auto&& somethingInheritingFromDuration);
+/// \endcode
+template <typename T, template <typename...> typename Template>
+concept DerivedFromSpecialization = requires(const T& t) {
+  detail::DerivedFromSpecializationImpl<Template>(t);
+};
+
 namespace detail {
 template <class T, template <class...> class TTemplate>
 constexpr bool is_specialization_of_v = false;

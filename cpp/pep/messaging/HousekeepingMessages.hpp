@@ -17,13 +17,13 @@ public:
 
 class PingRequest {
 public:
-  explicit inline PingRequest(uint64_t id) : mId(id) { }
+  explicit PingRequest(uint64_t id) : mId(id) { }
   uint64_t mId;
 };
 
 class PingResponse {
 public:
-  explicit inline PingResponse(uint64_t id) : mId(id) { }
+  explicit PingResponse(uint64_t id) : mId(id), mTimestamp(TimeNow()) { }
 
   uint64_t mId;
   Timestamp mTimestamp;

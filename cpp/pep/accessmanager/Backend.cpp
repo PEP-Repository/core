@@ -185,11 +185,14 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Removed user from user group " << Logging::Escape(x.mGroup);
     if (x.mBlockTokens) {
       return rxcpp::rxs::iterate(storage->getAllIdentifiersForUser(internalUserId)).concat_map([group=x.mGroup, accessManager](const std::string& uid) {
-        TokenBlockingCreateRequest tokenBlockRequest;
-        tokenBlockRequest.note="User removed from user group";
-        tokenBlockRequest.target.subject=uid;
-        tokenBlockRequest.target.userGroup=group;
-        //tokenBlockRequest.target.issueDateTime defaults to current time
+        TokenBlockingCreateRequest tokenBlockRequest{
+          .target = {
+            .subject = uid,
+            .userGroup = group,
+            .issueDateTime = TimeNow(),
+          },
+          .note = "User removed from user group",
+        };
         return accessManager->mKeyserver->sendRequest<TokenBlockingCreateResponse>(Signed(tokenBlockRequest, accessManager->getCertificateChain(), accessManager->getPrivateKey()));
       }).op(RxInstead(FakeVoid()));
     }
@@ -492,15 +495,16 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     cgFilter.columnGroups = std::vector<std::string>{query.mColumnGroupFilter};
   }
 
+  auto timestamp = query.mAt ? *query.mAt : TimeNow();
   // All columns in the system have a explicit relation to columnGroup '*', so they will be included here.
-  auto foundColumnGroupColumns = mStorage->getColumnGroupColumns(query.mAt, cgcFilter);
+  auto foundColumnGroupColumns = mStorage->getColumnGroupColumns(timestamp, cgcFilter);
 
   // Keep track of which columns are in which columnGroup. This map will contain all info necessary for further steps.
   std::map<std::string, std::vector<std::string>> columnsByColumnGroup;
   if(query.mColumnFilter.empty()) {
     // If we do not filter on columns, we want to find columnGroups that have no columns assigned to them.
     // These would not show up in foundColumnGroupColumns, so add them explicitly.
-    auto columngroups = mStorage->getColumnGroups(query.mAt, cgFilter);
+    auto columngroups = mStorage->getColumnGroups(timestamp, cgFilter);
     for (auto& cg : columngroups){
       columnsByColumnGroup[cg.name] = {};
     }
@@ -520,7 +524,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   if(!query.mColumnFilter.empty() || !query.mColumnGroupFilter.empty()){
     cgarFilter.columnGroups = RangeToVector(std::views::keys(columnsByColumnGroup));
   }
-  auto cgars = mStorage->getColumnGroupAccessRules(query.mAt, cgarFilter);
+  auto cgars = mStorage->getColumnGroupAccessRules(timestamp, cgarFilter);
 
   if(!query.mUserGroupFilter.empty() || !query.mColumnGroupModeFilter.empty()) {
     // If there were additional cgar filters in place, we need to go back on the found columngroups and columns and apply another narrowing filter, showing only those
@@ -558,14 +562,14 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   }
 
   std::set<std::string> foundParticipantGroups{};
-  auto pgars = mStorage->getParticipantGroupAccessRules(query.mAt, pgarFilter);
+  auto pgars = mStorage->getParticipantGroupAccessRules(timestamp, pgarFilter);
 
   if(!query.mParticipantGroupModeFilter.empty() || !query.mUserGroupFilter.empty()){
     // The pgar filters are narrowing the found participants as well, only show pgs with pgars
     transform(pgars, foundParticipantGroups, [](const auto& pgar) { return pgar.participantGroup;});
   } else{
     // Get the participantgroups as normal.
-    auto pgs = mStorage->getParticipantGroups(query.mAt, pgFilter);
+    auto pgs = mStorage->getParticipantGroups(timestamp, pgFilter);
     transform(pgs, foundParticipantGroups,[](const auto& pg) { return pg.name;});
   }
 
@@ -586,7 +590,7 @@ UserQueryResponse AccessManager::Backend::performUserQuery(const UserQuery& quer
 ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAccessRequest& request,
                                                              const std::string& userGroup) {
   ColumnAccess result;
-  auto now = Timestamp();
+  auto now = TimeNow();
 
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit "read-meta" access to all
@@ -656,7 +660,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
 ParticipantGroupAccess AccessManager::Backend::handleParticipantGroupAccessRequest(
     const ParticipantGroupAccessRequest& request, const std::string& userGroup) {
   ParticipantGroupAccess result;
-  auto now = Timestamp();
+  auto now = TimeNow();
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit full access to all participant
                                                        // groups
@@ -741,7 +745,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetad
     [[maybe_unused]] const std::string& userGroup) {
   (void) userGroup; // Currently, any user group can read metadata
 
-  const Timestamp now;
+  const Timestamp now = TimeNow();
   return {mStorage->getStructureMetadata(
       now,
       request.subjectType,

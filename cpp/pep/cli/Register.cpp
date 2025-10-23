@@ -5,6 +5,7 @@
 #include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/content/Date.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -23,7 +24,7 @@ public:
 
 private:
   std::optional<int> handleVerification(const pep::ParticipantPersonalia& personalia, bool isTestParticipant, bool force) {
-    if(!pep::Date::MatchesDdMmYyyyFormat(personalia.getDateOfBirth())) {
+    if(!pep::TryParseDdMmYyyy(personalia.getDateOfBirth())) {
       throw std::runtime_error("Entered date was not valid, please use the dd-mm-yyyy format.");
     }
 
@@ -149,7 +150,7 @@ private:
         std::cout << "Enter the participants date of birth, please use the dd-mm-yyyy format: " << std::endl;
         getline(std::cin, dateOfBirth);
 
-        dateValid = pep::Date::MatchesDdMmYyyyFormat(dateOfBirth);
+        dateValid = pep::TryParseDdMmYyyy(dateOfBirth).has_value();
         if (!dateValid) {
           std::cout << "Entered date was not valid, please use the dd-mm-yyyy format." << std::endl;
         }

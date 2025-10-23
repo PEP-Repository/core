@@ -19,10 +19,10 @@ std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBloc
         {std::to_string(e.id),
          e.target.subject,
          e.target.userGroup,
-         e.target.issueDateTime.toString(),
+         pep::TimestampToXmlDateTime(e.target.issueDateTime),
          e.metadata.note,
          e.metadata.issuer,
-         e.metadata.creationDateTime.toString()});
+         pep::TimestampToXmlDateTime(e.metadata.creationDateTime)});
   }
 
   return pep::structuredOutput::csv::append(stream, table) << std::endl;
@@ -101,12 +101,12 @@ protected:
               .issueDateTime =
                   [&] {
                     if (const auto date = values.getOptional<std::string>(param::issuedBeforeYyyymmdd)) {
-                      return pep::Timestamp::FromIsoDate(*date);
+                      return TimeZone::Local().timestampFromYyyyMmDd(*date);
                     }
-                    if (const auto time = values.getOptional<int64_t>(param::issuedBeforeUnixtime)) {
-                      return pep::Timestamp::FromTimeT(*time);
+                    if (const auto time = values.getOptional<std::chrono::seconds::rep>(param::issuedBeforeUnixtime)) {
+                      return Timestamp(std::chrono::seconds{*time});
                     }
-                    return pep::Timestamp{}; // default to current time
+                    return TimeNow(); // default to current time
                   }()},
           .message = values.get<std::string>(param::message)};
     }

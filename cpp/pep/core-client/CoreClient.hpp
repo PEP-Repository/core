@@ -114,7 +114,7 @@ struct EnumerateAndRetrieveResult : public EnumerateResult {
 // Result of a getHistory2 or deleteData2 call
 struct HistoryResult : public DataCellResult {
   Timestamp mTimestamp;
-  std::optional<std::string> mId;
+  std::optional<std::string> mId{};
 };
 
 // Used as parameter to CoreClient::deleteData2
@@ -552,10 +552,10 @@ protected:
   CoreClient(const Builder& builder);
 
   /// Returns a signed copy of \p msg, using the details of the current interactive user
-  template <typename MessageP, typename Message = std::remove_cvref_t<MessageP>>
-  Signed<Message> sign(MessageP&& msg) {
-    static_assert(std::is_same_v<Message, std::remove_cvref_t<MessageP>>); // enforce the default type for Message
-    return {std::forward<MessageP>(msg), certificateChain, privateKey};
+  template <typename MessageP>
+  auto sign(MessageP&& msg) {
+    using SignedMessage = Signed<std::remove_cvref_t<MessageP>>;
+    return SignedMessage{std::forward<MessageP>(msg), certificateChain, privateKey};
   }
 
   std::shared_ptr<messaging::ServerConnection> tryConnectTo(const EndPoint& endPoint);
@@ -717,12 +717,6 @@ public:
   std::vector<EnumerateResult> convertDataEnumerationEntries(
     const std::vector<DataEnumerationEntry2>& entries,
     const TicketPseudonyms& pseudonyms) const;
-
-  /// Returns a signed copy of \p msg, using the details of the current interactive use
-  /// @note This overload returns \c SignedTicketRequest2 and thus has a slightly different function signature.
-  SignedTicketRequest2 sign(TicketRequest2 msg) {
-    return SignedTicketRequest2{std::move(msg), certificateChain, privateKey};
-  }
 
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request);
 

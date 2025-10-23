@@ -93,7 +93,7 @@ private:
   messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> lpRequest);
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest);
 
-  std::string encryptId(std::string path, uint64_t time);
+  std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);
   std::vector<std::optional<LocalPseudonym>> decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const;
 
@@ -101,7 +101,7 @@ private:
 
   template <typename TEntry>
   using GetEntryContent = std::function<std::unique_ptr<EntryContent>(const TEntry&)>;
-  using GetDataAlterationResponse = std::function<std::string(EpochMillis, const std::vector<std::string>&, XxHasher::Hash)>;
+  using GetDataAlterationResponse = std::function<std::string(Timestamp, const std::vector<std::string>&, XxHasher::Hash)>;
 
   template <typename TRequest>
   messaging::MessageBatches handleDataAlterationRequest(

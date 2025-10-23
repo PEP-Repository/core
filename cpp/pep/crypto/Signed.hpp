@@ -15,7 +15,7 @@ protected:
   void assertValid(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName,
-    uint64_t timestampLeewaySeconds) const;
+    std::chrono::seconds timestampLeeway) const;
 
 public:
   SignedBase() = default;
@@ -49,15 +49,15 @@ public:
   [[nodiscard]] T open(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
-    uint64_t timestampLeewaySeconds = 60 * 60) const {
-    return mSignature.open<T>(mData, rootCAs, expectedCommonName, timestampLeewaySeconds);
+    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
+    return mSignature.open<T>(mData, rootCAs, expectedCommonName, timestampLeeway);
   }
 
   void validate(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
-    uint64_t timestampLeewaySeconds = 60 * 60) const {
-    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeewaySeconds);
+    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
+    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeeway);
   }
 
   T openWithoutCheckingSignature() const {

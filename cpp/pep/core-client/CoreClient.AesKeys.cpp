@@ -1,6 +1,6 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxMoveIterate.hpp>
 #include <pep/utils/Sha.hpp>
@@ -146,7 +146,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     auto [offset, keyRequest] = std::move(pair);
     const size_t count = keyRequest.mEntries.size();
     return clientAccessManager->sendRequest<EncryptionKeyResponse>(sign(std::move(keyRequest)))
-      .op(RxGetOne("encryption key response"))
+      .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {
           std::ostringstream ss;
