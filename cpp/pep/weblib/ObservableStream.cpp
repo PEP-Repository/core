@@ -43,8 +43,11 @@ public:
         // on error
         [this](std::exception_ptr ex) noexcept {
           LOG(LOG_TAG, debug) << "on_error";
-          //TODO wrap?
-          controller_.call<void>("error", std::move(ex));
+          try {
+            std::rethrow_exception(std::move(ex));
+          } catch (...) {
+            controller_.call<void>("error", val::take_ownership(emscripten::internal::_emval_from_current_cxa_exception()));
+          }
           deleteSelf();
         },
         // on completed
