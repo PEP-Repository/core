@@ -56,7 +56,8 @@ bool StringToBool(std::string_view value);
  * \return std::nullopt if owner is nullopt; otherwise the result of invoking the the getValue function on the owner.
  */
 template <SpecializationOf<std::optional> TOptional>
-decltype(auto) GetOptionalValue(TOptional&& owner, auto&& getValue) {
+auto GetOptionalValue(TOptional&& owner, auto&& getValue)
+    -> std::optional<decltype(std::forward<decltype(getValue)>(getValue)(*owner))> {
   if (!owner) {
     return std::nullopt;
   }
