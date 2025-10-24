@@ -85,6 +85,14 @@ project-settings-foss:
     - if [ -z "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Variable PEP_PUBLISHING_JSON_FILE not set; exit 1; fi
     - if [ ! -f "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Publishing specification JSON file not found at "$PEP_PUBLISHING_JSON_FILE"; exit 1; fi
 
+versioning-consistency:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine:latest
+  script:
+    # Version number should match the version number of the PEP binaries they're based on.
+    - diff version.json "$PEP_FOSS_REPO_DIR/version.json"
+
 ci-yml-include-versions:
   stage: static-analysis
   tags: [docker-small]
