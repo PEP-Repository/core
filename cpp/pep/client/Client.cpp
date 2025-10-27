@@ -2,6 +2,8 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxToEmpty.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -104,21 +106,15 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                        });
 
         // Store data in PEP
-        return storeData2(entries)
-            .last()       // Ensure further actions are executed only once
-            .as_dynamic() // Reduce compiler memory usage
-            .flat_map([this, identifier, complete](DataStorageResult2 result) -> rxcpp::observable<FakeVoid> {
-              if (complete) {
-                return completeParticipantRegistration(identifier, true);
-              }
-              else {
-                return rxcpp::observable<>::just(FakeVoid());
-              }
-            })
-            .as_dynamic() // Reduce compiler memory usage
-            .last()       // Ensure further actions are executed only once
-            .as_dynamic() // Reduce compiler memory usage
-            .map([identifier](FakeVoid) { return identifier; });
+        auto process = storeData2(entries).op(RxToEmpty<FakeVoid>());
+        if (complete) {
+          process = process.flat_map([this, identifier](FakeVoid) {
+            return completeParticipantRegistration(identifier, true);
+            });
+        }
+
+        // Return the identifier instead of the FakeVoid instance(s) that we got from processing
+        return process.op(RxInstead(identifier));
       });
 }
 
