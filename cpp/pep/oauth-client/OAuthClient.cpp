@@ -17,7 +17,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxGetOne.hpp>
 #include <pep/async/OnAsio.hpp>
 #include <pep/utils/Sha.hpp>
 
