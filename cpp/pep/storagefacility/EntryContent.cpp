@@ -1,7 +1,6 @@
 #include <pep/storagefacility/FileStore.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
-#include <pep/utils/MiscUtil.hpp>
 
 namespace pep {
 
