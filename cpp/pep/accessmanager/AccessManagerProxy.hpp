@@ -15,6 +15,7 @@ private:
   rxcpp::observable<FakeVoid> requestAmaMutation(AmaMutationRequest request) const;
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request) const;
   rxcpp::observable<ColumnNameMappingResponse> requestColumnNameMapping(ColumnNameMappingRequest request) const;
+  rxcpp::observable<ColumnNameMapping> requestSingleColumnNameMapping(ColumnNameMappingRequest request) const;
   rxcpp::observable<FakeVoid> requestSetStructureMetadata(SetStructureMetadataRequest request, messaging::Tail<StructureMetadataEntry> entries = messaging::MakeEmptyTail<StructureMetadataEntry>()) const;
 
 public:
@@ -59,8 +60,8 @@ public:
 
   rxcpp::observable<ColumnNameMappings> getColumnNameMappings() const;
   rxcpp::observable<ColumnNameMappings> readColumnNameMapping(const ColumnNameSection& original) const;
-  rxcpp::observable<ColumnNameMappings> createColumnNameMapping(const ColumnNameMapping& mapping) const;
-  rxcpp::observable<ColumnNameMappings> updateColumnNameMapping(const ColumnNameMapping& mapping) const;
+  rxcpp::observable<ColumnNameMapping> createColumnNameMapping(const ColumnNameMapping& mapping) const;
+  rxcpp::observable<ColumnNameMapping> updateColumnNameMapping(const ColumnNameMapping& mapping) const;
   rxcpp::observable<FakeVoid> deleteColumnNameMapping(const ColumnNameSection& original) const;
 
   rxcpp::observable<StructureMetadataEntry> getStructureMetadata(StructureMetadataType subjectType, std::vector<std::string> subjects, std::vector<StructureMetadataKey> keys = {}) const;

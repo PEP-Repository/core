@@ -529,6 +529,10 @@ private:
         auto pep = pep::ColumnNameSection::FromRawString(this->getParameterValues().get<std::string>("pep"));
         return pep::ColumnNameMapping{ castor, pep };
       }
+
+      static pep::ColumnNameMappings SingleMappingToMappings(pep::ColumnNameMapping mapping) {
+        return pep::ColumnNameMappings({ std::move(mapping) });
+      }
     };
 
     class ColumnNameMappingCreateCommand : public ColumnNameMappingWriteCommand {
@@ -539,7 +543,8 @@ private:
 
     protected:
       rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
-        return am.createColumnNameMapping(this->getSpecifiedColumnNameMapping());
+        return am.createColumnNameMapping(this->getSpecifiedColumnNameMapping())
+          .map(SingleMappingToMappings);
       }
     };
 
@@ -551,7 +556,8 @@ private:
 
     protected:
       rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
-        return am.updateColumnNameMapping(this->getSpecifiedColumnNameMapping());
+        return am.updateColumnNameMapping(this->getSpecifiedColumnNameMapping())
+          .map(SingleMappingToMappings);
       }
     };
 

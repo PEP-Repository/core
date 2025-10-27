@@ -6,6 +6,8 @@
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/transcryptor/KeyComponentSerializers.hpp>
 
+#include <rxcpp/operators/rx-flat_map.hpp>
+
 namespace pep {
 
 rxcpp::observable<KeyComponentResponse> AccessManagerProxy::requestKeyComponent(SignedKeyComponentRequest request) const {
@@ -64,6 +66,16 @@ rxcpp::observable<ColumnNameMappingResponse> AccessManagerProxy::requestColumnNa
     .op(RxGetOne());
 }
 
+rxcpp::observable<ColumnNameMapping> AccessManagerProxy::requestSingleColumnNameMapping(ColumnNameMappingRequest request) const {
+  return this->requestColumnNameMapping(std::move(request))
+    .map([](ColumnNameMappingResponse response) {
+    if (response.mappings.size() != 1U) {
+      throw std::runtime_error("Expected exactly 1 column name mapping but received " + std::to_string(response.mappings.size()));
+    }
+    return std::move(response.mappings.front());
+      });
+}
+
 rxcpp::observable<FakeVoid> AccessManagerProxy::migrateUserDbToAccessManager(messaging::MessageBatches fileParts) const {
   return this->sendRequest<MigrateUserDbToAccessManagerResponse>(this->sign(MigrateUserDbToAccessManagerRequest()), std::move(fileParts))
     .op(messaging::ResponseToVoid());
@@ -96,26 +108,18 @@ rxcpp::observable<ColumnNameMappings> AccessManagerProxy::readColumnNameMapping(
       });
 }
 
-rxcpp::observable<ColumnNameMappings> AccessManagerProxy::createColumnNameMapping(const ColumnNameMapping&
+rxcpp::observable<ColumnNameMapping> AccessManagerProxy::createColumnNameMapping(const ColumnNameMapping&
   mapping) const {
   return this
-    ->requestColumnNameMapping(ColumnNameMappingRequest{
-        CrudAction::Create, mapping.original, mapping.mapped })
-        .map([](const ColumnNameMappingResponse& response) {
-    assert(response.mappings.size() == 1U);
-    return ColumnNameMappings(response.mappings);
-          });
+    ->requestSingleColumnNameMapping(ColumnNameMappingRequest{
+        CrudAction::Create, mapping.original, mapping.mapped });
 }
 
-rxcpp::observable<ColumnNameMappings> AccessManagerProxy::updateColumnNameMapping(const ColumnNameMapping&
+rxcpp::observable<ColumnNameMapping> AccessManagerProxy::updateColumnNameMapping(const ColumnNameMapping&
   mapping) const {
   return this
-    ->requestColumnNameMapping(ColumnNameMappingRequest{
-        CrudAction::Update, mapping.original, mapping.mapped })
-        .map([](const ColumnNameMappingResponse& response) {
-    assert(response.mappings.size() == 1U);
-    return ColumnNameMappings(response.mappings);
-          });
+    ->requestSingleColumnNameMapping(ColumnNameMappingRequest{
+        CrudAction::Update, mapping.original, mapping.mapped });
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::deleteColumnNameMapping(const ColumnNameSection& original) const {
