@@ -22,7 +22,6 @@ private:
   void prepareLocalData(std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads, bool assumePristine);
   rxcpp::observable<FakeVoid> retrieveFromServer(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads);
   void processDataChunk(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx, const RetrievePage& result);
-  void processEmptyFiles(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx);
 
 protected:
   [[noreturn]] void fail(const std::string& message);
