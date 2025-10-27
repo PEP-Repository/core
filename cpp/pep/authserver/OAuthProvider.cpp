@@ -222,8 +222,8 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
 
   allowedRedirectUris.reserve(DefaultRedirectUris.size() + params.getExtraRedirectUris().size());
   std::ranges::copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris));
-  std::ranges::transform(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris), [](std::string urlStr) {
-    return url(std::move(urlStr));
+  std::ranges::transform(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris), [](std::string_view urlStr) {
+    return url(urlStr);
   });
 
   for (auto uri : allowedRedirectUris) {
