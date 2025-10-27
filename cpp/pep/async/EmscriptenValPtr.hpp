@@ -6,7 +6,8 @@
 
 namespace pep {
 
-/// emscripten::val smart-pointer wrapper that destructs value on the main thread.
+/// emscripten::val smart-pointer wrapper that destructs value on the main thread
+/// and is safe to copy on other threads.
 class EmscriptenValPtr {
   std::shared_ptr<emscripten::val> valPtr_;
 

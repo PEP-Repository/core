@@ -21,7 +21,9 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <emscripten/threading.h>
+#include <pep/async/RxInstead.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
 #include <rxcpp/operators/rx-finally.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -261,25 +263,25 @@ public:
   auto list(weblib::ListQuery query) {
     return CreateReadableStream(
         onIoThread()
-        .flat_map([query = std::move(query)](const std::shared_ptr<Client>& client) {
+        .flat_map([query = MakeSharedCopy(std::move(query))](const std::shared_ptr<Client>& client) {
           return client->requestTicket2(requestTicket2Opts{
-                .participantGroups = std::move(query.subjectGroups).value_or(std::vector<std::string>{}),
+                .participantGroups = std::move(query->subjectGroups).value_or(std::vector<std::string>{}),
                 .pps = RangeToVector(
-                    std::move(query.subjectPolymorphicPseudonyms).value_or(std::vector<std::string>{})
+                    std::move(query->subjectPolymorphicPseudonyms).value_or(std::vector<std::string>{})
                     | views::transform(PolymorphicPseudonym::FromText)
                     ),
-                .columnGroups = std::move(query.columnGroups).value_or(std::vector<std::string>{}),
-                .columns = std::move(query.columns).value_or(std::vector<std::string>{}),
+                .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
+                .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
                 .modes = {"read"}, //TODO support more modes
                 .includeAccessGroupPseudonyms = true,
               });
         })
         .flat_map([client = client_](const IndexedTicket2& indexedTicket) {
           return client->enumerateData2(indexedTicket.getTicket())
-            .flat_map([](std::vector<EnumerateResult> chunk) {
+            .flat_map([](std::vector<std::shared_ptr<EnumerateResult>> chunk) {
               return rxcpp::observable<>::iterate(std::move(chunk));
             })
-            .map([signedTicket = indexedTicket.getTicket()](EnumerateResult result) {
+            .map([signedTicket = indexedTicket.getTicket()](std::shared_ptr<EnumerateResult> result) {
               //TODO rx-notification equals should return typename std::enable_if<std::is_same<decltype(lhs == rhs), bool>::value, bool>::value
               return CellEntry{std::move(result), signedTicket};
             });
@@ -290,25 +292,69 @@ public:
   auto retrieve(std::vector<const CellEntry*> entries) {
     return CreateReadableStream(
         onIoThread()
-        .flat_map([entries = std::move(entries)](const std::shared_ptr<Client>& client)
-          -> rxcpp::observable<CellData> {
-              if (entries.empty()) { return rxcpp::observable<>::empty<CellData>(); }
-              auto signedTicket = entries.front()->ticket;
-              if (!all_of(entries, [&signedTicket](const CellEntry* entry) {
+        .flat_map([entries = MakeSharedCopy(std::move(entries))](
+            const std::shared_ptr<Client>& client) -> rxcpp::observable<CellData> {
+              if (entries->empty()) { return rxcpp::observable<>::empty<CellData>(); }
+              auto signedTicket = entries->front()->ticket;
+              if (!all_of(*entries, [&signedTicket](const CellEntry* entry) {
                 return entry->ticket == signedTicket;
               })) {
                 throw std::invalid_argument("Entry tickets differ. Can only retrieve entries from the same list call.");
               }
-              // move: one-time lambda
-              return client->retrieveData2(
+
+              auto pageBatches = client->retrieveData2(
+                  client->getKeys(
                       rxcpp::observable<>::iterate(
-                          RangeToVector(entries | views::transform(std::mem_fn(&CellEntry::inner)))),
-                      signedTicket,
-                      true //TODO
-                      )
-                  .map([entries = std::move(entries)](const std::shared_ptr<RetrieveResult>& result) {
-                    auto entry = entries.at(result->mIndex);
-                    return CellData{std::move(*result), entry};
+                          RangeToVector(*entries | views::transform(std::mem_fn(&CellEntry::inner)))),
+                      signedTicket),
+                  signedTicket);
+              return rxcpp::observable<>::just(entries)
+                  .observe_on(observe_on_emscripten(emscripten_main_runtime_thread_id()))
+                  .flat_map([pageBatches](const std::shared_ptr<std::vector<const CellEntry*>>& entries) {
+
+                    auto cellStreams = std::make_shared<std::vector<rxcpp::subjects::subject<val>>>(entries->size());
+
+                    std::vector<CellData> cellDatas;
+                    cellDatas.reserve(entries->size());
+                    for (std::size_t cellNum{}; cellNum < entries->size(); ++cellNum) {
+                      cellDatas.emplace_back((*entries)[cellNum],
+                          CreateReadableStream((*cellStreams)[cellNum].get_observable()));
+                    }
+
+                    pageBatches
+                        //TODO Do not request all batches at once, by implementing `pull` with ReadableStream
+                        .concat()
+                        .observe_on(observe_on_emscripten(emscripten_main_runtime_thread_id()))
+                        .subscribe(
+                            // on next
+                            [cellStreams](RetrievePage page) noexcept {
+                              auto stream = (*cellStreams)[page.fileIndex].get_subscriber();
+                              if (!page.mContent.empty()) {
+                                //XXX `new` is workaround to avoid copy, see https://github.com/emscripten-core/emscripten/issues/25412
+                                stream.on_next(val(new Buffer(std::move(page.mContent)), allow_raw_pointers{}));
+                              }
+                              if (page.mLast) { stream.on_completed(); }
+                            },
+                            // on error
+                            [cellStreams](const std::exception_ptr& ex) noexcept {
+                              LOG(LOG_TAG, debug) << "Error retrieving file pages: " << GetExceptionMessage(ex);
+                              for (auto& stream: *cellStreams) {
+                                // Only when on_completed has not been called
+                                if (stream.get_subscription().is_subscribed()) {
+                                  stream.get_subscriber().on_error(ex);
+                                }
+                              }
+                              LOG(LOG_TAG, debug) << "Closed non-completed streams";
+                            },
+                            // on completed
+                            [cellStreams]() noexcept {
+                              for ([[maybe_unused]] auto& stream: *cellStreams) {
+                                assert(!stream.get_subscription().is_subscribed()
+                                    && "Not all files were completed?");
+                              }
+                              LOG(LOG_TAG, debug) << "Completed ret";
+                            });
+                    return rxcpp::observable<>::iterate(std::move(cellDatas));
                   });
             })
         );

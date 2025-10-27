@@ -67,6 +67,11 @@ listBtn.addEventListener('click', () => void (async () => {
     columnGroups: (await pep.listColumns()).map(cg => cg.name),
     subjectGroups: (await pep.listSubjectGroups()).map(sg => sg.name),
   });
+  if (entries) {
+    for (const entry of entries) {
+      entry.delete();
+    }
+  }
   // @ts-ignore
   entries = await Array.fromAsync(res);
   retrieveBtn.disabled = false;
@@ -84,35 +89,35 @@ listBtn.addEventListener('click', () => void (async () => {
   output.value = JSON.stringify(jsonEntries, null, '  ');
 })());
 retrieveBtn.addEventListener('click', () => void (async () => {
-  const res = pep.retrieve([entries[0]]);
+  const res = pep.retrieve(entries);
   const jsonEntries = [];
+
   try {
     // @ts-ignore
     for await (/** @type {import("pep-repo-client").CellData} */ const data of res) {
       try {
-        const decoder = new TextDecoder();
-        const chunks = data.content();
-        try {
-          for await (/** @type {import("pep-repo-client").Buffer} */ const chunk of chunks) {
-            try {
-              decoder.decode(new Uint8Array(chunk.view()), {stream: true});
-            } finally {
-              chunk.delete();
+        let content = '';
+        {
+          const decoder = new TextDecoder();
+          const chunks = data.content;
+          try {
+            for await (/** @type {import("pep-repo-client").Buffer} */ const chunk of chunks) {
+              try {
+                content += decoder.decode(new Uint8Array(chunk.view()), {stream: true});
+              } finally {
+                chunk.delete();
+              }
             }
+          } finally {
+            await deleteObjectsAsync(chunks);
           }
-        } finally {
-          await deleteObjectsAsync(chunks);
+          content += decoder.decode();
         }
 
         jsonEntries.push({
           subjectLocalPseudonym: data.entry.subjectLocalPseudonym,
           column: data.entry.column,
-          metadata: Object.fromEntries(
-              [...data.metadataView().entries()]
-                  .map(([key, value]) =>
-                      [key, binaryToString(value)])
-          ),
-          content: decoder.decode(),
+          content: content,
         });
       } finally {
         data.delete();

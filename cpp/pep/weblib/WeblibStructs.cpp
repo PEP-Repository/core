@@ -74,10 +74,11 @@ BINDINGS
   FIELD(name)
 BINDINGS_END
 
+
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
   return RangeToCollection<decltype(partialMetadataView())>(
-    inner.mMetadata.extra()
+    inner->mMetadata.extra()
     | views::transform([](const auto& entry) {
       const auto& [key, value] = entry;
       std::optional<val> view;
@@ -91,33 +92,18 @@ std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataVi
 }
 
 std::string CellEntry::subjectLocalPseudonym() const {
-  assert(inner.mAccessGroupPseudonym && "mAccessGroupPseudonym not set");
-  return inner.mAccessGroupPseudonym->text();
+  assert(inner->mAccessGroupPseudonym && "mAccessGroupPseudonym not set");
+  return inner->mAccessGroupPseudonym->text();
 }
 
-const std::string& CellEntry::column() const { return inner.mColumn; }
-std::uint64_t CellEntry::fileSize() const { return inner.mFileSize; }
+const std::string& CellEntry::column() const { return inner->mColumn; }
+std::uint64_t CellEntry::fileSize() const { return inner->mFileSize; }
 
-std::unordered_map<std::string, val> CellData::metadataView() const {
-  using namespace std::ranges;
-  return RangeToCollection<decltype(metadataView())>(
-    inner.mMetadataDecrypted.extra()
-    | views::transform([](const auto& entry) {
-      const auto& [key, value] = entry;
-      std::span plaintext = pep::ConvertBytes<std::uint8_t>(value.plaintext());
-      return std::pair{key, val(typed_memory_view(plaintext.size(), plaintext.data()))};
-    })
-  );
-}
+CellData::CellData(const CellEntry* entry, val contentReadableStream)
+      : entry{entry}, contentReadableStream(std::move(contentReadableStream)) {}
 
 val CellData::content() const {
-  //TODO mContent probably should've been shared_ptr<string>s actually
-  return val(GetOptionalValue(inner.mContent,
-    [](const rxcpp::observable<std::string>& content) {
-    return CreateReadableStream(content.map([](std::string data) {
-      return Buffer(std::move(data));
-    }));
-  }));
+  return *contentReadableStream;
 }
 
 
@@ -129,8 +115,7 @@ EMSCRIPTEN_BINDINGS(CellEntry) {
     .function("partialMetadataView", &CellEntry::partialMetadataView)
   ;
   class_<CellData>("CellData")
-    .property("entry", FieldAsConst(&CellData::entry), return_value_policy::take_ownership{})
-    .function("metadataView", &CellData::metadataView)
-    .function("content", &CellData::content)
+    .property("entry", FieldAsConst(&CellData::entry), return_value_policy::reference(), nonnull<ret_val>())
+    .property("content", &CellData::content)
   ;
 }

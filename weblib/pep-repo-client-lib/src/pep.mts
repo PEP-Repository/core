@@ -100,16 +100,12 @@ export interface Buffer extends rawTypes.Buffer {
  * @warning This object must be deleted after use
  */
 export interface CellData extends rawTypes.CellData {
-  /**
-   * Get full decrypted cell metadata.
-   * The `Uint8Array`s have the same lifetime as the `CellData`.
-   */
-  metadataView(): Map<string, Uint8Array<SharedArrayBuffer>>;
+  readonly entry: CellEntry;
 
   /**
    * Get the cell content. The `Buffer` chunks concatenated form the whole content.
    */
-  content(): ReadableStream<Buffer>;
+  readonly content: ReadableStream<Buffer>;
 }
 
 type AuthenticationChannelMessage =

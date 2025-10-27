@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/async/EmscriptenValPtr.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
@@ -50,7 +51,7 @@ struct SubjectGroup {
 };
 
 struct CellEntry {
-  EnumerateResult inner;
+  std::shared_ptr<EnumerateResult> inner;
   std::shared_ptr<SignedTicket2> ticket;
 
   [[nodiscard]] std::string subjectLocalPseudonym() const;
@@ -60,10 +61,11 @@ struct CellEntry {
 };
 
 struct CellData {
-  RetrieveResult inner;
   const CellEntry* entry;
+  EmscriptenValPtr contentReadableStream;
 
-  [[nodiscard]] std::unordered_map<std::string, emscripten::val> metadataView() const;
+  CellData(const CellEntry* entry, emscripten::val contentReadableStream);
+
   [[nodiscard]] emscripten::val content() const;
 };
 
