@@ -6,6 +6,7 @@ add_executable(${PROJECT_NAME}Weblib
     WeblibStructs.cpp WeblibStructs.hpp
     EmscriptenBuffer.cpp EmscriptenBuffer.hpp
     ObservableStream.cpp ObservableStream.hpp
+    ObservableByteStream.cpp ObservableByteStream.hpp
     WeblibApiPromise.cpp WeblibApiPromise.hpp
 )
 find_package(nlohmann_json REQUIRED)

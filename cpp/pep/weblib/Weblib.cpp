@@ -10,6 +10,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
+#include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/ObservableStream.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
@@ -313,13 +314,13 @@ public:
                   .observe_on(observe_on_emscripten(emscripten_main_runtime_thread_id()))
                   .flat_map([pageBatches](const std::shared_ptr<std::vector<const CellEntry*>>& entries) {
 
-                    auto cellStreams = std::make_shared<std::vector<rxcpp::subjects::subject<val>>>(entries->size());
+                    auto cellStreams = std::make_shared<std::vector<rxcpp::subjects::subject<std::string>>>(entries->size());
 
                     std::vector<CellData> cellDatas;
                     cellDatas.reserve(entries->size());
                     for (std::size_t cellNum{}; cellNum < entries->size(); ++cellNum) {
                       cellDatas.emplace_back((*entries)[cellNum],
-                          CreateReadableStream((*cellStreams)[cellNum].get_observable()));
+                          CreateReadableByteStream((*cellStreams)[cellNum].get_observable(), 1 << 20 /*1 MiB*/));
                     }
 
                     pageBatches
@@ -331,8 +332,10 @@ public:
                             [cellStreams](RetrievePage page) noexcept {
                               auto stream = (*cellStreams)[page.fileIndex].get_subscriber();
                               if (!page.mContent.empty()) {
+                                //TODO remove commented code after benchmark
                                 //XXX `new` is workaround to avoid copy, see https://github.com/emscripten-core/emscripten/issues/25412
-                                stream.on_next(val(new Buffer(std::move(page.mContent)), allow_raw_pointers{}));
+                                // stream.on_next(val(new Buffer(std::move(page.mContent)), allow_raw_pointers{}));
+                                stream.on_next(std::move(page.mContent));
                               }
                               if (page.mLast) { stream.on_completed(); }
                             },

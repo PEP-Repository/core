@@ -89,19 +89,19 @@ listBtn.addEventListener('click', () => void (async () => {
   output.value = JSON.stringify(jsonEntries, null, '  ');
 })());
 retrieveBtn.addEventListener('click', () => void (async () => {
-  const res = pep.retrieve(entries);
+  const res = pep.retrieve(entries.filter(e => e.fileSize < 1024));
   const jsonEntries = [];
-
   try {
     // @ts-ignore
     for await (/** @type {import("pep-repo-client").CellData} */ const data of res) {
       try {
+        const chunks = data.content;
         let content = '';
-        {
+        //TODO remove commented code after benchmark
+        /*{
           const decoder = new TextDecoder();
-          const chunks = data.content;
           try {
-            for await (/** @type {import("pep-repo-client").Buffer} */ const chunk of chunks) {
+            for await (/!** @type {import("pep-repo-client").Buffer} *!/ const chunk of chunks) {
               try {
                 content += decoder.decode(new Uint8Array(chunk.view()), {stream: true});
               } finally {
@@ -112,6 +112,10 @@ retrieveBtn.addEventListener('click', () => void (async () => {
             await deleteObjectsAsync(chunks);
           }
           content += decoder.decode();
+        }*/
+
+        for await (const chunk of chunks.pipeThrough(new TextDecoderStream())) {
+          content += chunk;
         }
 
         jsonEntries.push({
@@ -119,6 +123,7 @@ retrieveBtn.addEventListener('click', () => void (async () => {
           column: data.entry.column,
           content: content,
         });
+
       } finally {
         data.delete();
       }

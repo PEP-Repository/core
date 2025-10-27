@@ -103,9 +103,9 @@ export interface CellData extends rawTypes.CellData {
   readonly entry: CellEntry;
 
   /**
-   * Get the cell content. The `Buffer` chunks concatenated form the whole content.
+   * Get the cell content. The chunks concatenated form the whole content.
    */
-  readonly content: ReadableStream<Buffer>;
+  readonly content: ReadableStream<Uint8Array<ArrayBuffer>>;
 }
 
 type AuthenticationChannelMessage =
