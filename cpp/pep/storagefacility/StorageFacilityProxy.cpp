@@ -16,8 +16,8 @@ rxcpp::observable<DataPayloadPage> StorageFacilityProxy::requestDataRead(DataRea
 
 rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(DataStoreRequest2 request, messaging::Tail<DataPayloadPage> pages) const {
   struct Context {
-    std::optional<uint64_t> file;
-    std::optional<uint64_t> page;
+    std::optional<decltype(DataPayloadPage::mIndex)> file;
+    std::optional<decltype(DataPayloadPage::mPageNumber)> page;
     XxHasher hasher = XxHasher(0);
   };
   auto ctx = std::make_shared<Context>();
