@@ -34,7 +34,7 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
         ctx->file = page.mIndex;
         ctx->page.reset();
       }
-      if (ctx->page.has_value() && *ctx->page >= page.mPageNumber) { // Processing a lower (or equal) page index than we did before
+      if (ctx->page.has_value() && *ctx->page + 1U != page.mPageNumber) { // Processing a page index that isn't the next one
         throw std::runtime_error("Data payload pages out of order for file " + std::to_string(*ctx->file) + ": can't process page " + std::to_string(page.mPageNumber) + " after having processed page " + std::to_string(*ctx->page));
       }
       ctx->page = page.mPageNumber;
