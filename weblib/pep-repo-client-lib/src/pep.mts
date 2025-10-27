@@ -267,7 +267,18 @@ export default class Pep {
   delete() {
     const client = this.#client;
     this.#client = null!; // Prevent usage
-    this.#wrapExec(() => client.delete());
+    this.#wrapExec(() => {
+      client.delete();
+      try {
+        this.#mod.exit();
+      } catch (ex) {
+        if (ex instanceof this.#mod.ExitStatus) {
+          console.error(ex);
+        } else {
+          throw ex;
+        }
+      }
+    });
   }
 
   onBusyChange(callback: ((busy: boolean) => void) | null) {

@@ -16,6 +16,7 @@
 
 #include <thread>
 
+#include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
@@ -368,6 +369,8 @@ public:
   }
 };
 
+void exitRuntime() { ::emscripten_force_exit(0); }
+
 EMSCRIPTEN_BINDINGS(weblib) {
   class_<Weblib>("Weblib")
       .smart_ptr_constructor("Weblib", &Weblib::Create<>)
@@ -391,6 +394,8 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .field("dateOfBirth", &ParticipantPersonalia::dateOfBirth)
   ;
   register_optional<EnrolledUser>();
+
+  function("exit", &exitRuntime);
 }
 }
 
@@ -410,4 +415,6 @@ int main() {
     std::abort();
   });
   Logging::Initialize({std::make_shared<ConsoleLogging>(debug /*TODO*/)});
+
+  ::emscripten_exit_with_live_runtime();
 }
