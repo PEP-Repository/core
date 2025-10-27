@@ -462,7 +462,7 @@ deploy-compose:
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH) && ($DEPLOYMENT_TYPE_PROD == "compose" || $DEPLOYMENT_TYPE_PROD == "both")'
   tags: [docker-small]
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
-  dependencies: []
+  dependencies: [] # prevents artifacts from `jobs in earlier stages` from being downloaded: see https://docs.gitlab.com/ci/yaml/#artifacts
   script:
     - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_DEPLOYING_JSON_FILE" docker-compose "$PROJECT_IMAGE_COMPOSE" redeploy
 
