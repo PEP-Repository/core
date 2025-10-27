@@ -495,7 +495,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     cgFilter.columnGroups = std::vector<std::string>{query.mColumnGroupFilter};
   }
 
-  auto timestamp = query.mAt ? *query.mAt : TimeNow();
+  auto timestamp = query.mAt ? *query.mAt : TimeNow(); // Not using optional<>.value_or to prevent TimeNow() from being evaluated
   // All columns in the system have a explicit relation to columnGroup '*', so they will be included here.
   auto foundColumnGroupColumns = mStorage->getColumnGroupColumns(timestamp, cgcFilter);
 
