@@ -146,81 +146,102 @@ CoreClient::retrieveData2(
   std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "retrieveData";
 
-  struct fileContext {
-    FileKey fileKey;
-    std::uint64_t bytesWritten = 0;
-    std::uint32_t nextPage = 0;
-  };
-  struct batchContext {
-    std::size_t latestIndex = 0;
-    std::vector<fileContext> files;
-  };
-
+  using namespace std::ranges;
   return batchedSubjects
       .map([this, ticket](const rxcpp::observable<FileKey>& batch) -> rxcpp::observable<RetrievePage> {
         return batch.op(RxToVector())
             .flat_map([this, ticket](const std::shared_ptr<std::vector<FileKey>>& batch) -> rxcpp::observable<RetrievePage> {
+              struct fileContext {
+                FileKey fileKey;
+                std::uint64_t bytesWritten = 0;
+                std::uint32_t nextPage = 0;
+              };
+              struct batchContext {
+                std::size_t latestIndex = 0;
+                std::vector<fileContext> files;
+              };
+
               auto ctx = std::make_shared<batchContext>();
               ctx->files = RangeToCollection<std::vector<fileContext>>(std::move(*batch));
-              // Request the file contents from the storage facility
-              return clientStorageFacility->sendRequest(MakeSharedCopy(
-                      Serialization::ToString(sign(DataReadRequest2{
-                        .mTicket = *ticket,
-                        .mIds = RangeToVector(ctx->files
-                            | std::views::transform([](const fileContext& file) { return file.fileKey.entry->mId; })),
-                      }))))
-                  .map([](std::string rawPage) -> std::optional<DataPayloadPage> {
-                    // Deserialize page
-                    return Serialization::FromString<DataPayloadPage>(std::move(rawPage));
+
+              auto emptyFiles = ctx->files
+                  | views::filter([](const fileContext& file) {
+                    return file.fileKey.entry->mFileSize == 0;
                   })
-                  .concat(rxcpp::observable<>::just(std::optional<DataPayloadPage>())) // Add nullopt sentinel
-                  .map([ctx](const std::optional<DataPayloadPage>& page) -> std::optional<RetrievePage> {
-                    const auto index = page ? page->mIndex : ctx->files.size();
-                    if (page && index >= ctx->files.size()) {
-                      throw std::runtime_error(std::format("Received too large file index: {} >= {}",
-                          index, ctx->files.size()));
-                    }
-
-                    // Check previous file(s)
-                    for (auto betweenIdx = ctx->latestIndex; betweenIdx < index; ++betweenIdx) {
-                      const fileContext& prevFileCtx = ctx->files[betweenIdx];
-                      const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
-                      if (prevFileCtx.bytesWritten < prevEntry.mFileSize) {
-                        throw std::runtime_error(std::format("Received file {} smaller than signaled file size: {} < {}",
-                            betweenIdx, prevFileCtx.bytesWritten, prevEntry.mFileSize));
-                      }
-                    }
-                    ctx->latestIndex = index;
-                    if (!page) { return {}; }
-
-                    if (index < ctx->latestIndex) {
-                      throw std::runtime_error(std::format("Received out-of-order file: expected {}(+1) but got {}",
-                          ctx->latestIndex, index));
-                    }
-
-                    fileContext& file = ctx->files[index];
-                    if (file.nextPage != page->mPageNumber) {
-                      throw std::runtime_error(std::format("Received out-of-order page for file {}: expected {} but got {}",
-                          file.nextPage, page->mPageNumber, index));
-                    }
-                    ++file.nextPage;
-
-                    const EnumerateResult& entry = *file.fileKey.entry;
-                    RetrievePage retrievedPage{
+                  | views::transform([](const fileContext& file) {
+                    return RetrievePage{
                       .fileIndex = file.fileKey.fileIndex,
                       .entry = file.fileKey.entry,
-                      .mContent = page->decrypt(file.fileKey.symmetricKey, entry.mMetadata),
+                      .mContent = {},
+                      .mLast = true,
                     };
-                    // Omit empty pages
-                    if (retrievedPage.mContent.empty()) { return {}; }
-                    file.bytesWritten += retrievedPage.mContent.size();
-                    if (file.bytesWritten > entry.mFileSize) {
-                      throw std::runtime_error(std::format("Received file {} larger than signaled file size: {}+ > {}",
-                          index, file.bytesWritten, entry.mFileSize));
-                    }
-                    return retrievedPage;
-                  })
-                  .op(RxFilterNullopt());
+                  });
+              return rxcpp::observable<>::iterate(RangeToVector(emptyFiles))
+                  .concat(
+                      // Request the file contents from the storage facility
+                      clientStorageFacility->sendRequest(MakeSharedCopy(
+                          Serialization::ToString(sign(DataReadRequest2{
+                            .mTicket = *ticket,
+                            .mIds = RangeToVector(ctx->files
+                                | views::transform([](const fileContext& file) { return file.fileKey.entry->mId; })),
+                          }))))
+                      .map([](std::string rawPage) -> std::optional<DataPayloadPage> {
+                        // Deserialize page
+                        return Serialization::FromString<DataPayloadPage>(std::move(rawPage));
+                      })
+                      .concat(rxcpp::observable<>::just(std::optional<DataPayloadPage>())) // Add nullopt sentinel
+                      .map([ctx](const std::optional<DataPayloadPage>& page) -> std::optional<RetrievePage> {
+                        const auto index = page ? page->mIndex : ctx->files.size();
+                        if (page && index >= ctx->files.size()) {
+                          throw std::runtime_error(std::format("Received too large file index: {} >= {}",
+                              index, ctx->files.size()));
+                        }
+
+                        // Check previous file(s)
+                        for (auto betweenIdx = ctx->latestIndex; betweenIdx < index; ++betweenIdx) {
+                          const fileContext& prevFileCtx = ctx->files[betweenIdx];
+                          const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
+                          if (prevFileCtx.bytesWritten < prevEntry.mFileSize) {
+                            throw std::runtime_error(std::format(
+                                "Received file {} smaller than signaled file size: {} < {}",
+                                betweenIdx, prevFileCtx.bytesWritten, prevEntry.mFileSize));
+                          }
+                        }
+                        ctx->latestIndex = index;
+                        if (!page) { return {}; }
+
+                        if (index < ctx->latestIndex) {
+                          throw std::runtime_error(std::format("Received out-of-order file: expected {}+ but got {}",
+                              ctx->latestIndex, index));
+                        }
+
+                        fileContext& file = ctx->files[index];
+                        if (file.nextPage != page->mPageNumber) {
+                          throw std::runtime_error(std::format(
+                              "Received out-of-order page for file {}: expected {} but got {}",
+                              file.nextPage, page->mPageNumber, index));
+                        }
+                        ++file.nextPage;
+
+                        const EnumerateResult& entry = *file.fileKey.entry;
+                        RetrievePage retrievedPage{
+                          .fileIndex = file.fileKey.fileIndex,
+                          .entry = file.fileKey.entry,
+                          .mContent = page->decrypt(file.fileKey.symmetricKey, entry.mMetadata),
+                        };
+                        // Omit empty pages
+                        if (retrievedPage.mContent.empty()) { return {}; }
+                        file.bytesWritten += retrievedPage.mContent.size();
+                        if (file.bytesWritten > entry.mFileSize) {
+                          throw std::runtime_error(std::format(
+                              "Received file {} larger than signaled file size: {}+ > {}",
+                              index, file.bytesWritten, entry.mFileSize));
+                        }
+                        retrievedPage.mLast = file.bytesWritten == entry.mFileSize;
+                        return retrievedPage;
+                      })
+                      .op(RxFilterNullopt())
+                      );
             });
       });
 }

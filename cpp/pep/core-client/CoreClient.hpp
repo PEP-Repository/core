@@ -105,6 +105,10 @@ struct RetrievePage {
 
   /// A piece of the content of the file
   std::string mContent;
+
+  /// Is this the last page?
+  /// Remember that empty files will not be included
+  bool mLast{};
 };
 
 // Represents a file retrieved using enumerateAndRetrieveData2.
@@ -521,7 +525,7 @@ class CoreClient : boost::noncopyable {
     std::shared_ptr<SignedTicket2> ticket);
 
   /// Retrieve cell contents.
-  /// \remark Verifies correct sizes. Returns files & pages in-order. Empty files & pages are omitted.
+  /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
   /// \remark Assumes \p batchedSubjects is properly batched (by \c getKeys)
   rxcpp::observable<rxcpp::observable<RetrievePage>>
   retrieveData2(

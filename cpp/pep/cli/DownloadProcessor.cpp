@@ -247,7 +247,6 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
           });
       })
       .op(RxBeforeCompletion([self, ctx, retrieveProgress]() {
-        self->processEmptyFiles(retrieveProgress, ctx);
         retrieveProgress->advanceToCompletion();
       }));
 }
@@ -267,21 +266,6 @@ void DownloadProcessor::processDataChunk(std::shared_ptr<Progress> retrieveProgr
 
   auto self = SharedFrom(*this);
   stream->write(result.mContent, self->mGlobalConfig);
-}
-
-void DownloadProcessor::processEmptyFiles(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx) {
-  for (size_t i = 0U; i < ctx->streams.size(); ++i) {
-    if (ctx->streams[i] == nullptr) {
-      // We've received no content (chunk) for this download, so it must be an empty file: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2337
-      auto& descriptor = ctx->descriptors.at(i);
-      assert(descriptor != nullptr);
-      ctx->streams[i] = this->openStorageStream(std::move(*descriptor), 0U, *retrieveProgress);
-      descriptor.reset();
-      ctx->streams[i]->commit(mGlobalConfig);
-    } else {
-      assert(ctx->descriptors.at(i) == nullptr);
-    }
-  }
 }
 
 std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openStorageStream(RecordDescriptor descriptor, size_t fileSize, Progress& progress) {
