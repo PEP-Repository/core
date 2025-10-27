@@ -2,6 +2,7 @@
 
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/Exceptions.hpp>
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
@@ -24,14 +25,14 @@ public:
   explicit StreamSource(rxcpp::observable<val> data) : data_(std::move(data)) {}
 
   void deleteSelf() {
-    self.delete_("cancel"); // Prevent calling into freed object
+    self.set("cancel", val::undefined()); // Prevent calling into freed object
     self.call<void>("delete"); // Deletes `this`, we must not access members afterwards
-    LOG(LOG_TAG, debug) << "deleted self";
+    LOG(LOG_TAG, debug) << this << " deleted self";
   }
 
   /// \param controller https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController
   void start(const val& controller) {
-    LOG(LOG_TAG, debug) << "start() called";
+    LOG(LOG_TAG, debug) << this << " start() called";
     assert(!subscription_.is_subscribed() && "Do not call start twice");
     controller_ = controller;
     subscription_ = data_
@@ -42,7 +43,7 @@ public:
         },
         // on error
         [this](std::exception_ptr ex) noexcept {
-          LOG(LOG_TAG, debug) << "on_error";
+          LOG(LOG_TAG, debug) << this << " on_error: " << GetExceptionMessage(ex);
           try {
             std::rethrow_exception(std::move(ex));
           } catch (...) {
@@ -52,14 +53,14 @@ public:
         },
         // on completed
         [this]() noexcept {
-          LOG(LOG_TAG, debug) << "on_completed";
+          LOG(LOG_TAG, debug) << this << " on_completed";
           controller_.call<void>("close");
           deleteSelf();
         });
   }
 
   void cancel(val reason) {
-    LOG(LOG_TAG, debug) << "cancel() called, reason: " << val::global("String")(std::move(reason)).as<std::string>();
+    LOG(LOG_TAG, debug) << this << " cancel() called, reason: " << val::global("String")(std::move(reason)).as<std::string>();
     subscription_.unsubscribe();
     deleteSelf();
   }
@@ -77,5 +78,6 @@ val pep::CreateReadableStream(rxcpp::observable<val> data) {
   // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
   val underlyingSource(StreamSource(std::move(data)));
   underlyingSource.as<StreamSource*>(allow_raw_pointers{})->self = underlyingSource;
-  return val::global("ReadableStream").new_(std::move(underlyingSource));
+  // We need withIndirectCancel, because the ReadableStream will call the functions originally present on the object
+  return val::global("ReadableStream").new_(val::module_property("withIndirectCancel")(std::move(underlyingSource)));
 }

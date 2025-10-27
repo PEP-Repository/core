@@ -27,6 +27,7 @@ set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
 set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
     SUFFIX .mjs
     PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG ON
+    LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
 #TODO limit -sENVIRONMENT?
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
@@ -49,6 +50,8 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
     # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
     "$<$<CONFIG:Debug>:-gseparate-dwarf;-sRUNTIME_DEBUG>"
+
+    "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
 
 # tsc isn't installed by default as it's in EMSDK devDependencies but we need it for --emit-tsd,
