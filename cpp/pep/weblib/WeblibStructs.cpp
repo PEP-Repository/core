@@ -6,6 +6,7 @@
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableStream.hpp>
 
+#include <boost/algorithm/hex.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
 #include <emscripten/bind.h>
@@ -91,6 +92,10 @@ std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataVi
   );
 }
 
+std::string CellEntry::id() const {
+  return boost::algorithm::hex(inner->mId);
+}
+
 std::string CellEntry::subjectLocalPseudonym() const {
   assert(inner->mAccessGroupPseudonym && "mAccessGroupPseudonym not set");
   return inner->mAccessGroupPseudonym->text();
@@ -109,6 +114,7 @@ val CellData::content() const {
 
 EMSCRIPTEN_BINDINGS(CellEntry) {
   class_<CellEntry>("CellEntry")
+    .property("id", &CellEntry::id)
     .property("subjectLocalPseudonym", &CellEntry::subjectLocalPseudonym)
     .property("column", &CellEntry::column)
     .property("fileSize", &CellEntry::fileSize)

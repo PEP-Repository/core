@@ -54,6 +54,7 @@ struct CellEntry {
   std::shared_ptr<EnumerateResult> inner;
   std::shared_ptr<SignedTicket2> ticket;
 
+  [[nodiscard]] std::string id() const;
   [[nodiscard]] std::string subjectLocalPseudonym() const;
   [[nodiscard]] const std::string& column() const;
   [[nodiscard]] std::uint64_t fileSize() const;
