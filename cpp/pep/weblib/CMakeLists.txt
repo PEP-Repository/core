@@ -60,7 +60,7 @@ find_program(NPM_PROGRAM npm)
 add_custom_command(
     TARGET ${PROJECT_NAME}Weblib PRE_BUILD
     COMMENT "Make sure typescript is installed"
-    COMMAND ${NPM_PROGRAM} install --omit=dev --save-prod typescript
+    COMMAND ${NPM_PROGRAM} install --no-audit --omit=dev --save-prod typescript
     WORKING_DIRECTORY "$ENV{EMSDK}/upstream/emscripten/"
     VERBATIM
 )
