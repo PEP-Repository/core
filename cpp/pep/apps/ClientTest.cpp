@@ -279,18 +279,16 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
 
     bool result = IsSemanticVersionEquivalent(*ownBinarySemver, server.version.binary.getSemver());
 
-    if (ownConfigSemver && server.version.config.has_value()){
+    if (ownConfigSemver && server.version.config.has_value()) {
       std::cout << server.name
-       << " Config version " << server.version.config->getSummary()
-       << std::endl;
-      if (!IsSemanticVersionEquivalent(*ownConfigSemver, server.version.config->getSemver())){
+        << " Config version " << server.version.config->getSummary()
+        << std::endl;
+      if (!IsSemanticVersionEquivalent(*ownConfigSemver, server.version.config->getSemver())) {
         result = false;
       }
     }
     return result;
     });
-}
-
 }
 
 PEP_DEFINE_MAIN_FUNCTION(ClientTestApplication)
