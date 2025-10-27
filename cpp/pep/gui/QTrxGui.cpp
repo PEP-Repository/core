@@ -23,7 +23,7 @@ void postDelayedToMainThread(std::chrono::milliseconds when, std::function<void(
     delete timer;
     fun();
   });
-  timer->start(static_cast<int>(when.count()));
+  timer->start(when);
 }
 
 struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
@@ -48,7 +48,7 @@ struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
     }
 
     void schedule(clock_type::time_point when, const rxcpp::schedulers::schedulable& scbl) const override {
-      postDelayedToMainThread(std::chrono::duration_cast<std::chrono::milliseconds>(when - clock_type::now()), [scbl] {
+      postDelayedToMainThread(duration_cast<std::chrono::milliseconds>(when - clock_type::now()), [scbl] {
         if (scbl.is_subscribed()) {
           // allow recursion
           rxcpp::schedulers::recursion r(true);

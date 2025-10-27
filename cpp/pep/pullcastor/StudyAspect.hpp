@@ -2,6 +2,8 @@
 
 #include <pep/structure/ShortPseudonyms.hpp>
 
+#include <rxcpp/rx-lite.hpp>
+
 namespace pep {
 namespace castor {
 

@@ -4,8 +4,12 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/registrationserver/RegistrationServer.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
 #include <pep/async/RxEnsureProgress.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
 #include <pep/auth/FacilityType.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
@@ -20,6 +24,7 @@
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
+#include <rxcpp/operators/rx-take.hpp>
 
 #include <iostream>
 
@@ -372,7 +377,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       if (rebuild) {
         LOG(LOG_TAG, info) << "Initializing shadow storage with short pseudonyms retrieved from Storage Facility";
       }
-      return RxIterate(pps);
+      return rxcpp::observable<>::iterate(std::move(*pps));
     })
       .flat_map([this, rebuild, count](const PseudonymsByPp::value_type& ppAndPseudonyms) { // Process each participant
       const auto& pseudonyms = ppAndPseudonyms.second;

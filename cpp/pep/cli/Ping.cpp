@@ -48,10 +48,11 @@ private:
 
   void handleResponse(const pep::SignedPingResponse& response) const override {
     if (mPrintDrift) {
-      std::cout 
-        << pep::Timestamp().getTime()
-             - response.openWithoutCheckingSignature().mTimestamp.getTime()
-        << std::endl;
+      std::cout
+          << duration_cast<std::chrono::milliseconds>(
+              pep::TimeNow() - response.openWithoutCheckingSignature().mTimestamp
+              ).count()
+          << std::endl;
       return;
     }
 
@@ -71,15 +72,15 @@ private:
   }
 
 public:
-  SigningServerPinger(bool printCertificateChain, bool printDrift) 
-    : TypedServerPinger<TClient, pep::SignedPingResponse>(SendRequestMethod), 
+  SigningServerPinger(bool printCertificateChain, bool printDrift)
+    : TypedServerPinger<TClient, pep::SignedPingResponse>(SendRequestMethod),
       mPrintCertificateChain(printCertificateChain),
       mPrintDrift(printDrift) {}
 };
 
 class KeyServerPinger : public TypedServerPinger<pep::Client, pep::PingResponse> {
 public:
-  KeyServerPinger(bool printCertificateChain, bool printDrift) 
+  KeyServerPinger(bool printCertificateChain, bool printDrift)
       : TypedServerPinger<pep::Client, pep::PingResponse>(&pep::Client::pingKeyServer) {
     if (printCertificateChain) {
       throw std::runtime_error("This server does not produce a certificate chain to print");

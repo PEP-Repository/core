@@ -1,7 +1,15 @@
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxConcatenateVectors.hpp>
+#include <pep/async/RxIndexed.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
+
+#include <rxcpp/operators/rx-buffer_count.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-group_by.hpp>
+#include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 
@@ -76,7 +84,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
     return rxcpp::observable<>::empty<EnumerateResult>();
   }
 
-  auto batches = std::make_shared<std::vector<std::vector<std::string>>>();
+  std::vector<std::vector<std::string>> batches;
   for (size_t i = 0U; i < ids.size(); i += DATA_RETRIEVAL_BATCH_SIZE) {
     auto batchSize = std::min(ids.size() - i, DATA_RETRIEVAL_BATCH_SIZE);
 
@@ -86,11 +94,11 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
     static_assert(DATA_RETRIEVAL_BATCH_SIZE <= static_cast<size_t>(std::numeric_limits<ptrdiff_t>::max())); // Ensure that we don't lose data in static_cast. We don't need a run time "assert(batchSize <= ...)" because batchSize <= DATA_RETRIEVAL_BATCH_SIZE
     auto end = begin + static_cast<ptrdiff_t>(batchSize);
 
-    batches->emplace_back(std::vector<std::string>(begin, end));
+    batches.emplace_back(std::vector<std::string>(begin, end));
   }
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
-  return RxIterate(batches)
+  return rxcpp::observable<>::iterate(std::move(batches))
     .flat_map([this, ticket, pseudonyms](std::vector<std::string> batch) {
     auto entryCount = batch.size();
     MetadataReadRequest2 readRequest;
@@ -239,34 +247,36 @@ CoreClient::getHistory2(SignedTicket2 ticket,
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> agPseuds;
       std::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
-        HistoryResult result;
-        result.mColumn = ticket.mColumns[entry.mColumnIndex];
-        result.mLocalPseudonymsIndex = entry.mPseudonymIndex;
-        result.mTimestamp = entry.mTimestamp;
-        if (!entry.mId.empty()) {
-          result.mId = entry.mId;
-        }
-
         auto ilp = localPseuds.find(entry.mPseudonymIndex);
         if (ilp == localPseuds.cend()) {
           auto emplaced = localPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ticket.mPseudonyms[entry.mPseudonymIndex])));
           assert(emplaced.second);
           ilp = emplaced.first;
         }
-        result.mLocalPseudonyms = ilp->second;
+        auto localPseudonyms = ilp->second;
 
-        if (result.mLocalPseudonyms->mAccessGroup) {
+        std::shared_ptr<LocalPseudonym> accessGroupPseudonym;
+        if (localPseudonyms->mAccessGroup) {
           auto iag = agPseuds.find(entry.mPseudonymIndex);
           if (iag == agPseuds.cend()) {
-            auto ag = result.mLocalPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
+            auto ag = localPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
             auto emplaced = agPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ag)));
             assert(emplaced.second);
             iag = emplaced.first;
           }
-          result.mAccessGroupPseudonym = iag->second;
+          accessGroupPseudonym = iag->second;
         }
 
-        return result;
+        return HistoryResult{
+          DataCellResult{
+            .mLocalPseudonyms = localPseudonyms,
+            .mLocalPseudonymsIndex = entry.mPseudonymIndex,
+            .mColumn = ticket.mColumns[entry.mColumnIndex],
+            .mAccessGroupPseudonym = accessGroupPseudonym,
+          },
+          entry.mTimestamp,
+          !entry.mId.empty() ? std::optional{entry.mId} : std::nullopt,
+        };
         });
       return rxcpp::observable<>::just(results);
     });

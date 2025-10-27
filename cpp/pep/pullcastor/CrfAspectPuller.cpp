@@ -1,6 +1,13 @@
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxGroupToVectors.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxSharedPtrCast.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/castor/StudyDataPoint.hpp>
 #include <pep/pullcastor/CrfAspectPuller.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
 
 namespace pep {
 namespace castor {

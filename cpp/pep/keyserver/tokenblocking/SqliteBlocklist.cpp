@@ -6,6 +6,8 @@
 #include <pep/database/Storage.hpp>
 #include <type_traits>
 
+using namespace std::chrono;
+
 namespace pep::tokenBlocking {
 namespace {
 
@@ -15,10 +17,10 @@ struct FlatEntry final {
   int64_t id = 0;
   std::string targetSubject;
   std::string targetUserGroup;
-  int64_t targetIssueDateTime = 0;
+  database::UnixMillis targetIssueDateTime = 0;
   std::string metadataNote;
   std::string metadataIssuer;
-  int64_t metaCreationDateTime = 0;
+  database::UnixMillis metaCreationDateTime = 0;
 };
 
 /// Consumes a FlatEntry to build a Blocklist::Entry
@@ -28,11 +30,11 @@ Blocklist::Entry Inflate(FlatEntry&& flat) {
       .target =
           {.subject = std::move(flat.targetSubject),
            .userGroup = std::move(flat.targetUserGroup),
-           .issueDateTime = Timestamp{flat.targetIssueDateTime}},
+           .issueDateTime = Timestamp(milliseconds{flat.targetIssueDateTime})},
       .metadata = {
           .note = std::move(flat.metadataNote),
           .issuer = std::move(flat.metadataIssuer),
-          .creationDateTime = Timestamp{flat.metaCreationDateTime}}};
+          .creationDateTime = Timestamp(milliseconds{flat.metaCreationDateTime})}};
 }
 
 /// Consumes an optional FlatEntry to build an optional Blocklist::Entry
@@ -60,7 +62,6 @@ auto MakeStorage(const std::filesystem::path& dbFile) {
           make_column("metadataNote", &FlatEntry::metadataNote),
           make_column("metadataIssuer", &FlatEntry::metadataIssuer),
           make_column("creationDateTime", &FlatEntry::metaCreationDateTime)));
-  storage.sync_schema();
   return storage;
 }
 
@@ -76,6 +77,7 @@ struct SqliteBlocklist::Data final : database::Storage<MakeStorage> {
   explicit Data(const std::filesystem::path& path)
     : Storage(path.string()) {
     assert(IsPlainPath(path) || !isPersistent); // Rule out other non-plain paths
+    syncSchema();
   }
 };
 
@@ -108,8 +110,8 @@ std::vector<Blocklist::Entry> SqliteBlocklist::allEntries() const {
 
 std::vector<Blocklist::Entry> SqliteBlocklist::allEntriesMatching(const TokenIdentifier& t) const {
   return InflateAll(mData->raw.get_all<FlatEntry>(where(
-      c(&FlatEntry::targetSubject) == t.subject and c(&FlatEntry::targetUserGroup) == t.userGroup
-      and c(&FlatEntry::targetIssueDateTime) >= t.issueDateTime.getTime())));
+      c(&FlatEntry::targetSubject) == t.subject && c(&FlatEntry::targetUserGroup) == t.userGroup
+      && c(&FlatEntry::targetIssueDateTime) >= TicksSinceEpoch<milliseconds>(t.issueDateTime))));
 }
 
 std::optional<Blocklist::Entry> SqliteBlocklist::entryById(int64_t id) const {
@@ -121,10 +123,10 @@ int64_t SqliteBlocklist::add(const TokenIdentifier& t, const Entry::Metadata& m)
       .id = 0, // overwritten in storage
       .targetSubject = t.subject,
       .targetUserGroup = t.userGroup,
-      .targetIssueDateTime = t.issueDateTime.getTime(),
+      .targetIssueDateTime = TicksSinceEpoch<milliseconds>(t.issueDateTime),
       .metadataNote = m.note,
       .metadataIssuer = m.issuer,
-      .metaCreationDateTime = m.creationDateTime.getTime()});
+      .metaCreationDateTime = TicksSinceEpoch<milliseconds>(m.creationDateTime)});
 }
 
 std::optional<Blocklist::Entry> SqliteBlocklist::removeById(int64_t id) {

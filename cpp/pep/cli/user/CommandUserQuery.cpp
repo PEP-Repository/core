@@ -3,10 +3,13 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
+#include <pep/utils/MiscUtil.hpp>
+
 #include <rxcpp/operators/rx-map.hpp>
 
 namespace {
 
+using namespace std::chrono;
 using namespace pep::cli;
 namespace so = pep::structuredOutput;
 
@@ -26,8 +29,8 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
              .value(pep::commandline::Value<std::string>()
                         .allow(std::vector<std::string>({"yaml", "json"}))
                         .defaultsTo("yaml", "yaml"))
-       + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC)")
-             .value(pep::commandline::Value<int64_t>().defaultsTo(pep::Timestamp::Max().getTime(), "most recent"))
+       + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
+             .value(pep::commandline::Value<milliseconds::rep>())
        + pep::commandline::Parameter("group", "Match these groups")
              .value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
        + pep::commandline::Parameter("user", "Match these users")
@@ -70,7 +73,9 @@ so::DisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::comman
 
 pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandline::NamedValues& values) {
   return {
-      .mAt = pep::Timestamp(values.get<int64_t>("at")),
+      .mAt = GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
+        return Timestamp(milliseconds{ms});
+      }),
       .mGroupFilter = values.get<std::string>("group"),
       .mUserFilter = values.get<std::string>("user"),
   };

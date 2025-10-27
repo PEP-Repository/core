@@ -4,7 +4,6 @@
 #include <rxcpp/operators/rx-ignore_elements.hpp>
 
 #include <pep/utils/Exceptions.hpp>
-#include <pep/async/RxIterate.hpp>
 #include <pep/utils/Shared.hpp>
 
 namespace {
@@ -69,11 +68,8 @@ void TestIterationNumberOfCopies(const std::function<rxcpp::observable<TestConta
 
 TEST(RxIterate, NumberOfCopies)
 {
-  // Native rxcpp iterate creates multiple copies, causing it to fail our test function...
-  // TestIterationNumberOfCopies([](const TestContainer& container) {return rxcpp::observable<>::iterate(container); });
-  
-  // ... but our RxIterate function doesn't create any copies, iterating directly over the shared_ptr<container> that we provide
-  TestIterationNumberOfCopies([](const TestContainer& container) {return pep::RxIterate(pep::MakeSharedCopy(container)); });
+  // Check that rxcpp::observable<>::iterate does not copy (it did in the past)
+  TestIterationNumberOfCopies([](const TestContainer& container) {return rxcpp::observable<>::iterate(container); });
 }
 
 }

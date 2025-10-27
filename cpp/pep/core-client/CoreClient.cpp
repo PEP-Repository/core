@@ -2,8 +2,8 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxCache.hpp>
-#include <pep/async/RxIterate.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
@@ -20,7 +20,6 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/Platform.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -116,7 +115,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
     });
 
   auto results = std::make_shared<std::map<size_t, PolymorphicPseudonym>>(); // The entries that we'll (fill and) return
-  auto entries = std::make_shared<std::vector<rxcpp::observable<std::pair<size_t, PolymorphicPseudonym>>>>(); // RX pipelines that'll produce index+PP pairs
+  std::vector<rxcpp::observable<std::pair<size_t, PolymorphicPseudonym>>> entries; // RX pipelines that'll produce index+PP pairs
 
   // Iterate over requested idsAndOrPps
   for (size_t i = 0U; i < idsAndOrPps.size(); ++i) {
@@ -126,7 +125,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       assert(emplaced);
     }
     else if (participantIdOrPP.size() == LocalPseudonym::TextLength()) { // This is a local pseudonym: look it up in the (RX-provided) full set of local pseudonyms
-      entries->emplace_back(ppsByLp->observe()
+      entries.emplace_back(ppsByLp->observe()
         .map([i, participantIdOrPP](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> ppsByLp) {
           auto position = ppsByLp->find(participantIdOrPP);
           if (position == ppsByLp->cend()) {
@@ -136,7 +135,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
           }));
     }
     else { // We need the user pseudonym format to determine what type of ID we're dealing with
-      entries->emplace_back(userPseudFormat->observe()
+      entries.emplace_back(userPseudFormat->observe()
         .flat_map([this, i, participantIdOrPP, ppsByLp](const UserPseudonymFormat& userPseudFormat) -> rxcpp::observable<std::pair<size_t, PolymorphicPseudonym>> {
           if (userPseudFormat.matches(participantIdOrPP)) { // This is a participant alias (aka user pseudonym): look it up in the (RX-provided) full set of local pseudonyms
             auto pseudonymStart = userPseudFormat.stripPrefix(participantIdOrPP);
@@ -160,7 +159,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
   }
 
   // Produce index+PP pairs for idsAndOrPps that must be parsed using RX
-  return RxIterate(entries)
+  return rxcpp::observable<>::iterate(std::move(entries))
     .flat_map([](rxcpp::observable<std::pair<size_t, PolymorphicPseudonym>> entry) { return entry.op(RxGetOne("parsed polymorphic pseudonym")); })
     .reduce(results, [](std::shared_ptr<std::map<size_t, PolymorphicPseudonym>> results, const auto& pair) { // Add those RX-provided index+PP pairs to our "results" map, filling in the blanks
     [[maybe_unused]] auto emplaced = results->emplace(pair.first, pair.second).second;

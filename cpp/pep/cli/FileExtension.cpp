@@ -4,7 +4,10 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/async/RxCache.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxConcatenateVectors.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxToSet.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 
@@ -140,7 +143,7 @@ protected:
 
   static rxcpp::observable<std::shared_ptr<ColumnExtensions>> GetGlobalConfigurationColumnExtensions(std::shared_ptr<pep::CoreClient> client) {
     return client->getGlobalConfiguration()
-      .op(pep::RxGetOne("global configuration"))
+      .op(pep::RxGetOne())
       .map([](std::shared_ptr<pep::GlobalConfiguration> config) {
       auto result = std::make_shared<ColumnExtensions>();
       for (const auto& sp : config->getShortPseudonyms()) {
@@ -370,14 +373,14 @@ protected:
               double completed = static_cast<double>(mColumnsSeen) / static_cast<double>(mTotalColumns);
               assert(completed >= 0.0);
               assert(completed <= 1.0);
-              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *mStartTime).count();
-              double total = elapsed / completed;
-              double remaining = total - elapsed;
+              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *mStartTime);
+              auto total = elapsed / completed;
+              auto remaining = total - elapsed;
 
               auto flags = std::cout.flags();
               PEP_DEFER(std::cout.flags(flags));
               std::cout << std::setprecision(1) << std::fixed << (completed * 100) << "% done"
-                << "; approximately " << pep::chrono::ToString(std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(remaining))) << " remaining"
+                << "; approximately " << pep::chrono::ToString(remaining) << " remaining"
                 << std::endl;
             }
             else {

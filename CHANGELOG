@@ -18,6 +18,8 @@ MANUAL CHANGES REQUIRED:
 - #2682: For all environments (except review) the conf-available directory needs to be renamed to conf-enabled. This change should already be in the master branch of all project repo's.
   Make sure that these changes are merged forward, when deploying the release.
 
+- ops#367: Migrate master branch to main branch for all project config repo's.
+
 ---------------
 
 Past changes, do not edit (except by person doing release):

@@ -4,7 +4,9 @@
 #include <pep/application/Application.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -15,6 +17,7 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <filesystem>
 
@@ -281,8 +284,8 @@ private:
             std::unordered_set<std::string> grouped;
           };
 
-          process = client->amaQuery(pep::AmaQuery())
-            .op(pep::RxGetOne("AMA query response"))
+          process = client->amaQuery(pep::AmaQuery{})
+            .op(pep::RxGetOne())
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();
             for (const auto& column : response.mColumns) {

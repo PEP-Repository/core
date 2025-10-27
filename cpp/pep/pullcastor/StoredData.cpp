@@ -1,6 +1,11 @@
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxDistinct.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxSharedPtrCast.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/pullcastor/StoredData.hpp>
+
+#include <rxcpp/operators/rx-filter.hpp>
 
 namespace pep {
 namespace castor {

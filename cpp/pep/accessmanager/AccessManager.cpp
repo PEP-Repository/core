@@ -1,10 +1,9 @@
-
 #include <pep/accessmanager/AccessManager.hpp>
 #include <pep/accessmanager/Backend.hpp>
 
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/auth/FacilityType.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
@@ -639,7 +638,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   backend->checkTicketRequest(request);
 
-  auto timestamp = Timestamp();
+  auto timestamp = TimeNow();
   std::vector<std::string> modes{"access"};
   backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
 
@@ -653,7 +652,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // Prepare ticket
 
   Ticket2 ticket;
-  ticket.mTimestamp = Timestamp();
+  ticket.mTimestamp = TimeNow();
   ticket.mModes = request.mModes;
   ticket.mColumns = request.mColumns;
   ticket.mUserGroup = userGroup;

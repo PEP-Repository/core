@@ -11,6 +11,8 @@
 #include <span>
 #include <unordered_set>
 
+using namespace std::literals;
+
 namespace {
 
 /// Test suite for verifying concrete implementations of the Blocklist interface
@@ -52,15 +54,7 @@ public:
 };
 
 /// Some arbitrary point in time to be used as a reference point in tests.
-constexpr auto REFERENCE_TIMESTAMP = pep::Timestamp{1577836800};
-
-constexpr pep::Timestamp operator+ (pep::Timestamp lhs, std::chrono::days duration) {
-  return pep::Timestamp{lhs.getTime() + duration_cast<std::chrono::milliseconds>(duration).count()};
-}
-
-constexpr pep::Timestamp operator- (pep::Timestamp lhs, std::chrono::days duration) {
-  return operator+ (lhs, -duration);
-}
+constexpr auto REFERENCE_TIMESTAMP = pep::Timestamp{1577836800ms};
 
 pep::filesystem::Temporary MakeUniqueTempDir() {
   namespace fs = pep::filesystem;
@@ -97,6 +91,12 @@ std::unique_ptr<SqliteBlocklist> TokenBlocking_Blocklist_Implementations<SqliteB
 }
 
 TYPED_TEST_SUITE(TokenBlocking_Blocklist_Implementations, BlocklistImplementations);
+
+const Blocklist::Entry::Metadata emptyMetadata{
+  .note{},
+  .issuer{},
+  .creationDateTime{/*zero*/},
+};
 
 
 // A token (identifier) A supersedes another token (identifier) B when
@@ -245,7 +245,6 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, AddingTokens) {
 TYPED_TEST(TokenBlocking_Blocklist_Implementations, AddingReturnsId) {
   using TestSuite = TokenBlocking_Blocklist_Implementations<TypeParam>;
   const auto tokens = ArbitraryTokens<3>();
-  const auto emptyMetadata = Blocklist::Entry::Metadata{};
   const std::unique_ptr<Blocklist> blocklist = TestSuite::createEmptyBlocklist();
 
   for (const auto& token : tokens) {
@@ -262,7 +261,6 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, UniqueIds) {
   using TestSuite = TokenBlocking_Blocklist_Implementations<TypeParam>;
   constexpr auto numberOfAdds = 4;
   const auto addedTokens = ArbitraryTokens<numberOfAdds>();
-  const auto emptyMetadata = Blocklist::Entry::Metadata{};
   const std::unique_ptr<Blocklist> blocklist = TestSuite::createEmptyBlocklist();
 
   std::unordered_set<int64_t> uniqueIds;
@@ -274,18 +272,18 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, UniqueIds) {
 // Blocklist entries can be retrieved by their id.
 TYPED_TEST(TokenBlocking_Blocklist_Implementations, RetrieveById) {
   using TestSuite = TokenBlocking_Blocklist_Implementations<TypeParam>;
-  constexpr auto tokenIssueDateTime = pep::Timestamp{0} + days{200};
+  constexpr auto tokenIssueDateTime = pep::Timestamp(days{200});
   constexpr auto tokenBlockDateTime = tokenIssueDateTime + days{10};
   const auto arbitraryNoise = ArbitraryTokens<2>();
 
   const std::unique_ptr<Blocklist> blocklist = TestSuite::createEmptyBlocklist();
-  blocklist->add(arbitraryNoise.front(), {}); // rules out just returning the first entry
+  blocklist->add(arbitraryNoise.front(), emptyMetadata); // rules out just returning the first entry
   const auto id = blocklist->add(
       {.subject = "example_user@somewhere.org", .userGroup = "Research Assessor", .issueDateTime = tokenIssueDateTime},
       {.note = "Token was sent to the wrong person.",
        .issuer = "some_admin@somewhere.org",
        .creationDateTime = tokenBlockDateTime});
-  blocklist->add(arbitraryNoise.back(), {}); // rules out just returning the last entry
+  blocklist->add(arbitraryNoise.back(), emptyMetadata); // rules out just returning the last entry
 
   const auto expectedResult = BlocklistEntry{
       id,
@@ -311,7 +309,7 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RemovingTokens) {
   const auto initiallyBlockedTokens = ArbitraryTokens<3>();
   const std::unique_ptr<Blocklist> blocklist = TestSuite::createEmptyBlocklist();
   for (const auto& t : initiallyBlockedTokens) {
-    blocklist->add(t, {"data_administrator", "for testing", pep::Timestamp::Min() + days{200}});
+    blocklist->add(t, {"data_administrator", "for testing", pep::Timestamp(days{200})});
   }
 
   for (const auto& removedToken : initiallyBlockedTokens) {
@@ -389,13 +387,12 @@ TEST(TokenBlocking_SqliteBlocklist, CreateWithStorageLocation_RejectSpecialValue
 // SqliteBlocklist::Create returns an object with non-persistent storage when "" or ":memory:" is passed as argument.
 TEST(TokenBlocking_SqliteBlocklist, CreateWithMemoryStorage) {
   const auto token = ArbitraryTokens<1>().front();
-  const auto metadata = Blocklist::Entry::Metadata{};
 
   const auto instanceA = SqliteBlocklist::CreateWithMemoryStorage();
   EXPECT_FALSE(instanceA->isPersistent());
   EXPECT_EQ(instanceA->size(), 0);
 
-  instanceA->add(token, metadata);
+  instanceA->add(token, emptyMetadata);
   EXPECT_EQ(instanceA->size(), 1);                                  // change should be visible in this instance
   EXPECT_EQ(SqliteBlocklist::CreateWithMemoryStorage()->size(), 0); // but not in any other instance
 }

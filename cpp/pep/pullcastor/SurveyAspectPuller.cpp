@@ -1,8 +1,16 @@
+#include <pep/async/RxGroupToVectors.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxSharedPtrCast.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/content/ParticipantDeviceHistory.hpp>
 #include <pep/castor/SurveyDataPoint.hpp>
 #include <pep/pullcastor/SurveyPackageInstancePuller.hpp>
 #include <pep/pullcastor/SurveyAspectPuller.hpp>
 #include <cmath>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 namespace castor {
@@ -10,18 +18,14 @@ namespace castor {
 namespace {
 
 int GetWeekNumber(Timestamp moment, Timestamp offset) {
-  auto seconds = difftime(moment.toTime_t(), offset.toTime_t());
-  if (seconds < 0) {
+  using namespace std::chrono;
+  auto diff = moment - offset;
+  if (diff < decltype(diff)::zero()) {
     PULLCASTOR_LOG(warning) << "Returning negative week number for timestamp that's before the offset";
   }
-  auto weeks = seconds
-    / 60 // minutes
-    / 60 // hours
-    / 24 // days
-    / 7; // weeks
   // Explicit floor to handle negative numbers, which may occur,
   //  see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1654
-  return static_cast<int>(std::floor(weeks));
+  return floor<duration<int, weeks::period>>(diff).count();
 }
 
 using StudyStartTimestamp = decltype(ParticipantDeviceRecord::time);
@@ -207,7 +211,7 @@ SurveyAspectPuller::AllSpisPuller::AllSpisPuller(std::shared_ptr<StudyPuller> sp
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::SpisPuller::loadContentForSpi(std::shared_ptr<SurveyPackageInstancePuller> spiPuller, rxcpp::observable<std::shared_ptr<SurveyDataPoint>> sdps) {
   return sdps
     .op(RxSharedPtrCast<DataPointBase>())
-    .flat_map([sp = this->getStudyPuller()](std::shared_ptr<DataPointBase> dp) {return sp->toFieldValue(dp).op(RxGetOne("survey field value")); })
+    .flat_map([sp = this->getStudyPuller()](std::shared_ptr<DataPointBase> dp) {return sp->toFieldValue(dp).op(RxGetOne()); })
     .group_by([](std::shared_ptr<FieldValue> fv) {return fv->getField()->getParentId(); })
     .flat_map([self = SharedFrom(*this), spiPuller](const auto& stepIdAndFvs) {
     return stepIdAndFvs
@@ -235,7 +239,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::Al
   return sp->getDataPoints(spis)
     .zip(
       this->getWeekNumberOffsetForParticipant(tspis->front().getSpi()->getParticipantId()),
-      this->getStudyPuller()->getEnvironmentPuller()->getImportColumnNamer().op(RxGetOne("import column namer"))
+      this->getStudyPuller()->getEnvironmentPuller()->getImportColumnNamer().op(RxGetOne())
     )
     .concat_map([self = SharedFrom(*this), tspis](const auto& context) {
     std::shared_ptr<SdpsBySpi> sdpsBySpi = std::get<0>(context);
@@ -273,7 +277,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::La
 
     PULLCASTOR_LOG(info) << "Out of " << tspis->size() << " finished Survey Package Instances"
       << " for survey package " << spi->getSurveyPackageName()
-      << " we'll only consider the one finished at " << latest.getTimestamp().toString();
+      << " we'll only consider the one finished at " << TimestampToXmlDateTime(latest.getTimestamp());
   }
 
   auto self = SharedFrom(*this);
