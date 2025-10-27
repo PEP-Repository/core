@@ -15,7 +15,6 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
-#include <rxcpp/operators/rx-zip.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
@@ -132,7 +131,12 @@ class ClientTestApplication : public Application {
 
   class Mode5Command : public ModeCommand<5> {
   private:
-    static rxcpp::observable<std::tuple<VersionResponse, std::string>> TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name);
+    struct ServerVersion {
+      std::string name;
+      VersionResponse version;
+    };
+    static rxcpp::observable<ServerVersion> TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name);
+
   protected:
     rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) override;
   public:
@@ -240,15 +244,18 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     .op(RxInstead(true));
 }
 
-rxcpp::observable<std::tuple<VersionResponse, std::string>> ClientTestApplication::Mode5Command::TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name) {
-  rxcpp::observable<VersionResponse> version;
+rxcpp::observable<ClientTestApplication::Mode5Command::ServerVersion> ClientTestApplication::Mode5Command::TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name) {
   if (proxy == nullptr) {
-    version = rxcpp::observable<>::empty<VersionResponse>();
+    return rxcpp::observable<>::empty<ServerVersion>();
   }
-  else {
-    version = proxy->requestVersion();
+  return proxy->requestVersion()
+    .map([name = std::move(name)](VersionResponse response) {
+    return ServerVersion{
+      .name = std::move(name),
+      .version = std::move(response),
+    };
+      });
   }
-  return version.zip(rxcpp::rxs::just(std::move(name)));
 }
 
 rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std::shared_ptr<Client> client) {
@@ -265,22 +272,18 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     TryGetServerVersion(client->getStorageFacilityProxy(false), "Storage Facility"),
     TryGetServerVersion(client->getRegistrationServerProxy(false), "Registration Server"),
     TryGetServerVersion(client->getAuthServerProxy(false), "Auth Server")
-  ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
-    const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary; 
-    std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;
-
-    const std::string& server = std::get<1>(response);
-    std::cout << server
-      << " Binary version " << serverBinaryVersion.getSummary()
+  ).map([ownBinarySemver, ownConfigSemver](const ServerVersion& server) {
+    std::cout << server.name
+      << " Binary version " << server.version.binary.getSummary()
       << std::endl;
 
-    bool result = IsSemanticVersionEquivalent(*ownBinarySemver, serverBinaryVersion.getSemver());
+    bool result = IsSemanticVersionEquivalent(*ownBinarySemver, server.version.binary.getSemver());
 
-    if (ownConfigSemver && serverConfigVersion.has_value()){
-      std::cout << server
-       << " Config version " << serverConfigVersion->getSummary()
+    if (ownConfigSemver && server.version.config.has_value()){
+      std::cout << server.name
+       << " Config version " << server.version.config->getSummary()
        << std::endl;
-      if (!IsSemanticVersionEquivalent(*ownConfigSemver, serverConfigVersion->getSemver())){
+      if (!IsSemanticVersionEquivalent(*ownConfigSemver, server.version.config->getSemver())){
         result = false;
       }
     }
