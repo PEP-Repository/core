@@ -91,7 +91,7 @@ const std::unordered_map<std::string, std::string> checksumNameMappings{
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
-      mAccessManager(params.getAccessManager(), *this),
+      mAccessManager(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this)),
       mTokenExpiration(params.getTokenExpiration()),
       mOauthTokenSecret(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
@@ -116,7 +116,7 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
     throw Error("Checksum chain " + request.mName + " not found");
   }
   request.mName = checksumMapping->second;
-  return mAccessManager.requestChecksumChain(std::move(request))
+  return mAccessManager->requestChecksumChain(std::move(request))
     .op(RxGetOne());
 }
 
@@ -124,7 +124,7 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
     const std::string &primaryId,
     const std::vector<std::string> &alternativeIds) {
 
-  return mAccessManager.findUser(primaryId, alternativeIds)
+  return mAccessManager->findUser(primaryId, alternativeIds)
     .map([](FindUserResponse response) {
       return response.mUserGroups;
     });
@@ -184,15 +184,15 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
   // Because we send the database as a multi-part message, it will not be retried automatically
   // when the connection to the access manager fails. Therefore, we first wait for the connection
   // to succeed, before starting the migration.
-  mAccessManager.connectionStatus()
+  mAccessManager->connectionStatus()
     .filter([](const ConnectionStatus& status){ return status.connected; })
     .first()
-    .flat_map([&accessManager=this->mAccessManager, storageFile](ConnectionStatus status) {
+    .flat_map([accessManager=mAccessManager, storageFile](ConnectionStatus status) {
       auto storageStream = std::make_shared<std::ifstream>(storageFile, std::ios::binary);
       if (!storageStream->is_open()) {
         throw std::runtime_error("Failed to open storageFile");
       }
-      return accessManager.migrateUserDbToAccessManager(messaging::IStreamToMessageBatches(storageStream));
+      return accessManager->migrateUserDbToAccessManager(messaging::IStreamToMessageBatches(storageStream));
     }).subscribe(
       [](FakeVoid) {
         LOG(LOG_TAG, info) << "Migration successful";
