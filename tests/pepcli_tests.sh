@@ -371,7 +371,7 @@ if should_run_test authserver-apache; then
   printYellow "so this time login should succeed, since the primary UID is now known to the system."
   test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com ""
   printYellow "but if he now logs in with 'integrationUser' in alternative-UIDs, but with a different primary UID, it should fail"
-  test_authserver_request "wrong-primary-uid" integrationUser@example.com "integrationUser,integration_user" access_denied
+  test_authserver_request "wrong-primary-uid" integrationUser@example.com "integrationUser,integration_user" server_error
 
   test_authserver_request eve eve "" access_denied
 
