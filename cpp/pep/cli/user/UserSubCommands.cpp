@@ -4,7 +4,7 @@
 using namespace pep::cli;
 
 CommandUser::UserSubCommand::UserSubCommand(const std::string &name, const std::string &description,
-                                            CommandUser::UserSubCommand::ClientMethod method, CommandUser &parent)
+                                            CommandUser::UserSubCommand::AmProxyMethod method, CommandUser &parent)
         : ChildCommandOf<CommandUser>(name, description, parent), mMethod(method) {
 }
 
@@ -15,7 +15,8 @@ pep::commandline::Parameters CommandUser::UserSubCommand::getSupportedParameters
 
 int CommandUser::UserSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-    return ((*client).*mMethod)(this->getParameterValues().get<std::string>("uid"));
+    auto& am = *client->getAccessManagerProxy();
+    return (am.*mMethod)(this->getParameterValues().get<std::string>("uid"));
   });
 }
 
@@ -31,7 +32,7 @@ pep::commandline::Parameters CommandUser::UserAddIdentifierSubCommand::getSuppor
 
 int CommandUser::UserAddIdentifierSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-    return client->addUserIdentifier(this->getParameterValues().get<std::string>("existingUid"), this->getParameterValues().get<std::string>("newUid"));
+    return client->getAccessManagerProxy()->addUserIdentifier(this->getParameterValues().get<std::string>("existingUid"), this->getParameterValues().get<std::string>("newUid"));
   });
 }
 
@@ -48,7 +49,7 @@ pep::commandline::Parameters CommandUser::UserGroupUserSubCommand::getSupportedP
 
 int CommandUser::UserAddToSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-    return client->addUserToGroup(this->getParameterValues().get<std::string>("uid"),
+    return client->getAccessManagerProxy()->addUserToGroup(this->getParameterValues().get<std::string>("uid"),
                                 this->getParameterValues().get<std::string>("group"));
   });
 }
@@ -60,7 +61,7 @@ pep::commandline::Parameters CommandUser::UserRemoveFromSubCommand::getSupported
 
 int CommandUser::UserRemoveFromSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-    return client->removeUserFromGroup(this->getParameterValues().get<std::string>("uid"),
+    return client->getAccessManagerProxy()->removeUserFromGroup(this->getParameterValues().get<std::string>("uid"),
                                 this->getParameterValues().get<std::string>("group"),
                                 !this->getParameterValues().has("dontBlockTokens"));
   });

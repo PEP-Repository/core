@@ -82,13 +82,6 @@ public:
   }
 
   template <typename T>
-  static T FromStringOrRaiseError(std::string source) {
-    static_assert(!std::is_same_v<T, Error>, "Ambiguous: should Error instance be raised or deserialized?");
-    Error::ThrowIfDeserializable(source);
-    return FromString<T>(source);
-  }
-
-  template <typename T>
   static T FromJsonString(const std::string &message) {
     return Serializer<T>().fromJsonString(message);
   }

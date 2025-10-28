@@ -88,7 +88,7 @@ void EnrollmentWidget::showRegisteredParticipant(std::shared_ptr<pep::Participan
 
   completeParticipantRegistrationSubscription = pepClient->completeParticipantRegistration(participantSID.toStdString(), true)
   .subscribe(
-  [](std::shared_ptr<pep::RegistrationResponse>) {},
+  [](pep::FakeVoid) {},
   [this](std::exception_ptr ep) {
     auto message = QString::fromStdString(pep::GetExceptionMessage(ep));
     if (message.isEmpty()) {

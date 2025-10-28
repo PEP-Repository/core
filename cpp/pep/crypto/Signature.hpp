@@ -39,10 +39,9 @@ class Signature {
       mTimestamp(timestamp),
       mIsLogCopy(isLogCopy) { }
 
-  static Signature create(
+  static Signature Make(
       const std::string& data,
-      X509CertificateChain chain,
-      const AsymmetricKey& privateKey,
+      const X509Identity& identity,
       bool isLogCopy=false,
       SignatureScheme scheme=SIGNATURE_SCHEME_V4);
 

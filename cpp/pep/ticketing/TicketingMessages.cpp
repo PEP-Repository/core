@@ -100,19 +100,18 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const
   return ticket;
 }
 
-Signed<Ticket2>::Signed(Ticket2 ticket, X509CertificateChain chain,
-  const AsymmetricKey& privateKey) {
+Signed<Ticket2>::Signed(Ticket2 ticket,
+  const X509Identity& identity) {
   auto data = Serialization::ToString(std::move(ticket));
-  mSignature = Signature::create(data, chain, privateKey);
+  mSignature = Signature::Make(data, identity);
   mData = std::move(data);
 }
 
 Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
-  const X509CertificateChain& chain,
-  const AsymmetricKey& privateKey) {
+  const X509Identity& identity) {
   mData = Serialization::ToString(std::move(ticketRequest));
-  mSignature = Signature::create(mData, chain, privateKey);
-  mLogSignature = Signature::create(mData, chain, privateKey, true);
+  mSignature = Signature::Make(mData, identity);
+  mLogSignature = Signature::Make(mData, identity, true);
 }
 
 TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(

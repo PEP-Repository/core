@@ -236,7 +236,7 @@ void StorageFacility::Parameters::check() const {
     throw std::runtime_error("encIdKey must be set");
   if (!pseudonymKey)
     throw std::runtime_error("pseudonymKey must be set");
-  if (GetFacilityType(getCertificateChain()) != FacilityType::StorageFacility)
+  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::StorageFacility)
     throw std::runtime_error("Invalid certificate chain for Storage Facility");
   SigningServer::Parameters::check();
   if (!this->pageStoreConfig)
