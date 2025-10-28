@@ -5,7 +5,6 @@
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Sha.hpp>
-#include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/async/RxRequireCount.hpp>

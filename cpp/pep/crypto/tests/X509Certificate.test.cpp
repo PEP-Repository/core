@@ -7,6 +7,8 @@
 
 #include <string>
 
+using namespace std::literals;
+
 namespace {
 
 const std::string rootCACertPEM = "-----BEGIN CERTIFICATE-----\n\
@@ -502,8 +504,8 @@ TEST(X509CertificateTest, GetCommonName) {
   pep::AsymmetricKey caPrivateKey(serverCAPrivateKeyPEM);
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
 
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
-  
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
+
   EXPECT_EQ(cert.getCommonName(), testCN) << "CN in certificate does not match expected value";
 }
 
@@ -514,7 +516,7 @@ TEST(X509CertificateTest, GetOrganizationalUnit) {
   pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
   pep::AsymmetricKey caPrivateKey(serverCAPrivateKeyPEM);
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
 
   EXPECT_EQ(cert.getOrganizationalUnit(), testOU) << "OU in certificate does not match expected value";
 }
@@ -526,7 +528,7 @@ TEST(X509CertificateTest, GetIssuerCommonName) {
   pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
   pep::AsymmetricKey caPrivateKey(serverCAPrivateKeyPEM);
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
 
   EXPECT_EQ(cert.getIssuerCommonName(), "PEP Intermediate PEP Server CA") << "Issuer CN in certificate does not match expected value";
 }
@@ -538,7 +540,7 @@ TEST(X509CertificateTest, DoesntHaveTLSServerEKU) {
   pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
   pep::AsymmetricKey caPrivateKey(serverCAPrivateKeyPEM);
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
 
   EXPECT_FALSE(cert.hasTLSServerEKU()) << "Certificate unexpectedly has a TLS Server EKU";
 }
@@ -556,13 +558,13 @@ TEST(X509CertificateTest, IsntServerCertificate) {
   pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
   pep::AsymmetricKey caPrivateKey(serverCAPrivateKeyPEM);
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
 
   EXPECT_FALSE(cert.isPEPServerCertificate()) << "Certificate is incorrectly identified as a server certificate";
 }
 
 TEST(X509CertificateTest, IsServerCertificate) {
-  
+
   pep::X509Certificate cert = pep::X509Certificate::FromPem(accessmanagerTLSCertPEM);
 
   EXPECT_TRUE(cert.isPEPServerCertificate()) << "Certificate is not a server certificate.";
@@ -578,13 +580,8 @@ TEST(X509CertificateTest, CertificateValidity) {
   pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
   pep::X509CertificateSigningRequest csr2(keyPair, testCN, testOU);
 
-  // Hardcoded duration: 60 seconds
-  std::chrono::seconds expectedDuration(60);
-  // Hardcoded duration: 60 minutes in seconds
-  std::chrono::seconds expectedDuration2(3600);
-
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, expectedDuration);
-  pep::X509Certificate cert2 = csr2.signCertificate(caCertificate, caPrivateKey, expectedDuration2);
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
+  pep::X509Certificate cert2 = csr2.signCertificate(caCertificate, caPrivateKey, 1h);
   pep::X509Certificate expiredCert = pep::X509Certificate::FromPem(ExpiredLeafCertSignedWithserverCACertPEM);
 
   EXPECT_TRUE(cert.isCurrentTimeInValidityPeriod()) << "Certificate should be within the validity period";
@@ -615,7 +612,7 @@ TEST(X509CertificateSigningRequestTest, GenerationAndSigning) {
   pep::AsymmetricKey caPrivateKey(serverCAPrivateKeyPEM);
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
 
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
 
   EXPECT_EQ(cert.getCommonName(), testCN) << "CN in certificate does not match input";
   EXPECT_EQ(cert.getOrganizationalUnit(), testOU) << "OU in certificate does not match input";
@@ -630,9 +627,8 @@ TEST(X509CertificateSigningRequestTest, CertificateDuration) {
 
   pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
 
-  // Duration above 2 years
-  std::chrono::seconds invalidMaximumDuration = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::hours{2 * 365 * 24 + 1});
-  std::chrono::seconds invalidMinimumDuration = std::chrono::seconds(-1);
+  auto invalidMaximumDuration = std::chrono::years{2} + 1s; // Duration above 2 years
+  auto invalidMinimumDuration = -1s;
 
   EXPECT_THROW(csr.signCertificate(caCertificate, caPrivateKey, invalidMinimumDuration), std::invalid_argument) << "Signing a certificate with a negative duration did not throw an error";
   EXPECT_THROW(csr.signCertificate(caCertificate, caPrivateKey, invalidMaximumDuration), std::invalid_argument) << "Signing a certificate with a duration above 2 years did not throw an error";
@@ -674,8 +670,8 @@ TEST(X509CertificateSigningRequestTest, CertificateExtensions) {
   pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
   pep::AsymmetricKey caPrivateKey(serverCAPrivateKeyPEM);
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
-  
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
+
   // The generated certificate should have the following extensions set:
   ASSERT_TRUE(cert.hasDigitalSignatureKeyUsage()) << "Generated certificate does not have Digital Signature Key Usage";
 
@@ -716,7 +712,7 @@ TEST(X509CertificateSigningRequestTest, UTF8CharsInUTFField) {
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(serverCACertPEM);
 
   // Sign the certificate
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, std::chrono::seconds(60));
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
 
   // Verify that the fields in the certificate contain the UTF-8 string
   EXPECT_EQ(cert.getCommonName(), UTF8TestCN) << "CN in certificate does not match UTF-8 input";

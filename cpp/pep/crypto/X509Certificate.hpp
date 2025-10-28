@@ -33,8 +33,8 @@ class X509Certificate {
   [[nodiscard]] bool verifyAuthorityKeyIdentifier(const X509Certificate& issuerCert) const;
   bool isPEPServerCertificate() const;
   bool hasTLSServerEKU() const;
-  std::chrono::system_clock::time_point getNotBefore() const;
-  std::chrono::system_clock::time_point getNotAfter() const;
+  std::chrono::sys_seconds getNotBefore() const;
+  std::chrono::sys_seconds getNotAfter() const;
   bool isCurrentTimeInValidityPeriod() const;
   std::string toPem() const;
   std::string toDer() const;

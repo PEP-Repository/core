@@ -373,14 +373,14 @@ protected:
               double completed = static_cast<double>(mColumnsSeen) / static_cast<double>(mTotalColumns);
               assert(completed >= 0.0);
               assert(completed <= 1.0);
-              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *mStartTime).count();
-              double total = elapsed / completed;
-              double remaining = total - elapsed;
+              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *mStartTime);
+              auto total = elapsed / completed;
+              auto remaining = total - elapsed;
 
               auto flags = std::cout.flags();
               PEP_DEFER(std::cout.flags(flags));
               std::cout << std::setprecision(1) << std::fixed << (completed * 100) << "% done"
-                << "; approximately " << pep::chrono::ToString(std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(remaining))) << " remaining"
+                << "; approximately " << pep::chrono::ToString(remaining) << " remaining"
                 << std::endl;
             }
             else {

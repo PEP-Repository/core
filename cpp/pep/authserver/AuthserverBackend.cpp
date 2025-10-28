@@ -76,7 +76,7 @@ void AuthserverBackend::Parameters::check() const {
   if(storageFile && storageFile->empty()) {
     throw std::runtime_error("If a storageFile is set, it may not be empty");
   }
-  if(tokenExpiration.count() == 0) {
+  if(tokenExpiration == decltype(tokenExpiration)::zero()) {
     throw std::runtime_error("tokenExpiration must be set");
   }
   if(oauthTokenSecret.empty()) {
@@ -132,11 +132,11 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
 
 
 OAuthToken AuthserverBackend::getToken(const std::string& uid, const std::string& group, const Timestamp& expirationTime) const {
-  auto now = std::chrono::system_clock::now();
+  auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
     mOauthTokenSecret, uid, group,
-    std::chrono::system_clock::to_time_t(now),
-    expirationTime.toTime_t()
+    now,
+    time_point_cast<std::chrono::seconds>(expirationTime)
   );
 }
 
@@ -162,11 +162,11 @@ OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& 
       validity = this->mTokenExpiration;
     }
   }
-  auto now = std::chrono::system_clock::now();
+  auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
     mOauthTokenSecret, uid, group.mName,
-    std::chrono::system_clock::to_time_t(now),
-    std::chrono::system_clock::to_time_t(now + validity)
+    now,
+    now + validity
   );
 }
 

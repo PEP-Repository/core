@@ -5,6 +5,7 @@
 #include <pep/rsk/Proofs.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
@@ -44,6 +45,9 @@
 // To detect and record whether the migration has been performed,
 // we added the MigrationRecord table, see the ensureInitialized function.
 
+using namespace std::chrono;
+using namespace std::literals;
+
 namespace pep {
 
 using namespace sqlite_orm;
@@ -64,7 +68,7 @@ struct MigrationRecord {
 
     RandomBytes(this->checksumNonce, 16);
     this->toVersion = toVersion;
-    this->timestamp = Timestamp().getTime();
+    this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   }
 
   uint64_t checksum() const {
@@ -78,7 +82,7 @@ struct MigrationRecord {
 
   int64_t seqno{};
   uint64_t toVersion{};
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
   std::vector<char> checksumNonce;
 };
 
@@ -104,7 +108,7 @@ struct TicketRequestRecord {
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
     this->request = Serialization::ToCharVector(ticketRequest);
-    this->timestamp = Timestamp().getTime();
+    this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
     this->certificateChain = certificateChain;
   }
 
@@ -154,7 +158,7 @@ struct TicketRequestRecord {
 
   std::string id;
   std::string accessGroup;
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
 
   std::vector<char> request; // SignedTicketRequest
   int64_t pseudonymSet{};
@@ -205,7 +209,8 @@ struct CertificateChainRecord {
 // Records an issued ticket
 struct TicketIssueRecord {
   TicketIssueRecord() = default;
-  TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts) : timestamp(ts.getTime()), request(request), columnSet(columnSet) {
+  TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts)
+  : timestamp(TicksSinceEpoch<milliseconds>(ts)), request(request), columnSet(columnSet) {
     RandomBytes(this->checksumNonce, 16);
   }
 
@@ -218,7 +223,7 @@ struct TicketIssueRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
 
   int64_t request{}; // seqno of related TicketRequestRecord
   int64_t columnSet{}; // seqno of ColumnSetRecord granted access to
@@ -951,9 +956,8 @@ void TranscryptorStorage::logIssuedTicket(
     throw Error(os.str());
   }
 
-  int64_t drift = timestamp.getTime() - Timestamp().getTime();
-  drift = drift > 0 ? drift : -drift;
-  if (drift/1000 > 60*5) {
+  auto drift = Abs(timestamp - TimeNow());
+  if (drift > 5min) {
     throw Error("Timestamp on ticket too far from current time");
   }
 

@@ -50,9 +50,10 @@ protected:
   void handleResponse(const pep::SignedPingResponse& response) const override {
     if (mPrintDrift) {
       std::cout
-        << pep::Timestamp().getTime()
-             - response.openWithoutCheckingSignature().mTimestamp.getTime()
-        << std::endl;
+          << duration_cast<std::chrono::milliseconds>(
+              pep::TimeNow() - response.openWithoutCheckingSignature().mTimestamp
+              ).count()
+          << std::endl;
       return;
     }
 

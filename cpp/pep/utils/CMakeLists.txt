@@ -91,6 +91,7 @@ if (WITH_TESTS)
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
+    VerifyBackwardCompatibleSerialization.hpp
     TestTiming.hpp
   )
   find_package(GTest REQUIRED)

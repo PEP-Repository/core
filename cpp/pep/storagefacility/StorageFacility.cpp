@@ -277,12 +277,15 @@ void StorageFacility::computeChecksumChainChecksum(
   checksum = 0;
   checkpoint = 0;
 
-  if (!maxCheckpoint)
-    maxCheckpoint = static_cast<uint64_t>(Timestamp().getTime()) - 60 * 1000ULL;
+  if (!maxCheckpoint) {
+    // The Storage Facility uses a timestamp as checkpoint
+    maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
+  }
 
   mFileStore->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
-    if (header.validFrom <= max) {
-      checkpoint = std::max(checkpoint, header.validFrom);
+    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(header.validFrom))};
+    if (validFromMs <= max) {
+      checkpoint = std::max(checkpoint, validFromMs);
       add(header);
     }
     });
@@ -343,7 +346,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       // enumerateData returns an error if there are no entries, which
       // we will ignore. Other errors are already logged.
       EntryName key(*localPseudonyms[pseud_index], col);
-      auto entry = mFileStore->lookup(key, static_cast<EpochMillis>(ticket.mTimestamp.getTime()));
+      auto entry = mFileStore->lookup(key, ticket.mTimestamp);
       if (!entry) {
         continue;
       }
@@ -754,7 +757,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               subscriber.on_error(e);
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
-              auto time = static_cast<EpochMillis>(Timestamp().getTime()); // Make all entries available/valid at the same moment: see #1631
+              auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
               for (size_t i = 0; i < ctx->entries.size(); i++) {
                 auto& entry = ctx->entries[i];
                 try {
@@ -796,13 +799,13 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
         std::move(metadata),
         EntryContent::PayloadData(
           { .polymorphicKey = entry.mPolymorphicKey,
-            .blindingTimestamp = static_cast<EpochMillis>(entry.mMetadata.getBlindingTimestamp().getTime()),
+            .blindingTimestamp = entry.mMetadata.getBlindingTimestamp(),
             .scheme = entry.mMetadata.getEncryptionScheme()
           },
           nullptr));
   };
 
-  auto getResponse = [](EpochMillis /* ignored */, const std::vector<std::string>& ids, XxHasher::Hash hash) {
+  auto getResponse = [](Timestamp /* ignored */, const std::vector<std::string>& ids, XxHasher::Hash hash) {
     DataStoreResponse2 resp;
     resp.mIds = ids;
     resp.mHash = hash;
@@ -866,7 +869,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
         EntryContent::PayloadData{
           {
             .polymorphicKey = entry.mPolymorphicKey,
-            .blindingTimestamp = static_cast<EpochMillis>(entry.mMetadata.getBlindingTimestamp().getTime()),
+            .blindingTimestamp = entry.mMetadata.getBlindingTimestamp(),
             .scheme = entry.mMetadata.getEncryptionScheme()
           },
           payload},
@@ -876,7 +879,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     changes.push_back(entryChange);
   }
 
-  auto time = static_cast<EpochMillis>(Timestamp().getTime()); // Make all entries available/valid at the same moment: see #1631
+  auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
   MetadataUpdateResponse2 response;
   for (const auto& change : changes) {
     auto id = this->encryptId(change->getName().string(), time);
@@ -894,13 +897,14 @@ StorageFacility::handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteReques
     return std::unique_ptr<EntryContent>();
   };
 
-  auto getResponse = [](EpochMillis timestamp, const std::vector<std::string>& ids, XxHasher::Hash hash) {
+  auto getResponse = [](Timestamp timestamp, const std::vector<std::string>& ids, XxHasher::Hash hash) {
     assert(hash == XxHasher(0ULL).digest());
     assert(ids.size() <= std::numeric_limits<uint32_t>::max());
 
-    DataDeleteResponse2 resp;
-    assert(timestamp <= static_cast<EpochMillis>(std::numeric_limits<int64_t>::max()));
-    resp.mTimestamp = Timestamp(static_cast<int64_t>(timestamp));
+    DataDeleteResponse2 resp{
+      .mTimestamp = timestamp,
+      .mEntries{}, // Filled below
+    };
 
     resp.mEntries.mIndices.reserve(ids.size());
     for (size_t i = 0U; i < ids.size(); ++i) {
@@ -1000,15 +1004,13 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
       for (const auto& entry : history) {
         assert(entry != nullptr);
 
-        auto& re = response.mEntries.emplace_back();
-        re.mColumnIndex = colIndexIt->second;
-        re.mPseudonymIndex = static_cast<uint32_t>(pseud_index);
-        EpochMillis validFrom = entry->getValidFrom();
-        assert(validFrom <= static_cast<EpochMillis>(std::numeric_limits<int64_t>::max()));
-        re.mTimestamp = Timestamp(static_cast<int64_t>(validFrom));
-        if (!entry->isTombstone()) {
-          re.mId = encryptId(entry->getName().string(), validFrom);
-        }
+        Timestamp validFrom = entry->getValidFrom();
+        response.mEntries.push_back({
+          .mColumnIndex = colIndexIt->second,
+          .mPseudonymIndex = static_cast<uint32_t>(pseud_index),
+          .mTimestamp = validFrom,
+          .mId = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
+        });
       }
     }
   }
@@ -1019,11 +1021,11 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
-std::string StorageFacility::encryptId(const std::string& path, uint64_t time) {
+std::string StorageFacility::encryptId(const std::string& path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
       mEncIdKey,
-      SFId(path, time)),
+      SFId{path, time}),
     false);
 }
 
@@ -1040,7 +1042,7 @@ Metadata StorageFacility::compileMetadata(
 
   Metadata result = Metadata(
     column,
-    pep::Timestamp{static_cast<int64_t>(content->getBlindingTimestamp())},
+    content->getBlindingTimestamp(),
     content->getEncryptionScheme());
 
   auto payloadTimestamp = content->getOriginalPayloadEntryTimestamp();

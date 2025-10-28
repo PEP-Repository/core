@@ -234,34 +234,36 @@ CoreClient::getHistory2(SignedTicket2 ticket,
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> agPseuds;
       std::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
-        HistoryResult result;
-        result.mColumn = ticket.mColumns[entry.mColumnIndex];
-        result.mLocalPseudonymsIndex = entry.mPseudonymIndex;
-        result.mTimestamp = entry.mTimestamp;
-        if (!entry.mId.empty()) {
-          result.mId = entry.mId;
-        }
-
         auto ilp = localPseuds.find(entry.mPseudonymIndex);
         if (ilp == localPseuds.cend()) {
           auto emplaced = localPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ticket.mPseudonyms[entry.mPseudonymIndex])));
           assert(emplaced.second);
           ilp = emplaced.first;
         }
-        result.mLocalPseudonyms = ilp->second;
+        auto localPseudonyms = ilp->second;
 
-        if (result.mLocalPseudonyms->mAccessGroup) {
+        std::shared_ptr<LocalPseudonym> accessGroupPseudonym;
+        if (localPseudonyms->mAccessGroup) {
           auto iag = agPseuds.find(entry.mPseudonymIndex);
           if (iag == agPseuds.cend()) {
-            auto ag = result.mLocalPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
+            auto ag = localPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
             auto emplaced = agPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ag)));
             assert(emplaced.second);
             iag = emplaced.first;
           }
-          result.mAccessGroupPseudonym = iag->second;
+          accessGroupPseudonym = iag->second;
         }
 
-        return result;
+        return HistoryResult{
+          DataCellResult{
+            .mLocalPseudonyms = localPseudonyms,
+            .mLocalPseudonymsIndex = entry.mPseudonymIndex,
+            .mColumn = ticket.mColumns[entry.mColumnIndex],
+            .mAccessGroupPseudonym = accessGroupPseudonym,
+          },
+          entry.mTimestamp,
+          !entry.mId.empty() ? std::optional{entry.mId} : std::nullopt,
+        };
         });
       return rxcpp::observable<>::just(results);
     });
