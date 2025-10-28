@@ -26,11 +26,11 @@ variables:
 
   # macOS app directories and appcast paths with legacy support to keep autoupdater working in case of changes
   MACOS_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml
-  MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/app/AppCast.xml
+  MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml
   MACOS_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
-  MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli/AppCast.xml
+  MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
   MACOS_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
-  MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/dt/AppCast.xml
+  MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
 
   PEP_DEPLOYING_JSON_FILE: config/$CI_COMMIT_REF_NAME/constellation.json
 
