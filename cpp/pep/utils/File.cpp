@@ -61,10 +61,10 @@ void IstreamToDestination(std::istream& in, std::function<void(const char * c, c
     if (in.fail()) {
       throw std::runtime_error("Reading from stream failed"); // Exception meant to be rethrown with more information.
     }
-    char buffer[pep::DISK_IO_BUFFERSIZE]{};
-    in.read(buffer, pep::DISK_IO_BUFFERSIZE);
+    std::array<char, DISK_IO_BUFFERSIZE> buffer{};
+    in.read(buffer.data(), buffer.size());
     if (in.gcount() > 0) {
-      writeToDestination(buffer, in.gcount());
+      writeToDestination(buffer.data(), in.gcount());
     }
     else {
       break;

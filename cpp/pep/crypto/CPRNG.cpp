@@ -27,14 +27,14 @@ CPURBG::CPURBG()
 
 void CPURBG::fillBuffer() {
   mBufferIdx = 0;
-  uint64_t plaintext[bufferSize] = {0};
+  std::array<uint64_t, bufferSize> plaintext{};
   plaintext[0] = mFillCount++;
-  int len;
+  int len{};
   if (1 != EVP_EncryptUpdate(
         mCtx.get(),
         reinterpret_cast<uint8_t*>(mBuffer.data()),
         &len,
-        reinterpret_cast<const uint8_t*>(plaintext),
+        reinterpret_cast<const uint8_t*>(plaintext.data()),
         bufferSize*8))
     throw std::runtime_error("CPURBG: EVP_EncryptUpdate failed");
   if (len != bufferSize*8)
@@ -54,36 +54,36 @@ CPRNG::CPRNG()
     throw std::runtime_error("CPRNG: EVP_EncryptInit_ex failed");
 }
 
-void CPRNG::operator()(uint8_t* buffer, size_t len) {
+void CPRNG::operator()(std::span<uint8_t> buffer) {
   std::lock_guard<std::mutex> g(mLock);
-  uint8_t plaintext[64] = {0};
-  int outLen;
-  while (len >= 64) {
+  std::array<uint8_t, 64> plaintext{};
+  int outLen{};
+  auto offsetBuffer = buffer;
+  while (offsetBuffer.size() >= 64) {
     if (1 != EVP_EncryptUpdate(
           mCtx.get(),
-          buffer,
+          offsetBuffer.data(),
           &outLen,
-          plaintext,
+          plaintext.data(),
           64))
       throw std::runtime_error("CPRNG: EVP_EncryptUpdate failed");
     if (outLen != 64)
       throw std::runtime_error("CPRNG: EVP_EncryptUpdate behaved unexpectedly");
-    len -= 64;
-    buffer += 64;
+    offsetBuffer = offsetBuffer.subspan(64);
   }
-  if (len == 0)
+  if (offsetBuffer.empty())
     return;
-  uint8_t tmp[64] = {0};
+  std::array<uint8_t, 64> tmp{};
   if (1 != EVP_EncryptUpdate(
         mCtx.get(),
-        tmp,
+        tmp.data(),
         &outLen,
-        plaintext,
+        plaintext.data(),
         64))
     throw std::runtime_error("CPRNG: EVP_EncryptUpdate failed");
   if (outLen != 64)
     throw std::runtime_error("CPRNG: EVP_EncryptUpdate behaved unexpectedly");
-  std::move(tmp, tmp + len, buffer);
+  std::ranges::copy(std::span(tmp).subspan(0, offsetBuffer.size()), offsetBuffer.begin());
 }
 
 }

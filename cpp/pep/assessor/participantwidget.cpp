@@ -1356,7 +1356,7 @@ void ParticipantDataAggregator::processStudyContexts(const pep::EnumerateAndRetr
 
 void ParticipantDataAggregator::processVisitAssessor(const pep::EnumerateAndRetrieveResult& result) {
   std::string context;
-  unsigned visit;
+  unsigned visit{};
   [[maybe_unused]] auto match = isVisitAssessorColumn(result.mColumn, &context, &visit);
   assert(match);
 

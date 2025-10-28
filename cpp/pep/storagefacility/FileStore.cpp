@@ -22,7 +22,7 @@ namespace {
 const std::string CHECKSUM_SUBSTITUTE_KEY = "checksum-substitute";
 
 uint64_t GenerateChecksumSubstitute() {
-  uint64_t checksumSubstitute;
+  uint64_t checksumSubstitute{};
   RandomBytes(reinterpret_cast<uint8_t*>(&checksumSubstitute), sizeof(checksumSubstitute));
   return checksumSubstitute;
 }

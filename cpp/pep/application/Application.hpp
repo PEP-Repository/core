@@ -60,14 +60,14 @@ class Application : public commandline::Command {
 #endif
 
   template <typename TDerived>
-  static int RunApplicationInstance(int argc, char* argv[]) {
+  static int RunApplicationInstance(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
     static_assert(boost::is_base_of<Application, TDerived>::value, "Call this function only with classes that inherit pep::Application");
 
     TDerived instance;
     return instance.run(argc, argv);
   }
 
-  int run(int argc, char* argv[]);
+  int run(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 
   std::filesystem::path rawConfigDirectory() const;
   std::optional<std::filesystem::path> rawConfigFile() const;
@@ -100,8 +100,8 @@ class Application : public commandline::Command {
   ~Application() override;
 
   template <class TDerived>
-  static int Run(int argc, char* argv[]) noexcept {
-    return RunWithoutError([argc, argv]() {
+  static int Run(int argc, char* argv[]) noexcept { //NOLINT(modernize-avoid-c-arrays)
+    return RunWithoutError([argc, argv]() { //NOLINT(modernize-avoid-c-arrays)
       return RunApplicationInstance<TDerived>(argc, argv);
     });
   }

@@ -256,10 +256,10 @@ void RegistrationServer::Parameters::check() const {
 
 bool RegistrationServer::openDatabase(const std::filesystem::path& file) {
   auto result = !std::filesystem::exists(file);
-  int err;
 
   try {
     // Open SQLite database for shadow administration of identifiers/short pseudonyms
+    int err{};
     err = sqlite3_open(file.string().c_str(), &pShadowStorage);
     if (err != SQLITE_OK) {
       LOG(LOG_TAG, warning) << "Error opening SQLite database: " << err;
@@ -275,7 +275,7 @@ bool RegistrationServer::openDatabase(const std::filesystem::path& file) {
 
     // There are two versions of the database schemas.  In the second version
     // we have an Id field on ShortPseudonyms.
-    sqlite3_stmt* colStmt;
+    sqlite3_stmt* colStmt{};
     err = sqlite3_prepare_v2(pShadowStorage,
       "PRAGMA table_info(ShadowShortPseudonyms);",
       -1, &colStmt, nullptr);
@@ -429,7 +429,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
 }
 
 size_t RegistrationServer::countShadowStoredEntries() const {
-  size_t result;
+  size_t result{};
   auto err = sqlite3_exec(pShadowStorage, "select count(*) from ShadowShortPseudonyms", &ParseSqliteSelectCountResult, &result, nullptr);
   if (err != SQLITE_OK) {
     LOG(LOG_TAG, warning) << "Error counting shadow storage entries: " << err;
@@ -480,10 +480,9 @@ struct RegistrationContext {
   * \param shortPseudonym The short pseudonym to be stored
   */
 void RegistrationServer::storeShortPseudonymShadow(const std::string& encryptedIdentifier, const std::string& tag, const std::string& shortPseudonym) {
-  sqlite3_stmt* insertStmt;
-
   std::string encryptedShortPseudonym = shadowPublicKey.encrypt(tag + ":" + shortPseudonym);
 
+  sqlite3_stmt* insertStmt{};
   //TODO Do we want to re-use the prepared statement?
   if (sqlite3_prepare_v2(pShadowStorage, "INSERT INTO ShadowShortPseudonyms(EncryptedIdentifier, EncryptedShortPseudonym) VALUES(?, ?)", -1, &insertStmt, nullptr) != SQLITE_OK) {
     LOG(LOG_TAG, warning) << "Error occured: " << sqlite3_errmsg(pShadowStorage);
@@ -581,7 +580,7 @@ void RegistrationServer::computeChecksumChainChecksum(
   if (!maxCheckpoint)
     maxCheckpoint = std::numeric_limits<int64_t>::max();
 
-  sqlite3_stmt* stmt;
+  sqlite3_stmt* stmt{};
 
   if (chain == "shadow-short-pseudonyms") {
     sqlite3_prepare_v2(pShadowStorage,

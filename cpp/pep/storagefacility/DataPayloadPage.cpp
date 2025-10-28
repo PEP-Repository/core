@@ -31,8 +31,6 @@ void DataPayloadPage::setEncrypted(
       std::shared_ptr<std::string> plaintext,
       const std::string& key,
       const Metadata& metadata) {
-  int ret;
-  int len;
   auto ctx = createGcmContext();
   RandomBytes(mCryptoNonce, 16);
   mCryptoMac.resize(16);
@@ -40,6 +38,7 @@ void DataPayloadPage::setEncrypted(
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
   std::string ad = computeAdditionalData(metadata);
+  int ret{};
   ret = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex failed");
@@ -59,6 +58,7 @@ void DataPayloadPage::setEncrypted(
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex 2nd failed");
+  int len{};
   ret = EVP_EncryptUpdate(ctx.get(),
     nullptr,
     &len,

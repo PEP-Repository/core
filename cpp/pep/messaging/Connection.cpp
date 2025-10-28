@@ -105,7 +105,7 @@ void Connection::ensureSend() {
 void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr error) {
   assert(error != nullptr);
 
-  severity_level severity;
+  severity_level severity{};
   std::string action, caption, description;
 
   switch (id.type().value()) {
@@ -514,7 +514,7 @@ void Connection::clearState() {
 
   // Cancel sending of previously scheduled request and response messages
   mScheduler->clear();
-  // Stop sending keepalive messages 
+  // Stop sending keepalive messages
   mKeepAliveTimer.cancel();
   mKeepAliveTimerRunning = false;
   // Clear state for outgoing messages

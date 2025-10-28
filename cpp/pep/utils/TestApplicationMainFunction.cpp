@@ -18,14 +18,14 @@ int main(int argc, char* argv[]) {
   // Ensure that LOG(...) messages are properly formatted, filtered, and sent to a file sink (but not to the console to prevent clutter)
   pep::Logging::Initialize({ std::make_shared<pep::FileLogging>(pep::info) });
 
-  unsigned int seed;
+  unsigned int seed{};
   pep::RandomBytes(reinterpret_cast<uint8_t*>(&seed), sizeof(seed));
   std::srand(seed);
 
   ::testing::InitGoogleTest(&argc, argv);
   int retval = RUN_ALL_TESTS();
 
-  uint64_t maxmem;
+  uint64_t maxmem{};
 #ifndef _WIN32
   rusage usage{};
   ::getrusage(RUSAGE_SELF, &usage);

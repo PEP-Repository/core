@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <istream>
 #include <string_view>
@@ -41,10 +42,10 @@ public:
   Hasher& update(std::istream& source) {
     constexpr std::streamsize HASH_CHUNK_LENGTH{4096};
 
-    char chunk[HASH_CHUNK_LENGTH];
-    std::streamsize actual;
+    std::array<char, HASH_CHUNK_LENGTH> chunk{};
+    std::streamsize actual{-1};
     do {
-      source.read(chunk, HASH_CHUNK_LENGTH);
+      source.read(chunk.data(), chunk.size());
       if (source) {
         actual = HASH_CHUNK_LENGTH;
       }
@@ -56,7 +57,7 @@ public:
       }
       if (actual > 0) {
         auto converted = static_cast<std::make_unsigned_t<std::streamsize>>(actual);
-        this->update(chunk, size_t{converted});
+        this->update(chunk.data(), size_t{converted});
       }
     } while (actual == HASH_CHUNK_LENGTH);
 

@@ -207,7 +207,7 @@ int Command::printAutocompleteInfo(std::queue<std::string>& arguments) {
   const auto children = this->createChildCommands();
 
   const auto parameters = this->getSupportedParameters();
-  bool terminated;
+  bool terminated{};
   // Lex (possibly again)
   const auto lexed = parameters.lex(arguments, &terminated);
 

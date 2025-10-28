@@ -65,7 +65,7 @@ std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
   }
 
   // Convert ASN1_STRING to UTF-8, ASN1_STRING_to_UTF8 allocates memory for the UTF-8 string
-  unsigned char* utf8;
+  unsigned char* utf8{};
   int length = ASN1_STRING_to_UTF8(&utf8, data);
 
   // Free the UTF-8 string allocated by ASN1_STRING_to_UTF8

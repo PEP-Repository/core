@@ -360,9 +360,9 @@ BENCHMARK(BM_CPURBG);
 
 static void BM_CPRNG(benchmark::State& state) {
   pep::CPRNG gen;
-  uint8_t buffer[32];
+  std::array<uint8_t, 32> buffer{};
   for (auto _ : state) {
-    gen(buffer, 32);
+    gen(buffer);
     benchmark::DoNotOptimize(buffer);
   }
   state.SetBytesProcessed(static_cast<int64_t>(state.iterations()*32));

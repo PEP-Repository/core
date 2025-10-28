@@ -18,7 +18,7 @@ const size_t RETRIES = 3;
 
 struct TarCtx {
    std::istream& stream;
-   char buf[10240] = {};
+   std::array<char, 10240> buf{};
 
    TarCtx(std::istream &stream) : stream(stream) {}
 };
@@ -42,7 +42,7 @@ la_ssize_t read_callback(archive* archive, void* clientData, const void** buffer
   if(ctx->stream.eof()) {
     return 0;
   }
-  ctx->stream.read(ctx->buf, sizeof(ctx->buf));
+  ctx->stream.read(ctx->buf.data(), static_cast<std::streamsize>(ctx->buf.size()));
   if(ctx->stream.fail()) {
     archive_set_error(archive, EIO, "Error reading archive from stream");
     return -1;
@@ -56,7 +56,7 @@ int close_callback(archive* archive, void* clientData) {
 }
 
 archive_entry* readNextHeader(archive* archive) {
-  archive_entry* entry;
+  archive_entry* entry{};
   int result = archive_read_next_header(archive, &entry);
   for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
     LOG(LOG_TAG, warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
@@ -84,9 +84,9 @@ archive_entry* readNextHeader(archive* archive) {
 }
 
 bool readBlockToStream(archive* archive, std::ostream& out) {
-  const void *buff;
-  size_t len;
-  la_int64_t offset;
+  const void *buff{};
+  size_t len{};
+  la_int64_t offset{};
 
   int result = archive_read_data_block(archive, &buff, &len, &offset);
   for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
@@ -198,7 +198,7 @@ void Tar::Extract(std::istream& stream, const std::filesystem::path& outputDirec
     oss << "Error opening tar stream for reading: " << archive_errno(archive) << " - " << archive_error_string(archive);
     throw std::runtime_error(oss.str());
   }
-  archive_entry* archive_entry;
+  archive_entry* archive_entry{};
   while( (archive_entry = readNextHeader(archive)) ) {
     std::filesystem::path outpath = outputDirectory / archive_entry_pathname(archive_entry);
     std::filesystem::create_directories(outpath.parent_path());

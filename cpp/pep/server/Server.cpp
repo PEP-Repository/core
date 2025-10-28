@@ -109,7 +109,7 @@ Server::handleChecksumChainRequest(
     maxCheckpoint = UnpackUint64BE(request.mCheckpoint);
   }
 
-  uint64_t checksum, checkpoint;
+  uint64_t checksum{}, checkpoint{};
   computeChecksumChainChecksum(
     request.mName,
     maxCheckpoint,

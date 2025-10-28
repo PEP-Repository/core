@@ -102,7 +102,7 @@ public:
    */
   template <typename TResponse>
   rxcpp::observable<TResponse> ping(std::function<PingResponse(const TResponse& rawResponse)> getPlainResponse) {
-    uint64_t id;
+    uint64_t id{};
     RandomBytes(reinterpret_cast<uint8_t*>(&id), sizeof(id));
 
     return this->whenConnected<TResponse>([id, getPlainResponse](std::shared_ptr<Connection> connection) -> rxcpp::observable<TResponse> {

@@ -159,8 +159,8 @@ private:
       // Get whether it's a test participant
       std::optional<bool> isTestParticipant;
       do {
-        char testParticipantYn;
         std::cout << "Register as a test participant (y/n)? ";
+        char testParticipantYn{};
         std::cin >> testParticipantYn;
 
         switch (testParticipantYn) {

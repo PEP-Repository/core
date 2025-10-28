@@ -87,10 +87,9 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
   }
   for (int i = 0; i < sk_ASN1_OBJECT_num(eku.get()); i++) {
     ASN1_OBJECT* oid = sk_ASN1_OBJECT_value(eku.get(), i);
-    char txt[1024];
-
-    if ((OBJ_obj2txt(txt, sizeof(txt), oid, 0) != -1)
-      && strcmp(txt, "TLS Web Server Authentication") == 0) {
+    std::string txt(1024, '\0');
+    if ((OBJ_obj2txt(txt.data(), static_cast<int>(txt.size()), oid, 0) != -1)
+      && txt == "TLS Web Server Authentication") {
       foundWebServerEKU = true;
       break;
     }
