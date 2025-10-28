@@ -145,8 +145,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
 
-      -Wno-deprecated-copy-with-dtor  # Ignore when defaulted...
-      -Wdeprecated-copy-with-user-provided-dtor  # ...but not when provided
       -Wno-unused-parameter
   )
 
