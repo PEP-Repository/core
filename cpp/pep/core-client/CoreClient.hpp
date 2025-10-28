@@ -683,6 +683,9 @@ public:
 
   rxcpp::observable<FakeVoid> setUserPrimaryId(std::string uid);
 
+  rxcpp::observable<FakeVoid> unsetUserPrimaryId(std::string uid);
+
+
   rxcpp::observable<FakeVoid> setUserDisplayId(std::string uid);
 
   rxcpp::observable<FakeVoid> removeUserIdentifier(std::string uid);
