@@ -228,7 +228,8 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
       mStorage->setPrimaryIdentifierForUser(*userId, request.mPrimaryId);
     }
     else if (primary != request.mPrimaryId) {
-      LOG(LOG_TAG, warning) << "Found a user based on the primary ID we received from the authentication source, but according to our storage a different id for this user is the primary ID.";
+      LOG(LOG_TAG, error) << "Found a user based on the primary ID we received from the authentication source, but according to our storage a different id for this user is the primary ID.";
+      throw Error("There is a problem with your user account. Please contact support to resolve this issue.");
     }
   }
   else {
@@ -238,12 +239,9 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
       if (!primary) {
         mStorage->addIdentifierForUser(*userId, request.mPrimaryId, true, false);
       }
-      else if (std::ranges::find(request.mAlternativeIds, *primary) == request.mAlternativeIds.end()) {
-        LOG(LOG_TAG, warning) << "A user tried to login as a user for which we already have a primary ID, which did not match any of the IDs we received from the authentication source.";
-        return FindUserResponse(std::nullopt);
-      }
-      else {
-        LOG(LOG_TAG, warning) << "Found a user, for which the primary ID was not received as primary ID from the authentication source, but as an alternative ID";
+      else{
+        LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID, that does not match the primary ID we received from the authentication source.";
+        throw Error("A different user account already exists for the provided user ID. Please contact support to resolve this issue.");
       }
     }
   }
