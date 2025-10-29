@@ -364,7 +364,7 @@ if should_run_test authserver-apache; then
   INTEGRATION_USER_PRIMARY_UID="TRnQNJSLx5RFD8VxfzD2HfTsEZ9cT4UsilWw8aiB1ZY"
   DIFFICULT_USER_PRIMARY_UID="MWE8U4BPnAJr27HjAqWD8DucHkFUTgDxLa4zSw7R9Bg"
   printYellow "We expect an error when user 'integrationUser' logs in with his primary UID."
-  printYellow "The user 'integrationUser' is currently only known by that UID. So not by e.g. his e-mailaddress, nor by his non-human-readable primary UID."
+  printYellow "The user is currently only known as 'integrationUser'. So not by e.g. his e-mailaddress, nor by his non-human-readable primary UID."
   test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com "" access_denied
   printYellow "When he logs in with his known UID 'integrationUser' (in this case specified as an alternative UID), this succeeds. Furthermore, his primary UID is now added to the database."
   test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com "integrationUser,integration_user"
