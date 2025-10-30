@@ -211,7 +211,8 @@ if(DEFINED EMSCRIPTEN)
       -sEXIT_RUNTIME  # Run global destructors after main()
       # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
       # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-      "$<$<CONFIG:Debug>:-gseparate-dwarf>"
+      "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"
+      "$<$<CONFIG:Debug,RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
       "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
   )
 

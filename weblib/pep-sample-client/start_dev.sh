@@ -6,6 +6,13 @@ set -eu
 #  other builds happen automatically
 # You need to open http://localhost:2280/weblib/pep-sample-client/ in browser
 
+# E.g. Debug/Release/RelWithDebInfo
+build_type="${1:-Debug}"
+server_build_type="${2:-$build_type}"
+
+build_type_lower=$(echo "$build_type" | tr '[:upper:]' '[:lower:]')
+server_build_type_lower=$(echo "$server_build_type" | tr '[:upper:]' '[:lower:]')
+
 cd -- "$(dirname -- "$0")"
 foss_dir="$PWD/../.."
 
@@ -23,19 +30,19 @@ trap stop_jobs EXIT
 # Build servers
 (
   cd "$foss_dir"
-  cmake --build --preset conan-debug --target pepServers
+  cmake --build --preset "conan-$server_build_type_lower" --target pepServers
 )
 
 # Initial weblib build incl. C++, place symlinks in source directory
 (
   cd "$foss_dir"
-  cmake --build --preset wasm32-debug --target pepWeblibSampleClient
+  cmake --build --preset "wasm32-$build_type_lower" --target pepWeblibSampleClient
 )
 
 # Start servers
 (
-  cd "$foss_dir/build/Debug/cpp/pep/servers/"
-  ./pepServers
+  cd "$foss_dir/build/$server_build_type/cpp/pep/servers/"
+  ./pepServers --loglevel debug
 ) &
 ../pep-repo-client-lib/start_websocket_proxy.sh &
 ./start_nginx.sh

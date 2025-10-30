@@ -18,15 +18,15 @@ add_custom_target(pep-sample-client-build
     BYPRODUCTS "${CMAKE_CURRENT_SOURCE_DIR}/dist"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-set(split_dwarf_copy_args_debug
+set(separate_dwarf_copy_args_debug
     create_symlink
     $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
     ${CMAKE_CURRENT_SOURCE_DIR}/dist/${PROJECT_NAME}Weblib.wasm.debug.wasm
 )
-add_custom_target(pep-sample-client-split-dwarf
-    COMMENT "Copy -gsplit-dwarf debug info"
+add_custom_target(pep-sample-client-separate-dwarf
+    COMMENT "Copy -gseparate-dwarf debug info"
     # Use cat to skip trying to skip in Release mode
-    COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Release>,cat;--,${split_dwarf_copy_args_debug}>"
+    COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
     COMMAND_EXPAND_LISTS
     VERBATIM
     DEPENDS ${PROJECT_NAME}Weblib
@@ -63,7 +63,7 @@ add_custom_target(${PROJECT_NAME}WeblibSampleClient ALL
     COMMENT "Build full weblib sample client"
     DEPENDS
       pep-sample-client-build
-      pep-sample-client-split-dwarf
+      pep-sample-client-separate-dwarf
       pep-sample-client-source-map
       pep-sample-client-config
 )

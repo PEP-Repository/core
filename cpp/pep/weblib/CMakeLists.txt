@@ -50,7 +50,8 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "--emit-tsd=$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts"
     # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
     # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-    "$<$<CONFIG:Debug>:-gseparate-dwarf;-sRUNTIME_DEBUG>"
+    "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf;-Wno-error=limited-postlink-optimizations>"
+    "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
 
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )

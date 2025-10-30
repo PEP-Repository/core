@@ -22,7 +22,7 @@ export default (env, argv) => ({
     chunkFormat: 'module',
     path: path.resolve(import.meta.dirname, 'dist'),
   },
-  devtool: argv.mode === 'development' ? 'source-map' : false,
+  devtool: 'source-map',
   // Enable filesystem cache in non-watch development mode
   ...(argv.mode === 'development' && !argv.watch ? {
     cache: {
