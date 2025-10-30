@@ -46,7 +46,7 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sNO_INVOKE_RUN # We call callMain ourselves
     # noExitRuntime required for -sNO_EXIT_RUNTIME
     -sINCOMING_MODULE_JS_API=thisProgram,print,printErr,noExitRuntime
-    -sEXPORTED_RUNTIME_METHODS=FS,FS_createPreloadedFile,IDBFS,callMain,ExitStatus
+    -sEXPORTED_RUNTIME_METHODS=FS,FS_createPreloadedFile,IDBFS,callMain,ExitStatus,getExceptionMessage,incrementExceptionRefcount,decrementExceptionRefcount
     "--emit-tsd=$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts"
     # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
     # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime

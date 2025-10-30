@@ -125,34 +125,29 @@ class Exception {
 }
 }
 
-/**
- * Transform WebAssembly Exceptions into JavaScript Errors.
- */
-function transformThrowException(ex: WebAssembly.Exception | Error | any): never {
-  if (ex instanceof WebAssembly.Exception) {
-    const error = new Error(
-        (ex.message && ex.message instanceof Array && ex.message.length === 2)
-            ? ex.message[1] || ex.message[0]
-            : String(ex),
-        {cause: ex});
-    if (ex.stack) {
-      error.stack = ex.stack;
-    }
-    throw error;
-  }
-  throw ex;
-}
+/** Are we using Emscripten EH instead of WASM EH? */
+const EmscriptenExceptionHandling = false;
 
-function wrapExecNoBusy<Ret>(fun: () => Ret): Ret {
+/**
+ * Transforms a WASM exception into an Error with the correct message, and stack when available.
+ * After obtaining message, frees the WASM exception object.
+ */
+function handleWasmExceptionForModule(mod: MainModule, wasmEx: WebAssembly.Exception): Error {
+  if (EmscriptenExceptionHandling) {
+    //XXX When using Emscripten EH, we should call incrementExceptionRefcount first,
+    // see https://github.com/emscripten-core/emscripten/issues/17115
+    mod.incrementExceptionRefcount(wasmEx);
+  }
   try {
-    const ret = fun();
-    if (ret instanceof Promise) {
-      return (ret as Ret & Promise<Ret>)
-          .catch(transformThrowException) as Ret & Promise<Ret>;
+    const [type, message] = mod.getExceptionMessage(wasmEx) as [string, string];
+    const error = new Error(message || type, {cause: wasmEx});
+    if (wasmEx.stack) {
+      error.stack = wasmEx.stack;
     }
-    return ret;
-  } catch (ex) {
-    transformThrowException(ex);
+    console.warn(`WebAssembly.Exception: ${type}: ${message}${wasmEx.stack ? `\n${wasmEx.stack}` : ''}`);
+    return error;
+  } finally {
+    mod.decrementExceptionRefcount(wasmEx);
   }
 }
 
@@ -166,7 +161,15 @@ export default class Pep {
   private constructor(config: InitConfig, wasm: MainModule) {
     this.#config = config;
     this.#mod = wasm;
-    this.#client = new wasm.Weblib();
+    try {
+      this.#client = new wasm.Weblib();
+    } catch (ex) {
+      if (ex instanceof WebAssembly.Exception) {
+        throw this.handleWasmException(ex);
+      } else {
+        throw ex;
+      }
+    }
   }
 
   static async #addConfigFile(
@@ -242,7 +245,15 @@ export default class Pep {
       err ? reject(err) : resolve();
     }));
     // Call main now that ClientKeys.json is loaded
-    wrapExecNoBusy(() => Module.callMain());
+    try {
+      Module.callMain();
+    } catch (ex) {
+      if (ex instanceof WebAssembly.Exception) {
+        throw handleWasmExceptionForModule(Module, ex);
+      } else {
+        throw ex;
+      }
+    }
     return new Pep(config, Module);
   }
 
@@ -251,7 +262,7 @@ export default class Pep {
     this.#onBusyChange?.(true);
     let ret;
     try {
-      ret = wrapExecNoBusy(fun);
+      ret = fun();
       if (ret instanceof Promise) {
         return (ret as Ret & Promise<Ret>)
             .finally(() => this.#onBusyChange?.(--this.#busy > 0)) as Ret & Promise<Ret>;
@@ -349,5 +360,10 @@ export default class Pep {
 
   retrieve(entries: CellEntry[]) : ReadableStream<CellData> {
     return this.#wrapExec(() => this.#client.retrieve(entries));
+  }
+
+  /** @see {@link handleWasmExceptionForModule} */
+  handleWasmException(ex: WebAssembly.Exception) {
+    return handleWasmExceptionForModule(this.#mod, ex);
   }
 }

@@ -1,27 +1,24 @@
 import Pep from 'pep-repo-client';
 import {binaryToString, concatStringsAsync, deleteObjectsAsync} from 'pep-repo-client/utils';
 
-function printExtraErrorDetails(ex) {
-  if (ex instanceof Error) {
-    if (ex.cause) {
-      // Browsers don't always display full cause
-      console.error('Cause:', ex.cause);
-    }
-    if (ex.stack) {
-      // Firefox messes up WASM stack when printing Error
-      console.error('Raw stack:', ex.stack);
-    }
+/** @type {Pep|undefined} */
+let pep;
+
+function handleMaybeWasmException(ex) {
+  //@ts-ignore
+  if (pep && ex && ex instanceof WebAssembly.Exception) {
+    const error = pep.handleWasmException(ex);
+    alert(error);
+    throw error;
   }
 }
 
 addEventListener('error', ev => {
-  if (ev.error) {
-    printExtraErrorDetails(ev.error);
-  }
+  handleMaybeWasmException(ev.error);
   alert(ev.error || ev.message);
 });
 addEventListener('unhandledrejection', ev => {
-  printExtraErrorDetails(ev.reason);
+  handleMaybeWasmException(ev.reason);
   alert(ev.reason);
 });
 
@@ -47,10 +44,11 @@ const registerParticipantBtn = /** @type {HTMLButtonElement} */ (document.getEle
 
 output.value = '';
 
-const pep = await Pep.create({
+pep = await Pep.create({
   clientConfig: new URL("dist/ClientConfig.json", location.href),
   authLandingPage: new URL("pepWasmTest-auth-landing", location.href),
 });
+
 pep.onBusyChange(isBusy => working.hidden = !isBusy);
 pep.onStatusChange(connected => loading.hidden = connected);
 loginBtn.disabled = false;
