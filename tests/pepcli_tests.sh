@@ -393,6 +393,33 @@ fi
 
 ####################
 
+if should_run_test user-query; then
+  userDisplayId="user-query-test-user"
+  userPrimaryId="user-query-test-primary-id"
+  userAlternativeIds=("user-query-test-alternative1" "user-query-test-alternative2")
+  [ "$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users" | any(."display id" == "'$userDisplayId'")')" == "false" ]
+  pepcli --oauth-token-group "Access Administrator" user create "$userDisplayId"
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier --primary-id "$userDisplayId" "$userPrimaryId"
+  for id in "${userAlternativeIds[@]}"; do
+    pepcli --oauth-token-group "Access Administrator" user addIdentifier "$userPrimaryId" "$id"
+  done
+  queryResult="$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users"[] | select(."primary id" == "'$userPrimaryId'")')"
+  [ -n "$queryResult" ]
+  returnedDisplayId=$(echo "$queryResult" | jq --raw-output '."display id"')
+  [ "$returnedDisplayId" == "$userDisplayId" ]
+  returnedPrimaryId=$(echo "$queryResult" | jq --raw-output '."primary id"')
+  [ "$returnedPrimaryId" == "$userPrimaryId" ]
+  returnedAlternativeIds=$(echo "$queryResult" | jq --raw-output '."other user identifiers"[]')
+  echo "'$returnedAlternativeIds'"
+  for id in "${userAlternativeIds[@]}"; do
+    echo "$returnedAlternativeIds" | grep "$id"
+  done
+
+  pepcli --oauth-token-group "Access Administrator" user remove "$userPrimaryId"
+fi
+
+####################
+
 if should_run_test structure-metadata; then
 
   # Add some entries
