@@ -272,11 +272,13 @@ export default class Pep {
       try {
         this.#mod.exit();
       } catch (ex) {
-        if (ex instanceof this.#mod.ExitStatus) {
-          console.error(ex);
+        if (ex instanceof this.#mod.ExitStatus && ex.status === 0) {
+          console.log(ex.message);
         } else {
           throw ex;
         }
+      } finally {
+        this.#mod = null!; // Prevent usage
       }
     });
   }
