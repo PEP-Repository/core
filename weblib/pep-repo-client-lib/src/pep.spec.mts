@@ -5,23 +5,11 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import consumers from 'node:stream/consumers';
 
-//TODO are these listeners needed?
-process.on('uncaughtException', error => {
-  process.exitCode = 1;
-  console.error(error);
-  // eslint-disable-next-line no-debugger
-  debugger;
-  console.warn('\nWe will try to continue anyway\n');
-});
-
-process.on('uncaughtExceptionMonitor', (error, origin) =>
-    console.error('\n\n\x07❌️', origin));
-
 let mainExited = false;
 process.on('beforeExit', () => {
   if (!mainExited) {
     process.exitCode ??= 13;
-    console.error('\n\n\x07❌️ Unexpected exit: Either Node.js was killed or ' +
+    console.error('\nUnexpected exit: Either Node.js was terminated or ' +
         'it prevented a hang due to a Promise that can never be fulfilled');
   }
 });
