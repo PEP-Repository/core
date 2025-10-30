@@ -36,3 +36,11 @@ export function binaryToString(data: Uint8Array): string {
   // Decode UTF-8
   return new TextDecoder().decode(constBuffer);
 }
+
+export async function concatStringsAsync(stream: AsyncIterable<string>): Promise<string> {
+  let content = '';
+  for await (const chunk of stream) {
+    content += chunk;
+  }
+  return content
+}

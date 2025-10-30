@@ -332,9 +332,6 @@ public:
                             [cellStreams](RetrievePage page) noexcept {
                               auto stream = (*cellStreams)[page.fileIndex].get_subscriber();
                               if (!page.mContent.empty()) {
-                                //TODO remove commented code after benchmark
-                                //XXX `new` is workaround to avoid copy, see https://github.com/emscripten-core/emscripten/issues/25412
-                                // stream.on_next(val(new Buffer(std::move(page.mContent)), allow_raw_pointers{}));
                                 stream.on_next(std::move(page.mContent));
                               }
                               if (page.mLast) { stream.on_completed(); }

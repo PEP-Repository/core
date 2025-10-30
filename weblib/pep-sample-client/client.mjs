@@ -1,5 +1,5 @@
 import Pep from 'pep-repo-client';
-import {binaryToString, deleteObjectsAsync} from 'pep-repo-client/utils';
+import {binaryToString, concatStringsAsync, deleteObjectsAsync} from 'pep-repo-client/utils';
 
 function printExtraErrorDetails(ex) {
   if (ex instanceof Error) {
@@ -34,7 +34,8 @@ const
     subjectGroupsBtn = /** @type {HTMLButtonElement} */ (document.getElementById('subject-groups-btn')),
     columnsBtn = /** @type {HTMLButtonElement} */ (document.getElementById('columns-btn')),
     listBtn = /** @type {HTMLButtonElement} */ (document.getElementById('list-btn')),
-    retrieveBtn = /** @type {HTMLButtonElement} */ (document.getElementById('retrieve-btn'));
+    retrieveBtn = /** @type {HTMLButtonElement} */ (document.getElementById('retrieve-btn')),
+    saveBtn = /** @type {HTMLButtonElement} */ (document.getElementById('save-btn'));
 const output = /** @type {HTMLTextAreaElement} */ (document.getElementById('output'));
 
 const
@@ -75,8 +76,10 @@ listBtn.addEventListener('click', () => void (async () => {
   // @ts-ignore
   entries = await Array.fromAsync(res);
   retrieveBtn.disabled = false;
+  saveBtn.disabled = false;
 
   const jsonEntries = entries.map(entry => ({
+    id: entry.id,
     subjectLocalPseudonym: entry.subjectLocalPseudonym,
     column: entry.column,
     fileSize: entry.fileSize.toString(),
@@ -95,33 +98,11 @@ retrieveBtn.addEventListener('click', () => void (async () => {
     // @ts-ignore
     for await (/** @type {import("pep-repo-client").CellData} */ const data of res) {
       try {
-        const chunks = data.content;
-        let content = '';
-        //TODO remove commented code after benchmark
-        /*{
-          const decoder = new TextDecoder();
-          try {
-            for await (/!** @type {import("pep-repo-client").Buffer} *!/ const chunk of chunks) {
-              try {
-                content += decoder.decode(new Uint8Array(chunk.view()), {stream: true});
-              } finally {
-                chunk.delete();
-              }
-            }
-          } finally {
-            await deleteObjectsAsync(chunks);
-          }
-          content += decoder.decode();
-        }*/
-
-        for await (const chunk of chunks.pipeThrough(new TextDecoderStream())) {
-          content += chunk;
-        }
-
         jsonEntries.push({
+          id: data.entry.id,
           subjectLocalPseudonym: data.entry.subjectLocalPseudonym,
           column: data.entry.column,
-          content: content,
+          content: await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream())),
         });
 
       } finally {
@@ -133,6 +114,63 @@ retrieveBtn.addEventListener('click', () => void (async () => {
     await deleteObjectsAsync(res);
   }
   output.value = JSON.stringify(jsonEntries, null, '  ');
+})());
+saveBtn.addEventListener('click', () => void (async () => {
+  const entry = entries.find(e => e.fileSize > 10e6 /*10 MB*/);
+  if (!entry) {
+    throw new Error('No cells over 10MB, upload one via pepcli');
+  }
+  output.value = JSON.stringify({
+    id: entry.id,
+    subjectLocalPseudonym: entry.subjectLocalPseudonym,
+    column: entry.column,
+    fileSize: entry.fileSize.toString(),
+  }, null, '  ');
+
+  const fileExtensionBin = entry.partialMetadataView().get('fileExtension');
+  const fileName = 'file' + (fileExtensionBin ? binaryToString(fileExtensionBin) : '');
+
+  let data;
+  try {
+    if ('showSaveFilePicker' in window) {
+      //@ts-ignore
+      const file = await showSaveFilePicker({suggestedName: fileName});
+      const startTime = performance.now();
+      let downloaded = 0n;
+      let prevTime = startTime;
+      //@ts-ignore
+      [data] = await Array.fromAsync(pep.retrieve([entry]));
+      await data.content.pipeThrough(new TransformStream({
+        transform(chunk, controller) {
+          downloaded += BigInt(chunk.byteLength);
+          const now = performance.now();
+          if (now > prevTime + 500 || downloaded === entry.fileSize) {
+            prevTime = now;
+            output.value = `${Number(downloaded) / 1e6} / ${Number(entry.fileSize) / 1e6} MB downloaded (${Math.floor(Number(downloaded) / Number(entry.fileSize) * 100)}% complete)`;
+          }
+          controller.enqueue(chunk);
+        }
+      })).pipeTo(await file.createWritable());
+
+      const endTime = performance.now();
+      output.value += `\nDownloaded ${downloaded} B in ${endTime - startTime} ms`;
+
+    } else {
+      console.warn('Browser does not support streaming file download, will buffer to memory');
+      //@ts-ignore
+      [data] = await Array.fromAsync(pep.retrieve([entry]));
+      const blob = new Blob(await Array.fromAsync(data.content));
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a')
+      a.href = blobUrl;
+      a.download = fileName;
+      a.click();
+      // Ideally we'd call URL.revokeObjectURL(blobUrl), but we don't know when the download is done
+    }
+  } finally {
+    data?.delete();
+  }
 })());
 registerParticipantBtn.addEventListener('click', () => void (async () => {
   output.value = await pep.registerParticipant({
