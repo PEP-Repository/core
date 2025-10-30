@@ -2,6 +2,7 @@
 
 #include <pep/async/OnEmscriptenThread.hpp>
 
+#include <emscripten/bind.h>
 #include <emscripten/val.h>
 
 #include <rxcpp/rx-lite.hpp>
@@ -24,8 +25,8 @@ requires (!std::same_as<TChunk, emscripten::val>)
 emscripten::val CreateReadableStream(rxcpp::observable<TChunk, TSourceOperator> data) {
   return CreateReadableStream(data
     .observe_on(observe_on_emscripten())
-    //TODO Copies chunk, see https://github.com/emscripten-core/emscripten/issues/25412
-    .map([](TChunk chunk) { return emscripten::val(std::move(chunk)); }));
+    //TODO `new` is workaround to not copy chunk, see https://github.com/emscripten-core/emscripten/issues/25412
+    .map([](TChunk chunk) { return emscripten::val(new TChunk(std::move(chunk)), emscripten::allow_raw_pointers{}); }));
 }
 
 }
