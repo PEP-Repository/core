@@ -220,7 +220,7 @@ CoreClient::retrieveData2(
                         if (file.nextPage != page->mPageNumber) {
                           throw std::runtime_error(std::format(
                               "Received out-of-order page for file {}: expected {} but got {}",
-                              file.nextPage, page->mPageNumber, index));
+                              index, file.nextPage, page->mPageNumber));
                         }
                         ++file.nextPage;
 
