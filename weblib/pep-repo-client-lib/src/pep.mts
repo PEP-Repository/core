@@ -70,7 +70,7 @@ export interface ParticipantPersonalia {
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
-  subjectPolymorphicPseudonyms?: string[] | undefined;
+  subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
 }
@@ -151,6 +151,26 @@ function handleWasmExceptionForModule(mod: MainModule, wasmEx: WebAssembly.Excep
   }
 }
 
+function throwPotentialWasmException(mod: MainModule, ex: WebAssembly.Exception | Error | unknown): never {
+  if (ex instanceof WebAssembly.Exception) {
+    throw handleWasmExceptionForModule(mod, ex);
+  }
+  throw ex;
+}
+
+function runHandleWasmExceptionForModule<Ret>(mod: MainModule, fun: () => Ret): Ret {
+  try {
+    const ret = fun();
+    if (ret instanceof Promise) {
+      return (ret as Ret & Promise<Ret>)
+          .catch(ex => throwPotentialWasmException(mod, ex)) as Ret & Promise<Ret>;
+    }
+    return ret;
+  } catch (ex) {
+    throwPotentialWasmException(mod, ex);
+  }
+}
+
 export default class Pep {
   readonly #config: InitConfig;
   #mod: MainModule;
@@ -161,15 +181,7 @@ export default class Pep {
   private constructor(config: InitConfig, wasm: MainModule) {
     this.#config = config;
     this.#mod = wasm;
-    try {
-      this.#client = new wasm.Weblib();
-    } catch (ex) {
-      if (ex instanceof WebAssembly.Exception) {
-        throw this.handleWasmException(ex);
-      } else {
-        throw ex;
-      }
-    }
+    this.#client = this.runHandleWasmException(() => new wasm.Weblib());
   }
 
   static async #addConfigFile(
@@ -245,15 +257,7 @@ export default class Pep {
       err ? reject(err) : resolve();
     }));
     // Call main now that ClientKeys.json is loaded
-    try {
-      Module.callMain();
-    } catch (ex) {
-      if (ex instanceof WebAssembly.Exception) {
-        throw handleWasmExceptionForModule(Module, ex);
-      } else {
-        throw ex;
-      }
-    }
+    runHandleWasmExceptionForModule(Module, () => Module.callMain());
     return new Pep(config, Module);
   }
 
@@ -365,5 +369,10 @@ export default class Pep {
   /** @see {@link handleWasmExceptionForModule} */
   handleWasmException(ex: WebAssembly.Exception) {
     return handleWasmExceptionForModule(this.#mod, ex);
+  }
+
+  /** @see {@link runHandleWasmExceptionForModule} */
+  runHandleWasmException<Ret>(fun: () => Ret): Ret {
+    return runHandleWasmExceptionForModule(this.#mod, fun);
   }
 }

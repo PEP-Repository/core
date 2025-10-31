@@ -23,7 +23,7 @@ namespace pep::weblib {
 
 struct ListQuery {
   std::optional<std::vector<std::string>> subjectGroups;
-  std::optional<std::vector<std::string>> subjectPolymorphicPseudonyms;
+  std::optional<std::vector<std::string>> subjects;
   std::optional<std::vector<std::string>> columnGroups;
   std::optional<std::vector<std::string>> columns;
 

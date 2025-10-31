@@ -2,6 +2,7 @@
 #include <pep/async/EmscriptenValPtr.hpp>
 #include <pep/async/ObservableAwaiter.hpp>
 #include <pep/async/OnEmscriptenThread.hpp>
+#include <pep/async/RxGetOne.hpp>
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/client/Client.hpp>
@@ -266,17 +267,23 @@ public:
     return CreateReadableStream(
         onIoThread()
         .flat_map([query = MakeSharedCopy(std::move(query))](const std::shared_ptr<Client>& client) {
-          return client->requestTicket2(requestTicket2Opts{
+          auto pps = query->subjects
+                     ? client->parsePpsOrIdentities(*query->subjects)
+                     .op(RxGetOne("PolymorphicPseudonym vector"))
+                     .as_dynamic()
+                     : rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>())
+                     .as_dynamic();
+
+          return pps.flat_map([client, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
+            return client->requestTicket2(requestTicket2Opts{
                 .participantGroups = std::move(query->subjectGroups).value_or(std::vector<std::string>{}),
-                .pps = RangeToVector(
-                    std::move(query->subjectPolymorphicPseudonyms).value_or(std::vector<std::string>{})
-                    | views::transform(PolymorphicPseudonym::FromText)
-                    ),
+                .pps = std::move(*pps),
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
                 .modes = {"read"}, //TODO support more modes
                 .includeAccessGroupPseudonyms = true,
               });
+          });
         })
         .flat_map([client = client_](const IndexedTicket2& indexedTicket) {
           return client->enumerateData2(indexedTicket.getTicket())

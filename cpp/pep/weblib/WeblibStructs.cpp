@@ -38,7 +38,7 @@ using namespace pep::weblib;
 
 EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::subjectGroups)::value_type>();
-  register_optional<decltype(ListQuery::subjectPolymorphicPseudonyms)::value_type>();
+  register_optional<decltype(ListQuery::subjects)::value_type>();
   register_optional<decltype(ListQuery::columnGroups)::value_type>();
   register_optional<decltype(ListQuery::columns)::value_type>();
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
@@ -50,7 +50,7 @@ EMSCRIPTEN_BINDINGS(optionals) {
 #define CUR_STRUCT ListQuery
 BINDINGS
   FIELD(subjectGroups)
-  FIELD(subjectPolymorphicPseudonyms)
+  FIELD(subjects)
   FIELD(columnGroups)
   FIELD(columns)
 BINDINGS_END

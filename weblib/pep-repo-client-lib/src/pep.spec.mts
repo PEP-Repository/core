@@ -1,9 +1,10 @@
 import {describe} from 'mocha';
 import {expect} from 'chai';
-import Pep, {ClientConfig} from "./pep.mjs";
+import Pep, {CellEntry, ClientConfig} from "./pep.mjs";
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import consumers from 'node:stream/consumers';
+import {binaryToString, concatStringsAsync} from "./utils.mjs";
 
 let mainExited = false;
 process.on('beforeExit', () => {
@@ -41,35 +42,31 @@ describe('Pep', function () {
         ShadowPublicKeyFile,
       },
     });
-    const token = pep.internalGenerateToken(tokenSecretFile.OAuthTokenSecret, 'Research Assessor');
-    await pep.authenticateWithToken(token);
+    await pep.runHandleWasmException(async () => {
+      const token = pep.internalGenerateToken(tokenSecretFile.OAuthTokenSecret, 'Research Assessor');
+      await pep.authenticateWithToken(token);
+    });
   });
   after(function () {
-    if (pep) {
-      pep.delete();
-    }
+    pep?.delete();
+    mainExited = true;
   });
 
   describe('#listColumns()', function () {
     it('should list columns and column groups', async function () {
-      expect(await pep.listColumns()).to.containSubset([
+      expect(await pep.runHandleWasmException(() => pep.listColumns()))
+          .to.containSubset([
         {
-          "columns": [
-            "BUGS.Visit1.Assessor",
-            "BUGS.Visit2.Assessor",
-            "Visit1.Assessor",
-            "Visit2.Assessor",
-            "Visit3.Assessor",
-          ],
-          "name": "VisitAssessors",
+          name: 'WasmTestColumnGroup',
+          columns: ['WasmTestColumn'],
         },
         {
-          "columns": ["ParticipantInfo"],
-          "name": "ParticipantInfo"
+          name: 'ParticipantInfo',
+          columns: ['ParticipantInfo'],
         },
         {
-          "columns": ["ParticipantIdentifier"],
-          "name": "ParticipantIdentifier",
+          name: 'ParticipantIdentifier',
+          columns: ['ParticipantIdentifier'],
         },
       ]);
     });
@@ -77,11 +74,103 @@ describe('Pep', function () {
 
   describe('#listSubjectGroups()', function () {
     it('should list subject groups', async function () {
-      expect(await pep.listSubjectGroups()).to.containSubset([
-        {name: '*'},
-      ]);
+      expect(await pep.runHandleWasmException(() => pep.listSubjectGroups()))
+          .to.containSubset([
+            {name: '*'},
+            {name: 'WasmTestSubjectGroup'},
+          ]);
+    });
+  });
+
+  describe('#list()', function () {
+    it('should list cells given subject groups', function () {
+      return pep.runHandleWasmException(async () => {
+        const entries = await Array.fromAsync(pep.list({
+          subjectGroups: ['WasmTestSubjectGroup'],
+          columnGroups: ['WasmTestColumnGroup'],
+        }));
+        try {
+          const entriesSimple = entries.map(entry => ({
+            id: entry.id,
+            subjectLocalPseudonym: entry.subjectLocalPseudonym,
+            column: entry.column,
+            fileSize: entry.fileSize,
+            partialMetadata: Object.fromEntries(
+                [...entry.partialMetadataView().entries()]
+                    .map(([key, value]) =>
+                        [key, value !== undefined ? binaryToString(value) : null])
+            ),
+          }));
+          try {
+            expect(entriesSimple).satisfies((entries: typeof entriesSimple) =>
+                    entries.every(entry => entry.column === 'WasmTestColumn'),
+                'All entries should be for WasmTestColumn');
+            expect(entriesSimple).satisfies((entries: typeof entriesSimple) =>
+                    entries.some(entry =>
+                        entry.partialMetadata['fileExtension'] === '.small'
+                        && entry.fileSize === BigInt('Some small test data!'.length)),
+                'One entry should have fileExtension .small and specific file size');
+            expect(entriesSimple).satisfies((entries: typeof entriesSimple) =>
+                entries.some(entry => entry.partialMetadata['fileExtension'] === '.large'
+                        && entry.fileSize === BigInt('Larger test data!\n'.length) * 700_000n,
+                    'One entry should have fileExtension .large and specific file size'));
+          } catch (ex) {
+            console.log(entriesSimple);
+            throw ex;
+          }
+        } finally {
+          entries.forEach(entry => entry.delete());
+        }
+      });
+    });
+    it('should lint cells given subject origin ID', function () {
+      return pep.runHandleWasmException(async () => {
+        const entries = await Array.fromAsync(pep.list({
+          subjects: ['WasmTestSubjectSmall'], // Pass origin ID
+          columnGroups: ['WasmTestColumnGroup'],
+        }));
+        try {
+          expect(entries).has.length(1);
+          const [entry] = entries as [CellEntry];
+          expect(binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()))
+              .equals('.small', 'Git back wrong fileExtension');
+        } finally {
+          entries.forEach(entry => entry.delete());
+        }
+      });
+    });
+  });
+
+  describe('#retrieve()', function () {
+    it('should retrieve cells', function () {
+      return pep.runHandleWasmException(async () => {
+        const entries = await Array.fromAsync(pep.list({
+          subjectGroups: ['WasmTestSubjectGroup'],
+          columnGroups: ['WasmTestColumnGroup'],
+        }));
+        try {
+          const smallEntry = entries.find(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()) === '.small'),
+              largeEntry = entries.find(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()) === '.large');
+          expect(smallEntry).to.exist;
+          expect(largeEntry).to.exist;
+
+          for await (using data of pep.retrieve([smallEntry!, largeEntry!])) {
+            let expectedData: string;
+            switch (data.entry.id) {
+              case smallEntry!.id:
+                expectedData = 'Some small test data!';
+                break;
+              case largeEntry!.id:
+                expectedData = Array(700_000).fill('Larger test data!\n').join('');
+                break;
+            }
+            expect(await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream())))
+                .equals(expectedData!, 'Wrong cell data');
+          }
+        } finally {
+          entries.forEach(entry => entry.delete());
+        }
+      });
     });
   });
 });
-
-mainExited = true;

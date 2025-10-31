@@ -412,6 +412,26 @@ fi
 if should_run_test weblib; then
   trace cd "$CORE_DIR/weblib/pep-repo-client-lib/"
 
+  pepcli --oauth-token-group "Data Administrator" ama column create WasmTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup create WasmTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama column addTo WasmTestColumn WasmTestColumnGroup
+
+  pepcli --oauth-token-group "Data Administrator" ama group create WasmTestSubjectGroup
+
+  pepcli --oauth-token-group "Access Administrator" ama cgar create WasmTestColumnGroup "Research Assessor" read
+  pepcli --oauth-token-group "Access Administrator" ama cgar create WasmTestColumnGroup "Research Assessor" write
+  pepcli --oauth-token-group "Access Administrator" ama pgar create WasmTestSubjectGroup "Research Assessor" enumerate
+  pepcli --oauth-token-group "Access Administrator" ama pgar create WasmTestSubjectGroup "Research Assessor" access
+
+  pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c WasmTestColumn \
+    -d 'Some small test data!' --metadataxentry "$(pepcli xentry --name fileExtension --payload .small)"
+  # Around 2MB
+  yes 'Larger test data!' | head -700000 | pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectLarge -c WasmTestColumn \
+    --input-path - --metadataxentry "$(pepcli xentry --name fileExtension --payload .large)"
+
+  pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
+  pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
+
   start_websocket_proxy_flags=()
   if [ -n "${CI-}" ]; then
     # Connect to docker:dind service container, see https://stackoverflow.com/a/48288560
@@ -424,9 +444,15 @@ if should_run_test weblib; then
   trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR/rootCA.cert" ./test_config/
   # If this fails, you may need to source the EMSDK activation script and forward the Node.js PATH when using sudo via 'sudo \"PATH=\$PATH\" ...'
   trace npm install
+
   trace npm test
+
   trace kill % || true
   trace wait -f % || true
+
+  pepcli --oauth-token-group "Data Administrator" ama column remove WasmTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove WasmTestColumnGroup
+  pepcli --oauth-token-group "Access Administrator" ama group remove WasmTestSubjectGroup --force
 fi
 
 ####################
