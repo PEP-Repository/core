@@ -56,6 +56,7 @@ struct CellEntry {
 
   [[nodiscard]] std::string id() const;
   [[nodiscard]] std::string subjectLocalPseudonym() const;
+  [[nodiscard]] std::string subjectEncryptedOriginId() const;
   [[nodiscard]] const std::string& column() const;
   [[nodiscard]] std::uint64_t fileSize() const;
   [[nodiscard]] std::unordered_map<std::string, std::optional<emscripten::val>> partialMetadataView() const;

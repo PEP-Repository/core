@@ -101,6 +101,10 @@ std::string CellEntry::subjectLocalPseudonym() const {
   return inner->mAccessGroupPseudonym->text();
 }
 
+std::string CellEntry::subjectEncryptedOriginId() const {
+  return inner->mLocalPseudonyms->mPolymorphic.text();
+}
+
 const std::string& CellEntry::column() const { return inner->mColumn; }
 std::uint64_t CellEntry::fileSize() const { return inner->mFileSize; }
 
@@ -116,6 +120,7 @@ EMSCRIPTEN_BINDINGS(CellEntry) {
   class_<CellEntry>("CellEntry")
     .property("id", &CellEntry::id)
     .property("subjectLocalPseudonym", &CellEntry::subjectLocalPseudonym)
+    .property("subjectEncryptedOriginId", &CellEntry::subjectEncryptedOriginId)
     .property("column", &CellEntry::column)
     .property("fileSize", &CellEntry::fileSize)
     .function("partialMetadataView", &CellEntry::partialMetadataView)
