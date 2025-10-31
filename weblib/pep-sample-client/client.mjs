@@ -4,21 +4,30 @@ import {binaryToString, concatStringsAsync, deleteObjectsAsync} from 'pep-repo-c
 /** @type {Pep|undefined} */
 let pep;
 
-function handleMaybeWasmException(ex) {
+/**
+ * @param {*} ex
+ * @param {Event} ev
+ */
+function handleMaybeWasmException(ex, ev) {
   //@ts-ignore
   if (pep && ex && ex instanceof WebAssembly.Exception) {
     const error = pep.handleWasmException(ex);
     alert(error);
-    throw error;
+    console.error('Uncaught', error);
+    ev.preventDefault();
   }
 }
 
 addEventListener('error', ev => {
-  handleMaybeWasmException(ev.error);
+  // Ignore noise from background threads, see /cpp/weblib/prejs.js
+  if (ev.error instanceof ErrorEvent || (!ev.error && ev.message === 'Uncaught [object WebAssembly.Exception]')) {
+    return;
+  }
+  handleMaybeWasmException(ev.error, ev);
   alert(ev.error || ev.message);
 });
 addEventListener('unhandledrejection', ev => {
-  handleMaybeWasmException(ev.reason);
+  handleMaybeWasmException(ev.reason, ev);
   alert(ev.reason);
 });
 
