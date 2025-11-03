@@ -52,13 +52,13 @@ rxcpp::observable<std::vector<EnumerateResult>> CoreClient::enumerateData2(const
                                                                        const std::vector<PolymorphicPseudonym>& pps,
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
-  return clientAccessManager
-      ->sendRequest<SignedTicket2>(sign(TicketRequest2{.mModes = {"read"},
-                                                       .mParticipantGroups = participantGroups,
-                                                       .mPolymorphicPseudonyms = pps,
-                                                       .mColumnGroups = columnGroups,
-                                                       .mColumns = columns,
-                                                       .mIncludeUserGroupPseudonyms = false}))
+  return accessManagerProxy
+      ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
+                                               .mParticipantGroups = participantGroups,
+                                               .mPolymorphicPseudonyms = pps,
+                                               .mColumnGroups = columnGroups,
+                                               .mColumns = columns,
+                                               .mIncludeUserGroupPseudonyms = false})
       .flat_map([this](SignedTicket2 ticket) { return this->enumerateData2(std::make_shared<SignedTicket2>(ticket)); });
 }
 
@@ -68,11 +68,8 @@ rxcpp::observable<std::vector<EnumerateResult>> CoreClient::enumerateData2(std::
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
   auto enumRequest = std::make_shared<DataEnumerationRequest2>();
   enumRequest->mTicket = *ticket;
-  return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-    sign(*enumRequest))))
-    .map([this, pseudonyms](std::string_view rawResponse) {
-      auto response = Serialization::FromString<
-        DataEnumerationResponse2>(rawResponse);
+  return storageFacilityProxy->requestDataEnumeration(std::move(*enumRequest))
+    .map([this, pseudonyms](const DataEnumerationResponse2& response) {
       return convertDataEnumerationEntries(response.mEntries, *pseudonyms);
     });
 }
@@ -105,11 +102,8 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
     MetadataReadRequest2 readRequest;
     readRequest.mIds = std::move(batch);
     readRequest.mTicket = *ticket;
-    return this->clientStorageFacility->sendRequest(
-      std::make_shared<std::string>(Serialization::ToString(sign( readRequest))))
-      .map([](std::string_view rawResponse) {
-      auto response = Serialization::FromString<
-        DataEnumerationResponse2>(rawResponse);
+    return this->storageFacilityProxy->requestMetadataRead(std::move(readRequest))
+      .map([](DataEnumerationResponse2 response) {
       return std::move(response.mEntries);
         })
       .op(RxConcatenateVectors())
@@ -164,12 +158,7 @@ CoreClient::retrieveData2(
             std::transform(ctx->subjects.cbegin(), ctx->subjects.cend(), std::back_inserter(readRequest.mIds),
                            [](const EnumerateResult& subject) { return subject.mId; });
             readRequest.mTicket = *ticket;
-            return clientStorageFacility->sendRequest(std::make_shared<std::string>(
-                  Serialization::ToString(sign(readRequest))))
-              .map([](std::string_view rawPage) {
-                // Deserialize page
-                return Serialization::FromString<DataPayloadPage>(rawPage);
-              })
+            return storageFacilityProxy->requestDataRead(std::move(readRequest))
               .group_by([](const DataPayloadPage& page) { return page.mIndex; })
               .map([ctx, offset](const rxcpp::grouped_observable<uint32_t, DataPayloadPage>& groupedPages) {
                 const auto index = groupedPages.get_key();
@@ -234,10 +223,8 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   FillHistoryRequestIndices<std::string, std::string>(
     request->mTicket, unsignedTicket, &Ticket2::mColumns, columns, request->mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
-  return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-    sign(*request))))
-    .map([](std::string_view rawResponse) {
-      auto response = Serialization::FromString<DataHistoryResponse2>(rawResponse);
+  return storageFacilityProxy->requestDataHistory(std::move(*request))
+    .map([](const DataHistoryResponse2& response) {
       return response.mEntries;
     })
     .op(RxConcatenateVectors())

@@ -24,60 +24,34 @@ protected:
         .allow(std::vector<std::string>({"accessmanager", "authserver", "keyserver", "registrationserver", "transcryptor", "storagefacility" }))); // TODO: don't require explicit std::vector<std::string>(...) instantiation
   }
 
+  using ServerFilter = std::unordered_set<std::string>;
+  using GetServerProxy = std::function<std::shared_ptr<const pep::ServerProxy>()>;
+
+  static rxcpp::observable<std::string> GetServerMetrics(const ServerFilter& filter, const std::string& name, const std::string& caption, const GetServerProxy& getServerProxy) {
+    if (filter.empty() || filter.contains(name)) {
+      return getServerProxy()->requestMetrics().map([caption](pep::MetricsResponse metrics) {
+        std::ostringstream oss;
+        oss << "============================ " << caption << " ============================\n";
+        oss << metrics.mMetrics;
+        return oss.str();
+        });
+    }
+    return rxcpp::observable<>::empty<std::string>();
+  }
+
   int execute() override {
     std::vector<std::string> serverFilterVec = this->getParameterValues().getOptionalMultiple<std::string>("server");
-    std::unordered_set<std::string> serverFilter(serverFilterVec.begin(), serverFilterVec.end());
+    ServerFilter serverFilter(serverFilterVec.begin(), serverFilterVec.end());
 
     return this->executeEventLoopFor([serverFilter](std::shared_ptr<pep::Client> client) {
       std::vector<rxcpp::observable<std::string>> observables;
-      if(serverFilter.empty() || serverFilter.find("accessmanager") != serverFilter.end()) {
-        observables.push_back(client->getAccessManagerMetrics().map([](pep::MetricsResponse metrics) {
-          std::ostringstream oss;
-          oss << "============================ Access Manager ============================\n";
-          oss << metrics.mMetrics;
-          return oss.str();
-        }));
-      }
-      if(serverFilter.empty() || serverFilter.find("authserver") != serverFilter.end()) {
-        observables.push_back(client->getAuthserverMetrics().map([](pep::MetricsResponse metrics) {
-          std::ostringstream oss;
-          oss << "============================ AuthServer ============================\n";
-          oss << metrics.mMetrics;
-          return oss.str();
-        }));
-      }
-      if(serverFilter.empty() || serverFilter.find("keyserver") != serverFilter.end()) {
-        observables.push_back(client->getKeyServerMetrics().map([](pep::MetricsResponse metrics) {
-          std::ostringstream oss;
-          oss << "============================ KeyServer ============================\n";
-          oss << metrics.mMetrics;
-          return oss.str();
-        }));
-      }
-      if(serverFilter.empty() || serverFilter.find("registrationserver") != serverFilter.end()) {
-        observables.push_back(client->getRegistrationServerMetrics().map([](pep::MetricsResponse metrics){
-          std::ostringstream oss;
-          oss << "============================ Registration Server ============================\n";
-          oss << metrics.mMetrics;
-          return oss.str();
-        }));
-      }
-      if(serverFilter.empty() || serverFilter.find("transcryptor") != serverFilter.end()) {
-        observables.push_back(client->getTranscryptorMetrics().map([](pep::MetricsResponse metrics){
-          std::ostringstream oss;
-          oss << "============================ Transcryptor ============================\n";
-          oss << metrics.mMetrics;
-          return oss.str();
-        }));
-      }
-      if(serverFilter.empty() || serverFilter.find("storagefacility") != serverFilter.end()) {
-        observables.push_back(client->getStorageFacilityMetrics().map([](pep::MetricsResponse metrics) {
-          std::ostringstream oss;
-          oss << "============================ Storage Facility ============================\n";
-          oss << metrics.mMetrics;
-          return oss.str();
-        }));
-      }
+      observables.push_back(GetServerMetrics(serverFilter, "accessmanager",       "Access Manager",       [client]() {return client->getAccessManagerProxy(); }));
+      observables.push_back(GetServerMetrics(serverFilter, "authserver",          "AuthServer",           [client]() {return client->getAuthServerProxy(); }));
+      observables.push_back(GetServerMetrics(serverFilter, "keyserver",           "KeyServer",            [client]() {return client->getKeyServerProxy(); }));
+      observables.push_back(GetServerMetrics(serverFilter, "registrationserver",  "Registration Server",  [client]() {return client->getRegistrationServerProxy(); }));
+      observables.push_back(GetServerMetrics(serverFilter, "transcryptor",        "Transcryptor",         [client]() {return client->getTranscryptorProxy(); }));
+      observables.push_back(GetServerMetrics(serverFilter, "storagefacility",     "Storage Facility",     [client]() {return client->getStorageFacilityProxy(); }));
+
       return rxcpp::rxs::iterate(observables).concat().map([](std::string metricsString){
         std::cout << metricsString << std::endl;
         return pep::FakeVoid();

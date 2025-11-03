@@ -10,8 +10,7 @@ using namespace std::chrono;
 
 namespace pep {
 
-Signature Signature::create(std::string_view data, X509CertificateChain chain,
-      const AsymmetricKey& privateKey, bool isLogCopy, SignatureScheme scheme) {
+Signature Signature::Make(std::string_view data, const X509Identity& identity, bool isLogCopy, SignatureScheme scheme) {
   auto timestamp = TimeNow();
 
   Sha512 hasher;
@@ -28,8 +27,8 @@ Signature Signature::create(std::string_view data, X509CertificateChain chain,
   }
 
   return Signature(
-    privateKey.signDigestSha256(hasher.digest().substr(0, 32)),
-    std::move(chain),
+    identity.getPrivateKey().signDigestSha256(hasher.digest().substr(0, 32)),
+    identity.getCertificateChain(),
     scheme,
     timestamp,
     isLogCopy

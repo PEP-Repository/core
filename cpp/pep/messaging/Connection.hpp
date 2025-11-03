@@ -35,12 +35,6 @@ public:
   // sends a message, the future is the reply as received by the server
   rxcpp::observable<std::string> sendRequest(std::shared_ptr<std::string> message, std::optional<MessageBatches> tail = {});
 
-  // Convenience function to serialize and send a message, wait for a
-  // response of a certain type and deserialize it.  Assumes there is a
-  // single response to the request.
-  template<typename response_type, typename request_type>
-  rxcpp::observable<response_type> sendRequest(request_type request);
-
   const Event<Connection, std::exception_ptr> onUncaughtReadException;
 
   // ******************** State and callbacks for message exchange using pep::networking classes ********************
@@ -149,44 +143,5 @@ private:
   RequestHandler* mRequestHandler;
 };
 
-
-template<typename response_type, typename request_type>
-rxcpp::observable<response_type>
-Connection::sendRequest(request_type request) {
-  std::shared_ptr<bool> done = std::make_shared<bool>(false);
-  return this->sendRequest(std::make_shared<std::string>(Serialization::ToString(std::move(request)))).map(
-    [done](std::string_view msg) {
-      if (*done) {
-        std::ostringstream message;
-        message
-          << "Unexpected double reply to "
-          << boost::core::demangle(typeid(request_type).name());
-        throw std::runtime_error(message.str());
-      }
-      *done = true;
-      if (msg.size() < sizeof(MessageMagic)) {
-        std::ostringstream message;
-        message
-          << "Unexpected short message in response to request "
-          << boost::core::demangle(typeid(request_type).name())
-          << ": expected "
-          << boost::core::demangle(typeid(response_type).name());
-        throw std::runtime_error(message.str());
-      }
-      auto magic = GetMessageMagic(msg);
-      if (magic != MessageMagician<response_type>::GetMagic()) {
-        std::ostringstream message;
-        message
-          << "Unexpected response message type to request "
-          << boost::core::demangle(typeid(request_type).name())
-          << ": expected "
-          << boost::core::demangle(typeid(response_type).name())
-          << ", but got "
-          << DescribeMessageMagic(msg);
-        throw std::runtime_error(message.str());
-      }
-      return Serialization::FromString<response_type>(msg);
-    }).last();
-}
 
 }

@@ -71,7 +71,7 @@ protected:
   rxcpp::observable<std::shared_ptr<pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
     if (mMetaReadableColumnGroups == nullptr) {
       mMetaReadableColumnGroups = pep::CreateRxCache([client]() {
-        return client->getAccessibleColumns(true, { "read-meta" })
+        return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read-meta" })
           .op(pep::RxGetOne("column access specification"))
           .map([](const pep::ColumnAccess& access) {return pep::MakeSharedCopy(access); });
         });
@@ -87,7 +87,7 @@ protected:
   rxcpp::observable<std::string> getAccessibleParticipantGroups(std::shared_ptr<pep::CoreClient> client) {
     if (mAccessibleParticipantGroups == nullptr) {
       mAccessibleParticipantGroups = pep::CreateRxCache([client]() {
-        return client->getAccessibleParticipantGroups(true)
+        return client->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
           .flat_map([](const pep::ParticipantGroupAccess& access) {
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {

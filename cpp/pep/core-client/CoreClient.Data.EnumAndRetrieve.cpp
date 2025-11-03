@@ -11,8 +11,6 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/utils/Shared.hpp>
 
-#include <pep/storagefacility/StorageFacilitySerializers.hpp>
-
 #include <algorithm>
 #include <exception>
 #include <memory>
@@ -171,12 +169,10 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
               colIdxs.begin(), colIdxs.end()));
           }
 
-          return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-              sign(enumRequest))))
+          return storageFacilityProxy->requestDataEnumeration(std::move(enumRequest))
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
-              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, std::string_view rawResponse) {
-                auto response = Serialization::FromString<DataEnumerationResponse2>(rawResponse);
+              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, const DataEnumerationResponse2& response) {
                 for (auto& entry: response.mEntries) {
                   if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.mFileSize <= ctx->dataSizeLimit)) {
                     // This entry will include data: save it for data retrieval
@@ -234,17 +230,8 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                   DataReadRequest2 readRequest;
                   readRequest.mIds = ids;
                   readRequest.mTicket = *ticket;
-                  return clientStorageFacility->sendRequest(
-                      std::make_shared<std::string>(
-                        Serialization::ToString(
-                          SignedDataReadRequest2(
-                            readRequest,
-                            certificateChain,
-                            privateKey))))
-                    .map([](std::string_view rawPage) {
-                      return MakeSharedCopy(
-                        Serialization::FromString<DataPayloadPage>(rawPage));
-                    });
+                  return storageFacilityProxy->requestDataRead(std::move(readRequest))
+                    .map([](DataPayloadPage page) { return MakeSharedCopy(std::move(page)); });
                 })
                 .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->mIndex; }))
                 .map([ctx](std::shared_ptr<IndexedPages> pages) {

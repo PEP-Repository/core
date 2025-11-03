@@ -77,7 +77,6 @@ target_link_libraries(${PROJECT_NAME}Utilslib
   Boost::headers
   Boost::log
   Boost::log_setup
-  Boost::system
   OpenSSL::Crypto
   xxHash::xxhash
 )
@@ -91,7 +90,7 @@ if (WITH_TESTS)
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
-    TestCompatibleMessageMagic.hpp
+    VerifyBackwardCompatibleSerialization.hpp
     TestTiming.hpp
   )
   find_package(GTest REQUIRED)

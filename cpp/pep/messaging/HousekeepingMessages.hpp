@@ -17,7 +17,8 @@ public:
 
 class PingRequest {
 public:
-  explicit PingRequest(uint64_t id) : mId(id) { }
+  PingRequest(); // sets ID to a random value
+  explicit PingRequest(uint64_t id) : mId(id) {}
   uint64_t mId;
 };
 
@@ -27,6 +28,8 @@ public:
 
   uint64_t mId;
   Timestamp mTimestamp;
+
+  void validate(const PingRequest& isReplyTo) const;
 };
 
 using SignedPingResponse = Signed<PingResponse>;

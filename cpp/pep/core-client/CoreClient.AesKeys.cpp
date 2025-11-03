@@ -29,7 +29,7 @@ CoreClient::unblindAndDecryptKeys(
 
   struct Context {
     std::shared_ptr<WaitGroup> wg;
-    std::vector<SignedEncryptionKeyRequest> reqs;
+    std::vector<EncryptionKeyRequest> reqs;
     std::vector<size_t> reqSizes;
     std::vector<EncryptedKey> encKeys;
     bool ok = true;
@@ -61,7 +61,7 @@ CoreClient::unblindAndDecryptKeys(
       );
     }
     baseCtx->reqSizes.push_back(request.mEntries.size());
-    baseCtx->reqs.push_back(sign(std::move(request)));
+    baseCtx->reqs.push_back(std::move(request));
   }
   // We proceed in two steps.  Step one: we send the request to unblind the keys.
   return CreateObservable<std::vector<EncryptedKey>>(
@@ -75,8 +75,7 @@ CoreClient::unblindAndDecryptKeys(
       auto action = ctx->wg->add(
           "unblindKeys offset " + std::to_string(offset));
       auto req_index = i;
-      clientAccessManager->sendRequest<
-          EncryptionKeyResponse>(std::move(ctx->reqs[i]))
+      accessManagerProxy->requestEncryptionKey(std::move(ctx->reqs[i]))
       .last().subscribe([action, offset, ctx, req_index](
           EncryptionKeyResponse resp) {
         if (!ctx->ok)
@@ -145,7 +144,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
     auto [offset, keyRequest] = std::move(pair);
     const size_t count = keyRequest.mEntries.size();
-    return clientAccessManager->sendRequest<EncryptionKeyResponse>(sign(std::move(keyRequest)))
+    return accessManagerProxy->requestEncryptionKey(pair.second)
       .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {
