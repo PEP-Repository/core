@@ -5,6 +5,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include <array>
 #include <fstream>
 #include <sstream>
 

@@ -1,4 +1,5 @@
 #include <pep/crypto/CPRNG.hpp>
+#include <array>
 #include <stdexcept>
 
 namespace {

@@ -5,6 +5,8 @@
 #include <boost/algorithm/hex.hpp>
 #include <gtest/gtest.h>
 
+#include <array>
+
 namespace {
 
 TEST(CurveScalarTest, TestConstructor1) {
