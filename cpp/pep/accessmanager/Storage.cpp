@@ -1490,13 +1490,15 @@ std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifie
 }
 
 std::optional<std::string> AccessManager::Backend::Storage::getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at) const {
-  return mImplementor->getLastMatchingRecord(c(&UserIdRecord::timestamp) <= at.getTime()
-        && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isPrimaryId) == true, &UserIdRecord::identifier);
+  using namespace pep::database;
+  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= at.getTime()
+        && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isPrimaryId) == true), &UserIdRecord::identifier));
 }
 
 std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
-  return mImplementor->getLastMatchingRecord(c(&UserIdRecord::timestamp) <= at.getTime()
-        && c(&UserIdRecord::internalUserId) == internalUserId, c(&UserIdRecord::isDisplayId) == true, &UserIdRecord::identifier);
+  using namespace pep::database;
+  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= at.getTime()
+        && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isDisplayId) == true), &UserIdRecord::identifier));
 }
 
 void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(std::string uid) {
