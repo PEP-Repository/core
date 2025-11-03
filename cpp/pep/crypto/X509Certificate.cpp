@@ -446,6 +446,10 @@ std::string X509Certificates::toPem() const {
   return out;
 }
 
+bool X509Certificates::isCurrentTimeInValidityPeriod() const {
+  return std::all_of(this->begin(), this->end(), std::mem_fn(&X509Certificate::isCurrentTimeInValidityPeriod));
+}
+
 bool X509CertificateChain::certifiesPrivateKey(const AsymmetricKey& privateKey) const {
   if (empty()) {
     return false;
