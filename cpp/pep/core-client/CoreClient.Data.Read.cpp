@@ -192,8 +192,8 @@ CoreClient::retrieveData2(
               });
             } else {
               // Only decrypt metadata
-              return rxcpp::observable<>::iterate(ctx->subjects)
-                .zip(rxcpp::observable<>::iterate(ctx->files))
+              return RxMoveIterate(ctx->subjects)
+                .zip(RxMoveIterate(ctx->files))
                 .op(RxIndexed<uint32_t>())
                 .map([ctx, offset](const std::pair<uint32_t, std::tuple<EnumerateResult, fileContext>>& entryData) {
                   const auto& [index, entryFile] = entryData;

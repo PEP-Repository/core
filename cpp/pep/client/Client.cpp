@@ -45,7 +45,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     }
 
     // Columns that haven't been checked are inaccessible: return them
-    return rxcpp::observable<>::iterate(*remaining);
+    return RxMoveIterate(*remaining);
       });
 }
 
@@ -75,7 +75,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
 
   return this
       ->getInaccessibleColumns("write",
-                               rxcpp::observable<>::iterate(*values).map([](const auto& pair) { return pair.first; }))
+                               RxMoveIterate(*values).map([](const auto& pair) { return pair.first; }))
       .op(RxToSet())
       .tap([](std::shared_ptr<std::set<std::string>> inaccessible) {
         if (!inaccessible->empty()) {

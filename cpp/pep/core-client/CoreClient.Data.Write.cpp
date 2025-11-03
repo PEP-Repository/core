@@ -312,7 +312,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         }
 
         // Send individual MetadataUpdateRequest2 instances to Storage Facility
-        return rxcpp::observable<>::iterate(std::move(batches))
+        return RxMoveIterate(std::move(batches))
           .flat_map([this](const std::pair<const size_t, std::shared_ptr<MetadataUpdateRequest2>>& pair) {
           size_t offset = pair.first;
           std::shared_ptr<MetadataUpdateRequest2> request = pair.second;

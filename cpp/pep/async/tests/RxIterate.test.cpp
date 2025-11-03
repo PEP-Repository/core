@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <numeric>
-#include <rxcpp/operators/rx-ignore_elements.hpp>
 
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Shared.hpp>
 
@@ -68,8 +68,8 @@ void TestIterationNumberOfCopies(const std::function<rxcpp::observable<TestConta
 
 TEST(RxIterate, NumberOfCopies)
 {
-  // Check that rxcpp::observable<>::iterate does not copy (it did in the past)
-  TestIterationNumberOfCopies([](const TestContainer& container) {return rxcpp::observable<>::iterate(container); });
+  // Check that RxMoveIterate does not copy (it did in the past)
+  TestIterationNumberOfCopies([](const TestContainer& container) {return pep::RxMoveIterate(container); });
 }
 
 }

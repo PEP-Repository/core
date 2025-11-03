@@ -1,5 +1,6 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/RxCache.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>
@@ -33,7 +34,7 @@ TEST(RxCache, producesSourceValues)
   std::vector<int> values { 1, 2, 3 };
   auto emitted = std::make_shared<std::vector<int>>();
 
-  CreateRxCache([values]() {return rxcpp::observable<>::iterate(values); })
+  CreateRxCache([values]() {return RxMoveIterate(values); })
     ->observe()
     .subscribe(
       [emitted](int i) {emitted->push_back(i); },

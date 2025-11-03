@@ -16,7 +16,7 @@ auto RxMoveIterate(std::ranges::input_range auto container) {
   using TValue = range_value_t<decltype(container)>;
   return CreateObservable<TValue>([container = std::make_shared<decltype(container)>(std::move(container))]
       (const rxcpp::subscriber<TValue>& subscriber) {
-    for (TValue& elem : *container) {
+    for (auto& elem : *container) {
       if (!subscriber.is_subscribed()) { break; }
       subscriber.on_next(std::move(elem));
     }

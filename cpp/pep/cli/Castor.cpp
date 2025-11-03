@@ -7,6 +7,7 @@
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -406,7 +407,7 @@ private:
     int execute() override {
       return this->executeEventLoopFor([importedOnly = this->getParameterValues().has("imported-only")](std::shared_ptr<pep::CoreClient> client) {
         rxcpp::observable<pep::ShortPseudonymDefinition> sps = client->getGlobalConfiguration()
-          .flat_map([](std::shared_ptr<pep::GlobalConfiguration> config) {return rxcpp::observable<>::iterate(config->getShortPseudonyms()); })
+          .flat_map([](std::shared_ptr<pep::GlobalConfiguration> config) {return RxMoveIterate(config->getShortPseudonyms()); })
           .filter([](const pep::ShortPseudonymDefinition& sp) {return sp.getCastor(); });
         if (importedOnly) {
           sps = sps.filter([](const pep::ShortPseudonymDefinition& sp) {return !sp.getCastor()->getStorageDefinitions().empty(); });

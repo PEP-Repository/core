@@ -3,6 +3,7 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/castor/ImportColumnNamer.hpp>
 #include <pep/castor/Site.hpp>
 #include <pep/castor/Participant.hpp>
@@ -70,7 +71,7 @@ void Study::setDefaultSiteByAbbreviation(const std::string& abbreviation) {
         << " Available abbreviations are " << available << '.';
       return rxcpp::observable<>::empty<std::shared_ptr<Site>>();
     }
-    return rxcpp::observable<>::iterate(*(found->second)); // Return sites with the sought-after abbreviation
+    return RxMoveIterate(*(found->second)); // Return sites with the sought-after abbreviation
       })
     .subscribe(
       [self, abbreviation](std::shared_ptr<Site> site) {

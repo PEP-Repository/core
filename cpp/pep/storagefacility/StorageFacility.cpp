@@ -6,7 +6,7 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/crypto/CPRNG.hpp>
 #include <pep/utils/Hasher.hpp>
-#include <pep/async/FakeVoid.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/FacilityType.hpp>
@@ -423,7 +423,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       }
 
       server->mMetrics->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
-      return rxcpp::observable<>::iterate(std::move(response));
+      return RxMoveIterate(std::move(response));
       });
 }
 

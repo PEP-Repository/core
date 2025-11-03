@@ -97,7 +97,7 @@ protected:
               result.emplace(group.first);
             }
           }
-          return rxcpp::observable<>::iterate(std::move(result));
+          return pep::RxMoveIterate(std::move(result));
             })
           .distinct()
           .op(pep::RxToSet())
@@ -105,7 +105,7 @@ protected:
           if (groups->find("*") != groups->cend()) {
             return rxcpp::observable<>::just(std::string("*"));
           }
-          return rxcpp::observable<>::iterate(std::move(*groups));
+          return pep::RxMoveIterate(std::move(*groups));
           });
         });
       if (mClient.lock() == nullptr) {

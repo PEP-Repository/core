@@ -827,7 +827,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     for (auto& x : amRequest.mAddParticipantToGroup)
       participantsMap[x.mParticipantGroup].push_back(x.mParticipant);
 
-  return rxcpp::observable<>::iterate(participantsMap)
+  return RxMoveIterate(participantsMap)
       .concat_map([self = SharedFrom(*this), performRemove](const std::pair<const std::string, std::vector<PolymorphicPseudonym>>& entry) {
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
@@ -909,11 +909,11 @@ AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
   auto resp = backend->performAMAQuery(request, userGroup);
 
   // Split information over multiple responses to keep message size down. See #1679.
-  return rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumns))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialColumnGroupQueryResponse(resp.mColumnGroups)))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumnGroupAccessRules)))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroups)))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroupAccessRules)))
+  return RxMoveIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumns))
+    .concat(RxMoveIterate(ExtractPartialColumnGroupQueryResponse(resp.mColumnGroups)))
+    .concat(RxMoveIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumnGroupAccessRules)))
+    .concat(RxMoveIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroups)))
+    .concat(RxMoveIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroupAccessRules)))
     .map([](const AmaQueryResponse& response) {
     return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(response))).as_dynamic();
          });

@@ -197,7 +197,7 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetR
 
 rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetExisting(std::shared_ptr<pep::CoreClient> client) {
   return client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
-    .concat_map([](const pep::AmaQueryResponse& response) {return rxcpp::observable<>::iterate(response.mParticipantGroups); })
+    .concat_map([](const pep::AmaQueryResponse& response) {return RxMoveIterate(response.mParticipantGroups); })
     .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.mName); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
     pep::enumerateAndRetrieveData2Opts opts;
@@ -239,7 +239,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupContents(std::shar
     participants[participant].existing = true;
   }
 
-  return rxcpp::observable<>::iterate(std::move(participants))
+  return pep::RxMoveIterate(std::move(participants))
     .filter([](const auto& kvp) {
     assert(kvp.second.required || kvp.second.existing);
     return kvp.second.required != kvp.second.existing;
@@ -306,7 +306,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfigurations(std
     pairs[kvp.first].second = kvp.second;
   }
 
-  return rxcpp::observable<>::iterate(std::move(pairs))
+  return RxMoveIterate(std::move(pairs))
     .map([](const auto& kvp) {return kvp.second; })
     .concat_map([context](const auto& pair) {return UpdateGroupConfiguration(context, pair.first, pair.second); });
 }

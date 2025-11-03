@@ -4,6 +4,7 @@
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxMoveIterate.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/content/Date.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
@@ -319,7 +320,7 @@ private:
             .concat_map([client](std::shared_ptr<pep::enumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
             .as_dynamic() // Reduce compiler memory usage
             .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.mLocalPseudonymsIndex; })) // Group by participant
-            .concat_map([](auto participants) { return rxcpp::observable<>::iterate(std::move(*participants)); }) // Iterate over participants
+            .concat_map([](auto participants) { return RxMoveIterate(std::move(*participants)); }) // Iterate over participants
             .map([](const std::pair<const uint32_t, std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>>>& pair) {return pair.second; }) // Keep only (shared_ptr to) vector of fields
             .concat_map([client, id, spCount](std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>> fields) -> rxcpp::observable<pep::FakeVoid> {
             auto idField = std::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.mColumn == "ParticipantIdentifier"; });
