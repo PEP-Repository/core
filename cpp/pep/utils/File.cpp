@@ -1,5 +1,6 @@
 #include <pep/utils/File.hpp>
 
+#include <array>
 #include <string>
 #include <fstream>
 #include <regex>
