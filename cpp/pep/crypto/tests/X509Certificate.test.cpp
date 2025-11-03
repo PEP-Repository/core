@@ -774,9 +774,11 @@ TEST(X509CertificatesTest, ToPem) {
 TEST(X509CertificateChainTest, VerifyCertificateChain) {
   // Load the root CA certificate
   pep::X509RootCertificates rootCA(rootCACertPEM);
+  ASSERT_TRUE(rootCA.front().isCurrentTimeInValidityPeriod());
 
   // Load the intermediate and server certificates
   pep::X509CertificateChain certChain(authserverCertPEM + serverCACertPEM);
+  ASSERT_TRUE(certChain.isCurrentTimeInValidityPeriod());
 
   // Verify the certificate chain against the root CAs
   EXPECT_TRUE(certChain.verify(rootCA)) << "Certificate chain verification failed";
@@ -807,9 +809,11 @@ TEST(X509CertificateChainTest, VerifyCertificateChainWithExpiredLeafCert) {
 TEST(X509CertificateChainTest, VerifyCertificateChainOrdering) {
   // Load the root CA certificate
   pep::X509RootCertificates rootCA(rootCACertPEM);
+  ASSERT_TRUE(rootCA.front().isCurrentTimeInValidityPeriod());
 
   // Load the intermediate and server certificates
   pep::X509CertificateChain certChain(serverCACertPEM + authserverCertPEM);
+  ASSERT_TRUE(certChain.isCurrentTimeInValidityPeriod());
 
   // Verify the certificate chain against the root CAs
   EXPECT_TRUE(certChain.verify(rootCA)) << "Certificate chain verification failed for reverse ordering";
