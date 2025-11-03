@@ -156,7 +156,14 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Removed user " << Logging::Escape(x.mUid);
   }
   for (auto& x : request.mAddUserIdentifier) {
-    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid, x.mIsPrimaryId, x.mIsDisplayId);
+    UserIdFlags flags = UserIdFlags::none;
+    if (x.mIsDisplayId) {
+      flags |= UserIdFlags::isDisplayId;
+    }
+    if (x.mIsPrimaryId) {
+      flags |= UserIdFlags::isPrimaryId;
+    }
+    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid, flags);
     LOG(LOG_TAG, info) << "Added user identifier " << Logging::Escape(x.mNewUid) << " for user " << Logging::Escape(x.mExistingUid);
   }
   for (auto& x : request.mRemoveUserIdentifier) {
@@ -237,7 +244,7 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
     if (userId) {
       auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
       if (!primary) {
-        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, true, false);
+        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId);
       }
       else{
         LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID, that does not match the primary ID we received from the authentication source.";

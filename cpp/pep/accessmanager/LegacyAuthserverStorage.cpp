@@ -87,7 +87,7 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
       int64_t internalId = nextInternalId++;
       std::tie(knownUser, std::ignore) = knownUsers.emplace(
           record.uid, UserInfo{internalId, {}, std::nullopt});
-      recordsToCreate.emplace_back(internalId, record.uid, false,
+      recordsToCreate.emplace_back(internalId, record.uid, UserIdFlags::none, false,
                                    record.timestamp);
     } else if (knownUser->second.tombstone) {
       // We have previously tombstoned this UID, but now we encounter it again.
@@ -108,7 +108,7 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
         // the UID
         knownUser->second.tombstone = recordsToCreate.emplace(
             recordsToCreate.end(), knownUser->second.internalId, record.uid,
-            true, record.timestamp);
+            UserIdFlags::none, true, record.timestamp);
       }
     } else {
       knownUser->second.groups.insert(record.group);

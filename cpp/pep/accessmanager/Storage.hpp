@@ -12,7 +12,7 @@
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
-
+#include <pep/accessmanager/UserIdFlags.hpp>
 
 namespace pep {
 
@@ -203,8 +203,8 @@ public:
   int64_t createUser(std::string identifier);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
-  void addIdentifierForUser(std::string_view uid, std::string identifier, bool isPrimaryId, bool isDisplayId);
-  void addIdentifierForUser(int64_t internalUserId, std::string identifier, bool isPrimaryId, bool isDisplayId);
+  void addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags);
+  void addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
 

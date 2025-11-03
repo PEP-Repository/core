@@ -96,7 +96,7 @@ public:
 
     for (auto& user : constants.users) {
       auto internalId = storage->createUser(user.displayId);
-      storage->addIdentifierForUser(internalId, user.primaryId, true, false);
+      storage->addIdentifierForUser(internalId, user.primaryId, UserIdFlags::isPrimaryId);
       for (auto& usergroup : user.userGroups) {
         storage->addUserToGroup(internalId, usergroup);
       }

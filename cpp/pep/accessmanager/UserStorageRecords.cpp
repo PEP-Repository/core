@@ -1,5 +1,6 @@
 #include <pep/accessmanager/UserStorageRecords.hpp>
 #include <pep/accessmanager/LegacyAuthserverStorage.hpp>
+#include <pep/accessmanager/UserIdFlags.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/utils/Bitpacking.hpp>
@@ -9,16 +10,15 @@ namespace pep {
 UserIdRecord::UserIdRecord(
     int64_t internalUserId,
     std::string identifier,
-    bool isPrimaryId,
-    bool isDisplayId,
+    UserIdFlags flags,
     bool tombstone,
     int64_t timestamp) {
   RandomBytes(checksumNonce, 16);
   this->timestamp = timestamp;
   this->internalUserId = internalUserId;
   this->identifier = std::move(identifier);
-  this->isPrimaryId = isPrimaryId;
-  this->isDisplayId = isDisplayId;
+  this->isPrimaryId = (flags & UserIdFlags::isPrimaryId) != UserIdFlags::none;
+  this->isDisplayId = (flags & UserIdFlags::isDisplayId) != UserIdFlags::none;
   this->tombstone = tombstone;
 }
 

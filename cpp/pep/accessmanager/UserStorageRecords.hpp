@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <pep/crypto/Timestamp.hpp>
+#include <pep/accessmanager/UserIdFlags.hpp>
 
 namespace pep {
 
@@ -11,7 +12,7 @@ namespace pep {
 /// Users can have multiple known IDs
 struct UserIdRecord {
   UserIdRecord() = default;
-  UserIdRecord(int64_t internalUserId, std::string identifier, bool isPrimaryId, bool isDisplayId, bool tombstone = false, int64_t timestamp = Timestamp().getTime());
+  UserIdRecord(int64_t internalUserId, std::string identifier, UserIdFlags flags = UserIdFlags::none, bool tombstone = false, int64_t timestamp = Timestamp().getTime());
   uint64_t checksum() const;
 
   int64_t seqno{};
