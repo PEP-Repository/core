@@ -62,18 +62,20 @@ protected:
 class FileExtensionRequiringChildCommand : public ChildCommandOf<CommandFileExtension> {
 private:
   std::weak_ptr<pep::CoreClient> mClient;
-  std::shared_ptr<pep::RxCache<std::shared_ptr<pep::ColumnAccess>>> mMetaReadableColumnGroups;
+  std::shared_ptr<pep::RxCache<std::shared_ptr<const pep::ColumnAccess>>> mMetaReadableColumnGroups;
   std::shared_ptr<pep::RxCache<std::string>> mAccessibleParticipantGroups;
 
 protected:
   using ColumnExtensions = std::map<std::string, std::string>;
 
-  rxcpp::observable<std::shared_ptr<pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
+  rxcpp::observable<std::shared_ptr<const pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
     if (mMetaReadableColumnGroups == nullptr) {
       mMetaReadableColumnGroups = pep::CreateRxCache([client]() {
         return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read-meta" })
           .op(pep::RxGetOne("column access specification"))
-          .map([](const pep::ColumnAccess& access) {return pep::MakeSharedCopy(access); });
+          .map([](pep::ColumnAccess access) {
+            return PtrAsConst(pep::MakeSharedCopy(std::move(access)));
+          });
         });
       if (mClient.lock() == nullptr) {
         mClient = client;
@@ -119,13 +121,13 @@ protected:
 
   rxcpp::observable<std::string> getMetaReadableColumns(std::shared_ptr<pep::CoreClient> client) {
     return this->getMetaReadableColumnGroups(client)
-      .flat_map([](std::shared_ptr<pep::ColumnAccess> access) { return pep::RxIterate(access->columns); })
+      .flat_map([](const std::shared_ptr<const pep::ColumnAccess>& access) { return pep::RxIterate(access->columns); })
       .distinct();
   }
 
   rxcpp::observable<std::string> getColumnsInGroupIfMetaReadable(std::shared_ptr<pep::CoreClient> client, const std::string& group) {
     return this->getMetaReadableColumnGroups(client)
-      .flat_map([group](std::shared_ptr<pep::ColumnAccess> access) {
+      .flat_map([group](const std::shared_ptr<const pep::ColumnAccess>& access) {
       std::vector<std::string> columns;
       auto position = access->columnGroups.find(group);
       if (position == access->columnGroups.cend()) {
