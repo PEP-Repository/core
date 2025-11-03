@@ -2,7 +2,7 @@
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxIndexed.hpp>
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
@@ -96,7 +96,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
   }
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
-  return RxMoveIterate(std::move(batches))
+  return RxIterate(std::move(batches))
     .flat_map([this, ticket, pseudonyms](std::vector<std::string> batch) {
     auto entryCount = batch.size();
     MetadataReadRequest2 readRequest;
@@ -111,7 +111,7 @@ CoreClient::getMetadata(const std::vector<std::string>& ids, std::shared_ptr<Sig
       if (entries->size() != entryCount) {
         throw std::runtime_error("Storage facility return an unexpected number of entries");
       }
-      return RxMoveIterate(convertDataEnumerationEntries(*entries, *pseudonyms));
+      return RxIterate(convertDataEnumerationEntries(*entries, *pseudonyms));
         });
       });
 }
@@ -192,8 +192,8 @@ CoreClient::retrieveData2(
               });
             } else {
               // Only decrypt metadata
-              return RxMoveIterate(ctx->subjects)
-                .zip(RxMoveIterate(ctx->files))
+              return RxIterate(ctx->subjects)
+                .zip(RxIterate(ctx->files))
                 .op(RxIndexed<uint32_t>())
                 .map([ctx, offset](const std::pair<uint32_t, std::tuple<EnumerateResult, fileContext>>& entryData) {
                   const auto& [index, entryFile] = entryData;

@@ -1,6 +1,6 @@
 #include <pep/assessor/exportwidget.hpp>
 #include <pep/assessor/ui_exportwidget.h>
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/Exceptions.hpp>
 
@@ -351,7 +351,7 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
           })
       // Convert observable<std::unordered_map<entry>> to observable<entry>
       .flat_map([](const std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>>& entries) {
-        return pep::RxMoveIterate(std::move(*entries));
+        return pep::RxIterate(std::move(*entries));
       })
       // Convert to std::nullopt for participants that don't match the user's context
       .map([this](std::pair<const uint32_t, ParticipantData> entry) -> std::optional<ParticipantData> {

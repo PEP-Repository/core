@@ -1,7 +1,7 @@
 #include <pep/pullcastor/CrfAspectPuller.hpp>
 #include <pep/pullcastor/SurveyAspectPuller.hpp>
 
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -20,7 +20,7 @@ StudyAspectPuller::StudyAspectPuller(std::shared_ptr<StudyPuller> study, const S
 }
 
 rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateChildrenFor(std::shared_ptr<StudyPuller> study) {
-  return RxMoveIterate(*study->getAspects())
+  return RxIterate(*study->getAspects())
     .map([study](const StudyAspect& aspect) {
     const auto& creators = GetCreateFunctions();
     auto type = aspect.getStorage()->getStudyType();

@@ -2,7 +2,7 @@
 
 #include <numeric>
 
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Shared.hpp>
 
@@ -68,8 +68,8 @@ void TestIterationNumberOfCopies(const std::function<rxcpp::observable<TestConta
 
 TEST(RxIterate, NumberOfCopies)
 {
-  // Check that RxMoveIterate does not copy (it did in the past)
-  TestIterationNumberOfCopies([](const TestContainer& container) {return pep::RxMoveIterate(container); });
+  // Check that RxIterate does not copy (it did in the past)
+  TestIterationNumberOfCopies([](const TestContainer& container) {return pep::RxIterate(container); });
 }
 
 }

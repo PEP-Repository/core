@@ -2,7 +2,7 @@
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/utils/Sha.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -140,7 +140,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   // Give each KeyRequest a (reference to the) ticket
   std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->mTicket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
 
-  return RxMoveIterate(std::move(keyRequests))
+  return RxIterate(std::move(keyRequests))
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
     auto [offset, keyRequest] = std::move(pair);
     const size_t count = keyRequest.mEntries.size();

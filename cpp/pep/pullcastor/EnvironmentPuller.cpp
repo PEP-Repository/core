@@ -2,7 +2,7 @@
 #include <chrono>
 #include <iostream>
 
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/async/RxToVector.hpp>
@@ -55,7 +55,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
         }
       }
     }
-    return RxMoveIterate(std::move(result));
+    return RxIterate(std::move(result));
     })
     .distinct();
 }
@@ -129,7 +129,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getGlobalConfiguration(); })
       .flat_map([spColumns, sps](std::shared_ptr<GlobalConfiguration> gc) {
         // Get all SP definitions
-        rxcpp::observable<ShortPseudonymDefinition> allowedSps = RxMoveIterate(gc->getShortPseudonyms());
+        rxcpp::observable<ShortPseudonymDefinition> allowedSps = RxIterate(gc->getShortPseudonyms());
 
         // If SP column names have been specified, limit to those
         if (spColumns.has_value()) {
@@ -321,7 +321,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> Environmen
   if (!mSps.has_value()) {
     return rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>()); // Return an empty vector rather than an empty observable
   }
-  return RxMoveIterate(*mSps)
+  return RxIterate(*mSps)
     .flat_map([client = mClient](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
     .op(RxToVector());
 }

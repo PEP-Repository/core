@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -12,8 +12,8 @@ struct NoCopy {
   NoCopy(const NoCopy&) { throw std::runtime_error("Do not copy me"); }
 };
 
-TEST(RxMoveIterate, NoCopy) {
-  EXPECT_NO_THROW(pep::RxMoveIterate(std::vector<NoCopy>(1))
+TEST(RxIterate, NoCopy) {
+  EXPECT_NO_THROW(pep::RxIterate(std::vector<NoCopy>(1))
     .map([](NoCopy v) { return v; })
     .subscribe([&](const NoCopy&) {}));
 }

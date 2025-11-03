@@ -3,7 +3,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 
-#include <pep/async/RxMoveIterate.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/async/OnAsio.hpp>
 #include <pep/async/CreateObservable.hpp>
@@ -19,7 +19,7 @@ TEST(RxParallelConcat, test_test_auto_unsubscribe)
 {
   std::vector<int> values = {0,1,2,3};
   rxcpp::composite_subscription subscription;
-  RxMoveIterate(values).subscribe(subscription,
+  RxIterate(values).subscribe(subscription,
       [&subscription](int i){
         EXPECT_TRUE(subscription.is_subscribed());
       },
