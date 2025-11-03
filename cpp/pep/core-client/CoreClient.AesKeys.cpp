@@ -144,7 +144,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
     auto [offset, keyRequest] = std::move(pair);
     const size_t count = keyRequest.mEntries.size();
-    return accessManagerProxy->requestEncryptionKey(pair.second)
+    return accessManagerProxy->requestEncryptionKey(std::move(keyRequest))
       .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {
