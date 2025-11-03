@@ -62,9 +62,9 @@ class X509Certificates: public std::list<X509Certificate> {
   explicit X509Certificates(const std::string& in);
 
   std::string toPem() const;
+  bool isCurrentTimeInValidityPeriod() const;
 
   friend class X509CertificateChain;
-
 };
 
 class X509RootCertificates: public X509Certificates {

@@ -75,7 +75,7 @@ public:
 
 class TicketRequest2 : public ClientSideTicketRequest2 {
 public:
-  bool mRequestIndexedTicket;
+  bool mRequestIndexedTicket{};
 };
 
 template <>
