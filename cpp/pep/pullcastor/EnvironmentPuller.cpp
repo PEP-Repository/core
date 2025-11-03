@@ -41,7 +41,7 @@ rxcpp::observable<std::shared_ptr<CoreClient>> EnsureEnrolled(std::shared_ptr<Cl
 }
 
 rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreClient> client) {
-  return client->getAccessibleColumns(true)
+  return client->getAccessManagerProxy()->getAccessibleColumns(true)
     .flat_map([](const ColumnAccess& access) {
     std::set<std::string> result;
     for (const auto& group : access.columnGroups) {
@@ -158,8 +158,8 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
   mColumnNamer = CreateRxCache([client = mClient, token = mOauthToken]() {
     return EnsureEnrolled(client, token)
-      .flat_map([](std::shared_ptr<CoreClient> client) {return client->getColumnNameMappings(); })
-      .map([](std::shared_ptr<ColumnNameMappings> mappings) { return std::make_shared<ImportColumnNamer>(*mappings); });
+      .flat_map([](std::shared_ptr<CoreClient> client) {return client->getAccessManagerProxy()->getColumnNameMappings(); })
+      .map([](ColumnNameMappings mappings) { return std::make_shared<ImportColumnNamer>(std::move(mappings)); });
     });
 
   mStudiesBySlug = CreateRxCache([castor = mCastor]() {

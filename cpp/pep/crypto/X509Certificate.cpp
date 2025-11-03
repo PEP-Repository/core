@@ -446,6 +446,10 @@ std::string X509Certificates::toPem() const {
   return out;
 }
 
+bool X509Certificates::isCurrentTimeInValidityPeriod() const {
+  return std::all_of(this->begin(), this->end(), std::mem_fn(&X509Certificate::isCurrentTimeInValidityPeriod));
+}
+
 bool X509CertificateChain::certifiesPrivateKey(const AsymmetricKey& privateKey) const {
   if (empty()) {
     return false;
@@ -896,6 +900,28 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
   return X509Certificate(cert);
 }
 
+X509Identity::X509Identity(AsymmetricKey privateKey)
+  : mPrivateKey(std::move(privateKey)) {
+  if (!mPrivateKey.isSet()) {
+    throw std::runtime_error("privateKey must be set");
+  }
+}
+
+X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain)
+  : X509Identity(std::move(privateKey)) {
+  mCertificateChain = std::move(certificateChain);
+  if (mCertificateChain.empty()) {
+    throw std::runtime_error("certificateChain must not be empty");
+  }
+  if (!mCertificateChain.certifiesPrivateKey(mPrivateKey)) {
+    throw std::runtime_error("certificateChain does not match private key");
+  }
+}
+
+X509Identity X509Identity::MakeUncertified(AsymmetricKey privateKey) {
+  return X509Identity(std::move(privateKey));
+}
+
 X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix)
   : X509IdentityFilesConfiguration(config.get<std::filesystem::path>(keyPrefix + "PrivateKeyFile"), config.get<std::filesystem::path>(keyPrefix + "CertificateFile")) {
 }
@@ -903,20 +929,8 @@ X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configurati
 X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const std::filesystem::path& privateKeyFilePath, const std::filesystem::path& certificateChainFilePath)
   : mPrivateKeyFilePath(privateKeyFilePath),
   mCertificateChainFilePath(certificateChainFilePath),
-  mPrivateKey(ReadFile(mPrivateKeyFilePath)),
-  mCertificateChain(ReadFile(mCertificateChainFilePath)) {
-
-  LOG(LOG_TAG, debug) << "Adding X509IdentityFiles from Configuration";
-
-  if (!mPrivateKey.isSet()) {
-    throw std::runtime_error("privateKey must be set");
-  }
-  if (mCertificateChain.empty()) {
-    throw std::runtime_error("certificateChain must not be empty");
-  }
-  if (!mCertificateChain.certifiesPrivateKey(mPrivateKey)) {
-    throw std::runtime_error("certificateChain does not match private key");
-  }
+  mIdentity(AsymmetricKey(ReadFile(mPrivateKeyFilePath)), X509CertificateChain(ReadFile(mCertificateChainFilePath))) {
+  LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
 }
 
 }

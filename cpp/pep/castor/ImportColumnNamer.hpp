@@ -19,7 +19,7 @@ private:
   std::string joinColumnNameSections(const std::string& prefix, const std::vector<std::string>& sections) const;
 
 public:
-  explicit ImportColumnNamer(const ColumnNameMappings& mappings);
+  explicit ImportColumnNamer(ColumnNameMappings mappings);
 
   rxcpp::observable<std::string> getImportableColumnNames(std::shared_ptr<CastorConnection> connection, const ShortPseudonymDefinition& sp, const std::optional<unsigned>& answerSetCount);
 

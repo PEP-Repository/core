@@ -2,14 +2,17 @@ add_library(${PROJECT_NAME}TranscryptorApilib
   KeyComponentMessages.cpp KeyComponentMessages.hpp
   KeyComponentSerializers.cpp KeyComponentSerializers.hpp
   TranscryptorMessages.cpp TranscryptorMessages.hpp
+  TranscryptorProxy.cpp TranscryptorProxy.hpp
   TranscryptorSerializers.cpp TranscryptorSerializers.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}TranscryptorApilib
   ${PROJECT_NAME}Morphinglib
+  ${PROJECT_NAME}ServerApilib
   ${PROJECT_NAME}Ticketinglib
 )
 verify_headers_standalone(${PROJECT_NAME}TranscryptorApilib)
+
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}Transcryptorlib
@@ -18,7 +21,6 @@ if (WITH_SERVERS)
       ChecksumChain.cpp ChecksumChain.hpp
   )
 
-  find_package(SqliteOrm REQUIRED)
   target_link_libraries(${PROJECT_NAME}Transcryptorlib
     ${PROJECT_NAME}TranscryptorApilib
     ${PROJECT_NAME}Serverlib

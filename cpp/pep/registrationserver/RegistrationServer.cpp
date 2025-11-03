@@ -161,8 +161,7 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   clientBuilder.setIoContext(getIoContext())
     .setCaCertFilepath(getRootCACertificatesFilePath())
-    .setPrivateKey(getPrivateKey())
-    .setCertificateChain(getCertificateChain())
+    .setSigningIdentity(getSigningIdentity())
     .setPrivateKeyData(ElgamalPrivateKey(strDataKey))
     .setPrivateKeyPseudonyms(ElgamalPrivateKey(strPseudonymKey));
   std::shared_ptr<CoreClient> client = clientBuilder.build();
@@ -248,7 +247,7 @@ void RegistrationServer::Parameters::check() const {
     throw std::runtime_error("shadowStorageFile must not be empty");
   if(!shadowPublicKey.isSet())
     throw std::runtime_error("shadowPublicKey must be set");
-  if (GetFacilityType(getCertificateChain()) != FacilityType::RegistrationServer)
+  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::RegistrationServer)
     throw std::runtime_error("Invalid certificate chain for Registration Server");
   SigningServer::Parameters::check();
 }
@@ -772,10 +771,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       return rxcpp::observable<>::empty<DataStorageResult2>();
     });
   })
-    .reduce( // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
-      RegistrationResponse(),
-      [](RegistrationResponse response, DataStorageResult2) {return response; }
-    )
+    .op(RxInstead(RegistrationResponse())) // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
     .map([first_error](RegistrationResponse response) { // Serialize RegistrationResponse
     if (*first_error) {
       std::rethrow_exception(*first_error);
@@ -803,8 +799,8 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
     return sps->front();
   })
     .flat_map([castor = getCastorConnection(), answerSetCount, client = pClient](const ShortPseudonymDefinition& sp) { // Get import column names for the SP
-    return client->getColumnNameMappings()
-      .flat_map([castor, sp, answerSetCount](std::shared_ptr<ColumnNameMappings> colMappings) {return castor::ImportColumnNamer(*colMappings).getImportableColumnNames(castor, sp, answerSetCount); });
+    return client->getAccessManagerProxy()->getColumnNameMappings()
+      .flat_map([castor, sp, answerSetCount](ColumnNameMappings colMappings) {return castor::ImportColumnNamer(std::move(colMappings)).getImportableColumnNames(castor, sp, answerSetCount); });
   })
     .on_error_resume_next([](std::exception_ptr ep) -> rxcpp::observable<std::string> {throw Error(GetExceptionMessage(ep)); }) // Convert exceptions to network-portable Error instances
     .op(RxToVector()) // Aggregate column names into a vector<>

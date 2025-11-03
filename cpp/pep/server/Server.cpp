@@ -1,6 +1,6 @@
 #include <chrono>
 #include <pep/auth/UserGroup.hpp>
-#include <pep/messaging/MessagingSerializers.hpp>
+#include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/Server.hpp>
 
 #include <pep/utils/Bitpacking.hpp>
@@ -73,10 +73,6 @@ Server::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   startupTime = std::chrono::steady_clock::now();
 }
 
-messaging::MessageBatches Server::handlePingRequest(std::shared_ptr<PingRequest> request) {
-  return messaging::BatchSingleMessage(this->makeSerializedPingResponse(*request));
-}
-
 messaging::MessageBatches
 Server::handleMetricsRequest(
   std::shared_ptr<SignedMetricsRequest> signedRequest) {
@@ -140,7 +136,6 @@ Server::Server(std::shared_ptr<Parameters> parameters)
   mIoContext(parameters->getIoContext()),
   mRootCAs(parameters->ensureValid().getRootCAs()) {
   RegisterRequestHandlers(*this,
-    &Server::handlePingRequest,
     &Server::handleMetricsRequest,
     &Server::handleChecksumChainNamesRequest,
     &Server::handleChecksumChainRequest);
@@ -148,10 +143,6 @@ Server::Server(std::shared_ptr<Parameters> parameters)
 
 std::filesystem::path Server::EnsureDirectoryPath(std::filesystem::path path) {
   return path / "";
-}
-
-std::string Server::makeSerializedPingResponse(const PingRequest& request) const {
-  return Serialization::ToString(PingResponse(request.mId));
 }
 
 std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {

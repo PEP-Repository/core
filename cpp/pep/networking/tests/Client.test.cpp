@@ -7,6 +7,7 @@
 
 #include <pep/utils/TestTiming.hpp>
 #include <gtest/gtest.h>
+#include <cmath>
 
 using namespace std::literals;
 

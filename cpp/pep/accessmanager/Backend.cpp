@@ -1,7 +1,6 @@
 #include <pep/accessmanager/Storage.hpp>
 #include <pep/accessmanager/AccessManager.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp>
-#include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/crypto/CPRNG.hpp>
@@ -193,7 +192,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
           },
           .note = "User removed from user group",
         };
-        return accessManager->mKeyserver->sendRequest<TokenBlockingCreateResponse>(Signed(tokenBlockRequest, accessManager->getCertificateChain(), accessManager->getPrivateKey()));
+        return accessManager->mKeyServerProxy.requestTokenBlockingCreate(std::move(tokenBlockRequest));
       }).op(RxInstead(FakeVoid()));
     }
     return rxcpp::rxs::just(FakeVoid());

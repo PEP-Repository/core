@@ -1,19 +1,13 @@
-#include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
-#include <pep/server/MonitoringSerializers.hpp>
-#include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/structure/StructureSerializers.hpp>
-#include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/utils/Compare.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -35,7 +29,6 @@
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
-#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 
@@ -62,19 +55,20 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
 
 }
 
-CoreClient::CoreClient(const Builder& builder):
+CoreClient::CoreClient(const Builder& builder) :
+  MessageSigner(builder.getSigningIdentity()),
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
-  caCertFilepath(builder.getCaCertFilepath()), privateKey(builder.getPrivateKey()),
-  rootCAs (X509RootCertificates{ReadFile(builder.getCaCertFilepath())}), certificateChain(builder.getCertificateChain()),
+  caCertFilepath(builder.getCaCertFilepath()),
+  rootCAs(X509RootCertificates{ReadFile(builder.getCaCertFilepath())}),
   privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
   publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
   accessManagerEndPoint(builder.getAccessManagerEndPoint()),
   storageFacilityEndPoint(builder.getStorageFacilityEndPoint()),
   transcryptorEndPoint(builder.getTranscryptorEndPoint()) {
 
-  clientAccessManager = tryConnectTo(accessManagerEndPoint);
-  clientStorageFacility = tryConnectTo(storageFacilityEndPoint);
-  clientTranscryptor = tryConnectTo(transcryptorEndPoint);
+  accessManagerProxy = tryConnectServerProxy<AccessManagerProxy>(accessManagerEndPoint);
+  storageFacilityProxy = tryConnectServerProxy<StorageFacilityProxy>(storageFacilityEndPoint);
+  transcryptorProxy = tryConnectServerProxy<TranscryptorProxy>(transcryptorEndPoint);
 
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
@@ -238,8 +232,9 @@ void CoreClient::Builder::initialize(
         if (enrollmentScheme && *enrollmentScheme == EnrollmentScheme::ENROLLMENT_SCHEME_CURRENT) {
           this->setPrivateKeyPseudonyms(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("PseudonymKey")));
           this->setPrivateKeyData(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("DataKey")));
-          this->setPrivateKey(AsymmetricKey(keysConfig.get<std::string>("PrivateKey")));
-          this->setCertificateChain(X509CertificateChain(keysConfig.get<std::string>("CertificateChain")));
+          this->setSigningIdentity(std::make_shared<X509Identity>(
+            AsymmetricKey(keysConfig.get<std::string>("PrivateKey")),
+            X509CertificateChain(keysConfig.get<std::string>("CertificateChain"))));
         }
         else {
           LOG(LOG_TAG, info) << "Skipped loading keys file because it is from an older version";
@@ -266,108 +261,20 @@ void CoreClient::Builder::initialize(
 }
 
 
-rxcpp::observable<ColumnAccess> CoreClient::getAccessibleColumns(bool includeImplicitlyGranted,
-                                                             const std::vector<std::string>& requireModes) {
-  return clientAccessManager->sendRequest<ColumnAccessResponse>(sign(ColumnAccessRequest{includeImplicitlyGranted,
-                                                                                         requireModes}));
-}
-
-rxcpp::observable<std::string> CoreClient::getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns) {
-  return columns.op(RxToSet()) // Create a set of columns we still need to check
-    .zip(this->getAccessibleColumns(true)) // Combine it with "the stuff we have access to"
-    .flat_map([mode](const auto& context) {
-    // Extract named variables from the context tuple
-    std::shared_ptr<std::set<std::string>> remaining = std::get<0>(context);
-    const ColumnAccess& access = std::get<1>(context);
-    // For every column group...
-    for (const auto& cg : access.columnGroups) {
-      const auto& cgAccess = cg.second;
-      if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
-        for (auto index : cgAccess.columns.mIndices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
-          remaining->erase(access.columns[index]);
-        }
-      }
-    }
-
-    // Columns that haven't been checked are inaccessible: return them
-    return rxcpp::observable<>::iterate(*remaining);
-      });
-}
-
-rxcpp::observable<ParticipantGroupAccess> CoreClient::getAccessibleParticipantGroups(bool includeImplicitlyGranted) {
-  return clientAccessManager->sendRequest<ParticipantGroupAccessResponse>(sign(ParticipantGroupAccessRequest{
-      includeImplicitlyGranted}));
-}
-
-std::shared_ptr<messaging::ServerConnection> CoreClient::tryConnectTo(const EndPoint& endPoint) {
-  return messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
-}
-
 rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
 
-rxcpp::observable<ConnectionStatus> CoreClient::getAccessManagerConnectionStatus() {
-  return clientAccessManager->connectionStatus();
+std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
+  return GetConstServerProxy(storageFacilityProxy, "Storage Facility", require);
 }
 
-rxcpp::observable<ConnectionStatus> CoreClient::getStorageFacilityStatus() {
-  return clientStorageFacility->connectionStatus();
+std::shared_ptr<const TranscryptorProxy> CoreClient::getTranscryptorProxy(bool require) const {
+  return GetConstServerProxy(transcryptorProxy, "Transcryptor", require);
 }
 
-rxcpp::observable<ConnectionStatus> CoreClient::getTranscryptorStatus() {
-  return clientTranscryptor->connectionStatus();
-}
-
-rxcpp::observable<VersionResponse>
-CoreClient::getAccessManagerVersion() {
-  return tryGetServerVersion(clientAccessManager);
-}
-
-rxcpp::observable<VersionResponse>
-CoreClient::getTranscryptorVersion() {
-  return tryGetServerVersion(clientTranscryptor);
-}
-
-rxcpp::observable<VersionResponse>
-CoreClient::getStorageFacilityVersion() {
-  return tryGetServerVersion(clientStorageFacility);
-}
-
-rxcpp::observable<SignedPingResponse> CoreClient::pingSigningServer(std::shared_ptr<messaging::ServerConnection> connection) const {
-  return connection->ping<SignedPingResponse>([this](const SignedPingResponse& signedResponse) { return signedResponse.open(rootCAs); });
-}
-
-rxcpp::observable<VersionResponse> CoreClient::tryGetServerVersion(std::shared_ptr<messaging::ServerConnection> connection)
-    const {
-  if (connection == nullptr) {
-    return rxcpp::observable<>::empty<VersionResponse>();
-  }
-  return connection->sendRequest<VersionResponse>(VersionRequest{});
-}
-
-rxcpp::observable<SignedPingResponse> CoreClient::pingAccessManager() const {
-  return pingSigningServer(clientAccessManager);
-}
-
-rxcpp::observable<SignedPingResponse> CoreClient::pingTranscryptor() const {
-  return pingSigningServer(clientTranscryptor);
-}
-
-rxcpp::observable<SignedPingResponse> CoreClient::pingStorageFacility() const {
-  return pingSigningServer(clientStorageFacility);
-}
-
-rxcpp::observable<MetricsResponse> CoreClient::getAccessManagerMetrics() {
-  return clientAccessManager->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
-}
-
-rxcpp::observable<MetricsResponse> CoreClient::getTranscryptorMetrics() {
-  return clientTranscryptor->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
-}
-
-rxcpp::observable<MetricsResponse> CoreClient::getStorageFacilityMetrics() {
-  return clientStorageFacility->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
+std::shared_ptr<const AccessManagerProxy> CoreClient::getAccessManagerProxy(bool require) const {
+  return GetConstServerProxy(accessManagerProxy, "Access Manager", require);
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {
@@ -377,15 +284,11 @@ const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const
 rxcpp::observable<FakeVoid> CoreClient::shutdown() {
   return rxcpp::observable<>::iterate(
     std::vector<rxcpp::observable<FakeVoid>> {
-      clientAccessManager->shutdown(),
-      clientStorageFacility->shutdown(),
-      clientTranscryptor->shutdown()
+      accessManagerProxy->shutdown(),
+      storageFacilityProxy->shutdown(),
+      transcryptorProxy->shutdown()
     }
   ).merge().last();
-}
-
-rxcpp::observable<VerifiersResponse> CoreClient::getRSKVerifiers() {
-  return clientAccessManager->sendRequest<VerifiersResponse>(VerifiersRequest{});
 }
 
 rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalConfiguration() {
@@ -393,86 +296,8 @@ rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalCon
     return rxcpp::observable<>::just(mGlobalConf);
   }
 
-  return clientAccessManager->sendRequest<GlobalConfiguration>(GlobalConfigurationRequest{})
+  return accessManagerProxy->requestGlobalConfiguration()
     .map([this](const GlobalConfiguration& gc) {return mGlobalConf = MakeSharedCopy(gc); });
-}
-
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::getColumnNameMappings() {
-  return clientAccessManager->sendRequest<ColumnNameMappingResponse>(sign(ColumnNameMappingRequest{}))
-      .map([](const ColumnNameMappingResponse& response) {
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::readColumnNameMapping(const ColumnNameSection&
-                                                                                         original) {
-  return clientAccessManager
-      ->sendRequest<ColumnNameMappingResponse>(sign(ColumnNameMappingRequest{CrudAction::Read, original, std::nullopt}))
-      .map([](const ColumnNameMappingResponse& response) {
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::createColumnNameMapping(const ColumnNameMapping&
-                                                                                           mapping) {
-  return clientAccessManager
-      ->sendRequest<ColumnNameMappingResponse>(sign(ColumnNameMappingRequest{
-          CrudAction::Create, mapping.original, mapping.mapped}))
-      .map([](const ColumnNameMappingResponse& response) {
-        assert(response.mappings.size() == 1U);
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<std::shared_ptr<ColumnNameMappings>> CoreClient::updateColumnNameMapping(const ColumnNameMapping&
-                                                                                           mapping) {
-  return clientAccessManager
-      ->sendRequest<ColumnNameMappingResponse>(sign(ColumnNameMappingRequest{
-          CrudAction::Update, mapping.original, mapping.mapped}))
-      .map([](const ColumnNameMappingResponse& response) {
-        assert(response.mappings.size() == 1U);
-        return std::make_shared<ColumnNameMappings>(response.mappings);
-      });
-}
-
-rxcpp::observable<FakeVoid> CoreClient::deleteColumnNameMapping(const ColumnNameSection& original) {
-  return clientAccessManager
-      ->sendRequest<ColumnNameMappingResponse>(
-          SignedColumnNameMappingRequest({CrudAction::Delete, original, std::nullopt}, certificateChain, privateKey))
-      .map([](const ColumnNameMappingResponse& response) { return FakeVoid(); });
-}
-
-rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> CoreClient::getStructureMetadata(
-    StructureMetadataType subjectType,
-    std::vector<std::string> subjects,
-    std::vector<StructureMetadataKey> keys) {
-  return clientAccessManager
-      ->sendRequest(std::make_shared<std::string>(Serialization::ToString(sign(StructureMetadataRequest{subjectType, std::move(subjects), std::move(keys)}))))
-      .map([](std::string chunk) {
-        return std::make_shared<StructureMetadataEntry>(Serialization::FromString<StructureMetadataEntry>(std::move(chunk)));
-      });
-}
-
-rxcpp::observable<FakeVoid> CoreClient::setStructureMetadata(StructureMetadataType subjectType, rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> entries) {
-  return clientAccessManager
-      ->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-          sign(SetStructureMetadataRequest{subjectType}))),
-        entries.map([](const std::shared_ptr<StructureMetadataEntry>& entry) {
-          return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(*entry)))
-              .as_dynamic();
-        }))
-      .map([](std::string response) {
-        // Check we got the right response type
-        (void) Serialization::FromString<SetStructureMetadataResponse>(std::move(response));
-        return FakeVoid();
-      });
-}
-
-rxcpp::observable<FakeVoid> CoreClient::removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) {
-  return clientAccessManager
-      ->sendRequest<SetStructureMetadataResponse>(
-          SignedSetStructureMetadataRequest({.subjectType = subjectType, .remove = std::move(subjectKeys)}, certificateChain, privateKey))
-      .map([](SetStructureMetadataResponse) { return FakeVoid(); });
 }
 
 std::shared_ptr<WorkerPool> CoreClient::getWorkerPool() {
@@ -503,7 +328,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
       columns->emplace(definition->getColumn().getFullName());
     }
 
-    return this->getAccessibleParticipantGroups(true)
+    return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
       pep::enumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
@@ -547,7 +372,7 @@ rxcpp::observable<PolymorphicPseudonym> CoreClient::findPPforShortPseudonym(std:
 
 rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 {
-  return getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
+  return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
     requestTicket2Opts tOpts;
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;
@@ -578,14 +403,13 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
     return rxcpp::observable<>::error<IndexedTicket2>(std::runtime_error("Query out of scope of provided Ticket"));
   }
   assert(ContainsUniqueValues(opts.pps));
-  return clientAccessManager->sendRequest<IndexedTicket2>(sign(TicketRequest2{
+  return accessManagerProxy->requestIndexedTicket(ClientSideTicketRequest2{
       .mModes = opts.modes,
       .mParticipantGroups = opts.participantGroups,
       .mPolymorphicPseudonyms = opts.pps,
       .mColumnGroups = opts.columnGroups,
       .mColumns = opts.columns,
-      .mRequestIndexedTicket = true,
-      .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms}));
+      .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
 }
 
 

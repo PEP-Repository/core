@@ -21,8 +21,7 @@ public:
   SignedBase() = default;
   SignedBase(
     std::string data,
-    X509CertificateChain chain,
-    const AsymmetricKey& privateKey);
+    const X509Identity& identity);
 
   SignedBase(
     std::string data,
@@ -41,10 +40,8 @@ public:
   Signed() = default; // TODO get rid of default constructor
   Signed(std::string data, Signature signature)
     : SignedBase(std::move(data), std::move(signature)) { }
-  Signed(T o,
-    const X509CertificateChain& chain,
-    const AsymmetricKey& privateKey) :
-    SignedBase(Serialization::ToString(std::move(o)), chain, privateKey) { }
+  Signed(T o, const X509Identity& identity) :
+    SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
   [[nodiscard]] T open(
     const X509RootCertificates& rootCAs,
@@ -64,6 +61,24 @@ public:
     return Serialization::FromString<T>(mData);
   }
 
+};
+
+class MessageSigner {
+private:
+  std::shared_ptr<const X509Identity> mSigningIdentity;
+
+protected:
+  std::shared_ptr<const X509Identity> getSigningIdentity(bool require = true) const;
+
+public:
+  explicit MessageSigner(std::shared_ptr<const X509Identity> signingIdentity = nullptr) noexcept;
+
+  void setSigningIdentity(std::shared_ptr<const X509Identity> signingIdentity) noexcept;
+
+  template <typename T>
+  Signed<T> sign(T message) const {
+    return Signed<T>(std::move(message), *this->getSigningIdentity());
+  }
 };
 
 template <typename T>

@@ -304,7 +304,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
       emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::warning);
       pepClient->completeParticipantRegistration(participantSID.toStdString())
         .observe_on(observe_on_gui())
-        .subscribe([](std::shared_ptr<pep::RegistrationResponse> result) {
+        .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
         qDebug() << "Exception occured";
         emit statusMessage(tr("Completing registration failed."), pep::error);
