@@ -13,12 +13,22 @@ Changes in upcoming release (1.6):
 - #2656: The "pepcli pull" command now also deals with unknown files and (sub)directories in the download directory, which
   can a.o. prevent (resumed) downloads from failing because "Data storage path already exists".
 
+- #2708: We now store whether a userID is the primary and/or the display ID. Primary ID is set automatically the first time a user logs in.
+  The userID given when creating a new user will be set as the display ID. Both can be changed by the access administrator.
+  When no displayIDs exist in the database, it tries to auto-assign display IDs for the existing users, by picking the first ID for that user, if that ID has not been removed.
+  If that first ID has been removed, auto-assignment will fail for that user. They will need to be set manually (see MANUAL CHANGES REQUIRED)
+  The output format of `pepcli user query` changes, because of this change. If it is used in scripts, these should be updated for the new format.
+  Currently, no one outside the PEP team can use `pepcli user query`, so impact should be limited.
+
 MANUAL CHANGES REQUIRED:
 
 - #2682: For all environments (except review) the conf-available directory needs to be renamed to conf-enabled. This change should already be in the master branch of all project repo's.
   Make sure that these changes are merged forward, when deploying the release.
 
 - ops#367: Migrate master branch to main branch for all project config repo's.
+
+- #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
+  Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
 
 ---------------
 
