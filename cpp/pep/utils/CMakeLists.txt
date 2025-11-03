@@ -76,7 +76,6 @@ target_link_libraries(${PROJECT_NAME}Utilslib
   Boost::headers
   Boost::log
   Boost::log_setup
-  Boost::system
   OpenSSL::Crypto
   xxHash::xxhash
 )
