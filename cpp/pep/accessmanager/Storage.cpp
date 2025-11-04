@@ -471,32 +471,32 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
 
   //DisplayIds and PrimaryIds where introduced at the same time. So if there are primaryIds already in the DB, we can also assume that the upgrade already happened before.
   //Furthermore, because we check that there are no primaryIds, in the auto-assignment we don't have to worry about whether identifiers are primaryIds or not.
-  if (mImplementor->raw.select(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)).empty()) {
+  if (mImplementor->raw.count(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)) == 0) {
     LOG(LOG_TAG, info) << "There are no displayIds in the database yet. Auto-assigning...";
     size_t countAssigned = 0;
     size_t countUnassigned = 0;
     auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
-    if (auto maxUserId = mImplementor->raw.max(&UserIdRecord::internalUserId)) {
-      for (int64_t userId = 1; userId < *maxUserId; ++userId) {
-        auto firstIdentifier = RangeToOptional(
-          mImplementor->raw.select(&UserIdRecord::identifier,
-          where(c(&UserIdRecord::internalUserId) == userId),
-          order_by(&UserIdRecord::seqno).asc(),
-          limit(1)));
-        if (firstIdentifier) {
-          if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
-            mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::isDisplayId));
-            countAssigned++;
-          }
-          else if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
-            countUnassigned++;
-          }
+    for (auto userId : mImplementor->getCurrentRecords(true, &UserIdRecord::internalUserId)) {
+      auto firstIdentifier = RangeToOptional(
+        mImplementor->raw.select(&UserIdRecord::identifier,
+        where(c(&UserIdRecord::internalUserId) == userId),
+        order_by(&UserIdRecord::seqno).asc(),
+        limit(1)));
+      if (firstIdentifier) {
+        if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
+          mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::isDisplayId));
+          countAssigned++;
+        }
+        else if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
+          countUnassigned++;
         }
       }
     }
     displayIdTransactionGuard.commit();
     LOG(LOG_TAG, info) << "A displayId has been assigned to " << countAssigned << " records.";
-    LOG(LOG_TAG, warning) << "No displayId could be automatically assigned to " << countUnassigned;
+    if (countUnassigned > 0) {
+      LOG(LOG_TAG, warning) << "No displayId could be automatically assigned to " << countUnassigned << " records";
+    }
   }
 }
 

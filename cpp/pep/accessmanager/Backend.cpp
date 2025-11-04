@@ -237,7 +237,8 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
       mStorage->setPrimaryIdentifierForUser(*userId, request.mPrimaryId);
     }
     else if (primary != request.mPrimaryId) {
-      LOG(LOG_TAG, error) << "Found a user based on the primary ID we received from the authentication source, but according to our storage a different id for this user is the primary ID.";
+      LOG(LOG_TAG, error) << "Found a user based on the primary ID we received from the authentication source (" << request.mPrimaryId
+        << "), but according to our storage a different id for this user is the primary ID. (" << *primary << ")";
       throw Error("There is a problem with your user account. Please contact support to resolve this issue.");
     }
   }
@@ -249,7 +250,8 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
         mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId);
       }
       else{
-        LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID, that does not match the primary ID we received from the authentication source.";
+        LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID (" << *primary
+          << "), that does not match the primary ID we received from the authentication source (" << request.mPrimaryId << ").";
         throw Error("A different user account already exists for the provided user ID. Please contact support to resolve this issue.");
       }
     }
