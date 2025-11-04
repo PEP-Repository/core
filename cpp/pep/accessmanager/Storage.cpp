@@ -179,7 +179,9 @@ auto am_create_db(const std::string& path) {
       make_column("timestamp", &UserIdRecord::timestamp),
       make_column("tombstone", &UserIdRecord::tombstone),
       make_column("internalUserId", &UserIdRecord::internalUserId),
-      make_column("identifier", &UserIdRecord::identifier)),
+      make_column("identifier", &UserIdRecord::identifier),
+      make_column("isPrimaryId", &UserIdRecord::isPrimaryId, default_value(false)),
+      make_column("isDisplayId", &UserIdRecord::isDisplayId, default_value(false))),
 
     make_index("idx_UserGroups",
       &UserGroupRecord::userGroupId,
@@ -465,6 +467,36 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
     }
     transactionGuard.commit();
     LOG(LOG_TAG, info) << "all records have been updated";
+  }
+
+  //DisplayIds and PrimaryIds where introduced at the same time. So if there are primaryIds already in the DB, we can also assume that the upgrade already happened before.
+  //Furthermore, because we check that there are no primaryIds, in the auto-assignment we don't have to worry about whether identifiers are primaryIds or not.
+  if (mImplementor->raw.count(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)) == 0) {
+    LOG(LOG_TAG, info) << "There are no displayIds in the database yet. Auto-assigning...";
+    size_t countAssigned = 0;
+    size_t countUnassigned = 0;
+    auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
+    for (auto userId : mImplementor->getCurrentRecords(true, &UserIdRecord::internalUserId)) {
+      auto firstIdentifier = RangeToOptional(
+        mImplementor->raw.select(&UserIdRecord::identifier,
+        where(c(&UserIdRecord::internalUserId) == userId),
+        order_by(&UserIdRecord::seqno).asc(),
+        limit(1)));
+      if (firstIdentifier) {
+        if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
+          mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::isDisplayId));
+          countAssigned++;
+        }
+        else if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
+          countUnassigned++;
+        }
+      }
+    }
+    displayIdTransactionGuard.commit();
+    LOG(LOG_TAG, info) << "A displayId has been assigned to " << countAssigned << " records.";
+    if (countUnassigned > 0) {
+      LOG(LOG_TAG, warning) << "No displayId could be automatically assigned to " << countUnassigned << " records";
+    }
   }
 }
 
@@ -1343,7 +1375,7 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
 
 int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
   int64_t internalUserId = getNextInternalUserId();
-  addIdentifierForUser(internalUserId, std::move(identifier));
+  addIdentifierForUser(internalUserId, std::move(identifier), UserIdFlags::isDisplayId);
   return internalUserId;
 }
 
@@ -1371,19 +1403,19 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
   }
 
   for(auto& uid : getAllIdentifiersForUser(internalUserId))
-    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, true));
+    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, UserIdFlags::none, true));
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier) {
+void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags) {
   int64_t internalUserId = getInternalUserId(uid);
-  addIdentifierForUser(internalUserId, identifier);
+  addIdentifierForUser(internalUserId, std::move(identifier), flags);
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier) {
+void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags) {
   if (findInternalUserId(identifier)) {
     throw Error("The user identifier already exists");
   }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier)));
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), flags));
 }
 
 void AccessManager::Backend::Storage::removeIdentifierForUser(std::string identifier) {
@@ -1403,7 +1435,11 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
     throw Error("The given identifier does not exist for the given internalUserId");
   }
 
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), true));
+  if (getDisplayIdentifierForUser(internalUserId) == identifier) {
+    throw Error("Cannot remove the display identifier for a user. First set a different display identifier, then you can remove this one.");
+  }
+
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), UserIdFlags::none, true));
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, Timestamp at) const {
@@ -1416,7 +1452,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::
 }
 
 int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, Timestamp at) const {
-  std::optional<int64_t> internalUserId = findInternalUserId(identifier);
+  std::optional<int64_t> internalUserId = findInternalUserId(identifier, at);
   if(!internalUserId) {
     throw Error("Could not find user id");
   }
@@ -1442,6 +1478,87 @@ std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifie
       && c(&UserIdRecord::internalUserId) == internalUserId,
       &UserIdRecord::identifier)
   );
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+  using namespace pep::database;
+  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+        && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isPrimaryId) == true), &UserIdRecord::identifier));
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+  using namespace pep::database;
+  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+        && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isDisplayId) == true), &UserIdRecord::identifier));
+}
+
+void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(std::string uid) {
+  auto internalId = getInternalUserId(uid);
+  setPrimaryIdentifierForUser(internalId, std::move(uid));
+}
+
+void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(int64_t internalUserId, std::string uid) {
+  assert(getInternalUserId(uid) == internalUserId);
+  auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
+  if (currentPrimaryIdentifier == uid) {
+    throw Error("This user identifier is already the primary identifier.");
+  }
+
+  auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
+  auto transactionGuard = mImplementor->raw.transaction_guard();
+  if (currentPrimaryIdentifier) {
+    mImplementor->raw.insert(UserIdRecord(internalUserId, *currentPrimaryIdentifier, currentDisplayIdentifier==*currentPrimaryIdentifier ? UserIdFlags::isDisplayId : UserIdFlags::none));
+  }
+  UserIdFlags flags = UserIdFlags::isPrimaryId;
+  if (currentDisplayIdentifier == uid) {
+    flags |= UserIdFlags::isDisplayId;
+
+  }
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), flags));
+  transactionGuard.commit();
+}
+
+void AccessManager::Backend::Storage::unsetPrimaryIdentifierForUser(std::string_view uid) {
+  auto internalId = getInternalUserId(uid);
+  unsetPrimaryIdentifierForUser(internalId, uid);
+}
+
+void AccessManager::Backend::Storage::unsetPrimaryIdentifierForUser(int64_t internalUserId, std::string_view uid) {
+  assert(getInternalUserId(uid) == internalUserId);
+  auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
+  if (currentPrimaryIdentifier != uid) {
+    throw Error("This user identifier is not the current primary identifier.");
+  }
+
+  auto transactionGuard = mImplementor->raw.transaction_guard();
+  auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(*currentPrimaryIdentifier), currentDisplayIdentifier==uid ? UserIdFlags::isDisplayId : UserIdFlags::none));
+  transactionGuard.commit();
+}
+
+void AccessManager::Backend::Storage::setDisplayIdentifierForUser(std::string uid) {
+  auto internalId = getInternalUserId(uid);
+  setDisplayIdentifierForUser(internalId, std::move(uid));
+}
+
+void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t internalUserId, std::string uid) {
+  assert(getInternalUserId(uid) == internalUserId);
+  auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
+  if (currentDisplayIdentifier == uid) {
+    throw Error("This user identifier is already the display identifier.");
+  }
+
+  auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
+  auto transactionGuard = mImplementor->raw.transaction_guard();
+  if (currentDisplayIdentifier) {
+    mImplementor->raw.insert(UserIdRecord(internalUserId, *currentDisplayIdentifier, currentPrimaryIdentifier==*currentDisplayIdentifier ? UserIdFlags::isPrimaryId : UserIdFlags::none));
+  }
+  UserIdFlags flags = UserIdFlags::isDisplayId;
+  if (currentPrimaryIdentifier==uid) {
+    flags |= UserIdFlags::isPrimaryId;
+  }
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), flags));
+  transactionGuard.commit();
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
@@ -1675,10 +1792,19 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   for (auto tuple: mImplementor->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
          && in(&UserIdRecord::internalUserId, RangeToVector(views::keys(usersInfo))),
-         &UserIdRecord::internalUserId,
-         &UserIdRecord::identifier)) {
-    auto& [internalId, identifier] = tuple;
-    usersInfo.at(internalId).mUids.push_back(std::move(identifier));
+         &UserIdRecord::internalUserId, &UserIdRecord::identifier, &UserIdRecord::isPrimaryId, &UserIdRecord::isDisplayId)) {
+    auto& [internalId, identifier, isPrimaryId, isDisplayId] = tuple;
+
+    QRUser& user = usersInfo.at(internalId);
+    if (isDisplayId) {
+      user.mDisplayId = identifier;
+    }
+    if (isPrimaryId) {
+      user.mPrimaryId = identifier;
+    }
+    if (!isPrimaryId && !isDisplayId) {
+      user.mOtherUids.push_back(std::move(identifier));
+    }
   }
 
   return UserQueryResponse{

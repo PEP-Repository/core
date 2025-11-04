@@ -12,7 +12,7 @@
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
-
+#include <pep/accessmanager/UserIdFlags.hpp>
 
 namespace pep {
 
@@ -203,8 +203,8 @@ public:
   int64_t createUser(std::string identifier);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
-  void addIdentifierForUser(std::string_view uid, std::string identifier);
-  void addIdentifierForUser(int64_t internalUserId, std::string identifier);
+  void addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags);
+  void addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
 
@@ -215,6 +215,19 @@ public:
   int64_t getInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
   std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = TimeNow()) const;
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
+  std::optional<std::string> getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
+  std::optional<std::string> getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
+
+  /* Updating user identifiers */
+  void setPrimaryIdentifierForUser(std::string uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void setPrimaryIdentifierForUser(int64_t internalUserId, std::string uid);
+  void unsetPrimaryIdentifierForUser(std::string_view uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void unsetPrimaryIdentifierForUser(int64_t internalUserId, std::string_view uid);
+  void setDisplayIdentifierForUser(std::string uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void setDisplayIdentifierForUser(int64_t internalUserId, std::string uid);
 
   /* Finding userGroupIds */
   /// Try to find the internalId for the userGroup with the given name. Returns nullopt if not found.

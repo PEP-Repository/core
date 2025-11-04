@@ -155,12 +155,31 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Removed user " << Logging::Escape(x.mUid);
   }
   for (auto& x : request.mAddUserIdentifier) {
-    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid);
+    UserIdFlags flags = UserIdFlags::none;
+    if (x.mIsDisplayId) {
+      flags |= UserIdFlags::isDisplayId;
+    }
+    if (x.mIsPrimaryId) {
+      flags |= UserIdFlags::isPrimaryId;
+    }
+    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid, flags);
     LOG(LOG_TAG, info) << "Added user identifier " << Logging::Escape(x.mNewUid) << " for user " << Logging::Escape(x.mExistingUid);
   }
   for (auto& x : request.mRemoveUserIdentifier) {
     mStorage->removeIdentifierForUser(x.mUid);
     LOG(LOG_TAG, info) << "Removed user identifier " << Logging::Escape(x.mUid);
+  }
+  for (auto& x : request.mSetPrimaryId) {
+    mStorage->setPrimaryIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Set identifier " << Logging::Escape(x) << " as primary identifier.";
+  }
+  for (auto& x : request.mUnsetPrimaryId) {
+    mStorage->unsetPrimaryIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Unset identifier " << Logging::Escape(x) << " as primary identifier.";
+  }
+  for (auto& x : request.mSetDisplayId) {
+    mStorage->setDisplayIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Set identifier " << Logging::Escape(x) << " as display identifier.";
   }
   for (auto& x : request.mCreateUserGroup) {
     mStorage->createUserGroup(x.mUserGroup);
@@ -212,10 +231,29 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
     const std::string& userGroup) {
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
   std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId);
-  if (!userId) {
+  if (userId) {
+    auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
+    if (!primary) {
+      mStorage->setPrimaryIdentifierForUser(*userId, request.mPrimaryId);
+    }
+    else if (primary != request.mPrimaryId) {
+      LOG(LOG_TAG, error) << "Found a user based on the primary ID we received from the authentication source (" << request.mPrimaryId
+        << "), but according to our storage a different id for this user is the primary ID. (" << *primary << ")";
+      throw Error("There is a problem with your user account. Please contact support to resolve this issue.");
+    }
+  }
+  else {
     userId = mStorage->findInternalUserId(request.mAlternativeIds);
     if (userId) {
-      mStorage->addIdentifierForUser(*userId, request.mPrimaryId);
+      auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
+      if (!primary) {
+        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId);
+      }
+      else{
+        LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID (" << *primary
+          << "), that does not match the primary ID we received from the authentication source (" << request.mPrimaryId << ").";
+        throw Error("A different user account already exists for the provided user ID. Please contact support to resolve this issue.");
+      }
     }
   }
   if (!userId) {

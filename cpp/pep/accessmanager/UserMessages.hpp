@@ -23,9 +23,12 @@ public:
 class AddUserIdentifier {
 public:
   AddUserIdentifier() = default;
-  AddUserIdentifier(std::string existingUid, std::string newUid) : mExistingUid(std::move(existingUid)), mNewUid(std::move(newUid)) { }
+  AddUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId)
+    : mExistingUid(std::move(existingUid)), mNewUid(std::move(newUid)), mIsPrimaryId(isPrimaryId),mIsDisplayId(isDisplayId) { }
   std::string mExistingUid;
   std::string mNewUid;
+  bool mIsPrimaryId;
+  bool mIsDisplayId;
 };
 
 class RemoveUserIdentifier {
@@ -81,6 +84,9 @@ public:
 
   std::vector<AddUserIdentifier> mAddUserIdentifier;
   std::vector<RemoveUserIdentifier> mRemoveUserIdentifier;
+  std::vector<std::string> mSetPrimaryId;
+  std::vector<std::string> mUnsetPrimaryId;
+  std::vector<std::string> mSetDisplayId;
 
   std::vector<CreateUserGroup> mCreateUserGroup;
   std::vector<RemoveUserGroup> mRemoveUserGroup;
@@ -104,17 +110,23 @@ public:
 class QRUser {
 public:
   QRUser() = default;
-  QRUser(std::vector<std::string> uids, std::vector<std::string> groups)
-    : mUids(std::move(uids)), mGroups(std::move(groups)) { }
+  QRUser(std::optional<std::string> displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<std::string> groups)
+    : mDisplayId(std::move(displayId)), mPrimaryId(std::move(primaryId)), mOtherUids(std::move(otherUids)), mGroups(std::move(groups)) { }
 
-  std::vector<std::string> mUids;
+  std::optional<std::string> mDisplayId;
+  std::optional<std::string> mPrimaryId;
+  std::vector<std::string> mOtherUids;
   std::vector<std::string> mGroups;
 
   [[nodiscard]] auto operator<=>(const QRUser&) const = default;
 
   friend std::ostream& operator<<(std::ostream& out, const QRUser& user) {
+    out << user.mDisplayId.value_or("[NO DISPLAY ID]") << ":{";
     out << "uids:{";
-    for (bool first = true; const auto& uid : user.mUids) {
+    if (user.mPrimaryId) {
+      out << "*" << *user.mPrimaryId;
+    }
+    for (bool first = !user.mPrimaryId; const auto& uid : user.mOtherUids) {
       if (!std::exchange(first, false)) { out << ", "; }
       out << uid;
     }
@@ -125,6 +137,7 @@ public:
       if (!std::exchange(first, false)) { out << ", "; }
       out << group;
     }
+    out << '}';
     out << '}';
     return out;
   }

@@ -333,6 +333,25 @@ if should_run_test authserver-apache; then
     AUTHSERVER=pepservertest
   fi
 
+  test_authserver_request() {
+    primaryUid="$1";
+    humanReadableUid="$2";
+    alternativeUids="$3";
+    expectError="${4:-false}"
+    spoofKey="${5:-"$(cat "$DATA_DIR"/authserver/spoofKey)"}"
+    alternativeUidsHeader="PEP-Alternative-Uids;"
+    if [ -n "$alternativeUids" ]; then
+      alternativeUidsHeader="PEP-Alternative-Uids: $alternativeUids"
+    fi
+    trace curlCmd -i -H "PEP-Primary-Uid: $primaryUid" -H "PEP-Human-Readable-Uid: $humanReadableUid" -H "$alternativeUidsHeader" -H "PEP-Spoof-Check: $spoofKey" \
+      "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$(url_encode "$primaryUid")&human_readable_uid=$(url_encode "$humanReadableUid")&alternative_uids=$(url_encode "$alternativeUids")" > "$DATA_DIR/authserverResponse.txt"
+    if [ "$expectError" = false ]; then
+      trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
+    else
+      trace grep "Location: http://localhost:16515.*[\?&]error=$expectError" "$DATA_DIR/authserverResponse.txt"
+    fi
+  }
+
   pepcli --oauth-token-group "Access Administrator" user create integrationUser
   pepcli --oauth-token-group "Access Administrator" user group create integrationGroup
   pepcli --oauth-token-group "Access Administrator" user addTo integrationUser integrationGroup
@@ -344,33 +363,23 @@ if should_run_test authserver-apache; then
 
   INTEGRATION_USER_PRIMARY_UID="TRnQNJSLx5RFD8VxfzD2HfTsEZ9cT4UsilWw8aiB1ZY"
   DIFFICULT_USER_PRIMARY_UID="MWE8U4BPnAJr27HjAqWD8DucHkFUTgDxLa4zSw7R9Bg"
-  SPOOF_KEY="$(cat "$DATA_DIR"/authserver/spoofKey)"
-  trace curlCmd -i -H "PEP-Primary-Uid: $INTEGRATION_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: integrationUser@example.com" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$INTEGRATION_USER_PRIMARY_UID&human_readable_uid=integrationUser%40example.com&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
-  # We expect an error when user 'integrationUser' logs in with his primary UID.
-  # The user 'integrationUser' is currently only known by that UID. So not by e.g. his e-mailaddress, nor by his non-human-readable primary UID.
-  trace grep "Location: http://localhost:16515.*[\?&]error=access_denied" "$DATA_DIR/authserverResponse.txt"
-  trace curlCmd -i -H "PEP-Primary-Uid: $INTEGRATION_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: integrationUser@example.com" -H "PEP-Alternative-Uids:integrationUser,integration_user" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$INTEGRATION_USER_PRIMARY_UID&human_readable_uid=integrationUser%40example.com&alternative_uids=integrationUser%2Cintegration_user" > "$DATA_DIR/authserverResponse.txt"
-  # When he logs in with his known UID 'integrationUser' (in this case specified as an alternative UID), this succeeds. Furthermore, his primary UID is now added to the database.
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
-  trace curlCmd -i -H "PEP-Primary-Uid: $INTEGRATION_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: integrationUser@example.com" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$INTEGRATION_USER_PRIMARY_UID&human_readable_uid=integrationUser%40example.com&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
-  # so this time login should succeed, since the primary UID is now known to the system.
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
-  trace curlCmd -i -H "PEP-Primary-Uid: eve" -H "PEP-Human-Readable-Uid: eve" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=eve&human_readable_uid=eve&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
-  trace grep "Location: http://localhost:16515.*[\?&]error=access_denied" "$DATA_DIR/authserverResponse.txt"
+  printYellow "We expect an error when user 'integrationUser' logs in with his primary UID."
+  printYellow "The user is currently only known as 'integrationUser'. So not by e.g. his e-mailaddress, nor by his non-human-readable primary UID."
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com "" access_denied
+  printYellow "When he logs in with his known UID 'integrationUser' (in this case specified as an alternative UID), this succeeds. Furthermore, his primary UID is now added to the database."
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com "integrationUser,integration_user"
+  printYellow "so this time login should succeed, since the primary UID is now known to the system."
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com ""
+  printYellow "but if he now logs in with 'integrationUser' in alternative-UIDs, but with a different primary UID, it should fail"
+  test_authserver_request "wrong-primary-uid" integrationUser@example.com "integrationUser,integration_user" server_error
+
+  test_authserver_request eve eve "" access_denied
 
   # Test if alternative UIDs with comma's are correctly split and decoded
-  trace curlCmd -i -H "PEP-Primary-Uid: $DIFFICULT_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: difficultuser@example.com" -H "PEP-Alternative-Uids:%22something%20with%20comma's%2C%20and%20spaces%22%40example.com,second_alternative" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$DIFFICULT_USER_PRIMARY_UID&human_readable_uid=difficultuser%40example.com&alternative_uids=%2522something%2520with%2520comma's%252C%2520and%2520spaces%2522%2540example.com%2Csecond_alternative" > "$DATA_DIR/authserverResponse.txt"
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
+  test_authserver_request "$DIFFICULT_USER_PRIMARY_UID" difficultuser@example.com "%22something%20with%20comma's%2C%20and%20spaces%22%40example.com,second_alternative"
 
   # Test if alternative UIDs with a plus are correctly URL-decoded
-  trace curlCmd -i -H "PEP-Primary-Uid: $DIFFICULT_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: difficultuser@example.com" -H "PEP-Alternative-Uids:difficultuser%2Bpep%40example.com" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$DIFFICULT_USER_PRIMARY_UID&human_readable_uid=difficultuser%40example.com&alternative_uids=difficultuser%252Bpep%2540example.com" > "$DATA_DIR/authserverResponse.txt"
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
+  test_authserver_request "$DIFFICULT_USER_PRIMARY_UID" difficultuser@example.com difficultuser%2Bpep%40example.com
 
   pepcli --oauth-token-group "Access Administrator" user removeFrom difficultUser integrationGroup
   pepcli --oauth-token-group "Access Administrator" user removeIdentifier "difficultuser+pep@example.com"
@@ -380,6 +389,33 @@ if should_run_test authserver-apache; then
   pepcli --oauth-token-group "Access Administrator" user removeFrom integrationUser integrationGroup
   pepcli --oauth-token-group "Access Administrator" user remove integrationUser
   pepcli --oauth-token-group "Access Administrator" user group remove integrationGroup
+fi
+
+####################
+
+if should_run_test user-query; then
+  userDisplayId="user-query-test-user"
+  userPrimaryId="user-query-test-primary-id"
+  userAlternativeIds=("user-query-test-alternative1" "user-query-test-alternative2")
+  [ "$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users" | any(."display id" == "'$userDisplayId'")')" == "false" ]
+  pepcli --oauth-token-group "Access Administrator" user create "$userDisplayId"
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier --primary-id "$userDisplayId" "$userPrimaryId"
+  for id in "${userAlternativeIds[@]}"; do
+    pepcli --oauth-token-group "Access Administrator" user addIdentifier "$userPrimaryId" "$id"
+  done
+  queryResult="$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users"[] | select(."primary id" == "'$userPrimaryId'")')"
+  [ -n "$queryResult" ]
+  returnedDisplayId=$(echo "$queryResult" | jq --raw-output '."display id"')
+  [ "$returnedDisplayId" == "$userDisplayId" ]
+  returnedPrimaryId=$(echo "$queryResult" | jq --raw-output '."primary id"')
+  [ "$returnedPrimaryId" == "$userPrimaryId" ]
+  returnedAlternativeIds=$(echo "$queryResult" | jq --raw-output '."other user identifiers"[]')
+  echo "'$returnedAlternativeIds'"
+  for id in "${userAlternativeIds[@]}"; do
+    echo "$returnedAlternativeIds" | grep "$id"
+  done
+
+  pepcli --oauth-token-group "Access Administrator" user remove "$userPrimaryId"
 fi
 
 ####################

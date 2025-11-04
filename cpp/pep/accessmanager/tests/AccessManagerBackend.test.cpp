@@ -6,6 +6,7 @@
 #include <pep/accessmanager/Storage.hpp>
 
 #include <filesystem>
+#include <gmock/gmock-matchers.h>
 
 using namespace pep;
 
@@ -23,11 +24,26 @@ public:
   static std::shared_ptr<AccessManager::Backend> backend;
   static std::shared_ptr<AccessManager::Backend::Storage> storage; // Have a direct variable so we can check the storage state directly, without going through backend
   static std::shared_ptr<GlobalConfiguration> globalConf;
+
+  struct User {
+    std::string primaryId;
+    std::string displayId;
+    std::vector<std::string> userGroups;
+  };
+
   struct Constants {
     const std::filesystem::path databasePath{"./testDB.sql"};
 
     const std::string userGroup1{"TestUserGroup"};
     const std::string userGroup2{"TestUserGroupWithoutAccess"};
+    const std::string userGroup3{"TestUserGroupWithoutMembers"};
+
+    const User user1{"123", "TestUserInOneGroup", {userGroup1}};
+    const User user2{"456", "TestUserInMultipleGroups", {userGroup1, userGroup2}};
+    const User user3{"789", "TestUserInNoGroups", {}};
+    const std::vector<User> users{user1, user2, user3};
+    const std::string unusedPrimaryId{"abc"};
+    const std::string nonExistingUser{"NonExistingUser"};
 
     const std::string r_col1{"readColumn_1"};
     const std::string r_col2{"readColumn_2"};
@@ -74,6 +90,18 @@ public:
 
   // Create a basic administration with a few columngroups and participantgroups defined.
   static void populateDatabase() {
+    storage->createUserGroup(UserGroup{constants.userGroup1, {}});
+    storage->createUserGroup(UserGroup{constants.userGroup2, {}});
+    storage->createUserGroup(UserGroup{constants.userGroup3, {}});
+
+    for (auto& user : constants.users) {
+      auto internalId = storage->createUser(user.displayId);
+      storage->addIdentifierForUser(internalId, user.primaryId, UserIdFlags::isPrimaryId);
+      for (auto& usergroup : user.userGroups) {
+        storage->addUserToGroup(internalId, usergroup);
+      }
+    }
+
     // Normally the LocalPseudonym and PolymorphicPseudonym should be linked. For the purposes of this test this is not required.
     storage->storeLocalPseudonymAndPP(constants.localPseudonym1, constants.dummyPP);
     storage->storeLocalPseudonymAndPP(constants.localPseudonym2, constants.dummyPP);
@@ -481,6 +509,36 @@ TEST_F(AccessManagerBackendTest, handleSetMetadataRequestNoAccess) {
   };
   EXPECT_THROW(backend->handleSetStructureMetadataRequestHead(request, constants.userGroup1), Error)
       << "only Data Administrator should be able to set metadata";
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_all_groups_for_existing_user) {
+  for (auto& user : constants.users) {
+    auto response = backend->handleFindUserRequest(FindUserRequest(user.primaryId, { user.displayId }), "Authserver");
+    EXPECT_NE(response.mUserGroups, std::nullopt);
+    EXPECT_THAT(*response.mUserGroups, testing::SizeIs(user.userGroups.size()));
+    for (auto& group : *response.mUserGroups) {
+      EXPECT_THAT(user.userGroups, testing::Contains(group.mName));
+    }
+  }
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_adds_primary_id_if_not_yet_known) {
+  auto internalIdAtStart = storage->findInternalUserId(constants.user1.primaryId);
+  ASSERT_NE(internalIdAtStart, std::nullopt);
+  storage->removeIdentifierForUser(constants.user1.primaryId);
+  ASSERT_EQ(storage->findInternalUserId(constants.user1.primaryId), std::nullopt);
+  backend->handleFindUserRequest(FindUserRequest{constants.user1.primaryId, {constants.user1.displayId}},  "Authserver");
+  EXPECT_EQ(storage->findInternalUserId(constants.user1.primaryId), internalIdAtStart);
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_nullopt_for_non_existing_user) {
+  auto response = backend->handleFindUserRequest(FindUserRequest{constants.nonExistingUser, {}}, "Authserver");
+  EXPECT_EQ(response.mUserGroups, std::nullopt);
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_throws_when_primary_id_does_not_match) {
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.unusedPrimaryId, {constants.user1.displayId}}, "Authserver"), Error);
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.user1.displayId, {}}, "Authserver"), Error);
 }
 
 }

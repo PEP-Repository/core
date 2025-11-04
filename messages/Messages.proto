@@ -1054,6 +1054,8 @@ message RemoveUser {
 message AddUserIdentifier {
   string existingUid = 1;
   string newUid = 2;
+  bool is_primary_id = 3;
+  bool is_display_id = 4;
 };
 
 message RemoveUserIdentifier {
@@ -1093,6 +1095,9 @@ message UserMutationRequest {
   repeated RemoveUser remove_user = 7;
   repeated AddUserIdentifier add_user_identifier = 8;
   repeated RemoveUserIdentifier remove_user_identifier = 9;
+  repeated string set_primary_identifier = 10;
+  repeated string unset_primary_identifier = 11;
+  repeated string set_display_identifier = 12;
 
   repeated CreateUserGroup create_user_group = 1;
   repeated RemoveUserGroup remove_user_group = 2;
@@ -1122,8 +1127,11 @@ message SignedUserQuery {
   bytes data = 4;
 }
 message QRUser {
-  repeated string uids = 1;
+  optional string display_id = 3;
+  optional string primary_id = 4;
+  repeated string other_uids = 5;
   repeated string groups = 2;
+
 }
 message UserQueryResponse {
   repeated QRUser users = 3;

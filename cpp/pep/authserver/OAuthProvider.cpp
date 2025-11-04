@@ -414,8 +414,14 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 
     return HTTPResponse("302 Found", "", {{"Location", std::string(returnUri.buffer())}});
   }).on_error_resume_next([redirectUri](std::exception_ptr ep) {
-    LOG(LOG_TAG, error) << "Unexpected error: " << rxcpp::rxu::what(ep);
-    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    try {
+      std::rethrow_exception(ep);
+    } catch (const Error& e) {
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, e.what()));
+    } catch(const std::exception& e) {
+      LOG(LOG_TAG, error) << "Unexpected error: " << e.what();
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    }
   });
 }
 

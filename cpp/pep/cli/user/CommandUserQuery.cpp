@@ -1,3 +1,4 @@
+#include <boost/algorithm/string/join.hpp>
 #include <pep/cli/user/CommandUserQuery.hpp>
 
 #include <pep/core-client/CoreClient.hpp>
@@ -45,6 +46,14 @@ int CommandUser::CommandUserQuery::execute() {
       }
       else {
         so::yaml::append(std::cout, res, config) << std::endl;
+      }
+      auto usersWithoutDisplayId = res.mUsers | std::ranges::views::filter([](QRUser user){ return !user.mDisplayId; });
+      for (auto& user : usersWithoutDisplayId) {
+        auto uids = std::move(user.mOtherUids);
+        if (user.mPrimaryId) {
+          uids.push_back(*user.mPrimaryId);
+        }
+        LOG(LOG_TAG, warning) << "No displayId for user with identifiers: " << boost::algorithm::join(uids, ", ");
       }
       return pep::FakeVoid();
     });

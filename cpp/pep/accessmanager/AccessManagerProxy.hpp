@@ -49,8 +49,11 @@ public:
 
   rxcpp::observable<FakeVoid> createUser(std::string uid) const;
   rxcpp::observable<FakeVoid> removeUser(std::string uid) const;
-  rxcpp::observable<FakeVoid> addUserIdentifier(std::string existingUid, std::string newUid) const;
+  rxcpp::observable<FakeVoid> addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) const;
   rxcpp::observable<FakeVoid> removeUserIdentifier(std::string uid) const;
+  rxcpp::observable<FakeVoid> setUserPrimaryId(std::string uid) const;
+  rxcpp::observable<FakeVoid> unsetUserPrimaryId(std::string uid) const;
+  rxcpp::observable<FakeVoid> setUserDisplayId(std::string uid) const;
   rxcpp::observable<FakeVoid> createUserGroup(UserGroup userGroup) const;
   rxcpp::observable<FakeVoid> modifyUserGroup(UserGroup userGroup) const;
   rxcpp::observable<FakeVoid> removeUserGroup(std::string name) const;
