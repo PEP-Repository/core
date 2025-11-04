@@ -1509,7 +1509,12 @@ void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(int64_t intern
   if (currentPrimaryIdentifier) {
     mImplementor->raw.insert(UserIdRecord(internalUserId, *currentPrimaryIdentifier, currentDisplayIdentifier==*currentPrimaryIdentifier ? UserIdFlags::isDisplayId : UserIdFlags::none));
   }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), currentDisplayIdentifier==uid ? UserIdFlags::isDisplayId : UserIdFlags::none));
+  UserIdFlags flags = UserIdFlags::isPrimaryId;
+  if (currentDisplayIdentifier == uid) {
+    flags |= UserIdFlags::isDisplayId;
+
+  }
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), flags));
   transactionGuard.commit();
 }
 
