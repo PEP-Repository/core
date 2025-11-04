@@ -13,10 +13,9 @@
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <fstream>
-#include <pep/async/RxGetOne.hpp>
-#include <pep/async/RxToVector.hpp>
 
 using namespace pep::cli;
 
