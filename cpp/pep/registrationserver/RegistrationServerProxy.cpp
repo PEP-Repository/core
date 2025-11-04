@@ -13,7 +13,7 @@ rxcpp::observable<std::string> RegistrationServerProxy::registerPepId() const {
 }
 
 rxcpp::observable<FakeVoid> RegistrationServerProxy::completeShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier, const pep::AsymmetricKey& publicKeyShadowAdministration) const {
-  RegistrationRequest request(std::move(pp));
+  RegistrationRequest request(pp);
   request.mEncryptedIdentifier = publicKeyShadowAdministration.encrypt(identifier);
   request.mEncryptionPublicKeyPem = publicKeyShadowAdministration.toPem();
 

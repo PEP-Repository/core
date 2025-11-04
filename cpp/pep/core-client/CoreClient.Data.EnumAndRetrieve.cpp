@@ -172,7 +172,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
           return storageFacilityProxy->requestDataEnumeration(std::move(enumRequest))
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
-              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, const DataEnumerationResponse2& response) {
+              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, DataEnumerationResponse2 response) {
                 for (auto& entry: response.mEntries) {
                   if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.mFileSize <= ctx->dataSizeLimit)) {
                     // This entry will include data: save it for data retrieval
