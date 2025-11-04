@@ -9,8 +9,6 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-#include <cmath>
-
 using namespace std::literals;
 
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
