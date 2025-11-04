@@ -1,5 +1,6 @@
 #include <pep/crypto/CPRNG.hpp>
 #include <array>
+#include <span>
 #include <stdexcept>
 
 namespace {
@@ -36,9 +37,9 @@ void CPURBG::fillBuffer() {
         reinterpret_cast<uint8_t*>(mBuffer.data()),
         &len,
         reinterpret_cast<const uint8_t*>(plaintext.data()),
-        bufferSize*8))
+        std::span(plaintext).size_bytes()))
     throw std::runtime_error("CPURBG: EVP_EncryptUpdate failed");
-  if (len != bufferSize*8)
+  if (len != std::span(plaintext).size_bytes())
     throw std::runtime_error("CPURBG: EVP_EncryptUpdate behaved unexpectedly");
 }
 
