@@ -1,8 +1,7 @@
 #pragma once
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Signature.hpp>
-#include <pep/crypto/X509Certificate.hpp>
+#include <pep/crypto/Signed.hpp>
 
 namespace pep {
 
@@ -20,9 +19,7 @@ public:
 
 class Ticket2 {
 public:
-  inline Ticket2() : mTimestamp(0) { }
-
-  Timestamp mTimestamp;
+  Timestamp mTimestamp{/*zero*/};
   std::vector<std::string> mModes;
   std::vector<LocalPseudonyms> mPseudonyms;
   std::vector<std::string> mColumns;
@@ -32,14 +29,14 @@ public:
   std::vector<PolymorphicPseudonym> getPolymorphicPseudonyms() const;
 };
 
-class SignedTicket2 {
+template <>
+class Signed<Ticket2> {
 public:
-  SignedTicket2() = default;
-  SignedTicket2(
+  Signed() = default;
+  Signed(
     Ticket2 ticket,
-    X509CertificateChain chain,
-    const AsymmetricKey& privateKey);
-  SignedTicket2(
+    const X509Identity& identity);
+  Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mTranscryptorSignature,
     std::string mData)
@@ -66,24 +63,28 @@ public:
     : DeserializableDerivedError<SignedTicket2ValidityPeriodError>(description) { }
 };
 
-class TicketRequest2 {
+class ClientSideTicketRequest2 {
 public:
   std::vector<std::string> mModes;
   std::vector<std::string> mParticipantGroups;
   std::vector<PolymorphicPseudonym> mPolymorphicPseudonyms;
   std::vector<std::string> mColumnGroups;
   std::vector<std::string> mColumns;
-  bool mRequestIndexedTicket = false;
   bool mIncludeUserGroupPseudonyms = false;
 };
 
-class SignedTicketRequest2 {
+class TicketRequest2 : public ClientSideTicketRequest2 {
 public:
-  SignedTicketRequest2() = default;
-  SignedTicketRequest2(TicketRequest2 ticketRequest,
-    const X509CertificateChain& chain,
-    const AsymmetricKey& privateKey);
-  SignedTicketRequest2(
+  bool mRequestIndexedTicket;
+};
+
+template <>
+class Signed<TicketRequest2> {
+public:
+  Signed() = default;
+  Signed(TicketRequest2 ticketRequest,
+    const X509Identity& identity);
+  Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mLogSignature,
     std::string mData)
@@ -98,5 +99,8 @@ public:
   std::optional<Signature> mLogSignature;
   std::string mData;
 };
+
+using SignedTicket2 = Signed<Ticket2>;
+using SignedTicketRequest2 = Signed<TicketRequest2>;
 
 }

@@ -8,6 +8,8 @@
 #include <pep/utils/TestTiming.hpp>
 #include <gtest/gtest.h>
 
+using namespace std::literals;
+
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
   friend class pep::SharedConstructor<ClientConnectivityHandler>;
 
@@ -101,7 +103,7 @@ private:
 
     auto latency = mBackoffParameters.minTimeout() * std::pow(mBackoffParameters.backoffFactor(), unsuccessful - 1U); // Calculate wait duration for this attempt
     latency = std::min(latency, static_cast<decltype(latency)>(mBackoffParameters.maxTimeout())); // Cap at max value
-    auto latencyMsec = std::chrono::duration_cast<std::chrono::milliseconds>(latency).count(); // Convert to milliseconds
+    auto latencyMsec = duration_cast<std::chrono::milliseconds>(latency); // Convert to milliseconds
 
     // Reconnect is started _before_ notifying us, so its timer had already been running before handleConnectionAttempt's previous invocation,
     // which assigned "now" to the "mLastAttempt" variable. Consequently, the reconnect attempt started earlier than the value that we
@@ -109,7 +111,7 @@ private:
     // To prevent our test from failing (as it e.g. did in https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/359703#L570), we subtract some msec
     // from the (expected/required) latency. E.g. if the client (connection) needed to wait 200 msec before reconnecting, it's acceptable if it
     // re-invokes our callback after 190 msec.
-    constexpr std::chrono::milliseconds::rep MAX_INVOCATION_OVERHEAD = 10;
+    constexpr auto MAX_INVOCATION_OVERHEAD = 10ms;
     ASSERT_GE(pep::testing::MillisecondsSince(*mLastAttempt), latencyMsec - MAX_INVOCATION_OVERHEAD) << "Client didn't observe latency during reconnect attempt";
   }
 
@@ -132,7 +134,7 @@ public:
     ASSERT_TRUE(mLastAttempt.has_value()) << "Client didn't attempt to connect to server";
     ASSERT_GT(mAttempts, 0U) << "Client didn't attempt to connect to server";
 
-    auto minBackoffMsec = std::chrono::duration_cast<std::chrono::milliseconds>(mBackoffParameters.minTimeout()).count();
+    auto minBackoffMsec = duration_cast<std::chrono::milliseconds>(mBackoffParameters.minTimeout());
     ASSERT_LT(pep::testing::MillisecondsSince(*mLastAttempt), minBackoffMsec) << "Client shutdown (and hence I/O context termination) shouldn't wait for exponential backoff. Does the Client cancel the timer?";
 
     ASSERT_GT(mAttempts, 1U) << "Client should have made at least two connection attempts: one successful plus one unsuccessful";
@@ -153,7 +155,7 @@ TEST(Client, Reconnects) { // TODO: simplify
     });
   server->start();
 
-  auto backoffParams = pep::ExponentialBackoff::Parameters(std::chrono::milliseconds(200), std::chrono::milliseconds(1000));
+  auto backoffParams = pep::ExponentialBackoff::Parameters(200ms, 1s);
   auto clientParameters = server->createClientParameters();
   auto client = pep::networking::Client::Create(*clientParameters, backoffParams);
 

@@ -35,22 +35,7 @@ LegacyAuthserverStorage::LegacyAuthserverStorage(const std::filesystem::path& pa
 
 // Checks whether the database has been initialized
 void LegacyAuthserverStorage::ensureInitialized() {
-  LOG(LOG_TAG, info) << "Syncing legacy authserver database schema ...";
-  try {
-    for(const auto& p : mStorage->raw.sync_schema_simulate(true)) {
-      if (p.second == sync_schema_result::dropped_and_recreated)
-        throw std::runtime_error("Legacy authserver database schema changed for table " + p.first + ", in a way that would drop the table");
-    }
-    for(const auto& p : mStorage->raw.sync_schema(true)) {
-      if (p.second == sync_schema_result::already_in_sync)
-        continue;
-      LOG(LOG_TAG, warning) << "  " << p.first << ": " << p.second;
-    }
-  } catch (const std::system_error& e) {
-    LOG(LOG_TAG, error) << "  failed for legacy authserver storage: " << e.what();
-    throw;
-  }
-
+  mStorage->syncSchema();
   if(mStorage->raw.count<UserIdRecord>() == 0) {
     LOG(LOG_TAG, info) << "UserId table empty in legacy authserver storage. Initializing based on existing UserGroupRecords";
 
@@ -81,14 +66,14 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
   int64_t nextInternalId = getNextInternalUserId();
   std::unordered_map<std::string /* uid */, UserInfo> knownUsers;
   for (auto record : mStorage->raw.iterate<LegacyUserGroupUserRecord>()) {
+    Timestamp recordTimestamp(std::chrono::milliseconds{record.timestamp});
     auto knownUser = knownUsers.find(record.uid);
     if (knownUser == knownUsers.end()) {
       // This is the first time we encounter this UID. Add it to UserIds
       int64_t internalId = nextInternalId++;
       std::tie(knownUser, std::ignore) = knownUsers.emplace(
           record.uid, UserInfo{internalId, {}, std::nullopt});
-      recordsToCreate.emplace_back(internalId, record.uid, UserIdFlags::none, false,
-                                   record.timestamp);
+      recordsToCreate.emplace_back(internalId, record.uid, UserIdFlags::none, false, recordTimestamp);
     } else if (knownUser->second.tombstone) {
       // We have previously tombstoned this UID, but now we encounter it again.
       // Remove the tombstone
@@ -108,7 +93,7 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
         // the UID
         knownUser->second.tombstone = recordsToCreate.emplace(
             recordsToCreate.end(), knownUser->second.internalId, record.uid,
-            UserIdFlags::none, true, record.timestamp);
+            UserIdFlags::none, true, recordTimestamp);
       }
     } else {
       knownUser->second.groups.insert(record.group);

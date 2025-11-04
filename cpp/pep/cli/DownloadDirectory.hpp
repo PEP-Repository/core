@@ -38,11 +38,6 @@ public:
     static Specification FromString(const std::string& value);
   };
 
-  struct RecordDescriptorUpdate {
-    RecordDescriptor previous;
-    Timestamp timestamp;
-  };
-
   class RecordStorageStream {
     friend class DownloadDirectory;
 

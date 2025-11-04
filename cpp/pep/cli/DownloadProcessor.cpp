@@ -1,8 +1,10 @@
 #include <pep/cli/DownloadProcessor.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxDrain.hpp>
-#include <pep/async/RxUtils.hpp>
-#include <pep/utils/VectorOfVectors.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxToVector.hpp>
+#include <pep/async/RxToVectorOfVectors.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -179,7 +181,7 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
             // Data should have been removed from the local copy, but it wasn't there
             LOG("update", pep::warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
-              << "; blinding timestamp " << existing.getBlindingTimestamp().getTime();
+              << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
         }
       }
@@ -192,7 +194,7 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
             // Data file should have been renamed in the local copy, but it wasn't there
             LOG("update", pep::warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
-              << "; blinding timestamp " << existing.getBlindingTimestamp().getTime();
+              << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
         }
       }

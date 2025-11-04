@@ -3,7 +3,7 @@
 #include <pep/auth/UserGroup.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 
@@ -13,6 +13,7 @@
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-take.hpp>
 
 namespace pep {
 
@@ -53,20 +54,12 @@ void AuthserverBackend::Parameters::setAccessManager(
   this->accessManager = accessManager;
 }
 
-const X509CertificateChain& AuthserverBackend::Parameters::getCertificateChain() const {
-  return certificateChain;
+std::shared_ptr<const X509Identity> AuthserverBackend::Parameters::getSigningIdentity() const {
+  return signingIdentity;
 }
-void AuthserverBackend::Parameters::setCertificateChain(const X509CertificateChain &certificateChain) {
-  this->certificateChain = certificateChain;
+void AuthserverBackend::Parameters::setSigningIdentity(std::shared_ptr<const X509Identity> identity) {
+  this->signingIdentity = identity;
 }
-
-const AsymmetricKey& AuthserverBackend::Parameters::getPrivateKey() const {
-  return privateKey;
-}
-void AuthserverBackend::Parameters::setPrivateKey(const AsymmetricKey &privateKey) {
-  this->privateKey = privateKey;
-}
-
 
 std::chrono::seconds AuthserverBackend::Parameters::getTokenExpiration() const {
   return tokenExpiration;
@@ -83,20 +76,22 @@ void AuthserverBackend::Parameters::check() const {
   if(storageFile && storageFile->empty()) {
     throw std::runtime_error("If a storageFile is set, it may not be empty");
   }
-  if(tokenExpiration.count() == 0) {
+  if(tokenExpiration == decltype(tokenExpiration)::zero()) {
     throw std::runtime_error("tokenExpiration must be set");
   }
   if(oauthTokenSecret.empty()) {
     throw std::runtime_error("oauthTokenSecret must be set");
+  }
+  if (signingIdentity == nullptr) {
+    throw std::runtime_error("signingIdentity must be set");
   }
 }
 const std::unordered_map<std::string, std::string> checksumNameMappings{
     {"groups", "user-groups"}, {"user-groups-v2", "user-group-users-legacy"}};
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
-    : mAccessManager(params.getAccessManager()),
-      mCertificateChain(params.getCertificateChain()),
-      mPrivateKey(params.getPrivateKey()),
+    : MessageSigner(params.getSigningIdentity()),
+      mAccessManager(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this)),
       mTokenExpiration(params.getTokenExpiration()),
       mOauthTokenSecret(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
@@ -121,17 +116,15 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
     throw Error("Checksum chain " + request.mName + " not found");
   }
   request.mName = checksumMapping->second;
-  return mAccessManager
-          ->sendRequest<ChecksumChainResponse>(
-              Signed(request, mCertificateChain, mPrivateKey))
-          .op(RxGetOne("ChecksumChainResponse"));
+  return mAccessManager->requestChecksumChain(std::move(request))
+    .op(RxGetOne());
 }
 
 rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::findUserGroupsAndStorePrimaryIdIfMissing(
     const std::string &primaryId,
     const std::vector<std::string> &alternativeIds) {
 
-  return mAccessManager->sendRequest<FindUserResponse>(Signed<FindUserRequest>(FindUserRequest(primaryId, alternativeIds), mCertificateChain, mPrivateKey))
+  return mAccessManager->findUser(primaryId, alternativeIds)
     .map([](FindUserResponse response) {
       return response.mUserGroups;
     });
@@ -139,11 +132,11 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
 
 
 OAuthToken AuthserverBackend::getToken(const std::string& uid, const std::string& group, const Timestamp& expirationTime) const {
-  auto now = std::chrono::system_clock::now();
+  auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
     mOauthTokenSecret, uid, group,
-    std::chrono::system_clock::to_time_t(now),
-    expirationTime.toTime_t()
+    now,
+    time_point_cast<std::chrono::seconds>(expirationTime)
   );
 }
 
@@ -169,11 +162,11 @@ OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& 
       validity = this->mTokenExpiration;
     }
   }
-  auto now = std::chrono::system_clock::now();
+  auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
     mOauthTokenSecret, uid, group.mName,
-    std::chrono::system_clock::to_time_t(now),
-    std::chrono::system_clock::to_time_t(now + validity)
+    now,
+    now + validity
   );
 }
 
@@ -194,17 +187,14 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
   mAccessManager->connectionStatus()
     .filter([](const ConnectionStatus& status){ return status.connected; })
     .first()
-    .flat_map([accessManager=this->mAccessManager, storageFile, certificateChain=mCertificateChain, privateKey=mPrivateKey](ConnectionStatus status) -> rxcpp::observable<std::string> {
+    .flat_map([accessManager=mAccessManager, storageFile](ConnectionStatus status) {
       auto storageStream = std::make_shared<std::ifstream>(storageFile, std::ios::binary);
       if (!storageStream->is_open()) {
         throw std::runtime_error("Failed to open storageFile");
       }
-      auto request = SignedMigrateUserDbToAccessManagerRequest(MigrateUserDbToAccessManagerRequest(), certificateChain, privateKey);
-      return accessManager->sendRequest(std::make_shared<std::string>(Serialization::ToString(request)),
-                                        messaging::IStreamToMessageBatches(storageStream));
+      return accessManager->migrateUserDbToAccessManager(messaging::IStreamToMessageBatches(storageStream));
     }).subscribe(
-      [](const std::string& rawResponse) {
-        Error::ThrowIfDeserializable(rawResponse);
+      [](FakeVoid) {
         LOG(LOG_TAG, info) << "Migration successful";
       },
       [](std::exception_ptr e) {

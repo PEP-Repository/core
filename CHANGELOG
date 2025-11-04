@@ -5,13 +5,7 @@ Note your text below, in the following format (with 42 the issue number of the c
 
 Changes in upcoming release (1.6):
 
-- #2682: It is now possible to make authserver_apache request certificates from Let's Encrypt, without having to use an external ACME client (such as acme.sh)
-  By default this is not enabled, so projects should not directly be affected by this.
-  This change did include a rename from the conf-available directory into conf-enabled. This makes it possible to add configuration to
-  the conf-available directory, which will not be automatically enabled. You can enable it at a later stage, e.g. in a CI job or manually.
-
-- #2656: The "pepcli pull" command now also deals with unknown files and (sub)directories in the download directory, which
-  can a.o. prevent (resumed) downloads from failing because "Data storage path already exists".
+---------------
 
 - #2708: We now store whether a userID is the primary and/or the display ID. Primary ID is set automatically the first time a user logs in.
   The userID given when creating a new user will be set as the display ID. Both can be changed by the access administrator.
@@ -22,24 +16,26 @@ Changes in upcoming release (1.6):
 
 MANUAL CHANGES REQUIRED:
 
-- #2682: For all environments (except review) the conf-available directory needs to be renamed to conf-enabled. This change should already be in the master branch of all project repo's.
-  Make sure that these changes are merged forward, when deploying the release.
-
-- ops#367: Migrate master branch to main branch for all project config repo's.
-
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
   Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
-
----------------
 
 Past changes, do not edit (except by person doing release):
 
 Release 1.5 (started 2025-09-01):
 
 - #2638: Added `--export` option to `pepcli pull` which does a basic export to json or yaml after downloading the data.
+
 - #2320: Section 4 "Data Access" of Design Document updated
 
 - #366: Replaced networking code to make it more maintainable.
+
+- #2682: It is now possible to make authserver_apache request certificates from Let's Encrypt, without having to use an external ACME client (such as acme.sh)
+  By default this is not enabled, so projects should not directly be affected by this.
+  This change did include a rename from the conf-available directory into conf-enabled. This makes it possible to add configuration to
+  the conf-available directory, which will not be automatically enabled. You can enable it at a later stage, e.g. in a CI job or manually.
+
+- #2656: The "pepcli pull" command now also deals with unknown files and (sub)directories in the download directory, which
+  can a.o. prevent (resumed) downloads from failing because "Data storage path already exists".
 
 MANUAL CHANGES REQUIRED:
 
@@ -66,6 +62,11 @@ MANUAL CHANGES REQUIRED:
   `MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/app/AppCast.xml` to `MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml`
   `MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli/AppCast.xml` to `MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml`
   `MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/dt/AppCast.xml` to `MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml`
+
+- #2682: For all environments (except review) the conf-available directory needs to be renamed to conf-enabled. This change should already be in the master branch of all project repo's.
+  Make sure that these changes are merged forward, when deploying the release.
+
+- ops#367: Migrate master branch to main branch for all project config repo's.
 
 
 Release 1.4 (started 2025-07-01):

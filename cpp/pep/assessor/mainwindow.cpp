@@ -18,8 +18,6 @@
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
 
-#include <pep/async/RxUtils.hpp>
-
 #include <QDebug>
 #include <QDir>
 #include <QSettings>
@@ -89,16 +87,16 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   boost::property_tree::ptree keys;
 
   //Subscribe for network status updates from the pepClient
-  client->getAccessManagerConnectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
+  client->getAccessManagerProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
     accessManagerConnectionStatus = accessManagerStatus;
   updateConnectionStatus();
     });
-  client->getKeyServerStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
+  client->getKeyServerProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
     keyServerConnectionStatus = keyServerStatus;
   updateConnectionStatus();
     });
-  client->getStorageFacilityStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus stroageFacilityStatus) {
-    storageFacilityConnectionStatus = stroageFacilityStatus;
+  client->getStorageFacilityProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus storageFacilityStatus) {
+    storageFacilityConnectionStatus = storageFacilityStatus;
   updateConnectionStatus();
     });
   client->getRegistrationExpiryObservable().observe_on(observe_on_gui()).subscribe([this](int) {
@@ -289,7 +287,7 @@ void MainWindow::showForToken(QString token) {
     .observe_on(observe_on_gui())
         .subscribe([this](const std::pair<std::shared_ptr<pep::EnrollmentResult>, std::shared_ptr<pep::GlobalConfiguration>> pair) {
         std::cout << "Received EnrollmentResult" << std::endl;
-      auto& cert = pair.first->certificateChain.front();
+      auto& cert = pair.first->signingIdentity.getCertificateChain().front();
 
       if(!cert.getCommonName().has_value()) {
         throw std::runtime_error("User certificate does not contain a username.");

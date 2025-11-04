@@ -26,6 +26,7 @@
 #include <pep/utils/Random.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 
+using namespace std::literals;
 using boost::urls::url;
 
 #ifdef ERROR_ACCESS_DENIED
@@ -163,7 +164,7 @@ void OAuthProvider::Parameters::check() const {
   if(httpPort == 0) {
     throw std::runtime_error("httpPort must be set");
   }
-  if(activeGrantExpiration.count() == 0) {
+  if(activeGrantExpiration == decltype(activeGrantExpiration)::zero()) {
     throw std::runtime_error("activeGrantExpiration must be set");
   }
   if(!io_context) {
@@ -464,7 +465,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     boost::property_tree::ptree responseData;
     responseData.add("access_token", token.getSerializedForm());
     responseData.add("token_type", "bearer");
-    responseData.add("expires_in", 60);
+    responseData.add("expires_in", std::chrono::seconds{1min}.count());
     std::ostringstream responseStream;
     boost::property_tree::write_json(responseStream, responseData);
 

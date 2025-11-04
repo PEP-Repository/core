@@ -5,15 +5,18 @@ add_library(${PROJECT_NAME}AccessManagerApilib
   UserMessages.hpp
   UserSerializers.cpp UserSerializers.cpp
   AccessManagerMessages.cpp AccessManagerMessages.hpp
+  AccessManagerProxy.cpp AccessManagerProxy.hpp
+  AccessManagerProxy.Ama.cpp
+  AccessManagerProxy.Users.cpp
   AccessManagerSerializers.cpp AccessManagerSerializers.hpp
 )
-
 target_link_libraries(${PROJECT_NAME}AccessManagerApilib
   ${PROJECT_NAME}Structurelib
   ${PROJECT_NAME}TranscryptorApilib
   ${PROJECT_NAME}KeyServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}AccessManagerApilib)
+
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}AccessManagerlib
@@ -28,7 +31,9 @@ if (WITH_SERVERS)
   target_link_libraries(${PROJECT_NAME}AccessManagerlib
     ${PROJECT_NAME}AccessManagerApilib
     ${PROJECT_NAME}Databaselib
+    ${PROJECT_NAME}KeyServerApilib
     ${PROJECT_NAME}Serverlib
+    ${PROJECT_NAME}TranscryptorApilib
   )
 
   option(AUTO_POPULATE_USER_DB "Should the user DB be automatically populated, when storage is empty?" ON)

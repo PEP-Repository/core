@@ -1,11 +1,22 @@
 #pragma once
 
 #include <pep/database/Record.hpp>
+#include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
 #include <sqlite_orm/sqlite_orm.h>
 
 namespace pep::database {
+struct SchemaError : std::logic_error {
+  enum class Reason {
+    dropped_and_recreated,
+    old_columns_removed,
+  };
+  SchemaError(std::string table, Reason reason);
+
+  std::string mTable;
+  Reason mReason;
+};
 
 template<typename T>
 struct having {
@@ -60,6 +71,41 @@ struct Storage : public BasicStorage {
   explicit Storage(std::string path)
     : BasicStorage(path), raw(MakeRaw(std::move(path))) {}
 
+  /// \brief Sync the database schema if that causes no data loss. Throws an error otherwise.
+  /// \param allow_old_column_removal Whether removal of old columns is allowed. When set to true, columns that are in the database, but not in the `make_storage` call, will be removed. If set to false, this will produce an error
+  /// \throws SchemaError if syncing the schema would cause a table being dropped, or if \p allow_old_column_removal is false and one or more columns would be dropped.
+  /// \throws std::system_error if sqlite produces errors
+  /// \returns true if changes have been made, false if the whole database schema was already in sync.
+  bool syncSchema(bool allow_old_column_removal = false) {
+    LOG("database::Storage", info) << "Syncing database schema...";
+    try {
+      auto simulateResults = raw.sync_schema_simulate(true);
+      for(const auto& [tableName, result] : simulateResults) {
+        switch (result) {
+        case sqlite_orm::sync_schema_result::already_in_sync:
+        case sqlite_orm::sync_schema_result::new_table_created:
+        case sqlite_orm::sync_schema_result::new_columns_added:
+          break;
+        case sqlite_orm::sync_schema_result::dropped_and_recreated:
+          throw SchemaError(tableName, SchemaError::Reason::dropped_and_recreated);
+        case sqlite_orm::sync_schema_result::old_columns_removed:
+        case sqlite_orm::sync_schema_result::new_columns_added_and_old_columns_removed:
+          if (allow_old_column_removal)
+            break;
+          throw SchemaError(tableName, SchemaError::Reason::old_columns_removed);
+        }
+      }
+      auto syncResults  = raw.sync_schema(true);
+      assert(syncResults == simulateResults);
+      return std::ranges::find_if(syncResults,
+        [](auto result){ return result.second != sqlite_orm::sync_schema_result::already_in_sync; }) != syncResults.end();
+    }
+    catch (const std::system_error& e) {
+      LOG("database::Storage", error) << "  failed: " << e.what();
+      throw;
+    }
+  }
+
   /// Return whether any non-tombstone records exist without retrieving them.
   ///
   /// Example: check if a column group is not empty
@@ -96,7 +142,7 @@ struct Storage : public BasicStorage {
   /// Example: enumerate all metadata for a specific subject type
   /// \code
   ///   myStorage->getCurrentRecords(storage,
-  ///     c(&MetadataRecord::timestamp) <= timestamp.getTime()
+  ///     c(&MetadataRecord::timestamp) <= TicksSinceEpoch<std::chrono::milliseconds>(timestamp)
   ///     && c(&MetadataRecord::subjectType) == subjectType,
   ///     &MetadataRecord::subject,
   ///     &MetadataRecord::metadataGroup,
@@ -151,6 +197,7 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
+
 }
 
 }

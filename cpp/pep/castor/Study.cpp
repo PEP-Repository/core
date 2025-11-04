@@ -2,7 +2,7 @@
 
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxGroupToVectors.hpp>
 #include <pep/castor/ImportColumnNamer.hpp>
 #include <pep/castor/Site.hpp>
 #include <pep/castor/Participant.hpp>

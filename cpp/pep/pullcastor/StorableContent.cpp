@@ -1,3 +1,4 @@
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/pullcastor/StorableContent.hpp>
 
 #include <boost/property_tree/json_parser.hpp>

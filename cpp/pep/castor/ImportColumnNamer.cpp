@@ -6,8 +6,8 @@
 namespace pep {
 namespace castor {
 
-ImportColumnNamer::ImportColumnNamer(const ColumnNameMappings& mappings)
-  : mMappings(mappings) {
+ImportColumnNamer::ImportColumnNamer(ColumnNameMappings mappings)
+  : mMappings(std::move(mappings)) {
 }
 
 std::string ImportColumnNamer::joinColumnNameSections(const std::string& configuredPrefix, const std::vector<std::string>& sections) const {
