@@ -21,9 +21,9 @@ struct RxConcatenateVectors {
   rxcpp::observable<std::shared_ptr<std::vector<TItem>>> operator()(rxcpp::observable<std::vector<TItem>, SourceOperator> chunks) const {
     return chunks.reduce(
       std::make_shared<std::vector<TItem>>(),
-      [](std::shared_ptr<std::vector<TItem>> result, const std::vector<TItem>& chunk) {
+      [](std::shared_ptr<std::vector<TItem>> result, std::vector<TItem> chunk) {
       result->reserve(result->size() + chunk.size());
-      result->insert(result->end(), chunk.cbegin(), chunk.cend());
+      result->insert(result->end(), std::move_iterator(chunk.begin()), std::move_iterator(chunk.end()));
       return result;
     });
   }

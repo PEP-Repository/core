@@ -63,22 +63,8 @@ public:
   }
 
   template <typename T>
-  static std::vector<char> ToCharVector(T value, bool withMagic = true) {
-    auto s = Serializer<T>().toString(std::move(value), withMagic);
-    return std::vector<char>(s.begin(), s.end());
-  }
-
-  template <typename T>
-  static T FromCharVector(const std::vector<char>& source, bool withMagic = true) {
-    return Serializer<T>().fromString(
-      std::string(source.begin(), source.end()),
-      withMagic
-    );
-  }
-
-  template <typename T>
-  static T FromString(std::string source, bool withMagic = true) {
-    return Serializer<T>().fromString(std::move(source), withMagic);
+  static T FromString(std::string_view source, bool withMagic = true) {
+    return Serializer<T>().fromString(source, withMagic);
   }
 
   template <typename T>

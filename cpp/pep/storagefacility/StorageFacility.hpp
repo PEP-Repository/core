@@ -93,8 +93,8 @@ private:
   messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> lpRequest);
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest);
 
-  std::string encryptId(const std::string& path, Timestamp time);
-  SFId decryptId(const std::string& encId);
+  std::string encryptId(std::string path, Timestamp time);
+  SFId decryptId(std::string_view encId);
   std::vector<std::optional<LocalPseudonym>> decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const;
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);

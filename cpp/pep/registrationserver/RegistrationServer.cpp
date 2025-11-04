@@ -84,7 +84,7 @@ rxcpp::observable<ShortPseudonymDefinition> GetShortPseudonymDefinitions(std::sh
     throw std::runtime_error("Cannot get short pseudonym definitions without global configuration");
   }
   return globalConfiguration->observe()
-    .flat_map([](std::shared_ptr<GlobalConfiguration> config) {return rxcpp::observable<>::iterate(config->getShortPseudonyms()); });
+    .flat_map([](std::shared_ptr<GlobalConfiguration> config) {return RxIterate(config->getShortPseudonyms()); });
 }
 
 int ParseSqliteSelectCountResult(void *pArg, int argc, char **argv, char **columnNames) {
@@ -110,7 +110,7 @@ private:
 
 public:
   void add(const std::string& localValue) { mLocal.push_back(localValue); }
-  rxcpp::observable<std::string> observe() const { return mRx->observe().concat(rxcpp::observable<>::iterate(mLocal)); }
+  rxcpp::observable<std::string> observe() const { return mRx->observe().concat(RxIterate(mLocal)); }
 
   static std::shared_ptr<ShortPseudonymCache> Create(RegistrationServer& server, const std::filesystem::path& shadowStorageFile) {
     auto result = std::shared_ptr<ShortPseudonymCache>(new ShortPseudonymCache(server, shadowStorageFile));
@@ -376,7 +376,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       if (rebuild) {
         LOG(LOG_TAG, info) << "Initializing shadow storage with short pseudonyms retrieved from Storage Facility";
       }
-      return rxcpp::observable<>::iterate(std::move(*pps));
+      return RxIterate(std::move(*pps));
     })
       .flat_map([this, rebuild, count](const PseudonymsByPp::value_type& ppAndPseudonyms) { // Process each participant
       const auto& pseudonyms = ppAndPseudonyms.second;
@@ -400,7 +400,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
         }
       }
 
-      return rxcpp::observable<>::iterate(pseudonyms)
+      return RxIterate(pseudonyms)
         .map([](const Pseudonyms::value_type& columnAndValue) {return columnAndValue.second; });
     })
       .as_dynamic()
@@ -703,7 +703,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       { *ctx->pp },                 // pps
       { "ShortPseudonyms" },        // columnGroups
       {})                           // columns
-    .flat_map([](std::vector<EnumerateResult> results) { return rxcpp::observable<>::iterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
+    .flat_map([](std::vector<EnumerateResult> results) { return RxIterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
     .map([](const EnumerateResult& result) {return result.mMetadata.getTag(); }) // Extract the column name
     .op(RxToVector()) // Convert to a single vector<> containing column names
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs

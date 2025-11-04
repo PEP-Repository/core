@@ -6,6 +6,7 @@
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
@@ -61,18 +62,20 @@ protected:
 class FileExtensionRequiringChildCommand : public ChildCommandOf<CommandFileExtension> {
 private:
   std::weak_ptr<pep::CoreClient> mClient;
-  std::shared_ptr<pep::RxCache<std::shared_ptr<pep::ColumnAccess>>> mMetaReadableColumnGroups;
+  std::shared_ptr<pep::RxCache<std::shared_ptr<const pep::ColumnAccess>>> mMetaReadableColumnGroups;
   std::shared_ptr<pep::RxCache<std::string>> mAccessibleParticipantGroups;
 
 protected:
   using ColumnExtensions = std::map<std::string, std::string>;
 
-  rxcpp::observable<std::shared_ptr<pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
+  rxcpp::observable<std::shared_ptr<const pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
     if (mMetaReadableColumnGroups == nullptr) {
       mMetaReadableColumnGroups = pep::CreateRxCache([client]() {
         return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read-meta" })
           .op(pep::RxGetOne("column access specification"))
-          .map([](const pep::ColumnAccess& access) {return pep::MakeSharedCopy(access); });
+          .map([](pep::ColumnAccess access) {
+            return PtrAsConst(pep::MakeSharedCopy(std::move(access)));
+          });
         });
       if (mClient.lock() == nullptr) {
         mClient = client;
@@ -96,7 +99,7 @@ protected:
               result.emplace(group.first);
             }
           }
-          return rxcpp::observable<>::iterate(result);
+          return pep::RxIterate(std::move(result));
             })
           .distinct()
           .op(pep::RxToSet())
@@ -104,7 +107,7 @@ protected:
           if (groups->find("*") != groups->cend()) {
             return rxcpp::observable<>::just(std::string("*"));
           }
-          return rxcpp::observable<>::iterate(*groups);
+          return pep::RxIterate(std::move(*groups));
           });
         });
       if (mClient.lock() == nullptr) {
@@ -118,13 +121,13 @@ protected:
 
   rxcpp::observable<std::string> getMetaReadableColumns(std::shared_ptr<pep::CoreClient> client) {
     return this->getMetaReadableColumnGroups(client)
-      .flat_map([](std::shared_ptr<pep::ColumnAccess> access) { return rxcpp::observable<>::iterate(access->columns); })
+      .flat_map([](const std::shared_ptr<const pep::ColumnAccess>& access) { return pep::RxIterate(access->columns); })
       .distinct();
   }
 
   rxcpp::observable<std::string> getColumnsInGroupIfMetaReadable(std::shared_ptr<pep::CoreClient> client, const std::string& group) {
     return this->getMetaReadableColumnGroups(client)
-      .flat_map([group](std::shared_ptr<pep::ColumnAccess> access) {
+      .flat_map([group](const std::shared_ptr<const pep::ColumnAccess>& access) {
       std::vector<std::string> columns;
       auto position = access->columnGroups.find(group);
       if (position == access->columnGroups.cend()) {
@@ -137,7 +140,7 @@ protected:
           columns.emplace_back(access->columns[i]);
         }
       }
-      return rxcpp::observable<>::iterate(columns);
+      return pep::RxIterate(std::move(columns));
         });
   }
 
@@ -605,7 +608,7 @@ protected:
   }
 
   rxcpp::observable<std::string> getParticipantGroupsToProcess(std::shared_ptr<pep::CoreClient> client) override {
-    return rxcpp::observable<>::iterate(this->getParameterValues().getOptionalMultiple<std::string>("participant-group"));
+    return pep::RxIterate(this->getParameterValues().getOptionalMultiple<std::string>("participant-group"));
   }
 
   rxcpp::observable<std::shared_ptr<std::vector<pep::PolymorphicPseudonym>>> getPpsToProcess(std::shared_ptr<pep::CoreClient> client) override {

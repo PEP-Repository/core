@@ -1,3 +1,4 @@
+#include <pep/async/RxIterate.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 #include <pep/registrationserver/RegistrationServerProxy.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
@@ -25,8 +26,8 @@ rxcpp::observable<std::string> RegistrationServerProxy::listCastorImportColumns(
   ListCastorImportColumnsRequest request{ spColumnName, answerSetCount.value_or(0U) };
   return this->sendRequest<ListCastorImportColumnsResponse>(std::move(request))
     .op(RxGetOne())
-    .flat_map([](const ListCastorImportColumnsResponse& response) {
-    return rxcpp::observable<>::iterate(response.mImportColumns);
+    .flat_map([](ListCastorImportColumnsResponse response) {
+    return RxIterate(std::move(response.mImportColumns));
       });
 }
 

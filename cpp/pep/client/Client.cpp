@@ -3,6 +3,7 @@
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToEmpty.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -41,7 +42,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     }
 
     // Columns that haven't been checked are inaccessible: return them
-    return rxcpp::observable<>::iterate(*remaining);
+    return RxIterate(*remaining);
       });
 }
 
@@ -71,7 +72,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
 
   return this
       ->getInaccessibleColumns("write",
-                               rxcpp::observable<>::iterate(*values).map([](const auto& pair) { return pair.first; }))
+                               RxIterate(*values).map([](const auto& pair) { return pair.first; }))
       .op(RxToSet())
       .tap([](std::shared_ptr<std::set<std::string>> inaccessible) {
         if (!inaccessible->empty()) {

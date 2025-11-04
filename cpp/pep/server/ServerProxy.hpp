@@ -11,13 +11,13 @@ private:
   std::shared_ptr<messaging::ServerConnection> mUntyped;
   const MessageSigner& mClientMessageSigner;
 
-  static void ValidateResponse(MessageMagic magic, const std::string& response, const std::type_info& responseInfo, const std::type_info& requestInfo);
+  static void ValidateResponse(MessageMagic magic, std::string_view response, const std::type_info& responseInfo, const std::type_info& requestInfo);
 
   template <typename TResponse, typename TRequest>
-  static TResponse DeserializeResponse(std::string serialized) {
+  static TResponse DeserializeResponse(std::string_view serialized) {
     static_assert(!std::is_same_v<TResponse, Error>, "Ambiguous: should Error instance be raised or deserialized?");
     ValidateResponse(MessageMagician<TResponse>::GetMagic(), serialized, typeid(TResponse), typeid(TRequest));
-    return Serialization::FromString<TResponse>(std::move(serialized));
+    return Serialization::FromString<TResponse>(serialized);
   }
 
 protected:

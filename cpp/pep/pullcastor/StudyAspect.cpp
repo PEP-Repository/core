@@ -1,5 +1,7 @@
 #include <pep/pullcastor/StudyAspect.hpp>
 
+#include <pep/async/RxIterate.hpp>
+
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -18,7 +20,7 @@ rxcpp::observable<StudyAspect> StudyAspect::GetAll(rxcpp::observable<ShortPseudo
     auto column = sp.getColumn().getFullName();
     const auto& castor = *sp.getCastor();
     const auto& defaultSlug = castor.getStudySlug();
-    return rxcpp::observable<>::iterate(castor.getStorageDefinitions())
+    return RxIterate(castor.getStorageDefinitions())
       .map([column, defaultSlug](std::shared_ptr<CastorStorageDefinition> storage) {
       auto slug = storage->getImportStudySlug();
       if (slug.empty()) {

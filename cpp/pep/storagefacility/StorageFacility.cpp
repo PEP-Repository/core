@@ -6,7 +6,7 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/crypto/CPRNG.hpp>
 #include <pep/utils/Hasher.hpp>
-#include <pep/async/FakeVoid.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/FacilityType.hpp>
@@ -423,7 +423,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       }
 
       server->mMetrics->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
-      return rxcpp::observable<>::iterate(response);
+      return RxIterate(std::move(response));
       });
 }
 
@@ -578,7 +578,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
             // PEP_DEFER ensures that the outer observable keeps going even if we raise an exception (on the inner observable) from this lambda
             PEP_DEFER(self->emitNextPage());
 
-            auto page = Serialization::FromString<DataPayloadPage>(*contents); // TODO: prevent string copy. E.g. either std::move, or change signature of Serialization::FromString<> to accept an std::string_view
+            auto page = Serialization::FromString<DataPayloadPage>(*contents);
             page.mIndex = fileIndex;
             page.mPageNumber = pageIndex;
 
@@ -1021,15 +1021,15 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
-std::string StorageFacility::encryptId(const std::string& path, Timestamp time) {
+std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
       mEncIdKey,
-      SFId{path, time}),
+      SFId{std::move(path), time}),
     false);
 }
 
-SFId StorageFacility::decryptId(const std::string& encId) {
+SFId StorageFacility::decryptId(std::string_view encId) {
   return Serialization::FromString<EncryptedSFId>(encId, false).decrypt(mEncIdKey);
 }
 
@@ -1041,7 +1041,7 @@ Metadata StorageFacility::compileMetadata(
   assert(content != nullptr);
 
   Metadata result = Metadata(
-    column,
+    std::move(column),
     content->getBlindingTimestamp(),
     content->getEncryptionScheme());
 

@@ -1,6 +1,7 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
@@ -311,7 +312,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         }
 
         // Send individual MetadataUpdateRequest2 instances to Storage Facility
-        return rxcpp::observable<>::iterate(batches)
+        return RxIterate(std::move(batches))
           .flat_map([this](const std::pair<const size_t, std::shared_ptr<MetadataUpdateRequest2>>& pair) {
           size_t offset = pair.first;
           std::shared_ptr<MetadataUpdateRequest2> request = pair.second;
@@ -454,7 +455,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
           response.mTimestamp,
         });
       }
-      return rxcpp::observable<>::iterate(ress);
+      return RxIterate(std::move(ress));
     });
   });
 }

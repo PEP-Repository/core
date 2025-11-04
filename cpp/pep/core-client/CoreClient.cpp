@@ -1,6 +1,7 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxCache.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
@@ -153,7 +154,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
   }
 
   // Produce index+PP pairs for idsAndOrPps that must be parsed using RX
-  return rxcpp::observable<>::iterate(std::move(entries))
+  return RxIterate(std::move(entries))
     .flat_map([](rxcpp::observable<std::pair<size_t, PolymorphicPseudonym>> entry) { return entry.op(RxGetOne("parsed polymorphic pseudonym")); })
     .reduce(results, [](std::shared_ptr<std::map<size_t, PolymorphicPseudonym>> results, const auto& pair) { // Add those RX-provided index+PP pairs to our "results" map, filling in the blanks
     [[maybe_unused]] auto emplaced = results->emplace(pair.first, pair.second).second;
@@ -282,7 +283,7 @@ const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const
 }
 
 rxcpp::observable<FakeVoid> CoreClient::shutdown() {
-  return rxcpp::observable<>::iterate(
+  return RxIterate(
     std::vector<rxcpp::observable<FakeVoid>> {
       accessManagerProxy->shutdown(),
       storageFacilityProxy->shutdown(),
@@ -384,7 +385,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return rxcpp::observable<>::iterate(ticket.getTicket()->open(rootCAs, getEnrolledGroup()).mPseudonyms);
+    return RxIterate(ticket.getTicket()->open(rootCAs, getEnrolledGroup()).mPseudonyms);
   });
 
 }

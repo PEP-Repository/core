@@ -4,6 +4,7 @@
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/auth/FacilityType.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
@@ -826,7 +827,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     for (auto& x : amRequest.mAddParticipantToGroup)
       participantsMap[x.mParticipantGroup].push_back(x.mParticipant);
 
-  return rxcpp::observable<>::iterate(participantsMap)
+  return RxIterate(participantsMap)
       .concat_map([self = SharedFrom(*this), performRemove](const std::pair<const std::string, std::vector<PolymorphicPseudonym>>& entry) {
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
@@ -908,11 +909,11 @@ AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
   auto resp = backend->performAMAQuery(request, userGroup);
 
   // Split information over multiple responses to keep message size down. See #1679.
-  return rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumns))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialColumnGroupQueryResponse(resp.mColumnGroups)))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumnGroupAccessRules)))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroups)))
-    .concat(rxcpp::observable<>::iterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroupAccessRules)))
+  return RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumns))
+    .concat(RxIterate(ExtractPartialColumnGroupQueryResponse(resp.mColumnGroups)))
+    .concat(RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumnGroupAccessRules)))
+    .concat(RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroups)))
+    .concat(RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroupAccessRules)))
     .map([](const AmaQueryResponse& response) {
     return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(response))).as_dynamic();
          });
@@ -1013,7 +1014,7 @@ messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::sha
 
   auto entries = backend->handleStructureMetadataRequest(request, userGroup);
   return
-      rxcpp::observable<>::iterate(std::move(entries))
+      RxIterate(std::move(entries))
       .map([](StructureMetadataEntry entry) {
         return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(std::move(entry))))
             .as_dynamic();
@@ -1031,7 +1032,7 @@ messaging::MessageBatches AccessManager::handleSetStructureMetadataRequest(
   return
       chunks.map([backend = backend, subjectType = request.subjectType, userGroup
         ](const std::shared_ptr<std::string>& chunk) {
-          StructureMetadataEntry entry = Serialization::FromString<StructureMetadataEntry>(std::move(*chunk));
+          StructureMetadataEntry entry = Serialization::FromString<StructureMetadataEntry>(*chunk);
 
           backend->handleSetStructureMetadataRequestEntry(subjectType, entry, userGroup);
           return FakeVoid{};

@@ -66,4 +66,9 @@ auto MakeSharedCopy(T&& instance) {
   return std::make_shared<Plain>(std::forward<T>(instance));
 }
 
+template <typename T>
+std::shared_ptr<const T> PtrAsConst(std::shared_ptr<T> ptr) {
+  return std::shared_ptr<const T>(std::move(ptr));
+}
+
 }

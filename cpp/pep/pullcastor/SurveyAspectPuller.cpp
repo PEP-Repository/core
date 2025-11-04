@@ -1,3 +1,4 @@
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxSharedPtrCast.hpp>
@@ -154,7 +155,7 @@ rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyAspectPuller::getDataP
       if (position == sdpsBySpi->cend()) {
         return rxcpp::observable<>::empty<std::shared_ptr<SurveyDataPoint>>();
       }
-      return rxcpp::observable<>::iterate(*position->second);
+      return RxIterate(*position->second);
         });
   }
   return spi->getSurveyDataPoints();
@@ -168,7 +169,7 @@ rxcpp::observable<std::shared_ptr<SdpsBySpi>> SurveyAspectPuller::getDataPoints(
   assert(!spis->empty());
   auto participant = spis->front()->getParticipant();
   assert(std::all_of(spis->cbegin(), spis->cend(), [participant](std::shared_ptr<SurveyPackageInstance> spi) {return spi->getParticipant() == participant; }));
-  return SurveyDataPoint::BulkRetrieve(participant, rxcpp::observable<>::iterate(*spis))
+  return SurveyDataPoint::BulkRetrieve(participant, RxIterate(*spis))
     .op(RxGroupToVectors([](std::shared_ptr<SurveyDataPoint> sdp) {return sdp->getSurveyPackageInstance(); }));
 }
 
@@ -255,7 +256,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::Al
       }
       auto weekno = GetWeekNumber(tspi.getTimestamp(), studyStart);
       auto spiPuller = IndexedSpiPuller::Create(namer, self->getColumnNamePrefix(), spi->getSurveyPackageName(), static_cast<unsigned>(index), weekno);
-      return self->loadContentForSpi(spiPuller, rxcpp::observable<>::iterate(*found->second));
+      return self->loadContentForSpi(spiPuller, RxIterate(*found->second));
       });
     });
 }
@@ -310,9 +311,9 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::ge
       return rxcpp::observable<>::empty<std::shared_ptr<StorableColumnContent>>();
     }
     auto spis = position->second;
-    return rxcpp::observable<>::iterate(*spis)
+    return RxIterate(*spis)
       .op(RxGroupToVectors([](std::shared_ptr<SurveyPackageInstance> spi) { return spi->getSurveyPackageId(); })) // Group by survey package (ID)
-      .concat_map([](std::shared_ptr<SpisById> spisBySpId) {return rxcpp::observable<>::iterate(*spisBySpId); }) // Emit one vector of SPIs per survey package (ID)
+      .concat_map([](std::shared_ptr<SpisById> spisBySpId) {return RxIterate(*spisBySpId); }) // Emit one vector of SPIs per survey package (ID)
       .concat_map([self](const auto& pair) { // Process SPIs for this survey package (ID)
       std::shared_ptr<Spis> spis = pair.second;
       return self->mSpisPuller->loadContentForSpis(spis, self);

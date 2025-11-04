@@ -16,7 +16,7 @@ namespace {
 
 }
 
-void ServerProxy::ValidateResponse(MessageMagic magic, const std::string& response, const std::type_info& responseInfo, const std::type_info& requestInfo) {
+void ServerProxy::ValidateResponse(MessageMagic magic, std::string_view response, const std::type_info& responseInfo, const std::type_info& requestInfo) {
   Error::ThrowIfDeserializable(response);
   if (response.size() < sizeof(MessageMagic)) {
     ThrowInvalidResponse("Unexpected short message", requestInfo, responseInfo);

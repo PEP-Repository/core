@@ -451,15 +451,15 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
     LOG(LOG_TAG, info) << "Backed up storage to " << backupPath << ". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
     auto transactionGuard = mImplementor->raw.transaction_guard();
     for (auto record : mImplementor->raw.iterate<SelectStarPseudonymRecord>()) {
-      CurvePoint localPseudonymAsPoint = Serialization::FromCharVector<CurvePoint>(record.localPseudonym);
+      CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(SpanToString(record.localPseudonym));
       record.localPseudonym = RangeToVector(localPseudonymAsPoint.pack());
-      ElgamalEncryption polymorphicPseudonymAsElgamalEncryption = Serialization::FromCharVector<ElgamalEncryption>(record.polymorphicPseudonym);
+      ElgamalEncryption polymorphicPseudonymAsElgamalEncryption = Serialization::FromString<ElgamalEncryption>(SpanToString(record.polymorphicPseudonym));
       record.polymorphicPseudonym = RangeToVector(polymorphicPseudonymAsElgamalEncryption.pack());
       mImplementor->raw.update(record);
     }
 
     for (auto record : mImplementor->raw.iterate<ParticipantGroupParticipantRecord>()) {
-      CurvePoint localPseudonymAsPoint = Serialization::FromCharVector<CurvePoint>(record.localPseudonym);
+      CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(SpanToString(record.localPseudonym));
       record.localPseudonym = RangeToVector(localPseudonymAsPoint.pack());
       mImplementor->raw.update(record);
     }

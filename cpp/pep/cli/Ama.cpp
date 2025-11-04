@@ -4,6 +4,7 @@
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
@@ -97,8 +98,8 @@ rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::
         participant->readField(gc, ear);
         return states;
       })
-    .concat_map([](std::shared_ptr<StateMap> states) {return rxcpp::observable<>::iterate(*states); })
-    .map([](const std::pair<const uint32_t, std::shared_ptr<ParticipantState>>& pair) {return pair.second; })
+    .concat_map([](std::shared_ptr<StateMap> states) {return pep::RxIterate(std::move(*states)); })
+    .map([](std::pair<const uint32_t, std::shared_ptr<ParticipantState>> pair) {return std::move(pair.second); })
     .filter([](std::shared_ptr<ParticipantState> participant) {return participant->mId != std::nullopt; }); // Rows without ParticipantIdentifier cannot be processed
 }
 
@@ -196,7 +197,7 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetR
 
 rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetExisting(std::shared_ptr<pep::CoreClient> client) {
   return client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
-    .concat_map([](const pep::AmaQueryResponse& response) {return rxcpp::observable<>::iterate(response.mParticipantGroups); })
+    .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.mParticipantGroups); })
     .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.mName); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
     pep::enumerateAndRetrieveData2Opts opts;
@@ -238,7 +239,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupContents(std::shar
     participants[participant].existing = true;
   }
 
-  return rxcpp::observable<>::iterate(participants)
+  return pep::RxIterate(std::move(participants))
     .filter([](const auto& kvp) {
     assert(kvp.second.required || kvp.second.existing);
     return kvp.second.required != kvp.second.existing;
@@ -305,7 +306,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfigurations(std
     pairs[kvp.first].second = kvp.second;
   }
 
-  return rxcpp::observable<>::iterate(pairs)
+  return RxIterate(std::move(pairs))
     .map([](const auto& kvp) {return kvp.second; })
     .concat_map([context](const auto& pair) {return UpdateGroupConfiguration(context, pair.first, pair.second); });
 }

@@ -30,8 +30,9 @@ public:
     using Map = std::unordered_map<Key, TItem>;
     return items.reduce(
       std::make_shared<Map>(),
-      [getKey = mGetKey](std::shared_ptr<Map> map, const TItem& item) {
-      if (!map->emplace((*getKey)(item), item).second) {
+      [getKey = mGetKey](std::shared_ptr<Map> map, TItem item) {
+      auto key = (*getKey)(std::as_const(item));
+      if (!map->emplace(std::move(key), std::move(item)).second) {
         throw std::runtime_error("Could not insert duplicate key into unordered map");
       }
       return map;

@@ -72,8 +72,8 @@ MetadataXEntry MetadataXEntry::preparePlaintext(const std::string& aeskey) const
   MetadataXEntry result = *this;
 
   if (result.mIsEncrypted) {
-    result.mPayload = Serialization::FromString<EncryptedBytes>(
-        std::move(result.mPayload), false).decrypt(aeskey).mData;
+    result.mPayload = Serialization::FromString<EncryptedBytes>(result.mPayload, false)
+        .decrypt(aeskey).mData;
     result.mIsEncrypted = false;
   }
 

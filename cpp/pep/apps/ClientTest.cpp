@@ -7,6 +7,7 @@
 #include <pep/utils/Sha.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 
@@ -232,7 +233,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     std::cout << i;
   }
 
-  return rxcpp::observable<>::iterate(pepRequests)
+  return RxIterate(pepRequests)
   .merge() // if this is concat(), the requests are send serially
   // does not work yet until we have a better boost threading integration //.timeout(std::chrono::milliseconds(1000))
   .tap(

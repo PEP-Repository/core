@@ -10,7 +10,7 @@ using namespace std::chrono;
 
 namespace pep {
 
-Signature Signature::Make(const std::string& data, const X509Identity& identity, bool isLogCopy, SignatureScheme scheme) {
+Signature Signature::Make(std::string_view data, const X509Identity& identity, bool isLogCopy, SignatureScheme scheme) {
   auto timestamp = TimeNow();
 
   Sha512 hasher;
@@ -36,7 +36,7 @@ Signature Signature::Make(const std::string& data, const X509Identity& identity,
 }
 
 void Signature::assertValid(
-    const std::string& data,
+    std::string_view data,
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName,
     seconds timestampLeeway,
