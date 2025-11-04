@@ -12,7 +12,7 @@ class RegisteredTestEnvironment : public ::testing::Environment {
 
 private:
   using Factory = std::function<RegisteredTestEnvironment* (int, char**)>;
-  
+
   static std::optional<Factory>& RegisteredFactory();
   static void RegisterFactory(const Factory& factory);
 
@@ -32,7 +32,7 @@ public:
   * \param argv The values of command line arguments
   * \return A pointer to a newly create test environment instance, or nullptr if no type has been registered.
   */
-  static RegisteredTestEnvironment* Create(int argc, char* argv[]);
+  static RegisteredTestEnvironment* Create(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 };
 
 template <typename TDerived>

@@ -51,7 +51,7 @@ public:
 template<typename T>
 T ParseDuration(const std::string& input) {
   std::istringstream inputStream(input);
-  uint64_t numericValue;
+  uint64_t numericValue{};
   inputStream >> numericValue;
   if(inputStream.fail()) {
     throw ParseException(std::string("Could not parse duration ") + input + ": no numeric value could be read.");

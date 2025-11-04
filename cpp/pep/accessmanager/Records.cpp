@@ -195,9 +195,9 @@ StructureMetadataRecord::StructureMetadataRecord(
 
 uint64_t StructureMetadataRecord::checksum() const {
   std::ostringstream os;
-  os << RangeToCollection<std::string_view>(checksumNonce)
+  os << SpanToString(checksumNonce)
     << timestamp << '\0' << subjectType << '\0' << subject << '\0' << metadataGroup << '\0' << subkey << '\0'
-    << RangeToCollection<std::string_view>(value) << '\0'
+    << SpanToString(value) << '\0'
     << tombstone;
   return UnpackUint64BE(Sha256().digest(std::move(os).str()));
 }

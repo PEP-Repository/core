@@ -202,7 +202,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
 }
 
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
-  int result;
+  int result{-1};
 
   auto stopEventLoop = [this, &result](int exitCode) {
     result = exitCode;

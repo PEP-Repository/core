@@ -226,8 +226,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
 
   // Test storage of data
   std::vector<rxcpp::observable<DataStorageResult2>> pepRequests;
-  int i;
-  for (i = 0; i < 10; i++) {
+  for (unsigned i = 0; i < 10; i++) {
     pepRequests.push_back(client->storeData2(pp, "ParticipantInfo",
                 std::make_shared<std::string>(lpPayload), { MetadataXEntry::MakeFileExtension(".txt") }));
     std::cout << i;
