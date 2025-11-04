@@ -251,7 +251,7 @@ rxcpp::observable<ClientTestApplication::Mode5Command::ServerVersion> ClientTest
   return proxy->requestVersion()
     .map([name = std::move(name)](VersionResponse response) {
     return ServerVersion{
-      .name = std::move(name),
+      .name = name,
       .version = std::move(response),
     };
       });

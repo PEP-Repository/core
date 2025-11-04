@@ -3,7 +3,7 @@
 
 namespace pep {
 
-PingRequest::PingRequest() {
+PingRequest::PingRequest(): mId{/*placeholder*/} {
   RandomBytes(reinterpret_cast<uint8_t*>(&mId), sizeof(mId));
 }
 

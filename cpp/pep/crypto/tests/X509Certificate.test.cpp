@@ -77,8 +77,6 @@ LDNGrvS2dlr7jcKVsa9dvC77moXLfYT01wxPhL7nnGT2MKazE+VH5UCoCpzTiTH5\n\
 QcENulXyum8vAHsbus1YxAneLDnKsw/i92y76lU=\n\
 -----END CERTIFICATE-----\n";
 
-const std::string caCertificateDer(reinterpret_cast<char const*>(pepServerCACertDER.data()), pepServerCACertDER.size());
-
 const std::string rootCACertPEMExpired = "-----BEGIN CERTIFICATE-----\n\
 MIIF8zCCA9ugAwIBAgIUUrSjvbBwXmyPrRza3ivlcpt3SrcwDQYJKoZIhvcNAQEL\n\
 BQAwgYAxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
@@ -305,7 +303,7 @@ TEST(X509CertificateTest, ToPEM) {
 
 TEST(X509CertificateTest, ToDER) {
   pep::X509Certificate cert = pep::X509Certificate::FromPem(pepServerCACertPEM);
-  EXPECT_EQ(cert.toDer(), caCertificateDer);
+  EXPECT_EQ(cert.toDer(), pep::SpanToString(pepServerCACertDER));
 }
 
 TEST(X509CertificateSigningRequestTest, GenerationAndSigning) {
