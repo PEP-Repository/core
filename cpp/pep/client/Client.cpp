@@ -12,11 +12,8 @@
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
-#include <rxcpp/operators/rx-zip.hpp>
-
-#include <rxcpp/operators/rx-concat_map.hpp>
-#include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 
@@ -150,7 +147,7 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 
 rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
   LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
-  return registrationServerProxy->completeShortPseudonyms(std::move(pp), identifier, publicKeyShadowAdministration);
+  return registrationServerProxy->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
 }
 
 rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthToken) {

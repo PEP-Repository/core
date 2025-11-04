@@ -57,7 +57,7 @@ rxcpp::observable<ColumnAccess> AccessManagerProxy::getAccessibleColumns(bool in
 
 rxcpp::observable<ParticipantGroupAccess> AccessManagerProxy::getAccessibleParticipantGroups(bool includeImplicitlyGranted) const {
   ParticipantGroupAccessRequest request{ includeImplicitlyGranted };
-  return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request)))
+  return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request))) //NOLINT(performance-move-const-arg) may change
     .op(RxGetOne());
 }
 

@@ -91,6 +91,15 @@ AsymmetricKey::AsymmetricKey(const AsymmetricKey& other) {
   }
 }
 
+AsymmetricKey::AsymmetricKey(AsymmetricKey&& other) {
+  std::lock_guard<std::mutex> lock(other.m);
+  if (other.mKey) {
+    mKey = std::exchange(other.mKey, nullptr);
+    set = std::exchange(other.set, false);
+    keyType = std::exchange(other.keyType, ASYMMETRIC_KEY_TYPE_NONE);
+  }
+}
+
 AsymmetricKey& AsymmetricKey::operator=(AsymmetricKey other) {
   std::lock_guard<std::mutex> lock(m);
   std::swap(mKey, other.mKey);
