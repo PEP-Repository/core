@@ -12,11 +12,13 @@ void PropertySerializer<ElgamalEncryption>::write(boost::property_tree::ptree& d
 }
 
 Timestamp PropertySerializer<Timestamp>::read(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const {
-  return Timestamp(DeserializeProperties<int64_t>(source, transform));
+  using namespace std::chrono;
+  return Timestamp(milliseconds{DeserializeProperties<milliseconds::rep>(source, transform)});
 }
 
 void PropertySerializer<Timestamp>::write(boost::property_tree::ptree& destination, const Timestamp& value) const {
-  SerializeProperties(destination, value.getTime());
+  using namespace std::chrono;
+  SerializeProperties(destination, TicksSinceEpoch<milliseconds>(value));
 }
 
 cli::ParticipantIdentifier PropertySerializer<cli::ParticipantIdentifier>::read(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const {

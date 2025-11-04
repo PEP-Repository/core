@@ -74,8 +74,8 @@ std::shared_ptr<AccessManager::Backend::Storage> AccessManagerStorageTest::stora
 std::shared_ptr<GlobalConfiguration> AccessManagerStorageTest::globalConf;
 
 void WaitForNewTimestamp() {
-  const Timestamp before;
-  while (Timestamp{} == before) {
+  const Timestamp before = TimeNow();
+  while (TimeNow() == before) {
     std::this_thread::sleep_for(1ms);
   }
 }
@@ -274,7 +274,7 @@ TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
 }
 
 TEST_F(AccessManagerStorageTest, getColumns_happy) {
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   auto actual = storage->getColumns(timestamp);
 
   size_t expected{58};
@@ -283,14 +283,14 @@ TEST_F(AccessManagerStorageTest, getColumns_happy) {
 
 TEST_F(AccessManagerStorageTest, getColumns_deleted_column) {
   storage->removeColumn("DeviceHistory");
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   auto actual = storage->getColumns(timestamp);
   size_t expected{57};
   ASSERT_EQ(actual.size(), expected);
 }
 
 TEST_F(AccessManagerStorageTest, getColumnGroups_happy) {
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   auto actual = storage->getColumnGroups(timestamp);
 
   size_t expected{12};
@@ -299,7 +299,7 @@ TEST_F(AccessManagerStorageTest, getColumnGroups_happy) {
 
 TEST_F(AccessManagerStorageTest, getColumnGroups_deleted_columnGroup) {
   storage->removeColumnGroup("Device", true);
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   auto actual = storage->getColumnGroups(timestamp);
 
   size_t expected{11};
@@ -307,7 +307,7 @@ TEST_F(AccessManagerStorageTest, getColumnGroups_deleted_columnGroup) {
 }
 
 TEST_F(AccessManagerStorageTest, getColumnGroupColumns_happy) {
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   auto actual_beta = storage->getColumnGroupColumns(timestamp);
 
   size_t expected{133};
@@ -316,7 +316,7 @@ TEST_F(AccessManagerStorageTest, getColumnGroupColumns_happy) {
 
 TEST_F(AccessManagerStorageTest, getColumnGroupColumns_deleted_columnGroup) {
   storage->removeColumnGroup("Device", true);
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   auto actual_beta = storage->getColumnGroupColumns(timestamp);
 
   size_t expected{131};
@@ -324,12 +324,12 @@ TEST_F(AccessManagerStorageTest, getColumnGroupColumns_deleted_columnGroup) {
 }
 
 TEST_F(AccessManagerStorageTest, getColumnGroupColumns_deleted_column) {
-  Timestamp timestampBefore{};
+  Timestamp timestampBefore = TimeNow();
   auto actualBefore = storage->getColumnGroupColumns(timestampBefore);
 
   storage->removeColumn("DeviceHistory"); // removed from "Device" ColumnGroup and "*" ColumnGroup, 2 removals
 
-  Timestamp timestampAfter{};
+  Timestamp timestampAfter = TimeNow();
   auto actualAfter = storage->getColumnGroupColumns(timestampAfter);
 
   ASSERT_EQ(actualBefore.size() - actualAfter.size(), 2);
@@ -469,7 +469,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_groups) {
   storage->createUserGroup(group1);
   storage->createUserGroup(group2);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "", ""});
+  auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
   EXPECT_EQ(groupNames, (std::vector{group1.mName, group2.mName})) << "should return all group names";
@@ -486,7 +486,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users) {
   storage->createUser(user1);
   storage->createUser(user2);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "", ""});
+  auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
       {{user1}, {}},
@@ -501,7 +501,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users_alt_ids) {
   storage->createUser(user1);
   storage->addIdentifierForUser(user1, user1Alt);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "", ""});
+  auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
       {{user1, user1Alt}, {}},
@@ -527,7 +527,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
   storage->addUserToGroup(user1, group1);
   storage->addUserToGroup(user2, group2);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "", ""});
+  auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
       {{user1, user1Alt}, {group1}},
@@ -558,7 +558,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   storage->addUserToGroup(user3, group1);
   storage->addUserToGroup(user3, group2);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "Group1", ""});
+  auto response = storage->executeUserQuery({TimeNow(), "Group1", ""});
   PrepareSortedMine(response);
 
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
@@ -593,7 +593,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   storage->addUserToGroup(user3, group1);
   storage->addUserToGroup(user3, group2);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "", "User1"});
+  auto response = storage->executeUserQuery({TimeNow(), "", "User1"});
   PrepareSortedMine(response);
 
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
@@ -623,7 +623,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
   storage->addUserToGroup(user1, group1);
   storage->addUserToGroup(user2, group2);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "", "-alt"});
+  auto response = storage->executeUserQuery({TimeNow(), "", "-alt"});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
       {{user1, user1Alt}, {group1}},
@@ -659,7 +659,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_and_group) {
 
   storage->addUserToGroup(userA1, groupB1);
 
-  auto response = storage->executeUserQuery({Timestamp{}, "GroupA", "UserA"});
+  auto response = storage->executeUserQuery({TimeNow(), "GroupA", "UserA"});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
       {{userA1}, {groupA1}},
@@ -701,14 +701,14 @@ TEST_F(AccessManagerStorageTest, setGetMetadataBasicColumn) {
   storage->createColumn(columnName);
   {
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
       EXPECT_FALSE(metaMap.contains(columnName))
           << "getStructureMetadata should exclude column without metadata, but returns a map with " << metaMap.at(columnName).size() << " entries";
     }
 
     ASSERT_NO_THROW(storage->setStructureMetadata(StructureMetadataType::Column, columnName, key1, value1));
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
       EXPECT_TRUE(metaMap.contains(columnName)) << "getStructureMetadata should return column for just-added metadata";
       const auto& colMetaMap = metaMap.at(columnName);
       EXPECT_TRUE(colMetaMap.contains(key1)) << "getStructureMetadata should return key of just-added metadata";
@@ -720,7 +720,7 @@ TEST_F(AccessManagerStorageTest, setGetMetadataBasicColumn) {
     ASSERT_NO_THROW(storage->setStructureMetadata(StructureMetadataType::Column, columnName, key2, value2))
         << "setStructureMetadata should be able to add multiple entries";
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column, {.subjects = {columnName}}));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column, {.subjects = {columnName}}));
       MetadataMap expected{{columnName, {{key1, value1}, {key2, value2}}}};
       EXPECT_EQ(metaMap, expected) << "getStructureMetadata should retrieve multiple entries";
     }
@@ -731,22 +731,22 @@ TEST_F(AccessManagerStorageTest, setGetMetadataBasicColumn) {
     storage->setStructureMetadata(StructureMetadataType::Column, columnName, keyB1, valueB1);
 
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key2}}));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key2}}));
       MetadataMap expected{{columnName, {{key2, value2}}}};
       EXPECT_EQ(metaMap, expected) << "getStructureMetadata should filter by a single key";
     }
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key1, keyB1}}));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key1, keyB1}}));
       MetadataMap expected{{columnName, {{key1, value1}, {keyB1, valueB1}}}};
       EXPECT_EQ(metaMap, expected) << "getStructureMetadata should filter by multiple keys";
     }
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column, {.subjects = {columnName}, .keys = {{groupA, ""}}}));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column, {.subjects = {columnName}, .keys = {{groupA, ""}}}));
       MetadataMap expected{{columnName, {{key1, value1}, {key2, value2}}}};
       EXPECT_EQ(metaMap, expected) << "getStructureMetadata should filter by metadata group";
     }
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key1, {groupB, ""}}}));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key1, {groupB, ""}}}));
       MetadataMap expected{{columnName, {{key1, value1}, {keyB1, valueB1}}}};
       EXPECT_EQ(metaMap, expected) << "getStructureMetadata should filter by metadata group or key";
     }
@@ -757,12 +757,12 @@ TEST_F(AccessManagerStorageTest, setGetMetadataBasicColumn) {
   storage->setStructureMetadata(StructureMetadataType::Column, columnName2, key1, value1);
 
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column, {.keys = {key1}}));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column, {.keys = {key1}}));
     MetadataMap expected{{columnName, {{key1, value1}}}, {columnName2, {{key1, value1}}}};
     EXPECT_EQ(metaMap, expected) << "getStructureMetadata should be able to filter by key for multiple columns";
   }
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key1}}));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column, {.subjects = {columnName}, .keys = {key1}}));
     MetadataMap expected{{columnName, {{key1, value1}}}};
     EXPECT_EQ(metaMap, expected) << "getStructureMetadata should be able to filter by column";
   }
@@ -789,14 +789,14 @@ TEST_F(AccessManagerStorageTest, removeMetadata) {
     }
   }
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, metaEntries) << "[sanity check] metadata should be added";
   }
 
   storage->removeStructureMetadata(StructureMetadataType::Column, column1, metaEntry1.first);
   metaEntries.at(column1).erase(metaEntry1.first);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, metaEntries) << "removeStructureMetadata should remove a single entry";
   }
 
@@ -829,20 +829,20 @@ TEST_F(AccessManagerStorageTest, removeMetadataStructure) {
     ctx.createStructure();
     storage->setStructureMetadata(ctx.structureType, structure, key, value);
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, ctx.structureType));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), ctx.structureType));
       MetadataMap expected{{structure, {{key, value}}}};
       ASSERT_EQ(metaMap, expected) << "[sanity check] metadata should be added to " << ctx.description;
     }
 
     ctx.removeStructure();
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, ctx.structureType));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), ctx.structureType));
       EXPECT_EQ(metaMap, MetadataMap{}) << "metadata should be removed when removing " << ctx.description;
     }
 
     ctx.createStructure();
     {
-      const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, ctx.structureType));
+      const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), ctx.structureType));
       EXPECT_EQ(metaMap, MetadataMap{}) << "metadata should stay removed when re-creating " << ctx.description;
     }
   }
@@ -864,14 +864,14 @@ TEST_F(AccessManagerStorageTest, setMetadataOverwrite) {
     }
   }
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, metaEntries) << "[sanity check] metadata should be added";
   }
 
   storage->setStructureMetadata(StructureMetadataType::Column, column, key, value2);
   metaEntries.at(column).at(key) = value2;
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, metaEntries) << "setStructureMetadata should overwrite an entry";
   }
 }
@@ -886,7 +886,7 @@ TEST_F(AccessManagerStorageTest, setMetadataBinary) {
 
   storage->setStructureMetadata(StructureMetadataType::Column, column, key, value);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     MetadataMap expected{{column, {{key, value}}}};
     EXPECT_EQ(metaMap, expected) << "metadata should support binary values";
   }
@@ -904,27 +904,27 @@ TEST_F(AccessManagerStorageTest, getSetRemoveMetadataSeparateSubjectType) {
 
   storage->setStructureMetadata(StructureMetadataType::Column, subject, key, value);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, metaEntries) << "[sanity check] metadata should be added";
   }
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::ColumnGroup));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::ColumnGroup));
     EXPECT_EQ(metaMap, MetadataMap{}) << "metadata should not be added to / retrieved from wrong metadata subject type";
   }
 
   storage->setStructureMetadata(StructureMetadataType::ColumnGroup, subject, key, value);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::ColumnGroup));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::ColumnGroup));
     ASSERT_EQ(metaMap, metaEntries) << "[sanity check] metadata should be added";
   }
 
   storage->removeStructureMetadata(StructureMetadataType::Column, subject, key);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, MetadataMap{}) << "[sanity check] metadata should be removed";
   }
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::ColumnGroup));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::ColumnGroup));
     ASSERT_EQ(metaMap, metaEntries) << "removeStructureMetadata should not remove metadata from wrong metadata subject type";
   }
 }
@@ -941,7 +941,7 @@ TEST_F(AccessManagerStorageTest, setGetMetadataColumnGroup) {
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, subjectType));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
     MetadataMap expected{{subject, {{key, value}}}};
     ASSERT_EQ(metaMap, expected) << "metadata should be added";
   }
@@ -959,7 +959,7 @@ TEST_F(AccessManagerStorageTest, setGetMetadataParticipantGroup) {
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, subjectType));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
     MetadataMap expected{{subject, {{key, value}}}};
     ASSERT_EQ(metaMap, expected) << "metadata should be added";
   }
@@ -976,16 +976,16 @@ TEST_F(AccessManagerStorageTest, getMetadataHistoric) {
 
   storage->setStructureMetadata(StructureMetadataType::Column, subject, key, value);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, metaEntries) << "[sanity check] metadata should be added";
   }
 
-  const Timestamp preRemove;
+  const Timestamp preRemove = TimeNow();
   WaitForNewTimestamp();
 
   storage->removeStructureMetadata(StructureMetadataType::Column, subject, key);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, MetadataMap{}) << "[sanity check] metadata should be removed";
   }
   {
@@ -1008,29 +1008,29 @@ TEST_F(AccessManagerStorageTest, getMetadataKeys) {
 
   storage->setStructureMetadata(StructureMetadataType::Column, subject, key, value);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, metaEntries) << "[sanity check] metadata should be added";
   }
 
   {
-    const auto metaKeys = storage->getStructureMetadataKeys(Timestamp{}, StructureMetadataType::Column, subject);
+    const auto metaKeys = storage->getStructureMetadataKeys(TimeNow(), StructureMetadataType::Column, subject);
     ASSERT_EQ(metaKeys, std::vector{key}) << "getStructureMetadataKeys should return just-added keys";
   }
   {
-    const auto metaKeys = storage->getStructureMetadataKeys(Timestamp{}, StructureMetadataType::Column, subject2);
+    const auto metaKeys = storage->getStructureMetadataKeys(TimeNow(), StructureMetadataType::Column, subject2);
     ASSERT_EQ(metaKeys, std::vector<StructureMetadataKey>{}) << "getStructureMetadataKeys should not return keys added to other subject";
   }
 
-  const Timestamp preRemove;
+  const Timestamp preRemove = TimeNow();
   WaitForNewTimestamp();
 
   storage->removeStructureMetadata(StructureMetadataType::Column, subject, key);
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, StructureMetadataType::Column));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), StructureMetadataType::Column));
     ASSERT_EQ(metaMap, MetadataMap{}) << "[sanity check] metadata should be removed";
   }
   {
-    const auto metaKeys = storage->getStructureMetadataKeys(Timestamp{}, StructureMetadataType::Column, subject);
+    const auto metaKeys = storage->getStructureMetadataKeys(TimeNow(), StructureMetadataType::Column, subject);
     ASSERT_EQ(metaKeys, std::vector<StructureMetadataKey>{}) << "getStructureMetadataKeys should not return removed keys";
   }
   {

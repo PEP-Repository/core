@@ -188,7 +188,7 @@ void DownloadProcessor::prepareLocalData(
             // Data should have been removed from the local copy, but it wasn't there
             LOG(LOG_TAG + ":update", pep::warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
-              << "; blinding timestamp " << existing.getBlindingTimestamp().getTime();
+              << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
         }
       }
@@ -201,7 +201,7 @@ void DownloadProcessor::prepareLocalData(
             // Data file should have been renamed in the local copy, but it wasn't there
             LOG(LOG_TAG + ":update", pep::warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
-              << "; blinding timestamp " << existing.getBlindingTimestamp().getTime();
+              << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
         }
       }

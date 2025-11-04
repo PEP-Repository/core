@@ -5,17 +5,16 @@
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Sha.hpp>
-#include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
-#include <rxcpp/operators/rx-zip.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
@@ -131,6 +130,13 @@ class ClientTestApplication : public Application {
   };
 
   class Mode5Command : public ModeCommand<5> {
+  private:
+    struct ServerVersion {
+      std::string name;
+      VersionResponse version;
+    };
+    static rxcpp::observable<ServerVersion> TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name);
+
   protected:
     rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) override;
   public:
@@ -236,7 +242,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     std::cout << i;
   }
 
-  return rxcpp::observable<>::iterate(pepRequests)
+  return RxIterate(pepRequests)
   .merge() // if this is concat(), the requests are send serially
   // does not work yet until we have a better boost threading integration //.timeout(std::chrono::milliseconds(1000))
   .tap(
@@ -247,6 +253,20 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     .op(RxInstead(true));
 }
 
+rxcpp::observable<ClientTestApplication::Mode5Command::ServerVersion> ClientTestApplication::Mode5Command::TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name) {
+  if (proxy == nullptr) {
+    return rxcpp::observable<>::empty<ServerVersion>();
+  }
+  return proxy->requestVersion()
+    .map([name = std::move(name)](VersionResponse response) {
+    return ServerVersion{
+      .name = name,
+      .version = std::move(response),
+    };
+      });
+  }
+}
+
 rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std::shared_ptr<Client> client) {
   std::shared_ptr<SemanticVersion> ownBinarySemver = std::make_shared<SemanticVersion>(BinaryVersion::current.getSemver());
   std::shared_ptr<SemanticVersion> ownConfigSemver{};
@@ -255,35 +275,29 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  return client->getAccessManagerVersion().zip(rxcpp::rxs::just("Access Manager")).merge(
-    client->getTranscryptorVersion().zip(rxcpp::rxs::just("Transcryptor")),
-    client->getKeyServerVersion().zip(rxcpp::rxs::just("Key Server")),
-    client->getStorageFacilityVersion().zip(rxcpp::rxs::just("Storage Facility")),
-    client->getRegistrationServerVersion().zip(rxcpp::rxs::just("Registration Server")),
-    client->getAuthserverVersion().zip(rxcpp::rxs::just("Auth Server"))
-  ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
-    const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary;
-    std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;
-
-    const std::string& server = std::get<1>(response);
-    std::cout << server
-      << " Binary version " << serverBinaryVersion.getSummary()
+  return TryGetServerVersion(client->getAccessManagerProxy(false), "Access Manager").merge(
+    TryGetServerVersion(client->getTranscryptorProxy(false), "Transcryptor"),
+    TryGetServerVersion(client->getKeyServerProxy(false), "Key Server"),
+    TryGetServerVersion(client->getStorageFacilityProxy(false), "Storage Facility"),
+    TryGetServerVersion(client->getRegistrationServerProxy(false), "Registration Server"),
+    TryGetServerVersion(client->getAuthServerProxy(false), "Auth Server")
+  ).map([ownBinarySemver, ownConfigSemver](const ServerVersion& server) {
+    std::cout << server.name
+      << " Binary version " << server.version.binary.getSummary()
       << std::endl;
 
-    bool result = IsSemanticVersionEquivalent(*ownBinarySemver, serverBinaryVersion.getSemver());
+    bool result = IsSemanticVersionEquivalent(*ownBinarySemver, server.version.binary.getSemver());
 
-    if (ownConfigSemver && serverConfigVersion.has_value()){
-      std::cout << server
-       << " Config version " << serverConfigVersion->getSummary()
-       << std::endl;
-      if (!IsSemanticVersionEquivalent(*ownConfigSemver, serverConfigVersion->getSemver())){
+    if (ownConfigSemver && server.version.config.has_value()) {
+      std::cout << server.name
+        << " Config version " << server.version.config->getSummary()
+        << std::endl;
+      if (!IsSemanticVersionEquivalent(*ownConfigSemver, server.version.config->getSemver())) {
         result = false;
       }
     }
     return result;
     });
-}
-
 }
 
 PEP_DEFINE_MAIN_FUNCTION(ClientTestApplication)

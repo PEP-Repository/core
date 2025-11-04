@@ -4,11 +4,7 @@
 
 
 namespace pep {
-class TokenRequest {
-public:
-  TokenRequest() = default;
-  TokenRequest(std::string subject, std::string group, Timestamp expirationTime)
-    : mSubject(std::move(subject)), mGroup(std::move(group)), mExpirationTime(expirationTime) { }
+struct TokenRequest {
   std::string mSubject;
   std::string mGroup;
   Timestamp mExpirationTime;

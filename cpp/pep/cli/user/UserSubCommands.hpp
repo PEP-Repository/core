@@ -1,22 +1,22 @@
 #pragma once
 
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/cli/User.hpp>
-#include <pep/core-client/CoreClient_fwd.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 
 namespace pep::cli {
 class CommandUser::UserSubCommand : public ChildCommandOf<CommandUser> {
 public:
-  using ClientMethod = rxcpp::observable<pep::FakeVoid>(pep::CoreClient::*)(std::string);
+  using AmProxyMethod = rxcpp::observable<pep::FakeVoid>(pep::AccessManagerProxy::*)(std::string) const;
 
 private:
-  ClientMethod mMethod;
+  AmProxyMethod mMethod;
 
 public:
   UserSubCommand(const std::string& name,
                     const std::string& description,
-                    ClientMethod method,
+                    AmProxyMethod method,
                     CommandUser& parent);
 
 protected:

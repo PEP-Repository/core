@@ -1,5 +1,7 @@
 #include <pep/content/ParticipantPersonalia.hpp>
 
+#include <pep/content/Date.hpp>
+
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
@@ -11,10 +13,10 @@ ParticipantPersonalia::ParticipantPersonalia(const std::string& firstName, const
 : mFirstName(firstName), mMiddleName(middleName), mLastName(lastName), mDateOfBirth(dateOfBirth) {
 }
 
-Date ParticipantPersonalia::ParseDateOfBirth(const std::string& value) {
-  auto result = Date::TryParseHomebrewFormat(value);
+std::chrono::year_month_day ParticipantPersonalia::ParseDateOfBirth(const std::string& value) {
+  auto result = TryParseDdMonthAbbrevYyyyDate(value);
   if (result == std::nullopt) {
-    result = Date::TryParseDdMmYyyy(value);
+    result = TryParseDdMmYyyy(value);
     if (result == std::nullopt) {
       throw std::runtime_error("Value could not be parsed as date of birth");
     }

@@ -2,19 +2,19 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/async/RxToEmpty.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/registrationserver/RegistrationServerSerializers.hpp>
-#include <pep/server/MonitoringSerializers.hpp>
 #include <pep/auth/OAuthToken.hpp>
-#include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/authserver/AuthserverSerializers.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
 
 namespace pep {
 
@@ -22,6 +22,28 @@ namespace {
 
 const std::string LOG_TAG("Client");
 
+}
+
+rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns) {
+  return columns.op(RxToSet()) // Create a set of columns we still need to check
+    .zip(this->getAccessManagerProxy()->getAccessibleColumns(true)) // Combine it with "the stuff we have access to"
+    .flat_map([mode](const auto& context) {
+    // Extract named variables from the context tuple
+    std::shared_ptr<std::set<std::string>> remaining = std::get<0>(context);
+    const ColumnAccess& access = std::get<1>(context);
+    // For every column group...
+    for (const auto& cg : access.columnGroups) {
+      const auto& cgAccess = cg.second;
+      if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
+        for (auto index : cgAccess.columns.mIndices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
+          remaining->erase(access.columns[index]);
+        }
+      }
+    }
+
+    // Columns that haven't been checked are inaccessible: return them
+    return RxIterate(*remaining);
+      });
 }
 
 rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPersonalia& personalia,
@@ -50,7 +72,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
 
   return this
       ->getInaccessibleColumns("write",
-                               rxcpp::observable<>::iterate(*values).map([](const auto& pair) { return pair.first; }))
+                               RxIterate(*values).map([](const auto& pair) { return pair.first; }))
       .op(RxToSet())
       .tap([](std::shared_ptr<std::set<std::string>> inaccessible) {
         if (!inaccessible->empty()) {
@@ -59,7 +81,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
         }
       })
       .as_dynamic() // Reduce compiler memory usage
-      .concat_map([this](std::shared_ptr<std::set<std::string>> inaccessible) { return generatePEPID(); })
+      .concat_map([this](std::shared_ptr<std::set<std::string>> inaccessible) { return this->getRegistrationServerProxy()->registerPepId(); })
       .as_dynamic() // Reduce compiler memory usage
       .flat_map([this, values, complete](std::string identifier) {
         // Generate polymorphic pseudonym
@@ -82,33 +104,19 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                        });
 
         // Store data in PEP
-        return storeData2(entries)
-            .last()       // Ensure further actions are executed only once
-            .as_dynamic() // Reduce compiler memory usage
-            .flat_map([this, identifier, complete](DataStorageResult2 result) {
-              if (complete) {
-                return completeParticipantRegistration(identifier, true);
-              }
-              else {
-                auto response = std::make_shared<RegistrationResponse>();
-                rxcpp::observable<std::shared_ptr<RegistrationResponse>> result = rxcpp::observable<>::from(response);
-                return result;
-              }
-            })
-            .as_dynamic() // Reduce compiler memory usage
-            .last()       // Ensure further actions are executed only once
-            .as_dynamic() // Reduce compiler memory usage
-            .map([identifier](std::shared_ptr<RegistrationResponse> lpResponse) { return identifier; });
+        auto process = storeData2(entries).op(RxToEmpty<FakeVoid>());
+        if (complete) {
+          process = process.flat_map([this, identifier](FakeVoid) {
+            return completeParticipantRegistration(identifier, true);
+            });
+        }
+
+        // Return the identifier instead of the FakeVoid instance(s) that we got from processing
+        return process.op(RxInstead(identifier));
       });
 }
 
-// Generates a Participant ID and returns it
-rxcpp::observable<std::string> Client::generatePEPID() {
-  return clientRegistrationServer->sendRequest<PEPIdRegistrationResponse>(sign(PEPIdRegistrationRequest{}))
-      .map([](PEPIdRegistrationResponse result) { return result.mPepId; });
-}
-
-rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::completeParticipantRegistration(
+rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
     const std::string& identifier, bool skipIdentifierStorage) {
   auto pp = generateParticipantPolymorphicPseudonym(identifier);
 
@@ -138,29 +146,9 @@ rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::completePartici
       .flat_map([this, pp, identifier](DataStorageResult2 result) { return generateShortPseudonyms(pp, identifier); });
 }
 
-rxcpp::observable<std::string> Client::listCastorImportColumns(const std::string& spColumnName,
-                                                               const std::optional<unsigned>& answerSetCount) {
-  return clientRegistrationServer
-      ->sendRequest<ListCastorImportColumnsResponse>(ListCastorImportColumnsRequest{spColumnName,
-                                                                                    answerSetCount.value_or(0U)})
-      .flat_map([](const ListCastorImportColumnsResponse& response) {
-        return rxcpp::observable<>::iterate(response.mImportColumns);
-      });
-}
-
-rxcpp::observable<std::shared_ptr<RegistrationResponse>> Client::generateShortPseudonyms(
-    const PolymorphicPseudonym& pp, const std::string& identifier) {
-  LOG(LOG_TAG, debug) << "Start generating short pseudonyms";
-
-  RegistrationRequest request(pp);
-  std::string encryptedIdentifier = publicKeyShadowAdministration.encrypt(identifier);
-  request.mEncryptedIdentifier = encryptedIdentifier;
-  request.mEncryptionPublicKeyPem = publicKeyShadowAdministration.toPem();
-
+rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
   LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
-
-  return clientRegistrationServer->sendRequest<RegistrationResponse>(sign(std::move(request)))
-      .map([](RegistrationResponse result) { return std::make_shared<RegistrationResponse>(result); });
+  return registrationServerProxy->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
 }
 
 rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthToken) {
@@ -182,79 +170,32 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 
   EnrollmentRequest request(csr, oauthToken);
   LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
-  return clientKeyServer->sendRequest<EnrollmentResponse>(request)
+  return keyServerProxy->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
     auto ctx = std::make_shared<EnrollmentContext>();
-    ctx->privateKey = privateKey;
-    ctx->certificateChain = lpResponse.mCertificateChain;
+    ctx->identity = std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain);
 
     return completeEnrollment(ctx);
       });
 }
 
-rxcpp::observable<std::string> Client::requestToken(std::string subject,
-                                                       std::string group,
-                                                       Timestamp expirationTime) {
-  if (!clientAuthserver) {
-    throw std::runtime_error("Connection to authserver is not initialized. Does the client configuration contain correct config for the authserver endpoint?");
-  }
-  return clientAuthserver->sendRequest<TokenResponse>(sign(TokenRequest(subject, group, expirationTime))) // linebreak
-      .map([](TokenResponse response) { return response.mToken; });
+std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
+  return GetConstServerProxy(keyServerProxy, "Key Server", require);
 }
 
-rxcpp::observable<ConnectionStatus> Client::getKeyServerStatus() {
-  return clientKeyServer->connectionStatus();
+std::shared_ptr<const AuthServerProxy> Client::getAuthServerProxy(bool require) const {
+  return GetConstServerProxy(authServerProxy, "Auth Server", require);
 }
 
-rxcpp::observable<ConnectionStatus> Client::getAuthserverStatus() {
-  return clientAuthserver->connectionStatus();
-}
-
-rxcpp::observable<ConnectionStatus> Client::getRegistrationServerStatus() {
-  return clientRegistrationServer->connectionStatus();
-}
-
-rxcpp::observable<VersionResponse> Client::getKeyServerVersion() {
-  return tryGetServerVersion(clientKeyServer);
-}
-
-rxcpp::observable<VersionResponse> Client::getAuthserverVersion() {
-  return tryGetServerVersion(clientAuthserver);
-}
-
-rxcpp::observable<VersionResponse> Client::getRegistrationServerVersion() {
-  return tryGetServerVersion(clientRegistrationServer);
-}
-
-rxcpp::observable<PingResponse> Client::pingKeyServer() const {
-  return clientKeyServer->ping<PingResponse>([](const PingResponse& response) { return response; });
-}
-
-rxcpp::observable<SignedPingResponse> Client::pingAuthserver() const {
-  return pingSigningServer(clientAuthserver);
-}
-
-rxcpp::observable<SignedPingResponse> Client::pingRegistrationServer() const {
-  return pingSigningServer(clientRegistrationServer);
-}
-
-rxcpp::observable<MetricsResponse> Client::getKeyServerMetrics() {
-  return clientKeyServer->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
-}
-
-rxcpp::observable<MetricsResponse> Client::getAuthserverMetrics() {
-  return clientAuthserver->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
-}
-
-rxcpp::observable<MetricsResponse> Client::getRegistrationServerMetrics() {
-  return clientRegistrationServer->sendRequest<MetricsResponse>(sign(MetricsRequest{}));
+std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProxy(bool require) const {
+  return GetConstServerProxy(registrationServerProxy, "Registration Server", require);
 }
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
   return CoreClient::shutdown()
-    .merge(clientKeyServer->shutdown())
-    .merge(clientRegistrationServer->shutdown())
-    .merge(clientAuthserver ? clientAuthserver->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(keyServerProxy->shutdown())
+    .merge(registrationServerProxy->shutdown())
+    .merge(authServerProxy ? authServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }
 
@@ -264,9 +205,9 @@ Client::Client(const Builder& builder)
     keyServerEndPoint(builder.getKeyServerEndPoint()),
     authserverEndPoint(builder.getAuthserverEndPoint()),
     registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
-  clientKeyServer = tryConnectTo(keyServerEndPoint);
-  clientAuthserver = tryConnectTo(authserverEndPoint);
-  clientRegistrationServer = tryConnectTo(registrationServerEndPoint);
+  keyServerProxy = this->tryConnectServerProxy<KeyServerProxy>(keyServerEndPoint);
+  authServerProxy = this->tryConnectServerProxy<AuthServerProxy>(authserverEndPoint);
+  registrationServerProxy = this->tryConnectServerProxy<RegistrationServerProxy>(registrationServerEndPoint);
 }
 
 

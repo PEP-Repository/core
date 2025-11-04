@@ -39,16 +39,17 @@ protected:
   int execute() override {
     const auto& values = this->getParameterValues();
 
-    auto expiration = values.has("expiration-unixtime")
-        ? static_cast<time_t>(values.get<int64_t>("expiration-unixtime"))
-        : pep::Timestamp::FromIsoDate(values.get<std::string>("expiration-yyyymmdd")).toTime_t();
+    Timestamp expiration = values.has("expiration-unixtime")
+        ? Timestamp(std::chrono::seconds{values.get<std::chrono::seconds::rep>("expiration-unixtime")})
+        : TimeZone::Local().timestampFromYyyyMmDd(values.get<std::string>("expiration-yyyymmdd"));
 
     return executeEventLoopFor([&values, expiration](std::shared_ptr<pep::Client> client) {
       return client
+          ->getAuthServerProxy()
           ->requestToken(
               values.get<std::string>("subject"),
               values.get<std::string>("user-group"),
-              pep::Timestamp::FromTimeT(expiration))
+              expiration)
           .map([json = values.has("json")](const std::string& token) {
             const auto decorate = [](const std::string& s) { return "{\n  \"OAuthToken\": \"" + s + "\"\n}"; };
             std::cout << (json ? decorate(token) : token) << std::endl;

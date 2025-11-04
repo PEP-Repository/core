@@ -20,15 +20,16 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     RxEnsureProgress.hpp
     RxFilterNullopt.hpp
     RxFinallyExhaust.hpp
-    RxGetOne.hpp
     RxGroupToVectors.hpp
     RxIndexed.hpp
     RxInstead.hpp
+    RxIterate.hpp
     RxLazy.hpp
     RxParallelConcat.hpp
-    RxRequireNonEmpty.hpp RxRequireNonEmpty.cpp
+    RxRequireCount.hpp RxRequireCount.cpp
     RxSharedPtrCast.hpp
     RxTimeout.cpp RxTimeout.hpp
+    RxToEmpty.hpp
     RxToSet.hpp
     RxToUnorderedMap.hpp
     RxToVector.hpp

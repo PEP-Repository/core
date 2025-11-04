@@ -1,15 +1,13 @@
 #pragma once
 
 #include <pep/crypto/Encrypted.hpp>
-#include <cstdint>
+#include <pep/crypto/Timestamp.hpp>
 
 namespace pep {
 
-class SFId {
-public:
-  SFId(std::string path, uint64_t time) : mPath(std::move(path)), mTime(time) { }
+struct SFId {
   std::string mPath;
-  uint64_t mTime = 0;
+  Timestamp mTime;
 };
 
 using EncryptedSFId = Encrypted<SFId>;
