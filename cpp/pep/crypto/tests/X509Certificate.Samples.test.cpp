@@ -304,7 +304,7 @@ L5ajYs5e\n\
 -----END CERTIFICATE-----\n";
 
 
-const std::string ExpiredLeafCertSignedWithserverCACertPEM = "-----BEGIN CERTIFICATE-----\n\
+const std::string pepAuthserverCertPEMExpired = "-----BEGIN CERTIFICATE-----\n\
 MIIFEDCCAvigAwIBAgIUIrH8TXvaacBqAcNM/zMhoaKbav4wDQYJKoZIhvcNAQEL\n\
 BQAwgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
 DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxJzAlBgNV\n\
@@ -406,7 +406,7 @@ M9abJTGdq6/ql9yafME65CouVhsFgB+q43dVOAUP1U6SSOOdKNGdzfyzP0K/D+S6\n\
 eMQgQIda08MUtjHdCSPxL9Z9YlUaVIpnCaaelM3deecGsPAXOey5\n\
 -----END CERTIFICATE-----\n";
 
-const std::string serverCACertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
+const std::string pepServerCACertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
 MIIGHjCCBAagAwIBAgIURvs11lhvxGvXyKpVvDWyzFQKl+cwDQYJKoZIhvcNAQEL\n\
 BQAwgYAxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
 DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxFDASBgNV\n\
@@ -442,7 +442,7 @@ Wi0Q/KITk0mHiClcxPHLks2iv6hqFNhmZyeti2JFoQi5ddICaLmH5WZnh/37xJkS\n\
 /pMSrFdH2UmBi0fcna2MnzaOlpAzanKaD5m/K55anD0/Ug==\n\
 -----END CERTIFICATE-----\n";
 
-const std::string authserverCertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
+const std::string pepAuthserverCertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
 MIIFEjCCAvqgAwIBAgIURvs11lhvxGvXyKpVvDWyzFQKl/QwDQYJKoZIhvcNAQEL\n\
 BQAwgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
 DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxJzAlBgNV\n\
