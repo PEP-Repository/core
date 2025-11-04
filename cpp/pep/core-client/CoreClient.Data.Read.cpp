@@ -122,8 +122,9 @@ CoreClient::getKeys(
         -> rxcpp::observable<FileKey> {
         auto& [batchNum, subjects] = batchSubjects;
         auto fileOffset = batchNum * DATA_RETRIEVAL_BATCH_SIZE;
-        return this->unblindAndDecryptKeys(subjects, ticket) // Get keys
-          .op(RxConcatenateVectors())
+        auto keys = this->unblindAndDecryptKeys(subjects, ticket) // Get keys
+          .op(RxConcatenateVectors());
+        return keys
           .flat_map([fileOffset, subjects = MakeSharedCopy(std::move(subjects))](const std::shared_ptr<std::vector<AESKey>>& keys) {
             if (keys->size() != subjects->size()) {
               throw std::runtime_error("KeyResponse contains the wrong number of entries");
