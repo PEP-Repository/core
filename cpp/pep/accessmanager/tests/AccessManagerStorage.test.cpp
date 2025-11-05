@@ -985,7 +985,7 @@ TEST_F(AccessManagerStorageTest, setGetMetadataUser) {
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, subjectType));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
     MetadataMap expected{{subject, {{key, value}}}};
     ASSERT_EQ(metaMap, expected) << "metadata should be added";
   }
@@ -1003,7 +1003,7 @@ TEST_F(AccessManagerStorageTest, setGetMetadataUserGroup) {
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {
-    const auto metaMap = MetadataToMap(storage->getStructureMetadata(Timestamp{}, subjectType));
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
     MetadataMap expected{{subject, {{key, value}}}};
     ASSERT_EQ(metaMap, expected) << "metadata should be added";
   }

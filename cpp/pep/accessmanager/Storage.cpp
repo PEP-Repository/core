@@ -1404,7 +1404,7 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
   }
 
   // Remove metadata
-  for (StructureMetadataKey& key : getStructureMetadataKeys(Timestamp(), StructureMetadataType::User, internalUserId)) {
+  for (StructureMetadataKey& key : getStructureMetadataKeys(TimeNow(), StructureMetadataType::User, internalUserId)) {
     removeStructureMetadata(StructureMetadataType::User, internalUserId, std::move(key));
   }
 
@@ -1700,7 +1700,7 @@ void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
   }
 
   // Remove metadata
-  for (StructureMetadataKey& key : getStructureMetadataKeys(Timestamp(), StructureMetadataType::UserGroup, *userGroupId)) {
+  for (StructureMetadataKey& key : getStructureMetadataKeys(TimeNow(), StructureMetadataType::UserGroup, *userGroupId)) {
     removeStructureMetadata(StructureMetadataType::UserGroup, *userGroupId, std::move(key));
   }
 
@@ -2051,7 +2051,7 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
 
 void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataType subjectType, int64_t internalSubjectId, StructureMetadataKey key) {
   assert(HasInternalId(subjectType));
-  const auto keys = getStructureMetadataKeys(Timestamp{}, subjectType, internalSubjectId);
+  const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, internalSubjectId);
 
   if (std::ranges::find(keys, key) == keys.end()) {
     std::ostringstream msg;
