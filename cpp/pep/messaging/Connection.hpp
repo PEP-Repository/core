@@ -126,7 +126,7 @@ protected:
   bool prepareBodyTransfer(const networking::SizedTransfer::Result& headerResult);
   void handleError(std::exception_ptr exception);
   void handleBinaryConnectivityChange(const networking::Connection::ConnectivityChange& change);
-  void clearState();
+  void clearState(bool reconnecting);
 
 protected:
   void close();

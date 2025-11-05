@@ -68,9 +68,10 @@ public:
   size_t pending() const noexcept { return mEntries.size(); }
 
   /**
-  * @brief Discards pending requests that cannot be re-sent, producing an error on the associated observable<>.
+  * @brief Discards pending requests, producing an error on the associated observable<>.
+  * @param resendable Whether resendable requests should also be discarded
   */
-  void purge();
+  void purge(bool resendable);
 
   /**
   * @brief Re-schedules pending requests that can be re-sent.

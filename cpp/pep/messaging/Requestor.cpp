@@ -117,15 +117,15 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
   }
 }
 
-void Requestor::purge() {
-  // remove requests that cannot be re-sent
+void Requestor::purge(bool resendable) {
+  // remove requests that should not be re-sent
   for (auto it = mEntries.begin(); it != mEntries.end(); /* sic */) {
     // confused? See the example of:
     //  https://en.cppreference.com/w/cpp/container/map/erase
 
     auto& request = it->second;
 
-    if (!request.resendable) {
+    if (resendable || !request.resendable) {
       // remove this request from the list
 
       // notify caller of the failure, but not directly!, since this might
