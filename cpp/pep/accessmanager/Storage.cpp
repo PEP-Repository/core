@@ -1860,14 +1860,17 @@ int64_t AccessManager::Backend::Storage::getInternalId(StructureMetadataType sub
   }
 }
 
-std::optional<std::string> AccessManager::Backend::Storage::getSomeSubjectForInternalId(
+std::optional<std::string> AccessManager::Backend::Storage::getSubjectForInternalId(
   StructureMetadataType subjectType, int64_t internalId, Timestamp at) const {
   assert(HasInternalId(subjectType));
   switch (subjectType) {
   case StructureMetadataType::User: {
+    auto identifier = getDisplayIdentifierForUser(internalId, at);
+    if (identifier)
+      return identifier;
     auto identifiers = getAllIdentifiersForUser(internalId, at);
     if (identifiers.size() > 0) {
-      return *getAllIdentifiersForUser(internalId, at).begin();
+      return std::ranges::min(getAllIdentifiersForUser(internalId, at));
     }
     return std::nullopt;
   }
