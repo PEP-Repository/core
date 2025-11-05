@@ -6,7 +6,7 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/crypto/CPRNG.hpp>
 #include <pep/utils/Hasher.hpp>
-#include <pep/async/FakeVoid.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/FacilityType.hpp>
@@ -236,7 +236,7 @@ void StorageFacility::Parameters::check() const {
     throw std::runtime_error("encIdKey must be set");
   if (!pseudonymKey)
     throw std::runtime_error("pseudonymKey must be set");
-  if (GetFacilityType(getCertificateChain()) != FacilityType::StorageFacility)
+  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::StorageFacility)
     throw std::runtime_error("Invalid certificate chain for Storage Facility");
   SigningServer::Parameters::check();
   if (!this->pageStoreConfig)
@@ -277,12 +277,15 @@ void StorageFacility::computeChecksumChainChecksum(
   checksum = 0;
   checkpoint = 0;
 
-  if (!maxCheckpoint)
-    maxCheckpoint = static_cast<uint64_t>(Timestamp().getTime()) - 60 * 1000ULL;
+  if (!maxCheckpoint) {
+    // The Storage Facility uses a timestamp as checkpoint
+    maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
+  }
 
   mFileStore->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
-    if (header.validFrom <= max) {
-      checkpoint = std::max(checkpoint, header.validFrom);
+    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(header.validFrom))};
+    if (validFromMs <= max) {
+      checkpoint = std::max(checkpoint, validFromMs);
       add(header);
     }
     });
@@ -343,7 +346,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       // enumerateData returns an error if there are no entries, which
       // we will ignore. Other errors are already logged.
       EntryName key(*localPseudonyms[pseud_index], col);
-      auto entry = mFileStore->lookup(key, static_cast<EpochMillis>(ticket.mTimestamp.getTime()));
+      auto entry = mFileStore->lookup(key, ticket.mTimestamp);
       if (!entry) {
         continue;
       }
@@ -420,7 +423,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       }
 
       server->mMetrics->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
-      return rxcpp::observable<>::iterate(response);
+      return RxIterate(std::move(response));
       });
 }
 
@@ -575,7 +578,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
             // PEP_DEFER ensures that the outer observable keeps going even if we raise an exception (on the inner observable) from this lambda
             PEP_DEFER(self->emitNextPage());
 
-            auto page = Serialization::FromString<DataPayloadPage>(*contents); // TODO: prevent string copy. E.g. either std::move, or change signature of Serialization::FromString<> to accept an std::string_view
+            auto page = Serialization::FromString<DataPayloadPage>(*contents);
             page.mIndex = fileIndex;
             page.mPageNumber = pageIndex;
 
@@ -707,7 +710,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
           [server, subscriber, ctx, request]
           (std::shared_ptr<std::string> rawPage) // incoming page
           -> rxcpp::observable<std::string> {// md5 of page
-            MessageMagic magic;
+            MessageMagic magic{};
             try {
               magic = GetMessageMagic(*rawPage);
             }
@@ -754,7 +757,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               subscriber.on_error(e);
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
-              auto time = static_cast<EpochMillis>(Timestamp().getTime()); // Make all entries available/valid at the same moment: see #1631
+              auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
               for (size_t i = 0; i < ctx->entries.size(); i++) {
                 auto& entry = ctx->entries[i];
                 try {
@@ -796,13 +799,13 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
         std::move(metadata),
         EntryContent::PayloadData(
           { .polymorphicKey = entry.mPolymorphicKey,
-            .blindingTimestamp = static_cast<EpochMillis>(entry.mMetadata.getBlindingTimestamp().getTime()),
+            .blindingTimestamp = entry.mMetadata.getBlindingTimestamp(),
             .scheme = entry.mMetadata.getEncryptionScheme()
           },
           nullptr));
   };
 
-  auto getResponse = [](EpochMillis /* ignored */, const std::vector<std::string>& ids, XxHasher::Hash hash) {
+  auto getResponse = [](Timestamp /* ignored */, const std::vector<std::string>& ids, XxHasher::Hash hash) {
     DataStoreResponse2 resp;
     resp.mIds = ids;
     resp.mHash = hash;
@@ -866,7 +869,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
         EntryContent::PayloadData{
           {
             .polymorphicKey = entry.mPolymorphicKey,
-            .blindingTimestamp = static_cast<EpochMillis>(entry.mMetadata.getBlindingTimestamp().getTime()),
+            .blindingTimestamp = entry.mMetadata.getBlindingTimestamp(),
             .scheme = entry.mMetadata.getEncryptionScheme()
           },
           payload},
@@ -876,7 +879,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     changes.push_back(entryChange);
   }
 
-  auto time = static_cast<EpochMillis>(Timestamp().getTime()); // Make all entries available/valid at the same moment: see #1631
+  auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
   MetadataUpdateResponse2 response;
   for (const auto& change : changes) {
     auto id = this->encryptId(change->getName().string(), time);
@@ -894,13 +897,14 @@ StorageFacility::handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteReques
     return std::unique_ptr<EntryContent>();
   };
 
-  auto getResponse = [](EpochMillis timestamp, const std::vector<std::string>& ids, XxHasher::Hash hash) {
+  auto getResponse = [](Timestamp timestamp, const std::vector<std::string>& ids, XxHasher::Hash hash) {
     assert(hash == XxHasher(0ULL).digest());
     assert(ids.size() <= std::numeric_limits<uint32_t>::max());
 
-    DataDeleteResponse2 resp;
-    assert(timestamp <= static_cast<EpochMillis>(std::numeric_limits<int64_t>::max()));
-    resp.mTimestamp = Timestamp(static_cast<int64_t>(timestamp));
+    DataDeleteResponse2 resp{
+      .mTimestamp = timestamp,
+      .mEntries{}, // Filled below
+    };
 
     resp.mEntries.mIndices.reserve(ids.size());
     for (size_t i = 0U; i < ids.size(); ++i) {
@@ -1000,15 +1004,13 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
       for (const auto& entry : history) {
         assert(entry != nullptr);
 
-        auto& re = response.mEntries.emplace_back();
-        re.mColumnIndex = colIndexIt->second;
-        re.mPseudonymIndex = static_cast<uint32_t>(pseud_index);
-        EpochMillis validFrom = entry->getValidFrom();
-        assert(validFrom <= static_cast<EpochMillis>(std::numeric_limits<int64_t>::max()));
-        re.mTimestamp = Timestamp(static_cast<int64_t>(validFrom));
-        if (!entry->isTombstone()) {
-          re.mId = encryptId(entry->getName().string(), validFrom);
-        }
+        Timestamp validFrom = entry->getValidFrom();
+        response.mEntries.push_back({
+          .mColumnIndex = colIndexIt->second,
+          .mPseudonymIndex = static_cast<uint32_t>(pseud_index),
+          .mTimestamp = validFrom,
+          .mId = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
+        });
       }
     }
   }
@@ -1019,15 +1021,15 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
-std::string StorageFacility::encryptId(const std::string& path, uint64_t time) {
+std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
       mEncIdKey,
-      SFId(path, time)),
+      SFId{std::move(path), time}),
     false);
 }
 
-SFId StorageFacility::decryptId(const std::string& encId) {
+SFId StorageFacility::decryptId(std::string_view encId) {
   return Serialization::FromString<EncryptedSFId>(encId, false).decrypt(mEncIdKey);
 }
 
@@ -1039,8 +1041,8 @@ Metadata StorageFacility::compileMetadata(
   assert(content != nullptr);
 
   Metadata result = Metadata(
-    column,
-    pep::Timestamp{static_cast<int64_t>(content->getBlindingTimestamp())},
+    std::move(column),
+    content->getBlindingTimestamp(),
     content->getEncryptionScheme());
 
   auto payloadTimestamp = content->getOriginalPayloadEntryTimestamp();

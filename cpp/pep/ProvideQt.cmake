@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Network Gui PrintSupport Widgets LinguistTools Svg)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Network Gui PrintSupport Widgets LinguistTools Svg)
 
 # Qt by default warns on deprecated APIs (via QT_WARN_DEPRECATED_UP_TO),
 # but we choose to disable some deprecated APIs altogether before the given version

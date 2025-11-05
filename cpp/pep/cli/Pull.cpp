@@ -4,6 +4,7 @@
 #include <pep/cli/Commands.hpp>
 
 #include <boost/range/iterator_range.hpp>
+#include <boost/algorithm/string/join.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -18,7 +19,8 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxToVector.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -140,9 +142,6 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   if (ctx->force && ctx->options.assumePristine) {
     throw std::runtime_error("Options --force and --assume-pristine cannot be used together - specify either one or the other");
   }
-  if (ctx->force && ctx->resume) {
-    throw std::runtime_error("Options --force and --resume cannot be used together - specify either one or the other");
-  }
   if (ctx->updateFormat && ctx->update) {
     throw std::runtime_error("Options --update-format and --update cannot be used together - specify either one or the other");
   }
@@ -240,8 +239,9 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       throw std::runtime_error("Option --all-accessible cannot be used together with other options specifying columns or participants");
     }
 
-    return client->getAccessibleParticipantGroups(true)
-      .zip(client->getAccessibleColumns(true, { "read" }))
+    auto& am = *client->getAccessManagerProxy();
+    return am.getAccessibleParticipantGroups(true)
+      .zip(am.getAccessibleColumns(true, { "read" }))
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
       for (const auto& pg : pga.participantGroups) {
@@ -303,12 +303,42 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
   std::shared_ptr<DownloadDirectory> directory;
   if (ctx->update) {
     prepareTempDirectory(ctx);
-    directory = DownloadDirectory::Create(ctx->tempDirectory, globalConfig);
 
-    if (!ctx->options.assumePristine && !ctx->force) {
-      auto nonpristine = directory->describeFirstNonPristineEntry(ctx->progress->push());
-      if (nonpristine != std::nullopt) {
-        throw std::runtime_error("Data in output directory " + ctx->outputDirectory + " has changed since last download: " + *nonpristine + ". Specify --force to discard local changes and update to server version");
+    auto progress = ctx->progress;
+    auto checkPristine = !ctx->options.assumePristine && !ctx->force;
+    if (checkPristine) { // Announce a separate step for each of the multiple directory iterations that we'll perform
+      progress = pep::Progress::Create(2U, ctx->progress->push());
+      progress->advance("Reading participant data");
+    }
+
+    directory = DownloadDirectory::Create(ctx->tempDirectory, globalConfig, progress->push());
+
+    if (checkPristine) {
+      progress->advance("Checking directory for changes");
+      auto nonpristine = directory->getNonPristineEntries(progress->push());
+      if (!nonpristine.empty()) {
+        std::vector<std::string> lines;
+        lines.reserve(nonpristine.size() + 1);
+        lines.emplace_back("Data in output directory " + ctx->outputDirectory + " has changed since last download. Specify --force to discard local changes and update to server version.");
+
+        std::transform(nonpristine.begin(), nonpristine.end(), std::back_inserter(lines), [](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
+          if (!entry.path.has_value()) {
+            assert(entry.record.has_value());
+            return "Absent file for participant " + entry.record->getParticipant().getLocalPseudonym().text() + ", column " + entry.record->getColumn();
+          }
+          if (!entry.record.has_value()) {
+            assert(entry.path.has_value());
+            return std::string("Unknown ") + (is_directory(*entry.path) ? "directory" : "file") + ' ' + entry.path->string();
+          }
+          assert(!is_directory(*entry.path));
+          return "File " + entry.path->string() + " has local changes";
+          });
+        throw std::runtime_error(boost::join(lines, "\n- "));
+      }
+    }
+    else if (ctx->force) {
+      for (auto unknown : directory->getUnknownContents()) {
+        remove_all(unknown);
       }
     }
   }
@@ -353,7 +383,7 @@ struct ExportContext final {
 void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
   if (formats == so::FormatFlags::none) { return; }
 
-  const auto downloadDir = DownloadDirectory::Create(ctx.input_directory, ctx.globalConfig);
+  const auto downloadDir = DownloadDirectory::Create(ctx.input_directory, ctx.globalConfig, [](std::shared_ptr<const pep::Progress>) {}); // TODO: report (instead of ignore) progress
   const auto table = so::TableFrom(*downloadDir);
   const auto exportAs = [&ctx](const std::string format, std::function<void(std::ofstream&)> write) {
     const auto dest = ctx.input_directory.parent_path() / ("export." + format); // assuming format == file extension
@@ -422,7 +452,7 @@ protected:
           return directory->pull(client, ctx->options, ctx->progress->push())
           .op(pep::RxBeforeCompletion([ctx, globalConfig]() {
             cleanUp(ctx);
-            ExecuteExports(ctx->exportFormats, {.globalConfig = globalConfig, .input_directory = ctx->outputDirectory, .force = ctx->force});
+            ExecuteExports(ctx->exportFormats, {.globalConfig = globalConfig, .input_directory = ctx->outputDirectory, .force = ctx->force}); // TODO: pass existing "directory" so that "ExecuteExports" doesn't have to re-invoke "DownloadDirectory::Create"
           }));
         });
       });

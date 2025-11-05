@@ -1,8 +1,10 @@
 #include <pep/cli/DownloadProcessor.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxDrain.hpp>
-#include <pep/async/RxUtils.hpp>
-#include <pep/utils/VectorOfVectors.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxToVector.hpp>
+#include <pep/async/RxToVectorOfVectors.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -157,13 +159,15 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, Enumerate
 
 void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads, bool assumePristine) {
   progress->advance("Preparing local data");
-  for (const auto& existing : mDestination->list()) {
-    auto position = std::find_if(downloads->begin(), downloads->end(), [&existing](const auto& pair) {
-      const RecordDescriptor& candidate = pair.first;
-      return candidate.getParticipant().getLocalPseudonym() == existing.getParticipant().getLocalPseudonym()
-        && candidate.getColumn() == existing.getColumn()
-        && candidate.getPayloadBlindingTimestamp() == existing.getPayloadBlindingTimestamp();
-      });
+  auto localRecords = mDestination->list();
+  if (localRecords.empty()) {
+    return;
+  }
+
+  auto ownProgress = pep::Progress::Create(localRecords.size(), progress->push());
+  for (const auto& existing : localRecords) {
+    ownProgress->advance(mDestination->getRecordFileName(existing, false)->string());
+    auto position = downloads->find(existing);
     if (position == downloads->cend()) {
       // Payload is not in the server's current data set: it has either been removed from the server,
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
@@ -177,7 +181,7 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
             // Data should have been removed from the local copy, but it wasn't there
             LOG("update", pep::warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
-              << "; blinding timestamp " << existing.getBlindingTimestamp().getTime();
+              << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
         }
       }
@@ -190,7 +194,7 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
             // Data file should have been renamed in the local copy, but it wasn't there
             LOG("update", pep::warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
-              << "; blinding timestamp " << existing.getBlindingTimestamp().getTime();
+              << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
         }
       }
@@ -203,6 +207,11 @@ void DownloadProcessor::prepareLocalData(std::shared_ptr<Progress> progress, std
 }
 
 rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads) {
+  if (downloads->empty()) {
+    progress->advance("Nothing to retrieve");
+    return rxcpp::observable<>::empty<FakeVoid>();
+  }
+
   progress->advance("Retrieving from server");
   // Extract download properties into context and local variables
   auto subjects = std::make_shared<std::queue<EnumerateResult>>();

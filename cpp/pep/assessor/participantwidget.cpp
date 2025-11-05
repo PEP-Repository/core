@@ -304,7 +304,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
       emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::warning);
       pepClient->completeParticipantRegistration(participantSID.toStdString())
         .observe_on(observe_on_gui())
-        .subscribe([](std::shared_ptr<pep::RegistrationResponse> result) {
+        .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
         qDebug() << "Exception occured";
         emit statusMessage(tr("Completing registration failed."), pep::error);
@@ -361,7 +361,7 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
 void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   std::string serial = deviceId.toStdString();
   std::string type;
-  auto timestamp = pep::Timestamp().getTime();
+  auto timestamp = pep::TimeNow();
 
   const pep::ParticipantDeviceRecord* current = nullptr;
   std::vector<pep::ParticipantDeviceRecord> records;
@@ -1170,14 +1170,14 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
   assert(index < history.size());
   auto record = *std::next(history.begin(), static_cast<ptrdiff_t>(index));
 
-  auto timestamp = pep::DateTime::FromDeviceRecordTimestamp(record.time);
-  std::optional<pep::DateTime> previousEntry;
+  auto timestamp = record.time;
+  std::optional<pep::Timestamp> previousEntry;
   if (index > 0) {
-    previousEntry = pep::DateTime::FromDeviceRecordTimestamp(std::next(history.begin(), static_cast<ptrdiff_t>(index) - 1)->time);
+    previousEntry = std::next(history.begin(), static_cast<ptrdiff_t>(index) - 1)->time;
   }
-  std::optional<pep::DateTime> nextEntry;
+  std::optional<pep::Timestamp> nextEntry;
   if (!isLastRecord) {
-    nextEntry = pep::DateTime::FromDeviceRecordTimestamp(std::next(history.begin(), static_cast<ptrdiff_t>(index) + 1)->time);
+    nextEntry = std::next(history.begin(), static_cast<ptrdiff_t>(index) + 1)->time;
   }
 
   auto dialog = new QDialog(this);
@@ -1215,7 +1215,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
   auto editor = new DateTimeEditor();
   layout->addRow(editor);
-  editor->setValue(TimeTToLocalQDateTime(timestamp.toTimeT()));
+  editor->setValue(pep::LocalQDateTimeFromStdTimestamp(timestamp));
 
   auto nowButton = new QPushButton(tr("set-timestamp-to-now"), this);
   nowButton->setObjectName("nowButton");
@@ -1242,10 +1242,10 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
     auto entered = editor->getValue();
     auto valid = entered.isValid(); // Valid timestamp was entered
     if (previousEntry) {
-      valid &= (entered > TimeTToLocalQDateTime(previousEntry->toTimeT())); // Is not earlier than the previous entry
+      valid &= (entered > pep::LocalQDateTimeFromStdTimestamp(*previousEntry)); // Is not earlier than the previous entry
     }
     if (nextEntry) {
-      valid &= (entered < TimeTToLocalQDateTime(nextEntry->toTimeT())); // Is not later than the next entry
+      valid &= (entered < pep::LocalQDateTimeFromStdTimestamp(*nextEntry)); // Is not later than the next entry
     }
 
     okButton->setEnabled(valid);
@@ -1258,7 +1258,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
     pep::ParticipantDeviceHistory history;
     try {
-      records[index].time = pep::DateTime(LocalQDateTimeToTimeT(editor->getValue())).toDeviceRecordTimestamp();
+      records[index].time = pep::QDateTimeToStdTimestamp(editor->getValue());
       history = pep::ParticipantDeviceHistory(records, true);
     }
     catch (const std::exception& error) {
@@ -1356,7 +1356,7 @@ void ParticipantDataAggregator::processStudyContexts(const pep::EnumerateAndRetr
 
 void ParticipantDataAggregator::processVisitAssessor(const pep::EnumerateAndRetrieveResult& result) {
   std::string context;
-  unsigned visit;
+  unsigned visit{};
   [[maybe_unused]] auto match = isVisitAssessorColumn(result.mColumn, &context, &visit);
   assert(match);
 

@@ -6,6 +6,7 @@
 #include <pep/accessmanager/Storage.hpp>
 
 #include <filesystem>
+#include <gmock/gmock-matchers.h>
 
 using namespace pep;
 
@@ -23,11 +24,26 @@ public:
   static std::shared_ptr<AccessManager::Backend> backend;
   static std::shared_ptr<AccessManager::Backend::Storage> storage; // Have a direct variable so we can check the storage state directly, without going through backend
   static std::shared_ptr<GlobalConfiguration> globalConf;
+
+  struct User {
+    std::string primaryId;
+    std::string displayId;
+    std::vector<std::string> userGroups;
+  };
+
   struct Constants {
     const std::filesystem::path databasePath{"./testDB.sql"};
 
     const std::string userGroup1{"TestUserGroup"};
     const std::string userGroup2{"TestUserGroupWithoutAccess"};
+    const std::string userGroup3{"TestUserGroupWithoutMembers"};
+
+    const User user1{"123", "TestUserInOneGroup", {userGroup1}};
+    const User user2{"456", "TestUserInMultipleGroups", {userGroup1, userGroup2}};
+    const User user3{"789", "TestUserInNoGroups", {}};
+    const std::vector<User> users{user1, user2, user3};
+    const std::string unusedPrimaryId{"abc"};
+    const std::string nonExistingUser{"NonExistingUser"};
 
     const std::string r_col1{"readColumn_1"};
     const std::string r_col2{"readColumn_2"};
@@ -74,6 +90,18 @@ public:
 
   // Create a basic administration with a few columngroups and participantgroups defined.
   static void populateDatabase() {
+    storage->createUserGroup(UserGroup{constants.userGroup1, {}});
+    storage->createUserGroup(UserGroup{constants.userGroup2, {}});
+    storage->createUserGroup(UserGroup{constants.userGroup3, {}});
+
+    for (auto& user : constants.users) {
+      auto internalId = storage->createUser(user.displayId);
+      storage->addIdentifierForUser(internalId, user.primaryId, UserIdFlags::isPrimaryId);
+      for (auto& usergroup : user.userGroups) {
+        storage->addUserToGroup(internalId, usergroup);
+      }
+    }
+
     // Normally the LocalPseudonym and PolymorphicPseudonym should be linked. For the purposes of this test this is not required.
     storage->storeLocalPseudonymAndPP(constants.localPseudonym1, constants.dummyPP);
     storage->storeLocalPseudonymAndPP(constants.localPseudonym2, constants.dummyPP);
@@ -140,7 +168,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
 
   const std::vector<std::string> columngroups{constants.r_cg1};
   const std::vector<std::string> modes{"read"};
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   std::vector<std::string> columns;
   std::unordered_map<std::string, IndexList> columnGroupMap{};
 
@@ -163,7 +191,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.double_col};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
@@ -179,7 +207,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_no_column_acc
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
-  Timestamp timestamp{};
+  Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.w_col};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
 
@@ -261,14 +289,14 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
 
   std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp;
+  Timestamp timestamp = TimeNow();
   backend->checkParticipantGroupAccess({constants.pg1}, constants.userGroup1, modes, timestamp);
   // No thrown exceptions means correct behaviour.
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
   std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp;
+  Timestamp timestamp = TimeNow();
   try {
     backend->checkParticipantGroupAccess({constants.pg2}, constants.userGroup1, modes, timestamp);
     FAIL() << "This should not have run without exceptions.";
@@ -355,22 +383,19 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  auto now = Timestamp();
-  backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, now);
+  backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
 
-  auto now = Timestamp();
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  backend->assertParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, now);
+  backend->assertParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
-  auto now = Timestamp();
   try {
     // Act
-    backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, now);
+    backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {
@@ -381,7 +406,7 @@ TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_noFilter){
-  auto request = AmaQuery();
+  AmaQuery request;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 65U);
@@ -392,7 +417,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_noFilter){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneColumnGroup){
-  auto request = AmaQuery();
+  AmaQuery request;
   request.mColumnGroupFilter = constants.r_cg1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -404,7 +429,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneColumnGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneParticipantGroup){
-  auto request = AmaQuery();
+  AmaQuery request;
   request.mParticipantGroupFilter = constants.pg1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -416,7 +441,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneParticipantGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_OneUserGroup){
-  auto request = AmaQuery();
+  AmaQuery request;
   request.mUserGroupFilter = constants.userGroup1;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -428,7 +453,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneUserGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_MultipleFilters){
-  auto request = AmaQuery();
+  AmaQuery request;
   request.mUserGroupFilter = constants.userGroup1;
   request.mParticipantGroupFilter = constants.pg1;
   request.mColumnFilter = constants.r_col1;
@@ -442,7 +467,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_MultipleFilters){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_NonExistingUserGroup){
-  auto request = AmaQuery();
+  AmaQuery request;
   request.mUserGroupFilter = "non-existing";
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -454,7 +479,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_NonExistingUserGroup){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_PartialColumnFilter){
-  auto request = AmaQuery();
+  AmaQuery request;
   request.mColumnFilter = "star";
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -466,7 +491,7 @@ TEST_F(AccessManagerBackendTest, AMAquery_PartialColumnFilter){
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_ColumnOnlyInStarFilter){
-  auto request = AmaQuery();
+  AmaQuery request;
   request.mColumnFilter = constants.star_col;
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
@@ -492,6 +517,36 @@ TEST_F(AccessManagerBackendTest, handleSetMetadataRequestNoAccess) {
       << "only Access Administrator should be able to set user-group metadata";
   EXPECT_NO_THROW(backend->handleSetStructureMetadataRequestHead(request, UserGroup::AccessAdministrator))
       << "Access Administrator should be able to set user-group metadata";
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_all_groups_for_existing_user) {
+  for (auto& user : constants.users) {
+    auto response = backend->handleFindUserRequest(FindUserRequest(user.primaryId, { user.displayId }), "Authserver");
+    EXPECT_NE(response.mUserGroups, std::nullopt);
+    EXPECT_THAT(*response.mUserGroups, testing::SizeIs(user.userGroups.size()));
+    for (auto& group : *response.mUserGroups) {
+      EXPECT_THAT(user.userGroups, testing::Contains(group.mName));
+    }
+  }
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_adds_primary_id_if_not_yet_known) {
+  auto internalIdAtStart = storage->findInternalUserId(constants.user1.primaryId);
+  ASSERT_NE(internalIdAtStart, std::nullopt);
+  storage->removeIdentifierForUser(constants.user1.primaryId);
+  ASSERT_EQ(storage->findInternalUserId(constants.user1.primaryId), std::nullopt);
+  backend->handleFindUserRequest(FindUserRequest{constants.user1.primaryId, {constants.user1.displayId}},  "Authserver");
+  EXPECT_EQ(storage->findInternalUserId(constants.user1.primaryId), internalIdAtStart);
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_nullopt_for_non_existing_user) {
+  auto response = backend->handleFindUserRequest(FindUserRequest{constants.nonExistingUser, {}}, "Authserver");
+  EXPECT_EQ(response.mUserGroups, std::nullopt);
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_throws_when_primary_id_does_not_match) {
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.unusedPrimaryId, {constants.user1.displayId}}, "Authserver"), Error);
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.user1.displayId, {}}, "Authserver"), Error);
 }
 
 }

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <pep/core-client/CoreClient_fwd.hpp>
-#include <pep/utils/Progress.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/cli/DownloadMetadata.hpp>
 #include <pep/async/FakeVoid.hpp>
+#include <pep/utils/Filesystem.hpp>
 
 #include <rxcpp/rx-lite.hpp>
 
@@ -36,11 +36,6 @@ public:
 
     std::string toString() const;
     static Specification FromString(const std::string& value);
-  };
-
-  struct RecordDescriptorUpdate {
-    RecordDescriptor previous;
-    Timestamp timestamp;
   };
 
   class RecordStorageStream {
@@ -92,6 +87,11 @@ public:
     PullOptions() noexcept = default; // Workaround for Clang build failure: see https://stackoverflow.com/a/44693603
   };
 
+  struct NonPristineEntry {
+    std::optional<RecordDescriptor> record;
+    std::optional<std::filesystem::path> path;
+  };
+
 private:
   std::filesystem::path mRoot;
   bool mApplyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
@@ -105,7 +105,7 @@ private:
   std::vector<RecordDescriptor> getRecords(const std::function<bool(const RecordDescriptor&)>& match) const;
 
 private:
-  explicit DownloadDirectory(const std::filesystem::path& root, std::shared_ptr<GlobalConfiguration> globalConfig); // Opens existing directory
+  explicit DownloadDirectory(const std::filesystem::path& root, std::shared_ptr<GlobalConfiguration> globalConfig, const Progress::OnCreation& onCreateProgress); // Opens existing directory
   DownloadDirectory(const std::filesystem::path& root, std::shared_ptr<CoreClient> client, const ContentSpecification& content, std::shared_ptr<GlobalConfiguration> globalConfig, bool applyFileExtensions); // Initializes new directory
 
   std::optional<Specification> tryReadSpecification() const;
@@ -115,6 +115,9 @@ private:
 
   bool deleteRecord(const RecordDescriptor& descriptor);
   bool renameRecord(const RecordDescriptor& descriptor, const std::filesystem::path& newPath);
+
+  void trackExistingPaths(filesystem::SetOfExistingPaths& dirs, filesystem::SetOfExistingPaths& files, const RecordDescriptor& descriptor) const;
+  filesystem::SetOfExistingPaths getUnknownContents(const filesystem::SetOfExistingPaths& knownDirs, const filesystem::SetOfExistingPaths& knownFiles) const;
 
 public:
   virtual ~DownloadDirectory() noexcept = default;
@@ -135,9 +138,10 @@ public:
   std::filesystem::path getSpecificationFilePath() const;
   std::filesystem::path getParticipantDirectory(const ParticipantIdentifier& id) const;
   std::optional<std::filesystem::path> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;
-  std::optional<std::filesystem::path> getRecordFileName(const RecordDescriptor& descriptor) const;
+  std::optional<std::filesystem::path> getRecordFileName(const RecordDescriptor& descriptor, bool absolute = true) const;
 
-  std::optional<std::string> describeFirstNonPristineEntry(const Progress::OnCreation& onCreateProgress) const;
+  std::vector<NonPristineEntry> getNonPristineEntries(const Progress::OnCreation& onCreateProgress) const;
+  filesystem::SetOfExistingPaths getUnknownContents() const;
 
   Specification getSpecification() const;
 

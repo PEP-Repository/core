@@ -13,6 +13,9 @@ using pep::FileStore;
 
 namespace {
 
+constexpr pep::Timestamp operator""_unixMs(const unsigned long long ms) noexcept {
+  return pep::Timestamp(std::chrono::milliseconds{ms});
+}
 
 struct Context {
   std::shared_ptr<boost::asio::io_context> io_context
@@ -82,34 +85,34 @@ TEST(FileStore, Basic) {
   change->setContent(std::make_unique<EntryContent>(
     EntryContent::Metadata(),
     EntryContent::PayloadData(
-      {.polymorphicKey = polymorphicKey, .blindingTimestamp = 1, .scheme = pep::EncryptionScheme::V3},
+      {.polymorphicKey = polymorphicKey, .blindingTimestamp = 1_unixMs, .scheme = pep::EncryptionScheme::V3},
       nullptr)));
   context.exhaust<std::string>(change->appendPage(std::make_shared<std::string>(page), page.size(), 0));
-  std::move(*change).commit(1);
+  std::move(*change).commit(1_unixMs);
 
   change = store->modifyEntry(name, false);
   ASSERT_NE(nullchange, change);
   EXPECT_EQ(1, change->content()->payload()->pageCount());
 
   auto duplicateChange = store->modifyEntry(name, false);
-  std::move(*change).commit(3);
-  EXPECT_ANY_THROW(std::move(*duplicateChange).commit(3));
+  std::move(*change).commit(3_unixMs);
+  EXPECT_ANY_THROW(std::move(*duplicateChange).commit(3_unixMs));
 
-  EXPECT_EQ(nullentry, store->lookup(name, 0));
+  EXPECT_EQ(nullentry, store->lookup(name, 0_unixMs));
 
-  auto test = store->lookup(name, 1);
+  auto test = store->lookup(name, 1_unixMs);
   ASSERT_NE(nullentry, test);
-  EXPECT_EQ(1, test->getValidFrom());
+  EXPECT_EQ(1_unixMs, test->getValidFrom());
   EXPECT_EQ(1, test->content()->payload()->pageCount());
 
-  test = store->lookup(name, 2);
+  test = store->lookup(name, 2_unixMs);
   ASSERT_NE(nullentry, test);
-  EXPECT_EQ(1, test->getValidFrom());
+  EXPECT_EQ(1_unixMs, test->getValidFrom());
   EXPECT_EQ(1, test->content()->payload()->pageCount());
 
-  test = store->lookup(name, 3);
+  test = store->lookup(name, 3_unixMs);
   ASSERT_NE(nullentry, test);
-  EXPECT_EQ(3, test->getValidFrom());
+  EXPECT_EQ(3_unixMs, test->getValidFrom());
   EXPECT_EQ(1, test->content()->payload()->pageCount());
   {
     auto results = context.exhaust<std::shared_ptr<std::string>>(
@@ -118,9 +121,9 @@ TEST(FileStore, Basic) {
     EXPECT_EQ(*((*results)[0]), page);
   }
 
-  test = store->lookup(name, 4);
+  test = store->lookup(name, 4_unixMs);
   ASSERT_NE(nullentry, test);
-  EXPECT_EQ(3, test->getValidFrom());
+  EXPECT_EQ(3_unixMs, test->getValidFrom());
   EXPECT_EQ(1, test->content()->payload()->pageCount());
   {
     auto results = context.exhaust<std::shared_ptr<std::string>>(

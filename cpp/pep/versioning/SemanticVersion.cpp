@@ -23,8 +23,13 @@ std::string SemanticVersion::format() const {
   return boost::algorithm::join(semverParts, ".");
 }
 
+bool SemanticVersion::hasGitlabProperties() const noexcept {
+  return mPipelineId > 0U && mJobId > 0U;
+}
+
 bool IsSemanticVersionEquivalent(const SemanticVersion& lhs, const SemanticVersion& rhs){
   return std::make_tuple<unsigned int, unsigned int, unsigned int>(lhs.getMajorVersion(), lhs.getMinorVersion(), lhs.getPipelineId()) ==
   std::make_tuple<unsigned int, unsigned int, unsigned int>(rhs.getMajorVersion(), rhs.getMinorVersion(), rhs.getPipelineId());
 }
+
 }

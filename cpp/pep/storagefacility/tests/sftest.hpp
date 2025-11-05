@@ -72,7 +72,8 @@ namespace pep::sftest {
           this->s3_service_name,
         },
         io_context,
-        this->GetCaCertFilepath()
+        this->GetCaCertFilepath(),
+        true  // use_https
       };
 
       return s3::Client::Create(params);

@@ -5,7 +5,6 @@
 
 namespace pep::structuredOutput {
 namespace stringConstants {
-
 struct Strings final {
   std::string_view option;
   std::string_view descriptive;
@@ -17,7 +16,11 @@ constexpr Strings groupsPerUser{"groups-per-user", "User Groups per Interactive 
 
 constexpr Strings users{"all-user", "All Interactive Users"};
 
-constexpr std::string_view identifiersKey{"user identifiers"};
+constexpr std::string_view displayIdKey{"display id"};
+
+constexpr std::string_view primaryIdKey{"primary id"};
+
+constexpr std::string_view otherIdentifiersKey{"other user identifiers"};
 
 constexpr std::string_view groupsKey{"user groups"};
 

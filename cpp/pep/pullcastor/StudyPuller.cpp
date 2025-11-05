@@ -1,7 +1,16 @@
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/castor/RepeatingDataPoint.hpp>
 #include <pep/pullcastor/CastorParticipant.hpp>
 #include <pep/pullcastor/StudyAspectPuller.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-group_by.hpp>
+#include <rxcpp/operators/rx-on_error_resume_next.hpp>
+#include <rxcpp/operators/rx-take.hpp>
 
 namespace pep {
 namespace castor {
@@ -14,7 +23,7 @@ rxcpp::observable<std::shared_ptr<CastorParticipant>> GetKnownParticipants(
   std::shared_ptr<StudyAspectPuller> aspect) {
   return stored
     .flat_map([allParticipants, spColumn = aspect->getShortPseudonymColumn()](std::shared_ptr<StoredData> stored) {
-    return rxcpp::observable<>::iterate(*allParticipants) // ...for every participant...
+    return RxIterate(*allParticipants) // ...for every participant...
       .filter([stored, spColumn](std::shared_ptr<CastorParticipant> participant) { // ...if participant corresponds with an SP known by PEP...
       auto id = participant->getParticipant()->getId();
       ColumnBoundParticipantId cbpId(spColumn, id);
@@ -123,13 +132,13 @@ rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> StudyPuller::getRepeating
 
 rxcpp::observable<std::shared_ptr<Field>> StudyPuller::getFields() {
   return mFieldsById->observe()
-    .flat_map([](std::shared_ptr<FieldsById> byId) {return rxcpp::observable<>::iterate(*byId); })
+    .flat_map([](std::shared_ptr<FieldsById> byId) {return RxIterate(*byId); })
     .map([](const auto& pair) {return pair.second; });
 }
 
 rxcpp::observable<std::shared_ptr<RepeatingDataPuller>> StudyPuller::getRepeatingDataPullers() {
   return mRepeatingDataPullers->observe()
-    .flat_map([](auto byId) {return rxcpp::observable<>::iterate(*byId); })
+    .flat_map([](auto byId) {return RxIterate(*byId); })
     .map([](const auto& pair) {return pair.second; });
 }
 

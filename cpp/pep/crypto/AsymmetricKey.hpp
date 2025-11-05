@@ -22,6 +22,7 @@ class AsymmetricKey {
   AsymmetricKey() = default;
   explicit AsymmetricKey(std::string_view buf);
   AsymmetricKey(const AsymmetricKey& other);
+  AsymmetricKey(AsymmetricKey&& other);
   AsymmetricKey& operator=(AsymmetricKey other);
   bool isPrivateKeyFor(const AsymmetricKey& publicKey) const;
   ~AsymmetricKey();
@@ -60,7 +61,7 @@ class AsymmetricKeyPair {
   ~AsymmetricKeyPair();
 
   static AsymmetricKeyPair GenerateKeyPair();
-  
+
   AsymmetricKey getPublicKey();
   AsymmetricKey getPrivateKey();
 

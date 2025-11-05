@@ -24,6 +24,9 @@ set -eu
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 
+# Portable envsubst replacement (But beware: also replaces shell variables and allows command injections)
+envsubst() { eval "echo \"$(sed 's/\\/\\\\/g; s/"/\\"/g')\""; }
+
 # Default values
 command=""
 git_dir=""
@@ -136,7 +139,7 @@ if [ "$with_rsyslog" = "true" ] && [ -z "$rsyslog_dir" ]; then
   usage 1
 fi
 
-foss_image_names="authserver_apache pep-monitoring pep-services client pep-connector"
+foss_image_names="docker-compose authserver_apache pep-monitoring pep-services client pep-scheduler pep-connector"
 
 git_root=$(cd "$git_dir" && pwd)
 git_config_dir="$git_root/config"
@@ -328,13 +331,17 @@ run_foss_pipeline() {
 
   foss_pipeline_id=$(get_foss_pipeline_id "$branchname") || return 1
   foss_project_path=$(gitlab_project_path "$foss_root")
+
+  # Set descriptive pipeline name
+  foss_api put "pipelines/$foss_pipeline_id/metadata" --data "name=Providing binaries for $CI_PROJECT_PATH/$CI_COMMIT_REF_NAME" > /dev/null || true
+
   echo "Running pipeline $foss_pipeline_id in project $foss_project_path for branch $branchname: "\
     "https://$foss_host/$foss_project_path/-/pipelines/$foss_pipeline_id"
   
   # All possible statuses are documented on https://docs.gitlab.com/ee/api/pipelines.html. I cannot find any documentation on what these statuses mean.
   # Not all statuses are listed below. I don't expect we will encounter the missing statuses, but if we do we must investigate in which category they should fall.
   running_statuses="\"pending\" \"running\" \"created\" \"preparing\" \"waiting_for_resource\""
-  success_statuses="\"success\" \"skipped\""
+  success_statuses="\"success\" \"skipped\" \"manual\""
   failure_statuses="\"failed\" \"canceled\" \"canceling\""
   
   pipeline_result=
@@ -486,8 +493,34 @@ build_config_dockerfile() {
   else
     echo "Building $dest_image for dockerfile $dockerfile without a base image"
   fi
+
+  # Special handling for docker-compose image to expand CI variables in .env file
+  if [ "$image_name" = "docker-compose" ]; then
+    env_file="$env_config_dir/docker-compose/.env"
+
+    if [ -f "$env_file" ]; then
+      echo "Expanding variables in .env file..."
+
+      # Create expanded .env file
+      expanded_env_file=$(mktemp)
+      cat "$env_file" | envsubst > "$expanded_env_file"
+
+      # Copy the expanded .env file over the original for the Docker build
+      mv "$expanded_env_file" "$env_file"
+
+      echo "Variables expanded in .env file"
+    else
+      echo "No .env file found at $env_file"
+    fi
+  fi
+
+  docker build -t "$dest_image" -f "$dockerfile" --pull \
+    --build-arg "ENVIRONMENT=$environment" \
+    --build-arg "PROJECT_DIR=$environment/project" \
+    --build-arg "BASE_IMAGE=$base_image" \
+    --build-arg "RSYSLOG_PREPOSITION=$rsyslog_preposition" \
+    "$git_config_dir"
   
-  docker build -t "$dest_image" -f "$dockerfile" --pull --build-arg "ENVIRONMENT=$environment" --build-arg "PROJECT_DIR=$environment/project" --build-arg "BASE_IMAGE=$base_image" --build-arg "RSYSLOG_PREPOSITION=$rsyslog_preposition" "$git_config_dir"
   docker push "$dest_image"
 }
 

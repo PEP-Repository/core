@@ -4,6 +4,8 @@
 #include <vector>
 #include <optional>
 #include <pep/crypto/Timestamp.hpp>
+#include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/database/Record.hpp>
 
 namespace pep {
 
@@ -11,18 +13,22 @@ namespace pep {
 /// Users can have multiple known IDs
 struct UserIdRecord {
   UserIdRecord() = default;
-  UserIdRecord(int64_t internalUserId, std::string identifier, bool tombstone = false, int64_t timestamp = Timestamp().getTime());
+  UserIdRecord(int64_t internalUserId, std::string identifier, UserIdFlags flags = UserIdFlags::none, bool tombstone = false, Timestamp timestamp = TimeNow());
   uint64_t checksum() const;
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   /// We use an internal ID to reference a user from other tables, since users identifiers can change, or are not yet known during registration
   int64_t internalUserId{};
   /// The identifier to register or remove for the user
   std::string identifier;
+  /// Whether this identifier is the primary identifier for the user
+  bool isPrimaryId;
+  /// Whether this identifier should be used as the display identifier for the user
+  bool isDisplayId;
 
   static inline const std::tuple RecordIdentifier{
     &UserIdRecord::internalUserId,
@@ -37,7 +43,7 @@ struct UserGroupRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   /// The ID of the user group used internally
@@ -71,7 +77,7 @@ struct UserGroupUserRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
   bool tombstone{};
 
   /// The ID of the user group the user is to be a member of. A UserGroupRecord must exist for the group.

@@ -6,7 +6,7 @@ namespace pep {
 rxcpp::observable<FakeVoid> RxAsioTimer(const std::chrono::milliseconds& duration, boost::asio::io_context& io_context, rxcpp::observe_on_one_worker observe_on) {
   /* A steady_timer is monotonic, eliminating some (possible) problems with
    * the non-monotonic deadline_timer. See e.g. https://stackoverflow.com/a/14848254 .
-   * 
+   *
    * Also it has been observed that a boost::asio::deadline_timer sometimes expires faster
    * than the specified duration, measured as the difference between two calls to
    * std::chrono::steady_clock::now(). Since a boost::asio::steady_timer is based on that
@@ -14,7 +14,7 @@ rxcpp::observable<FakeVoid> RxAsioTimer(const std::chrono::milliseconds& duratio
    * measurements (as e.g. used in the RxTimeout.test.cpp source).
    */
   auto implementor = std::make_shared<boost::asio::steady_timer>(io_context);
-  auto expire_after = std::chrono::duration_cast<boost::asio::steady_timer::duration>(duration);
+  auto expire_after = duration_cast<boost::asio::steady_timer::duration>(duration);
 
   return CreateObservable<FakeVoid>([implementor, expire_after](rxcpp::subscriber<FakeVoid> subscriber) {
     implementor->expires_after(expire_after);

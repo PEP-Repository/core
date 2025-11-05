@@ -1,3 +1,6 @@
+/label ~"3: Medium priority"
+<!-- Default priority label, change to the required priority -->
+
 ## User Story
 <!-- One single sentence describing the issue in the format: "As a(n) X, I want Y, so that Z."
      Replace {who}, {what} and {why} in the line below and it should format correctly by default.
@@ -30,5 +33,3 @@ _not provided_
 -->
 
 _not provided_
-
-

@@ -220,7 +220,7 @@ int Application::RunWithoutError(std::function<int()> implementor) noexcept {
   }
 }
 
-int Application::run(int argc, char* argv[]) {
+int Application::run(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
   if (useUnwinder()) {
     InitializeUnwinder();
   }

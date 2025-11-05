@@ -83,7 +83,7 @@ LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, co
   #ifdef _WIN32
     this->provideUpdateIfAvailable();
   #elif defined(__APPLE__) && defined(__MACH__)
-    // Create the updater, connect the SparkleUpdater signal to the provideUpdate 
+    // Create the updater, connect the SparkleUpdater signal to the provideUpdate
     // slot, then begin update check, provideUpdate will call provideUpdateIfAvailable
     updater = new SparkleUpdater();
     QObject::connect(updater, &SparkleUpdater::updateStatusChanged, this, &LoginWidget::provideUpdate);
@@ -159,7 +159,7 @@ void LoginWidget::provideUpdate(bool updateFound) {
 }
 
 void LoginWidget::provideUpdateIfAvailable(bool updateFound) {
-  
+
   // After checking for updates, change the login button back to normal
     ui->loginButton->setEnabled(true);
 
@@ -202,8 +202,7 @@ LoginWidget::~LoginWidget() {
  */
 void LoginWidget::on_loginButton_clicked() {
   if (ui->updateButton->isVisible() && ui->updateButton->isEnabled()) {
-    QMessageBox::StandardButton reply;
-    reply = QMessageBox::warning(this, tr("Update Available"),
+    auto reply = QMessageBox::warning(this, tr("Update Available"),
                                   tr("An update is available. If you do not update, the application might not work correctly. Do you want to continue without updating?"),
                                   QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::No) {

@@ -165,7 +165,9 @@ void DownloadMetadata::ensureFormatUpToDate() {
 
           auto position = std::find_if(states.cbegin(), states.cend(), [&descriptor](const RecordState& candidate) {return candidate.descriptor == descriptor; });
           if (position == states.cend()) {
-            throw std::runtime_error("Could not find pristine state for participant " + local.text() + ", column " + column + ", timestamp " + std::to_string(timestamp.getTime()));
+            throw std::runtime_error("Could not find pristine state for participant " + local.text()
+                + ", column " + column
+                + ", timestamp " + std::to_string(TicksSinceEpoch<std::chrono::milliseconds>(timestamp)));
           }
 
           if (position->hash) {
@@ -180,7 +182,9 @@ void DownloadMetadata::ensureFormatUpToDate() {
 
     if (!states.empty()) {
       const auto& first = states.front().descriptor;
-      throw std::runtime_error("Could not find file name information for " + std::to_string(states.size()) + " record(s), the first of which is for participant " + first.getParticipant().getLocalPseudonym().text() + ", column " + first.getColumn() + ", blinding timestamp " + std::to_string(first.getBlindingTimestamp().getTime()));
+      throw std::runtime_error("Could not find file name information for " + std::to_string(states.size()) + " record(s), the first of which is for participant " + first.getParticipant().getLocalPseudonym().text()
+          + ", column " + first.getColumn()
+          + ", blinding timestamp " + std::to_string(TicksSinceEpoch<std::chrono::milliseconds>(first.getBlindingTimestamp())));
     }
     std::filesystem::remove(legacyPristineFile);
     LOG(LOG_TAG, warning) << "Download directory metadata format upgraded. Please update your (offline) copies.";
@@ -191,38 +195,45 @@ void DownloadMetadata::ensureFormatUpToDate() {
   }
 }
 
-DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirectory, std::shared_ptr<GlobalConfiguration> globalConfig)
+DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirectory, std::shared_ptr<GlobalConfiguration> globalConfig, const Progress::OnCreation& onCreateProgress)
   : mGlobalConfig(globalConfig), mDownloadDirectory(std::filesystem::canonical(downloadDirectory)) {
   ensureFormatUpToDate();
 
   auto directory = getDirectory();
   if (std::filesystem::exists(directory)) {
+    std::vector<std::filesystem::path> participantPaths;
     for (std::filesystem::directory_iterator i(directory); i != std::filesystem::directory_iterator(); ++i) {
       if (std::filesystem::is_directory(i->path()) && !std::filesystem::equivalent(i->path(), getDirectory())) {
-        auto participantDirectory = i->path().filename();
-        for (std::filesystem::directory_iterator j(i->path()); j != std::filesystem::directory_iterator(); ++j) {
-          auto path = j->path();
-          assert(path.string().ends_with(GetFilenameExtension()));
-          auto filename = path.filename().string();
-          assert(filename.starts_with(GetFilenamePrefix()));
-          filename = filename.substr(0, filename.size() - GetFilenameExtension().size()); // Don't use path::stem, since it'll drop everything after the first period (.) instead of the last
-          assert(std::filesystem::equivalent(path, directory / participantDirectory / (filename + GetFilenameExtension())));
-          filename = filename.substr(GetFilenamePrefix().size());
+        participantPaths.emplace_back(i->path());
+      }
+    }
 
-          auto serialized = ReadFile(path);
-          boost::property_tree::ptree properties;
-          std::istringstream source(serialized);
-          boost::property_tree::read_json(source, properties);
-          auto record = DeserializeProperties<RecordState>(properties, MultiTypeTransform());
+    auto progress = Progress::Create(participantPaths.size(), onCreateProgress);
+    for (const auto& participantPath : participantPaths) {
+      auto participantDirectory = participantPath.filename();
+      progress->advance("Participant " + participantDirectory.string());
+      for (std::filesystem::directory_iterator j(participantPath); j != std::filesystem::directory_iterator(); ++j) {
+        auto path = j->path();
+        assert(path.string().ends_with(GetFilenameExtension()));
+        auto filename = path.filename().string();
+        assert(filename.starts_with(GetFilenamePrefix()));
+        filename = filename.substr(0, filename.size() - GetFilenameExtension().size()); // Don't use path::stem, since it'll drop everything after the first period (.) instead of the last
+        assert(std::filesystem::equivalent(path, directory / participantDirectory / (filename + GetFilenameExtension())));
+        filename = filename.substr(GetFilenamePrefix().size());
 
-          // Cache deserialized value
-          auto relative = (participantDirectory / filename).string();
-          [[maybe_unused]] auto added = mSnapshotsByRelativePath->emplace(relative, Snapshot{ serialized, record }).second;
-          assert(added);
-          added = mRelativePathsByDescriptor->emplace(record.descriptor, relative).second;
-          assert(added);
-          assert(mSnapshotsByRelativePath->size() == mRelativePathsByDescriptor->size());
-        }
+        auto serialized = ReadFile(path);
+        boost::property_tree::ptree properties;
+        std::istringstream source(serialized);
+        boost::property_tree::read_json(source, properties);
+        auto record = DeserializeProperties<RecordState>(properties, MultiTypeTransform());
+
+        // Cache deserialized value
+        auto relative = (participantDirectory / filename).string();
+        [[maybe_unused]] auto added = mSnapshotsByRelativePath->emplace(relative, Snapshot{ serialized, record }).second;
+        assert(added);
+        added = mRelativePathsByDescriptor->emplace(record.descriptor, relative).second;
+        assert(added);
+        assert(mSnapshotsByRelativePath->size() == mRelativePathsByDescriptor->size());
       }
     }
   }
