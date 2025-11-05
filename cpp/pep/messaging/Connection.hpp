@@ -122,7 +122,7 @@ private:
   void handleVersionResponse(const VersionResponse& response);
 
   // ******************** Miscellaneous ********************
-protected:
+private:
   bool prepareBodyTransfer(const networking::SizedTransfer::Result& headerResult);
   void handleError(std::exception_ptr exception);
   void handleBinaryConnectivityChange(const networking::Connection::ConnectivityChange& change);
