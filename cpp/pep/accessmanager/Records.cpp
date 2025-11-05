@@ -188,6 +188,7 @@ StructureMetadataRecord::StructureMetadataRecord(
     metadataGroup(std::move(metadataGroup)),
     subkey(std::move(key)),
     value(std::move(value)) {
+  assert((!this->tombstone || this->value.empty()) && "Tombstone with non-empty value");
   assert(!HasInternalId(subjectType));
   RandomBytes(checksumNonce, 16);
 }
@@ -206,6 +207,7 @@ StructureMetadataRecord::StructureMetadataRecord(
     metadataGroup(std::move(metadataGroup)),
     subkey(std::move(key)),
     value(std::move(value)) {
+  assert((!this->tombstone || this->value.empty()) && "Tombstone with non-empty value");
   assert(HasInternalId(subjectType));
   RandomBytes(checksumNonce, 16);
 }
