@@ -27,8 +27,8 @@ public:
     : mExistingUid(std::move(existingUid)), mNewUid(std::move(newUid)), mIsPrimaryId(isPrimaryId),mIsDisplayId(isDisplayId) { }
   std::string mExistingUid;
   std::string mNewUid;
-  bool mIsPrimaryId;
-  bool mIsDisplayId;
+  bool mIsPrimaryId = false;
+  bool mIsDisplayId = false;
 };
 
 class RemoveUserIdentifier {

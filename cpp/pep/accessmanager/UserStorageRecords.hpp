@@ -26,9 +26,9 @@ struct UserIdRecord {
   /// The identifier to register or remove for the user
   std::string identifier;
   /// Whether this identifier is the primary identifier for the user
-  bool isPrimaryId;
+  bool isPrimaryId = false;
   /// Whether this identifier should be used as the display identifier for the user
-  bool isDisplayId;
+  bool isDisplayId = false;
 
   static inline const std::tuple RecordIdentifier{
     &UserIdRecord::internalUserId,
