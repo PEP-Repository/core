@@ -1834,7 +1834,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
 }
 
 /* Core operations on Metadata */
-std::optional<int64_t> AccessManager::Backend::Storage::findInternalId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
+std::optional<int64_t> AccessManager::Backend::Storage::findInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
   assert(HasInternalId(subjectType));
   switch (subjectType) {
   case StructureMetadataType::User:
@@ -1847,7 +1847,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalId(Structure
   }
 }
 
-int64_t AccessManager::Backend::Storage::getInternalId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
+int64_t AccessManager::Backend::Storage::getInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
   assert(HasInternalId(subjectType));
   switch (subjectType) {
   case StructureMetadataType::User:
@@ -1886,7 +1886,7 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
     StructureMetadataType subjectType,
     std::string_view subject) const {
   if (HasInternalId(subjectType)) {
-    return getStructureMetadataKeys(timestamp, subjectType, getInternalId(subjectType, subject, timestamp));
+    return getStructureMetadataKeys(timestamp, subjectType, getInternalSubjectId(subjectType, subject, timestamp));
   }
   using namespace std::ranges;
   return RangeToVector(
@@ -1940,7 +1940,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
   if (hasInternalId) {
     internalSubjectIds.reserve(filter.subjects.size());
     for (auto& subject : filter.subjects) {
-      auto internalSubjectId = findInternalId(subjectType, subject, timestamp);
+      auto internalSubjectId = findInternalSubjectId(subjectType, subject, timestamp);
       if (internalSubjectId) {
         internalSubjectIds.try_emplace(*internalSubjectId, subject);
       }
@@ -1974,7 +1974,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
         }
         else {
           // otherwise, we had an empty filter. We'll need to look up a matching subject in the database.
-          auto foundSubject = getSomeSubjectForInternalId(subjectType, *internalSubjectId, timestamp);
+          auto foundSubject = getSubjectForInternalId(subjectType, *internalSubjectId, timestamp);
           if (!foundSubject) {
             throw std::runtime_error("Encountered an internalSubjectId, for which no subject could be found.");
           }
@@ -2001,7 +2001,7 @@ void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType
   case StructureMetadataType::ParticipantGroup: subjectExists = hasParticipantGroup(subject); break;
   case StructureMetadataType::User:
   case StructureMetadataType::UserGroup:
-    internalSubjectId = findInternalId(subjectType, subject);
+    internalSubjectId = findInternalSubjectId(subjectType, subject);
     subjectExists = internalSubjectId.has_value();
     break;
   }
@@ -2031,7 +2031,7 @@ void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType
 
 void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key) {
   if (HasInternalId(subjectType)) {
-    int64_t internalId = getInternalId(subjectType, subject);
+    int64_t internalId = getInternalSubjectId(subjectType, subject);
     removeStructureMetadata(subjectType, internalId, key);
     return;
   }
