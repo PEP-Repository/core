@@ -503,18 +503,21 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     const std::vector<std::string>& columns=std::vector<std::string>());
 
   /// Enumerate cells by ID.
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
   rxcpp::observable<rxcpp::observable<std::shared_ptr<EnumerateResult>>>
   enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<SignedTicket2> ticket);
 
   /// Get (meta)data decryption keys.
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
   rxcpp::observable<rxcpp::observable<FileKey>>
   getKeys(
     const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
     std::shared_ptr<SignedTicket2> ticket);
 
   /// Retrieve cell contents.
+  /// \param batchedSubjects Must be split in batches of \c DATA_RETRIEVAL_BATCH_SIZE (usually by \c getKeys)
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
   /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
-  /// \remark Assumes \p batchedSubjects is properly batched (by \c getKeys)
   rxcpp::observable<rxcpp::observable<RetrievePage>>
   retrieveData2(
     const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
