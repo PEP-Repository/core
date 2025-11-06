@@ -154,10 +154,9 @@ CoreClient::retrieveData2(
               struct fileContext {
                 FileKey fileKey;
                 std::uint64_t bytesWritten = 0;
-                std::uint32_t nextPage = 0;
               };
               struct batchContext {
-                std::size_t latestIndex = 0;
+                DataPayloadPageStreamOrder order;
                 std::vector<fileContext> files;
               };
 
@@ -174,16 +173,17 @@ CoreClient::retrieveData2(
                   .map([](DataPayloadPage page) {
                     return std::optional{std::move(page)};
                   })
-                  .concat(rxcpp::observable<>::just(std::optional<DataPayloadPage>())) // Add nullopt sentinel
+                  // Add nullopt sentinel to make sure we check if all files have been fully retrieved
+                  .concat(rxcpp::observable<>::just(std::optional<DataPayloadPage>()))
                   .map([ctx](const std::optional<DataPayloadPage>& page) -> std::optional<RetrievePage> {
                     const auto index = page ? page->mIndex : ctx->files.size();
                     if (page && index >= ctx->files.size()) {
-                      throw std::runtime_error(std::format("Received too large file index: {} >= {}",
+                      throw std::runtime_error(std::format("Received out-of-bounds file index: {} >= {}",
                           index, ctx->files.size()));
                     }
 
                     // Check previous file(s)
-                    for (auto betweenIdx = ctx->latestIndex; betweenIdx < index; ++betweenIdx) {
+                    for (auto betweenIdx = ctx->order.latestFileIndex(); betweenIdx < index; ++betweenIdx) {
                       const fileContext& prevFileCtx = ctx->files[betweenIdx];
                       const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
                       if (prevFileCtx.bytesWritten < prevEntry.mFileSize) {
@@ -192,23 +192,12 @@ CoreClient::retrieveData2(
                             betweenIdx, prevFileCtx.bytesWritten, prevEntry.mFileSize));
                       }
                     }
-                    ctx->latestIndex = index;
+                    // Return when we received the sentinel: we just wanted to check remaining files
                     if (!page) { return {}; }
 
-                    if (index < ctx->latestIndex) {
-                      throw std::runtime_error(std::format(
-                          "Received out-of-order file: expected {}+ but got {}",
-                          ctx->latestIndex, index));
-                    }
+                    ctx->order.check(*page);
 
                     fileContext& file = ctx->files[index];
-                    if (file.nextPage != page->mPageNumber) {
-                      throw std::runtime_error(std::format(
-                          "Received out-of-order page for file {}: expected {} but got {}",
-                          index, file.nextPage, page->mPageNumber));
-                    }
-                    ++file.nextPage;
-
                     const EnumerateResult& entry = *file.fileKey.entry;
                     RetrievePage retrievedPage{
                       .fileIndex = file.fileKey.fileIndex,
