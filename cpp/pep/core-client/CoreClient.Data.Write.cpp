@@ -255,7 +255,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
 
       // We have all the current (meta)data and polymorphic keys for the entries whose metadata we're going to update. Decrypt the keys now...
       return this->unblindAndDecryptKeys(ConvertDataEnumerationEntries(std::move(*enumEntries), *ctx->pseudonyms), signedTicket)
-        .flat_map([this, ctx, enumEntryIndices = MakeSharedCopy(std::move(enumEntryIndices))](const std::vector<AESKey>& enumKeys) { // ... then use the decrypted keys to prepare our request entries...
+        .flat_map([this, ctx, enumEntryIndices = PtrAsConst(MakeSharedCopy(std::move(enumEntryIndices)))
+          ](const std::vector<AESKey>& enumKeys) { // ... then use the decrypted keys to prepare our request entries...
         if (enumKeys.size() != enumEntryIndices->size()) {
           throw std::runtime_error("Received unexpected number of plaintext keys");
         }
