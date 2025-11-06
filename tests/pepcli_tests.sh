@@ -489,14 +489,14 @@ if should_run_test structure-metadata; then
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
   meta_value_retrieved="$(pepcli --oauth-token-group "Research Assessor" structure-metadata participant-group get participantGroupWithMetadata --key mygroup:mykey)"
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
-  meta_value_retrieved="$(pepcli --oauth-token-group "Research Assessor" structure-metadata user-group get userGroupWithMetadata --key mygroup:mykey)"
+  meta_value_retrieved="$(pepcli --oauth-token-group "Access Administrator" structure-metadata user-group get userGroupWithMetadata --key mygroup:mykey)"
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
 
   # Test metadata using multiple userIDs belonging to the same user
   pepcli --oauth-token-group "Access Administrator" user create userWithMetadata
   pepcli --oauth-token-group "Access Administrator" user addIdentifier userWithMetadata userWithMetadataAlternative
   pepcli --oauth-token-group "Access Administrator" structure-metadata user set userWithMetadata --key mygroup:mykey --value "$meta_value"
-  meta_value_retrieved="$(pepcli --oauth-token-group "Research Assessor" structure-metadata user get userWithMetadataAlternative --key mygroup:mykey)"
+  meta_value_retrieved="$(pepcli --oauth-token-group "Access Administrator" structure-metadata user get userWithMetadataAlternative --key mygroup:mykey)"
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
 
   # Clean up what we created in the DB
