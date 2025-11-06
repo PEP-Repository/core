@@ -479,19 +479,32 @@ if should_run_test structure-metadata; then
   # Add some entries for other metadata types
   pepcli --oauth-token-group "Data Administrator" ama columnGroup create columnGroupWithMetadata
   pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user group create userGroupWithMetadata
   pepcli --oauth-token-group "Data Administrator" structure-metadata column-group set columnGroupWithMetadata --key mygroup:mykey --value "$meta_value"
   pepcli --oauth-token-group "Data Administrator" structure-metadata participant-group set participantGroupWithMetadata --key mygroup:mykey --value "$meta_value"
+  pepcli --oauth-token-group "Access Administrator" structure-metadata user-group set userGroupWithMetadata --key mygroup:mykey --value "$meta_value"
 
   # Check presence of entries
   meta_value_retrieved="$(pepcli --oauth-token-group "Research Assessor" structure-metadata column-group get columnGroupWithMetadata --key mygroup:mykey)"
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
   meta_value_retrieved="$(pepcli --oauth-token-group "Research Assessor" structure-metadata participant-group get participantGroupWithMetadata --key mygroup:mykey)"
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
+  meta_value_retrieved="$(pepcli --oauth-token-group "Access Administrator" structure-metadata user-group get userGroupWithMetadata --key mygroup:mykey)"
+  [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
+
+  # Test metadata using multiple userIDs belonging to the same user
+  pepcli --oauth-token-group "Access Administrator" user create userWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier userWithMetadata userWithMetadataAlternative
+  pepcli --oauth-token-group "Access Administrator" structure-metadata user set userWithMetadata --key mygroup:mykey --value "$meta_value"
+  meta_value_retrieved="$(pepcli --oauth-token-group "Access Administrator" structure-metadata user get userWithMetadataAlternative --key mygroup:mykey)"
+  [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
 
   # Clean up what we created in the DB
   pepcli --oauth-token-group "Data Administrator" ama column remove columnWithMetadata
   pepcli --oauth-token-group "Data Administrator" ama columnGroup remove columnGroupWithMetadata
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user group remove userGroupWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user remove userWithMetadata
 
 fi
 

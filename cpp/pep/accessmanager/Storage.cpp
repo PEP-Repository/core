@@ -225,6 +225,7 @@ auto am_create_db(const std::string& path) {
       make_column("tombstone", &StructureMetadataRecord::tombstone),
       make_column("subjectType", &StructureMetadataRecord::subjectType),
       make_column("subject", &StructureMetadataRecord::subject),
+      make_column("internalSubjectId", &StructureMetadataRecord::internalSubjectId),
       make_column("metadataGroup", &StructureMetadataRecord::metadataGroup),
       make_column("subkey", &StructureMetadataRecord::subkey),
       make_column("value", &StructureMetadataRecord::value))
@@ -1402,6 +1403,11 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
     throw Error(oss.str());
   }
 
+  // Remove metadata
+  for (StructureMetadataKey& key : getStructureMetadataKeys(TimeNow(), StructureMetadataType::User, internalUserId)) {
+    removeStructureMetadata(StructureMetadataType::User, internalUserId, std::move(key));
+  }
+
   for(auto& uid : getAllIdentifiersForUser(internalUserId))
     mImplementor->raw.insert(UserIdRecord(internalUserId, uid, UserIdFlags::none, true));
 }
@@ -1586,6 +1592,15 @@ int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, T
   return userGroupId.value();
 }
 
+std::optional<std::string> AccessManager::Backend::Storage::getUserGroupName(int64_t userGroupId, Timestamp at) const {
+  return RangeToOptional(
+    mImplementor->getCurrentRecords(
+      c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+      && c(&UserGroupRecord::userGroupId) == userGroupId,
+      &UserGroupRecord::name)
+  );
+}
+
 std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int64_t internalUserId, Timestamp at) const {
   using namespace std::ranges;
   std::vector<int64_t> groupIds = RangeToCollection<std::vector>(
@@ -1682,6 +1697,11 @@ void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
     std::ostringstream msg;
     msg << "Group " << Logging::Escape(name) << " still has users. Group will not be removed";
     throw Error(msg.str());
+  }
+
+  // Remove metadata
+  for (StructureMetadataKey& key : getStructureMetadataKeys(TimeNow(), StructureMetadataType::UserGroup, *userGroupId)) {
+    removeStructureMetadata(StructureMetadataType::UserGroup, *userGroupId, std::move(key));
   }
 
   mImplementor->raw.insert(UserGroupRecord(*userGroupId, name, std::nullopt, true));
@@ -1814,10 +1834,60 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
 }
 
 /* Core operations on Metadata */
+std::optional<int64_t> AccessManager::Backend::Storage::findInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
+  assert(HasInternalId(subjectType));
+  switch (subjectType) {
+  case StructureMetadataType::User:
+    return findInternalUserId(subject, at);
+  case StructureMetadataType::UserGroup:
+    return findUserGroupId(subject, at);
+    break;
+  default:
+    throw std::logic_error("Specificed subjectType does not have an internalId");
+  }
+}
+
+int64_t AccessManager::Backend::Storage::getInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
+  assert(HasInternalId(subjectType));
+  switch (subjectType) {
+  case StructureMetadataType::User:
+    return getInternalUserId(subject, at);
+  case StructureMetadataType::UserGroup:
+    return getUserGroupId(subject, at);
+    break;
+  default:
+    throw std::logic_error("Specificed subjectType does not have an internalId");
+  }
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getSubjectForInternalId(
+  StructureMetadataType subjectType, int64_t internalId, Timestamp at) const {
+  assert(HasInternalId(subjectType));
+  switch (subjectType) {
+  case StructureMetadataType::User: {
+    auto identifier = getDisplayIdentifierForUser(internalId, at);
+    if (identifier)
+      return identifier;
+    auto identifiers = getAllIdentifiersForUser(internalId, at);
+    if (identifiers.size() > 0) {
+      return std::ranges::min(getAllIdentifiersForUser(internalId, at));
+    }
+    return std::nullopt;
+  }
+  case StructureMetadataType::UserGroup:
+    return getUserGroupName(internalId, at);
+  default:
+    throw std::logic_error("Specificed subjectType does not have an internalId");
+  }
+}
+
 std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureMetadataKeys(
     const Timestamp timestamp,
     StructureMetadataType subjectType,
     std::string_view subject) const {
+  if (HasInternalId(subjectType)) {
+    return getStructureMetadataKeys(timestamp, subjectType, getInternalSubjectId(subjectType, subject, timestamp));
+  }
   using namespace std::ranges;
   return RangeToVector(
     mImplementor->getCurrentRecords(
@@ -1833,8 +1903,30 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
   );
 }
 
+std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureMetadataKeys(
+    const Timestamp timestamp,
+    StructureMetadataType subjectType,
+    int64_t internalSubjectId) const {
+  assert(HasInternalId(subjectType));
+  using namespace std::ranges;
+  return RangeToVector(
+    mImplementor->getCurrentRecords(
+      c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
+      && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
+      && c(&StructureMetadataRecord::internalSubjectId) == internalSubjectId,
+      &StructureMetadataRecord::metadataGroup,
+      &StructureMetadataRecord::subkey)
+    | views::transform([](auto tuple) {
+      auto& [metadataGroup, subkey] = tuple;
+      return StructureMetadataKey(std::move(metadataGroup), std::move(subkey));
+    })
+  );
+}
+
 std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructureMetadata(const Timestamp timestamp, StructureMetadataType subjectType, const StructureMetadataFilter& filter) const {
   using namespace std::ranges;
+
+  bool hasInternalId = HasInternalId(subjectType);
 
   std::vector<std::reference_wrapper<const std::string>> metadataGroupFilters;
   std::vector<std::string> metadataKeyFilters;
@@ -1844,20 +1936,51 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
     else { metadataKeyFilters.emplace_back(key.toString()); }
   }
 
+  std::unordered_map<int64_t, std::string> internalSubjectIds; //This is a map, so we can translate the internalIds back to a subject, as specified in the filter.
+  if (hasInternalId) {
+    internalSubjectIds.reserve(filter.subjects.size());
+    for (auto& subject : filter.subjects) {
+      auto internalSubjectId = findInternalSubjectId(subjectType, subject, timestamp);
+      if (internalSubjectId) {
+        internalSubjectIds.try_emplace(*internalSubjectId, subject);
+      }
+    }
+  }
+
   return RangeToVector(
     mImplementor->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
-      && (filter.subjects.empty() || in(&StructureMetadataRecord::subject, filter.subjects))
+      // If we have no subject filters, we return all subjects. If we do have subject filters, we either need to check directly, or via internalId.
+      // If we have a non-empty filter, it is still possible that internalSubjectIds is empty. because no subjects match the filter.
+      // But in that case, we don't want to return everything. That is why we don't check the emptiness of internalSubjectIds.
+      && (filter.subjects.empty() || hasInternalId || in(&StructureMetadataRecord::subject, filter.subjects))
+      && (filter.subjects.empty() || !hasInternalId || in(&StructureMetadataRecord::internalSubjectId, RangeToVector(views::keys(internalSubjectIds))))
       && ((metadataGroupFilters.empty() && metadataKeyFilters.empty())
         || in(&StructureMetadataRecord::metadataGroup, metadataGroupFilters)
         || in(conc(conc(&StructureMetadataRecord::metadataGroup, ":"), &StructureMetadataRecord::subkey), metadataKeyFilters)),
       &StructureMetadataRecord::subject,
+      &StructureMetadataRecord::internalSubjectId,
       &StructureMetadataRecord::metadataGroup,
       &StructureMetadataRecord::subkey,
       &StructureMetadataRecord::value)
-    | views::transform([](auto tuple) {
-      auto& [subject, metadataGroup, subkey, value] = tuple;
+    | views::transform([this, &internalSubjectIds, subjectType, timestamp](auto tuple) {
+      auto& [subject, internalSubjectId, metadataGroup, subkey, value] = tuple;
+      if (HasInternalId(subjectType)) {
+        assert(internalSubjectId.has_value());
+        if (internalSubjectIds.size() > 0) {
+          // If internalSubjectIds is non-empty, the current internalSubjectId should be in the map.
+          subject=internalSubjectIds.at(*internalSubjectId);
+        }
+        else {
+          // otherwise, we had an empty filter. We'll need to look up a matching subject in the database.
+          auto foundSubject = getSubjectForInternalId(subjectType, *internalSubjectId, timestamp);
+          if (!foundSubject) {
+            throw std::runtime_error("Encountered an internalSubjectId, for which no subject could be found.");
+          }
+          subject = *foundSubject;
+        }
+      }
       return StructureMetadataEntry{
         .subjectKey = {
           .subject = std::move(subject),
@@ -1871,10 +1994,16 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
 
 void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key, std::string_view value) {
   bool subjectExists = false;
+  std::optional<int64_t> internalSubjectId;
   switch (subjectType) {
   case StructureMetadataType::Column:           subjectExists = hasColumn(subject); break;
   case StructureMetadataType::ColumnGroup:      subjectExists = hasColumnGroup(subject); break;
   case StructureMetadataType::ParticipantGroup: subjectExists = hasParticipantGroup(subject); break;
+  case StructureMetadataType::User:
+  case StructureMetadataType::UserGroup:
+    internalSubjectId = findInternalSubjectId(subjectType, subject);
+    subjectExists = internalSubjectId.has_value();
+    break;
   }
   if (!subjectExists) {
     std::ostringstream msg;
@@ -1882,15 +2011,31 @@ void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType
     throw Error(std::move(msg).str());
   }
 
-  mImplementor->raw.insert(StructureMetadataRecord(
+  if (internalSubjectId) {
+    mImplementor->raw.insert(StructureMetadataRecord(
+      subjectType,
+      *internalSubjectId,
+      std::move(key.metadataGroup),
+      std::move(key.subkey),
+      std::vector(value.begin(), value.end())));
+  }
+  else {
+    mImplementor->raw.insert(StructureMetadataRecord(
       subjectType,
       std::move(subject),
       std::move(key.metadataGroup),
       std::move(key.subkey),
       std::vector(value.begin(), value.end())));
+  }
 }
 
 void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key) {
+  if (HasInternalId(subjectType)) {
+    int64_t internalId = getInternalSubjectId(subjectType, subject);
+    removeStructureMetadata(subjectType, internalId, key);
+    return;
+  }
+
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, subject);
   if (std::ranges::find(keys, key) == keys.end()) {
     std::ostringstream msg;
@@ -1901,6 +2046,26 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   mImplementor->raw.insert(StructureMetadataRecord(
       subjectType,
       std::move(subject),
+      std::move(key.metadataGroup),
+      std::move(key.subkey),
+      {},
+      true));
+}
+
+void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataType subjectType, int64_t internalSubjectId, StructureMetadataKey key) {
+  assert(HasInternalId(subjectType));
+  const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, internalSubjectId);
+
+  if (std::ranges::find(keys, key) == keys.end()) {
+    std::ostringstream msg;
+    msg << "subject does not exist or does not contain metadata key "
+        << Logging::Escape(key.toString());
+    throw Error(std::move(msg).str());
+  }
+
+  mImplementor->raw.insert(StructureMetadataRecord(
+      subjectType,
+      internalSubjectId,
       std::move(key.metadataGroup),
       std::move(key.subkey),
       {},

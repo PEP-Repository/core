@@ -9,6 +9,10 @@ namespace pep {
 // All record types also have an acssociated struct type containing only the data about the columns, access modes, etc. So no tombstones, timestamps, seqno's, and other metadata.
 // This allows for sets of named structs that can be equality checked on only these datapoints.
 
+inline bool HasInternalId(StructureMetadataType subjectType) {
+  return subjectType == StructureMetadataType::User || subjectType == StructureMetadataType::UserGroup;
+}
+
 struct StructureMetadataFilter {
   /// Names of subjects to include (e.g. column names).
   /// Leave empty to include all subjects.
@@ -294,12 +298,32 @@ struct ParticipantGroupAccessRule {
 struct StructureMetadataRecord {
   StructureMetadataRecord() = default;
   StructureMetadataRecord(
-      StructureMetadataType subjectType,
-      std::string subject,
-      std::string metadataGroup,
-      std::string key,
-      std::vector<char> value,
-      bool tombstone = false);
+    StructureMetadataType subjectType,
+    std::string subject,
+    std::string metadataGroup,
+    std::string key,
+    std::vector<char> value,
+    bool tombstone = false);
+  // I would have liked to include the `subject` field as well for records with an internalSubjectId, so we can store the
+  // actual subject name that was used when creating the record. This could then be used for e.g.
+  // Storage::getSomeSubjectForInternalId, to know which subject name to choose.
+  // But this does not work nicely with e.g. GetCurrentRecords, unless you make sure you always store the original subject
+  // name for follow-up records of the same metadata entry.
+  // For example, let's say a user does the following:
+  //   pepcli user create JohnSmith
+  //   pepcli structure-metadata user set --key foo:bar --value hello JohnSmith
+  //   pepcli user addIdentifier JohnS
+  //   pepcli user removeIdentifier JohnSmith
+  //   pepcli structure-metadata user set --key foo:bar --value helloAgain JohnS
+  // You might expect the record that is created in the last step to use JohnS as subject name. But you need to use JohnSmith,
+  // even though that identifier no longer exists.
+   StructureMetadataRecord(
+     StructureMetadataType subjectType,
+     int64_t internalSubjectId,
+     std::string metadataGroup,
+     std::string key,
+     std::vector<char> value,
+     bool tombstone = false);
   uint64_t checksum() const;
 
   int64_t seqno{};
@@ -309,11 +333,13 @@ struct StructureMetadataRecord {
 
   std::underlying_type_t<StructureMetadataType> subjectType{};
   std::string subject;
+  std::optional<int64_t> internalSubjectId;
   std::string metadataGroup;
   std::string subkey;
   static inline const std::tuple RecordIdentifier{
     &StructureMetadataRecord::subjectType,
     &StructureMetadataRecord::subject,
+    &StructureMetadataRecord::internalSubjectId,
     &StructureMetadataRecord::metadataGroup,
     &StructureMetadataRecord::subkey,
   };

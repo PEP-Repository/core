@@ -48,6 +48,8 @@ const std::map<std::string, StructureMetadataType> MetadataTypeMapping{
   {"column", StructureMetadataType::Column},
   {"column-group", StructureMetadataType::ColumnGroup},
   {"participant-group", StructureMetadataType::ParticipantGroup},
+  {"user", StructureMetadataType::User},
+  {"user-group", StructureMetadataType::UserGroup},
 };
 
 StructureMetadataType ParseMetadataType(const std::string& type) {

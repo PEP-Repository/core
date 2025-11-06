@@ -508,7 +508,31 @@ TEST_F(AccessManagerBackendTest, handleSetMetadataRequestNoAccess) {
       .subjectType = StructureMetadataType::Column,
   };
   EXPECT_THROW(backend->handleSetStructureMetadataRequestHead(request, constants.userGroup1), Error)
-      << "only Data Administrator should be able to set metadata";
+      << "only Data Administrator should be able to set column metadata";
+  EXPECT_NO_THROW(backend->handleSetStructureMetadataRequestHead(request, UserGroup::DataAdministrator))
+      << "Data Administrator should be able to set column metadata";
+
+  request.subjectType = StructureMetadataType::UserGroup;
+  EXPECT_THROW(backend->handleSetStructureMetadataRequestHead(request, constants.userGroup1), Error)
+      << "only Access Administrator should be able to set user-group metadata";
+  EXPECT_NO_THROW(backend->handleSetStructureMetadataRequestHead(request, UserGroup::AccessAdministrator))
+      << "Access Administrator should be able to set user-group metadata";
+}
+
+TEST_F(AccessManagerBackendTest, handleGetMetadataRequestNoAccess) {
+  StructureMetadataRequest request{
+    .subjectType = StructureMetadataType::Column,
+    .subjects = {},
+    .keys = {}
+  };
+  EXPECT_NO_THROW(backend->handleStructureMetadataRequest(request, constants.userGroup1))
+      << "Any group should be able to get column metadata";
+
+  request.subjectType = StructureMetadataType::UserGroup;
+  EXPECT_THROW(backend->handleStructureMetadataRequest(request, constants.userGroup1), Error)
+      << "only Access Administrator should be able to get user-group metadata";
+  EXPECT_NO_THROW(backend->handleStructureMetadataRequest(request, UserGroup::AccessAdministrator))
+      << "Access Administrator should be able to get user-group metadata";
 }
 
 TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_all_groups_for_existing_user) {
