@@ -5,6 +5,7 @@
 #include <pep/utils/Configuration.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace {
