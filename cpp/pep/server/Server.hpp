@@ -1,12 +1,11 @@
 #pragma once
 
-#include <pep/utils/File.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
-#include <pep/server/MonitoringSerializers.hpp>
-#include <pep/async/IoContext_fwd.hpp>
-#include <pep/messaging/HousekeepingMessages.hpp>
+#include <pep/server/MonitoringMessages.hpp>
+#include <pep/utils/File.hpp>
 
 namespace pep {
 
@@ -50,8 +49,6 @@ protected:
 
   Server(std::shared_ptr<Parameters> parameters);
 
-  virtual std::string makeSerializedPingResponse(const PingRequest& request) const;
-
   virtual std::shared_ptr<prometheus::Registry> getMetricsRegistry();
 
   virtual std::unordered_set<std::string> getAllowedChecksumChainRequesters();
@@ -78,7 +75,6 @@ protected:
   static std::filesystem::path EnsureDirectoryPath(std::filesystem::path);
 
 private:
-  messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
   messaging::MessageBatches handleMetricsRequest(std::shared_ptr<SignedMetricsRequest> signedRequest);
   messaging::MessageBatches handleChecksumChainNamesRequest(std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest);
   messaging::MessageBatches handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest);

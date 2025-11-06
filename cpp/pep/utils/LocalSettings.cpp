@@ -410,14 +410,12 @@ LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
     //NOLINTNEXTLINE(concurrency-mt-unsafe) std::getenv is thread safe as long as we do not setenv/unsetenv/putenv
     char* homeDir = std::getenv("HOME");
     if(!homeDir) {
-      size_t initBufSize;
+      size_t initBufSize{1024};
       if (auto ret = sysconf(_SC_GETPW_R_SIZE_MAX); ret != -1) {
         initBufSize = static_cast<size_t>(ret);
-      } else {
-        initBufSize = 1024;
       }
       std::vector<char> buf(initBufSize);
-      passwd pwdBuf{}, *result;
+      passwd pwdBuf{}, *result{};
       while (true) {
         auto err = getpwuid_r(getuid(), &pwdBuf, buf.data(), buf.size(), &result);
         if (!err) {

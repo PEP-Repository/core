@@ -29,9 +29,11 @@ Checks:
 
   - concurrency-*
 
+  - cppcoreguidelines-avoid-capturing-lambda-coroutines
   - cppcoreguidelines-avoid-goto
   - cppcoreguidelines-avoid-non-const-global-variables
   - cppcoreguidelines-avoid-reference-coroutine-parameters
+  - cppcoreguidelines-init-variables
   - cppcoreguidelines-interfaces-global-init
   - cppcoreguidelines-missing-std-forward
   - cppcoreguidelines-narrowing-conversions
@@ -47,7 +49,7 @@ Checks:
   - google-global-names-in-headers
   - google-readability-casting
   # Don't enable as it is really slow: https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/2176#note_51237
-  #- google-runtime-int # Prefer (sized) typedefs where possible
+  #- google-runtime-int # Prefer (sized) typedefs or auto where possible
   - google-upgrade-googletest-case
   - hicpp-exception-baseclass
 
@@ -67,6 +69,7 @@ Checks:
   - misc-unused-using-decls
   - misc-use-internal-linkage
 
+  - modernize-avoid-c-arrays
   - modernize-deprecated-headers
   - modernize-replace-auto-ptr
   - modernize-shrink-to-fit

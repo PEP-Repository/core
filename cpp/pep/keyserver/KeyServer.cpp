@@ -8,6 +8,7 @@
 #include <pep/auth/FacilityType.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
 
 namespace pep {
@@ -20,7 +21,8 @@ tokenBlocking::TokenIdentifier Identifiers(const OAuthToken& token) {
   return {
       .subject = token.getSubject(),
       .userGroup = token.getGroup(),
-      .issueDateTime = pep::Timestamp{token.getIssuedAt() * 1000}};
+      .issueDateTime = token.getIssuedAt(),
+  };
 }
 
 std::unique_ptr<tokenBlocking::Blocklist> CreateBlocklist(const KeyServer::Parameters& parameters) {
@@ -115,6 +117,10 @@ void KeyServer::Parameters::check() const {
   Server::Parameters::check();
 }
 
+messaging::MessageBatches KeyServer::handlePingRequest(std::shared_ptr<PingRequest> request) {
+  return messaging::BatchSingleMessage(Serialization::ToString(PingResponse(request->mId)));
+}
+
 messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
     std::shared_ptr<EnrollmentRequest> enrollmentRequest) {
   checkValid(*enrollmentRequest);
@@ -148,7 +154,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
       .metadata{
           .note = std::move(request.note),
           .issuer = signedRequest->getLeafCertificateCommonName(),
-          .creationDateTime = Timestamp{}}};
+          .creationDateTime = TimeNow()}};
   entry.id = mBlocklist->add(entry.target, entry.metadata);
   return messaging::BatchSingleMessage(TokenBlockingCreateResponse{std::move(entry)});
 }
@@ -172,6 +178,7 @@ KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
     mBlocklist(CreateBlocklist(*parameters)) {
   RegisterRequestHandlers(
       *this,
+      &KeyServer::handlePingRequest,
       &KeyServer::handleUserEnrollmentRequest,
       &KeyServer::handleTokenBlockingListRequest,
       &KeyServer::handleTokenBlockingCreateRequest,
@@ -191,7 +198,7 @@ void KeyServer::checkValid(const EnrollmentRequest& request) const {
     throw Error("Certificate does not contain an organizational unit for user enrollment request");
   }
   auto ou = request.mCertificateSigningRequest.getOrganizationalUnit().value();
-  
+
   if (CertificateSubjectToFacilityType(cn, ou) != FacilityType::Unknown) {
     throw Error("Invalid certificate subject for user enrollment request");
   }
@@ -227,11 +234,10 @@ bool KeyServer::isValid(
 
 X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigningRequest& csr) const {
   try {
-    constexpr auto validityInSeconds = std::chrono::duration_cast<std::chrono::seconds>(validityTimeOfGeneratedCertificates);
     const auto certificate = csr.signCertificate(
         mClientCACertificateChain.empty() ? X509Certificate() : *mClientCACertificateChain.begin(),
         mClientCAPrivateKey,
-        validityInSeconds);
+        validityTimeOfGeneratedCertificates);
     assert(GetFacilityType(certificate) == FacilityType::User);
     LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
                         << " in OU=" << csr.getOrganizationalUnit().value_or("");

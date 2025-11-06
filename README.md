@@ -9,7 +9,7 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
 1. Install required packages (ubuntu packages in monospace)
    - `git`
    - conan (e.g. via `pipx`)
-   - `cmake`, preferably 3.23 or newer (see https://apt.kitware.com/ for how to get this for older versions of debian-based OSs)
+   - `cmake` 3.28 or newer (see https://apt.kitware.com/ for how to get this for older versions of debian-based OSs)
    - ninja (`ninja-build`)
    - `clang` (v18 is known to work (01-2024); see https://apt.llvm.org/ for how to get recent versions for older versions of debian-based OSs) (`g++` supported but not recommended for compiler performance reasons related to templates & RxCpp)
    - C++ STL, e.g. `libstdc++-dev` (v13 is known to work (01-2024), see <https://launchpad.net/~ubuntu-toolchain-r/+archive/ubuntu/test> for how to get recent versions like `libstdc++-13-dev` on older Ubuntu-based OSs)
@@ -93,7 +93,7 @@ Building on Windows can be done very similar to on \*nix.
 2. Install Conan: see [Conan documentation](docs/public/development/cpp/conan.md), or via `winget install conan`
 3. Optionally (recommended for ease of use) enable creation of symbolic links:
    1. First in the Windows settings by enabling 'Developer Mode'
-   2. Then in git via `git config --global core.symlinks true` (if you did this with an existing repo, you may need to remove the `--global` flag and do a `git restore ./conanfile.py ./ci_cd/conan` after)
+   2. Then in git via `git config --global core.symlinks true` (if you did this with an existing repo, you may need to remove the `--global` flag and do a `git restore ./conanfile.py` after)
    3. **Alternatively**: use `./docker-build/builder/conan/conanfile.py` instead of `./` in `conan install` (or just use `.\scripts\cmake-vs.bat`)
 4. Clone repository including submodules (`--recurse-submodules`)
 5. When using Visual Studio, you may use `.\scripts\cmake-vs.bat` inside a Visual Studio command prompt and open the generated solution. Otherwise, proceed like on \*nix

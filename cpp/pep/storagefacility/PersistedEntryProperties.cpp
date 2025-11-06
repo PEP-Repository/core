@@ -45,6 +45,16 @@ void SetPersistedEntryProperty<uint64_t>(PersistedEntryProperties& destination, 
 }
 
 template <>
+Timestamp ExtractPersistedEntryProperty<Timestamp>(PersistedEntryProperties& source, const std::string& key) {
+  return Timestamp(std::chrono::milliseconds{ExtractPersistedEntryProperty<std::uint64_t>(source, key)});
+}
+
+template <>
+void SetPersistedEntryProperty<Timestamp>(PersistedEntryProperties& destination, const std::string& key, const Timestamp& value) {
+  SetPersistedEntryProperty(destination, key, static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(value)));
+}
+
+template <>
 EncryptionScheme ExtractPersistedEntryProperty<EncryptionScheme>(PersistedEntryProperties& source, const std::string& key) {
   return EncryptionScheme(ExtractPersistedEntryProperty<uint8_t>(source, key));
 }

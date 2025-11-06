@@ -1,6 +1,11 @@
-#include <pep/castor/BulkRetrieveChildren.hpp>
 #include <pep/castor/SurveyDataPoint.hpp>
+
+#include <pep/async/RxIterate.hpp>
+#include <pep/castor/BulkRetrieveChildren.hpp>
 #include <pep/castor/Ptree.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 namespace pep {
 namespace castor {
@@ -26,8 +31,8 @@ rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyDataPoint::BulkRetriev
 
   return spis // Get SPIs
     .flat_map([object](std::shared_ptr<SurveyPackageInstance> spi) { // Associate every SPI with its survey instance IDs
-    return rxcpp::observable<>::iterate(spi->getSurveyInstanceIds())
-      .map([spi](const std::string& id) {return std::make_pair(id, spi); });
+    return RxIterate(spi->getSurveyInstanceIds())
+      .map([spi](std::string id) {return std::make_pair(std::move(id), spi); });
       })
     .reduce( // Collect SPIs and survey instance IDs into a map for easy lookup
       std::make_shared<SpisBySurveyInstanceId>(),

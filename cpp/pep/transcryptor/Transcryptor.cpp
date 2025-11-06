@@ -366,10 +366,9 @@ Transcryptor::handleLogIssuedTicketRequest(
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " finishing up";
   auto result = messaging::BatchSingleMessage(
       LogIssuedTicketResponse(
-        Signature::create(
+        Signature::Make(
           request->mTicket.mData,
-          this->getCertificateChain(),
-          this->getPrivateKey()
+          *this->getSigningIdentity()
         )
       )
     );

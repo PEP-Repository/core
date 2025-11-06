@@ -5,11 +5,11 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/authserver/AuthserverMessages.hpp>
-#include <pep/messaging/ServerConnection.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 
 namespace pep {
 
-class AuthserverBackend {
+class AuthserverBackend : public MessageSigner {
 public:
   class Parameters {
   public:
@@ -18,11 +18,8 @@ public:
     std::shared_ptr<messaging::ServerConnection> getAccessManager() const;
     void setAccessManager(std::shared_ptr<messaging::ServerConnection> accessManager);
 
-    const X509CertificateChain& getCertificateChain() const;
-    void setCertificateChain(const X509CertificateChain& certificateChain);
-
-    const AsymmetricKey& getPrivateKey() const;
-    void setPrivateKey(const AsymmetricKey& privateKey);
+    std::shared_ptr<const X509Identity> getSigningIdentity() const;
+    void setSigningIdentity(std::shared_ptr<const X509Identity> identity);
 
     std::chrono::seconds getTokenExpiration() const;
 
@@ -34,8 +31,7 @@ public:
 
   private:
     std::shared_ptr<messaging::ServerConnection> accessManager;
-    X509CertificateChain certificateChain;
-    AsymmetricKey privateKey;
+    std::shared_ptr<const X509Identity> signingIdentity;
     std::chrono::seconds tokenExpiration = std::chrono::seconds::zero();
     std::string oauthTokenSecret;
     std::optional<std::filesystem::path> storageFile;
@@ -70,9 +66,7 @@ public:
 private:
   void migrateDatabase(const std::filesystem::path& storageFile);
 
-  std::shared_ptr<messaging::ServerConnection> mAccessManager;
-  X509CertificateChain mCertificateChain;
-  AsymmetricKey mPrivateKey;
+  std::shared_ptr<AccessManagerProxy> mAccessManager;
   std::chrono::seconds mTokenExpiration;
   std::string mOauthTokenSecret;
 };

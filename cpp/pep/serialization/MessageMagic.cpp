@@ -14,22 +14,22 @@ std::string DescribeMessageMagic(MessageMagic magic) {
     .value_or("<UNKNOWN MESSAGE TYPE: " + std::to_string(magic) + ">");
 }
 
-std::string DescribeMessageMagic(const std::string& str) {
+std::string DescribeMessageMagic(std::string_view str) {
   return DescribeMessageMagic(GetMessageMagic(str));
 }
 
-MessageMagic CalculateMessageMagic(const std::string& crossPlatformName) {
+MessageMagic CalculateMessageMagic(std::string_view crossPlatformName) {
   return XXH32(crossPlatformName.data(), crossPlatformName.length(), 0xcafebabe);
 }
 
-MessageMagic GetMessageMagic(const std::string_view& str) {
+MessageMagic GetMessageMagic(std::string_view str) {
   // Make sure input is long enough to at least read the magic
   if (str.length() < sizeof(MessageMagic)) {
     LOG("GetMessageMagic", severity_level::info) << "Received a message which is shorter than " << sizeof(MessageMagic) << " bytes";
     throw SerializeException("Invalid message: too short");
   }
   static_assert(sizeof(MessageMagic) == sizeof(std::uint32_t));
-  return UnpackUint32BE(std::string(str, 0, sizeof(MessageMagic)));
+  return UnpackUint32BE(str);
 }
 
 MessageMagic PopMessageMagic(std::string& str) {

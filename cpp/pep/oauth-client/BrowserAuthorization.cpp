@@ -13,9 +13,8 @@
 
 #include <pep/utils/Win32Api.hpp>
 #if defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
-// TODO: switch to boost.process v2, since v1 is deprecated: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2646
-# include <boost/process/v1/system.hpp>
-# include <boost/process/v1/search_path.hpp>
+# include <boost/process/v2/environment.hpp>
+# include <boost/process/v2/process.hpp>
 #endif
 
 using namespace pep;
@@ -47,7 +46,7 @@ std::string GetStatusHtml(const std::optional<std::string> failure = std::nullop
       "</div>";
 }
 
-void OpenBrowser(boost::urls::url_view url) {
+void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context) {
   LOG(LOG_TAG, pep::debug) << "Opening in browser: " << url;
   if (!url.is_path_absolute())
     throw std::runtime_error("Can not open relative URLs");
@@ -64,9 +63,9 @@ void OpenBrowser(boost::urls::url_view url) {
     std::string command = "open";
 #endif
 #if defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
-    std::filesystem::path cmdPath = boost::process::v1::search_path(command);
+    auto cmdPath = boost::process::environment::find_executable(command);
     if (!cmdPath.empty()) {
-      int exitCode = boost::process::v1::system(cmdPath, std::string(url.buffer()));
+      int exitCode = boost::process::process{io_context, cmdPath, {url.buffer()}}.wait();
       if (exitCode != 0) {
         LOG(LOG_TAG, pep::warning) << "Failed to open browser. '" << command << "' returned exit code: " << exitCode;
       } else {
@@ -122,6 +121,6 @@ rxcpp::observable<AuthorizationResult> pep::BrowserAuthorization(
       return HTTPResponse("200 OK", GetStatusHtml(failure));
     }, "GET");
 
-    OpenBrowser(boost::urls::url(authorizeUri));
+    OpenBrowser(boost::urls::url(authorizeUri), *io_context);
   });
 }

@@ -9,3 +9,4 @@ target_link_libraries(${PROJECT_NAME}Ticketinglib
   ${PROJECT_NAME}RskPeplib
 )
 verify_headers_standalone(${PROJECT_NAME}Ticketinglib)
+add_unit_tests(Ticketing)

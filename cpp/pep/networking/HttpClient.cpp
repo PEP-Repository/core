@@ -304,7 +304,7 @@ void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
     return;
   }
 
-  unsigned int statuscode;
+  unsigned int statuscode{};
   responseStream >> statuscode;
   mResponse.setStatusCode(statuscode);
 
@@ -401,7 +401,7 @@ void HttpClient::handleReadChunkSize(const DelimitedTransfer::Result& result) {
 
   assert(boost::ends_with(*result, CRLF));
   std::istringstream responseStream(result->substr(0, result->size() - 2));
-  size_t chunkSize;
+  size_t chunkSize{};
   responseStream >> std::hex >> chunkSize;
 
   if (chunkSize > 0) {

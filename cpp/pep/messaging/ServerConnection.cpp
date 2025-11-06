@@ -84,21 +84,29 @@ void ServerConnection::handleConnectivityEnd() {
   mStatusSubscriber.on_completed();
 }
 
+std::shared_ptr<ServerConnection> ServerConnection::Create(std::shared_ptr<boost::asio::io_context> io_context, const EndPoint& endPoint, const std::filesystem::path& caCertFilepath) {
+  if (endPoint.hostname.empty()) {
+    throw std::runtime_error("Can't establish a server connection if host name isn't specified");
+  }
+
+  auto binaryParameters = BinaryProtocol::CreateClientParameters(*io_context, endPoint, caCertFilepath);
+  auto node = Node::Create(*binaryParameters);
+  auto connection = std::shared_ptr<ServerConnection>(new ServerConnection(node));
+  node->start().subscribe(
+    [connection](const Connection::Attempt::Result& result) { connection->handleConnectivityChange(result); },
+    [connection](std::exception_ptr error) { connection->handleConnectivityError(error); },
+    [connection]() { connection->handleConnectivityEnd(); });
+
+  return connection;
+
+}
+
 std::shared_ptr<ServerConnection> ServerConnection::TryCreate
 (std::shared_ptr<boost::asio::io_context> io_context, const EndPoint& endPoint, const std::filesystem::path& caCertFilepath) {
-  if (!endPoint.hostname.empty()) {
-    auto binaryParameters = BinaryProtocol::CreateClientParameters(*io_context, endPoint, caCertFilepath);
-
-    auto node = Node::Create(*binaryParameters);
-    auto connection = std::shared_ptr<ServerConnection>(new ServerConnection(node));
-    node->start().subscribe(
-      [connection](const Connection::Attempt::Result& result) { connection->handleConnectivityChange(result); },
-      [connection](std::exception_ptr error) { connection->handleConnectivityError(error); },
-      [connection]() { connection->handleConnectivityEnd(); });
-
-    return connection;
+  if (endPoint.hostname.empty()) {
+    return nullptr;
   }
-  return nullptr;
+  return Create(io_context, endPoint, caCertFilepath);
 }
 
 rxcpp::observable<ConnectionStatus> ServerConnection::connectionStatus() {

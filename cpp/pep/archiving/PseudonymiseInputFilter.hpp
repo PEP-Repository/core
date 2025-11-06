@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <ios>
 #include <string>
@@ -48,8 +49,8 @@ public:
       if (mBuffer.length() < static_cast<std::size_t>(amountRequested)) { // Only read and process more data when there is not enough in the cache to fill the current call.
         // Read until we have n + length of oldPseudonym chars (including what is already in preread).
         do {
-          char page[PAGE_SIZE]{};
-          auto amountReceived = boost::iostreams::read(src, page, PAGE_SIZE);
+          std::array<char, PAGE_SIZE> page{};
+          auto amountReceived = boost::iostreams::read(src, page.data(), page.size());
 
           if (amountReceived == EOF) {
             mEndOfSource = true;
@@ -61,7 +62,7 @@ public:
             return boost::iostreams::WOULD_BLOCK;
           }
           assert(amountReceived >= 0);
-          mBuffer.append(page, static_cast<size_t>(amountReceived));
+          mBuffer.append(page.data(), static_cast<size_t>(amountReceived));
 
         } while (mBuffer.length() < static_cast<std::size_t>(amountRequested));
       }

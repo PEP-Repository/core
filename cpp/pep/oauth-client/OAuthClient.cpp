@@ -66,7 +66,7 @@ namespace {
     }
 
     uint8_t get() override {
-      uint8_t raw;
+      uint8_t raw{};
       do {
         raw = mRawProvider.get();
       } while (raw >= mRawMaximum);

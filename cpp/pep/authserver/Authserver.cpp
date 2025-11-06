@@ -3,6 +3,7 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/server/MonitoringSerializers.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 
@@ -25,8 +26,7 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
   }
 
   backendParams.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
-  backendParams.setCertificateChain(getCertificateChain());
-  backendParams.setPrivateKey(getPrivateKey());
+  backendParams.setSigningIdentity(getSigningIdentity());
 }
 
 const AuthserverBackend::Parameters& Authserver::Parameters::getBackendParams() const {

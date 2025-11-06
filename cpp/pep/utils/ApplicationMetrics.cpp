@@ -33,7 +33,7 @@ namespace pep {
     }
 
     size_t result = 0;
-    int ignore;
+    int ignore{};
 
     infile >> ignore >> result;
 

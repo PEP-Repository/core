@@ -4,7 +4,7 @@
 
 void NotConnectedWidget::appendConnectionStatus(QString& destination, QString facility, pep::ConnectionStatus status) const {
   if (!status.connected) {
-    const char *format;
+    const char *format{};
 
     switch (status.error.value()) {
     case boost::system::errc::wrong_protocol_type:

@@ -1,0 +1,474 @@
+#include <pep/crypto/tests/X509Certificate.Samples.test.hpp>
+
+// Provides hard-coded sample certificates.
+// (Some of) these certificates in this file will exipire in 2125.
+
+// To re-generate:
+// 1. Run
+//    1. pki.sh
+//    2. openssl x509 -in pepServerCA.chain -outform DER -out - | xxd --include > pepServerCA.der
+//    3. openssl pkey -in pepServerCA.key -out pepServerCA_decrypted.key -passin file:pepServerCA.password
+// 2. Update variable "rootCACertPEM"             to the contents of file "rootCA.cert"
+// 3. Update variable "pepServerCACertPEM"        to the contents of file "pepServerCA.chain"
+// 4. Update variable "pepServerCACertDER"        to the contents of file "pepServerCA.der"
+// 5. Update variable "pepServerCAPrivateKeyPEM"  to the contents of file "pepServerCA_decrypted.key"
+// 6. Update variable "pepAuthserverCertPEM"      to the contents of file "PEPAuthserver.chain"
+
+const std::string rootCACertPEM = "-----BEGIN CERTIFICATE-----\n\
+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\n\
+-----END CERTIFICATE-----\n";
+
+const std::string pepServerCACertPEM = "-----BEGIN CERTIFICATE-----\n\
+MIIGHjCCBAagAwIBAgIUIrH8TXvaacBqAcNM/zMhoaKbauMwDQYJKoZIhvcNAQEL\n\
+BQAwgYAxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
+DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxFDASBgNV\n\
+BAsMC1BFUCBSb290IENBMRQwEgYDVQQDDAtQRVAgUm9vdCBDQTAgFw0yNTExMDQx\n\
+MzU0MTlaGA8yMTI1MTAxMTEzNTQxOVowgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQI\n\
+DApHZWxkZXJsYW5kMREwDwYDVQQHDAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91\n\
+ZCBVbml2ZXJzaXRlaXQxJzAlBgNVBAsMHlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNl\n\
+cnZlciBDQTEnMCUGA1UEAwweUEVQIEludGVybWVkaWF0ZSBQRVAgU2VydmVyIENB\n\
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAo7jppQbyje5jULgYwGer\n\
+A6a911Jy067ZBhZr5iRVZ2eOsfmw4gqV9m3Zq7XDdhsjbLgiRReZkn0ce05Lp/SQ\n\
+sKpEqpsbJ7KPHm01lH8yKyRAhiN68leanjEM82HCZzlxDNJEq8etvB+WL/Fzdhsd\n\
+1zeUfHWHE7CQ4jYvte7YmBBWRlj3diz4jGG6orFKXJwugR+TIdB6vSaaRg/WWDZL\n\
+G1RPi2QRr4QI54RLAOBiiGmqckvhFxjNaQjqIVD8Avhf6R4nUh37AXEPmU6G3aPe\n\
+yQlk0PY80hxtIk/tdBfNNPKW2GhI6ruHS4IuhS2wKLLkrNUj3Cvq5ypX/9CFtkuC\n\
+tJJHPL08HbhRfeD49BqwMKZKc8NIpBacKg1nivMy+rgfSJ0j4eYdT+1hVRLVx5/3\n\
+euMr5ec0SgFv2Beqd0agWm6msiWnmYfyzYzHt5JCcc9FGRjQ0H2gqfggESVY6B6y\n\
+M5NcCq6YHMaVkdSDlvSUgOV/EdpBAoC+6HagMFJVli+xlUP06aEedq2zuDzNvfM6\n\
+hNc0x9IGGslxWKhUz63p4jg38vh3dfPWye7U8Yj5P9jpIuh8w+qXiYwudjVbPijZ\n\
+Ei6Kt1GabSG7NwpP5SFU18KyEtRHkne62CNQ4c9x4ywaTLCh06WJb32o/N2zxas0\n\
+dk+xJ+9ztR5c/Zky9nyZWf0CAwEAAaNmMGQwEgYDVR0TAQH/BAgwBgEB/wIBADAd\n\
+BgNVHQ4EFgQUKUgy2fhkEl8hoVFzKAiY06QHbe8wHwYDVR0jBBgwFoAU+Hmod2uB\n\
+rXnl1YG2E43UuFVe+RwwDgYDVR0PAQH/BAQDAgGGMA0GCSqGSIb3DQEBCwUAA4IC\n\
+AQCJUlq8i5Hx90LbuTCtikT5vfV13P/EgoTfpaY3o4Uz1iVioowDXzIO5SWRPFqo\n\
+0dR/YyjVO8HQK1qOCiq215O8ulBFIIUJm4FW2o9SP9L17Zm23vBzadDmiJrYJS5e\n\
+CnNlo6/p6IlYHf9eVd4iBN6G+jfnNjIEYzC0uHaJZ9ig2iTM5E1yclyIEYapVO5k\n\
+HdaxT+Qej2pCYSbPxKycFwcUy7hMC5GOm/fIOlPbLL3qckemzJ65sUHcKRiUsFbQ\n\
+pUNuzjX1HX8MLikGND5tb/xOaP3eXe35Jd3XRc4Ox5Bo7wjlpqDUoO5w7b9fR3EI\n\
+1WZXUCQds8eMW85s4XT4DCEua5dIIAKWkfRYy/jHcTmXqWsU7IuntFYT4zt/9di3\n\
+3X6sxeFM3+XKpSHETYiAiPsmqY10JvFNEfvn0kGVzQq4Iftk1ha4L17o4++VKf0S\n\
+uHV+PLhca2UAkRZzUBzjluyQvrTvBAsLHqQt9JKR11gJgfnOL5ujgNcL4HbPrIjy\n\
+zvAhJSTiAmAkIchRII/MvQs3pOtP9L4Ma51bmwHkI8z73PobJY5/Xbv5YDlTSKsy\n\
+apd09OeQq2XiP3oZRu4nVzh8BljbVyvfytRqOpe+QUnHe6bqwd4Ynh8bQqk/pcRn\n\
+n9lpgd7ChWYs6DU9lCjeskth920W7JHA4gPAvzEtTjnUkg==\n\
+-----END CERTIFICATE-----\n";
+
+const std::vector<unsigned char> pepServerCACertDER = {
+  0x30, 0x82, 0x06, 0x1e, 0x30, 0x82, 0x04, 0x06, 0xa0, 0x03, 0x02, 0x01,
+  0x02, 0x02, 0x14, 0x22, 0xb1, 0xfc, 0x4d, 0x7b, 0xda, 0x69, 0xc0, 0x6a,
+  0x01, 0xc3, 0x4c, 0xff, 0x33, 0x21, 0xa1, 0xa2, 0x9b, 0x6a, 0xe3, 0x30,
+  0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b,
+  0x05, 0x00, 0x30, 0x81, 0x80, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55,
+  0x04, 0x06, 0x13, 0x02, 0x4e, 0x4c, 0x31, 0x13, 0x30, 0x11, 0x06, 0x03,
+  0x55, 0x04, 0x08, 0x0c, 0x0a, 0x47, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x6c,
+  0x61, 0x6e, 0x64, 0x31, 0x11, 0x30, 0x0f, 0x06, 0x03, 0x55, 0x04, 0x07,
+  0x0c, 0x08, 0x4e, 0x69, 0x6a, 0x6d, 0x65, 0x67, 0x65, 0x6e, 0x31, 0x1d,
+  0x30, 0x1b, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x14, 0x52, 0x61, 0x64,
+  0x62, 0x6f, 0x75, 0x64, 0x20, 0x55, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73,
+  0x69, 0x74, 0x65, 0x69, 0x74, 0x31, 0x14, 0x30, 0x12, 0x06, 0x03, 0x55,
+  0x04, 0x0b, 0x0c, 0x0b, 0x50, 0x45, 0x50, 0x20, 0x52, 0x6f, 0x6f, 0x74,
+  0x20, 0x43, 0x41, 0x31, 0x14, 0x30, 0x12, 0x06, 0x03, 0x55, 0x04, 0x03,
+  0x0c, 0x0b, 0x50, 0x45, 0x50, 0x20, 0x52, 0x6f, 0x6f, 0x74, 0x20, 0x43,
+  0x41, 0x30, 0x20, 0x17, 0x0d, 0x32, 0x35, 0x31, 0x31, 0x30, 0x34, 0x31,
+  0x33, 0x35, 0x34, 0x31, 0x39, 0x5a, 0x18, 0x0f, 0x32, 0x31, 0x32, 0x35,
+  0x31, 0x30, 0x31, 0x31, 0x31, 0x33, 0x35, 0x34, 0x31, 0x39, 0x5a, 0x30,
+  0x81, 0xa6, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06, 0x13,
+  0x02, 0x4e, 0x4c, 0x31, 0x13, 0x30, 0x11, 0x06, 0x03, 0x55, 0x04, 0x08,
+  0x0c, 0x0a, 0x47, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x6c, 0x61, 0x6e, 0x64,
+  0x31, 0x11, 0x30, 0x0f, 0x06, 0x03, 0x55, 0x04, 0x07, 0x0c, 0x08, 0x4e,
+  0x69, 0x6a, 0x6d, 0x65, 0x67, 0x65, 0x6e, 0x31, 0x1d, 0x30, 0x1b, 0x06,
+  0x03, 0x55, 0x04, 0x0a, 0x0c, 0x14, 0x52, 0x61, 0x64, 0x62, 0x6f, 0x75,
+  0x64, 0x20, 0x55, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x69, 0x74, 0x65,
+  0x69, 0x74, 0x31, 0x27, 0x30, 0x25, 0x06, 0x03, 0x55, 0x04, 0x0b, 0x0c,
+  0x1e, 0x50, 0x45, 0x50, 0x20, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x6d, 0x65,
+  0x64, 0x69, 0x61, 0x74, 0x65, 0x20, 0x50, 0x45, 0x50, 0x20, 0x53, 0x65,
+  0x72, 0x76, 0x65, 0x72, 0x20, 0x43, 0x41, 0x31, 0x27, 0x30, 0x25, 0x06,
+  0x03, 0x55, 0x04, 0x03, 0x0c, 0x1e, 0x50, 0x45, 0x50, 0x20, 0x49, 0x6e,
+  0x74, 0x65, 0x72, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x74, 0x65, 0x20, 0x50,
+  0x45, 0x50, 0x20, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x20, 0x43, 0x41,
+  0x30, 0x82, 0x02, 0x22, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
+  0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x82, 0x02, 0x0f, 0x00,
+  0x30, 0x82, 0x02, 0x0a, 0x02, 0x82, 0x02, 0x01, 0x00, 0xa3, 0xb8, 0xe9,
+  0xa5, 0x06, 0xf2, 0x8d, 0xee, 0x63, 0x50, 0xb8, 0x18, 0xc0, 0x67, 0xab,
+  0x03, 0xa6, 0xbd, 0xd7, 0x52, 0x72, 0xd3, 0xae, 0xd9, 0x06, 0x16, 0x6b,
+  0xe6, 0x24, 0x55, 0x67, 0x67, 0x8e, 0xb1, 0xf9, 0xb0, 0xe2, 0x0a, 0x95,
+  0xf6, 0x6d, 0xd9, 0xab, 0xb5, 0xc3, 0x76, 0x1b, 0x23, 0x6c, 0xb8, 0x22,
+  0x45, 0x17, 0x99, 0x92, 0x7d, 0x1c, 0x7b, 0x4e, 0x4b, 0xa7, 0xf4, 0x90,
+  0xb0, 0xaa, 0x44, 0xaa, 0x9b, 0x1b, 0x27, 0xb2, 0x8f, 0x1e, 0x6d, 0x35,
+  0x94, 0x7f, 0x32, 0x2b, 0x24, 0x40, 0x86, 0x23, 0x7a, 0xf2, 0x57, 0x9a,
+  0x9e, 0x31, 0x0c, 0xf3, 0x61, 0xc2, 0x67, 0x39, 0x71, 0x0c, 0xd2, 0x44,
+  0xab, 0xc7, 0xad, 0xbc, 0x1f, 0x96, 0x2f, 0xf1, 0x73, 0x76, 0x1b, 0x1d,
+  0xd7, 0x37, 0x94, 0x7c, 0x75, 0x87, 0x13, 0xb0, 0x90, 0xe2, 0x36, 0x2f,
+  0xb5, 0xee, 0xd8, 0x98, 0x10, 0x56, 0x46, 0x58, 0xf7, 0x76, 0x2c, 0xf8,
+  0x8c, 0x61, 0xba, 0xa2, 0xb1, 0x4a, 0x5c, 0x9c, 0x2e, 0x81, 0x1f, 0x93,
+  0x21, 0xd0, 0x7a, 0xbd, 0x26, 0x9a, 0x46, 0x0f, 0xd6, 0x58, 0x36, 0x4b,
+  0x1b, 0x54, 0x4f, 0x8b, 0x64, 0x11, 0xaf, 0x84, 0x08, 0xe7, 0x84, 0x4b,
+  0x00, 0xe0, 0x62, 0x88, 0x69, 0xaa, 0x72, 0x4b, 0xe1, 0x17, 0x18, 0xcd,
+  0x69, 0x08, 0xea, 0x21, 0x50, 0xfc, 0x02, 0xf8, 0x5f, 0xe9, 0x1e, 0x27,
+  0x52, 0x1d, 0xfb, 0x01, 0x71, 0x0f, 0x99, 0x4e, 0x86, 0xdd, 0xa3, 0xde,
+  0xc9, 0x09, 0x64, 0xd0, 0xf6, 0x3c, 0xd2, 0x1c, 0x6d, 0x22, 0x4f, 0xed,
+  0x74, 0x17, 0xcd, 0x34, 0xf2, 0x96, 0xd8, 0x68, 0x48, 0xea, 0xbb, 0x87,
+  0x4b, 0x82, 0x2e, 0x85, 0x2d, 0xb0, 0x28, 0xb2, 0xe4, 0xac, 0xd5, 0x23,
+  0xdc, 0x2b, 0xea, 0xe7, 0x2a, 0x57, 0xff, 0xd0, 0x85, 0xb6, 0x4b, 0x82,
+  0xb4, 0x92, 0x47, 0x3c, 0xbd, 0x3c, 0x1d, 0xb8, 0x51, 0x7d, 0xe0, 0xf8,
+  0xf4, 0x1a, 0xb0, 0x30, 0xa6, 0x4a, 0x73, 0xc3, 0x48, 0xa4, 0x16, 0x9c,
+  0x2a, 0x0d, 0x67, 0x8a, 0xf3, 0x32, 0xfa, 0xb8, 0x1f, 0x48, 0x9d, 0x23,
+  0xe1, 0xe6, 0x1d, 0x4f, 0xed, 0x61, 0x55, 0x12, 0xd5, 0xc7, 0x9f, 0xf7,
+  0x7a, 0xe3, 0x2b, 0xe5, 0xe7, 0x34, 0x4a, 0x01, 0x6f, 0xd8, 0x17, 0xaa,
+  0x77, 0x46, 0xa0, 0x5a, 0x6e, 0xa6, 0xb2, 0x25, 0xa7, 0x99, 0x87, 0xf2,
+  0xcd, 0x8c, 0xc7, 0xb7, 0x92, 0x42, 0x71, 0xcf, 0x45, 0x19, 0x18, 0xd0,
+  0xd0, 0x7d, 0xa0, 0xa9, 0xf8, 0x20, 0x11, 0x25, 0x58, 0xe8, 0x1e, 0xb2,
+  0x33, 0x93, 0x5c, 0x0a, 0xae, 0x98, 0x1c, 0xc6, 0x95, 0x91, 0xd4, 0x83,
+  0x96, 0xf4, 0x94, 0x80, 0xe5, 0x7f, 0x11, 0xda, 0x41, 0x02, 0x80, 0xbe,
+  0xe8, 0x76, 0xa0, 0x30, 0x52, 0x55, 0x96, 0x2f, 0xb1, 0x95, 0x43, 0xf4,
+  0xe9, 0xa1, 0x1e, 0x76, 0xad, 0xb3, 0xb8, 0x3c, 0xcd, 0xbd, 0xf3, 0x3a,
+  0x84, 0xd7, 0x34, 0xc7, 0xd2, 0x06, 0x1a, 0xc9, 0x71, 0x58, 0xa8, 0x54,
+  0xcf, 0xad, 0xe9, 0xe2, 0x38, 0x37, 0xf2, 0xf8, 0x77, 0x75, 0xf3, 0xd6,
+  0xc9, 0xee, 0xd4, 0xf1, 0x88, 0xf9, 0x3f, 0xd8, 0xe9, 0x22, 0xe8, 0x7c,
+  0xc3, 0xea, 0x97, 0x89, 0x8c, 0x2e, 0x76, 0x35, 0x5b, 0x3e, 0x28, 0xd9,
+  0x12, 0x2e, 0x8a, 0xb7, 0x51, 0x9a, 0x6d, 0x21, 0xbb, 0x37, 0x0a, 0x4f,
+  0xe5, 0x21, 0x54, 0xd7, 0xc2, 0xb2, 0x12, 0xd4, 0x47, 0x92, 0x77, 0xba,
+  0xd8, 0x23, 0x50, 0xe1, 0xcf, 0x71, 0xe3, 0x2c, 0x1a, 0x4c, 0xb0, 0xa1,
+  0xd3, 0xa5, 0x89, 0x6f, 0x7d, 0xa8, 0xfc, 0xdd, 0xb3, 0xc5, 0xab, 0x34,
+  0x76, 0x4f, 0xb1, 0x27, 0xef, 0x73, 0xb5, 0x1e, 0x5c, 0xfd, 0x99, 0x32,
+  0xf6, 0x7c, 0x99, 0x59, 0xfd, 0x02, 0x03, 0x01, 0x00, 0x01, 0xa3, 0x66,
+  0x30, 0x64, 0x30, 0x12, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff,
+  0x04, 0x08, 0x30, 0x06, 0x01, 0x01, 0xff, 0x02, 0x01, 0x00, 0x30, 0x1d,
+  0x06, 0x03, 0x55, 0x1d, 0x0e, 0x04, 0x16, 0x04, 0x14, 0x29, 0x48, 0x32,
+  0xd9, 0xf8, 0x64, 0x12, 0x5f, 0x21, 0xa1, 0x51, 0x73, 0x28, 0x08, 0x98,
+  0xd3, 0xa4, 0x07, 0x6d, 0xef, 0x30, 0x1f, 0x06, 0x03, 0x55, 0x1d, 0x23,
+  0x04, 0x18, 0x30, 0x16, 0x80, 0x14, 0xf8, 0x79, 0xa8, 0x77, 0x6b, 0x81,
+  0xad, 0x79, 0xe5, 0xd5, 0x81, 0xb6, 0x13, 0x8d, 0xd4, 0xb8, 0x55, 0x5e,
+  0xf9, 0x1c, 0x30, 0x0e, 0x06, 0x03, 0x55, 0x1d, 0x0f, 0x01, 0x01, 0xff,
+  0x04, 0x04, 0x03, 0x02, 0x01, 0x86, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86,
+  0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b, 0x05, 0x00, 0x03, 0x82, 0x02,
+  0x01, 0x00, 0x89, 0x52, 0x5a, 0xbc, 0x8b, 0x91, 0xf1, 0xf7, 0x42, 0xdb,
+  0xb9, 0x30, 0xad, 0x8a, 0x44, 0xf9, 0xbd, 0xf5, 0x75, 0xdc, 0xff, 0xc4,
+  0x82, 0x84, 0xdf, 0xa5, 0xa6, 0x37, 0xa3, 0x85, 0x33, 0xd6, 0x25, 0x62,
+  0xa2, 0x8c, 0x03, 0x5f, 0x32, 0x0e, 0xe5, 0x25, 0x91, 0x3c, 0x5a, 0xa8,
+  0xd1, 0xd4, 0x7f, 0x63, 0x28, 0xd5, 0x3b, 0xc1, 0xd0, 0x2b, 0x5a, 0x8e,
+  0x0a, 0x2a, 0xb6, 0xd7, 0x93, 0xbc, 0xba, 0x50, 0x45, 0x20, 0x85, 0x09,
+  0x9b, 0x81, 0x56, 0xda, 0x8f, 0x52, 0x3f, 0xd2, 0xf5, 0xed, 0x99, 0xb6,
+  0xde, 0xf0, 0x73, 0x69, 0xd0, 0xe6, 0x88, 0x9a, 0xd8, 0x25, 0x2e, 0x5e,
+  0x0a, 0x73, 0x65, 0xa3, 0xaf, 0xe9, 0xe8, 0x89, 0x58, 0x1d, 0xff, 0x5e,
+  0x55, 0xde, 0x22, 0x04, 0xde, 0x86, 0xfa, 0x37, 0xe7, 0x36, 0x32, 0x04,
+  0x63, 0x30, 0xb4, 0xb8, 0x76, 0x89, 0x67, 0xd8, 0xa0, 0xda, 0x24, 0xcc,
+  0xe4, 0x4d, 0x72, 0x72, 0x5c, 0x88, 0x11, 0x86, 0xa9, 0x54, 0xee, 0x64,
+  0x1d, 0xd6, 0xb1, 0x4f, 0xe4, 0x1e, 0x8f, 0x6a, 0x42, 0x61, 0x26, 0xcf,
+  0xc4, 0xac, 0x9c, 0x17, 0x07, 0x14, 0xcb, 0xb8, 0x4c, 0x0b, 0x91, 0x8e,
+  0x9b, 0xf7, 0xc8, 0x3a, 0x53, 0xdb, 0x2c, 0xbd, 0xea, 0x72, 0x47, 0xa6,
+  0xcc, 0x9e, 0xb9, 0xb1, 0x41, 0xdc, 0x29, 0x18, 0x94, 0xb0, 0x56, 0xd0,
+  0xa5, 0x43, 0x6e, 0xce, 0x35, 0xf5, 0x1d, 0x7f, 0x0c, 0x2e, 0x29, 0x06,
+  0x34, 0x3e, 0x6d, 0x6f, 0xfc, 0x4e, 0x68, 0xfd, 0xde, 0x5d, 0xed, 0xf9,
+  0x25, 0xdd, 0xd7, 0x45, 0xce, 0x0e, 0xc7, 0x90, 0x68, 0xef, 0x08, 0xe5,
+  0xa6, 0xa0, 0xd4, 0xa0, 0xee, 0x70, 0xed, 0xbf, 0x5f, 0x47, 0x71, 0x08,
+  0xd5, 0x66, 0x57, 0x50, 0x24, 0x1d, 0xb3, 0xc7, 0x8c, 0x5b, 0xce, 0x6c,
+  0xe1, 0x74, 0xf8, 0x0c, 0x21, 0x2e, 0x6b, 0x97, 0x48, 0x20, 0x02, 0x96,
+  0x91, 0xf4, 0x58, 0xcb, 0xf8, 0xc7, 0x71, 0x39, 0x97, 0xa9, 0x6b, 0x14,
+  0xec, 0x8b, 0xa7, 0xb4, 0x56, 0x13, 0xe3, 0x3b, 0x7f, 0xf5, 0xd8, 0xb7,
+  0xdd, 0x7e, 0xac, 0xc5, 0xe1, 0x4c, 0xdf, 0xe5, 0xca, 0xa5, 0x21, 0xc4,
+  0x4d, 0x88, 0x80, 0x88, 0xfb, 0x26, 0xa9, 0x8d, 0x74, 0x26, 0xf1, 0x4d,
+  0x11, 0xfb, 0xe7, 0xd2, 0x41, 0x95, 0xcd, 0x0a, 0xb8, 0x21, 0xfb, 0x64,
+  0xd6, 0x16, 0xb8, 0x2f, 0x5e, 0xe8, 0xe3, 0xef, 0x95, 0x29, 0xfd, 0x12,
+  0xb8, 0x75, 0x7e, 0x3c, 0xb8, 0x5c, 0x6b, 0x65, 0x00, 0x91, 0x16, 0x73,
+  0x50, 0x1c, 0xe3, 0x96, 0xec, 0x90, 0xbe, 0xb4, 0xef, 0x04, 0x0b, 0x0b,
+  0x1e, 0xa4, 0x2d, 0xf4, 0x92, 0x91, 0xd7, 0x58, 0x09, 0x81, 0xf9, 0xce,
+  0x2f, 0x9b, 0xa3, 0x80, 0xd7, 0x0b, 0xe0, 0x76, 0xcf, 0xac, 0x88, 0xf2,
+  0xce, 0xf0, 0x21, 0x25, 0x24, 0xe2, 0x02, 0x60, 0x24, 0x21, 0xc8, 0x51,
+  0x20, 0x8f, 0xcc, 0xbd, 0x0b, 0x37, 0xa4, 0xeb, 0x4f, 0xf4, 0xbe, 0x0c,
+  0x6b, 0x9d, 0x5b, 0x9b, 0x01, 0xe4, 0x23, 0xcc, 0xfb, 0xdc, 0xfa, 0x1b,
+  0x25, 0x8e, 0x7f, 0x5d, 0xbb, 0xf9, 0x60, 0x39, 0x53, 0x48, 0xab, 0x32,
+  0x6a, 0x97, 0x74, 0xf4, 0xe7, 0x90, 0xab, 0x65, 0xe2, 0x3f, 0x7a, 0x19,
+  0x46, 0xee, 0x27, 0x57, 0x38, 0x7c, 0x06, 0x58, 0xdb, 0x57, 0x2b, 0xdf,
+  0xca, 0xd4, 0x6a, 0x3a, 0x97, 0xbe, 0x41, 0x49, 0xc7, 0x7b, 0xa6, 0xea,
+  0xc1, 0xde, 0x18, 0x9e, 0x1f, 0x1b, 0x42, 0xa9, 0x3f, 0xa5, 0xc4, 0x67,
+  0x9f, 0xd9, 0x69, 0x81, 0xde, 0xc2, 0x85, 0x66, 0x2c, 0xe8, 0x35, 0x3d,
+  0x94, 0x28, 0xde, 0xb2, 0x4b, 0x61, 0xf7, 0x6d, 0x16, 0xec, 0x91, 0xc0,
+  0xe2, 0x03, 0xc0, 0xbf, 0x31, 0x2d, 0x4e, 0x39, 0xd4, 0x92
+};
+
+const std::string pepServerCAPrivateKeyPEM = "-----BEGIN PRIVATE KEY-----\n\
+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\n\
++hCAlI0yG20YJXgIWRNk+KdjK+pw4g==\n\
+-----END PRIVATE KEY-----\n";
+
+const std::string pepAuthserverCertPEM = "-----BEGIN CERTIFICATE-----\n\
+MIIFEjCCAvqgAwIBAgIUIrH8TXvaacBqAcNM/zMhoaKbav0wDQYJKoZIhvcNAQEL\n\
+BQAwgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
+DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxJzAlBgNV\n\
+BAsMHlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNlcnZlciBDQTEnMCUGA1UEAwweUEVQ\n\
+IEludGVybWVkaWF0ZSBQRVAgU2VydmVyIENBMCAXDTI1MTEwNDEzNTQyMFoYDzIx\n\
+MjUxMDExMTM1NDIwWjB+MQswCQYDVQQGEwJOTDETMBEGA1UECAwKR2VsZGVybGFu\n\
+ZDERMA8GA1UEBwwITmlqbWVnZW4xHTAbBgNVBAoMFFJhZGJvdWQgVW5pdmVyc2l0\n\
+ZWl0MRMwEQYDVQQLDApBdXRoc2VydmVyMRMwEQYDVQQDDApBdXRoc2VydmVyMIIB\n\
+IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApuP9lYBEmOGpNpdTaBof87vz\n\
+PqHJ+YFwYsjl4W3zem2TK+rZ2VChy8gNypB+lEV+LSQ/VNkg0tf+pneq6K6/vB92\n\
+EsB5h/ttjcdseBPAtQ4XZQwZvrEwNDmSSp3pOCGZhPERWR9BopvdL9cDDbl1eLxR\n\
+3ijQ6MC0+UWKIe7aSPGkjpNi+er6yYR8Os1vfQymhyFSpVhQDV3i4UF8RZIQjZVu\n\
+prJb3rEp75X6t814QOwJVUUPKEAeQ16igyT/s3VfMk3qRpAm/TGbDYWooqQ+zLaD\n\
+l6W+fcL4WfY9fwCwTC3Lcv1PS/Cf9p9Liz+SnY7qBlzHJTdms3YAjXFUIgBqbwID\n\
+AQABo10wWzAJBgNVHRMEAjAAMB0GA1UdDgQWBBTfOBoKlk7d1+y0z9mnGdeQZiVp\n\
+8zAfBgNVHSMEGDAWgBQpSDLZ+GQSXyGhUXMoCJjTpAdt7zAOBgNVHQ8BAf8EBAMC\n\
+BsAwDQYJKoZIhvcNAQELBQADggIBAG1GWeabUklqGK3MB+3d4L75IAuigr/Rix28\n\
+jOJ9TE0misJOVm5Cdnn8S8jZY8n5xCpC8ifI0XzDphPH3Y0S0QwulHeLNb/8py5Y\n\
+HTMmYbe1CiTBlsyYNshl0+XmuT0XBCAqBQ9vsq+nsszxaehI4hc6jyz5H9KRuxeu\n\
+U9cg0pnafOj7p83hy6k3jAlf3FznqA4ZegWdw8C+xxZbFGhPt4U53gQekKkPLY/u\n\
+zp5PZ1mPrwmi+mkF7GT25Kd41x2Naxb6sNKVl/59CYUMxd1FWfryebN1jyQZaL9z\n\
+xFNnPd3hk7F9DdwUZ6+mmHlPQS8dlDMol5QVnwEsTZZyArBqN6Fc2Gxfh7/03sOE\n\
+Xq1eeiY1josWz8W0ggcIiI4CpHmWTVmdYY3K6ywjAv8ZNSnM0S3XxUsrQfxxfnFx\n\
+JKR1TP7sGczb7jmmzSdVrmi58vWcXa3w+SrZ3lXY3RsMYKg+b8fBe6qz2WW4HSwC\n\
+c8+BLLB6+TJk9iOvRGtkW/4jF2g5ig5cUxPpQGL4IWvXCrLkhWmHLDsn11feeNJV\n\
+63WgiqD2jYvmkEK7yZMW1uXmGVha6r3Qm+CaaACYtJy8/XGkQH03VL/p/xEG+yt3\n\
+TUpJV4alPIR5ZT2iV+RotmHCP7VX6f+FKASjOIGh93RN/E8qOeTNsThX/EwxDoKr\n\
+L5ajYs5e\n\
+-----END CERTIFICATE-----\n";
+
+
+const std::string pepAuthserverCertPEMExpired = "-----BEGIN CERTIFICATE-----\n\
+MIIFEDCCAvigAwIBAgIUIrH8TXvaacBqAcNM/zMhoaKbav4wDQYJKoZIhvcNAQEL\n\
+BQAwgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
+DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxJzAlBgNV\n\
+BAsMHlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNlcnZlciBDQTEnMCUGA1UEAwweUEVQ\n\
+IEludGVybWVkaWF0ZSBQRVAgU2VydmVyIENBMB4XDTI1MTEwNDEzNTQyMFoXDTI1\n\
+MTEwNDE0MjM0NlowfjELMAkGA1UEBhMCTkwxEzARBgNVBAgMCkdlbGRlcmxhbmQx\n\
+ETAPBgNVBAcMCE5pam1lZ2VuMR0wGwYDVQQKDBRSYWRib3VkIFVuaXZlcnNpdGVp\n\
+dDETMBEGA1UECwwKQXV0aHNlcnZlcjETMBEGA1UEAwwKQXV0aHNlcnZlcjCCASIw\n\
+DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKbj/ZWARJjhqTaXU2gaH/O78z6h\n\
+yfmBcGLI5eFt83ptkyvq2dlQocvIDcqQfpRFfi0kP1TZINLX/qZ3quiuv7wfdhLA\n\
+eYf7bY3HbHgTwLUOF2UMGb6xMDQ5kkqd6TghmYTxEVkfQaKb3S/XAw25dXi8Ud4o\n\
+0OjAtPlFiiHu2kjxpI6TYvnq+smEfDrNb30MpochUqVYUA1d4uFBfEWSEI2Vbqay\n\
+W96xKe+V+rfNeEDsCVVFDyhAHkNeooMk/7N1XzJN6kaQJv0xmw2FqKKkPsy2g5el\n\
+vn3C+Fn2PX8AsEwty3L9T0vwn/afS4s/kp2O6gZcxyU3ZrN2AI1xVCIAam8CAwEA\n\
+AaNdMFswCQYDVR0TBAIwADAdBgNVHQ4EFgQU3zgaCpZO3dfstM/ZpxnXkGYlafMw\n\
+HwYDVR0jBBgwFoAUKUgy2fhkEl8hoVFzKAiY06QHbe8wDgYDVR0PAQH/BAQDAgbA\n\
+MA0GCSqGSIb3DQEBCwUAA4ICAQCa1xmWOXf3nvC6QsXzlmkY4vzMg0jl2C9HieHg\n\
+914KiKc0xBmeULL/TDeOM35Bi/WZXn6K2dYA859CMR8H2hAoSD4ZQUa5333JdlNz\n\
+x1n6WJsu1vm6f+D6lYnibdqh6+P3EaTq//dXFBgW+X5Aq+NbfeNpjjLN7/IsXNjR\n\
+8neeb9TgAyo1JsmqHhe9ywKZWLeedvNYkvNR9RMpVf3xYfNAAyhwkkiwArxbBHh1\n\
+78aQdrB7MOKVaKPuJ5jCfjaxbYms4cY+YNs2vTda4DmkEKkjHBPD+FnXn7PC6qww\n\
+vYFfU7dMxhZdwmFwhfi3ABoGytMhMIsjXkhSlIgiRiMfWVmdFYVVPPtWNDvoM8fK\n\
+TvI35AfqUkDBGtyfE8p/T9FFu4iSkBXBFtMNw4dE2a2hBiT8Ot+17xLfsNI0hdqR\n\
+hCPZ2IKp9r5J9KKBP/uF4U/a88YWMWZuZacGfyLgd+efXBLlaAPN6FgXXin5xLPw\n\
+OxApoZ4pVGABihiuMtz1upUC9M9WL3kPdS7z+lAdgFIsyLcg4u+f+xzTuH9WsWJR\n\
+VEllFexvYjwDzySDrxW+7cOZ4iCcqQRHFz1ChNMOOMyVlQEi8JboKPAp4XXfcjVq\n\
+hNTjsoADg/xRNxioVz/MQVIDtpJbuYdisOzrBHyPIoef18jzMJH7+GKIXjQshNRn\n\
+JxBDVA==\n\
+-----END CERTIFICATE-----\n";
+
+// From TLSAccessManager.chain
+const std::string accessmanagerTLSCertPEM = "-----BEGIN CERTIFICATE-----\n\
+MIIF6zCCA9OgAwIBAgIUIrH8TXvaacBqAcNM/zMhoaKbauswDQYJKoZIhvcNAQEL\n\
+BQAwgZgxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
+DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxIDAeBgNV\n\
+BAsMF1BFUCBJbnRlcm1lZGlhdGUgVExTIENBMSAwHgYDVQQDDBdQRVAgSW50ZXJt\n\
+ZWRpYXRlIFRMUyBDQTAgFw0yNTExMDQxMzU0MTlaGA8yMTI1MTAxMTEzNTQxOVow\n\
+gYQxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQHDAhO\n\
+aWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxFjAUBgNVBAsM\n\
+DUFjY2Vzc01hbmFnZXIxFjAUBgNVBAMMDUFjY2Vzc01hbmFnZXIwggEiMA0GCSqG\n\
+SIb3DQEBAQUAA4IBDwAwggEKAoIBAQC/lnGcDRYN3Tkg7UHRQM2kGVGZP6aXKNzI\n\
+CuEs2etRRjSR+yRGEeV4GCjeEr2UDRa4PtT9ZYs9yiFoL2Mq6/+WqZzuvRrKu8uy\n\
+PS2hxw3FsxPF3jfr+e2dBThSOpUX3/VWM6uub9xjNFjSzcGFUtUs00DVSOO48OlF\n\
+ZubAv0RGNtqO7mSTRwfdkEl83MgPwOP5gcRYK4IAfOTF2LjXM625HATCGxgJoYtu\n\
+IWWEqkpnPsoDjGZ9vu/XcVlEE+u4BVlVywA4dPBymE/CEpU4qLrumShLwvjpCTIw\n\
+qKGCMrbtMjT5ZyOwwPrYWaepl7acomu2LwreW9oSyCU3dVtI1Cm5AgMBAAGjggE7\n\
+MIIBNzAJBgNVHRMEAjAAMCMGA1UdEQQcMBqCCWxvY2FsaG9zdIINQWNjZXNzTWFu\n\
+YWdlcjAdBgNVHQ4EFgQUOC2q5kghCWUZ/V/t0jeO1Rfnh34wgcAGA1UdIwSBuDCB\n\
+tYAUp8J3LT+lpnS+FK/pOPfexxXSwaihgYakgYMwgYAxCzAJBgNVBAYTAk5MMRMw\n\
+EQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQHDAhOaWptZWdlbjEdMBsGA1UECgwU\n\
+UmFkYm91ZCBVbml2ZXJzaXRlaXQxFDASBgNVBAsMC1BFUCBSb290IENBMRQwEgYD\n\
+VQQDDAtQRVAgUm9vdCBDQYIUIrH8TXvaacBqAcNM/zMhoaKbauEwDgYDVR0PAQH/\n\
+BAQDAgWgMBMGA1UdJQQMMAoGCCsGAQUFBwMBMA0GCSqGSIb3DQEBCwUAA4ICAQBh\n\
+oOLE58sp30CoYXmgBShS6dtm1HXEGPpW7uyqmkEyossYrcPCG3VtETpy9HfthTZV\n\
+bIAOx51phgqnTSkT00Ju+RbxMD/qLeuh8pp/fgy9Wl7jq+3Y4LzKwdAWzEj/dY+4\n\
+OdvWFY5jdMOGkDmWdjZGJC0qyyIwqVdHpOA65ebr2c2PBXcNo67Mq8pIEBtjRyx/\n\
+d6xr4FULiYgOg+0LCH9N0YlZ19WcuHOhJi1ySS5/2wvkXYUvVUSLyYIHz0wR7NQy\n\
+A09FzhlSHVDdY7Qendqz8Xx2yg4vHLZobxnwj9jhSpclEr1Hxqsp8Y/7yDgIh0eH\n\
+X82UlCnJLHbUelKLXLN1f9qdsylk8zPVmsE5eG/7uRHI168jMbnGX+cp4AYBmUie\n\
+Hv0ETEhTqqrmn/AVeUroMTguolOl8kufYJ6MUoXBx6K3rcykmu5m66uD7/vEonMV\n\
+8uFdnX0URwbVDTN+P9dYT+nlc4jCqPoFhmCdZv9as0cVWRanDyrJOaBgsbr/R+f0\n\
+oKdv3oymvkC7ofTd7/aX+O0xYpyuACTD13jjXy9juHaqBbLtWjsCxmzvW5Irxtgn\n\
+gTiSd2F5yueiE1J3iJMf9/U3Q5iHHuU2m3h8by/H+l9Yd3b7wTAYl8dJDuwuCa2n\n\
+8qSW61C3MrvBwurwI/HDhulOxRSPOgqNT6FsbHydIw==\n\
+-----END CERTIFICATE-----\n";
+
+const std::string rootCACertPEMExpired = "-----BEGIN CERTIFICATE-----\n\
+MIIF8zCCA9ugAwIBAgIUb2ttUe8kbgFRNg2xGS/RetQelyEwDQYJKoZIhvcNAQEL\n\
+BQAwgYAxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
+DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxFDASBgNV\n\
+BAsMC1BFUCBSb290IENBMRQwEgYDVQQDDAtQRVAgUm9vdCBDQTAeFw0yNTExMDQx\n\
+MzM1MjdaFw0yNTExMDQxNDIzNDZaMIGAMQswCQYDVQQGEwJOTDETMBEGA1UECAwK\n\
+R2VsZGVybGFuZDERMA8GA1UEBwwITmlqbWVnZW4xHTAbBgNVBAoMFFJhZGJvdWQg\n\
+VW5pdmVyc2l0ZWl0MRQwEgYDVQQLDAtQRVAgUm9vdCBDQTEUMBIGA1UEAwwLUEVQ\n\
+IFJvb3QgQ0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCzFwe41W34\n\
+TUKaL8hegrnsTNXw1Mxx3FSR1aP6+Ok5Q6JCPLzun64KjiQ4+79w8n0orPTWhRsi\n\
+UUvUElF9GZYaVwC3LVisrQsEfqxH9seX8i6V7DV8L7YdKMUjLP2NyWN3LnfuqpYn\n\
+9cQDnGLZQoQLpbOmcfJ30bko4xVXm9J7hAewf9KJr6ohq5rjVjHciZkaO8BWvg1I\n\
+3XXSwdvOb87p31ixXRYnvMsGutOqXpO+equeZhD085rhAjoWwi2dTuyeDw9z6CM8\n\
+sM/v3P+t2zZ8P3XCG3lGtjL0175YnVMXQqADfYfC/7lD2XJ75pilJLw6HOrnsi+h\n\
+15C3CzPlYezztMiKv12hfkP1ExGHmj6To61jrJuRTyrJhVXUlseElt8FS20gjsIe\n\
+cSmv232kELwTUhr+UgsvSxxKLPx5ekE95ujrw2KeF5nVOcrLDSPwq6FnXdGDdkda\n\
+CboFnh+LQ+hHeND+i2d1aKaJuxTa5r+MNnz/czznN2zqGNJU/+dtVEacEGCKFavA\n\
+ltwubF9oLBNsFzfQmv1fla/h+xlacLUsjHyDzsk9flAYtC6QYxOqtVCv5FikNDVz\n\
+B/8tAgUD+4FRHViOTEJEmD4ON0clkTpTnVlPOnOWbfk4yUNfCifHeB7WkAFnrJQG\n\
+4S0PdLL3JQEgvcduOynoy2eHF+QpuTPkhwIDAQABo2MwYTAPBgNVHRMBAf8EBTAD\n\
+AQH/MB0GA1UdDgQWBBRFxo5h/Vwdnram3PI6o9jB2k2oVjAfBgNVHSMEGDAWgBRF\n\
+xo5h/Vwdnram3PI6o9jB2k2oVjAOBgNVHQ8BAf8EBAMCAYYwDQYJKoZIhvcNAQEL\n\
+BQADggIBAHg9yBvKdbACTajsOcZdWLcugzC3N+DXuls8GH2sKWbyLipxD4wUVhq7\n\
+TAPdE8edf5CZCmjH7e3QCcV5DVpnowIjEFi0jqllzOEjEGzIiOMS8cTq0MdP50G1\n\
+Slw7AzwWLKsXY+nlVuVUkD1Seqqk83DzULt74BD8JbSQ/G2BNYZjHuZfq4SrulIB\n\
+jlvW0FE6dnz6BBsBM7DN+RYhlIzXDRbzKnNI35ZedRJYxNkHftZNpqrJlUDoJf2J\n\
+kINCBQ9k9jUe5kvObAehUOoJxOpCEt3jAsw8NPn28oovHpbsJD6a2cEggySkMOas\n\
+YNYnSLsXh+pGLQTJQMUAxRz92XP5N51PJPFxnl1AjQL77uCOOrS9T1kx6Cte6BZ9\n\
+TtBaYSkospVjbQXI15Z+b8IjkLkQFnJGXV121+hUH3Eg3BlXIlUF9yGwV+Z9tHiH\n\
+rUL3bPAZJIo9uWYWjSPz4IDJ/n+MdbNq2MGCkOjvpxl1DEgSO42cJB3KrWEdEJAi\n\
+ECQWGACxKLpXzcXkioUsEQSp8ZFuN19iL102gfqM3uleAv3OZ+T6mSxwS/FMP+5e\n\
+M9abJTGdq6/ql9yafME65CouVhsFgB+q43dVOAUP1U6SSOOdKNGdzfyzP0K/D+S6\n\
+eMQgQIda08MUtjHdCSPxL9Z9YlUaVIpnCaaelM3deecGsPAXOey5\n\
+-----END CERTIFICATE-----\n";
+
+const std::string pepServerCACertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
+MIIGHjCCBAagAwIBAgIURvs11lhvxGvXyKpVvDWyzFQKl+cwDQYJKoZIhvcNAQEL\n\
+BQAwgYAxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
+DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxFDASBgNV\n\
+BAsMC1BFUCBSb290IENBMRQwEgYDVQQDDAtQRVAgUm9vdCBDQTAgFw0yNTExMDQx\n\
+MzM1MjhaGA8yMTI1MTAxMTEzMzUyOFowgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQI\n\
+DApHZWxkZXJsYW5kMREwDwYDVQQHDAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91\n\
+ZCBVbml2ZXJzaXRlaXQxJzAlBgNVBAsMHlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNl\n\
+cnZlciBDQTEnMCUGA1UEAwweUEVQIEludGVybWVkaWF0ZSBQRVAgU2VydmVyIENB\n\
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAq1aUGtmsvX9GkEgX+lSJ\n\
+qe0DJWPUL1hsx8wfpT6Wto53YK/3fbyDWQPSk/jDv1YU03iPzHIKBLZ3dY0nviqF\n\
+e8yplQYENe6na8OJlEguiiGypEKkJ6lwoNYqn25hsDvXPXYvEKld0Fw4LXyd2qJR\n\
+nVvrmCWksYQtRYH5WV+da46Yne5xM9aa/OmLunFemWkwMR6XKTn+dOQHOKmM81eo\n\
+59EAYMw0+j2Dsqfgp5LVV2Bgr7HJgb/1bpmf1tVDrHGQ3aMJ+SJNaYsSEvpkM686\n\
+e9e7zgqMLT/KO0DYCn5OZ4qjQ1WEs1rPNROgPJOdJ2o9y//Mqao/y2rdbg1Xupwx\n\
+XpyfgLlr6ikNdDrlOVg+Z9KPKIXMnHsIu6TdzyQ2v/Ufa7ifgMG+ob56KDR4rayN\n\
+sAmFRRSETuto5v/bY7nG14wqvE7KqU41dGxKicgJ/1jKv4yA2zQAwY0t1iQd18ZE\n\
+gNkzGwildvzTPGld1DLXq3ByXuXqmRypIGl0HnyB1nroqZVflcCalABzT4OfN0wX\n\
+QXjSNCJTxlxFO9cZ8bRL6mEkOYFJDmLWAgVPeDgXTVKXQWK9ygFn4foi5E7ysZFJ\n\
+27hvMjbcdv+18mmFFluT3yTnjOYifJiTEARhn01toRXNN8srsiYvBESm0uhk66ND\n\
+VCMPh8V5oHqYawIQQA3i+80CAwEAAaNmMGQwEgYDVR0TAQH/BAgwBgEB/wIBADAd\n\
+BgNVHQ4EFgQUMLxrVPty3raelkl8ySkWlhrc28QwHwYDVR0jBBgwFoAURcaOYf1c\n\
+HZ62ptzyOqPYwdpNqFYwDgYDVR0PAQH/BAQDAgGGMA0GCSqGSIb3DQEBCwUAA4IC\n\
+AQA7z3GSHmi94OWP+EkoBNSQtosqGWFM9UND8lDntbpyTNBjLbo9FqsjwzZIKF0b\n\
+I8al2B2oxdjzavc73dTkK0AqlSXTRSgRAFPLvQkSqjaWgt+tRJk02BSFo5/V2yve\n\
+cw49BSH+sFDhh/O5rHYIvAW3ngZh3RcXT25y2LiQ4hB3McE6XYy0rCmYK6ug4h0R\n\
+XlTxckkpi+ZgEaOs/zVuqzdYMLRS5CWhEeS/Mguhry9eQw22mBbvjowiu6pGYwru\n\
+K6/2zlkEnIosibSSKd8af+Kcvz/lxvzFlX6VcFdZQ5E49a86aw1cHtfLn2yy0A3B\n\
+6rnie++GEpD76sO+GBLA2WelVS1js+8uXuBPMz4BJQ3+fv/CyrGHbqDZOOTyzfpz\n\
+0mA4KNnMJPbl0Vnra7JE0VqFQYtzks3/rlGcRQjodKle63nk1IVmvETRTRzae7T/\n\
+StLA8EivkMNRLar5nssTFLGzgpbt3xdmjZXYYbTGt6b+ZfNE3sSchoWHkKgbZCNP\n\
+IHcwZ5obkGVV0JwmsWMAi7KS129oMidiR40+Uqj0M0asuUiwEIeZ0M0WswAAjenU\n\
+Wi0Q/KITk0mHiClcxPHLks2iv6hqFNhmZyeti2JFoQi5ddICaLmH5WZnh/37xJkS\n\
+/pMSrFdH2UmBi0fcna2MnzaOlpAzanKaD5m/K55anD0/Ug==\n\
+-----END CERTIFICATE-----\n";
+
+const std::string pepAuthserverCertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
+MIIFEjCCAvqgAwIBAgIURvs11lhvxGvXyKpVvDWyzFQKl/QwDQYJKoZIhvcNAQEL\n\
+BQAwgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
+DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxJzAlBgNV\n\
+BAsMHlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNlcnZlciBDQTEnMCUGA1UEAwweUEVQ\n\
+IEludGVybWVkaWF0ZSBQRVAgU2VydmVyIENBMCAXDTI1MTEwNDEzMzUyOVoYDzIx\n\
+MjUxMDExMTMzNTI5WjB+MQswCQYDVQQGEwJOTDETMBEGA1UECAwKR2VsZGVybGFu\n\
+ZDERMA8GA1UEBwwITmlqbWVnZW4xHTAbBgNVBAoMFFJhZGJvdWQgVW5pdmVyc2l0\n\
+ZWl0MRMwEQYDVQQLDApBdXRoc2VydmVyMRMwEQYDVQQDDApBdXRoc2VydmVyMIIB\n\
+IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlVqj4BxIcqP3B3uou03jPBta\n\
+C+VYw68LnS3/15ouINWi5VLpSeEa8piie1+NS+iinRqQ5xDN8L4MLhRDScJzHfBT\n\
+sq76B2f+l10or5wnidh8OjK1whtGiolppWC9LmXeQUx/zxwy654VJYEeZOk93+yA\n\
+0Q+rfJdUPHiY4I5WdwMgC0ppho/sGcyc3H8Il6rFmykX5V6dfdaq/Sjq1uOwWUWk\n\
+xx/MVa/2cIM5YSy1BJmHTVUUkfVoTpOXSxu8cdG4oxTj4hpvdJNbc1QUK++BAw4f\n\
+TB5sVxPL5lSvOxSyKry8isWGgYLNuQZY1v+gId3QN5VuR6TLD5OvYjSbOw0emwID\n\
+AQABo10wWzAJBgNVHRMEAjAAMB0GA1UdDgQWBBTUMO4b9Az71AqGNY0oJtPY+DIW\n\
+PzAfBgNVHSMEGDAWgBQwvGtU+3Letp6WSXzJKRaWGtzbxDAOBgNVHQ8BAf8EBAMC\n\
+BsAwDQYJKoZIhvcNAQELBQADggIBAChuoj2XOAYGmTKdsh2+djMRXQsaHYXREmnF\n\
+Fm8z+Kb2fnN4ZKXLGZd9+ch/Ux/v/SKoZXqi2wEPZWVZ7Jm/KNt0x9e5R1/M6CXq\n\
+GTtbJDfTAEmQhI4XbQ64zSgLpBWQsvfOvWvyHpVclxRWmraDogdpcjkGuMYU++0j\n\
+0oIm7cqlqt+vD0c03kFtahko9NGkOdfE7ijqdvHFejwl8mRjvtlzrFtD9Gqp5m+b\n\
+gRMkwYH8kSjtdbxVnFuxitpBQ8UgFYsjJA9GAQbET5aYFIpWJDkE+5uUKdcCjOdQ\n\
+BHkp5TQ9u5U0p/t+0I61IUzjjaD/epcNYwtr5eTstFX3oW0Q9wQN/dCzzEAfHnyk\n\
++t+iGFsIH3PmelExDBL3p5c0woOsWSsJUeGGdRFyKbGQi+MoyQ0G/aK9hGS/j7A+\n\
+Pxhdc6MPiXI1pFyAZ74DAiz0m1ShOkDjSFHgO4wiJCjcKqpc62l/ZpFh1xgUY2nF\n\
+BTXqhSFQRHGPExbMBIZ+Zi6Oy591/ViS/PH8mk3i4iROUfGMZ2HcblPSSuYgZICm\n\
+RAJm5QmoY6QNRrhA8YjphqIKNAP+mzMEBmmBOWImshCOEDBdthi2aEjKZPIRnXRW\n\
+byz893iepEWKPPkx3FYQNM7GIH7f/ZKGV2u59+fDdAaiuNIdKeB0Bg4w79mpHjaB\n\
+zrmKH5zb\n\
+-----END CERTIFICATE-----\n";

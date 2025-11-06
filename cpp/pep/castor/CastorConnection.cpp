@@ -1,3 +1,4 @@
+#include <pep/async/RxIterate.hpp>
 #include <pep/castor/CastorClient.hpp>
 #include <pep/castor/Ptree.hpp>
 #include <pep/castor/Study.hpp>
@@ -6,6 +7,7 @@
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 
@@ -75,8 +77,8 @@ rxcpp::observable<JsonPtr> CastorConnection::getJsonEntries(const std::string& a
   std::shared_ptr<HTTPRequest> request = this->makeGet(apiPath);
   return this->sendCastorRequest(request).flat_map([embeddedItemsNodeName](JsonPtr response) {
     auto list = CreateSharedChildTrees(response, embeddedItemsNodeName); // Clone these here to prevent ptrees from being copied by value in call to observable<>::iterate
-    return rxcpp::observable<>::iterate(list)
-      .map([](std::shared_ptr<boost::property_tree::ptree> ptree) {return std::static_pointer_cast<const boost::property_tree::ptree>(ptree); });
+    return RxIterate(std::move(list))
+      .map([](std::shared_ptr<boost::property_tree::ptree> ptree) {return std::static_pointer_cast<const boost::property_tree::ptree>(std::move(ptree)); });
   });
 }
 

@@ -51,8 +51,8 @@ public:
   inline const std::string& getOriginalTypeName() const noexcept { return mOriginalTypeName; }
 
   static bool IsSerializable(std::exception_ptr exception) noexcept;
-  static std::exception_ptr ReconstructIfDeserializable(const std::string& serialized);
-  static void ThrowIfDeserializable(const std::string& serialized);
+  static std::exception_ptr ReconstructIfDeserializable(std::string_view serialized);
+  static void ThrowIfDeserializable(std::string_view serialized);
 };
 
 template <typename TDerived, bool REGISTER>

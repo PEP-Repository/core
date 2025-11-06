@@ -3,7 +3,6 @@
 #include <pep/async/WorkGuard.hpp>
 #include <thread>
 #include <boost/asio/post.hpp>
-#include <optional>
 
 namespace pep {
 

@@ -27,7 +27,7 @@ class URandom {
   }
 
   void read(uint8_t* p, uint64_t len) const {
-    ssize_t i;
+    ssize_t i{};
 
     while (len > 0) {
       i = (len < (1 << 10)) ? static_cast<ssize_t>(len) : (1 << 10);

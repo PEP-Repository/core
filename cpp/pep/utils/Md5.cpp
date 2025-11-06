@@ -1,8 +1,9 @@
+#include <array>
 #include <openssl/evp.h>
 
 #include <pep/utils/Md5.hpp>
 #include <pep/utils/OpensslUtils.hpp>
-#include <pep/utils/Defer.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 namespace pep {
 
@@ -23,18 +24,18 @@ Md5::~Md5() noexcept {
 }
 
 void Md5::process(const void* block, size_t size) {
-  if (EVP_DigestUpdate(mContext, reinterpret_cast<const unsigned char*>(block), size) <= 0) {
+  if (EVP_DigestUpdate(mContext, block, size) <= 0) {
     throw pep::OpenSSLError("Failed to update MD5 context in Md5::process");
   }
 }
 
 Md5::Hash Md5::finish() {
   // MD5 digests are always 16 bytes (128 bit) long
-  unsigned char digest[16];
-  if (EVP_DigestFinal_ex(mContext, digest, nullptr) <= 0) {
+  std::array<unsigned char, 16> digest{};
+  if (EVP_DigestFinal_ex(mContext, digest.data(), nullptr) <= 0) {
     throw pep::OpenSSLError("Failed to finalize MD5 context in Md5::finish");
   }
-  return std::string(reinterpret_cast<char*>(digest), 16);
+  return Hash(SpanToString(digest));
 }
 
 }

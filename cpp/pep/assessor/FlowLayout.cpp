@@ -1,7 +1,7 @@
-/*  The FlowLayout class implements a widget that can handle different window sizes 
-*   The code of this class is taken from the Qt6 documentation 
+/*  The FlowLayout class implements a widget that can handle different window sizes
+*   The code of this class is taken from the Qt6 documentation
 *   https://doc.qt.io/qt-6/qtwidgets-layouts-flowlayout-example.html
-*/ 
+*/
 
 #include <pep/assessor/FlowLayout.hpp>
 
@@ -18,8 +18,7 @@ FlowLayout::FlowLayout(int margin, int hSpacing, int vSpacing)
 }
 
 FlowLayout::~FlowLayout() {
-  QLayoutItem *item;
-  while ((item = FlowLayout::takeAt(0)))
+  for (QLayoutItem *item{}; (item = FlowLayout::takeAt(0));)
     delete item;
 }
 
@@ -91,13 +90,13 @@ QSize FlowLayout::minimumSize() const {
 
 
 int FlowLayout::doLayout(const QRect &rect, bool testOnly) const {
-  int left, top, right, bottom;
+  int left{}, top{}, right{}, bottom{};
   getContentsMargins(&left, &top, &right, &bottom);
   QRect effectiveRect = rect.adjusted(+left, +top, -right, -bottom);
   int x = effectiveRect.x();
   int y = effectiveRect.y();
   int lineHeight = 0;
-  
+
   for (QLayoutItem *item : std::as_const(itemList)) {
     const QWidget *wid = item->widget();
     int spaceX = horizontalSpacing();

@@ -27,6 +27,7 @@ if(ENABLE_CLANG_TIDY)
   endif()
   find_program(CLANG_TIDY_PROGRAM clang-tidy)
   # Recompile when .clang-tidy changes
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.clang-tidy")
   file(SHA256 "${CMAKE_SOURCE_DIR}/.clang-tidy" clang_tidy_hash)
   set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
 endif()
@@ -144,8 +145,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
 
-      -Wno-deprecated-copy-with-dtor  # Ignore when defaulted...
-      -Wdeprecated-copy-with-user-provided-dtor  # ...but not when provided
       -Wno-unused-parameter
   )
 

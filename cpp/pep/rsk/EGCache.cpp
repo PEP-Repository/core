@@ -1,16 +1,15 @@
 #include <pep/rsk/EGCache.hpp>
+
+#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Log.hpp>
 #include <pep/utils/Singleton.hpp>
 
 #include <boost/core/noncopyable.hpp>
-
 #include <boost/functional/hash.hpp>
 
 #include <unordered_map>
-#include <chrono>
 #include <shared_mutex>
 #include <atomic>
-
-#include <pep/utils/Log.hpp>
 
 // There are currently two caches:
 //
@@ -52,6 +51,8 @@
 // but this can be disabled by passing std::memory_model_relaxed to the
 // "load" and "store" methods.
 
+using namespace std::literals;
+
 namespace pep {
 
 static const std::string LOG_TAG("EGCache");
@@ -70,8 +71,6 @@ private:
     static_assert(std::is_same_v<decltype(Options::PrunedSize), const size_t>);
     static_assert(std::is_same_v<decltype(Options::MaxSize), const size_t>);
     static_assert(std::is_same_v<decltype(Options::Name), const char* const>);
-    static_assert(std::is_same_v<decltype(Options::PruneCooldown), const double>);
-    static_assert(std::is_same_v<decltype(Options::ReEnableTime), const double>);
 
     // 'Value' should have a constructor with signature
     //    Value(EGCacheImp* egcache, Key&& key)
@@ -114,10 +113,9 @@ private:
     std::unordered_map<Key, Entry, KeyHash> data;
     uint64_t generation = 0;
     std::atomic_uint64_t useCount = 0; // for metrics
-    std::chrono::time_point<std::chrono::steady_clock> lastPrune
-      = std::chrono::steady_clock::now();
-    std::chrono::time_point<std::chrono::steady_clock> disabledAt
-      = std::chrono::steady_clock::now();
+    steady_seconds
+        lastPrune = TimeNow<steady_seconds>(),
+        disabledAt = TimeNow<steady_seconds>();
     bool enabled = true;
 
     using iterator = typename decltype(data)::iterator;
@@ -133,7 +131,7 @@ private:
     inline void disable_under_unique_lock() {
       assert(this->enabled);
       this->enabled = false;
-      this->disabledAt = std::chrono::steady_clock::now();
+      this->disabledAt = TimeNow<steady_seconds>();
     }
 
     // if the cache is disabled, but the prune has cooled down,
@@ -141,15 +139,11 @@ private:
     inline bool enabledOrEnablable_underSharedLock() {
       if (this->enabled)
         return true;
-      auto now = std::chrono::steady_clock::now();
-      std::chrono::duration<double> diff = now - this->disabledAt;
-      return diff.count() >= Options::ReEnableTime;
+      return TimeNow<steady_seconds>() - this->disabledAt >= Options::ReEnableTime;
     }
 
     inline bool pruneCooledDown_underSharedLock() {
-      auto now = std::chrono::steady_clock::now();
-      std::chrono::duration<double> diff = now - this->lastPrune;
-      return diff.count() >= Options::PruneCooldown;
+      return TimeNow<steady_seconds>() - this->lastPrune >= Options::PruneCooldown;
     }
 
     // prune cache, which might disable it
@@ -178,7 +172,7 @@ private:
 
       LOG(LOG_TAG, info) << "Pruned " << Options::Name << " cache down to "
         << this->data.size();
-      this->lastPrune = std::chrono::steady_clock::now();
+      this->lastPrune = TimeNow<steady_seconds>();
     }
 
     // adds entry associated with the given key, and returns
@@ -328,8 +322,8 @@ private:
     static constexpr size_t PrunedSize = 250;
     static constexpr size_t MaxSize = 500;
     static constexpr const char *Name = "RSK";
-    static constexpr double PruneCooldown = 900; // 15 minutes
-    static constexpr double ReEnableTime = 3600; // 1 hour
+    static constexpr auto PruneCooldown = 15min;
+    static constexpr auto ReEnableTime = 1h;
   };
 
   Cache<RSKKey, RSKValue, RSKOptions, RSKKey::hash> rskCache;
@@ -348,8 +342,8 @@ private:
     static constexpr size_t PrunedSize = 750;
     static constexpr size_t MaxSize = 1000;
     static constexpr const char *Name = "Table";
-    static constexpr double PruneCooldown = 900; // 15 minutes
-    static constexpr double ReEnableTime = 3600; // 1 hour
+    static constexpr auto PruneCooldown = 15min;
+    static constexpr auto ReEnableTime = 1h;
   };
 
   static_assert(TableOptions::PrunedSize > RSKOptions::MaxSize,

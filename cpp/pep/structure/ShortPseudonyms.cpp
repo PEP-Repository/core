@@ -66,7 +66,7 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
     if (!isdigit(*visit_start)) { // Also catches end-of-string
       throw std::runtime_error("Invalid short pseudonym column name: missing visit number");
     }
-    char *visit_end;
+    char *visit_end{};
     result.mVisit = strtol(remaining.data(), &visit_end, 10);
     if (*result.mVisit <= 0) {
       throw std::runtime_error("Invalid short pseudonym column name");

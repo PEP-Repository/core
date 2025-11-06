@@ -16,7 +16,7 @@ void RegisteredTestEnvironment::RegisterFactory(const Factory& factory) {
   registered = factory;
 }
 
-RegisteredTestEnvironment* RegisteredTestEnvironment::Create(int argc, char* argv[]) {
+RegisteredTestEnvironment* RegisteredTestEnvironment::Create(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
   const auto& registered = RegisteredFactory();
   if (registered.has_value()) {
     return (*registered)(argc, argv);

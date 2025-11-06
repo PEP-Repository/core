@@ -20,7 +20,7 @@ std::string PackUint64BE(uint64_t x) {
 }
 
 // Unpacks an uint32 from (the first 4 bytes of) a big-endian string.
-uint32_t UnpackUint32BE(const std::string& str) {
+uint32_t UnpackUint32BE(std::string_view str) {
   // copy first 4 characters of string (does not allocate because of Short-String-Optimization)
   std::string x(str, 0, 4);
 
@@ -38,7 +38,7 @@ uint32_t UnpackUint32BE(const std::string& str) {
 }
 
 // Unpacks an uint64 from (the first 8 bytes of) a big-endian string.
-uint64_t UnpackUint64BE(const std::string& str) {
+uint64_t UnpackUint64BE(std::string_view str) {
   // copy first 8 characters of string (does not allocate because of Short-String-Optimization)
   std::string x(str, 0, 8);
 

@@ -5,6 +5,7 @@
 #include <memory>
 #include <limits>
 #include <mutex>
+#include <span>
 
 #include <boost/core/noncopyable.hpp>
 
@@ -31,7 +32,8 @@ class CPRNG : private boost::noncopyable {
 
  public:
   CPRNG();
-  void operator()(uint8_t* buffer, size_t len);
+  void operator()(uint8_t* buffer, size_t len) { return (*this)({buffer, len}); }
+  void operator()(std::span<uint8_t> buffer);
 };
 
 // A cryptographically secure pseudo-random number generator compatible

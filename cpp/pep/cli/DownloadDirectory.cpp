@@ -402,7 +402,7 @@ std::string DownloadDirectory::Specification::toString() const {
 
 DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize)
   : mDestination(std::move(destination)), mDescriptor(std::move(descriptor)), mPath(std::move(path)), mFileName(mPath.filename().string()), mFileSize(fileSize), mHasher(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
-  
+
   mRaw = std::make_shared<std::ofstream>(mPath.string(), std::ios::out | std::ios::binary);
   if (!mRaw->is_open()) {
     throw std::system_error(errno, std::generic_category(), "Failed to open " + mPath.string());
@@ -443,7 +443,7 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
     throw std::runtime_error("Record has already been committed and stored at " + mPath.string());
   }
   mRaw = nullptr;
-  XxHasher::Hash hash;
+  XxHasher::Hash hash{};
   std::filesystem::path path;
   std::optional<Pseudonymiser> pseudonymiser{std::nullopt};
 

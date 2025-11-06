@@ -296,15 +296,11 @@ TEST(AsymmetricKeyTest, TestSignatures) {
   std::string signature = privateKey.signDigestSha256(testData1);
   EXPECT_NE("", signature);
 
-  bool check;
-  check = publicKey.verifyDigestSha256(testData1, signature);
-  EXPECT_TRUE(check);
+  EXPECT_TRUE(publicKey.verifyDigestSha256(testData1, signature));
 
-  check = publicKey.verifyDigestSha256(testData2, signature);
-  EXPECT_FALSE(check);
+  EXPECT_FALSE(publicKey.verifyDigestSha256(testData2, signature));
 
-  check = publicKeyPKCS1.verifyDigestSha256(testData1, signature);
-  EXPECT_FALSE(check);
+  EXPECT_FALSE(publicKeyPKCS1.verifyDigestSha256(testData1, signature));
 
   // Provided digest
   std::vector<unsigned char> digestVector = {

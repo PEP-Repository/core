@@ -17,7 +17,7 @@ public:
 class RegistrationRequest {
 public:
   RegistrationRequest() = default;
-  explicit inline RegistrationRequest(const PolymorphicPseudonym& polymorphicPseudonym) : mPolymorphicPseudonym(polymorphicPseudonym) { }
+  explicit RegistrationRequest(const PolymorphicPseudonym& polymorphicPseudonym) : mPolymorphicPseudonym(polymorphicPseudonym) { }
   PolymorphicPseudonym mPolymorphicPseudonym;
   std::string mEncryptedIdentifier;
   std::string mEncryptionPublicKeyPem;

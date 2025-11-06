@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <pep/client/Client.hpp>
 #include <pep/async/IoContextThread.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/utils/Configuration.hpp>
 
 #include <boost/asio/io_context.hpp>
@@ -26,14 +26,14 @@ protected:
       mIoContextThread = std::make_shared<pep::IoContextThread>(mIoContext, &mKeepRunning);
       mClient = pep::Client::OpenClient(pep::Configuration::FromFile("ClientConfig.json"), mIoContext, false);
       mClient->enrollUser(DATA_ADMIN_TOKEN).as_blocking().last();
-      mClient->amaCreateColumn("Test.Servers.Data").as_blocking().last();
-      mClient->amaCreateColumnGroup("Test.Servers").as_blocking().last();
-      mClient->amaAddColumnToGroup("Test.Servers.Data", "Test.Servers").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumn("Test.Servers.Data").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumnGroup("Test.Servers").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaAddColumnToGroup("Test.Servers.Data", "Test.Servers").as_blocking().last();
       mClient->enrollUser(ACCESS_ADMIN_TOKEN).as_blocking().last();
-      mClient->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "read").as_blocking().last();
-      mClient->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "write").as_blocking().last();
-      mClient->amaCreateGroupAccessRule("*", "PepTest", "access").as_blocking().last();
-      mClient->amaCreateGroupAccessRule("*", "PepTest", "enumerate").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "read").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "write").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateGroupAccessRule("*", "PepTest", "access").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateGroupAccessRule("*", "PepTest", "enumerate").as_blocking().last();
       mClient->enrollUser(USER_TOKEN).as_blocking().last();
     }
   }

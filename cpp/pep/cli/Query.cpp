@@ -60,7 +60,7 @@ private:
 
   int execute() override {
     return executeEventLoopFor([](std::shared_ptr<pep::CoreClient> client) {
-      return client->getAccessibleColumns(false) // Implicit column access is noted in a separate output line
+      return client->getAccessManagerProxy()->getAccessibleColumns(false) // Implicit column access is noted in a separate output line
         .map(
           [userGroup = client->getEnrolledGroup()](const pep::ColumnAccess& access) {
             // Copy received information to std::map<> to sort entries (by name) for output
@@ -177,7 +177,7 @@ private:
 
     int execute() override {
       return executeEventLoopFor([](std::shared_ptr<pep::CoreClient> client) {
-        return client->getAccessibleParticipantGroups(true)
+        return client->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
           .map([userGroup = client->getEnrolledGroup()](const pep::ParticipantGroupAccess& access) {
           ReportParticipantGroupAccess(access, userGroup);
           return pep::FakeVoid();
@@ -211,8 +211,8 @@ private:
     }
 
   private:
-    static void ReportTimestamp(std::ostream& destination, const std::string& announce, time_t timestamp) {
-      destination << '\n' << announce << ' ' << timestamp << ", i.e. " << pep::Timestamp::FromTimeT(timestamp).toString();
+    static void ReportTimestamp(std::ostream& destination, const std::string& announce, pep::Timestamp timestamp) {
+      destination << '\n' << announce << ' ' << timestamp << ", i.e. " << pep::TimestampToXmlDateTime(timestamp);
     }
 
   protected:

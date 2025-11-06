@@ -1,11 +1,13 @@
 #include <pep/cli/SingleCellCommand.hpp>
 #include <pep/cli/TicketFile.hpp>
 
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 using namespace pep::cli;
 
@@ -76,7 +78,7 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
 
     destination << '\n'
       << "\t{\n"
-      << "\t\t\"timestamp\": " << entry.mTimestamp.getTime() << ",\n"
+      << "\t\t\"timestamp\": " << TicksSinceEpoch<std::chrono::milliseconds>(entry.mTimestamp) << ",\n"
       << "\t\t\"pp\": \"" << entry.mLocalPseudonyms->mPolymorphic.text() << "\",\n"
       << "\t\t\"column\": \"" << entry.mColumn << "\",\n"
       << "\t\t\"id\": ";

@@ -2,6 +2,8 @@
 #include <pep/assessor/InputValidationTooltip.hpp>
 #include <pep/assessor/ui_participanteditor.h>
 #include <pep/assessor/QDate.hpp>
+#include <pep/content/Date.hpp>
+
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 
@@ -59,7 +61,7 @@ pep::ParticipantPersonalia ParticipantEditor::getPersonalia() const {
     ui->firstnameInput->text().toStdString(),
     ui->tussenvoegselsInput->text().toStdString(),
     ui->lastnameInput->text().toStdString(),
-    pep::Date(QDateToGregorian(ui->dateOfBirthInput->getValue())).toHomebrewFormat());
+    pep::ToDdMonthAbbrevYyyyDate(pep::QDateToStd(ui->dateOfBirthInput->getValue())));
 
   return result;
 }
@@ -68,7 +70,7 @@ void ParticipantEditor::setPersonalia(const pep::ParticipantPersonalia& data) {
   ui->firstnameInput->setText(QString::fromStdString(data.getFirstName()));
   ui->tussenvoegselsInput->setText(QString::fromStdString(data.getMiddleName()));
   ui->lastnameInput->setText(QString::fromStdString(data.getLastName()));
-  ui->dateOfBirthInput->setValue(GregorianToQDate(pep::ParticipantPersonalia::ParseDateOfBirth(data.getDateOfBirth()).gregorian()));
+  ui->dateOfBirthInput->setValue(pep::QDateFromStd(pep::ParticipantPersonalia::ParseDateOfBirth(data.getDateOfBirth())));
 }
 
 bool ParticipantEditor::getIsTestParticipant() const {

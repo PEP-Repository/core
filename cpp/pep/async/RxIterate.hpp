@@ -2,23 +2,23 @@
 
 #include <pep/async/CreateObservable.hpp>
 
+#include <ranges>
+
 namespace pep {
 
-/* !
- * \brief Converts/adapts a container to an observable that produces the container's items.
- * 
- * \tparam TContainer The type of container to iterate over. Must satisfy (some of) the C++11 "Container" requirements: see https://en.cppreference.com/w/cpp/named_req/Container
- * \param container: The container whose items will be produced by the observable.
- * \return An observable that produces the container's items.
- * 
- * \remark As opposed to rxcpp::observable<>::iterate, this function creates no copies of the container. 
- * \remark If the container isn't needed anymore, consider using RxDrain<> instead.
- */
-template <typename TContainer>
-rxcpp::observable<typename TContainer::value_type> RxIterate(std::shared_ptr<TContainer> container) {
-  return CreateObservable<typename TContainer::value_type>([container](rxcpp::subscriber<typename TContainer::value_type> subscriber) {
-    for (auto i = container->cbegin(); subscriber.is_subscribed() && i != container->cend(); ++i) {
-      subscriber.on_next(*i);
+/// Like \c rxcpp::observable<>::iterate, but moves elements out of the container if possible, as it's single-use.
+/// Note that you still have to move the container yourself,
+/// which means you can always safely use this instead of \c rxcpp::observable<>::iterate.
+/// Note that \c rxcpp::observable<>::iterate with move_iterators does not work, as it makes the collection const and
+/// retrieves the iterator type using \c decltype(std::begin(declval<C>())), which makes move iterator values const.
+auto RxIterate(std::ranges::input_range auto container) {
+  using namespace std::ranges;
+  using TValue = range_value_t<decltype(container)>;
+  return CreateObservable<TValue>([container = std::make_shared<decltype(container)>(std::move(container))]
+      (const rxcpp::subscriber<TValue>& subscriber) {
+    for (auto& elem : *container) {
+      if (!subscriber.is_subscribed()) { break; }
+      subscriber.on_next(std::move(elem));
     }
     if (subscriber.is_subscribed()) {
       subscriber.on_completed();

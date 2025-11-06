@@ -5,6 +5,8 @@
 #include <boost/asio/steady_timer.hpp>
 #include <gtest/gtest.h>
 
+using namespace std::literals;
+
 namespace {
 
 class FakeProtocol : public pep::networking::ProtocolImplementor<FakeProtocol> {
@@ -92,8 +94,8 @@ TEST(Server, DiscardsUnopenedSocket) {
 }
 
 TEST(Server, UnschedulesOnDestruction) {
-  pep::testing::Milliseconds SHORT_MSEC = 100;
-  pep::testing::Milliseconds LONG_MSEC = 200;
+  auto SHORT_TIME = 100ms;
+  auto LONG_TIME = 200ms;
 
   boost::asio::io_context context;
 
@@ -103,7 +105,7 @@ TEST(Server, UnschedulesOnDestruction) {
 
   // Release our shared_ptr to the server after SHORT_DURATION
   boost::asio::steady_timer timer(context);
-  timer.expires_after(std::chrono::duration_cast<boost::asio::steady_timer::duration>(pep::testing::MillisecondsToDuration(SHORT_MSEC)));
+  timer.expires_after(SHORT_TIME);
   timer.async_wait([&server /* note: captured by reference */](const boost::system::error_code& error) {
     server.reset(); // Ensure that the server is discarded even if our test assertion doesn't hold, preventing said server from keeping the I/O context busy
     ASSERT_FALSE(error) << "Timer produced an error: " << error;
@@ -111,10 +113,10 @@ TEST(Server, UnschedulesOnDestruction) {
 
   // Have the I/O context run for at most LONG_DURATION, and measure how long it runs
   auto started = pep::testing::Clock::now();
-  context.run_for(pep::testing::MillisecondsToDuration(LONG_MSEC));
+  context.run_for(LONG_TIME);
   auto duration = pep::testing::MillisecondsSince(started);
 
   // If the server unscheduled all its work when it was destroyed, the I/O context will have stopped running at that moment
-  ASSERT_GE(duration, SHORT_MSEC) << "I/O context finished before server was discarded";
-  ASSERT_LT(duration, LONG_MSEC) << "I/O server kept running after server was discarded";
+  ASSERT_GE(duration, SHORT_TIME) << "I/O context finished before server was discarded";
+  ASSERT_LT(duration, LONG_TIME) << "I/O server kept running after server was discarded";
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/content/Date.hpp>
+#include <chrono>
 #include <string>
 
 namespace pep {
@@ -22,7 +22,7 @@ public:
 
   std::string getFullName() const;
 
-  static Date ParseDateOfBirth(const std::string& value);
+  static std::chrono::year_month_day ParseDateOfBirth(const std::string& value);
 
   std::string toJson() const;
   static ParticipantPersonalia FromJson(const std::string& json);

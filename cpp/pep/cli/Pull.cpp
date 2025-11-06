@@ -19,7 +19,8 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxToVector.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -238,8 +239,9 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       throw std::runtime_error("Option --all-accessible cannot be used together with other options specifying columns or participants");
     }
 
-    return client->getAccessibleParticipantGroups(true)
-      .zip(client->getAccessibleColumns(true, { "read" }))
+    auto& am = *client->getAccessManagerProxy();
+    return am.getAccessibleParticipantGroups(true)
+      .zip(am.getAccessibleColumns(true, { "read" }))
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
       for (const auto& pg : pga.participantGroups) {
