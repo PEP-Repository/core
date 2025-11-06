@@ -650,7 +650,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
     auto pp = server->pClient->generateParticipantPolymorphicPseudonym(id);
     return MakeSharedCopy(ParticipantIdentity{ id, pp });
   }).flat_map([server](std::shared_ptr<ParticipantIdentity> participant) { // Raise an error if the generated (ID+)PP already existed
-    return server->pClient->enumerateData2( // Check with Storage Facility if (the row for) the generated ID already exists
+    return server->pClient->enumerateData( // Check with Storage Facility if (the row for) the generated ID already exists
       {},                        // groups
       { participant->pp },          // pps
       {},                        // columnGroups
@@ -698,7 +698,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
   };
 
   auto server = SharedFrom(*this);
-  return pClient->enumerateData2( // Get previously stored SPs for this participant
+  return pClient->enumerateData( // Get previously stored SPs for this participant
       {},                           // groups
       { *ctx->pp },                 // pps
       { "ShortPseudonyms" },        // columnGroups

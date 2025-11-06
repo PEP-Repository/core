@@ -71,7 +71,7 @@ TEST_F(ServersTest, UpAndDownload) {
   auto dataStorageResult = mClient->storeData2(pp, "Test.Servers.Data", std::make_shared<std::string>(testData), {pep::MetadataXEntry::MakeFileExtension(".txt")}, storeDataOpts).as_blocking().first();
   ASSERT_EQ(dataStorageResult.mIds.size(), 1);
   auto retrieveResult =
-      mClient->retrieveData2(
+      mClient->retrieveData(
           mClient->getKeys(
               mClient->enumerateDataByIds({dataStorageResult.mIds.at(0)},
                   ticket.getTicket()).concat(),
@@ -83,7 +83,7 @@ TEST_F(ServersTest, UpAndDownload) {
         if (page.fileIndex != 0) {
           throw std::runtime_error("Unexpected file index");
         }
-        return std::move(page.mContent);
+        return std::move(page.content);
       })
       .op(pep::RxConcatenateStrings())
       .as_blocking().first();

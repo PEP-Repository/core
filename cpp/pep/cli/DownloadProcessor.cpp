@@ -118,7 +118,7 @@ rxcpp::observable<std::shared_ptr<IndexedTicket2>> DownloadProcessor::requestTic
 
 rxcpp::observable<std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>>> DownloadProcessor::listFiles(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx) {
   progress->advance("Listing files");
-  return ctx->client->enumerateData2(ctx->ticket->getTicket())
+  return ctx->client->enumerateData(ctx->ticket->getTicket())
     .op(RxToVectorOfVectors());
 }
 
@@ -238,7 +238,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
   // Retrieve data for fields that we're updating
   auto retrieveProgress = Progress::Create(subjects->size(), progress->push());
   auto self = SharedFrom(*this);
-  return ctx->client->retrieveData2(ctx->client->getKeys(RxDrain(subjects), ctx->ticket->getTicket()), ctx->ticket->getTicket())
+  return ctx->client->retrieveData(ctx->client->getKeys(RxDrain(subjects), ctx->ticket->getTicket()), ctx->ticket->getTicket())
       .flat_map([self, ctx, retrieveProgress](const rxcpp::observable<RetrievePage>& batch) {
         return batch
           .map([self, ctx, retrieveProgress](const RetrievePage& page) {
@@ -265,7 +265,7 @@ void DownloadProcessor::processDataChunk(std::shared_ptr<Progress> retrieveProgr
   }
 
   auto self = SharedFrom(*this);
-  stream->write(result.mContent, self->mGlobalConfig);
+  stream->write(result.content, self->mGlobalConfig);
 }
 
 std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openStorageStream(RecordDescriptor descriptor, size_t fileSize, Progress& progress) {

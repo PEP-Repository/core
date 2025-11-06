@@ -179,7 +179,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         tOpts.columns = {"ParticipantInfo"};
         return client->requestTicket2(tOpts).flat_map(
           [client, id](IndexedTicket2 ticket) {
-            return client->retrieveData2(
+            return client->retrieveData(
                 client->getKeys(
                     client->enumerateDataByIds({id},
                         ticket.getTicket()).concat(),
@@ -192,7 +192,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         if (page.fileIndex != 0) {
           throw std::runtime_error("Unexpected file index");
         }
-        return std::move(page.mContent);
+        return std::move(page.content);
       })
       .op(RxConcatenateStrings())
       .map(

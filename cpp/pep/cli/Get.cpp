@@ -101,10 +101,10 @@ protected:
             }
 
             if (datastream) {
-              return client->retrieveData2(rxcpp::observable<>::just(std::move(keys)), ticket.getTicket())
+              return client->retrieveData(rxcpp::observable<>::just(std::move(keys)), ticket.getTicket())
                   .concat()
                   .map([datastream](const pep::RetrievePage& page) {
-                    *datastream << page.mContent;
+                    *datastream << page.content;
                     return pep::FakeVoid{};
                   })
                   .op(RxInstead(pep::FakeVoid{}));

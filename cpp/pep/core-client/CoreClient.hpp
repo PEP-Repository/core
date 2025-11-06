@@ -100,11 +100,10 @@ struct RetrievePage {
   std::shared_ptr<EnumerateResult> entry;
 
   /// A piece of the content of the file
-  std::string mContent;
+  std::string content;
 
   /// Is this the last page?
-  /// Remember that empty files will not be included
-  bool mLast{};
+  bool last{};
 };
 
 // Represents a file retrieved using enumerateAndRetrieveData2.
@@ -489,14 +488,14 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   /// Enumerate cells using a pre-requested ticket.
   rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
-  enumerateData2(std::shared_ptr<SignedTicket2> ticket);
+  enumerateData(std::shared_ptr<SignedTicket2> ticket);
 
   /*!
    * \brief Enumerate cells after requesting a new ticket.
    * \remark Results won't include (local) pseudonyms for the access group.
    */
   rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
-  enumerateData2(
+  enumerateData(
     const std::vector<std::string>& groups=std::vector<std::string>(),
     const std::vector<PolymorphicPseudonym>& pps = {},
     const std::vector<std::string>& columnGroups=std::vector<std::string>(),
@@ -519,7 +518,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
   /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
   rxcpp::observable<rxcpp::observable<RetrievePage>>
-  retrieveData2(
+  retrieveData(
     const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
     std::shared_ptr<SignedTicket2> ticket);
 

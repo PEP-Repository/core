@@ -125,7 +125,7 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 
   // Legacy: early participants were registered using an external identifier that was (initially) not stored. Completion
   // of such registrations must store the identifier retroactively
-  return enumerateData2({},                        // groups
+  return enumerateData({},                        // groups
                         {pp},                      // pps
                         {},                        // columnGroups
                         {"ParticipantIdentifier"}) // columns

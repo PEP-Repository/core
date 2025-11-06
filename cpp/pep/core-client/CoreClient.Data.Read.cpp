@@ -50,7 +50,7 @@ void FillHistoryRequestIndices(const SignedTicket2& ticket,
 
 }
 
-rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData2(const std::vector<std::string>&
+rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(const std::vector<std::string>&
                                                                            participantGroups,
                                                                        const std::vector<PolymorphicPseudonym>& pps,
                                                                        const std::vector<std::string>& columnGroups,
@@ -62,10 +62,10 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
                                                .mColumnGroups = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})
-      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData2(std::make_shared<SignedTicket2>(ticket)); });
+      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(ticket)); });
 }
 
-rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData2(std::shared_ptr<SignedTicket2> ticket) {
+rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "enumerateData";
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
@@ -141,7 +141,7 @@ CoreClient::getKeys(
 }
 
 rxcpp::observable<rxcpp::observable<RetrievePage>>
-CoreClient::retrieveData2(
+CoreClient::retrieveData(
   const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
   std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "retrieveData";
@@ -202,17 +202,17 @@ CoreClient::retrieveData2(
                     RetrievePage retrievedPage{
                       .fileIndex = file.fileKey.fileIndex,
                       .entry = file.fileKey.entry,
-                      .mContent = page->decrypt(file.fileKey.symmetricKey, entry.mMetadata),
+                      .content = page->decrypt(file.fileKey.symmetricKey, entry.mMetadata),
                     };
                     // Omit empty pages
-                    if (retrievedPage.mContent.empty()) { return {}; }
-                    file.bytesWritten += retrievedPage.mContent.size();
+                    if (retrievedPage.content.empty()) { return {}; }
+                    file.bytesWritten += retrievedPage.content.size();
                     if (file.bytesWritten > entry.mFileSize) {
                       throw std::runtime_error(std::format(
                           "Received file {} larger than signaled file size: {}+ > {}",
                           index, file.bytesWritten, entry.mFileSize));
                     }
-                    retrievedPage.mLast = file.bytesWritten == entry.mFileSize;
+                    retrievedPage.last = file.bytesWritten == entry.mFileSize;
                     return retrievedPage;
                   })
                   .op(RxFilterNullopt());
@@ -225,8 +225,8 @@ CoreClient::retrieveData2(
                     return RetrievePage{
                       .fileIndex = file.fileKey.fileIndex,
                       .entry = file.fileKey.entry,
-                      .mContent = {},
-                      .mLast = true,
+                      .content = {},
+                      .last = true,
                     };
                   });
 
