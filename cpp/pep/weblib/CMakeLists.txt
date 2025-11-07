@@ -33,9 +33,9 @@ set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
 #TODO limit -sENVIRONMENT?
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
-    -Wl,--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
+    -Wl,--no-demangle # https://github.com/llvm/llvm-project/issues/126919
     -gsource-map
-    -sNO_PROXY_TO_PTHREAD: # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
+    -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
     -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
     -sNO_PTHREAD_POOL_SIZE_STRICT # We don't block the main thread # TODO preallocate some threads in the pool?
     -sINITIAL_MEMORY=209715200 # 200 MiB
