@@ -53,7 +53,9 @@ struct httpRequestHandlerParamsObservable : httpRequestHandlerParams {
 
 static int writeResponse(mg_connection *conn, const pep::HTTPResponse& response) {
   std::string responseString = response.toString();
-  mg_write(conn, responseString.data(), responseString.length());
+  if (mg_write(conn, responseString.data(), responseString.length()) < 0) {
+    throw std::runtime_error("Failed to write HTTP response");
+  }
   return static_cast<int>(response.getStatusCode());
 }
 
@@ -66,56 +68,61 @@ static int requestHandler(struct mg_connection *conn, void *cbdata)
   LOG(LOG_TAG, debug) << "Handler uri: " << params->uri << ". Request uri: " << requestInfo->local_uri;
   LOG(LOG_TAG, debug) << "match uri exactly: " << params->exactMatchOnly;
 
-  if((params->method.empty() || params->method == requestInfo->request_method)
-    && (params->uri == requestInfo->local_uri || !params->exactMatchOnly)){
-    LOG(LOG_TAG, debug) << "Request handler matches request. Start handling the request";
-    try {
-      std::map<std::string, std::string, CaseInsensitiveCompare> headers;
-      for(size_t i = 0; i < static_cast<size_t>(requestInfo->num_headers); ++i) {
-        const auto& [it, isNew] = headers.try_emplace(requestInfo->http_headers[i].name, requestInfo->http_headers[i].value);
-        if(!isNew) {
-          it->second = it->second + "," + requestInfo->http_headers[i].value; //Multiple occurences of the same header can be combined, separated by comma's see https://tools.ietf.org/html/rfc2616#section-4.2
-        }
-      }
-      auto hostHeader = headers.find("Host");
-      if(hostHeader == headers.end()) {
-        return writeResponse(conn, HTTPResponse("400 Bad Request", "The HTTP request did not have a Host header."));
-      }
-
-      std::string body;
-      if(requestInfo->content_length > 0) {
-        body = std::string(static_cast<std::string::size_type>(requestInfo->content_length), '\0');
-        mg_read(conn, body.data(), body.size());
-      }
-      std::string queryString;
-      if(requestInfo->query_string)
-        queryString=requestInfo->query_string;
-      HTTPRequest request(hostHeader->second, networking::HttpMethod::FromString(requestInfo->request_method),
-        boost::urls::url(requestInfo->local_uri).set_encoded_query(queryString),
-        body, headers, false);
-
-
-      // We first check whether io_context is still running, and then we run the request handler on it.
-      // Since we are multithreaded here, io_context can stop between those two steps.
-      // So we add a work_guard, to make sure it keeps running, even if it runs out of work.
-      // workGuard will be active until it goes out of scope.
-      [[maybe_unused]] auto workGuard = boost::asio::make_work_guard(*params->io_context);
-      if(params->io_context->stopped()) {
-        // Since io_context is no longer running, the application is already being closed.
-        // We want to handle it as gracefully as possible the application doesn't e.g. segfault
-        // Using LOG can already lead to a segfault. Civetweb can however still write a response.
-        return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Error: application is closing. Can no longer handle requests."));
-      }
-      return writeResponse(conn, params->runHandler(request, requestInfo->remote_addr).as_blocking().first());
-    }
-    catch (std::exception& e) {
-      LOG(LOG_TAG, pep::error) << "Unexpected error while handling request: " << e.what();
-      return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Internal Server error"));
-    }
-  }
-  else {
+  if (params->exactMatchOnly && params->uri != requestInfo->local_uri) {
     LOG(LOG_TAG, debug) << "Request handler does not match request.";
     return 0;
+  }
+
+  if (!params->method.empty() && params->method != requestInfo->request_method) {
+    LOG(LOG_TAG, debug) << "Wrong method.";
+    return writeResponse(conn, HTTPResponse("405 Method Not Allowed", "Expected " + params->method + " request"));
+  }
+
+  LOG(LOG_TAG, debug) << "Request handler matches request. Start handling the request";
+  try {
+    std::map<std::string, std::string, CaseInsensitiveCompare> headers;
+    for(size_t i = 0; i < static_cast<size_t>(requestInfo->num_headers); ++i) {
+      const auto& [it, isNew] = headers.try_emplace(requestInfo->http_headers[i].name, requestInfo->http_headers[i].value);
+      if(!isNew) {
+        it->second = it->second + "," + requestInfo->http_headers[i].value; //Multiple occurrences of the same header can be combined, separated by comma's see https://tools.ietf.org/html/rfc2616#section-4.2
+      }
+    }
+    auto hostHeader = headers.find("Host");
+    if(hostHeader == headers.end()) {
+      return writeResponse(conn, HTTPResponse("400 Bad Request", "The HTTP request did not have a Host header."));
+    }
+
+    std::string body;
+    if(requestInfo->content_length > 0) {
+      body = std::string(static_cast<std::string::size_type>(requestInfo->content_length), '\0');
+      if (mg_read(conn, body.data(), body.size()) < 0) {
+        throw std::runtime_error("Failed to read HTTP request body");
+      }
+    }
+    std::string queryString;
+    if(requestInfo->query_string)
+      queryString=requestInfo->query_string;
+    HTTPRequest request(hostHeader->second, networking::HttpMethod::FromString(requestInfo->request_method),
+      boost::urls::url(requestInfo->local_uri).set_encoded_query(queryString),
+      body, headers, false);
+
+
+    // We first check whether io_context is still running, and then we run the request handler on it.
+    // Since we are multithreaded here, io_context can stop between those two steps.
+    // So we add a work_guard, to make sure it keeps running, even if it runs out of work.
+    // workGuard will be active until it goes out of scope.
+    [[maybe_unused]] auto workGuard = boost::asio::make_work_guard(*params->io_context);
+    if(params->io_context->stopped()) {
+      // Since io_context is no longer running, the application is already being closed.
+      // We want to handle it as gracefully as possible the application doesn't e.g. segfault
+      // Using LOG can already lead to a segfault. Civetweb can however still write a response.
+      return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Error: application is closing. Can no longer handle requests."));
+    }
+    return writeResponse(conn, params->runHandler(request, requestInfo->remote_addr).as_blocking().first());
+  }
+  catch (std::exception& e) {
+    LOG(LOG_TAG, pep::error) << "Unexpected error while handling request: " << e.what();
+    return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Internal Server error"));
   }
 }
 
