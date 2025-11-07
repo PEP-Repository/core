@@ -3,11 +3,11 @@
 namespace pep {
 
 TokenRequest Serializer<TokenRequest>::fromProtocolBuffer(proto::TokenRequest&& source) const {
-  return TokenRequest(
+  return TokenRequest{
     std::move(*source.mutable_subject()),
     std::move(*source.mutable_group()),
     Serialization::FromProtocolBuffer(std::move(*source.mutable_expirationtime()))
-  );
+  };
 }
 
 void Serializer<TokenRequest>::moveIntoProtocolBuffer(proto::TokenRequest& dest, TokenRequest value) const {

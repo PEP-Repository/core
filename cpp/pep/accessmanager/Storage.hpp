@@ -55,7 +55,7 @@ private:
   bool hasUserGroup(std::string_view name) const;
   /// Try to find the internalId for the userGroup with the given name. Throws if not found.
   bool userInGroup(int64_t internalUserId, int64_t userGroupId) const;
-  std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = Timestamp()) const;
+  std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = TimeNow()) const;
 
 public:
   Storage(const std::filesystem::path &path, std::shared_ptr<GlobalConfiguration> globalConf);
@@ -210,19 +210,19 @@ public:
 
   /* Finding user identifiers */
   /// Try to find the internalId for the user that has the given identifier. Returns nullopt if not found.
-  std::optional<int64_t> findInternalUserId(std::string_view identifier, Timestamp at = Timestamp()) const;
+  std::optional<int64_t> findInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
   /// Try to find the internalId for the user that has the given identifier. Throws if not found.
-  int64_t getInternalUserId(std::string_view identifier, Timestamp at = Timestamp()) const;
-  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = Timestamp()) const;
-  std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+  int64_t getInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
+  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = TimeNow()) const;
+  std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
 
   /* Finding userGroupIds */
   /// Try to find the internalId for the userGroup with the given name. Returns nullopt if not found.
-  std::optional<int64_t> findUserGroupId(std::string_view name, Timestamp at = Timestamp()) const;
-  int64_t getUserGroupId(std::string_view name, Timestamp at = Timestamp()) const;
+  std::optional<int64_t> findUserGroupId(std::string_view name, Timestamp at = TimeNow()) const;
+  int64_t getUserGroupId(std::string_view name, Timestamp at = TimeNow()) const;
 
   /* Check user group membership */
-  std::vector<UserGroup> getUserGroupsForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+  std::vector<UserGroup> getUserGroupsForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
   bool userInGroup(std::string_view uid, std::string_view group) const;
   bool userInGroup(int64_t internalUserId, std::string_view group) const;
   bool userGroupIsEmpty(int64_t userGroupId) const;

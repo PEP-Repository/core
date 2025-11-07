@@ -164,10 +164,10 @@ void Serializer<DataStoreEntry2>::moveIntoProtocolBuffer(proto::DataStoreEntry2&
 }
 
 DataDeleteResponse2 Serializer<DataDeleteResponse2>::fromProtocolBuffer(proto::DataDeleteResponse2&& source) const {
-  DataDeleteResponse2 result;
-  result.mTimestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp()));
-  result.mEntries = Serialization::FromProtocolBuffer(std::move(*source.mutable_entries()));
-  return result;
+  return {
+    .mTimestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
+    .mEntries = Serialization::FromProtocolBuffer(std::move(*source.mutable_entries())),
+  };
 }
 
 void Serializer<DataDeleteResponse2>::moveIntoProtocolBuffer(proto::DataDeleteResponse2& dest, DataDeleteResponse2 value) const {
@@ -219,12 +219,12 @@ void Serializer<DataHistoryRequest2>::moveIntoProtocolBuffer(proto::DataHistoryR
 }
 
 DataHistoryEntry2 Serializer<DataHistoryEntry2>::fromProtocolBuffer(proto::DataHistoryEntry2&& source) const {
-  DataHistoryEntry2 result;
-  result.mColumnIndex = source.column_index();
-  result.mPseudonymIndex = source.pseudonym_index();
-  result.mTimestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp()));
-  result.mId = std::move(*source.mutable_id());
-  return result;
+  return {
+    .mColumnIndex = source.column_index(),
+    .mPseudonymIndex = source.pseudonym_index(),
+    .mTimestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
+    .mId = std::move(*source.mutable_id()),
+  };
 }
 
 void Serializer<DataHistoryEntry2>::moveIntoProtocolBuffer(proto::DataHistoryEntry2& dest, DataHistoryEntry2 value) const {

@@ -34,8 +34,7 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
     throw std::runtime_error("Cannot enroll facility type " + std::to_string(static_cast<unsigned>(mType)) + " with certificate chain for type " + std::to_string(static_cast<unsigned>(facilityType)));
   }
 
-  builder.setCertificateChain(certificateChain);
-  builder.setPrivateKey(privateKey);
+  builder.setSigningIdentity(std::make_shared<X509Identity>(std::move(privateKey), std::move(certificateChain)));
 }
 
 EndPoint ServiceEnroller::getAccessManagerEndPoint(const Configuration& config) const {

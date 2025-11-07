@@ -58,7 +58,7 @@ public:
       return group.op(RxToVector())
         .map([key = group.get_key()](std::shared_ptr<ItemVector> items) {
         assert(!items->empty());
-        return std::make_pair(key, items);
+        return std::make_pair(key, std::move(items));
         });
       })
       .reduce(

@@ -5,6 +5,7 @@
 #include <pep/utils/Configuration.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace {
@@ -26,14 +27,14 @@ protected:
       mIoContextThread = std::make_shared<pep::IoContextThread>(mIoContext, &mKeepRunning);
       mClient = pep::Client::OpenClient(pep::Configuration::FromFile("ClientConfig.json"), mIoContext, false);
       mClient->enrollUser(DATA_ADMIN_TOKEN).as_blocking().last();
-      mClient->amaCreateColumn("Test.Servers.Data").as_blocking().last();
-      mClient->amaCreateColumnGroup("Test.Servers").as_blocking().last();
-      mClient->amaAddColumnToGroup("Test.Servers.Data", "Test.Servers").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumn("Test.Servers.Data").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumnGroup("Test.Servers").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaAddColumnToGroup("Test.Servers.Data", "Test.Servers").as_blocking().last();
       mClient->enrollUser(ACCESS_ADMIN_TOKEN).as_blocking().last();
-      mClient->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "read").as_blocking().last();
-      mClient->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "write").as_blocking().last();
-      mClient->amaCreateGroupAccessRule("*", "PepTest", "access").as_blocking().last();
-      mClient->amaCreateGroupAccessRule("*", "PepTest", "enumerate").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "read").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "write").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateGroupAccessRule("*", "PepTest", "access").as_blocking().last();
+      mClient->getAccessManagerProxy()->amaCreateGroupAccessRule("*", "PepTest", "enumerate").as_blocking().last();
       mClient->enrollUser(USER_TOKEN).as_blocking().last();
     }
   }
@@ -70,7 +71,7 @@ TEST_F(ServersTest, UpAndDownload) {
   auto dataStorageResult = mClient->storeData2(pp, "Test.Servers.Data", std::make_shared<std::string>(testData), {pep::MetadataXEntry::MakeFileExtension(".txt")}, storeDataOpts).as_blocking().first();
   ASSERT_EQ(dataStorageResult.mIds.size(), 1);
   auto retrieveResult =
-      mClient->retrieveData2(
+      mClient->retrieveData(
           mClient->getKeys(
               mClient->enumerateDataByIds({dataStorageResult.mIds.at(0)},
                   ticket.getTicket()).concat(),
@@ -82,7 +83,7 @@ TEST_F(ServersTest, UpAndDownload) {
         if (page.fileIndex != 0) {
           throw std::runtime_error("Unexpected file index");
         }
-        return std::move(page.mContent);
+        return std::move(page.content);
       })
       .op(pep::RxConcatenateStrings())
       .as_blocking().first();

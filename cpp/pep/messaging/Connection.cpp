@@ -514,7 +514,7 @@ void Connection::clearState() {
 
   // Cancel sending of previously scheduled request and response messages
   mScheduler->clear();
-  // Stop sending keepalive messages 
+  // Stop sending keepalive messages
   mKeepAliveTimer.cancel();
   mKeepAliveTimerRunning = false;
   // Clear state for outgoing messages
@@ -534,7 +534,7 @@ void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
 
   assert(!mVersionValidated);
   this->sendRequest(MakeSharedCopy(Serialization::ToString(VersionRequest())), std::nullopt, true)
-    .map([](std::string response) {return Serialization::FromString<VersionResponse>(response); })
+    .map([](std::string_view response) {return Serialization::FromString<VersionResponse>(response); })
     .observe_on(observe_on_asio(mIoContext))
     .subscribe(
       [self](VersionResponse response) {

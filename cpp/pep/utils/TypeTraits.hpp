@@ -28,6 +28,10 @@ template<template<typename...> typename Template, typename... Args>
 void DerivedFromSpecializationImpl(const Template<Args...>&);
 }
 
+/// Usage:
+/// \code
+/// void myFun(DerivedFromSpecialization<std::chrono::duration> auto&& somethingInheritingFromDuration);
+/// \endcode
 template <typename T, template <typename...> typename Template>
 concept DerivedFromSpecialization = requires(const T& t) {
   detail::DerivedFromSpecializationImpl<Template>(t);

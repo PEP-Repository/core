@@ -5,6 +5,7 @@
  * This allows the "CastorConnection" class to be used without be(com)ing dependent on our networking code.
  */
 
+#include <pep/crypto/Timestamp.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/networking/HTTPMessage.hpp>
 #include <pep/utils/Event.hpp>
@@ -36,7 +37,7 @@ struct AuthenticationStatus {
    */
   AuthenticationState state;
 
-  static const int EXPIRY_MARGIN_SECONDS;
+  static const std::chrono::seconds EXPIRY_MARGIN;
 
   //! The authentication token
   std::string token;
@@ -44,7 +45,7 @@ struct AuthenticationStatus {
   //! The calculated time of expiration of the token.
   /*! There is no margin used in the calculation. When checking the expiration, using a margin may be desirable
    */
-  std::optional<time_t> expires;
+  std::optional<Timestamp> expires;
 
   //! The exception, if an error occured
   std::exception_ptr exceptionPtr;
@@ -52,10 +53,10 @@ struct AuthenticationStatus {
   /*!
    * \brief Construct an AUTHENTICATED AuthenticationStatus
    * \param token The received token
-   * \param expireSeconds The number of seconds until expiration of the token
+   * \param expiresIn The number of seconds until expiration of the token
    */
-  AuthenticationStatus(const std::string& token, const int& expireSeconds)
-    : state(AUTHENTICATED), token(token), expires(time(nullptr) + expireSeconds) {}
+  AuthenticationStatus(const std::string& token, std::chrono::seconds expiresIn)
+    : state(AUTHENTICATED), token(token), expires(TimeNow() + expiresIn) {}
 
   /*!
    * \brief Construct an AUTHENTICATION_ERROR AuthenticationStatus

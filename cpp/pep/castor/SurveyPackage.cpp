@@ -1,5 +1,7 @@
-#include <pep/castor/Survey.hpp>
 #include <pep/castor/SurveyPackage.hpp>
+
+#include <pep/async/RxIterate.hpp>
+#include <pep/castor/Survey.hpp>
 #include <pep/castor/Ptree.hpp>
 
 namespace pep {
@@ -19,8 +21,8 @@ std::string SurveyPackage::getName() const {
 }
 
 rxcpp::observable<std::shared_ptr<Survey>> SurveyPackage::getSurveys() const {
-  return rxcpp::observable<>::iterate(*mSurveysJson)
-    .map([self = SharedFrom(*this)](auto item) { return Survey::Create(self->getParent(), std::make_shared<boost::property_tree::ptree>(item.second)); });
+  return RxIterate(*mSurveysJson /*don't move member*/)
+    .map([self = SharedFrom(*this)](auto item) { return Survey::Create(self->getParent(), std::make_shared<boost::property_tree::ptree>(std::move(item.second))); });
 }
 
 }

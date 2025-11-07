@@ -46,7 +46,7 @@ bool Error::IsSerializable(std::exception_ptr exception) noexcept {
   }
 }
 
-std::exception_ptr Error::ReconstructIfDeserializable(const std::string& serialized) {
+std::exception_ptr Error::ReconstructIfDeserializable(std::string_view serialized) {
   if (serialized.size() >= sizeof(MessageMagic)) {
     if (GetMessageMagic(serialized) == MessageMagician<Error>::GetMagic()) { // It's deserializable
       // Deserialize properties into base class instance
@@ -81,7 +81,7 @@ std::exception_ptr Error::ReconstructIfDeserializable(const std::string& seriali
   return nullptr;
 }
 
-void Error::ThrowIfDeserializable(const std::string& serialized) {
+void Error::ThrowIfDeserializable(std::string_view serialized) {
   auto ptr = Error::ReconstructIfDeserializable(serialized);
   if (ptr != nullptr) {
     std::rethrow_exception(ptr);

@@ -19,8 +19,8 @@ namespace castor {
 
 namespace {
 
-template<typename T>
-void ParseDateTime(std::string datestring, const std::string& formatstring, std::chrono::time_point<T, std::chrono::seconds>& datetime) {
+template<typename TClock>
+void ParseDateTime(std::string datestring, const std::string& formatstring, std::chrono::time_point<TClock, std::chrono::seconds>& datetime) {
   std::istringstream datestringstream(std::move(datestring));
   // std::chrono::locate_zone()
   datestringstream >> parse(formatstring, datetime);
@@ -36,17 +36,13 @@ Timestamp ParseCastorDateTime(const boost::property_tree::ptree& datetimeObject)
   const std::string& datestring = datetimeObject.get<std::string>("date");
 
   local_seconds datetime;
-  //date/tz.hpp doesn't handle the frational second part well, so we strip it off
+  //date/tz.hpp doesn't handle the fractional second part well, so we strip it off
   ParseDateTime(datestring.substr(0, datestring.find('.')), "%F %T", datetime);
 
   // timezone: e.g. "Europe/Amsterdam"
   const std::string& timezone = datetimeObject.get<std::string>("timezone");
 
-  // Seconds since epoch
-  auto seconds = zoned_seconds(timezone, datetime).get_sys_time().time_since_epoch();
-
-  // Convert to msec for Timestamp constructor: see ppp#133
-  return Timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(seconds).count());
+  return zoned_seconds(timezone, datetime).get_sys_time();
 }
 
 }

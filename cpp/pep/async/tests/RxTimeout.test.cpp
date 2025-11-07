@@ -8,6 +8,8 @@
 #include <boost/asio/io_context.hpp>
 #include <optional>
 
+using namespace std::literals;
+
 /* This source demonstrates a bunch of problems running time-based observables on our ASIO RX scheduler.
  * Specifically, we were looking for a mechanism to issue errors for observables that don't produce
  * an .on_completed (or .on_error) before a specified deadline. Note that the standard RX .timeout operator
@@ -33,16 +35,16 @@ bool IsRxTimeoutError(std::exception_ptr exception) noexcept {
   }
 }
 
-/* E.g. if an observable wants to emit an item after LONG_MSEC but times out after
- * SHORT_MSEC, then the observable and the associated I/O context should terminate
- * (after the SHORT_MSEC but) before the LONG_MSEC.
+/* E.g. if an observable wants to emit an item after LONG_TIME but times out after
+ * SHORT_TIME, then the observable and the associated I/O context should terminate
+ * (after the SHORT_TIME but) before the LONG_TIME.
  * Unfortunately, (machine load) circumstances may sometimes cause work to take more time than
  * (formally) required, which in turn may cause tests to fail. If so, increase the values of
- * SHORT_MSEC and/or LONG_MSEC (and/or the difference between them) to accommodate such
+ * SHORT_TIME and/or LONG_TIME (and/or the difference between them) to accommodate such
  * slow processing.
  */
-const auto SHORT_MSEC = 250;
-const auto LONG_MSEC = 500;
+const auto SHORT_TIME = 250ms;
+const auto LONG_TIME = 500ms;
 
 // Function typedefs/signatures that can be passed to the test function
 using TimerObservable = rxcpp::observable<pep::FakeVoid>;
@@ -66,7 +68,8 @@ const char* DescribeObservableState(const std::optional<std::exception_ptr>& err
 // Core test function: verifies proper functioning of the observable produced by "MakeTimer", and optionally of the observable produced by "AddTimeout"
 void TestTimeBoundObservable(const MakeTimer& make_timer, const std::optional<AddTimeout>& add_timeout, bool should_time_out) {
   // Process parameters
-  pep::testing::Milliseconds emit_after = SHORT_MSEC, timeout_after = LONG_MSEC;
+  auto emit_after = SHORT_TIME;
+  auto timeout_after = LONG_TIME;
   if (add_timeout.has_value()) {
     if (should_time_out) {
       std::swap(emit_after, timeout_after);
@@ -82,13 +85,13 @@ void TestTimeBoundObservable(const MakeTimer& make_timer, const std::optional<Ad
 
   // Create the timer observable
   start = pep::testing::Clock::now();
-  TimerObservable observable = make_timer(pep::testing::MillisecondsToDuration(emit_after), io_context);
+  TimerObservable observable = make_timer(emit_after, io_context);
   ASSERT_LT(pep::testing::MillisecondsSince(start), emit_after) << "Current thread was blocked by timer observable creation";
 
   // Optionally add the timeout
   if (add_timeout.has_value()) {
     start = pep::testing::Clock::now();
-    observable = (*add_timeout)(observable, pep::testing::MillisecondsToDuration(timeout_after), io_context);
+    observable = (*add_timeout)(observable, timeout_after, io_context);
     ASSERT_LT(pep::testing::MillisecondsSince(start), timeout_after) << "Current thread was blocked by addition of timeout to observable";
   }
 
@@ -121,7 +124,7 @@ void TestTimeBoundObservable(const MakeTimer& make_timer, const std::optional<Ad
       error = nullptr;
     }
   );
-  ASSERT_LT(pep::testing::MillisecondsSince(start), SHORT_MSEC) << "Subscribing to observable blocked current thread";
+  ASSERT_LT(pep::testing::MillisecondsSince(start), SHORT_TIME) << "Subscribing to observable blocked current thread";
   ASSERT_FALSE(emitted) << "Observable shouldn't produce a value before having been scheduled";
   ASSERT_FALSE(error.has_value()) << "Observable shouldn't have " << DescribeObservableState(error) << " before having been scheduled";
 
@@ -132,8 +135,8 @@ void TestTimeBoundObservable(const MakeTimer& make_timer, const std::optional<Ad
   EXPECT_TRUE(error.has_value()) << "Observable produced neither error nor completion notification";
   EXPECT_NE(should_time_out, emitted) << "Observable should either produce a value or time out";
 
-  EXPECT_GE(ran_for_msec, SHORT_MSEC) << "I/O context finished running before observable terminated";
-  EXPECT_LT(ran_for_msec, LONG_MSEC) << "I/O context kept running after observable terminated";
+  EXPECT_GE(ran_for_msec, SHORT_TIME) << "I/O context finished running before observable terminated";
+  EXPECT_LT(ran_for_msec, LONG_TIME) << "I/O context kept running after observable terminated";
 }
 
 void TestTimer(const MakeTimer& make_timer) {
@@ -212,7 +215,7 @@ TEST(RxTimeout, BoundToAsio) {
 TEST(RxTimeout, TimerReplacement) {
   TestTimer(
     [](pep::testing::Duration emit_after, boost::asio::io_context& io_context) {
-      return pep::RxAsioTimer(std::chrono::duration_cast<pep::RxAsioDuration>(emit_after), io_context, pep::observe_on_asio(io_context));
+      return pep::RxAsioTimer(duration_cast<pep::RxAsioDuration>(emit_after), io_context, pep::observe_on_asio(io_context));
     }
   );
 }
@@ -222,10 +225,10 @@ TEST(RxTimeout, TimerReplacement) {
 TEST(RxTimeout, TimeoutReplacement) {
   TestTimeout(
     [](pep::testing::Duration emit_after, boost::asio::io_context& io_context) {
-      return pep::RxAsioTimer(std::chrono::duration_cast<pep::RxAsioDuration>(emit_after), io_context, pep::observe_on_asio(io_context));
+      return pep::RxAsioTimer(duration_cast<pep::RxAsioDuration>(emit_after), io_context, pep::observe_on_asio(io_context));
     },
     [](TimerObservable items, pep::testing::Duration timeout_after, boost::asio::io_context& io_context) {
-      return items.op(pep::RxAsioTimeout(std::chrono::duration_cast<pep::RxAsioDuration>(timeout_after), io_context, pep::observe_on_asio(io_context)));
+      return items.op(pep::RxAsioTimeout(duration_cast<pep::RxAsioDuration>(timeout_after), io_context, pep::observe_on_asio(io_context)));
     }
   );
 }
@@ -235,8 +238,8 @@ TEST(RxTimeout, FinallyExhaust) {
   boost::asio::io_context io_context;
   auto finished = pep::MakeSharedCopy(false);
 
-  pep::RxAsioTimer(std::chrono::duration_cast<pep::RxAsioDuration>(std::chrono::milliseconds(LONG_MSEC)), io_context, pep::observe_on_asio(io_context))
-    .op(pep::RxAsioTimeout(std::chrono::duration_cast<pep::RxAsioDuration>(std::chrono::milliseconds(SHORT_MSEC)), io_context, pep::observe_on_asio(io_context)))
+  pep::RxAsioTimer(LONG_TIME, io_context, pep::observe_on_asio(io_context))
+    .op(pep::RxAsioTimeout(SHORT_TIME, io_context, pep::observe_on_asio(io_context)))
     .op(pep::RxFinallyExhaust(io_context, [finished]() { *finished = true; return rxcpp::observable<>::empty<bool>(); }))
     .subscribe(
       [](pep::FakeVoid) { FAIL() << "Observable should time out instead of emitting a timer item"; },

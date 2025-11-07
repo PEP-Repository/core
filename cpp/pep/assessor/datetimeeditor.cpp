@@ -26,7 +26,7 @@ DateTimeEditor::~DateTimeEditor()
 QDateTime DateTimeEditor::getValue() const {
   auto date = ui->dateEdit->getValue();
   auto time = ui->timeEdit->time();
-  return MakeLocalQDateTime(date, time);
+  return pep::MakeLocalQDateTime(date, time);
 }
 
 void DateTimeEditor::setValue(const QDateTime& value) {

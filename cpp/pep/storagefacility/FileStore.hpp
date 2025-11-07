@@ -25,8 +25,8 @@ public:
   class Entry;
 
   struct EntryHeader {
-    EpochMillis validFrom;
-    uint64_t checksumSubstitute;
+    Timestamp validFrom;
+    uint64_t checksumSubstitute{};
   };
   using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
 
@@ -77,7 +77,7 @@ public:
     friend class FileStore;
 
   private:
-    EpochMillis mLastEntryValidFrom = 0;
+    Timestamp mLastEntryValidFrom;
     bool mValid = true;
     std::shared_ptr<PagedEntryPayload> mPagedPayload;
 
@@ -85,13 +85,13 @@ public:
     explicit EntryChange(const Entry& overwrites);
 
   public:
-    const EpochMillis& getLastEntryValidFrom() const { return mLastEntryValidFrom; }
+    Timestamp getLastEntryValidFrom() const { return mLastEntryValidFrom; }
 
     void setContent(std::unique_ptr<EntryContent>&& content) { EntryBase::setContent(std::move(content)); }
     rxcpp::observable<std::string> appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr); // returns MD5( data xxhash(data) )
 
     // must be on same thread as FileStore
-    void commit(EpochMillis availableFrom) &&; // mark this entry as finished (moving it from a tmp directory to the real directory structure)
+    void commit(Timestamp availableFrom) &&; // mark this entry as finished (moving it from a tmp directory to the real directory structure)
     void cancel() &&;
   };
 
@@ -108,23 +108,23 @@ public:
   private:
     static const std::string FILE_EXTENSION;
 
-    EpochMillis mValidFrom;
+    Timestamp mValidFrom;
 
-    Entry(EntryChange&& source, EpochMillis validFrom);
-    Entry(Cell& cell, EpochMillis validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
+    Entry(EntryChange&& source, Timestamp validFrom);
+    Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     std::filesystem::path getFilePath(const std::string& extension) const;
 
   public:
     std::unique_ptr<EntryContent> cloneContent() const;
 
-    EpochMillis getValidFrom() const noexcept { return mValidFrom; }
+    Timestamp getValidFrom() const noexcept { return mValidFrom; }
     EntryHeader header() const;
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
     static std::shared_ptr<Entry> TryLoad(Cell& cell, const std::filesystem::path& path);
-    static std::shared_ptr<Entry> Load(Cell& cell, EpochMillis timestamp);
+    static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
   };
 
   using EntrySet = typename PropertyBasedContainer<std::shared_ptr<Entry>, &Entry::getValidFrom>::set;
@@ -147,7 +147,7 @@ public:
 
     const EntryHeaders& entryHeaders() const noexcept { return mEntryHeaders; }
     void addEntry(std::shared_ptr<Entry> entry);
-    std::shared_ptr<Entry> lookup(EpochMillis validAt = std::numeric_limits<EpochMillis>::max()); // (Absent or) max value indicates "latest version"
+    std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
   };
 
   class Participant {
@@ -172,12 +172,12 @@ public:
     size_t entryCount() const;
     void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
     EntrySet lookupWithHistory(const std::string& column) const;
-    std::shared_ptr<Entry> lookup(const std::string& column, EpochMillis validAt = std::numeric_limits<EpochMillis>::max());
+    std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
   };
 
 
   EntrySet lookupWithHistory(const EntryName& name) const;
-  std::shared_ptr<Entry> lookup(const EntryName& name, EpochMillis validAt = std::numeric_limits<EpochMillis>::max());
+  std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
   std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
 
   EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);

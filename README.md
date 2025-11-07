@@ -93,7 +93,7 @@ Building on Windows can be done very similar to on \*nix.
 2. Install Conan: see [Conan documentation](docs/public/development/cpp/conan.md), or via `winget install conan`
 3. Optionally (recommended for ease of use) enable creation of symbolic links:
    1. First in the Windows settings by enabling 'Developer Mode'
-   2. Then in git via `git config --global core.symlinks true` (if you did this with an existing repo, you may need to remove the `--global` flag and do a `git restore ./conanfile.py ./ci_cd/conan` after)
+   2. Then in git via `git config --global core.symlinks true` (if you did this with an existing repo, you may need to remove the `--global` flag and do a `git restore ./conanfile.py` after)
    3. **Alternatively**: use `./docker-build/builder/conan/conanfile.py` instead of `./` in `conan install` (or just use `.\scripts\cmake-vs.bat`)
 4. Clone repository including submodules (`--recurse-submodules`)
 5. When using Visual Studio, you may use `.\scripts\cmake-vs.bat` inside a Visual Studio command prompt and open the generated solution. Otherwise, proceed like on \*nix

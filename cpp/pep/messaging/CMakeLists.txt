@@ -11,7 +11,7 @@ add_library(${PROJECT_NAME}Messaginglib STATIC
     Connection.cpp Connection.hpp
     ConnectionFailureException.hpp
     ConnectionStatus.hpp
-    HousekeepingMessages.hpp
+    HousekeepingMessages.cpp HousekeepingMessages.hpp
     MessageHeader.cpp MessageHeader.hpp
     MessageProperties.cpp MessageProperties.hpp
     MessageSequence.cpp MessageSequence.hpp
@@ -19,8 +19,10 @@ add_library(${PROJECT_NAME}Messaginglib STATIC
     Node.cpp Node.hpp
     RequestHandler.cpp RequestHandler.hpp
     Requestor.cpp Requestor.hpp
+    ResponseToVoid.hpp
     Scheduler.cpp Scheduler.hpp
     ServerConnection.cpp ServerConnection.hpp
+    Tail.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}Messaginglib

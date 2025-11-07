@@ -19,10 +19,10 @@ std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBloc
         {std::to_string(e.id),
          e.target.subject,
          e.target.userGroup,
-         e.target.issueDateTime.toString(),
+         pep::TimestampToXmlDateTime(e.target.issueDateTime),
          e.metadata.note,
          e.metadata.issuer,
-         e.metadata.creationDateTime.toString()});
+         pep::TimestampToXmlDateTime(e.metadata.creationDateTime)});
   }
 
   return pep::structuredOutput::csv::append(stream, table) << std::endl;
@@ -101,12 +101,12 @@ protected:
               .issueDateTime =
                   [&] {
                     if (const auto date = values.getOptional<std::string>(param::issuedBeforeYyyymmdd)) {
-                      return pep::Timestamp::FromIsoDate(*date);
+                      return TimeZone::Local().timestampFromYyyyMmDd(*date);
                     }
-                    if (const auto time = values.getOptional<int64_t>(param::issuedBeforeUnixtime)) {
-                      return pep::Timestamp::FromTimeT(*time);
+                    if (const auto time = values.getOptional<std::chrono::seconds::rep>(param::issuedBeforeUnixtime)) {
+                      return Timestamp(std::chrono::seconds{*time});
                     }
-                    return pep::Timestamp{}; // default to current time
+                    return TimeNow(); // default to current time
                   }()},
           .message = values.get<std::string>(param::message)};
     }
@@ -121,7 +121,7 @@ protected:
 
     return executeEventLoopFor(
         [&, config = Configuration::From(this->getParameterValues())](std::shared_ptr<pep::Client> client) {
-          return client->tokenBlockCreate(config.target, config.message).map(printResponse);
+        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message }).map(printResponse);
         });
   }
 };
@@ -157,7 +157,7 @@ protected:
 
     return executeEventLoopFor(
         [&, config = Configuration::From(this->getParameterValues())](std::shared_ptr<pep::Client> client) {
-          return client->tokenBlockRemove(config.entryId).map(printResponse);
+        return client->getKeyServerProxy()->requestTokenBlockingRemove(TokenBlockingRemoveRequest{ config.entryId }).map(printResponse);
         });
   }
 };
@@ -175,7 +175,7 @@ protected:
     };
 
     return executeEventLoopFor(
-        [&](std::shared_ptr<pep::Client> client) { return client->tokenBlockList().map(printResponse); });
+        [&](std::shared_ptr<pep::Client> client) { return client->getKeyServerProxy()->requestTokenBlockingList().map(printResponse); });
   }
 };
 

@@ -1,6 +1,6 @@
-#include <pep/async/RxGetOne.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
-#include <pep/async/RxRequireNonEmpty.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxSharedPtrCast.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/async/RxToVector.hpp>
@@ -56,7 +56,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::FormP
   return RepeatingDataPuller::Aggregate(sp, mRepeatingDataPullers, participant->getRepeatingDataInstances())
     .op(RxGetOne("reports tree"))
     .flat_map([fvs, column = mColumnName](std::shared_ptr<boost::property_tree::ptree> reports) {
-    return StorableColumnContent::CreateJson(column, rxcpp::observable<>::iterate(*fvs), reports);
+    return StorableColumnContent::CreateJson(column, RxIterate(*fvs), reports);
     })
     .op(RxGetOne("CRF form cell data"));
 }
@@ -85,7 +85,7 @@ rxcpp::observable<std::shared_ptr<StudyDataPoint>> CrfAspectPuller::getStudyData
       if (position == sdpsByParticipant->cend()) {
         return rxcpp::observable<>::empty<std::shared_ptr<StudyDataPoint>>();
       }
-      return rxcpp::observable<>::iterate(*position->second);
+      return RxIterate(*position->second);
         });
   }
 

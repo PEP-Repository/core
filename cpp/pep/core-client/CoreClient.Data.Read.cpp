@@ -3,11 +3,13 @@
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxFilterNullopt.hpp>
 #include <pep/async/RxIndexed.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
 #include <rxcpp/operators/rx-buffer_count.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-group_by.hpp>
 #include <rxcpp/operators/rx-take.hpp>
@@ -48,30 +50,29 @@ void FillHistoryRequestIndices(const SignedTicket2& ticket,
 
 }
 
-rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData2(const std::vector<std::string>&
+rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(const std::vector<std::string>&
                                                                            participantGroups,
                                                                        const std::vector<PolymorphicPseudonym>& pps,
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
-  return clientAccessManager
-      ->sendRequest<SignedTicket2>(sign(TicketRequest2{.mModes = {"read"},
-                                                       .mParticipantGroups = participantGroups,
-                                                       .mPolymorphicPseudonyms = pps,
-                                                       .mColumnGroups = columnGroups,
-                                                       .mColumns = columns,
-                                                       .mIncludeUserGroupPseudonyms = false}))
-      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData2(std::make_shared<SignedTicket2>(ticket)); });
+  return accessManagerProxy
+      ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
+                                               .mParticipantGroups = participantGroups,
+                                               .mPolymorphicPseudonyms = pps,
+                                               .mColumnGroups = columnGroups,
+                                               .mColumns = columns,
+                                               .mIncludeUserGroupPseudonyms = false})
+      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(ticket)); });
 }
 
-rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData2(std::shared_ptr<SignedTicket2> ticket) {
+rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "enumerateData";
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
-  return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-    sign(DataEnumerationRequest2{*ticket}))))
-    .map([pseudonyms](std::string rawResponse) {
-      auto response = Serialization::FromString<
-        DataEnumerationResponse2>(std::move(rawResponse));
+  auto enumRequest = std::make_shared<DataEnumerationRequest2>();
+  enumRequest->mTicket = *ticket;
+  return storageFacilityProxy->requestDataEnumeration(std::move(*enumRequest))
+    .map([pseudonyms](DataEnumerationResponse2 response) {
       return ConvertDataEnumerationEntries(std::move(response.mEntries), *pseudonyms);
     });
 }
@@ -82,21 +83,19 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
 
-  return rxcpp::observable<>::iterate(ids) //TODO Use RxMoveIterate from https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/2285
+  return RxIterate(std::move(ids))
       .buffer(static_cast<int>(DATA_RETRIEVAL_BATCH_SIZE))
       .as_dynamic() // Reduce compiler memory usage
       //TODO shouldn't we be using shared_from_this()?
       .map([this, ticket, pseudonyms](std::vector<std::string> batch)
         -> rxcpp::observable<std::shared_ptr<EnumerateResult>> {
             auto entryCount = batch.size();
-            return this->clientStorageFacility->sendRequest(MakeSharedCopy(Serialization::ToString(sign(
-                    MetadataReadRequest2{
-                      .mTicket = *ticket,
-                      .mIds = std::move(batch),
-                    }))))
-                .map([](std::string rawResponse) {
-                  auto response = Serialization::FromString<
-                    DataEnumerationResponse2>(std::move(rawResponse));
+            return this->storageFacilityProxy->requestMetadataRead(
+                MetadataReadRequest2{
+                  .mTicket = *ticket,
+                  .mIds = std::move(batch),
+                })
+                .map([](DataEnumerationResponse2 response) {
                   return std::move(response.mEntries);
                 })
                 .op(RxConcatenateVectors())
@@ -104,7 +103,7 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
                   if (entries->size() != entryCount) {
                     throw std::runtime_error("Storage facility return an unexpected number of entries");
                   }
-                  return rxcpp::observable<>::iterate(ConvertDataEnumerationEntries(std::move(*entries), *pseudonyms));
+                  return RxIterate(ConvertDataEnumerationEntries(std::move(*entries), *pseudonyms));
                 });
           });
 }
@@ -142,7 +141,7 @@ CoreClient::getKeys(
 }
 
 rxcpp::observable<rxcpp::observable<RetrievePage>>
-CoreClient::retrieveData2(
+CoreClient::retrieveData(
   const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
   std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "retrieveData";
@@ -155,15 +154,68 @@ CoreClient::retrieveData2(
               struct fileContext {
                 FileKey fileKey;
                 std::uint64_t bytesWritten = 0;
-                std::uint32_t nextPage = 0;
               };
               struct batchContext {
-                std::size_t latestIndex = 0;
+                DataPayloadPageStreamOrder order;
                 std::vector<fileContext> files;
               };
 
               auto ctx = std::make_shared<batchContext>();
               ctx->files = RangeToCollection<std::vector<fileContext>>(std::move(*batch));
+
+              // Request the file contents from the storage facility
+              auto pagesFromServer =
+                  storageFacilityProxy->requestDataRead(DataReadRequest2{
+                    .mTicket = *ticket,
+                    .mIds = RangeToVector(ctx->files
+                        | views::transform([](const fileContext& file) { return file.fileKey.entry->mId; })),
+                  })
+                  .map([](DataPayloadPage page) {
+                    return std::optional{std::move(page)};
+                  })
+                  // Add nullopt sentinel to make sure we check if all files have been fully retrieved
+                  .concat(rxcpp::observable<>::just(std::optional<DataPayloadPage>()))
+                  .map([ctx](const std::optional<DataPayloadPage>& page) -> std::optional<RetrievePage> {
+                    const auto index = page ? page->mIndex : ctx->files.size();
+                    if (page && index >= ctx->files.size()) {
+                      throw std::runtime_error(std::format("Received out-of-bounds file index: {} >= {}",
+                          index, ctx->files.size()));
+                    }
+
+                    // Check previous file(s)
+                    for (auto betweenIdx = ctx->order.latestFileIndex(); betweenIdx < index; ++betweenIdx) {
+                      const fileContext& prevFileCtx = ctx->files[betweenIdx];
+                      const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
+                      if (prevFileCtx.bytesWritten < prevEntry.mFileSize) {
+                        throw std::runtime_error(std::format(
+                            "Received file {} smaller than signaled file size: {} < {}",
+                            betweenIdx, prevFileCtx.bytesWritten, prevEntry.mFileSize));
+                      }
+                    }
+                    // Return when we received the sentinel: we just wanted to check remaining files
+                    if (!page) { return {}; }
+
+                    ctx->order.check(*page);
+
+                    fileContext& file = ctx->files[index];
+                    const EnumerateResult& entry = *file.fileKey.entry;
+                    RetrievePage retrievedPage{
+                      .fileIndex = file.fileKey.fileIndex,
+                      .entry = file.fileKey.entry,
+                      .content = page->decrypt(file.fileKey.symmetricKey, entry.mMetadata),
+                    };
+                    // Omit empty pages
+                    if (retrievedPage.content.empty()) { return {}; }
+                    file.bytesWritten += retrievedPage.content.size();
+                    if (file.bytesWritten > entry.mFileSize) {
+                      throw std::runtime_error(std::format(
+                          "Received file {} larger than signaled file size: {}+ > {}",
+                          index, file.bytesWritten, entry.mFileSize));
+                    }
+                    retrievedPage.last = file.bytesWritten == entry.mFileSize;
+                    return retrievedPage;
+                  })
+                  .op(RxFilterNullopt());
 
               auto emptyFiles = ctx->files
                   | views::filter([](const fileContext& file) {
@@ -173,76 +225,13 @@ CoreClient::retrieveData2(
                     return RetrievePage{
                       .fileIndex = file.fileKey.fileIndex,
                       .entry = file.fileKey.entry,
-                      .mContent = {},
-                      .mLast = true,
+                      .content = {},
+                      .last = true,
                     };
                   });
-              return rxcpp::observable<>::iterate(RangeToVector(emptyFiles))
-                  .concat(
-                      // Request the file contents from the storage facility
-                      clientStorageFacility->sendRequest(MakeSharedCopy(
-                          Serialization::ToString(sign(DataReadRequest2{
-                            .mTicket = *ticket,
-                            .mIds = RangeToVector(ctx->files
-                                | views::transform([](const fileContext& file) { return file.fileKey.entry->mId; })),
-                          }))))
-                      .map([](std::string rawPage) -> std::optional<DataPayloadPage> {
-                        // Deserialize page
-                        return Serialization::FromString<DataPayloadPage>(std::move(rawPage));
-                      })
-                      .concat(rxcpp::observable<>::just(std::optional<DataPayloadPage>())) // Add nullopt sentinel
-                      .map([ctx](const std::optional<DataPayloadPage>& page) -> std::optional<RetrievePage> {
-                        const auto index = page ? page->mIndex : ctx->files.size();
-                        if (page && index >= ctx->files.size()) {
-                          throw std::runtime_error(std::format("Received too large file index: {} >= {}",
-                              index, ctx->files.size()));
-                        }
 
-                        // Check previous file(s)
-                        for (auto betweenIdx = ctx->latestIndex; betweenIdx < index; ++betweenIdx) {
-                          const fileContext& prevFileCtx = ctx->files[betweenIdx];
-                          const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
-                          if (prevFileCtx.bytesWritten < prevEntry.mFileSize) {
-                            throw std::runtime_error(std::format(
-                                "Received file {} smaller than signaled file size: {} < {}",
-                                betweenIdx, prevFileCtx.bytesWritten, prevEntry.mFileSize));
-                          }
-                        }
-                        ctx->latestIndex = index;
-                        if (!page) { return {}; }
-
-                        if (index < ctx->latestIndex) {
-                          throw std::runtime_error(std::format("Received out-of-order file: expected {}+ but got {}",
-                              ctx->latestIndex, index));
-                        }
-
-                        fileContext& file = ctx->files[index];
-                        if (file.nextPage != page->mPageNumber) {
-                          throw std::runtime_error(std::format(
-                              "Received out-of-order page for file {}: expected {} but got {}",
-                              index, file.nextPage, page->mPageNumber));
-                        }
-                        ++file.nextPage;
-
-                        const EnumerateResult& entry = *file.fileKey.entry;
-                        RetrievePage retrievedPage{
-                          .fileIndex = file.fileKey.fileIndex,
-                          .entry = file.fileKey.entry,
-                          .mContent = page->decrypt(file.fileKey.symmetricKey, entry.mMetadata),
-                        };
-                        // Omit empty pages
-                        if (retrievedPage.mContent.empty()) { return {}; }
-                        file.bytesWritten += retrievedPage.mContent.size();
-                        if (file.bytesWritten > entry.mFileSize) {
-                          throw std::runtime_error(std::format(
-                              "Received file {} larger than signaled file size: {}+ > {}",
-                              index, file.bytesWritten, entry.mFileSize));
-                        }
-                        retrievedPage.mLast = file.bytesWritten == entry.mFileSize;
-                        return retrievedPage;
-                      })
-                      .op(RxFilterNullopt())
-                      );
+              return RxIterate(RangeToVector(emptyFiles))
+                  .concat(std::move(pagesFromServer));
             });
       });
 }
@@ -262,10 +251,8 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   FillHistoryRequestIndices<std::string, std::string>(
     request->mTicket, unsignedTicket, &Ticket2::mColumns, columns, request->mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
-  return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-    sign(*request))))
-    .map([](std::string rawResponse) {
-      auto response = Serialization::FromString<DataHistoryResponse2>(std::move(rawResponse));
+  return storageFacilityProxy->requestDataHistory(std::move(*request))
+    .map([](const DataHistoryResponse2& response) {
       return response.mEntries;
     })
     .op(RxConcatenateVectors())
@@ -276,34 +263,36 @@ CoreClient::getHistory2(SignedTicket2 ticket,
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> agPseuds;
       std::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
-        HistoryResult result;
-        result.mColumn = ticket.mColumns[entry.mColumnIndex];
-        result.mLocalPseudonymsIndex = entry.mPseudonymIndex;
-        result.mTimestamp = entry.mTimestamp;
-        if (!entry.mId.empty()) {
-          result.mId = entry.mId;
-        }
-
         auto ilp = localPseuds.find(entry.mPseudonymIndex);
         if (ilp == localPseuds.cend()) {
           auto emplaced = localPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ticket.mPseudonyms[entry.mPseudonymIndex])));
           assert(emplaced.second);
           ilp = emplaced.first;
         }
-        result.mLocalPseudonyms = ilp->second;
+        auto localPseudonyms = ilp->second;
 
-        if (result.mLocalPseudonyms->mAccessGroup) {
+        std::shared_ptr<LocalPseudonym> accessGroupPseudonym;
+        if (localPseudonyms->mAccessGroup) {
           auto iag = agPseuds.find(entry.mPseudonymIndex);
           if (iag == agPseuds.cend()) {
-            auto ag = result.mLocalPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
+            auto ag = localPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
             auto emplaced = agPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ag)));
             assert(emplaced.second);
             iag = emplaced.first;
           }
-          result.mAccessGroupPseudonym = iag->second;
+          accessGroupPseudonym = iag->second;
         }
 
-        return result;
+        return HistoryResult{
+          DataCellResult{
+            .mLocalPseudonyms = localPseudonyms,
+            .mLocalPseudonymsIndex = entry.mPseudonymIndex,
+            .mColumn = ticket.mColumns[entry.mColumnIndex],
+            .mAccessGroupPseudonym = accessGroupPseudonym,
+          },
+          entry.mTimestamp,
+          !entry.mId.empty() ? std::optional{entry.mId} : std::nullopt,
+        };
         });
       return rxcpp::observable<>::just(results);
     });

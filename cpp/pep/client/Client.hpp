@@ -2,11 +2,12 @@
 
 #include <pep/client/Client_fwd.hpp>
 
+#include <pep/authserver/AuthServerProxy.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/keyserver/KeyServerProxy.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/registrationserver/RegistrationServerMessages.hpp>
-#include <pep/keyserver/KeyServerMessages.hpp>
+#include <pep/registrationserver/RegistrationServerProxy.hpp>
 
 namespace pep {
 
@@ -76,12 +77,6 @@ public:
                                                      bool complete = true);
 
   /*!
-   * \brief Generate and store a PEP ID
-   * \return rxcpp::observable< std::string > producing the (generated) participant ID
-   */
-  rxcpp::observable<std::string> generatePEPID();
-
-  /*!
    * \brief Completes a participant's registration. Should be called for participants whose initial registration was
    * (possibly) incomplete, i.e. registerParticipant was called with complete == false, or the participant has been
    * registered from an earlier code base, or additional short pseudonyms need to be generated.
@@ -89,11 +84,8 @@ public:
    * \param skipIdentifierStorage Pass true if you're sure the participant ID has already been stored, i.e. this method
    * is called after a call to registerParticipant. \return rxcpp::observable< RegistrationResponse >
    */
-  rxcpp::observable<std::shared_ptr<RegistrationResponse>> completeParticipantRegistration(
+  rxcpp::observable<FakeVoid> completeParticipantRegistration(
       const std::string& identifier, bool skipIdentifierStorage = false);
-
-  rxcpp::observable<std::string> listCastorImportColumns(const std::string& spColumnName,
-                                                         const std::optional<unsigned>& answerSetCount);
 
   /*!
    * \brief Enroll a user. A key pair is generated and, using a provided OAuth token, a certificate and PEP key
@@ -105,27 +97,9 @@ public:
    */
   rxcpp::observable<EnrollmentResult> enrollUser(const std::string& oauthToken);
 
-  rxcpp::observable<std::string> requestToken(std::string subject, std::string group, Timestamp expirationTime);
-
-  rxcpp::observable<ConnectionStatus> getKeyServerStatus();
-  rxcpp::observable<ConnectionStatus> getAuthserverStatus();
-  rxcpp::observable<ConnectionStatus> getRegistrationServerStatus();
-
-  rxcpp::observable<VersionResponse> getKeyServerVersion();
-  rxcpp::observable<VersionResponse> getAuthserverVersion();
-  rxcpp::observable<VersionResponse> getRegistrationServerVersion();
-
-  rxcpp::observable<PingResponse> pingKeyServer() const;
-  rxcpp::observable<SignedPingResponse> pingAuthserver() const;
-  rxcpp::observable<SignedPingResponse> pingRegistrationServer() const;
-
-  rxcpp::observable<MetricsResponse> getKeyServerMetrics();
-  rxcpp::observable<MetricsResponse> getAuthserverMetrics();
-  rxcpp::observable<MetricsResponse> getRegistrationServerMetrics();
-
-  rxcpp::observable<TokenBlockingCreateResponse> tokenBlockCreate(tokenBlocking::TokenIdentifier, std::string note);
-  rxcpp::observable<TokenBlockingRemoveResponse> tokenBlockRemove(int64_t id);
-  rxcpp::observable<TokenBlockingListResponse> tokenBlockList();
+  std::shared_ptr<const KeyServerProxy> getKeyServerProxy(bool require = true) const;
+  std::shared_ptr<const AuthServerProxy> getAuthServerProxy(bool require = true) const;
+  std::shared_ptr<const RegistrationServerProxy> getRegistrationServerProxy(bool require = true) const;
 
   rxcpp::observable<FakeVoid> shutdown() override;
 
@@ -139,14 +113,14 @@ private:
   const EndPoint authserverEndPoint;
   const EndPoint registrationServerEndPoint;
 
-  std::shared_ptr<messaging::ServerConnection> clientKeyServer;
-  std::shared_ptr<messaging::ServerConnection> clientAuthserver;
-  std::shared_ptr<messaging::ServerConnection> clientRegistrationServer;
+  std::shared_ptr<KeyServerProxy> keyServerProxy;
+  std::shared_ptr<AuthServerProxy> authServerProxy;
+  std::shared_ptr<RegistrationServerProxy> registrationServerProxy;
 
   Client(const Builder& builder);
 
-  rxcpp::observable<std::shared_ptr<RegistrationResponse>> generateShortPseudonyms(const PolymorphicPseudonym& pp,
-                                                                                   const std::string& identifier);
+  rxcpp::observable<FakeVoid> generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier);
+  rxcpp::observable<std::string> getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns);
 };
 
 }

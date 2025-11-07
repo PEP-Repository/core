@@ -7,7 +7,6 @@
 #include <pep/application/CommandLineCommand.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/Platform.hpp>
 
 #define PEP_DEFINE_C_MAIN_FUNCTION(applicationType) \
   int main(int argc, char* argv[]) { \
@@ -26,6 +25,8 @@
  */
 // Do not place this under the pep namespace
 #ifdef _WIN32
+#include <pep/utils/Platform.hpp>
+
 # define PEP_DEFINE_MAIN_FUNCTION(applicationType) \
     PEP_DEFINE_C_MAIN_FUNCTION(applicationType) \
     \

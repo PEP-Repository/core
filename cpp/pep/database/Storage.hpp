@@ -116,7 +116,7 @@ struct Storage : public BasicStorage {
   /// Example: enumerate all metadata for a specific subject type
   /// \code
   ///   myStorage->getCurrentRecords(storage,
-  ///     c(&MetadataRecord::timestamp) <= timestamp.getTime()
+  ///     c(&MetadataRecord::timestamp) <= TicksSinceEpoch<std::chrono::milliseconds>(timestamp)
   ///     && c(&MetadataRecord::subjectType) == subjectType,
   ///     &MetadataRecord::subject,
   ///     &MetadataRecord::metadataGroup,

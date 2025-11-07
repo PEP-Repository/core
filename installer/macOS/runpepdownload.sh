@@ -39,6 +39,8 @@ if "$SPARKLE_EXECUTABLE" "$PEP_APP_DIR" --probe; then
     fi
 fi
 
+cd "$HOME/Downloads"
+
 open "$PEPLOGON_EXECUTABLE"
 # Give pepLogon time to start
 sleep 2

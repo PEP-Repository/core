@@ -972,6 +972,7 @@ message AmaMutationResponse {
 // group/column access rules, etc exist) at a given timestamp matching
 // the given (optional) filters.
 message AmaQuery {
+  // Optional
   Timestamp at = 1;
 
   string column_filter = 2;
@@ -1110,6 +1111,7 @@ message UserMutationResponse {
 }
 
 message UserQuery {
+  // Optional
   Timestamp at = 1;
 
   string group_filter = 2;

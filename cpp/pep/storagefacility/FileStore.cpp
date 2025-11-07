@@ -12,6 +12,9 @@
 #include <fstream>
 #include <sstream>
 
+using namespace std::chrono;
+using namespace std::literals;
+
 namespace pep {
 
 namespace {
@@ -114,7 +117,7 @@ FileStore::FileStore(
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(mPath);
 
-  auto start_time = std::chrono::steady_clock::now();
+  auto start_time = steady_clock::now();
   for (const auto& p : std::filesystem::directory_iterator(mPath)) {
     auto name = p.path().filename().string();
     if (std::filesystem::is_directory(p.path()) && name.size() == LocalPseudonym::TextLength()) {
@@ -122,13 +125,13 @@ FileStore::FileStore(
     }
   }
 
-  double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count();
+  duration<double> seconds(steady_clock::now() - start_time);
   std::stringstream message;
   message.setf(std::ios::fixed);
   message.precision(2);
-  message << "Loaded " << this->entryCount() << " file store entries in " << seconds << " seconds";
-  if (seconds != 0.0) {
-    message << " (" << (static_cast<double>(this->entryCount()) / seconds) << " entries per second)";
+  message << "Loaded " << this->entryCount() << " file store entries in " << seconds;
+  if (seconds != decltype(seconds)::zero()) {
+    message << " (" << (static_cast<double>(this->entryCount()) / seconds.count()) << " entries per second)";
   }
   LOG(LOG_TAG, info) << message.str();
 }
@@ -193,7 +196,7 @@ FileStore::EntrySet FileStore::lookupWithHistory(const EntryName& name) const {
   return participant->lookupWithHistory(name.column());
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, EpochMillis validAt) {
+std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
   auto participant = this->getParticipant(name.participant());
   if (participant == nullptr) {
     return nullptr;
@@ -201,10 +204,10 @@ std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Epoch
   return participant->lookup(name.column(), validAt);
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(EpochMillis validAt) {
-  // The std::map<>::lower_bound function will find the entry _after_ the one we need when validAt == std::numeric_limits<EpochMillis>::max().
+std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
+  // The std::map<>::lower_bound function will find the entry _after_ the one we need when validAt == Timestamp::max().
   // So to make the function produce consistent results, we search for "validAt+1" to ensure that we _always_ find the entry after the one we need.
-  auto find = validAt == std::numeric_limits<EpochMillis>::max() ? std::numeric_limits<EpochMillis>::max() : validAt + 1;
+  auto find = validAt == Timestamp::max() ? Timestamp::max() : validAt + 1ms;
   auto it = mEntryHeaders.lower_bound(find);
 
   // If we're positioned on the first item, the request was for a "validAt" before the first entry was stored.
@@ -235,7 +238,8 @@ std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& 
 }
 
 FileStore::EntryChange::EntryChange(Cell& cell)
-  : EntryBase(cell, GenerateChecksumSubstitute(), nullptr) {
+  : EntryBase(cell, GenerateChecksumSubstitute(), nullptr),
+    mLastEntryValidFrom{/*zero*/} {
 }
 
 FileStore::EntryChange::EntryChange(const Entry& overwrites)
@@ -243,7 +247,7 @@ FileStore::EntryChange::EntryChange(const Entry& overwrites)
 }
 
 std::filesystem::path FileStore::Entry::getFilePath(const std::string& extension) const {
-  auto filename = std::to_string(this->getValidFrom()) + extension;
+  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(this->getValidFrom())) + extension;
   return this->getCell().path() / filename;
 }
 
@@ -287,7 +291,7 @@ void FileStore::Entry::save() const {
 
   out << ENTRY_FILE_TYPE;
   WriteBinary(out, this->getName().string());
-  WriteBinary(out, mValidFrom);
+  WriteBinary(out, static_cast<std::uint64_t>(TicksSinceEpoch<milliseconds>(mValidFrom)));
 
   std::vector<PageId> pages;
   PersistedEntryProperties properties;
@@ -317,7 +321,7 @@ void FileStore::Entry::save() const {
   std::filesystem::rename(tempfile, this->getFilePath(Entry::FILE_EXTENSION));
 }
 
-void FileStore::EntryChange::commit(EpochMillis availableFrom) && {
+void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   if (!mValid)
     throw std::runtime_error("FileStore: change to entry already committed/cancelled: " + this->getName().string());
   if (availableFrom <= mLastEntryValidFrom)
@@ -330,7 +334,8 @@ void FileStore::EntryChange::commit(EpochMillis availableFrom) && {
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
   if (this->getCell().entryHeaders().find(availableFrom) != this->getCell().entryHeaders().cend()) {
-    auto msg = "Cannot store duplicate entry with name " + this->getName().string() + " and timestamp " + std::to_string(availableFrom);
+    auto msg = "Cannot store duplicate entry with name " + this->getName().string()
+        + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
     LOG(LOG_TAG, error) << msg;
     throw std::runtime_error(msg);
   }
@@ -362,11 +367,12 @@ void FileStore::EntryChange::cancel() && {
   mValid = false;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, EpochMillis timestamp) {
-  auto filename = std::to_string(timestamp) + FILE_EXTENSION;
+std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp timestamp) {
+  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FILE_EXTENSION;
   auto result = TryLoad(cell, cell.path() / filename);
   if (result == nullptr) {
-    throw std::runtime_error("Could not load entry for cell " + cell.entryName().string() + " at timestamp " + std::to_string(timestamp));
+    throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
+        + " at timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(timestamp)));
   }
   return result;
 }
@@ -378,7 +384,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const st
 
   auto name = path.filename().string();
   name = name.substr(0, name.size() - FILE_EXTENSION.size());
-  EpochMillis validFrom{boost::lexical_cast<EpochMillis>(name)};
+  Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(name)});
 
   std::ifstream infile;
   infile.open(path.string(), std::ios::binary | std::ios::in);
@@ -398,7 +404,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const st
     throw std::runtime_error("could not read file (wrong entry name)");
   }
 
-  auto storedValidFrom = ReadBinary(infile, EpochMillis{0});
+  Timestamp storedValidFrom(milliseconds{ReadBinary(infile, std::uint64_t{})});
   if (storedValidFrom != validFrom) {
     throw std::runtime_error("could not read file (wrong validity timestamp)");
   }
@@ -433,12 +439,12 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const st
   return Entry::Create(cell, validFrom, checksumSubstitute, std::move(entryContent));
 }
 
-FileStore::Entry::Entry(EntryChange&& source, EpochMillis validFrom)
+FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
   : EntryBase(std::move(source)), mValidFrom(validFrom) {
   assert(this->content() == nullptr || this->content()->payload() != nullptr);
 }
 
-FileStore::Entry::Entry(Cell& cell, EpochMillis validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
+FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
   : EntryBase(cell, checksumSubstitute, std::move(content)), mValidFrom(validFrom) {
 }
 
@@ -474,7 +480,8 @@ std::filesystem::path FileStore::Cell::path() const {
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
   auto emplaced = mEntryHeaders.emplace(entry->header()).second;
   if (!emplaced) {
-    auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string() + " and timestamp " + std::to_string(entry->getValidFrom());
+    auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
+        + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
     LOG(LOG_TAG, error) << msg;
     throw std::runtime_error(msg);
   }
@@ -532,7 +539,7 @@ FileStore::EntrySet FileStore::Participant::lookupWithHistory(const std::string&
   return result;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::string& column, EpochMillis validAt) {
+std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::string& column, Timestamp validAt) {
   auto cell = this->getCell(column);
   if (cell == nullptr) {
     return nullptr;

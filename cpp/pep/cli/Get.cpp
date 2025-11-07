@@ -13,10 +13,9 @@
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <fstream>
-#include <pep/async/RxGetOne.hpp>
-#include <pep/async/RxToVector.hpp>
 
 using namespace pep::cli;
 
@@ -84,14 +83,14 @@ protected:
               LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
             }
 
-            rxcpp::observable<pep::FileKey> keys = client->getKeys(
+            rxcpp::observable<pep::FileKey> key = client->getKeys(
                 client->enumerateDataByIds({boost::algorithm::unhex(values.get<std::string>("id"))}, ticket.getTicket())
                 .concat(),
                 ticket.getTicket()
                 ).concat();
 
             if (metadatastream) {
-              keys = keys.tap([metadatastream](const pep::FileKey& fileKey) {
+              key = key.tap([metadatastream](const pep::FileKey& fileKey) {
                 std::string json;
                 auto mdpb = pep::Serialization::ToProtocolBuffer(fileKey.decryptMetadata());
                 if (const auto status = google::protobuf::util::MessageToJsonString(mdpb, &json); !status.ok()) {
@@ -102,10 +101,10 @@ protected:
             }
 
             if (datastream) {
-              return client->retrieveData2(rxcpp::observable<>::just(std::move(keys)), ticket.getTicket())
+              return client->retrieveData(rxcpp::observable<>::just(std::move(key)), ticket.getTicket())
                   .concat()
                   .map([datastream](const pep::RetrievePage& page) {
-                    *datastream << page.mContent;
+                    *datastream << page.content;
                     return pep::FakeVoid{};
                   })
                   .op(RxInstead(pep::FakeVoid{}));

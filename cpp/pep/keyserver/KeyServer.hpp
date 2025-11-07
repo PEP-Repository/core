@@ -3,6 +3,7 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp>
 #include <pep/keyserver/tokenblocking/Blocklist.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
 namespace pep {
@@ -66,6 +67,7 @@ protected:
   std::string describe() const override;
 
 private:
+  messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
   messaging::MessageBatches handleUserEnrollmentRequest(std::shared_ptr<EnrollmentRequest> enrollmentRequest);
   messaging::MessageBatches handleTokenBlockingListRequest(std::shared_ptr<SignedTokenBlockingListRequest> signedRequest);
   messaging::MessageBatches handleTokenBlockingCreateRequest(std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest);

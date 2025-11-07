@@ -26,11 +26,11 @@ variables:
 
   # macOS app directories and appcast paths with legacy support to keep autoupdater working in case of changes
   MACOS_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml
-  MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/app/AppCast.xml
+  MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml
   MACOS_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
-  MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli/AppCast.xml
+  MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
   MACOS_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
-  MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/dt/AppCast.xml
+  MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
 
   PEP_DEPLOYING_JSON_FILE: config/$CI_COMMIT_REF_NAME/constellation.json
 
@@ -84,6 +84,14 @@ project-settings-foss:
     - if [ -z "$PEP_PROJECT_PRODUCTION_BRANCH" ]; then >&2 echo Variable PEP_PROJECT_PRODUCTION_BRANCH not set; exit 1; fi
     - if [ -z "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Variable PEP_PUBLISHING_JSON_FILE not set; exit 1; fi
     - if [ ! -f "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Publishing specification JSON file not found at "$PEP_PUBLISHING_JSON_FILE"; exit 1; fi
+
+versioning-consistency:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine:latest
+  script:
+    # Version number should match the version number of the PEP binaries they're based on.
+    - diff version.json "$PEP_FOSS_REPO_DIR/version.json"
 
 ci-yml-include-versions:
   stage: static-analysis
@@ -454,7 +462,7 @@ deploy-compose:
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH) && ($DEPLOYMENT_TYPE_PROD == "compose" || $DEPLOYMENT_TYPE_PROD == "both")'
   tags: [docker-small]
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
-  dependencies: []
+  dependencies: [] # prevents artifacts from `jobs in earlier stages` from being downloaded: see https://docs.gitlab.com/ci/yaml/#artifacts
   script:
     - ./"$PEP_FOSS_REPO_DIR"/ci_cd/constellation.sh "$PEP_DEPLOYING_JSON_FILE" docker-compose "$PROJECT_IMAGE_COMPOSE" redeploy
 

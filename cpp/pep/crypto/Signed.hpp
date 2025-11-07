@@ -15,14 +15,13 @@ protected:
   void assertValid(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName,
-    uint64_t timestampLeewaySeconds) const;
+    std::chrono::seconds timestampLeeway) const;
 
 public:
   SignedBase() = default;
   SignedBase(
     std::string data,
-    X509CertificateChain chain,
-    const AsymmetricKey& privateKey);
+    const X509Identity& identity);
 
   SignedBase(
     std::string data,
@@ -41,29 +40,45 @@ public:
   Signed() = default; // TODO get rid of default constructor
   Signed(std::string data, Signature signature)
     : SignedBase(std::move(data), std::move(signature)) { }
-  Signed(T o,
-    const X509CertificateChain& chain,
-    const AsymmetricKey& privateKey) :
-    SignedBase(Serialization::ToString(std::move(o)), chain, privateKey) { }
+  Signed(T o, const X509Identity& identity) :
+    SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
   [[nodiscard]] T open(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
-    uint64_t timestampLeewaySeconds = 60 * 60) const {
-    return mSignature.open<T>(mData, rootCAs, expectedCommonName, timestampLeewaySeconds);
+    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
+    return mSignature.open<T>(mData, rootCAs, expectedCommonName, timestampLeeway);
   }
 
   void validate(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
-    uint64_t timestampLeewaySeconds = 60 * 60) const {
-    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeewaySeconds);
+    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
+    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeeway);
   }
 
   T openWithoutCheckingSignature() const {
     return Serialization::FromString<T>(mData);
   }
 
+};
+
+class MessageSigner {
+private:
+  std::shared_ptr<const X509Identity> mSigningIdentity;
+
+protected:
+  std::shared_ptr<const X509Identity> getSigningIdentity(bool require = true) const;
+
+public:
+  explicit MessageSigner(std::shared_ptr<const X509Identity> signingIdentity = nullptr) noexcept;
+
+  void setSigningIdentity(std::shared_ptr<const X509Identity> signingIdentity) noexcept;
+
+  template <typename T>
+  Signed<T> sign(T message) const {
+    return Signed<T>(std::move(message), *this->getSigningIdentity());
+  }
 };
 
 template <typename T>

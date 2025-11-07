@@ -6,8 +6,6 @@
 
 namespace pep {
 
-using EpochMillis = uint64_t;
-
 class FileStore;
 
 class EntryContent : boost::noncopyable {
@@ -20,14 +18,13 @@ public:
   struct PayloadData final {
     struct Encryption final {
       EncryptedKey polymorphicKey;
-      EpochMillis blindingTimestamp;
+      Timestamp blindingTimestamp;
       EncryptionScheme scheme;
     };
 
     /// Fully specified constructor
     PayloadData(Encryption encryption, std::shared_ptr<EntryPayload> ptr): encryption{encryption}, ptr{ptr} {}
 
-    PayloadData() = default;
     PayloadData(PayloadData&&) = default;
     PayloadData& operator= (PayloadData&&) = default;
 
@@ -41,23 +38,23 @@ public:
   };
 
 private:
-  static constexpr EpochMillis NO_PREVIOUS_PAYLOAD_ENTRY = 0;
+  static constexpr Timestamp NO_PREVIOUS_PAYLOAD_ENTRY{/*zero*/};
 
-  EpochMillis mOriginalPayloadEntryTimestamp = NO_PREVIOUS_PAYLOAD_ENTRY; // Sentinel value (0) indicates that this content has its own original payload
+  Timestamp mOriginalPayloadEntryTimestamp = NO_PREVIOUS_PAYLOAD_ENTRY; // Sentinel value (0) indicates that this content has its own original payload
   Metadata mMetadata; // Does not include "x-" prefixes: see comment in PersistedEntryProperties.hpp
   PayloadData mPayload;
 
 public:
   EntryContent(Metadata metadata,
     PayloadData payload,
-    std::optional<EpochMillis> originalPayloadEntryTimestamp = std::nullopt);
-  EntryContent(const EntryContent& original, EpochMillis originalEntryValidFrom);
+    std::optional<Timestamp> originalPayloadEntryTimestamp = std::nullopt);
+  EntryContent(const EntryContent& original, Timestamp originalEntryValidFrom);
 
   const EncryptedKey& getPolymorphicKey() const noexcept { return mPayload.encryption.polymorphicKey; }
-  EpochMillis getBlindingTimestamp() const noexcept { return mPayload.encryption.blindingTimestamp; }
+  Timestamp getBlindingTimestamp() const noexcept { return mPayload.encryption.blindingTimestamp; }
   EncryptionScheme getEncryptionScheme() const noexcept { return mPayload.encryption.scheme; }
 
-  std::optional<EpochMillis> getOriginalPayloadEntryTimestamp() const;
+  std::optional<Timestamp> getOriginalPayloadEntryTimestamp() const;
 
   std::shared_ptr<EntryPayload> payload() const noexcept { return mPayload.ptr; }
   void setPayload(std::shared_ptr<EntryPayload> payload);

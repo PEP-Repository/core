@@ -12,11 +12,11 @@ namespace castor {
 namespace {
 
 rxcpp::observable<std::string> LoadCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, std::shared_ptr<EnumerateResult> entry) {
-  return client->retrieveData2(client->getKeys(rxcpp::observable<>::just(std::move(entry)), ticket), ticket)
+  return client->retrieveData(client->getKeys(rxcpp::observable<>::just(std::move(entry)), ticket), ticket)
       .concat()
       .map([](RetrievePage page) {
         assert(page.fileIndex == 0 && "Unexpected file index");
-        return std::move(page.mContent);
+        return std::move(page.content);
       })
       .op(RxConcatenateStrings());
 }

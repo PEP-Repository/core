@@ -8,7 +8,7 @@ std::string BoolToString(bool value) {
   return value ? "true" : "false";
 }
 
-bool StringToBool(const std::string& value) {
+bool StringToBool(std::string_view value) {
   return value == "true";
 }
 

@@ -95,7 +95,8 @@ class UserMutationResponse {
 
 class UserQuery {
 public:
-  Timestamp mAt;
+  // Use nullopt for current server time, such that a wrong client time does not influence query
+  std::optional<Timestamp> mAt;
   std::string mGroupFilter;
   std::string mUserFilter;
 };

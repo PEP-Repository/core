@@ -1,4 +1,5 @@
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/castor/RepeatingDataPoint.hpp>
@@ -23,7 +24,7 @@ RepeatingDataPuller::RepeatingDataPuller(std::shared_ptr<RepeatingData> repeatin
       .map([](std::shared_ptr<RepeatingDataForm> form) {return form->getId(); })
       .op(RxToVector())
       .flat_map([allFields](std::shared_ptr<std::vector<std::string>> formIds) {
-      return rxcpp::observable<>::iterate(*allFields)
+      return RxIterate(*allFields)
         .filter([formIds](std::shared_ptr<Field> field) {
         auto end = formIds->cend();
         return std::find(formIds->cbegin(), end, field->getParentId()) != end;
@@ -67,7 +68,7 @@ rxcpp::observable<FakeVoid> RepeatingDataPuller::addMatchingInstancesTo(std::sha
       return lhs->getId().compare(rhs->getId()) < 0;
     });
 
-    return rxcpp::observable<>::iterate(*instances) // Iterate over repeating data instances
+    return RxIterate(std::move(*instances)) // Iterate over repeating data instances
       .concat_map([self, sp, destination](std::shared_ptr<RepeatingDataInstance> rdi) { // Get a ptree for each repeating data instance
       return FieldValue::Aggregate(self->getRepeatingDataInstanceFieldValues(sp, rdi));
       })
@@ -94,8 +95,8 @@ rxcpp::observable<std::shared_ptr<boost::property_tree::ptree>> RepeatingDataPul
     .op(RxToVector()) // Ensure that candidates can be iterated over multiple times
     .flat_map([sp, rdps](std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataInstance>>> rdis) {
     auto result = std::make_shared<boost::property_tree::ptree>();
-    return rxcpp::observable<>::iterate(*rdps)
-      .flat_map([sp, rdis, result](std::shared_ptr<RepeatingDataPuller> rp) {return rp->addMatchingInstancesTo(sp, result, rxcpp::observable<>::iterate(*rdis)); })
+    return RxIterate(*rdps)
+      .flat_map([sp, rdis, result](std::shared_ptr<RepeatingDataPuller> rp) {return rp->addMatchingInstancesTo(sp, result, RxIterate(*rdis)); })
       .op(RxInstead(result));
     });
 }

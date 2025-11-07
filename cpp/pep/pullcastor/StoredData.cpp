@@ -1,6 +1,7 @@
 #include <pep/async/RxDistinct.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxSharedPtrCast.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/pullcastor/StoredData.hpp>
@@ -31,7 +32,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> StoredData::Load(std::shared_ptr<
 
   return PepParticipant::LoadAll(client, *participants, participantGroups, columns, { })
     .flat_map([spColumns, mapped](std::shared_ptr<PepParticipant> participant) {
-    return rxcpp::observable<>::iterate(*spColumns)
+    return RxIterate(*spColumns)
       .flat_map([mapped, participant](const std::string& column) -> rxcpp::observable<FakeVoid> {
       auto content = participant->tryGetCellContent(column);
       if (content == nullptr) {
@@ -104,14 +105,14 @@ rxcpp::observable<StoreData2Entry> StoredData::getUpdateEntry(std::shared_ptr<St
 }
 
 rxcpp::observable<std::shared_ptr<const PepParticipant>> StoredData::getParticipants() const {
-  return rxcpp::observable<>::iterate(*mParticipants)
+  return RxIterate(*mParticipants)
     .map([](const auto& pair) {return pair.second; })
     .op(RxDistinct())
     .op(RxSharedPtrCast<const PepParticipant>());
 }
 
 rxcpp::observable<std::string> StoredData::getCastorSps(std::shared_ptr<const PepParticipant> participant, const std::string& spColumnName) const {
-  return rxcpp::observable<>::iterate(*mParticipants)
+  return RxIterate(*mParticipants)
     .filter([participant, spColumnName](const auto& pair) {return pair.first.getColumnName() == spColumnName && pair.second == participant; })
     .map([](const auto& pair) {return pair.first.getParticipantId(); });
 }

@@ -2,6 +2,8 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 
+#include <sstream>
+
 namespace pep::networking {
 
 class Client::Connection : public networking::Connection, public std::enable_shared_from_this<Connection> {
@@ -76,15 +78,16 @@ void Client::Connection::establish() {
 
     if (!socketResult) {
       // Retry establishing the connection
-      auto message = "Could not establish connection for " + client->describe()
-        + ": " + GetExceptionMessage(socketResult.exception()) + '.';
+      std::ostringstream message;
+      message << "Could not establish connection for " << client->describe()
+        << ": " << GetExceptionMessage(socketResult.exception()) << '.';
 
       auto latency = self->reconnect();
       if (latency.has_value()) {
-        message += " Retrying in " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(*latency).count()) + " msec";
+        message << " Retrying in " << duration_cast<std::chrono::milliseconds>(*latency);
       }
 
-      LOG("Networking client", warning) << message;
+      LOG("Networking client", warning) << message.str();
       self->onConnectionAttempt.notify(Attempt::Result::Failure(socketResult.exception()));
       return;
     }
