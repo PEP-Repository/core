@@ -11,13 +11,13 @@ struct deferred {
   deferred(F&& f) : f(std::move(f)) {}
   deferred(const deferred<F> &) = delete;
   deferred(deferred<F> &&) = delete;
-  ~deferred() { 
+  ~deferred() {
     this->trigger();
   }
   void trigger() {
     if (this->triggered)
       return;
-    this->triggered = true; 
+    this->triggered = true;
     this->f();
   }
 private:
@@ -30,9 +30,24 @@ deferred<F> defer_func(F&& f) {
   return deferred<F>(std::forward<F>(f));
 }
 
+#ifdef __clang__
+// For Clang >22: Silence warning about __COUNTER__, which now apparently is a C2y (planned C23) extension
+# define PEP_SilenceCounterExtensionWarningBegin \
+  _Pragma("clang diagnostic push") \
+  _Pragma("clang diagnostic ignored \"-Wunknown-warning-option\"") /*for Clang <22*/  \
+  _Pragma("clang diagnostic ignored \"-Wc2y-extensions\"")
+# define PEP_SilenceCounterExtensionWarningEnd \
+  _Pragma("clang diagnostic pop")
+#else
+# define PEP_SilenceCounterExtensionWarningBegin
+# define PEP_SilenceCounterExtensionWarningEnd
+#endif
+
 // The invocation of BOOST_PP_CAT(_defer_, __COUNTER__) produces unique tokens such as "_defer_1234".
 // This macro defines a variable with that name, and its destructor will run the specified code at scope end.
-#define PEP_DEFER(code) auto BOOST_PP_CAT(_defer_, __COUNTER__) = defer_func([&](){code;})
+#define PEP_DEFER(code) \
+  auto PEP_SilenceCounterExtensionWarningBegin BOOST_PP_CAT(_defer_, __COUNTER__) PEP_SilenceCounterExtensionWarningEnd = \
+    defer_func([&](){code;})
 
 // That an explicit lambda must be passed to defer_unique is intentional,
 // so that the programmer can control -and is aware of- the captures.

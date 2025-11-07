@@ -2,7 +2,7 @@
 #include <pep/async/EmscriptenValPtr.hpp>
 #include <pep/async/ObservableAwaiter.hpp>
 #include <pep/async/OnEmscriptenThread.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/client/Client.hpp>
@@ -16,6 +16,7 @@
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 
+#include <numeric>
 #include <thread>
 
 #include <emscripten/emscripten.h>
@@ -76,30 +77,41 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
 
   rxcpp::observable<bool> connectionStatusChange() {
     auto disconnectedServers = std::make_shared<std::unordered_set<std::string>>();
-    return client_->getKeyServerStatus().map([](ConnectionStatus status) {
-      return std::pair{"KeyServer"s, status};
-    }).merge(client_->getStorageFacilityStatus().map([](ConnectionStatus status) {
-      return std::pair{"StorageFacility"s, status};
-    })).merge(client_->getAccessManagerConnectionStatus().map([](ConnectionStatus status) {
-      return std::pair{"AccessManager"s, status};
-    })).merge(client_->getTranscryptorStatus().map([](ConnectionStatus status) {
-      return std::pair{"Transcryptor"s, status};
-    })).merge(client_->getRegistrationServerStatus().map([](ConnectionStatus status) {
-      return std::pair{"RegistrationServer"s, status};
-    })).merge(client_->getAuthserverStatus().map([](ConnectionStatus status) {
-      return std::pair{"Authserver"s, status};
-    })).map([disconnectedServers = std::move(disconnectedServers)]
+    std::map<std::string, std::shared_ptr<const ServerProxy>> servers{
+      {"KeyServer", client_->getKeyServerProxy()},
+      {"StorageFacility", client_->getStorageFacilityProxy()},
+      {"AccessManager", client_->getAccessManagerProxy()},
+      {"Transcryptor", client_->getTranscryptorProxy()},
+      {"RegistrationServer", client_->getRegistrationServerProxy()},
+      {"AuthServer", client_->getAuthServerProxy()},
+    };
+
+    auto serverConnectionStatuses = std::move(servers)
+        | views::transform([](const auto& entry) {
+          auto& [name, proxy] = entry;
+          return proxy->connectionStatus()
+              .map([name](ConnectionStatus status) {
+                return std::pair{name, status};
+              });
+        });
+
+    auto mergedConnectionStatuses = std::reduce(serverConnectionStatuses.begin(), serverConnectionStatuses.end(),
+      rxcpp::observable<>::empty<std::pair<std::string, ConnectionStatus>>().as_dynamic(),
+      [](const auto& obs1, const auto& obs2) { return obs1.merge(obs2); });
+
+    return mergedConnectionStatuses
+        .map([disconnectedServers = std::move(disconnectedServers)]
         (const std::pair<std::string, ConnectionStatus>& pair) {
-      auto& [server, status] = pair;
-      if (status.connected) {
-        LOG(LOG_TAG, debug) << "Reconnected to " << server;
-        disconnectedServers->erase(server);
-      } else {
-        LOG(LOG_TAG, debug) << "Lost connection to " << server;
-        disconnectedServers->insert(server);
-      }
-      return disconnectedServers->empty();
-    }).distinct_until_changed();
+              auto& [server, status] = pair;
+              if (status.connected) {
+                LOG(LOG_TAG, debug) << "Reconnected to " << server;
+                disconnectedServers->erase(server);
+              } else {
+                LOG(LOG_TAG, debug) << "Lost connection to " << server;
+                disconnectedServers->insert(server);
+              }
+              return disconnectedServers->empty();
+            }).distinct_until_changed();
   }
 
   // Call this to make sure the Client is only accessed from the io_context thread
@@ -212,13 +224,13 @@ public:
   /// \returns Promise<string>
   auto internalGenerateToken(std::string tokenSecretHex, std::string userGroup) {
     using namespace std::chrono;
-    auto now = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
+    auto now = TimeNow<sys_seconds>();
     return OAuthToken::Generate(
         boost::algorithm::unhex(tokenSecretHex),
         "weblib",
         userGroup,
         now,
-        now + 60 * 60 * 24 /*in a day*/)
+        now + days{1})
       .getSerializedForm();
   }
 
@@ -286,7 +298,7 @@ public:
           });
         })
         .flat_map([client = client_](const IndexedTicket2& indexedTicket) {
-          return client->enumerateData2(indexedTicket.getTicket())
+          return client->enumerateData(indexedTicket.getTicket())
             .flat_map([](std::vector<std::shared_ptr<EnumerateResult>> chunk) {
               return rxcpp::observable<>::iterate(std::move(chunk));
             })
@@ -311,8 +323,8 @@ public:
                 throw std::invalid_argument("Entry tickets differ. Can only retrieve entries from the same list call.");
               }
 
-              auto pageBatches = client->retrieveData2(
-                  client->getKeys(
+              auto pageBatches = self->client_->retrieveData(
+                  self->client_->getKeys(
                       rxcpp::observable<>::iterate(
                           RangeToVector(*entries | views::transform(std::mem_fn(&CellEntry::inner)))),
                       signedTicket),
@@ -338,10 +350,10 @@ public:
                             // on next
                             [cellStreams](RetrievePage page) noexcept {
                               auto stream = (*cellStreams)[page.fileIndex].get_subscriber();
-                              if (!page.mContent.empty()) {
-                                stream.on_next(std::move(page.mContent));
+                              if (!page.content.empty()) {
+                                stream.on_next(std::move(page.content));
                               }
-                              if (page.mLast) { stream.on_completed(); }
+                              if (page.last) { stream.on_completed(); }
                             },
                             // on error
                             [cellStreams](const std::exception_ptr& ex) noexcept {
