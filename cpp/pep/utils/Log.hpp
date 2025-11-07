@@ -114,4 +114,15 @@ public:
   }
 };
 
+#ifdef __EMSCRIPTEN__
+class JsConsoleLogging : public Logging {
+protected:
+  std::shared_ptr<Sink> registerSink() const override;
+
+public:
+  explicit JsConsoleLogging(severity_level minimum_level)
+    : Logging(minimum_level) {}
+};
+#endif
+
 }

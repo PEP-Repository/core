@@ -430,7 +430,7 @@ int main() {
     }
     std::abort();
   });
-  Logging::Initialize({std::make_shared<ConsoleLogging>(debug /*TODO*/)});
+  Logging::Initialize({std::make_shared<JsConsoleLogging>(debug /*TODO*/)});
 
   ::emscripten_exit_with_live_runtime();
 }
