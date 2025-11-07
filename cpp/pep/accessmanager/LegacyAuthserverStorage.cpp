@@ -66,14 +66,14 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
   int64_t nextInternalId = getNextInternalUserId();
   std::unordered_map<std::string /* uid */, UserInfo> knownUsers;
   for (auto record : mStorage->raw.iterate<LegacyUserGroupUserRecord>()) {
+    Timestamp recordTimestamp(std::chrono::milliseconds{record.timestamp});
     auto knownUser = knownUsers.find(record.uid);
     if (knownUser == knownUsers.end()) {
       // This is the first time we encounter this UID. Add it to UserIds
       int64_t internalId = nextInternalId++;
       std::tie(knownUser, std::ignore) = knownUsers.emplace(
           record.uid, UserInfo{internalId, {}, std::nullopt});
-      recordsToCreate.emplace_back(internalId, record.uid, false,
-                                   record.timestamp);
+      recordsToCreate.emplace_back(internalId, record.uid, UserIdFlags::none, false, recordTimestamp);
     } else if (knownUser->second.tombstone) {
       // We have previously tombstoned this UID, but now we encounter it again.
       // Remove the tombstone
@@ -93,7 +93,7 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
         // the UID
         knownUser->second.tombstone = recordsToCreate.emplace(
             recordsToCreate.end(), knownUser->second.internalId, record.uid,
-            true, record.timestamp);
+            UserIdFlags::none, true, recordTimestamp);
       }
     } else {
       knownUser->second.groups.insert(record.group);

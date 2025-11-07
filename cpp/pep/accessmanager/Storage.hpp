@@ -12,7 +12,7 @@
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
-
+#include <pep/accessmanager/UserIdFlags.hpp>
 
 namespace pep {
 
@@ -53,9 +53,15 @@ private:
   /* private methods related to user groups */
   int64_t getNextUserGroupId() const;
   bool hasUserGroup(std::string_view name) const;
-  /// Try to find the internalId for the userGroup with the given name. Throws if not found.
   bool userInGroup(int64_t internalUserId, int64_t userGroupId) const;
-  std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = Timestamp()) const;
+  std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = TimeNow()) const;
+
+  std::optional<int64_t> findInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at = TimeNow()) const;
+  /// Try to find the internalId for the userGroup with the given name. Throws if not found.
+  int64_t getInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at = TimeNow()) const;
+  /// Find a subject for the given internalId and subjectType. If there are multiple options for a given internalId (e.g. multiple UserIds for a single user), it picks one.
+  std::optional<std::string> getSubjectForInternalId(StructureMetadataType subjectType, int64_t internalId,
+                                                         Timestamp at) const;
 
 public:
   Storage(const std::filesystem::path &path, std::shared_ptr<GlobalConfiguration> globalConf);
@@ -203,26 +209,40 @@ public:
   int64_t createUser(std::string identifier);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
-  void addIdentifierForUser(std::string_view uid, std::string identifier);
-  void addIdentifierForUser(int64_t internalUserId, std::string identifier);
+  void addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags);
+  void addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
 
   /* Finding user identifiers */
   /// Try to find the internalId for the user that has the given identifier. Returns nullopt if not found.
-  std::optional<int64_t> findInternalUserId(std::string_view identifier, Timestamp at = Timestamp()) const;
+  std::optional<int64_t> findInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
   /// Try to find the internalId for the user that has the given identifier. Throws if not found.
-  int64_t getInternalUserId(std::string_view identifier, Timestamp at = Timestamp()) const;
-  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = Timestamp()) const;
-  std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+  int64_t getInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
+  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = TimeNow()) const;
+  std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
+  std::optional<std::string> getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
+  std::optional<std::string> getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
+
+  /* Updating user identifiers */
+  void setPrimaryIdentifierForUser(std::string uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void setPrimaryIdentifierForUser(int64_t internalUserId, std::string uid);
+  void unsetPrimaryIdentifierForUser(std::string_view uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void unsetPrimaryIdentifierForUser(int64_t internalUserId, std::string_view uid);
+  void setDisplayIdentifierForUser(std::string uid);
+  // Caller must make sure uid indeed belongs to internalUserId
+  void setDisplayIdentifierForUser(int64_t internalUserId, std::string uid);
 
   /* Finding userGroupIds */
   /// Try to find the internalId for the userGroup with the given name. Returns nullopt if not found.
-  std::optional<int64_t> findUserGroupId(std::string_view name, Timestamp at = Timestamp()) const;
-  int64_t getUserGroupId(std::string_view name, Timestamp at = Timestamp()) const;
+  std::optional<int64_t> findUserGroupId(std::string_view name, Timestamp at = TimeNow()) const;
+  int64_t getUserGroupId(std::string_view name, Timestamp at = TimeNow()) const;
+  std::optional<std::string> getUserGroupName(int64_t userGroupId, Timestamp at) const;
 
   /* Check user group membership */
-  std::vector<UserGroup> getUserGroupsForUser(int64_t internalUserId, Timestamp at = Timestamp()) const;
+  std::vector<UserGroup> getUserGroupsForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
   bool userInGroup(std::string_view uid, std::string_view group) const;
   bool userInGroup(int64_t internalUserId, std::string_view group) const;
   bool userGroupIsEmpty(int64_t userGroupId) const;
@@ -241,12 +261,16 @@ public:
   /* Core operations on Metadata */
   /// Get the metadata keys for the specified \p subject (which is of type \p subjectType)
   std::vector<StructureMetadataKey> getStructureMetadataKeys(Timestamp timestamp, StructureMetadataType subjectType, std::string_view subject) const;
+  /// Get the metadata keys for the subject identified by the specified \p internalSubjectId (which is of type \p subjectType)
+  std::vector<StructureMetadataKey> getStructureMetadataKeys(Timestamp timestamp, StructureMetadataType subjectType, int64_t internalSubjectId) const;
   /// Get (filtered) metadata for the specified \p subject (which is of type \p subjectType)
   std::vector<StructureMetadataEntry> getStructureMetadata(Timestamp timestamp, StructureMetadataType subjectType, const StructureMetadataFilter& filter = {}) const;
   /// Create or overwrite a metadata entry for the specified \p subject (which is of type \p subjectType)
   void setStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key, std::string_view value);
   /// Remove a metadata entry for the specified \p subject (which is of type \p subjectType)
   void removeStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key);
+  /// Remove a metadata entry for the specified \p internalSubjectId (which is of type \p subjectType)
+  void removeStructureMetadata(StructureMetadataType subjectType, int64_t internalSubjectId, StructureMetadataKey key);
 };
 
 }

@@ -91,6 +91,15 @@ AsymmetricKey::AsymmetricKey(const AsymmetricKey& other) {
   }
 }
 
+AsymmetricKey::AsymmetricKey(AsymmetricKey&& other) {
+  std::lock_guard<std::mutex> lock(other.m);
+  if (other.mKey) {
+    mKey = std::exchange(other.mKey, nullptr);
+    set = std::exchange(other.set, false);
+    keyType = std::exchange(other.keyType, ASYMMETRIC_KEY_TYPE_NONE);
+  }
+}
+
 AsymmetricKey& AsymmetricKey::operator=(AsymmetricKey other) {
   std::lock_guard<std::mutex> lock(m);
   std::swap(mKey, other.mKey);
@@ -144,7 +153,7 @@ std::string AsymmetricKey::encrypt(const std::string& str) const {
   }
 
   // Determine the max size of the output buffer
-  std::size_t outlen;
+  std::size_t outlen{};
   if (EVP_PKEY_encrypt(ctx, nullptr, &outlen, reinterpret_cast<const unsigned char*>(str.data()), str.length()) <= 0) {
     throw pep::OpenSSLError("Failure to determine output buffer size in AsymmetricKey::encrypt.");
   }
@@ -177,7 +186,7 @@ std::string AsymmetricKey::decrypt(const std::string& str) const {
     throw pep::OpenSSLError("Failed to initialize EVP_PKEY_CTX in AsymmetricKey::decrypt.");
   }
 
-  size_t outlen;
+  size_t outlen{};
   if (EVP_PKEY_decrypt(ctx, nullptr, &outlen, reinterpret_cast<const unsigned char*>(str.data()), str.length()) <= 0) {
     throw pep::OpenSSLError("Failed to obtain decrypted size in AsymmetricKey::decrypt.");
   }
@@ -193,9 +202,9 @@ std::string AsymmetricKey::decrypt(const std::string& str) const {
 }
 
 /**
- * 
+ *
  * Write a public/private key to a PKCS#8 PEM string.
- * 
+ *
  * @brief Converts the key to PEM format.
  * @return The key in PEM format.
  * @throws std::runtime_error if the key type is not set or if an OpenSSL error occurred.
@@ -362,7 +371,7 @@ std::string AsymmetricKey::signDigestSha256(const std::string& abDigest) const {
   }
 
   // Determine the buffer length for the signature
-  size_t sigLen;
+  size_t sigLen{};
   if (EVP_PKEY_sign(ctx, nullptr, &sigLen, reinterpret_cast<const unsigned char*>(abDigest.data()), abDigest.size()) <= 0) {
     throw pep::OpenSSLError("Failed to determine signature length in AsymmetricKey::signDigestSha256.");
   }

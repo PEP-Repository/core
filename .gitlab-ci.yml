@@ -272,7 +272,7 @@ cleanup:
     - if: $RUN_CLEANUP == 'master' && $CI_COMMIT_BRANCH == $PEP_FOSS_DEVELOPMENT_BRANCH
       interruptible: false
   variables:
-    GIT_STRATEGY: clone # For core#2681
+    GIT_STRATEGY: clone # Fixes cleanup job: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2681#note_53099
   dependencies: []
   resource_group: cleanup  # Do not run multiple cleanup jobs concurrently
   tags:
@@ -1191,6 +1191,8 @@ retag-pep-docker-images:
     - job: pep-services-image-test
       artifacts: false
     - job: docker-integration
+      artifacts: false
+    - job: docker-integration-on-base-data
       artifacts: false
   #language=sh
   script:

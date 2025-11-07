@@ -19,9 +19,7 @@ public:
 
 class Ticket2 {
 public:
-  inline Ticket2() : mTimestamp(0) { }
-
-  Timestamp mTimestamp;
+  Timestamp mTimestamp{/*zero*/};
   std::vector<std::string> mModes;
   std::vector<LocalPseudonyms> mPseudonyms;
   std::vector<std::string> mColumns;
@@ -37,8 +35,7 @@ public:
   Signed() = default;
   Signed(
     Ticket2 ticket,
-    X509CertificateChain chain,
-    const AsymmetricKey& privateKey);
+    const X509Identity& identity);
   Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mTranscryptorSignature,
@@ -66,15 +63,19 @@ public:
     : DeserializableDerivedError<SignedTicket2ValidityPeriodError>(description) { }
 };
 
-class TicketRequest2 {
+class ClientSideTicketRequest2 {
 public:
   std::vector<std::string> mModes;
   std::vector<std::string> mParticipantGroups;
   std::vector<PolymorphicPseudonym> mPolymorphicPseudonyms;
   std::vector<std::string> mColumnGroups;
   std::vector<std::string> mColumns;
-  bool mRequestIndexedTicket = false;
   bool mIncludeUserGroupPseudonyms = false;
+};
+
+class TicketRequest2 : public ClientSideTicketRequest2 {
+public:
+  bool mRequestIndexedTicket{};
 };
 
 template <>
@@ -82,8 +83,7 @@ class Signed<TicketRequest2> {
 public:
   Signed() = default;
   Signed(TicketRequest2 ticketRequest,
-    const X509CertificateChain& chain,
-    const AsymmetricKey& privateKey);
+    const X509Identity& identity);
   Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mLogSignature,

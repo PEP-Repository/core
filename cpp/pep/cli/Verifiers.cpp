@@ -21,7 +21,7 @@ protected:
     return this->executeEventLoopFor(
       false // ensureEnrolled
       , [](std::shared_ptr<pep::CoreClient> client) {
-      return client->getRSKVerifiers().map([](
+      return client->getAccessManagerProxy()->requestVerifiers().map([](
             pep::VerifiersResponse resp) {
           std::cout
             << pep::Serialization::ToJsonString(resp)

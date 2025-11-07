@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/messaging/Scheduler.hpp>
 #include <pep/serialization/Error.hpp>
 #include <boost/asio/deadline_timer.hpp>
@@ -148,7 +149,7 @@ void TestStreams(const std::vector<size_t> sizes) {
   FakeSender sender(scheduler);
 
   for (const auto& stream : streams) {
-    scheduler->push(stream.id, rxcpp::observable<>::iterate(stream.batches));
+    scheduler->push(stream.id, pep::RxIterate(stream.batches));
   }
   ASSERT_NO_FATAL_FAILURE(ioContext.run());
 

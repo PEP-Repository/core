@@ -1,8 +1,11 @@
 #pragma once
 
+#include <pep/utils/TypeTraits.hpp>
+
 #include <boost/optional.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -44,19 +47,21 @@ std::string BoolToString(bool value);
 * \param value The string to convert.
 * \return The boolean written out in the specified string.
 */
-bool StringToBool(const std::string& value);
+bool StringToBool(std::string_view value);
 
+//XXX This may be removed in favor of optional::transform when we move to C++23
 /* \brief Gets an optional<Value> from an optional<Owner>.
  * \param owner The (possibly nullopt) value from which to retrieve a value.
  * \param getValue A function that returns a value when invoked with an Owner instance.
  * \return std::nullopt if owner is nullopt; otherwise the result of invoking the the getValue function on the owner.
  */
-template <typename T, typename TGetValue>
-auto GetOptionalValue(const std::optional<T>& owner, const TGetValue& getValue) -> std::optional<decltype(getValue(*owner))> {
+template <DerivedFromSpecialization<std::optional> TOptional>
+auto GetOptionalValue(TOptional&& owner, auto&& getValue)
+    -> std::optional<std::decay_t<decltype(std::forward<decltype(getValue)>(getValue)(*owner))>> {
   if (!owner) {
     return std::nullopt;
   }
-  return getValue(*owner);
+  return std::forward<decltype(getValue)>(getValue)(*std::forward<decltype(owner)>(owner));
 }
 
 template<typename T>
@@ -94,5 +99,22 @@ boost::property_tree::path RawPtreePath(const std::string& path);
   ([](auto&&... args) -> decltype(auto) { \
     return (fun)(std::forward<decltype(args)>(args)...); \
   })
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(TClass&)> MethodAsFree(TReturn (TClass::* fun)()) { return fun; }
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(const TClass&)> MethodAsFree(TReturn (TClass::* fun)() const) { return fun; }
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(TClass&&)> MethodAsFree(TReturn (TClass::* fun)() &&) { return fun; }
+
+template <typename TReturn, typename TClass>
+std::function<TReturn(const TClass&&)> MethodAsFree(TReturn (TClass::* fun)() const &&) { return fun; }
+
+/// Generic version of \c std::abs
+[[nodiscard]] constexpr auto Abs(auto v) {
+  return v < decltype(v){/*default*/} ? -std::move(v) : std::move(v);
+}
 
 }

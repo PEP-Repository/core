@@ -1,34 +1,46 @@
 #include <pep/accessmanager/UserStorageRecords.hpp>
 #include <pep/accessmanager/LegacyAuthserverStorage.hpp>
+#include <pep/accessmanager/UserIdFlags.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <sstream>
 
+using namespace std::chrono;
+
 namespace pep {
 UserIdRecord::UserIdRecord(
     int64_t internalUserId,
     std::string identifier,
+    UserIdFlags flags,
     bool tombstone,
-    int64_t timestamp) {
+    Timestamp timestamp) {
   RandomBytes(checksumNonce, 16);
-  this->timestamp = timestamp;
+  this->timestamp = TicksSinceEpoch<milliseconds>(timestamp);
   this->internalUserId = internalUserId;
   this->identifier = std::move(identifier);
+  this->isPrimaryId = (flags & UserIdFlags::isPrimaryId) != UserIdFlags::none;
+  this->isDisplayId = (flags & UserIdFlags::isDisplayId) != UserIdFlags::none;
   this->tombstone = tombstone;
 }
 
 uint64_t UserIdRecord::checksum() const {
   std::ostringstream os;
   os << std::string(checksumNonce.begin(), checksumNonce.end())
-     << timestamp << '\0' << internalUserId << '\0' << identifier  << '\0'  << '\0' << tombstone;
+     << timestamp << '\0' << internalUserId << '\0' << identifier  << '\0';
+  // We only add isDisplayId and isPrimaryId to the checksum if at least one of them is true, because in an earlier version we did not have these fields. This way we don't get a checksum change.
+  // Probably by mistake, before the addition of those fields, two consecutive `\0`s were written.
+  // So that is why we always write the `\0` before as well as after isDisplayId and isPrimaryId, even if those values themselves are not written.
+  if (isPrimaryId || isDisplayId)
+    os << isPrimaryId << '\0' << isDisplayId;
+  os << '\0' << tombstone;
   return UnpackUint64BE(Sha256().digest(std::move(os).str()));
 }
 
 UserGroupRecord::UserGroupRecord(int64_t userGroupId, std::string name, std::optional<uint64_t> maxAuthValiditySeconds, bool tombstone) {
   RandomBytes(checksumNonce, 16);
   this->userGroupId = userGroupId;
-  this->timestamp = Timestamp().getTime();
+  this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   this->name = std::move(name);
   this->tombstone = tombstone;
   this->maxAuthValiditySeconds = maxAuthValiditySeconds;
@@ -54,7 +66,7 @@ UserGroupUserRecord::UserGroupUserRecord(
     int64_t userGroupId,
     bool tombstone) {
   RandomBytes(checksumNonce, 16);
-  this->timestamp = Timestamp().getTime();
+  this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   this->internalUserId = internalUserId;
   this->userGroupId = userGroupId;
   this->tombstone = tombstone;

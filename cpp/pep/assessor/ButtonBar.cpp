@@ -55,8 +55,7 @@ void ButtonBar::clear() {
 
 // Adapted (ahem!) from https://stackoverflow.com/a/4857631
 void ButtonBar::ClearLayout(QLayout *layout) {
-  QLayoutItem *item;
-  while ((item = layout->takeAt(0)))
+  for (QLayoutItem *item{}; (item = layout->takeAt(0));)
   {
     if (item->layout())
     {

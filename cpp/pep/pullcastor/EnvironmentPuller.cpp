@@ -2,7 +2,8 @@
 #include <chrono>
 #include <iostream>
 
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/pullcastor/StudyPuller.hpp>
@@ -41,7 +42,7 @@ rxcpp::observable<std::shared_ptr<CoreClient>> EnsureEnrolled(std::shared_ptr<Cl
 }
 
 rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreClient> client) {
-  return client->getAccessibleColumns(true)
+  return client->getAccessManagerProxy()->getAccessibleColumns(true)
     .flat_map([](const ColumnAccess& access) {
     std::set<std::string> result;
     for (const auto& group : access.columnGroups) {
@@ -54,7 +55,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
         }
       }
     }
-    return rxcpp::observable<>::iterate(result);
+    return RxIterate(std::move(result));
     })
     .distinct();
 }
@@ -72,8 +73,8 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     oauthTokenFile = std::filesystem::canonical(config.get<std::filesystem::path>("OAuthTokenFile"));
     castorAPIKeyFile = std::filesystem::canonical(config.get<std::filesystem::path>("CastorAPIKeyFile"));
 
-    auto waitPeriod = config.get<int64_t>("WaitPeriodDays") * 24 * 60 * 60 * 1000;
-    mCooldownThreshold = pep::Timestamp{Timestamp().getTime() - waitPeriod};
+    auto waitPeriod = std::chrono::days{config.get<std::chrono::days::rep>("WaitPeriodDays")};
+    mCooldownThreshold = TimeNow() - waitPeriod;
 
     auto metricsFile = config.get<std::optional<std::filesystem::path>>("Metrics.TargetFile");
     if (metricsFile) {
@@ -128,7 +129,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getGlobalConfiguration(); })
       .flat_map([spColumns, sps](std::shared_ptr<GlobalConfiguration> gc) {
         // Get all SP definitions
-        rxcpp::observable<ShortPseudonymDefinition> allowedSps = rxcpp::observable<>::iterate(gc->getShortPseudonyms());
+        rxcpp::observable<ShortPseudonymDefinition> allowedSps = RxIterate(gc->getShortPseudonyms());
 
         // If SP column names have been specified, limit to those
         if (spColumns.has_value()) {
@@ -158,8 +159,8 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
   mColumnNamer = CreateRxCache([client = mClient, token = mOauthToken]() {
     return EnsureEnrolled(client, token)
-      .flat_map([](std::shared_ptr<CoreClient> client) {return client->getColumnNameMappings(); })
-      .map([](std::shared_ptr<ColumnNameMappings> mappings) { return std::make_shared<ImportColumnNamer>(*mappings); });
+      .flat_map([](std::shared_ptr<CoreClient> client) {return client->getAccessManagerProxy()->getColumnNameMappings(); })
+      .map([](ColumnNameMappings mappings) { return std::make_shared<ImportColumnNamer>(std::move(mappings)); });
     });
 
   mStudiesBySlug = CreateRxCache([castor = mCastor]() {
@@ -320,7 +321,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> Environmen
   if (!mSps.has_value()) {
     return rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>()); // Return an empty vector rather than an empty observable
   }
-  return rxcpp::observable<>::iterate(*mSps)
+  return RxIterate(*mSps)
     .flat_map([client = mClient](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
     .op(RxToVector());
 }

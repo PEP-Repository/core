@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <ranges>
 #include <string>
 
 #include <openssl/evp.h>
 
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Hasher.hpp>
 
 namespace pep {
@@ -26,7 +28,7 @@ protected:
 
   Hash finish() override {
     std::string ret(OUTPUTSIZE, '\0');
-    digestInto(reinterpret_cast<uint8_t*>(ret.data()));
+    digestInto(ConvertBytes<std::uint8_t>(std::span<char, OUTPUTSIZE>(ret)));
     return ret;
   }
 
@@ -41,11 +43,11 @@ private:
     }
   }
 
-  void digestInto(uint8_t out[OUTPUTSIZE]) {
+  void digestInto(std::span<std::uint8_t, OUTPUTSIZE> out) {
     this->ensureInitialized();
-    unsigned int s;
-    EVP_DigestFinal_ex(mdctx, out, &s);
-    assert(s == OUTPUTSIZE);
+    unsigned int s{};
+    EVP_DigestFinal_ex(mdctx, out.data(), &s);
+    assert(s == out.size());
   }
 
 protected:
@@ -78,7 +80,7 @@ std::string Sha<TDerived, OUTPUTSIZE, BLOCKSIZE>::HMac(std::string_view key, std
     // Shorten key by hashing it
     TDerived sha;
     sha.update(key);
-    static_cast<Sha&>(sha).digestInto(k.data());
+    static_cast<Sha&>(sha).digestInto(std::span(k).template subspan<0, OUTPUTSIZE>());
   }
   else {
     // Copy the provided key as is. Because of the initial value of k, it will be zero padded
@@ -100,7 +102,7 @@ std::string Sha<TDerived, OUTPUTSIZE, BLOCKSIZE>::HMac(std::string_view key, std
   sha
     .update(k_ipad.data(), BLOCKSIZE)
     .update(data);
-  static_cast<Sha&>(sha).digestInto(intermediate_hash.data());
+  static_cast<Sha&>(sha).digestInto(intermediate_hash);
 
   // Compute final HMAC
   return TDerived()

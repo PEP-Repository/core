@@ -15,6 +15,8 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
+using namespace std::chrono;
+
 namespace pep::cli {
 
 const std::string LOG_TAG = "Cli";
@@ -28,11 +30,12 @@ std::string CliApplication::getDescription() const {
 }
 
 pep::commandline::Parameters CliApplication::getSupportedParameters() const {
+  const auto daySecs = seconds{days{1}}.count();
   return pep::commandline::Utility::getSupportedParameters()
     + MakeConfigFileParameters(pep::GetResourceWorkingDirForOS(), "ClientConfig.json", false, "client-config-name", "client-working-directory") // Maintain backward compatible "--client-XYZ" switch names as aliases
     + pep::commandline::Parameter("oauth-token", "OAuth token to use to enroll. Accepts a token-string, JSON token or path to a token-file.").value(pep::commandline::Value<std::string>())
     + pep::commandline::Parameter("oauth-token-secret", "OAuth token secret to generate oauth token").value(pep::commandline::Value<std::string>())
-    + pep::commandline::Parameter("oauth-token-duration", "Validity of generated token in seconds").value(pep::commandline::Value<uint64_t>().defaultsTo(60 * 60 * 24, "a day"))
+    + pep::commandline::Parameter("oauth-token-duration", "Validity of generated token in seconds").value(pep::commandline::Value<seconds::rep>().defaultsTo(daySecs, "a day"))
     + pep::commandline::Parameter("oauth-token-subject", "Subject for generated token").value(pep::commandline::Value<std::string>().defaultsTo("pepcli"))
     + pep::commandline::Parameter("oauth-token-group", "Group for generated token").value(pep::commandline::Value<std::string>().defaultsTo(pep::UserGroup::ResearchAssessor));
 }
@@ -132,7 +135,8 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
     if (!token) {
       auto tokenSecret = this->getTokenSecret();
       if (tokenSecret.has_value()) {
-        auto now = std::time(nullptr);
+        const auto now = TimeNow<sys_seconds>();
+        const seconds oauthTokenDuration{parameterValues.get<seconds::rep>("oauth-token-duration")};
 
         LOG(LOG_TAG, pep::info) << " generated new token using oauth token secret" << std::endl;
         token = pep::OAuthToken::Generate(
@@ -140,7 +144,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
           cmdlineSubject,
           cmdlineGroup,
           now,
-          now + static_cast<time_t>(parameterValues.get<uint64_t>("oauth-token-duration")));
+          now + oauthTokenDuration);
 
         token->writeJson(tokenPath);
       }
@@ -198,7 +202,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
 }
 
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
-  int result;
+  int result{-1};
 
   auto stopEventLoop = [this, &result](int exitCode) {
     result = exitCode;

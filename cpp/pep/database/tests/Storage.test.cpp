@@ -1,8 +1,3 @@
-// Workaround for build failure due to header file names being replaced by macro contents: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2713#note_52952
-#include <boost/mpl/and.hpp>
-#include <boost/mpl/or.hpp>
-// Workaround ends here
-
 #include <gtest/gtest.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <pep/database/Storage.hpp>

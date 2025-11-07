@@ -1,15 +1,12 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/async/FakeVoid.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/castor/Study.hpp>
 #include <pep/castor/Ptree.hpp>
 #include <pep/crypto/Timestamp.hpp>
-
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -22,6 +19,8 @@
 #include <cmath>
 #include <sstream>
 #include <string>
+
+using namespace std::literals;
 
 static const std::string LOG_TAG ("CastorClient");
 namespace pep {
@@ -39,7 +38,7 @@ std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context
 
 }
 
-const int AuthenticationStatus::EXPIRY_MARGIN_SECONDS = 30;
+const std::chrono::seconds AuthenticationStatus::EXPIRY_MARGIN{30};
 const std::string CastorClient::BASE_PATH = "/api/";
 
 bool AuthenticationStatus::authenticated() const {
@@ -47,7 +46,7 @@ bool AuthenticationStatus::authenticated() const {
     return false;
   }
   assert(expires.has_value());
-  return time(nullptr) < *expires - EXPIRY_MARGIN_SECONDS;
+  return TimeNow() < *expires - EXPIRY_MARGIN;
 }
 
 CastorClient::CastorClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::string clientId, std::string clientSecret, std::optional<std::filesystem::path> caCertFilepath)
@@ -88,7 +87,9 @@ void CastorClient::reauthenticate() {
       }
       boost::property_tree::ptree responseJson;
       ReadJsonIntoPtree(responseJson, response.getBody());
-      return AuthenticationStatus(responseJson.get<std::string>("access_token"), responseJson.get<int>("expires_in"));
+      using namespace std::chrono;
+      return AuthenticationStatus(responseJson.get<std::string>("access_token"),
+          seconds{responseJson.get<seconds::rep>("expires_in")});
     })
     .on_error_resume_next([](std::exception_ptr ep){
       LOG(LOG_TAG, error) << "Failed authenticating to Castor: " << rxcpp::rxu::what(ep);
@@ -206,34 +207,20 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     auto xml = message.substr(CASTOR_429_RESPONSE_MESSAGE_HEADER.size());
 
     // Calculate the time to wait before retrying
-    auto when = Timestamp::FromXmlDateTime(xml).toTime_t();
-    auto now = std::time(nullptr);
-    auto diff = std::difftime(when, now); // in seconds
+    auto retryWhen = TimestampFromXmlDataTime(xml);
 
     // An observable that'll emit a FakeVoid when we can retry the request
     rxcpp::observable<FakeVoid> wait;
-    if (diff < 0) { // No need to wait: e.g. processing or transmission took a while, or we've been sitting on a breakpoint
+    if (TimeNow() > retryWhen) { // No need to wait: e.g. processing or transmission took a while, or we've been sitting on a breakpoint
       wait = rxcpp::observable<>::just(FakeVoid());
     }
     else {
       // Just to be sure: wait 1 second longer than calculated, since message says to retry _after_ the specified time
-      LOG(LOG_TAG, info) << "Castor requests throttled until " << xml
-        << ": waiting for " << static_cast<uintmax_t>(diff) << " + 1 seconds";
-      ++diff;
+      retryWhen += 1s;
+      LOG(LOG_TAG, info) << "Castor requests throttled until " << xml;
 
-      /* Convert our number of seconds(represented as a double) to an std::chrono::duration<>.
-       * Since we don't specify the 2nd template parameter, it defaults to std::ratio<1>,
-       * which means "seconds". See https://en.cppreference.com/w/cpp/chrono/duration
-       */
-      std::chrono::duration<double> seconds(diff);
-
-      // Convert our duration<> to the steady_clock::duration that RX's Timer operator wants
-      assert(!std::isnan(seconds.count()));
-      assert(!std::isinf(seconds.count()));
-      // TODO: prevent undefined behavior when our double is "too large to be representable by the target's integer type": see https://en.cppreference.com/w/cpp/chrono/duration/duration_cast
-      // TODO: prevent arithmetic overflow converting our number of seconds to steady_clock's tick period (e.g. nanoseconds)
-      auto duration = std::chrono::duration_cast<std::chrono::steady_clock::duration>(seconds);
-      wait = rxcpp::observable<>::timer(duration)
+      // We need to use a duration instead of a time_point as Rx wants a steady_clock time
+      wait = rxcpp::observable<>::timer(retryWhen - TimeNow())
         .op(RxGetOne("emissions from RX timer"))
         .op(RxInstead(FakeVoid()));
     }
@@ -249,7 +236,7 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     std::string info = "in CastorClient::sendCastorRequest.";
     auto expires = this->authenticationSubject.get_value().expires;
     if (expires.has_value()) {
-      info += " OAuth2 expires at: " + boost::posix_time::to_simple_string(boost::posix_time::from_time_t(*expires));
+      info += " OAuth2 expires at: " + TimestampToXmlDateTime(*expires);
     }
     info += "\nRequest:\n" + request->toString();
     throw CastorException::FromErrorResponse(response, info);

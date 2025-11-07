@@ -25,7 +25,7 @@ class Signature {
   Timestamp mTimestamp;
   bool mIsLogCopy = false;
 
-  Signature() = default;
+  Signature() : mTimestamp{/*zero*/} {}
 
   Signature(
       std::string signature,
@@ -39,29 +39,28 @@ class Signature {
       mTimestamp(timestamp),
       mIsLogCopy(isLogCopy) { }
 
-  static Signature create(
-      const std::string& data,
-      X509CertificateChain chain,
-      const AsymmetricKey& privateKey,
+  static Signature Make(
+      std::string_view data,
+      const X509Identity& identity,
       bool isLogCopy=false,
       SignatureScheme scheme=SIGNATURE_SCHEME_V4);
 
   void assertValid(
-      const std::string& data,
+      std::string_view data,
       const X509RootCertificates& rootCAs,
       std::optional<std::string> expectedCommonName,
-      uint64_t timestampLeewaySeconds,
+      std::chrono::seconds timestampLeeway,
       bool expectLogCopy=false) const;
 
   template<typename T>
   T open(
-      const std::string& data,
+      std::string_view data,
       const X509RootCertificates& rootCAs,
       std::optional<std::string> expectedCommonName=std::nullopt,
-      uint64_t timestampLeewaySeconds=60*60) const {
+      std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
     // This function checks whether the signature is valid and throws
     // a network-portable Error exception if it isn't.
-    assertValid(data, rootCAs, expectedCommonName, timestampLeewaySeconds);
+    assertValid(data, rootCAs, expectedCommonName, timestampLeeway);
     return Serialization::FromString<T>(data);
   }
 

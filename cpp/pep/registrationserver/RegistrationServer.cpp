@@ -7,7 +7,7 @@
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
 #include <pep/async/RxEnsureProgress.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
@@ -84,7 +84,7 @@ rxcpp::observable<ShortPseudonymDefinition> GetShortPseudonymDefinitions(std::sh
     throw std::runtime_error("Cannot get short pseudonym definitions without global configuration");
   }
   return globalConfiguration->observe()
-    .flat_map([](std::shared_ptr<GlobalConfiguration> config) {return rxcpp::observable<>::iterate(config->getShortPseudonyms()); });
+    .flat_map([](std::shared_ptr<GlobalConfiguration> config) {return RxIterate(config->getShortPseudonyms()); });
 }
 
 int ParseSqliteSelectCountResult(void *pArg, int argc, char **argv, char **columnNames) {
@@ -110,7 +110,7 @@ private:
 
 public:
   void add(const std::string& localValue) { mLocal.push_back(localValue); }
-  rxcpp::observable<std::string> observe() const { return mRx->observe().concat(rxcpp::observable<>::iterate(mLocal)); }
+  rxcpp::observable<std::string> observe() const { return mRx->observe().concat(RxIterate(mLocal)); }
 
   static std::shared_ptr<ShortPseudonymCache> Create(RegistrationServer& server, const std::filesystem::path& shadowStorageFile) {
     auto result = std::shared_ptr<ShortPseudonymCache>(new ShortPseudonymCache(server, shadowStorageFile));
@@ -161,8 +161,7 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   clientBuilder.setIoContext(getIoContext())
     .setCaCertFilepath(getRootCACertificatesFilePath())
-    .setPrivateKey(getPrivateKey())
-    .setCertificateChain(getCertificateChain())
+    .setSigningIdentity(getSigningIdentity())
     .setPrivateKeyData(ElgamalPrivateKey(strDataKey))
     .setPrivateKeyPseudonyms(ElgamalPrivateKey(strPseudonymKey));
   std::shared_ptr<CoreClient> client = clientBuilder.build();
@@ -248,7 +247,7 @@ void RegistrationServer::Parameters::check() const {
     throw std::runtime_error("shadowStorageFile must not be empty");
   if(!shadowPublicKey.isSet())
     throw std::runtime_error("shadowPublicKey must be set");
-  if (GetFacilityType(getCertificateChain()) != FacilityType::RegistrationServer)
+  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::RegistrationServer)
     throw std::runtime_error("Invalid certificate chain for Registration Server");
   SigningServer::Parameters::check();
 }
@@ -256,10 +255,10 @@ void RegistrationServer::Parameters::check() const {
 
 bool RegistrationServer::openDatabase(const std::filesystem::path& file) {
   auto result = !std::filesystem::exists(file);
-  int err;
 
   try {
     // Open SQLite database for shadow administration of identifiers/short pseudonyms
+    int err{};
     err = sqlite3_open(file.string().c_str(), &pShadowStorage);
     if (err != SQLITE_OK) {
       LOG(LOG_TAG, warning) << "Error opening SQLite database: " << err;
@@ -275,7 +274,7 @@ bool RegistrationServer::openDatabase(const std::filesystem::path& file) {
 
     // There are two versions of the database schemas.  In the second version
     // we have an Id field on ShortPseudonyms.
-    sqlite3_stmt* colStmt;
+    sqlite3_stmt* colStmt{};
     err = sqlite3_prepare_v2(pShadowStorage,
       "PRAGMA table_info(ShadowShortPseudonyms);",
       -1, &colStmt, nullptr);
@@ -377,7 +376,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       if (rebuild) {
         LOG(LOG_TAG, info) << "Initializing shadow storage with short pseudonyms retrieved from Storage Facility";
       }
-      return rxcpp::observable<>::iterate(std::move(*pps));
+      return RxIterate(std::move(*pps));
     })
       .flat_map([this, rebuild, count](const PseudonymsByPp::value_type& ppAndPseudonyms) { // Process each participant
       const auto& pseudonyms = ppAndPseudonyms.second;
@@ -401,7 +400,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
         }
       }
 
-      return rxcpp::observable<>::iterate(pseudonyms)
+      return RxIterate(pseudonyms)
         .map([](const Pseudonyms::value_type& columnAndValue) {return columnAndValue.second; });
     })
       .as_dynamic()
@@ -429,7 +428,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
 }
 
 size_t RegistrationServer::countShadowStoredEntries() const {
-  size_t result;
+  size_t result{};
   auto err = sqlite3_exec(pShadowStorage, "select count(*) from ShadowShortPseudonyms", &ParseSqliteSelectCountResult, &result, nullptr);
   if (err != SQLITE_OK) {
     LOG(LOG_TAG, warning) << "Error counting shadow storage entries: " << err;
@@ -480,10 +479,9 @@ struct RegistrationContext {
   * \param shortPseudonym The short pseudonym to be stored
   */
 void RegistrationServer::storeShortPseudonymShadow(const std::string& encryptedIdentifier, const std::string& tag, const std::string& shortPseudonym) {
-  sqlite3_stmt* insertStmt;
-
   std::string encryptedShortPseudonym = shadowPublicKey.encrypt(tag + ":" + shortPseudonym);
 
+  sqlite3_stmt* insertStmt{};
   //TODO Do we want to re-use the prepared statement?
   if (sqlite3_prepare_v2(pShadowStorage, "INSERT INTO ShadowShortPseudonyms(EncryptedIdentifier, EncryptedShortPseudonym) VALUES(?, ?)", -1, &insertStmt, nullptr) != SQLITE_OK) {
     LOG(LOG_TAG, warning) << "Error occured: " << sqlite3_errmsg(pShadowStorage);
@@ -581,7 +579,7 @@ void RegistrationServer::computeChecksumChainChecksum(
   if (!maxCheckpoint)
     maxCheckpoint = std::numeric_limits<int64_t>::max();
 
-  sqlite3_stmt* stmt;
+  sqlite3_stmt* stmt{};
 
   if (chain == "shadow-short-pseudonyms") {
     sqlite3_prepare_v2(pShadowStorage,
@@ -704,7 +702,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       { *ctx->pp },                 // pps
       { "ShortPseudonyms" },        // columnGroups
       {})                           // columns
-    .flat_map([](std::vector<EnumerateResult> results) { return rxcpp::observable<>::iterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
+    .flat_map([](std::vector<EnumerateResult> results) { return RxIterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
     .map([](const EnumerateResult& result) {return result.mMetadata.getTag(); }) // Extract the column name
     .op(RxToVector()) // Convert to a single vector<> containing column names
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs
@@ -773,10 +771,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       return rxcpp::observable<>::empty<DataStorageResult2>();
     });
   })
-    .reduce( // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
-      RegistrationResponse(),
-      [](RegistrationResponse response, DataStorageResult2) {return response; }
-    )
+    .op(RxInstead(RegistrationResponse())) // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
     .map([first_error](RegistrationResponse response) { // Serialize RegistrationResponse
     if (*first_error) {
       std::rethrow_exception(*first_error);
@@ -804,8 +799,8 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
     return sps->front();
   })
     .flat_map([castor = getCastorConnection(), answerSetCount, client = pClient](const ShortPseudonymDefinition& sp) { // Get import column names for the SP
-    return client->getColumnNameMappings()
-      .flat_map([castor, sp, answerSetCount](std::shared_ptr<ColumnNameMappings> colMappings) {return castor::ImportColumnNamer(*colMappings).getImportableColumnNames(castor, sp, answerSetCount); });
+    return client->getAccessManagerProxy()->getColumnNameMappings()
+      .flat_map([castor, sp, answerSetCount](ColumnNameMappings colMappings) {return castor::ImportColumnNamer(std::move(colMappings)).getImportableColumnNames(castor, sp, answerSetCount); });
   })
     .on_error_resume_next([](std::exception_ptr ep) -> rxcpp::observable<std::string> {throw Error(GetExceptionMessage(ep)); }) // Convert exceptions to network-portable Error instances
     .op(RxToVector()) // Aggregate column names into a vector<>
