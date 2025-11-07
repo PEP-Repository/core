@@ -238,7 +238,7 @@ public:
   WeblibApiPromise listColumns() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Client>& client) {
-          return client->getAccessibleColumns(true, { "read" });
+          return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
         })
         .map([](const ColumnAccess& access) {
           return RangeToVector(
@@ -258,7 +258,7 @@ public:
   WeblibApiPromise listSubjectGroups() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Client>& client) {
-          return client->getAccessibleParticipantGroups(true);
+          return client->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
         }).map([](ParticipantGroupAccess access) {
           return RangeToVector(
             std::move(access).participantGroups
