@@ -323,8 +323,8 @@ public:
                 throw std::invalid_argument("Entry tickets differ. Can only retrieve entries from the same list call.");
               }
 
-              auto pageBatches = self->client_->retrieveData(
-                  self->client_->getKeys(
+              auto pageBatches = client->retrieveData(
+                  client->getKeys(
                       rxcpp::observable<>::iterate(
                           RangeToVector(*entries | views::transform(std::mem_fn(&CellEntry::inner)))),
                       signedTicket),
