@@ -6,6 +6,7 @@ using namespace pep;
 #ifdef __EMSCRIPTEN__
 
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/OnAsio.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
@@ -38,7 +39,10 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
     [request = std::move(request)](rxcpp::subscriber<HTTPResponse> subscriber) {
       emscripten_fetch_attr_t attr;
       emscripten_fetch_attr_init(&attr);
-      attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+      // We need to do a synchronous request, because otherwise a thread blocking on io_context::run() will
+      // never return to JS, which means the callbacks will never be called.
+      // (Alternatively, we could do the request on the main thread.)
+      attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
 
       CheckedCopy(request.getMethod().toString(), attr.requestMethod);
 
@@ -125,15 +129,17 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
       };
 
       LOG(LOG_TAG, debug) << "Fetching URL: " << request.uri();
+      // Note: all parameters get copied in emscripten_fetch
       auto fetch = emscripten_fetch(&attr, std::string(request.uri().buffer()).c_str());
-      // Make sure pointers to these are still valid in the fetch
+      // Make sure that code isn't changed to prematurely discard these variables, which must remain valid until the above function call
       (void) headers;
       (void) headerPtrs;
       (void) ctx;
       if (!fetch) {
         throw std::runtime_error("Failed to initiate HTTP fetch");
       }
-    });
+    })
+    .subscribe_on(observe_on_asio(*io_context));
 }
 
 #else // ! __EMSCRIPTEN__

@@ -253,7 +253,7 @@ export default class Pep {
 
     // Populate folder from IndexedDB
     // Promises are currently not supported in preInit, see https://github.com/emscripten-core/emscripten/issues/14520
-    await new Promise<void>((resolve, reject) => Module.FS.syncfs(true, (err: Error | null) => {
+    await new Promise<void>((resolve, reject) => FS.syncfs(true, (err: Error | null) => {
       err ? reject(err) : resolve();
     }));
     // Call main now that ClientKeys.json is loaded
@@ -310,28 +310,37 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.getEnrolledUser());
   }
 
-  authenticate() {
+  async authenticate(): Promise<void> {
     const landingPage = this.#config.authLandingPage;
     if (!landingPage) {
       throw new Error("authLandingPage config was not set");
     }
 
-    const authChan = new BroadcastChannel('pep-auth-code-' + crypto.randomUUID());
-    authChan.addEventListener('message', ev => {
-      const msg = ev.data as AuthenticationChannelMessage;
-      if ('code' in msg) {
-        this.#wrapExec(() => this.#client.authenticationCodeCallback(msg.code));
-      } else {
-        this.#wrapExec(() => this.#client.authenticationErrorCallback(msg.error, msg.errorDescription ?? ''));
-      }
-    });
+    let oauthClient: rawTypes.OAuthClient | undefined;
+    try {
+      await this.#wrapExec(() => new Promise<void>((resolve, reject) => {
+        const authChan = new BroadcastChannel('pep-auth-code-' + crypto.randomUUID());
+        authChan.addEventListener('message', ev => {
+          const msg = ev.data as AuthenticationChannelMessage;
+          if ('code' in msg) {
+            oauthClient!.completeAuthentication(msg.code)
+                .then(resolve, reject);
+          } else {
+            oauthClient!.failAuthentication(msg.error, msg.errorDescription ?? '')
+                .then(resolve, reject);
+          }
+        });
 
-    const fullLandUrl = new URL(landingPage);
-    fullLandUrl.searchParams.append('chan', authChan.name);
-    return this.#wrapExec(() => this.#client.authenticate(fullLandUrl.href,
-        (authUrl: string) => {
-          open(authUrl, '_blank', 'popup,top=100,left=100,width=600,height=900');
-        }));
+        const fullLandUrl = new URL(landingPage);
+        fullLandUrl.searchParams.append('chan', authChan.name);
+        oauthClient = this.#client.authenticate(fullLandUrl.href,
+            (authUrl: string) => {
+              open(authUrl, '_blank', 'popup,top=100,left=100,width=600,height=900');
+            });
+      }));
+    } finally {
+      oauthClient?.delete();
+    }
   }
 
   authenticateWithToken(token: string) {

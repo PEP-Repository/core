@@ -29,9 +29,9 @@
 #include <pep/async/RxInstead.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
-#include <rxcpp/operators/rx-finally.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/subjects/rx-replaysubject.hpp>
 
 using namespace pep;
 using namespace pep::weblib;
@@ -47,9 +47,8 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
 
   Configuration clientConfig_;
   std::shared_ptr<Client> client_;
-  std::shared_ptr<OAuthClient> oauthClient_;
 
-  rxcpp::subjects::subject<AuthorizationResult> authorizationCodeChan_;
+  std::optional<rxcpp::observe_on_one_worker> asioWorker_;
 
   // Destruct these first to stop io_service
   std::jthread thread_;
@@ -60,6 +59,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Set up event loop
     auto io_context_ = std::make_shared<boost::asio::io_context>();
     workGuard_.emplace(make_work_guard(*io_context_));
+    asioWorker_.emplace(observe_on_asio(*io_context_));
 
     clientConfig_ = Configuration::FromFile("ClientConfig.json");
 
@@ -114,10 +114,10 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
             }).distinct_until_changed();
   }
 
-  // Call this to make sure the Client is only accessed from the io_context thread
-  rxcpp::observable<std::shared_ptr<Client>> onIoThread() const {
-    return rxcpp::observable<>::just(client_)
-        .subscribe_on(observe_on_asio(*client_->getIoContext()));
+  /// Call this to make sure state is only accessed from the io_context thread
+  rxcpp::observable<std::shared_ptr<Weblib>> onIoThread() {
+    return rxcpp::observable<>::just(shared_from_this())
+        .subscribe_on(*asioWorker_);
   }
 
 public:
@@ -133,91 +133,86 @@ public:
         });
   }
 
-  /// \returns Promise<EnrolledUser>
+  /// \returns \c Promise<EnrolledUser>
   WeblibApiPromise getEnrolledUser() {
     co_return co_await onIoThread()
-      .map([](const std::shared_ptr<Client>& client) -> std::optional<EnrolledUser> {
-        if (client->getEnrolled()) {
+      .map([](const std::shared_ptr<Weblib>& self) -> std::optional<EnrolledUser> {
+        if (self->client_->getEnrolled()) {
           return EnrolledUser{
-              .userGroup = client->getEnrolledGroup(),
-              .user = client->getEnrolledUser(),
+              .userGroup = self->client_->getEnrolledGroup(),
+              .user = self->client_->getEnrolledUser(),
           };
         }
         return {};
       });
   }
 
-  //TODO The threading here is questionable
-  WeblibApiVoidPromise authenticate(std::string redirectUri, val openAuthPage) {
-    LOG(LOG_TAG, debug) << "authenticate";
-    if (oauthClient_) {
-      throw std::logic_error("Authentication already in progress");
-    }
+  class OAuthClient {
+    rxcpp::subjects::replay<AuthorizationResult, decltype(asioWorker_)::value_type> authorizationCodeChan_;
+    rxcpp::observable<FakeVoid> run_;
 
-    oauthClient_ = OAuthClient::Create(OAuthClient::Parameters{
-        .io_context = client_->getIoContext(),
-        .config = clientConfig_.get_child("AuthenticationServer"),
-        .authorizationMethod = [
-            redirectUri,
-            openAuthPage = EmscriptenValPtr(openAuthPage),
-            self = shared_from_this()
-        ](
-            std::shared_ptr<boost::asio::io_context> io_context,
-            std::function<std::string(std::string redirectUri)> getAuthorizeUri
+  public:
+    OAuthClient(const std::shared_ptr<Weblib>& weblib, std::string redirectUri, val openAuthPage)
+      : authorizationCodeChan_(*weblib->asioWorker_) {
+      auto oauthClient = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
+        .io_context = weblib->client_->getIoContext(),
+        .config = weblib->clientConfig_.get_child("AuthenticationServer"),
+        .authorizationMethod = [this,
+          redirectUri = std::move(redirectUri),
+          openAuthPage = EmscriptenValPtr(std::move(openAuthPage))](
+        const std::shared_ptr<boost::asio::io_context>&,
+        const std::function<std::string(std::string redirectUri)>& getAuthorizeUri
         ) {
           // Still called on same thread
           (*openAuthPage)(getAuthorizeUri(redirectUri));
           // Would be nice to let openAuthPage return a promise,
-          // but then we have to add full observable coroutine support, so callback it is
-          return self->authorizationCodeChan_.get_observable();
+          // but then we have to add full observable coroutine support,
+          // plus val::awaiter currently only works inside val::promise_type, so callback it is
+          return authorizationCodeChan_.get_observable();
         },
-    });
+      });
 
-    co_await oauthClient_->run()
-        .observe_on(observe_on_asio(*client_->getIoContext()))
-        .flat_map([self = shared_from_this()](AuthorizationResult res) {
-          if (res) {
-            return self->client_->enrollUser(*res);
-          } else {
-            std::rethrow_exception(res.exception());
-          }
-        })
-        .map([](const EnrollmentResult &) {
-          LOG(LOG_TAG, pep::info) << "Completed enrollment!";
-          return FakeVoid();
-        })
-        .finally([self = shared_from_this()] {
-          self->oauthClient_.reset();
-          self->authorizationCodeChan_ = {};
-        });
-  }
-
-  /// Call after \c authenticate on successful authentication
-  void authenticationCodeCallback(std::string code) {
-    LOG(LOG_TAG, debug) << "authenticationCodeCallback";
-    if (!oauthClient_) {
-      throw std::logic_error("No authentication in progress");
+      run_ = oauthClient->run()
+          .flat_map([weblib](AuthorizationResult res) {
+            if (res) {
+              return weblib->client_->enrollUser(*res);
+            } else {
+              std::rethrow_exception(res.exception());
+            }
+          })
+          .map([](const EnrollmentResult&) {
+            LOG(LOG_TAG, pep::info) << "Completed enrollment!";
+            return FakeVoid{};
+          });
     }
-    auto subscriber = authorizationCodeChan_.get_subscriber();
-    subscriber.on_next(AuthorizationResult::Success(code));
-    subscriber.on_completed();
-  }
 
-  /// Call after \c authenticate on authentication failure
-  void authenticationErrorCallback(std::string error, std::string errorDescription) {
-    LOG(LOG_TAG, debug) << "authenticationErrorCallback";
-    if (!oauthClient_) {
-      throw std::logic_error("No authentication in progress");
+    /// Call on successful authentication
+    WeblibApiVoidPromise completeAuthentication(std::string code) {
+      LOG(LOG_TAG, debug) << "completeAuthentication";
+      rxcpp::observable<>::just(AuthorizationResult::Success(std::move(code)))
+          .subscribe(authorizationCodeChan_.get_subscriber());
+      co_await run_;
     }
-    auto subscriber = authorizationCodeChan_.get_subscriber();
-    subscriber.on_next(AuthorizationResult::Failure(std::make_exception_ptr(OAuthError(error, errorDescription))));
-    subscriber.on_completed();
+
+    /// Call on authentication failure
+    WeblibApiVoidPromise failAuthentication(std::string error, std::string errorDescription) {
+      LOG(LOG_TAG, debug) << "failAuthentication";
+      rxcpp::observable<>::just(AuthorizationResult::Failure(std::make_exception_ptr(
+              OAuthError(std::move(error), std::move(errorDescription)))))
+          .subscribe(authorizationCodeChan_.get_subscriber());
+      co_await run_;
+    }
+  };
+
+  OAuthClient authenticate(std::string redirectUri, val openAuthPage) {
+    LOG(LOG_TAG, debug) << "authenticate";
+    return OAuthClient(shared_from_this(), std::move(redirectUri), std::move(openAuthPage));
   }
 
   WeblibApiVoidPromise authenticateWithToken(std::string token) {
     co_await onIoThread()
-      .flat_map([token = std::move(token)](const std::shared_ptr<Client>& client) {
-        return client->enrollUser(token).op(RxInstead(FakeVoid{}));
+      .flat_map([token = std::move(token)](const std::shared_ptr<Weblib>& self) {
+        return self->client_->enrollUser(token).op(RxInstead(FakeVoid{}));
       });
   }
 
@@ -237,8 +232,8 @@ public:
   /// \returns Promise<ColumnGroup[]>
   WeblibApiPromise listColumns() {
     co_return co_await onIoThread()
-        .flat_map([](const std::shared_ptr<Client>& client) {
-          return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
+        .flat_map([](const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
         })
         .map([](const ColumnAccess& access) {
           return RangeToVector(
@@ -257,8 +252,8 @@ public:
   /// \returns Promise<SubjectGroup[]>
   WeblibApiPromise listSubjectGroups() {
     co_return co_await onIoThread()
-        .flat_map([](const std::shared_ptr<Client>& client) {
-          return client->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
+        .flat_map([](const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
         }).map([](ParticipantGroupAccess access) {
           return RangeToVector(
             std::move(access).participantGroups
@@ -278,16 +273,16 @@ public:
   auto list(weblib::ListQuery query) {
     return CreateReadableStream(
         onIoThread()
-        .flat_map([query = MakeSharedCopy(std::move(query))](const std::shared_ptr<Client>& client) {
+        .flat_map([query = MakeSharedCopy(std::move(query))](const std::shared_ptr<Weblib>& self) {
           auto pps = query->subjects
-                     ? client->parsePpsOrIdentities(*query->subjects)
+                     ? self->client_->parsePpsOrIdentities(*query->subjects)
                      .op(RxGetOne("PolymorphicPseudonym vector"))
                      .as_dynamic()
                      : rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>())
                      .as_dynamic();
 
-          return pps.flat_map([client, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
-            return client->requestTicket2(requestTicket2Opts{
+          return pps.flat_map([self, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
+            return self->client_->requestTicket2(requestTicket2Opts{
                 .participantGroups = std::move(query->subjectGroups).value_or(std::vector<std::string>{}),
                 .pps = std::move(*pps),
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
@@ -314,7 +309,7 @@ public:
     return CreateReadableStream(
         onIoThread()
         .flat_map([entries = MakeSharedCopy(std::move(entries))](
-            const std::shared_ptr<Client>& client) -> rxcpp::observable<CellData> {
+            const std::shared_ptr<Weblib>& self) -> rxcpp::observable<CellData> {
               if (entries->empty()) { return rxcpp::observable<>::empty<CellData>(); }
               auto signedTicket = entries->front()->ticket;
               if (!all_of(*entries, [&signedTicket](const CellEntry* entry) {
@@ -323,8 +318,8 @@ public:
                 throw std::invalid_argument("Entry tickets differ. Can only retrieve entries from the same list call.");
               }
 
-              auto pageBatches = client->retrieveData(
-                  client->getKeys(
+              auto pageBatches = self->client_->retrieveData(
+                  self->client_->getKeys(
                       rxcpp::observable<>::iterate(
                           RangeToVector(*entries | views::transform(std::mem_fn(&CellEntry::inner)))),
                       signedTicket),
@@ -382,8 +377,8 @@ public:
 
   WeblibApiPromise registerParticipant(ParticipantPersonalia personalia, bool isTestParticipant) {
     co_return co_await onIoThread()
-        .flat_map([personalia = std::move(personalia), isTestParticipant](const std::shared_ptr<Client>& client) {
-          return client->registerParticipant(personalia, isTestParticipant);
+        .flat_map([personalia = std::move(personalia), isTestParticipant](const std::shared_ptr<Weblib>& self) {
+          return self->client_->registerParticipant(personalia, isTestParticipant);
         });
   }
 };
@@ -396,8 +391,6 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("onStatusChange", &Weblib::onStatusChange)
       .function("getEnrolledUser", &Weblib::getEnrolledUser)
       .function("authenticate", &Weblib::authenticate)
-      .function("authenticationCodeCallback", &Weblib::authenticationCodeCallback)
-      .function("authenticationErrorCallback", &Weblib::authenticationErrorCallback)
       .function("authenticateWithToken", &Weblib::authenticateWithToken)
       .function("internalGenerateToken", &Weblib::internalGenerateToken)
       .function("listColumns", &Weblib::listColumns)
@@ -405,6 +398,10 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("registerParticipant", &Weblib::registerParticipant)
       .function("list", &Weblib::list)
       .function("retrieve", &Weblib::retrieve)
+  ;
+  class_<Weblib::OAuthClient>("OAuthClient")
+      .function("completeAuthentication", &Weblib::OAuthClient::completeAuthentication)
+      .function("failAuthentication", &Weblib::OAuthClient::failAuthentication)
   ;
   value_object<ParticipantPersonalia>("ParticipantPersonalia")
       .field("firstName", &ParticipantPersonalia::firstName)
