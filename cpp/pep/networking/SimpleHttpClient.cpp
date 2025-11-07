@@ -84,7 +84,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
               std::runtime_error("Failed to fetch URL: "s + fetch->url))
             .subscribe(ctx->subscriber);
       };
-      attr.onsuccess = attr.onerror = [](emscripten_fetch_t *fetch) noexcept {
+      attr.onsuccess = [](emscripten_fetch_t *fetch) noexcept {
         PEP_DEFER(closeFetch(fetch));
         const auto ctx = static_cast<fetchContext *>(fetch->userData);
 
