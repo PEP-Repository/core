@@ -71,15 +71,13 @@ pep-services
 client
 pep-scheduler
 pep-connector
+docker-compose
 '
 dtap_container_image_names="$foss_container_image_names
-backup-tool
 nginx
 prometheus
-testidp
 logger
 nginx-review
-docker-compose
 watchdog-watchdog
 loki
 gitlab-ci-pipelines-exporter
@@ -149,7 +147,7 @@ gitlab_dir_api() {
 # 1. Make sure that we are not in a shallow repository,
 #    because we want to see all remote branches.
 # 2. Fetch remote.
-# 3.  Make sure we have origin/HEAD pointing to the main branch
+# 3. Make sure we have origin/HEAD pointing to the main branch
 prepare_git_repo() {
   if [ "$(git rev-parse --is-shallow-repository)" != false ]; then
     if [ -n "$should_unshallow" ]; then
