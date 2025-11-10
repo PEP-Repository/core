@@ -99,7 +99,7 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
     storageFacilityConnectionStatus = storageFacilityStatus;
   updateConnectionStatus();
     });
-  client->getRegistrationExpiryObservable().observe_on(observe_on_gui()).subscribe([this](int) {
+  client->getRegistrationExpiryObservable().observe_on(observe_on_gui()).subscribe([this](FakeVoid) {
     loginExpired();
     });
 
