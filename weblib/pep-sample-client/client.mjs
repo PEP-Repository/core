@@ -137,36 +137,41 @@ saveBtn.addEventListener('click', () => void (async () => {
   const fileExtensionBin = entry.partialMetadataView().get('fileExtension');
   const fileName = 'file' + (fileExtensionBin ? binaryToString(fileExtensionBin) : '');
 
+  /** @type {import("pep-repo-client").CellData | undefined} */
   let data;
+  async function getContent() {
+    //@ts-ignore
+    [data] = await Array.fromAsync(pep.retrieve([entry]));
+    const startTime = performance.now();
+    let downloaded = 0n;
+    let prevTime = startTime;
+    return data.content.pipeThrough(new TransformStream({
+      transform(chunk, controller) {
+        downloaded += BigInt(chunk.byteLength);
+        const now = performance.now();
+        if (now > prevTime + 500 || downloaded === entry.fileSize) {
+          prevTime = now;
+          output.value = `${Number(downloaded) / 1e6} / ${Number(entry.fileSize) / 1e6} MB downloaded (${Math.floor(Number(downloaded) / Number(entry.fileSize) * 100)}% complete)`;
+          if (downloaded === entry.fileSize) {
+            const endTime = performance.now();
+            output.value += `\nDownloaded ${downloaded} B in ${endTime - startTime} ms`;
+          }
+        }
+        controller.enqueue(chunk);
+      }
+    }));
+  }
+
   try {
     if ('showSaveFilePicker' in window) {
       //@ts-ignore
       const file = await showSaveFilePicker({suggestedName: fileName});
-      const startTime = performance.now();
-      let downloaded = 0n;
-      let prevTime = startTime;
-      //@ts-ignore
-      [data] = await Array.fromAsync(pep.retrieve([entry]));
-      await data.content.pipeThrough(new TransformStream({
-        transform(chunk, controller) {
-          downloaded += BigInt(chunk.byteLength);
-          const now = performance.now();
-          if (now > prevTime + 500 || downloaded === entry.fileSize) {
-            prevTime = now;
-            output.value = `${Number(downloaded) / 1e6} / ${Number(entry.fileSize) / 1e6} MB downloaded (${Math.floor(Number(downloaded) / Number(entry.fileSize) * 100)}% complete)`;
-          }
-          controller.enqueue(chunk);
-        }
-      })).pipeTo(await file.createWritable());
-
-      const endTime = performance.now();
-      output.value += `\nDownloaded ${downloaded} B in ${endTime - startTime} ms`;
+      await (await getContent()).pipeTo(await file.createWritable());
 
     } else {
       console.warn('Browser does not support streaming file download, will buffer to memory');
       //@ts-ignore
-      [data] = await Array.fromAsync(pep.retrieve([entry]));
-      const blob = new Blob(await Array.fromAsync(data.content));
+      const blob = new Blob(await Array.fromAsync(await getContent()));
       const blobUrl = URL.createObjectURL(blob);
 
       const a = document.createElement('a')
