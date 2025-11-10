@@ -178,7 +178,9 @@ saveBtn.addEventListener('click', () => void (async () => {
       a.href = blobUrl;
       a.download = fileName;
       a.click();
-      // Ideally we'd call URL.revokeObjectURL(blobUrl), but we don't know when the download is done
+      // Unclear if a delay is required, but let's be sure the download started,
+      //  see https://stackoverflow.com/a/71164969/4454665
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1_000);
     }
   } finally {
     data?.delete();
