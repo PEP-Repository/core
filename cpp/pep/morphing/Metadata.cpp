@@ -20,6 +20,12 @@ Metadata Metadata::decrypt(const std::string& aeskey) const {
 
 Metadata Metadata::getBound() const {
   using namespace std::ranges;
+
+  if (mEncryptionScheme == EncryptionScheme::V1) {
+    // Uses full Protobuf serialization
+    return *this;
+  }
+
   Metadata result;
   result.mBlindingTimestamp = mBlindingTimestamp;
   result.mTag = mTag;
