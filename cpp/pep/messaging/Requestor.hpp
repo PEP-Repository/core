@@ -69,9 +69,9 @@ public:
 
   /**
   * @brief Discards pending requests, producing an error on the associated observable<>.
-  * @param resendable Whether resendable requests should also be discarded
+  * @param all Whether all requests should be discarded. If FALSE, requests are only discarded if they are not resendable.
   */
-  void purge(bool resendable);
+  void purge(bool all);
 
   /**
   * @brief Re-schedules pending requests that can be re-sent.

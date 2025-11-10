@@ -117,7 +117,7 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
   }
 }
 
-void Requestor::purge(bool resendable) {
+void Requestor::purge(bool all) {
   // remove requests that should not be re-sent
   for (auto it = mEntries.begin(); it != mEntries.end(); /* sic */) {
     // confused? See the example of:
@@ -125,7 +125,7 @@ void Requestor::purge(bool resendable) {
 
     auto& request = it->second;
 
-    if (resendable || !request.resendable) {
+    if (all || !request.resendable) {
       // remove this request from the list
 
       // notify caller of the failure, but not directly!, since this might
