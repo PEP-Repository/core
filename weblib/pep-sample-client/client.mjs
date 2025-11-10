@@ -33,7 +33,8 @@ addEventListener('unhandledrejection', ev => {
 
 const loading = document.getElementById('loading');
 const working = document.getElementById('working');
-const loginBtn = /** @type {HTMLButtonElement} */ (document.getElementById('login-btn'));
+const loginBtn = /** @type {HTMLButtonElement} */ (document.getElementById('login-btn')),
+    logoutBtn = /** @type {HTMLButtonElement} */ (document.getElementById('logout-btn'));
 const loggedIn = document.getElementById('logged-in');
 const userInfo = document.getElementById('user-info');
 const
@@ -204,6 +205,7 @@ async function updateEnrollStatus() {
   let enrolledUser = await pep.getEnrolledUser();
   userInfo.textContent = enrolledUser ? `Logged in as ${enrolledUser.userGroup} ${enrolledUser.user}` : '';
   loggedIn.hidden = !enrolledUser;
+  logoutBtn.disabled = !enrolledUser;
 }
 void updateEnrollStatus();
 
@@ -215,6 +217,12 @@ loginBtn.addEventListener('click', () => {
     } finally {
       loginBtn.disabled = false;
     }
+    void updateEnrollStatus();
+  })();
+});
+logoutBtn.addEventListener('click', () => {
+  void (async () => {
+    await pep.unenroll();
     void updateEnrollStatus();
   })();
 });

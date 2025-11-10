@@ -147,6 +147,14 @@ public:
       });
   }
 
+  WeblibApiVoidPromise unenroll() {
+    co_await onIoThread()
+      .map([](const std::shared_ptr<Weblib>& self) {
+        self->client_->unenroll();
+        return FakeVoid{};
+      });
+  }
+
   class OAuthClient {
     rxcpp::subjects::replay<AuthorizationResult, decltype(asioWorker_)::value_type> authorizationCodeChan_;
     rxcpp::observable<FakeVoid> run_;
@@ -390,6 +398,7 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .smart_ptr_constructor("Weblib", &Weblib::Create<>)
       .function("onStatusChange", &Weblib::onStatusChange)
       .function("getEnrolledUser", &Weblib::getEnrolledUser)
+      .function("unenroll", &Weblib::unenroll)
       .function("authenticate", &Weblib::authenticate)
       .function("authenticateWithToken", &Weblib::authenticateWithToken)
       .function("internalGenerateToken", &Weblib::internalGenerateToken)

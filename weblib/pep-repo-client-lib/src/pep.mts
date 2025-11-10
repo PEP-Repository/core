@@ -310,6 +310,10 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.getEnrolledUser());
   }
 
+  unenroll() {
+    return this.#wrapExec(() => this.#client.unenroll());
+  }
+
   async authenticate(): Promise<void> {
     const landingPage = this.#config.authLandingPage;
     if (!landingPage) {
