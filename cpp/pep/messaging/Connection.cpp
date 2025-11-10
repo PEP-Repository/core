@@ -298,7 +298,7 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
 void Connection::close() {
   mBinaryStatusSubscription.cancel();
   mBinary.reset();
-  this->clearState();
+  this->clearState(false);
   this->setStatus(Status::finalizing);
 }
 
@@ -506,7 +506,7 @@ void Connection::handleError(std::exception_ptr exception) {
   }
 }
 
-void Connection::clearState() {
+void Connection::clearState(bool reconnecting) {
   // Let request handlers know that they won't receive further tail segments
   for (auto& incoming : mIncomingRequestTails) {
     incoming.second.abort();
@@ -526,7 +526,7 @@ void Connection::clearState() {
   // Discard cached incoming requests
   mPrematureRequests.clear();
   // Discard pending requests that cannot be re-sent
-  mRequestor->purge();
+  mRequestor->purge(!reconnecting);
 }
 
 void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
@@ -612,7 +612,7 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
     assert(false);
     return;
   case networking::Transport::ConnectivityStatus::reconnecting:
-    this->clearState();
+    this->clearState(true);
     this->setStatus(Status::reinitializing);
     return;
   case networking::Transport::ConnectivityStatus::connecting:
