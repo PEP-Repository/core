@@ -169,18 +169,23 @@ saveBtn.addEventListener('click', () => void (async () => {
       await (await getContent()).pipeTo(await file.createWritable());
 
     } else {
-      console.warn('Browser does not support streaming file download, will buffer to memory');
-      //@ts-ignore
-      const blob = new Blob(await Array.fromAsync(await getContent()));
+      console.warn('Browser does not support streaming file download, will write to Origin-Private File System first');
+      const rootDir = await navigator.storage.getDirectory();
+      const tmpDir = await rootDir.getDirectoryHandle('tmp-retrieve', {create: true});
+      const tmpFile = await tmpDir.getFileHandle(`file-${crypto.randomUUID()}`, {create: true});
+      await (await getContent()).pipeTo(await tmpFile.createWritable());
+      const blob = await tmpFile.getFile();
       const blobUrl = URL.createObjectURL(blob);
-
       const a = document.createElement('a')
       a.href = blobUrl;
       a.download = fileName;
       a.click();
       // Unclear if a delay is required, but let's be sure the download started,
       //  see https://stackoverflow.com/a/71164969/4454665
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1_000);
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+        void tmpDir.removeEntry(tmpFile.name);
+      }, 1_000);
     }
   } finally {
     data?.delete();
