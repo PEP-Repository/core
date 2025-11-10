@@ -57,14 +57,14 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
 
   Weblib() {
     // Set up event loop
-    auto io_context_ = std::make_shared<boost::asio::io_context>();
-    workGuard_.emplace(make_work_guard(*io_context_));
-    asioWorker_.emplace(observe_on_asio(*io_context_));
+    auto io_context = std::make_shared<boost::asio::io_context>();
+    workGuard_.emplace(make_work_guard(*io_context));
+    asioWorker_.emplace(observe_on_asio(*io_context));
 
     clientConfig_ = Configuration::FromFile("ClientConfig.json");
 
     // Start client
-    client_ = Client::OpenClient(clientConfig_, std::move(io_context_));
+    client_ = Client::OpenClient(clientConfig_, std::move(io_context));
     thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
       std::stop_callback onStop(std::move(stop), [io_context] {
         LOG(LOG_TAG, debug) << "stopping io_context...";
@@ -319,6 +319,7 @@ public:
         .flat_map([entries = MakeSharedCopy(std::move(entries))](
             const std::shared_ptr<Weblib>& self) -> rxcpp::observable<CellData> {
               if (entries->empty()) { return rxcpp::observable<>::empty<CellData>(); }
+
               auto signedTicket = entries->front()->ticket;
               if (!all_of(*entries, [&signedTicket](const CellEntry* entry) {
                 return entry->ticket == signedTicket;
@@ -375,7 +376,7 @@ public:
                                 assert(!stream.get_subscription().is_subscribed()
                                     && "Not all files were completed?");
                               }
-                              LOG(LOG_TAG, debug) << "Completed ret";
+                              LOG(LOG_TAG, debug) << "Completed retrieve";
                             });
                     return rxcpp::observable<>::iterate(std::move(cellDatas));
                   });
