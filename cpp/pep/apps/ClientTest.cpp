@@ -179,13 +179,22 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         tOpts.columns = {"ParticipantInfo"};
         return client->requestTicket2(tOpts).flat_map(
           [client, id](IndexedTicket2 ticket) {
-            return client->retrieveData2(client->getMetadata({id}, ticket.getTicket()), ticket.getTicket(), true);
+            return client->retrieveData(
+                client->enumerateDataByIds({id},
+                    ticket.getTicket()
+                ).concat()
+                .op(RxGetOne("file")),
+                ticket.getTicket());
           });
       })
-      .flat_map([](std::shared_ptr<RetrieveResult> result) {
-        return result->mContent->op(RxConcatenateStrings());
+      .concat()
+      .map([](RetrievePage page) {
+        if (page.fileIndex != 0) {
+          throw std::runtime_error("Unexpected file index");
+        }
+        return std::move(page.content);
       })
-      .op(RxGetOne("result"))
+      .op(RxConcatenateStrings())
       .map(
         [strPayload](const std::string& szResult) {
           std::cout << "Received data : " << szResult << std::endl;

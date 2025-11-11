@@ -83,15 +83,27 @@ struct EnumerateResult : public DataCellResult {
   std::string mId;
 };
 
-struct RetrieveResult {
-  /// Index of the file this result belongs to
-  uint32_t mIndex{};
+struct FileKey {
+  std::uint32_t fileIndex{};
+  std::shared_ptr<EnumerateResult> entry;
+  std::string symmetricKey;
 
-  /// Decrypted metadata of the file
-  Metadata mMetadataDecrypted;
+  [[nodiscard]] Metadata decryptMetadata() const {
+    return entry->mMetadata.decrypt(symmetricKey);
+  }
+};
 
-  /// Content of the file, if requested
-  std::optional<rxcpp::observable<std::string>> mContent;
+struct RetrievePage {
+  std::uint32_t fileIndex{};
+
+  /// EnumerateResult for the file this page belongs to
+  std::shared_ptr<EnumerateResult> entry;
+
+  /// A piece of the content of the file
+  std::string content;
+
+  /// Is this the last page?
+  bool last{};
 };
 
 // Represents a file retrieved using enumerateAndRetrieveData2.
@@ -474,31 +486,49 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   rxcpp::observable<IndexedTicket2>
   requestTicket2(const requestTicket2Opts& opts);
 
-  /*!
-   * \brief Enumerate data using a pre-requested ticket.
-   */
-  rxcpp::observable<std::vector<EnumerateResult>>
-  enumerateData2(std::shared_ptr<SignedTicket2> ticket);
+  /// Enumerate cells using a pre-requested ticket.
+  rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
+  enumerateData(std::shared_ptr<SignedTicket2> ticket);
 
   /*!
-   * \brief Enuremate data using new API.
+   * \brief Enumerate cells after requesting a new ticket.
    * \remark Results won't include (local) pseudonyms for the access group.
    */
-  rxcpp::observable<std::vector<EnumerateResult>>
-  enumerateData2(
+  rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
+  enumerateData(
     const std::vector<std::string>& groups=std::vector<std::string>(),
     const std::vector<PolymorphicPseudonym>& pps = {},
     const std::vector<std::string>& columnGroups=std::vector<std::string>(),
     const std::vector<std::string>& columns=std::vector<std::string>());
 
-  rxcpp::observable<EnumerateResult>
-  getMetadata(const std::vector<std::string>& ids, std::shared_ptr<SignedTicket2> ticket);
+  /// Enumerate cells by ID.
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
+  rxcpp::observable<rxcpp::observable<std::shared_ptr<EnumerateResult>>>
+  enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<SignedTicket2> ticket);
 
-  rxcpp::observable<std::shared_ptr<RetrieveResult>>
-  retrieveData2(
-    const rxcpp::observable<EnumerateResult>& subjects,
-    std::shared_ptr<SignedTicket2> ticket,
-    bool includeContent);
+  /// Get (meta)data decryption keys.
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
+  rxcpp::observable<rxcpp::observable<FileKey>>
+  getKeys(
+    const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
+    std::shared_ptr<SignedTicket2> ticket);
+
+  /// Retrieve cell contents.
+  /// First calls \c getKeys, then calls the \c FileKey overload.
+  /// Use this overload when decrypted metadata is not required.
+  rxcpp::observable<rxcpp::observable<RetrievePage>>
+  retrieveData(
+    const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
+    std::shared_ptr<SignedTicket2> ticket);
+
+  /// Retrieve cell contents.
+  /// \param batchedSubjects Must be split in batches of \c DATA_RETRIEVAL_BATCH_SIZE (usually by \c getKeys)
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
+  /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
+  rxcpp::observable<rxcpp::observable<RetrievePage>>
+  retrieveData(
+    const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
+    std::shared_ptr<SignedTicket2> ticket);
 
   /*!
  * \brief Retrieve history using a pre-requested ticket.
@@ -571,7 +601,7 @@ public:
   // the same as used to retrieve the entries.
   rxcpp::observable<std::vector<AESKey>>
   unblindAndDecryptKeys(
-      const std::vector<EnumerateResult>& entries,
+      std::span<const std::shared_ptr<EnumerateResult>> entries,
       std::shared_ptr<SignedTicket2> ticket);
 
   // Assigns encrypted and blinded keys to (entries in) a data storage request.
@@ -581,9 +611,9 @@ public:
 
   class TicketPseudonyms;
 
-  std::vector<EnumerateResult> convertDataEnumerationEntries(
-    const std::vector<DataEnumerationEntry2>& entries,
-    const TicketPseudonyms& pseudonyms) const;
+  static std::vector<std::shared_ptr<EnumerateResult>> ConvertDataEnumerationEntries(
+    std::vector<DataEnumerationEntry2>&& entries,
+    const TicketPseudonyms& pseudonyms);
 };
 
 struct CoreClient::AESKey {

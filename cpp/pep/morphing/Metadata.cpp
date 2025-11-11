@@ -18,6 +18,25 @@ Metadata Metadata::decrypt(const std::string& aeskey) const {
   return result;
 }
 
+Metadata Metadata::getBound() const {
+  using namespace std::ranges;
+
+  // V1 includes all xentries as it uses a full Protobuf serialization.
+  // V2 includes no xentries (so we could omit them below).
+  // V3 includes only bound xentries.
+  if (mEncryptionScheme == EncryptionScheme::V1) {
+    return *this;
+  }
+
+  Metadata result;
+  result.mBlindingTimestamp = mBlindingTimestamp;
+  result.mTag = mTag;
+  result.mEncryptionScheme = mEncryptionScheme;
+  result.mExtra = RangeToCollection<std::map<std::string, MetadataXEntry>>(mExtra
+      | views::filter([](const std::pair<const std::string, MetadataXEntry>& entry) { return entry.second.bound(); }));
+  return result;
+}
+
 KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const LocalPseudonym& localPseudonym) const {
   auto scheme = this->getEncryptionScheme();
   if (scheme == EncryptionScheme::V1) {

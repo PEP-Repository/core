@@ -199,11 +199,15 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                 return rxcpp::observable<>::empty<FakeVoid>();
               }
 
+              auto entryCount = entries->size();
+              auto ids = RangeToVector(*entries
+                | std::ranges::views::transform(std::mem_fn(&DataEnumerationEntry2::mId)));
+
               // Create an observable that'll produce AES keys
               rxcpp::observable<FakeVoid> getKeys = this->unblindAndDecryptKeys(
-                  convertDataEnumerationEntries(*entries, *ctx->pseudonyms), ctx->signedTicket)
-                .map([ctx, entries](const std::vector<AESKey>& keys) {
-                  if (keys.size() != entries->size()) {
+                  ConvertDataEnumerationEntries(std::move(*entries), *ctx->pseudonyms), ctx->signedTicket)
+                .map([ctx, entryCount](const std::vector<AESKey>& keys) {
+                  if (keys.size() != entryCount) {
                     throw std::runtime_error("Received unexpected number of plaintext keys");
                   }
                   assert(ctx->keys.empty());
@@ -214,10 +218,6 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                 });
 
               // Create an observable that'll retrieve (encrypted) pages from Storage Facility
-              std::vector<std::string> ids;
-              ids.reserve(entries->size());
-              std::transform(entries->cbegin(), entries->cend(), std::back_inserter(ids),
-                             [](const DataEnumerationEntry2& entry) { return entry.mId; });
               rxcpp::observable<FakeVoid> getPages = BatchedRetrieve<std::shared_ptr<DataPayloadPage>>(
                 ids,
                 [](size_t offset,
@@ -268,11 +268,10 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                       auto ipage = ctx->pages->find(static_cast<uint32_t>(i));
                       if (ipage != ctx->pages->cend()) {
                         auto& pages = *ipage->second;
-                        std::stringstream buffer;
+                        std::ostringstream buffer;
                         for (size_t i = 0U; i < pages.size(); ++i) {
                           assert(pages[i]->mPageNumber == i);
-                          auto chunk = pages[i]->decrypt(key, entry.mMetadata);
-                          buffer << *chunk;
+                          buffer << pages[i]->decrypt(key, entry.mMetadata);
                         }
                         res.mData = std::move(buffer).str();
                       }

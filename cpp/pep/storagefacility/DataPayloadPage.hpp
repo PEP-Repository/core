@@ -1,7 +1,6 @@
 #pragma once
 
 #include <exception>
-#include <memory>
 
 #include <pep/morphing/Metadata.hpp>
 
@@ -31,12 +30,12 @@ class DataPayloadPage {
   // Fills the page with the provided plaintext.
   // Note that mPageNumber should already be set to the right value.,
   void setEncrypted(
-          std::shared_ptr<std::string> plaintext,
+          std::string_view plaintext,
           const std::string& key,
           const Metadata& metadata);
 
   // Decrypts page.
-  std::shared_ptr<std::string> decrypt(const std::string& key, const Metadata& metadata) const;
+  std::string decrypt(const std::string& key, const Metadata& metadata) const;
 
   static bool EncryptionIncludesMetadata(EncryptionScheme encryptionScheme);
 };

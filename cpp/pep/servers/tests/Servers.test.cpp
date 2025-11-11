@@ -5,6 +5,7 @@
 #include <pep/utils/Configuration.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace {
@@ -69,13 +70,23 @@ TEST_F(ServersTest, UpAndDownload) {
   storeDataOpts.ticket = std::make_shared<pep::IndexedTicket2>(ticket);
   auto dataStorageResult = mClient->storeData2(pp, "Test.Servers.Data", std::make_shared<std::string>(testData), {pep::MetadataXEntry::MakeFileExtension(".txt")}, storeDataOpts).as_blocking().first();
   ASSERT_EQ(dataStorageResult.mIds.size(), 1);
-  auto retrieveResult = mClient->retrieveData2(
-    mClient->getMetadata({dataStorageResult.mIds.at(0)}, ticket.getTicket()),
-    ticket.getTicket(), true)
-    .flat_map([](std::shared_ptr<pep::RetrieveResult> res) {
-      return res->mContent.value_or(rxcpp::observable<>::empty<std::string>()).op(pep::RxConcatenateStrings());
-    })
-    .as_blocking().first();
+  auto retrieveResult =
+      mClient->retrieveData(
+mClient->enumerateDataByIds(
+            {dataStorageResult.mIds.at(0)},
+              ticket.getTicket()
+          ).concat(),
+          ticket.getTicket()
+      )
+      .concat()
+      .map([](pep::RetrievePage page) {
+        if (page.fileIndex != 0) {
+          throw std::runtime_error("Unexpected file index");
+        }
+        return std::move(page.content);
+      })
+      .op(pep::RxConcatenateStrings())
+      .as_blocking().first();
   ASSERT_EQ(retrieveResult, testData);
 }
 

@@ -54,4 +54,24 @@ TEST(MetadataTest, noEncryptionTest) {
   EXPECT_NO_THROW((void)me.payloadForStore());
 }
 
+TEST(MetadataTest, BackwardCompatibleKeyBlindingAdditionalData) {
+  pep::Metadata metadata{
+    "Tag",
+    pep::TimeNow(),
+    pep::EncryptionScheme::V1
+  };
+  metadata.extra().emplace("UnboundXEntry", pep::MetadataXEntry::FromPlaintext(
+    "Payload",
+    false, // encrypted
+    false // bound
+    ));
+
+  pep::LocalPseudonym lp(pep::CurvePoint::Random());
+  auto full = metadata.computeKeyBlindingAdditionalData(lp);
+  auto reduced = metadata.getBound().computeKeyBlindingAdditionalData(lp);
+
+  EXPECT_EQ(full.invertComponent, reduced.invertComponent);
+  EXPECT_EQ(full.content, reduced.content);
+}
+
 }

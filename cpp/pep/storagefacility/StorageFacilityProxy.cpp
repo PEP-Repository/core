@@ -1,4 +1,5 @@
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
@@ -16,28 +17,24 @@ rxcpp::observable<DataPayloadPage> StorageFacilityProxy::requestDataRead(DataRea
 
 rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(DataStoreRequest2 request, messaging::Tail<DataPayloadPage> pages) const {
   struct Context {
-    std::optional<decltype(DataPayloadPage::mIndex)> file;
-    std::optional<decltype(DataPayloadPage::mPageNumber)> page;
+    DataPayloadPageStreamOrder order;
     XxHasher hasher = XxHasher(0);
   };
   auto ctx = std::make_shared<Context>();
 
   // Calculate hash of (serialized) pages as they are processed
   messaging::MessageBatches batches = pages
-    .map([ctx](messaging::TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
+    .map([ctx, numFiles = request.mEntries.size()](messaging::TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
     return segment
-      .map([ctx](DataPayloadPage page) {
-      if (ctx->file.has_value() && *ctx->file > page.mIndex) { // Processing a lower file index than we did before
-        throw std::runtime_error("Data payload pages out of order: can't process file " + std::to_string(page.mIndex) + " after having processed file " + std::to_string(*ctx->file));
+      .map([ctx, numFiles](DataPayloadPage page) {
+
+      if (page.mIndex >= numFiles) {
+        throw std::runtime_error(std::format("Received out-of-bounds file index: {} >= {}",
+            page.mIndex, numFiles));
       }
-      if (!ctx->file.has_value() || page.mIndex > *ctx->file) { // First page of the next file
-        ctx->file = page.mIndex;
-        ctx->page.reset();
-      }
-      if (ctx->page.has_value() && *ctx->page + 1U != page.mPageNumber) { // Processing a page index that isn't the next one
-        throw std::runtime_error("Data payload pages out of order for file " + std::to_string(*ctx->file) + ": can't process page " + std::to_string(page.mPageNumber) + " after having processed page " + std::to_string(*ctx->page));
-      }
-      ctx->page = page.mPageNumber;
+
+      ctx->order.check(page);
+
       auto serialized = MakeSharedCopy(Serialization::ToString(std::move(page)));
       ctx->hasher.update(PageHash(*serialized));
       return serialized;

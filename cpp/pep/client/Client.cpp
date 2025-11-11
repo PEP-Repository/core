@@ -125,11 +125,11 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 
   // Legacy: early participants were registered using an external identifier that was (initially) not stored. Completion
   // of such registrations must store the identifier retroactively
-  return enumerateData2({},                        // groups
+  return enumerateData({},                        // groups
                         {pp},                      // pps
                         {},                        // columnGroups
                         {"ParticipantIdentifier"}) // columns
-      .flat_map([this, identifier, pp](std::vector<EnumerateResult> result) -> rxcpp::observable<DataStorageResult2> {
+      .flat_map([this, identifier, pp](std::vector<std::shared_ptr<EnumerateResult>> result) -> rxcpp::observable<DataStorageResult2> {
         if (!result.empty()) {
           LOG(LOG_TAG, info) << "Participant identifier already present in PEP";
           // We do not store the participant ID again, but continue with the storage of other stuff in case this failed

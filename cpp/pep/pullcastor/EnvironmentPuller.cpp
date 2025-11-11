@@ -15,10 +15,10 @@
 
 #include <boost/asio/io_context.hpp>
 
+#include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-distinct.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
-#include <rxcpp/operators/rx-window.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
@@ -199,9 +199,8 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     ++*read;
     return self->getStorageUpdate(castor);
     })
-    .window(STOREDATA_WINDOW_SIZE) // Process StoreData2Entry items in batches
-    .concat_map([](rxcpp::observable<StoreData2Entry> batch) { return batch.op(RxToVector()); }) // Get this batch's items as a vector
-    .flat_map([self](std::shared_ptr<std::vector<StoreData2Entry>> batch) {return self->processBatchToStore(batch); }) // Store the items
+    .buffer(STOREDATA_WINDOW_SIZE) // Process StoreData2Entry items in batches
+    .flat_map([self](const std::vector<StoreData2Entry>& batch) {return self->processBatchToStore(batch); }) // Store the items
     .tap( // Perform housekeeping
       [self, written](size_t count) {
         self->mMetrics->storedEntries_count.Increment(static_cast<double>(count));
@@ -215,12 +214,12 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     );
 }
 
-rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(std::shared_ptr<std::vector<StoreData2Entry>> batch) {
+rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(const std::vector<StoreData2Entry>& batch) {
   if (mDry) {
-    return rxcpp::observable<>::just(batch->size());
+    return rxcpp::observable<>::just(batch.size());
   }
 
-  return mClient->storeData2(*batch)
+  return mClient->storeData2(batch)
     .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.mIds.size(); });
 }
 

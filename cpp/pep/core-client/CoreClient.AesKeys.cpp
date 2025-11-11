@@ -23,7 +23,7 @@ CoreClient::AESKey::AESKey(const CurvePoint& point)
 
 rxcpp::observable<std::vector<CoreClient::AESKey>>
 CoreClient::unblindAndDecryptKeys(
-      const std::vector<EnumerateResult>& entries,
+      std::span<const std::shared_ptr<EnumerateResult>> entries,
       std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "unblindAndDecryptKeys";
 
@@ -52,7 +52,7 @@ CoreClient::unblindAndDecryptKeys(
     for (unsigned i = offset;
          i < std::min(static_cast<unsigned>(entries.size()), offset + KEY_REQUEST_BATCH_SIZE);
          i++) {
-      const auto& entry = entries[i];
+      const auto& entry = *entries[i];
       request.mEntries.emplace_back(
          entry.mMetadata,
          entry.mPolymorphicKey,

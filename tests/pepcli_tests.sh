@@ -52,7 +52,20 @@ if should_run_test basic; then
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   # Store data in a not yet existing row
-  pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d random-data
+  id="$(pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d random-data \
+    --ticket-out "$DEST_DIR/ticket" \
+    --metadataxentry "$(pepcli xentry --name mymetakey --payload mymetadata)")"
+  id="$(printf %s "$id" | jq --raw-output .id)"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --output-file -)"
+  [ "$value" = random-data ] || fail "Expected [random-data], got [$value]"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --metadata -)"
+  value="$(printf %s "$value" | jq --compact-output .extra)"
+  desired_value="$(printf %s mymetadata | jq --raw-input --compact-output '{"mymetakey": {"payload": . | @base64}}')"
+  [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
+
+  execute . rm "$DEST_DIR/ticket"
 
   # Ensure that MRI column exists and is read+writable for "Research Assessor" (who will upload and download)
   pepcli --oauth-token-group "Data Administrator" ama column create Visit1.MRI.Func
@@ -610,7 +623,7 @@ if should_run_test s3-roundtrip; then
   pepcli --oauth-token-group "Data Administrator" ama column addTo LargeColumn LargeColumns
   pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" read
   pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" write
-  
+
   # Store a large (i.e. stored in S3) file with some participants
   readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
   # 10 blocks @ 1048576 bytes each = 10MiB
@@ -618,7 +631,7 @@ if should_run_test s3-roundtrip; then
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
-  
+
   # Download the (large) files that we stored
   pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
   # We'd like to diff/compare the downloaded files to the original LARGE_RANDOM_DATA_FILE, but
@@ -628,7 +641,7 @@ if should_run_test s3-roundtrip; then
   if [ "$count" -ne 50 ]; then
     fail "Expected to download 50 files from S3 but got $count."
   fi
-  
+
   # Clean up
   execute . rm "$LARGE_RANDOM_DATA_FILE"
   execute . rm -rf "$DEST_DIR/s3-backed-files"

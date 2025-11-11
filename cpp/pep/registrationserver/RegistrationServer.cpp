@@ -649,12 +649,12 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
     auto pp = server->pClient->generateParticipantPolymorphicPseudonym(id);
     return MakeSharedCopy(ParticipantIdentity{ id, pp });
   }).flat_map([server](std::shared_ptr<ParticipantIdentity> participant) { // Raise an error if the generated (ID+)PP already existed
-    return server->pClient->enumerateData2( // Check with Storage Facility if (the row for) the generated ID already exists
+    return server->pClient->enumerateData( // Check with Storage Facility if (the row for) the generated ID already exists
       {},                        // groups
       { participant->pp },          // pps
       {},                        // columnGroups
       { "ParticipantIdentifier" }) // columns
-      .map([](const std::vector<EnumerateResult>& result) { // Raise an exception if (the row for) our generated ID already existed
+      .map([](const std::vector<std::shared_ptr<EnumerateResult>>& result) { // Raise an exception if (the row for) our generated ID already existed
       if (!result.empty()) {
         throw Error("Generated a duplicate participant ID. Please retry"); // TODO retry automatically instead
       }
@@ -697,13 +697,13 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
   };
 
   auto server = SharedFrom(*this);
-  return pClient->enumerateData2( // Get previously stored SPs for this participant
+  return pClient->enumerateData( // Get previously stored SPs for this participant
       {},                           // groups
       { *ctx->pp },                 // pps
       { "ShortPseudonyms" },        // columnGroups
       {})                           // columns
-    .flat_map([](std::vector<EnumerateResult> results) { return RxIterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
-    .map([](const EnumerateResult& result) {return result.mMetadata.getTag(); }) // Extract the column name
+    .flat_map([](std::vector<std::shared_ptr<EnumerateResult>> results) { return RxIterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
+    .map([](const std::shared_ptr<EnumerateResult>& result) {return result->mMetadata.getTag(); }) // Extract the column name
     .op(RxToVector()) // Convert to a single vector<> containing column names
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs
     .filter([](std::pair<std::shared_ptr<std::vector<std::string>>, ShortPseudonymDefinition> pair) { // Keep only defined SPs that the participant does not have
