@@ -183,7 +183,8 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
                 client->getKeys(
                     client->enumerateDataByIds({id},
                         ticket.getTicket()).concat(),
-                    ticket.getTicket()),
+                    ticket.getTicket())
+                    .op(RxGetOne("file (key)")),
                 ticket.getTicket());
           });
       })
