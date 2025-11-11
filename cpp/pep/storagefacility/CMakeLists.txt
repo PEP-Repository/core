@@ -1,6 +1,7 @@
 add_library(${PROJECT_NAME}StorageFacilityApilib
   Constants.hpp
   DataPayloadPage.cpp DataPayloadPage.hpp
+  DataPayloadPageStreamOrder.cpp DataPayloadPageStreamOrder.hpp
   PageHash.cpp PageHash.hpp
   StorageFacilityMessages.hpp
   StorageFacilityProxy.cpp StorageFacilityProxy.hpp

@@ -6,6 +6,7 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
 #include <rxcpp/operators/rx-buffer_count.hpp>
