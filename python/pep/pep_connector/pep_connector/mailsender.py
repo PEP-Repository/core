@@ -1198,6 +1198,7 @@ class MailSender(Connector):
 
                 template_vars = {
                     "recipient_name": recipient_name,
+                    "deadline": start_dates[survey_index] if start_dates and survey_index < len(start_dates) else "binnen 2 weken",
                 }
 
                 # Load custom HTML content if specified
