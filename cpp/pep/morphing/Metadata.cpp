@@ -21,8 +21,10 @@ Metadata Metadata::decrypt(const std::string& aeskey) const {
 Metadata Metadata::getBound() const {
   using namespace std::ranges;
 
+  // V1 includes all xentries as it uses a full Protobuf serialization.
+  // V2 includes no xentries (so we could omit them below).
+  // V3 includes only bound xentries.
   if (mEncryptionScheme == EncryptionScheme::V1) {
-    // Uses full Protobuf serialization
     return *this;
   }
 
