@@ -161,7 +161,15 @@ try {
       pause
       exit $ret.ExitCode
     }
-    $pullArgs = $pullArgs | where { $_ -ne '--resume' } # Remove incompatible flag
+    if ($partialDownloadPresent) {
+      $pullArgs = $pullArgs | where { $_ -ne '--resume' } # Remove incompatible flag
+      if (!$downloadPresent) {
+        # Remove --update when --resume was present and we don't have a base download
+        $pullArgs = $pullArgs | where { $_ -ne '--update' }
+        # Since no specification remains, specify what data we want
+        $pullArgs += '--all-accessible'
+      }
+    }
     $pullArgs += '--force'
     $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
     if ($ret.ExitCode -ne 0) {
