@@ -72,12 +72,12 @@ TEST_F(ServersTest, UpAndDownload) {
   ASSERT_EQ(dataStorageResult.mIds.size(), 1);
   auto retrieveResult =
       mClient->retrieveData(
-          mClient->getKeys(
-              mClient->enumerateDataByIds({dataStorageResult.mIds.at(0)},
-                  ticket.getTicket()).concat(),
+mClient->enumerateDataByIds(
+            {dataStorageResult.mIds.at(0)},
               ticket.getTicket()
-              ),
-          ticket.getTicket())
+          ).concat(),
+          ticket.getTicket()
+      )
       .concat()
       .map([](pep::RetrievePage page) {
         if (page.fileIndex != 0) {

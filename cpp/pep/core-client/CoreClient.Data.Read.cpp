@@ -143,6 +143,13 @@ CoreClient::getKeys(
 
 rxcpp::observable<rxcpp::observable<RetrievePage>>
 CoreClient::retrieveData(
+  const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
+  std::shared_ptr<SignedTicket2> ticket) {
+  return retrieveData(getKeys(subjects, ticket), ticket);
+}
+
+rxcpp::observable<rxcpp::observable<RetrievePage>>
+CoreClient::retrieveData(
   const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
   std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "retrieveData";

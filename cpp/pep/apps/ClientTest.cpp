@@ -180,11 +180,10 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         return client->requestTicket2(tOpts).flat_map(
           [client, id](IndexedTicket2 ticket) {
             return client->retrieveData(
-                client->getKeys(
-                    client->enumerateDataByIds({id},
-                        ticket.getTicket()).concat(),
-                    ticket.getTicket())
-                    .op(RxGetOne("file (key)")),
+                client->enumerateDataByIds({id},
+                    ticket.getTicket()
+                ).concat()
+                .op(RxGetOne("file")),
                 ticket.getTicket());
           });
       })
