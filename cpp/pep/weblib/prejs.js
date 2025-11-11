@@ -33,11 +33,13 @@ if (ENVIRONMENT_IS_WORKER) {
     }
   }
 
-  addEventListener('error', ev => {
-    if (ev.error && ev.error instanceof WebAssembly.Exception) {
-      throw handleWasmExceptionForModule(Module, ev.error);
-    }
-  });
+  if ('addEventListener' in globalThis) { // Do not call for Node.js
+    addEventListener('error', ev => {
+      if (ev.error && ev.error instanceof WebAssembly.Exception) {
+        throw handleWasmExceptionForModule(Module, ev.error);
+      }
+    });
+  }
 }
 
 Object.assign(Module, {
