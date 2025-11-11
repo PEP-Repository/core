@@ -87,7 +87,6 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
   return RxIterate(std::move(ids))
       .buffer(static_cast<int>(DATA_RETRIEVAL_BATCH_SIZE))
       .as_dynamic() // Reduce compiler memory usage
-      //TODO shouldn't we be using shared_from_this()?
       .map([this, ticket, pseudonyms](std::vector<std::string> batch)
         -> rxcpp::observable<std::shared_ptr<EnumerateResult>> {
             auto entryCount = batch.size();

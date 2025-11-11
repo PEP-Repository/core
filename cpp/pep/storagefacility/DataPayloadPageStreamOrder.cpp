@@ -10,7 +10,7 @@ void pep::DataPayloadPageStreamOrder::check(const DataPayloadPage& page) {
         mLatestFileIndex, page.mIndex, page.mPageNumber));
   }
   // Next file?
-  // Note: skipping empty files is allowed
+  // Note: skipping (empty) files is allowed
   if (page.mIndex > mLatestFileIndex) {
     mNextPageNumber = 0;
     mLatestFileIndex = page.mIndex;
