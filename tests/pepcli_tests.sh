@@ -53,14 +53,14 @@ if should_run_test basic; then
 
   # Store data in a not yet existing row
   id="$(pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d random-data \
-    --ticket-out ./ticket \
+    --ticket-out "$DEST_DIR/ticket" \
     --metadataxentry "$(pepcli xentry --name mymetakey --payload mymetadata)")"
   id="$(printf %s "$id" | jq --raw-output .id)"
 
-  value="$(pepcli get --ticket ./ticket --id "$id" --output-file -)"
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --output-file -)"
   [ "$value" = random-data ] || fail "Expected [random-data], got [$value]"
 
-  value="$(pepcli get --ticket ./ticket --id "$id" --metadata -)"
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --metadata -)"
   value="$(printf %s "$value" | jq --compact-output .extra)"
   desired_value="$(printf %s mymetadata | jq --raw-input --compact-output '{"mymetakey": {"payload": . | @base64}}')"
   [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
