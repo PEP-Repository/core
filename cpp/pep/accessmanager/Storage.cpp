@@ -179,7 +179,9 @@ auto am_create_db(const std::string& path) {
       make_column("timestamp", &UserIdRecord::timestamp),
       make_column("tombstone", &UserIdRecord::tombstone),
       make_column("internalUserId", &UserIdRecord::internalUserId),
-      make_column("identifier", &UserIdRecord::identifier)),
+      make_column("identifier", &UserIdRecord::identifier),
+      make_column("isPrimaryId", &UserIdRecord::isPrimaryId, default_value(false)),
+      make_column("isDisplayId", &UserIdRecord::isDisplayId, default_value(false))),
 
     make_index("idx_UserGroups",
       &UserGroupRecord::userGroupId,
@@ -223,6 +225,7 @@ auto am_create_db(const std::string& path) {
       make_column("tombstone", &StructureMetadataRecord::tombstone),
       make_column("subjectType", &StructureMetadataRecord::subjectType),
       make_column("subject", &StructureMetadataRecord::subject),
+      make_column("internalSubjectId", &StructureMetadataRecord::internalSubjectId),
       make_column("metadataGroup", &StructureMetadataRecord::metadataGroup),
       make_column("subkey", &StructureMetadataRecord::subkey),
       make_column("value", &StructureMetadataRecord::value))
@@ -465,6 +468,36 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
     }
     transactionGuard.commit();
     LOG(LOG_TAG, info) << "all records have been updated";
+  }
+
+  //DisplayIds and PrimaryIds where introduced at the same time. So if there are primaryIds already in the DB, we can also assume that the upgrade already happened before.
+  //Furthermore, because we check that there are no primaryIds, in the auto-assignment we don't have to worry about whether identifiers are primaryIds or not.
+  if (mImplementor->raw.count(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)) == 0) {
+    LOG(LOG_TAG, info) << "There are no displayIds in the database yet. Auto-assigning...";
+    size_t countAssigned = 0;
+    size_t countUnassigned = 0;
+    auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
+    for (auto userId : mImplementor->getCurrentRecords(true, &UserIdRecord::internalUserId)) {
+      auto firstIdentifier = RangeToOptional(
+        mImplementor->raw.select(&UserIdRecord::identifier,
+        where(c(&UserIdRecord::internalUserId) == userId),
+        order_by(&UserIdRecord::seqno).asc(),
+        limit(1)));
+      if (firstIdentifier) {
+        if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
+          mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::isDisplayId));
+          countAssigned++;
+        }
+        else if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
+          countUnassigned++;
+        }
+      }
+    }
+    displayIdTransactionGuard.commit();
+    LOG(LOG_TAG, info) << "A displayId has been assigned to " << countAssigned << " records.";
+    if (countUnassigned > 0) {
+      LOG(LOG_TAG, warning) << "No displayId could be automatically assigned to " << countUnassigned << " records";
+    }
   }
 }
 
@@ -1343,7 +1376,7 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
 
 int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
   int64_t internalUserId = getNextInternalUserId();
-  addIdentifierForUser(internalUserId, std::move(identifier));
+  addIdentifierForUser(internalUserId, std::move(identifier), UserIdFlags::isDisplayId);
   return internalUserId;
 }
 
@@ -1370,20 +1403,25 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
     throw Error(oss.str());
   }
 
+  // Remove metadata
+  for (StructureMetadataKey& key : getStructureMetadataKeys(TimeNow(), StructureMetadataType::User, internalUserId)) {
+    removeStructureMetadata(StructureMetadataType::User, internalUserId, std::move(key));
+  }
+
   for(auto& uid : getAllIdentifiersForUser(internalUserId))
-    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, true));
+    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, UserIdFlags::none, true));
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier) {
+void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags) {
   int64_t internalUserId = getInternalUserId(uid);
-  addIdentifierForUser(internalUserId, identifier);
+  addIdentifierForUser(internalUserId, std::move(identifier), flags);
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier) {
+void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags) {
   if (findInternalUserId(identifier)) {
     throw Error("The user identifier already exists");
   }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier)));
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), flags));
 }
 
 void AccessManager::Backend::Storage::removeIdentifierForUser(std::string identifier) {
@@ -1403,7 +1441,11 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
     throw Error("The given identifier does not exist for the given internalUserId");
   }
 
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), true));
+  if (getDisplayIdentifierForUser(internalUserId) == identifier) {
+    throw Error("Cannot remove the display identifier for a user. First set a different display identifier, then you can remove this one.");
+  }
+
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), UserIdFlags::none, true));
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, Timestamp at) const {
@@ -1416,7 +1458,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::
 }
 
 int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, Timestamp at) const {
-  std::optional<int64_t> internalUserId = findInternalUserId(identifier);
+  std::optional<int64_t> internalUserId = findInternalUserId(identifier, at);
   if(!internalUserId) {
     throw Error("Could not find user id");
   }
@@ -1444,6 +1486,87 @@ std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifie
   );
 }
 
+std::optional<std::string> AccessManager::Backend::Storage::getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+  using namespace pep::database;
+  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+        && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isPrimaryId) == true), &UserIdRecord::identifier));
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
+  using namespace pep::database;
+  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+        && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isDisplayId) == true), &UserIdRecord::identifier));
+}
+
+void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(std::string uid) {
+  auto internalId = getInternalUserId(uid);
+  setPrimaryIdentifierForUser(internalId, std::move(uid));
+}
+
+void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(int64_t internalUserId, std::string uid) {
+  assert(getInternalUserId(uid) == internalUserId);
+  auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
+  if (currentPrimaryIdentifier == uid) {
+    throw Error("This user identifier is already the primary identifier.");
+  }
+
+  auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
+  auto transactionGuard = mImplementor->raw.transaction_guard();
+  if (currentPrimaryIdentifier) {
+    mImplementor->raw.insert(UserIdRecord(internalUserId, *currentPrimaryIdentifier, currentDisplayIdentifier==*currentPrimaryIdentifier ? UserIdFlags::isDisplayId : UserIdFlags::none));
+  }
+  UserIdFlags flags = UserIdFlags::isPrimaryId;
+  if (currentDisplayIdentifier == uid) {
+    flags |= UserIdFlags::isDisplayId;
+
+  }
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), flags));
+  transactionGuard.commit();
+}
+
+void AccessManager::Backend::Storage::unsetPrimaryIdentifierForUser(std::string_view uid) {
+  auto internalId = getInternalUserId(uid);
+  unsetPrimaryIdentifierForUser(internalId, uid);
+}
+
+void AccessManager::Backend::Storage::unsetPrimaryIdentifierForUser(int64_t internalUserId, std::string_view uid) {
+  assert(getInternalUserId(uid) == internalUserId);
+  auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
+  if (currentPrimaryIdentifier != uid) {
+    throw Error("This user identifier is not the current primary identifier.");
+  }
+
+  auto transactionGuard = mImplementor->raw.transaction_guard();
+  auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(*currentPrimaryIdentifier), currentDisplayIdentifier==uid ? UserIdFlags::isDisplayId : UserIdFlags::none));
+  transactionGuard.commit();
+}
+
+void AccessManager::Backend::Storage::setDisplayIdentifierForUser(std::string uid) {
+  auto internalId = getInternalUserId(uid);
+  setDisplayIdentifierForUser(internalId, std::move(uid));
+}
+
+void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t internalUserId, std::string uid) {
+  assert(getInternalUserId(uid) == internalUserId);
+  auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
+  if (currentDisplayIdentifier == uid) {
+    throw Error("This user identifier is already the display identifier.");
+  }
+
+  auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
+  auto transactionGuard = mImplementor->raw.transaction_guard();
+  if (currentDisplayIdentifier) {
+    mImplementor->raw.insert(UserIdRecord(internalUserId, *currentDisplayIdentifier, currentPrimaryIdentifier==*currentDisplayIdentifier ? UserIdFlags::isPrimaryId : UserIdFlags::none));
+  }
+  UserIdFlags flags = UserIdFlags::isDisplayId;
+  if (currentPrimaryIdentifier==uid) {
+    flags |= UserIdFlags::isPrimaryId;
+  }
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), flags));
+  transactionGuard.commit();
+}
+
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
   auto records = mImplementor->getCurrentRecords(
       c(&UserGroupRecord::name) == name
@@ -1467,6 +1590,15 @@ int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, T
     throw Error("Could not find usergroup");
   }
   return userGroupId.value();
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getUserGroupName(int64_t userGroupId, Timestamp at) const {
+  return RangeToOptional(
+    mImplementor->getCurrentRecords(
+      c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+      && c(&UserGroupRecord::userGroupId) == userGroupId,
+      &UserGroupRecord::name)
+  );
 }
 
 std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int64_t internalUserId, Timestamp at) const {
@@ -1565,6 +1697,11 @@ void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
     std::ostringstream msg;
     msg << "Group " << Logging::Escape(name) << " still has users. Group will not be removed";
     throw Error(msg.str());
+  }
+
+  // Remove metadata
+  for (StructureMetadataKey& key : getStructureMetadataKeys(TimeNow(), StructureMetadataType::UserGroup, *userGroupId)) {
+    removeStructureMetadata(StructureMetadataType::UserGroup, *userGroupId, std::move(key));
   }
 
   mImplementor->raw.insert(UserGroupRecord(*userGroupId, name, std::nullopt, true));
@@ -1675,10 +1812,19 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   for (auto tuple: mImplementor->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
          && in(&UserIdRecord::internalUserId, RangeToVector(views::keys(usersInfo))),
-         &UserIdRecord::internalUserId,
-         &UserIdRecord::identifier)) {
-    auto& [internalId, identifier] = tuple;
-    usersInfo.at(internalId).mUids.push_back(std::move(identifier));
+         &UserIdRecord::internalUserId, &UserIdRecord::identifier, &UserIdRecord::isPrimaryId, &UserIdRecord::isDisplayId)) {
+    auto& [internalId, identifier, isPrimaryId, isDisplayId] = tuple;
+
+    QRUser& user = usersInfo.at(internalId);
+    if (isDisplayId) {
+      user.mDisplayId = identifier;
+    }
+    if (isPrimaryId) {
+      user.mPrimaryId = identifier;
+    }
+    if (!isPrimaryId && !isDisplayId) {
+      user.mOtherUids.push_back(std::move(identifier));
+    }
   }
 
   return UserQueryResponse{
@@ -1688,10 +1834,60 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
 }
 
 /* Core operations on Metadata */
+std::optional<int64_t> AccessManager::Backend::Storage::findInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
+  assert(HasInternalId(subjectType));
+  switch (subjectType) {
+  case StructureMetadataType::User:
+    return findInternalUserId(subject, at);
+  case StructureMetadataType::UserGroup:
+    return findUserGroupId(subject, at);
+    break;
+  default:
+    throw std::logic_error("Specificed subjectType does not have an internalId");
+  }
+}
+
+int64_t AccessManager::Backend::Storage::getInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at) const {
+  assert(HasInternalId(subjectType));
+  switch (subjectType) {
+  case StructureMetadataType::User:
+    return getInternalUserId(subject, at);
+  case StructureMetadataType::UserGroup:
+    return getUserGroupId(subject, at);
+    break;
+  default:
+    throw std::logic_error("Specificed subjectType does not have an internalId");
+  }
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getSubjectForInternalId(
+  StructureMetadataType subjectType, int64_t internalId, Timestamp at) const {
+  assert(HasInternalId(subjectType));
+  switch (subjectType) {
+  case StructureMetadataType::User: {
+    auto identifier = getDisplayIdentifierForUser(internalId, at);
+    if (identifier)
+      return identifier;
+    auto identifiers = getAllIdentifiersForUser(internalId, at);
+    if (identifiers.size() > 0) {
+      return std::ranges::min(getAllIdentifiersForUser(internalId, at));
+    }
+    return std::nullopt;
+  }
+  case StructureMetadataType::UserGroup:
+    return getUserGroupName(internalId, at);
+  default:
+    throw std::logic_error("Specificed subjectType does not have an internalId");
+  }
+}
+
 std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureMetadataKeys(
     const Timestamp timestamp,
     StructureMetadataType subjectType,
     std::string_view subject) const {
+  if (HasInternalId(subjectType)) {
+    return getStructureMetadataKeys(timestamp, subjectType, getInternalSubjectId(subjectType, subject, timestamp));
+  }
   using namespace std::ranges;
   return RangeToVector(
     mImplementor->getCurrentRecords(
@@ -1707,8 +1903,30 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
   );
 }
 
+std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureMetadataKeys(
+    const Timestamp timestamp,
+    StructureMetadataType subjectType,
+    int64_t internalSubjectId) const {
+  assert(HasInternalId(subjectType));
+  using namespace std::ranges;
+  return RangeToVector(
+    mImplementor->getCurrentRecords(
+      c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
+      && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
+      && c(&StructureMetadataRecord::internalSubjectId) == internalSubjectId,
+      &StructureMetadataRecord::metadataGroup,
+      &StructureMetadataRecord::subkey)
+    | views::transform([](auto tuple) {
+      auto& [metadataGroup, subkey] = tuple;
+      return StructureMetadataKey(std::move(metadataGroup), std::move(subkey));
+    })
+  );
+}
+
 std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructureMetadata(const Timestamp timestamp, StructureMetadataType subjectType, const StructureMetadataFilter& filter) const {
   using namespace std::ranges;
+
+  bool hasInternalId = HasInternalId(subjectType);
 
   std::vector<std::reference_wrapper<const std::string>> metadataGroupFilters;
   std::vector<std::string> metadataKeyFilters;
@@ -1718,20 +1936,51 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
     else { metadataKeyFilters.emplace_back(key.toString()); }
   }
 
+  std::unordered_map<int64_t, std::string> internalSubjectIds; //This is a map, so we can translate the internalIds back to a subject, as specified in the filter.
+  if (hasInternalId) {
+    internalSubjectIds.reserve(filter.subjects.size());
+    for (auto& subject : filter.subjects) {
+      auto internalSubjectId = findInternalSubjectId(subjectType, subject, timestamp);
+      if (internalSubjectId) {
+        internalSubjectIds.try_emplace(*internalSubjectId, subject);
+      }
+    }
+  }
+
   return RangeToVector(
     mImplementor->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
-      && (filter.subjects.empty() || in(&StructureMetadataRecord::subject, filter.subjects))
+      // If we have no subject filters, we return all subjects. If we do have subject filters, we either need to check directly, or via internalId.
+      // If we have a non-empty filter, it is still possible that internalSubjectIds is empty. because no subjects match the filter.
+      // But in that case, we don't want to return everything. That is why we don't check the emptiness of internalSubjectIds.
+      && (filter.subjects.empty() || hasInternalId || in(&StructureMetadataRecord::subject, filter.subjects))
+      && (filter.subjects.empty() || !hasInternalId || in(&StructureMetadataRecord::internalSubjectId, RangeToVector(views::keys(internalSubjectIds))))
       && ((metadataGroupFilters.empty() && metadataKeyFilters.empty())
         || in(&StructureMetadataRecord::metadataGroup, metadataGroupFilters)
         || in(conc(conc(&StructureMetadataRecord::metadataGroup, ":"), &StructureMetadataRecord::subkey), metadataKeyFilters)),
       &StructureMetadataRecord::subject,
+      &StructureMetadataRecord::internalSubjectId,
       &StructureMetadataRecord::metadataGroup,
       &StructureMetadataRecord::subkey,
       &StructureMetadataRecord::value)
-    | views::transform([](auto tuple) {
-      auto& [subject, metadataGroup, subkey, value] = tuple;
+    | views::transform([this, &internalSubjectIds, subjectType, timestamp](auto tuple) {
+      auto& [subject, internalSubjectId, metadataGroup, subkey, value] = tuple;
+      if (HasInternalId(subjectType)) {
+        assert(internalSubjectId.has_value());
+        if (internalSubjectIds.size() > 0) {
+          // If internalSubjectIds is non-empty, the current internalSubjectId should be in the map.
+          subject=internalSubjectIds.at(*internalSubjectId);
+        }
+        else {
+          // otherwise, we had an empty filter. We'll need to look up a matching subject in the database.
+          auto foundSubject = getSubjectForInternalId(subjectType, *internalSubjectId, timestamp);
+          if (!foundSubject) {
+            throw std::runtime_error("Encountered an internalSubjectId, for which no subject could be found.");
+          }
+          subject = *foundSubject;
+        }
+      }
       return StructureMetadataEntry{
         .subjectKey = {
           .subject = std::move(subject),
@@ -1745,10 +1994,16 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
 
 void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key, std::string_view value) {
   bool subjectExists = false;
+  std::optional<int64_t> internalSubjectId;
   switch (subjectType) {
   case StructureMetadataType::Column:           subjectExists = hasColumn(subject); break;
   case StructureMetadataType::ColumnGroup:      subjectExists = hasColumnGroup(subject); break;
   case StructureMetadataType::ParticipantGroup: subjectExists = hasParticipantGroup(subject); break;
+  case StructureMetadataType::User:
+  case StructureMetadataType::UserGroup:
+    internalSubjectId = findInternalSubjectId(subjectType, subject);
+    subjectExists = internalSubjectId.has_value();
+    break;
   }
   if (!subjectExists) {
     std::ostringstream msg;
@@ -1756,15 +2011,31 @@ void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType
     throw Error(std::move(msg).str());
   }
 
-  mImplementor->raw.insert(StructureMetadataRecord(
+  if (internalSubjectId) {
+    mImplementor->raw.insert(StructureMetadataRecord(
+      subjectType,
+      *internalSubjectId,
+      std::move(key.metadataGroup),
+      std::move(key.subkey),
+      std::vector(value.begin(), value.end())));
+  }
+  else {
+    mImplementor->raw.insert(StructureMetadataRecord(
       subjectType,
       std::move(subject),
       std::move(key.metadataGroup),
       std::move(key.subkey),
       std::vector(value.begin(), value.end())));
+  }
 }
 
 void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key) {
+  if (HasInternalId(subjectType)) {
+    int64_t internalId = getInternalSubjectId(subjectType, subject);
+    removeStructureMetadata(subjectType, internalId, key);
+    return;
+  }
+
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, subject);
   if (std::ranges::find(keys, key) == keys.end()) {
     std::ostringstream msg;
@@ -1775,6 +2046,26 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   mImplementor->raw.insert(StructureMetadataRecord(
       subjectType,
       std::move(subject),
+      std::move(key.metadataGroup),
+      std::move(key.subkey),
+      {},
+      true));
+}
+
+void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataType subjectType, int64_t internalSubjectId, StructureMetadataKey key) {
+  assert(HasInternalId(subjectType));
+  const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, internalSubjectId);
+
+  if (std::ranges::find(keys, key) == keys.end()) {
+    std::ostringstream msg;
+    msg << "subject does not exist or does not contain metadata key "
+        << Logging::Escape(key.toString());
+    throw Error(std::move(msg).str());
+  }
+
+  mImplementor->raw.insert(StructureMetadataRecord(
+      subjectType,
+      internalSubjectId,
       std::move(key.metadataGroup),
       std::move(key.subkey),
       {},

@@ -399,7 +399,7 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
     return;
   }
 
-  QStackedWidget* widgets[] = { ui->register_content, ui->open_content };
+  std::array widgets{ ui->register_content, ui->open_content };
 
   for (auto widget : widgets) {
     showPatienceWidget(widget, "Loading...");
@@ -641,8 +641,7 @@ void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
     // http://lists.qt-project.org/pipermail/interest/2013-October/009482.html
     // Qt doesn't automatically redraw a widget when its CSS class gets updated.
     // This isn't very pretty, but there is no pretty way to deal with this.
-    QWidget* widgets[] = { ui->statusBar, statusbarCancelButton };
-    for (QWidget* widget : widgets) {
+    for (QWidget* widget : std::initializer_list<QWidget*>{ ui->statusBar, statusbarCancelButton }) {
       widget->style()->unpolish(widget);
       widget->style()->polish(widget);
       widget->update();

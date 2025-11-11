@@ -527,7 +527,7 @@ namespace pep
         LocalPageStore::Create(io_context, config));
   }
 
-  constexpr char SYNC_ERROR_MSG[]
+  const std::string SYNC_ERROR_MSG
     = "DualPageStore: disagreement between local and S3 storage!";
 
   messaging::MessageSequence
@@ -548,10 +548,10 @@ namespace pep
         case 2:
           if (*(values->at(0)) == *(values->at(1)))
             return rxcpp::observable<>::just(values->at(0));
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Get: Contents differ.");
         case 1:
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Get: Page found in only one of the two stores.");
         default:
           throw std::runtime_error("DualPageStore: Get: assertion error: "
@@ -576,10 +576,10 @@ namespace pep
         case 2:
           if (values->at(0) == values->at(1))
             return rxcpp::observable<>::just(values->at(0));
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Put: ETags differ.");
         case 1:
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Put: only one store failed to put the given put.");
         case 0:
           throw std::runtime_error("DualPageStore: Put: both "

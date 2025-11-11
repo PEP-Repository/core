@@ -22,15 +22,33 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::removeUser(std::string uid) cons
   return requestUserMutation(std::move(request));
 }
 
-rxcpp::observable<FakeVoid> AccessManagerProxy::addUserIdentifier(std::string existingUid, std::string newUid) const {
+rxcpp::observable<FakeVoid> AccessManagerProxy::addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) const {
   UserMutationRequest request;
-  request.mAddUserIdentifier.emplace_back(std::move(existingUid), std::move(newUid));
+  request.mAddUserIdentifier.emplace_back(std::move(existingUid), std::move(newUid), isPrimaryId, isDisplayId);
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserIdentifier(std::string uid) const {
   UserMutationRequest request;
   request.mRemoveUserIdentifier.emplace_back(std::move(uid));
+  return requestUserMutation(std::move(request));
+}
+
+rxcpp::observable<FakeVoid> AccessManagerProxy::setUserPrimaryId(std::string uid) const {
+  UserMutationRequest request;
+  request.mSetPrimaryId.emplace_back(std::move(uid));
+  return requestUserMutation(std::move(request));
+}
+
+rxcpp::observable<FakeVoid> AccessManagerProxy::unsetUserPrimaryId(std::string uid) const {
+  UserMutationRequest request;
+  request.mUnsetPrimaryId.emplace_back(std::move(uid));
+  return requestUserMutation(std::move(request));
+}
+
+rxcpp::observable<FakeVoid> AccessManagerProxy::setUserDisplayId(std::string uid) const {
+  UserMutationRequest request;
+  request.mSetDisplayId.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 

@@ -52,15 +52,12 @@ using MakeTimer = std::function<TimerObservable(pep::testing::Duration, boost::a
 using AddTimeout = std::function<TimerObservable(TimerObservable, pep::testing::Duration, boost::asio::io_context&)>;
 
 const char* DescribeObservableState(const std::optional<std::exception_ptr>& error) {
-  const char* result;
+  const char* result = "failed";
   if (!error.has_value()) {
     result = "running";
   }
   else if (*error == nullptr) {
     result = "completed successfully";
-  }
-  else {
-    result = "failed";
   }
   return result;
 }

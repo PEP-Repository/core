@@ -17,14 +17,14 @@ TEST(Defer, Defer) {
 TEST(Defer, DeferUnique) {
   int did = 0;
   {
-    auto guard = defer_unique([&did]{ did++; });
+    auto guard = pep::defer_unique([&did]{ did++; });
 
     ASSERT_EQ(did, 0);
   }
   ASSERT_EQ(did, 1);
 
   {
-    auto guard = defer_unique([&did]{ did++; });
+    auto guard = pep::defer_unique([&did]{ did++; });
 
     ASSERT_EQ(did, 1);
     guard.reset();
@@ -32,7 +32,7 @@ TEST(Defer, DeferUnique) {
   }
 
   {
-    auto guard = defer_unique([&did]{ did++; });
+    auto guard = pep::defer_unique([&did]{ did++; });
     ASSERT_EQ(did, 2);
     auto guard2 = std::move(guard);
     ASSERT_EQ(did, 2);
@@ -43,14 +43,14 @@ TEST(Defer, DeferUnique) {
 TEST(Defer, DeferShared) {
   int did = 0;
   {
-    auto guard = defer_shared([&did]{ did++; });
+    auto guard = pep::defer_shared([&did]{ did++; });
 
     ASSERT_EQ(did, 0);
   }
   ASSERT_EQ(did, 1);
 
   {
-    auto guard = defer_shared([&did]{ did++; });
+    auto guard = pep::defer_shared([&did]{ did++; });
 
     ASSERT_EQ(did, 1);
     guard.reset();
@@ -58,7 +58,7 @@ TEST(Defer, DeferShared) {
   }
 
   {
-    auto guard = defer_shared([&did]{ did++; });
+    auto guard = pep::defer_shared([&did]{ did++; });
     ASSERT_EQ(did, 2);
     auto guard2 = guard;
     ASSERT_EQ(did, 2);

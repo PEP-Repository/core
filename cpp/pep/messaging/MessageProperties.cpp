@@ -191,7 +191,7 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
   auto flagBits = properties & FLAG_BITS;
   auto streamId = properties & STREAM_ID_BITS;
 
-  MessageType::Value type;
+  MessageType::Value type = MessageType::REQUEST;
   if (streamId == CONTROL_STREAM_ID) {
     if (properties != CONTROL_STREAM_ID) {
       throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
@@ -200,9 +200,6 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
   }
   else if (typeBits & TYPE_RESPONSE) {
     type = MessageType::RESPONSE;
-  }
-  else {
-    type = MessageType::REQUEST;
   }
 
   Flags flags(flagBits & FLAG_CLOSE, flagBits & FLAG_ERROR, flagBits & FLAG_PAYLOAD);

@@ -1328,6 +1328,8 @@ retag-pep-docker-images:
       artifacts: false
     - job: docker-integration
       artifacts: false
+    - job: docker-integration-on-base-data
+      artifacts: false
   #language=sh
   script:
     - *docker_login

@@ -177,6 +177,8 @@ Administrative tasks:
   - [`user query`](#user-query) List users and user groups
   - [`user create/remove`](#user-createremove) Create and remove users
   - [`user addIdentifier/removeIdentifier`](#user-addidentifierremoveidentifier) Add and remove identifiers for users
+  - [`user setDisplayId`](#user-setdisplayid) Set the display ID for users.
+  - [`user setPrimaryId/unsetPrimaryId`](#user-setprimaryidunsetprimaryid) Set or unset the primary ID for users.
   - [`user addTo/removeFrom`](#user-addtoremovefrom) Add users to or remove users from user groups
   - [`user group create/remove/modify`](#user-group-createremovemodify) Create, remove or modify user groups
 - [`token`](#token) provides subcommands for requesting and blocking tokens. Only for users enrolled as an `Access Administrator`:
@@ -450,6 +452,48 @@ pepcli user removeIdentifier <uid>
 
 It is not possible to remove an identifier for a user if that is the only remaining identifier for that user. You can remove
 the user entirely with the `pepcli user remove` command, if that is desired.
+
+### `user setDisplayId`
+The displayID for a user can be set by running
+```shell
+pepcli user setDisplayId <uid>
+```
+
+`<uid>` needs to be an exisitng userId for that user.
+
+The displayId is used when PEP needs to choose one identifier of a user to display to e.g. an access administrator,
+when they are administering users.
+
+When a new user is created with `pepcli user create <uid>`, `<uid>` will be set as the current display ID.
+It can be changed at a later time with `pepcli user setDisplayId <someOtherExistingUid>`.
+
+It is not possible to unset the displayId. Once a displayId has been set for a user, that user will always have a displayId.
+
+### `user setPrimaryId/unsetPrimaryId`
+The primaryID for a user can be set by running
+```shell
+pepcli user setPrimaryId <uid>
+```
+
+`<uid>` needs to be an exisitng userId for that user.
+
+Authentication sources often use a non-human readable, fixed identifier as a permanent identifier for a user. Human readable
+IDs are often not guaranteed to remain the same. We call this fixed identifier the _primary ID_ of the user.
+
+Primary IDs are not very suitable to be used by human users. So instead, we can register the user based on e.g. their e-mail address.
+When a user first logs in, their primary ID is then automatically stored, and marked as the primary ID. If the e-mail address changes
+at a later time, but the primary ID remains the same, the user will still be recognized by PEP.
+
+If the primary ID for a user changes, but their human readable ID is still the same, PEP will not automatically use the new
+primary ID. It is possible that, at different points in time, different users have the same e-mail address. PEP should not treat those
+as being the same user. So that's why it doesn't automatically accept a changed primary ID. The user will get an error message,
+and should contact their PEP support. The access administrator can then unset the primary ID, if that is indeed the desired solution.
+The primary ID will then be auto-assigned again at the next login of the user.
+
+Primary IDs can be unset with:
+```shell
+pepcli user unsetPrimaryId <uid>
+```
 
 ### `user addTo/removeFrom`
 

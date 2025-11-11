@@ -710,7 +710,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
           [server, subscriber, ctx, request]
           (std::shared_ptr<std::string> rawPage) // incoming page
           -> rxcpp::observable<std::string> {// md5 of page
-            MessageMagic magic;
+            MessageMagic magic{};
             try {
               magic = GetMessageMagic(*rawPage);
             }

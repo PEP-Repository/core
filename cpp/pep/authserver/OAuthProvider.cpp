@@ -286,14 +286,14 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   auto primaryUidIt = params.find("primary_uid"),
       humanReadableUidIt = params.find("human_readable_uid");
   if(primaryUidIt == params.end() || humanReadableUidIt == params.end()) {
-    std::pair<std::string, std::string> testUsers[] = {
+    std::array<std::pair<std::string, std::string>, 6> testUsers{{
       {"assessor@master.pep.cs.ru.nl", UserGroup::ResearchAssessor},
       {"monitor@master.pep.cs.ru.nl", UserGroup::Monitor},
       {"dataadmin@master.pep.cs.ru.nl", UserGroup::DataAdministrator},
       {"accessadmin@master.pep.cs.ru.nl", UserGroup::AccessAdministrator},
       {"multihat@master.pep.cs.ru.nl", "Someone with all roles"},
       {"eve@university-of-adversaries.com", "Someone without access"}
-    };
+    }};
     auto linkUri = request.uri();
     std::ostringstream body;
     body << "<html><body>";
@@ -460,8 +460,14 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 
     return HTTPResponse("302 Found", "", {{"Location", std::string(returnUri.buffer())}});
   }).on_error_resume_next([redirectUri](std::exception_ptr ep) {
-    LOG(LOG_TAG, error) << "Unexpected error: " << rxcpp::rxu::what(ep);
-    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    try {
+      std::rethrow_exception(ep);
+    } catch (const Error& e) {
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, e.what()));
+    } catch(const std::exception& e) {
+      LOG(LOG_TAG, error) << "Unexpected error: " << e.what();
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    }
   });
 }
 

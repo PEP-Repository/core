@@ -204,6 +204,8 @@ enum class StructureMetadataType : uint8_t {
   Column,
   ColumnGroup,
   ParticipantGroup,
+  User,
+  UserGroup,
 };
 
 /// \see StructureMetadataFilter

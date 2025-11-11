@@ -41,6 +41,7 @@ std::ostream& appendYaml(std::ostream& stream,
   const auto printUserGroups = flags & DisplayConfig::Flags::printUserGroups;
   const auto withHeader = flags & DisplayFlags::printHeaders;
   const auto userOffset = indentations(withHeader ? 1 : 0);
+  const auto userInnerOffset = userOffset + "  "; //We don't use indentations(), but hardcode the extra indent to two spaces, so it matches the "- " of the first line of the user output.
   const auto uidAndGroupOffset = indentations(withHeader ? 3 : 2);
 
   if (withHeader) {
@@ -48,13 +49,25 @@ std::ostream& appendYaml(std::ostream& stream,
   }
   for (auto& user : users) {
     stream << userOffset << "- ";
-    appendYamlListHeader(stream, stringConstants::identifiersKey, user.mUids.size());
-    for (auto& uid : user.mUids) {
+    bool hasWritten = false;
+    if (user.mDisplayId) {
+      hasWritten = true;
+      stream << stringConstants::displayIdKey << ": " << *user.mDisplayId << "\n";
+    }
+    if (user.mPrimaryId) {
+      if (hasWritten)
+        stream << userInnerOffset;
+      hasWritten = true;
+      stream << stringConstants::primaryIdKey << ": " << *user.mPrimaryId << "\n";
+    }
+    if (hasWritten)
+      stream << userInnerOffset;
+    appendYamlListHeader(stream, stringConstants::otherIdentifiersKey, user.mOtherUids.size());
+    for (auto& uid : user.mOtherUids) {
       stream << uidAndGroupOffset << "- " << uid << "\n";
     }
     if(printUserGroups) {
-      // We explicitly use 2 spaces (and not just a call to indentations with a certain indentation level),  so it aligns with "- " for the mUids header, even if we change the indentation size in indentations()
-      stream << userOffset << "  ";
+      stream << userInnerOffset;
       appendYamlListHeader(stream, stringConstants::groupsKey, user.mGroups.size());
       for (auto& group : user.mGroups) {
         stream << uidAndGroupOffset << "- " << group << "\n";

@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
   pep::Logging::Initialize({ std::make_shared<pep::FileLogging>(pep::info) });
   // pep::Logging::Initialize({ std::make_shared<pep::ConsoleLogging>(pep::info) }); // ... but not to the console to prevent clutter
 
-  unsigned int seed;
+  unsigned int seed{};
   pep::RandomBytes(reinterpret_cast<uint8_t*>(&seed), sizeof(seed));
   std::srand(seed);
 
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
   // getrusage not supported on Emscripten and
   // even the stub is broken: https://github.com/emscripten-core/emscripten/issues/18083
 #ifndef __EMSCRIPTEN__
-  uint64_t maxmem;
+  uint64_t maxmem{};
 #ifndef _WIN32
   rusage usage{};
   ::getrusage(RUSAGE_SELF, &usage);

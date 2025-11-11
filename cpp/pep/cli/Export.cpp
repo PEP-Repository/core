@@ -88,7 +88,7 @@ pep::commandline::Parameters CommandExport::getSupportedParameters() const {
 }
 
 int CommandExport::ChildCommand::execute() {
-  return executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
+  return executeEventLoopFor(false, [this](std::shared_ptr<pep::CoreClient> client) {
     return client->getGlobalConfiguration().map([this](std::shared_ptr<pep::GlobalConfiguration> globalConfig) {
       const auto idToText = [globalConfig](const ParticipantIdentifier& id) {
         return globalConfig->getUserPseudonymFormat().makeUserPseudonym(id.getLocalPseudonym());

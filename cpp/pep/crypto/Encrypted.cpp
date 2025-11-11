@@ -6,14 +6,13 @@ namespace pep {
 
 EncryptedBase::EncryptedBase(const std::string& key,
   const std::string& plaintext) {
-  int ret;
-  int len;
   auto ctx = createGcmContext();
   RandomBytes(mIv, 16);
   mTag.resize(16);
   mCiphertext.resize(plaintext.size());
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
+  int ret{};
   ret = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex failed");
@@ -33,6 +32,7 @@ EncryptedBase::EncryptedBase(const std::string& key,
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex 2nd failed");
+  int len{};
   ret = EVP_EncryptUpdate(ctx.get(),
     reinterpret_cast<uint8_t*>(mCiphertext.data()),
     &len,

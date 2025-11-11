@@ -22,11 +22,11 @@ void PrepareSortedMine(UserQueryResponse& response) {
     return !group.mName.starts_with("My");
   });
   erase_if(response.mUsers, [](const QRUser& user) {
-    return find_if(user.mUids, [](const std::string& uid) { return uid.starts_with("My"); }) == user.mUids.end();
+    return !(user.mDisplayId.has_value() && user.mDisplayId->starts_with("My"));
   });
   for (QRUser& user : response.mUsers) {
     sort(user.mGroups);
-    sort(user.mUids);
+    sort(user.mOtherUids);
   }
   sort(response.mUserGroups);
   sort(response.mUsers);
@@ -359,8 +359,8 @@ TEST_F(AccessManagerStorageTest, findInternalUserId) {
 TEST_F(AccessManagerStorageTest, multipleUserIdentifiers) {
   int64_t originalId = storage->createUser("user");
   storage->createUser("anotherUser");
-  storage->addIdentifierForUser(originalId, "firstAlternativeName");
-  storage->addIdentifierForUser(originalId, "secondAlternativeName");
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::none);
   EXPECT_EQ(storage->findInternalUserId("firstAlternativeName"), originalId);
   EXPECT_EQ(storage->findInternalUserId("secondAlternativeName"), originalId);
   storage->removeIdentifierForUser(originalId, "secondAlternativeName");
@@ -374,11 +374,19 @@ TEST_F(AccessManagerStorageTest, multipleUserIdentifiers) {
 
 TEST_F(AccessManagerStorageTest, cannotRemoveLastUserIdentifier) {
   int64_t originalId = storage->createUser("user");
-  storage->addIdentifierForUser(originalId, "firstAlternativeName");
-  storage->addIdentifierForUser(originalId, "secondAlternativeName");
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::none);
   storage->removeIdentifierForUser(originalId, "firstAlternativeName");
-  storage->removeIdentifierForUser(originalId, "user");
-  EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "secondAlternativeName"));
+  storage->removeIdentifierForUser(originalId, "secondAlternativeName");
+  EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
+}
+
+TEST_F(AccessManagerStorageTest, cannotRemoveDisplayIdentifier) {
+  int64_t originalId = storage->createUser("user"); //this will be the display identifier
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
+  EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
+  storage->setDisplayIdentifierForUser(originalId, "firstAlternativeName");
+  EXPECT_NO_THROW(storage->removeIdentifierForUser(originalId, "user"));
 }
 
 TEST_F(AccessManagerStorageTest, cannotRemoveUidStillInGroups) {
@@ -489,8 +497,8 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users) {
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1}, {}},
-      {{user2}, {}},
+      {user1, {}, {}, {}},
+      {user2, {}, {}, {}},
     })) << "should return all users";
 }
 
@@ -499,12 +507,12 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users_alt_ids) {
       user1 = "MyUser1",
       user1Alt = "MyUser1-alt";
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {}},
+      {user1, {}, {user1Alt}, {}},
     })) << "should return alternative identifiers";
 }
 
@@ -521,7 +529,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
   storage->createUser(user2);
 
   storage->addUserToGroup(user1, group1);
@@ -530,8 +538,8 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}},
-      {{user2}, {group2}},
+      {user1, {}, {user1Alt}, {group1}},
+      {user2, {}, {}, {group2}},
     })) << "should return user-group memberships";
 }
 
@@ -549,7 +557,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
   storage->createUser(user2);
   storage->createUser(user3);
 
@@ -565,8 +573,8 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return filtered group names";
 
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}},
-      {{user3}, {group1}}, // Note: we don't return group2 for user3
+      {user1, {}, {user1Alt}, {group1}},
+      {user3, {}, {}, {group1}}, // Note: we don't return group2 for user3
     })) << "should return group-filtered users with group memberships";
 }
 
@@ -584,7 +592,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
   storage->createUser(user2);
   storage->createUser(user3);
 
@@ -597,7 +605,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   PrepareSortedMine(response);
 
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}}, // Note: we also want to see alternative IDs
+      {user1, {}, {user1Alt}, {group1}}, // Note: we also want to see alternative IDs
     })) << "should return filtered users with all alt IDs with group memberships";
 
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
@@ -617,7 +625,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
   storage->createUser(user2);
 
   storage->addUserToGroup(user1, group1);
@@ -626,7 +634,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
   auto response = storage->executeUserQuery({TimeNow(), "", "-alt"});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{user1, user1Alt}, {group1}},
+      {user1, {}, {user1Alt}, {group1}},
     })) << "should return filtered users with all alt IDs with group memberships";
 
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
@@ -662,7 +670,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_and_group) {
   auto response = storage->executeUserQuery({TimeNow(), "GroupA", "UserA"});
   PrepareSortedMine(response);
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {{userA1}, {groupA1}},
+      {userA1, {}, {}, {groupA1}},
     })) << "should return double-filtered users with group memberships";
 
   const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
@@ -824,6 +832,10 @@ TEST_F(AccessManagerStorageTest, removeMetadataStructure) {
           [&] {storage->removeColumnGroup(structure, false); }},
       {StructureMetadataType::ParticipantGroup, "participant group", [&] {storage->createParticipantGroup(structure); },
           [&] {storage->removeParticipantGroup(structure, false); }},
+      {StructureMetadataType::User, "user", [&] {storage->createUser(structure); },
+          [&] {storage->removeUser(structure); }},
+      {StructureMetadataType::UserGroup, "user group", [&] {storage->createUserGroup(UserGroup{structure, {}}); },
+          [&] {storage->removeUserGroup(structure); }},
   };
   for (const context& ctx : contexts) {
     ctx.createStructure();
@@ -956,6 +968,55 @@ TEST_F(AccessManagerStorageTest, setGetMetadataParticipantGroup) {
       Error) << "setStructureMetadata should refuse non-existing participant group";
   const std::string subject = "ParticipantGroupWithMetadata";
   storage->createParticipantGroup(subject);
+
+  ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
+    MetadataMap expected{{subject, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be added";
+  }
+}
+
+TEST_F(AccessManagerStorageTest, setGetMetadataUser) {
+  constexpr StructureMetadataType subjectType = StructureMetadataType::User;
+
+  const StructureMetadataKey key{"meta_group", "meta_key"};
+  const std::string value = "meta value";
+  EXPECT_THROW(storage->setStructureMetadata(subjectType, "NonExisting", key, value),
+      Error) << "setStructureMetadata should refuse non-existing user";
+  const std::string subject = "UserWithMetadata";
+  const std::string alternativeUid = "AlternativeUid";
+  storage->createUser(subject);
+  storage->addIdentifierForUser(subject, alternativeUid, UserIdFlags::none);
+
+  ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
+    MetadataMap expected{{subject, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be added";
+  }
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType, StructureMetadataFilter{{alternativeUid}, {}}));
+    MetadataMap expected{{alternativeUid, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be returned with the same userID as specified in the filter";
+  }
+  storage->setDisplayIdentifierForUser(alternativeUid);
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
+    MetadataMap expected{{alternativeUid, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be returned with the displayId, if no filter is specified";
+  }
+}
+
+TEST_F(AccessManagerStorageTest, setGetMetadataUserGroup) {
+  constexpr StructureMetadataType subjectType = StructureMetadataType::UserGroup;
+
+  const StructureMetadataKey key{"meta_group", "meta_key"};
+  const std::string value = "meta value";
+  EXPECT_THROW(storage->setStructureMetadata(subjectType, "NonExisting", key, value),
+      Error) << "setStructureMetadata should refuse non-existing user group";
+  const std::string subject = "UserGroupWithMetadata";
+  storage->createUserGroup(UserGroup(subject, {}));
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {

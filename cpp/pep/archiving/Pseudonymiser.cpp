@@ -22,9 +22,9 @@ void Pseudonymiser::pseudonymise(std::istream& in, std::function<void(const char
   boost::iostreams::filtering_istream filteringStream;
   filteringStream.push(pseudonymiseFilter);
   filteringStream.push(in);
-  char buffer[PSEUDONYMISER_BUFFER_SIZE]{};
+  std::array<char, PSEUDONYMISER_BUFFER_SIZE> buffer{};
   for (;;) {
-    auto amount = boost::iostreams::read(filteringStream, buffer, PSEUDONYMISER_BUFFER_SIZE);
+    auto amount = boost::iostreams::read(filteringStream, buffer.data(), buffer.size());
 
     if (amount == boost::iostreams::WOULD_BLOCK) {
       // WOULD_BLOCK is as of yet unimplemented. When it is, we want a heads up.
@@ -32,7 +32,7 @@ void Pseudonymiser::pseudonymise(std::istream& in, std::function<void(const char
     }
     if (amount != EOF) {
       assert(amount >= 0);
-      writeToDestination(buffer, amount);
+      writeToDestination(buffer.data(), amount);
     }
     else {
       break;

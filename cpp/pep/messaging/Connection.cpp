@@ -105,7 +105,7 @@ void Connection::ensureSend() {
 void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr error) {
   assert(error != nullptr);
 
-  severity_level severity;
+  severity_level severity{};
   std::string action, caption, description;
 
   switch (id.type().value()) {

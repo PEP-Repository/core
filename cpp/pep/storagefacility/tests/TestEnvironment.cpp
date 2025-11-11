@@ -22,7 +22,7 @@ private:
   }
 
 public:
-  StorageFacilityTestEnvironment(int argc, char* argv[])
+  StorageFacilityTestEnvironment(int argc, char* argv[]) //NOLINT(modernize-avoid-c-arrays)
     : pep::SelfRegisteringTestEnvironment<StorageFacilityTestEnvironment>(argc, argv) {
     auto end = argv + argc;
     if (std::find(argv, end, std::string("--launch-s3proxy")) != end) {

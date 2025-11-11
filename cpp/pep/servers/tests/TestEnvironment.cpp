@@ -7,7 +7,7 @@ class ServerTestEnvironment : public pep::SelfRegisteringTestEnvironment<ServerT
 private:
   pep::Servers servers;
 public:
-  ServerTestEnvironment(int argc, char* argv[])
+  ServerTestEnvironment(int argc, char* argv[]) //NOLINT(modernize-avoid-c-arrays)
     : pep::SelfRegisteringTestEnvironment<ServerTestEnvironment>(argc, argv) {
   }
 
