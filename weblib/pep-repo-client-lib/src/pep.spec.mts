@@ -102,18 +102,19 @@ describe('Pep', function () {
             ),
           }));
           try {
-            expect(entriesSimple).satisfies((entries: typeof entriesSimple) =>
-                    entries.every(entry => entry.column === 'WasmTestColumn'),
-                'All entries should be for WasmTestColumn');
-            expect(entriesSimple).satisfies((entries: typeof entriesSimple) =>
-                    entries.some(entry =>
-                        entry.partialMetadata['fileExtension'] === '.small'
-                        && entry.fileSize === BigInt('Some small test data!'.length)),
-                'One entry should have fileExtension .small and specific file size');
-            expect(entriesSimple).satisfies((entries: typeof entriesSimple) =>
-                entries.some(entry => entry.partialMetadata['fileExtension'] === '.large'
-                        && entry.fileSize === BigInt('Larger test data!\n'.length) * 700_000n,
-                    'One entry should have fileExtension .large and specific file size'));
+            expect(entriesSimple).satisfies(function entriesShouldHaveRightColumn(entries: typeof entriesSimple) {
+              return entries.every(entry => entry.column === 'WasmTestColumn');
+            });
+            expect(entriesSimple).satisfies(function someEntryShouldHaveSmallExtensionAndRightSize(entries: typeof entriesSimple) {
+              return entries.some(entry =>
+                  entry.partialMetadata['fileExtension'] === '.small'
+                  && entry.fileSize === BigInt('Some small test data!'.length));
+            });
+            expect(entriesSimple).satisfies(function someEntryShouldHaveLargeExtensionAndRightSize(entries: typeof entriesSimple) {
+              return entries.some(entry => entry.partialMetadata['fileExtension'] === '.large'
+                      && entry.fileSize === BigInt('Larger test data!\n'.length) * 700_000n,
+                  'One entry should have fileExtension .large and specific file size');
+            });
           } catch (ex) {
             console.log(entriesSimple);
             throw ex;
@@ -123,7 +124,7 @@ describe('Pep', function () {
         }
       });
     });
-    it('should lint cells given subject origin ID', function () {
+    it('should list cells given subject origin ID', function () {
       return pep.runHandleWasmException(async () => {
         const entries = await Array.fromAsync(pep.list({
           subjects: ['WasmTestSubjectSmall'], // Pass origin ID
@@ -133,7 +134,7 @@ describe('Pep', function () {
           expect(entries).has.length(1);
           const [entry] = entries as [CellEntry];
           expect(binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()))
-              .equals('.small', 'Git back wrong fileExtension');
+              .equals('.small', 'Got back wrong fileExtension');
         } finally {
           entries.forEach(entry => entry.delete());
         }
@@ -155,17 +156,17 @@ describe('Pep', function () {
           expect(largeEntry).to.exist;
 
           for await (using data of pep.retrieve([smallEntry!, largeEntry!])) {
-            let expectedData: string;
+            let expectedContent: string;
             switch (data.entry.id) {
               case smallEntry!.id:
-                expectedData = 'Some small test data!';
+                expectedContent = 'Some small test data!';
                 break;
               case largeEntry!.id:
-                expectedData = Array(700_000).fill('Larger test data!\n').join('');
+                expectedContent = Array(700_000).fill('Larger test data!\n').join('');
                 break;
             }
-            expect(await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream())))
-                .equals(expectedData!, 'Wrong cell data');
+            const content = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
+            expect(content).equals(expectedContent!, 'Wrong cell data');
           }
         } finally {
           entries.forEach(entry => entry.delete());
