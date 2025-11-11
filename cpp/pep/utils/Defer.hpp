@@ -36,7 +36,7 @@ deferred<F> defer_func(F&& f) {
 }
 
 #ifdef __clang__
-// For Clang >22: Silence warning about __COUNTER__, which now apparently is a C2y (planned C23) extension
+// For Clang >22: Silence warning about __COUNTER__, which now apparently is a C2y extension
 # define PEP_SilenceCounterExtensionWarningBegin \
   _Pragma("clang diagnostic push") \
   _Pragma("clang diagnostic ignored \"-Wunknown-warning-option\"") /*for Clang <22*/  \
