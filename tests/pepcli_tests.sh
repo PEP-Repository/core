@@ -65,6 +65,13 @@ if should_run_test basic; then
   desired_value="$(printf %s mymetadata | jq --raw-input --compact-output '{"mymetakey": {"payload": . | @base64}}')"
   [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
 
+  desired_value=$'random data with\nLF newline'
+  id="$(pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d "$desired_value")"
+  id="$(printf %s "$id" | jq --raw-output .id)"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --output-file -)"
+  [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
+
   execute . rm "$DEST_DIR/ticket"
 
   # Ensure that MRI column exists and is read+writable for "Research Assessor" (who will upload and download)
