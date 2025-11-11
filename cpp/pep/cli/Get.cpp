@@ -83,10 +83,13 @@ protected:
               LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
             }
 
-            rxcpp::observable<pep::FileKey> key = client->getKeys(
-                client->enumerateDataByIds({boost::algorithm::unhex(values.get<std::string>("id"))}, ticket.getTicket())
-                .concat(),
-                ticket.getTicket()
+            rxcpp::observable<pep::FileKey> key =
+                client->getKeys(
+                    client->enumerateDataByIds(
+                        {boost::algorithm::unhex(values.get<std::string>("id"))},
+                        ticket.getTicket()
+                    ).concat(),
+                    ticket.getTicket()
                 ).concat();
 
             if (metadatastream) {
@@ -109,7 +112,7 @@ protected:
                   })
                   .op(RxInstead(pep::FakeVoid{}));
             } else {
-              return rxcpp::observable<>::just(pep::FakeVoid());
+              return key.op(RxInstead(pep::FakeVoid{}));
             }
           });
     });
