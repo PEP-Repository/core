@@ -25,7 +25,7 @@ PtreeAccess<boost::property_tree::ptree>::ReturnType PtreeAccess<boost::property
     boost::property_tree::write_json(json, parent);
     LOG("Castor", error) << "Error \"" << GetExceptionMessage(std::current_exception())
       << "\" occurred attempting to find path \"" << path << "\" in the property tree with the following JSON representation:\n"
-      << std::move(json).str();
+      << json.str();
     throw;
   }
 }
