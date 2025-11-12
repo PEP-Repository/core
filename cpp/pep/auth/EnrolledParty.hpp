@@ -15,6 +15,7 @@ enum class EnrolledParty : uint32_t {
   AccessManager = 3,
   Transcryptor = 4,
   RegistrationServer = 5,
+  AuthServer = 6,
 };
 
 std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledParty party);
