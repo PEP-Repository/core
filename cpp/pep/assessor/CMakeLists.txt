@@ -77,6 +77,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
   #TODO cleanup using --install approach as used on Windows?
   add_custom_command(TARGET ${PROJECT_NAME}Assessor POST_BUILD
+    COMMENT "Copy Sparkle framework files to assessor"
     COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}Assessor>/../Frameworks/
     COMMAND cp -R ${SPARKLE_LIBRARY} $<TARGET_FILE_DIR:${PROJECT_NAME}Assessor>/../Frameworks/
     COMMAND install_name_tool -change @rpath/Sparkle.framework/Versions/B/Sparkle @executable_path/../Frameworks/Sparkle.framework/Versions/B/Sparkle $<TARGET_FILE:${PROJECT_NAME}Assessor>
