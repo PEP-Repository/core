@@ -453,19 +453,22 @@ class MailSender(Connector):
             time.sleep(rate_limit_seconds)
             self.log("Waking up from sleep", level=logging.INFO, tag=self.LOG_TAG)
 
-    def record_email_send(self, short_pseudonym: str, column: str, emails_sent: dict, email: str, survey_id: int, survey_type: str) -> None:
+    def record_email_send(self, short_pseudonym: str, column: str, emails_sent: dict, email: str, is_primary_email: bool, survey_id: int, survey_type: str) -> None:
         """Record that we sent an email to this address for this survey"""
         try:
-            # Initialize the dictionary structure if needed
             if not emails_sent:
                 emails_sent = {}
 
-            # Check if hashed_email exists, using .get() to avoid KeyError
-            if not emails_sent.get("hashed_email"):
+            # Only store hashed email for primary (teacher) emails, and always update it
+            # This ensures the hash stays current if the teacher changes their email
+            # Student emails (for interview/thinkaloud) are never hashed and stored as we don't
+            # need these to be searchable in datamonitor
+            if is_primary_email:
                 hashed_email = self.hash_email(email)
+                if "hashed_email" in emails_sent and emails_sent["hashed_email"] != hashed_email:
+                    self.log(f"Updating hashed email for short pseudonym: {short_pseudonym}", level=logging.WARNING, tag=self.LOG_TAG)
                 emails_sent["hashed_email"] = hashed_email
 
-            # Initialize the survey_types structure if needed
             if "survey_types" not in emails_sent:
                 emails_sent["survey_types"] = {}
 
@@ -965,6 +968,7 @@ class MailSender(Connector):
         template_survey_ids = config.get("template_survey_ids")
         short_pseudonym_column = config.get("pep_sp_column")
         recipient_email_column = config.get("pep_email_column")
+        is_primary_email = config.get("primary_email", True)
         emails_sent_column = config.get("pep_emails_sent_column")
         survey_ids_column = config.get("pep_survey_ids_column")
         email_subject = config.get("email_subject")
@@ -1235,6 +1239,7 @@ class MailSender(Connector):
                                         column=emails_sent_column,
                                         emails_sent=emails_sent,
                                         email=email,
+                                        is_primary_email=is_primary_email,
                                         survey_id=survey_id,
                                         survey_type=survey_type)
                 subject_received_email = True
