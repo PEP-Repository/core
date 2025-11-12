@@ -35,10 +35,10 @@ protected:
     Server::Parameters::check();
   }
 
-public:
   /// \copydoc Server::Parameters::Parameters
   Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
+public:
   std::shared_ptr<const X509Identity> getSigningIdentity() const { return identity_; }
 };
 
