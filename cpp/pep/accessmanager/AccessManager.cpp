@@ -431,7 +431,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   if (!party.has_value()) {
     throw std::runtime_error("Cannot produce encryption key for this requestor");
   }
-  if (!EnrolledPartyHasDataAccess(*party)) {
+  if (!HasDataAccess(*party)) {
     throw std::runtime_error("Unsupported enrolled party " + std::to_string(static_cast<unsigned>(*party)));
   }
 
