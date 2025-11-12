@@ -1205,7 +1205,7 @@ class MailSender(Connector):
                 if start_dates and survey_index < len(start_dates):
                     try:
                         deadline_date = datetime.fromisoformat(start_dates[survey_index])+ timedelta(days=14)
-                        deadline = deadline_date.isoformat()
+                        deadline = deadline_date.date().isoformat()
                     except ValueError:
                         self.log(f"Invalid date format for start_date at index {survey_index}", 
                                 level=logging.WARNING, tag=self.LOG_TAG)
