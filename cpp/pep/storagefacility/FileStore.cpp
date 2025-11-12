@@ -133,7 +133,7 @@ FileStore::FileStore(
   if (seconds != decltype(seconds)::zero()) {
     message << " (" << (static_cast<double>(this->entryCount()) / seconds.count()) << " entries per second)";
   }
-  LOG(LOG_TAG, info) << std::move(message).str();
+  LOG(LOG_TAG, info) << message.str();
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
