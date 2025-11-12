@@ -19,8 +19,6 @@ const auto certificateSubjectMappings = [] {
   return map_type{pairs.begin(), pairs.end()};
 }();
 
-const std::string intermediateClientCaCommonName = "PEP Intermediate PEP Client CA";
-
 } // namespace
 
 EnrolledParty CertificateSubjectToEnrolledParty(const std::string& commonName, const std::string& organizationalUnit) {
@@ -45,26 +43,24 @@ std::optional<std::string_view> EnrolledPartyToCertificateSubject(EnrolledParty 
 }
 
 EnrolledParty GetEnrolledParty(const X509Certificate& certificate) {
-  auto result = CertificateSubjectToEnrolledParty(certificate.getCommonName().value_or(""), certificate.getOrganizationalUnit().value_or(""));
-  switch (result) {
-  case EnrolledParty::Unknown:
-  case EnrolledParty::User:
-    if (certificate.getIssuerCommonName() == intermediateClientCaCommonName) {
-      return EnrolledParty::User;
-    } else {
-      return EnrolledParty::Unknown;
-    }
-  case EnrolledParty::StorageFacility:
-  case EnrolledParty::AccessManager:
-  case EnrolledParty::Transcryptor:
-  case EnrolledParty::RegistrationServer:
-    if (certificate.isPEPServerCertificate() && !certificate.hasTLSServerEKU()) {
-      return result;
-    } else {
-      return EnrolledParty::Unknown;
-    }
+  if (certificate.isPEPUserCertificate()) {
+    return EnrolledParty::User;
   }
-  return EnrolledParty::Unknown;
+  if (certificate.hasTLSServerEKU()) {
+    return EnrolledParty::Unknown;
+  }
+  if (!certificate.isPEPServerCertificate()) {
+    return EnrolledParty::Unknown;
+  }
+
+  auto cn = certificate.getCommonName();
+  assert(cn.has_value());
+  auto mapping = certificateSubjectMappings.left.find(*cn);
+  if (mapping == certificateSubjectMappings.left.end()) {
+    return EnrolledParty::Unknown;
+  }
+
+  return mapping->second;
 }
 
 EnrolledParty GetEnrolledParty(const X509CertificateChain& chain) {

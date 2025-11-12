@@ -43,6 +43,7 @@ namespace {
 
 const std::string intermediateServerCaCommonName = "PEP Intermediate PEP Server CA";
 const std::string intermediateServerTlsCaCommonName = "PEP Intermediate TLS CA";
+const std::string intermediateClientCaCommonName = "PEP Intermediate PEP Client CA";
 
 std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
 
@@ -296,6 +297,10 @@ bool X509Certificate::isPEPServerCertificate() const {
 
   // If not a TLS server certificate, check if it is a PEP server certificate
   return (issuerCn == intermediateServerCaCommonName);
+}
+
+bool X509Certificate::isPEPUserCertificate() const {
+  return this->getIssuerCommonName() == intermediateClientCaCommonName;
 }
 
 std::chrono::sys_seconds X509Certificate::getNotBefore() const {
