@@ -10,12 +10,13 @@ using namespace pep;
 
 namespace {
 
-std::string_view GetValidServerCertificateSubject(EnrolledParty server) {
-  const auto serverName = GetEnrolledServerCertificateSubject(server);
-  if (!serverName) {
-    throw std::invalid_argument("EnrolledParty is not a server");
+std::string GetValidServerCertificateSubject(EnrolledParty enrolledAs) {
+  if (auto server = ServerTraits::Find(enrolledAs)) {
+    if (auto result = server->enrollmentSubject()) {
+      return *result;
+    }
   }
-  return *serverName;
+  throw std::invalid_argument("EnrolledParty is not a server");
 }
 
 EnrolledParty GetValidEnrolledParty(const X509Certificate& cert) {

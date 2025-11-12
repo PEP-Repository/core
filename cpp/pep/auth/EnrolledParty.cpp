@@ -16,13 +16,6 @@ std::optional<EnrolledParty> GetEnrolledServer(const std::string& ou) {
   return std::nullopt;
 }
 
-std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledParty party) {
-  if (auto server = ServerTraits::Find(party)) {
-    return server->enrollmentSubject();
-  }
-  return std::nullopt;
-}
-
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate) {
   if (IsUserEnrollmentCertificate(certificate)) {
     return EnrolledParty::User;
