@@ -10,7 +10,7 @@ using namespace pep;
 
 namespace {
 
-std::string_view GetValidServerName(EnrolledParty server) {
+std::string_view GetValidServerCertificateSubject(EnrolledParty server) {
   const auto serverName = GetEnrolledServerCertificateSubject(server);
   if (!serverName) {
     throw std::invalid_argument("EnrolledParty is not a server");
@@ -68,7 +68,7 @@ ReshuffleRecipient pep::PseudonymRecipientForUserGroup(std::string userGroup) {
 ReshuffleRecipient pep::PseudonymRecipientForServer(const EnrolledParty& server) {
   return {
       static_cast<RecipientBase::Type>(server),
-      std::string(GetValidServerName(server)),
+      std::string(GetValidServerCertificateSubject(server)),
   };
 }
 
@@ -83,7 +83,7 @@ RekeyRecipient pep::RekeyRecipientForCertificate(const X509Certificate& cert) {
 RekeyRecipient pep::RekeyRecipientForServer(const EnrolledParty& server) {
   return {
       static_cast<RecipientBase::Type>(server),
-      std::string(GetValidServerName(server)),
+      std::string(GetValidServerCertificateSubject(server)),
   };
 }
 
@@ -99,7 +99,7 @@ SkRecipient pep::RecipientForCertificate(const X509Certificate& cert) {
 }
 
 SkRecipient pep::RecipientForServer(const EnrolledParty& server) {
-  auto serverName = GetValidServerName(server);
+  auto serverName = GetValidServerCertificateSubject(server);
   return {
       static_cast<RecipientBase::Type>(server),
       {
