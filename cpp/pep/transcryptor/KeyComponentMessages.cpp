@@ -21,7 +21,7 @@ KeyComponentResponse KeyComponentResponse::HandleRequest(
   auto recipient = RecipientForCertificate(signedRequest.getLeafCertificate());
   KeyComponentResponse response;
   response.mPseudonymKeyComponent = pseudonymTranslator.generateKeyComponent(recipient);
-  if (party == EnrolledParty::User || party == EnrolledParty::RegistrationServer) {
+  if (HasDataAccess(*party)) {
     response.mEncryptionKeyComponent = dataTranslator.generateKeyComponent(recipient);
   }
   return response;
