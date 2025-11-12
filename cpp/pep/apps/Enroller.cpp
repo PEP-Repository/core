@@ -29,20 +29,22 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
   AsymmetricKey privateKey(ReadFile(this->getParameterValues().get<std::filesystem::path>("private-key-file")));
   X509CertificateChain certificateChain(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file")));
 
-  auto party = GetEnrolledParty(certificateChain);
-  if (party != mParty) {
+  if (!mServer.matchesCertificateChain(certificateChain)) {
     std::string description = "unknown facility";
-    if (party.has_value()) {
-      description = "facility " + std::to_string(static_cast<unsigned>(*party));
+    if (!certificateChain.empty()) {
+      auto certificate = certificateChain.front();
+      if (auto ou = certificate.getOrganizationalUnit()) {
+        description = *ou;
+      }
     }
-    throw std::runtime_error("Cannot enroll facility " + std::to_string(static_cast<unsigned>(mParty)) + " with certificate chain for " + description);
+    throw std::runtime_error("Cannot enroll " + mServer.description() + " with certificate chain for " + description);
   }
 
   builder.setSigningIdentity(std::make_shared<X509Identity>(std::move(privateKey), std::move(certificateChain)));
 }
 
 EndPoint ServiceEnroller::getAccessManagerEndPoint(const Configuration& config) const {
-  if (mParty == EnrolledParty::AccessManager) {
+  if (mServer == ServerTraits::AccessManager()) {
     EndPoint result;
     result.hostname = "127.0.0.1";
     result.port = config.get<uint16_t>("ListenPort");
