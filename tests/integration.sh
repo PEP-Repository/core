@@ -463,8 +463,8 @@ if should_run_test weblib; then
   trace wait -f % || true
 
   pepcli --oauth-token-group "Data Administrator" ama column remove WasmTestColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove WasmTestColumnGroup
-  pepcli --oauth-token-group "Access Administrator" ama group remove WasmTestSubjectGroup --force
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove WasmTestColumnGroup --force
+  pepcli --oauth-token-group "Data Administrator" ama group remove WasmTestSubjectGroup --force
 fi
 
 ####################
