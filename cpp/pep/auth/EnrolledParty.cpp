@@ -13,12 +13,11 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate
     return EnrolledParty::User;
   }
 
-  auto server = ServerTraits::ForCertificate(certificate);
-  if (!server.has_value()) {
-    return std::nullopt;
+  if (auto server = ServerTraits::ForCertificate(certificate)) {
+    return server->enrollsAs();
   }
 
-  return server->enrollsAs();
+  return std::nullopt;
 }
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain) {
