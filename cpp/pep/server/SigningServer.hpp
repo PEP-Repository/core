@@ -39,7 +39,7 @@ protected:
     if (!IsServerSigningCertificate(cert)) {
       throw std::runtime_error("Invalid certificate chain for " + description + ": not a PEP server signing certificate");
     }
-    auto ou = cert.getOrganizationalUnit().value_or({});
+    auto ou = cert.getOrganizationalUnit().value_or(std::string());
     if (!this->certificateSubjects().contains(ou)) {
       throw std::runtime_error("Invalid certificate chain for " + description + ": issued to \"" + ou + '"');
     }
