@@ -24,11 +24,11 @@ const auto certificateSubjectMappings = [] {
   return map_type{pairs.begin(), pairs.end()};
 }();
 
-std::optional<std::string> GetServerCertificateSubject(const X509Certificate& certificate, bool tls) {
-  if (certificate.hasTLSServerEKU() != tls) {
+std::optional<std::string> GetServerCertificateSubject(const X509Certificate& certificate) {
+  if (certificate.hasTLSServerEKU()) {
     return std::nullopt; // Not the correct type of certificate
   }
-  auto issuer = tls ? intermediateServerTlsCaCommonName : intermediateServerCaCommonName;
+  auto issuer = intermediateServerCaCommonName;
   if (certificate.getIssuerCommonName() != issuer) {
     return std::nullopt; // Not issued by the correct intermediate CA
   }
@@ -67,7 +67,7 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate
     return EnrolledParty::User;
   }
 
-  auto subject = GetServerCertificateSubject(certificate, false);
+  auto subject = GetServerCertificateSubject(certificate);
   if (!subject.has_value()) {
     return std::nullopt;
   }
@@ -83,7 +83,7 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain)
 }
 
 bool IsServerSigningCertificate(const X509Certificate& certificate) {
-  if (auto subject = GetServerCertificateSubject(certificate, false)) {
+  if (auto subject = GetServerCertificateSubject(certificate)) {
     if (certificateSubjectMappings.left.count(*subject) != 0) {
       return true;
     }
