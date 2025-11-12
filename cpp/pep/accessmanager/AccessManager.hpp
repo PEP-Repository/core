@@ -20,7 +20,7 @@ public:
 
   class Parameters : public SigningServer::Parameters {
   protected:
-    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::AccessManager; }
+    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { UserGroup::AccessManager }; }
 
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);

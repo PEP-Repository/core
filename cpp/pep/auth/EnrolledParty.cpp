@@ -1,4 +1,5 @@
 #include <pep/auth/EnrolledParty.hpp>
+#include <pep/auth/UserGroup.hpp>
 
 #include <boost/bimap/bimap.hpp>
 
@@ -14,12 +15,11 @@ const std::string intermediateClientCaCommonName = "PEP Intermediate PEP Client 
 
 const auto certificateSubjectMappings = [] {
   using map_type = boost::bimaps::bimap<std::string, EnrolledParty>;
-  std::array<map_type::value_type, 5> pairs{ {
+  std::array<map_type::value_type, 4> pairs{ {
     {"StorageFacility", EnrolledParty::StorageFacility},
     {"AccessManager", EnrolledParty::AccessManager},
     {"RegistrationServer", EnrolledParty::RegistrationServer},
     {"Transcryptor", EnrolledParty::Transcryptor},
-    {"Authserver", EnrolledParty::AuthServer}, // Note lowercase 's'
   }};
   return map_type{pairs.begin(), pairs.end()};
 }();
@@ -63,7 +63,7 @@ std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledPart
 }
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate) {
-  if (IsUserEnrollmentCertificate(certificate)) {
+  if (IsUserSigningCertificate(certificate)) {
     return EnrolledParty::User;
   }
 
@@ -82,14 +82,17 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain)
   return GetEnrolledParty(*chain.begin());
 }
 
-bool IsServerEnrollmentCertificate(const X509Certificate& certificate) {
-  if (auto party = GetEnrolledParty(certificate)) {
-    return *party != EnrolledParty::User;
+bool IsServerSigningCertificate(const X509Certificate& certificate) {
+  if (auto subject = GetServerCertificateSubject(certificate, false)) {
+    if (certificateSubjectMappings.left.count(*subject) != 0) {
+      return true;
+    }
+    return UserGroup::Authserver.contains(*subject);
   }
   return false;
 }
 
-bool IsUserEnrollmentCertificate(const X509Certificate& certificate) {
+bool IsUserSigningCertificate(const X509Certificate& certificate) {
   return certificate.getIssuerCommonName() == intermediateClientCaCommonName;
 }
 

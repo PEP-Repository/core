@@ -18,5 +18,5 @@ TEST(EnrolledParty, IsntServerCertificate) {
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(pepServerCACertPEM);
   pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
 
-  EXPECT_FALSE(pep::IsServerEnrollmentCertificate(cert)) << "Certificate is incorrectly identified as a server certificate";
+  EXPECT_FALSE(pep::IsServerSigningCertificate(cert)) << "Certificate is incorrectly identified as a server certificate";
 }

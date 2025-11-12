@@ -28,7 +28,7 @@ class Transcryptor : public SigningServer {
  public:
   class Parameters : public SigningServer::Parameters {
   protected:
-    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::Transcryptor; }
+    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { "Transcryptor" }; }
 
   public:
     Parameters(

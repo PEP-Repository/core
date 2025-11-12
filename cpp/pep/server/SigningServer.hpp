@@ -27,16 +27,21 @@ private:
   std::shared_ptr<X509Identity> identity_;
 
 protected:
-  virtual EnrolledParty enrollsAs() const noexcept = 0;
+  virtual std::unordered_set<std::string> certificateSubjects() const noexcept = 0;
 
   void check() const override {
-    auto certFor = GetEnrolledParty(*identity_->getCertificateChain().cbegin());
-    if (!certFor.has_value()) {
-      throw std::runtime_error("certificateChain's leaf certificate must be a PEP server enrollment certificate");
+    auto description = *this->certificateSubjects().begin();
+    const auto& chain = identity_->getCertificateChain();
+    if (chain.empty()) {
+      throw std::runtime_error("Invalid certificate chain for " + description + ": empty");
     }
-    auto required = this->enrollsAs();
-    if (certFor != required) {
-      throw std::runtime_error("Server enrolled as " + std::to_string(ToUnderlying(required)) + " cannot be enrolled with certificate chain for " + std::to_string(ToUnderlying(*certFor)));
+    auto cert = chain.front();
+    if (!IsServerSigningCertificate(cert)) {
+      throw std::runtime_error("Invalid certificate chain for " + description + ": not a PEP server signing certificate");
+    }
+    auto ou = cert.getOrganizationalUnit().value_or({});
+    if (!this->certificateSubjects().contains(ou)) {
+      throw std::runtime_error("Invalid certificate chain for " + description + ": issued to \"" + ou + '"');
     }
 
     Server::Parameters::check();

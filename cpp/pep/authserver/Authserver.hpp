@@ -18,7 +18,7 @@ public:
     const OAuthProvider::Parameters& getOAuthParams() const;
 
   protected:
-    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::AuthServer; }
+    std::unordered_set<std::string> certificateSubjects() const noexcept override { return UserGroup::Authserver; }
     void check() const override;
 
   private:

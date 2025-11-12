@@ -29,7 +29,7 @@ class RegistrationServer : public SigningServer {
  public:
   class Parameters : public SigningServer::Parameters {
   protected:
-    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::RegistrationServer; }
+    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { "RegistrationServer" }; }
 
    public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
