@@ -247,8 +247,6 @@ void RegistrationServer::Parameters::check() const {
     throw std::runtime_error("shadowStorageFile must not be empty");
   if(!shadowPublicKey.isSet())
     throw std::runtime_error("shadowPublicKey must be set");
-  if (GetEnrolledParty(this->getSigningIdentity()->getCertificateChain()) != EnrolledParty::RegistrationServer)
-    throw std::runtime_error("Invalid certificate chain for Registration Server");
   SigningServer::Parameters::check();
 }
 

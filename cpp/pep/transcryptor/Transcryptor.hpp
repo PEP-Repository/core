@@ -27,7 +27,10 @@ class Transcryptor : public SigningServer {
 
  public:
   class Parameters : public SigningServer::Parameters {
-   public:
+  protected:
+    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::Transcryptor; }
+
+  public:
     Parameters(
         std::shared_ptr<boost::asio::io_context> io_context,
         const Configuration& config);

@@ -33,6 +33,10 @@ private:
 public:
   class Parameters : public SigningServer::Parameters {
     friend class StorageFacility;
+
+  protected:
+    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::StorageFacility; }
+
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 

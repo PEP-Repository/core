@@ -352,8 +352,7 @@ void AccessManager::Parameters::check() const {
     throw std::runtime_error("dataTranslator must be set");
   if (!backend)
     throw std::runtime_error("backend must be set");
-  if (GetEnrolledParty(this->getSigningIdentity()->getCertificateChain()) != EnrolledParty::AccessManager)
-    throw std::runtime_error("Invalid certificate chain for Access Manager");
+
   SigningServer::Parameters::check();
 }
 
