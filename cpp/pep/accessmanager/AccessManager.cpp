@@ -428,13 +428,16 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   auto request = std::make_shared<EncryptionKeyRequest>(
     signedRequest->open(this->getRootCAs()));
   const auto party = GetEnrolledParty(signedRequest->mSignature.mCertificateChain);
+  if (!party.has_value()) {
+    throw std::runtime_error("Cannot produce encryption key for this requestor");
+  }
 
-  switch (party) {
+  switch (*party) {
   case EnrolledParty::User:
   case EnrolledParty::RegistrationServer:
     break;
   default:
-    throw std::runtime_error("Unsupported enrolled party " + std::to_string(static_cast<unsigned>(party)));
+    throw std::runtime_error("Unsupported enrolled party " + std::to_string(static_cast<unsigned>(*party)));
   }
 
   const auto recipient = std::make_shared<RekeyRecipient>(

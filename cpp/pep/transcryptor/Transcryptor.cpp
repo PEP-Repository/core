@@ -378,20 +378,20 @@ Transcryptor::handleLogIssuedTicketRequest(
 }
 
 messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<RekeyRequest> pRequest) {
-  if (pRequest->mClientCertificateChain.empty()) {
-    throw Error("Cannot rekey for client without a certificate");
-  }
   if (!pRequest->mClientCertificateChain.verify(getRootCAs())) {
     throw Error("Client certificate chain is not valid");
   }
   const auto party = GetEnrolledParty(pRequest->mClientCertificateChain);
+  if (!party.has_value()) {
+    throw Error("Cannot rekey for this requestor");
+  }
 
-  switch (party) {
+  switch (*party) {
   case EnrolledParty::User:
   case EnrolledParty::RegistrationServer:
     break;
   default:
-    throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(party)));
+    throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(*party)));
   }
 
   const auto recipient = RekeyRecipientForCertificate(pRequest->mClientCertificateChain.front());

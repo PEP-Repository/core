@@ -4,5 +4,5 @@
 
 TEST(EnrolledParty, NotFromTlsCertificate) {
   auto cert = pep::X509Certificate::FromPem(accessmanagerTLSCertPEM);
-  EXPECT_EQ(GetEnrolledParty(cert), pep::EnrolledParty::Unknown);
+  EXPECT_FALSE(GetEnrolledParty(cert).has_value());
 }

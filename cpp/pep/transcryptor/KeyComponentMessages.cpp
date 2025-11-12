@@ -14,13 +14,7 @@ KeyComponentResponse KeyComponentResponse::HandleRequest(
 ) {
   signedRequest.validate(rootCAs);
   auto party = GetEnrolledParty(signedRequest.mSignature.mCertificateChain);
-  LOG("handleKeyComponentRequest", debug) << "Handling SignedKeyComponentRequest for facilityType "
-    << static_cast<unsigned>(party);
-  if (party != EnrolledParty::User &&
-    party != EnrolledParty::StorageFacility &&
-    party != EnrolledParty::Transcryptor &&
-    party != EnrolledParty::AccessManager &&
-    party != EnrolledParty::RegistrationServer) {
+  if (!party.has_value()) {
     throw Error("KeyComponentRequest denied");
   }
 

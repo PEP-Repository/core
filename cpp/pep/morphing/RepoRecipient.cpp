@@ -11,7 +11,7 @@ using namespace pep;
 namespace {
 
 std::string_view GetValidServerName(EnrolledParty server) {
-  const auto serverName = EnrolledPartyToCertificateSubject(server);
+  const auto serverName = GetEnrolledServerCertificateSubject(server);
   if (!serverName) {
     throw std::invalid_argument("EnrolledParty is not a server");
   }
@@ -19,11 +19,11 @@ std::string_view GetValidServerName(EnrolledParty server) {
 }
 
 EnrolledParty GetValidEnrolledParty(const X509Certificate& cert) {
-  EnrolledParty party = GetEnrolledParty(cert);
-  if (party == EnrolledParty::Unknown) {
+  auto party = GetEnrolledParty(cert);
+  if (!party.has_value()) {
     throw std::invalid_argument("EnrolledParty is unknown");
   }
-  return party;
+  return *party;
 }
 
 /// Reshuffle: take user group name for users, as pseudonymization is per user group

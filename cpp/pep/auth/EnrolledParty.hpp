@@ -10,7 +10,6 @@
 namespace pep {
 
 enum class EnrolledParty : uint32_t {
-  Unknown = 0,
   User = 1,
   StorageFacility = 2,
   AccessManager = 3,
@@ -18,9 +17,10 @@ enum class EnrolledParty : uint32_t {
   RegistrationServer = 5,
 };
 
-std::optional<std::string_view> EnrolledPartyToCertificateSubject(EnrolledParty party);
-EnrolledParty CertificateSubjectToEnrolledParty(const std::string& commonName, const std::string& organizationalUnit);
-EnrolledParty GetEnrolledParty(const X509Certificate& certificate); // Inferred from the certificate's OU, CN, and issuer CN.
-EnrolledParty GetEnrolledParty(const X509CertificateChain& chain);
+std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledParty party);
+std::optional<EnrolledParty> GetEnrolledServer(const std::string& commonName, const std::string& organizationalUnit);
+
+std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate); // Inferred from the certificate's OU, CN, and issuer CN.
+std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain);
 
 }

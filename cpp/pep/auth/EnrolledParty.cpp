@@ -21,20 +21,20 @@ const auto certificateSubjectMappings = [] {
 
 } // namespace
 
-EnrolledParty CertificateSubjectToEnrolledParty(const std::string& commonName, const std::string& organizationalUnit) {
+std::optional<EnrolledParty> GetEnrolledServer(const std::string& commonName, const std::string& organizationalUnit) {
   if (commonName != organizationalUnit) {
     // Server facilities are enrolled with equal CN and OU, e.g. "OU=AccessManager, CN=AccessManager"
-    return EnrolledParty::Unknown;
+    return std::nullopt;
   }
 
   if (auto it = certificateSubjectMappings.left.find(organizationalUnit);
     it != certificateSubjectMappings.left.end()) {
     return it->second;
   }
-  return EnrolledParty::Unknown;
+  return std::nullopt;
 }
 
-std::optional<std::string_view> EnrolledPartyToCertificateSubject(EnrolledParty party) {
+std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledParty party) {
   if (auto it = certificateSubjectMappings.right.find(party);
       it != certificateSubjectMappings.right.end()) {
     return it->second;
@@ -42,30 +42,30 @@ std::optional<std::string_view> EnrolledPartyToCertificateSubject(EnrolledParty 
   return {};
 }
 
-EnrolledParty GetEnrolledParty(const X509Certificate& certificate) {
+std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate) {
   if (certificate.isPEPUserCertificate()) {
     return EnrolledParty::User;
   }
   if (certificate.hasTLSServerEKU()) {
-    return EnrolledParty::Unknown;
+    return std::nullopt;
   }
   if (!certificate.isPEPServerCertificate()) {
-    return EnrolledParty::Unknown;
+    return std::nullopt;
   }
 
   auto cn = certificate.getCommonName();
   assert(cn.has_value());
   auto mapping = certificateSubjectMappings.left.find(*cn);
   if (mapping == certificateSubjectMappings.left.end()) {
-    return EnrolledParty::Unknown;
+    return std::nullopt;
   }
 
   return mapping->second;
 }
 
-EnrolledParty GetEnrolledParty(const X509CertificateChain& chain) {
+std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain) {
   if (chain.empty()) {
-    return EnrolledParty::Unknown;
+    return std::nullopt;
   }
   return GetEnrolledParty(*chain.begin());
 }

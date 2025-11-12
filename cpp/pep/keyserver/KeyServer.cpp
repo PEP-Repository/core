@@ -199,7 +199,7 @@ void KeyServer::checkValid(const EnrollmentRequest& request) const {
   }
   auto ou = request.mCertificateSigningRequest.getOrganizationalUnit().value();
 
-  if (CertificateSubjectToEnrolledParty(cn, ou) != EnrolledParty::Unknown) {
+  if (GetEnrolledServer(cn, ou).has_value()) {
     throw Error("Invalid certificate subject for user enrollment request");
   }
 
