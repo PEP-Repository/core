@@ -270,9 +270,16 @@ class AccessGroup:
     def upload_file_with_pipe_by_short_pseudonym(self, short_pseudonym: str, column: str, data, file_extension=None):
         self.store_data(column=column, short_pseudonym=short_pseudonym, input_path="-", pipe_data=data, file_extension=file_extension)
     
-    def upload_data_to_all_short_pseudonyms(self, short_pseudonym_column_name: str, target_column: str, data: str, file_extension=None):
+    def fill_column_by_short_pseudonym(self, short_pseudonym_column_name: str, target_column: str, data: str, file_extension=None):
         self.log(f"Uploading data to all accessible short pseudonyms in column {target_column}.", level=logging.DEBUG)
         short_pseudonyms = self.list_short_pseudonyms(short_pseudonym_column_name)
         self.log(f"Found {len(short_pseudonyms)} short pseudonyms to upload data to.", level=logging.DEBUG)
         for sp in short_pseudonyms:
             self.upload_data_by_short_pseudonym(short_pseudonym=sp, column=target_column, data=data, file_extension=file_extension)
+
+    def fill_column_by_source_column_existence(self, source_column: str, target_column: str, data: str, file_extension=None):
+        self.log(f"Obtaining all accessible local pseudonyms in source column {source_column}.", level=logging.DEBUG)
+        local_pseudonym_data = self.list_columndata_by_local_pseudonym([source_column])
+        self.log(f"Found {len(local_pseudonym_data)} local pseudonyms to upload data to.", level=logging.DEBUG)
+        for lp in local_pseudonym_data.keys():
+            self.store_data(column=target_column, data=data, participant=lp, file_extension=file_extension)
