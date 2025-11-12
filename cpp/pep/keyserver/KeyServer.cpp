@@ -5,7 +5,7 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <chrono>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
@@ -199,7 +199,7 @@ void KeyServer::checkValid(const EnrollmentRequest& request) const {
   }
   auto ou = request.mCertificateSigningRequest.getOrganizationalUnit().value();
 
-  if (CertificateSubjectToFacilityType(cn, ou) != FacilityType::Unknown) {
+  if (CertificateSubjectToEnrolledParty(cn, ou) != EnrolledParty::Unknown) {
     throw Error("Invalid certificate subject for user enrollment request");
   }
 
@@ -238,7 +238,7 @@ X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigning
         mClientCACertificateChain.empty() ? X509Certificate() : *mClientCACertificateChain.begin(),
         mClientCAPrivateKey,
         validityTimeOfGeneratedCertificates);
-    assert(GetFacilityType(certificate) == FacilityType::User);
+    assert(GetEnrolledParty(certificate) == EnrolledParty::User);
     LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
                         << " in OU=" << csr.getOrganizationalUnit().value_or("");
     return certificate;

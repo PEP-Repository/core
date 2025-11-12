@@ -1,6 +1,6 @@
 #include <pep/transcryptor/KeyComponentMessages.hpp>
 
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/transcryptor/KeyComponentSerializers.hpp>
 
@@ -13,21 +13,21 @@ KeyComponentResponse KeyComponentResponse::HandleRequest(
   const X509RootCertificates& rootCAs
 ) {
   signedRequest.validate(rootCAs);
-  auto facilityType = GetFacilityType(signedRequest.mSignature.mCertificateChain);
+  auto party = GetEnrolledParty(signedRequest.mSignature.mCertificateChain);
   LOG("handleKeyComponentRequest", debug) << "Handling SignedKeyComponentRequest for facilityType "
-    << static_cast<unsigned>(facilityType);
-  if (facilityType != FacilityType::User &&
-    facilityType != FacilityType::StorageFacility &&
-    facilityType != FacilityType::Transcryptor &&
-    facilityType != FacilityType::AccessManager &&
-    facilityType != FacilityType::RegistrationServer) {
+    << static_cast<unsigned>(party);
+  if (party != EnrolledParty::User &&
+    party != EnrolledParty::StorageFacility &&
+    party != EnrolledParty::Transcryptor &&
+    party != EnrolledParty::AccessManager &&
+    party != EnrolledParty::RegistrationServer) {
     throw Error("KeyComponentRequest denied");
   }
 
   auto recipient = RecipientForCertificate(signedRequest.getLeafCertificate());
   KeyComponentResponse response;
   response.mPseudonymKeyComponent = pseudonymTranslator.generateKeyComponent(recipient);
-  if (facilityType == FacilityType::User || facilityType == FacilityType::RegistrationServer) {
+  if (party == EnrolledParty::User || party == EnrolledParty::RegistrationServer) {
     response.mEncryptionKeyComponent = dataTranslator.generateKeyComponent(recipient);
   }
   return response;

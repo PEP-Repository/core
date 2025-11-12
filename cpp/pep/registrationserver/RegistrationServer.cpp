@@ -11,7 +11,7 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
@@ -247,7 +247,7 @@ void RegistrationServer::Parameters::check() const {
     throw std::runtime_error("shadowStorageFile must not be empty");
   if(!shadowPublicKey.isSet())
     throw std::runtime_error("shadowPublicKey must be set");
-  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::RegistrationServer)
+  if (GetEnrolledParty(this->getSigningIdentity()->getCertificateChain()) != EnrolledParty::RegistrationServer)
     throw std::runtime_error("Invalid certificate chain for Registration Server");
   SigningServer::Parameters::check();
 }

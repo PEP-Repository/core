@@ -9,7 +9,7 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
@@ -236,7 +236,7 @@ void StorageFacility::Parameters::check() const {
     throw std::runtime_error("encIdKey must be set");
   if (!pseudonymKey)
     throw std::runtime_error("pseudonymKey must be set");
-  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::StorageFacility)
+  if (GetEnrolledParty(this->getSigningIdentity()->getCertificateChain()) != EnrolledParty::StorageFacility)
     throw std::runtime_error("Invalid certificate chain for Storage Facility");
   SigningServer::Parameters::check();
   if (!this->pageStoreConfig)

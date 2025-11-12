@@ -1,6 +1,6 @@
 #include <pep/transcryptor/Transcryptor.hpp>
 
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/rsk/RskSerializers.hpp>
@@ -260,13 +260,13 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       ret.mPolymorphic = entry.mPolymorphic;
       ret.mStorageFacility = server->mPseudonymTranslator->translateStep(
           entry.mStorageFacility,
-          RecipientForServer(FacilityType::StorageFacility));
+          RecipientForServer(EnrolledParty::StorageFacility));
       ret.mAccessManager = server->mPseudonymTranslator->translateStep(
           entry.mAccessManager,
-          RecipientForServer(FacilityType::AccessManager));
+          RecipientForServer(EnrolledParty::AccessManager));
       localPseudonym = server->mPseudonymTranslator->translateStep(
           entry.mTranscryptor,
-          RecipientForServer(FacilityType::Transcryptor)
+          RecipientForServer(EnrolledParty::Transcryptor)
       ).decrypt(*server->mPseudonymKey);
 
       if (ctx->includeUserGroupPseudonyms) {
@@ -384,14 +384,14 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
   if (!pRequest->mClientCertificateChain.verify(getRootCAs())) {
     throw Error("Client certificate chain is not valid");
   }
-  const auto facilityType = GetFacilityType(pRequest->mClientCertificateChain);
+  const auto party = GetEnrolledParty(pRequest->mClientCertificateChain);
 
-  switch (facilityType) {
-  case FacilityType::User:
-  case FacilityType::RegistrationServer:
+  switch (party) {
+  case EnrolledParty::User:
+  case EnrolledParty::RegistrationServer:
     break;
   default:
-    throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(facilityType)));
+    throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(party)));
   }
 
   const auto recipient = RekeyRecipientForCertificate(pRequest->mClientCertificateChain.front());

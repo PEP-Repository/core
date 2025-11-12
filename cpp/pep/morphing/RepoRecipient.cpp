@@ -1,6 +1,6 @@
 #include <pep/morphing/RepoRecipient.hpp>
 
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 
 #include <cassert>
 #include <stdexcept>
@@ -10,20 +10,20 @@ using namespace pep;
 
 namespace {
 
-std::string_view GetValidServerName(FacilityType serverFacilityType) {
-  const auto serverName = FacilityTypeToCertificateSubject(serverFacilityType);
+std::string_view GetValidServerName(EnrolledParty server) {
+  const auto serverName = EnrolledPartyToCertificateSubject(server);
   if (!serverName) {
-    throw std::invalid_argument("FacilityType is not a server");
+    throw std::invalid_argument("EnrolledParty is not a server");
   }
   return *serverName;
 }
 
-FacilityType GetValidFacilityType(const X509Certificate& cert) {
-  FacilityType type = GetFacilityType(cert);
-  if (type == FacilityType::Unknown) {
-    throw std::invalid_argument("FacilityType is unknown");
+EnrolledParty GetValidEnrolledParty(const X509Certificate& cert) {
+  EnrolledParty party = GetEnrolledParty(cert);
+  if (party == EnrolledParty::Unknown) {
+    throw std::invalid_argument("EnrolledParty is unknown");
   }
-  return type;
+  return party;
 }
 
 /// Reshuffle: take user group name for users, as pseudonymization is per user group
@@ -36,9 +36,9 @@ std::string ReshufflePayload(const X509Certificate& cert) {
 }
 
 /// Rekey: take certificate serialization for users, as rekeying is per user
-std::string RekeyPayload(const X509Certificate& cert, FacilityType type) {
-  assert(GetFacilityType(cert) == type);
-  if (type == FacilityType::User) {
+std::string RekeyPayload(const X509Certificate& cert, EnrolledParty party) {
+  assert(GetEnrolledParty(cert) == party);
+  if (party == EnrolledParty::User) {
     return cert.toDer();
   } else {
     if (cert.getOrganizationalUnit().has_value()) {
@@ -53,19 +53,19 @@ std::string RekeyPayload(const X509Certificate& cert, FacilityType type) {
 
 ReshuffleRecipient pep::PseudonymRecipientForCertificate(const X509Certificate& cert) {
   return {
-      static_cast<RecipientBase::Type>(GetValidFacilityType(cert)),
+      static_cast<RecipientBase::Type>(GetValidEnrolledParty(cert)),
       ReshufflePayload(cert),
   };
 }
 
 ReshuffleRecipient pep::PseudonymRecipientForUserGroup(std::string userGroup) {
   return {
-      static_cast<RecipientBase::Type>(FacilityType::User),
+      static_cast<RecipientBase::Type>(EnrolledParty::User),
       std::move(userGroup),
   };
 }
 
-ReshuffleRecipient pep::PseudonymRecipientForServer(const FacilityType& server) {
+ReshuffleRecipient pep::PseudonymRecipientForServer(const EnrolledParty& server) {
   return {
       static_cast<RecipientBase::Type>(server),
       std::string(GetValidServerName(server)),
@@ -73,14 +73,14 @@ ReshuffleRecipient pep::PseudonymRecipientForServer(const FacilityType& server) 
 }
 
 RekeyRecipient pep::RekeyRecipientForCertificate(const X509Certificate& cert) {
-  FacilityType type = GetValidFacilityType(cert);
+  EnrolledParty party = GetValidEnrolledParty(cert);
   return {
-      static_cast<RecipientBase::Type>(type),
-      RekeyPayload(cert, type),
+      static_cast<RecipientBase::Type>(party),
+      RekeyPayload(cert, party),
   };
 }
 
-RekeyRecipient pep::RekeyRecipientForServer(const FacilityType& server) {
+RekeyRecipient pep::RekeyRecipientForServer(const EnrolledParty& server) {
   return {
       static_cast<RecipientBase::Type>(server),
       std::string(GetValidServerName(server)),
@@ -88,17 +88,17 @@ RekeyRecipient pep::RekeyRecipientForServer(const FacilityType& server) {
 }
 
 SkRecipient pep::RecipientForCertificate(const X509Certificate& cert) {
-  FacilityType type = GetValidFacilityType(cert);
+  EnrolledParty party = GetValidEnrolledParty(cert);
   return {
-      static_cast<RecipientBase::Type>(type),
+      static_cast<RecipientBase::Type>(party),
       {
           .reshuffle = ReshufflePayload(cert),
-          .rekey = RekeyPayload(cert, type),
+          .rekey = RekeyPayload(cert, party),
       },
   };
 }
 
-SkRecipient pep::RecipientForServer(const FacilityType& server) {
+SkRecipient pep::RecipientForServer(const EnrolledParty& server) {
   auto serverName = GetValidServerName(server);
   return {
       static_cast<RecipientBase::Type>(server),

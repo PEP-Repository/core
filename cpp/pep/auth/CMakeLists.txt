@@ -1,7 +1,7 @@
 # Functionality related to auth[entication|orization].
 
 add_library(${PROJECT_NAME}Authlib STATIC
-    FacilityType.cpp FacilityType.hpp
+    EnrolledParty.cpp EnrolledParty.hpp
     OAuthError.cpp OAuthError.hpp
     OAuthToken.cpp OAuthToken.hpp
     UserGroup.cpp UserGroup.hpp
@@ -18,3 +18,6 @@ target_link_libraries(${PROJECT_NAME}Authlib
 
 verify_headers_standalone(${PROJECT_NAME}Authlib)
 add_unit_tests(Auth)
+target_sources(${PROJECT_NAME}AuthUnitTests PRIVATE
+  ../crypto/tests/X509Certificate.Samples.test.cpp
+)
