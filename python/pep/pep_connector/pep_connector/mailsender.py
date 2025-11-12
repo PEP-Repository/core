@@ -1201,7 +1201,7 @@ class MailSender(Connector):
                 is_reminder = (reason == "Reminder")
 
                 # Calculate deadline as start_date + 14 days
-                deadline = "binnen 2 weken"
+                deadline = "over 2 weken"
                 if start_dates and survey_index < len(start_dates):
                     try:
                         deadline_date = datetime.fromisoformat(start_dates[survey_index])+ timedelta(days=14)
