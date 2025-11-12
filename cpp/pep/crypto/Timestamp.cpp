@@ -1,5 +1,7 @@
 #include <pep/crypto/Timestamp.hpp>
 
+#include <pep/utils/StringStream.hpp>
+
 #include <format>
 #include <regex>
 #include <sstream>
@@ -71,7 +73,7 @@ protected:
       auto facet = new blt::local_time_input_facet("%Y-%m-%dT%H:%M:%S%F%ZP");
       ss.imbue(std::locale(ss.getloc(), facet));
       ss >> parsed;
-      if (auto remaining = ss.view().substr(static_cast<std::size_t>(ss.tellg())); !remaining.empty()) {
+      if (auto remaining = GetUnparsed(ss); !remaining.empty()) {
         throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
       }
     }
@@ -97,7 +99,7 @@ protected:
       facet->set_iso_format();
       ss.imbue(std::locale(ss.getloc(), facet));
       ss >> parsedDate;
-      if (auto remaining = ss.view().substr(static_cast<std::size_t>(ss.tellg())); !remaining.empty()) {
+      if (auto remaining = GetUnparsed(ss); !remaining.empty()) {
         throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
       }
     }

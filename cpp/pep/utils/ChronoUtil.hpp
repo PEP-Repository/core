@@ -8,6 +8,8 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
+#include <pep/utils/StringStream.hpp>
+
 namespace pep::chrono {
 namespace detail {
   template<class T>
@@ -56,7 +58,7 @@ T ParseDuration(const std::string& input) {
   if(inputStream.fail()) {
     throw ParseException(std::string("Could not parse duration ") + input + ": no numeric value could be read.");
   }
-  std::string suffix = std::move(inputStream).str().substr(static_cast<std::string::size_type>(inputStream.tellg()));
+  std::string suffix = GetUnparsed(std::move(inputStream));
   boost::algorithm::trim_left(suffix);
   boost::algorithm::to_lower(suffix);
   if(suffix == "d" || suffix == "day" || suffix == "days") {
