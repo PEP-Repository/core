@@ -21,15 +21,26 @@ Metadata Metadata::decrypt(const std::string& aeskey) const {
   return result;
 }
 
+/// \throws std::runtime_error When new fields are used with an old version, where this may be a problem for key blinding
+void Metadata::checkFieldsConsistentWithVersion() const {
+  if (mEncryptionScheme < EncryptionScheme::V3) {
+    // MetadataXEntry was introduced after V3,
+    // so old versions should never have them.
+    // Instead, a new V3 Metadata object should be created to insert them.
+    if (!mExtra.empty()) {
+      throw std::invalid_argument(
+          std::format("This metadata version cannot have x-entries, but found {} (first '{}')",
+              mExtra.size(), mExtra.begin()->first));
+    }
+  }
+}
+
 Metadata Metadata::getBound() const {
   using namespace std::ranges;
 
-  // V1 includes uses a full Protobuf serialization,
-  // although normally the fields below should be enough,
-  // as the rest did not exist yet
-  if (mEncryptionScheme == EncryptionScheme::V1) {
-    return *this;
-  }
+  // Although V1 includes uses a full Protobuf serialization,
+  // other fields than those below did not exist in this version
+  checkFieldsConsistentWithVersion();
 
   Metadata result;
   result.mBlindingTimestamp = mBlindingTimestamp;
@@ -41,6 +52,8 @@ Metadata Metadata::getBound() const {
 }
 
 KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const LocalPseudonym& localPseudonym) const {
+  checkFieldsConsistentWithVersion();
+
   auto scheme = this->getEncryptionScheme();
 
   if (scheme == EncryptionScheme::V1) {
@@ -53,14 +66,6 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
   }
 
   if (scheme == EncryptionScheme::V2) {
-    // MetadataXEntry was introduced after V3
-    using namespace std::ranges;
-    if (auto it = find_if(mExtra, &MetadataXEntry::bound, PEP_WrapFn(std::get<MetadataXEntry>));
-      it != mExtra.end()) {
-      throw std::invalid_argument(
-          std::format("This metadata version cannot have bound x-entries, but found bound '{}'", it->first));
-    }
-
     std::ostringstream ss;
     ss << PackUint64BE(ToUnderlying(EncryptionScheme::V2));
     ss << PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(this->getBlindingTimestamp())));
