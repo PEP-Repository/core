@@ -385,12 +385,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
   if (!party.has_value()) {
     throw Error("Cannot rekey for this requestor");
   }
-
-  switch (*party) {
-  case EnrolledParty::User:
-  case EnrolledParty::RegistrationServer:
-    break;
-  default:
+  if (!EnrolledPartyHasDataAccess(*party)) {
     throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(*party)));
   }
 

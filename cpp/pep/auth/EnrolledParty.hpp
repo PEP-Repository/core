@@ -23,4 +23,6 @@ std::optional<EnrolledParty> GetEnrolledServer(const std::string& commonName, co
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate); // Inferred from the certificate's OU, CN, and issuer CN.
 std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain);
 
+bool EnrolledPartyHasDataAccess(EnrolledParty party);
+
 }

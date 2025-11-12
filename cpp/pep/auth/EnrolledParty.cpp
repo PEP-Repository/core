@@ -70,4 +70,14 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain)
   return GetEnrolledParty(*chain.begin());
 }
 
+bool EnrolledPartyHasDataAccess(EnrolledParty party) {
+  switch (party) {
+  case EnrolledParty::User:
+  case EnrolledParty::RegistrationServer:
+    return true;
+  default:
+    return false;
+  }
+}
+
 }

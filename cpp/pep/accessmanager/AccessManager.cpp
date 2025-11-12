@@ -431,12 +431,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   if (!party.has_value()) {
     throw std::runtime_error("Cannot produce encryption key for this requestor");
   }
-
-  switch (*party) {
-  case EnrolledParty::User:
-  case EnrolledParty::RegistrationServer:
-    break;
-  default:
+  if (!EnrolledPartyHasDataAccess(*party)) {
     throw std::runtime_error("Unsupported enrolled party " + std::to_string(static_cast<unsigned>(*party)));
   }
 
