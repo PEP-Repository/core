@@ -4,7 +4,10 @@
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/utils/Bitpacking.hpp>
+#include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Sha.hpp>
+
+#include <format>
 
 namespace pep {
 
@@ -21,9 +24,9 @@ Metadata Metadata::decrypt(const std::string& aeskey) const {
 Metadata Metadata::getBound() const {
   using namespace std::ranges;
 
-  // V1 includes all xentries as it uses a full Protobuf serialization.
-  // V2 includes no xentries (so we could omit them below).
-  // V3 includes only bound xentries.
+  // V1 includes uses a full Protobuf serialization,
+  // although normally the fields below should be enough,
+  // as the rest did not exist yet
   if (mEncryptionScheme == EncryptionScheme::V1) {
     return *this;
   }
@@ -39,6 +42,7 @@ Metadata Metadata::getBound() const {
 
 KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const LocalPseudonym& localPseudonym) const {
   auto scheme = this->getEncryptionScheme();
+
   if (scheme == EncryptionScheme::V1) {
     // V1 uses Protobuf serialization, which is not guaranteed to be stable
     return {
@@ -49,6 +53,14 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
   }
 
   if (scheme == EncryptionScheme::V2) {
+    // MetadataXEntry was introduced after V3
+    using namespace std::ranges;
+    if (auto it = find_if(mExtra, &MetadataXEntry::bound, PEP_WrapFn(std::get<MetadataXEntry>));
+      it != mExtra.end()) {
+      throw std::invalid_argument(
+          std::format("This metadata version cannot have bound x-entries, but found bound '{}'", it->first));
+    }
+
     std::ostringstream ss;
     ss << PackUint64BE(ToUnderlying(EncryptionScheme::V2));
     ss << PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(this->getBlindingTimestamp())));
