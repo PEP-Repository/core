@@ -386,7 +386,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
     throw Error("Cannot rekey for this requestor");
   }
   if (!HasDataAccess(*party)) {
-    throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(*party)));
+    throw std::runtime_error("Requestor does not have data access: " + std::to_string(static_cast<unsigned>(*party)));
   }
 
   const auto recipient = RekeyRecipientForCertificate(pRequest->mClientCertificateChain.front());
