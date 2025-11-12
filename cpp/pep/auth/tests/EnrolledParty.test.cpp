@@ -20,10 +20,3 @@ TEST(EnrolledParty, IsntServerCertificate) {
 
   EXPECT_FALSE(pep::IsServerEnrollmentCertificate(cert)) << "Certificate is incorrectly identified as a server certificate";
 }
-
-TEST(X509CertificateTest, IsServerTlsCertificate) {
-
-  pep::X509Certificate cert = pep::X509Certificate::FromPem(accessmanagerTLSCertPEM);
-
-  EXPECT_TRUE(pep::IsServerTlsCertificate(cert)) << "Certificate is not a server certificate.";
-}

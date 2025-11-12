@@ -82,10 +82,6 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain)
   return GetEnrolledParty(*chain.begin());
 }
 
-bool IsServerTlsCertificate(const X509Certificate& certificate) {
-  return GetServerCertificateSubject(certificate, true).has_value();
-}
-
 bool IsServerEnrollmentCertificate(const X509Certificate& certificate) {
   if (auto party = GetEnrolledParty(certificate)) {
     return *party != EnrolledParty::User;
