@@ -783,7 +783,7 @@ void AccessManager::Backend::Storage::removeParticipantGroup(const std::string& 
   }
   else if (associatedLocalPseudonyms.size() > 0 || associatedAccessRules.size() > 0) {
     // There where associated participants and or access rules, but force was not given as a parameter. Warn the user.
-    std::stringstream msg;
+    std::ostringstream msg;
     msg << "Removing participant-group \"" << name << "\" failed due to\n";
     if (associatedLocalPseudonyms.size() > 0) {
       msg << associatedLocalPseudonyms.size() << " participants found in group.\n";
@@ -1065,7 +1065,7 @@ void AccessManager::Backend::Storage::removeColumnGroup(const std::string& name,
   }
   else if (associatedColumns.size() > 0 || associatedAccessRules.size() > 0) {
     // There where associated columns and or access rules, but force was not given as a parameter. Warn the user.
-    std::stringstream msg;
+    std::ostringstream msg;
     msg << "Removing column-group \"" << name << "\" failed due to\n";
     if (associatedColumns.size() > 0) {
       msg << "associated columns:\n";

@@ -66,7 +66,7 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
     ss << PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(this->getBlindingTimestamp())));
     ss << PackUint64BE(this->getTag().size());
     ss << this->getTag();
-    return { ss.str(), false };
+    return { std::move(ss).str(), false };
   }
 
   if (scheme == EncryptionScheme::V3) {
@@ -92,7 +92,7 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
       ss << PackUint8(xentry.storeEncrypted());
     }
 
-    return { ss.str(), true };
+    return { std::move(ss).str(), true };
   }
 
   throw std::runtime_error("Unknown blinding encryption scheme");

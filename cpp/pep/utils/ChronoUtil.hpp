@@ -56,7 +56,7 @@ T ParseDuration(const std::string& input) {
   if(inputStream.fail()) {
     throw ParseException(std::string("Could not parse duration ") + input + ": no numeric value could be read.");
   }
-  std::string suffix = inputStream.str().substr(static_cast<std::string::size_type>(inputStream.tellg()));
+  std::string suffix = std::move(inputStream).str().substr(static_cast<std::string::size_type>(inputStream.tellg()));
   boost::algorithm::trim_left(suffix);
   boost::algorithm::to_lower(suffix);
   if(suffix == "d" || suffix == "day" || suffix == "days") {
@@ -94,7 +94,7 @@ template<typename Rep, typename Period>
 std::string ToString(std::chrono::duration<Rep, Period> duration) {
   std::ostringstream oss;
   WriteHumanReadableDuration(duration, oss);
-  return oss.str();
+  return std::move(oss).str();
 }
 
 }

@@ -31,17 +31,17 @@ void ReadInputStreamToOutputStream(boost::iostreams::filtering_istream& inputStr
 void RunTestWithStringSource(const std::string& input, const std::string& oldValue, const std::string& newValue, const std::string& expected) {
   boost::iostreams::filtering_istream in;
   pep::PseudonymiseInputFilter pseudonymiseInputFilter{ oldValue, newValue };
-  std::stringstream source{ input };
+  std::istringstream source{ input };
   in.push(pseudonymiseInputFilter);
   in.push(source);
-  std::stringstream out;
+  std::ostringstream out;
   ReadInputStreamToOutputStream(in, out);
-  std::string actual{ out.str() };
+  std::string actual{ std::move(out).str() };
   ASSERT_EQ(actual, expected);
 }
 
 void RunTestWithDirectCall(const std::string& input, const std::string& oldValue, const std::string& newValue, const std::string& expected, size_t bufferSize) {
-  std::stringstream source{ input };
+  std::istringstream source{ input };
   pep::PseudonymiseInputFilter pseudonymiseInputFilter{ oldValue, newValue };
   std::string outputbuffer{};
   outputbuffer.resize(bufferSize);
@@ -95,16 +95,16 @@ TEST(FilterStream, reuseFilter) {
   pep::PseudonymiseInputFilter pseudonymiseInputFilter{ "Old", "New" };
 
   boost::iostreams::filtering_istream firstStream;
-  std::stringstream firstSource{ "Old Text" };
+  std::istringstream firstSource{ "Old Text" };
   firstStream.push(pseudonymiseInputFilter);
   firstStream.push(firstSource);
 
   boost::iostreams::filtering_istream secondStream;
-  std::stringstream secondSource{ "Some other Old Text" };
+  std::istringstream secondSource{ "Some other Old Text" };
   secondStream.push(pseudonymiseInputFilter);
   secondStream.push(secondSource);
 
-  std::stringstream out;
+  std::ostringstream out;
 
   ReadInputStreamToOutputStream(firstStream, out);
   ASSERT_EQ(out.str(), "New Text");
@@ -115,7 +115,7 @@ TEST(FilterStream, reuseFilter) {
 
 
   ReadInputStreamToOutputStream(secondStream, out);
-  ASSERT_EQ(out.str(), "Some other New Text");
+  ASSERT_EQ(std::move(out).str(), "Some other New Text");
 }
 
 }

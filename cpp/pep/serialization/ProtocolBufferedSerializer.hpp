@@ -210,7 +210,7 @@ public:
     if (withMagic) {
       std::ostringstream magicStream;
       MessageMagician<T>::WriteMagicTo(magicStream);
-      ret = magicStream.str();
+      ret = std::move(magicStream).str();
     }
     buffer.AppendToString(&ret);
     return ret;

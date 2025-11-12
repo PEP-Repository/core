@@ -33,7 +33,7 @@ protected:
         std::ostringstream oss;
         oss << "============================ " << caption << " ============================\n";
         oss << metrics.mMetrics;
-        return oss.str();
+        return std::move(oss).str();
         });
     }
     return rxcpp::observable<>::empty<std::string>();

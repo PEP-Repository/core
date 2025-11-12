@@ -140,7 +140,7 @@ OAuthToken OAuthToken::Generate(
     stream << encodeBase64URL(
              Sha256::HMac(secret, payload));
 
-    return OAuthToken(stream.str());
+    return OAuthToken(std::move(stream).str());
 }
 
 OAuthToken::OAuthToken(const std::string& serialized)
@@ -165,7 +165,7 @@ OAuthToken::OAuthToken(const std::string& serialized)
     mHmac = decodeBase64URL(splitToken[1]);
 
     boost::property_tree::ptree root;
-    std::stringstream jsonStream(mData);
+    std::istringstream jsonStream(mData);
     boost::property_tree::read_json(jsonStream, root);
 
     mSubject = root.get<std::string>("sub");

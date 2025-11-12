@@ -69,7 +69,7 @@ public:
   inline std::ostream& stream() override { return mContent; }
 
   ~MessageBoxNotificationChannel() noexcept override {
-    auto message = mContent.str();
+    auto message = std::move(mContent).str();
 
     // Write message to stdio so that it can be piped or redirected
     auto& destination = GetStdioNotificationStream(mError);

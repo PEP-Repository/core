@@ -126,14 +126,14 @@ FileStore::FileStore(
   }
 
   duration<double> seconds(steady_clock::now() - start_time);
-  std::stringstream message;
+  std::ostringstream message;
   message.setf(std::ios::fixed);
   message.precision(2);
   message << "Loaded " << this->entryCount() << " file store entries in " << seconds;
   if (seconds != decltype(seconds)::zero()) {
     message << " (" << (static_cast<double>(this->entryCount()) / seconds.count()) << " entries per second)";
   }
-  LOG(LOG_TAG, info) << message.str();
+  LOG(LOG_TAG, info) << std::move(message).str();
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
@@ -287,7 +287,7 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
 }
 
 void FileStore::Entry::save() const {
-  std::stringstream out;
+  std::ostringstream out;
 
   out << ENTRY_FILE_TYPE;
   WriteBinary(out, this->getName().string());
@@ -302,7 +302,7 @@ void FileStore::Entry::save() const {
   WriteBinary(out, pages);
   WriteBinary(out, properties);
 
-  std::string content = out.str();
+  std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
   auto tempfile = this->getFilePath(".tmp");
