@@ -8,14 +8,6 @@ const std::string intermediateClientCaCommonName = "PEP Intermediate PEP Client 
 
 }
 
-std::optional<EnrolledParty> GetEnrolledServer(const std::string& ou) {
-  auto server = ServerTraits::Find([ou](const ServerTraits& candidate) {return candidate.enrollmentSubject() == ou; });
-  if (server.has_value()) {
-    return server->enrollsAs();
-  }
-  return std::nullopt;
-}
-
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate) {
   if (IsUserEnrollmentCertificate(certificate)) {
     return EnrolledParty::User;
