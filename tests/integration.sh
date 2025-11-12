@@ -401,7 +401,10 @@ else
   CONFIG_DIR="/data"
 fi
 
-bash "$TESTS_DIR/pepcli_tests.sh" "$PEPCLI_COMMAND" "$DATA_DIR" "$CONFIG_DIR" "$TEST_INPUT_DIR" "$LOCAL" "$TESTS_TO_RUN" "$TESTS_TO_SKIP"
+readonly DEST_DIR="$CONFIG_DIR/test_output"
+execute . mkdir -p "$DEST_DIR"
+
+bash "$TESTS_DIR/pepcli_tests.sh" "$PEPCLI_COMMAND" "$DATA_DIR" "$CONFIG_DIR" "$DEST_DIR" "$TEST_INPUT_DIR" "$LOCAL" "$TESTS_TO_RUN" "$TESTS_TO_SKIP"
 
 ####################
 

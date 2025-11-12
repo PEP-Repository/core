@@ -15,13 +15,11 @@ set -o pipefail
 readonly PEPCLI_COMMAND="$1"
 readonly DATA_DIR="$2"
 readonly CONFIG_DIR="$3"
-readonly TEST_INPUT_DIR="$4"
-readonly LOCAL="$5"
-readonly TESTS_TO_RUN="$6"
-readonly TESTS_TO_SKIP="$7"
-
-readonly DEST_DIR="$CONFIG_DIR/test_output"
-execute . mkdir -p "$DEST_DIR"
+readonly DEST_DIR="$4"
+readonly TEST_INPUT_DIR="$5"
+readonly LOCAL="$6"
+readonly TESTS_TO_RUN="$7"
+readonly TESTS_TO_SKIP="$8"
 
 readonly ACCESS_ADMINISTRATOR_TOKEN="ewogICAgInN1YiI6ICJBY2Nlc3MgQWRtaW5pc3RyYXRvciIsCiAgICAiZ3JvdXAiOiAiQWNjZXNzIEFkbWluaXN0cmF0b3IiLAogICAgImlhdCI6ICIxNTcyMzU0MjI4IiwKICAgICJleHAiOiAiMjA3MzY1NDEyMiIKfQo.DYnQyvtpvj2OozTnC6MUMJKW7G-ckzber0q0kRnjwHQ"
 
