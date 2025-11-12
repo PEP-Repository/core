@@ -58,7 +58,7 @@ EnrolledParty GetEnrolledParty(const X509Certificate& certificate) {
   case EnrolledParty::AccessManager:
   case EnrolledParty::Transcryptor:
   case EnrolledParty::RegistrationServer:
-    if (certificate.isPEPServerCertificate()) {
+    if (certificate.isPEPServerCertificate() && !certificate.hasTLSServerEKU()) {
       return result;
     } else {
       return EnrolledParty::Unknown;
