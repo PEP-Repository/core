@@ -9,7 +9,7 @@ const std::string intermediateClientCaCommonName = "PEP Intermediate PEP Client 
 }
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate) {
-  if (IsUserEnrollmentCertificate(certificate)) {
+  if (IsUserSigningCertificate(certificate)) {
     return EnrolledParty::User;
   }
 
@@ -28,7 +28,7 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain)
   return GetEnrolledParty(*chain.begin());
 }
 
-bool IsUserEnrollmentCertificate(const X509Certificate& certificate) {
+bool IsUserSigningCertificate(const X509Certificate& certificate) {
   return certificate.getIssuerCommonName() == intermediateClientCaCommonName;
 }
 

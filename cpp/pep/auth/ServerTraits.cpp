@@ -8,7 +8,7 @@ namespace {
 const std::string intermediateServerCaCommonName = "PEP Intermediate PEP Server CA";
 const std::string intermediateServerTlsCaCommonName = "PEP Intermediate TLS CA";
 
-std::optional<std::string> GetServerEnrollmentCertificateSubject(const X509Certificate& certificate) {
+std::optional<std::string> GetServerSigningCertificateSubject(const X509Certificate& certificate) {
   if (certificate.hasTLSServerEKU()) {
     return std::nullopt; // Not the correct type of certificate
   }
@@ -21,7 +21,7 @@ std::optional<std::string> GetServerEnrollmentCertificateSubject(const X509Certi
     return std::nullopt; // Empty OU (user group)
   }
   if (result != certificate.getCommonName()) {
-    return std::nullopt; // Server facilities are enrolled with equal CN and OU, e.g. "OU=AccessManager, CN=AccessManager"
+    return std::nullopt; // Server certificates have equal CN and OU, e.g. "OU=AccessManager, CN=AccessManager"
   }
 
   return result;
@@ -53,7 +53,7 @@ bool ServerTraits::matchesCertificateSubject(const std::string& subject) const {
 }
 
 bool ServerTraits::matchesCertificate(const X509Certificate& certificate) const {
-  if (auto subject = GetServerEnrollmentCertificateSubject(certificate)) {
+  if (auto subject = GetServerSigningCertificateSubject(certificate)) {
     return this->matchesCertificateSubject(*subject);
   }
   return false;
@@ -145,7 +145,7 @@ std::optional<ServerTraits> ServerTraits::ForCertificateSubject(const std::strin
 }
 
 std::optional<ServerTraits> ServerTraits::ForCertificate(const X509Certificate& certificate) {
-  if (auto subject = GetServerEnrollmentCertificateSubject(certificate)) {
+  if (auto subject = GetServerSigningCertificateSubject(certificate)) {
     return ForCertificateSubject(*subject);
   }
   return std::nullopt;

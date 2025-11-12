@@ -15,13 +15,12 @@ enum class EnrolledParty : uint32_t {
   AccessManager = 3,
   Transcryptor = 4,
   RegistrationServer = 5,
-  AuthServer = 6,
 };
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate); // Inferred from the certificate's OU, CN, and issuer CN.
 std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain);
 
-bool IsUserEnrollmentCertificate(const X509Certificate& certificate);
+bool IsUserSigningCertificate(const X509Certificate& certificate);
 
 bool HasDataAccess(EnrolledParty party);
 
