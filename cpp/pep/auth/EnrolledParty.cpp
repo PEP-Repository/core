@@ -8,6 +8,10 @@ namespace pep {
 
 namespace {
 
+const std::string intermediateServerCaCommonName = "PEP Intermediate PEP Server CA";
+const std::string intermediateServerTlsCaCommonName = "PEP Intermediate TLS CA";
+const std::string intermediateClientCaCommonName = "PEP Intermediate PEP Client CA";
+
 const auto certificateSubjectMappings = [] {
   using map_type = boost::bimaps::bimap<std::string, EnrolledParty>;
   std::array<map_type::value_type, 4> pairs{{
@@ -18,6 +22,26 @@ const auto certificateSubjectMappings = [] {
   }};
   return map_type{pairs.begin(), pairs.end()};
 }();
+
+std::optional<std::string> GetServerCertificateSubject(const X509Certificate& certificate, bool tls) {
+  if (certificate.hasTLSServerEKU() != tls) {
+    return std::nullopt; // Not the correct type of certificate
+  }
+  auto issuer = tls ? intermediateServerTlsCaCommonName : intermediateServerCaCommonName;
+  if (certificate.getIssuerCommonName() != issuer) {
+    return std::nullopt; // Not issued by the correct intermediate CA
+  }
+
+  auto result = certificate.getOrganizationalUnit();
+  if (!result.has_value()) {
+    return std::nullopt; // Empty OU (user group)
+  }
+  if (result != certificate.getCommonName()) {
+    return std::nullopt; // Server facilities are enrolled with equal CN and OU, e.g. "OU=AccessManager, CN=AccessManager"
+  }
+
+  return result;
+}
 
 } // namespace
 
@@ -38,24 +62,16 @@ std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledPart
 }
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate) {
-  if (certificate.isPEPUserCertificate()) {
+  if (IsUserEnrollmentCertificate(certificate)) {
     return EnrolledParty::User;
   }
-  if (certificate.hasTLSServerEKU()) {
-    return std::nullopt;
-  }
-  if (!certificate.isPEPServerCertificate()) {
+
+  auto subject = GetServerCertificateSubject(certificate, false);
+  if (!subject.has_value()) {
     return std::nullopt;
   }
 
-  auto cn = certificate.getCommonName();
-  assert(cn.has_value());
-  auto mapping = certificateSubjectMappings.left.find(*cn);
-  if (mapping == certificateSubjectMappings.left.end()) {
-    return std::nullopt;
-  }
-
-  return mapping->second;
+  return GetEnrolledServer(*subject);
 }
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain) {
@@ -63,6 +79,21 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain)
     return std::nullopt;
   }
   return GetEnrolledParty(*chain.begin());
+}
+
+bool IsServerTlsCertificate(const X509Certificate& certificate) {
+  return GetServerCertificateSubject(certificate, true).has_value();
+}
+
+bool IsServerEnrollmentCertificate(const X509Certificate& certificate) {
+  if (auto party = GetEnrolledParty(certificate)) {
+    return *party != EnrolledParty::User;
+  }
+  return false;
+}
+
+bool IsUserEnrollmentCertificate(const X509Certificate& certificate) {
+  return certificate.getIssuerCommonName() == intermediateClientCaCommonName;
 }
 
 bool HasDataAccess(EnrolledParty party) {

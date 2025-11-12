@@ -2,7 +2,28 @@
 #include <pep/crypto/tests/X509Certificate.Samples.test.hpp>
 #include <gtest/gtest.h>
 
+using namespace std::literals;
+
 TEST(EnrolledParty, NotFromTlsCertificate) {
   auto cert = pep::X509Certificate::FromPem(accessmanagerTLSCertPEM);
   EXPECT_FALSE(GetEnrolledParty(cert).has_value());
+}
+
+TEST(EnrolledParty, IsntServerCertificate) {
+  std::string testCN = "TestCN";
+  std::string testOU = "TestOU";
+  pep::AsymmetricKeyPair keyPair = pep::AsymmetricKeyPair::GenerateKeyPair();
+  pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
+  pep::AsymmetricKey caPrivateKey(pepServerCAPrivateKeyPEM);
+  pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(pepServerCACertPEM);
+  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
+
+  EXPECT_FALSE(pep::IsServerEnrollmentCertificate(cert)) << "Certificate is incorrectly identified as a server certificate";
+}
+
+TEST(X509CertificateTest, IsServerTlsCertificate) {
+
+  pep::X509Certificate cert = pep::X509Certificate::FromPem(accessmanagerTLSCertPEM);
+
+  EXPECT_TRUE(pep::IsServerTlsCertificate(cert)) << "Certificate is not a server certificate.";
 }

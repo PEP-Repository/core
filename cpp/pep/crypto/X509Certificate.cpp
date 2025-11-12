@@ -41,10 +41,6 @@ constexpr std::chrono::seconds MAX_PEP_CERTIFICATE_VALIDITY_PERIOD = std::chrono
 
 namespace {
 
-const std::string intermediateServerCaCommonName = "PEP Intermediate PEP Server CA";
-const std::string intermediateServerTlsCaCommonName = "PEP Intermediate TLS CA";
-const std::string intermediateClientCaCommonName = "PEP Intermediate PEP Client CA";
-
 std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
 
   int index = X509_NAME_get_index_by_NID(name, nid, -1);
@@ -278,29 +274,6 @@ std::optional<std::string> X509Certificate::getIssuerCommonName() const {
   }
   X509_NAME* issuerName = X509_get_issuer_name(mInternal);
   return SearchOIDinName(issuerName, NID_commonName);
-}
-
-/**
- * @brief Check if the X509Certificate is a PEP/TLS certificate for a PEP server.
- */
-bool X509Certificate::isPEPServerCertificate() const {
-  if (getCommonName() != getOrganizationalUnit()) {
-    return false;
-  }
-
-  auto issuerCn = getIssuerCommonName();
-
-  // If the certificate has the TLS server EKU, check if the issuer is the intermediate TLS CA
-  if (hasTLSServerEKU()) {
-    return (issuerCn == intermediateServerTlsCaCommonName);
-  }
-
-  // If not a TLS server certificate, check if it is a PEP server certificate
-  return (issuerCn == intermediateServerCaCommonName);
-}
-
-bool X509Certificate::isPEPUserCertificate() const {
-  return this->getIssuerCommonName() == intermediateClientCaCommonName;
 }
 
 std::chrono::sys_seconds X509Certificate::getNotBefore() const {

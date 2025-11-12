@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
@@ -28,11 +29,8 @@ private:
 protected:
   void check() const override {
     auto& certificate = *identity_->getCertificateChain().cbegin();
-    if (!certificate.isPEPServerCertificate()) {
-      throw std::runtime_error("certificateChain's leaf certificate must be a PEP server certificate");
-    }
-    if (certificate.hasTLSServerEKU()) {
-      throw std::runtime_error("certificateChain's leaf certificate must not be a TLS certificate");
+    if (!IsServerEnrollmentCertificate(certificate)) {
+      throw std::runtime_error("certificateChain's leaf certificate must be a PEP server enrollment certificate");
     }
     Server::Parameters::check();
   }
