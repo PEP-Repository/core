@@ -18,7 +18,7 @@ public:
     const OAuthProvider::Parameters& getOAuthParams() const;
 
   protected:
-    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::AuthServer; }
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::AuthServer(); }
     void check() const override;
 
   private:

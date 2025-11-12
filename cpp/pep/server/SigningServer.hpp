@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/auth/EnrolledParty.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
@@ -27,16 +27,12 @@ private:
   std::shared_ptr<X509Identity> identity_;
 
 protected:
-  virtual EnrolledParty enrollsAs() const noexcept = 0;
+  virtual ServerTraits serverTraits() const noexcept = 0;
 
   void check() const override {
-    auto certFor = GetEnrolledParty(*identity_->getCertificateChain().cbegin());
-    if (!certFor.has_value()) {
-      throw std::runtime_error("certificateChain's leaf certificate must be a PEP server enrollment certificate");
-    }
-    auto required = this->enrollsAs();
-    if (certFor != required) {
-      throw std::runtime_error("Server enrolled as " + std::to_string(ToUnderlying(required)) + " cannot be enrolled with certificate chain for " + std::to_string(ToUnderlying(*certFor)));
+    auto traits = this->serverTraits();
+    if (!traits.matchesCertificateChain(identity_->getCertificateChain())) {
+      throw std::runtime_error("Invalid certificate chain for " + traits.description());
     }
 
     Server::Parameters::check();

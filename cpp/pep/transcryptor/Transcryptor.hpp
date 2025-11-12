@@ -28,7 +28,7 @@ class Transcryptor : public SigningServer {
  public:
   class Parameters : public SigningServer::Parameters {
   protected:
-    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::Transcryptor; }
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::Transcryptor(); }
 
   public:
     Parameters(

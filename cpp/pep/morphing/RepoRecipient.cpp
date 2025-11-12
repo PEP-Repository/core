@@ -1,6 +1,6 @@
 #include <pep/morphing/RepoRecipient.hpp>
 
-#include <pep/auth/EnrolledParty.hpp>
+#include <pep/auth/ServerTraits.hpp>
 
 #include <cassert>
 #include <stdexcept>

@@ -35,7 +35,7 @@ public:
     friend class StorageFacility;
 
   protected:
-    EnrolledParty enrollsAs() const noexcept override { return EnrolledParty::StorageFacility; }
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::StorageFacility(); }
 
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
