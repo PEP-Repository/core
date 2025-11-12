@@ -184,4 +184,15 @@ constexpr auto MoveElements = std::views::transform([](auto& elem) { return std:
   return result;
 }
 
+auto OnlyItemIn(auto&& container) {
+  const auto begin = container.begin(), end = container.end();
+  if (begin == end) {
+    throw std::runtime_error("Can't get item from empty container");
+  }
+  if (auto i = begin; ++i != end) {
+    throw std::runtime_error("Container has more than one item");
+  }
+  return *begin;
+}
+
 }
