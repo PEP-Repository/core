@@ -152,7 +152,7 @@ else
 fi
 
 if [ -n "${BUILD_MODE-}" ]; then
-  >&2 printGreen "It is not possible to specify a mode directory in a non-local build"
+  >&2 printGreen "It is not possible to specify a build mode in a non-local build"
   usage
 fi
 readonly BUILD_MODE="${BUILD_MODE:-.}"
