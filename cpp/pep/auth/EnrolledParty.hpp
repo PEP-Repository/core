@@ -18,7 +18,7 @@ enum class EnrolledParty : uint32_t {
 };
 
 std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledParty party);
-std::optional<EnrolledParty> GetEnrolledServer(const std::string& commonName, const std::string& organizationalUnit);
+std::optional<EnrolledParty> GetEnrolledServer(const std::string& ou);
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate); // Inferred from the certificate's OU, CN, and issuer CN.
 std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain);

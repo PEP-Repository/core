@@ -199,8 +199,8 @@ void KeyServer::checkValid(const EnrollmentRequest& request) const {
   }
   auto ou = request.mCertificateSigningRequest.getOrganizationalUnit().value();
 
-  if (GetEnrolledServer(cn, ou).has_value()) {
-    throw Error("Invalid certificate subject for user enrollment request");
+  if (GetEnrolledServer(ou).has_value()) {
+    throw Error("Can't enroll user into server group " + ou);
   }
 
   const auto token = OAuthToken::Parse(request.mOAuthToken);

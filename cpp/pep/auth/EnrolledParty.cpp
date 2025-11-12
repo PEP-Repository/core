@@ -21,13 +21,8 @@ const auto certificateSubjectMappings = [] {
 
 } // namespace
 
-std::optional<EnrolledParty> GetEnrolledServer(const std::string& commonName, const std::string& organizationalUnit) {
-  if (commonName != organizationalUnit) {
-    // Server facilities are enrolled with equal CN and OU, e.g. "OU=AccessManager, CN=AccessManager"
-    return std::nullopt;
-  }
-
-  if (auto it = certificateSubjectMappings.left.find(organizationalUnit);
+std::optional<EnrolledParty> GetEnrolledServer(const std::string& ou) {
+  if (auto it = certificateSubjectMappings.left.find(ou);
     it != certificateSubjectMappings.left.end()) {
     return it->second;
   }
