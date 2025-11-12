@@ -1200,9 +1200,19 @@ class MailSender(Connector):
                 # Check if this is a reminder email
                 is_reminder = (reason == "Reminder")
 
+                # Calculate deadline as start_date + 14 days
+                deadline = "binnen 2 weken"
+                if start_dates and survey_index < len(start_dates):
+                    try:
+                        deadline_date = datetime.fromisoformat(start_dates[survey_index])+ timedelta(days=14)
+                        deadline = deadline_date.isoformat()
+                    except ValueError:
+                        self.log(f"Invalid date format for start_date at index {survey_index}", 
+                                level=logging.WARNING, tag=self.LOG_TAG)
+
                 template_vars = {
                     "recipient_name": recipient_name,
-                    "deadline": start_dates[survey_index] if start_dates and survey_index < len(start_dates) else "binnen 2 weken",
+                    "deadline": deadline
                 }
 
                 # Load custom HTML content if specified
