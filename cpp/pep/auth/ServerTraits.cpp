@@ -49,7 +49,7 @@ std::string ServerTraits::defaultId() const {
 }
 
 bool ServerTraits::matchesCertificateSubject(const std::string& subject) const {
-  return this->enrollmentSubject() == subject;
+  return this->userGroups().contains(subject);
 }
 
 bool ServerTraits::matchesCertificate(const X509Certificate& certificate) const {
