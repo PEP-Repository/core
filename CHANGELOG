@@ -25,6 +25,8 @@ Release 1.5 (started 2025-09-01):
 - #2656: The "pepcli pull" command now also deals with unknown files and (sub)directories in the download directory, which
   can a.o. prevent (resumed) downloads from failing because "Data storage path already exists".
 
+- #2732: Corrected documentation links displayed by "pepcli [...] --help".
+
 MANUAL CHANGES REQUIRED:
 
 - As per verbal instruction by @smeis: redeploy the `pep-release` VM.
