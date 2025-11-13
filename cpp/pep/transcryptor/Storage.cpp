@@ -5,6 +5,7 @@
 #include <pep/rsk/Proofs.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
@@ -44,6 +45,9 @@
 // To detect and record whether the migration has been performed,
 // we added the MigrationRecord table, see the ensureInitialized function.
 
+using namespace std::chrono;
+using namespace std::literals;
+
 namespace pep {
 
 using namespace sqlite_orm;
@@ -64,7 +68,7 @@ struct MigrationRecord {
 
     RandomBytes(this->checksumNonce, 16);
     this->toVersion = toVersion;
-    this->timestamp = Timestamp().getTime();
+    this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   }
 
   uint64_t checksum() const {
@@ -78,7 +82,7 @@ struct MigrationRecord {
 
   int64_t seqno{};
   uint64_t toVersion{};
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
   std::vector<char> checksumNonce;
 };
 
@@ -103,8 +107,8 @@ struct TicketRequestRecord {
 
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
-    this->request = Serialization::ToCharVector(ticketRequest);
-    this->timestamp = Timestamp().getTime();
+    this->request = RangeToVector(Serialization::ToString(ticketRequest));
+    this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
     this->certificateChain = certificateChain;
   }
 
@@ -154,7 +158,7 @@ struct TicketRequestRecord {
 
   std::string id;
   std::string accessGroup;
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
 
   std::vector<char> request; // SignedTicketRequest
   int64_t pseudonymSet{};
@@ -205,7 +209,8 @@ struct CertificateChainRecord {
 // Records an issued ticket
 struct TicketIssueRecord {
   TicketIssueRecord() = default;
-  TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts) : timestamp(ts.getTime()), request(request), columnSet(columnSet) {
+  TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts)
+  : timestamp(TicksSinceEpoch<milliseconds>(ts)), request(request), columnSet(columnSet) {
     RandomBytes(this->checksumNonce, 16);
   }
 
@@ -218,7 +223,7 @@ struct TicketIssueRecord {
 
   int64_t seqno{};
   std::vector<char> checksumNonce;
-  int64_t timestamp{};
+  database::UnixMillis timestamp{};
 
   int64_t request{}; // seqno of related TicketRequestRecord
   int64_t columnSet{}; // seqno of ColumnSetRecord granted access to
@@ -252,7 +257,7 @@ struct PseudonymSetRecord {
 struct PseudonymSetPseudonymRecord {
   PseudonymSetPseudonymRecord() = default;
   PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set) : set(set) {
-    this->pseudonym = Serialization::ToCharVector(pseudonym.getValidCurvePoint());
+    this->pseudonym = RangeToVector(Serialization::ToString(pseudonym.getValidCurvePoint()));
     RandomBytes(this->checksumNonce, 16);
   }
 
@@ -478,20 +483,6 @@ auto ts_create_db(const std::string& path) {
   );
 }
 
-[[nodiscard]] bool RemovesDatabaseElement(sync_schema_result result) {
-  switch (result) {
-    case sync_schema_result::old_columns_removed:
-    case sync_schema_result::new_columns_added_and_old_columns_removed:
-    case sync_schema_result::dropped_and_recreated:
-      return true;
-    case sync_schema_result::new_table_created:
-    case sync_schema_result::already_in_sync:
-    case sync_schema_result::new_columns_added:
-      return false; // fine, no removal here
-  }
-  throw std::runtime_error("Unknown sync_schema_result: Cannot verify that no data was lost during synchronization of database schemas.");
-}
-
 }
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
@@ -575,39 +566,7 @@ void TranscryptorStorage::ensureInitialized() {
 }
 
 void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
-  bool all_in_sync = true;
-
-  try {
-    bool printed_header = false;
-    for(auto&& p : mStorage->raw.sync_schema(true)) {
-      if (p.second != sync_schema_result::already_in_sync) {
-        if (!printed_header) {
-          printed_header = true;
-          LOG(LOG_TAG, warning) << "Synchronizing database schemas ... ";
-        }
-        LOG(LOG_TAG, warning) << "  " << p.first
-            << ": " << p.second;
-      }
-
-      // Currently, no migration step should remove tables or columns,
-      // so let's make sure it doesn't!
-      if (RemovesDatabaseElement(p.second)) {
-        LOG(LOG_TAG, error) << "Cannot synchronise transcryptor "
-             "database for doing "
-             "so would lead to unforeseen data loss, probably by an"
-             "oversight in our SQL ORM code.";
-        throw Error("Transcryptor database initialization failed.");
-      }
-
-      if (p.second != sync_schema_result::already_in_sync)
-        all_in_sync = false;
-    }
-  } catch (const std::system_error& e) {
-    LOG(LOG_TAG, error) << "Database synchronization failed: " << e.what();
-    throw;
-  }
-
-  if (all_in_sync) {
+  if (!mStorage->syncSchema()) {
     LOG(LOG_TAG, info) << "All database schemas in sync;"
       << " checking whether migration has been performed.";
 
@@ -689,7 +648,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
     // store old checksum before we modify record
     uint64_t old_checksum = record.checksum_v1();
 
-    auto request = Serialization::FromCharVector<SignedTicketRequest2>(record.request);
+    auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
 
     if (!request.mLogSignature) {
       LOG(LOG_TAG, warning) << "Ticket request record number "
@@ -705,7 +664,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
     if (chainId)
       record.certificateChain = chainId;
 
-    record.request = Serialization::ToCharVector(std::move(request));
+    record.request = RangeToVector(Serialization::ToString(std::move(request)));
 
     // and, finally, compensate for the checksum change:
     record.checksumCorrection = old_checksum ^ record.checksum();
@@ -851,7 +810,7 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
       leafs.push_back(Serialization::ToString(cert));
       os_fingerprint << Sha256().digest(leafs.back());
     }
-    fingerprint = os_fingerprint.str();
+    fingerprint = std::move(os_fingerprint).str();
   }
   auto fingerprint_it = fingerprint.begin();
 
@@ -994,12 +953,11 @@ void TranscryptorStorage::logIssuedTicket(
         << std::quoted(accessGroup)
         << ") does not match access group on request ("
         << std::quoted(reqRecord->accessGroup) <<  ")";
-    throw Error(os.str());
+    throw Error(std::move(os).str());
   }
 
-  int64_t drift = timestamp.getTime() - Timestamp().getTime();
-  drift = drift > 0 ? drift : -drift;
-  if (drift/1000 > 60*5) {
+  auto drift = Abs(timestamp - TimeNow());
+  if (drift > 5min) {
     throw Error("Timestamp on ticket too far from current time");
   }
 

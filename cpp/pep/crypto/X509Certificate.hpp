@@ -33,8 +33,8 @@ class X509Certificate {
   [[nodiscard]] bool verifyAuthorityKeyIdentifier(const X509Certificate& issuerCert) const;
   bool isPEPServerCertificate() const;
   bool hasTLSServerEKU() const;
-  std::chrono::system_clock::time_point getNotBefore() const;
-  std::chrono::system_clock::time_point getNotAfter() const;
+  std::chrono::sys_seconds getNotBefore() const;
+  std::chrono::sys_seconds getNotAfter() const;
   bool isCurrentTimeInValidityPeriod() const;
   std::string toPem() const;
   std::string toDer() const;
@@ -62,9 +62,9 @@ class X509Certificates: public std::list<X509Certificate> {
   explicit X509Certificates(const std::string& in);
 
   std::string toPem() const;
+  bool isCurrentTimeInValidityPeriod() const;
 
   friend class X509CertificateChain;
-
 };
 
 class X509RootCertificates: public X509Certificates {
@@ -119,12 +119,27 @@ class X509CertificateSigningRequest {
   std::optional<std::string> searchOIDinSubject(int nid) const;
 };
 
+class X509Identity {
+private:
+  AsymmetricKey mPrivateKey;
+  X509CertificateChain mCertificateChain;
+
+  X509Identity(AsymmetricKey privateKey);
+
+public:
+  X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain);
+
+  const AsymmetricKey& getPrivateKey() const noexcept { return mPrivateKey; }
+  const X509CertificateChain& getCertificateChain() const noexcept { return mCertificateChain; }
+
+  static X509Identity MakeUncertified(AsymmetricKey privateKey); // Only for test purposes
+};
+
 class X509IdentityFilesConfiguration {
 private:
   std::filesystem::path mPrivateKeyFilePath;
   std::filesystem::path mCertificateChainFilePath;
-  AsymmetricKey mPrivateKey;
-  X509CertificateChain mCertificateChain;
+  X509Identity mIdentity;
 
 public:
   X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix);
@@ -132,8 +147,7 @@ public:
 
   const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
   const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }
-  const AsymmetricKey& getPrivateKey() const noexcept { return mPrivateKey; }
-  const X509CertificateChain& getCertificateChain() const noexcept { return mCertificateChain; }
+  const X509Identity& identity() const noexcept { return mIdentity; }
 };
 
 }

@@ -1,9 +1,8 @@
 #include <pep/accessmanager/Storage.hpp>
 #include <pep/accessmanager/AccessManager.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp>
-#include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/auth/UserGroup.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/crypto/CPRNG.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
@@ -24,6 +23,21 @@ void EnsureMapContains(std::unordered_map<std::string, TValue>& map, const std::
     assert(position != map.cend());
     assert(position == map.find(key));
   });
+}
+
+enum class AccessMode {
+  read,
+  write
+};
+void EnsureStructureMetadataAccess(AccessMode mode, StructureMetadataType subjectType, std::string_view userGroup) {
+  if (subjectType == StructureMetadataType::User || subjectType == StructureMetadataType::UserGroup) {
+    UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, userGroup);
+  }
+  else {
+    if (mode == AccessMode::write) {
+      UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+    }
+  }
 }
 
 }
@@ -156,12 +170,31 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Removed user " << Logging::Escape(x.mUid);
   }
   for (auto& x : request.mAddUserIdentifier) {
-    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid);
+    UserIdFlags flags = UserIdFlags::none;
+    if (x.mIsDisplayId) {
+      flags |= UserIdFlags::isDisplayId;
+    }
+    if (x.mIsPrimaryId) {
+      flags |= UserIdFlags::isPrimaryId;
+    }
+    mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid, flags);
     LOG(LOG_TAG, info) << "Added user identifier " << Logging::Escape(x.mNewUid) << " for user " << Logging::Escape(x.mExistingUid);
   }
   for (auto& x : request.mRemoveUserIdentifier) {
     mStorage->removeIdentifierForUser(x.mUid);
     LOG(LOG_TAG, info) << "Removed user identifier " << Logging::Escape(x.mUid);
+  }
+  for (auto& x : request.mSetPrimaryId) {
+    mStorage->setPrimaryIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Set identifier " << Logging::Escape(x) << " as primary identifier.";
+  }
+  for (auto& x : request.mUnsetPrimaryId) {
+    mStorage->unsetPrimaryIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Unset identifier " << Logging::Escape(x) << " as primary identifier.";
+  }
+  for (auto& x : request.mSetDisplayId) {
+    mStorage->setDisplayIdentifierForUser(x);
+    LOG(LOG_TAG, info) << "Set identifier " << Logging::Escape(x) << " as display identifier.";
   }
   for (auto& x : request.mCreateUserGroup) {
     mStorage->createUserGroup(x.mUserGroup);
@@ -185,12 +218,15 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Removed user from user group " << Logging::Escape(x.mGroup);
     if (x.mBlockTokens) {
       return rxcpp::rxs::iterate(storage->getAllIdentifiersForUser(internalUserId)).concat_map([group=x.mGroup, accessManager](const std::string& uid) {
-        TokenBlockingCreateRequest tokenBlockRequest;
-        tokenBlockRequest.note="User removed from user group";
-        tokenBlockRequest.target.subject=uid;
-        tokenBlockRequest.target.userGroup=group;
-        //tokenBlockRequest.target.issueDateTime defaults to current time
-        return accessManager->mKeyserver->sendRequest<TokenBlockingCreateResponse>(Signed(tokenBlockRequest, accessManager->getCertificateChain(), accessManager->getPrivateKey()));
+        TokenBlockingCreateRequest tokenBlockRequest{
+          .target = {
+            .subject = uid,
+            .userGroup = group,
+            .issueDateTime = TimeNow(),
+          },
+          .note = "User removed from user group",
+        };
+        return accessManager->mKeyServerProxy.requestTokenBlockingCreate(std::move(tokenBlockRequest));
       }).op(RxInstead(FakeVoid()));
     }
     return rxcpp::rxs::just(FakeVoid());
@@ -210,10 +246,29 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
     const std::string& userGroup) {
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
   std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId);
-  if (!userId) {
+  if (userId) {
+    auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
+    if (!primary) {
+      mStorage->setPrimaryIdentifierForUser(*userId, request.mPrimaryId);
+    }
+    else if (primary != request.mPrimaryId) {
+      LOG(LOG_TAG, error) << "Found a user based on the primary ID we received from the authentication source (" << request.mPrimaryId
+        << "), but according to our storage a different id for this user is the primary ID. (" << *primary << ")";
+      throw Error("There is a problem with your user account. Please contact support to resolve this issue.");
+    }
+  }
+  else {
     userId = mStorage->findInternalUserId(request.mAlternativeIds);
     if (userId) {
-      mStorage->addIdentifierForUser(*userId, request.mPrimaryId);
+      auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
+      if (!primary) {
+        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId);
+      }
+      else{
+        LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID (" << *primary
+          << "), that does not match the primary ID we received from the authentication source (" << request.mPrimaryId << ").";
+        throw Error("A different user account already exists for the provided user ID. Please contact support to resolve this issue.");
+      }
     }
   }
   if (!userId) {
@@ -492,15 +547,16 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     cgFilter.columnGroups = std::vector<std::string>{query.mColumnGroupFilter};
   }
 
+  auto timestamp = query.mAt ? *query.mAt : TimeNow(); // Not using optional<>.value_or to prevent TimeNow() from being evaluated
   // All columns in the system have a explicit relation to columnGroup '*', so they will be included here.
-  auto foundColumnGroupColumns = mStorage->getColumnGroupColumns(query.mAt, cgcFilter);
+  auto foundColumnGroupColumns = mStorage->getColumnGroupColumns(timestamp, cgcFilter);
 
   // Keep track of which columns are in which columnGroup. This map will contain all info necessary for further steps.
   std::map<std::string, std::vector<std::string>> columnsByColumnGroup;
   if(query.mColumnFilter.empty()) {
     // If we do not filter on columns, we want to find columnGroups that have no columns assigned to them.
     // These would not show up in foundColumnGroupColumns, so add them explicitly.
-    auto columngroups = mStorage->getColumnGroups(query.mAt, cgFilter);
+    auto columngroups = mStorage->getColumnGroups(timestamp, cgFilter);
     for (auto& cg : columngroups){
       columnsByColumnGroup[cg.name] = {};
     }
@@ -520,7 +576,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   if(!query.mColumnFilter.empty() || !query.mColumnGroupFilter.empty()){
     cgarFilter.columnGroups = RangeToVector(std::views::keys(columnsByColumnGroup));
   }
-  auto cgars = mStorage->getColumnGroupAccessRules(query.mAt, cgarFilter);
+  auto cgars = mStorage->getColumnGroupAccessRules(timestamp, cgarFilter);
 
   if(!query.mUserGroupFilter.empty() || !query.mColumnGroupModeFilter.empty()) {
     // If there were additional cgar filters in place, we need to go back on the found columngroups and columns and apply another narrowing filter, showing only those
@@ -558,14 +614,14 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   }
 
   std::set<std::string> foundParticipantGroups{};
-  auto pgars = mStorage->getParticipantGroupAccessRules(query.mAt, pgarFilter);
+  auto pgars = mStorage->getParticipantGroupAccessRules(timestamp, pgarFilter);
 
   if(!query.mParticipantGroupModeFilter.empty() || !query.mUserGroupFilter.empty()){
     // The pgar filters are narrowing the found participants as well, only show pgs with pgars
     transform(pgars, foundParticipantGroups, [](const auto& pgar) { return pgar.participantGroup;});
   } else{
     // Get the participantgroups as normal.
-    auto pgs = mStorage->getParticipantGroups(query.mAt, pgFilter);
+    auto pgs = mStorage->getParticipantGroups(timestamp, pgFilter);
     transform(pgs, foundParticipantGroups,[](const auto& pg) { return pg.name;});
   }
 
@@ -586,7 +642,7 @@ UserQueryResponse AccessManager::Backend::performUserQuery(const UserQuery& quer
 ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAccessRequest& request,
                                                              const std::string& userGroup) {
   ColumnAccess result;
-  auto now = Timestamp();
+  auto now = TimeNow();
 
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit "read-meta" access to all
@@ -656,7 +712,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
 ParticipantGroupAccess AccessManager::Backend::handleParticipantGroupAccessRequest(
     const ParticipantGroupAccessRequest& request, const std::string& userGroup) {
   ParticipantGroupAccess result;
-  auto now = Timestamp();
+  auto now = TimeNow();
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit full access to all participant
                                                        // groups
@@ -738,10 +794,10 @@ ColumnNameMappingResponse AccessManager::Backend::handleColumnNameMappingRequest
 
 std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetadataRequest(
     const StructureMetadataRequest& request,
-    [[maybe_unused]] const std::string& userGroup) {
-  (void) userGroup; // Currently, any user group can read metadata
+    const std::string& userGroup) {
+  EnsureStructureMetadataAccess(AccessMode::read, request.subjectType, userGroup);
 
-  const Timestamp now;
+  const Timestamp now = TimeNow();
   return {mStorage->getStructureMetadata(
       now,
       request.subjectType,
@@ -754,7 +810,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetad
 void AccessManager::Backend::handleSetStructureMetadataRequestHead(
     const SetStructureMetadataRequest& request,
     const std::string& userGroup) {
-  UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+  EnsureStructureMetadataAccess(AccessMode::write, request.subjectType, userGroup);
 
   for (const auto& [subject, key] : request.remove) {
     mStorage->removeStructureMetadata(request.subjectType, subject, key);
@@ -765,7 +821,7 @@ void AccessManager::Backend::handleSetStructureMetadataRequestEntry(
     StructureMetadataType subjectType,
     const StructureMetadataEntry& entry,
     const std::string& userGroup) {
-  UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+  EnsureStructureMetadataAccess(AccessMode::write, subjectType, userGroup);
 
   mStorage->setStructureMetadata(subjectType, entry.subjectKey.subject, entry.subjectKey.key, entry.value);
 }

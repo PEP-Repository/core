@@ -11,8 +11,10 @@ namespace pep {
 class DataEnumerationRequest2 {
 public:
   SignedTicket2 mTicket;
-  std::optional<IndexList> mColumns;
-  std::optional<IndexList> mPseudonyms;
+  // Falls back to all columns in ticket
+  std::optional<IndexList> mColumns{};
+  // Falls back to all pseudonyms in ticket
+  std::optional<IndexList> mPseudonyms{};
 };
 
 class DataEnumerationEntry2 {

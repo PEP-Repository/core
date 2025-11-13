@@ -2,7 +2,6 @@
 
 #include <pep/crypto/Timestamp.hpp>
 
-#include <ctime>
 #include <string>
 
 namespace pep::tokenBlocking {

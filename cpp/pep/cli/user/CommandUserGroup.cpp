@@ -10,15 +10,15 @@ CommandUser::CommandUserGroup::CommandUserGroup(CommandUser& parent)
 
 class CommandUser::CommandUserGroup::UserGroupSubCommand : public ChildCommandOf<CommandUser::CommandUserGroup> {
 public:
-  using ClientMethod = rxcpp::observable<pep::FakeVoid> (pep::CoreClient::*)(pep::UserGroup);
+  using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(pep::UserGroup) const;
 
 private:
-  ClientMethod mMethod;
+  AmProxyMethod mMethod;
 
 public:
   UserGroupSubCommand(const std::string& name,
                       const std::string& description,
-                      ClientMethod method,
+                      AmProxyMethod method,
                       CommandUserGroup& parent)
     : ChildCommandOf<CommandUserGroup>(name, description, parent),
       mMethod(method) {}
@@ -41,7 +41,8 @@ protected:
       pep::UserGroup userGroup;
       userGroup.mMaxAuthValidity = this->getParameterValues().getOptional<std::chrono::seconds>("max-auth-validity");
       userGroup.mName = this->getParameterValues().get<std::string>("name");
-      return ((*client).*mMethod)(userGroup);
+      auto& am = *client->getAccessManagerProxy();
+      return (am.*mMethod)(userGroup);
     });
   }
 };
@@ -61,7 +62,7 @@ protected:
 
   int execute() override {
     return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-      return client->removeUserGroup(this->getParameterValues().get<std::string>("name"));
+      return client->getAccessManagerProxy()->removeUserGroup(this->getParameterValues().get<std::string>("name"));
     });
   }
 };
@@ -70,9 +71,9 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CommandUser::CommandUser
   return {
     std::make_shared<UserGroupSubCommand>("create",
                                           "Create new user group",
-                                          &pep::CoreClient::createUserGroup,
+                                          &pep::AccessManagerProxy::createUserGroup,
                                           *this),
-    std::make_shared<UserGroupSubCommand>("modify", "Modify user group", &pep::CoreClient::modifyUserGroup, *this),
+    std::make_shared<UserGroupSubCommand>("modify", "Modify user group", &pep::AccessManagerProxy::modifyUserGroup, *this),
     std::make_shared<UserGroupRemoveCommand>(*this),
   };
 }

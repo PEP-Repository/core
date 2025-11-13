@@ -88,13 +88,13 @@ pep::commandline::Parameters CommandExport::getSupportedParameters() const {
 }
 
 int CommandExport::ChildCommand::execute() {
-  return executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
+  return executeEventLoopFor(false, [this](std::shared_ptr<pep::CoreClient> client) {
     return client->getGlobalConfiguration().map([this](std::shared_ptr<pep::GlobalConfiguration> globalConfig) {
       const auto idToText = [globalConfig](const ParticipantIdentifier& id) {
         return globalConfig->getUserPseudonymFormat().makeUserPseudonym(id.getLocalPseudonym());
       };
       const auto config = commonConfiguration(idToText);
-      const auto existingDownloadDir = DownloadDirectory::Create(config.inputDirectory, globalConfig);
+      const auto existingDownloadDir = DownloadDirectory::Create(config.inputDirectory, globalConfig, [](std::shared_ptr<const Progress>) {}); // TODO: report (instead of ignore) progress
       abortIfNotWritable(config.outputFile, config.allowOverwrite); // early check, before doing any work
       const auto table = pep::structuredOutput::TableFrom(*existingDownloadDir, config.conversion);
       safeWriteOutput(table, config.outputFile, config.allowOverwrite);

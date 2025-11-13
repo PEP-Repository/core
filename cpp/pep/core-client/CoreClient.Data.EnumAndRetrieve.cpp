@@ -3,13 +3,13 @@
 
 #include <pep/core-client/CoreClient.hpp>
 
-#include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxGroupToVectors.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/utils/Shared.hpp>
-
-#include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
 #include <algorithm>
 #include <exception>
@@ -116,7 +116,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
     [this, ctx](rxcpp::subscriber<EnumerateAndRetrieveResult> subscriber) {
       ctx->subscriber = subscriber;
       this->requestTicket2(*ctx->requestTicketOpts) // Get (indexed) ticket
-          // .op(RxGetOne("ticket")) // Doesn't compile: see https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/1690#note_29119
+        .op(RxGetOne())
         .flat_map([this, ctx](const IndexedTicket2& indexedTicket) {
           ctx->signedTicket = indexedTicket.getTicket();
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());
@@ -169,12 +169,10 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
               colIdxs.begin(), colIdxs.end()));
           }
 
-          return clientStorageFacility->sendRequest(std::make_shared<std::string>(Serialization::ToString(
-              sign(enumRequest))))
+          return storageFacilityProxy->requestDataEnumeration(std::move(enumRequest))
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
-              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, std::string rawResponse) {
-                auto response = Serialization::FromString<DataEnumerationResponse2>(std::move(rawResponse));
+              [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, DataEnumerationResponse2 response) {
                 for (auto& entry: response.mEntries) {
                   if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.mFileSize <= ctx->dataSizeLimit)) {
                     // This entry will include data: save it for data retrieval
@@ -201,11 +199,15 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                 return rxcpp::observable<>::empty<FakeVoid>();
               }
 
+              auto entryCount = entries->size();
+              auto ids = RangeToVector(*entries
+                | std::ranges::views::transform(std::mem_fn(&DataEnumerationEntry2::mId)));
+
               // Create an observable that'll produce AES keys
               rxcpp::observable<FakeVoid> getKeys = this->unblindAndDecryptKeys(
-                  convertDataEnumerationEntries(*entries, *ctx->pseudonyms), ctx->signedTicket)
-                .map([ctx, entries](const std::vector<AESKey>& keys) {
-                  if (keys.size() != entries->size()) {
+                  ConvertDataEnumerationEntries(std::move(*entries), *ctx->pseudonyms), ctx->signedTicket)
+                .map([ctx, entryCount](const std::vector<AESKey>& keys) {
+                  if (keys.size() != entryCount) {
                     throw std::runtime_error("Received unexpected number of plaintext keys");
                   }
                   assert(ctx->keys.empty());
@@ -216,10 +218,6 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                 });
 
               // Create an observable that'll retrieve (encrypted) pages from Storage Facility
-              std::vector<std::string> ids;
-              ids.reserve(entries->size());
-              std::transform(entries->cbegin(), entries->cend(), std::back_inserter(ids),
-                             [](const DataEnumerationEntry2& entry) { return entry.mId; });
               rxcpp::observable<FakeVoid> getPages = BatchedRetrieve<std::shared_ptr<DataPayloadPage>>(
                 ids,
                 [](size_t offset,
@@ -232,20 +230,8 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                   DataReadRequest2 readRequest;
                   readRequest.mIds = ids;
                   readRequest.mTicket = *ticket;
-                  return clientStorageFacility->sendRequest(
-                      std::make_shared<std::string>(
-                        Serialization::ToString(
-                          SignedDataReadRequest2(
-                            readRequest,
-                            certificateChain,
-                            privateKey))))
-                    .map([](
-                      std::string rawPage) {
-                      return MakeSharedCopy(
-                        Serialization::FromString<DataPayloadPage>(
-                          std::move(
-                            rawPage)));
-                    });
+                  return storageFacilityProxy->requestDataRead(std::move(readRequest))
+                    .map([](DataPayloadPage page) { return MakeSharedCopy(std::move(page)); });
                 })
                 .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->mIndex; }))
                 .map([ctx](std::shared_ptr<IndexedPages> pages) {
@@ -282,11 +268,10 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                       auto ipage = ctx->pages->find(static_cast<uint32_t>(i));
                       if (ipage != ctx->pages->cend()) {
                         auto& pages = *ipage->second;
-                        std::stringstream buffer;
+                        std::ostringstream buffer;
                         for (size_t i = 0U; i < pages.size(); ++i) {
                           assert(pages[i]->mPageNumber == i);
-                          auto chunk = pages[i]->decrypt(key, entry.mMetadata);
-                          buffer << *chunk;
+                          buffer << pages[i]->decrypt(key, entry.mMetadata);
                         }
                         res.mData = std::move(buffer).str();
                       }

@@ -4,4 +4,5 @@
 	<String Id="NewerVersionInstalled" Overridable="yes">Er is een nieuwere versie van PEP Assessor geïnstalleerd. Om deze te vervangen door een oudere versie, verwijdert u eerst de bestaande installatie.</String>
 	<String Id="LaunchPepAssessor" Overridable="yes">PEP Assessor starten</String>
 	<String Id="PepCommandPrompt" Overridable="yes">PEP Opdrachtregel</String>
+	<String Id="PepDownloadAll" Overridable="yes">PEP Download Alles</String>
 </WixLocalization>

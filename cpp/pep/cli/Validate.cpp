@@ -1,3 +1,4 @@
+#include <pep/async/RxIterate.hpp>
 #include <pep/application/Application.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/Exceptions.hpp>
@@ -86,8 +87,8 @@ private:
             std::make_shared<std::unordered_map<uint32_t, ParticipantData>>(),
             [](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> data, pep::EnumerateAndRetrieveResult result) { return AddEnumerateAndRetrieveResult(data, result); }
           )
-          .flat_map([](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> data) { return rxcpp::observable<>::iterate(*data); }) // Convert to an observable<key-value-pair>
-          .map([](std::pair<const uint32_t, ParticipantData> pair) { return ValidateData(pair.second); }) // Validate each ParticipantData
+          .flat_map([](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> data) { return pep::RxIterate(std::move(*data)); }) // Convert to an observable<key-value-pair>
+          .map([](const std::pair<const uint32_t, ParticipantData>& pair) { return ValidateData(pair.second); }) // Validate each ParticipantData
           .filter([](int returnValue) {return returnValue != 0; }) // Keep only error return values
           .concat(rxcpp::observable<>::just(0)) // Append default return value 0 = everything OK
           .map(

@@ -45,8 +45,8 @@ std::filesystem::path ValidateDirectory(const std::filesystem::path& raw) {
 }
 
 
-DownloadDirectory::DownloadDirectory(const std::filesystem::path& root, std::shared_ptr<GlobalConfiguration> globalConfig)
-  : mRoot(ValidateDirectory(root)), mMetadata(mRoot, globalConfig), mGlobalConfig(globalConfig) {
+DownloadDirectory::DownloadDirectory(const std::filesystem::path& root, std::shared_ptr<GlobalConfiguration> globalConfig, const Progress::OnCreation& onCreateProgress)
+  : mRoot(ValidateDirectory(root)), mMetadata(mRoot, globalConfig, onCreateProgress), mGlobalConfig(globalConfig) {
   auto spec = tryReadSpecification();
   if (!spec) {
     throw std::runtime_error("Directory " + mRoot.string() + " is not a PEP download directory");
@@ -109,12 +109,12 @@ DownloadDirectory::Specification DownloadDirectory::getSpecification() const {
   return *result;
 }
 
-std::optional<std::filesystem::path> DownloadDirectory::getRecordFileName(const RecordDescriptor& descriptor) const {
-  auto relative = mMetadata.getRelativePath(descriptor);
-  if (relative) {
-    return mRoot / *relative;
+std::optional<std::filesystem::path> DownloadDirectory::getRecordFileName(const RecordDescriptor& descriptor, bool absolute) const {
+  auto relativePath = mMetadata.getRelativePath(descriptor);
+  if (!relativePath.has_value() || !absolute) {
+    return relativePath;
   }
-  return std::nullopt;
+  return mRoot / *relativePath;
 }
 
 void DownloadDirectory::clear() {
@@ -192,26 +192,80 @@ public:
   }
 };
 
-std::optional<std::string> DownloadDirectory::describeFirstNonPristineEntry(const Progress::OnCreation& onCreateProgress) const {
-  // TODO: check if directory contains files/directories other than pristine data
-  auto pristine = mMetadata.getRecords();
-  auto progress = Progress::Create(pristine.size(), onCreateProgress);
+std::vector<DownloadDirectory::NonPristineEntry> DownloadDirectory::getNonPristineEntries(const Progress::OnCreation& onCreateProgress) const {
+  std::vector<DownloadDirectory::NonPristineEntry> result;
 
+  // Check entries that should be there
+  auto pristine = mMetadata.getRecords();
+  filesystem::SetOfExistingPaths dirs, files;
+  auto progress = Progress::Create(pristine.size(), onCreateProgress);
   for (const auto& entry : pristine) {
+    this->trackExistingPaths(dirs, files, entry.descriptor);
     auto current = getCurrentDataHash(entry.descriptor);
     auto filename = getRecordFileName(entry.descriptor);
-    progress->advance(1U, GetOptionalValue(filename, [](const std::filesystem::path& path) {return path.string(); }));
+    progress->advance(1U, GetOptionalValue(this->getRecordFileName(entry.descriptor, false), [](const std::filesystem::path& path) {return path.string(); }));
     if (entry.hash != current) {
-      if (filename == std::nullopt) {
-        return "absent file for participant " + entry.descriptor.getParticipant().getLocalPseudonym().text()
-          + ", column " + entry.descriptor.getColumn();
-      }
-      return "file " + filename->string();
+      result.emplace_back(entry.descriptor, filename);
     }
   }
 
+  // Check entries that shouldn't be there
+  // TODO: report Progress for this?
+  auto unknown = this->getUnknownContents(dirs, files);
+  result.reserve(result.size() + unknown.size());
+  std::transform(unknown.begin(), unknown.end(), std::back_inserter(result), [](const std::filesystem::path& path) {
+    return NonPristineEntry{ std::nullopt, path };
+    });
+
   progress->advanceToCompletion();
-  return std::nullopt;
+  return result;
+}
+
+void DownloadDirectory::trackExistingPaths(filesystem::SetOfExistingPaths& dirs, filesystem::SetOfExistingPaths& files, const RecordDescriptor& descriptor) const {
+  auto addToSet = [](filesystem::SetOfExistingPaths& paths, const std::filesystem::path& existing) {
+    assert(exists(existing));
+    return paths.insert(existing).second;
+    };
+
+  addToSet(dirs, this->getParticipantDirectory(descriptor.getParticipant()));
+  if (auto file = this->getRecordFileName(descriptor)) {
+    [[maybe_unused]] auto added = addToSet(files, *file);
+    assert(added);
+  }
+}
+
+filesystem::SetOfExistingPaths DownloadDirectory::getUnknownContents() const {
+  // List contents that should be there
+  filesystem::SetOfExistingPaths dirs, files;
+  for (const auto& record : mMetadata.getRecords()) {
+    this->trackExistingPaths(dirs, files, record.descriptor);
+  }
+  // Return contents that shouldn't be there
+  return this->getUnknownContents(dirs, files);
+}
+
+filesystem::SetOfExistingPaths DownloadDirectory::getUnknownContents(const filesystem::SetOfExistingPaths& knownDirs, const filesystem::SetOfExistingPaths& knownFiles) const {
+  // Iterate over actual contents, collecting entries that shouldn't be there
+  filesystem::SetOfExistingPaths result;
+  for (std::filesystem::directory_iterator i(mRoot); i != std::filesystem::directory_iterator(); ++i) {
+    if (is_directory(i->path())) {
+      if (!equivalent(i->path(), mMetadata.getDirectory())) {
+        if (!knownDirs.contains(i->path())) {
+          result.insert(i->path());
+        } else {
+          for (std::filesystem::directory_iterator j(i->path()); j != std::filesystem::directory_iterator(); ++j) {
+            if (!knownFiles.contains(j->path())) {
+              result.insert(j->path());
+            }
+          }
+        }
+      }
+    } else if (!equivalent(i->path(), this->getSpecificationFilePath())) {
+      result.insert(i->path());
+    }
+  }
+
+  return result;
 }
 
 std::vector<RecordDescriptor> DownloadDirectory::getRecords(const std::function<bool(const RecordDescriptor&)>& match) const {
@@ -342,13 +396,13 @@ std::string DownloadDirectory::Specification::toString() const {
 
   std::ostringstream result;
   boost::property_tree::write_json(result, root);
-  return result.str();
+  return std::move(result).str();
 }
 
 
 DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize)
   : mDestination(std::move(destination)), mDescriptor(std::move(descriptor)), mPath(std::move(path)), mFileName(mPath.filename().string()), mFileSize(fileSize), mHasher(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
-  
+
   mRaw = std::make_shared<std::ofstream>(mPath.string(), std::ios::out | std::ios::binary);
   if (!mRaw->is_open()) {
     throw std::system_error(errno, std::generic_category(), "Failed to open " + mPath.string());
@@ -389,7 +443,7 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
     throw std::runtime_error("Record has already been committed and stored at " + mPath.string());
   }
   mRaw = nullptr;
-  XxHasher::Hash hash;
+  XxHasher::Hash hash{};
   std::filesystem::path path;
   std::optional<Pseudonymiser> pseudonymiser{std::nullopt};
 

@@ -1,3 +1,4 @@
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/pullcastor/StorableContent.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -51,9 +52,9 @@ public:
   const std::string& getValue() const {
     if (!mValue.has_value()) {
       assert(mStructure != nullptr);
-      std::stringstream stream;
+      std::ostringstream stream;
       boost::property_tree::write_json(stream, *mStructure);
-      mValue = stream.str();
+      mValue = std::move(stream).str();
     }
     return *mValue;
   }
@@ -74,7 +75,7 @@ public:
     */
   rxcpp::observable<std::string> getDataToStore(const std::string& existing) const override {
     boost::property_tree::ptree tree;
-    std::stringstream content(existing);
+    std::istringstream content(existing);
     try {
       boost::property_tree::read_json(content, tree);
     }

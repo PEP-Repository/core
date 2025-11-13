@@ -11,13 +11,13 @@ ParticipantDeviceRecord ParticipantDeviceRecord::Deserialize(const boost::proper
     source.get<std::string>("type"),
     source.get<std::string>("serial"),
     source.get_optional<std::string>("note").value_or(""),
-    source.get<int64_t>("date")
+    Timestamp(std::chrono::milliseconds{source.get<std::chrono::milliseconds::rep>("date")})
   );
 }
 
 ParticipantDeviceRecord ParticipantDeviceRecord::Parse(const std::string& json) {
   boost::property_tree::ptree pepData;
-  std::stringstream ss(json);
+  std::istringstream ss(json);
   boost::property_tree::read_json(ss, pepData);
   return Deserialize(pepData);
 }
@@ -28,7 +28,7 @@ void ParticipantDeviceRecord::serialize(boost::property_tree::ptree& destination
   if (!note.empty()) {
     destination.put("note", note);
   }
-  destination.put("date", time);
+  destination.put("date", TicksSinceEpoch<std::chrono::milliseconds>(time));
 }
 
 void ParticipantDeviceHistory::onInvalid(const std::string& reason, bool throwException) {
@@ -55,7 +55,7 @@ ParticipantDeviceHistory::ParticipantDeviceHistory(const std::vector<Participant
   : mRecords(records) {
   std::sort(mRecords.begin(), mRecords.end());
   const ParticipantDeviceRecord *active = nullptr;
-  std::optional<int64_t> lastTimestamp;
+  std::optional<Timestamp> lastTimestamp;
   for (auto i = begin(); i != end(); ++i) {
     if (i->isActive()) {
       if (active != nullptr) {
@@ -122,7 +122,7 @@ std::string ParticipantDeviceHistory::toJson() const {
   root.push_back(std::make_pair("entries", entries));
   std::ostringstream result;
   boost::property_tree::write_json(result, root);
-  return result.str();
+  return std::move(result).str();
 }
 
 }

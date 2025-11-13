@@ -4,16 +4,17 @@
 
 #include <pep/utils/Exceptions.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/utils/File.hpp>
+#include <pep/utils/Stream.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 
 #include <boost/algorithm/hex.hpp>
 
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
-#include <rxcpp/operators/rx-concat_map.hpp>
-#include <rxcpp/operators/rx-reduce.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <fstream>
 
@@ -44,72 +45,80 @@ protected:
 
     return this->executeEventLoopFor([&values](std::shared_ptr<pep::CoreClient> client) {
       return pep::cli::TicketFile::GetTicket(*client, values, std::nullopt)
-        .concat_map([&values, client](pep::IndexedTicket2 ticket) {
-      std::shared_ptr<std::ostream> datastream;
-      std::shared_ptr<std::ostream> metadatastream;
+          .flat_map([&values, client](pep::IndexedTicket2 ticket) -> rxcpp::observable<pep::FakeVoid> {
+            std::shared_ptr<std::ostream> datastream;
+            std::shared_ptr<std::ostream> metadatastream;
 
-      int stdoutcount = 0;
+            int stdoutcount = 0;
 
-      if (values.has("output-file")) {
-        auto path = values.get<std::string>("output-file");
-        std::shared_ptr<std::ostream> stream;
-        if (path == "-") {
-          stdoutcount++;
-          datastream = std::shared_ptr<std::ostream>(&std::cout, [](void*){});
-        } else {
-          datastream = std::make_shared<std::ofstream>(path, std::ios_base::out | std::ios_base::binary);
-        }
-      }
+            if (values.has("output-file")) {
+              auto path = values.get<std::string>("output-file");
+              std::shared_ptr<std::ostream> stream;
+              if (path == "-") {
+                stdoutcount++;
+                datastream = std::shared_ptr<std::ostream>(
+                  &std::cout,
+                  [setStdoutBinary = pep::SetBinaryFileMode::ForStdout()](void*) {});
+              } else {
+                datastream = std::make_shared<std::ofstream>(path, std::ios_base::out | std::ios_base::binary);
+              }
+            }
 
-      if (values.has("metadata")) {
-        auto path = values.get<std::string>("metadata");
-        std::shared_ptr<std::ostream> stream;
-        if (path == "-") {
-          stdoutcount++;
-          metadatastream = std::shared_ptr<std::ostream>(&std::cout, [](void*){});
-        } else
-          metadatastream = std::make_shared<std::ofstream>(path);
-      }
+            if (values.has("metadata")) {
+              auto path = values.get<std::string>("metadata");
+              std::shared_ptr<std::ostream> stream;
+              if (path == "-") {
+                stdoutcount++;
+                metadatastream = std::shared_ptr<std::ostream>(&std::cout, [](void*) {});
+              } else
+                metadatastream = std::make_shared<std::ofstream>(path);
+            }
 
-      if (stdoutcount>1) {
-        throw std::runtime_error("Cannot write both data and metadata to stdout.");
-      }
+            if (stdoutcount > 1) {
+              throw std::runtime_error("Cannot write both data and metadata to stdout.");
+            }
 
-      if (!datastream && !metadatastream) {
-        throw std::runtime_error("Please set either --output-file or --metadata.");
-      }
+            if (!datastream && !metadatastream) {
+              throw std::runtime_error("Please set either --output-file or --metadata.");
+            }
 
-      if (datastream) {
-        LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
-      }
+            if (datastream) {
+              LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
+            }
 
-      return client->retrieveData2(
-          client->getMetadata({boost::algorithm::unhex(values.get<std::string>("id"))}, ticket.getTicket()),
-          ticket.getTicket(),
-          datastream != nullptr // includeData
-      ).flat_map([datastream,metadatastream](std::shared_ptr<pep::RetrieveResult> result) {
-        if (result->mContent) {
-          return result->mContent
-            ->map([datastream](const std::string& chunk) {
-              *datastream << chunk;
-              return pep::FakeVoid();
-            }).op(RxInstead(pep::FakeVoid()))
-            .as_dynamic();
-        }
-        if (metadatastream) {
-          std::string json;
-          auto mdpb = pep::Serialization::ToProtocolBuffer(
-              result->mMetadataDecrypted);
-          if (const auto status = google::protobuf::util::MessageToJsonString(mdpb, &json); !status.ok()) {
-            throw std::runtime_error("Failed to convert metadata to JSON: " + status.ToString());
-          }
+            rxcpp::observable<pep::FileKey> key =
+                client->getKeys(
+                    client->enumerateDataByIds(
+                        {boost::algorithm::unhex(values.get<std::string>("id"))},
+                        ticket.getTicket()
+                    ).concat(),
+                    ticket.getTicket()
+                ).concat();
 
-          *metadatastream << json;
-        }
-        return rxcpp::observable<>::from(pep::FakeVoid()).as_dynamic();
-      });
-      });
-      });
+            if (metadatastream) {
+              key = key.tap([metadatastream](const pep::FileKey& fileKey) {
+                std::string json;
+                auto mdpb = pep::Serialization::ToProtocolBuffer(fileKey.decryptMetadata());
+                if (const auto status = google::protobuf::util::MessageToJsonString(mdpb, &json); !status.ok()) {
+                  throw std::runtime_error("Failed to convert metadata to JSON: " + status.ToString());
+                }
+                *metadatastream << json;
+              });
+            }
+
+            if (datastream) {
+              return client->retrieveData(rxcpp::observable<>::just(std::move(key)), ticket.getTicket())
+                  .concat()
+                  .map([datastream](const pep::RetrievePage& page) {
+                    *datastream << page.content;
+                    return pep::FakeVoid{};
+                  })
+                  .op(RxInstead(pep::FakeVoid{}));
+            } else {
+              return key.op(RxInstead(pep::FakeVoid{}));
+            }
+          });
+    });
   }
 };
 

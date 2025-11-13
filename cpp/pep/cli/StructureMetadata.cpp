@@ -5,7 +5,8 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <pep/application/Application.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
@@ -47,6 +48,8 @@ const std::map<std::string, StructureMetadataType> MetadataTypeMapping{
   {"column", StructureMetadataType::Column},
   {"column-group", StructureMetadataType::ColumnGroup},
   {"participant-group", StructureMetadataType::ParticipantGroup},
+  {"user", StructureMetadataType::User},
+  {"user-group", StructureMetadataType::UserGroup},
 };
 
 StructureMetadataType ParseMetadataType(const std::string& type) {
@@ -100,16 +103,16 @@ protected:
         .key = ParseMetadataKey(values.get<std::string>("key"), false),
       };
 
-      return client->getStructureMetadata(subjectType, {requestedSubjectKey.subject}, {requestedSubjectKey.key})
+      return client->getAccessManagerProxy()->getStructureMetadata(subjectType, {requestedSubjectKey.subject}, {requestedSubjectKey.key})
           .op(RxToVector())
-          .map([requestedSubjectKey](const std::shared_ptr<std::vector<std::shared_ptr<StructureMetadataEntry>>>& entries) -> FakeVoid {
+          .map([requestedSubjectKey](const std::shared_ptr<std::vector<StructureMetadataEntry>>& entries) -> FakeVoid {
             if (entries->empty()) {
               throw std::runtime_error("Metadata entry does not exist");
             }
             if (entries->size() > 1) {
               throw std::runtime_error("Expected single metadata entry but server sent multiple");
             }
-            auto& entry = *entries->front();
+            auto& entry = entries->front();
             if (entry.subjectKey != requestedSubjectKey) {
               throw std::runtime_error(
                   "Expected single metadata entry "
@@ -153,13 +156,13 @@ protected:
 
           bool json = values.has("json");
 
-          auto getEntries = client->getStructureMetadata(subjectType, std::move(subjects), std::move(keys));
+          auto getEntries = client->getAccessManagerProxy()->getStructureMetadata(subjectType, std::move(subjects), std::move(keys));
 
           if (json) {
             using namespace boost::property_tree;
             auto root = std::make_shared<ptree>();
-            return getEntries.map([root](const std::shared_ptr<StructureMetadataEntry>& entry) -> FakeVoid {
-              root->add(RawPtreePath(entry->subjectKey.subject) / RawPtreePath(entry->subjectKey.key.toString()), entry->value);
+            return getEntries.map([root](const StructureMetadataEntry& entry) -> FakeVoid {
+              root->add(RawPtreePath(entry.subjectKey.subject) / RawPtreePath(entry.subjectKey.key.toString()), entry.value);
               return {};
             }).op(RxBeforeCompletion([root] {
               write_json(std::cout, *root);
@@ -167,8 +170,8 @@ protected:
           }
           else {
             auto root = std::make_shared<std::map<std::string /*subject*/, std::map<StructureMetadataKey, std::string /*value*/>>>();
-            return getEntries.map([root](const std::shared_ptr<StructureMetadataEntry>& entry) -> FakeVoid {
-              (*root)[std::move(entry->subjectKey.subject)][std::move(entry->subjectKey.key)] = std::move(entry->value);
+            return getEntries.map([root](StructureMetadataEntry entry) -> FakeVoid {
+              (*root)[std::move(entry.subjectKey.subject)][std::move(entry.subjectKey.key)] = std::move(entry.value);
               return {};
             }).op(RxBeforeCompletion([root] {
               for (const auto& [subject, meta] : *root) {
@@ -219,11 +222,11 @@ protected:
         value = std::move(ss).str();
       }
 
-      return client->setStructureMetadata(subjectType, rxcpp::observable<>::from(std::make_shared<StructureMetadataEntry>(
+      return client->getAccessManagerProxy()->setStructureMetadata(subjectType, pep::messaging::MakeSingletonTail(
           StructureMetadataEntry{
             .subjectKey = {std::move(subject), std::move(key)},
             .value = std::move(*value),
-          })));
+          }));
     });
   }
 };
@@ -247,7 +250,7 @@ protected:
       auto subject = values.get<std::string>("subject");
       auto key = ParseMetadataKey(values.get<std::string>("key"), false);
 
-      return client->removeStructureMetadata(subjectType, {
+      return client->getAccessManagerProxy()->removeStructureMetadata(subjectType, {
           {std::move(subject), std::move(key)},
       });
     });

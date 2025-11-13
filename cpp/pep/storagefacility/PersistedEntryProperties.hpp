@@ -12,7 +12,7 @@ namespace pep {
  * - that map is then serialized to disk just like it was before.
  * This source provides the "PersistedEntryProperties" typedef for the string-to-string map, plus some functions
  * to access the map's data.
- * 
+ *
  * Note that custom metadata entries (MetadataXEntry instances) are stored with the key prefixed with
  * "x-", to allow custom entries (such as "x-filesize") to be distinguished from non-custom ones (such as
  * "filesize"). The functions in this source only deal with value storage and assume that the caller
@@ -67,6 +67,9 @@ template <> void SetPersistedEntryProperty<uint8_t>(PersistedEntryProperties& de
 template <> uint64_t ExtractPersistedEntryProperty<uint64_t>(PersistedEntryProperties& source, const std::string& key);
 //! Specialized property assignment for uint64_t values.
 template <> void SetPersistedEntryProperty<uint64_t>(PersistedEntryProperties& destination, const std::string& key, const uint64_t& value);
+
+template <> Timestamp ExtractPersistedEntryProperty<Timestamp>(PersistedEntryProperties& source, const std::string& key);
+template <> void SetPersistedEntryProperty<Timestamp>(PersistedEntryProperties& destination, const std::string& key, const Timestamp& value);
 
 //! Specialized property extraction for EncryptionScheme (enumerator) values.
 template <> EncryptionScheme ExtractPersistedEntryProperty<EncryptionScheme>(PersistedEntryProperties& source, const std::string& key);

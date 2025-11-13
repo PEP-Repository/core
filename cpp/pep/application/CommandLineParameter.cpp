@@ -327,7 +327,7 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
       break;
     }
 
-    const Parameter* s;
+    const Parameter* s{};
     auto named = std::find_if(mByAnnouncement.cbegin(), mByAnnouncement.cend(), [&token](const auto& pair) {return pair.first.string() == token; });
     if (named != mByAnnouncement.cend()) { // The current token is a "--name" or "-shorthand" announcement
       arguments.pop(); // Discard the announcement from remaining arguments

@@ -78,6 +78,7 @@ variables:
     cpp/pep/serialization/pepSerializationUnitTests
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
+    cpp/pep/ticketing/pepTicketingUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
 
@@ -141,7 +142,9 @@ variables:
   IMAGE_PEP_SERVICES:          ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-services
   IMAGE_PEP_MONITORING:        ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-monitoring
   IMAGE_PEP_CLIENT:            ${CI_REGISTRY}/${CI_PROJECT_PATH}/client
+  IMAGE_PEP_SCHEDULER:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-scheduler
   IMAGE_PEP_CONNECTOR:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-connector
+  IMAGE_PEP_COMPOSE:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/docker-compose
   # authserver itself is now part of the pep-services container, so we only need a separate apache/shibboleth container
   IMAGE_PEP_AUTHSERVER_APACHE: ${CI_REGISTRY}/${CI_PROJECT_PATH}/authserver_apache
 
@@ -268,6 +271,9 @@ cleanup:
       needs: []
     - if: $RUN_CLEANUP == 'master' && $CI_COMMIT_BRANCH == $PEP_FOSS_DEVELOPMENT_BRANCH
       interruptible: false
+  variables:
+    GIT_STRATEGY: clone # Fixes cleanup job: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2681#note_53099
+  dependencies: []
   resource_group: cleanup  # Do not run multiple cleanup jobs concurrently
   tags:
     - docker-small
@@ -875,13 +881,21 @@ build-docker-images:
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
     - docker buildx build --pull
                           --push
+                          --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" "docker/docker-compose"
+    - docker buildx build --pull
+                          --push
                           --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "docker/apache"
       ### Build derived images, these should be built after the base images
+    - docker buildx build --pull
+                          --push --file "docker/pep-scheduler.Dockerfile"
+                          --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST"
+                          --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
+                          --build-arg "BASE_IMAGE=$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" .
     - docker buildx build --pull
                           --push --file "docker/pep-connector.Dockerfile"
                           --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST"
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
-                          --build-arg "BASE_IMAGE=$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" .
+                          --build-arg "BASE_IMAGE=$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" .
 
 ###############################################
 # Configuration for the runtime-analysis stage#
@@ -1178,13 +1192,17 @@ retag-pep-docker-images:
       artifacts: false
     - job: docker-integration
       artifacts: false
+    - job: docker-integration-on-base-data
+      artifacts: false
   #language=sh
   script:
     - *docker_login
     - docker buildx imagetools create "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker buildx imagetools create "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker buildx imagetools create "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
 
 ##########################################

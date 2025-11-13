@@ -11,7 +11,6 @@
 #include <mutex>
 
 #include <pep/async/OnAsio.hpp>
-#include <pep/async/RxIterate.hpp>
 #include <pep/async/WorkGuard.hpp>
 
 namespace pep {
@@ -56,7 +55,7 @@ class WorkerPool : private boost::noncopyable {
         S_iter in_end;   // end of batch (+1 as usual for iterators)
         T_iter out;      // start of batch in return vector ys
     };
-    auto batches = std::make_shared<std::vector<batch_t>>();
+    std::vector<batch_t> batches;
 
     size_t nBatches = xsPtr->size() / batchSize;
     size_t lastBatchSize = xsPtr->size() % batchSize;
@@ -64,12 +63,12 @@ class WorkerPool : private boost::noncopyable {
     else nBatches++;
 
     // Prepare batches
-    batches->resize(nBatches);
+    batches.resize(nBatches);
     for (size_t i = 0; i < nBatches; i++) {
       size_t thisBatchSize = batchSize;
       if (i == nBatches - 1) // last batch
         thisBatchSize = lastBatchSize;
-      auto& batch = (*batches)[i];
+      auto& batch = batches[i];
       batch.in_begin = xsPtr->begin() + static_cast<ptrdiff_t>(i * batchSize);
       batch.in_end = xsPtr->begin() + static_cast<ptrdiff_t>((i *  batchSize) + thisBatchSize);
       batch.out = ys->begin() + static_cast<ptrdiff_t>(i * batchSize);
@@ -78,7 +77,7 @@ class WorkerPool : private boost::noncopyable {
     // xsPtr would go out of scope after this return, which frees it and
     // thus invalidates the iterators into it.  To keep xsPtr alive, we
     // capture it in the final callback.
-    return RxIterate(batches)
+    return rxcpp::observable<>::iterate(std::move(batches))
     .map([this, f, accWorker](batch_t batch) {
       // Handle each batch on separate worker
       return rxcpp::observable<>::just(std::move(batch))

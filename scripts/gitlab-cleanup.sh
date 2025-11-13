@@ -2,7 +2,7 @@
 # shellcheck disable=SC3043  # `local` may not be defined in POSIX sh
 
 set_opts() {
-  set -eux -o noglob
+  set -eu -o noglob
 }
 set_opts
 
@@ -69,16 +69,20 @@ foss_container_image_names=\
 authserver_apache
 pep-services
 client
+pep-scheduler
+pep-connector
+docker-compose
 '
 dtap_container_image_names="$foss_container_image_names
-backup-tool
 nginx
 prometheus
-testidp
 logger
 nginx-review
-docker-compose
 watchdog-watchdog
+loki
+gitlab-ci-pipelines-exporter
+proxmox-exporter
+blackbox-exporter
 "
 
 # Also keep docker-build images for n commits in FOSS before the latest commit.
@@ -143,17 +147,15 @@ gitlab_dir_api() {
 # 1. Make sure that we are not in a shallow repository,
 #    because we want to see all remote branches.
 # 2. Fetch remote.
-# 3.  Make sure we have origin/HEAD pointing to the main branch
+# 3. Make sure we have origin/HEAD pointing to the main branch
 prepare_git_repo() {
   if [ "$(git rev-parse --is-shallow-repository)" != false ]; then
     if [ -n "$should_unshallow" ]; then
       # Convert shallow clone into regular one
       >&2 echo "Unshallowing shallow repository $PWD"
       git remote set-branches origin '*' >&2
-      set +e
       fetch_err="$(git fetch --unshallow 2>&1)"
       fetch_status=$?
-      set -e
       echo "git fetch --unshallow exited with status $fetch_status" >&2
       if [ $fetch_status -ne 0 ]; then
         fail "git fetch --unshallow failed: $fetch_err"
@@ -601,8 +603,11 @@ list_dtap_container_repositories() {
     # Select repos with names ending in /img_name
     local repos
     repos="$(raw_echo "$all_image_repos" | jq --compact-output '.[] | select(.name | endswith("/\($img_name)"))' --arg img_name "$img_name")"
-    [ -z "$repos" ] && fail "No container repos found for $img_name"
-    raw_echo_trailing_newline "$repos"
+    if [ -n "$repos" ]; then
+      raw_echo_trailing_newline "$repos"
+    else
+      >&2 echo "No container repos found for $img_name"
+    fi
   done
 }
 
@@ -629,8 +634,8 @@ clean_dtap_container_repositories() {
 # This command deletes branches in DTAP that:
 # - Are not protected or the main branch
 # - Have no corresponding branch in PEP FOSS with the same name
-# - Have commit(s) since master that only update the FOSS submodule
-# - Have a FOSS submodule at the tip of which the commit is also in FOSS master
+# - Have commit(s) since main that only update the FOSS submodule
+# - Have a FOSS submodule at the tip of which the commit is also in FOSS main
 
 # Command to clean DTAP git branches
 clean_dtap_branches() {
@@ -692,8 +697,9 @@ clean_dtap_branches() {
         continue
       fi
 
-      files_changed_since_master="$(git diff --name-only --merge-base refs/remotes/origin/HEAD "$refname")"
-      if [ "$files_changed_since_master" != "$dtap_foss_submodule" ] && [ "$files_changed_since_master" != '' ]; then
+      merge_base="$(git merge-base refs/remotes/origin/HEAD "$refname")"
+      files_changed_since_main="$(git diff --name-only "$merge_base" "$refname")"
+      if [ "$files_changed_since_main" != "$dtap_foss_submodule" ] && [ "$files_changed_since_main" != '' ]; then
         >&2 echo 'Skipping: More files than FOSS submodule changed since main branch'
         continue
       fi

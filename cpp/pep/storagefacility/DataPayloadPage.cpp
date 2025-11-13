@@ -4,9 +4,9 @@
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/serialization/Serialization.hpp>
-
-#include <cassert>
 #include <pep/crypto/GcmContext.hpp>
+
+#include <stdexcept>
 
 namespace pep {
 
@@ -28,18 +28,17 @@ bool DataPayloadPage::EncryptionIncludesMetadata(EncryptionScheme encryptionSche
 }
 
 void DataPayloadPage::setEncrypted(
-      std::shared_ptr<std::string> plaintext,
+      std::string_view plaintext,
       const std::string& key,
       const Metadata& metadata) {
-  int ret;
-  int len;
   auto ctx = createGcmContext();
   RandomBytes(mCryptoNonce, 16);
   mCryptoMac.resize(16);
-  mPayloadData.resize(plaintext->size());
+  mPayloadData.resize(plaintext.size());
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
   std::string ad = computeAdditionalData(metadata);
+  int ret{};
   ret = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex failed");
@@ -59,6 +58,7 @@ void DataPayloadPage::setEncrypted(
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex 2nd failed");
+  int len{};
   ret = EVP_EncryptUpdate(ctx.get(),
     nullptr,
     &len,
@@ -70,8 +70,8 @@ void DataPayloadPage::setEncrypted(
   ret = EVP_EncryptUpdate(ctx.get(),
     reinterpret_cast<uint8_t*>(mPayloadData.data()),
     &len,
-    reinterpret_cast<const uint8_t*>(plaintext->data()),
-    static_cast<int>(plaintext->size())
+    reinterpret_cast<const uint8_t*>(plaintext.data()),
+    static_cast<int>(plaintext.size())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptUpdate for plaintext failed");
@@ -95,13 +95,12 @@ void DataPayloadPage::setEncrypted(
     throw std::runtime_error("EVP_CIPHER_CTX_ctrl GET_TAG failed");
 }
 
-std::shared_ptr<std::string> DataPayloadPage::decrypt(
+std::string DataPayloadPage::decrypt(
         const std::string& key, const Metadata& metadata) const {
   auto ctx = createGcmContext();
   int ret = 0;
   int len = 0;
-  std::shared_ptr<std::string> plaintext = std::make_shared<std::string>();
-  plaintext->resize(mPayloadData.size());
+  std::string plaintext(mPayloadData.size(), '\0');
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
   std::string ad = computeAdditionalData(metadata);
@@ -134,14 +133,14 @@ std::shared_ptr<std::string> DataPayloadPage::decrypt(
   if (ret != 1)
     throw std::runtime_error("EVP_DecryptUpdate for AD failed");
   ret = EVP_DecryptUpdate(ctx.get(),
-    reinterpret_cast<uint8_t*>(plaintext->data()),
+    reinterpret_cast<uint8_t*>(plaintext.data()),
     &len,
     reinterpret_cast<const uint8_t*>(mPayloadData.data()),
     static_cast<int>(mPayloadData.size())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_DecryptUpdate for plaintext failed");
-  if (len != static_cast<int>(plaintext->size()))
+  if (len != static_cast<int>(plaintext.size()))
     throw std::runtime_error("EVP_DecryptUpdate wrote wrong amount of data");
   ret = EVP_CIPHER_CTX_ctrl(ctx.get(),
     EVP_CTRL_GCM_SET_TAG,
@@ -153,7 +152,7 @@ std::shared_ptr<std::string> DataPayloadPage::decrypt(
     throw std::runtime_error("EVP_CIPHER_CTX_ctrl TAG failed");
   ret = EVP_DecryptFinal_ex(
     ctx.get(),
-    reinterpret_cast<uint8_t*>(plaintext->data() + len),
+    reinterpret_cast<uint8_t*>(plaintext.data() + len),
     &len
   );
   if (ret != 1)

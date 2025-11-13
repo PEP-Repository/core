@@ -23,6 +23,7 @@ public:
 
   std::string format() const;
   std::strong_ordering operator<=> (const SemanticVersion& other) const = default;
+  bool hasGitlabProperties() const noexcept;
 };
 
 /* \brief Checks for equality of only the first three values (major, minor, pipeline).

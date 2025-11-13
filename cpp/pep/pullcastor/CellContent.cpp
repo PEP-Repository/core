@@ -1,7 +1,8 @@
 #include <pep/pullcastor/CellContent.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -10,12 +11,14 @@ namespace castor {
 
 namespace {
 
-rxcpp::observable<std::string> LoadCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const EnumerateResult& entry) {
-  return client->retrieveData2(rxcpp::observable<>::from(entry), ticket, true)
-    .flat_map([](std::shared_ptr<RetrieveResult> retrieveResult) {
-      assert(retrieveResult->mContent);
-      return retrieveResult->mContent->op(RxConcatenateStrings());
-    });
+rxcpp::observable<std::string> LoadCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, std::shared_ptr<EnumerateResult> entry) {
+  return client->retrieveData(rxcpp::observable<>::just(std::move(entry)), ticket)
+      .concat()
+      .map([](RetrievePage page) {
+        assert(page.fileIndex == 0 && "Unexpected file index");
+        return std::move(page.content);
+      })
+      .op(RxConcatenateStrings());
 }
 
 }
@@ -35,7 +38,7 @@ std::shared_ptr<CellContent> CellContent::Create(std::shared_ptr<CoreClient> cli
   if (preloaded != nullptr) {
     return preloaded;
   }
-  return LazyCellContent::Create(client, ticket, ear);
+  return LazyCellContent::Create(client, ticket, std::make_shared<EnumerateResult>(ear));
 }
 
 PreloadedCellContent::PreloadedCellContent(const std::string& value)
@@ -55,7 +58,7 @@ rxcpp::observable<std::shared_ptr<PreloadedCellContent>> PreloadedCellContent::L
   if (result != nullptr) {
     return rxcpp::observable<>::just(result);
   }
-  return LoadCellContent(client, ticket, ear)
+  return LoadCellContent(client, ticket, std::make_shared<EnumerateResult>(ear))
     .map([column = ear.mColumn](std::string content) {return PreloadedCellContent::Create(std::move(content)); });
 }
 
@@ -63,7 +66,7 @@ rxcpp::observable<std::string> PreloadedCellContent::getData() const {
   return rxcpp::observable<>::just(mValue);
 }
 
-LazyCellContent::LazyCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const EnumerateResult& entry) {
+LazyCellContent::LazyCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, std::shared_ptr<EnumerateResult> entry) {
   mData = CreateRxCache([client, ticket, entry]() {
     return LoadCellContent(client, ticket, entry);
   });

@@ -1,5 +1,5 @@
 #include <pep/async/OnAsio.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
 #include <pep/messaging/Node.hpp>
 #include <pep/messaging/ConnectionFailureException.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
@@ -105,7 +105,7 @@ void Connection::ensureSend() {
 void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr error) {
   assert(error != nullptr);
 
-  severity_level severity;
+  severity_level severity{};
   std::string action, caption, description;
 
   switch (id.type().value()) {
@@ -298,7 +298,7 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
 void Connection::close() {
   mBinaryStatusSubscription.cancel();
   mBinary.reset();
-  this->clearState();
+  this->clearState(false);
   this->setStatus(Status::finalizing);
 }
 
@@ -371,6 +371,8 @@ void Connection::IncomingRequestTail::handleChunk(const Flags& flags, std::share
   }
   if (flags.error()) {
     if (mSubscriber) {
+      //TODO Why nullptr? Deserialize Error or pass some runtime_error instead?
+      LOG(LOG_TAG, warning) << "Received error chunk in request tail";
       mSubscriber->on_error(nullptr);
     } else {
       mError = true;
@@ -506,7 +508,7 @@ void Connection::handleError(std::exception_ptr exception) {
   }
 }
 
-void Connection::clearState() {
+void Connection::clearState(bool reconnecting) {
   // Let request handlers know that they won't receive further tail segments
   for (auto& incoming : mIncomingRequestTails) {
     incoming.second.abort();
@@ -514,7 +516,7 @@ void Connection::clearState() {
 
   // Cancel sending of previously scheduled request and response messages
   mScheduler->clear();
-  // Stop sending keepalive messages 
+  // Stop sending keepalive messages
   mKeepAliveTimer.cancel();
   mKeepAliveTimerRunning = false;
   // Clear state for outgoing messages
@@ -526,7 +528,7 @@ void Connection::clearState() {
   // Discard cached incoming requests
   mPrematureRequests.clear();
   // Discard pending requests that cannot be re-sent
-  mRequestor->purge();
+  mRequestor->purge(!reconnecting);
 }
 
 void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
@@ -534,7 +536,7 @@ void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
 
   assert(!mVersionValidated);
   this->sendRequest(MakeSharedCopy(Serialization::ToString(VersionRequest())), std::nullopt, true)
-    .map([](std::string response) {return Serialization::FromString<VersionResponse>(response); })
+    .map([](std::string_view response) {return Serialization::FromString<VersionResponse>(response); })
     .observe_on(observe_on_asio(mIoContext))
     .subscribe(
       [self](VersionResponse response) {
@@ -612,7 +614,7 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
     assert(false);
     return;
   case networking::Transport::ConnectivityStatus::reconnecting:
-    this->clearState();
+    this->clearState(true);
     this->setStatus(Status::reinitializing);
     return;
   case networking::Transport::ConnectivityStatus::connecting:
@@ -667,6 +669,8 @@ void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_pt
   }
   mQueuedItems.clear();
   if (mError) {
+    //TODO Why nullptr? Pass deserialized error or some runtime_error instead?
+    LOG(LOG_TAG, warning) << "Forwarding error chunk from request tail";
     mSubscriber->on_error(nullptr);
   } else if (mCompleted) {
     mSubscriber->on_completed();

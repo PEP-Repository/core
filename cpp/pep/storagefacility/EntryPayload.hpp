@@ -27,6 +27,10 @@ protected:
 
   virtual void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const;
 
+  EntryPayload() = default;
+  EntryPayload(const EntryPayload &) = default;
+  EntryPayload& operator=(const EntryPayload &) = default;
+
 public:
   virtual ~EntryPayload() noexcept = default;
 

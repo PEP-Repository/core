@@ -38,8 +38,14 @@ request() {
   shift
   shift
   url="https://$gitlab_host/api/v4/projects/$project_id/$path"
-  # >&2 echo "Sending $method request to $url" "$@"
-  if ! curl --no-progress-meter --fail --request "$method" -H "PRIVATE-TOKEN: $api_key" -H "Cache-Control: no-cache" "$url" "$@"; then
+
+  if ! curl --no-progress-meter \
+            --fail \
+            --retry 7 \
+            --request "$method" \
+            --header "PRIVATE-TOKEN: $api_key" \
+            --header "Cache-Control: no-cache" \
+            "$url" "$@"; then
     >&2 echo "Error while sending $method request to $url" "$@"
     return 1
   fi
@@ -78,7 +84,7 @@ case $command in
   get-multipage)
     get_multipage "$rel_path" "$@"
     ;;
-  get|post|delete)
+  get|post|put|delete)
     request "$command" "$rel_path" "$@"
     ;;
   *)

@@ -19,8 +19,8 @@ const std::string LOG_TAG ("DumpShadowAdministration");
 
 class DumpShadowAdministrationApplication : public pep::Application {
   static void DumpShadowAdministration(const char* filename, const AsymmetricKey shadowPrivateKey) {
-    ::sqlite3* pDB;
-    int err;
+    ::sqlite3* pDB{};
+    int err{};
 
     // Open SQLite database
     err = sqlite3_open(filename, &pDB);
@@ -29,7 +29,7 @@ class DumpShadowAdministrationApplication : public pep::Application {
       throw std::runtime_error("Error opening SQLite database");
     }
 
-    sqlite3_stmt* pStmt;
+    sqlite3_stmt* pStmt{};
 
     err = sqlite3_prepare(pDB, "SELECT * FROM ShadowShortPseudonyms", -1, &pStmt, nullptr);
     if (err != SQLITE_OK) {
@@ -37,7 +37,7 @@ class DumpShadowAdministrationApplication : public pep::Application {
       throw std::runtime_error("Error opening SQLite database");
     }
 
-    size_t len;
+    size_t len{};
     std::string identifier, shortPseudonym;
 
     err = sqlite3_step(pStmt);
@@ -57,11 +57,10 @@ class DumpShadowAdministrationApplication : public pep::Application {
   }
 
   static void StoreShortPseudonymShadow(::sqlite3* pDB, const AsymmetricKey& shadowPublicKey, const std::string& identifier, const std::string& shortPseudonym) {
-    sqlite3_stmt* insertStmt;
-
     std::string encryptedIdentifier = shadowPublicKey.encrypt(identifier);
     std::string encryptedShortPseudonym = shadowPublicKey.encrypt(shortPseudonym);
 
+    sqlite3_stmt* insertStmt{};
     if(sqlite3_prepare_v2(pDB, "INSERT INTO ShadowShortPseudonyms(EncryptedIdentifier, EncryptedShortPseudonym) VALUES(?, ?)", -1, &insertStmt, nullptr) != SQLITE_OK) {
       LOG(LOG_TAG, warning) << "Error occured: " << sqlite3_errmsg(pDB);
       throw std::runtime_error("Error occured");
@@ -87,8 +86,8 @@ class DumpShadowAdministrationApplication : public pep::Application {
   }
 
   static void CreateShadowAdministration(const char* filenameDB, const AsymmetricKey& shadowPublicKey, const char* filenameInput) {
-    ::sqlite3* pDB;
-    int err;
+    ::sqlite3* pDB{};
+    int err{};
 
     // Open SQLite database for shadow administration of identifiers/short pseudonyms
     err = sqlite3_open(filenameDB, &pDB);

@@ -4,7 +4,10 @@
 #include <pep/application/Application.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/async/RxUtils.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -15,6 +18,7 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <filesystem>
 
@@ -271,7 +275,7 @@ private:
       };
 
       return this->executeEventLoopFor([provide, remaining, studySp, answerSetCount](std::shared_ptr<pep::Client> client) {
-        auto required = client->listCastorImportColumns(studySp, answerSetCount)
+        auto required = client->getRegistrationServerProxy()->listCastorImportColumns(studySp, answerSetCount)
           .map([](const std::string& name) {return ColumnStatus{ name, std::nullopt, std::nullopt }; });
         rxcpp::observable<ColumnStatus> process = required;
 
@@ -281,8 +285,8 @@ private:
             std::unordered_set<std::string> grouped;
           };
 
-          process = client->amaQuery(pep::AmaQuery())
-            .op(pep::RxGetOne("AMA query response"))
+          process = client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
+            .op(pep::RxGetOne())
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();
             for (const auto& column : response.mColumns) {
@@ -319,10 +323,10 @@ private:
               created = rxcpp::observable<>::just(pep::FakeVoid());
             }
             else {
-              created = client->amaCreateColumn(column.name);
+              created = client->getAccessManagerProxy()->amaCreateColumn(column.name);
             }
             return created
-              .flat_map([client, name = column.name](pep::FakeVoid) {return client->amaAddColumnToGroup(name, "Castor"); })
+              .flat_map([client, name = column.name](pep::FakeVoid) {return client->getAccessManagerProxy()->amaAddColumnToGroup(name, "Castor"); })
               .map([column](pep::FakeVoid) { return column; });
               });
         }
@@ -403,7 +407,7 @@ private:
     int execute() override {
       return this->executeEventLoopFor([importedOnly = this->getParameterValues().has("imported-only")](std::shared_ptr<pep::CoreClient> client) {
         rxcpp::observable<pep::ShortPseudonymDefinition> sps = client->getGlobalConfiguration()
-          .flat_map([](std::shared_ptr<pep::GlobalConfiguration> config) {return rxcpp::observable<>::iterate(config->getShortPseudonyms()); })
+          .flat_map([](std::shared_ptr<pep::GlobalConfiguration> config) {return RxIterate(config->getShortPseudonyms()); })
           .filter([](const pep::ShortPseudonymDefinition& sp) {return sp.getCastor(); });
         if (importedOnly) {
           sps = sps.filter([](const pep::ShortPseudonymDefinition& sp) {return !sp.getCastor()->getStorageDefinitions().empty(); });
@@ -429,8 +433,8 @@ private:
   private:
     class ColumnNameMappingSubCommand : public ChildCommandOf<CommandCastorColumnNameMapping> {
     private:
-      static pep::FakeVoid ReportColumnNameMappings(std::shared_ptr<pep::ColumnNameMappings> mappings) {
-        auto entries = mappings->getEntries();
+      static pep::FakeVoid ReportColumnNameMappings(const pep::ColumnNameMappings& mappings) {
+        auto entries = mappings.getEntries();
         std::sort(entries.begin(), entries.end(), [](const pep::ColumnNameMapping& lhs, const pep::ColumnNameMapping& rhs) { return lhs.original.getValue() < rhs.original.getValue(); });
         for (const auto& entry : entries) {
           std::cout << std::quoted(entry.original.getValue()) << " --> " << std::quoted(entry.mapped.getValue()) << std::endl;
@@ -443,11 +447,11 @@ private:
         : ChildCommandOf<CommandCastorColumnNameMapping>(name, description, parent) {
       }
 
-      virtual rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) = 0;
+      virtual rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) = 0;
 
       int execute() override {
         return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-          return this->getAffectedMappings(client)
+          return this->getAffectedMappings(*client->getAccessManagerProxy())
             .map(ReportColumnNameMappings)
             .op(pep::RxBeforeCompletion(
               []() {
@@ -464,8 +468,8 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->getColumnNameMappings();
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.getColumnNameMappings();
       }
     };
 
@@ -492,8 +496,8 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->readColumnNameMapping(this->getSpecifiedCastorColumnNameSection());
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.readColumnNameMapping(this->getSpecifiedCastorColumnNameSection());
       }
     };
 
@@ -504,9 +508,9 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->deleteColumnNameMapping(this->getSpecifiedCastorColumnNameSection())
-          .map([](pep::FakeVoid) {return std::make_shared<pep::ColumnNameMappings>(pep::ColumnNameMappings({})); });
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.deleteColumnNameMapping(this->getSpecifiedCastorColumnNameSection())
+          .map([](pep::FakeVoid) {return pep::ColumnNameMappings({}); });
       }
     };
 
@@ -526,6 +530,10 @@ private:
         auto pep = pep::ColumnNameSection::FromRawString(this->getParameterValues().get<std::string>("pep"));
         return pep::ColumnNameMapping{ castor, pep };
       }
+
+      static pep::ColumnNameMappings SingleMappingToMappings(pep::ColumnNameMapping mapping) {
+        return pep::ColumnNameMappings({ std::move(mapping) });
+      }
     };
 
     class ColumnNameMappingCreateCommand : public ColumnNameMappingWriteCommand {
@@ -535,8 +543,9 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->createColumnNameMapping(this->getSpecifiedColumnNameMapping());
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.createColumnNameMapping(this->getSpecifiedColumnNameMapping())
+          .map(SingleMappingToMappings);
       }
     };
 
@@ -547,8 +556,9 @@ private:
       }
 
     protected:
-      rxcpp::observable<std::shared_ptr<pep::ColumnNameMappings>> getAffectedMappings(std::shared_ptr<pep::CoreClient> client) override {
-        return client->updateColumnNameMapping(this->getSpecifiedColumnNameMapping());
+      rxcpp::observable<pep::ColumnNameMappings> getAffectedMappings(const pep::AccessManagerProxy& am) override {
+        return am.updateColumnNameMapping(this->getSpecifiedColumnNameMapping())
+          .map(SingleMappingToMappings);
       }
     };
 
