@@ -13,11 +13,8 @@ constexpr uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
 namespace pep::messaging {
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
   return pep::CreateObservable<MessageSequence>([stream, first = std::make_shared<bool>(true)](rxcpp::subscriber<MessageSequence> subscriber) {
-    stream->exceptions(std::ios_base::badbit); //TODO temp
-
     // Rewind stream to beginning
     if (!*first) {
-      LOG("MessageSequence", warning) << "Rewinding stream to beginning"; //TODO temp
       stream->seekg(0);
     }
     *first = false;
@@ -38,12 +35,6 @@ MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
 
       // Provide this page to the subscriber
       if (nRead > 0) {
-        //TODO temp
-        if (!subscriber.is_subscribed()) {
-          LOG("MessageSequence", error) << ">>>> Not subscribed!!! :'(";
-        }
-        LOG("MessageSequence", info) << ">>>> Read: [" << std::string_view(*page).substr(0, std::min(page->size(), std::size_t{50})) << "[...]]";
-
         subscriber.on_next(rxcpp::observable<>::just(page));
       }
     }
