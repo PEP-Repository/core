@@ -100,7 +100,8 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
   auto relative = this->getRelativeDocumentationUrl();
   if (relative != std::nullopt) {
     auto version = BinaryVersion::current.getSemver();
-    // Note: this link will produce a 404 for old (unsupported) release branches, and for feature branches (if documentation was not explicitly published).
+    // Note: this link will point to "release-X.Y" regardless of the branch for which the software was built, which has a multitude of problems
+    // See #2734 for (some) details and a suggestion for improvement
     destination << "\nDocumentation for \"" << fullSelf << "\" is located at https://docs.pages.pep.cs.ru.nl/public/core/"
       << "release-" << version.getMajorVersion() << '.' << version.getMinorVersion()
       << "/user_documentation/" << *relative;
