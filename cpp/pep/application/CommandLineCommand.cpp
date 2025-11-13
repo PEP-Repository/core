@@ -99,14 +99,11 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
 
   auto relative = this->getRelativeDocumentationUrl();
   if (relative != std::nullopt) {
-    auto branch = BinaryVersion::current.getReference();
-    if (branch.empty()) {
-      destination << "\nDocumentation URL for \"" << fullSelf << "\" cannot be determined because branch name is unknown.";
-    }
-    else {
-      // Note: this link will produce a 404 for old (unsupported) release branches, and for feature branches (if documentation was not explicitly published).
-      destination << "\nDocumentation for \"" << fullSelf << "\" is located at https://docs.pages.pep.cs.ru.nl/public/core/" << branch << "/user_documentation/" << *relative;
-    }
+    auto version = BinaryVersion::current.getSemver();
+    // Note: this link will produce a 404 for old (unsupported) release branches, and for feature branches (if documentation was not explicitly published).
+    destination << "\nDocumentation for \"" << fullSelf << "\" is located at https://docs.pages.pep.cs.ru.nl/public/core/"
+      << "release-" << version.getMajorVersion() << '.' << version.getMinorVersion()
+      << "/user_documentation/" << *relative;
     destination << std::endl;
   }
 
