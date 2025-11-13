@@ -436,10 +436,13 @@ if should_run_test weblib; then
 
   pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c WasmTestColumn \
     -d 'Some small test data!' --metadataxentry "$(pepcli xentry --name fileExtension --payload .small)"
+
   # Around 2MB
   # Ignore SIGPIPE (141) because output is cut off
-  (yes 'Larger test data!' || [ $? = 141 ]) | head -700000 | pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectLarge -c WasmTestColumn \
-    --input-path - --metadataxentry "$(pepcli xentry --name fileExtension --payload .large)"
+  (yes 'Larger test data!' || [ $? = 141 ]) | head -700000 >"$DATA_DIR/file.large"
+  pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectLarge -c WasmTestColumn \
+    --input-path /data/file.large
+  rm "$DATA_DIR/file.large"
 
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
