@@ -91,7 +91,6 @@ public:
   explicit AccessManager(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   std::unordered_set<std::string> getAllowedChecksumChainRequesters() override;
   std::vector<std::string> getChecksumChainNames() const override;

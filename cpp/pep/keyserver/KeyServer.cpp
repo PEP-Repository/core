@@ -185,8 +185,6 @@ KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
       &KeyServer::handleTokenBlockingRemoveRequest);
 }
 
-std::string KeyServer::describe() const { return "Key Server"; }
-
 void KeyServer::checkValid(const EnrollmentRequest& request) const {
 
   if(!request.mCertificateSigningRequest.getCommonName().has_value()) {

@@ -80,8 +80,5 @@ Authserver::Authserver(std::shared_ptr<Parameters> parameters)
                           &Authserver::handleTokenRequest,
                           &Authserver::handleChecksumChainRequest); //This overwrites the handler in MonitorableServer with our own handler
 }
-std::string Authserver::describe() const {
-  return "Authserver";
-}
 
 }

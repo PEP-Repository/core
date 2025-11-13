@@ -64,7 +64,6 @@ public:
   explicit Transcryptor(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   std::shared_ptr<prometheus::Registry> getMetricsRegistry() override;
   std::vector<std::string> getChecksumChainNames() const override;

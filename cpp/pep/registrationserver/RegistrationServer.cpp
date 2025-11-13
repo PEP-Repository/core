@@ -810,8 +810,4 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
 }
 
 
-std::string RegistrationServer::describe() const {
-  return "Registration Server";
-}
-
 }

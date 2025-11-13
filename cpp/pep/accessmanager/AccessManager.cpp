@@ -402,10 +402,6 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
                           &AccessManager::handleSetStructureMetadataRequest);
 }
 
-std::string AccessManager::describe() const {
-  return "Access Manager";
-}
-
 std::optional<std::filesystem::path> AccessManager::getStoragePath() {
   return EnsureDirectoryPath(backend->getStoragePath().parent_path());
 }

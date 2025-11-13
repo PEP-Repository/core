@@ -79,7 +79,6 @@ public:
   explicit StorageFacility(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   void statsTimer(const boost::system::error_code& e);
   std::vector<std::string> getChecksumChainNames() const override;

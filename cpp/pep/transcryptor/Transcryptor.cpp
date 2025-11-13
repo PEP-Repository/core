@@ -424,10 +424,6 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   mVerifiers.ensureThreadSafe(); // See #791
 }
 
-std::string Transcryptor::describe() const {
-  return "Transcryptor";
-}
-
 std::optional<std::filesystem::path> Transcryptor::getStoragePath() {
   std::filesystem::path path = (std::filesystem::path(mStorage->getPath())).remove_filename();
   return EnsureDirectoryPath(path);

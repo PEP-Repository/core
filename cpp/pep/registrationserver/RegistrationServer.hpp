@@ -89,7 +89,6 @@ public:
   ~RegistrationServer() override;
 
 protected:
-  std::string describe() const override;
   std::vector<std::string> getChecksumChainNames() const override;
   void computeChecksumChainChecksum(
     const std::string& chain, std::optional<uint64_t> maxCheckpoint,

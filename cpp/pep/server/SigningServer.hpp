@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/auth/ServerTraits.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
@@ -27,8 +26,6 @@ private:
   std::shared_ptr<X509Identity> identity_;
 
 protected:
-  virtual ServerTraits serverTraits() const noexcept = 0;
-
   void check() const override {
     auto traits = this->serverTraits();
     if (!traits.matchesCertificateChain(identity_->getCertificateChain())) {
