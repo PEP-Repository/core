@@ -1,6 +1,6 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
-#include <pep/cli/ProxyTraits.hpp>
+#include <pep/client/Client.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 
@@ -53,10 +53,10 @@ public:
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     std::vector<std::string> serverIds;
-    auto proxies = ProxyTraits::All();
-    serverIds.reserve(proxies.size());
-    std::transform(proxies.cbegin(), proxies.cend(), std::back_inserter(serverIds),
-      [](const ProxyTraits& proxy) {return proxy.server().commandLineId(); });
+    auto traits = pep::ServerTraits::All();
+    serverIds.reserve(traits.size());
+    std::transform(traits.cbegin(), traits.cend(), std::back_inserter(serverIds),
+      [](const pep::ServerTraits& single) {return single.commandLineId(); });
     std::sort(serverIds.begin(), serverIds.end());
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
@@ -77,18 +77,24 @@ protected:
     }
 
     auto serverId = parameterValues.get<std::string>("server");
-    auto traits = ProxyTraits::All();
-    auto found = std::find_if(traits.begin(), traits.end(), [serverId](const ProxyTraits& candidate) {return candidate.server().commandLineId() == serverId; });
-    assert(found != traits.end());
+    auto traits = pep::ServerTraits::Find([serverId](const pep::ServerTraits& candidate) {
+      return candidate.commandLineId() == serverId;
+      });
+    assert(traits.has_value());
 
-    if (printCertificateChain && found->server().userGroups().empty()) {
-      LOG(LOG_TAG, pep::error) << found->server().description() << " does not produce a certificate chain to print";
+    if (printCertificateChain && traits->userGroups().empty()) {
+      LOG(LOG_TAG, pep::error) << traits->description() << " does not produce a certificate chain to print";
       return 3;
     }
 
-    return this->executeEventLoopFor(false, [traits = *found, printCertificateChain, printDrift](std::shared_ptr<pep::Client> client) {
-      const pep::ServerProxy& proxy = *traits.getProxy(*client);
+    return this->executeEventLoopFor(false, [traits = *traits, printCertificateChain, printDrift](std::shared_ptr<pep::Client> client) {
+      auto proxies = client->getServerProxies(false);
+      auto found = proxies.find(traits);
+      if (found == proxies.end()) {
+        throw std::runtime_error("No endpoint configured for " + traits.description());
+      }
 
+      const pep::ServerProxy& proxy = *found->second;
       if (printCertificateChain) {
         return PrintCertificateChain(static_cast<const pep::SigningServerProxy&>(proxy)); // TODO: prevent downcast
       }

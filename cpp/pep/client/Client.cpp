@@ -191,6 +191,14 @@ std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProx
   return GetConstServerProxy(registrationServerProxy, "Registration Server", require);
 }
 
+Client::ServerProxies Client::getServerProxies(bool requireAll) const {
+  auto result = CoreClient::getServerProxies(requireAll);
+  AddServerProxy(result, ServerTraits::AuthServer(), this->getAuthServerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::KeyServer(), this->getKeyServerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::RegistrationServer(), this->getRegistrationServerProxy(requireAll));
+  return result;
+}
+
 rxcpp::observable<FakeVoid> Client::shutdown() {
   return CoreClient::shutdown()
     .merge(keyServerProxy->shutdown())

@@ -6,6 +6,7 @@
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/WorkerPool.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
@@ -547,6 +548,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       std::shared_ptr<boost::asio::io_context> io_context = nullptr,
       bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
 
+  using ServerProxies = std::map<ServerTraits, std::shared_ptr<const ServerProxy>>;
+
 protected:
   /*! \brief constructor for CoreClient
    *
@@ -575,6 +578,8 @@ protected:
     return proxy;
   }
 
+  static bool AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy);
+
 public:
   virtual ~CoreClient() noexcept = default;
 
@@ -584,6 +589,8 @@ public:
   std::shared_ptr<const StorageFacilityProxy> getStorageFacilityProxy(bool require = true) const;
   std::shared_ptr<const TranscryptorProxy> getTranscryptorProxy(bool require = true) const;
   std::shared_ptr<const AccessManagerProxy> getAccessManagerProxy(bool require = true) const;
+
+  virtual ServerProxies getServerProxies(bool requireAll) const;
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);

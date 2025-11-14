@@ -266,6 +266,16 @@ rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
 
+bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy) {
+  if (proxy != nullptr) {
+    [[maybe_unused]] auto emplaced = destination.emplace(std::make_pair(traits, proxy)).second;
+    assert(emplaced);
+    return true;
+  }
+
+  return false;
+}
+
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
   return GetConstServerProxy(storageFacilityProxy, "Storage Facility", require);
 }
@@ -276,6 +286,16 @@ std::shared_ptr<const TranscryptorProxy> CoreClient::getTranscryptorProxy(bool r
 
 std::shared_ptr<const AccessManagerProxy> CoreClient::getAccessManagerProxy(bool require) const {
   return GetConstServerProxy(accessManagerProxy, "Access Manager", require);
+}
+
+CoreClient::ServerProxies CoreClient::getServerProxies(bool requireAll) const {
+  ServerProxies result;
+
+  AddServerProxy(result, ServerTraits::AccessManager(), this->getAccessManagerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::StorageFacility(), this->getStorageFacilityProxy(requireAll));
+  AddServerProxy(result, ServerTraits::Transcryptor(), this->getTranscryptorProxy(requireAll));
+
+  return result;
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {

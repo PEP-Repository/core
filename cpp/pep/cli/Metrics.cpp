@@ -1,6 +1,6 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
-#include <pep/cli/ProxyTraits.hpp>
+#include <pep/client/Client.hpp>
 #include <pep/application/Application.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -18,10 +18,10 @@ public:
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
-    auto proxies = ProxyTraits::All();
+    auto traits = pep::ServerTraits::All();
     std::vector<std::string> ids;
-    ids.reserve(proxies.size());
-    std::transform(proxies.begin(), proxies.end(), std::back_inserter(ids), [](const ProxyTraits& traits) {return traits.server().commandLineId(); });
+    ids.reserve(traits.size());
+    std::transform(traits.begin(), traits.end(), std::back_inserter(ids), [](const pep::ServerTraits& traits) {return traits.commandLineId(); });
     std::sort(ids.begin(), ids.end());
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
@@ -30,26 +30,33 @@ protected:
   }
 
   int execute() override {
-    auto all = ProxyTraits::All();
-    std::vector<ProxyTraits> proxies;
+    return this->executeEventLoopFor([allowed = this->getParameterValues().getOptionalMultiple<std::string>("server")](std::shared_ptr<pep::Client> client) {
+      pep::Client::ServerProxies proxies;
 
-    std::vector<std::string> allowed = this->getParameterValues().getOptionalMultiple<std::string>("server");
-    if (!allowed.empty()) {
-      proxies.reserve(all.size());
-      std::copy_if(all.begin(), all.end(), std::back_inserter(proxies), [&allowed](const ProxyTraits& candidate) {
-        auto found = std::find(allowed.begin(), allowed.end(), candidate.server().commandLineId());
-        return found != allowed.end();
-        });
-    }
-    else {
-      proxies = std::move(all);
-    }
+      if (allowed.empty()) {
+        proxies = client->getServerProxies(true);
+      }
+      else {
+        auto available = client->getServerProxies(false);
 
-    return this->executeEventLoopFor([&proxies](std::shared_ptr<pep::Client> client) {
+        for (const auto& id : allowed) {
+          auto found = std::find_if(available.begin(), available.end(), [id](const auto& pair) {
+            return pair.first.commandLineId() == id;
+            });
+          if (found == available.end()) {
+            throw std::runtime_error("No endpoint configured for " + id);
+          }
+          proxies.emplace(*found);
+        }
+      }
+
       return rxcpp::rxs::iterate(proxies)
-        .concat_map([client](const ProxyTraits& traits) {
-        return traits.getProxy(*client)->requestMetrics()
-          .map([caption = traits.server().description()](pep::MetricsResponse metrics) {
+        .concat_map([client](const auto& pair) {
+        const pep::ServerTraits& traits = pair.first;
+        std::shared_ptr<const pep::ServerProxy> proxy = pair.second;
+
+        return proxy->requestMetrics()
+          .map([caption = traits.description()](pep::MetricsResponse metrics) {
           std::cout
             << "============================ " << caption << " ============================\n"
             << metrics.mMetrics
