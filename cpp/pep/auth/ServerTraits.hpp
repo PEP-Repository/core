@@ -14,6 +14,7 @@ private:
   std::optional<std::string> mCustomId;
 
   std::string defaultId() const;
+  std::string id() const;
 
   bool matchesCertificateSubject(const std::string& subject) const;
   bool matchesCertificate(const X509Certificate& certificate) const;

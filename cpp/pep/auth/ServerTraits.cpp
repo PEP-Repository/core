@@ -48,6 +48,13 @@ std::string ServerTraits::defaultId() const {
   return result;
 }
 
+std::string ServerTraits::id() const {
+  if (mCustomId.has_value()) {
+    return *mCustomId;
+  }
+  return this->defaultId();
+}
+
 bool ServerTraits::matchesCertificateSubject(const std::string& subject) const {
   return this->userGroups().contains(subject);
 }
@@ -96,14 +103,11 @@ bool ServerTraits::hasDataAccess() const {
 }
 
 std::string ServerTraits::configNode() const {
-  if (mCustomId.has_value()) {
-    return *mCustomId;
-  }
-  return this->defaultId();
+  return this->id();
 }
 
 std::string ServerTraits::commandLineId() const {
-  auto result = this->configNode();
+  auto result = this->id();
   std::for_each(result.begin(), result.end(), [](char& c) { c = static_cast<char>(std::tolower(c)); });
   return result;
 }
