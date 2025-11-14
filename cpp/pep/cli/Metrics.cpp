@@ -1,10 +1,9 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
+#include <pep/cli/ProxyTraits.hpp>
 #include <pep/application/Application.hpp>
-#include <pep/utils/Exceptions.hpp>
-#include <pep/client/Client.hpp>
 
-#include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
 using namespace pep::cli;
@@ -19,43 +18,45 @@ public:
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
+    auto proxies = ProxyTraits::All();
+    std::vector<std::string> ids;
+    ids.reserve(proxies.size());
+    std::transform(proxies.begin(), proxies.end(), std::back_inserter(ids), [](const ProxyTraits& traits) {return traits.server().commandLineId(); });
+    std::sort(ids.begin(), ids.end());
+
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Restrict to specified server(s)").value(pep::commandline::Value<std::string>().positional().multiple()
-        .allow(std::vector<std::string>({"accessmanager", "authserver", "keyserver", "registrationserver", "transcryptor", "storagefacility" }))); // TODO: don't require explicit std::vector<std::string>(...) instantiation
-  }
-
-  using ServerFilter = std::unordered_set<std::string>;
-  using GetServerProxy = std::function<std::shared_ptr<const pep::ServerProxy>()>;
-
-  static rxcpp::observable<std::string> GetServerMetrics(const ServerFilter& filter, const std::string& name, const std::string& caption, const GetServerProxy& getServerProxy) {
-    if (filter.empty() || filter.contains(name)) {
-      return getServerProxy()->requestMetrics().map([caption](pep::MetricsResponse metrics) {
-        std::ostringstream oss;
-        oss << "============================ " << caption << " ============================\n";
-        oss << metrics.mMetrics;
-        return oss.str();
-        });
-    }
-    return rxcpp::observable<>::empty<std::string>();
+        .allow(ids));
   }
 
   int execute() override {
-    std::vector<std::string> serverFilterVec = this->getParameterValues().getOptionalMultiple<std::string>("server");
-    ServerFilter serverFilter(serverFilterVec.begin(), serverFilterVec.end());
+    auto all = ProxyTraits::All();
+    std::vector<ProxyTraits> proxies;
 
-    return this->executeEventLoopFor([serverFilter](std::shared_ptr<pep::Client> client) {
-      std::vector<rxcpp::observable<std::string>> observables;
-      observables.push_back(GetServerMetrics(serverFilter, "accessmanager",       "Access Manager",       [client]() {return client->getAccessManagerProxy(); }));
-      observables.push_back(GetServerMetrics(serverFilter, "authserver",          "AuthServer",           [client]() {return client->getAuthServerProxy(); }));
-      observables.push_back(GetServerMetrics(serverFilter, "keyserver",           "KeyServer",            [client]() {return client->getKeyServerProxy(); }));
-      observables.push_back(GetServerMetrics(serverFilter, "registrationserver",  "Registration Server",  [client]() {return client->getRegistrationServerProxy(); }));
-      observables.push_back(GetServerMetrics(serverFilter, "transcryptor",        "Transcryptor",         [client]() {return client->getTranscryptorProxy(); }));
-      observables.push_back(GetServerMetrics(serverFilter, "storagefacility",     "Storage Facility",     [client]() {return client->getStorageFacilityProxy(); }));
+    std::vector<std::string> allowed = this->getParameterValues().getOptionalMultiple<std::string>("server");
+    if (!allowed.empty()) {
+      proxies.reserve(all.size());
+      std::copy_if(all.begin(), all.end(), std::back_inserter(proxies), [&allowed](const ProxyTraits& candidate) {
+        auto found = std::find(allowed.begin(), allowed.end(), candidate.server().commandLineId());
+        return found != allowed.end();
+        });
+    }
+    else {
+      proxies = std::move(all);
+    }
 
-      return rxcpp::rxs::iterate(observables).concat().map([](std::string metricsString){
-        std::cout << metricsString << std::endl;
-        return pep::FakeVoid();
-      });
+    return this->executeEventLoopFor([&proxies](std::shared_ptr<pep::Client> client) {
+      return rxcpp::rxs::iterate(proxies)
+        .concat_map([client](const ProxyTraits& traits) {
+        return traits.getProxy(*client)->requestMetrics()
+          .map([caption = traits.server().description()](pep::MetricsResponse metrics) {
+          std::cout
+            << "============================ " << caption << " ============================\n"
+            << metrics.mMetrics
+            << std::endl;
+          return pep::FakeVoid();
+            });
+          });
     });
   }
 };
