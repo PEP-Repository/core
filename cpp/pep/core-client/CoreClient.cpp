@@ -298,6 +298,15 @@ CoreClient::ServerProxies CoreClient::getServerProxies(bool requireAll) const {
   return result;
 }
 
+std::shared_ptr<const ServerProxy> CoreClient::getServerProxy(const ServerTraits& traits) const {
+  auto all = this->getServerProxies(false);
+  auto position = all.find(traits);
+  if (position == all.end()) {
+    throw std::runtime_error("Not connected to " + traits.description());
+  }
+  return position->second;
+}
+
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {
   return io_context;
 }

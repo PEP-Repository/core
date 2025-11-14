@@ -591,6 +591,7 @@ public:
   std::shared_ptr<const AccessManagerProxy> getAccessManagerProxy(bool require = true) const;
 
   virtual ServerProxies getServerProxies(bool requireAll) const;
+  std::shared_ptr<const ServerProxy> getServerProxy(const ServerTraits& traits) const;
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);

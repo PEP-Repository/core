@@ -88,18 +88,12 @@ protected:
     }
 
     return this->executeEventLoopFor(false, [traits = *traits, printCertificateChain, printDrift](std::shared_ptr<pep::Client> client) {
-      auto proxies = client->getServerProxies(false);
-      auto found = proxies.find(traits);
-      if (found == proxies.end()) {
-        throw std::runtime_error("No endpoint configured for " + traits.description());
-      }
-
-      const pep::ServerProxy& proxy = *found->second;
+      auto proxy = client->getServerProxy(traits);
       if (printCertificateChain) {
-        return PrintCertificateChain(static_cast<const pep::SigningServerProxy&>(proxy)); // TODO: prevent downcast
+        return PrintCertificateChain(static_cast<const pep::SigningServerProxy&>(*proxy)); // TODO: prevent downcast
       }
 
-      return PingAndPrint(proxy, printDrift);
+      return PingAndPrint(*proxy, printDrift);
       });
   }
 };

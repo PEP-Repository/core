@@ -37,16 +37,13 @@ protected:
         proxies = client->getServerProxies(true);
       }
       else {
-        auto available = client->getServerProxies(false);
-
         for (const auto& id : allowed) {
-          auto found = std::find_if(available.begin(), available.end(), [id](const auto& pair) {
-            return pair.first.commandLineId() == id;
+          auto traits = pep::ServerTraits::Find([id](const pep::ServerTraits& candidate) {
+            return candidate.commandLineId() == id;
             });
-          if (found == available.end()) {
-            throw std::runtime_error("No endpoint configured for " + id);
-          }
-          proxies.emplace(*found);
+          assert(traits.has_value());
+          auto proxy = client->getServerProxy(*traits);
+          proxies.emplace(*traits, proxy);
         }
       }
 
