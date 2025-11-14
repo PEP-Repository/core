@@ -82,7 +82,7 @@ protected:
       });
     assert(traits.has_value());
 
-    if (printCertificateChain && traits->userGroups().empty()) {
+    if (printCertificateChain && !traits->hasSigningIdentity()) {
       LOG(LOG_TAG, pep::error) << traits->description() << " does not produce a certificate chain to print";
       return 3;
     }

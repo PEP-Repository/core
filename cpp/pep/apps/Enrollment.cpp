@@ -24,7 +24,7 @@ std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::create
   result.emplace_back(std::make_shared<UserEnroller>(*this));
 
   for (auto& server : servers) {
-    if (server.enrollsAs().has_value()) {
+    if (server.isEnrollable()) {
       result.emplace_back(std::make_shared<ServiceEnroller>(std::move(server), *this));
     }
   }

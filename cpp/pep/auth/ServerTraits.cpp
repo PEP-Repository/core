@@ -70,18 +70,29 @@ std::string ServerTraits::tlsCertificateSubject() const {
   return this->id();
 }
 
+bool ServerTraits::hasSigningIdentity() const {
+  return this->isEnrollable() || mCustomId.has_value();
+}
+
+bool ServerTraits::isEnrollable() const {
+  return mEnrollsAs.has_value();
+}
+
+bool ServerTraits::hasDataAccess() const {
+  return mEnrollsAs == EnrolledParty::RegistrationServer;
+}
+
 std::unordered_set<std::string> ServerTraits::userGroups() const {
   std::unordered_set<std::string> result;
-  if (mCustomId.has_value()) {
-    result.emplace(*mCustomId); // Legacy: PEP (enrollment) certificates have been issued for "Authserver" not "AuthServer"
-  }
 
-  if (mEnrollsAs.has_value() || mCustomId.has_value()) {
+  if (this->hasSigningIdentity()) {
     result.emplace(this->defaultId());
+    if (mCustomId.has_value()) {
+      result.emplace(*mCustomId);
+    }
   }
 
   return result;
-
 }
 
 bool ServerTraits::matchesCertificateChain(const X509CertificateChain& chain) const {
@@ -96,10 +107,6 @@ std::optional<std::string> ServerTraits::enrollmentSubject() const {
     return std::nullopt;
   }
   return this->defaultId();
-}
-
-bool ServerTraits::hasDataAccess() const {
-  return mEnrollsAs == EnrolledParty::RegistrationServer;
 }
 
 std::string ServerTraits::configNode() const {

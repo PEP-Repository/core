@@ -28,11 +28,13 @@ public:
 
   std::string tlsCertificateSubject() const;
 
+  bool hasSigningIdentity() const;
   std::unordered_set<std::string> userGroups() const;
   bool matchesCertificateChain(const X509CertificateChain& chain) const;
   static std::optional<ServerTraits> ForCertificateSubject(const std::string& subject);
   static std::optional<ServerTraits> ForCertificate(const X509Certificate& certificate);
 
+  bool isEnrollable() const;
   const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; }
   std::optional<std::string> enrollmentSubject() const;
 
