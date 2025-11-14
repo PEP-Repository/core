@@ -67,7 +67,7 @@ bool ServerTraits::matchesCertificate(const X509Certificate& certificate) const 
 }
 
 std::string ServerTraits::tlsCertificateSubject() const {
-  return mCustomId.value_or(this->defaultId());
+  return this->id();
 }
 
 std::unordered_set<std::string> ServerTraits::userGroups() const {
