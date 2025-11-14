@@ -64,6 +64,8 @@ public:
   rxcpp::observable<ConnectionStatus> connectionStatus() const;
   rxcpp::observable<FakeVoid> shutdown();
 
+  virtual rxcpp::observable<PingResponse> requestPing() const = 0;
+
   rxcpp::observable<VersionResponse> requestVersion() const;
   rxcpp::observable<MetricsResponse> requestMetrics() const;
   rxcpp::observable<ChecksumChainNamesResponse> requestChecksumChainNames() const;
