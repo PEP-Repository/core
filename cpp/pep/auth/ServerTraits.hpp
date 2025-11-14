@@ -27,6 +27,8 @@ public:
   const std::string& description() const noexcept { return mDescription; }
 
   std::string tlsCertificateSubject() const;
+  std::string configNode() const;
+  std::string commandLineId() const;
 
   bool hasSigningIdentity() const;
   std::unordered_set<std::string> userGroups() const;
@@ -39,9 +41,6 @@ public:
   std::optional<std::string> enrollmentSubject() const;
 
   bool hasDataAccess() const;
-
-  std::string configNode() const;
-  std::string commandLineId() const;
 
   static ServerTraits AccessManager();
   static ServerTraits AuthServer();
