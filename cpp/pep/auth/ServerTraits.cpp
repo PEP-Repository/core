@@ -107,7 +107,7 @@ std::string ServerTraits::configNode() const {
 }
 
 std::string ServerTraits::commandLineId() const {
-  auto result = this->id();
+  auto result = this->defaultId();
   std::for_each(result.begin(), result.end(), [](char& c) { c = static_cast<char>(std::tolower(c)); });
   return result;
 }
