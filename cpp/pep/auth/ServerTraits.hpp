@@ -38,7 +38,7 @@ public:
   bool hasDataAccess() const;
 
   std::string configNode() const;
-  std::string commandLineParameter() const;
+  std::string commandLineId() const;
 
   static ServerTraits AccessManager();
   static ServerTraits AuthServer();

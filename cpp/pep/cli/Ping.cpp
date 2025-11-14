@@ -83,7 +83,7 @@ using ServerPingers = std::map<std::string, std::shared_ptr<ServerPinger>>;
 
 template <typename TProxy>
 void AddPinger(ServerPingers& destination, pep::ServerTraits server, std::shared_ptr<const TProxy>(pep::Client::* method)(bool) const) {
-  auto id = server.commandLineParameter();
+  auto id = server.commandLineId();
   auto concrete = pep::MakeSharedCopy(ProxyPinger<TProxy>(std::move(server), method));
   [[maybe_unused]] auto emplaced = destination.emplace(id, concrete).second;
   assert(emplaced);
