@@ -26,6 +26,7 @@ set(PEPCLI_SRCS
     MultiCellQuery.cpp MultiCellQuery.hpp
     NoLongerSupportedCommand.cpp
     Ping.cpp
+    ProxyTraits.cpp ProxyTraits.hpp
     Pull.cpp
     Query.cpp
     Register.cpp
