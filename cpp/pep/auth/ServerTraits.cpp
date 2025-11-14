@@ -104,7 +104,7 @@ bool ServerTraits::matchesCertificateChain(const X509CertificateChain& chain) co
 }
 
 std::optional<std::string> ServerTraits::enrollmentSubject() const {
-  if (!mEnrollsAs.has_value()) {
+  if (!this->isEnrollable()) {
     return std::nullopt;
   }
   return this->defaultId();
