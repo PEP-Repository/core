@@ -28,7 +28,7 @@ struct UniqueVerification<std::string> {
     for (auto i = properties.begin(); i != end; ++i) {
       auto j = i;
       for (++j; j != end; ++j) {
-        EXPECT_NE(i->second, j->second) << i->first << " and " << j->first << " have the same " << description << ": \"" << i->second << '"';
+        EXPECT_NE(i->second, j->second) << i->first << " and " << j->first << " have the same \"" << description << "\" value of \"" << i->second << '"';
       }
     }
   }
