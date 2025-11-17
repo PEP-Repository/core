@@ -112,7 +112,7 @@ void EnrollmentResult::writeJsonTo(std::ostream& os, bool writeDataKey, bool wri
     config.add<std::string>("CertificateChain", signingIdentity.getCertificateChain().toPem());
   }
 
-  config.add<std::string>("EnrollmentScheme", Serialization::ToEnumString(ENROLLMENT_SCHEME_CURRENT));
+  config.add<std::string>("EnrollmentScheme", std::string(Serialization::ToEnumString(ENROLLMENT_SCHEME_CURRENT)));
 
   boost::property_tree::write_json(os, config);
 }
