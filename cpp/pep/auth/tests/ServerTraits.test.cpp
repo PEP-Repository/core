@@ -34,12 +34,11 @@ void VerifyServerMethodProducesUniqueProperties(const std::vector<pep::ServerTra
 }
 
 TEST(ServerTraits, HaveUniqueProperties) {
+  auto servers = pep::ServerTraits::All();
 
-  auto all = pep::ServerTraits::All();
-
-  VerifyServerMethodProducesUniqueProperties(all, "abbreviation", &pep::ServerTraits::abbreviation);
-  VerifyServerMethodProducesUniqueProperties(all, "description", &pep::ServerTraits::description);
-  VerifyServerMethodProducesUniqueProperties(all, "config node", &pep::ServerTraits::configNode);
-  VerifyServerMethodProducesUniqueProperties(all, "command line ID", &pep::ServerTraits::commandLineId);
-  VerifyServerMethodProducesUniqueProperties(all, "TLS certificate subject", &pep::ServerTraits::tlsCertificateSubject);
+  VerifyServerMethodProducesUniqueProperties(servers, "abbreviation", &pep::ServerTraits::abbreviation);
+  VerifyServerMethodProducesUniqueProperties(servers, "description", &pep::ServerTraits::description);
+  VerifyServerMethodProducesUniqueProperties(servers, "config node", &pep::ServerTraits::configNode);
+  VerifyServerMethodProducesUniqueProperties(servers, "command line ID", &pep::ServerTraits::commandLineId);
+  VerifyServerMethodProducesUniqueProperties(servers, "TLS certificate subject", &pep::ServerTraits::tlsCertificateSubject);
 }
