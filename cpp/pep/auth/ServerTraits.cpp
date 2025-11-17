@@ -1,6 +1,7 @@
 #include <pep/auth/Certificate.hpp>
 #include <pep/auth/ServerTraits.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <cassert>
 
 namespace pep {
@@ -120,14 +121,26 @@ std::vector<ServerTraits> ServerTraits::All() {
   };
 }
 
+std::vector<ServerTraits> ServerTraits::Where(const std::function<bool(const ServerTraits&)>& include) {
+  auto result = All();
+  auto end = result.end();
+  auto removed = std::remove_if(result.begin(), end, [include](const ServerTraits& candidate) {return !include(candidate); });
+  result.erase(removed, end);
+  return result;
+}
+
 std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const ServerTraits&)>& predicate) {
-  auto all = All();
-  auto end = all.end();
-  auto position = std::find_if(all.begin(), end, predicate);
-  if (position != end) {
-    return *position;
+  auto filtered = Where(predicate);
+  switch (filtered.size()) {
+  case 0U:
+    return std::nullopt;
+  case 1U:
+    return std::move(filtered.front());
+  default:
+    std::vector<std::string> descriptions;
+    std::transform(filtered.begin(), filtered.end(), std::back_inserter(descriptions), [](const ServerTraits& traits) {return traits.description(); });
+    throw std::runtime_error("Multiple server traits match the predicate: " + boost::join(descriptions, " and "));
   }
-  return std::nullopt;
 }
 
 std::optional<ServerTraits> ServerTraits::Find(EnrolledParty enrollsAs) {

@@ -13,9 +13,7 @@ commandline::Parameters EnrollmentApplication::getSupportedParameters() const {
 }
 
 std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::createChildCommands() {
-  auto servers = ServerTraits::All();
-  // Remove (traits for) servers that cannot be enrolled
-  servers.erase(std::remove_if(servers.begin(), servers.end(), [](const ServerTraits& server) { return !server.isEnrollable(); }), servers.end());
+  auto servers = ServerTraits::Where([](const ServerTraits& server) { return server.isEnrollable(); });
   // Sort by EnrolledParty value: produces nicely sorted child commands
   std::sort(servers.begin(), servers.end(), [](const ServerTraits& lhs, const ServerTraits& rhs) {
     assert(lhs.enrollsAs().has_value());

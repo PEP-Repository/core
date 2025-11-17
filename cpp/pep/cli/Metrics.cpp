@@ -19,9 +19,11 @@ public:
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     auto traits = pep::ServerTraits::All();
+
     std::vector<std::string> ids;
     ids.reserve(traits.size());
     std::transform(traits.begin(), traits.end(), std::back_inserter(ids), [](const pep::ServerTraits& traits) {return traits.commandLineId(); });
+    // Sort by command line ID: produces nicely sorted child commands
     std::sort(ids.begin(), ids.end());
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()

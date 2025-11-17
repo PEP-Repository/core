@@ -30,34 +30,35 @@ public:
   std::string commandLineId() const;
   std::string tlsCertificateSubject() const;
 
-  // Properties for servers with a signing identity (PEP certificate): AM, AS, RS, SF, TS (i.e. all except KS)
   bool hasSigningIdentity() const;
-  std::optional<std::string> userGroup() const;
+  // Properties below are empty (or return false) for servers without a signing identity: KS
+  std::optional<std::string> userGroup() const; // The primary one, i.e. the custom ID if available ("Authserver" for AS)
   std::unordered_set<std::string> userGroups() const;
   bool signingIdentityMatches(const std::string& certificateSubject) const;
   bool signingIdentityMatches(const X509Certificate& certificate) const;
   bool signingIdentityMatches(const X509CertificateChain& chain) const;
 
-  // Properties for servers with pseudonym access: AM, RS, SF, TS (i.e. signing servers except AS)
   bool isEnrollable() const;
-  const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; }
-  std::optional<std::string> enrollmentSubject() const;
+  // Properties below are empty for servers without a signing identity: AS and KS
+  const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; } // Empty if !isEnrollable
+  std::optional<std::string> enrollmentSubject() const; // Empty if !isEnrollable
 
-  // Properties for servers with data access: only RS
   bool hasDataAccess() const;
 
   // These could have been static consts
-  static ServerTraits AccessManager();
-  static ServerTraits AuthServer();
-  static ServerTraits KeyServer();
-  static ServerTraits RegistrationServer();
-  static ServerTraits StorageFacility();
-  static ServerTraits Transcryptor();
+  static ServerTraits AccessManager();      // hasSigningIdentity, isEnrollable
+  static ServerTraits AuthServer();         // hasSigningIdentity
+  static ServerTraits KeyServer();          // <none>
+  static ServerTraits RegistrationServer(); // hasSigningIdentity, isEnrollable, hasDataAccess
+  static ServerTraits StorageFacility();    // hasSigningIdentity, isEnrollable
+  static ServerTraits Transcryptor();       // hasSigningIdentity, isEnrollable
 
+  // Getting multiple server (traits instances)
   static std::vector<ServerTraits> All();
+  static std::vector<ServerTraits> Where(const std::function<bool(const ServerTraits&)>& include);
 
-  // Finding a single server (traits instance) by property
-  static std::optional<ServerTraits> Find(const std::function<bool(const ServerTraits&)>& predicate);
+  // Getting a single server (traits instance) by property
+  static std::optional<ServerTraits> Find(const std::function<bool(const ServerTraits&)>& match);
   static std::optional<ServerTraits> Find(EnrolledParty enrollsAs);
 
   // Allow class to be used as key in an std::map<> (std::unordered_map would require addition of an std::hash<> specialization)
