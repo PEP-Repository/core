@@ -25,7 +25,7 @@ template <typename T>
 void VerifyServerMethodProducesUniqueProperties(const std::vector<pep::ServerTraits>& servers, const std::string& property, T (pep::ServerTraits::*method)() const) {
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
   ServerProperties<Plain> properties;
-  std::transform(servers.begin(), servers.end(), std::inserter(properties, properties.begin()), [method](const pep::ServerTraits& server) {
+  std::transform(servers.begin(), servers.end(), std::back_inserter(properties), [method](const pep::ServerTraits& server) {
     return std::make_pair(server.description(), (server.*method)());
     });
   VerifyServerPropertiesAreUnique(property, std::move(properties));
