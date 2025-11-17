@@ -5,17 +5,19 @@
 
 namespace pep {
 
-ServerTraits::ServerTraits(std::string description) noexcept
-  : mDescription(std::move(description)) {
+ServerTraits::ServerTraits(std::string abbreviation, std::string description) noexcept
+  : mAbbreviation(std::move(abbreviation)), mDescription(std::move(description)) {
 }
 
-ServerTraits::ServerTraits(std::string description, EnrolledParty enrollsAs) noexcept
-  : mDescription(std::move(description)), mEnrollsAs(enrollsAs) {
-  assert(mEnrollsAs != EnrolledParty::User);
+ServerTraits::ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAs) noexcept
+  : ServerTraits(std::move(abbreviation), std::move(description)) {
+  assert(enrollsAs != EnrolledParty::User);
+  mEnrollsAs = enrollsAs;
 }
 
-ServerTraits::ServerTraits(std::string description, std::string customId) noexcept
-  : mDescription(std::move(description)), mCustomId(std::move(customId)) {
+ServerTraits::ServerTraits(std::string abbreviation, std::string description, std::string customId) noexcept
+  : ServerTraits(std::move(abbreviation), std::move(description)) {
+  mCustomId = std::move(customId);
 }
 
 std::string ServerTraits::defaultId() const {
@@ -100,12 +102,12 @@ std::string ServerTraits::commandLineId() const {
   return result;
 }
 
-ServerTraits ServerTraits::AccessManager()      { return ServerTraits{ "Access Manager",      EnrolledParty::AccessManager       }; }
-ServerTraits ServerTraits::AuthServer()         { return ServerTraits{ "Auth Server",         "Authserver"                       }; }
-ServerTraits ServerTraits::KeyServer()          { return ServerTraits{ "Key Server"                                              }; }
-ServerTraits ServerTraits::RegistrationServer() { return ServerTraits{ "Registration Server", EnrolledParty::RegistrationServer, }; }
-ServerTraits ServerTraits::StorageFacility()    { return ServerTraits{ "Storage Facility",    EnrolledParty::StorageFacility     }; }
-ServerTraits ServerTraits::Transcryptor()       { return ServerTraits{ "Transcryptor",        EnrolledParty::Transcryptor,       }; }
+ServerTraits ServerTraits::AccessManager()      { return ServerTraits{ "AM", "Access Manager",      EnrolledParty::AccessManager       }; }
+ServerTraits ServerTraits::AuthServer()         { return ServerTraits{ "AS", "Auth Server",         "Authserver"                       }; }
+ServerTraits ServerTraits::KeyServer()          { return ServerTraits{ "KS", "Key Server"                                              }; }
+ServerTraits ServerTraits::RegistrationServer() { return ServerTraits{ "RS", "Registration Server", EnrolledParty::RegistrationServer, }; }
+ServerTraits ServerTraits::StorageFacility()    { return ServerTraits{ "SF", "Storage Facility",    EnrolledParty::StorageFacility     }; }
+ServerTraits ServerTraits::Transcryptor()       { return ServerTraits{ "TS", "Transcryptor",        EnrolledParty::Transcryptor,       }; }
 
 std::vector<ServerTraits> ServerTraits::All() {
   return {

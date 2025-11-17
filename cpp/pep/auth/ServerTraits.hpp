@@ -9,6 +9,7 @@ namespace pep {
 
 class ServerTraits {
 private:
+  std::string mAbbreviation;
   std::string mDescription;
   std::optional<EnrolledParty> mEnrollsAs;
   std::optional<std::string> mCustomId;
@@ -16,11 +17,12 @@ private:
   std::string defaultId() const;
   std::string id() const;
 
-  explicit ServerTraits(std::string description) noexcept;
-  ServerTraits(std::string description, EnrolledParty enrollsAs) noexcept;
-  ServerTraits(std::string description, std::string customId) noexcept;
+  ServerTraits(std::string abbreviation, std::string description) noexcept;
+  ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAs) noexcept;
+  ServerTraits(std::string abbreviation, std::string description, std::string customId) noexcept;
 
 public:
+  const std::string& abbreviation() const noexcept { return mAbbreviation; }
   const std::string& description() const noexcept { return mDescription; }
 
   std::string tlsCertificateSubject() const;
