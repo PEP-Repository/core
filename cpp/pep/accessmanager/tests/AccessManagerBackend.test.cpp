@@ -537,7 +537,7 @@ TEST_F(AccessManagerBackendTest, handleGetMetadataRequestNoAccess) {
 
 TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_all_groups_for_existing_user) {
   for (auto& user : constants.users) {
-    auto response = backend->handleFindUserRequest(FindUserRequest(user.primaryId, { user.displayId }), "Authserver");
+    auto response = backend->handleFindUserRequest(FindUserRequest(user.primaryId, { user.displayId }), *ServerTraits::AuthServer().userGroup());
     EXPECT_NE(response.mUserGroups, std::nullopt);
     EXPECT_THAT(*response.mUserGroups, testing::SizeIs(user.userGroups.size()));
     for (auto& group : *response.mUserGroups) {
@@ -551,18 +551,18 @@ TEST_F(AccessManagerBackendTest, handleFindUserRequest_adds_primary_id_if_not_ye
   ASSERT_NE(internalIdAtStart, std::nullopt);
   storage->removeIdentifierForUser(constants.user1.primaryId);
   ASSERT_EQ(storage->findInternalUserId(constants.user1.primaryId), std::nullopt);
-  backend->handleFindUserRequest(FindUserRequest{constants.user1.primaryId, {constants.user1.displayId}},  "Authserver");
+  backend->handleFindUserRequest(FindUserRequest{constants.user1.primaryId, {constants.user1.displayId}}, *ServerTraits::AuthServer().userGroup());
   EXPECT_EQ(storage->findInternalUserId(constants.user1.primaryId), internalIdAtStart);
 }
 
 TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_nullopt_for_non_existing_user) {
-  auto response = backend->handleFindUserRequest(FindUserRequest{constants.nonExistingUser, {}}, "Authserver");
+  auto response = backend->handleFindUserRequest(FindUserRequest{constants.nonExistingUser, {}}, *ServerTraits::AuthServer().userGroup());
   EXPECT_EQ(response.mUserGroups, std::nullopt);
 }
 
 TEST_F(AccessManagerBackendTest, handleFindUserRequest_throws_when_primary_id_does_not_match) {
-  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.unusedPrimaryId, {constants.user1.displayId}}, "Authserver"), Error);
-  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.user1.displayId, {}}, "Authserver"), Error);
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.unusedPrimaryId, {constants.user1.displayId}}, *ServerTraits::AuthServer().userGroup()), Error);
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.user1.displayId, {}}, *ServerTraits::AuthServer().userGroup()), Error);
 }
 
 }

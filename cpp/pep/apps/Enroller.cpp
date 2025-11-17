@@ -16,7 +16,7 @@ const std::string LOG_TAG("Enrollment");
 }
 
 EndPoint Enroller::getAccessManagerEndPoint(const Configuration& config) const {
-  return config.get<EndPoint>("AccessManager");
+  return config.get<EndPoint>(ServerTraits::AccessManager().configNode());
 }
 
 rxcpp::observable<EnrollmentResult> UserEnroller::enroll(std::shared_ptr<Client> client) const {
@@ -59,12 +59,12 @@ void Enroller::setProperties(Client::Builder& builder, const Configuration& conf
   try {
     builder.setCaCertFilepath(config.get<std::filesystem::path>("CACertificateFile"));
 
-    EndPoint keyServerEndPoint = config.get<EndPoint>("KeyServer");
+    EndPoint keyServerEndPoint = config.get<EndPoint>(ServerTraits::KeyServer().configNode());
     builder.setKeyServerEndPoint(keyServerEndPoint);
 
     builder.setAccessManagerEndPoint(this->getAccessManagerEndPoint(config));
 
-    EndPoint transcryptorEndPoint = config.get<EndPoint>("Transcryptor");
+    EndPoint transcryptorEndPoint = config.get<EndPoint>(ServerTraits::Transcryptor().configNode());
     builder.setTranscryptorEndPoint(transcryptorEndPoint);
   }
   catch (std::exception& e) {

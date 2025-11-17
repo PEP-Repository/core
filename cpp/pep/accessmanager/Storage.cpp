@@ -272,12 +272,13 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   // ///////////////////////////////////////////////////////////////////////////
 
   // Registration sever
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "RegistrationServer", "access"));
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "RegistrationServer", "enumerate"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", "RegistrationServer", "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", "RegistrationServer", "write"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", "RegistrationServer", "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", "RegistrationServer", "write"));
+  const auto registrationServer = *ServerTraits::RegistrationServer().enrollmentSubject();
+  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "access"));
+  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "enumerate"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "read"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "write"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "read"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "write"));
 
   // "Pull castor" server
   mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "PullCastor", "access"));

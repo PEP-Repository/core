@@ -202,15 +202,15 @@ void CoreClient::Builder::initialize(
       this->setPublicKeyData(config.get<ElgamalPublicKey>("PublicKeyData"));
       this->setPublicKeyPseudonyms(config.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
 
-      if (auto amConfig = config.get<std::optional<EndPoint>>("AccessManager")) {
+      if (auto amConfig = config.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
         this->setAccessManagerEndPoint(*amConfig);
       }
 
-      if (auto tcConfig = config.get<std::optional<EndPoint>>("Transcryptor")) {
+      if (auto tcConfig = config.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
         this->setTranscryptorEndPoint(*tcConfig);
       }
 
-      if (auto sfConfig = config.get<std::optional<EndPoint>>("StorageFacility")) {
+      if (auto sfConfig = config.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
         this->setStorageFacilityEndPoint(*sfConfig);
       }
     } catch (std::exception& e) {

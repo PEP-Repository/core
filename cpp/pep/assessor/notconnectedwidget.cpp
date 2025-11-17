@@ -1,8 +1,10 @@
 #include <pep/assessor/notconnectedwidget.hpp>
 
+#include <pep/auth/ServerTraits.hpp>
+
 #include <pep/assessor/ui_notconnectedwidget.h>
 
-void NotConnectedWidget::appendConnectionStatus(QString& destination, QString facility, pep::ConnectionStatus status) const {
+void NotConnectedWidget::appendConnectionStatus(QString& destination, const std::string& facility, pep::ConnectionStatus status) const {
   if (!status.connected) {
     const char *format{};
 
@@ -19,7 +21,7 @@ void NotConnectedWidget::appendConnectionStatus(QString& destination, QString fa
     if (!destination.isEmpty()) {
       destination += "\r\n\r\n";
     }
-    destination += tr(format).arg(facility);
+    destination += tr(format).arg(QString::fromStdString(facility).toLower());
   }
 }
 
@@ -28,9 +30,9 @@ NotConnectedWidget::NotConnectedWidget(pep::ConnectionStatus accessManager, pep:
   ui->setupUi(this);
   QString text;
 
-  appendConnectionStatus(text, "access manager", accessManager);
-  appendConnectionStatus(text, "keyserver", keyServer);
-  appendConnectionStatus(text, "storage facility", storageFacility);
+  appendConnectionStatus(text, pep::ServerTraits::AccessManager().description(), accessManager);
+  appendConnectionStatus(text, pep::ServerTraits::KeyServer().description(), keyServer);
+  appendConnectionStatus(text, pep::ServerTraits::StorageFacility().description(), storageFacility);
 
   if (text.isEmpty()) {
     text = tr("Your session has expired and you have been logged out. Please restart the application.");

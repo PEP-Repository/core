@@ -228,15 +228,15 @@ void Client::Builder::initialize(const Configuration& config,
     this->setPublicKeyShadowAdministration(AsymmetricKey(ReadFile(*shadowPublicKeyFile)));
   }
 
-  if (auto ksConfig = config.get<std::optional<EndPoint>>("KeyServer")) {
+  if (auto ksConfig = config.get<std::optional<EndPoint>>(ServerTraits::KeyServer().configNode())) {
     this->setKeyServerEndPoint(*ksConfig);
   }
 
-  if (auto asConfig = config.get<std::optional<EndPoint>>("Authserver")) {
+  if (auto asConfig = config.get<std::optional<EndPoint>>(ServerTraits::AuthServer().configNode())) {
     this->setAuthserverEndPoint(*asConfig);
   }
 
-  if (auto rsConfig = config.get<std::optional<EndPoint>>("RegistrationServer")) {
+  if (auto rsConfig = config.get<std::optional<EndPoint>>(ServerTraits::RegistrationServer().configNode())) {
     this->setRegistrationServerEndPoint(*rsConfig);
   }
 }

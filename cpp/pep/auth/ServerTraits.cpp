@@ -58,14 +58,19 @@ bool ServerTraits::hasDataAccess() const {
   return mEnrollsAs == EnrolledParty::RegistrationServer;
 }
 
+std::optional<std::string> ServerTraits::userGroup() const {
+  if (!this->hasSigningIdentity()) {
+    return std::nullopt;
+  }
+  return this->id();
+}
+
 std::unordered_set<std::string> ServerTraits::userGroups() const {
   std::unordered_set<std::string> result;
 
-  if (this->hasSigningIdentity()) {
-    result.emplace(this->defaultId());
-    if (mCustomId.has_value()) {
-      result.emplace(*mCustomId);
-    }
+  if (auto primary = this->userGroup()) { // Custom ID if we have one; default ID if not
+    result.emplace(*primary);
+    result.emplace(this->defaultId()); // Not (re-)added if same as primary ID
   }
 
   return result;

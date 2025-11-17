@@ -28,6 +28,7 @@ public:
   std::string commandLineId() const;
 
   bool hasSigningIdentity() const;
+  std::optional<std::string> userGroup() const;
   std::unordered_set<std::string> userGroups() const;
   bool signingIdentityMatches(const std::string& certificateSubject) const;
   bool signingIdentityMatches(const X509Certificate& certificate) const;
