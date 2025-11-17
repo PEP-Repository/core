@@ -277,15 +277,15 @@ bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& 
 }
 
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
-  return GetConstServerProxy(storageFacilityProxy, "Storage Facility", require);
+  return GetConstServerProxy(storageFacilityProxy, ServerTraits::StorageFacility(), require);
 }
 
 std::shared_ptr<const TranscryptorProxy> CoreClient::getTranscryptorProxy(bool require) const {
-  return GetConstServerProxy(transcryptorProxy, "Transcryptor", require);
+  return GetConstServerProxy(transcryptorProxy, ServerTraits::Transcryptor(), require);
 }
 
 std::shared_ptr<const AccessManagerProxy> CoreClient::getAccessManagerProxy(bool require) const {
-  return GetConstServerProxy(accessManagerProxy, "Access Manager", require);
+  return GetConstServerProxy(accessManagerProxy, ServerTraits::AccessManager(), require);
 }
 
 CoreClient::ServerProxies CoreClient::getServerProxies(bool requireAll) const {

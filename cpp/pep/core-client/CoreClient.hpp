@@ -570,10 +570,10 @@ protected:
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
 
   template <typename T>
-  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> proxy, const std::string& serverName, bool require) {
+  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> proxy, const ServerTraits& traits, bool require) {
     if (require && proxy == nullptr) {
       // TODO: refactor so that CoreClient and derived class instances cannot exist without instantiating their individual ServerProxy fields
-      throw std::runtime_error("Not connected to " + serverName);
+      throw std::runtime_error("Not connected to " + traits.description());
     }
     return proxy;
   }

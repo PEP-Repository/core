@@ -180,15 +180,15 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 }
 
 std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
-  return GetConstServerProxy(keyServerProxy, "Key Server", require);
+  return GetConstServerProxy(keyServerProxy, ServerTraits::KeyServer(), require);
 }
 
 std::shared_ptr<const AuthServerProxy> Client::getAuthServerProxy(bool require) const {
-  return GetConstServerProxy(authServerProxy, "Auth Server", require);
+  return GetConstServerProxy(authServerProxy, ServerTraits::AuthServer(), require);
 }
 
 std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProxy(bool require) const {
-  return GetConstServerProxy(registrationServerProxy, "Registration Server", require);
+  return GetConstServerProxy(registrationServerProxy, ServerTraits::RegistrationServer(), require);
 }
 
 Client::ServerProxies Client::getServerProxies(bool requireAll) const {
