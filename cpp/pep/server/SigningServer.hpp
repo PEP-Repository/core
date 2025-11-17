@@ -28,7 +28,7 @@ private:
 protected:
   void check() const override {
     auto traits = this->serverTraits();
-    if (!traits.matchesCertificateChain(identity_->getCertificateChain())) {
+    if (!traits.signingIdentityMatches(identity_->getCertificateChain())) {
       throw std::runtime_error("Invalid certificate chain for " + traits.description());
     }
 

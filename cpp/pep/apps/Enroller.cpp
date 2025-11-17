@@ -29,7 +29,7 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
   AsymmetricKey privateKey(ReadFile(this->getParameterValues().get<std::filesystem::path>("private-key-file")));
   X509CertificateChain certificateChain(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file")));
 
-  if (!mServer.matchesCertificateChain(certificateChain)) {
+  if (!mServer.signingIdentityMatches(certificateChain)) {
     std::string description = "unknown facility";
     if (!certificateChain.empty()) {
       auto certificate = certificateChain.front();

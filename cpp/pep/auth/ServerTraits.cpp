@@ -1,34 +1,9 @@
+#include <pep/auth/Certificate.hpp>
 #include <pep/auth/ServerTraits.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <cassert>
 
 namespace pep {
-
-namespace {
-
-const std::string intermediateServerCaCommonName = "PEP Intermediate PEP Server CA";
-const std::string intermediateServerTlsCaCommonName = "PEP Intermediate TLS CA";
-
-std::optional<std::string> GetServerSigningCertificateSubject(const X509Certificate& certificate) {
-  if (certificate.hasTLSServerEKU()) {
-    return std::nullopt; // Not the correct type of certificate
-  }
-  if (certificate.getIssuerCommonName() != intermediateServerCaCommonName) {
-    return std::nullopt; // Not issued by the correct intermediate CA
-  }
-
-  auto result = certificate.getOrganizationalUnit();
-  if (!result.has_value()) {
-    return std::nullopt; // Empty OU (user group)
-  }
-  if (result != certificate.getCommonName()) {
-    return std::nullopt; // Server certificates have equal CN and OU, e.g. "OU=AccessManager, CN=AccessManager"
-  }
-
-  return result;
-}
-
-}
 
 ServerTraits::ServerTraits(std::string description) noexcept
   : mDescription(std::move(description)) {
@@ -56,13 +31,13 @@ std::string ServerTraits::id() const {
   return this->defaultId();
 }
 
-bool ServerTraits::matchesCertificateSubject(const std::string& subject) const {
-  return this->userGroups().contains(subject);
+bool ServerTraits::signingIdentityMatches(const std::string& certificateSubject) const {
+  return this->userGroups().contains(certificateSubject);
 }
 
-bool ServerTraits::matchesCertificate(const X509Certificate& certificate) const {
-  if (auto subject = GetServerSigningCertificateSubject(certificate)) {
-    return this->matchesCertificateSubject(*subject);
+bool ServerTraits::signingIdentityMatches(const X509Certificate& certificate) const {
+  if (auto subject = GetSubjectIfServerSigningCertificate(certificate)) {
+    return this->signingIdentityMatches(*subject);
   }
   return false;
 }
@@ -96,11 +71,11 @@ std::unordered_set<std::string> ServerTraits::userGroups() const {
   return result;
 }
 
-bool ServerTraits::matchesCertificateChain(const X509CertificateChain& chain) const {
+bool ServerTraits::signingIdentityMatches(const X509CertificateChain& chain) const {
   if (chain.empty()) {
     return false;
   }
-  return this->matchesCertificate(chain.front());
+  return this->signingIdentityMatches(chain.front());
 }
 
 std::optional<std::string> ServerTraits::enrollmentSubject() const {
@@ -150,17 +125,6 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
 
 std::optional<ServerTraits> ServerTraits::Find(EnrolledParty enrollsAs) {
   return Find([enrollsAs](const ServerTraits& candidate) {return candidate.enrollsAs() == enrollsAs; });
-}
-
-std::optional<ServerTraits> ServerTraits::ForCertificateSubject(const std::string& subject) {
-  return Find([subject](const ServerTraits& candidate) {return candidate.matchesCertificateSubject(subject); });
-}
-
-std::optional<ServerTraits> ServerTraits::ForCertificate(const X509Certificate& certificate) {
-  if (auto subject = GetServerSigningCertificateSubject(certificate)) {
-    return ForCertificateSubject(*subject);
-  }
-  return std::nullopt;
 }
 
 }

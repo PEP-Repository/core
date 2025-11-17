@@ -1,12 +1,13 @@
 # Functionality related to auth[entication|orization].
 
 add_library(${PROJECT_NAME}Authlib STATIC
-    EnrolledParty.cpp EnrolledParty.hpp
-    OAuthError.cpp OAuthError.hpp
-    OAuthToken.cpp OAuthToken.hpp
-    ServerTraits.cpp ServerTraits.hpp
-    UserGroup.cpp UserGroup.hpp
-    UserGroupSerializers.cpp UserGroupSerializers.hpp
+  Certificate.cpp Certificate.hpp
+  EnrolledParty.cpp EnrolledParty.hpp
+  OAuthError.cpp OAuthError.hpp
+  OAuthToken.cpp OAuthToken.hpp
+  ServerTraits.cpp ServerTraits.hpp
+  UserGroup.cpp UserGroup.hpp
+  UserGroupSerializers.cpp UserGroupSerializers.hpp
 )
 
 find_package(Boost REQUIRED)

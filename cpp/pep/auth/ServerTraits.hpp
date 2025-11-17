@@ -16,9 +16,6 @@ private:
   std::string defaultId() const;
   std::string id() const;
 
-  bool matchesCertificateSubject(const std::string& subject) const;
-  bool matchesCertificate(const X509Certificate& certificate) const;
-
   explicit ServerTraits(std::string description) noexcept;
   ServerTraits(std::string description, EnrolledParty enrollsAs) noexcept;
   ServerTraits(std::string description, std::string customId) noexcept;
@@ -32,10 +29,10 @@ public:
 
   bool hasSigningIdentity() const;
   std::unordered_set<std::string> userGroups() const;
-  bool matchesCertificateChain(const X509CertificateChain& chain) const;
-  static std::optional<ServerTraits> ForCertificateSubject(const std::string& subject);
-  static std::optional<ServerTraits> ForCertificate(const X509Certificate& certificate);
-
+  bool signingIdentityMatches(const std::string& certificateSubject) const;
+  bool signingIdentityMatches(const X509Certificate& certificate) const;
+  bool signingIdentityMatches(const X509CertificateChain& chain) const;
+  
   bool isEnrollable() const;
   const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; }
   std::optional<std::string> enrollmentSubject() const;
