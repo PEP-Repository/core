@@ -15,18 +15,20 @@ commandline::Parameters EnrollmentApplication::getSupportedParameters() const {
 std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::createChildCommands() {
   auto servers = ServerTraits::All();
   // Remove (traits for) servers that cannot be enrolled
-  servers.erase(std::remove_if(servers.begin(), servers.end(), [](const ServerTraits& server) { return !server.enrollsAs().has_value(); }), servers.end());
+  servers.erase(std::remove_if(servers.begin(), servers.end(), [](const ServerTraits& server) { return !server.isEnrollable(); }), servers.end());
   // Sort by EnrolledParty value: produces nicely sorted child commands
-  std::sort(servers.begin(), servers.end(), [](const ServerTraits& lhs, const ServerTraits& rhs) { return *lhs.enrollsAs() < *rhs.enrollsAs(); });
+  std::sort(servers.begin(), servers.end(), [](const ServerTraits& lhs, const ServerTraits& rhs) {
+    assert(lhs.enrollsAs().has_value());
+    assert(rhs.enrollsAs().has_value());
+    return *lhs.enrollsAs() < *rhs.enrollsAs();
+    });
 
   std::vector<std::shared_ptr<commandline::Command>> result;
   result.reserve(servers.size() + 1U);
   result.emplace_back(std::make_shared<UserEnroller>(*this));
 
   for (auto& server : servers) {
-    if (server.isEnrollable()) {
-      result.emplace_back(std::make_shared<ServiceEnroller>(std::move(server), *this));
-    }
+    result.emplace_back(std::make_shared<ServiceEnroller>(std::move(server), *this));
   }
 
   return result;
