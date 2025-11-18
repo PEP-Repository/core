@@ -3,6 +3,7 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <functional>
+#include <set>
 #include <unordered_set>
 
 namespace pep {
@@ -49,6 +50,9 @@ public:
   const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; }
   std::optional<std::string> enrollmentSubject() const;
 
+  // Allow class to be used as key in an std::set<> or std::map<> (std::unordered_XYZ would require addition of an std::hash<> specialization)
+  auto operator<=>(const ServerTraits&) const = default;
+
   // These could have been static consts
   static ServerTraits AccessManager();      // hasSigningIdentity, isEnrollable
   static ServerTraits AuthServer();         // hasSigningIdentity
@@ -58,15 +62,12 @@ public:
   static ServerTraits Transcryptor();       // hasSigningIdentity, isEnrollable
 
   // Getting multiple server (traits instances)
-  static std::vector<ServerTraits> All();
-  static std::vector<ServerTraits> Where(const std::function<bool(const ServerTraits&)>& include);
+  static std::set<ServerTraits> All();
+  static std::set<ServerTraits> Where(const std::function<bool(const ServerTraits&)>& include);
 
   // Getting a single server (traits instance) by property
   static std::optional<ServerTraits> Find(const std::function<bool(const ServerTraits&)>& match);
   static std::optional<ServerTraits> Find(EnrolledParty enrollsAs);
-
-  // Allow class to be used as key in an std::map<> (std::unordered_map would require addition of an std::hash<> specialization)
-  auto operator<=>(const ServerTraits&) const = default;
 };
 
 }

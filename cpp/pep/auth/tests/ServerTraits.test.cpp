@@ -63,7 +63,7 @@ struct ServerPropertyValue<std::unordered_set<T>> {
 };
 
 template <typename T>
-void VerifyServerMethodProducesUniqueProperties(const std::vector<pep::ServerTraits>& servers, const std::string& property, T (pep::ServerTraits::*method)() const) {
+void VerifyServerMethodProducesUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, T (pep::ServerTraits::*method)() const) {
   // Aggregate the properties for all servers into a vector
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
   std::vector<ServerProperty<Plain>> properties;
@@ -92,6 +92,7 @@ void VerifyServerMethodProducesUniqueProperties(const std::vector<pep::ServerTra
 
 TEST(ServerTraits, HaveUniqueProperties) {
   auto servers = pep::ServerTraits::All();
+  EXPECT_EQ(servers.size(), 6U);
 
   VerifyServerMethodProducesUniqueProperties(servers, "abbreviation", &pep::ServerTraits::abbreviation);
   VerifyServerMethodProducesUniqueProperties(servers, "description", &pep::ServerTraits::description);

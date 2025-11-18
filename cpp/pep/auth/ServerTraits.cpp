@@ -110,8 +110,8 @@ ServerTraits ServerTraits::RegistrationServer() { return ServerTraits{ "RS", "Re
 ServerTraits ServerTraits::StorageFacility()    { return ServerTraits{ "SF", "Storage Facility",    EnrolledParty::StorageFacility     }; }
 ServerTraits ServerTraits::Transcryptor()       { return ServerTraits{ "TS", "Transcryptor",        EnrolledParty::Transcryptor,       }; }
 
-std::vector<ServerTraits> ServerTraits::All() {
-  return {
+std::set<ServerTraits> ServerTraits::All() {
+  std::set<ServerTraits> result = {
     AccessManager(),
     AuthServer(),
     KeyServer(),
@@ -119,13 +119,13 @@ std::vector<ServerTraits> ServerTraits::All() {
     StorageFacility(),
     Transcryptor(),
   };
+  assert(result.size() == 6U);
+  return result;
 }
 
-std::vector<ServerTraits> ServerTraits::Where(const std::function<bool(const ServerTraits&)>& include) {
+std::set<ServerTraits> ServerTraits::Where(const std::function<bool(const ServerTraits&)>& include) {
   auto result = All();
-  auto end = result.end();
-  auto removed = std::remove_if(result.begin(), end, [include](const ServerTraits& candidate) {return !include(candidate); });
-  result.erase(removed, end);
+  std::erase_if(result, [include](const ServerTraits& candidate) {return !include(candidate); });
   return result;
 }
 
@@ -135,7 +135,7 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
   case 0U:
     return std::nullopt;
   case 1U:
-    return std::move(filtered.front());
+    return std::move(*filtered.begin());
   default:
     std::vector<std::string> descriptions;
     std::transform(filtered.begin(), filtered.end(), std::back_inserter(descriptions), [](const ServerTraits& traits) {return traits.description(); });
