@@ -53,19 +53,19 @@ public:
   // Allow class to be used as key in an std::set<> or std::map<> (std::unordered_XYZ would require addition of an std::hash<> specialization)
   auto operator<=>(const ServerTraits&) const = default;
 
-  // These could have been static consts
-  static ServerTraits AccessManager();      // hasSigningIdentity, isEnrollable
+  // Individual servers. Defined as static methods instead of consts to avoid the static initialization fiasco: see e.g. UserGroup::AccessManager and UserGroup::Authserver
+  static ServerTraits AccessManager();      // hasSigningIdentity + isEnrollable
   static ServerTraits AuthServer();         // hasSigningIdentity
   static ServerTraits KeyServer();          // <none>
-  static ServerTraits RegistrationServer(); // hasSigningIdentity, isEnrollable, hasDataAccess
-  static ServerTraits StorageFacility();    // hasSigningIdentity, isEnrollable
-  static ServerTraits Transcryptor();       // hasSigningIdentity, isEnrollable
+  static ServerTraits RegistrationServer(); // hasSigningIdentity + isEnrollable + hasDataAccess
+  static ServerTraits StorageFacility();    // hasSigningIdentity + isEnrollable
+  static ServerTraits Transcryptor();       // hasSigningIdentity + isEnrollable
 
-  // Getting multiple server (traits instances)
+  // Getting/finding multiple servers
   static std::set<ServerTraits> All();
   static std::set<ServerTraits> Where(const std::function<bool(const ServerTraits&)>& include);
 
-  // Getting a single server (traits instance) by property
+  // Getting/finding an individual server
   static std::optional<ServerTraits> Find(const std::function<bool(const ServerTraits&)>& match);
   static std::optional<ServerTraits> Find(EnrolledParty enrollsAs);
 };
