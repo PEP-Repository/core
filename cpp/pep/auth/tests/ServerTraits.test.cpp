@@ -5,8 +5,8 @@
 
 namespace {
 
-// Not using a map<> or unordered_map<> because we'd need to use some (possibly duplicate) property as the key
-template <typename T> using ServerProperty = std::pair<std::string, T>;
+template <typename T> using ServerProperties = std::map<pep::ServerTraits, T>;
+template <typename T> using ServerProperty = ServerProperties<T>::value_type;
 
 template <typename T, typename Enable = void>
 struct ServerPropertyValue;
@@ -66,11 +66,11 @@ template <typename GetProperty>
 void VerifyServersHaveUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, const GetProperty& getProperty) {
   using T = std::invoke_result_t<const GetProperty, const pep::ServerTraits&>;
 
-  // Aggregate the properties for all servers into a vector
+  // Aggregate the properties for all servers
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
-  std::vector<ServerProperty<Plain>> properties;
-  std::transform(servers.begin(), servers.end(), std::back_inserter(properties), [getProperty](const pep::ServerTraits& server) {
-    return std::make_pair(server.description(), getProperty(server));
+  ServerProperties<Plain> properties;
+  std::transform(servers.begin(), servers.end(), std::inserter(properties, properties.begin()), [getProperty](const pep::ServerTraits& server) {
+    return std::make_pair(server, getProperty(server));
     });
 
   // Compare each server('s property) against each other server('s property)
@@ -82,7 +82,7 @@ void VerifyServersHaveUniqueProperties(const std::set<pep::ServerTraits>& server
       for (++j; j != end; ++j) {
         if (!Value::IsEmpty(j->second)) { // Don't compare e.g. nullopt
           if (std::optional<std::string> duplicate = Value::DescribeIfDuplicate(i->second, j->second)) {
-            FAIL() << i->first << " and " << j->first << " have duplicate \"" << property << '\" ' << *duplicate;
+            FAIL() << i->first.description() << " and " << j->first.description() << " have duplicate \"" << property << '\" ' << *duplicate;
           }
         }
       }
