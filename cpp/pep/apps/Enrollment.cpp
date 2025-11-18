@@ -16,7 +16,7 @@ std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::create
   auto servers = RangeToVector(ServerTraits::Where([](const ServerTraits& server) { return server.isEnrollable(); }));
   // Sort by EnrolledParty value: produces nicely sorted child commands
   std::sort(servers.begin(), servers.end(), [](const ServerTraits& lhs, const ServerTraits& rhs) {
-    return *lhs.enrollsAs(true) < *rhs.enrollsAs(true);
+    return *lhs.enrollsAsParty(true) < *rhs.enrollsAsParty(true);
     });
 
   std::vector<std::shared_ptr<commandline::Command>> result;

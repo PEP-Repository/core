@@ -12,7 +12,7 @@ class ServerTraits {
 private:
   std::string mAbbreviation;
   std::string mDescription;
-  std::optional<EnrolledParty> mEnrollsAs;
+  std::optional<EnrolledParty> mEnrollsAsParty;
   std::optional<std::string> mCustomId;
 
   std::string defaultId() const;
@@ -20,7 +20,7 @@ private:
 
   // Private constructors ensure that all instances have been created by this class itself, i.e. are valid
   ServerTraits(std::string abbreviation, std::string description) noexcept;
-  ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAs) noexcept;
+  ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAsParty) noexcept;
   ServerTraits(std::string abbreviation, std::string description, std::string customId) noexcept;
 
 public:
@@ -47,7 +47,7 @@ public:
   bool signingIdentityMatches(const X509CertificateChain& chain) const;
 
   // Properties related to enrollment: nullopt for servers that are not enrollable (AS and KS)
-  const std::optional<EnrolledParty>& enrollsAs(bool require) const noexcept { return mEnrollsAs; }
+  const std::optional<EnrolledParty>& enrollsAsParty(bool require) const noexcept { return mEnrollsAsParty; }
   std::optional<std::string> enrollmentSubject(bool require) const;
 
   // Allow class to be used as key in an std::set<> or std::map<> (std::unordered_XYZ would require addition of an std::hash<> specialization)
@@ -67,7 +67,7 @@ public:
 
   // Getting/finding an individual server
   static std::optional<ServerTraits> Find(const std::function<bool(const ServerTraits&)>& match);
-  static std::optional<ServerTraits> Find(EnrolledParty enrollsAs);
+  static std::optional<ServerTraits> Find(EnrolledParty enrollsAsParty);
 };
 
 }

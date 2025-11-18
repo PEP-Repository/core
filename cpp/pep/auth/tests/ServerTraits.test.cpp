@@ -82,7 +82,7 @@ void VerifyServersHaveUniqueProperties(const std::set<pep::ServerTraits>& server
       for (++j; j != end; ++j) {
         if (!Value::IsEmpty(j->second)) { // Don't compare e.g. nullopt
           if (std::optional<std::string> duplicate = Value::DescribeIfDuplicate(i->second, j->second)) {
-            FAIL() << i->first << " and " << j->first << " have duplicate " << property << ' ' << *duplicate;
+            FAIL() << i->first << " and " << j->first << " have duplicate \"" << property << '\" ' << *duplicate;
           }
         }
       }
@@ -117,6 +117,6 @@ TEST(ServerTraits, HaveUniqueProperties) {
   VerifyServerMethodProducesUniqueProperties(servers, "user group", &pep::ServerTraits::userGroup);
   VerifyServerMethodProducesUniqueProperties(servers, "user groups", &pep::ServerTraits::userGroups);
 
-  VerifyServerMethodProducesUniqueProperties(servers, "enrolls as", &pep::ServerTraits::enrollsAs);
+  VerifyServerMethodProducesUniqueProperties(servers, "enrolls as party", &pep::ServerTraits::enrollsAsParty);
   VerifyServerMethodProducesUniqueProperties(servers, "enrollment subject", &pep::ServerTraits::enrollmentSubject);
 }

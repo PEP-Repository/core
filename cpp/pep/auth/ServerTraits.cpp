@@ -23,10 +23,10 @@ ServerTraits::ServerTraits(std::string abbreviation, std::string description) no
   : mAbbreviation(std::move(abbreviation)), mDescription(std::move(description)) {
 }
 
-ServerTraits::ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAs) noexcept
+ServerTraits::ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAsParty) noexcept
   : ServerTraits(std::move(abbreviation), std::move(description)) {
-  assert(enrollsAs != EnrolledParty::User);
-  mEnrollsAs = enrollsAs;
+  assert(enrollsAsParty != EnrolledParty::User);
+  mEnrollsAsParty = enrollsAsParty;
 }
 
 ServerTraits::ServerTraits(std::string abbreviation, std::string description, std::string customId) noexcept
@@ -57,11 +57,11 @@ bool ServerTraits::hasSigningIdentity() const {
 }
 
 bool ServerTraits::isEnrollable() const {
-  return mEnrollsAs.has_value();
+  return mEnrollsAsParty.has_value();
 }
 
 bool ServerTraits::hasDataAccess() const {
-  return mEnrollsAs == EnrolledParty::RegistrationServer;
+  return mEnrollsAsParty == EnrolledParty::RegistrationServer;
 }
 
 std::optional<std::string> ServerTraits::userGroup(bool require) const {
@@ -149,8 +149,8 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
   }
 }
 
-std::optional<ServerTraits> ServerTraits::Find(EnrolledParty enrollsAs) {
-  return Find([enrollsAs](const ServerTraits& candidate) {return candidate.enrollsAs(false) == enrollsAs; });
+std::optional<ServerTraits> ServerTraits::Find(EnrolledParty enrollsAsParty) {
+  return Find([enrollsAsParty](const ServerTraits& candidate) {return candidate.enrollsAsParty(false) == enrollsAsParty; });
 }
 
 }

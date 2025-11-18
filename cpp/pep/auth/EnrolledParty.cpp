@@ -10,7 +10,7 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate
 
   if (auto subject = GetSubjectIfServerSigningCertificate(certificate)) {
     if (auto traits = ServerTraits::Find([subject](const ServerTraits& candidate) {return candidate.signingIdentityMatches(*subject); })) {
-      return traits->enrollsAs(false);
+      return traits->enrollsAsParty(false);
     }
   }
 
