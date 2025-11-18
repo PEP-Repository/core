@@ -24,9 +24,9 @@ const auto certificateSubjectMappings = [] {
   return map_type{pairs.begin(), pairs.end()};
 }();
 
-std::optional<std::string> GetServerCertificateSubject(const X509Certificate& certificate) {
+std::optional<std::string> GetServerSigningCertificateSubject(const X509Certificate& certificate) {
   if (certificate.hasTLSServerEKU()) {
-    return std::nullopt; // Not the correct type of certificate
+    return std::nullopt; // Not a signing certificate
   }
   auto issuer = intermediateServerCaCommonName;
   if (certificate.getIssuerCommonName() != issuer) {
@@ -67,7 +67,7 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate
     return EnrolledParty::User;
   }
 
-  auto subject = GetServerCertificateSubject(certificate);
+  auto subject = GetServerSigningCertificateSubject(certificate);
   if (!subject.has_value()) {
     return std::nullopt;
   }
@@ -83,7 +83,7 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain)
 }
 
 bool IsServerSigningCertificate(const X509Certificate& certificate) {
-  if (auto subject = GetServerCertificateSubject(certificate)) {
+  if (auto subject = GetServerSigningCertificateSubject(certificate)) {
     if (certificateSubjectMappings.left.count(*subject) != 0) {
       return true;
     }
