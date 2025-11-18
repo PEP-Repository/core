@@ -15,10 +15,10 @@ commandline::Parameters EnrollmentApplication::getSupportedParameters() const {
 std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::createChildCommands() {
   return {
     std::make_shared<UserEnroller>(*this),
-    std::make_shared<ServiceEnroller>(FacilityType::StorageFacility, "Storage Facility", *this),
-    std::make_shared<ServiceEnroller>(FacilityType::AccessManager, "Access Manager", *this),
-    std::make_shared<ServiceEnroller>(FacilityType::Transcryptor, "Transcryptor", *this),
-    std::make_shared<ServiceEnroller>(FacilityType::RegistrationServer, "Registration Server", *this, true)
+    std::make_shared<ServiceEnroller>(EnrolledParty::StorageFacility, "Storage Facility", *this),
+    std::make_shared<ServiceEnroller>(EnrolledParty::AccessManager, "Access Manager", *this),
+    std::make_shared<ServiceEnroller>(EnrolledParty::Transcryptor, "Transcryptor", *this),
+    std::make_shared<ServiceEnroller>(EnrolledParty::RegistrationServer, "Registration Server", *this, true)
   };
 }
 

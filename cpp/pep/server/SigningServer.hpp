@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
@@ -26,21 +27,30 @@ private:
   std::shared_ptr<X509Identity> identity_;
 
 protected:
+  virtual std::unordered_set<std::string> certificateSubjects() const noexcept = 0;
+
   void check() const override {
-    auto& certificate = *identity_->getCertificateChain().cbegin();
-    if (!certificate.isPEPServerCertificate()) {
-      throw std::runtime_error("certificateChain's leaf certificate must be a PEP server certificate");
+    auto description = *this->certificateSubjects().begin();
+    const auto& chain = identity_->getCertificateChain();
+    if (chain.empty()) {
+      throw std::runtime_error("Invalid certificate chain for " + description + ": empty");
     }
-    if (certificate.hasTLSServerEKU()) {
-      throw std::runtime_error("certificateChain's leaf certificate must not be a TLS certificate");
+    auto cert = chain.front();
+    if (!IsServerSigningCertificate(cert)) {
+      throw std::runtime_error("Invalid certificate chain for " + description + ": not a PEP server signing certificate");
     }
+    auto ou = cert.getOrganizationalUnit().value_or(std::string());
+    if (!this->certificateSubjects().contains(ou)) {
+      throw std::runtime_error("Invalid certificate chain for " + description + ": issued to \"" + ou + '"');
+    }
+
     Server::Parameters::check();
   }
 
-public:
   /// \copydoc Server::Parameters::Parameters
   Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
+public:
   std::shared_ptr<const X509Identity> getSigningIdentity() const { return identity_; }
 };
 

@@ -5,7 +5,7 @@
 #include <pep/accessmanager/AmaSerializers.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
 #include <pep/morphing/RepoKeys.hpp>
@@ -49,15 +49,15 @@ void FillTranscryptorRequestEntry(
   std::tie(entry.mAccessManager, entry.mAccessManagerProof) =
       pseudonymTranslator.certifiedTranslateStep(
           entry.mPolymorphic,
-          RecipientForServer(FacilityType::AccessManager));
+          RecipientForServer(EnrolledParty::AccessManager));
   std::tie(entry.mStorageFacility, entry.mStorageFacilityProof) =
       pseudonymTranslator.certifiedTranslateStep(
           entry.mPolymorphic,
-          RecipientForServer(FacilityType::StorageFacility));
+          RecipientForServer(EnrolledParty::StorageFacility));
   std::tie(entry.mTranscryptor, entry.mTranscryptorProof) =
       pseudonymTranslator.certifiedTranslateStep(
           entry.mPolymorphic,
-          RecipientForServer(FacilityType::Transcryptor));
+          RecipientForServer(EnrolledParty::Transcryptor));
   entry.ensurePacked();
 }
 
@@ -352,8 +352,7 @@ void AccessManager::Parameters::check() const {
     throw std::runtime_error("dataTranslator must be set");
   if (!backend)
     throw std::runtime_error("backend must be set");
-  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::AccessManager)
-    throw std::runtime_error("Invalid certificate chain for Access Manager");
+
   SigningServer::Parameters::check();
 }
 
@@ -427,14 +426,12 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
   auto request = std::make_shared<EncryptionKeyRequest>(
     signedRequest->open(this->getRootCAs()));
-  const auto facilityType = GetFacilityType(signedRequest->mSignature.mCertificateChain);
-
-  switch (facilityType) {
-  case FacilityType::User:
-  case FacilityType::RegistrationServer:
-    break;
-  default:
-    throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(facilityType)));
+  const auto party = GetEnrolledParty(signedRequest->mSignature.mCertificateChain);
+  if (!party.has_value()) {
+    throw std::runtime_error("Cannot produce encryption key for this requestor");
+  }
+  if (!HasDataAccess(*party)) {
+    throw std::runtime_error("Unsupported enrolled party " + std::to_string(static_cast<unsigned>(*party)));
   }
 
   const auto recipient = std::make_shared<RekeyRecipient>(
@@ -938,15 +935,15 @@ messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_p
 messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request) {
   return messaging::BatchSingleMessage(VerifiersResponse(
       mPseudonymTranslator->computeTranslationProofVerifiers(
-          RecipientForServer(FacilityType::AccessManager),
+          RecipientForServer(EnrolledParty::AccessManager),
           mPublicKeyPseudonyms
       ),
       mPseudonymTranslator->computeTranslationProofVerifiers(
-          RecipientForServer(FacilityType::StorageFacility),
+          RecipientForServer(EnrolledParty::StorageFacility),
           mPublicKeyPseudonyms
       ),
       mPseudonymTranslator->computeTranslationProofVerifiers(
-          RecipientForServer(FacilityType::Transcryptor),
+          RecipientForServer(EnrolledParty::Transcryptor),
           mPublicKeyPseudonyms
       )
   ));

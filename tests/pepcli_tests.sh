@@ -82,7 +82,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Access Administrator" ama cgar create MRI "Research Assessor" write
 
   # Ensure we have an SP value in the database that can be pseudonymized in the upload
-  pepcli --oauth-token-group "RegistrationServer" store -p "$TEST_PARTICIPANT" -c ShortPseudonym.Visit1.FMRI -d GUM123456751
+  write_registration_server_cell ShortPseudonym.Visit1.FMRI store -p "$TEST_PARTICIPANT" -d GUM123456751
+  
   pepcli --oauth-token-group "Access Administrator" user group create Read.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama columnGroup create Just.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama column addTo ShortPseudonym.Visit1.FMRI Just.ShortPseudonym.Visit1
@@ -148,7 +149,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Access Administrator" user group create groupWithoutAccess
   pepcli --oauth-token-group "groupWithoutAccess" query column-access
 
-  pepcli --oauth-token-group "RegistrationServer" delete -p "$TEST_PARTICIPANT" -c ShortPseudonym.Visit1.FMRI
+  write_registration_server_cell ShortPseudonym.Visit1.FMRI delete -p "$TEST_PARTICIPANT"
+
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c DeviceHistory
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func
 
@@ -282,8 +284,7 @@ if should_run_test ama; then
   # Adding the --force flag should make it succeed
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithAccessRule --force
 
-
-  pepcli --oauth-token-group "RegistrationServer" delete -p "$ID" -c ParticipantIdentifier
+  write_registration_server_cell ParticipantIdentifier delete -p "$ID"
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 fi

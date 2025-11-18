@@ -18,6 +18,7 @@ public:
     const OAuthProvider::Parameters& getOAuthParams() const;
 
   protected:
+    std::unordered_set<std::string> certificateSubjects() const noexcept override { return UserGroup::Authserver; }
     void check() const override;
 
   private:

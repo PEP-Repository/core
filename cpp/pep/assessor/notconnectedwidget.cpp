@@ -2,7 +2,7 @@
 
 #include <pep/assessor/ui_notconnectedwidget.h>
 
-void NotConnectedWidget::appendConnectionStatus(QString& destination, QString facility, pep::ConnectionStatus status) const {
+void NotConnectedWidget::appendConnectionStatus(QString& destination, QString server, pep::ConnectionStatus status) const {
   if (!status.connected) {
     const char *format{};
 
@@ -19,7 +19,7 @@ void NotConnectedWidget::appendConnectionStatus(QString& destination, QString fa
     if (!destination.isEmpty()) {
       destination += "\r\n\r\n";
     }
-    destination += tr(format).arg(facility);
+    destination += tr(format).arg(server);
   }
 }
 

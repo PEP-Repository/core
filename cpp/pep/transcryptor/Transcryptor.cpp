@@ -1,6 +1,6 @@
 #include <pep/transcryptor/Transcryptor.hpp>
 
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/rsk/RskSerializers.hpp>
@@ -260,13 +260,13 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       ret.mPolymorphic = entry.mPolymorphic;
       ret.mStorageFacility = server->mPseudonymTranslator->translateStep(
           entry.mStorageFacility,
-          RecipientForServer(FacilityType::StorageFacility));
+          RecipientForServer(EnrolledParty::StorageFacility));
       ret.mAccessManager = server->mPseudonymTranslator->translateStep(
           entry.mAccessManager,
-          RecipientForServer(FacilityType::AccessManager));
+          RecipientForServer(EnrolledParty::AccessManager));
       localPseudonym = server->mPseudonymTranslator->translateStep(
           entry.mTranscryptor,
-          RecipientForServer(FacilityType::Transcryptor)
+          RecipientForServer(EnrolledParty::Transcryptor)
       ).decrypt(*server->mPseudonymKey);
 
       if (ctx->includeUserGroupPseudonyms) {
@@ -378,20 +378,15 @@ Transcryptor::handleLogIssuedTicketRequest(
 }
 
 messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<RekeyRequest> pRequest) {
-  if (pRequest->mClientCertificateChain.empty()) {
-    throw Error("Cannot rekey for client without a certificate");
-  }
   if (!pRequest->mClientCertificateChain.verify(getRootCAs())) {
     throw Error("Client certificate chain is not valid");
   }
-  const auto facilityType = GetFacilityType(pRequest->mClientCertificateChain);
-
-  switch (facilityType) {
-  case FacilityType::User:
-  case FacilityType::RegistrationServer:
-    break;
-  default:
-    throw std::runtime_error("Unsupported facility type " + std::to_string(static_cast<unsigned>(facilityType)));
+  const auto party = GetEnrolledParty(pRequest->mClientCertificateChain);
+  if (!party.has_value()) {
+    throw Error("Cannot rekey for this requestor");
+  }
+  if (!HasDataAccess(*party)) {
+    throw std::runtime_error("Requestor does not have data access: " + std::to_string(static_cast<unsigned>(*party)));
   }
 
   const auto recipient = RekeyRecipientForCertificate(pRequest->mClientCertificateChain.front());

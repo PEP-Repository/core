@@ -33,6 +33,10 @@ private:
 public:
   class Parameters : public SigningServer::Parameters {
     friend class StorageFacility;
+
+  protected:
+    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { "StorageFacility" }; }
+
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 

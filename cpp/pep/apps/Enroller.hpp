@@ -2,7 +2,7 @@
 
 #include <pep/apps/Enrollment.hpp>
 #include <pep/client/Client.hpp>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 
 namespace pep {
 
@@ -22,7 +22,7 @@ protected:
       + commandline::Parameter("output-path", "Location of output file").value(commandline::Value<std::filesystem::path>().positional());
   }
 
-  Enroller(FacilityType type, const std::string& description, EnrollmentApplication& parent)
+  Enroller(EnrolledParty type, const std::string& description, EnrollmentApplication& parent)
     : commandline::ChildCommandOf<EnrollmentApplication>(
         std::to_string(static_cast<unsigned>(type)), "Enrolls " + description, parent)
   {}
@@ -43,13 +43,13 @@ protected:
 
 public:
   explicit UserEnroller(EnrollmentApplication& parent)
-    : Enroller(FacilityType::User, "a user", parent) {
+    : Enroller(EnrolledParty::User, "a user", parent) {
   }
 };
 
 class ServiceEnroller : public Enroller {
 private:
-  FacilityType mType;
+  EnrolledParty mParty;
   bool mProducesDataKey;
 
 protected:
@@ -66,8 +66,8 @@ protected:
   inline rxcpp::observable<EnrollmentResult> enroll(std::shared_ptr<Client> client) const override { return client->enrollServer(); }
 
 public:
-  ServiceEnroller(FacilityType type, const std::string& description, EnrollmentApplication& parent, bool producesDataKey = false)
-    : Enroller(type, description, parent), mType(type), mProducesDataKey(producesDataKey) {
+  ServiceEnroller(EnrolledParty party, const std::string& description, EnrollmentApplication& parent, bool producesDataKey = false)
+    : Enroller(party, description, parent), mParty(party), mProducesDataKey(producesDataKey) {
   }
 };
 

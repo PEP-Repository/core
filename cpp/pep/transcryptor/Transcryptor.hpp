@@ -27,7 +27,10 @@ class Transcryptor : public SigningServer {
 
  public:
   class Parameters : public SigningServer::Parameters {
-   public:
+  protected:
+    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { "Transcryptor" }; }
+
+  public:
     Parameters(
         std::shared_ptr<boost::asio::io_context> io_context,
         const Configuration& config);
