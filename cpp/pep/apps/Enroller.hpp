@@ -66,7 +66,7 @@ protected:
 
 public:
   ServiceEnroller(ServerTraits server, EnrollmentApplication& parent)
-    : Enroller(*server.enrollsAs(), server.description(), parent), mServer(std::move(server)) {
+    : Enroller(*server.enrollsAs(true), server.description(), parent), mServer(std::move(server)) {
   }
 };
 

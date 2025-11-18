@@ -197,7 +197,7 @@ void KeyServer::checkValid(const EnrollmentRequest& request) const {
   }
   auto ou = request.mCertificateSigningRequest.getOrganizationalUnit().value();
 
-  if (ServerTraits::Find([ou](const ServerTraits& candidate) {return candidate.enrollmentSubject() == ou; })) {
+  if (ServerTraits::Find([ou](const ServerTraits& candidate) {return candidate.enrollmentSubject(false) == ou; })) {
     throw Error("Can't enroll user into server group " + ou);
   }
 

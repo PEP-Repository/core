@@ -64,11 +64,14 @@ bool ServerTraits::hasDataAccess() const {
   return mEnrollsAs == EnrolledParty::RegistrationServer;
 }
 
-std::optional<std::string> ServerTraits::userGroup() const {
-  if (!this->hasSigningIdentity()) {
-    return {};
+std::optional<std::string> ServerTraits::userGroup(bool require) const {
+  if (this->hasSigningIdentity()) {
+    return this->certificateSubject();
   }
-  return this->certificateSubject();
+  if (require) {
+    throw std::runtime_error(this->description() + " does not have a signing identity");
+  }
+  return {};
 }
 
 std::unordered_set<std::string> ServerTraits::userGroups() const {
@@ -96,11 +99,14 @@ bool ServerTraits::signingIdentityMatches(const X509CertificateChain& chain) con
   return this->signingIdentityMatches(chain.front());
 }
 
-std::optional<std::string> ServerTraits::enrollmentSubject() const {
-  if (!this->isEnrollable()) {
-    return std::nullopt;
+std::optional<std::string> ServerTraits::enrollmentSubject(bool require) const {
+  if (this->isEnrollable()) {
+    return this->defaultId();
   }
-  return this->defaultId();
+  if (require) {
+    throw std::runtime_error(this->description() + " is not enrollable");
+  }
+  return std::nullopt;
 }
 
 ServerTraits ServerTraits::AccessManager()      { return ServerTraits{ "AM", "Access Manager",      EnrolledParty::AccessManager       }; }
@@ -144,7 +150,7 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
 }
 
 std::optional<ServerTraits> ServerTraits::Find(EnrolledParty enrollsAs) {
-  return Find([enrollsAs](const ServerTraits& candidate) {return candidate.enrollsAs() == enrollsAs; });
+  return Find([enrollsAs](const ServerTraits& candidate) {return candidate.enrollsAs(false) == enrollsAs; });
 }
 
 }

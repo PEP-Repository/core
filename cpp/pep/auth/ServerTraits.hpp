@@ -40,15 +40,15 @@ public:
   bool hasDataAccess() const; // requires/implies isEnrollable()
 
   // Properties related to signing identities: nullopt/empty/false for servers without a signing identity (KS)
-  std::optional<std::string> userGroup() const;
+  std::optional<std::string> userGroup(bool require) const;
   std::unordered_set<std::string> userGroups() const;
   bool signingIdentityMatches(const std::string& certificateSubject) const;
   bool signingIdentityMatches(const X509Certificate& certificate) const;
   bool signingIdentityMatches(const X509CertificateChain& chain) const;
 
   // Properties related to enrollment: nullopt for servers that are not enrollable (AS and KS)
-  const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; }
-  std::optional<std::string> enrollmentSubject() const;
+  const std::optional<EnrolledParty>& enrollsAs(bool require) const noexcept { return mEnrollsAs; }
+  std::optional<std::string> enrollmentSubject(bool require) const;
 
   // Allow class to be used as key in an std::set<> or std::map<> (std::unordered_XYZ would require addition of an std::hash<> specialization)
   auto operator<=>(const ServerTraits&) const = default;

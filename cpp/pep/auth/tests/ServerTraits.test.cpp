@@ -62,13 +62,15 @@ struct ServerPropertyValue<std::unordered_set<T>> {
   }
 };
 
-template <typename T>
-void VerifyServerMethodProducesUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, T (pep::ServerTraits::*method)() const) {
+template <typename GetProperty>
+void VerifyServersHaveUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, const GetProperty& getProperty) {
+  using T = std::invoke_result_t<const GetProperty, const pep::ServerTraits&>;
+
   // Aggregate the properties for all servers into a vector
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
   std::vector<ServerProperty<Plain>> properties;
-  std::transform(servers.begin(), servers.end(), std::back_inserter(properties), [method](const pep::ServerTraits& server) {
-    return std::make_pair(server.description(), (server.*method)());
+  std::transform(servers.begin(), servers.end(), std::back_inserter(properties), [getProperty](const pep::ServerTraits& server) {
+    return std::make_pair(server.description(), getProperty(server));
     });
 
   // Compare each server('s property) against each other server('s property)
@@ -86,6 +88,16 @@ void VerifyServerMethodProducesUniqueProperties(const std::set<pep::ServerTraits
       }
     }
   }
+}
+
+template <typename T>
+void VerifyServerMethodProducesUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, T(pep::ServerTraits::* method)() const) {
+  return VerifyServersHaveUniqueProperties(servers, property, [method](const pep::ServerTraits& server) { return (server.*method)(); });
+}
+
+template <typename T>
+void VerifyServerMethodProducesUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, T(pep::ServerTraits::* method)(bool) const) {
+  return VerifyServersHaveUniqueProperties(servers, property, [method](const pep::ServerTraits& server) { return (server.*method)(false); });
 }
 
 }

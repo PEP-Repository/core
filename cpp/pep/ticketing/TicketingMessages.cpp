@@ -55,14 +55,14 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     mSignature->assertValid(
       mData,
       rootCAs,
-      *ServerTraits::AccessManager().userGroup(),
+      *ServerTraits::AccessManager().userGroup(true),
       std::chrono::days{1},
       false
     );
     mTranscryptorSignature->assertValid(
       mData,
       rootCAs,
-      *ServerTraits::Transcryptor().userGroup(),
+      *ServerTraits::Transcryptor().userGroup(true),
       std::chrono::days{1},
       false
     );
@@ -91,7 +91,7 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const
   mSignature->assertValid(
     mData,
     rootCAs,
-    *ServerTraits::AccessManager().userGroup(),
+    *ServerTraits::AccessManager().userGroup(true),
     std::chrono::days{1},
     false
   );

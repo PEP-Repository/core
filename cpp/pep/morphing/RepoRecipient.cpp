@@ -12,7 +12,7 @@ namespace {
 
 std::string GetValidServerCertificateSubject(EnrolledParty enrolledAs) {
   if (auto server = ServerTraits::Find(enrolledAs)) {
-    if (auto result = server->enrollmentSubject()) {
+    if (auto result = server->enrollmentSubject(false)) {
       return *result;
     }
   }

@@ -272,7 +272,7 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   // ///////////////////////////////////////////////////////////////////////////
 
   // Registration sever
-  const auto registrationServer = *ServerTraits::RegistrationServer().enrollmentSubject();
+  const auto registrationServer = *ServerTraits::RegistrationServer().enrollmentSubject(true);
   mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "access"));
   mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "enumerate"));
   mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "read"));
