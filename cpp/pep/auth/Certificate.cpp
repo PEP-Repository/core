@@ -20,21 +20,18 @@ bool CertificateMatchesCA(const X509Certificate& certificate, const std::string&
   return result;
 }
 
-std::optional<std::string> GetServerSubjectIfCaMatches(const X509Certificate& certificate, const std::string& cn, bool tls) {
+std::optional<std::string> GetServerSubjectIfValidCertificate(const X509Certificate& certificate, const std::string& cn, bool tls) {
   if (!CertificateMatchesCA(certificate, cn, tls)) {
     return std::nullopt;
   }
 
-  auto result = certificate.getOrganizationalUnit();
-
   // CA should have included an OU in the certificate
-  assert(result.has_value());
+  auto result = certificate.getOrganizationalUnit();
   if (!result.has_value()) {
     return std::nullopt;
   }
 
   // Server certificates have equal CN and OU, e.g. "OU=AccessManager, CN=AccessManager"
-  assert(result == certificate.getCommonName());
   if (result != certificate.getCommonName()) {
     return std::nullopt;
   }
@@ -45,11 +42,11 @@ std::optional<std::string> GetServerSubjectIfCaMatches(const X509Certificate& ce
 }
 
 bool IsServerTlsCertificate(const X509Certificate& certificate) {
-  return GetServerSubjectIfCaMatches(certificate, intermediateServerTlsCaCommonName, true).has_value();
+  return GetServerSubjectIfValidCertificate(certificate, intermediateServerTlsCaCommonName, true).has_value();
 }
 
 bool IsServerSigningCertificate(const X509Certificate& certificate) {
-  return GetServerSubjectIfCaMatches(certificate, intermediateServerCaCommonName, false).has_value();
+  return GetServerSubjectIfValidCertificate(certificate, intermediateServerCaCommonName, false).has_value();
 }
 
 bool IsUserSigningCertificate(const X509Certificate& certificate) {
@@ -57,7 +54,7 @@ bool IsUserSigningCertificate(const X509Certificate& certificate) {
 }
 
 std::optional<std::string> GetSubjectIfServerSigningCertificate(const X509Certificate& certificate) {
-  return GetServerSubjectIfCaMatches(certificate, intermediateServerCaCommonName, false);
+  return GetServerSubjectIfValidCertificate(certificate, intermediateServerCaCommonName, false);
 }
 
 std::optional<std::string> GetSubjectIfServerSigningCertificate(const X509CertificateChain& chain) {
