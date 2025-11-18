@@ -82,7 +82,7 @@ void VerifyServersHaveUniqueProperties(const std::unordered_set<pep::ServerTrait
       for (++j; j != end; ++j) {
         if (!Value::IsEmpty(j->second)) { // Don't compare e.g. nullopt
           if (std::optional<std::string> duplicate = Value::DescribeIfDuplicate(i->second, j->second)) {
-            FAIL() << i->first.description() << " and " << j->first.description() << " have duplicate \"" << property << '\" ' << *duplicate;
+            FAIL() << i->first.description() << " and " << j->first.description() << " have duplicate \"" << property << "\" " << *duplicate;
           }
         }
       }
