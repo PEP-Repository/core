@@ -548,7 +548,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       std::shared_ptr<boost::asio::io_context> io_context = nullptr,
       bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
 
-  using ServerProxies = std::map<ServerTraits, std::shared_ptr<const ServerProxy>>;
+  using ServerProxies = std::unordered_map<ServerTraits, std::shared_ptr<const ServerProxy>>;
 
 protected:
   /*! \brief constructor for CoreClient
