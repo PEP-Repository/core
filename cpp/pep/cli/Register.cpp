@@ -230,7 +230,7 @@ private:
             std::ostringstream pidss;
             const auto& format = (*gcPtr)->getGeneratedParticipantIdentifierFormat();
             pidss << format.getPrefix() << std::setfill('0') << std::setw(static_cast<int>(*format.getTotalNumberOfDigits())) << i;
-            auto pid = pidss.str();
+            auto pid = std::move(pidss).str();
             pids->push(pid);
             auto pp = std::make_shared<pep::PolymorphicPseudonym>(
               client->generateParticipantPolymorphicPseudonym(pid));

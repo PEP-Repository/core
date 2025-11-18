@@ -162,6 +162,8 @@ class Metadata {
   // N.B. for a consistent result when blinding the encrypted AES key
   // it is important that mExtra is a sorted std::map.
   std::map<std::string,MetadataXEntry> mExtra;
+
+  void checkFieldsConsistentWithVersion() const;
 };
 
 }

@@ -69,7 +69,7 @@ std::string ToDdMonthAbbrevYyyyDate(const year_month_day& date) {
     throw std::range_error("year cannot be negative for this date format");
   }
 
-  std::stringstream result;
+  std::ostringstream result;
   result
     << std::setfill('0') << std::setw(2) << day << "-"
     << monthAbbrevs.at(iMonth) << "-"

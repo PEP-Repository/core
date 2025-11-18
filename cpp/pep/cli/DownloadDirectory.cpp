@@ -396,7 +396,7 @@ std::string DownloadDirectory::Specification::toString() const {
 
   std::ostringstream result;
   boost::property_tree::write_json(result, root);
-  return result.str();
+  return std::move(result).str();
 }
 
 

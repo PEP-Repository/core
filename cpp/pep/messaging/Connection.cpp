@@ -371,6 +371,8 @@ void Connection::IncomingRequestTail::handleChunk(const Flags& flags, std::share
   }
   if (flags.error()) {
     if (mSubscriber) {
+      //TODO Why nullptr? Deserialize Error or pass some runtime_error instead?
+      LOG(LOG_TAG, warning) << "Received error chunk in request tail";
       mSubscriber->on_error(nullptr);
     } else {
       mError = true;
@@ -667,6 +669,8 @@ void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_pt
   }
   mQueuedItems.clear();
   if (mError) {
+    //TODO Why nullptr? Pass deserialized error or some runtime_error instead?
+    LOG(LOG_TAG, warning) << "Forwarding error chunk from request tail";
     mSubscriber->on_error(nullptr);
   } else if (mCompleted) {
     mSubscriber->on_completed();

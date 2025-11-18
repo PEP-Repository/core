@@ -56,6 +56,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 
     #TODO cleanup using --install approach as used on Windows?
     add_custom_command(TARGET ${PROJECT_NAME}cli POST_BUILD
+        COMMENT "Copy Sparkle framework files to cli"
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}cli>/Frameworks/
         COMMAND cp -R ${SPARKLE_LIBRARY} $<TARGET_FILE_DIR:${PROJECT_NAME}cli>/Frameworks/
 

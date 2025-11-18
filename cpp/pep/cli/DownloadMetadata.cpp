@@ -281,7 +281,7 @@ void DownloadMetadata::add(const RecordDescriptor& record, const std::string& da
   SerializeProperties(properties, state);
   std::ostringstream buffer;
   boost::property_tree::write_json(buffer, properties);
-  auto serialized = buffer.str();
+  auto serialized = std::move(buffer).str();
 
   WriteFile(path, serialized);
 

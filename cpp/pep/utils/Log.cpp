@@ -278,7 +278,7 @@ std::string Logging::Escape(const std::string& in) {
     }
   }
   ss << "\"";
-  return ss.str();
+  return std::move(ss).str();
 }
 
 }

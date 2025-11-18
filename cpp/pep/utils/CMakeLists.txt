@@ -53,6 +53,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Shared.hpp
     Singleton.hpp
     Stream.cpp Stream.hpp
+    StringStream.cpp StringStream.hpp
     ThreadUtil.cpp ThreadUtil.hpp
     TypeTraits.hpp
     VectorOfVectors.hpp
