@@ -12,9 +12,7 @@ namespace {
 
 std::string GetValidServerCertificateSubject(EnrolledParty enrolledAs) {
   if (auto server = ServerTraits::Find(enrolledAs)) {
-    if (auto result = server->enrollmentSubject(false)) {
-      return *result;
-    }
+    return *server->enrollmentSubject(true); // this server is "enrolledAs()" the value we searched for, so its enrollmentSubject() must be non-null
   }
   throw std::invalid_argument("EnrolledParty is not a server");
 }
