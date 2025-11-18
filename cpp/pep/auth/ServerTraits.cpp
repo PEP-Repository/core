@@ -144,7 +144,7 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
   case 0U:
     return std::nullopt;
   case 1U:
-    return std::move(*filtered.begin());
+    return *filtered.begin();
   default:
     std::vector<std::string> descriptions;
     std::transform(filtered.begin(), filtered.end(), std::back_inserter(descriptions), [](const ServerTraits& traits) {return traits.description(); });
