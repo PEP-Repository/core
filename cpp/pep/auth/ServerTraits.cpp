@@ -6,6 +6,19 @@
 
 namespace pep {
 
+std::string ServerTraits::defaultId() const {
+  auto result = mDescription;
+  result.erase(remove_if(result.begin(), result.end(), isspace), result.end());
+  return result;
+}
+
+std::string ServerTraits::id() const {
+  if (mCustomId.has_value()) {
+    return *mCustomId;
+  }
+  return this->defaultId();
+}
+
 ServerTraits::ServerTraits(std::string abbreviation, std::string description) noexcept
   : mAbbreviation(std::move(abbreviation)), mDescription(std::move(description)) {
 }
@@ -21,17 +34,14 @@ ServerTraits::ServerTraits(std::string abbreviation, std::string description, st
   mCustomId = std::move(customId);
 }
 
-std::string ServerTraits::defaultId() const {
-  auto result = mDescription;
-  result.erase(remove_if(result.begin(), result.end(), isspace), result.end());
-  return result;
+std::string ServerTraits::configNode() const {
+  return this->id();
 }
 
-std::string ServerTraits::id() const {
-  if (mCustomId.has_value()) {
-    return *mCustomId;
-  }
-  return this->defaultId();
+std::string ServerTraits::commandLineId() const {
+  auto result = this->defaultId();
+  boost::algorithm::to_lower(result);
+  return result;
 }
 
 std::string ServerTraits::certificateSubject() const {
@@ -91,16 +101,6 @@ std::optional<std::string> ServerTraits::enrollmentSubject() const {
     return std::nullopt;
   }
   return this->defaultId();
-}
-
-std::string ServerTraits::configNode() const {
-  return this->id();
-}
-
-std::string ServerTraits::commandLineId() const {
-  auto result = this->defaultId();
-  boost::algorithm::to_lower(result);
-  return result;
 }
 
 ServerTraits ServerTraits::AccessManager()      { return ServerTraits{ "AM", "Access Manager",      EnrolledParty::AccessManager       }; }

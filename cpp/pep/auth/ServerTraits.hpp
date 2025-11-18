@@ -33,20 +33,21 @@ public:
   std::string certificateSubject() const; // The primary one, i.e. the custom ID if available ("Authserver" for AS)
   std::unordered_set<std::string> certificateSubjects() const;
 
-  // Properties related to signing identities
+  // Level of access
   bool hasSigningIdentity() const;
-  std::optional<std::string> userGroup() const; // Nullopt for servers without a signing identity (KS)
+  bool isEnrollable() const; // requires/implies hasSigningIdentity()
+  bool hasDataAccess() const; // requires/implies isEnrollable()
+
+  // Properties related to signing identities: nullopt/empty/false for servers without a signing identity (KS)
+  std::optional<std::string> userGroup() const;
   std::unordered_set<std::string> userGroups() const;
   bool signingIdentityMatches(const std::string& certificateSubject) const;
   bool signingIdentityMatches(const X509Certificate& certificate) const;
   bool signingIdentityMatches(const X509CertificateChain& chain) const;
 
   // Properties related to enrollment: nullopt for servers that are not enrollable (AS and KS)
-  bool isEnrollable() const;
   const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; }
   std::optional<std::string> enrollmentSubject() const;
-
-  bool hasDataAccess() const;
 
   // These could have been static consts
   static ServerTraits AccessManager();      // hasSigningIdentity, isEnrollable
