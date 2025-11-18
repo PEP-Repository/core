@@ -3,7 +3,6 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <functional>
-#include <set>
 #include <unordered_set>
 
 namespace pep {
@@ -50,7 +49,7 @@ public:
   const std::optional<EnrolledParty>& enrollsAsParty(bool require) const noexcept { return mEnrollsAsParty; }
   std::optional<std::string> enrollmentSubject(bool require) const;
 
-  // Allow class to be used as key in an std::set<> or std::map<> (std::unordered_XYZ would require addition of an std::hash<> specialization)
+  // Allow class to be used as key in an std::set<> or std::map<>
   auto operator<=>(const ServerTraits&) const = default;
 
   // Individual servers. Defined as static methods instead of consts to avoid the static initialization fiasco: see e.g. UserGroup::AccessManager and UserGroup::Authserver
@@ -62,12 +61,21 @@ public:
   static ServerTraits Transcryptor();       // hasSigningIdentity + isEnrollable
 
   // Getting/finding multiple servers
-  static std::set<ServerTraits> All();
-  static std::set<ServerTraits> Where(const std::function<bool(const ServerTraits&)>& include);
+  static std::unordered_set<ServerTraits> All();
+  static std::unordered_set<ServerTraits> Where(const std::function<bool(const ServerTraits&)>& include);
 
   // Getting/finding an individual server
   static std::optional<ServerTraits> Find(const std::function<bool(const ServerTraits&)>& match);
   static std::optional<ServerTraits> Find(EnrolledParty enrollsAsParty);
+};
+
+}
+
+namespace std {
+
+// Allow ServerTraits to be used as key in an std::unordered_set<> or std::unordered_map<>
+template <> struct hash<pep::ServerTraits> {
+  size_t operator()(const pep::ServerTraits& server) const;
 };
 
 }

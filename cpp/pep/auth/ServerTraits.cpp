@@ -116,8 +116,8 @@ ServerTraits ServerTraits::RegistrationServer() { return ServerTraits{ "RS", "Re
 ServerTraits ServerTraits::StorageFacility()    { return ServerTraits{ "SF", "Storage Facility",    EnrolledParty::StorageFacility     }; }
 ServerTraits ServerTraits::Transcryptor()       { return ServerTraits{ "TS", "Transcryptor",        EnrolledParty::Transcryptor,       }; }
 
-std::set<ServerTraits> ServerTraits::All() {
-  std::set<ServerTraits> result = {
+std::unordered_set<ServerTraits> ServerTraits::All() {
+  std::unordered_set<ServerTraits> result = {
     AccessManager(),
     AuthServer(),
     KeyServer(),
@@ -125,11 +125,14 @@ std::set<ServerTraits> ServerTraits::All() {
     StorageFacility(),
     Transcryptor(),
   };
+
+  // Ensure our (in)equality comparison doesn't consider instances equivalent
   assert(result.size() == 6U);
+
   return result;
 }
 
-std::set<ServerTraits> ServerTraits::Where(const std::function<bool(const ServerTraits&)>& include) {
+std::unordered_set<ServerTraits> ServerTraits::Where(const std::function<bool(const ServerTraits&)>& include) {
   auto result = All();
   std::erase_if(result, [include](const ServerTraits& candidate) {return !include(candidate); });
   return result;
@@ -151,6 +154,14 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
 
 std::optional<ServerTraits> ServerTraits::Find(EnrolledParty enrollsAsParty) {
   return Find([enrollsAsParty](const ServerTraits& candidate) {return candidate.enrollsAsParty(false) == enrollsAsParty; });
+}
+
+}
+
+namespace std {
+
+size_t hash<pep::ServerTraits>::operator()(const pep::ServerTraits& server) const {
+  return std::hash<std::string>()(server.abbreviation()); // Unit test checks that abbreviations are unique
 }
 
 }

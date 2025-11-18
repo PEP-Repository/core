@@ -5,7 +5,7 @@
 
 namespace {
 
-template <typename T> using ServerProperties = std::map<pep::ServerTraits, T>;
+template <typename T> using ServerProperties = std::unordered_map<pep::ServerTraits, T>;
 template <typename T> using ServerProperty = ServerProperties<T>::value_type;
 
 template <typename T, typename Enable = void>
@@ -63,7 +63,7 @@ struct ServerPropertyValue<std::unordered_set<T>> {
 };
 
 template <typename GetProperty>
-void VerifyServersHaveUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, const GetProperty& getProperty) {
+void VerifyServersHaveUniqueProperties(const std::unordered_set<pep::ServerTraits>& servers, const std::string& property, const GetProperty& getProperty) {
   using T = std::invoke_result_t<const GetProperty, const pep::ServerTraits&>;
 
   // Aggregate the properties for all servers
@@ -91,12 +91,12 @@ void VerifyServersHaveUniqueProperties(const std::set<pep::ServerTraits>& server
 }
 
 template <typename T>
-void VerifyServerMethodProducesUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, T(pep::ServerTraits::* method)() const) {
+void VerifyServerMethodProducesUniqueProperties(const std::unordered_set<pep::ServerTraits>& servers, const std::string& property, T(pep::ServerTraits::* method)() const) {
   return VerifyServersHaveUniqueProperties(servers, property, [method](const pep::ServerTraits& server) { return (server.*method)(); });
 }
 
 template <typename T>
-void VerifyServerMethodProducesUniqueProperties(const std::set<pep::ServerTraits>& servers, const std::string& property, T(pep::ServerTraits::* method)(bool) const) {
+void VerifyServerMethodProducesUniqueProperties(const std::unordered_set<pep::ServerTraits>& servers, const std::string& property, T(pep::ServerTraits::* method)(bool) const) {
   return VerifyServersHaveUniqueProperties(servers, property, [method](const pep::ServerTraits& server) { return (server.*method)(false); });
 }
 
