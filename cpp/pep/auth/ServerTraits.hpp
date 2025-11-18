@@ -23,25 +23,28 @@ private:
   ServerTraits(std::string abbreviation, std::string description, std::string customId) noexcept;
 
 public:
-  // Properties for all servers
+  // String properties
   const std::string& abbreviation() const noexcept { return mAbbreviation; }
   const std::string& description() const noexcept { return mDescription; }
   std::string configNode() const;
   std::string commandLineId() const;
-  std::string tlsCertificateSubject() const;
 
+  // Properties related to certificates (both TLS and signing)
+  std::string certificateSubject() const; // The primary one, i.e. the custom ID if available ("Authserver" for AS)
+  std::unordered_set<std::string> certificateSubjects() const;
+
+  // Properties related to signing identities
   bool hasSigningIdentity() const;
-  // Properties below are empty (or return false) for servers without a signing identity: KS
-  std::optional<std::string> userGroup() const; // The primary one, i.e. the custom ID if available ("Authserver" for AS)
+  std::optional<std::string> userGroup() const; // Nullopt for servers without a signing identity (KS)
   std::unordered_set<std::string> userGroups() const;
   bool signingIdentityMatches(const std::string& certificateSubject) const;
   bool signingIdentityMatches(const X509Certificate& certificate) const;
   bool signingIdentityMatches(const X509CertificateChain& chain) const;
 
+  // Properties related to enrollment: nullopt for servers that are not enrollable (AS and KS)
   bool isEnrollable() const;
-  // Properties below are empty for servers without a signing identity: AS and KS
-  const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; } // Empty if !isEnrollable
-  std::optional<std::string> enrollmentSubject() const; // Empty if !isEnrollable
+  const std::optional<EnrolledParty>& enrollsAs() const noexcept { return mEnrollsAs; }
+  std::optional<std::string> enrollmentSubject() const;
 
   bool hasDataAccess() const;
 

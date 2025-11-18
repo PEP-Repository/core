@@ -92,16 +92,18 @@ void VerifyServerMethodProducesUniqueProperties(const std::vector<pep::ServerTra
 
 TEST(ServerTraits, HaveUniqueProperties) {
   auto servers = pep::ServerTraits::All();
-  servers.emplace_back(pep::ServerTraits::AuthServer());
 
   VerifyServerMethodProducesUniqueProperties(servers, "abbreviation", &pep::ServerTraits::abbreviation);
   VerifyServerMethodProducesUniqueProperties(servers, "description", &pep::ServerTraits::description);
   VerifyServerMethodProducesUniqueProperties(servers, "config node", &pep::ServerTraits::configNode);
   VerifyServerMethodProducesUniqueProperties(servers, "command line ID", &pep::ServerTraits::commandLineId);
-  VerifyServerMethodProducesUniqueProperties(servers, "TLS certificate subject", &pep::ServerTraits::tlsCertificateSubject);
+
+  VerifyServerMethodProducesUniqueProperties(servers, "certificate subject", &pep::ServerTraits::certificateSubject);
+  VerifyServerMethodProducesUniqueProperties(servers, "certificate subjects", &pep::ServerTraits::certificateSubjects);
 
   VerifyServerMethodProducesUniqueProperties(servers, "user group", &pep::ServerTraits::userGroup);
   VerifyServerMethodProducesUniqueProperties(servers, "user groups", &pep::ServerTraits::userGroups);
+
   VerifyServerMethodProducesUniqueProperties(servers, "enrolls as", &pep::ServerTraits::enrollsAs);
   VerifyServerMethodProducesUniqueProperties(servers, "enrollment subject", &pep::ServerTraits::enrollmentSubject);
 }

@@ -34,19 +34,12 @@ std::string ServerTraits::id() const {
   return this->defaultId();
 }
 
-bool ServerTraits::signingIdentityMatches(const std::string& certificateSubject) const {
-  return this->userGroups().contains(certificateSubject);
-}
-
-bool ServerTraits::signingIdentityMatches(const X509Certificate& certificate) const {
-  if (auto subject = GetSubjectIfServerSigningCertificate(certificate)) {
-    return this->signingIdentityMatches(*subject);
-  }
-  return false;
-}
-
-std::string ServerTraits::tlsCertificateSubject() const {
+std::string ServerTraits::certificateSubject() const {
   return this->id();
+}
+
+std::unordered_set<std::string> ServerTraits::certificateSubjects() const {
+  return { this->certificateSubject(), this->defaultId() }; // Values may be identical, resulting in an unordered_set<> with just a single entry
 }
 
 bool ServerTraits::hasSigningIdentity() const {
@@ -63,20 +56,27 @@ bool ServerTraits::hasDataAccess() const {
 
 std::optional<std::string> ServerTraits::userGroup() const {
   if (!this->hasSigningIdentity()) {
-    return std::nullopt;
+    return {};
   }
-  return this->id();
+  return this->certificateSubject();
 }
 
 std::unordered_set<std::string> ServerTraits::userGroups() const {
-  std::unordered_set<std::string> result;
-
-  if (auto primary = this->userGroup()) { // Custom ID if we have one; default ID if not
-    result.emplace(*primary);
-    result.emplace(this->defaultId()); // Not (re-)added if same as primary ID
+  if (!this->hasSigningIdentity()) {
+    return {};
   }
+  return this->certificateSubjects();
+}
 
-  return result;
+bool ServerTraits::signingIdentityMatches(const std::string& certificateSubject) const {
+  return this->userGroups().contains(certificateSubject);
+}
+
+bool ServerTraits::signingIdentityMatches(const X509Certificate& certificate) const {
+  if (auto subject = GetSubjectIfServerSigningCertificate(certificate)) {
+    return this->signingIdentityMatches(*subject);
+  }
+  return false;
 }
 
 bool ServerTraits::signingIdentityMatches(const X509CertificateChain& chain) const {

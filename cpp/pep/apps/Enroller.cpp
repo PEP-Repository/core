@@ -48,7 +48,7 @@ EndPoint ServiceEnroller::getAccessManagerEndPoint(const Configuration& config) 
     EndPoint result;
     result.hostname = "127.0.0.1";
     result.port = config.get<uint16_t>("ListenPort");
-    result.expectedCommonName = ServerTraits::AccessManager().tlsCertificateSubject();
+    result.expectedCommonName = ServerTraits::AccessManager().certificateSubject();
     return result;
   }
 
