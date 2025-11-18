@@ -31,11 +31,11 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
 
   auto party = GetEnrolledParty(certificateChain);
   if (party != mParty) {
-    std::string description = "unknown facility";
+    std::string description = "unknown party";
     if (party.has_value()) {
-      description = "facility " + std::to_string(static_cast<unsigned>(*party));
+      description = "party " + std::to_string(static_cast<unsigned>(*party));
     }
-    throw std::runtime_error("Cannot enroll facility " + std::to_string(static_cast<unsigned>(mParty)) + " with certificate chain for " + description);
+    throw std::runtime_error("Cannot enroll party " + std::to_string(static_cast<unsigned>(mParty)) + " with certificate chain for " + description);
   }
 
   builder.setSigningIdentity(std::make_shared<X509Identity>(std::move(privateKey), std::move(certificateChain)));

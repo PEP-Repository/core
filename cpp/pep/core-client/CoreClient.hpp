@@ -432,7 +432,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   std::string getEnrolledUser() const;
 
   /*!
-   * \brief Enroll a non-user facility. The type of facility is inferred from this CoreClient's certificate chain.
+   * \brief Enroll a server. The type of server is inferred from this CoreClient's certificate chain.
    *
    * \return rxcpp::observable< EnrollmentResult >
    */
