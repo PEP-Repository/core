@@ -4,7 +4,7 @@
 
 #include <pep/assessor/ui_notconnectedwidget.h>
 
-void NotConnectedWidget::appendConnectionStatus(QString& destination, const std::string& facility, pep::ConnectionStatus status) const {
+void NotConnectedWidget::appendConnectionStatus(QString& destination, const std::string& server, pep::ConnectionStatus status) const {
   if (!status.connected) {
     const char *format{};
 
@@ -21,7 +21,7 @@ void NotConnectedWidget::appendConnectionStatus(QString& destination, const std:
     if (!destination.isEmpty()) {
       destination += "\r\n\r\n";
     }
-    destination += tr(format).arg(QString::fromStdString(facility).toLower());
+    destination += tr(format).arg(QString::fromStdString(server).toLower());
   }
 }
 
