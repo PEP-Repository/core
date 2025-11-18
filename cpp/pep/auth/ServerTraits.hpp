@@ -49,7 +49,7 @@ public:
   const std::optional<EnrolledParty>& enrollsAsParty(bool require) const;
   std::optional<std::string> enrollmentSubject(bool require) const;
 
-  // Allow class to be used as key in an std::set<> or std::map<>
+  // Allow class to be used as key in (std) containers (also see std::hash<> specialization below)
   auto operator<=>(const ServerTraits&) const = default;
 
   // Individual servers. Defined as static methods instead of consts to avoid the static initialization fiasco: see e.g. UserGroup::AccessManager and UserGroup::Authserver
@@ -73,7 +73,7 @@ public:
 
 namespace std {
 
-// Allow ServerTraits to be used as key in an std::unordered_set<> or std::unordered_map<>
+// Allow ServerTraits to (also) be used as key in unordered (std) containers
 template <> struct hash<pep::ServerTraits> {
   size_t operator()(const pep::ServerTraits& server) const;
 };
