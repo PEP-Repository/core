@@ -99,12 +99,16 @@ bool ServerTraits::signingIdentityMatches(const X509CertificateChain& chain) con
   return this->signingIdentityMatches(chain.front());
 }
 
-std::optional<std::string> ServerTraits::enrollmentSubject(bool require) const {
-  if (this->isEnrollable()) {
-    return this->defaultId();
-  }
-  if (require) {
+const std::optional<EnrolledParty>& ServerTraits::enrollsAsParty(bool require) const {
+  if (require && !mEnrollsAsParty.has_value()) {
     throw std::runtime_error(this->description() + " is not enrollable");
+  }
+  return mEnrollsAsParty;
+}
+
+std::optional<std::string> ServerTraits::enrollmentSubject(bool require) const {
+  if (this->enrollsAsParty(require)) { // Raises an exception if required but not enrollable
+    return this->defaultId();
   }
   return std::nullopt;
 }

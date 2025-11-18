@@ -46,7 +46,7 @@ public:
   bool signingIdentityMatches(const X509CertificateChain& chain) const;
 
   // Properties related to enrollment: nullopt for servers that are not enrollable (AS and KS)
-  const std::optional<EnrolledParty>& enrollsAsParty(bool require) const noexcept { return mEnrollsAsParty; }
+  const std::optional<EnrolledParty>& enrollsAsParty(bool require) const;
   std::optional<std::string> enrollmentSubject(bool require) const;
 
   // Allow class to be used as key in an std::set<> or std::map<>
