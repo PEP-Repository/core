@@ -21,7 +21,7 @@ func TokenExpiry(c Context) {
 	if daysExpired > 0 {
 		c.Issuef("OAuthToken for watchdog has expired %d days ago",
 			daysExpired)
-	} else if daysExpired > -shared.Conf.TokenExpiryWarningDays {
+	} else if daysExpired > -int(shared.Conf.TokenExpiryWarningDays) {
 		c.Issuef("OAuthToken for watchdog will expire in %d days",
 			-daysExpired)
 	}

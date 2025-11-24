@@ -82,7 +82,7 @@ type ConfType struct {
 
 	// Configuration of checks
 	// Number of days before token expiry to start warning.
-	TokenExpiryWarningDays int `yaml:"tokenExpiryWarningDays"`
+	TokenExpiryWarningDays uint `yaml:"tokenExpiryWarningDays"`
 
 	CheckHTTPSCertificateExpiry []string `yaml:"checkHTTPSCertificateExpiry"`
 
