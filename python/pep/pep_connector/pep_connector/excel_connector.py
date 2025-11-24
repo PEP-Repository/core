@@ -1,6 +1,5 @@
 import logging
 import os
-import ast
 from .peprepository import PEPRepository
 from .connectors import Connector
 
@@ -87,9 +86,7 @@ class ExcelConnector(Connector):
                 return []
                 
             # Safely parses the pseudonym value as a Python literal
-            if isinstance(pseudonym_value, str):
-                return ast.literal_eval(pseudonym_value)
-            return pseudonym_value
+            return self.parse_pep_python_list(pseudonym_value)
         except (SyntaxError, ValueError) as e:
             self.log(f"Failed to parse pseudonym value '{pseudonym_value}': {str(e)}", logging.ERROR)
             return []

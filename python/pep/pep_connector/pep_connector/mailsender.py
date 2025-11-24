@@ -5,6 +5,7 @@ import hashlib
 import getpass
 import os
 import time
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -15,6 +16,9 @@ from email import encoders
 from datetime import datetime, timedelta
 from .connectors import Connector
 from .peprepository import PEPRepository
+from .datamonitor import DataMonitor
+from pypdf import PdfWriter
+import weasyprint
 
 class MailSender(Connector):
     """Class for sending emails via SMTP with tracking capabilities"""
@@ -585,7 +589,7 @@ class MailSender(Connector):
             "email_subject", "email_template", "max_reminders"
         ]
 
-        is_report = "report_type" in config
+        is_report = "is_report_type" in config
 
         # Report types don't explicitly require these keys
         if not is_report:
@@ -1016,10 +1020,66 @@ class MailSender(Connector):
             self.log(f"Error reading HTML file {file_path}: {e}", level=logging.ERROR, tag=self.LOG_TAG)
             raise
 
+    def _merge_pdfs(self, pdf_infos: list, output_path: str) -> str:
+        """
+        Merge multiple PDFs given by a list of dicts with 'path' keys.
+        Returns the output path.
+        """
+        merger = PdfWriter()
+        for pdf_info in pdf_infos:
+            merger.append(pdf_info["pdf_path"])
+        merger.write(output_path)
+        merger.close()
+        return output_path
+
+    def _generate_expert_report_pdfs(self, monitor_columns, info_columns, group_column, 
+                                    consent_column, survey_participant_column, emails_sent_column="EmailsSent",
+                                    report_filename="Participatierapport.pdf", output_dir="/tmp",
+                                    max_recent_columns=3):
+        """
+        Generate grouped HTML reports and PDFs for expert report emailing.
+        Returns a dict: {group_name: {"pdf_path": ..., "filename": ..., "mimetype": ...}}
+        
+        Args:
+            monitor_columns: List of dicts with column_name and optional display_name keys
+            info_columns: List of dicts with column_name and optional display_name keys
+            group_column: Column to group by
+            consent_column: Column containing consent information
+            survey_participant_column: Column indicating survey participation
+            emails_sent_column: Column containing emails sent information
+            report_filename: Filename for the generated PDF
+            output_dir: Directory to save PDFs to
+            max_recent_columns: Maximum number of recent columns to display
+        """
+        monitor = DataMonitor(self.repository)
+        grouped_reports = monitor.generate_grouped_html_reports(
+            monitor_columns=monitor_columns,
+            info_columns=info_columns,
+            group_column=group_column,
+            consent_column=consent_column,
+            emails_sent_column=emails_sent_column,
+            include_javascript=False,
+            statistics_only=True,
+            max_recent_columns=max_recent_columns
+        )
+
+        pdf_paths_dict = {}
+        for grouped_val, report in grouped_reports.items():
+            safe_filename = re.sub(r'[^\w-]', '_', grouped_val.strip('. '))[:100]
+            pdf_path = f"{output_dir}/{safe_filename}_report.pdf"
+            weasyprint.HTML(string=report).write_pdf(pdf_path)
+            pdf_paths_dict[grouped_val] = {
+                "pdf_path": pdf_path,
+                "filename": report_filename,
+                "mimetype": "application/pdf"
+            }
+        return pdf_paths_dict
+
     def send_survey_emails(self, limesurvey_connector, config, survey_type) -> tuple[int, int, int]:
         self.validate_config(config)
 
         # Load required config items
+        survey_participant_column = "TeacherInfo.IsSurveyParticipant"
         template_survey_ids = config.get("template_survey_ids")
         short_pseudonym_column = config.get("pep_sp_column")
         recipient_email_column = config.get("pep_email_column")
@@ -1037,7 +1097,8 @@ class MailSender(Connector):
         attachments = config.get("attachments")
         footer_image = config.get("footer_image")
 
-        pep_columns = [recipient_email_column,
+        pep_columns = [survey_participant_column,
+                       recipient_email_column,
                        emails_sent_column,
                        survey_ids_column]
 
@@ -1063,23 +1124,41 @@ class MailSender(Connector):
         # Get conditions if specified
         conditions = config.get("conditions", [])
 
-        report_type = config.get("report_type", False)
-
-        # variable is_report, boolean if report_type is set
-        is_report = report_type is not False
+        is_report = config.get("is_report_type", False)
 
         # Check if this is an expert report type that needs school-specific PDFs
-        is_expert_report = report_type == "expert"
-        pdf_paths = config.get("pdf_paths", {}) if is_expert_report else {}
+        report_info = config.get("report_info", {})
+        is_expert_report = report_info.get("type") == "expert"
 
-        # Add TeacherInfo.SchoolName and TeacherInfo.IsExpertTeacher to columns if expert report
         if is_expert_report:
-            school_name_column = "TeacherInfo.SchoolName"
             expert_teacher_column = "TeacherInfo.IsExpertTeacher"
-            if school_name_column not in pep_columns:
-                pep_columns.append(school_name_column)
+            pep_report_subject_column = report_info.get("subject_column")
+            report_filename = report_info.get("combined_filename", "Participatierapport.pdf")
+            monitor_columns = report_info.get("monitor_columns")
+            info_columns = report_info.get("info_columns")
+            group_column = report_info.get("filter_by_column")
+            consent_column = report_info.get("pep_consent_column", "Consent.Bool")
+            max_recent_columns = report_info.get("max_recent_columns", 4)
+            output_dir = report_info.get("output_dir", "/tmp")
+            
+            # Ensure columns are added for PEP fetch
+            if group_column and group_column not in pep_columns:
+                pep_columns.append(group_column)
             if expert_teacher_column not in pep_columns:
                 pep_columns.append(expert_teacher_column)
+            if pep_report_subject_column and pep_report_subject_column not in pep_columns:
+                pep_columns.append(pep_report_subject_column)
+            
+            # Add info columns for the report         
+            if info_columns:
+                for col in info_columns:
+                    col_name = col["column_name"] if isinstance(col, dict) else col
+                    if col_name not in pep_columns:
+                        pep_columns.append(col_name)
+            
+            # Add consent column for report generation if not already present
+            if consent_column and consent_column not in pep_columns:
+                pep_columns.append(consent_column)
 
         if is_report:
             # For reports we do not require any survey IDs, but if we want repeating reports,
@@ -1107,6 +1186,22 @@ class MailSender(Connector):
         # Load config from PEP
         subject_info = limesurvey_connector.list_columndata_by_short_pseudonym(short_pseudonym_column, pep_columns)
 
+        # Generate PDFs for expert report after fetching all data
+        if is_expert_report:
+            pdf_paths_dict = self._generate_expert_report_pdfs(
+                monitor_columns=monitor_columns,
+                info_columns=info_columns,
+                group_column=group_column,
+                consent_column=consent_column,
+                survey_participant_column=survey_participant_column,
+                emails_sent_column=emails_sent_column,
+                report_filename=report_filename,
+                output_dir=output_dir,
+                max_recent_columns=max_recent_columns
+            )
+        else:
+            pdf_paths_dict = {}
+
         total_subjects = len(subject_info)
         subjects_emailed_count = 0
         skipped_count = 0
@@ -1119,6 +1214,65 @@ class MailSender(Connector):
             self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Processing subject.", level=logging.INFO, tag=self.LOG_TAG)
 
             # Parse data retrieved from PEP and hardcoded conditions
+            def parse_flag(value):
+                if value == "1":
+                    return True
+                if value == "0":
+                    return False
+                return None
+
+            # Only check expert teacher flag if this is an expert report
+            if is_expert_report:
+                is_expert_teacher = parse_flag(data["columns"].get(expert_teacher_column))
+                
+                if is_expert_teacher is None:
+                    skipped_count += 1
+                    self.log(
+                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                        f"Invalid expert teacher flag in {expert_teacher_column}. Expected '1' or '0'.",
+                        level=logging.ERROR, tag=self.LOG_TAG,
+                    )
+                    continue
+
+                if is_expert_teacher:
+                    self.log(
+                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Included.",
+                        level=logging.DEBUG, tag=self.LOG_TAG,
+                    )
+                else:
+                    skipped_count += 1
+                    self.log(
+                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                        f"Skipping: Not an expert teacher.",
+                        level=logging.INFO, tag=self.LOG_TAG,
+                    )
+                    continue
+            else:
+                # For non-expert reports and surveys, only check survey participant
+                is_survey_participant = parse_flag(data["columns"].get(survey_participant_column))
+
+                if is_survey_participant is None:
+                    skipped_count += 1
+                    self.log(
+                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                        f"Invalid survey participant flag in {survey_participant_column}. Expected '1' or '0'.",
+                        level=logging.ERROR, tag=self.LOG_TAG,
+                    )
+                    continue
+
+                if is_survey_participant:
+                    self.log(
+                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Included.",
+                        level=logging.DEBUG, tag=self.LOG_TAG,
+                    )
+                else:
+                    skipped_count += 1
+                    self.log(
+                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                        f"Skipping: Not a survey participant.",
+                        level=logging.INFO, tag=self.LOG_TAG,
+                    )
+                    continue
 
             # Recipient name is optional
             recipient_name = data["columns"].get(recipient_name_column) if recipient_name_column else None
@@ -1134,28 +1288,46 @@ class MailSender(Connector):
             # For expert reports, get school name and prepare school-specific attachments
             subject_attachments = attachments
             if is_expert_report:
-                school_name = data["columns"].get("TeacherInfo.SchoolName")
-                is_expert_teacher = data["columns"].get("TeacherInfo.IsExpertTeacher")
-                
-                # Only add school-specific PDF if this is actually an expert teacher
-                if is_expert_teacher and school_name and pdf_paths.get("TeacherInfo.SchoolName", {}).get(school_name):
-                    # school_pdf is already a dict with path, filename, and mimetype
-                    school_pdf = pdf_paths["TeacherInfo.SchoolName"][school_name]
-                    
-                    # Combine existing attachments with school-specific PDF
-                    if subject_attachments:
-                        subject_attachments = subject_attachments + [school_pdf]
+                # For expert reports, skip non-expert teachers
+                if not is_expert_teacher:
+                    skipped_count += 1
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Not an expert teacher.", 
+                            level=logging.INFO, tag=self.LOG_TAG)
+                    continue
+
+                report_subjects_raw = data["columns"].get(pep_report_subject_column)
+                report_subjects = self.parse_pep_python_list(report_subjects_raw)
+
+                # Skip if no report subjects configured
+                if not report_subjects:
+                    skipped_count += 1
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Expert teacher but no report subjects configured.", 
+                            level=logging.INFO, tag=self.LOG_TAG)
+                    continue
+
+                pdf_infos = []
+                for report_subject in report_subjects:
+                    pdf_info = pdf_paths_dict.get(report_subject)
+                    if pdf_info:
+                        pdf_infos.append(pdf_info)
                     else:
-                        subject_attachments = [school_pdf]
-                    
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Added school-specific PDF for expert teacher at {school_name}", 
+                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: No PDF info found for subject {report_subject}", level=logging.ERROR, tag=self.LOG_TAG)
+                if pdf_infos:
+                    merged_pdf_path = f"/tmp/merged_{short_pseudonym}.pdf"
+                    self._merge_pdfs(pdf_infos, merged_pdf_path)
+                    merged_pdf_info = {
+                        "path": merged_pdf_path,
+                        "filename": report_filename,
+                        "mimetype": "application/pdf"
+                    }
+
+                    # Combine with existing attachments if any
+                    if subject_attachments:
+                        subject_attachments = subject_attachments + [merged_pdf_info]
+                    else:
+                        subject_attachments = [merged_pdf_info]
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Added merged PDF for expert teacher: {merged_pdf_path}", 
                             level=logging.DEBUG, tag=self.LOG_TAG)
-                elif school_name and not is_expert_teacher:
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Not an expert teacher, skipping school-specific PDF for {school_name}", 
-                            level=logging.DEBUG, tag=self.LOG_TAG)
-                elif is_expert_teacher and school_name:
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: No PDF found for expert teacher school: {school_name}", 
-                            level=logging.WARNING, tag=self.LOG_TAG)
 
             # Emails sent data is required to track email history
             emails_sent_data = data["columns"].get(emails_sent_column)

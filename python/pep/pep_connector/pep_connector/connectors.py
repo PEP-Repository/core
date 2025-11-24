@@ -159,3 +159,21 @@ class Connector(AccessGroup):
             self.prometheus_metrics.track_exception(is_exception_occurring=True)
         # Exit with error code
         sys.exit(1)
+
+    def parse_pep_python_list(self, value: str) -> list:
+        """
+        Parse a Python list stored as a string in a PEP column.
+        Example: "['School1', 'School2']" -> ['School1', 'School2']
+        """
+        import ast
+        if not value or not isinstance(value, str):
+            raise ValueError("Value must be a non-empty string representing a Python list")
+        try:
+            parsed = ast.literal_eval(value)
+            if isinstance(parsed, list):
+                return parsed
+            else:
+                raise ValueError("Parsed value is not a list")
+        except Exception:
+            self.log(f"Error parsing Python list from value: {value}", level=logging.ERROR)
+            raise
