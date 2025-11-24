@@ -149,7 +149,7 @@ public:
     return T(valueDescriptor->number());
   }
 
-  std::string toEnumString(T value) const {
+  std::string_view toEnumString(T value) const {
     auto valueDescriptor = mDescriptor->FindValueByNumber(static_cast<int>(value));
     if (valueDescriptor == nullptr) {
       throw std::runtime_error("Unknown enumerator value " + std::to_string(value));
