@@ -7,6 +7,11 @@ if (!(Test-Path env:PEP_NO_SOFTWARE_INSTALL)) {
   pipx upgrade conan
 }
 
+$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+if (!(Test-Path $vswhere)) {
+  throw 'Visual Studio version locator not found'
+}
+
 $vswhere_extra_args = @()
 
 # Set PEP_USE_VS_VERSION_RANGE to force using specific version. E.g. '[17, 18)' to use version 2022 (which must be installed).
