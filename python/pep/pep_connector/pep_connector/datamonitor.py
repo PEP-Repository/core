@@ -879,11 +879,12 @@ class DataMonitor(Connector):
             <tr>
                 <td>{display_name}</td>
                 <td>{filled_count}/{total}</td>
-                <td>{percentage}%</td>
                 <td>
                     <div class="progress-bar-container">
                         <div class="progress-bar" style="width: {percentage}%;"></div>
                     </div>
+                    {percentage}%
+                </td>
             """
 
             for lp in participant_info.keys():
