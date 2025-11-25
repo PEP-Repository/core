@@ -39,7 +39,7 @@ call "%OwnDir%\windows-ci-runner.bat" || exit /B 1
 
 echo Initializing environment for Visual Studio tool invocation.
 
-if [%PEP_VCVARS_BAT%] == [] (
+if "%PEP_VCVARS_BAT%" == "" (
   echo Windows CI runner provisioning script didn't provide the required PEP_VCVARS_BAT variable. Aborting.
   exit /B 1
 )
