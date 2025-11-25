@@ -12,7 +12,11 @@ from .dataadmin import DataAdmin
 from .accessadmin import AccessAdmin
 from .json_connector import JSONConnector
 from .datamonitor import DataMonitor
-from .mailsender import MailSender
+
+try:
+    from .mailsender import MailSender
+except ImportError:
+    MailSender = None
 
 try:
     from .excel_connector import ExcelConnector
@@ -35,10 +39,11 @@ __all__ = [
     "DataAdmin",
     "AccessAdmin",
     "JSONConnector",
-    "DataMonitor",
-    "MailSender"
+    "DataMonitor"
 ]
 
+if MailSender:
+    __all__.append("MailSender")
 if ExcelConnector:
     __all__.append("ExcelConnector")
 if GoogleFormsConnector:
