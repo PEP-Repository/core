@@ -89,10 +89,10 @@ echo Compiling WiX sources
 
 REM Work around "light.exe : error LGHT0001 : A required privilege is not held by the client" when invoked from an elevated context.
 REM See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1272#note_16345
-REM The "PEP_PSEXEC64_EXE" variable is set by the "windows-ci-runner.bat", which also ensures that the utility is installed.
-if not "%PEP_PSEXEC64_EXE%" == "" (
-  echo Manipulating linker's user context with %PEP_PSEXEC64_EXE%.
-  set MANIPULATE_UAC=%PEP_PSEXEC64_EXE% -accepteula -h -w "%CD%"
+where PsExec64
+if %errorlevel% eq 0 (
+  echo Manipulating linker's user context with PsExec64.
+  set MANIPULATE_UAC=PsExec64 -accepteula -h -w "%CD%"
 )
 
 echo Linking MSI installer
