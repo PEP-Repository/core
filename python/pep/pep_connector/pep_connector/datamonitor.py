@@ -985,22 +985,19 @@ class DataMonitor(Connector):
 
         return html
 
-    def generate_html_report(self, monitor_columns: list[str], info_columns: list[str], output_path: str = None, 
+    def generate_html_report(self, monitor_columns: list[str | dict], info_columns: list[str | dict], output_path: str = None, 
                             include_javascript: bool = True, report_title: str = "Data Monitoring Report",
-                            statistics_only: bool = False, monitor_column_display_names: dict = None,
-                            info_column_display_names: dict = None) -> str:
+                            statistics_only: bool = False) -> str:
         """
         Generate an HTML report showing the status of monitored data columns for all participants.
         
         Args:
-            monitor_columns: List of columns to check for data
-            info_columns: List of columns to include as identifying information
+            monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
+            info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             output_path: Path where to save the HTML report (if None, returns HTML as string)
             include_javascript: Whether to include sections with javascript (default: True)
             report_title: Title for the HTML report
             statistics_only: Whether to only show statistics without individual participant data
-            monitor_column_display_names: Optional dict mapping monitor column names to display names
-            info_column_display_names: Optional dict mapping info column names to display names
             
         Returns:
             HTML file path that was saved, or the HTML content as a string if output_path is None
@@ -1011,8 +1008,12 @@ class DataMonitor(Connector):
         if not isinstance(info_columns, list):
             raise ValueError("Info columns must be a list of strings")
 
+        # Extract column names for data fetching
+        monitor_column_names = [col["column_name"] if isinstance(col, dict) else col for col in monitor_columns]
+        info_column_names = [col["column_name"] if isinstance(col, dict) else col for col in info_columns]
+
         # Get all data using find_missing_entries
-        missing_entries, data_info, participant_info = self.find_missing_entries(monitor_columns, info_columns)
+        missing_entries, data_info, participant_info = self.find_missing_entries(monitor_column_names, info_column_names)
         
         # Create a lookup of missing columns by local pseudonym for quick reference
         missing_by_lp = {}
@@ -1021,7 +1022,7 @@ class DataMonitor(Connector):
             missing_by_lp[lp] = entry["missing_columns"]
         
         # Calculate column completion statistics
-        column_stats = self._calculate_column_stats(monitor_columns, participant_info, data_info)
+        column_stats = self._calculate_column_stats(monitor_column_names, participant_info, data_info)
 
         # Generate the HTML content
         html = self._generate_html_content(
@@ -1033,9 +1034,7 @@ class DataMonitor(Connector):
             column_counts=column_stats,
             report_title=report_title,
             include_javascript=include_javascript,
-            statistics_only=statistics_only,
-            monitor_column_display_names=monitor_column_display_names,
-            info_column_display_names=info_column_display_names
+            statistics_only=statistics_only
         )
 
         # If output_path is None, return the HTML directly
@@ -1051,25 +1050,22 @@ class DataMonitor(Connector):
         self.log(f"HTML report saved to {output_path}", level=logging.INFO)
         return output_path
 
-    def generate_filtered_html_report(self, monitor_columns: list[str], info_columns: list[str], 
+    def generate_filtered_html_report(self, monitor_columns: list[str | dict], info_columns: list[str | dict], 
                                      participant_info: dict, output_path: str = None, 
                                      include_javascript: bool = True, 
                                      report_title: str = "Data Monitoring Report",
-                                     statistics_only: bool = False, monitor_column_display_names: dict = None,
-                                     info_column_display_names: dict = None) -> str:
+                                     statistics_only: bool = False) -> str:
         """
         Generate an HTML report showing the status of monitored data columns for pre-filtered participants.
         
         Args:
-            monitor_columns: List of columns to check for data
-            info_columns: List of columns to include as identifying information
+            monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
+            info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             participant_info: Pre-filtered participant info dictionary
             output_path: Path where to save the HTML report (if None, returns HTML as string)
             include_javascript: Whether to include sections with javascript (default: True)
             report_title: Title for the HTML report
             statistics_only: Whether to only show statistics without individual participant data
-            monitor_column_display_names: Optional dict mapping monitor column names to display names
-            info_column_display_names: Optional dict mapping info column names to display names
             
         Returns:
             HTML file path that was saved, or the HTML content as a string if output_path is None
@@ -1082,9 +1078,12 @@ class DataMonitor(Connector):
         if not isinstance(participant_info, dict):
             raise ValueError("Participant info must be a dictionary")
 
+        # Extract column names for data fetching
+        monitor_column_names = [col["column_name"] if isinstance(col, dict) else col for col in monitor_columns]
+
         # Get data info for the monitor columns
         self.log("Getting data info for monitor columns", level=logging.DEBUG)
-        data_info = self.get_data_info(monitor_columns)
+        data_info = self.get_data_info(monitor_column_names)
         
         # Filter data_info to only include participants in the participant_info
         filtered_data_info = {lp: data for lp, data in data_info.items() if lp in participant_info}
@@ -1097,11 +1096,11 @@ class DataMonitor(Connector):
             # Check if this local pseudonym exists in filtered_data_info
             if lp not in filtered_data_info:
                 # All monitor columns are missing
-                missing_columns = monitor_columns.copy()
+                missing_columns = monitor_column_names.copy()
                 self.log(f"Participant {lp} is missing all monitor columns", level=logging.DEBUG)
             else:
                 # Check each monitor column
-                for column in monitor_columns:
+                for column in monitor_column_names:
                     if column not in filtered_data_info[lp] or "timestamp" not in filtered_data_info[lp][column]:
                         missing_columns.append(column)
                         self.log(f"Participant {lp} is missing column {column}", level=logging.DEBUG)
@@ -1121,7 +1120,7 @@ class DataMonitor(Connector):
             missing_by_lp[lp] = entry["missing_columns"]
         
         # Calculate column completion statistics for the filtered set
-        column_stats = self._calculate_column_stats(monitor_columns, participant_info, filtered_data_info)
+        column_stats = self._calculate_column_stats(monitor_column_names, participant_info, filtered_data_info)
 
         # Generate the HTML content
         html = self._generate_html_content(
@@ -1133,9 +1132,7 @@ class DataMonitor(Connector):
             column_counts=column_stats,
             report_title=report_title,
             include_javascript=include_javascript,
-            statistics_only=statistics_only,
-            monitor_column_display_names=monitor_column_display_names,
-            info_column_display_names=info_column_display_names
+            statistics_only=statistics_only
         )
 
         # If output_path is None, return the HTML directly
