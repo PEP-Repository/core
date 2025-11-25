@@ -44,7 +44,7 @@ if [%PEP_VCVARS_BAT%] == [] (
   exit /B 1
 )
 
-call %PEP_VCVARS_BAT% || exit /B 1
+call "%PEP_VCVARS_BAT%" || exit /B 1
 
 if "%CI_COMMIT_REF_NAME%" == "" (
   echo No CI_COMMIT_REF_NAME specified: performing 'local' build.
