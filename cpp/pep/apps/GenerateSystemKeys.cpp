@@ -1,4 +1,5 @@
 #include <pep/application/Application.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/utils/Random.hpp>
 
@@ -83,8 +84,8 @@ class GenerateSystemKeysApplication : public pep::Application {
       return ADD_DATA_BLINDING;
     }
 
-    GenerateSpecificKeysFileCommand(const std::string& name, const std::string& description, GenerateSystemKeysApplication& parent)
-      : GenerateKeysFileCommand(name, description, parent) {
+    GenerateSpecificKeysFileCommand(const pep::ServerTraits& server, GenerateSystemKeysApplication& parent)
+      : GenerateKeysFileCommand(server.abbreviation(), server.description(), parent) {
     }
 
   public:
@@ -95,12 +96,12 @@ class GenerateSystemKeysApplication : public pep::Application {
 
   class GenerateAmKeysFileCommand : public GenerateSpecificKeysFileCommand<true> {
   public:
-    explicit GenerateAmKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<true>("AM", "Access Manager", parent) {}
+    explicit GenerateAmKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<true>(pep::ServerTraits::AccessManager(), parent) {}
   };
 
   class GenerateTsKeysFileCommand : public GenerateSpecificKeysFileCommand<false> {
   public:
-    explicit GenerateTsKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<false>("TS", "Transcryptor", parent) {}
+    explicit GenerateTsKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<false>(pep::ServerTraits::Transcryptor(), parent) {}
   };
 
   class GenerateBothKeysFilesCommand : public pep::commandline::ChildCommandOf<GenerateSystemKeysApplication> {

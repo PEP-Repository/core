@@ -29,7 +29,7 @@ class RegistrationServer : public SigningServer {
  public:
   class Parameters : public SigningServer::Parameters {
   protected:
-    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { "RegistrationServer" }; }
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::RegistrationServer(); }
 
    public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
@@ -89,7 +89,6 @@ public:
   ~RegistrationServer() override;
 
 protected:
-  std::string describe() const override;
   std::vector<std::string> getChecksumChainNames() const override;
   void computeChecksumChainChecksum(
     const std::string& chain, std::optional<uint64_t> maxCheckpoint,

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/auth/EnrolledParty.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
@@ -27,21 +26,10 @@ private:
   std::shared_ptr<X509Identity> identity_;
 
 protected:
-  virtual std::unordered_set<std::string> certificateSubjects() const noexcept = 0;
-
   void check() const override {
-    auto description = *this->certificateSubjects().begin();
-    const auto& chain = identity_->getCertificateChain();
-    if (chain.empty()) {
-      throw std::runtime_error("Invalid certificate chain for " + description + ": empty");
-    }
-    auto cert = chain.front();
-    if (!IsServerSigningCertificate(cert)) {
-      throw std::runtime_error("Invalid certificate chain for " + description + ": not a PEP server signing certificate");
-    }
-    auto ou = cert.getOrganizationalUnit().value_or(std::string());
-    if (!this->certificateSubjects().contains(ou)) {
-      throw std::runtime_error("Invalid certificate chain for " + description + ": issued to \"" + ou + '"');
+    auto traits = this->serverTraits();
+    if (!traits.signingIdentityMatches(identity_->getCertificateChain())) {
+      throw std::runtime_error("Invalid certificate chain for " + traits.description());
     }
 
     Server::Parameters::check();

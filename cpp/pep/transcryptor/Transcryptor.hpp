@@ -28,7 +28,7 @@ class Transcryptor : public SigningServer {
  public:
   class Parameters : public SigningServer::Parameters {
   protected:
-    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { "Transcryptor" }; }
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::Transcryptor(); }
 
   public:
     Parameters(
@@ -64,7 +64,6 @@ public:
   explicit Transcryptor(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   std::shared_ptr<prometheus::Registry> getMetricsRegistry() override;
   std::vector<std::string> getChecksumChainNames() const override;

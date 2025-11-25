@@ -1,8 +1,8 @@
 #pragma once
 
 #include <pep/apps/Enrollment.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/client/Client.hpp>
-#include <pep/auth/EnrolledParty.hpp>
 
 namespace pep {
 
@@ -49,8 +49,7 @@ public:
 
 class ServiceEnroller : public Enroller {
 private:
-  EnrolledParty mParty;
-  bool mProducesDataKey;
+  ServerTraits mServer;
 
 protected:
   std::vector<commandline::Parameter> getAuthorizationParameters() const override {
@@ -60,14 +59,14 @@ protected:
     };
   }
   inline bool producesExtendedProperties() const noexcept override { return false; }
-  inline bool producesDataKey() const noexcept override { return mProducesDataKey; }
+  inline bool producesDataKey() const noexcept override { return mServer.hasDataAccess(); }
   void setProperties(Client::Builder& builder, const Configuration& config) const override;
   EndPoint getAccessManagerEndPoint(const Configuration& config) const override;
   inline rxcpp::observable<EnrollmentResult> enroll(std::shared_ptr<Client> client) const override { return client->enrollServer(); }
 
 public:
-  ServiceEnroller(EnrolledParty party, const std::string& description, EnrollmentApplication& parent, bool producesDataKey = false)
-    : Enroller(party, description, parent), mParty(party), mProducesDataKey(producesDataKey) {
+  ServiceEnroller(ServerTraits server, EnrollmentApplication& parent)
+    : Enroller(*server.enrollsAsParty(true), server.description(), parent), mServer(std::move(server)) {
   }
 };
 

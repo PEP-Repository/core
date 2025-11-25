@@ -13,13 +13,21 @@ commandline::Parameters EnrollmentApplication::getSupportedParameters() const {
 }
 
 std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::createChildCommands() {
-  return {
-    std::make_shared<UserEnroller>(*this),
-    std::make_shared<ServiceEnroller>(EnrolledParty::StorageFacility, "Storage Facility", *this),
-    std::make_shared<ServiceEnroller>(EnrolledParty::AccessManager, "Access Manager", *this),
-    std::make_shared<ServiceEnroller>(EnrolledParty::Transcryptor, "Transcryptor", *this),
-    std::make_shared<ServiceEnroller>(EnrolledParty::RegistrationServer, "Registration Server", *this, true)
-  };
+  auto servers = RangeToVector(ServerTraits::Where([](const ServerTraits& server) { return server.isEnrollable(); }));
+  // Sort by EnrolledParty value: produces nicely sorted child commands
+  std::sort(servers.begin(), servers.end(), [](const ServerTraits& lhs, const ServerTraits& rhs) {
+    return *lhs.enrollsAsParty(true) < *rhs.enrollsAsParty(true);
+    });
+
+  std::vector<std::shared_ptr<commandline::Command>> result;
+  result.reserve(servers.size() + 1U);
+  result.emplace_back(std::make_shared<UserEnroller>(*this));
+
+  for (auto& server : servers) {
+    result.emplace_back(std::make_shared<ServiceEnroller>(std::move(server), *this));
+  }
+
+  return result;
 }
 
 Configuration EnrollmentApplication::getConfiguration() {

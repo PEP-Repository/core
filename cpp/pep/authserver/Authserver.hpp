@@ -18,7 +18,7 @@ public:
     const OAuthProvider::Parameters& getOAuthParams() const;
 
   protected:
-    std::unordered_set<std::string> certificateSubjects() const noexcept override { return UserGroup::Authserver; }
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::AuthServer(); }
     void check() const override;
 
   private:
@@ -30,7 +30,6 @@ public:
   explicit Authserver(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::vector<std::string> getChecksumChainNames() const override;
   void computeChecksumChainChecksum(
     const std::string& chain, std::optional<uint64_t> maxCheckpoint,

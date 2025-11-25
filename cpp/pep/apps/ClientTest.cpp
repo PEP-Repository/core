@@ -130,13 +130,6 @@ class ClientTestApplication : public Application {
   };
 
   class Mode5Command : public ModeCommand<5> {
-  private:
-    struct ServerVersion {
-      std::string name;
-      VersionResponse version;
-    };
-    static rxcpp::observable<ServerVersion> TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name);
-
   protected:
     rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) override;
   public:
@@ -252,20 +245,6 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
     .op(RxInstead(true));
 }
 
-rxcpp::observable<ClientTestApplication::Mode5Command::ServerVersion> ClientTestApplication::Mode5Command::TryGetServerVersion(std::shared_ptr<const ServerProxy> proxy, std::string name) {
-  if (proxy == nullptr) {
-    return rxcpp::observable<>::empty<ServerVersion>();
-  }
-  return proxy->requestVersion()
-    .map([name = std::move(name)](VersionResponse response) {
-    return ServerVersion{
-      .name = name,
-      .version = std::move(response),
-    };
-      });
-  }
-}
-
 rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std::shared_ptr<Client> client) {
   std::shared_ptr<SemanticVersion> ownBinarySemver = std::make_shared<SemanticVersion>(BinaryVersion::current.getSemver());
   std::shared_ptr<SemanticVersion> ownConfigSemver{};
@@ -274,29 +253,35 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  return TryGetServerVersion(client->getAccessManagerProxy(false), "Access Manager").merge(
-    TryGetServerVersion(client->getTranscryptorProxy(false), "Transcryptor"),
-    TryGetServerVersion(client->getKeyServerProxy(false), "Key Server"),
-    TryGetServerVersion(client->getStorageFacilityProxy(false), "Storage Facility"),
-    TryGetServerVersion(client->getRegistrationServerProxy(false), "Registration Server"),
-    TryGetServerVersion(client->getAuthServerProxy(false), "Auth Server")
-  ).map([ownBinarySemver, ownConfigSemver](const ServerVersion& server) {
-    std::cout << server.name
-      << " Binary version " << server.version.binary.getSummary()
-      << std::endl;
-
-    bool result = IsSemanticVersionEquivalent(*ownBinarySemver, server.version.binary.getSemver());
-
-    if (ownConfigSemver && server.version.config.has_value()) {
-      std::cout << server.name
-        << " Config version " << server.version.config->getSummary()
+  auto result = MakeSharedCopy(true);
+  return rxcpp::observable<>::iterate(client->getServerProxies(false))
+    .flat_map([result, ownBinarySemver, ownConfigSemver](const auto& pair) {
+    const ServerTraits& traits = pair.first;
+    const std::shared_ptr<const ServerProxy>& proxy = pair.second;
+    return proxy->requestVersion()
+      .map([result, ownBinarySemver, ownConfigSemver, description = traits.description()](const VersionResponse& response) {
+      std::cout << description
+        << " Binary version " << response.binary.getSummary()
         << std::endl;
-      if (!IsSemanticVersionEquivalent(*ownConfigSemver, server.version.config->getSemver())) {
-        result = false;
+
+      if (!IsSemanticVersionEquivalent(*ownBinarySemver, response.binary.getSemver())) {
+        *result = false;
       }
-    }
-    return result;
-    });
+
+      if (ownConfigSemver && response.config.has_value()) {
+        std::cout << description
+          << " Config version " << response.config->getSummary()
+          << std::endl;
+        if (!IsSemanticVersionEquivalent(*ownConfigSemver, response.config->getSemver())) {
+          *result = false;
+        }
+      }
+      return FakeVoid();
+        });
+      })
+    .op(RxInstead(*result));
+}
+
 }
 
 PEP_DEFINE_MAIN_FUNCTION(ClientTestApplication)

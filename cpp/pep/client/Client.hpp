@@ -101,6 +101,8 @@ public:
   std::shared_ptr<const AuthServerProxy> getAuthServerProxy(bool require = true) const;
   std::shared_ptr<const RegistrationServerProxy> getRegistrationServerProxy(bool require = true) const;
 
+  ServerProxies getServerProxies(bool requireAll) const override;
+
   rxcpp::observable<FakeVoid> shutdown() override;
 
   static std::shared_ptr<Client> OpenClient(const Configuration& config,

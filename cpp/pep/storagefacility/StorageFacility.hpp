@@ -35,7 +35,7 @@ public:
     friend class StorageFacility;
 
   protected:
-    std::unordered_set<std::string> certificateSubjects() const noexcept override { return { "StorageFacility" }; }
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::StorageFacility(); }
 
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
@@ -79,7 +79,6 @@ public:
   explicit StorageFacility(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   void statsTimer(const boost::system::error_code& e);
   std::vector<std::string> getChecksumChainNames() const override;

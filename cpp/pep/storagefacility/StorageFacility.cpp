@@ -1055,10 +1055,6 @@ Metadata StorageFacility::compileMetadata(
   return result;
 }
 
-std::string StorageFacility::describe() const {
-  return "Storage Facility";
-}
-
 std::optional<std::filesystem::path> StorageFacility::getStoragePath() {
   return EnsureDirectoryPath(mFileStore->metaDir());
 }

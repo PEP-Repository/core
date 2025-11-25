@@ -191,8 +191,8 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     globalConfFile = config.get<std::filesystem::path>("GlobalConfigurationFile");
 
     publicKeyPseudonyms = config.get<ElgamalPublicKey>("PublicKeyPseudonyms");
-    transcryptorEndPoint = config.get<EndPoint>("Transcryptor");
-    keyServerEndPoint = config.get<EndPoint>("KeyServer");
+    transcryptorEndPoint = config.get<EndPoint>(ServerTraits::Transcryptor().configNode());
+    keyServerEndPoint = config.get<EndPoint>(ServerTraits::KeyServer().configNode());
 
     if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
       systemKeysFile = optionalSystemKeysFile.value();
@@ -400,10 +400,6 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
                           &AccessManager::handleMigrateUserDbToAccessManagerRequest,
                           &AccessManager::handleStructureMetadataRequest,
                           &AccessManager::handleSetStructureMetadataRequest);
-}
-
-std::string AccessManager::describe() const {
-  return "Access Manager";
 }
 
 std::optional<std::filesystem::path> AccessManager::getStoragePath() {

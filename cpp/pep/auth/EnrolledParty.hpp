@@ -4,8 +4,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <string>
-#include <string_view>
 
 namespace pep {
 
@@ -17,14 +15,8 @@ enum class EnrolledParty : uint32_t {
   RegistrationServer = 5,
 };
 
-std::optional<std::string_view> GetEnrolledServerCertificateSubject(EnrolledParty party);
-std::optional<EnrolledParty> GetEnrolledServer(const std::string& ou);
-
 std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate); // Inferred from the certificate's OU, CN, and issuer CN.
 std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain);
-
-bool IsServerSigningCertificate(const X509Certificate& certificate);
-bool IsUserSigningCertificate(const X509Certificate& certificate);
 
 bool HasDataAccess(EnrolledParty party);
 

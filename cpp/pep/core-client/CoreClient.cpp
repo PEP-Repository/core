@@ -202,15 +202,15 @@ void CoreClient::Builder::initialize(
       this->setPublicKeyData(config.get<ElgamalPublicKey>("PublicKeyData"));
       this->setPublicKeyPseudonyms(config.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
 
-      if (auto amConfig = config.get<std::optional<EndPoint>>("AccessManager")) {
+      if (auto amConfig = config.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
         this->setAccessManagerEndPoint(*amConfig);
       }
 
-      if (auto tcConfig = config.get<std::optional<EndPoint>>("Transcryptor")) {
+      if (auto tcConfig = config.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
         this->setTranscryptorEndPoint(*tcConfig);
       }
 
-      if (auto sfConfig = config.get<std::optional<EndPoint>>("StorageFacility")) {
+      if (auto sfConfig = config.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
         this->setStorageFacilityEndPoint(*sfConfig);
       }
     } catch (std::exception& e) {
@@ -266,16 +266,45 @@ rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
 
+bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy) {
+  if (proxy != nullptr) {
+    [[maybe_unused]] auto emplaced = destination.emplace(std::make_pair(traits, proxy)).second;
+    assert(emplaced);
+    return true;
+  }
+
+  return false;
+}
+
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
-  return GetConstServerProxy(storageFacilityProxy, "Storage Facility", require);
+  return GetConstServerProxy(storageFacilityProxy, ServerTraits::StorageFacility(), require);
 }
 
 std::shared_ptr<const TranscryptorProxy> CoreClient::getTranscryptorProxy(bool require) const {
-  return GetConstServerProxy(transcryptorProxy, "Transcryptor", require);
+  return GetConstServerProxy(transcryptorProxy, ServerTraits::Transcryptor(), require);
 }
 
 std::shared_ptr<const AccessManagerProxy> CoreClient::getAccessManagerProxy(bool require) const {
-  return GetConstServerProxy(accessManagerProxy, "Access Manager", require);
+  return GetConstServerProxy(accessManagerProxy, ServerTraits::AccessManager(), require);
+}
+
+CoreClient::ServerProxies CoreClient::getServerProxies(bool requireAll) const {
+  ServerProxies result;
+
+  AddServerProxy(result, ServerTraits::AccessManager(), this->getAccessManagerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::StorageFacility(), this->getStorageFacilityProxy(requireAll));
+  AddServerProxy(result, ServerTraits::Transcryptor(), this->getTranscryptorProxy(requireAll));
+
+  return result;
+}
+
+std::shared_ptr<const ServerProxy> CoreClient::getServerProxy(const ServerTraits& traits) const {
+  auto all = this->getServerProxies(false);
+  auto position = all.find(traits);
+  if (position == all.end()) {
+    throw std::runtime_error("Not connected to " + traits.description());
+  }
+  return position->second;
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {

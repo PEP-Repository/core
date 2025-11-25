@@ -1,6 +1,6 @@
 #include <pep/morphing/RepoRecipient.hpp>
 
-#include <pep/auth/EnrolledParty.hpp>
+#include <pep/auth/ServerTraits.hpp>
 
 #include <cassert>
 #include <stdexcept>
@@ -10,12 +10,11 @@ using namespace pep;
 
 namespace {
 
-std::string_view GetValidServerCertificateSubject(EnrolledParty server) {
-  const auto serverName = GetEnrolledServerCertificateSubject(server);
-  if (!serverName) {
-    throw std::invalid_argument("EnrolledParty is not a server");
+std::string GetValidServerCertificateSubject(EnrolledParty enrolledAs) {
+  if (auto server = ServerTraits::Find(enrolledAs)) {
+    return *server->enrollmentSubject(true); // this server is "enrolledAs()" the value we searched for, so its enrollmentSubject() must be non-null
   }
-  return *serverName;
+  throw std::invalid_argument("EnrolledParty is not a server");
 }
 
 EnrolledParty GetValidEnrolledParty(const X509Certificate& cert) {
