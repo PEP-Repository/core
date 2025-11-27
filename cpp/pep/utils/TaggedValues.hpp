@@ -10,7 +10,26 @@
 namespace pep {
 
 /// @brief Container for heterogeneous value types identified by a tag type.
-/// @remark Tag types must have a nested "type" identifier indicating the type of value associated with that tag. Confused? See the unit test.
+/// \code
+///   // Common code
+///   struct WorkingDirectoryTag { using type = std::filesystem::path; };
+///   struct TrustedRootCAsTag   { using type = pep::X509RootCertificates; };
+///
+///   // Calling code
+///   TaggedValues context;
+///   context.set<WorkingDirectoryTag>(getcwd());
+///   if (std::filesystem::exists(rootCaPath)) {
+///     context.set<TrustedRootCAsTag>(pep::X509RootCertificates(pep::FromPem(ReadFile(rootCaPath))));
+///   }
+///
+///   // Receiving code
+///   if (auto rootCAs = context.get<TrustedRootCAsTag>()) {
+///     myCertificateChain.validate(*rootCAs);
+///   }
+///   else {
+///     throw std::runtime_error("Can't validate certificate chain");
+///   }
+/// \endcode
 class TaggedValues {
 private:
   std::unordered_map<std::type_index, std::any> mValues;
