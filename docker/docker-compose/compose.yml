@@ -3,9 +3,12 @@ x-logging-pipeline-pep-services: &logging-pipeline-pep-services
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -33,9 +36,12 @@ x-logging-pipeline-watchdog: &logging-pipeline-watchdog
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -60,9 +66,12 @@ x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -112,9 +121,12 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -170,9 +182,12 @@ x-logging-pipeline-prometheus-node-exporter: &logging-pipeline-prometheus-node-e
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -202,9 +217,12 @@ x-logging-pipeline-nginx: &logging-pipeline-nginx
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
