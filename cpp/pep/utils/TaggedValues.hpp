@@ -22,6 +22,7 @@ public:
 
   template <typename TTag> void set(typename TTag::type value) { mValues.insert_or_assign(KeyFor<TTag>(), std::move(value)); }
   template <typename TTag> void unset() { mValues.erase(KeyFor<TTag>()); }
+
   void clear() { mValues.clear(); }
 
   size_t empty() const noexcept { return mValues.empty(); }
