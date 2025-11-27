@@ -1,11 +1,14 @@
 #Requires -PSEdition Core
+
+<#
+.SYNOPSIS
+  Find Visual Studio and define some environment variables.
+#>
+[CmdletBinding()]
+param()
+
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
-
-if (!(Test-Path env:PEP_NO_SOFTWARE_INSTALL)) {
-  echo 'Upgrading Conan'
-  pipx upgrade conan
-}
 
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 if (!(Test-Path $vswhere)) {

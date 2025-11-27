@@ -34,8 +34,8 @@ if [%BuildType%] == [Debug] (
   goto :Invocation
 )
 
-echo Invoking Windows CI runner provisioning script.
-call "%OwnDir%\windows-ci-runner.bat" || exit /B 1
+echo Locating Visual Studio.
+call "%OwnDir%\windows-ci-find-msvc.bat" || exit /B 1
 
 echo Initializing environment for Visual Studio tool invocation.
 
@@ -70,10 +70,8 @@ if exist "%BUILD_DIR%" (
 
 echo Installing Conan packages.
 
-REM Ensure that we're using the correct URL for conancenter: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2616#note_47704
-conan remote update conancenter --url https://center2.conan.io
-
-conan install .\docker-build\builder\conan\conanfile.py ^
+pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
+  install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
   --profile:all=.\docker-build\builder\conan\conan_profile ^
   --build=missing ^
@@ -86,13 +84,6 @@ conan install .\docker-build\builder\conan\conanfile.py ^
   -o "&:custom_build_folder=True" ^
   --output-folder=.\%BUILD_DIR%\ ^
   || exit /B 1
-if "%CLEAN_CONAN%" neq "" (
-  echo Cleaning Conan cache.
-  REM Remove some temporary build files (excludes binaries)
-  conan remove "*" --lru 4w --confirm || exit /B 1
-  REM Remove old packages
-  conan cache clean --build --temp || exit /B 1
-)
 
 echo Configuring CMake project.
 cmake --preset conan-default %PEP_CMAKE_DEFINES% || exit /B 1
