@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory=$true, Position=0, ValueFromRemainingArguments=$true)]
-  [string[]] $args
+  [string[]] $ScriptAndArgs
 )
 
 # First try Git Bash, then find in path, as Git bash is by default not in Path
@@ -14,5 +14,5 @@ if (!$bash) {
 }
 # We use run.sh to support non-script commands (e.g. echo) and honor shebangs for scripts, without using `-c`,
 # which would require us to escape arguments here
-&$bash $PSScriptRoot/run.sh $args
+&$bash $PSScriptRoot/run.sh @ScriptAndArgs
 exit $LASTEXITCODE
