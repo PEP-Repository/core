@@ -70,7 +70,7 @@ if exist "%BUILD_DIR%" (
 
 echo Installing Conan packages.
 
-pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" -- ^
+pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
   --profile:all=.\docker-build\builder\conan\conan_profile ^

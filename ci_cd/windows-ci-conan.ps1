@@ -5,12 +5,8 @@
   Upgrade conan and call conan with provided arguments, synchronizing with other calls of this script.
   Clean cache afterwards.
 #>
-[CmdletBinding()]
-param(
-  # You'll probably need to start with `--`
-  [Parameter(Mandatory = $true, Position = 0, ValueFromRemainingArguments = $true)]
-  [string[]] $ConanArgs
-)
+
+$ConanArgs = $args
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
