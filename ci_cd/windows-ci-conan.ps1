@@ -14,6 +14,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
 
+if (!$ConanArgs) { $ConanArgs = @() }
+
 do {
   try {
     $conanLock = [IO.File]::Open("C:\Users\pep\.pep-conan-lock", [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Read)

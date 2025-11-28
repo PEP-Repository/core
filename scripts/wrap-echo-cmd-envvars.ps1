@@ -13,6 +13,11 @@ param(
   [string[]] $EnvVars
 )
 
+$ErrorActionPreference = 'Stop'
+
+if (!$ScriptArgs) { $ScriptArgs = @() }
+
+
 # Execute script, avoiding printing to stdout
 &$ScriptPath $ScriptArgs | % { [Console]::Error.WriteLine($_) } # Just 1>&2
 
