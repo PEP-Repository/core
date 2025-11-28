@@ -7,6 +7,7 @@
 #>
 [CmdletBinding()]
 param(
+  # You'll probably need to start with `--`
   [Parameter(Mandatory = $true, Position = 0, ValueFromRemainingArguments = $true)]
   [string[]] $ConanArgs
 )
