@@ -27,7 +27,7 @@ if (Test-Path env:PEP_USE_VS_VERSION_RANGE) {
 # Export environment variables for other scripts
 
 # E.g. 'C:\Program Files\Microsoft Visual Studio\18\Community'
-$env:PEP_VISUAL_STUDIO_DIR = &$vswhere $vswhere_extra_args -latest -property resolvedInstallationPath
+$env:PEP_VISUAL_STUDIO_DIR = &$vswhere @vswhere_extra_args -latest -property resolvedInstallationPath
 if (!$env:PEP_VISUAL_STUDIO_DIR) {
   throw "Visual Studio $vswhere_extra_args not installed"
 }

@@ -14,8 +14,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
 
-if (!$ConanArgs) { $ConanArgs = @() }
-
 do {
   try {
     $conanLock = [IO.File]::Open("C:\Users\pep\.pep-conan-lock", [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Read)
@@ -33,7 +31,7 @@ try {
     pipx upgrade conan
   }
 
-  conan $ConanArgs
+  conan @ConanArgs
 
   if (Test-Path env:CLEAN_CONAN) {
     echo 'Cleaning Conan cache.'

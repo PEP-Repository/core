@@ -19,7 +19,7 @@ if (!$ScriptArgs) { $ScriptArgs = @() }
 
 
 # Execute script, avoiding printing to stdout
-&$ScriptPath $ScriptArgs | % { [Console]::Error.WriteLine($_) } # Just 1>&2
+&$ScriptPath @ScriptArgs | % { [Console]::Error.WriteLine($_) } # Just 1>&2
 
 # Echo each specified environment variable such that CMD can evaluate it
 foreach ($envVar in $EnvVars) {
