@@ -172,6 +172,10 @@ auto TaggedValues::ConstAgnosticGetValue(TValues& values) {
   return result;
 }
 
+/// @brief Returns the (unordered_map) key for the specified TaggedValue specialization
+/// @tparam TTagged The TaggedValue specialization (type) to produce the key for
+/// @return A value usable as a key in std containers.
+/// @remark Asserts at compile time that TTagged is a specialization of TaggedValue
 template <typename TTagged>
 std::type_index TaggedValues::KeyFor() noexcept {
   static_assert(std::is_same_v<TTagged, TaggedValue<typename TTagged::value_type, typename TTagged::tag_type>>, "TTagged must be a TaggedValue<> specialization");
