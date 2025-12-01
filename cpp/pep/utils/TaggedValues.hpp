@@ -34,7 +34,7 @@ class TaggedValues {
 private:
   std::unordered_map<std::type_index, std::any> mValues;
 
-  template <typename TTag> static constexpr std::type_index KeyFor() noexcept { return std::type_index(typeid(TTag)); }
+  template <typename TTag> static std::type_index KeyFor() noexcept { return std::type_index(typeid(TTag)); }
   template <typename TTag, typename TValues> static CopyConstness<typename TTag::type, TValues>* ConstAgnosticGet(TValues& values);
 
 public:
