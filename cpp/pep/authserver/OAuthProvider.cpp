@@ -191,14 +191,12 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
               .observe_on(observe_on_asio(*io_context)) //We want to run the cleaning up code on the io thread, so we don't have to worry about multithreading issues
               .subscribe([this](auto) {
-    LOG(LOG_TAG, info) << "Cleaning up expired grants";
-
+    LOG(LOG_TAG, debug) << "Cleaning up expired grants";
 
     auto now = std::chrono::steady_clock::now();
     for(auto it = activeGrants.begin(); it != activeGrants.end(); /* updated inside loop */) {
       if(now - it->second.createdAt > this->activeGrantExpiration) {
-        LOG(LOG_TAG, info) << "Removed expired grant for code " << it->first;
-        LOG(LOG_TAG, info) << "now - it->second.createdAt = " << pep::chrono::ToString(now - it->second.createdAt);
+        LOG(LOG_TAG, debug) << "Removed expired grant";
         it = activeGrants.erase(it);
       }
       else {
