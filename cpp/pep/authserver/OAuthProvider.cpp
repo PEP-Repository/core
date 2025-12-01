@@ -216,6 +216,12 @@ void OAuthProvider::addActiveGrant(const std::string& code, grant g) {
 
 std::optional<OAuthProvider::grant>
 OAuthProvider::getActiveGrant(const std::string& code) {
+  LOG(LOG_TAG, info) << "Looking for active grant for code " << code;
+  LOG(LOG_TAG, info) << "Existing grants: ";
+  auto now1 = std::chrono::steady_clock::now();
+  for (auto [c, grant] : activeGrants) {
+    LOG(LOG_TAG, info) << c << ": expires in " << pep::chrono::ToString(now1 - grant.createdAt);
+  }
   auto it = activeGrants.find(code);
   if (it == activeGrants.end()) {
     return std::nullopt;
