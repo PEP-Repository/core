@@ -117,7 +117,7 @@ public:
 
   /// @brief Determines if the instance is empty
   /// @return TRUE if the instance stores no values; FALSE if it stores any
-  size_t empty() const noexcept { return mValues.empty(); }
+  bool empty() const noexcept { return mValues.empty(); }
 
   /// @brief Determines the number of values stored in the instance
   /// @return The number of stored values
