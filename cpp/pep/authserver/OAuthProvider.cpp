@@ -234,6 +234,8 @@ OAuthProvider::getActiveGrant(const std::string& code) {
 rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRequest request, std::string remoteIp) {
   const auto& params = request.uri().params();
 
+  LOG(LOG_TAG, info) << "Handlig authorization request: " << request.toString();
+
 #ifdef ENABLE_OAUTH_TEST_USERS
   LOG(LOG_TAG, pep::critical) << "OAuth test users enabled. This must not happen in production!";
 
@@ -427,6 +429,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 
 HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string remoteIp) {
   try {
+    LOG(LOG_TAG, info) << "Handlig token request: " << request.toString();
     auto formData = request.getBodyAsFormData();
     for(auto& p : {"client_id", "redirect_uri", "grant_type", "code", "code_verifier"}) {
       if(formData.find(p) == formData.end()) {
