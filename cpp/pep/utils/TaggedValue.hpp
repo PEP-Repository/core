@@ -3,9 +3,10 @@
 #include <pep/utils/TypeTraits.hpp>
 #include <any>
 #include <cassert>
-#include <unordered_map>
+#include <stdexcept>
 #include <typeindex>
 #include <typeinfo>
+#include <unordered_map>
 
 #include <boost/exception/error_info.hpp>
 
@@ -96,8 +97,15 @@ public:
   /// @brief Stores a TaggedValue
   /// @tparam TTagged The TaggedValue specialization to store
   /// @param value The TaggedValue to store
+  /// @return TRUE if the value was newly inserted; FALSE if it was overwritten.
   /// @remark Overwrites any existing value
-  template <typename TTagged> void set(TTagged value) { mValues.insert_or_assign(KeyFor<TTagged>(), std::move(value)); }
+  template <typename TTagged> bool set(TTagged value) { return mValues.insert_or_assign(KeyFor<TTagged>(), std::move(value)).second; }
+
+  /// @brief Stores a new TaggedValue
+  /// @tparam TTagged The TaggedValue specialization to store
+  /// @param value The TaggedValue to store
+  /// @remark Throws an exception if the instance already stores the specified TaggedValue
+  template <typename TTagged> void add(TTagged value);
 
   /// @brief Discards the value associated with the specified tag
   /// @tparam TTag The tag for which to discard the value
@@ -116,6 +124,12 @@ public:
   size_t size() const noexcept { return mValues.size(); }
 };
 
+template <typename TTagged> void TaggedValues::add(TTagged value) {
+  if (this->get<TTagged>()) {
+    throw std::runtime_error("The specified TaggedValue already exists");
+  }
+  this->set(std::move(value));
+}
 
 /// @brief Implements lookup for TaggedValues::get (both const and non-const versions)
 /// @tparam TTagged The TaggedValue specialization for which to retrieve the value

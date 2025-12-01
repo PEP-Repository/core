@@ -37,7 +37,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Md5.cpp Md5.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
-    MultiTypeTransform.hpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
     Paths.cpp Paths.hpp

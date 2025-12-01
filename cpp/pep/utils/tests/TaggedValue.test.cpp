@@ -38,24 +38,26 @@ TEST(TaggedValues, StorageAndRetrieval) {
   ExpectTaggedValue<TaggedLastName>(values, std::nullopt, "Initialized with last name");
   ExpectTaggedValue<TaggedAge>(values, std::nullopt, "Initialized with age");
 
-  values.set(TaggedFirstName("Homer"));
+  values.add(TaggedFirstName("Homer"));
   EXPECT_FALSE(values.empty());
   EXPECT_EQ(1U, values.size());
   ExpectTaggedValue<TaggedFirstName>(values, "Homer");
   ExpectTaggedValue<TaggedLastName>(values, std::nullopt, "Setting first name updated last name");
   ExpectTaggedValue<TaggedAge>(values, std::nullopt, "Setting first name updated age");
 
-  values.set(TaggedLastName("Simpson"));
+  values.add(TaggedLastName("Simpson"));
   EXPECT_EQ(2U, values.size());
   ExpectTaggedValue<TaggedFirstName>(values, "Homer", "Setting last name updated first name");
   ExpectTaggedValue<TaggedLastName>(values, "Simpson");
   ExpectTaggedValue<TaggedAge>(values, std::nullopt, "Setting last name updated age");
 
-  values.set(TaggedAge(46U));
+  values.add(TaggedAge(46U));
   EXPECT_EQ(3U, values.size());
   ExpectTaggedValue<TaggedFirstName>(values, "Homer", "Setting age updated first name");
   ExpectTaggedValue<TaggedLastName>(values, "Simpson", "Setting age updated last name");
   ExpectTaggedValue<TaggedAge>(values, 46U);
+
+  EXPECT_ANY_THROW(values.add(TaggedFirstName("Marge")));
 
   values.set(TaggedFirstName("Marge"));
   EXPECT_EQ(3U, values.size()) << "Overwriting changed the size of the container";
@@ -81,7 +83,7 @@ TEST(TaggedValues, StorageAndRetrieval) {
   ExpectTaggedValue<TaggedAge>(values, 45U, "Unsetting last name updated age");
 
   using TaggedFavoriteChild = pep::TaggedValue<std::string, struct FavoriteChildTag>;
-  values.set(TaggedFavoriteChild("Lisa"));
+  values.add(TaggedFavoriteChild("Lisa"));
   EXPECT_EQ(3U, values.size()) << "Unexpected size after adding local tag";
   ExpectTaggedValue<TaggedFirstName>(values, "Marge", "Adding local tag updated first name");
   ExpectTaggedValue<TaggedLastName>(values, std::nullopt, "Adding local tag updated last name");

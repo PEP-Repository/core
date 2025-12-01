@@ -157,11 +157,11 @@ bool DownloadDirectory::renameRecord(const RecordDescriptor& descriptor, const s
 template <>
 class pep::PropertySerializer<DownloadDirectory::ContentSpecification> : public PropertySerializerByReference<DownloadDirectory::ContentSpecification> {
 public:
-  void read(DownloadDirectory::ContentSpecification& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
-    DeserializeProperties(destination.columnGroups, source, "column-groups", transform);
-    DeserializeProperties(destination.columns, source, "columns", transform);
-    DeserializeProperties(destination.groups, source, "participant-groups", transform);
-    DeserializeProperties(destination.pps, source, "participants", transform);
+  void read(DownloadDirectory::ContentSpecification& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
+    DeserializeProperties(destination.columnGroups, source, "column-groups", context);
+    DeserializeProperties(destination.columns, source, "columns", context);
+    DeserializeProperties(destination.groups, source, "participant-groups", context);
+    DeserializeProperties(destination.pps, source, "participants", context);
   }
 
   void write(boost::property_tree::ptree& destination, const DownloadDirectory::ContentSpecification& value) const override {
@@ -175,14 +175,14 @@ public:
 template <>
 class pep::PropertySerializer<DownloadDirectory::Specification> : public PropertySerializerByReference<DownloadDirectory::Specification> {
 public:
-  void read(DownloadDirectory::Specification& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
-    DeserializeProperties(destination.accessGroup, source, "access-group", transform);
-    DeserializeProperties(destination.content, source, "content", transform);
+  void read(DownloadDirectory::Specification& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
+    DeserializeProperties(destination.accessGroup, source, "access-group", context);
+    DeserializeProperties(destination.content, source, "content", context);
 
     // Backward compatibility: the download directory may have been created by a PEP version that didn't support file extensions yet.
     // We may therefore be reading a property_tree that does not contain an "apply-file-extensions" node.
     // In this case, keep the directory in the same format by _not_ applying file extensions.
-    destination.applyFileExtensions = DeserializeProperties<std::optional<bool>>(source, "apply-file-extensions", transform).value_or(false);
+    destination.applyFileExtensions = DeserializeProperties<std::optional<bool>>(source, "apply-file-extensions", context).value_or(false);
   }
 
   void write(boost::property_tree::ptree& destination, const DownloadDirectory::Specification& value) const override {
@@ -387,7 +387,7 @@ DownloadDirectory::Specification DownloadDirectory::Specification::FromString(co
   boost::property_tree::ptree root;
   boost::property_tree::read_json(json, root);
 
-  return DeserializeProperties<DownloadDirectory::Specification>(root, MultiTypeTransform());
+  return DeserializeProperties<DownloadDirectory::Specification>(root, DeserializationContext());
 }
 
 std::string DownloadDirectory::Specification::toString() const {

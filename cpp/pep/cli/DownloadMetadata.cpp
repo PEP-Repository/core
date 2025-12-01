@@ -138,7 +138,7 @@ void DownloadMetadata::ensureFormatUpToDate() {
     LOG(LOG_TAG, warning) << "Upgrading legacy download directory format.";
     boost::property_tree::ptree stateProperties;
     boost::property_tree::read_json(legacyPristineFile.string(), stateProperties);
-    auto states = DeserializeProperties<std::vector<RecordState>>(stateProperties, "records", MultiTypeTransform());
+    auto states = DeserializeProperties<std::vector<RecordState>>(stateProperties, "records", DeserializationContext());
 
     auto participantMetaFiles = GetLegacyParticipantMetaFilePaths(mDownloadDirectory);
     for (const auto& participantFile : participantMetaFiles) {
@@ -159,7 +159,7 @@ void DownloadMetadata::ensureFormatUpToDate() {
           boost::algorithm::split(parts, filename, boost::algorithm::is_space());
           assert(parts.size() > 0);
           const auto& column = parts[0];
-          auto timestamp = DeserializeProperties<Timestamp>(fileProperties.second, "timestamp", MultiTypeTransform());
+          auto timestamp = DeserializeProperties<Timestamp>(fileProperties.second, "timestamp", DeserializationContext());
 
           RecordDescriptor descriptor(id, column, timestamp);
 
@@ -225,7 +225,7 @@ DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirector
         boost::property_tree::ptree properties;
         std::istringstream source(serialized);
         boost::property_tree::read_json(source, properties);
-        auto record = DeserializeProperties<RecordState>(properties, MultiTypeTransform());
+        auto record = DeserializeProperties<RecordState>(properties, DeserializationContext());
 
         // Cache deserialized value
         auto relative = (participantDirectory / filename).string();

@@ -9,7 +9,7 @@ namespace pep {
   class PropertySerializer<BrandingConfiguration> : public PropertySerializerByReference<BrandingConfiguration> {
   public:
     void write(boost::property_tree::ptree& destination, const BrandingConfiguration& value) const override;
-    void read(BrandingConfiguration& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override;
+    void read(BrandingConfiguration& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override;
   };
 
 }
