@@ -22,7 +22,7 @@ void ExpectTaggedValue(const pep::TaggedValues& values, const std::optional<type
     EXPECT_EQ(stored->value(), *expected) << detail;
   }
   else if (expected) {
-    FAIL() << "Found no value but expected '" << *expected << "': " << colon << detail;
+    FAIL() << "Found no value but expected '" << *expected << colon << detail;
   }
 }
 
