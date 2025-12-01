@@ -54,7 +54,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Singleton.hpp
     Stream.cpp Stream.hpp
     StringStream.cpp StringStream.hpp
-    TaggedValues.cpp TaggedValues.hpp
+    TaggedValue.hpp
     ThreadUtil.cpp ThreadUtil.hpp
     TypeTraits.hpp
     VectorOfVectors.hpp
