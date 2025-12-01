@@ -12,7 +12,7 @@
 
 namespace pep {
 
-/// @brief Associates (a value of) a particular type with a (unique) tag type, allowing such values to be stored a TaggedValues container
+/// @brief Associates (a value of) a particular type with a (unique) tag type, allowing such values to be stored in a TaggedValues container
 /// @tparam TValue The type of value associated with the tag
 /// @tparam TTag The (unique) tag type associated with the value. Usually a named struct introduced specifically to identify a TaggedValue
 /// \code
