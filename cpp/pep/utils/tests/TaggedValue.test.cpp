@@ -72,8 +72,8 @@ TEST(TaggedValues, StorageAndRetrieval) {
     FAIL() << "Age somehow disappeared";
   }
   EXPECT_EQ(3U, values.size()) << "In-place update changed the size of the container";
-  ExpectTaggedValue<TaggedFirstName>(values, "Marge", "Incrementing age updated first name");
-  ExpectTaggedValue<TaggedLastName>(values, "Simpson", "Incrementing age updated last name");
+  ExpectTaggedValue<TaggedFirstName>(values, "Marge", "Decrementing age updated first name");
+  ExpectTaggedValue<TaggedLastName>(values, "Simpson", "Decrementing age updated last name");
   ExpectTaggedValue<TaggedAge>(values, 45U);
 
   values.unset<TaggedLastName>();
