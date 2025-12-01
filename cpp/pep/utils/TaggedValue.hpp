@@ -58,7 +58,7 @@ public:
 ///
 ///   // Calling code
 ///   TaggedValues context;
-///   context.set(TaggedWorkingDirectory(getcwd()));
+///   context.set(TaggedWorkingDirectory(std::filesystem::current_path()));
 ///   if (std::filesystem::exists(rootCaPath)) {
 ///     context.set(TaggedRootCAs(X509RootCertificates(FromPem(ReadFile(rootCaPath)))));
 ///   }
