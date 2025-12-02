@@ -222,6 +222,8 @@ generic_cleanup() {
   local used_versions
   used_versions="$(set_opts && $list_used_fun)"
   [ -z "$used_versions" ] && fail "Didn't find any $what_description to keep, something is wrong"
+  # Split from assignment because we don't have pipefail
+  used_versions="$(raw_echo "$used_versions" | sort | uniq)"
   >&2 echo "Found $(raw_echo "$used_versions" | wc -w) $what_description that may be in use"
   >&2 echo "$used_versions"
 
@@ -229,6 +231,8 @@ generic_cleanup() {
   >&2 printf '\nListing existing %s...\n\n' "$what_description"
   local existing_versions existing_len
   existing_versions="$(set_opts && $list_existing_fun)"
+  # Split from assignment because we don't have pipefail
+  existing_versions="$(raw_echo "$existing_versions" | sort | uniq)"
   existing_len="$(raw_echo "$existing_versions" | jq --slurp length)"
   >&2 echo "Found $existing_len $what_description"
 
@@ -278,7 +282,7 @@ list_protected_branch_names() {
   raw_echo "$protected_branch_names"
 }
 
-# Get lines with unique commit SHAs from tips of protected branches/tags
+# Get lines with commit SHAs from tips of protected branches/tags
 list_protected_commits() {
   local dir="$1"
 
@@ -294,8 +298,7 @@ list_protected_commits() {
   tags_raw="$(gitlab_dir_api "$dir" get-multipage repository/tags)"
   protected_tag_names="$(raw_echo "$tags_raw" | jq --raw-output '.[] | select(.protected).name')"
 
-  local commits
-  commits="$(set_opts
+  (
     cd "$dir"
     prepare_git_repo
 
@@ -309,9 +312,7 @@ list_protected_commits() {
         >&2 echo "$objectname used by protected $objecttype $refname"
         echo "$objectname"
       done
-  )"
-  # Split from assignment because we don't have pipefail
-  raw_echo "$commits" | sort | uniq
+  )
 }
 
 # List all relevant image tag objects in a project.
@@ -408,54 +409,49 @@ delete_package_version() {
 
 # List docker-build image tags that we want to keep:
 # tags that are used in some git tag or the tip of some branch in PEP FOSS or docker-build itself.
-# Returns: lines with unique tag names
+# Returns: lines with tag names
 list_used_docker_build_image_tags() {
-  local used_tags
-  used_tags="$(set_opts
-    # List docker-build image tags used by PEP FOSS repo
-    (
-      cd "$foss_dir"
-      prepare_git_repo
-      git for-each-ref | while read -r objectname objecttype refname; do
-        case "$objecttype" in
-          commit|tag)
-            ancestors="$(set_opts
-              if [ "$objecttype" = commit ]; then
-                git rev-list "$objectname" --max-count="$((keep_extra_docker_build+1))"
-              else
-                echo "$objectname"
-              fi
-            )"
-            for ancestor in $ancestors; do
-              # Could also parse ci_cd/docker-common.yml (via git show) but this is probably easier.
-              # We leave out --verify to handle refs where docker-build doesn't exist
-              docker_build_commit="$(git rev-parse --revs-only "$ancestor:$foss_docker_build_submodule")"
-              if [ -n "$docker_build_commit" ]; then
-                >&2 echo "docker-build $docker_build_commit needed by $objecttype $refname (commit $ancestor)"
-                echo "sha-$docker_build_commit"
-              fi
-            done
-            ;;
-        esac
-      done
-    )
+  # List docker-build image tags used by PEP FOSS repo
+  (
+    cd "$foss_dir"
+    prepare_git_repo
+    git for-each-ref | while read -r objectname objecttype refname; do
+      case "$objecttype" in
+        commit|tag)
+          ancestors="$(set_opts
+            if [ "$objecttype" = commit ]; then
+              git rev-list "$objectname" --max-count="$((keep_extra_docker_build+1))"
+            else
+              echo "$objectname"
+            fi
+          )"
+          for ancestor in $ancestors; do
+            # Could also parse ci_cd/docker-common.yml (via git show) but this is probably easier.
+            # We leave out --verify to handle refs where docker-build doesn't exist
+            docker_build_commit="$(git rev-parse --revs-only "$ancestor:$foss_docker_build_submodule")"
+            if [ -n "$docker_build_commit" ]; then
+              >&2 echo "docker-build $docker_build_commit needed by $objecttype $refname (commit $ancestor)"
+              echo "sha-$docker_build_commit"
+            fi
+          done
+          ;;
+      esac
+    done
+  )
 
-    # List docker-build tags from commits at the tip of a branch / tag in docker-build
-    (
-      cd "$docker_build_dir"
-      prepare_git_repo
-      git for-each-ref | while read -r objectname objecttype refname; do
-        case "$objecttype" in
-          commit|tag)
-            >&2 echo "docker-build $objectname pointed to by docker-build $objecttype $refname"
-            echo "sha-$objectname"
-            ;;
-        esac
-      done
-    )
-  )"
-  # Split from assignment because we don't have pipefail
-  raw_echo "$used_tags" | sort | uniq
+  # List docker-build tags from commits at the tip of a branch / tag in docker-build
+  (
+    cd "$docker_build_dir"
+    prepare_git_repo
+    git for-each-ref | while read -r objectname objecttype refname; do
+      case "$objecttype" in
+        commit|tag)
+          >&2 echo "docker-build $objectname pointed to by docker-build $objecttype $refname"
+          echo "sha-$objectname"
+          ;;
+      esac
+    done
+  )
 }
 
 # List all relevant image tag objects in docker-build
