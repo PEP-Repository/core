@@ -566,7 +566,7 @@ clean_foss_containers() {
 # There are separate image repositories per branch / git tag, prefixed with `branch/`.
 # We can throw away a whole repository if the corresponding branch / git tag does not exist anymore.
 
-# List branches & git tags in DTAP git repo
+# List branches & git tags in DTAP git repo, plus their slugs
 list_used_dtap_refs() {
   (
     # List DTAP branches/tags
@@ -576,11 +576,20 @@ list_used_dtap_refs() {
     while read -r objecttype refname refname_short; do
       case "$objecttype" in
         commit|tag)
-          ref_slug="$(slugify "$refname_short")"
-          >&2 echo "$ref_slug/* in used by $objecttype $refname"
+          >&2 echo "$refname_short/* in used by $objecttype $refname"
           for img_name in $dtap_container_image_names; do
-            raw_echo "$ref_slug/$img_name "
+            raw_echo "$refname_short/$img_name "
           done
+
+          # Currently we do not slugify repository names, but we might in the future.
+          # (Note: slug of release-x.y is release-x-y)
+          ref_slug="$(slugify "$refname_short")"
+          if [ "$ref_slug" != "$refname_short"]; then
+            >&2 echo "$ref_slug/* in used by $objecttype $refname"
+            for img_name in $dtap_container_image_names; do
+              raw_echo "$ref_slug/$img_name "
+            done
+          fi
           echo
           ;;
       esac
