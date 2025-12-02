@@ -674,7 +674,7 @@ windows-client:
     - job: retrieve-lockfile
       optional: true
   tags:
-    - windows
+    - windows-parallel
   rules:
     - if: $FAST_DEPLOY
       when: never
@@ -698,7 +698,7 @@ windows-all-targets:
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
   tags:
-    - windows
+    - windows-parallel
   rules:
     - if: $FAST_DEPLOY
       when: never
@@ -974,7 +974,7 @@ windows-test:
       when: never
     - when: on_success
   tags:
-    - windows
+    - windows-test
   needs: [windows-all-targets]
   script:
     - *run-tests-windows
@@ -1048,7 +1048,7 @@ pep-services-image-test:
 windows-local-integration:
   stage: integration
   tags:
-    - windows
+    - windows-test
   rules:
     - if: $FAST_DEPLOY
       when: never
