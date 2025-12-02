@@ -1,4 +1,9 @@
-# Provision/update Windows Runner. Run as gitlabrunner on the machine.
+<#
+.SYNOPSIS
+  Provision/update Windows Runner. Run as gitlabrunner on the machine.
+#>
+[CmdletBinding()]
+param()
 
 $ErrorActionPreference = 'Stop'
 
