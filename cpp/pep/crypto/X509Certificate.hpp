@@ -40,6 +40,8 @@ class X509Certificate {
 
   bool isInitialized() const { return mInternal != nullptr; }
 
+  bool hasSameSubject(const X509Certificate& other) const;
+
   static X509Certificate FromPem(const std::string& pem);
   static X509Certificate FromDer(const std::string& der);
 
@@ -103,6 +105,8 @@ class X509CertificateSigningRequest {
   static X509CertificateSigningRequest FromPem(const std::string& pem);
   static X509CertificateSigningRequest FromDer(const std::string& der);
 
+  static X509CertificateSigningRequest CreateWithSubjectFromExistingCertificate(AsymmetricKeyPair& keyPair, const X509Certificate& certificate);
+
   /*!
    * \brief Generate a X509 certificate based on the CSR. As subject it will contain the common name returned by getCommonName() and the organizational unit returned by getOrganizationUnit(). Other fields will be ignored.
    * \param caCert The issuer's certificate
@@ -113,6 +117,12 @@ class X509CertificateSigningRequest {
   X509Certificate signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const;
 
  private:
+  // This will create a certificate signing request that does not have a subject yet, and therefore can't yet be signed.
+  // Make sure to set a subject and sign the certificate, before using it or returning it from a public method/constructor.
+  X509CertificateSigningRequest(AsymmetricKeyPair& keyPair);
+
+  void sign(const AsymmetricKeyPair& keyPair);
+
   X509_REQ* mCSR = nullptr;
 
   std::optional<std::string> searchOIDinSubject(int nid) const;
@@ -138,7 +148,7 @@ class X509IdentityFilesConfiguration {
 private:
   std::filesystem::path mPrivateKeyFilePath;
   std::filesystem::path mCertificateChainFilePath;
-  X509Identity mIdentity;
+  std::shared_ptr<X509Identity> mIdentity;
 
 public:
   X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix);
@@ -146,7 +156,8 @@ public:
 
   const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
   const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }
-  const X509Identity& identity() const noexcept { return mIdentity; }
+  std::shared_ptr<const X509Identity> identity() const noexcept { return mIdentity; }
+  std::shared_ptr<X509Identity> identity() noexcept { return mIdentity; }
 };
 
 }

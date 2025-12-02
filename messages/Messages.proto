@@ -349,6 +349,47 @@ message SignedPingResponse {
   bytes data = 4;
 }
 
+message CsrRequest {
+}
+
+message SignedCsrRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CsrResponse {
+  X509CertificateSigningRequest csr = 1;
+}
+
+message CertificateReplacementRequest {
+  X509CertificateChain certificate_chain = 1;
+  bool force = 2;
+}
+
+message SignedCertificateReplacementRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CertificateReplacementResponse {
+}
+
+message SignedCertificateReplacementResponse {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CertificateReplacementCommitRequest {
+}
+
+message SignedCertificateReplacementCommitRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CertificateReplacementCommitResponse {
+}
+
 message VersionRequest {
 }
 

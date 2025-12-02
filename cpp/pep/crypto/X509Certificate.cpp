@@ -340,6 +340,14 @@ std::string X509Certificate::toDer() const {
   return OpenSSLBIOToString(bio);
 }
 
+bool X509Certificate::hasSameSubject(const X509Certificate& other) const {
+  int result = X509_subject_name_cmp(mInternal, other.mInternal);
+  if (result == -2) {
+    throw OpenSSLError("Failed to compare certificate subjects.");
+  }
+  return result == 0;
+}
+
 X509Certificate X509Certificate::FromPem(const std::string& pem) {
 
   // Create a BIO for the PEM-encoded data
@@ -531,23 +539,7 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const {
  * @param commonName The common name for the CSR.
  * @param organizationalUnit The organizational unit for the CSR.
  */
-X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit) {
-
-  if (!keyPair.mKeyPair) {
-    throw std::invalid_argument("Input key pair is nullptr in X509CertificateSigningRequest constructor.");
-  }
-
-  // Create a new X509_REQ object
-  mCSR = X509_REQ_new();
-  if (!mCSR) {
-    throw pep::OpenSSLError("Failed to create X509_REQ object in X509CertificateSigningRequest constructor.");
-  }
-
-  if (X509_REQ_set_version(mCSR, X509_REQ_VERSION_1) <= 0) {
-    X509_REQ_free(mCSR);
-    throw pep::OpenSSLError("Failed to set version in X509CertificateSigningRequest constructor.");
-  }
-
+X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit) : X509CertificateSigningRequest(keyPair) {
   // Obtain the subject name of the X509 request, pointer must not be freed
   X509_NAME* name = X509_REQ_get_subject_name(mCSR);
 
@@ -569,10 +561,12 @@ X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& 
     throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest constructor.");
   }
 
-  // Sign the X509 request
-  if(X509_REQ_sign(mCSR, keyPair.mKeyPair, EVP_sha256()) <= 0) {
+  try {
+    sign(keyPair);
+  }
+  catch (...) {
     X509_REQ_free(mCSR);
-    throw pep::OpenSSLError("Failed to sign X509 request in X509CertificateSigningRequest constructor.");
+    throw;
   }
 }
 
@@ -728,6 +722,26 @@ X509CertificateSigningRequest X509CertificateSigningRequest::FromDer(const std::
   return request;
 }
 
+X509CertificateSigningRequest X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(
+  AsymmetricKeyPair& keyPair, const X509Certificate& certificate) {
+  X509CertificateSigningRequest result(keyPair);
+
+  // pointer must not be freed
+  X509_NAME* subject = X509_get_subject_name(certificate.mInternal);
+  if (!subject) {
+    throw OpenSSLError("Failed to get subject name from certificate.");
+  }
+
+  //X509_REQ_set_subject_name will make an internal copy of the X509_NAME*
+  if (X509_REQ_set_subject_name(result.mCSR, X509_get_subject_name(certificate.mInternal)) == 0) {
+    throw OpenSSLError("Failed to set subject name of certificate signing request.");
+  }
+
+  result.sign(keyPair);
+
+  return result;
+}
+
 /**
  * @brief Sign a certificate based on the X509CertificateSigningRequest.
  * @param caCert The issuer's certificate.
@@ -878,6 +892,35 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
   return X509Certificate(cert);
 }
 
+X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair) {
+  if (!keyPair.mKeyPair) {
+    throw std::invalid_argument("Input key pair is nullptr in X509CertificateSigningRequest constructor.");
+  }
+
+  // Create a new X509_REQ object
+  mCSR = X509_REQ_new();
+  if (!mCSR) {
+    throw pep::OpenSSLError("Failed to create X509_REQ object in X509CertificateSigningRequest constructor.");
+  }
+
+  if (X509_REQ_set_version(mCSR, X509_REQ_VERSION_1) <= 0) {
+    X509_REQ_free(mCSR);
+    throw pep::OpenSSLError("Failed to set version in X509CertificateSigningRequest constructor.");
+  }
+
+  // Set the public key
+  if(X509_REQ_set_pubkey(mCSR, keyPair.mKeyPair) <= 0) {
+    X509_REQ_free(mCSR);
+    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest constructor.");
+  }
+}
+
+void X509CertificateSigningRequest::sign(const AsymmetricKeyPair& keyPair) {
+  if(X509_REQ_sign(mCSR, keyPair.mKeyPair, EVP_sha256()) <= 0) {
+    throw pep::OpenSSLError("Failed to sign X509 request.");
+  }
+}
+
 X509Identity::X509Identity(AsymmetricKey privateKey)
   : mPrivateKey(std::move(privateKey)) {
   if (!mPrivateKey.isSet()) {
@@ -907,7 +950,7 @@ X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configurati
 X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const std::filesystem::path& privateKeyFilePath, const std::filesystem::path& certificateChainFilePath)
   : mPrivateKeyFilePath(privateKeyFilePath),
   mCertificateChainFilePath(certificateChainFilePath),
-  mIdentity(AsymmetricKey(ReadFile(mPrivateKeyFilePath)), X509CertificateChain(ReadFile(mCertificateChainFilePath))) {
+  mIdentity(std::make_shared<X509Identity>(AsymmetricKey(ReadFile(mPrivateKeyFilePath)), X509CertificateChain(ReadFile(mCertificateChainFilePath)))) {
   LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
 }
 

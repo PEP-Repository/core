@@ -1,0 +1,19 @@
+#pragma once
+
+#include <pep/server/CertificateRenewalMessages.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
+
+namespace pep {
+
+PEP_DEFINE_EMPTY_SERIALIZER(CsrRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(CsrRequest);
+PEP_DEFINE_CODED_SERIALIZER(CsrResponse);
+PEP_DEFINE_CODED_SERIALIZER(CertificateReplacementRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(CertificateReplacementRequest);
+PEP_DEFINE_EMPTY_SERIALIZER(CertificateReplacementResponse);
+PEP_DEFINE_SIGNED_SERIALIZATION(CertificateReplacementResponse);
+PEP_DEFINE_EMPTY_SERIALIZER(CertificateReplacementCommitRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(CertificateReplacementCommitRequest);
+PEP_DEFINE_EMPTY_SERIALIZER(CertificateReplacementCommitResponse);
+
+}
