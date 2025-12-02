@@ -16,7 +16,7 @@ const std::string LOG_TAG("Enrollment");
 }
 
 EndPoint Enroller::getAccessManagerEndPoint(const Configuration& config) const {
-  return config.get<EndPoint>("AccessManager");
+  return config.get<EndPoint>(ServerTraits::AccessManager().configNode());
 }
 
 rxcpp::observable<EnrollmentResult> UserEnroller::enroll(std::shared_ptr<Client> client) const {
@@ -29,20 +29,26 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
   AsymmetricKey privateKey(ReadFile(this->getParameterValues().get<std::filesystem::path>("private-key-file")));
   X509CertificateChain certificateChain(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file")));
 
-  auto facilityType = GetFacilityType(certificateChain);
-  if (facilityType != mType) {
-    throw std::runtime_error("Cannot enroll facility type " + std::to_string(static_cast<unsigned>(mType)) + " with certificate chain for type " + std::to_string(static_cast<unsigned>(facilityType)));
+  if (!mServer.signingIdentityMatches(certificateChain)) {
+    std::string description = "unknown party";
+    if (!certificateChain.empty()) {
+      auto certificate = certificateChain.front();
+      if (auto ou = certificate.getOrganizationalUnit()) {
+        description = *ou;
+      }
+    }
+    throw std::runtime_error("Cannot enroll " + mServer.description() + " with certificate chain for " + description);
   }
 
   builder.setSigningIdentity(std::make_shared<X509Identity>(std::move(privateKey), std::move(certificateChain)));
 }
 
 EndPoint ServiceEnroller::getAccessManagerEndPoint(const Configuration& config) const {
-  if (mType == FacilityType::AccessManager) {
+  if (mServer == ServerTraits::AccessManager()) {
     EndPoint result;
     result.hostname = "127.0.0.1";
     result.port = config.get<uint16_t>("ListenPort");
-    result.expectedCommonName = "AccessManager";
+    result.expectedCommonName = mServer.certificateSubject();
     return result;
   }
 
@@ -53,12 +59,12 @@ void Enroller::setProperties(Client::Builder& builder, const Configuration& conf
   try {
     builder.setCaCertFilepath(config.get<std::filesystem::path>("CACertificateFile"));
 
-    EndPoint keyServerEndPoint = config.get<EndPoint>("KeyServer");
+    EndPoint keyServerEndPoint = config.get<EndPoint>(ServerTraits::KeyServer().configNode());
     builder.setKeyServerEndPoint(keyServerEndPoint);
 
     builder.setAccessManagerEndPoint(this->getAccessManagerEndPoint(config));
 
-    EndPoint transcryptorEndPoint = config.get<EndPoint>("Transcryptor");
+    EndPoint transcryptorEndPoint = config.get<EndPoint>(ServerTraits::Transcryptor().configNode());
     builder.setTranscryptorEndPoint(transcryptorEndPoint);
   }
   catch (std::exception& e) {

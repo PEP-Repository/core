@@ -37,7 +37,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Md5.cpp Md5.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
-    MultiTypeTransform.hpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
     Paths.cpp Paths.hpp
@@ -54,6 +53,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Singleton.hpp
     Stream.cpp Stream.hpp
     StringStream.cpp StringStream.hpp
+    TaggedValue.hpp
     ThreadUtil.cpp ThreadUtil.hpp
     TypeTraits.hpp
     VectorOfVectors.hpp

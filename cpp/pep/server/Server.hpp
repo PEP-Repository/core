@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/async/IoContext_fwd.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
@@ -25,7 +26,7 @@ public:
   * \brief Produces a human-readable description of the server.
   * \return A string describing the server (type).
   */
-  virtual std::string describe() const = 0;
+  std::string describe() { return mDescription; }
 
   /*!
   * \brief Produces the path where the server stores its data (if any).
@@ -110,6 +111,7 @@ private:
   std::shared_ptr<Metrics> mMetrics;
   EGCache& mEGCache; // <- for metrics
   unsigned int mUncaughtReadExceptions = 0;
+  std::string mDescription;
   std::shared_ptr<boost::asio::io_context> mIoContext;
   X509RootCertificates mRootCAs;
 };
@@ -139,6 +141,8 @@ public:
    * \brief Destructor.
    */
   virtual ~Parameters() noexcept = default;
+
+  virtual ServerTraits serverTraits() const noexcept = 0;
 
   /*!
    * \brief Validates these parameters, raising an exception if they're not valid.

@@ -11,7 +11,7 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
@@ -138,8 +138,8 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
     setShadowStorageFile(config.get<std::filesystem::path>("ShadowStorageFile"));
     shadowPublicKeyFile = config.get<std::filesystem::path>("ShadowPublicKeyFile");
 
-    clientBuilder.setAccessManagerEndPoint(config.get<EndPoint>("AccessManager"));
-    clientBuilder.setStorageFacilityEndPoint(config.get<EndPoint>("StorageFacility"));
+    clientBuilder.setAccessManagerEndPoint(config.get<EndPoint>(ServerTraits::AccessManager().configNode()));
+    clientBuilder.setStorageFacilityEndPoint(config.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -247,8 +247,6 @@ void RegistrationServer::Parameters::check() const {
     throw std::runtime_error("shadowStorageFile must not be empty");
   if(!shadowPublicKey.isSet())
     throw std::runtime_error("shadowPublicKey must be set");
-  if (GetFacilityType(this->getSigningIdentity()->getCertificateChain()) != FacilityType::RegistrationServer)
-    throw std::runtime_error("Invalid certificate chain for Registration Server");
   SigningServer::Parameters::check();
 }
 
@@ -811,9 +809,5 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
 #endif
 }
 
-
-std::string RegistrationServer::describe() const {
-  return "Registration Server";
-}
 
 }

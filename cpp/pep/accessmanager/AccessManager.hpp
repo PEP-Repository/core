@@ -19,6 +19,9 @@ public:
   class Backend; // Public to allow unit testing
 
   class Parameters : public SigningServer::Parameters {
+  protected:
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::AccessManager(); }
+
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
@@ -88,7 +91,6 @@ public:
   explicit AccessManager(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   std::unordered_set<std::string> getAllowedChecksumChainRequesters() override;
   std::vector<std::string> getChecksumChainNames() const override;

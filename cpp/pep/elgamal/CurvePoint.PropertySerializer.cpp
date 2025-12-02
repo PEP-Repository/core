@@ -6,8 +6,8 @@ void PropertySerializer<CurvePoint>::write(boost::property_tree::ptree& destinat
   SerializeProperties(destination, value.text());
 }
 
-CurvePoint PropertySerializer<CurvePoint>::read(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const {
-  return CurvePoint::FromText(DeserializeProperties<std::string>(source, transform));
+CurvePoint PropertySerializer<CurvePoint>::read(const boost::property_tree::ptree& source, const DeserializationContext& context) const {
+  return CurvePoint::FromText(DeserializeProperties<std::string>(source, context));
 }
 
 }

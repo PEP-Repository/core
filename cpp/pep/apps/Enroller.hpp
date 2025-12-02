@@ -1,8 +1,8 @@
 #pragma once
 
 #include <pep/apps/Enrollment.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/client/Client.hpp>
-#include <pep/auth/FacilityType.hpp>
 
 namespace pep {
 
@@ -22,7 +22,7 @@ protected:
       + commandline::Parameter("output-path", "Location of output file").value(commandline::Value<std::filesystem::path>().positional());
   }
 
-  Enroller(FacilityType type, const std::string& description, EnrollmentApplication& parent)
+  Enroller(EnrolledParty type, const std::string& description, EnrollmentApplication& parent)
     : commandline::ChildCommandOf<EnrollmentApplication>(
         std::to_string(static_cast<unsigned>(type)), "Enrolls " + description, parent)
   {}
@@ -43,14 +43,13 @@ protected:
 
 public:
   explicit UserEnroller(EnrollmentApplication& parent)
-    : Enroller(FacilityType::User, "a user", parent) {
+    : Enroller(EnrolledParty::User, "a user", parent) {
   }
 };
 
 class ServiceEnroller : public Enroller {
 private:
-  FacilityType mType;
-  bool mProducesDataKey;
+  ServerTraits mServer;
 
 protected:
   std::vector<commandline::Parameter> getAuthorizationParameters() const override {
@@ -60,14 +59,14 @@ protected:
     };
   }
   inline bool producesExtendedProperties() const noexcept override { return false; }
-  inline bool producesDataKey() const noexcept override { return mProducesDataKey; }
+  inline bool producesDataKey() const noexcept override { return mServer.hasDataAccess(); }
   void setProperties(Client::Builder& builder, const Configuration& config) const override;
   EndPoint getAccessManagerEndPoint(const Configuration& config) const override;
   inline rxcpp::observable<EnrollmentResult> enroll(std::shared_ptr<Client> client) const override { return client->enrollServer(); }
 
 public:
-  ServiceEnroller(FacilityType type, const std::string& description, EnrollmentApplication& parent, bool producesDataKey = false)
-    : Enroller(type, description, parent), mType(type), mProducesDataKey(producesDataKey) {
+  ServiceEnroller(ServerTraits server, EnrollmentApplication& parent)
+    : Enroller(*server.enrollsAsParty(true), server.description(), parent), mServer(std::move(server)) {
   }
 };
 

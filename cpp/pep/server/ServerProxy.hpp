@@ -58,11 +58,14 @@ public:
   /// @param clientMessageSigner The instance that will sign messages sent to the server.
   /// @remark Caller must ensure that the MessageSigner outlives the ServerProxy
   ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner);
+  virtual ~ServerProxy() noexcept = default;
   ServerProxy(const ServerProxy&) = delete;
   ServerProxy& operator=(const ServerProxy&) = delete;
 
   rxcpp::observable<ConnectionStatus> connectionStatus() const;
   rxcpp::observable<FakeVoid> shutdown();
+
+  virtual rxcpp::observable<PingResponse> requestPing() const = 0;
 
   rxcpp::observable<VersionResponse> requestVersion() const;
   rxcpp::observable<MetricsResponse> requestMetrics() const;

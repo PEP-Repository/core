@@ -165,3 +165,14 @@ pepcli() {
     trace timeout --foreground -v --kill-after=10s "$PEPCLI_TIMEOUT" docker exec --interactive -w "/data/client" pepservertest "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
   fi
 }
+
+write_registration_server_cell() {
+  column="$1"
+  shift
+  parameters="$@"
+
+  # (Ab)using column group "ParticipantInfo" to temporarily grant write privileges to "Research Assessor"
+  pepcli --oauth-token-group "Data Administrator" ama column addTo "${column}" ParticipantInfo
+  pepcli --oauth-token-group "Research Assessor" "$@" -c "${column}"
+  pepcli --oauth-token-group "Data Administrator" ama column removeFrom "${column}" ParticipantInfo
+}

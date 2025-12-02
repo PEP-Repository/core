@@ -1,5 +1,5 @@
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-
 #include <pep/utils/MiscUtil.hpp>
 
 using namespace std::literals;
@@ -55,14 +55,14 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     mSignature->assertValid(
       mData,
       rootCAs,
-      std::string("AccessManager"),
+      ServerTraits::AccessManager().userGroup(true),
       std::chrono::days{1},
       false
     );
     mTranscryptorSignature->assertValid(
       mData,
       rootCAs,
-      std::string("Transcryptor"),
+      ServerTraits::Transcryptor().userGroup(true),
       std::chrono::days{1},
       false
     );
@@ -91,7 +91,7 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const
   mSignature->assertValid(
     mData,
     rootCAs,
-    std::string("AccessManager"),
+    ServerTraits::AccessManager().userGroup(true),
     std::chrono::days{1},
     false
   );

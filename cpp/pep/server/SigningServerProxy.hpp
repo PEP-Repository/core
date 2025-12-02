@@ -6,10 +6,14 @@
 namespace pep {
 
 class SigningServerProxy : public ServerProxy {
+private:
+  rxcpp::observable<SignedPingResponse> requestSignedPing(const PingRequest& request) const;
+
 public:
   using ServerProxy::ServerProxy;
 
-  rxcpp::observable<SignedPingResponse> requestPing() const;
+  rxcpp::observable<PingResponse> requestPing() const override;
+  rxcpp::observable<X509CertificateChain> requestCertificateChain() const;
 };
 
 }

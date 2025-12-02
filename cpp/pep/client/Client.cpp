@@ -180,15 +180,23 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 }
 
 std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
-  return GetConstServerProxy(keyServerProxy, "Key Server", require);
+  return GetConstServerProxy(keyServerProxy, ServerTraits::KeyServer(), require);
 }
 
 std::shared_ptr<const AuthServerProxy> Client::getAuthServerProxy(bool require) const {
-  return GetConstServerProxy(authServerProxy, "Auth Server", require);
+  return GetConstServerProxy(authServerProxy, ServerTraits::AuthServer(), require);
 }
 
 std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProxy(bool require) const {
-  return GetConstServerProxy(registrationServerProxy, "Registration Server", require);
+  return GetConstServerProxy(registrationServerProxy, ServerTraits::RegistrationServer(), require);
+}
+
+Client::ServerProxies Client::getServerProxies(bool requireAll) const {
+  auto result = CoreClient::getServerProxies(requireAll);
+  AddServerProxy(result, ServerTraits::AuthServer(), this->getAuthServerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::KeyServer(), this->getKeyServerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::RegistrationServer(), this->getRegistrationServerProxy(requireAll));
+  return result;
 }
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
@@ -220,15 +228,15 @@ void Client::Builder::initialize(const Configuration& config,
     this->setPublicKeyShadowAdministration(AsymmetricKey(ReadFile(*shadowPublicKeyFile)));
   }
 
-  if (auto ksConfig = config.get<std::optional<EndPoint>>("KeyServer")) {
+  if (auto ksConfig = config.get<std::optional<EndPoint>>(ServerTraits::KeyServer().configNode())) {
     this->setKeyServerEndPoint(*ksConfig);
   }
 
-  if (auto asConfig = config.get<std::optional<EndPoint>>("Authserver")) {
+  if (auto asConfig = config.get<std::optional<EndPoint>>(ServerTraits::AuthServer().configNode())) {
     this->setAuthserverEndPoint(*asConfig);
   }
 
-  if (auto rsConfig = config.get<std::optional<EndPoint>>("RegistrationServer")) {
+  if (auto rsConfig = config.get<std::optional<EndPoint>>(ServerTraits::RegistrationServer().configNode())) {
     this->setRegistrationServerEndPoint(*rsConfig);
   }
 }

@@ -98,10 +98,10 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CACertificateFile"));
     clientBuilder.setPublicKeyData(clientConfig.get<ElgamalPublicKey>("PublicKeyData"));
     clientBuilder.setPublicKeyPseudonyms(clientConfig.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
-    clientBuilder.setAccessManagerEndPoint(clientConfig.get<EndPoint>("AccessManager"));
-    clientBuilder.setStorageFacilityEndPoint(clientConfig.get<EndPoint>("StorageFacility"));
-    clientBuilder.setKeyServerEndPoint(clientConfig.get<EndPoint>("KeyServer"));
-    clientBuilder.setTranscryptorEndPoint(clientConfig.get<EndPoint>("Transcryptor"));
+    clientBuilder.setAccessManagerEndPoint(clientConfig.get<EndPoint>(ServerTraits::AccessManager().configNode()));
+    clientBuilder.setStorageFacilityEndPoint(clientConfig.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
+    clientBuilder.setKeyServerEndPoint(clientConfig.get<EndPoint>(ServerTraits::KeyServer().configNode()));
+    clientBuilder.setTranscryptorEndPoint(clientConfig.get<EndPoint>(ServerTraits::Transcryptor().configNode()));
 
     clientBuilder.setIoContext(io_context);
 

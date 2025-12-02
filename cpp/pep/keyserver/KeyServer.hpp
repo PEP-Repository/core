@@ -14,6 +14,8 @@ public:
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::KeyServer(); }
+
     /*!
      * \return The client CA private key
      */
@@ -62,9 +64,6 @@ public:
 
 public:
   explicit KeyServer(std::shared_ptr<Parameters>);
-
-protected:
-  std::string describe() const override;
 
 private:
   messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);

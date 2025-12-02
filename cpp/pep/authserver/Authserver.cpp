@@ -18,7 +18,7 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
   EndPoint accessManagerEndPoint;
 
   try {
-    accessManagerEndPoint = config.get<EndPoint>("AccessManager");
+    accessManagerEndPoint = config.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -79,9 +79,6 @@ Authserver::Authserver(std::shared_ptr<Parameters> parameters)
   RegisterRequestHandlers(*this,
                           &Authserver::handleTokenRequest,
                           &Authserver::handleChecksumChainRequest); //This overwrites the handler in MonitorableServer with our own handler
-}
-std::string Authserver::describe() const {
-  return "Authserver";
 }
 
 }

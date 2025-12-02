@@ -1,3 +1,4 @@
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/auth/UserGroup.hpp>
 
 #include <pep/serialization/Error.hpp>
@@ -6,6 +7,9 @@
 #include <boost/algorithm/string/join.hpp>
 
 namespace pep {
+
+const std::string UserGroup::AccessManager = *ServerTraits::AccessManager().userGroup(true);
+const std::unordered_set<std::string> UserGroup::Authserver = ServerTraits::AuthServer().userGroups();
 
 void UserGroup::EnsureAccess(std::unordered_set<std::string> allowedUserGroups, std::string_view currentUserGroup, std::string_view actionDescription) {
   for (const auto &allowedGroup : allowedUserGroups) {

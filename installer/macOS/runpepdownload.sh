@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=all
 
-set -ex
+set -e
 
 PEP_SCRIPT_DIR_REL="$(dirname -- "$0")"
 PEP_SCRIPT_DIR=$(cd "$PEP_SCRIPT_DIR_REL" && pwd)
@@ -41,7 +41,7 @@ fi
 
 cd "$HOME/Downloads"
 
-open "$PEPLOGON_EXECUTABLE"
+"$PEPLOGON_EXECUTABLE"
 # Give pepLogon time to start
 sleep 2
 
@@ -62,7 +62,7 @@ if [ -d "$OUTPUT_DIR/pulled-data" ]; then
     exit 1
 fi
 
-if "$PEPCLI_EXECUTABLE" pull --all-accessible --output-directory "$OUTPUT_DIR/pulled-data"; then
+if "$PEPCLI_EXECUTABLE" pull --force --all-accessible --output-directory "$OUTPUT_DIR/pulled-data"; then
     show_alert "Success" "Files downloaded successfully to '$OUTPUT_DIR'."
 else
     exit_code=$?
