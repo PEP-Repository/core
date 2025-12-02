@@ -156,6 +156,7 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
 
   auto dataLocation = getStoragePath();
 
+  // Will be NaN for servers without dataLocation
   mMetrics->diskUsageProportion.Set(ApplicationMetrics::GetDiskUsageProportion(dataLocation));
   mMetrics->diskUsageTotal.Set(ApplicationMetrics::GetDiskUsageBytes(dataLocation));
 
