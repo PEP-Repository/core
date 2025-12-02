@@ -584,7 +584,7 @@ list_used_dtap_refs() {
           # Currently we do not slugify repository names, but we might in the future.
           # (Note: slug of release-x.y is release-x-y)
           ref_slug="$(slugify "$refname_short")"
-          if [ "$ref_slug" != "$refname_short"]; then
+          if [ "$ref_slug" != "$refname_short" ]; then
             >&2 echo "$ref_slug/* in used by $objecttype $refname"
             for img_name in $dtap_container_image_names; do
               raw_echo "$ref_slug/$img_name "
