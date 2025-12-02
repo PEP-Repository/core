@@ -70,12 +70,13 @@ if exist "%BUILD_DIR%" (
 
 echo Installing Conan packages.
 
+REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
 pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
-  --profile:all=.\docker-build\builder\conan\conan_profile ^
+  --profile__all=.\docker-build\builder\conan\conan_profile ^
   --build=missing ^
-  -s:a build_type="%BuildType%" ^
+  -s__a build_type="%BuildType%" ^
   -o "&:with_assessor=True" ^
   -o "&:with_servers=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_castor=False" ^

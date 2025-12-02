@@ -6,7 +6,8 @@
   Clean cache afterwards.
 #>
 
-$ConanArgs = $args
+# Replace `-[...]__[...]` by `-[...]:[...]`. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
+$ConanArgs = $args -replace '(?<=^-[^_]*)__', ':'
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
@@ -33,7 +34,7 @@ try {
   if (Test-Path env:CLEAN_CONAN) {
     echo 'Cleaning Conan cache.'
     # Remove some temporary build files (excludes binaries)
-    conan remove "*" --lru 4w --confirm
+    conan remove '*' --lru 4w --confirm
     # Remove old packages
     conan cache clean --build --temp
   }
