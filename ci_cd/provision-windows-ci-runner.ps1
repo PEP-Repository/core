@@ -2,8 +2,13 @@
 
 $ErrorActionPreference = 'Stop'
 
+if (!($env:USERNAME -match 'gitlab')) {
+  throw 'This script must be run as gitlabrunner user'
+}
+
 echo 'Installing / upgrading packages'
 
+# System-wide installs (some of these could've been per-user)
 $pkgs = @(
   'Microsoft.PowerShell' # Powershell Core
   'Git.Git'
@@ -14,6 +19,7 @@ winget install $pkgs --accept-package-agreements --disable-interactivity
 # 0x8A15002B = no upgrade found: see https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md
 if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 0x8A15002B) { exit $LASTEXITCODE }
 
+# Per-user install
 echo 'Installing Python'
 $pkgs = @(
   'Python 3.13'
@@ -21,6 +27,7 @@ $pkgs = @(
 winget install $pkgs --source msstore --accept-package-agreements --disable-interactivity
 if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 0x8A15002B) { exit $LASTEXITCODE }
 
+# System-wide install
 echo 'Installing Visual Studio'
 # https://gist.github.com/robotdad/83041ccfe1bea895ffa0739192771732
 # https://learn.microsoft.com/en-us/visualstudio/install/use-command-line-parameters-to-install-visual-studio
