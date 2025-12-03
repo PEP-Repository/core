@@ -1,3 +1,4 @@
+#include <pep/auth/Certificate.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/SigningServer.hpp>
@@ -20,7 +21,7 @@ messaging::MessageBatches SigningServer::handlePingRequest(std::shared_ptr<PingR
 }
 
 messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<SignedCsrRequest> signedRequest) {
-  signedRequest->validate(this->getRootCAs());
+  signedRequest->validate(*this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting CSRs");
 
   AsymmetricKeyPair newKeyPair = AsymmetricKeyPair::GenerateKeyPair();
@@ -31,7 +32,7 @@ messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<Signed
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std::shared_ptr<SignedCertificateReplacementRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Renewing certificates");
 
   if (!mNewPrivateKey) {
@@ -46,7 +47,11 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
     throw Error("New certificate has a different subject from the current certificate. Use --force to force replacing the certificate.");
   }
 
-  if (!request.mCertificateChain.verify(getRootCAs())) {
+  if (!IsServerSigningCertificate(mIdentityFilesConfig->identity()->getCertificateChain().front())) {
+    throw std::runtime_error("New certificate is not a server signing certificate");
+  }
+
+  if (!request.mCertificateChain.verify(*getRootCAs())) {
     throw Error("Cannot replace certificate for server, since the new certificate chain cannot be verified.");
   }
 
@@ -56,7 +61,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementCommitRequest(std::shared_ptr<SignedCertificateReplacementCommitRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Committing renewed certificates");
 
 
@@ -76,7 +81,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
     throw Error("Cannot commit replaced certificate for server, since the certificate does not match the new private key of the server.");
   }
 
-  if (!mIdentityFilesConfig->identity()->getCertificateChain().verify(getRootCAs())) {
+  if (!mIdentityFilesConfig->identity()->getCertificateChain().verify(*getRootCAs())) {
     throw Error("Cannot commit replaced certificate for server, since the new certificate chain cannot be verified.");
   }
 

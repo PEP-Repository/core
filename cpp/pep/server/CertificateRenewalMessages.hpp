@@ -11,6 +11,7 @@ using SignedCsrRequest = Signed<CsrRequest>;
 struct CsrResponse {
   X509CertificateSigningRequest mCsr;
 };
+using SignedCsrResponse = Signed<CsrResponse>;
 
 struct CertificateReplacementRequest {
   X509CertificateChain mCertificateChain;

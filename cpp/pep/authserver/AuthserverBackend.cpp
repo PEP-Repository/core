@@ -44,6 +44,13 @@ AuthserverBackend::Parameters::Parameters(const Configuration& config) {
   }
 }
 
+const EndPoint& AuthserverBackend::Parameters::getAccessManagerEndPoint() const {
+  return accessManagerEndpoint;
+}
+void AuthserverBackend::Parameters::setAccessManagerEndPoint(EndPoint endPoint) {
+  this->accessManagerEndpoint = std::move(endPoint);
+}
+
 std::shared_ptr<messaging::ServerConnection>
 AuthserverBackend::Parameters::getAccessManager() const {
   return this->accessManager;
@@ -69,6 +76,12 @@ const std::string& AuthserverBackend::Parameters::getOAuthTokenSecret() const { 
 
 const std::optional<std::filesystem::path>& AuthserverBackend::Parameters::getStorageFile() const {return storageFile; }
 
+std::shared_ptr<X509RootCertificates> AuthserverBackend::Parameters::getRootCertificates() const { return rootCertificates; }
+
+void AuthserverBackend::Parameters::setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates) {
+  this->rootCertificates = std::move(rootCertificates);
+}
+
 void AuthserverBackend::Parameters::check() const {
   if (!accessManager) {
     throw std::runtime_error("AccessManager must be set");
@@ -91,7 +104,7 @@ const std::unordered_map<std::string, std::string> checksumNameMappings{
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
-      mAccessManager(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this)),
+      mAccessManager(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this, params.getAccessManagerEndPoint().expectedCommonName, params.getRootCertificates())),
       mTokenExpiration(params.getTokenExpiration()),
       mOauthTokenSecret(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {

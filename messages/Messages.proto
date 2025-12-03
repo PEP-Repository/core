@@ -361,6 +361,11 @@ message CsrResponse {
   X509CertificateSigningRequest csr = 1;
 }
 
+message SignedCsrResponse {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
 message CertificateReplacementRequest {
   X509CertificateChain certificate_chain = 1;
   bool force = 2;

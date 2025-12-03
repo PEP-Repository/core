@@ -158,7 +158,7 @@ messaging::MessageBatches Transcryptor::handleKeyComponentRequest(std::shared_pt
     *signedRequest,
     *mPseudonymTranslator,
     *mDataTranslator,
-    this->getRootCAs());
+    *this->getRootCAs());
 
   lpMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
 
@@ -175,7 +175,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   if (!mPseudonymKey)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
 
-  auto unpackedRequest = request->mRequest.openAsTranscryptor(this->getRootCAs());
+  auto unpackedRequest = request->mRequest.openAsTranscryptor(*this->getRootCAs());
 
   struct Context {
     uintmax_t requestNumber{};
@@ -348,7 +348,7 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto requestNumber = mNextLogIssuedTicketRequestNumber++;
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " received";
 
-  auto ticket = request->mTicket.openForLogging(getRootCAs());
+  auto ticket = request->mTicket.openForLogging(*getRootCAs());
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
   auto hash = ComputePseudonymHash(ticket.mPseudonyms);
@@ -378,7 +378,7 @@ Transcryptor::handleLogIssuedTicketRequest(
 }
 
 messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<RekeyRequest> pRequest) {
-  if (!pRequest->mClientCertificateChain.verify(getRootCAs())) {
+  if (!pRequest->mClientCertificateChain.verify(*getRootCAs())) {
     throw Error("Client certificate chain is not valid");
   }
   const auto party = GetEnrolledParty(pRequest->mClientCertificateChain);

@@ -363,7 +363,7 @@ messaging::MessageBatches AccessManager::handleKeyComponentRequest(std::shared_p
     *pRequest,
     *mPseudonymTranslator,
     *mDataTranslator,
-    this->getRootCAs());
+    *this->getRootCAs());
   lpMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count());
 
   //Return result
@@ -374,7 +374,7 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   : SigningServer(parameters),
   mPseudonymKey(parameters->getPseudonymKey()),
   mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
-  mTranscryptorProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
+  mTranscryptorProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getTranscryptorEndPoint().expectedCommonName, getRootCAs()),
   mKeyServerProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getKeyServerEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
   mDataTranslator(parameters->getDataTranslator()),
@@ -421,7 +421,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   auto start_time = std::chrono::steady_clock::now();
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
   auto request = std::make_shared<EncryptionKeyRequest>(
-    signedRequest->open(this->getRootCAs()));
+    signedRequest->open(*this->getRootCAs()));
   const auto party = GetEnrolledParty(signedRequest->mSignature.mCertificateChain);
   if (!party.has_value()) {
     throw std::runtime_error("Cannot produce encryption key for this requestor");
@@ -436,7 +436,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   if (request->mTicket2 == nullptr)
     throw Error("Invalid signature or missing ticket");
 
-  auto ticket = request->mTicket2->open(this->getRootCAs(), userGroup);
+  auto ticket = request->mTicket2->open(*this->getRootCAs(), userGroup);
 
   backend->checkTicketForEncryptionKeyRequest(request, ticket);
 
@@ -603,7 +603,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   // openAsAccessManager checks that mSignature and mLogSignature are set,
   // are valid and match.
-  auto request = signedRequest->openAsAccessManager(this->getRootCAs());
+  auto request = signedRequest->openAsAccessManager(*this->getRootCAs());
   auto userGroup = signedRequest->mSignature->getLeafCertificateOrganizationalUnit();
 
   backend->checkTicketRequest(request);
@@ -788,7 +788,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 }
 
 messaging::MessageBatches AccessManager::handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> signedRequest) {
-  AmaMutationRequest request = signedRequest->open(this->getRootCAs());
+  AmaMutationRequest request = signedRequest->open(*this->getRootCAs());
   std::string userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
   backend->performMutationsForRequest(request, userGroup);
 
@@ -896,7 +896,7 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
 
 messaging::MessageBatches
 AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   auto resp = backend->performAMAQuery(request, userGroup);
@@ -913,14 +913,14 @@ AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
 }
 
 messaging::MessageBatches AccessManager::handleUserQuery(std::shared_ptr<SignedUserQuery> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   return messaging::BatchSingleMessage(backend->performUserQuery(request, accessGroup));
 }
 
 messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_ptr<SignedUserMutationRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   return backend->performUserMutationsForRequest(request, accessGroup).map([](UserMutationResponse response) -> messaging::MessageSequence {
@@ -948,7 +948,7 @@ messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<
 messaging::MessageBatches
 AccessManager::handleColumnAccessRequest(
   std::shared_ptr<SignedColumnAccessRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleColumnAccessRequest(request, userGroup));
@@ -957,7 +957,7 @@ AccessManager::handleColumnAccessRequest(
 messaging::MessageBatches
 AccessManager::handleParticipantGroupAccessRequest(
   std::shared_ptr<SignedParticipantGroupAccessRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleParticipantGroupAccessRequest(request, userGroup));
@@ -965,7 +965,7 @@ AccessManager::handleParticipantGroupAccessRequest(
 
 messaging::MessageBatches AccessManager::handleColumnNameMappingRequest
 (std::shared_ptr<SignedColumnNameMappingRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleColumnNameMappingRequest(request, userGroup));
@@ -974,7 +974,7 @@ messaging::MessageBatches AccessManager::handleColumnNameMappingRequest
 messaging::MessageBatches AccessManager::
     handleMigrateUserDbToAccessManagerRequest(std::shared_ptr<SignedMigrateUserDbToAccessManagerRequest> signedRequest, messaging::MessageSequence chunksObservable) {
   UserGroup::EnsureAccess(UserGroup::Authserver, signedRequest->getLeafCertificateOrganizationalUnit());
-  signedRequest->validate(this->getRootCAs()); //The request itself is empty, but we do want to check the signature
+  signedRequest->validate(*this->getRootCAs()); //The request itself is empty, but we do want to check the signature
   assert(getStoragePath().has_value());
   backend->ensureNoUserData();
   auto tmpUserDbMigrationPath = getStoragePath().value() / pep::filesystem::RandomizedName("AuthserverStorage-%%%%%%.sqlite");
@@ -995,14 +995,14 @@ messaging::MessageBatches AccessManager::
 
 messaging::MessageBatches AccessManager::handleFindUserRequest(
     std::shared_ptr<SignedFindUserRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleFindUserRequest(request, userGroup));
 }
 
 messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::shared_ptr<SignedStructureMetadataRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   auto entries = backend->handleStructureMetadataRequest(request, userGroup);
@@ -1017,7 +1017,7 @@ messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::sha
 messaging::MessageBatches AccessManager::handleSetStructureMetadataRequest(
     std::shared_ptr<SignedSetStructureMetadataRequest> signedRequest,
     messaging::MessageSequence chunks) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
 
   backend->handleSetStructureMetadataRequestHead(request, userGroup);

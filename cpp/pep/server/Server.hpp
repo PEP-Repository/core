@@ -70,7 +70,7 @@ protected:
   }
 
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return mIoContext; }
-  const X509RootCertificates& getRootCAs() const noexcept { return mRootCAs; }
+  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return mRootCAs; }
   EGCache& getEgCache() { return mEGCache; }
 
   static std::filesystem::path EnsureDirectoryPath(std::filesystem::path);
@@ -113,7 +113,7 @@ private:
   unsigned int mUncaughtReadExceptions = 0;
   std::string mDescription;
   std::shared_ptr<boost::asio::io_context> mIoContext;
-  X509RootCertificates mRootCAs;
+  std::shared_ptr<X509RootCertificates> mRootCAs;
 };
 
 
@@ -124,7 +124,7 @@ class Server::Parameters {
 private:
   std::shared_ptr<boost::asio::io_context> mIoContext;
   std::filesystem::path rootCACertificatesFilePath_;
-  X509RootCertificates rootCAs_;
+  std::shared_ptr<X509RootCertificates> rootCAs_;
 
 protected:
   virtual void check() const {}
@@ -169,7 +169,7 @@ public:
    * \brief Produces the root CA certificate(s) for this server's constellation.
    * \return (A reference to) this server's constellation's root CA certificate(s).
    */
-  const X509RootCertificates& getRootCAs() const noexcept { return rootCAs_; }
+  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return rootCAs_; }
 };
 
 }

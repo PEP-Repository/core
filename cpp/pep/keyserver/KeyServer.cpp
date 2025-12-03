@@ -145,7 +145,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingListRequest(
 messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
     std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest) {
    UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, signedRequest->getLeafCertificateOrganizationalUnit(), "token blocklist management");
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
 
   auto entry = tokenBlocking::BlocklistEntry{
@@ -162,7 +162,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
 messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
     std::shared_ptr<SignedTokenBlockingRemoveRequest> signedRequest) {
   EnsureTokenBlockingAdminAccess(signedRequest->getLeafCertificateOrganizationalUnit());
-  const auto request = signedRequest->open(this->getRootCAs());
+  const auto request = signedRequest->open(*this->getRootCAs());
   if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
 
   auto entry = mBlocklist->removeById(request.id);
