@@ -5,6 +5,7 @@
 #include <pep/storagefacility/PageStore.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 
+#include <typeinfo>
 #include <xxhash.h>
 
 namespace pep {
@@ -16,6 +17,11 @@ using PageId = uint64_t;
  */
 class EntryPayload {
 protected:
+  /// Equivalent to typeid(*this), but without requiring rtti
+  virtual const std::type_info& type() const noexcept= 0;
+  /// Polymorhic equality check that may only be called when both objects are of the exact same type
+  virtual bool equals(const EntryPayload&) const = 0;
+
   size_t validatedPageIndex(size_t index) const;
 
   static XXH64_hash_t XxHash(const std::string& rawPage);
@@ -32,6 +38,10 @@ protected:
   EntryPayload& operator=(const EntryPayload &) = default;
 
 public:
+  /// True if both objects are of the exact same type AND they hold equivalent data
+  bool operator== (const EntryPayload& rhs) const { return this->type() == rhs.type() && this->equals(rhs); }
+  bool operator!= (const EntryPayload& rhs) const { return !(*this == rhs); }
+
   virtual ~EntryPayload() noexcept = default;
 
   virtual std::shared_ptr<EntryPayload> clone() const = 0;
@@ -55,6 +65,12 @@ private:
   uint64_t mPayloadSize;
 
 protected:
+  const std::type_info& type() const noexcept override { return typeid(InlinedEntryPayload); };
+  bool equals(const EntryPayload& rhs) const override {
+    const auto& typed_rhs = static_cast<const InlinedEntryPayload&>(rhs);
+    return this->mContent == typed_rhs.mContent && this->mPayloadSize == typed_rhs.mPayloadSize;
+  }
+
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
 
 public:
@@ -82,6 +98,14 @@ private:
   uint64_t mPageSize = 0; // Zero for old entries that didn't store the property
 
 protected:
+  const std::type_info& type() const noexcept override { return typeid(PagedEntryPayload); };
+  bool equals(const EntryPayload& rhs) const override {
+    const auto& typed_rhs = static_cast<const PagedEntryPayload&>(rhs);
+    return this->mPages == typed_rhs.mPages &&
+        this->mPayloadSize == typed_rhs.mPayloadSize &&
+        this->mPageSize == typed_rhs.mPageSize;
+  }
+
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
 
 public:
