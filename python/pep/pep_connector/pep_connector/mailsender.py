@@ -1295,15 +1295,15 @@ class MailSender(Connector):
                             level=logging.INFO, tag=self.LOG_TAG)
                     continue
 
-                report_subjects_raw = data["columns"].get(pep_report_subject_column)
-                report_subjects = self.parse_pep_python_list(report_subjects_raw)
-
                 # Skip if no report subjects configured
-                if not report_subjects:
+                report_subjects_raw = data["columns"].get(pep_report_subject_column)
+                if not report_subjects_raw:
                     skipped_count += 1
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Expert teacher but no report subjects configured.", 
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Expert teacher but no report subjects specified.", 
                             level=logging.INFO, tag=self.LOG_TAG)
                     continue
+
+                report_subjects = self.parse_pep_python_list(report_subjects_raw)
 
                 pdf_infos = []
                 for report_subject in report_subjects:
