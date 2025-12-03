@@ -1328,6 +1328,11 @@ class MailSender(Connector):
                         subject_attachments = [merged_pdf_info]
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Added merged PDF for expert teacher: {merged_pdf_path}", 
                             level=logging.DEBUG, tag=self.LOG_TAG)
+                else:
+                    skipped_count += 1
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: No PDFs to merge for expert teacher.", 
+                            level=logging.WARNING, tag=self.LOG_TAG)
+                    continue
 
             # Emails sent data is required to track email history
             emails_sent_data = data["columns"].get(emails_sent_column)
