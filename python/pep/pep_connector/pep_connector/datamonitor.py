@@ -1162,10 +1162,17 @@ class DataMonitor(Connector):
         """
         self.log(f"Grouping participants by column: {group_column}", level=logging.DEBUG)
         groups = {}
+        skipped_count = 0
 
         for lp, info_data in participant_info.items():
             # Get the value from the specified column
-            group_value = info_data["columns"].get(group_column, "unknown")
+            group_value = info_data["columns"].get(group_column)
+            
+            # Skip participants with None or empty string group values
+            if group_value is None or group_value == "":
+                skipped_count += 1
+                self.log(f"Skipping participant {lp} with None/empty {group_column}", level=logging.DEBUG)
+                continue
 
             # Initialize group if it doesn't exist
             if group_value not in groups:
@@ -1174,7 +1181,7 @@ class DataMonitor(Connector):
             # Add participant to the group
             groups[group_value][lp] = info_data
 
-        self.log(f"Created {len(groups)} groups", level=logging.DEBUG)
+        self.log(f"Created {len(groups)} groups, skipped {skipped_count} participants with None/empty {group_column}", level=logging.DEBUG)
         for group_value, group_participants in groups.items():
             self.log(f"Group '{group_value}': {len(group_participants)} participants", level=logging.DEBUG)
 
