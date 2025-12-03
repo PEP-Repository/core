@@ -3,9 +3,12 @@ x-logging-pipeline-pep-services: &logging-pipeline-pep-services
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -33,9 +36,12 @@ x-logging-pipeline-watchdog: &logging-pipeline-watchdog
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -60,9 +66,12 @@ x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -112,9 +121,12 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -170,9 +182,12 @@ x-logging-pipeline-prometheus-node-exporter: &logging-pipeline-prometheus-node-e
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -202,9 +217,12 @@ x-logging-pipeline-nginx: &logging-pipeline-nginx
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -464,26 +482,10 @@ services:
     image: "${DOCKER_IMAGE_BASE}/nginx:${DOCKER_IMAGE_TAG}"
     container_name: "nginx"
     restart: unless-stopped
-      # Environment-specific port mappings and volumes, use in override:
-      # release:
-      # --publish 8000:80
-      # --publish 80:80
-      # --publish 443:443
-      # --publish 5000:5000
-      # --volume /data/volumes/secrets/nginx/loki/.htpasswd:/etc/nginx/.htpasswd:ro
-      # --volume /data/volumes/secrets/acme:/cert:ro
-      # selfhosted:
-      # --publish 9000:9000
-      # --volume /data/volumes/secrets/storagefacility/s3certs:/s3cert:ro
+      # port mappings and volumes are quite environment-specific, set those in compose.override in target repos instead
     volumes:
       - "${SECRETS_DIR_BASE}/nginx/ssl:/etc/nginx/ssl"
       - /etc/localtime:/etc/localtime:ro
-      # Environment-specific volumes:
-      # Release environment: .htpasswd, acme certs
-      # - "${DATA_DIR_BASE}/volumes/secrets/nginx/loki/.htpasswd:/etc/nginx/.htpasswd:ro"
-      # - "${DATA_DIR_BASE}/volumes/secrets/acme:/cert:ro"
-      # Other environments: s3cert for storage facility
-      # - "${DATA_DIR_BASE}/volumes/secrets/storagefacility/s3certs:/s3cert:ro"
     logging:
       <<: *logging-pipeline-nginx
     profiles: ["nginx"]
