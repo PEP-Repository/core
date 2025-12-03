@@ -384,6 +384,19 @@ X509Certificate X509Certificate::FromDer(const std::string& der) {
   return X509Certificate(cert);
 }
 
+std::strong_ordering X509Certificate::operator<=>(const X509Certificate& other) const {
+  int result = X509_cmp(mInternal, other.mInternal);
+  switch (result) {
+  case 0:
+    return std::strong_ordering::equal;
+  case -1:
+    return std::strong_ordering::less;
+  case 1:
+    return std::strong_ordering::greater;
+  }
+  throw std::runtime_error("Unexpected return code from X509_cmp");
+}
+
 /**
  * @brief Constructor for X509Certificates that takes a PEM-encoded certificate chain.
  * @param in The PEM-encoded certificate chain.

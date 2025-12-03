@@ -56,8 +56,13 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementCommitRequest(std::shared_ptr<SignedCertificateReplacementCommitRequest> signedRequest) {
-  signedRequest->validate(this->getRootCAs());
+  auto request = signedRequest->open(this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Committing renewed certificates");
+
+
+  if (request.mCertificateChain != mIdentityFilesConfig->identity()->getCertificateChain()) {
+    throw Error("Cannot commit replaced certificate for server, since the certificate chain in the request does not match the current certificate chain of the server");
+  }
 
   if (!mNewPrivateKey) {
     throw Error("Cannot commit replaced certificate for server, since the server does not have a new private key.");

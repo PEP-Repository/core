@@ -23,6 +23,7 @@ struct CertificateReplacementResponse {
 using SignedCertificateReplacementResponse = Signed<CertificateReplacementResponse>;
 
 struct CertificateReplacementCommitRequest {
+  X509CertificateChain mCertificateChain;
 };
 using SignedCertificateReplacementCommitRequest = Signed<CertificateReplacementCommitRequest>;
 

@@ -14,6 +14,8 @@ public:
 
   rxcpp::observable<PingResponse> requestPing() const override;
   rxcpp::observable<X509CertificateChain> requestCertificateChain() const;
+  rxcpp::observable<X509CertificateSigningRequest> requestCertificateSigningRequest() const;
+  rxcpp::observable<FakeVoid> requestCertificateReplacement(X509CertificateChain newCertificateChain, bool force);
 };
 
 }

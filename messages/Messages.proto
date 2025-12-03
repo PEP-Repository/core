@@ -380,6 +380,7 @@ message SignedCertificateReplacementResponse {
 }
 
 message CertificateReplacementCommitRequest {
+  X509CertificateChain certificate_chain = 1;
 }
 
 message SignedCertificateReplacementCommitRequest {

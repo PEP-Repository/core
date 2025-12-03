@@ -45,6 +45,9 @@ class X509Certificate {
   static X509Certificate FromPem(const std::string& pem);
   static X509Certificate FromDer(const std::string& der);
 
+  std::strong_ordering operator<=>(const X509Certificate& other) const;
+  bool operator==(const X509Certificate& other) const = default;
+
  private:
   X509* mInternal = nullptr;
 

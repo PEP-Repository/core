@@ -24,4 +24,14 @@ void Serializer<CertificateReplacementRequest>::moveIntoProtocolBuffer(proto::Ce
   dest.set_force(value.mForce);
 }
 
+CertificateReplacementCommitRequest Serializer<CertificateReplacementCommitRequest>::fromProtocolBuffer(proto::CertificateReplacementCommitRequest&& source) const {
+  CertificateReplacementCommitRequest result;
+  result.mCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()));
+  return result;
+}
+
+void Serializer<CertificateReplacementCommitRequest>::moveIntoProtocolBuffer(proto::CertificateReplacementCommitRequest& dest, CertificateReplacementCommitRequest value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.mCertificateChain));
+}
+
 }
