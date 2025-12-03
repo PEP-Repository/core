@@ -1300,7 +1300,7 @@ class MailSender(Connector):
                 if not report_subjects_raw:
                     skipped_count += 1
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Expert teacher but no report subjects specified.", 
-                            level=logging.INFO, tag=self.LOG_TAG)
+                            level=logging.WARNING, tag=self.LOG_TAG)
                     continue
 
                 report_subjects = self.parse_pep_python_list(report_subjects_raw)
