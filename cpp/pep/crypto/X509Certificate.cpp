@@ -546,28 +546,19 @@ X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& 
   // Add the common name and organizational unit to the subject (name, OID, type, value, length, position, set)
   // position of -1 means it is appended, and set of 0 means a new RDN is created
   if(X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(commonName.data()), static_cast<int>(commonName.size()), -1, 0) <= 0) {
-    X509_REQ_free(mCSR);
     throw pep::OpenSSLError("Failed to add CN in X509CertificateSigningRequest constructor.");
   }
 
   if(X509_NAME_add_entry_by_NID(name, NID_organizationalUnitName, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(organizationalUnit.data()), static_cast<int>(organizationalUnit.size()), -1, 0) <= 0) {
-    X509_REQ_free(mCSR);
     throw pep::OpenSSLError("Failed to add OU in X509CertificateSigningRequest constructor.");
   }
 
   // Set the public key
   if(X509_REQ_set_pubkey(mCSR, keyPair.mKeyPair) <= 0) {
-    X509_REQ_free(mCSR);
     throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest constructor.");
   }
 
-  try {
-    sign(keyPair);
-  }
-  catch (...) {
-    X509_REQ_free(mCSR);
-    throw;
-  }
+  sign(keyPair);
 }
 
 X509CertificateSigningRequest::X509CertificateSigningRequest(const X509CertificateSigningRequest& other) {
