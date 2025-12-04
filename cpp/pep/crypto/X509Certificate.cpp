@@ -827,7 +827,8 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
   if (!cert) {
     throw pep::OpenSSLError("Failed to create X509 certificate in X509CertificateSigningRequest::signCertificate.");
   }
-  // TODO; prevent "cert" from leaking if an exception is raised below
+  // Take ownership of the X509 structure immediately to prevent it from being leaked if an exception is raised below
+  X509Certificate result(*cert);
 
   // Set version to 2 (which corresponds to X509v3)
   if (X509_set_version(cert, X509_VERSION_3) <= 0) {
@@ -942,7 +943,7 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     throw pep::OpenSSLError("Failed to sign the certificate.");
   }
 
-  return X509Certificate(*cert);
+  return result;
 }
 
 X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain)
