@@ -941,9 +941,9 @@ X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certif
   }
 }
 
-X509Identity X509Identity::MakeSelfSigned(std::string organization, std::string commonName, std::string countryCode) {
+X509Identity X509Identity::MakeSelfSigned(std::string organization, std::string commonName, std::string countryCode, std::chrono::seconds validityPeriod) {
   auto keys = AsymmetricKeyPair::GenerateKeyPair();
-  auto cert = X509Certificate::MakeSelfSigned(keys, std::move(organization), std::move(commonName), std::move(countryCode));
+  auto cert = X509Certificate::MakeSelfSigned(keys, std::move(organization), std::move(commonName), std::move(countryCode), validityPeriod);
   return X509Identity(std::move(keys).getPrivateKey(), X509CertificateChain({ std::move(cert) }));
 }
 
