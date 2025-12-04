@@ -117,14 +117,6 @@ function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDay().toString().padStart(2, '0')}`;
 }
 
-declare namespace WebAssembly {
-/** @see https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/JavaScript_interface/Exception */
-class Exception {
-  stack?: string | undefined;
-  message?: [string, string] | unknown;
-}
-}
-
 /** Are we using Emscripten EH instead of WASM EH? */
 const EmscriptenExceptionHandling = false;
 

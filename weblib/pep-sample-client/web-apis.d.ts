@@ -21,4 +21,5 @@ declare interface SaveFilePickerOptions {
   types?: AllowedFileType[];
 }
 
+/** @see https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker */
 declare function showSaveFilePicker(options?: SaveFilePickerOptions): Promise<FileSystemFileHandle>;
