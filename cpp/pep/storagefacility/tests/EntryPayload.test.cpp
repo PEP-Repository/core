@@ -1,20 +1,28 @@
 #include <memory>
+#include <type_traits>
 
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/storagefacility/PersistedEntryProperties.hpp>
 
 #include <gtest/gtest.h>
 
-using pep::EntryPayload;
+using namespace pep;
+
+namespace {
+
+/// Calls std::make_shared with the specific type T and than casts it to a std::shared_ptr of the base class
+template <typename T, typename... Args>
+requires std::is_base_of_v<EntryPayload, T>
+std::shared_ptr<EntryPayload> MakeEntryPayload(Args&&... args) { return std::make_shared<T>(std::forward<Args>(args)...); }
+
+}
 
 TEST(EntryPayload, EntryPayloadEquality) {
-    using BasePtr = std::shared_ptr<EntryPayload>;
-
     { // both InlinedEntryPayload objects
-      const BasePtr lhs = std::make_shared<pep::InlinedEntryPayload>("1 2 3 4 5 6", 11);
-      const BasePtr same = std::make_shared<pep::InlinedEntryPayload>("1 2 3 4 5 6", 11);
-      const BasePtr different_data = std::make_shared<pep::InlinedEntryPayload>("1 2 ZZZ 5 6", 11);
-      const BasePtr different_size = std::make_shared<pep::InlinedEntryPayload>("1 2 3 4 5 6", 7);
+      const auto lhs = MakeEntryPayload<InlinedEntryPayload>("1 2 3 4 5 6", 11);
+      const auto same = MakeEntryPayload<InlinedEntryPayload>("1 2 3 4 5 6", 11);
+      const auto different_data = MakeEntryPayload<InlinedEntryPayload>("1 2 ZZZ 5 6", 11);
+      const auto different_size = MakeEntryPayload<InlinedEntryPayload>("1 2 3 4 5 6", 7);
 
       EXPECT_TRUE(StrictlyEqual(*lhs, *same));
       EXPECT_TRUE(StrictlyEqual(*lhs, *lhs)); // edge_case
@@ -44,15 +52,15 @@ TEST(EntryPayload, EntryPayloadEquality) {
       const auto diff_pages = std::vector<PageId>{0x12345678};
 
       auto props = lhs_props();
-      const BasePtr lhs = std::make_shared<pep::PagedEntryPayload>(props, lhs_pages); // constructor consumes props
+      const auto lhs = MakeEntryPayload<PagedEntryPayload>(props, lhs_pages); // constructor consumes props
       props = lhs_props();
-      const BasePtr same = std::make_shared<pep::PagedEntryPayload>(props, lhs_pages);
+      const auto same = MakeEntryPayload<PagedEntryPayload>(props, lhs_pages);
       props = diff_filesize_props();
-      const BasePtr diff1 = std::make_shared<pep::PagedEntryPayload>(props, lhs_pages);
+      const auto diff1 = MakeEntryPayload<PagedEntryPayload>(props, lhs_pages);
       props = diff_pagesize_props();
-      const BasePtr diff2 = std::make_shared<pep::PagedEntryPayload>(props, lhs_pages);
+      const auto diff2 = MakeEntryPayload<PagedEntryPayload>(props, lhs_pages);
       props = lhs_props();
-      const BasePtr diff3 = std::make_shared<pep::PagedEntryPayload>(props, diff_pages);
+      const auto diff3 = MakeEntryPayload<PagedEntryPayload>(props, diff_pages);
 
       EXPECT_TRUE(StrictlyEqual(*lhs, *same));
       EXPECT_TRUE(StrictlyEqual(*lhs, *lhs)); // edge_case
@@ -70,8 +78,8 @@ TEST(EntryPayload, EntryPayloadEquality) {
       const auto lhs_pages = std::vector<PageId>{0xDEADBEEF};
 
       auto props = lhs_props();
-      const BasePtr paged = std::make_shared<pep::PagedEntryPayload>(props, lhs_pages); // constructor consumes props
-      const BasePtr inlined = std::make_shared<pep::InlinedEntryPayload>("1 2 3 4 5 6", 11);
+      const auto paged = MakeEntryPayload<PagedEntryPayload>(props, lhs_pages); // constructor consumes props
+      const auto inlined = MakeEntryPayload<InlinedEntryPayload>("1 2 3 4 5 6", 11);
 
       EXPECT_FALSE(StrictlyEqual(*paged, *inlined));
       EXPECT_FALSE(StrictlyEqual(*inlined, *paged));
