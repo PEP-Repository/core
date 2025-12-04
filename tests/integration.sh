@@ -341,7 +341,7 @@ else
     readarray -t publish_ports_flags < <(
       docker inspect --format='{{json .Config.ExposedPorts}}' "$IMAGE" |
       jq --raw-output 'keys[]' | sed 's/\(.*\)\/.*/--publish=\1:\0/')
-    if [ "${#publish_ports_flags}" -eq 0 ]; then
+    if [ "${#publish_ports_flags[@]}" -eq 0 ]; then
       fail "Failed to get exposed ports for Docker image"
     fi
   fi
@@ -441,6 +441,9 @@ if should_run_test weblib; then
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
 
+  trace mkdir -p ./test_config/
+  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR/rootCA.cert" ./test_config/
+
   start_websocket_proxy_flags=()
   if [ -n "${CI-}" ]; then
     # Connect to docker:dind service container, see https://stackoverflow.com/a/48288560
@@ -449,8 +452,6 @@ if should_run_test weblib; then
   printGreen "\$ ./start_websocket_proxy.sh ${start_websocket_proxy_flags[*]} &"
   ./start_websocket_proxy.sh "${start_websocket_proxy_flags[@]}" &
 
-  trace mkdir -p ./test_config/
-  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR/rootCA.cert" ./test_config/
   # If this fails, you may need to source the EMSDK activation script and forward the Node.js PATH when using sudo via 'sudo \"PATH=\$PATH\" ...'
   trace npm install
 
