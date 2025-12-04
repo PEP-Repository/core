@@ -96,8 +96,6 @@ private:
 public:
   X509CertificateChain(X509Certificates certificates);
 
-  static X509CertificateChain MakeSelfSigned(AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode = X509Certificate::defaultSelfSignedCountryCode);
-
   const X509Certificate& leaf() const;
   X509CertificateChain& operator/=(X509Certificate leaf);
 
