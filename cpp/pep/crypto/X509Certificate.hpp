@@ -71,8 +71,8 @@ public:
 
 using X509Certificates = std::list<X509Certificate>;
 
-X509Certificates FromPem(const std::string& in);
-std::string ToPem(const X509Certificates& certificates);
+X509Certificates X509CertificatesFromPem(const std::string& in);
+std::string X509CertificatesToPem(const X509Certificates& certificates);
 
 
 class X509RootCertificates {

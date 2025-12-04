@@ -405,14 +405,14 @@ X509CertificateChain::X509CertificateChain(X509Certificates certificates)
  * @brief Factory method for X509Certificates that takes a PEM-encoded list of certificates.
  * @param in The PEM-encoded certificate chain.
  */
-X509Certificates FromPem(const std::string& in) {
+X509Certificates X509CertificatesFromPem(const std::string& in) {
   if (in.empty()) {
-    throw std::runtime_error("Certificates input is empty in X509Certificates constructor.");
+    throw std::runtime_error("Certificates input is empty in X509Certificates PEM reader.");
   }
 
   BIO *bio = BIO_new_mem_buf(in.data(), boost::numeric_cast<int>(in.size()));
   if (!bio) {
-    throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509Certificates constructor.");
+    throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509Certificates PEM reader.");
   }
   PEP_DEFER(BIO_free(bio));
 
@@ -432,7 +432,7 @@ X509Certificates FromPem(const std::string& in) {
   if (ERR_GET_LIB(err) == ERR_LIB_PEM && ERR_GET_REASON(err) == PEM_R_NO_START_LINE) {
     ERR_clear_error();
   } else {
-    throw pep::OpenSSLError("Failed to parse certificate chain from IO buffer (BIO) in X509Certificates constructor.");
+    throw pep::OpenSSLError("Failed to parse certificate chain from IO buffer (BIO) in X509Certificates PEM reader.");
   }
 
   return result;
@@ -442,7 +442,7 @@ X509Certificates FromPem(const std::string& in) {
  * @brief Convert the X509Certificates to PEM format.
  * @return The PEM-encoded certificate chain.
  */
-std::string ToPem(const X509Certificates& certificates) {
+std::string X509CertificatesToPem(const X509Certificates& certificates) {
   std::string out;
 
   for (const X509Certificate& cert : certificates) {
@@ -470,7 +470,7 @@ X509RootCertificates::X509RootCertificates(X509Certificates certificates)
 }
 
 X509RootCertificates X509RootCertificates::FromFile(const std::filesystem::path& caCertFilePath) {
-  return X509RootCertificates(FromPem(ReadFile(caCertFilePath)));
+  return X509RootCertificates(X509CertificatesFromPem(ReadFile(caCertFilePath)));
 }
 
 bool X509CertificateChain::isCurrentTimeInValidityPeriod() const {
@@ -957,7 +957,7 @@ X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(std::filesystem::
   : mPrivateKeyFilePath(std::move(privateKeyFilePath)),
   mCertificateChainFilePath(std::move(certificateChainFilePath)),
   mIdentity(AsymmetricKey(ReadFile(mPrivateKeyFilePath)),
-    X509CertificateChain(FromPem(ReadFile(mCertificateChainFilePath)))) {
+    X509CertificateChain(X509CertificatesFromPem(ReadFile(mCertificateChainFilePath)))) {
   LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
   if (!mIdentity.getCertificateChain().verify(X509RootCertificates::FromFile(rootCaCertFilePath))) {
     throw std::runtime_error("X509 identity does not pass validation against root CAs");

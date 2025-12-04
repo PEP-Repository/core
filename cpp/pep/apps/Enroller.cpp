@@ -27,7 +27,7 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
   Enroller::setProperties(builder, config);
 
   AsymmetricKey privateKey(ReadFile(this->getParameterValues().get<std::filesystem::path>("private-key-file")));
-  X509CertificateChain certificateChain(FromPem(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file"))));
+  X509CertificateChain certificateChain(X509CertificatesFromPem(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file"))));
 
   if (!mServer.signingIdentityMatches(certificateChain)) {
     std::string description = "unknown party";

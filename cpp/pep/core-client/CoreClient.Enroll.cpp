@@ -107,7 +107,7 @@ void EnrollmentResult::writeJsonTo(std::ostream& os, bool writeDataKey, bool wri
     config.add<std::string>("PrivateKey", signingIdentity.getPrivateKey().toPem());
   }
   if (writeCertificateChain) {
-    config.add<std::string>("CertificateChain", ToPem(signingIdentity.getCertificateChain().certificates()));
+    config.add<std::string>("CertificateChain", X509CertificatesToPem(signingIdentity.getCertificateChain().certificates()));
   }
 
   config.add<std::string>("EnrollmentScheme", std::string(Serialization::ToEnumString(ENROLLMENT_SCHEME_CURRENT)));

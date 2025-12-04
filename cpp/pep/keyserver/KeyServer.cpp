@@ -73,7 +73,7 @@ KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_co
   }
 
   setClientCAPrivateKey(AsymmetricKey(ReadFile(clientCAPrivateKeyFile)));
-  setClientCACertificateChain(X509CertificateChain(FromPem(ReadFile(clientCACertificateChainFile))));
+  setClientCACertificateChain(X509CertificateChain(X509CertificatesFromPem(ReadFile(clientCACertificateChainFile))));
   setBlocklistStoragePath(blocklistStoragePath);
 }
 
@@ -123,7 +123,7 @@ messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
     .mCertificateChain = mClientCACertificateChain / certificate
   };
   LOG(LOG_TAG, debug) << "Sending certificate chain len=" << response.mCertificateChain.certificates().size() << ":"
-                      << ToPem(response.mCertificateChain.certificates());
+                      << X509CertificatesToPem(response.mCertificateChain.certificates());
   return messaging::BatchSingleMessage(std::move(response));
 }
 
