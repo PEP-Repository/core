@@ -336,23 +336,17 @@ else
     trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" "$IMAGE" bash /app/config_servers.sh
   fi
 
-  #TODO what about EXPOSE?
-  publish_ports_flags=''
+  publish_ports_flags=()
   if $PUBLISH_PORTS; then
-    publish_ports_flags='
-      --publish 8080:8080
-      --publish 8082:8082
-      --publish 16501:16501
-      --publish 16511:16511
-      --publish 16512:16512
-      --publish 16516:16516
-      --publish 16518:16518
-      --publish 16519:16519
-    '
+    readarray -t publish_ports_flags < <(
+      docker inspect --format='{{json .Config.ExposedPorts}}' "$IMAGE" |
+      jq --raw-output 'keys[]' | sed 's/\(.*\)\/.*/--publish=\1:\0/')
+    if [ "${#publish_ports_flags}" -eq 0 ]; then
+      fail "Failed to get exposed ports for Docker image"
+    fi
   fi
 
-  # shellcheck disable=SC2086 # Split $publish_ports_flags
-  trace docker run --net pep-network $publish_ports_flags -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
+  trace docker run --net pep-network "${publish_ports_flags[@]}" -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
   docker logs --follow pepservertest 2> >(sed -u "s/^/[pep-services]: /" >&2) > >(sed -u "s/^/[pep-services]: /") &
 fi
 
