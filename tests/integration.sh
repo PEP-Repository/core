@@ -441,7 +441,7 @@ if should_run_test weblib; then
   # Ignore SIGPIPE (141) because output is cut off
   (yes 'Larger test data!' || [ $? = 141 ]) | head -700000 >"$DATA_DIR/file.large"
   pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectLarge -c WasmTestColumn \
-    --input-path /data/file.large
+    --input-path "$CONFIG_DIR/file.large"
   rm "$DATA_DIR/file.large"
 
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
