@@ -17,11 +17,13 @@ echo 'Installing / upgrading packages'
 $pkgs = @(
   'Microsoft.PowerShell' # Powershell Core
   'Git.Git'
-  'WiXToolset.WiXToolset' # =v3 (legacy)
   'GoLang.Go'
 )
 winget install $pkgs --accept-package-agreements --disable-interactivity
 # 0x8A15002B = no upgrade found: see https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md
+if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 0x8A15002B) { exit $LASTEXITCODE }
+
+winget install WiXToolset.WiXToolset --version=3.14.1.8722 --accept-package-agreements --disable-interactivity
 if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 0x8A15002B) { exit $LASTEXITCODE }
 
 # Per-user install
