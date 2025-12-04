@@ -390,7 +390,7 @@ X509Certificate X509Certificate::MakeSelfSigned(const AsymmetricKeyPair& keys, s
   // TODO: check success of functions below; raise an exception if not
 
   // Default (version 1) certificates are rejected as root CAs by X509_verify_cert
-  X509_set_version(x509, 2); // version 3; see https://github.com/azsn/gen-ca-cert/blob/master/gen-ca-cert.c
+  X509_set_version(x509, X509_VERSION_3);
 
   ASN1_INTEGER_set(X509_get_serialNumber(x509), 1); // "sets the serial number of our certificate"
   X509_gmtime_adj(X509_get_notBefore(x509), 0); // "sets the certificate's notBefore property to the current time"
