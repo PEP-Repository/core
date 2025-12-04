@@ -9,7 +9,9 @@
   },
   "typesVersions": {
     "*": {
-      "*": ["./dist/*"]
+      "*": [
+        "./dist/*"
+      ]
     }
   },
   "// scripts.prepare": "Transitive local dependencies are not automatically installed: https://docs.npmjs.com/cli/v11/configuring-npm/package-json#local-paths",
@@ -36,12 +38,12 @@
     "pep-repo-client-wasm"
   ],
   "devDependencies": {
-    "@types/chai": "^5.2.2",
+    "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.0.13",
-    "chai": "^5.2.1",
-    "mocha": "^11.7.1",
-    "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "@types/node": "^24.10.1",
+    "chai": "^6.2.1",
+    "mocha": "^11.7.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
