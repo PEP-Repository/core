@@ -120,6 +120,15 @@ TEST(X509CertificateTest, ToDER) {
   EXPECT_EQ(cert.toDer(), pep::SpanToString(pepServerCACertDER));
 }
 
+TEST(X509CertificateTest, SelfSigned) {
+  auto cert = pep::X509Certificate::MakeSelfSigned(pep::AsymmetricKeyPair::GenerateKeyPair(), "Metacortex", "Mr. Anderson", "US");
+  EXPECT_TRUE(cert.isSelfSigned());
+
+  auto chain = pep::X509CertificateChain({ std::move(cert) });
+  auto rootCAs = pep::X509RootCertificates({ chain.leaf() });
+  EXPECT_TRUE(chain.verify(rootCAs));
+}
+
 TEST(X509CertificateSigningRequestTest, GenerationAndSigning) {
   std::string testCN = "TestCN";
   std::string testOU = "TestOU";
