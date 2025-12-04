@@ -20,7 +20,7 @@ protected:
   /// Equivalent to typeid(*this), but without requiring rtti
   virtual const std::type_info& type() const noexcept= 0;
   /// Polymorhic equality check that may only be called when both objects are of the exact same type
-  virtual bool equals(const EntryPayload&) const = 0;
+  virtual bool isStrictlyEqualTo(const EntryPayload&) const = 0;
 
   size_t validatedPageIndex(size_t index) const;
 
@@ -38,10 +38,6 @@ protected:
   EntryPayload& operator=(const EntryPayload &) = default;
 
 public:
-  /// True if both objects are of the exact same type AND they hold equivalent data
-  bool operator== (const EntryPayload& rhs) const { return this->type() == rhs.type() && this->equals(rhs); }
-  bool operator!= (const EntryPayload& rhs) const { return !(*this == rhs); }
-
   virtual ~EntryPayload() noexcept = default;
 
   virtual std::shared_ptr<EntryPayload> clone() const = 0;
@@ -53,7 +49,14 @@ public:
 
   static void Save(std::shared_ptr<EntryPayload> payload, PersistedEntryProperties& properties, std::vector<PageId>& pages);
   static std::shared_ptr<EntryPayload> Load(PersistedEntryProperties& properties, std::vector<PageId>& pages);
+
+  friend bool StrictlyEqual(const EntryPayload&, const EntryPayload&);
 };
+
+/// True if both objects are of the exact same type AND they hold equivalent data
+inline bool StrictlyEqual(const EntryPayload& lhs, const EntryPayload& rhs) {
+  return lhs.type() == rhs.type() && lhs.isStrictlyEqualTo(rhs);
+}
 
 /*!
  * \brief An entry payload consisting of a single small page stored on the FileStore (i.e. without using the PageStore).
@@ -66,7 +69,7 @@ private:
 
 protected:
   const std::type_info& type() const noexcept override { return typeid(InlinedEntryPayload); };
-  bool equals(const EntryPayload& rhs) const override {
+  bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
     const auto& typed_rhs = static_cast<const InlinedEntryPayload&>(rhs);
     return this->mContent == typed_rhs.mContent && this->mPayloadSize == typed_rhs.mPayloadSize;
   }
@@ -99,7 +102,7 @@ private:
 
 protected:
   const std::type_info& type() const noexcept override { return typeid(PagedEntryPayload); };
-  bool equals(const EntryPayload& rhs) const override {
+  bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
     const auto& typed_rhs = static_cast<const PagedEntryPayload&>(rhs);
     return this->mPages == typed_rhs.mPages &&
         this->mPayloadSize == typed_rhs.mPayloadSize &&

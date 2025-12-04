@@ -8,8 +8,7 @@
 using pep::EntryPayload;
 
 TEST(EntryPayload, EntryPayloadEquality) {
-    using namespace pep;
-    using BasePtr = std::shared_ptr<pep::EntryPayload>;
+    using BasePtr = std::shared_ptr<EntryPayload>;
 
     { // both InlinedEntryPayload objects
       const BasePtr lhs = std::make_shared<pep::InlinedEntryPayload>("1 2 3 4 5 6", 11);
@@ -17,10 +16,10 @@ TEST(EntryPayload, EntryPayloadEquality) {
       const BasePtr different_data = std::make_shared<pep::InlinedEntryPayload>("1 2 ZZZ 5 6", 11);
       const BasePtr different_size = std::make_shared<pep::InlinedEntryPayload>("1 2 3 4 5 6", 7);
 
-      EXPECT_EQ(*lhs, *same);
-      EXPECT_EQ(*lhs, *lhs); // edge_case
-      EXPECT_NE(*lhs, *different_data);
-      EXPECT_NE(*lhs, *different_size);
+      EXPECT_TRUE(StrictlyEqual(*lhs, *same));
+      EXPECT_TRUE(StrictlyEqual(*lhs, *lhs)); // edge_case
+      EXPECT_FALSE(StrictlyEqual(*lhs, *different_data));
+      EXPECT_FALSE(StrictlyEqual(*lhs, *different_size));
     }
     { // both PagedEntryPayload objects
       const auto lhs_props = [] {
@@ -55,11 +54,11 @@ TEST(EntryPayload, EntryPayloadEquality) {
       props = lhs_props();
       const BasePtr diff3 = std::make_shared<pep::PagedEntryPayload>(props, diff_pages);
 
-      EXPECT_EQ(*lhs, *same);
-      EXPECT_EQ(*lhs, *lhs); // edge_case
-      EXPECT_NE(*lhs, *diff1);
-      EXPECT_NE(*lhs, *diff2);
-      EXPECT_NE(*lhs, *diff3);
+      EXPECT_TRUE(StrictlyEqual(*lhs, *same));
+      EXPECT_TRUE(StrictlyEqual(*lhs, *lhs)); // edge_case
+      EXPECT_FALSE(StrictlyEqual(*lhs, *diff1));
+      EXPECT_FALSE(StrictlyEqual(*lhs, *diff2));
+      EXPECT_FALSE(StrictlyEqual(*lhs, *diff3));
     }
     { // different object types
       const auto lhs_props = [] {
@@ -74,8 +73,8 @@ TEST(EntryPayload, EntryPayloadEquality) {
       const BasePtr paged = std::make_shared<pep::PagedEntryPayload>(props, lhs_pages); // constructor consumes props
       const BasePtr inlined = std::make_shared<pep::InlinedEntryPayload>("1 2 3 4 5 6", 11);
 
-      EXPECT_NE(*paged, *inlined);
-      EXPECT_NE(*inlined, *paged);
+      EXPECT_FALSE(StrictlyEqual(*paged, *inlined));
+      EXPECT_FALSE(StrictlyEqual(*inlined, *paged));
     }
 }
 
