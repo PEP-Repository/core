@@ -4,7 +4,6 @@
 #include <openssl/asn1.h>
 
 #include <pep/crypto/AsymmetricKey.hpp>
-#include <pep/serialization/Serializer.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
 
 #include <list>
@@ -16,68 +15,99 @@
 namespace pep {
 
 class X509Certificate {
- public:
-  X509Certificate() = default;
+public:
+  static constexpr const char* defaultSelfSignedCountryCode = "NL";
+
   X509Certificate(const X509Certificate& other);
-  X509Certificate& operator=(X509Certificate other);
   X509Certificate(X509Certificate&& other) noexcept;
-  ~X509Certificate();
+  ~X509Certificate() noexcept;
+  X509Certificate& operator=(const X509Certificate& other);
+  X509Certificate& operator=(X509Certificate&& other) noexcept;
+
+  explicit X509Certificate(X509& cert) noexcept : mRaw(&cert) {} // Takes ownership
+  [[nodiscard]] const X509& raw() const noexcept;
+
   AsymmetricKey getPublicKey() const;
   std::optional<std::string> getCommonName() const;
   std::optional<std::string> getOrganizationalUnit() const;
   std::optional<std::string> getIssuerCommonName() const;
+  std::optional<unsigned long> pathLengthConstraint() const; //NOLINT(google-runtime-int)
+
   bool hasBasicConstraints() const;
   bool hasDigitalSignatureKeyUsage() const;
-  std::optional<unsigned long> getPathLength() const; //NOLINT(google-runtime-int)
+  bool hasTLSServerEKU() const;
+  bool isSelfSigned() const;
+
   [[nodiscard]] bool verifySubjectKeyIdentifier() const;
   [[nodiscard]] bool verifyAuthorityKeyIdentifier(const X509Certificate& issuerCert) const;
-  bool hasTLSServerEKU() const;
+
   std::chrono::sys_seconds getNotBefore() const;
   std::chrono::sys_seconds getNotAfter() const;
   bool isCurrentTimeInValidityPeriod() const;
+
   std::string toPem() const;
   std::string toDer() const;
 
-  bool isInitialized() const { return mInternal != nullptr; }
-
   static X509Certificate FromPem(const std::string& pem);
   static X509Certificate FromDer(const std::string& der);
+  static X509Certificate MakeSelfSigned(const AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode = defaultSelfSignedCountryCode);
+
+  bool operator==(const X509Certificate& rhs) const;
+  bool operator!=(const X509Certificate& rhs) const { return !(*this == rhs); }
 
  private:
-  X509* mInternal = nullptr;
+  X509* mRaw = nullptr;
 
-  X509Certificate(X509* cert) : mInternal(cert) {}
+  [[nodiscard]] X509* rawPointer() const noexcept; // Some of our "const" methods require the X509 structure to be mutable
   std::optional<std::string> searchOIDinSubject(int nid) const;
 
-  friend class X509Certificates;
   friend class X509CertificateChain;
   friend class X509CertificateSigningRequest;
 };
 
-class X509Certificates: public std::list<X509Certificate> {
- public:
-  using std::list<X509Certificate>::list;
-  X509Certificates() = default;
-  explicit X509Certificates(const std::string& in);
 
-  std::string toPem() const;
-  bool isCurrentTimeInValidityPeriod() const;
+using X509Certificates = std::list<X509Certificate>;
 
-  friend class X509CertificateChain;
+X509Certificates FromPem(const std::string& in);
+std::string ToPem(const X509Certificates& certificates);
+
+
+class X509RootCertificates {
+private:
+  X509Certificates mItems;
+
+public:
+  explicit X509RootCertificates(X509Certificates certificates);
+
+  static X509RootCertificates FromFile(const std::filesystem::path& caCertFilePath);
+
+  const X509Certificates& items() const noexcept { return mItems; }
 };
 
-class X509RootCertificates: public X509Certificates {
- public:
-  using X509Certificates::X509Certificates;
-};
 
-class X509CertificateChain : public X509Certificates {
- public:
-  using X509Certificates::X509Certificates;
+class X509CertificateChain {
+private:
+  X509Certificates mCertificates;
+
+public:
+  X509CertificateChain(X509Certificates certificates);
+
+  static X509CertificateChain MakeSelfSigned(AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode = X509Certificate::defaultSelfSignedCountryCode);
+
+  const X509Certificate& leaf() const;
+  X509CertificateChain& operator/=(X509Certificate leaf);
 
   [[nodiscard]] bool verify(const X509RootCertificates& rootCAs) const;
+  bool isCurrentTimeInValidityPeriod() const;
   bool certifiesPrivateKey(const AsymmetricKey& privateKey) const;
+
+  // You should have no business accessing these methods unless you're serializing
+  const X509Certificates& certificates() const& { return mCertificates; }
+  X509Certificates certificates()&& { return mCertificates; }
 };
+
+inline X509CertificateChain operator/(X509CertificateChain chain, X509Certificate leaf) { return chain /= std::move(leaf); }
+
 
 class X509CertificateSigningRequest {
  public:
@@ -118,21 +148,21 @@ class X509CertificateSigningRequest {
   std::optional<std::string> searchOIDinSubject(int nid) const;
 };
 
+
 class X509Identity {
 private:
   AsymmetricKey mPrivateKey;
   X509CertificateChain mCertificateChain;
 
-  X509Identity(AsymmetricKey privateKey);
-
 public:
   X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain);
 
+  static X509Identity MakeSelfSigned(std::string organization, std::string commonName, std::string countryCode = X509Certificate::defaultSelfSignedCountryCode);
+
   const AsymmetricKey& getPrivateKey() const noexcept { return mPrivateKey; }
   const X509CertificateChain& getCertificateChain() const noexcept { return mCertificateChain; }
-
-  static X509Identity MakeUncertified(AsymmetricKey privateKey); // Only for test purposes
 };
+
 
 class X509IdentityFilesConfiguration {
 private:
@@ -142,10 +172,11 @@ private:
 
 public:
   X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix);
-  X509IdentityFilesConfiguration(const std::filesystem::path& privateKeyFilePath, const std::filesystem::path& certificateChainFilePath);
+  X509IdentityFilesConfiguration(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath);
 
   const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
   const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }
+
   const X509Identity& identity() const noexcept { return mIdentity; }
 };
 

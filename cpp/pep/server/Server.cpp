@@ -178,6 +178,6 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
 Server::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> ioContext, const Configuration& config)
   : mIoContext(std::move(ioContext)),
   rootCACertificatesFilePath_(config.get<std::filesystem::path>("CACertificateFile")),
-  rootCAs_(ReadFile(rootCACertificatesFilePath_)) {}
+  rootCAs_(FromPem(ReadFile(rootCACertificatesFilePath_))) {}
 
 }

@@ -178,7 +178,7 @@ void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::
 
 FakeCastorTest::FakeCastorTest() {
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
-  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, X509IdentityFilesConfiguration(GetIdentityFilePath("localhost.key"), GetIdentityFilePath("localhost.cert")));
+  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, X509IdentityFilesConfiguration(GetIdentityFilePath("localhost.key"), GetIdentityFilePath("localhost.cert"), GetIdentityFilePath("rootCA.cert")));
   mServer = FakeCastorApi::Create(parameters, port, options);
   mServer->start();
 

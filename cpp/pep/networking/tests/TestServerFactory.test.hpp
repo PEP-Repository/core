@@ -60,10 +60,11 @@ class TlsTestServerFactory : public TestServerFactory {
 private:
   pep::filesystem::Temporary mPrivateKeyFile;
   pep::filesystem::Temporary mCertificateChainFile;
+  pep::filesystem::Temporary mRootCaFile;
 
 protected:
   std::shared_ptr<pep::networking::Protocol::ServerParameters> createServerParameters(boost::asio::io_context& ioContext, uint16_t port) const override {
-    auto result = std::make_shared<pep::networking::Tls::ServerParameters>(ioContext, port, pep::X509IdentityFilesConfiguration(mPrivateKeyFile.path(), mCertificateChainFile.path()));
+    auto result = std::make_shared<pep::networking::Tls::ServerParameters>(ioContext, port, pep::X509IdentityFilesConfiguration(mPrivateKeyFile.path(), mCertificateChainFile.path(), mRootCaFile.path()));
     result->skipCertificateSecurityLevelCheck(true); // Skip (server side) certificate security check: our sample certificate fails OpenSSL's default security level with "ca md too weak"
     return result;
   }
@@ -139,4 +140,6 @@ TlsTestServerFactory::TlsTestServerFactory()
     "j/2cvryh9PFVyQNU6OC3Vn9dCzA3gnpOPRZjDRxyBC9D9/sUDeWkmQrAS65e" "\n"
     "-----END CERTIFICATE-----" "\n"
   );
+
+  throw std::runtime_error("Write root CA file here");
 }

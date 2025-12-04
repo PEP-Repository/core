@@ -28,7 +28,7 @@ public:
     /*!
      * \return The certificate chain corresponding with the client CA private key
      */
-    X509CertificateChain& getClientCACertificateChain();
+    const std::optional<X509CertificateChain>& getClientCACertificateChain();
     /*!
      * \param certificateChain The certificate chain corresponding with the client CA private key
      */
@@ -57,7 +57,7 @@ public:
 
   private:
     AsymmetricKey mClientCAPrivateKey;
-    X509CertificateChain mClientCACertificateChain;
+    std::optional<X509CertificateChain> mClientCACertificateChain;
     std::string mOauthTokenSecret;
     std::optional<std::filesystem::path> mBlocklistStoragePath;
   };

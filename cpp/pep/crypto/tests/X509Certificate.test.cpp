@@ -20,7 +20,9 @@ TEST(X509CertificateTest, CopyConstructor) {
 
 TEST(X509CertificateTest, AssignmentOperator) {
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(pepServerCACertPEM);
-  pep::X509Certificate caCertificate2;
+  pep::X509Certificate caCertificate2 = pep::X509Certificate::FromPem(rootCACertPEM);
+  EXPECT_NE(caCertificate.toPem(), caCertificate2.toPem());
+
   caCertificate2 = caCertificate;
   EXPECT_EQ(caCertificate.toPem(), caCertificate2.toPem());
 }
@@ -202,13 +204,13 @@ TEST(X509CertificateSigningRequestTest, CertificateExtensions) {
   // The generated certificate should not have basic constraints set
   ASSERT_FALSE(cert.hasBasicConstraints()) << "Generated certificate has the Basic Constraints set, which it should not have";
   // And it should not have a path length constraint, so the result should be std::nullopt
-  ASSERT_FALSE(cert.getPathLength().has_value()) << "Generated certificate has a pathlength constraint";
+  ASSERT_FALSE(cert.pathLengthConstraint().has_value()) << "Generated certificate has a pathlength constraint";
 
   // The intermediate root certificate should however have basic constraints and a pathlength of 0
   pep::X509Certificate intermediateCACert = pep::X509Certificate::FromPem(pepServerCACertPEM);
   ASSERT_TRUE(intermediateCACert.hasBasicConstraints()) << "Intermediate CA cert does not have Basic Constraints";
-  ASSERT_TRUE(intermediateCACert.getPathLength().has_value()) << "Intermediate CA cert does not have a pathlength constraint";
-  ASSERT_TRUE(intermediateCACert.getPathLength().value() == 0) << "Intermediate CA cert has a pathlength constraint different from 0";
+  ASSERT_TRUE(intermediateCACert.pathLengthConstraint().has_value()) << "Intermediate CA cert does not have a pathlength constraint";
+  ASSERT_TRUE(intermediateCACert.pathLengthConstraint().value() == 0) << "Intermediate CA cert has a pathlength constraint different from 0";
 }
 
 TEST(X509CertificateSigningRequestTest, UTF8CharsInUTFField) {
@@ -259,18 +261,18 @@ TEST(X509CertificateSigningRequestTest, LongStringInField) {
 TEST(X509CertificatesTest, X509CertificatesFormatting) {
 
   // An empty string input should throw an error
-  EXPECT_THROW(pep::X509Certificates certificates(""), std::runtime_error);
+  EXPECT_THROW(pep::FromPem(""), std::runtime_error);
 
   // Certificates chains in PEM format can be interleaved with text, for example as comments
-  EXPECT_NO_THROW(pep::X509Certificates certificates("extra text\n" + pepAuthserverCertPEM + pepServerCACertPEM));
-  EXPECT_NO_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "extra text\n" + pepServerCACertPEM));
+  EXPECT_NO_THROW(pep::FromPem("extra text\n" + pepAuthserverCertPEM + pepServerCACertPEM));
+  EXPECT_NO_THROW(pep::FromPem(pepAuthserverCertPEM + "extra text\n" + pepServerCACertPEM));
 
   // But bad formatting after a -----BEGIN CERTIFICATE----- block should produce an error
-  EXPECT_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting\n-----END CERTIFICATE-----" + pepServerCACertPEM), std::runtime_error);
+  EXPECT_THROW(pep::FromPem(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting\n-----END CERTIFICATE-----" + pepServerCACertPEM), std::runtime_error);
   // Also without a -----END CERTIFICATE----- block
-  EXPECT_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting" + pepServerCACertPEM), std::runtime_error);
+  EXPECT_THROW(pep::FromPem(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting" + pepServerCACertPEM), std::runtime_error);
   // But bad formatting with only an -----END CERTIFICATE----- doesnt throw an error
-  EXPECT_NO_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "bad formatting\n-----END CERTIFICATE-----\n" + pepServerCACertPEM));
+  EXPECT_NO_THROW(pep::FromPem(pepAuthserverCertPEM + "bad formatting\n-----END CERTIFICATE-----\n" + pepServerCACertPEM));
 
   // Openssl error should be cleared after parsing errors
   EXPECT_TRUE(ERR_get_error() == 0) << "Openssl errors are not cleared after parsing errors";
@@ -280,18 +282,18 @@ TEST(X509CertificatesTest, X509CertificatesFormatting) {
 }
 
 TEST(X509CertificatesTest, ToPem) {
-  pep::X509Certificates certificates(pepAuthserverCertPEM + pepServerCACertPEM);
+  pep::X509Certificates certificates = pep::FromPem(pepAuthserverCertPEM + pepServerCACertPEM);
   std::string expectedPem = pepAuthserverCertPEM + pepServerCACertPEM;
-  EXPECT_EQ(certificates.toPem(), expectedPem) << "PEM conversion of X509Certificates failed";
+  EXPECT_EQ(ToPem(certificates), expectedPem) << "PEM conversion of X509Certificates failed";
 }
 
 TEST(X509CertificateChainTest, VerifyCertificateChain) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEM);
-  ASSERT_TRUE(rootCA.front().isCurrentTimeInValidityPeriod());
+  pep::X509RootCertificates rootCA(pep::FromPem(rootCACertPEM));
+  ASSERT_TRUE(rootCA.items().front().isCurrentTimeInValidityPeriod());
 
   // Load the intermediate and server certificates
-  pep::X509CertificateChain certChain(pepAuthserverCertPEM + pepServerCACertPEM);
+  pep::X509CertificateChain certChain(pep::FromPem(pepAuthserverCertPEM + pepServerCACertPEM));
   ASSERT_TRUE(certChain.isCurrentTimeInValidityPeriod());
 
   // Verify the certificate chain against the root CAs
@@ -300,23 +302,16 @@ TEST(X509CertificateChainTest, VerifyCertificateChain) {
 
 TEST(X509CertificateChainTest, VerifyCertificateChainWithExpiredRootCA) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEMExpired);
-
-  // Load the intermediate and server certificates
-  pep::X509CertificateChain certChain(pepAuthserverCertPEMWithExpiredRoot + pepServerCACertPEMWithExpiredRoot);
-  ASSERT_TRUE(certChain.isCurrentTimeInValidityPeriod());
-
-  // Verify the certificate chain against the root CAs
-  EXPECT_FALSE(certChain.verify(rootCA)) << "Certificate chain verification succeeded with expired root CA";
+  EXPECT_ANY_THROW(pep::X509RootCertificates rootCA(pep::FromPem(rootCACertPEMExpired)));
 }
 
 TEST(X509CertificateChainTest, VerifyCertificateChainWithExpiredLeafCert) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEM);
-  ASSERT_TRUE(rootCA.front().isCurrentTimeInValidityPeriod());
+  pep::X509RootCertificates rootCA(pep::FromPem(rootCACertPEM));
+  ASSERT_TRUE(rootCA.items().front().isCurrentTimeInValidityPeriod());
 
   // Create the certificate chain with the expired leaf certificate and the CA certificate
-  pep::X509CertificateChain certChain(pepAuthserverCertPEMExpired + pepServerCACertPEM);
+  pep::X509CertificateChain certChain(pep::FromPem(pepAuthserverCertPEMExpired + pepServerCACertPEM));
 
   // Verify the certificate chain against the root CAs
   EXPECT_FALSE(certChain.verify(rootCA)) << "Certificate chain verification succeeded with expired leaf certificate";
@@ -324,11 +319,11 @@ TEST(X509CertificateChainTest, VerifyCertificateChainWithExpiredLeafCert) {
 
 TEST(X509CertificateChainTest, VerifyCertificateChainOrdering) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEM);
-  ASSERT_TRUE(rootCA.front().isCurrentTimeInValidityPeriod());
+  pep::X509RootCertificates rootCA(pep::FromPem(rootCACertPEM));
+  ASSERT_TRUE(rootCA.items().front().isCurrentTimeInValidityPeriod());
 
   // Load the intermediate and server certificates
-  pep::X509CertificateChain certChain(pepServerCACertPEM + pepAuthserverCertPEM);
+  pep::X509CertificateChain certChain(pep::FromPem(pepServerCACertPEM + pepAuthserverCertPEM));
   ASSERT_TRUE(certChain.isCurrentTimeInValidityPeriod());
 
   // Verify the certificate chain against the root CAs
@@ -336,7 +331,7 @@ TEST(X509CertificateChainTest, VerifyCertificateChainOrdering) {
 }
 
 TEST(X509CertificateChainTest, CertifiesPrivateKey) {
-  pep::X509CertificateChain certChain(pepServerCACertPEM + rootCACertPEM);
+  pep::X509CertificateChain certChain(pep::FromPem(pepServerCACertPEM + rootCACertPEM));
   pep::AsymmetricKey privateKey(pepServerCAPrivateKeyPEM);
   EXPECT_TRUE(certChain.certifiesPrivateKey(privateKey)) << "Certificate chain does not certify the private key";
 }

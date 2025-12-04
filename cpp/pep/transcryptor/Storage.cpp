@@ -8,8 +8,8 @@
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
-#include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/database/Storage.hpp>
 
 #include <sqlite_orm/sqlite_orm.h>
@@ -90,7 +90,7 @@ struct MigrationRecord {
 struct TicketRequestRecord {
   TicketRequestRecord() = default;
   TicketRequestRecord(
-      SignedTicketRequest2 ticketRequest,
+      std::string ticketRequest,
       int64_t pseudonymSet,
       int64_t modeSet,
       std::string pseudonymHash,
@@ -107,7 +107,7 @@ struct TicketRequestRecord {
 
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
-    this->request = RangeToVector(Serialization::ToString(ticketRequest));
+    this->request = RangeToVector(std::move(ticketRequest));
     this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
     this->certificateChain = certificateChain;
   }
@@ -657,14 +657,10 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
       continue;
     }
 
-    // move certificate chain from request to table:
-    std::optional<int64_t> chainId = getOrCreateCertificateChain(
-      std::exchange(request.mLogSignature->mCertificateChain,
-        X509CertificateChain()));
+    auto [serialized, chainId] = this->extractCertificateChain(std::move(request));
+    record.request = RangeToVector(std::move(serialized));
     if (chainId)
       record.certificateChain = chainId;
-
-    record.request = RangeToVector(Serialization::ToString(std::move(request)));
 
     // and, finally, compensate for the checksum change:
     record.checksumCorrection = old_checksum ^ record.checksum();
@@ -787,27 +783,20 @@ int64_t TranscryptorStorage::getOrCreatePseudonymSet(const std::vector<LocalPseu
 }
 
 std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
-    X509CertificateChain&& chain) {
-
-  // Recall that X509CertificateChain is derived from
-  //  std::list<X509Certificate>, so chain is just a list of certificates:
-  //
-  //   chain = cert_0, cert_1, ..., cert_N,
-  //
-  // where the cert_0 is the leaf certificate (and cert_N might be the root).
-  // Cf. Signature::getLeafCertificate in crypto/Signature.hpp.
+    X509CertificateChain chain) {
 
   // First compute the fingerprint of the chain:
   //
   //   fingerprint = sha256(cert_0) sha256(cert_1) ... sha256(cert_N)
   //
+  auto certs = std::move(chain).certificates();
   std::vector<std::string> leafs;
-  leafs.reserve(chain.size());
+  leafs.reserve(certs.size());
   std::string fingerprint;
   {
     std::ostringstream os_fingerprint;
-    for (auto&& cert : chain) {
-      leafs.push_back(Serialization::ToString(cert));
+    for (auto&& cert : certs) {
+      leafs.push_back(Serialization::ToString(std::move(cert)));
       os_fingerprint << Sha256().digest(leafs.back());
     }
     fingerprint = std::move(os_fingerprint).str();
@@ -820,10 +809,10 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
   size_t K = 0;
   std::optional<int64_t> parentId;
 
-  assert(leafs.size() == chain.size());
-  assert(fingerprint.size() == 32*chain.size());
+  assert(leafs.size() == certs.size());
+  assert(fingerprint.size() == 32 * certs.size());
 
-  for (; K<chain.size(); K++, fingerprint_it += 32) {
+  for (; K < certs.size(); K++, fingerprint_it += 32) {
     // see if  cert_K, ..., cert_N  is our database
     std::vector<int64_t> results = this->mStorage->raw.select(
         &CertificateChainRecord::seqno, where(
@@ -843,7 +832,7 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
   }
   // note that parentId might not be set here when none of the certificates
   // was in our database.  In that case:
-  assert( (K==chain.size()) == (!parentId));
+  assert( (K == certs.size()) == (!parentId));
 
   // Now, roll back and insert new records.
   CertificateChainRecord chainRecord;
@@ -859,6 +848,34 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
   }
 
   return parentId;
+}
+
+std::pair<std::string, std::optional<int64_t>> TranscryptorStorage::extractCertificateChain(SignedTicketRequest2 request) {
+  // If the request('s log signature) has a certificate chain, store it separately
+  std::optional<int64_t> chainId;
+  if (request.mLogSignature.has_value()) {
+    chainId = this->getOrCreateCertificateChain(request.mLogSignature->mCertificateChain);
+    if (!chainId.has_value()) {
+      throw std::runtime_error("No certificate chain stored for log signature");
+    }
+  }
+
+  // We can't discard the certificate chain out of our pep::SignedTicketRequest2, so we convert it to protobuf...
+  proto::SignedTicketRequest2 buf;
+  Serializer<SignedTicketRequest2> serializer;
+  serializer.moveIntoProtocolBuffer(buf, std::move(request));
+
+  // ... from which we *can* discard the certificate chain
+  auto signature = buf.mutable_log_signature();
+  assert(chainId.has_value() == (signature != nullptr));
+  if (signature != nullptr) {
+    signature->clear_certificate_chain();
+    assert(!signature->has_certificate_chain());
+  }
+
+  // Serialize the protobuf representation without the certificate chain
+  auto serialized = serializer.toString(buf);
+  return std::make_pair(std::move(serialized), chainId);
 }
 
 // Retrieves the current version of the database according to the
@@ -909,19 +926,17 @@ std::string TranscryptorStorage::logTicketRequest(
     SignedTicketRequest2 ticketRequest,
     std::string pseudonymHash) {
 
-  // Already compute the access group now,
-  std::string accessGroup
-      = ticketRequest.mLogSignature->getLeafCertificateOrganizationalUnit();
-  // because we move the certificate chain from ticketRequest to its own table.
   if (!ticketRequest.mLogSignature)
     throw Error("log signature on ticket request is not set");
+  // Already compute the access group now,
+  // because we move the certificate chain from ticketRequest to its own table.
+  std::string accessGroup
+      = ticketRequest.mLogSignature->getLeafCertificateOrganizationalUnit();
 
-  auto chainId = getOrCreateCertificateChain(
-    std::exchange(ticketRequest.mLogSignature->mCertificateChain,
-      X509CertificateChain()));
+  auto [serialized, chainId] = this->extractCertificateChain(std::move(ticketRequest));
 
   auto record = TicketRequestRecord(
-    std::move(ticketRequest),
+    std::move(serialized),
     getOrCreatePseudonymSet(localPseudonyms),
     getOrCreateModeSet(modes),
     std::move(pseudonymHash),
