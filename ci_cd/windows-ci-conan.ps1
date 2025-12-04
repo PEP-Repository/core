@@ -3,7 +3,7 @@
 <#
 .SYNOPSIS
   Upgrade conan and call conan with provided arguments, synchronizing with other calls of this script.
-  Clean cache afterwards.
+  Clean cache afterwards if CLEAN_CONAN is set.
 #>
 
 $ErrorActionPreference = 'Stop'
