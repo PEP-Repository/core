@@ -953,18 +953,9 @@ X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certif
 }
 
 X509Identity X509Identity::MakeSelfSigned(std::string organization, std::string commonName, std::string countryCode) {
-  // Generate a keypair for the new identity
   auto keys = AsymmetricKeyPair::GenerateKeyPair();
-
-  // Create a self-signed certificate that'll serve as both a root CA and a leaf certificate
   auto cert = X509Certificate::MakeSelfSigned(keys, std::move(organization), std::move(commonName), std::move(countryCode));
-  auto certs = X509Certificates({ std::move(cert) }); // Make a singleton "list of certificates" (required by further processing)
-
-  // ... and as the chain's (only/leaf) certificate
-  auto chain = X509CertificateChain(std::move(certs));
-
-  // Construct return value
-  return X509Identity(std::move(keys).getPrivateKey(), std::move(chain));
+  return X509Identity(std::move(keys).getPrivateKey(), X509CertificateChain({ std::move(cert) }));
 }
 
 X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix) : X509IdentityFilesConfiguration(
