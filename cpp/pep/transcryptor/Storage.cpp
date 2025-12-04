@@ -8,8 +8,8 @@
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/database/Storage.hpp>
 
 #include <sqlite_orm/sqlite_orm.h>
