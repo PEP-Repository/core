@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/crypto/tests/TemporaryX509IdentityFiles.hpp>
 #include <pep/networking/Client.hpp>
 #include <pep/networking/Server.hpp>
 #include <pep/networking/Tcp.hpp>
@@ -58,20 +59,18 @@ public:
 
 class TlsTestServerFactory : public TestServerFactory {
 private:
-  pep::filesystem::Temporary mPrivateKeyFile;
-  pep::filesystem::Temporary mCertificateChainFile;
-  pep::filesystem::Temporary mRootCaFile;
+  TemporaryX509IdentityFiles mIdentityFiles;
 
 protected:
   std::shared_ptr<pep::networking::Protocol::ServerParameters> createServerParameters(boost::asio::io_context& ioContext, uint16_t port) const override {
-    auto result = std::make_shared<pep::networking::Tls::ServerParameters>(ioContext, port, pep::X509IdentityFilesConfiguration(mPrivateKeyFile.path(), mCertificateChainFile.path(), mRootCaFile.path()));
+    auto result = std::make_shared<pep::networking::Tls::ServerParameters>(ioContext, port, mIdentityFiles);
     result->skipCertificateSecurityLevelCheck(true); // Skip (server side) certificate security check: our sample certificate fails OpenSSL's default security level with "ca md too weak"
     return result;
   }
 
   std::shared_ptr<pep::networking::Protocol::ClientParameters> createClientParameters(const pep::networking::Server& server) const override {
     auto result = std::static_pointer_cast<pep::networking::Tls::ClientParameters>(TestServerFactory::createClientParameters(server));
-    result->caCertFilePath(mCertificateChainFile.path());
+    result->caCertFilePath(mIdentityFiles.getCertificateChainFilePath());
     result->skipPeerVerification(true); // Skip (client side) certificate verification: our sample certificate fails it. Curiously the server also flunks the handshake with "tlsv1 alert unknown ca (SSL routines)" if the client doesn't set_verify_mode(boost::asio::ssl::verify_none)
     return result;
   }
@@ -83,10 +82,6 @@ public:
 
 
 TlsTestServerFactory::TlsTestServerFactory()
-  : mPrivateKeyFile("private.key"), mCertificateChainFile("certificate.chain"), mRootCaFile("rootCA.cert") {
+  : mIdentityFiles(TemporaryX509IdentityFiles::Make("private.key", "certificate.chain", "rootCA.cert")) {
 
-  auto identity = pep::X509Identity::MakeSelfSigned("TLS testers, inc.", "PepTlsUnitTest");
-  pep::WriteFile(mPrivateKeyFile.path(), identity.getPrivateKey().toPem());
-  pep::WriteFile(mCertificateChainFile.path(), pep::X509CertificatesToPem(identity.getCertificateChain().certificates()));
-  pep::WriteFile(mRootCaFile.path(), identity.getCertificateChain().leaf().toPem());
 }

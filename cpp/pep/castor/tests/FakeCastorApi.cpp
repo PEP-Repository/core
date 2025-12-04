@@ -178,7 +178,7 @@ void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::
 
 FakeCastorTest::FakeCastorTest() {
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
-  X509IdentityFilesConfiguration identity(GetIdentityFilePath("localhost.key"), GetIdentityFilePath("localhost.cert"), GetIdentityFilePath("rootCA.cert")); // TODO: who's staging this rootCA.cert for us?
+  X509IdentityFilesConfiguration identity(GetIdentityFilePath("localhost.key"), GetIdentityFilePath("localhost.cert"), GetIdentityFilePath("rootCA.cert")); // TODO: who's staging this rootCA.cert for us? Use TemporaryX509IdentityFiles instead
   networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, identity);
   mServer = FakeCastorApi::Create(parameters, port, options);
   mServer->start();
