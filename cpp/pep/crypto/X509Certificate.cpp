@@ -365,46 +365,25 @@ X509Certificate X509Certificate::FromDer(const std::string& der) {
   return X509Certificate(*cert);
 }
 
-X509Certificate X509Certificate::MakeSelfSigned(const AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode) {
-  // Implementation adapted from https://stackoverflow.com/a/15082282 , from which the quotes are taken as well
-
-  auto pub = keys.getPublicKey();
-  assert(pub.mKey != nullptr);
-  auto priv = keys.getPrivateKey();
-  assert(priv.mKey != nullptr);
-
-  assert(!organization.empty());
-  assert(!commonName.empty());
-  if (countryCode.size() != 2U) { // Not sure if this is really required by OpenSSL, but let's (have our callers) walk the line
-    throw std::runtime_error("Country code must be a two-letter one"); // TODO: improve specification
+X509Certificate X509Certificate::MakeSelfSigned(const AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode, std::chrono::seconds validityPeriod) {
+  X509_NAME* name = X509_NAME_new();
+  if (name == nullptr) {
+    throw pep::OpenSSLError("Failed to create X509_NAME for self-signed certificate");
   }
+  PEP_DEFER(X509_NAME_free(name));
 
-  X509* x509 = X509_new(); // "The first function we are going to need"
-  if (x509 == nullptr) {
-    throw OpenSSLError("Failed to create new X509 structure");
-  }
-
-  // Take ownership of the X509 structure immediately to prevent it from being leaked if an exception is raised below
-  X509Certificate result(*x509);
-
-  // TODO: check success of functions below; raise an exception if not
-
-  // Default (version 1) certificates are rejected as root CAs by X509_verify_cert
-  X509_set_version(x509, X509_VERSION_3);
-
-  ASN1_INTEGER_set(X509_get_serialNumber(x509), 1); // "sets the serial number of our certificate"
-  X509_gmtime_adj(X509_get_notBefore(x509), 0); // "sets the certificate's notBefore property to the current time"
-  X509_gmtime_adj(X509_get_notAfter(x509), 31536000L); // "sets the certificate's notAfter property to 365 days from now"
-  X509_set_pubkey(x509, pub.mKey); // "set the public key for our certificate"
-
-  // "set the name of the issuer to the name of the subject"
-  X509_NAME* name = X509_get_subject_name(x509); // "get the subject name"
   X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, reinterpret_cast<unsigned char*>(countryCode.data()), -1, -1, 0); // "country code"
   X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, reinterpret_cast<unsigned char*>(organization.data()), -1, -1, 0); // "organization ('O')"
   X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<unsigned char*>(commonName.data()), -1, -1, 0); // "common name ('CN')"
 
-  X509_set_issuer_name(x509, name); // "set the issuer name"
-  X509_sign(x509, priv.mKey, EVP_sha1()); // "perform the signing process"
+  auto pub = keys.getPublicKey();
+  assert(pub.mKey != nullptr);
+  auto result = MakeUnsigned(pub, *name, validityPeriod);
+
+  auto priv = keys.getPrivateKey();
+  assert(priv.mKey != nullptr);
+  result.sign(priv, *name);
+
   return result;
 }
 
@@ -796,24 +775,7 @@ X509CertificateSigningRequest X509CertificateSigningRequest::FromDer(const std::
   return request;
 }
 
-/**
- * @brief Sign a certificate based on the X509CertificateSigningRequest.
- * @param caCert The issuer's certificate.
- * @param caPrivateKey The private key of the CA used to sign the certificate.
- * @param validityPeriod seconds that the certificate should be valid.
- * @return The newly generated certificate.
- */
-X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
-  auto rawCaCert = caCert.rawPointer();
-
-  if (!caPrivateKey.isSet()) {
-    throw std::invalid_argument("CA private key is not set in X509CertificateSigningRequest::signCertificate.");
-  }
-
+X509Certificate X509Certificate::MakeUnsigned(const AsymmetricKey& publicKey, const X509_NAME& subjectName, const std::chrono::seconds validityPeriod) {
   // Sanity check on the validity period
   if (validityPeriod <= std::chrono::seconds{0}) {
     throw std::invalid_argument("Validity period must be greater than zero");
@@ -864,12 +826,6 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     throw pep::OpenSSLError("Failed to set serial number for certificate.");
   }
 
-  // Set issuer name from CA's subject
-  X509_NAME* issuerName = X509_get_subject_name(rawCaCert);
-  if (X509_set_issuer_name(cert, issuerName) <= 0) {
-    throw pep::OpenSSLError("Failed to set issuer name.");
-  }
-
   // Set the validity period, start 60 seconds before the current time
   if (!X509_gmtime_adj(X509_getm_notBefore(cert), -60)) {
     throw pep::OpenSSLError("Failed to set notBefore time in X509CertificateSigningRequest::signCertificate.");
@@ -879,20 +835,15 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     throw pep::OpenSSLError("Failed to set notAfter time in X509CertificateSigningRequest::signCertificate.");
   }
 
-  // Set subject name from CSR
-  X509_NAME* subjectName = X509_REQ_get_subject_name(mCSR);
-  if (X509_set_subject_name(cert, subjectName) <= 0) {
+  // Set subject name
+  if (X509_set_subject_name(cert, &subjectName) <= 0) {
     throw pep::OpenSSLError("Failed to set subject name.");
   }
 
-  // Set public key from CSR
-  auto csrPublicKey = getPublicKey();
-  if (X509_set_pubkey(cert, csrPublicKey.mKey) <= 0) {
+  // Set public key
+  if (X509_set_pubkey(cert, publicKey.mKey) <= 0) {
     throw pep::OpenSSLError("Failed to set public key.");
   }
-
-  X509V3_CTX ctx;
-  X509V3_set_ctx(&ctx, rawCaCert, cert, mCSR, nullptr, 0);
 
   // The function `X509V3_EXT_conf_nid` is not documented, but we are using it as we lack a good alternative.
   // When a better documented high level function to create x509 extensions is found, this function should be replaced.
@@ -910,6 +861,47 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
       throw pep::OpenSSLError("Failed to add Key Usage extension to certificate.");
     }
   }
+
+  return result;
+}
+
+void X509Certificate::sign(const AsymmetricKey& caPrivateKey, const X509_NAME& caName) {
+  auto internal = this->rawPointer();
+
+  // Set issuer name from CA's subject
+  if (X509_set_issuer_name(internal, &caName) <= 0) {
+    throw pep::OpenSSLError("Failed to set issuer name.");
+  }
+
+  // Sign the certificate with CA's private key, X509_sign returns the size
+  // of the signature in bytes for success and zero for failure.
+  if (X509_sign(internal, caPrivateKey.mKey, EVP_sha256()) <= 0) {
+    throw pep::OpenSSLError("Failed to sign the certificate.");
+  }
+}
+
+/**
+ * @brief Sign a certificate based on the X509CertificateSigningRequest.
+ * @param caCert The issuer's certificate.
+ * @param caPrivateKey The private key of the CA used to sign the certificate.
+ * @param validityPeriod seconds that the certificate should be valid.
+ * @return The newly generated certificate.
+ */
+X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const {
+  if (!mCSR) {
+    throw std::runtime_error("Invalid X509_REQ structure");
+  }
+  if (!caPrivateKey.isSet()) {
+    throw std::invalid_argument("CA private key is not set in X509CertificateSigningRequest::signCertificate.");
+  }
+
+  auto rawCaCert = caCert.rawPointer();
+
+  auto result = X509Certificate::MakeUnsigned(this->getPublicKey(), *X509_REQ_get_subject_name(mCSR), validityPeriod);
+  auto cert = result.rawPointer();
+
+  X509V3_CTX ctx;
+  X509V3_set_ctx(&ctx, rawCaCert, cert, mCSR, nullptr, 0);
 
   // Add Subject Key Identifier extension
   {
@@ -937,11 +929,7 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     }
   }
 
-  // Sign the certificate with CA's private key, X509_sign returns the size
-  // of the signature in bytes for success and zero for failure.
-  if (X509_sign(cert, caPrivateKey.mKey, EVP_sha256()) <= 0) {
-    throw pep::OpenSSLError("Failed to sign the certificate.");
-  }
+  result.sign(caPrivateKey, *X509_get_subject_name(rawCaCert));
 
   return result;
 }

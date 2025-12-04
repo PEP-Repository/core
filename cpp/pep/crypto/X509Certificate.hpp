@@ -50,7 +50,7 @@ public:
 
   static X509Certificate FromPem(const std::string& pem);
   static X509Certificate FromDer(const std::string& der);
-  static X509Certificate MakeSelfSigned(const AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode = defaultSelfSignedCountryCode);
+  static X509Certificate MakeSelfSigned(const AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode = defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = std::chrono::hours(1));
 
   bool operator==(const X509Certificate& rhs) const;
   bool operator!=(const X509Certificate& rhs) const { return !(*this == rhs); }
@@ -60,6 +60,9 @@ public:
 
   [[nodiscard]] X509* rawPointer() const noexcept; // Some of our "const" methods require the X509 structure to be mutable
   std::optional<std::string> searchOIDinSubject(int nid) const;
+
+  static X509Certificate MakeUnsigned(const AsymmetricKey& publicKey, const X509_NAME& subjectName, std::chrono::seconds validityPeriod);
+  void sign(const AsymmetricKey& caPrivateKey, const X509_NAME& caName);
 
   friend class X509CertificateChain;
   friend class X509CertificateSigningRequest;
