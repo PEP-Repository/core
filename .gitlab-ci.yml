@@ -974,7 +974,9 @@ windows-test:
       when: never
     - when: on_success
   tags:
-    - windows-test
+    # Do not run in parallel with other tests, as we may bind to static ports.
+    # May still run in parallel with build jobs.
+    - windows-sequential
   needs: [windows-all-targets]
   script:
     - *run-tests-windows
@@ -1048,7 +1050,7 @@ pep-services-image-test:
 windows-local-integration:
   stage: integration
   tags:
-    - windows-test
+    - windows-sequential
   rules:
     - if: $FAST_DEPLOY
       when: never
