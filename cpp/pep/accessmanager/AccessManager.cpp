@@ -508,6 +508,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     */
                   LOG(LOG_TAG, debug) << "Rekey request has a BLIND_MODE_UNBLIND entry -> forwarding to transcryptor";
                   RekeyRequest rkReq{
+                    .mKeys{},
                     .mClientCertificateChain = signedRequest->mSignature.mCertificateChain,
                   };
                   rkReq.mKeys.reserve(dwNumUnblind);
@@ -639,17 +640,17 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // struct, so that we don't have to put everything into shared_ptrs
   struct Context {
     std::shared_ptr<AccessManager> server;
-    uintmax_t requestNumber{};
+    uintmax_t requestNumber;
     TicketRequest2 request;
     Ticket2 ticket;
-    SignedTicket2 signedTicket;
+    SignedTicket2 signedTicket{};
     std::vector<AccessManager::Backend::pp_t> pps;
     decltype(time) start_time;
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
     std::vector<std::string> participantModes;
-    TranscryptorRequest tsReq;
-    TranscryptorRequestEntries tsReqEntries;
+    TranscryptorRequest tsReq{};
+    TranscryptorRequestEntries tsReqEntries{};
     Signature signature; // signature (for the AM) on the TicketRequest
   };
 
