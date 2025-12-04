@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
 
 # Replace `-[...]__[...]` by `-[...]:[...]`. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
+# (?<=...) = RegEx lookbehind
 $ConanArgs = $args -replace '(?<=^-[^_]*)__', ':'
 
 do {
