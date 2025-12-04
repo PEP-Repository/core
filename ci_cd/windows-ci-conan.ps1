@@ -15,7 +15,7 @@ $ConanArgs = $args -replace '(?<=^-[^_]*)__', ':'
 
 do {
   try {
-    $conanLock = [IO.File]::Open("C:\Users\pep\.pep-conan-lock", [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Read)
+    $conanLock = [IO.File]::Open("$HOME\.pep-conan-lock", [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Read)
   }
   catch [IO.IOException] {
     Write-Warning "Waiting for other CI job to finish with Conan: $_"
