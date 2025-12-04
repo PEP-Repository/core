@@ -973,7 +973,6 @@ X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(std::filesystem::
   if (!mIdentity.getCertificateChain().verify(X509RootCertificates::FromFile(rootCaCertFilePath))) {
     throw std::runtime_error("X509 identity does not pass validation against root CAs");
   }
-  // TODO: more
 }
 
 }
