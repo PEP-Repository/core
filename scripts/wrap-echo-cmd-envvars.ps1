@@ -1,9 +1,10 @@
 <#
 .SYNOPSIS
-  Facilitate forwarding environment variables from PowerShell script to CMD by printing SET commands to stdout.
+  Invokes PowerShell script, then forwards specified environment variables set by this script to CMD by printing SET commands to stdout.
 #>
 [CmdletBinding()]
 param(
+  # PowerShell script
   [Parameter(Mandatory=$true)]
   [string] $ScriptPath,
 
