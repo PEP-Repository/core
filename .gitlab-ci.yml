@@ -359,7 +359,7 @@ cleanup:
     exit $DID_JOB_FAIL
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
-# See provision-windows-ci-runner.ps1.
+# See scripts/provision-windows-ci-runner.ps1.
 .run-tests-windows: &run-tests-windows
   - |
     $testsArray = $TESTS -split ' ';
