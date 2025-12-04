@@ -1,16 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES2024",
-    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowJs": true,
     "checkJs": true,
+    // Type checking
+    "strict": true,
+    "strictNullChecks": false,
     // Output
     "noEmit": true,
     // CLI
     "pretty": true
   },
-  "include": ["./**/*.mjs"],
+  "include": ["./**/*.mjs", "./web-apis.d.ts"],
   "exclude": ["./dist/"]
 }

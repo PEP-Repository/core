@@ -9,7 +9,6 @@ let pep;
  * @param {Event} ev
  */
 function handleMaybeWasmException(ex, ev) {
-  //@ts-ignore
   if (pep && ex && ex instanceof WebAssembly.Exception) {
     const error = pep.handleWasmException(ex);
     alert(error);
@@ -81,7 +80,6 @@ listBtn.addEventListener('click', () => void (async () => {
       entry.delete();
     }
   }
-  // @ts-ignore
   entries = await Array.fromAsync(res);
   retrieveBtn.disabled = false;
   saveBtn.disabled = false;
@@ -103,8 +101,7 @@ retrieveBtn.addEventListener('click', () => void (async () => {
   const res = pep.retrieve(entries.filter(e => e.fileSize < 1024));
   const jsonEntries = [];
   try {
-    // @ts-ignore
-    for await (/** @type {import("pep-repo-client").CellData} */ const data of res) {
+    for await (const data of res) {
       try {
         jsonEntries.push({
           id: data.entry.id,
@@ -118,7 +115,6 @@ retrieveBtn.addEventListener('click', () => void (async () => {
       }
     }
   } finally {
-    // @ts-ignore
     await deleteObjectsAsync(res);
   }
   output.value = JSON.stringify(jsonEntries, null, '  ');
@@ -141,7 +137,6 @@ saveBtn.addEventListener('click', () => void (async () => {
   /** @type {import("pep-repo-client").CellData | undefined} */
   let data;
   async function getContent() {
-    //@ts-ignore
     [data] = await Array.fromAsync(pep.retrieve([entry]));
     const startTime = performance.now();
     let downloaded = 0n;
@@ -165,7 +160,6 @@ saveBtn.addEventListener('click', () => void (async () => {
 
   try {
     if ('showSaveFilePicker' in window) {
-      //@ts-ignore
       const file = await showSaveFilePicker({suggestedName: fileName});
       await (await getContent()).pipeTo(await file.createWritable());
 
