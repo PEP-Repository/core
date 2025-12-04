@@ -1,4 +1,5 @@
 @echo off
+REM TODO: rewrite in PowerShell: see e.g. ci_cd/windows-ci-find-msvc.bat
 REM Having this code in a batch file (as opposed to in .gitlab-ci.yml) allows it to be run and debugged locally.
 REM Variables are prefixed with "PEP" to reduce chances of naming collisions.
 set OwnDir=%~dp0
