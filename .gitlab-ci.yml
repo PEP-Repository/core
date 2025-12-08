@@ -359,15 +359,14 @@ cleanup:
     exit $DID_JOB_FAIL
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
-# See scripts/provision-windows-ci-runner.ps1.
 .run-tests-windows: &run-tests-windows
   - |
     $testsArray = $TESTS -split ' ';
     $DID_JOB_FAIL = 0
     foreach ($TEST in $testsArray) {
-      & "C:\Program Files\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
+      & "$env:ProgramFiles\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
       if ($LASTEXITCODE -ne 0) {
-          $DID_JOB_FAIL = 1
+        $DID_JOB_FAIL = 1
       }
     }
     exit $DID_JOB_FAIL
