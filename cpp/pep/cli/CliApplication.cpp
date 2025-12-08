@@ -121,7 +121,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
     if (!token) {
       if (std::filesystem::exists(tokenPath)) {
         LOG(LOG_TAG, pep::info)
-          << "Cached token found in"
+          << "Cached token found in "
           << std::filesystem::canonical(tokenPath) << std::endl;
         token = pep::OAuthToken::ReadJson(tokenPath);
         if (!token->verify(mRequiredSubject, mRequiredGroup)) {
