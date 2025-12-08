@@ -176,10 +176,10 @@ void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::
   mBinary->asyncWrite(mOutput.data(), mOutput.length(), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {self->handleWrite(result); });
 }
 
-FakeCastorTest::FakeCastorTest() {
+FakeCastorTest::FakeCastorTest()
+  : mIdentity(TemporaryX509IdentityFiles::Make("localhost.key", "localhost.cert", "localhost.root.cert")) { // TODO: move to global test environment
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
-  X509IdentityFilesConfiguration identity(GetIdentityFilePath("localhost.key"), GetIdentityFilePath("localhost.cert"), GetIdentityFilePath("rootCA.cert")); // TODO: who's staging this rootCA.cert for us? Use TemporaryX509IdentityFiles instead
-  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, identity);
+  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, mIdentity);
   mServer = FakeCastorApi::Create(parameters, port, options);
   mServer->start();
 
@@ -187,7 +187,7 @@ FakeCastorTest::FakeCastorTest() {
     EndPoint("localhost", port),
     castor::ApiKey{ "SomeID", "SomeSecret" },
     mClientSide.ioContext(),
-    GetIdentityFilePath("localhost.cert"));
+    mIdentity.getCertificateChainFilePath());
 
   mClientSide.start();
   mServerSide.start();

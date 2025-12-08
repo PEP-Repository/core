@@ -22,7 +22,7 @@ public:
     pep::filesystem::Temporary cert(std::move(certificateChainFile));
     pep::filesystem::Temporary root(std::move(rootCaFileName));
 
-    auto identity = pep::X509Identity::MakeSelfSigned("TLS testers, inc.", "PepTlsUnitTest");
+    auto identity = pep::X509Identity::MakeSelfSigned("X509 testers, inc.", "localhost"); // TODO: allow caller to specify values (and perhaps other certificate metrics)
     pep::WriteFile(priv.path(), identity.getPrivateKey().toPem());
     pep::WriteFile(cert.path(), pep::X509CertificatesToPem(identity.getCertificateChain().certificates()));
     pep::WriteFile(root.path(), identity.getCertificateChain().leaf().toPem());
