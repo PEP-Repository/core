@@ -3,6 +3,7 @@
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
+#include <cassert>
 
 /// @brief Creates a set of (self-signed) X509 identity files that are removed when the instance is destroyed.
 /// @remark Defined entirely in the header so that the class can be used from all (unit) test executables.
@@ -19,9 +20,7 @@ private:
   }
 
   static pep::filesystem::Temporary CreateTemporary(const std::filesystem::path& directory, const std::string& content) {
-    if (!exists(directory)) {
-      throw std::runtime_error("Can't create temporary file in nonexistent directory " + directory.string());
-    }
+    assert(exists(directory));
 
     // Generate a random nonexistent file path
     std::filesystem::path file;
@@ -38,6 +37,10 @@ private:
 
 public:
   static TemporaryX509IdentityFiles Make(std::string organization, std::string commonName, std::filesystem::path directory = std::filesystem::current_path()) {
+    if (!exists(directory)) {
+      throw std::runtime_error("Can't create temporary file in nonexistent directory " + directory.string());
+    }
+
     auto identity = pep::X509Identity::MakeSelfSigned(std::move(organization), std::move(commonName));
 
     auto priv = CreateTemporary(directory, identity.getPrivateKey().toPem());
