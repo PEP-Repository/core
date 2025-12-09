@@ -290,6 +290,11 @@ networks:
     name: authservernetwork
     driver: bridge
 
+volumes:
+  surfconext_metadata:
+  # This is where mod_md stores the Let's Encrypt certificates and related files. Makes sure we don't run into rate limits when the container is restarted a lot.
+  acme_certificates:
+
 services:
   # Core PEP Services
   transcryptor:
@@ -436,8 +441,9 @@ services:
     volumes:
       - "${DATA_DIR_BASE}/authserver:/data"
       - "${SECRETS_DIR_BASE}/authserver:/secrets:ro"
-      # - "${SECRETS_DIR_BASE}/acme:/cert:ro" # Only when acme.sh is used
       - "${DATA_DIR_BASE}/authserver/apache_logs:/var/log/apache2"
+      - acme_certificates:/etc/apache2/md
+      - surfconext_metadata:/metadata
       - /etc/localtime:/etc/localtime:ro
     working_dir: /data
     depends_on:

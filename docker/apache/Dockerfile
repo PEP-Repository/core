@@ -19,9 +19,5 @@ RUN a2enmod proxy proxy_http ssl headers include rewrite md
 ENV DEBIAN_FRONTEND=''
 
 EXPOSE 80 443
-VOLUME ["/metadata"]
-
-# This is where mod_md stores the Let's Encrypt certificates and related files. Makes sure we don't run into rate limits when the container is restarted a lot.
-VOLUME ["/etc/apache2/md"]
 
 CMD ["run.sh"]
