@@ -6,7 +6,7 @@
 #include <cassert>
 
 /// @brief Creates a set of (self-signed) X509 identity files that are removed when the instance is destroyed.
-/// @remark Defined entirely in the header so that the class can be used from all (unit) test executables.
+/// @remark Header-only so that the class can be used from all (unit test executable) binaries without additional link requirements.
 class TemporaryX509IdentityFiles : public pep::X509IdentityFiles {
 private:
   pep::filesystem::Temporary mPrivateKeyFile;
