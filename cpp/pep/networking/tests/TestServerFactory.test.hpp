@@ -82,6 +82,6 @@ public:
 
 
 TlsTestServerFactory::TlsTestServerFactory()
-  : mIdentityFiles(TemporaryX509IdentityFiles::Make("private.key", "certificate.chain", "rootCA.cert")) {
+  : mIdentityFiles(TemporaryX509IdentityFiles::Make("TLS Test Factory, inc.", "localhost")) {
 
 }

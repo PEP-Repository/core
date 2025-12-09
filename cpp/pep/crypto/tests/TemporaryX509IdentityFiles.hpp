@@ -4,6 +4,8 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
 
+/// @brief Creates a set of (self-signed) X509 identity files that are removed when the instance is destroyed.
+/// @remark Defined entirely in the header so that the class can be used from all (unit) test executables.
 class TemporaryX509IdentityFiles : public pep::X509IdentityFiles {
 private:
   pep::filesystem::Temporary mPrivateKeyFile;
@@ -16,16 +18,31 @@ private:
     , mPrivateKeyFile(std::move(privateKeyFile)), mCertificateChainFile(std::move(certificateChainFile)), mRootCaFile(std::move(rootCaFile)) {
   }
 
-public:
-  static TemporaryX509IdentityFiles Make(std::filesystem::path privateKeyFile, std::filesystem::path certificateChainFile, std::filesystem::path rootCaFileName) {
-    pep::filesystem::Temporary priv(std::move(privateKeyFile));
-    pep::filesystem::Temporary cert(std::move(certificateChainFile));
-    pep::filesystem::Temporary root(std::move(rootCaFileName));
+  static pep::filesystem::Temporary CreateTemporary(const std::filesystem::path& directory, const std::string& content) {
+    if (!exists(directory)) {
+      throw std::runtime_error("Can't create temporary file in nonexistent directory " + directory.string());
+    }
 
-    auto identity = pep::X509Identity::MakeSelfSigned("X509 testers, inc.", "localhost"); // TODO: allow caller to specify values (and perhaps other certificate metrics)
-    pep::WriteFile(priv.path(), identity.getPrivateKey().toPem());
-    pep::WriteFile(cert.path(), pep::X509CertificatesToPem(identity.getCertificateChain().certificates()));
-    pep::WriteFile(root.path(), identity.getCertificateChain().leaf().toPem());
+    // Generate a random nonexistent file path
+    std::filesystem::path file;
+    const std::string pattern(8U, '%');
+    do {
+      auto name = pep::filesystem::RandomizedName(pattern);
+      file = directory / name;
+    } while (exists(file));
+
+    pep::filesystem::Temporary result(file); // Take ownership of the path immediately to ensure that it's deleted even if exceptions occur while writing the file
+    pep::WriteFile(result.path(), content);
+    return result;
+  }
+
+public:
+  static TemporaryX509IdentityFiles Make(std::string organization, std::string commonName, std::filesystem::path directory = std::filesystem::current_path()) {
+    auto identity = pep::X509Identity::MakeSelfSigned(std::move(organization), std::move(commonName));
+
+    auto priv = CreateTemporary(directory, identity.getPrivateKey().toPem());
+    auto cert = CreateTemporary(directory, pep::X509CertificatesToPem(identity.getCertificateChain().certificates()));
+    auto root = CreateTemporary(directory, identity.getCertificateChain().leaf().toPem());
 
     return TemporaryX509IdentityFiles(std::move(priv), std::move(cert), std::move(root));
   }

@@ -177,7 +177,7 @@ void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::
 }
 
 FakeCastorTest::FakeCastorTest()
-  : mIdentity(TemporaryX509IdentityFiles::Make("localhost.key", "localhost.cert", "localhost.root.cert")) { // TODO: move to global test environment
+  : mIdentity(TemporaryX509IdentityFiles::Make("Fake Castor b.v.", "localhost")) { // TODO: move to global test environment
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
   networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, mIdentity);
   mServer = FakeCastorApi::Create(parameters, port, options);
