@@ -19,6 +19,5 @@ RUN a2enmod proxy proxy_http ssl headers include rewrite md
 ENV DEBIAN_FRONTEND=''
 
 EXPOSE 80 443
-# Note: anonymous volumes are not actually persisted when using --rm flag. Remove this in favour when all 
 
 CMD ["run.sh"]
