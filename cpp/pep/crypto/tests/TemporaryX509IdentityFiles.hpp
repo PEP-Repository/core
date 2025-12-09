@@ -50,7 +50,9 @@ public:
     return TemporaryX509IdentityFiles(std::move(priv), std::move(cert), std::move(root));
   }
 
-  // Gets a sliced copy of this instance, e.g. to pass to Tls::ServerParameters. Helps get rid of linting error "cppcoreguidelines-slicing"
+  /// @brief Gets a sliced copy of this instance, e.g. to pass to Tls::ServerParameters. This instance must outlive the sliced copy.
+  /// @return An X509IdentityFiles instance corresponding to this (TemporaryX509IdentityFiles) instance.
+  /// @remark Helps get rid of linting error "cppcoreguidelines-slicing". See https://stackoverflow.com/a/59867897.
   X509IdentityFiles slicedToX509IdentityFiles() const {
     return X509IdentityFiles(mPrivateKeyFile.path(), mCertificateChainFile.path(), mRootCaFile.path());
   }
