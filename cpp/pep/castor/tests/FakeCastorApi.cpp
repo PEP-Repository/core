@@ -21,10 +21,6 @@ namespace {
 
 const std::string LOG_TAG ("FakeCastorApi");
 
-std::filesystem::path GetIdentityFilePath(const std::string& name) {
-  return GetAbsolutePath(name);
-}
-
 }
 
 class FakeCastorApi::Connection : public std::enable_shared_from_this<Connection>, public SharedConstructor<Connection> {
