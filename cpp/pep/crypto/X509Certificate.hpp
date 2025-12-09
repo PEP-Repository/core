@@ -166,15 +166,16 @@ public:
 };
 
 
-class X509IdentityFilesConfiguration {
+class X509IdentityFiles {
 private:
   std::filesystem::path mPrivateKeyFilePath;
   std::filesystem::path mCertificateChainFilePath;
   X509Identity mIdentity;
 
 public:
-  X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix);
-  X509IdentityFilesConfiguration(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath);
+  X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath);
+
+  static X509IdentityFiles FromConfig(const Configuration& config, const std::string& keyPrefix);
 
   const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
   const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }

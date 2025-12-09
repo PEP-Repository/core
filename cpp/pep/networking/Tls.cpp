@@ -270,7 +270,7 @@ Tls::ClientParameters::ClientParameters(boost::asio::io_context& ioContext, EndP
   : TcpBasedProtocolImplementor<Tls>::ClientParameters(ioContext, std::move(endPoint)) {
 }
 
-Tls::ServerParameters::ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFilesConfiguration identity)
+Tls::ServerParameters::ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFiles identity)
   : TcpBasedProtocolImplementor<Tls>::ServerParameters(ioContext, port), mIdentity(std::move(identity)) {
 }
 

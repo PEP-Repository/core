@@ -947,13 +947,7 @@ X509Identity X509Identity::MakeSelfSigned(std::string organization, std::string 
   return X509Identity(std::move(keys).getPrivateKey(), X509CertificateChain({ std::move(cert) }));
 }
 
-X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix) : X509IdentityFilesConfiguration(
-  config.get<std::filesystem::path>(keyPrefix + "PrivateKeyFile"),
-  config.get<std::filesystem::path>(keyPrefix + "CertificateFile"),
-  config.get<std::filesystem::path>("CACertificateFile")) {
-}
-
-X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath)
+X509IdentityFiles::X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath)
   : mPrivateKeyFilePath(std::move(privateKeyFilePath)),
   mCertificateChainFilePath(std::move(certificateChainFilePath)),
   mIdentity(AsymmetricKey(ReadFile(mPrivateKeyFilePath)),
@@ -962,6 +956,13 @@ X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(std::filesystem::
   if (!mIdentity.getCertificateChain().verify(X509RootCertificates::FromFile(rootCaCertFilePath))) {
     throw std::runtime_error("X509 identity does not pass validation against root CAs");
   }
+}
+
+X509IdentityFiles X509IdentityFiles::FromConfig(const Configuration& config, const std::string& keyPrefix) {
+  return X509IdentityFiles(
+    config.get<std::filesystem::path>(keyPrefix + "PrivateKeyFile"),
+    config.get<std::filesystem::path>(keyPrefix + "CertificateFile"),
+    config.get<std::filesystem::path>("CACertificateFile"));
 }
 
 }

@@ -4,7 +4,7 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
 
-class TemporaryX509IdentityFiles : public pep::X509IdentityFilesConfiguration {
+class TemporaryX509IdentityFiles : public pep::X509IdentityFiles {
 private:
   pep::filesystem::Temporary mPrivateKeyFile;
   pep::filesystem::Temporary mCertificateChainFile;
@@ -12,7 +12,7 @@ private:
 
 private:
   TemporaryX509IdentityFiles(pep::filesystem::Temporary privateKeyFile, pep::filesystem::Temporary certificateChainFile, pep::filesystem::Temporary rootCaFile)
-    : X509IdentityFilesConfiguration(privateKeyFile.path(), certificateChainFile.path(), rootCaFile.path())
+    : X509IdentityFiles(privateKeyFile.path(), certificateChainFile.path(), rootCaFile.path())
     , mPrivateKeyFile(std::move(privateKeyFile)), mCertificateChainFile(std::move(certificateChainFile)), mRootCaFile(std::move(rootCaFile)) {
   }
 
