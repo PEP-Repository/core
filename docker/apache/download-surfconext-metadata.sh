@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 
+mkdir -p /metadata
 curl -o /metadata/surfconext.xml https://metadata.surfconext.nl/idp-metadata.xml
 validUntil="$(xmlstarlet sel -t -v '/md:EntityDescriptor/@validUntil' /metadata/surfconext.xml)"
 validUntilTimestamp="$(date --date="$validUntil" +%s)"
