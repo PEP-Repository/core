@@ -492,7 +492,7 @@ X509CertificateChain& X509CertificateChain::operator/=(X509Certificate leaf) {
   return *this;
 }
 
-bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { // TODO: move code to constructor; validate order
+bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { // TODO: move code to constructor; validate correct order (leaf first)
   // https://stackoverflow.com/questions/16291809/programmatically-verify-certificate-chain-using-openssl-api
   // https://stackoverflow.com/questions/3412032/how-do-you-verify-a-public-key-was-issued-by-your-private-ca
 
