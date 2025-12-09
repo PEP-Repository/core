@@ -22,16 +22,16 @@ private:
   static pep::filesystem::Temporary CreateTemporary(const std::filesystem::path& directory, const std::string& content) {
     assert(exists(directory));
 
-    // Generate a random nonexistent file path
+    // Generate a path to a file...
     std::filesystem::path file;
-    const std::string pattern(8U, '%');
+    const std::string pattern(8U, '%'); // ... with an 8-character random name...
     do {
       auto name = pep::filesystem::RandomizedName(pattern);
       file = directory / name;
-    } while (exists(file));
+    } while (exists(file)); // ... that does not exist (yet)
 
-    pep::filesystem::Temporary result(file); // Take ownership of the path immediately to ensure that it's deleted even if exceptions occur while writing the file
-    pep::WriteFile(result.path(), content);
+    pep::filesystem::Temporary result(file); // Take ownership of the path immediately to ensure that it's deleted even if exceptions occur while we write the file (below)
+    pep::WriteFile(result.path(), content); // (Create and) write the file
     return result;
   }
 
