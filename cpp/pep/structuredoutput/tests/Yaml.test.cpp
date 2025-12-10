@@ -8,34 +8,53 @@ namespace {
 namespace yaml = pep::structuredOutput::yaml;
 using pep::structuredOutput::Tree;
 
-TEST(structuredOutputYaml, ObjectFieldsAreInAlphabeticalOrder) {
+
+TEST(structuredOutputYaml, NakedValues) {
+  // naked values
+  EXPECT_EQ(yaml::to_string(Tree::FromJson("this string")), "\"this string\"\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(false)), "false\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(52)), "52\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(nullptr)), "null\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(nlohmann::json::object())), "{}\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(nlohmann::json::array())), "[]\n");
+}
+
+TEST(structuredOutputYaml, FlatArray) {
+  EXPECT_EQ(
+      yaml::to_string(
+          Tree::FromJson({"simple string", true, 17, nullptr, nlohmann::json::object(), nlohmann::json::array()})),
+      "- \"simple string\"\n"
+      "- true\n"
+      "- 17\n"
+      "- null\n"
+      "- {}\n"
+      "- []\n");
+}
+
+TEST(structuredOutputYaml, FlatMap) {
   EXPECT_EQ(
       yaml::to_string(Tree::FromJson({{"C", nullptr}, {"D", nullptr}, {"B", nullptr}, {"A", nullptr}})),
       "A: null\n"
       "B: null\n"
       "C: null\n"
-      "D: null\n");
-}
+      "D: null\n")
+      << "keys should appear in alphabetical order";
 
-TEST(structuredOutputYaml, AtomicValues) {
   EXPECT_EQ(
-      yaml::to_string(Tree::FromJson({{"key 1", "string"}, {"key 2", true}, {"key 3", 312}, {"key 4", nullptr}})),
+      yaml::to_string(
+          Tree::FromJson(
+              {{"key 1", "string"},
+               {"key 2", true},
+               {"key 3", 312},
+               {"key 4", nullptr},
+               {"key 5", nlohmann::json::object()},
+               {"key 6", nlohmann::json::array()}})),
       "key 1: \"string\"\n"
       "key 2: true\n"
       "key 3: 312\n"
-      "key 4: null\n");
-}
-
-TEST(structuredOutputYaml, FlatArray) {
-  EXPECT_EQ(
-      yaml::to_string(Tree::FromJson({"mon", "tue", "wed", "thu", "fri", "sat", "sun"})),
-      "- \"mon\"\n"
-      "- \"tue\"\n"
-      "- \"wed\"\n"
-      "- \"thu\"\n"
-      "- \"fri\"\n"
-      "- \"sat\"\n"
-      "- \"sun\"\n");
+      "key 4: null\n"
+      "key 5: {}\n"
+      "key 6: []\n");
 }
 
 TEST(structuredOutputYaml, ArrayOfObjects) {
@@ -77,7 +96,9 @@ TEST(structuredOutputYaml, MixedTree) {
           Tree::FromJson(
               {{"list", {1, {2, 3, 2}, 2, 5}},
                {"number", 141},
-               {"object", {{"left", {false, true}}, {"right", {{"first", 1}, {"second", 2}}}}}})),
+               {"object",
+                {{"left", {false, true}},
+                 {"right", {{"first", nlohmann::json::array()}, {"second", nlohmann::json::object()}}}}}})),
       "list: # size = 4\n"
       "  - 1\n"
       "  - # size = 3\n"
@@ -92,8 +113,8 @@ TEST(structuredOutputYaml, MixedTree) {
       "    - false\n"
       "    - true\n"
       "  right:\n"
-      "    first: 1\n"
-      "    second: 2\n");
+      "    first: []\n"
+      "    second: {}\n");
 }
 
 } // namespace
