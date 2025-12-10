@@ -18,6 +18,17 @@ TEST(structuredOutputYaml, NakedValues) {
   EXPECT_EQ(yaml::to_string(Tree::FromJson(nlohmann::json::array())), "[]\n");
 }
 
+TEST(structuredOutputYaml, StringLiteralEscaping) {
+  EXPECT_EQ(
+      yaml::to_string(Tree::FromJson({{"unquoted0", "always quote rhs"}, {"unquoted _key_", "escape \\ and \"!"}})),
+      "unquoted _key_: \"escape \\\\ and \\\"!\"\n"
+      "unquoted0: \"always quote rhs\"\n");
+  EXPECT_EQ(
+      yaml::to_string(Tree::FromJson({{"0key", "quote keys that do not start with alpha"}, {"k|:", "special chars"}})),
+      "\"0key\": \"quote keys that do not start with alpha\"\n"
+      "\"k|:\": \"special chars\"\n");
+}
+
 TEST(structuredOutputYaml, FlatArray) {
   EXPECT_EQ(
       yaml::to_string(
