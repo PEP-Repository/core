@@ -7,6 +7,7 @@
 namespace {
 namespace yaml = pep::structuredOutput::yaml;
 using pep::structuredOutput::Tree;
+using njs = nlohmann::json;
 
 TEST(structuredOutputYaml, NakedValues) {
   // naked values
@@ -14,8 +15,8 @@ TEST(structuredOutputYaml, NakedValues) {
   EXPECT_EQ(yaml::to_string(Tree::FromJson(false)), "false\n");
   EXPECT_EQ(yaml::to_string(Tree::FromJson(52)), "52\n");
   EXPECT_EQ(yaml::to_string(Tree::FromJson(nullptr)), "null\n");
-  EXPECT_EQ(yaml::to_string(Tree::FromJson(nlohmann::json::object())), "{}\n");
-  EXPECT_EQ(yaml::to_string(Tree::FromJson(nlohmann::json::array())), "[]\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(njs::object())), "{}\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(njs::array())), "[]\n");
 }
 
 TEST(structuredOutputYaml, StringLiteralEscaping) {
@@ -32,7 +33,7 @@ TEST(structuredOutputYaml, StringLiteralEscaping) {
 TEST(structuredOutputYaml, FlatArray) {
   EXPECT_EQ(
       yaml::to_string(
-          Tree::FromJson({"simple string", true, 17, nullptr, nlohmann::json::object(), nlohmann::json::array()}),
+          Tree::FromJson({"simple string", true, 17, nullptr, njs::object(), njs::array()}),
           {.includeArraySizeComments = true}), // we expect no comments here, since a naked list has no header element
       "- \"simple string\"\n"
       "- true\n"
@@ -58,8 +59,8 @@ TEST(structuredOutputYaml, FlatMap) {
                {"key 2", true},
                {"key 3", 312},
                {"key 4", nullptr},
-               {"key 5", nlohmann::json::object()},
-               {"key 6", nlohmann::json::array()}}),
+               {"key 5", njs::object()},
+               {"key 6", njs::array()}}),
           {.includeArraySizeComments = true}), // we expect no comments here
       "key 1: \"string\"\n"
       "key 2: true\n"
@@ -149,9 +150,7 @@ TEST(structuredOutputYaml, MixedTree) {
           Tree::FromJson(
               {{"list", {1, {2, 3, 2}, 2, 5}},
                {"number", 141},
-               {"object",
-                {{"left", {false, true}},
-                 {"right", {{"first", nlohmann::json::array()}, {"second", nlohmann::json::object()}}}}}}),
+               {"object", {{"left", {false, true}}, {"right", {{"first", njs::array()}, {"second", njs::object()}}}}}}),
           {.includeArraySizeComments = true}),
       "list: # size = 4\n"
       "  - 1\n"
