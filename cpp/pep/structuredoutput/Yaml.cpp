@@ -100,41 +100,39 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 /// @note DOES append a newline character to the output
 void SerializeJsonAsYaml(std::ostream& stream, nlohmann::json node, std::size_t indentLevel = {}) {
   const auto indent = std::string(2 * indentLevel, ' ');
-  const auto isAtomic = [](const nlohmann::json& node) { return !(node.is_object() || node.is_array()); };
+  const auto isAtomic = [](const nlohmann::json& node) {
+    return !(node.is_object() || node.is_array()) || node.empty();
+  };
   auto indentIfNotFirst = [first = true, &indent](std::ostream& stream) mutable {
     if (!first) { stream << indent; }
     first = false;
   };
 
   if (node.is_object()) {
-    for (auto it = node.begin(); it != node.end(); ++it) {
+    if (node.empty()) { stream << "{}\n"; }
+    else for (auto it = node.begin(); it != node.end(); ++it) {
       indentIfNotFirst(stream);
       stream << it.key() << ":";
 
-      if (isAtomic(*it)) {
-        stream << " ";
-        SerializeJsonAsYaml(stream, it.value(), indentLevel + 1);
-      }
+      if (isAtomic(*it)) { stream << " "; }
       else {
         if (it->is_array()) { stream << " # size = " << it->size(); }
         stream << '\n' << indent << "  ";
-        SerializeJsonAsYaml(stream, it.value(), indentLevel + 1);
       }
+      SerializeJsonAsYaml(stream, it.value(), indentLevel + 1);
     }
   }
   else if (node.is_array()) {
-    for (const auto& element : node) {
+    if (node.empty()) { stream << "[]\n"; }
+    else for (const auto& element : node) {
       indentIfNotFirst(stream);
       stream << "- ";
 
-      if (!element.is_array()) {
-        SerializeJsonAsYaml(stream, element, indentLevel + 1);
-      }
-      else {
+      if (element.is_array() && !element.empty()) {
         stream << "# size = " << element.size();
         stream << '\n' << indent << "  ";
-        SerializeJsonAsYaml(stream, element, indentLevel + 1);
       }
+      SerializeJsonAsYaml(stream, element, indentLevel + 1);
     }
   }
   else if (node.is_string()) {
