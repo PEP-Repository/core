@@ -100,17 +100,25 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 /// @note DOES append a newline character to the output
 void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::json node, std::size_t indentLevel = {}) {
   const auto indent = std::string(2 * indentLevel, ' ');
-  const auto isAtomic = [](const nlohmann::json& node) {
-    return !(node.is_object() || node.is_array()) || node.empty();
-  };
+
+  /// does nothing on the first call and appends indentation on subsequent calls
   auto indentIfNotFirst = [first = true, &indent](std::ostream& stream) mutable {
     if (!first) { stream << indent; }
     first = false;
   };
 
-  if (node.is_object()) {
-    if (node.empty()) { stream << "{}\n"; }
-    else for (auto it = node.begin(); it != node.end(); it++) {
+  const auto isAtomic = [](const nlohmann::json& node) {
+    return !(node.is_object() || node.is_array()) || node.empty();
+  };
+
+  if (node.is_null()) { stream << "null\n"; }
+  else if (node.is_number_integer()) { stream << std::to_string(node.get<int>()) + "\n"; }
+  else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
+  else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
+  else if (node.empty()) { stream << (node.is_array() ? "[]" : "{}") << "\n"; }
+  else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>()) << "\n"; }
+  else if (node.is_object()) {
+    for (auto it = node.begin(); it != node.end(); it++) {
       indentIfNotFirst(stream);
       stream << it.key() << ":";
 
@@ -123,8 +131,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
     }
   }
   else if (node.is_array()) {
-    if (node.empty()) { stream << "[]\n"; }
-    else for (const auto& element : node) {
+    for (const auto& element : node) {
       indentIfNotFirst(stream);
       stream << "- ";
 
@@ -135,14 +142,6 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
       SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
     }
   }
-  else if (node.is_string()) {
-    AppendStringLiteral(stream, node.get<std::string>());
-    stream << "\n";
-  }
-  else if (node.is_number_integer()) { stream << std::to_string(node.get<int>()) + "\n"; }
-  else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
-  else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
-  else if (node.is_null()) { stream << "null\n"; }
 }
 
 } // namespace
