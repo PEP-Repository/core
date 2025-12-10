@@ -98,7 +98,7 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 /// @note does NOT prefix the output with indentation,
 ///       the caller should make sure that the output stream is at the correct initial indentation level
 /// @note DOES append a newline character to the output
-void SerializeJsonAsYaml(std::ostream& stream, nlohmann::json node, std::size_t indentLevel = {}) {
+void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::json node, std::size_t indentLevel = {}) {
   const auto indent = std::string(2 * indentLevel, ' ');
   const auto isAtomic = [](const nlohmann::json& node) {
     return !(node.is_object() || node.is_array()) || node.empty();
@@ -110,16 +110,16 @@ void SerializeJsonAsYaml(std::ostream& stream, nlohmann::json node, std::size_t 
 
   if (node.is_object()) {
     if (node.empty()) { stream << "{}\n"; }
-    else for (auto it = node.begin(); it != node.end(); ++it) {
+    else for (auto it = node.begin(); it != node.end(); it++) {
       indentIfNotFirst(stream);
       stream << it.key() << ":";
 
       if (isAtomic(*it)) { stream << " "; }
       else {
-        if (it->is_array()) { stream << " # size = " << it->size(); }
+        if (it->is_array() && config.includeArraySizeComments) { stream << " # size = " << it->size(); }
         stream << '\n' << indent << "  ";
       }
-      SerializeJsonAsYaml(stream, it.value(), indentLevel + 1);
+      SerializeJsonAsYaml(stream, config, it.value(), indentLevel + 1);
     }
   }
   else if (node.is_array()) {
@@ -129,10 +129,10 @@ void SerializeJsonAsYaml(std::ostream& stream, nlohmann::json node, std::size_t 
       stream << "- ";
 
       if (element.is_array() && !element.empty()) {
-        stream << "# size = " << element.size();
+        if (config.includeArraySizeComments) stream << "# size = " << element.size();
         stream << '\n' << indent << "  ";
       }
-      SerializeJsonAsYaml(stream, element, indentLevel + 1);
+      SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
     }
   }
   else if (node.is_string()) {
@@ -148,8 +148,8 @@ void SerializeJsonAsYaml(std::ostream& stream, nlohmann::json node, std::size_t 
 } // namespace
 
 /// Appends a YAML representation of a tree to a stream
-std::ostream& append(std::ostream& stream, const Tree& tree) {
-  SerializeJsonAsYaml(stream, tree.toJson());
+std::ostream& append(std::ostream& stream, const Tree& tree, const Config config) {
+  SerializeJsonAsYaml(stream, config, tree.toJson());
   return stream;
 }
 
@@ -169,11 +169,12 @@ std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& res, Di
 
   return stream;
 }
+
 /// Converts a tree to string.
 /// @details This is a small wrapper around append for convenience.
-std::string to_string(const Tree& tree) {
+std::string to_string(const Tree& tree, const Config config) {
   std::ostringstream stream;
-  append(stream, tree);
+  append(stream, tree, config);
   std::cout << stream.str() << std::endl;
   return std::move(stream).str();
 }
