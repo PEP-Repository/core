@@ -27,7 +27,7 @@ struct EntryProperties final {
 PersistedEntryProperties AsPersistentEntryProperties(const EntryProperties vals) {
   PersistedEntryProperties persistedProps;
   SetPersistedEntryProperty(persistedProps, "filesize", vals.filesize);
-  SetPersistedEntryProperty(persistedProps, "pagesize", vals.filesize);
+  SetPersistedEntryProperty(persistedProps, "pagesize", vals.pagesize);
   return persistedProps;
 }
 
