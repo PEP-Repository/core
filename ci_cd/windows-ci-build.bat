@@ -76,7 +76,7 @@ pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   || exit /B 1
 
 REM Put windeployqt and cmake in path
-call .\generators\conanbuild.bat || exit /B 1
+call .\%BUILD_DIR%\generators\conanbuild.bat || exit /B 1
 
 echo Configuring CMake project.
 cmake --preset conan-default %PEP_CMAKE_DEFINES% || exit /B 1
