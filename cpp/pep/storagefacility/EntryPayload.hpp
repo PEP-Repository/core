@@ -41,7 +41,9 @@ public:
 
   /// True if both objects are of the exact same type AND they hold equivalent data
   bool isStrictlyEqualTo(const EntryPayload& other) const {
-    return this == std::addressof(other) || (typeid(*this) == typeid(other) && allMemberVarsAreEqual(other));
+    if (this == std::addressof(other)) return true;
+    if (typeid(*this) != typeid(other)) return false;
+    return allMemberVarsAreEqual(other);
   };
 
   virtual size_t pageCount() const noexcept = 0;
