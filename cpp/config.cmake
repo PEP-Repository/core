@@ -1,5 +1,5 @@
 # This file defines settings applicable to all (C and) C++ targets (including external ones).
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.20...4.2)
 
 enable_language(C CXX)
 
