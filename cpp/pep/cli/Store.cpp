@@ -4,7 +4,7 @@
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/archiving/Pseudonymiser.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/archiving/Tar.hpp>
 #include <pep/utils/Stream.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -78,7 +78,7 @@ void AddSpecifiedMetadata(std::map<std::string, pep::MetadataXEntry>& metadata, 
     pep::proto::NamedMetadataXEntry e;
     auto status = google::protobuf::util::JsonStringToMessage(json, &e);
     if (!status.ok()) {
-      std::stringstream ss;
+      std::ostringstream ss;
       ss << "Parsing metadata entry " << std::quoted(json) << " failed";
       ss << ": " << status;
       throw std::runtime_error(std::move(ss).str());
@@ -94,7 +94,7 @@ void AddSpecifiedMetadata(std::map<std::string, pep::MetadataXEntry>& metadata, 
       entry
       });
     if (!inserted) {
-      std::stringstream ss;
+      std::ostringstream ss;
       ss << "metadata entry " << std::quoted(e.name())
         << " specified twice.";
       throw std::runtime_error(std::move(ss).str());
@@ -186,7 +186,7 @@ void CheckSymlinkAllowed(const std::filesystem::path& inpath, bool shouldResolve
     for (auto &path : foundSymlinks){
       message << path.string() << "\n";
     }
-    throw std::runtime_error(message.str());
+    throw std::runtime_error(std::move(message).str());
   }
 }
 
@@ -381,7 +381,7 @@ protected:
     }
 
     return store
-      .op(pep::RxGetOne("storage result"))
+      .op(pep::RxGetOne())
       .map([](pep::DataStorageResult2 res) {
         pt::ptree out;
         out.put("id", boost::algorithm::hex(res.mIds[0]));

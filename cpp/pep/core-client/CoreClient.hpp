@@ -2,25 +2,23 @@
 
 #include <pep/core-client/CoreClient_fwd.hpp>
 
-#include <pep/accessmanager/AccessManagerMessages.hpp>
-#include <pep/accessmanager/AmaMessages.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/WorkerPool.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
-#include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/messaging/MessageSequence.hpp>
-#include <pep/messaging/ServerConnection.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/server/MonitoringMessages.hpp>
-#include <pep/storagefacility/StorageFacilityMessages.hpp>
+#include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
+#include <pep/transcryptor/TranscryptorProxy.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
 
 #include <cstddef>
@@ -41,8 +39,7 @@ namespace pep {
 struct EnrollmentResult {
   ElgamalPrivateKey privateKeyData;
   ElgamalPrivateKey privateKeyPseudonyms;
-  AsymmetricKey privateKey;
-  X509CertificateChain certificateChain;
+  X509Identity signingIdentity;
 
   void writeJsonTo(std::ostream& os, bool writeDataKey = true, bool writePrivateKey = true, bool writeCertificateChain = true) const;
 };
@@ -87,15 +84,27 @@ struct EnumerateResult : public DataCellResult {
   std::string mId;
 };
 
-struct RetrieveResult {
-  /// Index of the file this result belongs to
-  uint32_t mIndex{};
+struct FileKey {
+  std::uint32_t fileIndex{};
+  std::shared_ptr<EnumerateResult> entry;
+  std::string symmetricKey;
 
-  /// Decrypted metadata of the file
-  Metadata mMetadataDecrypted;
+  [[nodiscard]] Metadata decryptMetadata() const {
+    return entry->mMetadata.decrypt(symmetricKey);
+  }
+};
 
-  /// Content of the file, if requested
-  std::optional<rxcpp::observable<std::string>> mContent;
+struct RetrievePage {
+  std::uint32_t fileIndex{};
+
+  /// EnumerateResult for the file this page belongs to
+  std::shared_ptr<EnumerateResult> entry;
+
+  /// A piece of the content of the file
+  std::string content;
+
+  /// Is this the last page?
+  bool last{};
 };
 
 // Represents a file retrieved using enumerateAndRetrieveData2.
@@ -114,7 +123,7 @@ struct EnumerateAndRetrieveResult : public EnumerateResult {
 // Result of a getHistory2 or deleteData2 call
 struct HistoryResult : public DataCellResult {
   Timestamp mTimestamp;
-  std::optional<std::string> mId;
+  std::optional<std::string> mId{};
 };
 
 // Used as parameter to CoreClient::deleteData2
@@ -240,7 +249,7 @@ class ShortPseudonymContextError : public std::runtime_error {
   {}
 };
 
-class CoreClient : boost::noncopyable {
+class CoreClient : protected MessageSigner, boost::noncopyable {
  public:
   static constexpr size_t DATA_RETRIEVAL_BATCH_SIZE{4000};
 
@@ -248,13 +257,11 @@ class CoreClient : boost::noncopyable {
   std::shared_ptr<boost::asio::io_context> io_context;
   std::optional<std::filesystem::path> keysFilePath;
   const std::filesystem::path caCertFilepath;
-  AsymmetricKey privateKey;
   std::shared_ptr<WorkerPool> mWorkerPool = nullptr;
 
   std::shared_ptr<WorkerPool> getWorkerPool();
 
   X509RootCertificates rootCAs;
-  X509CertificateChain certificateChain;
 
   ElgamalPrivateKey privateKeyData;
   const ElgamalPublicKey publicKeyData;
@@ -266,9 +273,9 @@ class CoreClient : boost::noncopyable {
   const EndPoint storageFacilityEndPoint;
   const EndPoint transcryptorEndPoint;
 
-  std::shared_ptr<messaging::ServerConnection> clientAccessManager;
-  std::shared_ptr<messaging::ServerConnection> clientStorageFacility;
-  std::shared_ptr<messaging::ServerConnection> clientTranscryptor;
+  std::shared_ptr<AccessManagerProxy> accessManagerProxy;
+  std::shared_ptr<StorageFacilityProxy> storageFacilityProxy;
+  std::shared_ptr<TranscryptorProxy> transcryptorProxy;
 
   rxcpp::subjects::subject<int> registrationSubject;
   rxcpp::subjects::subject<EnrollmentResult> enrollmentSubject;
@@ -300,19 +307,11 @@ class CoreClient : boost::noncopyable {
       return caCertFilepath;
     }
 
-    const AsymmetricKey& getPrivateKey() const {
-      return privateKey;
+    std::shared_ptr<const X509Identity> getSigningIdentity() const {
+      return signingIdentity;
     }
-    Builder& setPrivateKey(const AsymmetricKey& privateKey) {
-      Builder::privateKey = privateKey;
-      return *this;
-    }
-
-    const X509CertificateChain& getCertificateChain() const {
-      return certificateChain;
-    }
-    Builder& setCertificateChain(const X509CertificateChain& certificateChain) {
-      Builder::certificateChain = certificateChain;
+    Builder& setSigningIdentity(std::shared_ptr<const X509Identity> identity) {
+      Builder::signingIdentity = identity;
       return *this;
     }
 
@@ -377,6 +376,9 @@ class CoreClient : boost::noncopyable {
                     bool persistKeysFile);
 
     std::shared_ptr<CoreClient> build() const {
+      if (signingIdentity == nullptr) {
+        throw std::runtime_error("signingIdentity must be set");
+      }
       return std::shared_ptr<CoreClient>(new CoreClient(*this));
     }
 
@@ -384,8 +386,7 @@ class CoreClient : boost::noncopyable {
     std::shared_ptr<boost::asio::io_context> io_context;
     std::optional<std::filesystem::path> keysFilePath;
     std::filesystem::path caCertFilepath;
-    AsymmetricKey privateKey;
-    X509CertificateChain certificateChain;
+    std::shared_ptr<const X509Identity> signingIdentity;
     ElgamalPrivateKey privateKeyData;
     ElgamalPrivateKey privateKeyPseudonyms;
     ElgamalPublicKey publicKeyData;
@@ -432,7 +433,7 @@ class CoreClient : boost::noncopyable {
   std::string getEnrolledUser() const;
 
   /*!
-   * \brief Enroll a non-user facility. The type of facility is inferred from this CoreClient's certificate chain.
+   * \brief Enroll a server. The type of server is inferred from this CoreClient's certificate chain.
    *
    * \return rxcpp::observable< EnrollmentResult >
    */
@@ -486,31 +487,49 @@ class CoreClient : boost::noncopyable {
   rxcpp::observable<IndexedTicket2>
   requestTicket2(const requestTicket2Opts& opts);
 
-  /*!
-   * \brief Enumerate data using a pre-requested ticket.
-   */
-  rxcpp::observable<std::vector<EnumerateResult>>
-  enumerateData2(std::shared_ptr<SignedTicket2> ticket);
+  /// Enumerate cells using a pre-requested ticket.
+  rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
+  enumerateData(std::shared_ptr<SignedTicket2> ticket);
 
   /*!
-   * \brief Enuremate data using new API.
+   * \brief Enumerate cells after requesting a new ticket.
    * \remark Results won't include (local) pseudonyms for the access group.
    */
-  rxcpp::observable<std::vector<EnumerateResult>>
-  enumerateData2(
+  rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
+  enumerateData(
     const std::vector<std::string>& groups=std::vector<std::string>(),
     const std::vector<PolymorphicPseudonym>& pps = {},
     const std::vector<std::string>& columnGroups=std::vector<std::string>(),
     const std::vector<std::string>& columns=std::vector<std::string>());
 
-  rxcpp::observable<EnumerateResult>
-  getMetadata(const std::vector<std::string>& ids, std::shared_ptr<SignedTicket2> ticket);
+  /// Enumerate cells by ID.
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
+  rxcpp::observable<rxcpp::observable<std::shared_ptr<EnumerateResult>>>
+  enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<SignedTicket2> ticket);
 
-  rxcpp::observable<std::shared_ptr<RetrieveResult>>
-  retrieveData2(
-    const rxcpp::observable<EnumerateResult>& subjects,
-    std::shared_ptr<SignedTicket2> ticket,
-    bool includeContent);
+  /// Get (meta)data decryption keys.
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
+  rxcpp::observable<rxcpp::observable<FileKey>>
+  getKeys(
+    const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
+    std::shared_ptr<SignedTicket2> ticket);
+
+  /// Retrieve cell contents.
+  /// First calls \c getKeys, then calls the \c FileKey overload.
+  /// Use this overload when decrypted metadata is not required.
+  rxcpp::observable<rxcpp::observable<RetrievePage>>
+  retrieveData(
+    const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
+    std::shared_ptr<SignedTicket2> ticket);
+
+  /// Retrieve cell contents.
+  /// \param batchedSubjects Must be split in batches of \c DATA_RETRIEVAL_BATCH_SIZE (usually by \c getKeys)
+  /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
+  /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
+  rxcpp::observable<rxcpp::observable<RetrievePage>>
+  retrieveData(
+    const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
+    std::shared_ptr<SignedTicket2> ticket);
 
   /*!
  * \brief Retrieve history using a pre-requested ticket.
@@ -521,21 +540,6 @@ class CoreClient : boost::noncopyable {
       const std::optional<std::vector<std::string>>& columns = std::nullopt);
 
   rxcpp::observable<std::shared_ptr<GlobalConfiguration>> getGlobalConfiguration();
-  rxcpp::observable<VerifiersResponse> getRSKVerifiers();
-
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> getColumnNameMappings();
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> readColumnNameMapping(const ColumnNameSection& original);
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> createColumnNameMapping(const ColumnNameMapping& mapping);
-  rxcpp::observable<std::shared_ptr<ColumnNameMappings>> updateColumnNameMapping(const ColumnNameMapping& mapping);
-  rxcpp::observable<FakeVoid> deleteColumnNameMapping(const ColumnNameSection& original);
-
-  // Get/set non-cell metadata
-  rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> getStructureMetadata(
-      StructureMetadataType subjectType,
-      std::vector<std::string> subjects,
-      std::vector<StructureMetadataKey> keys = {});
-  rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, rxcpp::observable<std::shared_ptr<StructureMetadataEntry>> entries);
-  rxcpp::observable<FakeVoid> removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys);
 
   static constexpr bool DEFAULT_PERSIST_KEYS_FILE = true;
 
@@ -544,6 +548,8 @@ class CoreClient : boost::noncopyable {
       std::shared_ptr<boost::asio::io_context> io_context = nullptr,
       bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
 
+  using ServerProxies = std::unordered_map<ServerTraits, std::shared_ptr<const ServerProxy>>;
+
 protected:
   /*! \brief constructor for CoreClient
    *
@@ -551,20 +557,11 @@ protected:
    */
   CoreClient(const Builder& builder);
 
-  /// Returns a signed copy of \p msg, using the details of the current interactive user
-  template <typename MessageP, typename Message = std::remove_cvref_t<MessageP>>
-  Signed<Message> sign(MessageP&& msg) {
-    static_assert(std::is_same_v<Message, std::remove_cvref_t<MessageP>>); // enforce the default type for Message
-    return {std::forward<MessageP>(msg), certificateChain, privateKey};
-  }
-
-  std::shared_ptr<messaging::ServerConnection> tryConnectTo(const EndPoint& endPoint);
-  rxcpp::observable<VersionResponse> tryGetServerVersion(std::shared_ptr<messaging::ServerConnection> connection) const;
-  rxcpp::observable<SignedPingResponse> pingSigningServer(std::shared_ptr<messaging::ServerConnection> connection) const;
+  template <typename TProxy>
+  std::shared_ptr<TProxy> tryConnectServerProxy(const EndPoint& endPoint) const;
 
   struct EnrollmentContext {
-    std::shared_ptr<AsymmetricKey> privateKey;
-    X509CertificateChain certificateChain;
+    std::shared_ptr<const X509Identity> identity;
     CurveScalar alpha, beta;
     CurveScalar gamma, delta;
     SignedKeyComponentRequest keyComponentRequest;
@@ -572,31 +569,29 @@ protected:
 
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
 
+  template <typename T>
+  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> proxy, const ServerTraits& traits, bool require) {
+    if (require && proxy == nullptr) {
+      // TODO: refactor so that CoreClient and derived class instances cannot exist without instantiating their individual ServerProxy fields
+      throw std::runtime_error("Not connected to " + traits.description());
+    }
+    return proxy;
+  }
+
+  static bool AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy);
+
 public:
   virtual ~CoreClient() noexcept = default;
-
-  rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {});
-  rxcpp::observable<std::string> getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns);
-  rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted);
 
   rxcpp::observable<int> getRegistrationExpiryObservable();
   inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath; }
 
-  rxcpp::observable<ConnectionStatus> getAccessManagerConnectionStatus();
-  rxcpp::observable<ConnectionStatus> getStorageFacilityStatus();
-  rxcpp::observable<ConnectionStatus> getTranscryptorStatus();
+  std::shared_ptr<const StorageFacilityProxy> getStorageFacilityProxy(bool require = true) const;
+  std::shared_ptr<const TranscryptorProxy> getTranscryptorProxy(bool require = true) const;
+  std::shared_ptr<const AccessManagerProxy> getAccessManagerProxy(bool require = true) const;
 
-  rxcpp::observable<VersionResponse> getAccessManagerVersion();
-  rxcpp::observable<VersionResponse> getTranscryptorVersion();
-  rxcpp::observable<VersionResponse> getStorageFacilityVersion();
-
-  rxcpp::observable<SignedPingResponse> pingAccessManager() const;
-  rxcpp::observable<SignedPingResponse> pingTranscryptor() const;
-  rxcpp::observable<SignedPingResponse> pingStorageFacility() const;
-
-  rxcpp::observable<MetricsResponse> getAccessManagerMetrics();
-  rxcpp::observable<MetricsResponse> getTranscryptorMetrics();
-  rxcpp::observable<MetricsResponse> getStorageFacilityMetrics();
+  virtual ServerProxies getServerProxies(bool requireAll) const;
+  std::shared_ptr<const ServerProxy> getServerProxy(const ServerTraits& traits) const;
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);
@@ -606,105 +601,15 @@ public:
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const;
   virtual rxcpp::observable<FakeVoid> shutdown();
 
-  //
-  // Access manager administration API
-  //
-  rxcpp::observable<FakeVoid>
-  amaCreateColumn(std::string name);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumn(std::string name);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateColumnGroup(std::string name);
-
-  /*!
-   * Removes the column group named \a name
-   * @param force determines how associated columns and access rules
-   *        are handled\n
-   *        \c false - the removal of the group is aborted\n
-   *        \c true - the associated data is also removed
-   */
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumnGroup(std::string name, bool force);
-
-  rxcpp::observable<FakeVoid>
-  amaAddColumnToGroup(std::string column, std::string group);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumnFromGroup(std::string column, std::string group);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateParticipantGroup(std::string name);
-
-  /*!
-   * Removes the participant group named \a name
-   * @param force determines how associated participant connections and access rules
-   *        are handled\n
-   *        \c false - the removal of the group is aborted\n
-   *        \c true - the associated data is also removed
-   */
-  rxcpp::observable<FakeVoid>
-  amaRemoveParticipantGroup(std::string name, bool force);
-
-  rxcpp::observable<FakeVoid>
-  amaAddParticipantToGroup(std::string group, const PolymorphicPseudonym& participant);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveParticipantFromGroup(std::string group, const PolymorphicPseudonym& participant);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateColumnGroupAccessRule(std::string columnGroup,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveColumnGroupAccessRule(std::string columnGroup,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<FakeVoid>
-  amaCreateGroupAccessRule(std::string group,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<FakeVoid>
-  amaRemoveGroupAccessRule(std::string group,
-      std::string accessGroup, std::string mode);
-
-  rxcpp::observable<AmaQueryResponse>
-  amaQuery(AmaQuery query);
-
-  //
-  // User administration API
-  //
-  rxcpp::observable<FakeVoid> createUser(std::string uid);
-
-  rxcpp::observable<FakeVoid> removeUser(std::string uid);
-
-  rxcpp::observable<FakeVoid> addUserIdentifier(std::string existingUid, std::string newUid);
-
-  rxcpp::observable<FakeVoid> removeUserIdentifier(std::string uid);
-
-  rxcpp::observable<FakeVoid> createUserGroup(UserGroup userGroup);
-
-  rxcpp::observable<FakeVoid> modifyUserGroup(UserGroup userGroup);
-
-  rxcpp::observable<FakeVoid> removeUserGroup(std::string name);
-
-  rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group);
-
-  rxcpp::observable<FakeVoid> removeUserFromGroup(std::string uid, std::string group, bool blockTokens);
-
-  rxcpp::observable<UserQueryResponse> userQuery(UserQuery query);
-
   // Private helpers
  private:
   struct AESKey;
 
-  rxcpp::observable<FakeVoid> amaRequestMutation(AmaMutationRequest request);
   // Unblinds and decrypt keys for entries.  The provided ticket should be
   // the same as used to retrieve the entries.
   rxcpp::observable<std::vector<AESKey>>
   unblindAndDecryptKeys(
-      const std::vector<EnumerateResult>& entries,
+      std::span<const std::shared_ptr<EnumerateResult>> entries,
       std::shared_ptr<SignedTicket2> ticket);
 
   // Assigns encrypted and blinded keys to (entries in) a data storage request.
@@ -714,18 +619,9 @@ public:
 
   class TicketPseudonyms;
 
-  std::vector<EnumerateResult> convertDataEnumerationEntries(
-    const std::vector<DataEnumerationEntry2>& entries,
-    const TicketPseudonyms& pseudonyms) const;
-
-  /// Returns a signed copy of \p msg, using the details of the current interactive use
-  /// @note This overload returns \c SignedTicketRequest2 and thus has a slightly different function signature.
-  SignedTicketRequest2 sign(TicketRequest2 msg) {
-    return SignedTicketRequest2{std::move(msg), certificateChain, privateKey};
-  }
-
-  rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request);
-
+  static std::vector<std::shared_ptr<EnumerateResult>> ConvertDataEnumerationEntries(
+    std::vector<DataEnumerationEntry2>&& entries,
+    const TicketPseudonyms& pseudonyms);
 };
 
 struct CoreClient::AESKey {
@@ -750,5 +646,14 @@ public:
   std::shared_ptr<LocalPseudonyms> getLocalPseudonyms(uint32_t index) const { return mPseudonyms.at(index); }
   std::shared_ptr<LocalPseudonym> getAccessGroupPseudonym(uint32_t index) const; // Returns NULL if ticket didn't include access group pseudonyms
 };
+
+template <typename TProxy>
+std::shared_ptr<TProxy> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {
+  auto untyped = messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
+  if (untyped == nullptr) {
+    return nullptr;
+  }
+  return std::make_shared<TProxy>(untyped, static_cast<const MessageSigner&>(*this));
+}
 
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.20...4.2)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(PATH_DELIMITER ";")

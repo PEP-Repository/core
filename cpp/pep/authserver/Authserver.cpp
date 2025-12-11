@@ -3,6 +3,7 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/server/MonitoringSerializers.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 
@@ -17,7 +18,7 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
   EndPoint accessManagerEndPoint;
 
   try {
-    accessManagerEndPoint = config.get<EndPoint>("AccessManager");
+    accessManagerEndPoint = config.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -25,8 +26,7 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
   }
 
   backendParams.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
-  backendParams.setCertificateChain(getCertificateChain());
-  backendParams.setPrivateKey(getPrivateKey());
+  backendParams.setSigningIdentity(getSigningIdentity());
 }
 
 const AuthserverBackend::Parameters& Authserver::Parameters::getBackendParams() const {
@@ -79,9 +79,6 @@ Authserver::Authserver(std::shared_ptr<Parameters> parameters)
   RegisterRequestHandlers(*this,
                           &Authserver::handleTokenRequest,
                           &Authserver::handleChecksumChainRequest); //This overwrites the handler in MonitorableServer with our own handler
-}
-std::string Authserver::describe() const {
-  return "Authserver";
 }
 
 }

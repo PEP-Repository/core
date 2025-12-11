@@ -37,10 +37,10 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Md5.cpp Md5.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
-    MultiTypeTransform.hpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
     Paths.cpp Paths.hpp
+    PlainTypeName.hpp PlainTypeName.cpp
     Platform.cpp Platform.hpp
     Progress.cpp Progress.hpp
     PropertyBasedContainer.hpp
@@ -52,6 +52,8 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Shared.hpp
     Singleton.hpp
     Stream.cpp Stream.hpp
+    StringStream.cpp StringStream.hpp
+    TaggedValue.hpp
     ThreadUtil.cpp ThreadUtil.hpp
     TypeTraits.hpp
     VectorOfVectors.hpp
@@ -76,7 +78,6 @@ target_link_libraries(${PROJECT_NAME}Utilslib
   Boost::headers
   Boost::log
   Boost::log_setup
-  Boost::system
   OpenSSL::Crypto
   xxHash::xxhash
 )
@@ -90,6 +91,7 @@ if (WITH_TESTS)
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
+    VerifyBackwardCompatibleSerialization.hpp
     TestTiming.hpp
   )
   find_package(GTest REQUIRED)

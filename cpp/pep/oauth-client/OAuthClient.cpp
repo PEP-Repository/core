@@ -66,7 +66,7 @@ namespace {
     }
 
     uint8_t get() override {
-      uint8_t raw;
+      uint8_t raw{};
       do {
         raw = mRawProvider.get();
       } while (raw >= mRawMaximum);
@@ -214,7 +214,7 @@ rxcpp::observable<std::string> OAuthClient::doTokenRequest(const std::string& co
         oss << "An unexpected error occurred while requesting a token." << std::endl;
         oss << "Status: " << response.getStatusCode() << " " << response.getStatusMessage();
         oss << "contents: " << response.getBody();
-        throw std::runtime_error(oss.str());
+        throw std::runtime_error(std::move(oss).str());
       }
       throw OAuthError(error, description);
     }

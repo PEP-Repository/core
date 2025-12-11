@@ -96,7 +96,7 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
     auto refuse = binary.isGitlabBuild() && BinaryVersion::current.isGitlabBuild(); // TODO: perhaps make this depend on ConfigVersion::getReference() == "local"?
 
     std::string msg;
-    severity_level severity;
+    severity_level severity{};
     if (refuse) {
       msg = "Refusing";
       severity = error;

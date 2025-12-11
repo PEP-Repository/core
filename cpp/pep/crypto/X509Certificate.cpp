@@ -41,9 +41,6 @@ constexpr std::chrono::seconds MAX_PEP_CERTIFICATE_VALIDITY_PERIOD = std::chrono
 
 namespace {
 
-const std::string intermediateServerCaCommonName = "PEP Intermediate PEP Server CA";
-const std::string intermediateServerTlsCaCommonName = "PEP Intermediate TLS CA";
-
 std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
 
   int index = X509_NAME_get_index_by_NID(name, nid, -1);
@@ -65,7 +62,7 @@ std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
   }
 
   // Convert ASN1_STRING to UTF-8, ASN1_STRING_to_UTF8 allocates memory for the UTF-8 string
-  unsigned char* utf8;
+  unsigned char* utf8{};
   int length = ASN1_STRING_to_UTF8(&utf8, data);
 
   // Free the UTF-8 string allocated by ASN1_STRING_to_UTF8
@@ -108,7 +105,7 @@ bool VerifyKeyIdentifier(const ASN1_OCTET_STRING* ki, const X509* cert) {
   return kiView == hashView;
 }
 
-std::chrono::system_clock::time_point ConvertASN1TimeToTimePoint(const ASN1_TIME* asn1Time) {
+std::chrono::sys_seconds ConvertASN1TimeToTimePoint(const ASN1_TIME* asn1Time) {
   // Convert ASN1_TIME to struct tm
   std::tm timeTm{};
   if (ASN1_TIME_to_tm(asn1Time, &timeTm) <= 0) {
@@ -116,8 +113,8 @@ std::chrono::system_clock::time_point ConvertASN1TimeToTimePoint(const ASN1_TIME
   }
 
   // Convert std::tm to time_point
-  std::time_t time_in_time_t = timegm(&timeTm); // Use timegm to get time in UTC
-  return std::chrono::system_clock::from_time_t(time_in_time_t);
+  std::time_t time_in_time_t = ::timegm(&timeTm); // Use timegm to get time in UTC
+  return time_point_cast<std::chrono::seconds>(std::chrono::system_clock::from_time_t(time_in_time_t));
 }
 
 } // namespace
@@ -279,26 +276,7 @@ std::optional<std::string> X509Certificate::getIssuerCommonName() const {
   return SearchOIDinName(issuerName, NID_commonName);
 }
 
-/**
- * @brief Check if the X509Certificate is a PEP/TLS certificate for a PEP server.
- */
-bool X509Certificate::isPEPServerCertificate() const {
-  if (getCommonName() != getOrganizationalUnit()) {
-    return false;
-  }
-
-  auto issuerCn = getIssuerCommonName();
-
-  // If the certificate has the TLS server EKU, check if the issuer is the intermediate TLS CA
-  if (hasTLSServerEKU()) {
-    return (issuerCn == intermediateServerTlsCaCommonName);
-  }
-
-  // If not a TLS server certificate, check if it is a PEP server certificate
-  return (issuerCn == intermediateServerCaCommonName);
-}
-
-std::chrono::system_clock::time_point X509Certificate::getNotBefore() const {
+std::chrono::sys_seconds X509Certificate::getNotBefore() const {
   if (!mInternal) {
     throw std::runtime_error("Invalid X509 structure");
   }
@@ -307,7 +285,7 @@ std::chrono::system_clock::time_point X509Certificate::getNotBefore() const {
   return ConvertASN1TimeToTimePoint(notBefore);
 }
 
-std::chrono::system_clock::time_point X509Certificate::getNotAfter() const {
+std::chrono::sys_seconds X509Certificate::getNotAfter() const {
   if (!mInternal) {
     throw std::runtime_error("Invalid X509 structure");
   }
@@ -444,6 +422,10 @@ std::string X509Certificates::toPem() const {
   }
 
   return out;
+}
+
+bool X509Certificates::isCurrentTimeInValidityPeriod() const {
+  return std::all_of(this->begin(), this->end(), std::mem_fn(&X509Certificate::isCurrentTimeInValidityPeriod));
 }
 
 bool X509CertificateChain::certifiesPrivateKey(const AsymmetricKey& privateKey) const {
@@ -896,6 +878,28 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
   return X509Certificate(cert);
 }
 
+X509Identity::X509Identity(AsymmetricKey privateKey)
+  : mPrivateKey(std::move(privateKey)) {
+  if (!mPrivateKey.isSet()) {
+    throw std::runtime_error("privateKey must be set");
+  }
+}
+
+X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain)
+  : X509Identity(std::move(privateKey)) {
+  mCertificateChain = std::move(certificateChain);
+  if (mCertificateChain.empty()) {
+    throw std::runtime_error("certificateChain must not be empty");
+  }
+  if (!mCertificateChain.certifiesPrivateKey(mPrivateKey)) {
+    throw std::runtime_error("certificateChain does not match private key");
+  }
+}
+
+X509Identity X509Identity::MakeUncertified(AsymmetricKey privateKey) {
+  return X509Identity(std::move(privateKey));
+}
+
 X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix)
   : X509IdentityFilesConfiguration(config.get<std::filesystem::path>(keyPrefix + "PrivateKeyFile"), config.get<std::filesystem::path>(keyPrefix + "CertificateFile")) {
 }
@@ -903,20 +907,8 @@ X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configurati
 X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const std::filesystem::path& privateKeyFilePath, const std::filesystem::path& certificateChainFilePath)
   : mPrivateKeyFilePath(privateKeyFilePath),
   mCertificateChainFilePath(certificateChainFilePath),
-  mPrivateKey(ReadFile(mPrivateKeyFilePath)),
-  mCertificateChain(ReadFile(mCertificateChainFilePath)) {
-
-  LOG(LOG_TAG, debug) << "Adding X509IdentityFiles from Configuration";
-
-  if (!mPrivateKey.isSet()) {
-    throw std::runtime_error("privateKey must be set");
-  }
-  if (mCertificateChain.empty()) {
-    throw std::runtime_error("certificateChain must not be empty");
-  }
-  if (!mCertificateChain.certifiesPrivateKey(mPrivateKey)) {
-    throw std::runtime_error("certificateChain does not match private key");
-  }
+  mIdentity(AsymmetricKey(ReadFile(mPrivateKeyFilePath)), X509CertificateChain(ReadFile(mCertificateChainFilePath))) {
+  LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
 }
 
 }

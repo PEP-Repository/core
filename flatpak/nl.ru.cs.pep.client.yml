@@ -1,6 +1,6 @@
 id: nl.ru.cs.pep.client
 runtime: org.kde.Platform
-runtime-version: '6.7'
+runtime-version: '6.8' # Keep consistent with nl.ru.cs.pep.base.yml in docker-build
 sdk: org.kde.Sdk
 base: nl.ru.cs.pep.base
 command: run.sh

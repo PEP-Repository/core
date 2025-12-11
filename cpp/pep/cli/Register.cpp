@@ -4,7 +4,9 @@
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/content/Date.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -23,7 +25,7 @@ public:
 
 private:
   std::optional<int> handleVerification(const pep::ParticipantPersonalia& personalia, bool isTestParticipant, bool force) {
-    if(!pep::Date::MatchesDdMmYyyyFormat(personalia.getDateOfBirth())) {
+    if(!pep::TryParseDdMmYyyy(personalia.getDateOfBirth())) {
       throw std::runtime_error("Entered date was not valid, please use the dd-mm-yyyy format.");
     }
 
@@ -74,7 +76,7 @@ private:
   int generateParticipantID() {
     return this->executeEventLoopFor(
     [](std::shared_ptr<pep::Client> client) {
-      return client->generatePEPID()
+      return client->getRegistrationServerProxy()->registerPepId()
         .op(ProcessGeneratedID);
     });
   }
@@ -149,7 +151,7 @@ private:
         std::cout << "Enter the participants date of birth, please use the dd-mm-yyyy format: " << std::endl;
         getline(std::cin, dateOfBirth);
 
-        dateValid = pep::Date::MatchesDdMmYyyyFormat(dateOfBirth);
+        dateValid = pep::TryParseDdMmYyyy(dateOfBirth).has_value();
         if (!dateValid) {
           std::cout << "Entered date was not valid, please use the dd-mm-yyyy format." << std::endl;
         }
@@ -158,8 +160,8 @@ private:
       // Get whether it's a test participant
       std::optional<bool> isTestParticipant;
       do {
-        char testParticipantYn;
         std::cout << "Register as a test participant (y/n)? ";
+        char testParticipantYn{};
         std::cin >> testParticipantYn;
 
         switch (testParticipantYn) {
@@ -228,7 +230,7 @@ private:
             std::ostringstream pidss;
             const auto& format = (*gcPtr)->getGeneratedParticipantIdentifierFormat();
             pidss << format.getPrefix() << std::setfill('0') << std::setw(static_cast<int>(*format.getTotalNumberOfDigits())) << i;
-            auto pid = pidss.str();
+            auto pid = std::move(pidss).str();
             pids->push(pid);
             auto pp = std::make_shared<pep::PolymorphicPseudonym>(
               client->generateParticipantPolymorphicPseudonym(pid));
@@ -318,9 +320,9 @@ private:
             .concat_map([client](std::shared_ptr<pep::enumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
             .as_dynamic() // Reduce compiler memory usage
             .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.mLocalPseudonymsIndex; })) // Group by participant
-            .concat_map([](auto participants) { return rxcpp::observable<>::iterate(*participants); }) // Iterate over participants
+            .concat_map([](auto participants) { return RxIterate(std::move(*participants)); }) // Iterate over participants
             .map([](const std::pair<const uint32_t, std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>>>& pair) {return pair.second; }) // Keep only (shared_ptr to) vector of fields
-            .concat_map([client, id, spCount](std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>> fields) -> rxcpp::observable<std::shared_ptr<pep::RegistrationResponse>> {
+            .concat_map([client, id, spCount](std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>> fields) -> rxcpp::observable<pep::FakeVoid> {
             auto idField = std::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.mColumn == "ParticipantIdentifier"; });
             if (idField == fields->cend()) {
               assert(spCount >= fields->size());
@@ -336,7 +338,7 @@ private:
               else {
                 LOG(LOG_TAG, pep::error) << "Cannot generate " << spsToGenerate << " short pseudonym(s) for participant without identifier";
               }
-              return rxcpp::observable<>::empty<std::shared_ptr<pep::RegistrationResponse>>();
+              return rxcpp::observable<>::empty<pep::FakeVoid>();
             }
 
             // At this point we're processing a record that has a stored ParticipantIdentifier
@@ -348,7 +350,7 @@ private:
               return client->completeParticipantRegistration(idField->mData, true);
             }
 
-            return rxcpp::observable<>::empty<std::shared_ptr<pep::RegistrationResponse>>();
+            return rxcpp::observable<>::empty<pep::FakeVoid>();
               });
             })
           .as_dynamic() // Reduce compiler memory usage

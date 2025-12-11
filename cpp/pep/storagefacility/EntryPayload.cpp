@@ -108,7 +108,7 @@ XXH64_hash_t EntryPayload::XxHash(const std::string& rawPage) {
 std::string EntryPayload::XxHashToString(XXH64_hash_t xxhash) {
   std::ostringstream out;
   WriteBinary(out, uint64_t{xxhash});
-  return out.str();
+  return std::move(out).str();
 }
 
 uint64_t EntryPayload::ExtractFileSize(PersistedEntryProperties& properties) {

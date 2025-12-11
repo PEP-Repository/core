@@ -26,6 +26,7 @@
 #include <pep/utils/Random.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 
+using namespace std::literals;
 using boost::urls::url;
 
 #ifdef ERROR_ACCESS_DENIED
@@ -98,7 +99,7 @@ HTTPResponse MakeErrorJsonHttpResponse(const std::string& error, const std::stri
   if(error == OAuthProvider::ERROR_SERVER_ERROR) {
     status = "500 Internal Server Error";
   }
-  return MakeHttpResponse(status, oss.str(), "application/json");
+  return MakeHttpResponse(status, std::move(oss).str(), "application/json");
 }
 
 HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const std::string& description) {
@@ -163,7 +164,7 @@ void OAuthProvider::Parameters::check() const {
   if(httpPort == 0) {
     throw std::runtime_error("httpPort must be set");
   }
-  if(activeGrantExpiration.count() == 0) {
+  if(activeGrantExpiration == decltype(activeGrantExpiration)::zero()) {
     throw std::runtime_error("activeGrantExpiration must be set");
   }
   if(!io_context) {
@@ -239,14 +240,14 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   auto primaryUidIt = params.find("primary_uid"),
       humanReadableUidIt = params.find("human_readable_uid");
   if(primaryUidIt == params.end() || humanReadableUidIt == params.end()) {
-    std::pair<std::string, std::string> testUsers[] = {
+    std::array<std::pair<std::string, std::string>, 6> testUsers{{
       {"assessor@master.pep.cs.ru.nl", UserGroup::ResearchAssessor},
       {"monitor@master.pep.cs.ru.nl", UserGroup::Monitor},
       {"dataadmin@master.pep.cs.ru.nl", UserGroup::DataAdministrator},
       {"accessadmin@master.pep.cs.ru.nl", UserGroup::AccessAdministrator},
       {"multihat@master.pep.cs.ru.nl", "Someone with all roles"},
       {"eve@university-of-adversaries.com", "Someone without access"}
-    };
+    }};
     auto linkUri = request.uri();
     std::ostringstream body;
     body << "<html><body>";
@@ -256,7 +257,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       body << "<a href=\"" << linkUri << "\">" << description << "</a><br>";
     }
     body << "</body></html>";
-    return rxcpp::rxs::just(HTTPResponse("200 OK", body.str()));
+    return rxcpp::rxs::just(HTTPResponse("200 OK", std::move(body).str()));
   }
   const std::string& primaryUid = (*primaryUidIt).value;
   const std::string& humanReadableUid = (*humanReadableUidIt).value;
@@ -385,7 +386,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
           body << "<option>" << g << "</option>";
         }
         body << END_GROUP_SELECTION_TEMPLATE;
-        return HTTPResponse("200 OK", body.str());
+        return HTTPResponse("200 OK", std::move(body).str());
       }
     }
 
@@ -413,8 +414,14 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 
     return HTTPResponse("302 Found", "", {{"Location", std::string(returnUri.buffer())}});
   }).on_error_resume_next([redirectUri](std::exception_ptr ep) {
-    LOG(LOG_TAG, error) << "Unexpected error: " << rxcpp::rxu::what(ep);
-    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    try {
+      std::rethrow_exception(ep);
+    } catch (const Error& e) {
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, e.what()));
+    } catch(const std::exception& e) {
+      LOG(LOG_TAG, error) << "Unexpected error: " << e.what();
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    }
   });
 }
 
@@ -425,7 +432,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
       if(formData.find(p) == formData.end()) {
         std::ostringstream oss;
         oss << p << " required";
-        return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, oss.str());
+        return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, std::move(oss).str());
       }
     }
 
@@ -458,11 +465,11 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     boost::property_tree::ptree responseData;
     responseData.add("access_token", token.getSerializedForm());
     responseData.add("token_type", "bearer");
-    responseData.add("expires_in", 60);
+    responseData.add("expires_in", std::chrono::seconds{1min}.count());
     std::ostringstream responseStream;
     boost::property_tree::write_json(responseStream, responseData);
 
-    return MakeHttpResponse("200 OK", responseStream.str(), "application/json");
+    return MakeHttpResponse("200 OK", std::move(responseStream).str(), "application/json");
   }
   catch (const Error& err) {
     return MakeErrorJsonHttpResponse(ERROR_SERVER_ERROR, err.what());

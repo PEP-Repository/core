@@ -33,6 +33,10 @@ private:
 public:
   class Parameters : public SigningServer::Parameters {
     friend class StorageFacility;
+
+  protected:
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::StorageFacility(); }
+
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
@@ -75,7 +79,6 @@ public:
   explicit StorageFacility(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   void statsTimer(const boost::system::error_code& e);
   std::vector<std::string> getChecksumChainNames() const override;
@@ -93,15 +96,15 @@ private:
   messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> lpRequest);
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest);
 
-  std::string encryptId(const std::string& path, uint64_t time);
-  SFId decryptId(const std::string& encId);
+  std::string encryptId(std::string path, Timestamp time);
+  SFId decryptId(std::string_view encId);
   std::vector<std::optional<LocalPseudonym>> decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const;
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);
 
   template <typename TEntry>
   using GetEntryContent = std::function<std::unique_ptr<EntryContent>(const TEntry&)>;
-  using GetDataAlterationResponse = std::function<std::string(EpochMillis, const std::vector<std::string>&, XxHasher::Hash)>;
+  using GetDataAlterationResponse = std::function<std::string(Timestamp, const std::vector<std::string>&, XxHasher::Hash)>;
 
   template <typename TRequest>
   messaging::MessageBatches handleDataAlterationRequest(

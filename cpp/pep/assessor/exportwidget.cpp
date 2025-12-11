@@ -1,5 +1,7 @@
 #include <pep/assessor/exportwidget.hpp>
 #include <pep/assessor/ui_exportwidget.h>
+#include <pep/async/RxFilterNullopt.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/Exceptions.hpp>
 
@@ -299,7 +301,7 @@ std::string ExportWidget::getExportFilename(const QList<std::shared_ptr<Exportab
 void ExportWidget::doExport() {
   auto selected = this->getSelectedItems();
   auto fileName = this->getExportFilename(selected);
-  if (fileName.empty()) { // If the dialog box asking for a fileName is cancelled, fileName will be empty. If so, do nothing. 
+  if (fileName.empty()) { // If the dialog box asking for a fileName is cancelled, fileName will be empty. If so, do nothing.
     return;
   }
   try {
@@ -341,19 +343,25 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
 
   using ParticipantData = std::map<std::string, std::string>;
   return mPepClient->enumerateAndRetrieveData2(opts) // Get study contexts, plus values for all requested columns
-    .reduce( // Associate participant indices with values for that participant
-      std::make_shared<std::unordered_map<uint32_t, ParticipantData>>(),
-      [](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> entries, const pep::EnumerateAndRetrieveResult& result) {
-        (*entries)[result.mLocalPseudonymsIndex][result.mColumn] = result.mData;
-  return entries;
-      }).flat_map([](const std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>>& entries) {return rxcpp::observable<>::iterate(*entries); }) // Convert observable<std::unordered_map<entry>> to observable<entry>
-        .map([this](std::pair<const uint32_t, ParticipantData> entry) -> std::optional<ParticipantData> { // Convert to std::nullopt for participants that don't match the user's context
+      .reduce( // Associate participant indices with values for that participant
+          std::make_shared<std::unordered_map<uint32_t, ParticipantData>>(),
+          [](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> entries,
+          const pep::EnumerateAndRetrieveResult& result) {
+            (*entries)[result.mLocalPseudonymsIndex][result.mColumn] = result.mData;
+            return entries;
+          })
+      // Convert observable<std::unordered_map<entry>> to observable<entry>
+      .flat_map([](const std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>>& entries) {
+        return pep::RxIterate(std::move(*entries));
+      })
+      // Convert to std::nullopt for participants that don't match the user's context
+      .map([this](std::pair<const uint32_t, ParticipantData> entry) -> std::optional<ParticipantData> {
         if (!mStudyContext.matches(entry.second["StudyContexts"])) {
           return std::nullopt;
         }
-      entry.second.erase("StudyContexts");
-      return entry.second;
-          }).filter([](const std::optional<ParticipantData>& data) {return data.has_value(); }) // Exclude (std::nullopt) entries for participants that didn't match the user's context
-            .map([](const std::optional<ParticipantData>& optional) {return *optional; }) // Convert optional<ParticipantData> to ParticipantData
-            ;
+        entry.second.erase("StudyContexts");
+        return std::move(entry.second);
+      })
+      // Exclude (std::nullopt) entries for participants that didn't match the user's context
+      .op(pep::RxFilterNullopt());
 }

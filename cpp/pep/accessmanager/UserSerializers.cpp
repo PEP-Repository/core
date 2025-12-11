@@ -20,12 +20,14 @@ void Serializer<RemoveUser>::moveIntoProtocolBuffer(proto::RemoveUser& dest, Rem
 }
 
 AddUserIdentifier Serializer<AddUserIdentifier>::fromProtocolBuffer(proto::AddUserIdentifier&& source) const {
-  return AddUserIdentifier(std::move(*source.mutable_existinguid()), std::move(*source.mutable_newuid()));
+  return AddUserIdentifier(std::move(*source.mutable_existinguid()), std::move(*source.mutable_newuid()), source.is_primary_id(), source.is_display_id());
 }
 
 void Serializer<AddUserIdentifier>::moveIntoProtocolBuffer(proto::AddUserIdentifier& dest, AddUserIdentifier value) const {
   *dest.mutable_existinguid() = std::move(value.mExistingUid);
   *dest.mutable_newuid() = std::move(value.mNewUid);
+  dest.set_is_primary_id(value.mIsPrimaryId);
+  dest.set_is_display_id(value.mIsDisplayId);
 }
 
 RemoveUserIdentifier Serializer<RemoveUserIdentifier>::fromProtocolBuffer(proto::RemoveUserIdentifier&& source) const {
@@ -96,6 +98,9 @@ UserMutationRequest Serializer<UserMutationRequest>::fromProtocolBuffer(proto::U
     std::move(*source.mutable_add_user_identifier()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUserIdentifier,
     std::move(*source.mutable_remove_user_identifier()));
+  result.mSetPrimaryId = RangeToVector(MoveElements(*source.mutable_set_primary_identifier()));
+  result.mUnsetPrimaryId = RangeToVector(MoveElements(*source.mutable_unset_primary_identifier()));
+  result.mSetDisplayId = RangeToVector(MoveElements(*source.mutable_set_display_identifier()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mCreateUserGroup,
     std::move(*source.mutable_create_user_group()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUserGroup,
@@ -116,6 +121,12 @@ void Serializer<UserMutationRequest>::moveIntoProtocolBuffer(proto::UserMutation
     std::move(value.mRemoveUser));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_add_user_identifier(),
     std::move(value.mAddUserIdentifier));
+  auto moveSetPrimaryId = MoveElements(value.mSetPrimaryId);
+  dest.mutable_set_primary_identifier()->Assign(moveSetPrimaryId.begin(), moveSetPrimaryId.end());
+  auto moveUnsetPrimaryId = MoveElements(value.mUnsetPrimaryId);
+  dest.mutable_unset_primary_identifier()->Assign(moveUnsetPrimaryId.begin(), moveUnsetPrimaryId.end());
+  auto moveSetDisplayId = MoveElements(value.mSetDisplayId);
+  dest.mutable_set_display_identifier()->Assign(moveSetDisplayId.begin(), moveSetDisplayId.end());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user_identifier(),
     std::move(value.mRemoveUserIdentifier));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_create_user_group(),
@@ -147,41 +158,48 @@ void Serializer<UserQueryResponse>::moveIntoProtocolBuffer(proto::UserQueryRespo
 }
 
 UserQuery Serializer<UserQuery>::fromProtocolBuffer(proto::UserQuery&& source) const {
-  UserQuery result;
-  result.mAt = Serialization::FromProtocolBuffer(
-    std::move(*source.mutable_at()));
-  result.mGroupFilter = std::move(*source.mutable_group_filter());
-  result.mUserFilter = std::move(*source.mutable_user_filter());
-  return result;
+  return {
+    .mAt = source.has_at()
+        ? std::optional(Serialization::FromProtocolBuffer(std::move(*source.mutable_at())))
+        : std::nullopt,
+    .mGroupFilter = std::move(*source.mutable_group_filter()),
+    .mUserFilter = std::move(*source.mutable_user_filter()),
+  };
 }
 
 void Serializer<UserQuery>::moveIntoProtocolBuffer(proto::UserQuery& dest, UserQuery value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_at(), value.mAt);
+  if (value.mAt) {
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_at(), *value.mAt);
+  }
   *dest.mutable_group_filter() = std::move(value.mGroupFilter);
   *dest.mutable_user_filter() = std::move(value.mUserFilter);
 }
 
 QRUser Serializer<QRUser>::fromProtocolBuffer(proto::QRUser&& source) const {
-  std::vector<std::string> uids;
-  uids.reserve(static_cast<size_t>(source.uids().size()));
-  for (auto& x : *source.mutable_uids())
-    uids.push_back(std::move(x));
+  std::optional<std::string> primaryId;
+  if (source.has_primary_id()) {
+    primaryId = std::move(*source.mutable_primary_id());
+  }
+  std::optional<std::string> displayId;
+  if (source.has_display_id()) {
+    displayId = std::move(*source.mutable_display_id());
+  }
+  std::vector<std::string> otherUids = RangeToVector(MoveElements(*source.mutable_other_uids()));
+  std::vector<std::string> groups = RangeToVector(MoveElements(*source.mutable_groups()));
 
-  std::vector<std::string> groups;
-  groups.reserve(static_cast<size_t>(source.groups().size()));
-  for (auto& x : *source.mutable_groups())
-    groups.push_back(std::move(x));
-  return QRUser(std::move(uids), std::move(groups));
+  return QRUser(std::move(displayId), std::move(primaryId), std::move(otherUids), std::move(groups));
 }
 
 void Serializer<QRUser>::moveIntoProtocolBuffer(proto::QRUser& dest, QRUser value) const {
-  dest.mutable_uids()->Reserve(static_cast<int>(value.mUids.size()));
-  for (auto& x : value.mUids)
-    dest.add_uids(std::move(x));
+  if (value.mDisplayId)
+    *dest.mutable_display_id() = std::move(*value.mDisplayId);
+  if (value.mPrimaryId)
+    *dest.mutable_primary_id() = std::move(*value.mPrimaryId);
+  auto moveOtherUids = MoveElements(value.mOtherUids);
+  dest.mutable_other_uids()->Assign(moveOtherUids.begin(), moveOtherUids.end());
 
-  dest.mutable_groups()->Reserve(static_cast<int>(value.mGroups.size()));
-  for (auto& x : value.mGroups)
-    dest.add_groups(std::move(x));
+  auto moveGroups = MoveElements(value.mGroups);
+  dest.mutable_groups()->Assign(moveGroups.begin(), moveGroups.end());
 }
 
 }

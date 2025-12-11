@@ -1,7 +1,8 @@
 add_custom_target(${PROJECT_NAME}watchdog  ALL
+  COMMENT "Build pep-watchdog"
   COMMAND ${CMAKE_COMMAND} -E env "GOPATH=${GOPATH}" "GO111MODULE=off" go build ${GO_BUILD_FLAGS} -v pep.cs.ru.nl/pep-watchdog
-  DEPENDS ${PROJECT_NAME}gopep-messages 
-# find . | grep ".*.go" | cut -c 3- 
+  DEPENDS ${PROJECT_NAME}gopep-messages
+# find . | grep ".*.go" | cut -c 3-
 selfCheck.go
 mail/main.go
 shared/conf.go

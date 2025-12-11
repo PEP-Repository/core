@@ -7,7 +7,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 
 namespace pep::database {
-
 struct SchemaError : std::logic_error {
   enum class Reason {
     dropped_and_recreated,
@@ -17,6 +16,12 @@ struct SchemaError : std::logic_error {
 
   std::string mTable;
   Reason mReason;
+};
+
+template<typename T>
+struct having {
+  explicit having(T&& expr) : mExpr(std::move(expr)) {}
+  T mExpr;
 };
 
 /// @brief Non-template base class for Storage<> (defined below).
@@ -111,12 +116,33 @@ struct Storage : public BasicStorage {
   template <Record RecordType>
   [[nodiscard]] bool currentRecordExists(auto whereCondition);
 
+
+  /// Return non-tombstone records.
+  /// The where-clause is evaluated for all records, before determining which records are current. The having-clause is only evaluated for the current records.
+  ///
+  /// Example: get the current primary identifier for a given internalUserId.
+  /// If we check `isPrimaryId` in the where-clause, we filter out all the records that tell us that a current record is no longer the primary ID.
+  /// So it would return all records that have ever been the primary ID, instead of only the records that are currently the primary ID.
+  /// \code
+  ///   using namespace pep::database;
+  ///   myStorage->getCurrentRecords(storage,
+  ///     c(&UserIdRecord::timestamp) <= timestamp.getTime()
+  ///       && c(&UserIdRecord::internalUserId) == internalUserId,
+  ///     having(c(&UserIdRecord::isPrimaryId) == true),
+  ///     &UserIdRecord::identifier
+  /// \endcode
+  ///
+  /// \returns Collection of tuples with columns from \p selectColumns
+  ///   (or single values if a single column was specified)
+  template <Record RecordType, typename havingT, typename... ColTypes>
+  [[nodiscard]] auto getCurrentRecords(auto whereCondition, having<havingT> havingCondition, ColTypes RecordType::*... selectColumns);
+
   /// Return non-tombstone records.
   ///
   /// Example: enumerate all metadata for a specific subject type
   /// \code
   ///   myStorage->getCurrentRecords(storage,
-  ///     c(&MetadataRecord::timestamp) <= timestamp.getTime()
+  ///     c(&MetadataRecord::timestamp) <= TicksSinceEpoch<std::chrono::milliseconds>(timestamp)
   ///     && c(&MetadataRecord::subjectType) == subjectType,
   ///     &MetadataRecord::subject,
   ///     &MetadataRecord::metadataGroup,
@@ -136,13 +162,27 @@ template <auto MakeRaw> template <Record RecordType>
   auto result = raw.iterate(select(
     columns(max(&RecordType::seqno)),
     where(std::move(whereCondition)),
-    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     // SQLite will pick this column from the row with the max() value:
     // https://www.sqlite.org/lang_select.html#bareagg
     .having(c(&RecordType::tombstone) == false),
     limit(1)
   ));
   return result.begin() != result.end();
+}
+
+template <auto MakeRaw> template <Record RecordType, typename havingT, typename... ColTypes>
+[[nodiscard]] auto Storage<MakeRaw>::getCurrentRecords(auto whereCondition, having<havingT> havingCondition, ColTypes RecordType::*... selectColumns) {
+  static_assert(sizeof...(ColTypes) > 0, "No columns specified");
+  using namespace sqlite_orm;
+  return raw.iterate(select(
+    // SQLite will pick these columns from the row with the max() value:
+    // https://www.sqlite.org/lang_select.html#bareagg
+    columns(max(&RecordType::seqno), selectColumns...),
+    where(whereCondition),
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
+    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr)
+  )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 }
 
 template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
@@ -154,7 +194,7 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 

@@ -6,6 +6,8 @@ add_library(${PROJECT_NAME}Ticketinglib STATIC
 )
 
 target_link_libraries(${PROJECT_NAME}Ticketinglib
+  ${PROJECT_NAME}Authlib
   ${PROJECT_NAME}RskPeplib
 )
 verify_headers_standalone(${PROJECT_NAME}Ticketinglib)
+add_unit_tests(Ticketing)

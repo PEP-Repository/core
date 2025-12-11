@@ -1,41 +1,34 @@
 #include <pep/crypto/Timestamp.hpp>
 
-#include <chrono>
-#include <ctime>
-#include <pep/utils/Platform.hpp>
+#include <pep/utils/StringStream.hpp>
+
+#include <format>
 #include <regex>
+#include <sstream>
 #include <stdexcept>
 
 #include <boost/date_time/c_local_time_adjustor.hpp>
-#include <boost/date_time/date_parsing.hpp>
-#include <boost/date_time/gregorian/greg_month.hpp>
-#include <boost/date_time/gregorian/parsers.hpp>
-#include <boost/date_time/gregorian_calendar.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
+#include <boost/date_time/gregorian/greg_date.hpp>
+#include <boost/date_time/gregorian/gregorian_io.hpp>
 #include <boost/date_time/local_time/local_date_time.hpp>
-#include <boost/date_time/local_time/local_time.hpp>
-#include <boost/date_time/local_time/local_time_types.hpp>
-#include <boost/date_time/local_time/posix_time_zone.hpp>
-#include <boost/date_time/posix_time/conversion.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/posix_time/posix_time_config.hpp>
-#include <boost/date_time/posix_time/posix_time_system.hpp>
-#include <boost/date_time/posix_time/time_parsers.hpp>
-#include <boost/date_time/time_clock.hpp>
-#include <boost/date_time/time_duration.hpp>
-#include <boost/exception/diagnostic_information.hpp>
-#include <boost/exception/exception.hpp>
-#include <boost/format.hpp>
+#include <boost/date_time/local_time/local_time_io.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/numeric/conversion/cast.hpp>
+
+using namespace std::chrono;
+
+namespace bpt = boost::posix_time;
+namespace blt = boost::local_time;
 
 namespace pep {
 
 namespace {
 
-constexpr auto XML_DATE_TIME_FORMAT = "%04d-%02d-%02dT%02d:%02d:%02dZ";
-
 constexpr auto SYSTEM_LOCAL_TIME_ZONE = "SYSTEM_TIME_ZONE";
 
-constexpr auto EPOCH_OFFSET = boost::posix_time::ptime(boost::gregorian::date(1970, 1, 1));
+const bpt::ptime UnixEpochPtime(BoostDateFromStd(sys_days{}));
 
 /// Converts strings to pep::Timestamp values
 class TimestampParser {
@@ -43,122 +36,100 @@ public:
   virtual ~TimestampParser() = default;
 
   /// Parses the input that was passed at construction.
-  pep::Timestamp parse() {
-    checkInput(mRawInput);
-    const auto output = inputToPtime(mRawInput);
-    checkRawOutput(output);
-    return pep::Timestamp::FromPtime(output);
+  Timestamp parse(std::string_view input) {
+    try {
+      return parseImpl(input);
+    } catch (...) {
+      std::throw_with_nested(std::runtime_error(std::format("Couldn't parse \"{}\" as {}", input, mFormatName)));
+    }
   }
 
 protected:
-  static constexpr auto E_MSG_NOT_MATCHING_FORMAT = "input does not match format specification";
-  static constexpr auto E_MSG_UNREPRESENTABLE_VALUE = "unrepresentable value";
+  explicit TimestampParser(std::string name)
+    : mFormatName{std::move(name)} {}
 
-  TimestampParser(std::string name, std::string initialInput)
-    : mFormatName{std::move(name)}, mRawInput{std::move(initialInput)} {}
-
-  std::runtime_error parsingError(const std::string& details) const {
-    return std::runtime_error{"Couldn't parse \"" + mRawInput + "\" as " + mFormatName + ": " + details};
-  }
-
-  virtual void checkInput(const std::string&) const = 0;          ///< lexical checks on the input string
-  virtual boost::posix_time::ptime inputToPtime(std::string) = 0; ///< actual parsing of the string
+  virtual Timestamp parseImpl(std::string_view) = 0; ///< actual parsing of the string
 
 private:
-  void checkRawOutput(boost::posix_time::ptime time) {
-    const auto min = Timestamp::Min().toPtime(), max = Timestamp::Max().toPtime();
-    const auto inRepresentableRange = min <= time && time <= max;
-    if (!inRepresentableRange) { throw parsingError(E_MSG_UNREPRESENTABLE_VALUE); }
-  }
-
   std::string mFormatName;
-  std::string mRawInput;
 };
 
 class XmlDateTimeParser : public TimestampParser {
 public:
-  XmlDateTimeParser(std::string input) : TimestampParser{"xml date-time", std::move(input)} {}
+  XmlDateTimeParser() : TimestampParser{"xml date-time"} {}
 
-  void checkInput(const std::string& str) const override {
-    const auto formatOk = !str.empty() // so we can safely call str.back() and similar operations from this point onward
-        && std::ranges::count(str, 'T') == 1 // requirement for .normalizedInputToTimeT
-        && str.find(' ') == std::string::npos; // no space chars before we swap out 'T'
-    if (!formatOk) { throw parsingError(E_MSG_NOT_MATCHING_FORMAT); }
-  }
+protected:
+  Timestamp parseImpl(std::string_view str) override {
+    // See:
+    // - https://www.boost.org/doc/libs/latest/doc/html/date_time/date_time_io.html#date_time.format_flags
+    // - https://www.boost.org/doc/libs/latest/doc/html/date_time/date_time_io.html#date_time.time_input_facet
+    // Note that %Q is not supported for input, so we use the broader %ZP, which also handles simple offsets
+    //TODO If boost ever starts using actual POSIX timezones instead of the inverse, the timezone offset here has to be reversed
 
-  boost::posix_time::ptime inputToPtime(std::string str) override {
-    try {
-      // Extract the time zone specification if present
-      auto offset = TryExtractXmlTimeZone(str);
-
-      // Replace XML's 'T' delimiter by the space that Boost's parsing function accepts
-      std::ranges::replace(str, 'T', ' ');
-      auto ptime = boost::posix_time::time_from_string(str);
-
-      // Apply time zone (offset) to result
-      if (offset.has_value()) {
-        ptime -= boost::posix_time::minutes(offset->count());
+    blt::local_date_time parsed(boost::date_time::not_a_date_time);
+    {
+      std::istringstream ss{std::string(str)};
+      ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+      auto facet = new blt::local_time_input_facet("%Y-%m-%dT%H:%M:%S%F%ZP");
+      ss.imbue(std::locale(ss.getloc(), facet));
+      ss >> parsed;
+      if (auto remaining = GetUnparsed(ss); !remaining.empty()) {
+        throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
       }
-      return ptime;
     }
-    catch (const boost::exception& e) {
-      throw parsingError(boost::diagnostic_information(e));
-    }
+
+    return TimestampFromBoostPtime(parsed.utc_time());
   }
 };
 
-class IsoDateParser final : public TimestampParser {
+class YyyyMmDdDateParser final : public TimestampParser {
 public:
-  IsoDateParser(std::string input, std::string timeZone)
-    : TimestampParser{"iso date (yyyymmdd)", std::move(input)}, mTimeZone{std::move(timeZone)} {}
+  explicit YyyyMmDdDateParser(std::string timeZone)
+    : TimestampParser{"yyyymmdd"}, mTimeZone{std::move(timeZone)} {}
 
 protected:
-  void checkInput(const std::string& str) const override {
-    if (str.length() != 8 || !std::all_of(str.begin(), str.end(), ::isdigit)) {
-      throw parsingError(E_MSG_NOT_MATCHING_FORMAT);
-    }
-  }
+  Timestamp parseImpl(std::string_view str) override {
+    // See https://www.boost.org/doc/libs/latest/doc/html/date_time/date_time_io.html#date_time.date_input_facet
 
-  boost::posix_time::ptime inputToPtime(std::string str) override {
-    try {
-      return InterpretDateWithBoost(str, mTimeZone);
+    boost::gregorian::date parsedDate;
+    {
+      std::istringstream ss{std::string(str)};
+      ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+      auto facet = new boost::gregorian::date_input_facet;
+      facet->set_iso_format();
+      ss.imbue(std::locale(ss.getloc(), facet));
+      ss >> parsedDate;
+      if (auto remaining = GetUnparsed(ss); !remaining.empty()) {
+        throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
+      }
     }
-    catch (const boost::exception& e) {
-      throw parsingError(boost::diagnostic_information(e));
+
+    if (mTimeZone == SYSTEM_LOCAL_TIME_ZONE) {
+      using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
+      return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
     }
+
+    const auto localTime = blt::local_date_time{
+      parsedDate,
+      bpt::time_duration{0, 0, 0},
+      boost::make_shared<blt::posix_time_zone>(mTimeZone),
+      blt::local_date_time::EXCEPTION_ON_ERROR};
+
+    return TimestampFromBoostPtime(UtcTimeFromIncorrectPTime(localTime));
   }
 
 private:
   /// Takes a Boost local_date_time object where the base_utc_offset is inverted
   /// and returns the UTC time as if the offset was set correctly.
-  ///
-  /// @note This function was added as a workaround for a bug in boost::posix_time::posix_time_zone, where
+  /// See https://github.com/boostorg/date_time/issues/240
+  /// @note This function was added as a workaround for a bug in bpt::posix_time_zone, where
   ///   after parsing a posix timezone string, the base utc offset is set to the inverse of the expected value.
-  boost::posix_time::ptime UtcTimeFromIncorrectPTime(boost::local_time::local_date_time time) {
+  static bpt::ptime UtcTimeFromIncorrectPTime(blt::local_date_time time) {
     // TODO: Remove this workaround when Boost has been fixed and then
-    // replace all calls to this function with a plain call to 'time.utc_time()'.
+    //  replace all calls to this function with a plain call to 'time.utc_time()',
+    //  and then also see the TODO in XmlDateTimeParser.
     const auto offset = time.zone()->base_utc_offset();
     return time.utc_time() + offset + offset;
-  }
-
-  boost::posix_time::ptime InterpretDateWithBoost(const std::string& isoDate, const std::string& posixTimeZone) {
-    namespace bpt = boost::posix_time;
-    namespace blt = boost::local_time;
-
-    const auto parsedDate = boost::gregorian::from_undelimited_string(isoDate);
-    const auto parsedDateTime = bpt::ptime{parsedDate};
-    if (posixTimeZone == SYSTEM_LOCAL_TIME_ZONE) {
-      using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
-      return Adjustor::utc_to_local(parsedDateTime);
-    }
-
-    const auto localTime = blt::local_date_time{
-        parsedDate,
-        bpt::time_duration{0, 0, 0},
-        boost::make_shared<blt::posix_time_zone>(posixTimeZone),
-        blt::local_date_time::EXCEPTION_ON_ERROR};
-
-    return UtcTimeFromIncorrectPTime(localTime);
   }
 
   std::string mTimeZone;
@@ -166,99 +137,56 @@ private:
 
 } // namespace
 
-Timestamp Timestamp::Max() {
-  // Ensure that Timestamp::Max() can be converted to a valid boost::posix::ptime
-  auto ptime_max_msec = (boost::posix_time::ptime(boost::posix_time::special_values::max_date_time) - EPOCH_OFFSET).total_milliseconds();
-  auto msec = std::min(std::numeric_limits<int64_t>::max(), ptime_max_msec);
-  return Timestamp(msec);
+TimeZone TimeZone::Local() { return {SYSTEM_LOCAL_TIME_ZONE}; }
+
+bpt::ptime TimestampToBoostPtime(Timestamp time) {
+  if (time == Timestamp::min()) { return boost::date_time::neg_infin; }
+  if (time == Timestamp::max()) { return boost::date_time::pos_infin; }
+  // Note: Range checking would be of limited use,
+  //  because the STL already allows implicit conversion to higher-precision durations even if there could be data loss,
+  //  e.g. sys_time<milliseconds>::max() can be converted to system_clock::time_point even if they are both int64_t and
+  //  system_clock::time_point is in nanoseconds.
+  //  Other things like dates also start to break down at large values, with years overflowing etc.
+  return UnixEpochPtime + bpt::milliseconds{TicksSinceEpoch<milliseconds>(time)};
 }
 
-Timestamp::Timestamp() {
-  using namespace std::chrono;
-  mValue = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+Timestamp TimestampFromBoostPtime(bpt::ptime ts) {
+  if (ts.is_not_a_date_time()) { throw std::invalid_argument("Cannot convert not_a_date_time"); }
+  // Only map infinities, not min & max Boost time, as there is no reason to use the latter when the former exist
+  if (ts.is_neg_infinity()) return Timestamp::min();
+  if (ts.is_pos_infinity()) return Timestamp::max();
+  // See note about range checking above
+  return Timestamp(milliseconds{(ts - UnixEpochPtime).total_milliseconds()});
 }
 
-Timestamp::TimeZone Timestamp::TimeZone::Local() { return {SYSTEM_LOCAL_TIME_ZONE}; }
-
-time_t Timestamp::toTime_t() const { return mValue / 1000; }
-
-boost::posix_time::ptime Timestamp::toPtime() const {
-  return boost::posix_time::ptime(EPOCH_OFFSET + boost::posix_time::milliseconds(mValue));
+std::string TimestampToXmlDateTime(Timestamp time) {
+  std::ostringstream ss;
+  ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+  auto facet = new bpt::time_facet("%Y-%m-%dT%H:%M:%S%FZ");
+  ss.imbue(std::locale(ss.getloc(), facet));
+  ss << TimestampToBoostPtime(time);
+  return std::move(ss).str();
 }
 
-Timestamp Timestamp::FromTimeT(time_t ts) { return Timestamp(ts * 1000); }
-
-Timestamp Timestamp::FromPtime(boost::posix_time::ptime ts) {
-  if (ts == boost::posix_time::not_a_date_time) {
-    throw std::runtime_error("Can't construct a Timestamp from an invalid (sentinel) ptime");
-  }
-  if (ts < EPOCH_OFFSET) {
-    throw std::runtime_error("Can't construct a Timestamp outside the Unix epoch");
-  }
-  return Timestamp((ts - EPOCH_OFFSET).total_milliseconds());
+Timestamp TimestampFromXmlDataTime(std::string_view xml) {
+  return XmlDateTimeParser{}.parse(xml);
 }
 
-std::string Timestamp::toString() const {
-  time_t ts = this->toTime_t();
-  std::tm tm{};
-  if (!gmtime_r(&ts, &tm)) {
-    throw std::runtime_error("Failed to convert time");
-  }
-
-  return (boost::format(XML_DATE_TIME_FORMAT)
-      % (tm.tm_year + 1900) % (tm.tm_mon + 1) % tm.tm_mday
-      % tm.tm_hour % tm.tm_min % tm.tm_sec).str();
+Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {
+  return YyyyMmDdDateParser{mStr}.parse(yyyyMmDd);
 }
 
-Timestamp Timestamp::FromXmlDateTime(const std::string& xml) {
-  return XmlDateTimeParser{xml}.parse();
+
+year_month_day BoostDateToStd(const boost::gregorian::date& date) {
+  return year{date.year()} / month{date.month()} / day{date.day()};
 }
 
-Timestamp Timestamp::FromIsoDate(const std::string& yyyymmdd, TimeZone timeZone) {
-  return IsoDateParser{yyyymmdd, timeZone.mStr}.parse();
-}
-
-std::optional<std::chrono::minutes> TryExtractXmlTimeZone(std::string& source) {
-  if (source.empty()) {
-    return std::nullopt;
-  }
-
-  // Cheap handler for 'Z' suffix, which indicates UTC
-  if (source.back() == 'Z') {
-    source.resize(source.size() - 1U);
-    return std::chrono::minutes(0);
-  }
-
-  // Regex handler for "shh:mm", where 's' is the '+' or '-' sign 
-  static constexpr const char* TIME_ZONE_REGEX_EXPR = "([+-])(\\d{2}):(\\d{2})$";
-  constexpr size_t TIME_ZONE_SPEC_LENGTH = 6U;
-
-  std::regex ex(TIME_ZONE_REGEX_EXPR);
-  std::smatch matches;
-  if (!std::regex_search(source, matches, ex)) {
-    return std::nullopt;
-  }
-
-  assert(matches.size() == 4U); // The entire expression plus its three groups
-  assert(std::ranges::all_of(matches, [](const auto& single) { return single.matched; }));
-  assert(matches[0].str().size() == TIME_ZONE_SPEC_LENGTH); // Entire time zone spec "shh:mm"
-  assert(matches[1].str().size() == 1U); // Sign: either '+' or '-'
-  assert(matches[2].str().size() == 2U); // hh
-  assert(matches[3].str().size() == 2U); // mm
-
-  auto hours = std::stol(matches[2].str());
-  auto minutes = std::stol(matches[3].str());
-  if (minutes >= 60) {
-    return std::nullopt; // Should have been carried over as an additional hour into the "hh" slot
-  }
-
-  auto result = std::chrono::hours(hours) + std::chrono::minutes(minutes);
-  if (matches[1].str().front() == '-') {
-    result = -result;
-  }
-
-  source.resize(source.size() - TIME_ZONE_SPEC_LENGTH);
-  return std::chrono::duration_cast<std::chrono::minutes>(result);
+boost::gregorian::date BoostDateFromStd(const year_month_day& date) {
+  return {
+    boost::numeric_cast<boost::gregorian::greg_year::value_type>(int{date.year()}),
+    boost::numeric_cast<boost::gregorian::greg_month::value_type>(unsigned{date.month()}),
+    boost::numeric_cast<boost::gregorian::greg_day::value_type>(unsigned{date.day()}),
+  };
 }
 
 } // namespace pep

@@ -13,6 +13,7 @@ if(ENABLE_CLANG_TIDY)
   if(PROFILE_CLANG_TIDY)
     list(APPEND clang_tidy_opts "--enable-check-profile" "--store-check-profile=${clang_tidy_profile_dir}")
     add_custom_target(clang-tidy-stats
+        COMMENT "Print Clang-Tidy checks performance statistics"
         COMMAND ${INVOKE_SH} "${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-stats.sh" ${clang_tidy_profile_dir}
         USES_TERMINAL
         VERBATIM
@@ -27,6 +28,7 @@ if(ENABLE_CLANG_TIDY)
   endif()
   find_program(CLANG_TIDY_PROGRAM clang-tidy)
   # Recompile when .clang-tidy changes
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.clang-tidy")
   file(SHA256 "${CMAKE_SOURCE_DIR}/.clang-tidy" clang_tidy_hash)
   set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
 endif()
@@ -144,8 +146,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
 
-      -Wno-deprecated-copy-with-dtor  # Ignore when defaulted...
-      -Wdeprecated-copy-with-user-provided-dtor  # ...but not when provided
       -Wno-unused-parameter
   )
 

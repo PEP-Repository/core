@@ -1,7 +1,8 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
-#include <pep/async/RxGetOne.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/utils/Sha.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -22,13 +23,13 @@ CoreClient::AESKey::AESKey(const CurvePoint& point)
 
 rxcpp::observable<std::vector<CoreClient::AESKey>>
 CoreClient::unblindAndDecryptKeys(
-      const std::vector<EnumerateResult>& entries,
+      std::span<const std::shared_ptr<EnumerateResult>> entries,
       std::shared_ptr<SignedTicket2> ticket) {
   LOG(LOG_TAG, debug) << "unblindAndDecryptKeys";
 
   struct Context {
     std::shared_ptr<WaitGroup> wg;
-    std::vector<SignedEncryptionKeyRequest> reqs;
+    std::vector<EncryptionKeyRequest> reqs;
     std::vector<size_t> reqSizes;
     std::vector<EncryptedKey> encKeys;
     bool ok = true;
@@ -51,7 +52,7 @@ CoreClient::unblindAndDecryptKeys(
     for (unsigned i = offset;
          i < std::min(static_cast<unsigned>(entries.size()), offset + KEY_REQUEST_BATCH_SIZE);
          i++) {
-      const auto& entry = entries[i];
+      const auto& entry = *entries[i];
       request.mEntries.emplace_back(
          entry.mMetadata,
          entry.mPolymorphicKey,
@@ -60,7 +61,7 @@ CoreClient::unblindAndDecryptKeys(
       );
     }
     baseCtx->reqSizes.push_back(request.mEntries.size());
-    baseCtx->reqs.push_back(sign(std::move(request)));
+    baseCtx->reqs.push_back(std::move(request));
   }
   // We proceed in two steps.  Step one: we send the request to unblind the keys.
   return CreateObservable<std::vector<EncryptedKey>>(
@@ -74,8 +75,7 @@ CoreClient::unblindAndDecryptKeys(
       auto action = ctx->wg->add(
           "unblindKeys offset " + std::to_string(offset));
       auto req_index = i;
-      clientAccessManager->sendRequest<
-          EncryptionKeyResponse>(std::move(ctx->reqs[i]))
+      accessManagerProxy->requestEncryptionKey(std::move(ctx->reqs[i]))
       .last().subscribe([action, offset, ctx, req_index](
           EncryptionKeyResponse resp) {
         if (!ctx->ok)
@@ -140,13 +140,13 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   // Give each KeyRequest a (reference to the) ticket
   std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->mTicket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
 
-  return rxcpp::observable<>::iterate(std::move(keyRequests))
-    .flat_map([this, request](const std::pair<const size_t, EncryptionKeyRequest>& pair) {
-    size_t offset = pair.first;
-    const EncryptionKeyRequest& keyRequest = pair.second;
-    return clientAccessManager->sendRequest<EncryptionKeyResponse>(sign(pair.second))
-      .op(RxGetOne("encryption key response"))
-      .map([request, offset, count = keyRequest.mEntries.size()](EncryptionKeyResponse keyResponse) {
+  return RxIterate(std::move(keyRequests))
+    .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
+    auto [offset, keyRequest] = std::move(pair);
+    const size_t count = keyRequest.mEntries.size();
+    return accessManagerProxy->requestEncryptionKey(std::move(keyRequest))
+      .op(RxGetOne())
+      .map([request, offset, count](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {
           std::ostringstream ss;
           ss << "EncryptionKeyResponse contains " << keyResponse.mKeys.size()

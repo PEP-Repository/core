@@ -2,6 +2,7 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
+#include <pep/messaging/ResponseToVoid.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -9,117 +10,41 @@ using namespace pep::cli;
 
 namespace {
 
-class ServerPinger {
-public:
-  virtual ~ServerPinger() noexcept = default;
-  virtual rxcpp::observable<pep::FakeVoid> execute(const pep::Client& client) const = 0;
-};
-
-template <typename TClient, typename TResponse>
-class TypedServerPinger : public ServerPinger {
-public:
-  using SendMethod = rxcpp::observable<TResponse>(TClient::*)() const;
-
-private:
-  SendMethod mSend;
-
-protected:
-  TypedServerPinger(SendMethod send) : mSend(send) {}
-
-  virtual void handleResponse(const TResponse& response) const {
-    std::cout << "Received response" << std::endl;
-  }
-
-public:
-  rxcpp::observable<pep::FakeVoid> execute(const pep::Client& client) const override {
-    return (client.*mSend)()
-      .map([this](const TResponse& response) {
-      handleResponse(response);
-      return pep::FakeVoid();
-    });
-  }
-};
-
-template <typename TClient, rxcpp::observable<pep::SignedPingResponse> (TClient::*SendRequestMethod)() const>
-class SigningServerPinger : public TypedServerPinger<TClient, pep::SignedPingResponse> {
-private:
-  bool mPrintCertificateChain;
-  bool mPrintDrift;
-
-  void handleResponse(const pep::SignedPingResponse& response) const override {
-    if (mPrintDrift) {
-      std::cout 
-        << pep::Timestamp().getTime()
-             - response.openWithoutCheckingSignature().mTimestamp.getTime()
-        << std::endl;
-      return;
-    }
-
-    if (!mPrintCertificateChain) {
-      return TypedServerPinger<TClient, pep::SignedPingResponse>::handleResponse(response);
-    }
-
-    auto printed = false;
-    for (const auto& certificate : response.mSignature.mCertificateChain) {
-      std::cout << certificate.toPem();
-      printed = true;
-    }
-    if (!printed) {
-      throw std::runtime_error("Server signed its ping response with an empty certificate chain?!?");
-    }
-    std::cout << std::endl;
-  }
-
-public:
-  SigningServerPinger(bool printCertificateChain, bool printDrift) 
-    : TypedServerPinger<TClient, pep::SignedPingResponse>(SendRequestMethod), 
-      mPrintCertificateChain(printCertificateChain),
-      mPrintDrift(printDrift) {}
-};
-
-class KeyServerPinger : public TypedServerPinger<pep::Client, pep::PingResponse> {
-public:
-  KeyServerPinger(bool printCertificateChain, bool printDrift) 
-      : TypedServerPinger<pep::Client, pep::PingResponse>(&pep::Client::pingKeyServer) {
-    if (printCertificateChain) {
-      throw std::runtime_error("This server does not produce a certificate chain to print");
-    }
-    if (printDrift) {
-      throw std::runtime_error("This server does not support printing drift");
-      // The templated nature of this code makes it difficult, and not at all
-      // worth-while, to add general drift printing code.
-    }
-  }
-};
-
-using AccessManagerPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingAccessManager>;
-using StorageFacilityPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingStorageFacility>;
-using TranscryptorPinger = SigningServerPinger<pep::CoreClient, &pep::CoreClient::pingTranscryptor>;
-using AuthServerPinger = SigningServerPinger<pep::Client, &pep::Client::pingAuthserver>;
-using RegistrationServerPinger = SigningServerPinger<pep::Client, &pep::Client::pingRegistrationServer>;
-
-template <typename TPinger>
-std::shared_ptr<ServerPinger> CreateServerPinger(bool printCertificateChain, bool printDrift) {
-  return std::make_shared<TPinger>(printCertificateChain, printDrift);
-}
-
-using ServerPingerFactoryMethod = std::shared_ptr<ServerPinger> (*)(bool printCertificateChain, bool printDrift);
-
-const std::unordered_map<std::string, ServerPingerFactoryMethod> pingerFactoryMethods = []() { // Using a factory method to allow const initialization
-  std::unordered_map<std::string, ServerPingerFactoryMethod> result;
-
-  result["accessmanager"] = &CreateServerPinger<AccessManagerPinger>;
-  result["keyserver"] = &CreateServerPinger<KeyServerPinger>;
-  result["registrationserver"] = &CreateServerPinger<RegistrationServerPinger>;
-  result["storagefacility"] = &CreateServerPinger<StorageFacilityPinger>;
-  result["transcryptor"] = &CreateServerPinger<TranscryptorPinger>;
-  result["authserver"] = &CreateServerPinger<AuthServerPinger>;
-
-  return result;
-}();
-
-
 class CommandPing : public ChildCommandOf<CliApplication> {
+private:
+  static rxcpp::observable<pep::FakeVoid> PrintCertificateChain(const pep::SigningServerProxy& proxy) {
+    return proxy
+      .requestCertificateChain()
+      .map([](const pep::X509CertificateChain& chain) {
+      auto printed = false;
+      for (const auto& certificate : chain) {
+        std::cout << certificate.toPem();
+        printed = true;
+      }
+      if (!printed) {
+        throw std::runtime_error("Server signed its ping response with an empty certificate chain?!?");
+      }
+      return pep::FakeVoid();
+        });
+  }
+
+  static rxcpp::observable<pep::FakeVoid> PingAndPrint(const pep::ServerProxy& proxy, bool printDrift) {
+    return proxy
+      .requestPing()
+      .map([printDrift](const pep::PingResponse& response) {
+      if (printDrift) {
+        std::cout
+          << duration_cast<std::chrono::milliseconds>(
+            pep::TimeNow() - response.mTimestamp
+          ).count();
+      } else {
+        std::cout << "Received response";
+      }
+      std::cout << std::endl;
+      return pep::FakeVoid();
+        });
+  }
+
 public:
   explicit CommandPing(CliApplication& parent)
     : ChildCommandOf<CliApplication>("ping", "Ping a server", parent) {
@@ -127,10 +52,14 @@ public:
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
+    auto traits = pep::ServerTraits::All();
+
     std::vector<std::string> serverIds;
-    serverIds.reserve(pingerFactoryMethods.size());
-    std::transform(pingerFactoryMethods.cbegin(), pingerFactoryMethods.cend(), std::back_inserter(serverIds),
-      [](const std::pair<const std::string, ServerPingerFactoryMethod>& pair) {return pair.first; });
+    serverIds.reserve(traits.size());
+    std::transform(traits.cbegin(), traits.cend(), std::back_inserter(serverIds),
+      [](const pep::ServerTraits& single) {return single.commandLineId(); });
+    // Sort by command line ID: produces nicely sorted child commands
+    std::sort(serverIds.begin(), serverIds.end());
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Server to ping").value(pep::commandline::Value<std::string>().required().allow(serverIds))
@@ -141,9 +70,6 @@ protected:
   int execute() override {
     const auto& parameterValues = this->getParameterValues();
 
-    auto factory = pingerFactoryMethods.find(parameterValues.get<std::string>("server"));
-    assert(factory != pingerFactoryMethods.cend());
-
     auto printCertificateChain = parameterValues.has("print-certificate-chain");
     auto printDrift = parameterValues.has("print-drift");
     if (printDrift && printCertificateChain) {
@@ -152,11 +78,24 @@ protected:
       return 3;
     }
 
-    auto pinger = factory->second(printCertificateChain, printDrift);
+    auto serverId = parameterValues.get<std::string>("server");
+    auto traits = pep::ServerTraits::Find([serverId](const pep::ServerTraits& candidate) {
+      return candidate.commandLineId() == serverId;
+      });
+    assert(traits.has_value());
 
-    return this->executeEventLoopFor(false,
-      [pinger](std::shared_ptr<pep::Client> client) {
-        return pinger->execute(*client);
+    if (printCertificateChain && !traits->hasSigningIdentity()) {
+      LOG(LOG_TAG, pep::error) << traits->description() << " does not produce a certificate chain to print";
+      return 3;
+    }
+
+    return this->executeEventLoopFor(false, [traits = *traits, printCertificateChain, printDrift](std::shared_ptr<pep::Client> client) {
+      auto proxy = client->getServerProxy(traits);
+      if (printCertificateChain) {
+        return PrintCertificateChain(static_cast<const pep::SigningServerProxy&>(*proxy)); // TODO: prevent downcast
+      }
+
+      return PingAndPrint(*proxy, printDrift);
       });
   }
 };

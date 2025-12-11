@@ -3,12 +3,14 @@
 add_library(${PROJECT_NAME}ServerApilib
   MonitoringMessages.hpp
   MonitoringSerializers.cpp MonitoringSerializers.hpp
+  ServerProxy.cpp ServerProxy.hpp
+  SigningServerProxy.cpp SigningServerProxy.hpp
 )
 target_link_libraries(${PROJECT_NAME}ServerApilib
-  ${PROJECT_NAME}Cryptolib
-  ${PROJECT_NAME}Serializationlib
+  ${PROJECT_NAME}Messaginglib
 )
 verify_headers_standalone(${PROJECT_NAME}ServerApilib)
+
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}Serverlib STATIC

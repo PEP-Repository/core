@@ -8,6 +8,8 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
+#include <pep/utils/StringStream.hpp>
+
 namespace pep::chrono {
 namespace detail {
   template<class T>
@@ -23,12 +25,12 @@ namespace detail {
 
   template<typename DurationType, typename Rep, typename Period>
   std::chrono::duration<Rep, Period> writeDurationAs(std::chrono::duration<Rep, Period> in, const std::string& unit, std::ostream& ostream, bool hasPreviousOutput = false) {
-    auto converted = std::chrono::duration_cast<DurationType>(in);
+    auto converted = duration_cast<DurationType>(in);
     if(converted.count() > 0) {
       writeFilled(ostream, converted.count(), hasPreviousOutput);
       ostream << unit;
     }
-    auto retVal = in - std::chrono::duration_cast<std::chrono::duration<Rep, Period>>(converted);
+    auto retVal = in - duration_cast<std::chrono::duration<Rep, Period>>(converted);
     return retVal;
   }
 }
@@ -51,25 +53,25 @@ public:
 template<typename T>
 T ParseDuration(const std::string& input) {
   std::istringstream inputStream(input);
-  uint64_t numericValue;
+  uint64_t numericValue{};
   inputStream >> numericValue;
   if(inputStream.fail()) {
     throw ParseException(std::string("Could not parse duration ") + input + ": no numeric value could be read.");
   }
-  std::string suffix = inputStream.str().substr(static_cast<std::string::size_type>(inputStream.tellg()));
+  std::string suffix = GetUnparsed(std::move(inputStream));
   boost::algorithm::trim_left(suffix);
   boost::algorithm::to_lower(suffix);
   if(suffix == "d" || suffix == "day" || suffix == "days") {
-    return std::chrono::duration_cast<T>(std::chrono::days(numericValue));
+    return duration_cast<T>(std::chrono::days(numericValue));
   }
   if(suffix == "h" || suffix == "hour" || suffix == "hours") {
-    return std::chrono::duration_cast<T>(std::chrono::hours(numericValue));
+    return duration_cast<T>(std::chrono::hours(numericValue));
   }
   if(suffix == "min" || suffix == "minute" || suffix == "minutes") {
-    return std::chrono::duration_cast<T>(std::chrono::minutes(numericValue));
+    return duration_cast<T>(std::chrono::minutes(numericValue));
   }
   if(suffix == "s" || suffix == "second" || suffix == "seconds") {
-    return std::chrono::duration_cast<T>(std::chrono::seconds(numericValue));
+    return duration_cast<T>(std::chrono::seconds(numericValue));
   }
   throw ParseException(std::string("Could not parse duration ") + input + ": unit not recognized.");
 }
@@ -83,7 +85,7 @@ void WriteHumanReadableDuration(std::chrono::duration<Rep, Period> duration, std
   auto remaining = detail::writeDurationAs<std::chrono::days>(duration, "d", ostream);
   remaining = detail::writeDurationAs<std::chrono::hours>(remaining, "h", ostream, remaining != duration);
   remaining = detail::writeDurationAs<std::chrono::minutes>(remaining, "m", ostream, remaining != duration);
-  auto seconds = std::chrono::duration_cast<std::chrono::duration<double>>(remaining);
+  auto seconds = duration_cast<std::chrono::duration<double>>(remaining);
   if(seconds.count() > 0) {
     detail::writeFilled(ostream, seconds.count(), remaining != duration);
     ostream << "s";
@@ -94,7 +96,7 @@ template<typename Rep, typename Period>
 std::string ToString(std::chrono::duration<Rep, Period> duration) {
   std::ostringstream oss;
   WriteHumanReadableDuration(duration, oss);
-  return oss.str();
+  return std::move(oss).str();
 }
 
 }

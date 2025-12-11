@@ -138,7 +138,7 @@ void DownloadMetadata::ensureFormatUpToDate() {
     LOG(LOG_TAG, warning) << "Upgrading legacy download directory format.";
     boost::property_tree::ptree stateProperties;
     boost::property_tree::read_json(legacyPristineFile.string(), stateProperties);
-    auto states = DeserializeProperties<std::vector<RecordState>>(stateProperties, "records", MultiTypeTransform());
+    auto states = DeserializeProperties<std::vector<RecordState>>(stateProperties, "records", DeserializationContext());
 
     auto participantMetaFiles = GetLegacyParticipantMetaFilePaths(mDownloadDirectory);
     for (const auto& participantFile : participantMetaFiles) {
@@ -159,13 +159,15 @@ void DownloadMetadata::ensureFormatUpToDate() {
           boost::algorithm::split(parts, filename, boost::algorithm::is_space());
           assert(parts.size() > 0);
           const auto& column = parts[0];
-          auto timestamp = DeserializeProperties<Timestamp>(fileProperties.second, "timestamp", MultiTypeTransform());
+          auto timestamp = DeserializeProperties<Timestamp>(fileProperties.second, "timestamp", DeserializationContext());
 
           RecordDescriptor descriptor(id, column, timestamp);
 
           auto position = std::find_if(states.cbegin(), states.cend(), [&descriptor](const RecordState& candidate) {return candidate.descriptor == descriptor; });
           if (position == states.cend()) {
-            throw std::runtime_error("Could not find pristine state for participant " + local.text() + ", column " + column + ", timestamp " + std::to_string(timestamp.getTime()));
+            throw std::runtime_error("Could not find pristine state for participant " + local.text()
+                + ", column " + column
+                + ", timestamp " + std::to_string(TicksSinceEpoch<std::chrono::milliseconds>(timestamp)));
           }
 
           if (position->hash) {
@@ -180,7 +182,9 @@ void DownloadMetadata::ensureFormatUpToDate() {
 
     if (!states.empty()) {
       const auto& first = states.front().descriptor;
-      throw std::runtime_error("Could not find file name information for " + std::to_string(states.size()) + " record(s), the first of which is for participant " + first.getParticipant().getLocalPseudonym().text() + ", column " + first.getColumn() + ", blinding timestamp " + std::to_string(first.getBlindingTimestamp().getTime()));
+      throw std::runtime_error("Could not find file name information for " + std::to_string(states.size()) + " record(s), the first of which is for participant " + first.getParticipant().getLocalPseudonym().text()
+          + ", column " + first.getColumn()
+          + ", blinding timestamp " + std::to_string(TicksSinceEpoch<std::chrono::milliseconds>(first.getBlindingTimestamp())));
     }
     std::filesystem::remove(legacyPristineFile);
     LOG(LOG_TAG, warning) << "Download directory metadata format upgraded. Please update your (offline) copies.";
@@ -221,7 +225,7 @@ DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirector
         boost::property_tree::ptree properties;
         std::istringstream source(serialized);
         boost::property_tree::read_json(source, properties);
-        auto record = DeserializeProperties<RecordState>(properties, MultiTypeTransform());
+        auto record = DeserializeProperties<RecordState>(properties, DeserializationContext());
 
         // Cache deserialized value
         auto relative = (participantDirectory / filename).string();
@@ -277,7 +281,7 @@ void DownloadMetadata::add(const RecordDescriptor& record, const std::string& da
   SerializeProperties(properties, state);
   std::ostringstream buffer;
   boost::property_tree::write_json(buffer, properties);
-  auto serialized = buffer.str();
+  auto serialized = std::move(buffer).str();
 
   WriteFile(path, serialized);
 

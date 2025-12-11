@@ -157,11 +157,11 @@ bool DownloadDirectory::renameRecord(const RecordDescriptor& descriptor, const s
 template <>
 class pep::PropertySerializer<DownloadDirectory::ContentSpecification> : public PropertySerializerByReference<DownloadDirectory::ContentSpecification> {
 public:
-  void read(DownloadDirectory::ContentSpecification& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
-    DeserializeProperties(destination.columnGroups, source, "column-groups", transform);
-    DeserializeProperties(destination.columns, source, "columns", transform);
-    DeserializeProperties(destination.groups, source, "participant-groups", transform);
-    DeserializeProperties(destination.pps, source, "participants", transform);
+  void read(DownloadDirectory::ContentSpecification& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
+    DeserializeProperties(destination.columnGroups, source, "column-groups", context);
+    DeserializeProperties(destination.columns, source, "columns", context);
+    DeserializeProperties(destination.groups, source, "participant-groups", context);
+    DeserializeProperties(destination.pps, source, "participants", context);
   }
 
   void write(boost::property_tree::ptree& destination, const DownloadDirectory::ContentSpecification& value) const override {
@@ -175,14 +175,14 @@ public:
 template <>
 class pep::PropertySerializer<DownloadDirectory::Specification> : public PropertySerializerByReference<DownloadDirectory::Specification> {
 public:
-  void read(DownloadDirectory::Specification& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
-    DeserializeProperties(destination.accessGroup, source, "access-group", transform);
-    DeserializeProperties(destination.content, source, "content", transform);
+  void read(DownloadDirectory::Specification& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
+    DeserializeProperties(destination.accessGroup, source, "access-group", context);
+    DeserializeProperties(destination.content, source, "content", context);
 
     // Backward compatibility: the download directory may have been created by a PEP version that didn't support file extensions yet.
     // We may therefore be reading a property_tree that does not contain an "apply-file-extensions" node.
     // In this case, keep the directory in the same format by _not_ applying file extensions.
-    destination.applyFileExtensions = DeserializeProperties<std::optional<bool>>(source, "apply-file-extensions", transform).value_or(false);
+    destination.applyFileExtensions = DeserializeProperties<std::optional<bool>>(source, "apply-file-extensions", context).value_or(false);
   }
 
   void write(boost::property_tree::ptree& destination, const DownloadDirectory::Specification& value) const override {
@@ -387,7 +387,7 @@ DownloadDirectory::Specification DownloadDirectory::Specification::FromString(co
   boost::property_tree::ptree root;
   boost::property_tree::read_json(json, root);
 
-  return DeserializeProperties<DownloadDirectory::Specification>(root, MultiTypeTransform());
+  return DeserializeProperties<DownloadDirectory::Specification>(root, DeserializationContext());
 }
 
 std::string DownloadDirectory::Specification::toString() const {
@@ -396,13 +396,13 @@ std::string DownloadDirectory::Specification::toString() const {
 
   std::ostringstream result;
   boost::property_tree::write_json(result, root);
-  return result.str();
+  return std::move(result).str();
 }
 
 
 DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize)
   : mDestination(std::move(destination)), mDescriptor(std::move(descriptor)), mPath(std::move(path)), mFileName(mPath.filename().string()), mFileSize(fileSize), mHasher(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
-  
+
   mRaw = std::make_shared<std::ofstream>(mPath.string(), std::ios::out | std::ios::binary);
   if (!mRaw->is_open()) {
     throw std::system_error(errno, std::generic_category(), "Failed to open " + mPath.string());
@@ -443,7 +443,7 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
     throw std::runtime_error("Record has already been committed and stored at " + mPath.string());
   }
   mRaw = nullptr;
-  XxHasher::Hash hash;
+  XxHasher::Hash hash{};
   std::filesystem::path path;
   std::optional<Pseudonymiser> pseudonymiser{std::nullopt};
 

@@ -170,40 +170,37 @@ BENCHMARK(BM_Sha256Long);
 
 static void BM_PageDecrypt(benchmark::State& state) {
   pep::DataPayloadPage page;
-  auto plaintext = std::make_shared<std::string>();
+  std::string plaintext(1000*1000, '\0');
   pep::Metadata md;
   std::string key;
-  plaintext->resize(1000*1000);
   key.resize(32);
   page.setEncrypted(plaintext, key, md);
   for (auto _ : state) {
     benchmark::DoNotOptimize(page.decrypt(key, md));
   }
-  SetBytesProcessed(state, plaintext->size());
+  SetBytesProcessed(state, plaintext.size());
 }
 BENCHMARK(BM_PageDecrypt);
 
 static void BM_PageEncrypt(benchmark::State& state) {
   pep::DataPayloadPage page;
-  auto plaintext = std::make_shared<std::string>();
+  std::string plaintext(1000*1000, '\0');
   pep::Metadata md;
   std::string key;
-  plaintext->resize(1000*1000);
   key.resize(32);
   for (auto _ : state) {
     page.setEncrypted(plaintext, key, md);
     benchmark::DoNotOptimize(page);
   }
-  SetBytesProcessed(state, plaintext->size());
+  SetBytesProcessed(state, plaintext.size());
 }
 BENCHMARK(BM_PageEncrypt);
 
 static void BM_PageSerialize(benchmark::State& state) {
   pep::DataPayloadPage page;
-  auto plaintext = std::make_shared<std::string>();
+  std::string plaintext(1000*1000, '\0');
   pep::Metadata md;
   std::string key;
-  plaintext->resize(1000*1000);
   key.resize(32);
   page.setEncrypted(plaintext, key, md);
 
@@ -233,16 +230,15 @@ static void BM_PageSerialize(benchmark::State& state) {
     }
     benchmark::DoNotOptimize(pep::Serialization::ToString(std::move(pages[i++])));
   }
-  SetBytesProcessed(state, plaintext->size());
+  SetBytesProcessed(state, plaintext.size());
 }
 BENCHMARK(BM_PageSerialize);
 
 static void BM_PageDeserialize(benchmark::State& state) {
   pep::DataPayloadPage page;
-  auto plaintext = std::make_shared<std::string>();
+  std::string plaintext(1000*1000, '\0');
   pep::Metadata md;
   std::string key;
-  plaintext->resize(1000*1000);
   key.resize(32);
   page.setEncrypted(plaintext, key, md);
   std::string serialized = pep::Serialization::ToString(page);
@@ -250,7 +246,7 @@ static void BM_PageDeserialize(benchmark::State& state) {
     benchmark::DoNotOptimize(
             pep::Serialization::FromString<pep::DataPayloadPage>(serialized));
   }
-  SetBytesProcessed(state, plaintext->size());
+  SetBytesProcessed(state, plaintext.size());
 }
 BENCHMARK(BM_PageDeserialize);
 
@@ -272,9 +268,9 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
     ticket.mPseudonyms.push_back(lp);
   }
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
-  pep::X509CertificateChain chain;
+  auto identity = pep::X509Identity::MakeUncertified(keypair.getPrivateKey());
   ret.mTicket2 = std::make_shared<pep::SignedTicket2>(
-      ticket, chain, keypair.getPrivateKey());
+      ticket, identity);
   for (uint32_t i = 0; i < 1000; i++) {
     pep::KeyRequestEntry kre;
     kre.mMetadata.setTag("some tag" + std::to_string(i));
@@ -360,9 +356,9 @@ BENCHMARK(BM_CPURBG);
 
 static void BM_CPRNG(benchmark::State& state) {
   pep::CPRNG gen;
-  uint8_t buffer[32];
+  std::array<uint8_t, 32> buffer{};
   for (auto _ : state) {
-    gen(buffer, 32);
+    gen(buffer);
     benchmark::DoNotOptimize(buffer);
   }
   state.SetBytesProcessed(static_cast<int64_t>(state.iterations()*32));

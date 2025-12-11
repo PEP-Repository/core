@@ -46,13 +46,39 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 ####################
 
 if should_run_test basic; then
+  # Store a PEP ID...
+  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  # ... then verify that we can read it back (see #2750)
+  pepcli validate data
+  # Clean up: delete the ID that we stored
+  write_registration_server_cell ParticipantIdentifier delete -p "$id"
 
   pepcli --oauth-token-group "Research Assessor" pull -P '*' -C ShortPseudonyms -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo --output-directory "$DEST_DIR/pulled-data"
   pepcli list -l -P '*' -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   # Store data in a not yet existing row
-  pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d random-data
+  id="$(pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d random-data \
+    --ticket-out "$DEST_DIR/ticket" \
+    --metadataxentry "$(pepcli xentry --name mymetakey --payload mymetadata)")"
+  id="$(printf %s "$id" | jq --raw-output .id)"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --output-file -)"
+  [ "$value" = random-data ] || fail "Expected [random-data], got [$value]"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --metadata -)"
+  value="$(printf %s "$value" | jq --compact-output .extra)"
+  desired_value="$(printf %s mymetadata | jq --raw-input --compact-output '{"mymetakey": {"payload": . | @base64}}')"
+  [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
+
+  desired_value=$'random data with\nLF newline'
+  id="$(pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d "$desired_value")"
+  id="$(printf %s "$id" | jq --raw-output .id)"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --output-file -)"
+  [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
+
+  execute . rm "$DEST_DIR/ticket"
 
   # Ensure that MRI column exists and is read+writable for "Research Assessor" (who will upload and download)
   pepcli --oauth-token-group "Data Administrator" ama column create Visit1.MRI.Func
@@ -62,7 +88,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Access Administrator" ama cgar create MRI "Research Assessor" write
 
   # Ensure we have an SP value in the database that can be pseudonymized in the upload
-  pepcli --oauth-token-group "RegistrationServer" store -p "$TEST_PARTICIPANT" -c ShortPseudonym.Visit1.FMRI -d GUM123456751
+  write_registration_server_cell ShortPseudonym.Visit1.FMRI store -p "$TEST_PARTICIPANT" -d GUM123456751
+  
   pepcli --oauth-token-group "Access Administrator" user group create Read.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama columnGroup create Just.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama column addTo ShortPseudonym.Visit1.FMRI Just.ShortPseudonym.Visit1
@@ -128,7 +155,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Access Administrator" user group create groupWithoutAccess
   pepcli --oauth-token-group "groupWithoutAccess" query column-access
 
-  pepcli --oauth-token-group "RegistrationServer" delete -p "$TEST_PARTICIPANT" -c ShortPseudonym.Visit1.FMRI
+  write_registration_server_cell ShortPseudonym.Visit1.FMRI delete -p "$TEST_PARTICIPANT"
+
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c DeviceHistory
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func
 
@@ -262,8 +290,7 @@ if should_run_test ama; then
   # Adding the --force flag should make it succeed
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithAccessRule --force
 
-
-  pepcli --oauth-token-group "RegistrationServer" delete -p "$ID" -c ParticipantIdentifier
+  write_registration_server_cell ParticipantIdentifier delete -p "$ID"
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 fi
@@ -333,6 +360,25 @@ if should_run_test authserver-apache; then
     AUTHSERVER=pepservertest
   fi
 
+  test_authserver_request() {
+    primaryUid="$1";
+    humanReadableUid="$2";
+    alternativeUids="$3";
+    expectError="${4:-false}"
+    spoofKey="${5:-"$(cat "$DATA_DIR"/authserver/spoofKey)"}"
+    alternativeUidsHeader="PEP-Alternative-Uids;"
+    if [ -n "$alternativeUids" ]; then
+      alternativeUidsHeader="PEP-Alternative-Uids: $alternativeUids"
+    fi
+    trace curlCmd -i -H "PEP-Primary-Uid: $primaryUid" -H "PEP-Human-Readable-Uid: $humanReadableUid" -H "$alternativeUidsHeader" -H "PEP-Spoof-Check: $spoofKey" \
+      "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$(url_encode "$primaryUid")&human_readable_uid=$(url_encode "$humanReadableUid")&alternative_uids=$(url_encode "$alternativeUids")" > "$DATA_DIR/authserverResponse.txt"
+    if [ "$expectError" = false ]; then
+      trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
+    else
+      trace grep "Location: http://localhost:16515.*[\?&]error=$expectError" "$DATA_DIR/authserverResponse.txt"
+    fi
+  }
+
   pepcli --oauth-token-group "Access Administrator" user create integrationUser
   pepcli --oauth-token-group "Access Administrator" user group create integrationGroup
   pepcli --oauth-token-group "Access Administrator" user addTo integrationUser integrationGroup
@@ -344,33 +390,23 @@ if should_run_test authserver-apache; then
 
   INTEGRATION_USER_PRIMARY_UID="TRnQNJSLx5RFD8VxfzD2HfTsEZ9cT4UsilWw8aiB1ZY"
   DIFFICULT_USER_PRIMARY_UID="MWE8U4BPnAJr27HjAqWD8DucHkFUTgDxLa4zSw7R9Bg"
-  SPOOF_KEY="$(cat "$DATA_DIR"/authserver/spoofKey)"
-  trace curlCmd -i -H "PEP-Primary-Uid: $INTEGRATION_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: integrationUser@example.com" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$INTEGRATION_USER_PRIMARY_UID&human_readable_uid=integrationUser%40example.com&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
-  # We expect an error when user 'integrationUser' logs in with his primary UID.
-  # The user 'integrationUser' is currently only known by that UID. So not by e.g. his e-mailaddress, nor by his non-human-readable primary UID.
-  trace grep "Location: http://localhost:16515.*[\?&]error=access_denied" "$DATA_DIR/authserverResponse.txt"
-  trace curlCmd -i -H "PEP-Primary-Uid: $INTEGRATION_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: integrationUser@example.com" -H "PEP-Alternative-Uids:integrationUser,integration_user" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$INTEGRATION_USER_PRIMARY_UID&human_readable_uid=integrationUser%40example.com&alternative_uids=integrationUser%2Cintegration_user" > "$DATA_DIR/authserverResponse.txt"
-  # When he logs in with his known UID 'integrationUser' (in this case specified as an alternative UID), this succeeds. Furthermore, his primary UID is now added to the database.
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
-  trace curlCmd -i -H "PEP-Primary-Uid: $INTEGRATION_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: integrationUser@example.com" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$INTEGRATION_USER_PRIMARY_UID&human_readable_uid=integrationUser%40example.com&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
-  # so this time login should succeed, since the primary UID is now known to the system.
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
-  trace curlCmd -i -H "PEP-Primary-Uid: eve" -H "PEP-Human-Readable-Uid: eve" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=eve&human_readable_uid=eve&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
-  trace grep "Location: http://localhost:16515.*[\?&]error=access_denied" "$DATA_DIR/authserverResponse.txt"
+  printYellow "We expect an error when user 'integrationUser' logs in with his primary UID."
+  printYellow "The user is currently only known as 'integrationUser'. So not by e.g. his e-mailaddress, nor by his non-human-readable primary UID."
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com "" access_denied
+  printYellow "When he logs in with his known UID 'integrationUser' (in this case specified as an alternative UID), this succeeds. Furthermore, his primary UID is now added to the database."
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com "integrationUser,integration_user"
+  printYellow "so this time login should succeed, since the primary UID is now known to the system."
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" integrationUser@example.com ""
+  printYellow "but if he now logs in with 'integrationUser' in alternative-UIDs, but with a different primary UID, it should fail"
+  test_authserver_request "wrong-primary-uid" integrationUser@example.com "integrationUser,integration_user" server_error
+
+  test_authserver_request eve eve "" access_denied
 
   # Test if alternative UIDs with comma's are correctly split and decoded
-  trace curlCmd -i -H "PEP-Primary-Uid: $DIFFICULT_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: difficultuser@example.com" -H "PEP-Alternative-Uids:%22something%20with%20comma's%2C%20and%20spaces%22%40example.com,second_alternative" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$DIFFICULT_USER_PRIMARY_UID&human_readable_uid=difficultuser%40example.com&alternative_uids=%2522something%2520with%2520comma's%252C%2520and%2520spaces%2522%2540example.com%2Csecond_alternative" > "$DATA_DIR/authserverResponse.txt"
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
+  test_authserver_request "$DIFFICULT_USER_PRIMARY_UID" difficultuser@example.com "%22something%20with%20comma's%2C%20and%20spaces%22%40example.com,second_alternative"
 
   # Test if alternative UIDs with a plus are correctly URL-decoded
-  trace curlCmd -i -H "PEP-Primary-Uid: $DIFFICULT_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: difficultuser@example.com" -H "PEP-Alternative-Uids:difficultuser%2Bpep%40example.com" -H "PEP-Spoof-Check: $SPOOF_KEY" \
-    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$DIFFICULT_USER_PRIMARY_UID&human_readable_uid=difficultuser%40example.com&alternative_uids=difficultuser%252Bpep%2540example.com" > "$DATA_DIR/authserverResponse.txt"
-  trace grep "Location: http://localhost:16515.*[\?&]code=" "$DATA_DIR/authserverResponse.txt"
+  test_authserver_request "$DIFFICULT_USER_PRIMARY_UID" difficultuser@example.com difficultuser%2Bpep%40example.com
 
   pepcli --oauth-token-group "Access Administrator" user removeFrom difficultUser integrationGroup
   pepcli --oauth-token-group "Access Administrator" user removeIdentifier "difficultuser+pep@example.com"
@@ -380,6 +416,33 @@ if should_run_test authserver-apache; then
   pepcli --oauth-token-group "Access Administrator" user removeFrom integrationUser integrationGroup
   pepcli --oauth-token-group "Access Administrator" user remove integrationUser
   pepcli --oauth-token-group "Access Administrator" user group remove integrationGroup
+fi
+
+####################
+
+if should_run_test user-query; then
+  userDisplayId="user-query-test-user"
+  userPrimaryId="user-query-test-primary-id"
+  userAlternativeIds=("user-query-test-alternative1" "user-query-test-alternative2")
+  [ "$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users" | any(."display id" == "'$userDisplayId'")')" == "false" ]
+  pepcli --oauth-token-group "Access Administrator" user create "$userDisplayId"
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier --primary-id "$userDisplayId" "$userPrimaryId"
+  for id in "${userAlternativeIds[@]}"; do
+    pepcli --oauth-token-group "Access Administrator" user addIdentifier "$userPrimaryId" "$id"
+  done
+  queryResult="$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users"[] | select(."primary id" == "'$userPrimaryId'")')"
+  [ -n "$queryResult" ]
+  returnedDisplayId=$(echo "$queryResult" | jq --raw-output '."display id"')
+  [ "$returnedDisplayId" == "$userDisplayId" ]
+  returnedPrimaryId=$(echo "$queryResult" | jq --raw-output '."primary id"')
+  [ "$returnedPrimaryId" == "$userPrimaryId" ]
+  returnedAlternativeIds=$(echo "$queryResult" | jq --raw-output '."other user identifiers"[]')
+  echo "'$returnedAlternativeIds'"
+  for id in "${userAlternativeIds[@]}"; do
+    echo "$returnedAlternativeIds" | grep "$id"
+  done
+
+  pepcli --oauth-token-group "Access Administrator" user remove "$userPrimaryId"
 fi
 
 ####################
@@ -443,19 +506,32 @@ if should_run_test structure-metadata; then
   # Add some entries for other metadata types
   pepcli --oauth-token-group "Data Administrator" ama columnGroup create columnGroupWithMetadata
   pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user group create userGroupWithMetadata
   pepcli --oauth-token-group "Data Administrator" structure-metadata column-group set columnGroupWithMetadata --key mygroup:mykey --value "$meta_value"
   pepcli --oauth-token-group "Data Administrator" structure-metadata participant-group set participantGroupWithMetadata --key mygroup:mykey --value "$meta_value"
+  pepcli --oauth-token-group "Access Administrator" structure-metadata user-group set userGroupWithMetadata --key mygroup:mykey --value "$meta_value"
 
   # Check presence of entries
   meta_value_retrieved="$(pepcli --oauth-token-group "Research Assessor" structure-metadata column-group get columnGroupWithMetadata --key mygroup:mykey)"
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
   meta_value_retrieved="$(pepcli --oauth-token-group "Research Assessor" structure-metadata participant-group get participantGroupWithMetadata --key mygroup:mykey)"
   [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
+  meta_value_retrieved="$(pepcli --oauth-token-group "Access Administrator" structure-metadata user-group get userGroupWithMetadata --key mygroup:mykey)"
+  [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
+
+  # Test metadata using multiple userIDs belonging to the same user
+  pepcli --oauth-token-group "Access Administrator" user create userWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier userWithMetadata userWithMetadataAlternative
+  pepcli --oauth-token-group "Access Administrator" structure-metadata user set userWithMetadata --key mygroup:mykey --value "$meta_value"
+  meta_value_retrieved="$(pepcli --oauth-token-group "Access Administrator" structure-metadata user get userWithMetadataAlternative --key mygroup:mykey)"
+  [ "$meta_value_retrieved" = "$meta_value" ] || fail "Expected [$meta_value], got [$meta_value_retrieved]"
 
   # Clean up what we created in the DB
   pepcli --oauth-token-group "Data Administrator" ama column remove columnWithMetadata
   pepcli --oauth-token-group "Data Administrator" ama columnGroup remove columnGroupWithMetadata
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user group remove userGroupWithMetadata
+  pepcli --oauth-token-group "Access Administrator" user remove userWithMetadata
 
 fi
 
@@ -561,7 +637,7 @@ if should_run_test s3-roundtrip; then
   pepcli --oauth-token-group "Data Administrator" ama column addTo LargeColumn LargeColumns
   pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" read
   pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" write
-  
+
   # Store a large (i.e. stored in S3) file with some participants
   readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
   # 10 blocks @ 1048576 bytes each = 10MiB
@@ -569,7 +645,7 @@ if should_run_test s3-roundtrip; then
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
-  
+
   # Download the (large) files that we stored
   pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
   # We'd like to diff/compare the downloaded files to the original LARGE_RANDOM_DATA_FILE, but
@@ -579,7 +655,7 @@ if should_run_test s3-roundtrip; then
   if [ "$count" -ne 50 ]; then
     fail "Expected to download 50 files from S3 but got $count."
   fi
-  
+
   # Clean up
   execute . rm "$LARGE_RANDOM_DATA_FILE"
   execute . rm -rf "$DEST_DIR/s3-backed-files"

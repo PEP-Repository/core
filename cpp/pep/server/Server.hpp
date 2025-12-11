@@ -1,12 +1,12 @@
 #pragma once
 
-#include <pep/utils/File.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
-#include <pep/server/MonitoringSerializers.hpp>
-#include <pep/async/IoContext_fwd.hpp>
-#include <pep/messaging/HousekeepingMessages.hpp>
+#include <pep/server/MonitoringMessages.hpp>
+#include <pep/utils/File.hpp>
 
 namespace pep {
 
@@ -26,7 +26,7 @@ public:
   * \brief Produces a human-readable description of the server.
   * \return A string describing the server (type).
   */
-  virtual std::string describe() const = 0;
+  std::string describe() { return mDescription; }
 
   /*!
   * \brief Produces the path where the server stores its data (if any).
@@ -49,8 +49,6 @@ protected:
   std::shared_ptr<prometheus::Registry> mRegistry;
 
   Server(std::shared_ptr<Parameters> parameters);
-
-  virtual std::string makeSerializedPingResponse(const PingRequest& request) const;
 
   virtual std::shared_ptr<prometheus::Registry> getMetricsRegistry();
 
@@ -78,7 +76,6 @@ protected:
   static std::filesystem::path EnsureDirectoryPath(std::filesystem::path);
 
 private:
-  messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
   messaging::MessageBatches handleMetricsRequest(std::shared_ptr<SignedMetricsRequest> signedRequest);
   messaging::MessageBatches handleChecksumChainNamesRequest(std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest);
   messaging::MessageBatches handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest);
@@ -114,6 +111,7 @@ private:
   std::shared_ptr<Metrics> mMetrics;
   EGCache& mEGCache; // <- for metrics
   unsigned int mUncaughtReadExceptions = 0;
+  std::string mDescription;
   std::shared_ptr<boost::asio::io_context> mIoContext;
   X509RootCertificates mRootCAs;
 };
@@ -143,6 +141,8 @@ public:
    * \brief Destructor.
    */
   virtual ~Parameters() noexcept = default;
+
+  virtual ServerTraits serverTraits() const noexcept = 0;
 
   /*!
    * \brief Validates these parameters, raising an exception if they're not valid.

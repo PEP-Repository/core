@@ -27,7 +27,10 @@ class Transcryptor : public SigningServer {
 
  public:
   class Parameters : public SigningServer::Parameters {
-   public:
+  protected:
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::Transcryptor(); }
+
+  public:
     Parameters(
         std::shared_ptr<boost::asio::io_context> io_context,
         const Configuration& config);
@@ -61,7 +64,6 @@ public:
   explicit Transcryptor(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   std::shared_ptr<prometheus::Registry> getMetricsRegistry() override;
   std::vector<std::string> getChecksumChainNames() const override;
