@@ -17,9 +17,6 @@ using PageId = uint64_t;
  */
 class EntryPayload {
 protected:
-  /// Polymorhic equality check that may only be called when both objects are of the exact same type
-  virtual bool isStrictlyEqualTo(const EntryPayload& other) const { return typeid(*this) == typeid(other); };
-
   size_t validatedPageIndex(size_t index) const;
 
   static XXH64_hash_t XxHash(const std::string& rawPage);
@@ -40,6 +37,9 @@ public:
 
   virtual std::shared_ptr<EntryPayload> clone() const = 0;
 
+  /// True if both objects are of the exact same type AND they hold equivalent data
+  virtual bool isStrictlyEqualTo(const EntryPayload& other) const { return typeid(*this) == typeid(other); };
+
   virtual size_t pageCount() const noexcept = 0;
   virtual uint64_t size() const noexcept = 0;
   virtual std::optional<uint64_t> pageSize() const = 0;
@@ -47,14 +47,7 @@ public:
 
   static void Save(std::shared_ptr<EntryPayload> payload, PersistedEntryProperties& properties, std::vector<PageId>& pages);
   static std::shared_ptr<EntryPayload> Load(PersistedEntryProperties& properties, std::vector<PageId>& pages);
-
-  friend bool StrictlyEqual(const EntryPayload&, const EntryPayload&);
 };
-
-/// True if both objects are of the exact same type AND they hold equivalent data
-inline bool StrictlyEqual(const EntryPayload& lhs, const EntryPayload& rhs) {
-  return lhs.isStrictlyEqualTo(rhs);
-}
 
 /*!
  * \brief An entry payload consisting of a single small page stored on the FileStore (i.e. without using the PageStore).
@@ -66,18 +59,18 @@ private:
   uint64_t mPayloadSize;
 
 protected:
-  bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
-    if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
-    const auto& downcast = static_cast<const InlinedEntryPayload&>(rhs);
-    return this->mContent == downcast.mContent && this->mPayloadSize == downcast.mPayloadSize;
-  }
-
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
 
 public:
   InlinedEntryPayload(std::string content, uint64_t payloadSize) : mContent(std::move(content)), mPayloadSize(payloadSize) {}
 
   std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<InlinedEntryPayload>(*this); }
+
+  bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
+    if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
+    const auto& downcast = static_cast<const InlinedEntryPayload&>(rhs);
+    return this->mContent == downcast.mContent && this->mPayloadSize == downcast.mPayloadSize;
+  }
 
   size_t pageCount() const noexcept override { return 1U; }
   uint64_t size() const noexcept override { return mPayloadSize; }
@@ -99,6 +92,14 @@ private:
   uint64_t mPageSize = 0; // Zero for old entries that didn't store the property
 
 protected:
+  void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
+
+public:
+  PagedEntryPayload() = default;
+  PagedEntryPayload(PersistedEntryProperties& properties, std::vector<PageId> pages);
+
+  std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<PagedEntryPayload>(*this); }
+
   bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
     if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
 
@@ -108,14 +109,6 @@ protected:
         this->mPayloadSize == downcast.mPayloadSize &&
         this->mPageSize == downcast.mPageSize;
   }
-
-  void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
-
-public:
-  PagedEntryPayload() = default;
-  PagedEntryPayload(PersistedEntryProperties& properties, std::vector<PageId> pages);
-
-  std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<PagedEntryPayload>(*this); }
 
   size_t pageCount() const noexcept override { return mPages.size(); }
   uint64_t size() const noexcept override { return mPayloadSize; }

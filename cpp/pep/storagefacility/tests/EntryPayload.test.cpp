@@ -47,29 +47,30 @@ TEST(EntryPayload, payloads_are_not_strictly_equal_if_types_are_different) {
   const auto paged = MakeEntryPayload<PagedEntryPayload>(props, std::vector<PageId>{12, 13, 14});
   const auto inlined = MakeEntryPayload<InlinedEntryPayload>("1 2 3 4 5 6", 11);
 
-  EXPECT_FALSE(StrictlyEqual(*paged, *inlined));
-  EXPECT_FALSE(StrictlyEqual(*inlined, *paged));
+  EXPECT_FALSE(paged->isStrictlyEqualTo(*inlined));
+  EXPECT_FALSE(inlined->isStrictlyEqualTo(*paged));
 }
 
 TEST(EntryPayload, inlined_payloads_are_strictly_equal_if_their_content_is_equal) {
-  EXPECT_TRUE(StrictlyEqual(
-      *MakeEntryPayload<InlinedEntryPayload>("1 2", 3),
-      *MakeEntryPayload<InlinedEntryPayload>("1 2", 3)));
-  EXPECT_TRUE(StrictlyEqual(
-      *MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5),
-      *MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5)));
+  EXPECT_TRUE(
+      MakeEntryPayload<InlinedEntryPayload>("1 2", 3)->isStrictlyEqualTo(
+          *MakeEntryPayload<InlinedEntryPayload>("1 2", 3)));
+  EXPECT_TRUE(
+      MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5)
+          ->isStrictlyEqualTo(*MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5)));
 
   // edge_case: compare to self
   const auto specificInstance = MakeEntryPayload<InlinedEntryPayload>("ABCD", 4);
-  EXPECT_TRUE(StrictlyEqual(*specificInstance, *specificInstance));
+  EXPECT_TRUE(specificInstance->isStrictlyEqualTo(*specificInstance));
 }
 
 TEST(EntryPayload, inlined_payloads_are_not_strictly_equal_if_their_contents_differ) {
-  EXPECT_FALSE(StrictlyEqual(
-      *MakeEntryPayload<InlinedEntryPayload>("AAA", 3),
-      *MakeEntryPayload<InlinedEntryPayload>("BBB", 3)));
   EXPECT_FALSE(
-      StrictlyEqual(*MakeEntryPayload<InlinedEntryPayload>("CC", 2), *MakeEntryPayload<InlinedEntryPayload>("D", 1)));
+      MakeEntryPayload<InlinedEntryPayload>("AAA", 3)->isStrictlyEqualTo(
+          *MakeEntryPayload<InlinedEntryPayload>("BBB", 3)));
+  EXPECT_FALSE(
+      MakeEntryPayload<InlinedEntryPayload>("CC", 2)->isStrictlyEqualTo(
+          *MakeEntryPayload<InlinedEntryPayload>("D", 1)));
 }
 
 TEST(EntryPayload, paged_payloads_are_strictly_equal_if_their_content_is_equal) {
@@ -90,17 +91,17 @@ TEST(EntryPayload, paged_payloads_are_strictly_equal_if_their_content_is_equal) 
   props = AsPersistentEntryProperties(propsB);
   const auto paged_BB_1 = MakeEntryPayload<PagedEntryPayload>(props, pagesB);
 
-  EXPECT_TRUE(StrictlyEqual(*paged_AA_0, *paged_AA_1));
-  EXPECT_TRUE(StrictlyEqual(*paged_BB_0, *paged_BB_1));
+  EXPECT_TRUE(paged_AA_0->isStrictlyEqualTo(*paged_AA_1));
+  EXPECT_TRUE(paged_BB_0->isStrictlyEqualTo(*paged_BB_1));
 
   // edge_case: compare to self
-  EXPECT_TRUE(StrictlyEqual(*paged_AA_0, *paged_AA_0));
+  EXPECT_TRUE(paged_AA_0->isStrictlyEqualTo(*paged_AA_0));
 
   // edge case: empty payloads are equal (regardless of how are constructed)
   props = AsPersistentEntryProperties({.filesize = 0, .pagesize = 0});
   const auto emptyA = MakeEntryPayload<PagedEntryPayload>(props, std::vector<PageId>{});
   const auto emptyB = std::make_shared<PagedEntryPayload>();
-  EXPECT_TRUE(StrictlyEqual(*emptyA, *emptyB));
+  EXPECT_TRUE(emptyA->isStrictlyEqualTo(*emptyB));
 }
 
 TEST(EntryPayload, paged_payloads_are_not_strictly_equal_if_their_contents_differ) {
@@ -121,7 +122,7 @@ TEST(EntryPayload, paged_payloads_are_not_strictly_equal_if_their_contents_diffe
   props = AsPersistentEntryProperties(propsB);
   const auto paged_BB = MakeEntryPayload<PagedEntryPayload>(props, pagesB);
 
-  EXPECT_FALSE(StrictlyEqual(*paged_AA, *paged_AB));
-  EXPECT_FALSE(StrictlyEqual(*paged_AA, *paged_BA));
-  EXPECT_FALSE(StrictlyEqual(*paged_AA, *paged_BB));
+  EXPECT_FALSE(paged_AA->isStrictlyEqualTo(*paged_AB));
+  EXPECT_FALSE(paged_AA->isStrictlyEqualTo(*paged_BA));
+  EXPECT_FALSE(paged_AA->isStrictlyEqualTo(*paged_BB));
 }
