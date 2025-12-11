@@ -56,8 +56,8 @@ TEST(EntryPayload, inlined_payloads_are_strictly_equal_if_their_content_is_equal
       MakeEntryPayload<InlinedEntryPayload>("1 2", 3)->isStrictlyEqualTo(
           *MakeEntryPayload<InlinedEntryPayload>("1 2", 3)));
   EXPECT_TRUE(
-      MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5)
-          ->isStrictlyEqualTo(*MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5)));
+      MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5)->isStrictlyEqualTo(
+          *MakeEntryPayload<InlinedEntryPayload>("3 4 5", 5)));
 
   // edge_case: compare to self
   const auto specificInstance = MakeEntryPayload<InlinedEntryPayload>("ABCD", 4);
