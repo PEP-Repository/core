@@ -13,6 +13,11 @@ $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
 # (?<=...) = RegEx lookbehind
 $ConanArgs = $args -replace '(?<=^-[^_]*)__', ':'
 
+# Set PEP_USE_MSVC_VERSION to force using specific version. E.g. 194 to use some VS 2022 version (which must be installed).
+if (Test-Path env:PEP_USE_MSVC_VERSION) {
+  $ConanArgs += @('-s:a'; "compiler.version=$env:PEP_USE_MSVC_VERSION")
+}
+
 do {
   try {
     $conanLock = [IO.File]::Open("$HOME\.pep-conan-lock", [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Read)
@@ -25,6 +30,7 @@ do {
 } while ($false)
 
 try {
+  # Set PEP_NO_SOFTWARE_INSTALL to prevent installing software
   if (!(Test-Path env:PEP_NO_SOFTWARE_INSTALL)) {
     echo 'Upgrading Conan'
     pipx upgrade conan
@@ -34,9 +40,9 @@ try {
 
   if (Test-Path env:CLEAN_CONAN) {
     echo 'Cleaning Conan cache.'
-    # Remove some temporary build files (excludes binaries)
-    conan remove '*' --lru 4w --confirm
     # Remove old packages
+    conan remove '*' --lru 4w --confirm
+    # Remove some temporary build files (excludes binaries)
     conan cache clean --build --temp
   }
 }

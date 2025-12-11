@@ -64,7 +64,7 @@ REM Specify %pipelinenumber% and %jobnumber% to ensure that configVersion.json h
 powershell -ExecutionPolicy Bypass -File "%OwnDir%\..\scripts\invoke-sh.ps1" "../scripts/createConfigVersionJson.sh" "%unixinfradir%" "%unixprojectdir%" "%pipelinenumber%" "%jobnumber%" > "%artifactsdir%\configVersion.json" || exit /B 1
 popd
 if not exist "%artifactsdir%\configVersion.json" (
-  echo Config version file was not created at %artifactsdir%\configVersion.json 2>&1
+  echo Config version file was not created at %artifactsdir%\configVersion.json
   exit /B 1
 )
 

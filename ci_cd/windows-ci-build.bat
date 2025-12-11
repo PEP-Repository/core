@@ -1,5 +1,5 @@
 @echo off
-REM TODO: rewrite in PowerShell: see e.g. ci_cd/windows-ci-find-msvc.bat
+REM TODO: rewrite in PowerShell
 REM Having this code in a batch file (as opposed to in .gitlab-ci.yml) allows it to be run and debugged locally.
 REM Variables are prefixed with "PEP" to reduce chances of naming collisions.
 set OwnDir=%~dp0
@@ -34,18 +34,6 @@ if [%BuildType%] == [Debug] (
   echo Unsupported build type: %BuildType%
   goto :Invocation
 )
-
-echo Locating Visual Studio.
-call "%OwnDir%\windows-ci-find-msvc.bat" || exit /B 1
-
-echo Initializing environment for Visual Studio tool invocation.
-
-if "%PEP_VCVARS_BAT%" == "" (
-  echo Windows CI runner provisioning script didn't provide the required PEP_VCVARS_BAT variable. Aborting.
-  exit /B 1
-)
-
-call "%PEP_VCVARS_BAT%" || exit /B 1
 
 if "%CI_COMMIT_REF_NAME%" == "" (
   echo No CI_COMMIT_REF_NAME specified: performing 'local' build.
@@ -87,6 +75,9 @@ pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   --output-folder=.\%BUILD_DIR%\ ^
   || exit /B 1
 
+REM Put windeployqt and cmake in path
+call .\generators\conanbuild.bat || exit /B 1
+
 echo Configuring CMake project.
 cmake --preset conan-default %PEP_CMAKE_DEFINES% || exit /B 1
 
@@ -112,8 +103,6 @@ copy cpp\pep\logon\%BuildType%\pepLogon.exe gui\%BuildType% || exit /B 1
 copy cpp\pep\cli\%BuildType%\pepcli.exe gui\%BuildType% || exit /B 1
 
 echo Invoking WiX installer creation script.
-REM Put windeployqt in path
-call .\generators\conanbuild.bat || exit /B 1
 call ..\installer\createBinWixLib.bat . %BuildType% || exit /B 1
 call .\generators\deactivate_conanbuild.bat || exit /B 1
 
