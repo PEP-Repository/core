@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)  # Use https://apt.kitware.com/ to get a recent CMake version if needed
+cmake_minimum_required(VERSION 3.28...4.2)  # Use https://apt.kitware.com/ to get a recent CMake version if needed
 
 # We don't use C++ modules yet and don't want to require clang-scan-deps,
 # see https://discourse.cmake.org/t/cmake-3-28-cmake-cxx-compiler-clang-scan-deps-notfound-not-found/9244
