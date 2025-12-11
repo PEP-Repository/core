@@ -66,11 +66,7 @@ public:
 
   std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<InlinedEntryPayload>(*this); }
 
-  bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
-    if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
-    const auto& downcast = static_cast<const InlinedEntryPayload&>(rhs);
-    return this->mContent == downcast.mContent && this->mPayloadSize == downcast.mPayloadSize;
-  }
+  bool isStrictlyEqualTo(const EntryPayload& rhs) const override;
 
   size_t pageCount() const noexcept override { return 1U; }
   uint64_t size() const noexcept override { return mPayloadSize; }
@@ -100,15 +96,7 @@ public:
 
   std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<PagedEntryPayload>(*this); }
 
-  bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
-    if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
-
-    const auto& downcast = static_cast<const PagedEntryPayload&>(rhs);
-    return
-        this->mPages == downcast.mPages &&
-        this->mPayloadSize == downcast.mPayloadSize &&
-        this->mPageSize == downcast.mPageSize;
-  }
+  bool isStrictlyEqualTo(const EntryPayload& rhs) const override;
 
   size_t pageCount() const noexcept override { return mPages.size(); }
   uint64_t size() const noexcept override { return mPayloadSize; }
