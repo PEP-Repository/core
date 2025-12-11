@@ -17,10 +17,8 @@ using PageId = uint64_t;
  */
 class EntryPayload {
 protected:
-  /// Equivalent to typeid(*this), but without requiring rtti
-  virtual const std::type_info& type() const noexcept= 0;
   /// Polymorhic equality check that may only be called when both objects are of the exact same type
-  virtual bool isStrictlyEqualTo(const EntryPayload&) const = 0;
+  virtual bool isStrictlyEqualTo(const EntryPayload& other) const { return typeid(*this) == typeid(other); };
 
   size_t validatedPageIndex(size_t index) const;
 
@@ -55,7 +53,7 @@ public:
 
 /// True if both objects are of the exact same type AND they hold equivalent data
 inline bool StrictlyEqual(const EntryPayload& lhs, const EntryPayload& rhs) {
-  return lhs.type() == rhs.type() && lhs.isStrictlyEqualTo(rhs);
+  return lhs.isStrictlyEqualTo(rhs);
 }
 
 /*!
@@ -68,10 +66,10 @@ private:
   uint64_t mPayloadSize;
 
 protected:
-  const std::type_info& type() const noexcept override { return typeid(InlinedEntryPayload); };
   bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
-    const auto& typed_rhs = static_cast<const InlinedEntryPayload&>(rhs);
-    return this->mContent == typed_rhs.mContent && this->mPayloadSize == typed_rhs.mPayloadSize;
+    if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
+    const auto& downcast = static_cast<const InlinedEntryPayload&>(rhs);
+    return this->mContent == downcast.mContent && this->mPayloadSize == downcast.mPayloadSize;
   }
 
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
@@ -101,12 +99,14 @@ private:
   uint64_t mPageSize = 0; // Zero for old entries that didn't store the property
 
 protected:
-  const std::type_info& type() const noexcept override { return typeid(PagedEntryPayload); };
   bool isStrictlyEqualTo(const EntryPayload& rhs) const override {
-    const auto& typed_rhs = static_cast<const PagedEntryPayload&>(rhs);
-    return this->mPages == typed_rhs.mPages &&
-        this->mPayloadSize == typed_rhs.mPayloadSize &&
-        this->mPageSize == typed_rhs.mPageSize;
+    if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
+
+    const auto& downcast = static_cast<const PagedEntryPayload&>(rhs);
+    return
+        this->mPages == downcast.mPages &&
+        this->mPayloadSize == downcast.mPayloadSize &&
+        this->mPageSize == downcast.mPageSize;
   }
 
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
