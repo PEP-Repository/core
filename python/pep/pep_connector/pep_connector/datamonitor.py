@@ -1187,7 +1187,7 @@ class DataMonitor(Connector):
 
         return groups
 
-    def generate_grouped_html_reports(self, monitor_columns: list[str | dict], info_columns: list[str | dict], 
+    def generate_grouped_html_reports(self, monitor_columns: list[str | dict] | None, info_columns: list[str | dict] | None, 
                                                  group_column: str, 
                                                  consent_column: str | None = "Consent.Bool",
                                                  survey_participant_column: str | None = "TeacherInfo.IsSurveyParticipant",
@@ -1199,8 +1199,8 @@ class DataMonitor(Connector):
         filtered to only include participants who are survey participants and have given consent.
 
         Args:
-            monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
-            info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
+            monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys, or None
+            info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys, or None
             group_column: Column name to group participants by
             consent_column: Column name containing consent information (default: "Consent.Bool")
             survey_participant_column: Column name containing survey participant flag (default: "TeacherInfo.IsSurveyParticipant")
@@ -1214,18 +1214,25 @@ class DataMonitor(Connector):
         """
         self.log(f"Generating grouped HTML reports by column: {group_column}", level=logging.INFO)
 
-        if not isinstance(monitor_columns, list):
-            raise ValueError("Monitor columns must be a list, its now: {}".format(type(monitor_columns)))
-        if not isinstance(info_columns, list):
-            raise ValueError("Info columns must be a list, its now: {}".format(type(info_columns)))
+        if monitor_columns is not None and not isinstance(monitor_columns, list):
+            raise ValueError("Monitor columns must be a list or None, its now: {}".format(type(monitor_columns)))
+        if info_columns is not None and not isinstance(info_columns, list):
+            raise ValueError("Info columns must be a list or None, its now: {}".format(type(info_columns)))
+        
+        # At least one of monitor_columns or info_columns must be provided
+        if monitor_columns is None and info_columns is None:
+            raise ValueError("At least one of monitor_columns or info_columns must be provided")
+        
+        # Default to empty list if None
+        if monitor_columns is None:
+            monitor_columns = []
+        if info_columns is None:
+            info_columns = []
 
         if info_columns and isinstance(info_columns[0], dict):
             info_column_names = [col["column_name"] for col in info_columns]
         else:
             info_column_names = info_columns
-
-        if group_column not in info_column_names:
-            raise ValueError(f"Group column '{group_column}' must be included in info_columns")
 
         # Build list of all columns needed for report generation
         all_columns_for_report = []
