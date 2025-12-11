@@ -1229,11 +1229,6 @@ class DataMonitor(Connector):
         if info_columns is None:
             info_columns = []
 
-        if info_columns and isinstance(info_columns[0], dict):
-            info_column_names = [col["column_name"] for col in info_columns]
-        else:
-            info_column_names = info_columns
-
         # Build list of all columns needed for report generation
         all_columns_for_report = []
         
