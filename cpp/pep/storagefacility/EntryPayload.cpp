@@ -50,10 +50,10 @@ std::shared_ptr<EntryPayload> EntryPayload::Load(PersistedEntryProperties& prope
   return result;
 }
 
-bool InlinedEntryPayload::isStrictlyEqualTo(const EntryPayload& rhs) const {
-  if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
+bool InlinedEntryPayload::allMemberVarsAreEqual(const EntryPayload& rhs) const {
   const auto& downcast = static_cast<const InlinedEntryPayload&>(rhs);
-  return this->mContent == downcast.mContent && this->mPayloadSize == downcast.mPayloadSize;
+  return this->mContent == downcast.mContent
+      && this->mPayloadSize == downcast.mPayloadSize;
 }
 
 messaging::MessageSequence InlinedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {
@@ -87,11 +87,10 @@ std::shared_ptr<InlinedEntryPayload> InlinedEntryPayload::Load(PersistedEntryPro
   return std::make_shared<InlinedEntryPayload>(std::move(*content), size);
 }
 
-bool PagedEntryPayload::isStrictlyEqualTo(const EntryPayload& rhs) const {
-  if (!EntryPayload::isStrictlyEqualTo(rhs)) return false;
-
+bool PagedEntryPayload::allMemberVarsAreEqual(const EntryPayload& rhs) const {
   const auto& downcast = static_cast<const PagedEntryPayload&>(rhs);
-  return this->mPages == downcast.mPages && this->mPayloadSize == downcast.mPayloadSize
+  return this->mPages == downcast.mPages
+      && this->mPayloadSize == downcast.mPayloadSize
       && this->mPageSize == downcast.mPageSize;
 }
 

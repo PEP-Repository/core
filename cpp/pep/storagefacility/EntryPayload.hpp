@@ -32,13 +32,17 @@ protected:
   EntryPayload(const EntryPayload &) = default;
   EntryPayload& operator=(const EntryPayload &) = default;
 
+  virtual bool allMemberVarsAreEqual(const EntryPayload&) const = 0;
+
 public:
   virtual ~EntryPayload() noexcept = default;
 
   virtual std::shared_ptr<EntryPayload> clone() const = 0;
 
   /// True if both objects are of the exact same type AND they hold equivalent data
-  virtual bool isStrictlyEqualTo(const EntryPayload& other) const { return typeid(*this) == typeid(other); };
+  bool isStrictlyEqualTo(const EntryPayload& other) const {
+    return this == std::addressof(other) || (typeid(*this) == typeid(other) && allMemberVarsAreEqual(other));
+  };
 
   virtual size_t pageCount() const noexcept = 0;
   virtual uint64_t size() const noexcept = 0;
@@ -61,12 +65,12 @@ private:
 protected:
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
 
+  bool allMemberVarsAreEqual(const EntryPayload& rhs) const override;
+
 public:
   InlinedEntryPayload(std::string content, uint64_t payloadSize) : mContent(std::move(content)), mPayloadSize(payloadSize) {}
 
   std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<InlinedEntryPayload>(*this); }
-
-  bool isStrictlyEqualTo(const EntryPayload& rhs) const override;
 
   size_t pageCount() const noexcept override { return 1U; }
   uint64_t size() const noexcept override { return mPayloadSize; }
@@ -90,13 +94,13 @@ private:
 protected:
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
 
+  bool allMemberVarsAreEqual(const EntryPayload& rhs) const override;
+
 public:
   PagedEntryPayload() = default;
   PagedEntryPayload(PersistedEntryProperties& properties, std::vector<PageId> pages);
 
   std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<PagedEntryPayload>(*this); }
-
-  bool isStrictlyEqualTo(const EntryPayload& rhs) const override;
 
   size_t pageCount() const noexcept override { return mPages.size(); }
   uint64_t size() const noexcept override { return mPayloadSize; }
