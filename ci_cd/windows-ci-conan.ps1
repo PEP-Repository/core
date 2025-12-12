@@ -18,7 +18,7 @@ if (Test-Path env:PEP_USE_MSVC_VERSION) {
   $ConanArgs += @('-s:a'; "compiler.version=$env:PEP_USE_MSVC_VERSION")
 }
 
-do {
+while ($true) {
   try {
     $conanLock = [IO.File]::Open("$HOME\.pep-conan-lock", [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Read)
   }
@@ -27,7 +27,8 @@ do {
     Start-Sleep 10s
     continue
   }
-} while ($false)
+  break
+}
 
 try {
   # Set PEP_NO_SOFTWARE_INSTALL to prevent installing software
