@@ -41,8 +41,10 @@ try {
 
   if (Test-Path env:CLEAN_CONAN) {
     echo 'Cleaning Conan cache.'
-    # Remove old packages
+    # Remove old recipes
     conan remove '*' --lru 4w --confirm
+    # Remove old packages
+    conan remove '*:*' --lru 4w --confirm
     # Remove some temporary build files (excludes binaries)
     conan cache clean --build --temp
   }
