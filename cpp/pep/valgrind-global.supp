@@ -1,0 +1,16 @@
+## Added (3.20, 6.30] ##
+{
+   ProtobufInitHashSetLeak
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:_Znwm
+   ...
+   fun:_ZNK4absl12lts_2025081418container_internal12raw_hash_setINS1_17FlatHashMapPolicyINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEN6google8protobuf10Descriptor13WellKnownTypeEEENS1_10StringHashENS1_8StringEqESaISt4pairIKS9_SD_EEE19EmplaceDecomposableclIS9_JRKSt21piecewise_construct_tSt5tupleIJRSI_EESR_IJRKSD_EEEEESH_INSL_8iteratorEbERKT_DpOT0_
+   fun:_ZN6google8protobuf14DescriptorPool6TablesC1Ev
+   fun:_ZN6google8protobuf14DescriptorPoolC1EPNS0_18DescriptorDatabaseEPNS1_14ErrorCollectorE
+   fun:_ZN6google8protobuf12_GLOBAL__N_116NewGeneratedPoolEv
+   fun:_ZN6google8protobuf14DescriptorPool24InternalAddGeneratedFileEPKvi
+   fun:_ZN6google8protobuf8internal14AddDescriptorsEPKNS1_15DescriptorTableE
+   fun:call_init
+}
+####

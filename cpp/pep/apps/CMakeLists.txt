@@ -17,6 +17,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 target_link_libraries(${PROJECT_NAME}GenerateSystemKeys
   ${PROJECT_NAME}Applicationlib
+  ${PROJECT_NAME}Authlib
   ${PROJECT_NAME}Elgamallib
 )
 

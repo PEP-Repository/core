@@ -6,6 +6,7 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
 #include <rxcpp/operators/rx-buffer_count.hpp>
@@ -86,7 +87,6 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
   return RxIterate(std::move(ids))
       .buffer(static_cast<int>(DATA_RETRIEVAL_BATCH_SIZE))
       .as_dynamic() // Reduce compiler memory usage
-      //TODO shouldn't we be using shared_from_this()?
       .map([this, ticket, pseudonyms](std::vector<std::string> batch)
         -> rxcpp::observable<std::shared_ptr<EnumerateResult>> {
             auto entryCount = batch.size();
@@ -138,6 +138,13 @@ CoreClient::getKeys(
               });
           });
       });
+}
+
+rxcpp::observable<rxcpp::observable<RetrievePage>>
+CoreClient::retrieveData(
+  const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
+  std::shared_ptr<SignedTicket2> ticket) {
+  return retrieveData(getKeys(subjects, ticket), ticket);
 }
 
 rxcpp::observable<rxcpp::observable<RetrievePage>>

@@ -83,7 +83,7 @@ public:
   }
 
   template <typename T>
-  static std::string ToEnumString(const T& value) {
+  static std::string_view ToEnumString(const T& value) {
     return Serializer<T>().toEnumString(value);
   }
 };

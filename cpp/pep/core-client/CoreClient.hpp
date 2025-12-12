@@ -6,6 +6,7 @@
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/WorkerPool.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
@@ -433,7 +434,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   std::string getEnrolledUser() const;
 
   /*!
-   * \brief Enroll a non-user facility. The type of facility is inferred from this CoreClient's certificate chain.
+   * \brief Enroll a server. The type of server is inferred from this CoreClient's certificate chain.
    *
    * \return rxcpp::observable< EnrollmentResult >
    */
@@ -517,6 +518,14 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     std::shared_ptr<SignedTicket2> ticket);
 
   /// Retrieve cell contents.
+  /// First calls \c getKeys, then calls the \c FileKey overload.
+  /// Use this overload when decrypted metadata is not required.
+  rxcpp::observable<rxcpp::observable<RetrievePage>>
+  retrieveData(
+    const rxcpp::observable<std::shared_ptr<EnumerateResult>>& subjects,
+    std::shared_ptr<SignedTicket2> ticket);
+
+  /// Retrieve cell contents.
   /// \param batchedSubjects Must be split in batches of \c DATA_RETRIEVAL_BATCH_SIZE (usually by \c getKeys)
   /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
   /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
@@ -542,6 +551,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       std::shared_ptr<boost::asio::io_context> io_context = nullptr,
       bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
 
+  using ServerProxies = std::unordered_map<ServerTraits, std::shared_ptr<const ServerProxy>>;
+
 protected:
   /*! \brief constructor for CoreClient
    *
@@ -562,13 +573,15 @@ protected:
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
 
   template <typename T>
-  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> proxy, const std::string& serverName, bool require) {
+  static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> proxy, const ServerTraits& traits, bool require) {
     if (require && proxy == nullptr) {
       // TODO: refactor so that CoreClient and derived class instances cannot exist without instantiating their individual ServerProxy fields
-      throw std::runtime_error("Not connected to " + serverName);
+      throw std::runtime_error("Not connected to " + traits.description());
     }
     return proxy;
   }
+
+  static bool AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy);
 
 public:
   virtual ~CoreClient() noexcept = default;
@@ -579,6 +592,9 @@ public:
   std::shared_ptr<const StorageFacilityProxy> getStorageFacilityProxy(bool require = true) const;
   std::shared_ptr<const TranscryptorProxy> getTranscryptorProxy(bool require = true) const;
   std::shared_ptr<const AccessManagerProxy> getAccessManagerProxy(bool require = true) const;
+
+  virtual ServerProxies getServerProxies(bool requireAll) const;
+  std::shared_ptr<const ServerProxy> getServerProxy(const ServerTraits& traits) const;
 
   rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext = std::nullopt);
   rxcpp::observable<PolymorphicPseudonym> findPPforShortPseudonym(std::string shortPseudonym, const std::optional<StudyContext>& studyContext = std::nullopt);

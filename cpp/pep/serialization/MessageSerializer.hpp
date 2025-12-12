@@ -26,12 +26,12 @@ public:
   virtual T parseFromIstream(std::istream& source) const = 0;
 
   virtual std::string toString(T value, bool withMagic = true) const {
-    std::stringstream out;
+    std::ostringstream out;
     if (withMagic) {
       MessageMagician<T>::WriteMagicTo(out);
     }
     serializeToOstream(out, std::move(value));
-    return out.str();
+    return std::move(out).str();
   }
 
   virtual T fromString(std::string_view szMessage, bool withMagic = true) const {

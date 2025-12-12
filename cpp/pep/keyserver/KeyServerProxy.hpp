@@ -10,7 +10,7 @@ class KeyServerProxy : public ServerProxy {
 public:
   using ServerProxy::ServerProxy;
 
-  rxcpp::observable<PingResponse> requestPing() const;
+  rxcpp::observable<PingResponse> requestPing() const override;
   rxcpp::observable<EnrollmentResponse> requestUserEnrollment(EnrollmentRequest request) const;
 
   rxcpp::observable<TokenBlockingListResponse> requestTokenBlockingList() const;

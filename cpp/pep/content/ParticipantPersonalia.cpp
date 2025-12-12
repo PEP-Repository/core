@@ -41,13 +41,13 @@ std::string ParticipantPersonalia::toJson() const {
   properties.add<std::string>("LastName", lastName);
   properties.add<std::string>("DoB", dateOfBirth);
 
-  std::stringstream result;
+  std::ostringstream result;
   boost::property_tree::write_json(result, properties);
-  return result.str();
+  return std::move(result).str();
 }
 
 ParticipantPersonalia ParticipantPersonalia::FromJson(const std::string& json) {
-  std::stringstream ss(json);
+  std::istringstream ss(json);
   boost::property_tree::ptree properties;
   boost::property_tree::read_json(ss, properties);
 

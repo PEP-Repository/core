@@ -1,4 +1,5 @@
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>

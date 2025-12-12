@@ -238,7 +238,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
   // Retrieve data for fields that we're updating
   auto retrieveProgress = Progress::Create(subjects->size(), progress->push());
   auto self = SharedFrom(*this);
-  return ctx->client->retrieveData(ctx->client->getKeys(RxDrain(subjects), ctx->ticket->getTicket()), ctx->ticket->getTicket())
+  return ctx->client->retrieveData(RxDrain(subjects), ctx->ticket->getTicket())
       .flat_map([self, ctx, retrieveProgress](const rxcpp::observable<RetrievePage>& batch) {
         return batch
           .map([self, ctx, retrieveProgress](const RetrievePage& page) {

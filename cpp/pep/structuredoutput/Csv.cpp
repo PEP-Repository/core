@@ -45,7 +45,7 @@ std::ostream& append(std::ostream& stream, const Table& table, Config config) {
 std::string to_string(const Table& table, Config config) {
   std::ostringstream stream;
   append(stream, table, config);
-  return stream.str();
+  return std::move(stream).str();
 }
 
 } // namespace pep::structuredOutput::csv

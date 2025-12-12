@@ -44,13 +44,39 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 ####################
 
 if should_run_test basic; then
+  # Store a PEP ID...
+  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  # ... then verify that we can read it back (see #2750)
+  pepcli validate data
+  # Clean up: delete the ID that we stored
+  write_registration_server_cell ParticipantIdentifier delete -p "$id"
 
   pepcli --oauth-token-group "Research Assessor" pull -P '*' -C ShortPseudonyms -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo --output-directory "$DEST_DIR/pulled-data"
   pepcli list -l -P '*' -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   # Store data in a not yet existing row
-  pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d random-data
+  id="$(pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d random-data \
+    --ticket-out "$DEST_DIR/ticket" \
+    --metadataxentry "$(pepcli xentry --name mymetakey --payload mymetadata)")"
+  id="$(printf %s "$id" | jq --raw-output .id)"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --output-file -)"
+  [ "$value" = random-data ] || fail "Expected [random-data], got [$value]"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --metadata -)"
+  value="$(printf %s "$value" | jq --compact-output .extra)"
+  desired_value="$(printf %s mymetadata | jq --raw-input --compact-output '{"mymetakey": {"payload": . | @base64}}')"
+  [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
+
+  desired_value=$'random data with\nLF newline'
+  id="$(pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d "$desired_value")"
+  id="$(printf %s "$id" | jq --raw-output .id)"
+
+  value="$(pepcli get --ticket "$DEST_DIR/ticket" --id "$id" --output-file -)"
+  [ "$value" = "$desired_value" ] || fail "Expected [$desired_value], got [$value]"
+
+  execute . rm "$DEST_DIR/ticket"
 
   # Ensure that MRI column exists and is read+writable for "Research Assessor" (who will upload and download)
   pepcli --oauth-token-group "Data Administrator" ama column create Visit1.MRI.Func
@@ -60,7 +86,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Access Administrator" ama cgar create MRI "Research Assessor" write
 
   # Ensure we have an SP value in the database that can be pseudonymized in the upload
-  pepcli --oauth-token-group "RegistrationServer" store -p "$TEST_PARTICIPANT" -c ShortPseudonym.Visit1.FMRI -d GUM123456751
+  write_registration_server_cell ShortPseudonym.Visit1.FMRI store -p "$TEST_PARTICIPANT" -d GUM123456751
+  
   pepcli --oauth-token-group "Access Administrator" user group create Read.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama columnGroup create Just.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama column addTo ShortPseudonym.Visit1.FMRI Just.ShortPseudonym.Visit1
@@ -126,7 +153,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Access Administrator" user group create groupWithoutAccess
   pepcli --oauth-token-group "groupWithoutAccess" query column-access
 
-  pepcli --oauth-token-group "RegistrationServer" delete -p "$TEST_PARTICIPANT" -c ShortPseudonym.Visit1.FMRI
+  write_registration_server_cell ShortPseudonym.Visit1.FMRI delete -p "$TEST_PARTICIPANT"
+
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c DeviceHistory
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func
 
@@ -260,8 +288,7 @@ if should_run_test ama; then
   # Adding the --force flag should make it succeed
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithAccessRule --force
 
-
-  pepcli --oauth-token-group "RegistrationServer" delete -p "$ID" -c ParticipantIdentifier
+  write_registration_server_cell ParticipantIdentifier delete -p "$ID"
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 fi
@@ -608,7 +635,7 @@ if should_run_test s3-roundtrip; then
   pepcli --oauth-token-group "Data Administrator" ama column addTo LargeColumn LargeColumns
   pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" read
   pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" write
-  
+
   # Store a large (i.e. stored in S3) file with some participants
   readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
   # 10 blocks @ 1048576 bytes each = 10MiB
@@ -616,7 +643,7 @@ if should_run_test s3-roundtrip; then
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
-  
+
   # Download the (large) files that we stored
   pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
   # We'd like to diff/compare the downloaded files to the original LARGE_RANDOM_DATA_FILE, but
@@ -626,7 +653,7 @@ if should_run_test s3-roundtrip; then
   if [ "$count" -ne 50 ]; then
     fail "Expected to download 50 files from S3 but got $count."
   fi
-  
+
   # Clean up
   execute . rm "$LARGE_RANDOM_DATA_FILE"
   execute . rm -rf "$DEST_DIR/s3-backed-files"

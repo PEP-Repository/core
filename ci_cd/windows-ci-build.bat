@@ -1,4 +1,5 @@
 @echo off
+REM TODO: rewrite in PowerShell
 REM Having this code in a batch file (as opposed to in .gitlab-ci.yml) allows it to be run and debugged locally.
 REM Variables are prefixed with "PEP" to reduce chances of naming collisions.
 set OwnDir=%~dp0
@@ -34,18 +35,6 @@ if [%BuildType%] == [Debug] (
   goto :Invocation
 )
 
-echo Invoking Windows CI runner provisioning script.
-call "%OwnDir%\windows-ci-runner.bat" || exit /B 1
-
-echo Initializing environment for Visual Studio tool invocation.
-
-if [%PEP_VCVARS_BAT%] == [] (
-  echo Windows CI runner provisioning script didn't provide the required PEP_VCVARS_BAT variable. Aborting.
-  exit /B 1
-)
-
-call %PEP_VCVARS_BAT% || exit /B 1
-
 if "%CI_COMMIT_REF_NAME%" == "" (
   echo No CI_COMMIT_REF_NAME specified: performing 'local' build.
   set CI_COMMIT_REF_NAME=local
@@ -70,14 +59,13 @@ if exist "%BUILD_DIR%" (
 
 echo Installing Conan packages.
 
-REM Ensure that we're using the correct URL for conancenter: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2616#note_47704
-conan remote update conancenter --url https://center2.conan.io
-
-conan install .\docker-build\builder\conan\conanfile.py ^
+REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
+pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
+  install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
-  --profile:all=.\docker-build\builder\conan\conan_profile ^
+  --profile__all=.\docker-build\builder\conan\conan_profile ^
   --build=missing ^
-  -s:a build_type="%BuildType%" ^
+  -s__a build_type="%BuildType%" ^
   -o "&:with_assessor=True" ^
   -o "&:with_servers=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_castor=False" ^
@@ -86,13 +74,9 @@ conan install .\docker-build\builder\conan\conanfile.py ^
   -o "&:custom_build_folder=True" ^
   --output-folder=.\%BUILD_DIR%\ ^
   || exit /B 1
-if "%CLEAN_CONAN%" neq "" (
-  echo Cleaning Conan cache.
-  REM Remove some temporary build files (excludes binaries)
-  conan remove "*" --lru 4w --confirm || exit /B 1
-  REM Remove old packages
-  conan cache clean --build --temp || exit /B 1
-)
+
+REM Put windeployqt and cmake in path
+call .\%BUILD_DIR%\generators\conanbuild.bat || exit /B 1
 
 echo Configuring CMake project.
 cmake --preset conan-default %PEP_CMAKE_DEFINES% || exit /B 1
@@ -119,8 +103,6 @@ copy cpp\pep\logon\%BuildType%\pepLogon.exe gui\%BuildType% || exit /B 1
 copy cpp\pep\cli\%BuildType%\pepcli.exe gui\%BuildType% || exit /B 1
 
 echo Invoking WiX installer creation script.
-REM Put windeployqt in path
-call .\generators\conanbuild.bat || exit /B 1
 call ..\installer\createBinWixLib.bat . %BuildType% || exit /B 1
 call .\generators\deactivate_conanbuild.bat || exit /B 1
 

@@ -185,7 +185,7 @@ protected:
           }
           out << std::endl;
 
-          std::cerr << out.str();
+          std::cerr << std::move(out).str();
       }
     };
     auto ctx = std::make_shared<Context>(this->getParameterValues());

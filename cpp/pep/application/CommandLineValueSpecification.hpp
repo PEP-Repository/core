@@ -57,7 +57,7 @@ struct format {
   std::string operator()(const T& v) {
     std::ostringstream ss;
     ss << v;
-    return ss.str();
+    return std::move(ss).str();
   }
 };
 
@@ -267,7 +267,7 @@ void ValueSpecificationTemplate<Derived, T>::writeHelpText(std::ostream& destina
       values << delimiter << format<T>()(entry);
       delimiter = ", ";
     }
-    WriteHelpItemSupplement(destination, "Value must be one of: " + values.str());
+    WriteHelpItemSupplement(destination, "Value must be one of: " + std::move(values).str());
   }
   if (mDefault.has_value()) {
     std::ostringstream text;
@@ -277,7 +277,7 @@ void ValueSpecificationTemplate<Derived, T>::writeHelpText(std::ostream& destina
     else {
       text << format<T>()(*mDefault);
     }
-    WriteHelpItemSupplement(destination, "Value defaults to " + text.str());
+    WriteHelpItemSupplement(destination, "Value defaults to " + std::move(text).str());
   }
 }
 

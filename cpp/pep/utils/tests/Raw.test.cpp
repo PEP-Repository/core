@@ -75,10 +75,10 @@ TEST(Raw, PackedBE) {
   pep::RandomBytes(reinterpret_cast<uint8_t*>(&value), sizeof(uint64_t) / sizeof(uint8_t));
   auto packed = pep::PackUint64BE(value);
 
-  std::stringstream stream;
+  std::ostringstream stream;
   pep::WriteBinary(stream, value);
 
-  EXPECT_EQ(packed, stream.str()) << "Big-endian packing and network-compatible binary writing don't produce the same string";
+  EXPECT_EQ(packed, std::move(stream).str()) << "Big-endian packing and network-compatible binary writing don't produce the same string";
 }
 
 }

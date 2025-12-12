@@ -64,7 +64,7 @@ private:
   * \return (An observable emitting) the number of stored items.
   * \remark When performing a dry run, doesn't store the entries but only returns the number of entries that would have been sent to Storage Facility.
   */
-  rxcpp::observable<size_t> processBatchToStore(std::shared_ptr<std::vector<StoreData2Entry>> batch);
+  rxcpp::observable<size_t> processBatchToStore(const std::vector<StoreData2Entry>& batch);
 
   /*!
   * \brief Utility function that ensures that the Client instance is enrolled.

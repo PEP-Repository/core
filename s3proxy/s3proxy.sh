@@ -114,10 +114,8 @@ start_containers() {
 
   # Local paths exposed as a -v volume are prefixed with a slash to prevent Git Bash on Windows
   # from mangling those paths. See https://stackoverflow.com/a/50608818
-  # TODO: remove "-e JCLOUDS_PROVIDER=filesystem" if/when problem with default (filesystem-nio2) provider has been fixed.
-  # See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2620
   >&2 printf "Starting s3proxy container..."
-  "$docker" run --rm --detach --name s3proxy -e S3PROXY_IDENTITY=${S3_ACCESS_KEY} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY} -e LOG_LEVEL=TRACE -e JCLOUDS_PROVIDER=filesystem -p 9001:80 -v /"${DATADIR}":/data "${S3PROXY_IMAGE}"
+  "$docker" run --rm --detach --name s3proxy -e S3PROXY_IDENTITY=${S3_ACCESS_KEY} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY} -e LOG_LEVEL=TRACE -p 9001:80 -v /"${DATADIR}":/data "${S3PROXY_IMAGE}"
   "$docker" logs --follow s3proxy 2> >(sed -u "s/^/[s3proxy]: /" >&2) > >(sed -u "s/^/[s3proxy]: /") &
   >&2 printf "Starting nginx (s3proxyproxy) container..."
   # shellcheck disable=SC2086 # Don't quote possibly empty $network_switch variable so Docker won't interpret them as an empty image spec, causing "invalid reference format" errors

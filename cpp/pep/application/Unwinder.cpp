@@ -632,14 +632,14 @@ void InitializeUnwinder() {
 
   // Compute filename, no need to check for uniqueness as it includes the current time
   auto in_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  std::stringstream ss;
+  std::ostringstream ss;
   ss << szReportName << "_" << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d-%H-%M-%S");
 #ifndef _WIN32
   ss << "_CrashReport.txt";
 #else
   ss << "_Crash.dmp";
 #endif
-  szCrashReportFileName = ss.str();
+  szCrashReportFileName = std::move(ss).str();
 
 #ifndef _WIN32
   struct sigaction stSignalDescriptor;

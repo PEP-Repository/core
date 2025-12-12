@@ -748,7 +748,7 @@ protected:
             const auto& entry = *entryPtr;
             auto position = specs->find(entry.mLocalPseudonyms->mPolymorphic);
             if (position != specs->cend()) { // If this participant was identified by the user on the command line, report back using that identifier
-              for (auto spec : position->second) {
+              for (auto& spec : position->second) {
                 this->reportFileExtension(spec.str(), entry.mColumn, entry.mMetadata.extra());
               }
             }

@@ -272,12 +272,13 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   // ///////////////////////////////////////////////////////////////////////////
 
   // Registration sever
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "RegistrationServer", "access"));
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "RegistrationServer", "enumerate"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", "RegistrationServer", "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", "RegistrationServer", "write"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", "RegistrationServer", "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", "RegistrationServer", "write"));
+  const auto registrationServer = *ServerTraits::RegistrationServer().enrollmentSubject(true);
+  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "access"));
+  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "enumerate"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "read"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "write"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "read"));
+  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "write"));
 
   // "Pull castor" server
   mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "PullCastor", "access"));
@@ -783,7 +784,7 @@ void AccessManager::Backend::Storage::removeParticipantGroup(const std::string& 
   }
   else if (associatedLocalPseudonyms.size() > 0 || associatedAccessRules.size() > 0) {
     // There where associated participants and or access rules, but force was not given as a parameter. Warn the user.
-    std::stringstream msg;
+    std::ostringstream msg;
     msg << "Removing participant-group \"" << name << "\" failed due to\n";
     if (associatedLocalPseudonyms.size() > 0) {
       msg << associatedLocalPseudonyms.size() << " participants found in group.\n";
@@ -1065,7 +1066,7 @@ void AccessManager::Backend::Storage::removeColumnGroup(const std::string& name,
   }
   else if (associatedColumns.size() > 0 || associatedAccessRules.size() > 0) {
     // There where associated columns and or access rules, but force was not given as a parameter. Warn the user.
-    std::stringstream msg;
+    std::ostringstream msg;
     msg << "Removing column-group \"" << name << "\" failed due to\n";
     if (associatedColumns.size() > 0) {
       msg << "associated columns:\n";

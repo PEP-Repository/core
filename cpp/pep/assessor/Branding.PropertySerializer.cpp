@@ -7,9 +7,9 @@ void PropertySerializer<BrandingConfiguration>::write(boost::property_tree::ptre
   SerializeProperties(destination, "ProjectLogo", value.projectLogo);
 }
 
-void PropertySerializer<BrandingConfiguration>::read(BrandingConfiguration& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const {
-  DeserializeProperties(destination.projectName, source, "ProjectName", transform);
-  DeserializeProperties(destination.projectLogo, source, "ProjectLogo", transform);
+void PropertySerializer<BrandingConfiguration>::read(BrandingConfiguration& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const {
+  DeserializeProperties(destination.projectName, source, "ProjectName", context);
+  DeserializeProperties(destination.projectLogo, source, "ProjectLogo", context);
 }
 
 }

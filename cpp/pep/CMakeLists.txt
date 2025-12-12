@@ -13,6 +13,7 @@ if(ENABLE_CLANG_TIDY)
   if(PROFILE_CLANG_TIDY)
     list(APPEND clang_tidy_opts "--enable-check-profile" "--store-check-profile=${clang_tidy_profile_dir}")
     add_custom_target(clang-tidy-stats
+        COMMENT "Print Clang-Tidy checks performance statistics"
         COMMAND ${INVOKE_SH} "${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-stats.sh" ${clang_tidy_profile_dir}
         USES_TERMINAL
         VERBATIM

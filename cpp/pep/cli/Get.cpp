@@ -6,6 +6,7 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/utils/File.hpp>
+#include <pep/utils/Stream.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 
 #include <boost/algorithm/hex.hpp>
@@ -55,7 +56,9 @@ protected:
               std::shared_ptr<std::ostream> stream;
               if (path == "-") {
                 stdoutcount++;
-                datastream = std::shared_ptr<std::ostream>(&std::cout, [](void*) {});
+                datastream = std::shared_ptr<std::ostream>(
+                  &std::cout,
+                  [setStdoutBinary = pep::SetBinaryFileMode::ForStdout()](void*) {});
               } else {
                 datastream = std::make_shared<std::ofstream>(path, std::ios_base::out | std::ios_base::binary);
               }
@@ -83,10 +86,13 @@ protected:
               LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
             }
 
-            rxcpp::observable<pep::FileKey> key = client->getKeys(
-                client->enumerateDataByIds({boost::algorithm::unhex(values.get<std::string>("id"))}, ticket.getTicket())
-                .concat(),
-                ticket.getTicket()
+            rxcpp::observable<pep::FileKey> key =
+                client->getKeys(
+                    client->enumerateDataByIds(
+                        {boost::algorithm::unhex(values.get<std::string>("id"))},
+                        ticket.getTicket()
+                    ).concat(),
+                    ticket.getTicket()
                 ).concat();
 
             if (metadatastream) {
@@ -109,7 +115,7 @@ protected:
                   })
                   .op(RxInstead(pep::FakeVoid{}));
             } else {
-              return rxcpp::observable<>::just(pep::FakeVoid());
+              return key.op(RxInstead(pep::FakeVoid{}));
             }
           });
     });

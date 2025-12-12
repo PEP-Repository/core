@@ -88,7 +88,11 @@ sign_app() {
   if [[ "$app_root_dir" == "$PEP_MACOS_ASSESSOR_APP_ROOT" ]]; then
     # Sign pepassessor
 
-    find "$app_path/Contents/Plugins" -name "*.dylib" -exec codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" {} \;
+    # Plugins may be absent for statically linked Qt,
+    # see https://doc.qt.io/qt-6/plugins-howto.html#static-plugins
+    if [[ -d "$app_path/Contents/Plugins" ]]; then
+      find "$app_path/Contents/Plugins" -name "*.dylib" -exec codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" {} \;
+    fi
     find "$app_path/Contents/Frameworks" -maxdepth 1 -name "*.dylib" -exec codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" {} \;
     codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" "$app_path/Contents/MacOS/pepAssessor"
   elif [[ "$app_root_dir" == "$PEP_MACOS_CLI_APP_ROOT" ]]; then

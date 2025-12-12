@@ -95,7 +95,7 @@ template <typename T>
 boost::property_tree::path RawPtreePath(const std::string& path);
 
 // Wrap overloaded/templated function in lambda object to pass to another function
-#define PEP_WrapOverloadedFunction(fun) \
+#define PEP_WrapFn(fun) \
   ([](auto&&... args) -> decltype(auto) { \
     return (fun)(std::forward<decltype(args)>(args)...); \
   })

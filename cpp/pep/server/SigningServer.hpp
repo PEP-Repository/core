@@ -27,20 +27,18 @@ private:
 
 protected:
   void check() const override {
-    auto& certificate = *identity_->getCertificateChain().cbegin();
-    if (!certificate.isPEPServerCertificate()) {
-      throw std::runtime_error("certificateChain's leaf certificate must be a PEP server certificate");
+    auto traits = this->serverTraits();
+    if (!traits.signingIdentityMatches(identity_->getCertificateChain())) {
+      throw std::runtime_error("Invalid certificate chain for " + traits.description());
     }
-    if (certificate.hasTLSServerEKU()) {
-      throw std::runtime_error("certificateChain's leaf certificate must not be a TLS certificate");
-    }
+
     Server::Parameters::check();
   }
 
-public:
   /// \copydoc Server::Parameters::Parameters
   Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
+public:
   std::shared_ptr<const X509Identity> getSigningIdentity() const { return identity_; }
 };
 

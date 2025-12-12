@@ -133,7 +133,7 @@ HTTPResponse MakeErrorJsonHttpResponse(const std::string& error, const std::stri
   if(error == OAuthProvider::ERROR_SERVER_ERROR) {
     status = "500 Internal Server Error";
   }
-  return MakeHttpResponse(status, oss.str(), "application/json");
+  return MakeHttpResponse(status, std::move(oss).str(), "application/json");
 }
 
 HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const std::string& description) {
@@ -303,7 +303,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       body << "<a href=\"" << linkUri << "\">" << description << "</a><br>";
     }
     body << "</body></html>";
-    return rxcpp::rxs::just(HTTPResponse("200 OK", body.str()));
+    return rxcpp::rxs::just(HTTPResponse("200 OK", std::move(body).str()));
   }
   const std::string& primaryUid = (*primaryUidIt).value;
   const std::string& humanReadableUid = (*humanReadableUidIt).value;
@@ -432,7 +432,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
           body << "<option>" << g << "</option>";
         }
         body << END_GROUP_SELECTION_TEMPLATE;
-        return HTTPResponse("200 OK", body.str());
+        return HTTPResponse("200 OK", std::move(body).str());
       }
     }
 
@@ -478,7 +478,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
       if(formData.find(p) == formData.end()) {
         std::ostringstream oss;
         oss << p << " required";
-        return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, oss.str());
+        return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, std::move(oss).str());
       }
     }
 
@@ -527,7 +527,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
         responseHeaders.emplace("Access-Control-Allow-Origin", originIt->second);
       }
     }
-    return MakeHttpResponse("200 OK", responseStream.str(), "application/json", std::move(responseHeaders));
+    return MakeHttpResponse("200 OK", std::move(responseStream).str(), "application/json", std::move(responseHeaders));
   }
   catch (const Error& err) {
     return MakeErrorJsonHttpResponse(ERROR_SERVER_ERROR, err.what());

@@ -117,7 +117,7 @@ namespace pep::s3
             << "SignedHeaders=" << c.signed_headers << ", "
             << "Signature=" << signature;
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
       std::string GetDateTime(const Context& c) {
@@ -136,7 +136,7 @@ namespace pep::s3
         ss  << GetDate(c) << "/" << c.credentials.region
             << "/" << c.credentials.service << "/aws4_request";
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -174,7 +174,7 @@ namespace pep::s3
             << boost::algorithm::to_lower_copy(boost::algorithm::hex(
                   Sha256().digest(ComputeCanonicalRequest(c))));
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -192,7 +192,7 @@ namespace pep::s3
             << c.signed_headers << "\n"
             << c.request.header("X-Amz-Content-Sha256");
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -216,7 +216,7 @@ namespace pep::s3
           ss << key << "=" << encodedQueries.find(key)->value;
         }
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -246,9 +246,9 @@ namespace pep::s3
           ss_signed_headers << key_lower_case;
         }
 
-        c.signed_headers = ss_signed_headers.str();
+        c.signed_headers = std::move(ss_signed_headers).str();
 
-        return ss_result.str();
+        return std::move(ss_result).str();
       }
 
 
@@ -274,7 +274,7 @@ namespace pep::s3
     }
     ss << std::put_time(&tm, "%Y%m%dT%H%M%SZ");
 
-    return ss.str();
+    return std::move(ss).str();
   }
 
 

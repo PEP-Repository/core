@@ -5,7 +5,7 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <chrono>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
@@ -185,8 +185,6 @@ KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
       &KeyServer::handleTokenBlockingRemoveRequest);
 }
 
-std::string KeyServer::describe() const { return "Key Server"; }
-
 void KeyServer::checkValid(const EnrollmentRequest& request) const {
 
   if(!request.mCertificateSigningRequest.getCommonName().has_value()) {
@@ -199,8 +197,8 @@ void KeyServer::checkValid(const EnrollmentRequest& request) const {
   }
   auto ou = request.mCertificateSigningRequest.getOrganizationalUnit().value();
 
-  if (CertificateSubjectToFacilityType(cn, ou) != FacilityType::Unknown) {
-    throw Error("Invalid certificate subject for user enrollment request");
+  if (ServerTraits::Find([ou](const ServerTraits& candidate) {return candidate.enrollmentSubject(false) == ou; })) {
+    throw Error("Can't enroll user into server group " + ou);
   }
 
   const auto token = OAuthToken::Parse(request.mOAuthToken);
@@ -238,7 +236,7 @@ X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigning
         mClientCACertificateChain.empty() ? X509Certificate() : *mClientCACertificateChain.begin(),
         mClientCAPrivateKey,
         validityTimeOfGeneratedCertificates);
-    assert(GetFacilityType(certificate) == FacilityType::User);
+    assert(GetEnrolledParty(certificate) == EnrolledParty::User);
     LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
                         << " in OU=" << csr.getOrganizationalUnit().value_or("");
     return certificate;
