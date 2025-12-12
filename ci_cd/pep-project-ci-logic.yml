@@ -36,6 +36,8 @@ variables:
 
   PROJECT_IMAGE_COMPOSE: "$CI_REGISTRY_IMAGE/$CI_COMMIT_BRANCH/docker-compose:$CI_PIPELINE_ID"
 
+  EXTRA_IMAGE_DIR: $CI_PROJECT_DIR/config/$CI_COMMIT_BRANCH/extra-images
+
 # Applies to whole pipeline
 workflow:
   rules:
@@ -79,6 +81,9 @@ include:
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_TESTING_BRANCH) && ($DEPLOYMENT_TYPE_TEST == "compose" || $DEPLOYMENT_TYPE_TEST == "both")'
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_ACCEPTANCE_BRANCH) && ($DEPLOYMENT_TYPE_ACC == "compose" || $DEPLOYMENT_TYPE_ACC == "both")'
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH) && ($DEPLOYMENT_TYPE_PROD == "compose" || $DEPLOYMENT_TYPE_PROD == "both")'
+
+.docker_login: &docker_login
+  docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
 
 ###############################################
 # Configuration for the static-analysis stage #
@@ -188,6 +193,48 @@ docker-add-config:
   artifacts:
     paths:
     - client.sif # Might not exist: client image is built depending on project repo contents
+
+docker-build-extra-images:
+  stage: build
+  extends: .dind-small
+  rules:
+    - !reference [.on-deployed-branches, rules]
+  needs:
+    - job: docker-add-config
+      artifacts: false
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  before_script:
+    - apk add --no-cache jq
+  script:
+    - |
+      if [ ! -d "$EXTRA_IMAGE_DIR" ]; then
+        echo "No extra-images directory found in config/$CI_COMMIT_BRANCH, skipping extra images build"
+        exit 0
+      fi
+    - ${PEP_FOSS_REPO_DIR}/scripts/createConfigVersionJson.sh config/${CI_COMMIT_BRANCH} config/${CI_COMMIT_BRANCH}/project > configVersion.json
+    - *docker_login
+      # for all dirs in extra-images dir, build the respective Dockerfile
+    - |
+      for EXTRA_IMAGE_NAME in $(find "$EXTRA_IMAGE_DIR" -mindepth 1 -maxdepth 1 -type d -print | xargs -n1 basename); do
+        if [ ! -d "$EXTRA_IMAGE_DIR/$EXTRA_IMAGE_NAME" ]; then
+          echo "$EXTRA_IMAGE_NAME is not a directory in $EXTRA_IMAGE_DIR" >&2
+          exit 1
+        fi
+        if [ -f "./docker/$EXTRA_IMAGE_NAME.Dockerfile" ]; then
+          echo "Copying configVersion.json to extra image $EXTRA_IMAGE_NAME"
+          cp configVersion.json "$EXTRA_IMAGE_DIR/$EXTRA_IMAGE_NAME/"
+          echo "Building extra image $EXTRA_IMAGE_NAME"
+          docker buildx build --pull \
+                              --push \
+                              --tag "$REGISTRY_PATH/$EXTRA_IMAGE_NAME:$CI_PIPELINE_ID" \
+                              --file "./docker/$EXTRA_IMAGE_NAME.Dockerfile" \
+                              "$EXTRA_IMAGE_DIR/$EXTRA_IMAGE_NAME/"
+        else
+          echo "No Dockerfile found for extra image $EXTRA_IMAGE_NAME in ./docker/" >&2
+          exit 1
+        fi
+      done
 
 windows-installer:
   stage: build
@@ -436,6 +483,19 @@ docker-update-latest:
                                                          --env "$CI_COMMIT_REF_NAME"
                                                          --tag "$CI_PIPELINE_ID"
                                                          --foss-dir "$PEP_FOSS_REPO_DIR"
+    - *docker_login
+    # Dynamically retag all extra images that were built
+    - |
+      if [ -d "$EXTRA_IMAGE_DIR" ]; then
+        for EXTRA_IMAGE_NAME in $(find "$EXTRA_IMAGE_DIR" -mindepth 1 -maxdepth 1 -type d -print | xargs -n1 basename); do
+          if [ -f "./docker/$EXTRA_IMAGE_NAME.Dockerfile" ]; then
+            echo "Retagging extra image $EXTRA_IMAGE_NAME as latest"
+            docker buildx imagetools create --tag "$REGISTRY_PATH/$EXTRA_IMAGE_NAME:latest" "$REGISTRY_PATH/$EXTRA_IMAGE_NAME:$CI_PIPELINE_ID"
+          fi
+        done
+      else
+        echo "No extra-images directory found, skipping extra images retag"
+      fi
 
 publish-docker-client:
   extends: .publish-base
@@ -505,7 +565,7 @@ test-deployment:
   script:
     - /app/pepClientTest /config/ClientConfig.json 5
 
-.check-downloadables-base: # Also extended in pep/ops
+.check-downloadables-base: # Also extended in pep/dtap for review env
   stage: test
   tags: [docker-small]
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
