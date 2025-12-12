@@ -565,7 +565,7 @@ test-deployment:
   script:
     - /app/pepClientTest /config/ClientConfig.json 5
 
-.check-downloadables-base: # Also extended in pep/ops
+.check-downloadables-base: # Also extended in pep/dtap for review env
   stage: test
   tags: [docker-small]
   image: ${BUILDER_IMAGE_UBUNTU_LTS}

@@ -562,6 +562,7 @@ ubuntu-lts-release-manual-lint:
     VERIFY_HEADERS_STANDALONE: "off"
   rules:
     - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - when: on_success
 
 ubuntu-rolling-debug:
   extends:
@@ -940,9 +941,6 @@ windows-test:
   variables:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "none"
-    TESTS: "$UNIT_TESTS_BASE"
-  rules:
-    - when: on_success
   tags:
     - windows
   needs: [windows-all-targets]
@@ -960,8 +958,6 @@ windows-test:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: "$UNIT_TESTS_BASE"
-  rules:
-    - when: on_success
   script:
     - *run-tests
   artifacts:
@@ -1015,8 +1011,6 @@ windows-local-integration:
   stage: integration
   tags:
     - windows
-  rules:
-    - when: on_success
   needs:
     - windows-all-targets
   script:
@@ -1026,8 +1020,6 @@ windows-local-integration:
 
 .macos-local-integration-base:
   stage: integration
-  rules:
-    - when: on_success
   script:
     - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
 
