@@ -373,15 +373,14 @@ cleanup:
     exit $DID_JOB_FAIL
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
-# See the ci_cd/windows-ci-runner.bat provisioning script.
 .run-tests-windows: &run-tests-windows
   - |
     $testsArray = $TESTS -split ' ';
     $DID_JOB_FAIL = 0
     foreach ($TEST in $testsArray) {
-      & "C:\Program Files\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
+      & "$env:ProgramFiles\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
       if ($LASTEXITCODE -ne 0) {
-          $DID_JOB_FAIL = 1
+        $DID_JOB_FAIL = 1
       }
     }
     exit $DID_JOB_FAIL
@@ -688,7 +687,7 @@ windows-client:
     - job: retrieve-lockfile
       optional: true
   tags:
-    - windows
+    - windows-parallel
   rules:
     - if: $FAST_DEPLOY
       when: never
@@ -712,7 +711,7 @@ windows-all-targets:
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
   tags:
-    - windows
+    - windows-parallel
   rules:
     - if: $FAST_DEPLOY
       when: never
@@ -988,7 +987,9 @@ windows-test:
       when: never
     - when: on_success
   tags:
-    - windows
+    # Do not run in parallel with other tests, as we may bind to static ports.
+    # May still run in parallel with build jobs.
+    - windows-sequential
   needs: [windows-all-targets]
   script:
     - *run-tests-windows
@@ -1062,7 +1063,7 @@ pep-services-image-test:
 windows-local-integration:
   stage: integration
   tags:
-    - windows
+    - windows-sequential
   rules:
     - if: $FAST_DEPLOY
       when: never
