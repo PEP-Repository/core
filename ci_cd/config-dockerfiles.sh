@@ -456,7 +456,6 @@ provide_base_images() {
   provide_images=$(config_images_with_foss_base)
   if [ -z "$provide_images" ]; then
     # No base images required to build config images.
-    # This may be a pep/ops "release-X.Y" branch, which should provide all base images.
     provide_images=$foss_image_names
   fi
   
