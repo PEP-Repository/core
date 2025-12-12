@@ -93,8 +93,11 @@ REM shortcuts are in other components than the files targeted by those shortcuts
 REM See https://github.com/wixtoolset/issues/issues/5938 and/or http://lists.wixtoolset.org/pipermail/wix-users-wixtoolset.org/2020-March/008799.html
 set IGNORE_CROSS_COMPONENT_REFS=-sw1076
 
+REM ICE validation only available for admin accounts & interactive sessions: https://stackoverflow.com/q/1064580
+set WIX_CI_NO_ICE_VALIDATION=-sval
+
 REM Note: light.exe may fail with "error LGHT0001 : A required privilege is not held by the client" when invoked from an elevated context. Execute as non-admin instead.
 REM  See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1272#note_16345
-"%WIX%\bin\light.exe" -nologo %IGNORE_CROSS_COMPONENT_REFS% -ext WixUIExtension -ext WixUtilExtension -cultures:nl-NL -out "%wixdir%\pep.msi" "%wixdir%\main.wixobj" "%wixdir%\configFiles.wixobj" "%wixLibPath%" -loc "%OwnDir%\nl-NL.wxl" -loc "%OwnDir%\en-US.wxl" || exit /B 1
+"%WIX%\bin\light.exe" -nologo %IGNORE_CROSS_COMPONENT_REFS% %WIX_CI_NO_ICE_VALIDATION% -ext WixUIExtension -ext WixUtilExtension -cultures:nl-NL -out "%wixdir%\pep.msi" "%wixdir%\main.wixobj" "%wixdir%\configFiles.wixobj" "%wixLibPath%" -loc "%OwnDir%\nl-NL.wxl" -loc "%OwnDir%\en-US.wxl" || exit /B 1
 
 echo Successfully produced MSI installer at "%wixdir%\pep.msi"
