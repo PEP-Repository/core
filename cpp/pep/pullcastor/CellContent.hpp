@@ -101,7 +101,7 @@ class LazyCellContent : public CellContent, private SharedConstructor<LazyCellCo
 private:
   std::shared_ptr<RxCache<std::string>> mData;
 
-  LazyCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const EnumerateResult& entry);
+  LazyCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, std::shared_ptr<EnumerateResult> entry);
 
 public:
   /*!

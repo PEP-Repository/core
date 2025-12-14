@@ -147,6 +147,9 @@ class Metadata {
 
   Metadata decrypt(const std::string& aeskey) const;
 
+  /// Filter to entries used by \c computeKeyBlindingAdditionalData
+  Metadata getBound() const;
+
   // Compute the additional data used to bind metadata for the keyblinding.
   KeyBlindingAdditionalData computeKeyBlindingAdditionalData(const LocalPseudonym& localPseudonym) const;
 
@@ -159,6 +162,8 @@ class Metadata {
   // N.B. for a consistent result when blinding the encrypted AES key
   // it is important that mExtra is a sorted std::map.
   std::map<std::string,MetadataXEntry> mExtra;
+
+  void checkFieldsConsistentWithVersion() const;
 };
 
 }

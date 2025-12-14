@@ -133,6 +133,7 @@ Server::Server(std::shared_ptr<Parameters> parameters)
   : mRegistry(std::make_shared<prometheus::Registry>()),
   mMetrics(std::make_shared<Metrics>(mRegistry)),
   mEGCache(EGCache::get()),
+  mDescription(parameters->serverTraits().description()),
   mIoContext(parameters->getIoContext()),
   mRootCAs(parameters->ensureValid().getRootCAs()) {
   RegisterRequestHandlers(*this,
@@ -155,6 +156,7 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
 
   auto dataLocation = getStoragePath();
 
+  // Will be NaN for servers without dataLocation
   mMetrics->diskUsageProportion.Set(ApplicationMetrics::GetDiskUsageProportion(dataLocation));
   mMetrics->diskUsageTotal.Set(ApplicationMetrics::GetDiskUsageBytes(dataLocation));
 

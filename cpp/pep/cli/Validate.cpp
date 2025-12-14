@@ -17,6 +17,7 @@ using namespace pep::cli;
 namespace {
 
 struct ParticipantData {
+  std::shared_ptr<pep::LocalPseudonym> accessGroupPseudonym;
   std::string id;
   std::map<std::string, std::string> deviceHistory;
 };
@@ -32,18 +33,35 @@ private:
     if (!result.mDataSet) {
       throw std::runtime_error("Data could not be retrieved inline"); // TODO: support this
     }
+    if (result.mAccessGroupPseudonym == nullptr) {
+      throw std::runtime_error("Access group pseudonym required");
+    }
+
     auto& entry = (*data)[result.mLocalPseudonymsIndex];
+    if (entry.accessGroupPseudonym == nullptr) { // A new ParticipantData instance (with .accessGroupPseudonym = nullptr) was just inserted
+      entry.accessGroupPseudonym = result.mAccessGroupPseudonym;
+    }
+    assert(*entry.accessGroupPseudonym == *result.mAccessGroupPseudonym);
+
     if (result.mColumn == "ParticipantIdentifier") {
       entry.id = result.mData;
     }
     else {
       entry.deviceHistory[result.mColumn] = result.mData;
     }
+
     return data;
   }
 
   static int ValidateData(const ParticipantData& data) {
     int result = 0;
+
+    if (data.id.empty()) {
+      assert(data.accessGroupPseudonym != nullptr);
+      LOG(LOG_TAG, pep::warning) << "Missing PEP ID for subject with local pseudonym " << data.accessGroupPseudonym->text();
+      result = 1;
+    }
+
     for (const auto& history : data.deviceHistory) {
       try {
         pep::ParticipantDeviceHistory::Parse(history.second);
@@ -78,6 +96,7 @@ private:
           pep::enumerateAndRetrieveData2Opts opts;
           opts.groups = { "*" };
           opts.columns = { "ParticipantIdentifier" };
+          opts.includeAccessGroupPseudonyms = true;
           for (const auto& device : config->getDevices()) {
             opts.columns.push_back(device.columnName);
           }

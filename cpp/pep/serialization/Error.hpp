@@ -42,8 +42,8 @@ private:
   bool isDeserializable() const;
 
 public:
-  explicit inline Error(const std::string& description)
-    : mDescription(description) { }
+  explicit inline Error(std::string description)
+    : mDescription(std::move(description)) { }
 
   std::string mDescription;
 

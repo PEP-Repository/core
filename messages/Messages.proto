@@ -1245,6 +1245,8 @@ enum StructureMetadataType {
   Column = 0;
   ColumnGroup = 1;
   ParticipantGroup = 2;
+  User = 3;
+  UserGroup_ = 4; // UserGroup is already defined as a message, so we need to use a different name
 }
 
 message StructureMetadataRequest {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/utils/MultiTypeTransform.hpp>
+#include <pep/utils/TaggedValue.hpp>
 
 #include <optional>
 #include <unordered_map>
@@ -10,6 +10,11 @@
 #include <boost/property_tree/ptree.hpp>
 
 namespace pep {
+
+/// @brief Context values to help interpret values being deserialized.
+using DeserializationContext = TaggedValues;
+/// @brief TaggedValue indicating a directory that should be used as the base for interpretation of relative paths.
+using TaggedBaseDirectory = TaggedValue<std::filesystem::path, struct BaseDirectoryTag>;
 
 /*
 Callers: use these frontend functions (SerializeProperties<> and DeserializeProperties<>) exclusively.
@@ -21,16 +26,16 @@ template <typename TValue>
 void SerializeProperties(boost::property_tree::ptree& destination, const boost::property_tree::ptree::path_type& path, const TValue& value);
 
 template <typename TValue>
-TValue DeserializeProperties(const boost::property_tree::ptree& source, const MultiTypeTransform& transform);
+TValue DeserializeProperties(const boost::property_tree::ptree& source, const DeserializationContext& context);
 
 template <typename TValue>
-TValue DeserializeProperties(const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform);
+TValue DeserializeProperties(const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context);
 
 template <typename TValue>
-TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform);
+TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const DeserializationContext& context);
 
 template <typename TValue>
-TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform);
+TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context);
 
 
 /*
@@ -63,11 +68,11 @@ public:
 template <typename TValue>
 class PropertySerializerByValue : public PropertySerializerBase<TValue> {
 public:
-  virtual TValue read(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const = 0;
+  virtual TValue read(const boost::property_tree::ptree& source, const DeserializationContext& context) const = 0;
 
-  virtual TValue readChild(const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) const {
+  virtual TValue readChild(const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) const {
     const auto& own = source.get_child(path);
-    return read(own, transform);
+    return read(own, context);
   }
 };
 
@@ -75,11 +80,11 @@ public:
 template <typename TValue>
 class PropertySerializerByReference : public PropertySerializerBase<TValue> {
 public:
-  virtual void read(TValue& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const = 0;
+  virtual void read(TValue& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const = 0;
 
-  virtual void readChild(TValue& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) const {
+  virtual void readChild(TValue& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) const {
     const auto& own = source.get_child(path);
-    read(destination, own, transform);
+    read(destination, own, context);
   }
 };
 
@@ -91,7 +96,7 @@ public:
     destination.put_value(value);
   }
 
-  TValue read(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
+  TValue read(const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
     return source.get_value<TValue>();
   }
 };
@@ -99,57 +104,47 @@ public:
 // Functions that adapt by-reference deserialization requests to by-value serializers and vice versa
 namespace detail {
   template <typename T>
-  T DeserializeByValue(const PropertySerializerByValue<T>& serializer, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) {
-    auto result = serializer.read(source, transform);
-    transform(result);
-    return result;
+  T DeserializeByValue(const PropertySerializerByValue<T>& serializer, const boost::property_tree::ptree& source, const DeserializationContext& context) {
+    return serializer.read(source, context);
   }
 
   template <typename T>
-  T DeserializeByValue(const PropertySerializerByValue<T>& serializer, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) {
-    auto result = serializer.readChild(source, path, transform);
-    transform(result);
-    return result;
+  T DeserializeByValue(const PropertySerializerByValue<T>& serializer, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) {
+    return serializer.readChild(source, path, context);
   }
 
   template <typename T>
-  T DeserializeByValue(const PropertySerializerByReference<T>& serializer, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) {
+  T DeserializeByValue(const PropertySerializerByReference<T>& serializer, const boost::property_tree::ptree& source, const DeserializationContext& context) {
     T result;
-    serializer.read(result, source, transform);
-    transform(result);
+    serializer.read(result, source, context);
     return result;
   }
 
   template <typename T>
-  T DeserializeByValue(const PropertySerializerByReference<T>& serializer, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) {
+  T DeserializeByValue(const PropertySerializerByReference<T>& serializer, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) {
     T result;
-    serializer.readChild(result, source, path, transform);
-    transform(result);
+    serializer.readChild(result, source, path, context);
     return result;
   }
 
   template <typename T>
-  void DeserializeByReference(const PropertySerializerByValue<T>& serializer, T& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) {
-    destination = serializer.read(source, transform);
-    transform(destination);
+  void DeserializeByReference(const PropertySerializerByValue<T>& serializer, T& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) {
+    destination = serializer.read(source, context);
   }
 
   template <typename T>
-  void DeserializeByReference(const PropertySerializerByValue<T>& serializer, T& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) {
-    destination = serializer.readChild(source, path, transform);
-    transform(destination);
+  void DeserializeByReference(const PropertySerializerByValue<T>& serializer, T& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) {
+    destination = serializer.readChild(source, path, context);
   }
 
   template <typename T>
-  void DeserializeByReference(const PropertySerializerByReference<T>& serializer, T& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) {
-    serializer.read(destination, source, transform);
-    transform(destination);
+  void DeserializeByReference(const PropertySerializerByReference<T>& serializer, T& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) {
+    serializer.read(destination, source, context);
   }
 
   template <typename T>
-  void DeserializeByReference(const PropertySerializerByReference<T>& serializer, T& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) {
-    serializer.readChild(destination, source, path, transform);
-    transform(destination);
+  void DeserializeByReference(const PropertySerializerByReference<T>& serializer, T& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) {
+    serializer.readChild(destination, source, path, context);
   }
 }
 
@@ -165,24 +160,24 @@ void SerializeProperties(boost::property_tree::ptree& destination, const boost::
 }
 
 template <typename TValue>
-TValue DeserializeProperties(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) {
-  return detail::DeserializeByValue(PropertySerializer<TValue>(), source, transform);
+TValue DeserializeProperties(const boost::property_tree::ptree& source, const DeserializationContext& context) {
+  return detail::DeserializeByValue(PropertySerializer<TValue>(), source, context);
 }
 
 template <typename TValue>
-TValue DeserializeProperties(const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) {
-  return detail::DeserializeByValue(PropertySerializer<TValue>(), source, path, transform);
+TValue DeserializeProperties(const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) {
+  return detail::DeserializeByValue(PropertySerializer<TValue>(), source, path, context);
 }
 
 template <typename TValue>
-TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) {
-  detail::DeserializeByReference(PropertySerializer<TValue>(), destination, source, transform);
+TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) {
+  detail::DeserializeByReference(PropertySerializer<TValue>(), destination, source, context);
   return destination;
 }
 
 template <typename TValue>
-TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) {
-  detail::DeserializeByReference(PropertySerializer<TValue>(), destination, source, path, transform);
+TValue& DeserializeProperties(TValue& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) {
+  detail::DeserializeByReference(PropertySerializer<TValue>(), destination, source, path, context);
   return destination;
 }
 
@@ -204,7 +199,7 @@ public:
     }
   }
 
-  void read(std::vector<TValue>& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
+  void read(std::vector<TValue>& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
     if (source.empty()) {
       if (!source.data().empty()) {
         throw std::runtime_error("Cannot read vector data from non-array node");
@@ -219,7 +214,7 @@ public:
     }
     destination.clear(); // TODO: prevent destination from having been updated if an exception is raised below
     for (const auto& entry : source) {
-      destination.push_back(DeserializeProperties<TValue>(entry.second, transform));
+      destination.push_back(DeserializeProperties<TValue>(entry.second, context));
     }
   }
 
@@ -230,10 +225,10 @@ public:
     }
   }
 
-  void readChild(std::vector<TValue>& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) const override {
+  void readChild(std::vector<TValue>& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) const override {
     const auto& own = source.get_child_optional(path);
     if (own) {
-      read(destination, *own, transform);
+      read(destination, *own, context);
     }
     else {
       destination.clear();
@@ -258,10 +253,10 @@ public:
     }
   }
 
-  void read(Map& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
+  void read(Map& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
     destination.clear(); // TODO: prevent destination from having been updated if an exception is raised below
     for (const auto& entry : source) {
-      auto emplaced = destination.emplace(std::make_pair(entry.first, DeserializeProperties<TValue>(entry.second, transform)));
+      auto emplaced = destination.emplace(std::make_pair(entry.first, DeserializeProperties<TValue>(entry.second, context)));
       if (!emplaced.second) {
         throw std::runtime_error("Cannot add duplicate key '" + entry.first + "' to unordered map");
       }
@@ -285,10 +280,10 @@ public:
     }
   }
 
-  void read(std::optional<TValue>& destination, const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
+  void read(std::optional<TValue>& destination, const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
     std::optional<std::string> content;
     try {
-      content = DeserializeProperties<std::string>(source, MultiTypeTransform()); // Prevent transformation: we want the raw "null" value if it's there
+      content = DeserializeProperties<std::string>(source, DeserializationContext()); // Prevent contextual transformation: we want the raw "null" value if it's there
     }
     catch (const boost::property_tree::ptree_error&) {
       // Ignore: Couldn't deserialize as string: this wasn't a JSON null value or "null" string
@@ -298,7 +293,7 @@ public:
         throw std::runtime_error("Input not supported: cannot discriminate between JSON \"null\" string and null value");
       }
     }
-    destination = DeserializeProperties<TValue>(source, transform);
+    destination = DeserializeProperties<TValue>(source, context);
   }
 
   void writeChild(boost::property_tree::ptree& destination, const boost::property_tree::ptree::path_type& path, const std::optional<TValue>& value) const override {
@@ -308,10 +303,10 @@ public:
     }
   }
 
-  void readChild(std::optional<TValue>& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const MultiTypeTransform& transform) const override {
+  void readChild(std::optional<TValue>& destination, const boost::property_tree::ptree& source, const boost::property_tree::ptree::path_type& path, const DeserializationContext& context) const override {
     const auto& own = source.get_child_optional(path);
     if (own) {
-      read(destination, *own, transform);
+      read(destination, *own, context);
     }
     else {
       destination = std::nullopt;
@@ -326,8 +321,14 @@ public:
     SerializeProperties(destination, value.string());
   }
 
-  std::filesystem::path read(const boost::property_tree::ptree& source, const MultiTypeTransform& transform) const override {
-    return DeserializeProperties<std::string>(source, transform);
+  std::filesystem::path read(const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
+    std::filesystem::path result = DeserializeProperties<std::string>(source, context);
+    if (!result.empty() && result.is_relative()) {
+      if (auto base = context.get_value<TaggedBaseDirectory>()) {
+        result = *base / result;
+      }
+    }
+    return result;
   }
 };
 

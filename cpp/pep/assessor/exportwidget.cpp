@@ -1,5 +1,6 @@
 #include <pep/assessor/exportwidget.hpp>
 #include <pep/assessor/ui_exportwidget.h>
+#include <pep/async/RxFilterNullopt.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/Exceptions.hpp>
@@ -362,7 +363,5 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
         return std::move(entry.second);
       })
       // Exclude (std::nullopt) entries for participants that didn't match the user's context
-      .filter([](const std::optional<ParticipantData>& data) { return data.has_value(); })
-      // Convert optional<ParticipantData> to ParticipantData
-      .map([](std::optional<ParticipantData> optional) { return std::move(*optional); });
+      .op(pep::RxFilterNullopt());
 }

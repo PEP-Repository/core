@@ -8,9 +8,9 @@ namespace pep {
 class Configuration {
 private:
   boost::property_tree::ptree mProperties;
-  MultiTypeTransform mTransform;
+  DeserializationContext mDeserializationContext;
 
-  void setRelativePathTransform(const std::filesystem::path& base);
+  void setBasePath(const std::filesystem::path& base);
 
 public:
 
@@ -25,17 +25,16 @@ public:
 
   template <typename T>
   T get(const boost::property_tree::ptree::path_type& path) const {
-      return DeserializeProperties<T>(mProperties, path, mTransform);
+      return DeserializeProperties<T>(mProperties, path, mDeserializationContext);
   }
 
   template <typename T> // TODO: remove; have callers use get<std::optional<T>> instead
   T get(const boost::property_tree::ptree::path_type& path, const T& defaultValue) const {
-    auto configured = DeserializeProperties<std::optional<T>>(mProperties, path, mTransform);
+    auto configured = DeserializeProperties<std::optional<T>>(mProperties, path, mDeserializationContext);
     if (configured) {
       return *configured;
     }
     T result = defaultValue;
-    mTransform(result);
     return result;
   }
 };

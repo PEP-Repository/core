@@ -162,7 +162,7 @@ template <auto MakeRaw> template <Record RecordType>
   auto result = raw.iterate(select(
     columns(max(&RecordType::seqno)),
     where(std::move(whereCondition)),
-    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     // SQLite will pick this column from the row with the max() value:
     // https://www.sqlite.org/lang_select.html#bareagg
     .having(c(&RecordType::tombstone) == false),
@@ -180,7 +180,7 @@ template <auto MakeRaw> template <Record RecordType, typename havingT, typename.
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false && havingCondition.mExpr)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 }
@@ -194,7 +194,7 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 

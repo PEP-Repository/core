@@ -60,6 +60,7 @@ endif()
 
 if(PEP_LOCAL_INFRA)
   add_custom_command(TARGET ${PROJECT_NAME}PullCastor POST_BUILD
+    COMMENT "Generate PullCastor token"
     COMMAND ${PROJECT_NAME}Token --json --secret-json ${PEP_LOCAL_INFRA_DIR}/../OAuthTokenSecret.json --subject PullCastor --group PullCastor > ${CMAKE_CURRENT_BINARY_DIR}/OAuthToken.json)
 elseif(EXISTS "${CMAKE_SOURCE_DIR}/oauthTokens/PullCastor.json")
   configure_file("${CMAKE_SOURCE_DIR}/oauthTokens/PullCastor.json" "${CMAKE_CURRENT_BINARY_DIR}/OAuthToken.json" COPYONLY)
@@ -72,6 +73,7 @@ if("${CMAKE_GENERATOR}" MATCHES "Visual Studio.*")
     # Ensure that the OAuthToken.json file is (also) present in the executable directories (where PullCastor.json is located).
     foreach(config ${CMAKE_CONFIGURATION_TYPES})
         add_custom_command(TARGET ${PROJECT_NAME}PullCastor POST_BUILD
+            COMMENT "Copy PullCastor token"
             COMMAND IF EXIST "${CMAKE_WINDOWS_BINARY_DIR}\\OAuthToken.json" COPY /Y "${CMAKE_WINDOWS_BINARY_DIR}\\OAuthToken.json" "${CMAKE_WINDOWS_BINARY_DIR}\\${config}\\")
     endforeach()
 

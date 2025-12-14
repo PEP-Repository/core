@@ -56,7 +56,7 @@ void ReadJsonIntoPtree(boost::property_tree::ptree& destination, const std::stri
 std::string PtreeToJson(const boost::property_tree::ptree& ptree) {
   std::ostringstream result;
   boost::property_tree::write_json(result, ptree);
-  return result.str();
+  return std::move(result).str();
 }
 
 }

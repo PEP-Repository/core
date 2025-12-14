@@ -25,6 +25,21 @@ void EnsureMapContains(std::unordered_map<std::string, TValue>& map, const std::
   });
 }
 
+enum class AccessMode {
+  read,
+  write
+};
+void EnsureStructureMetadataAccess(AccessMode mode, StructureMetadataType subjectType, std::string_view userGroup) {
+  if (subjectType == StructureMetadataType::User || subjectType == StructureMetadataType::UserGroup) {
+    UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, userGroup);
+  }
+  else {
+    if (mode == AccessMode::write) {
+      UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+    }
+  }
+}
+
 }
 
 AccessManager::Backend::Backend(const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf)
@@ -779,8 +794,8 @@ ColumnNameMappingResponse AccessManager::Backend::handleColumnNameMappingRequest
 
 std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetadataRequest(
     const StructureMetadataRequest& request,
-    [[maybe_unused]] const std::string& userGroup) {
-  (void) userGroup; // Currently, any user group can read metadata
+    const std::string& userGroup) {
+  EnsureStructureMetadataAccess(AccessMode::read, request.subjectType, userGroup);
 
   const Timestamp now = TimeNow();
   return {mStorage->getStructureMetadata(
@@ -795,7 +810,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetad
 void AccessManager::Backend::handleSetStructureMetadataRequestHead(
     const SetStructureMetadataRequest& request,
     const std::string& userGroup) {
-  UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+  EnsureStructureMetadataAccess(AccessMode::write, request.subjectType, userGroup);
 
   for (const auto& [subject, key] : request.remove) {
     mStorage->removeStructureMetadata(request.subjectType, subject, key);
@@ -806,7 +821,7 @@ void AccessManager::Backend::handleSetStructureMetadataRequestEntry(
     StructureMetadataType subjectType,
     const StructureMetadataEntry& entry,
     const std::string& userGroup) {
-  UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
+  EnsureStructureMetadataAccess(AccessMode::write, subjectType, userGroup);
 
   mStorage->setStructureMetadata(subjectType, entry.subjectKey.subject, entry.subjectKey.key, entry.value);
 }

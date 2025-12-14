@@ -140,7 +140,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
             page.mPageNumber = (*fileContext)++;
             page.mIndex = static_cast<uint32_t>(i);
             page.setEncrypted(
-                  in,
+                  *in,
                   ctx->keys[i].bytes,
                   ctx->request->mEntries[i].mMetadata
                   );
@@ -243,21 +243,22 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         throw std::runtime_error("Could not find all entries for metadata update. Attempting to update deleted entries?");
       }
 
-      // We have all the current (meta)data and polymorphic keys for the entries whose metadata we're going to update. Decrypt the keys now...
-      return this->unblindAndDecryptKeys(convertDataEnumerationEntries(*enumEntries, *ctx->pseudonyms), signedTicket)
-        .flat_map([this, ctx, enumEntries](const std::vector<AESKey>& enumKeys) { // ... then use the decrypted keys to prepare our request entries...
-        if (enumKeys.size() != enumEntries->size()) {
-          throw std::runtime_error("Received unexpected number of plaintext keys");
-        }
+      // Allow speedy lookup of columnIndex -> pseudonymIndex -> indexInEnumEntries
+      std::unordered_map<uint32_t, std::unordered_map<uint32_t, size_t>> enumEntryIndices;
+      enumEntryIndices.reserve(enumEntries->size());
+      for (size_t i = 0U; i < enumEntries->size(); ++i) {
+        const auto& enumEntry = (*enumEntries)[i];
+        auto& pseudIndices = enumEntryIndices[enumEntry.mColumnIndex]; // Get (reference to) an unordered_map for this column index
+        auto emplaced [[maybe_unused]] = pseudIndices.emplace(std::make_pair(enumEntry.mPseudonymIndex, i)).second;
+        assert(emplaced); // or we have received multiple enumeration entries for the same columnIndex+pseudonymIndex combination
+      }
 
-        // Allow speedy lookup of columnIndex -> pseudonymIndex -> indexInEnumEntries
-        std::unordered_map<uint32_t, std::unordered_map<uint32_t, size_t>> enumEntryIndices;
-        enumEntryIndices.reserve(enumEntries->size());
-        for (size_t i = 0U; i < enumEntries->size(); ++i) {
-          const auto& enumEntry = (*enumEntries)[i];
-          auto& pseudIndices = enumEntryIndices[enumEntry.mColumnIndex]; // Get (reference to) an unordered_map for this column index
-          auto emplaced [[maybe_unused]] = pseudIndices.emplace(std::make_pair(enumEntry.mPseudonymIndex, i)).second;
-          assert(emplaced); // or we have received multiple enumeration entries for the same columnIndex+pseudonymIndex combination
+      // We have all the current (meta)data and polymorphic keys for the entries whose metadata we're going to update. Decrypt the keys now...
+      return this->unblindAndDecryptKeys(ConvertDataEnumerationEntries(std::move(*enumEntries), *ctx->pseudonyms), signedTicket)
+        .flat_map([this, ctx, enumEntryIndices = PtrAsConst(MakeSharedCopy(std::move(enumEntryIndices)))
+          ](const std::vector<AESKey>& enumKeys) { // ... then use the decrypted keys to prepare our request entries...
+        if (enumKeys.size() != enumEntryIndices->size()) {
+          throw std::runtime_error("Received unexpected number of plaintext keys");
         }
 
         // Update every DataStoreEntry2 with properties from the enum entry representing the data card that we'll overwrite
@@ -265,8 +266,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         storeKeys.reserve(ctx->request->mEntries.size());
         for (auto& storeEntry : ctx->request->mEntries) {
           // Find the enum entry corresponding with this store entry
-          auto correspondingColumn = enumEntryIndices.find(storeEntry.mColumnIndex);
-          if (correspondingColumn == enumEntryIndices.cend()) {
+          auto correspondingColumn = enumEntryIndices->find(storeEntry.mColumnIndex);
+          if (correspondingColumn == enumEntryIndices->cend()) {
             throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->mTicket.openWithoutCheckingSignature().mColumns[storeEntry.mColumnIndex]);
           }
           auto correspondingEnumEntry = correspondingColumn->second.find(storeEntry.mPseudonymIndex);

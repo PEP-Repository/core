@@ -1,6 +1,7 @@
 add_library(${PROJECT_NAME}StorageFacilityApilib
   Constants.hpp
   DataPayloadPage.cpp DataPayloadPage.hpp
+  DataPayloadPageStreamOrder.cpp DataPayloadPageStreamOrder.hpp
   PageHash.cpp PageHash.hpp
   StorageFacilityMessages.hpp
   StorageFacilityProxy.cpp StorageFacilityProxy.hpp
@@ -79,4 +80,10 @@ if (WITH_SERVERS)
     add_unit_tests(StorageFacility EXTRA_ARGS "--launch-s3proxy")
     add_dependencies(${PROJECT_NAME}StorageFacilityUnitTests ${PROJECT_NAME}StorageFacility_s3proxy storagefacility_pki)
   endif ()
+
+  add_cli_install_executable(${PROJECT_NAME}MakeS3request MakeS3request.cpp)
+  target_link_libraries(${PROJECT_NAME}MakeS3request
+    ${PROJECT_NAME}StorageFacilitylib
+    ${PROJECT_NAME}Applicationlib
+  )
 endif()

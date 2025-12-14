@@ -199,11 +199,16 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                 return rxcpp::observable<>::empty<FakeVoid>();
               }
 
+              auto entryCount = entries->size();
+              auto ids = RangeToVector(*entries
+                | std::ranges::views::transform(std::mem_fn(&DataEnumerationEntry2::mId)));
+              // Convert each of SF's DataEnumerationEntry2 to (a shared_ptr to) an EnumerateResult
+              auto enumResults = MakeSharedCopy(ConvertDataEnumerationEntries(std::move(*entries), *ctx->pseudonyms));
+
               // Create an observable that'll produce AES keys
-              rxcpp::observable<FakeVoid> getKeys = this->unblindAndDecryptKeys(
-                  convertDataEnumerationEntries(*entries, *ctx->pseudonyms), ctx->signedTicket)
-                .map([ctx, entries](const std::vector<AESKey>& keys) {
-                  if (keys.size() != entries->size()) {
+              rxcpp::observable<FakeVoid> getKeys = this->unblindAndDecryptKeys(*enumResults, ctx->signedTicket)
+                .map([ctx, entryCount](const std::vector<AESKey>& keys) {
+                  if (keys.size() != entryCount) {
                     throw std::runtime_error("Received unexpected number of plaintext keys");
                   }
                   assert(ctx->keys.empty());
@@ -214,10 +219,6 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                 });
 
               // Create an observable that'll retrieve (encrypted) pages from Storage Facility
-              std::vector<std::string> ids;
-              ids.reserve(entries->size());
-              std::transform(entries->cbegin(), entries->cend(), std::back_inserter(ids),
-                             [](const DataEnumerationEntry2& entry) { return entry.mId; });
               rxcpp::observable<FakeVoid> getPages = BatchedRetrieve<std::shared_ptr<DataPayloadPage>>(
                 ids,
                 [](size_t offset,
@@ -246,43 +247,38 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                   rxcpp::observable<FakeVoid> job) { return job; }) // Retrieve AES keys and encrypted pages *concurrently* (because of *flat*_map)
                 .as_dynamic() // Reduce compiler memory usage
                 .op(RxBeforeCompletion(
-                  [ctx, entries]() { // When both AES key retrieval and encrypted page retrieval have been completed...
-                    assert(entries->size() == ctx->keys.size());
+                  [ctx, enumResults]() { // When both AES key retrieval and encrypted page retrieval have been completed...
+                    assert(enumResults->size() == ctx->keys.size());
 
-                    // Iterate over DataEnumerationResponse2 entries that we've retrieved data for
-                    for (size_t i = 0U; i < entries->size(); ++i) {
-                      const auto& entry = (*entries)[i];
+                    // Iterate over EnumerateResult entries that we've retrieved data for
+                    for (size_t i = 0U; i < enumResults->size(); ++i) {
+                      auto& enumResult = *(*enumResults)[i];
                       const auto& key = ctx->keys[i];
 
-                      // Convert Storage Facility's DataEnumerationResponse2 to CoreClient's EnumerateAndRetrieveResult
+                      // Convert EnumerateResult (without data) to EnumerateAndRetrieveResult (with data)
                       EnumerateAndRetrieveResult res;
+                      static_cast<EnumerateResult&>(res) = std::move(enumResult); // Initialize base class (sub-object) fields
                       res.mDataSet = true;
-                      res.mId = entry.mId;
-                      res.mMetadataDecrypted = entry.mMetadata.decrypt(key);
-                      res.mColumn = entry.mMetadata.getTag();
-                      res.mLocalPseudonymsIndex = entry.mPseudonymIndex;
-                      res.mLocalPseudonyms = ctx->pseudonyms->getLocalPseudonyms(entry.mPseudonymIndex);
-                      res.mAccessGroupPseudonym = ctx->pseudonyms->getAccessGroupPseudonym(entry.mPseudonymIndex);
+                      res.mMetadataDecrypted = res.mMetadata.decrypt(key);
 
                       // Fill the entry's data with the pages we retrieved for it
                       auto ipage = ctx->pages->find(static_cast<uint32_t>(i));
                       if (ipage != ctx->pages->cend()) {
                         auto& pages = *ipage->second;
-                        std::stringstream buffer;
+                        std::ostringstream buffer;
                         for (size_t i = 0U; i < pages.size(); ++i) {
                           assert(pages[i]->mPageNumber == i);
-                          auto chunk = pages[i]->decrypt(key, entry.mMetadata);
-                          buffer << *chunk;
+                          buffer << pages[i]->decrypt(key, res.mMetadata);
                         }
                         res.mData = std::move(buffer).str();
                       }
 
                       // Verify consistency
-                      if (res.mData.size() != entry.mFileSize) {
+                      if (res.mData.size() != res.mFileSize) {
                         std::ostringstream message;
                         message << "Received " << res.mData.size()
                                 << " bytes of data for a storage facility entry that was supposed to have "
-                                << entry.mFileSize << " bytes";
+                                << res.mFileSize << " bytes";
                         throw std::runtime_error(message.str());
                       }
 

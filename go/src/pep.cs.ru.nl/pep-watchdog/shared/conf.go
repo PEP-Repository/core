@@ -20,6 +20,7 @@ var Conf = ConfType{
 	EphemeralBelow:            20 * time.Minute,
 	MaxUnreportedSolvedIssues: 50,
 	ProbationPeriod:           1 * time.Hour,
+	TokenExpiryWarningDays:    30,
 	CanaryFile: CanaryFileConf{
 		Interval: time.Hour * 24,
 		Identity: "pep-canary-file",
@@ -80,6 +81,9 @@ type ConfType struct {
 	SelfCheckBindAddr string `yaml:"selfCheckBindAddr"`
 
 	// Configuration of checks
+	// Number of days before token expiry to start warning.
+	TokenExpiryWarningDays uint `yaml:"tokenExpiryWarningDays"`
+
 	CheckHTTPSCertificateExpiry []string `yaml:"checkHTTPSCertificateExpiry"`
 
 	CheckTLSCertificateExpiry []string `yaml:"checkTLSCertificateExpiry"`

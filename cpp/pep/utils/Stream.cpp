@@ -36,7 +36,9 @@ SetBinaryFileMode::SetBinaryFileMode(FILE* file, std::streambuf* stream) : file_
 }
 
 SetBinaryFileMode::SetBinaryFileMode(SetBinaryFileMode&& other) noexcept
-  : file_{ std::exchange(other.file_, {}) }, prevMode_{ other.prevMode_ } {
+  : file_{ std::exchange(other.file_, {}) },
+  stream_{ std::exchange(other.stream_, {}) },
+  prevMode_{ other.prevMode_ } {
 }
 
 SetBinaryFileMode::~SetBinaryFileMode() noexcept {

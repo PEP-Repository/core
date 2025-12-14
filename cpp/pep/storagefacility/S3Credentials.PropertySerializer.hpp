@@ -18,6 +18,6 @@ namespace pep
 
     s3::Credentials read(
         const boost::property_tree::ptree& source,
-        const MultiTypeTransform& transform) const override;
+        const DeserializationContext& context) const override;
   };
 }

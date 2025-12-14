@@ -832,6 +832,10 @@ TEST_F(AccessManagerStorageTest, removeMetadataStructure) {
           [&] {storage->removeColumnGroup(structure, false); }},
       {StructureMetadataType::ParticipantGroup, "participant group", [&] {storage->createParticipantGroup(structure); },
           [&] {storage->removeParticipantGroup(structure, false); }},
+      {StructureMetadataType::User, "user", [&] {storage->createUser(structure); },
+          [&] {storage->removeUser(structure); }},
+      {StructureMetadataType::UserGroup, "user group", [&] {storage->createUserGroup(UserGroup{structure, {}}); },
+          [&] {storage->removeUserGroup(structure); }},
   };
   for (const context& ctx : contexts) {
     ctx.createStructure();
@@ -964,6 +968,55 @@ TEST_F(AccessManagerStorageTest, setGetMetadataParticipantGroup) {
       Error) << "setStructureMetadata should refuse non-existing participant group";
   const std::string subject = "ParticipantGroupWithMetadata";
   storage->createParticipantGroup(subject);
+
+  ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
+    MetadataMap expected{{subject, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be added";
+  }
+}
+
+TEST_F(AccessManagerStorageTest, setGetMetadataUser) {
+  constexpr StructureMetadataType subjectType = StructureMetadataType::User;
+
+  const StructureMetadataKey key{"meta_group", "meta_key"};
+  const std::string value = "meta value";
+  EXPECT_THROW(storage->setStructureMetadata(subjectType, "NonExisting", key, value),
+      Error) << "setStructureMetadata should refuse non-existing user";
+  const std::string subject = "UserWithMetadata";
+  const std::string alternativeUid = "AlternativeUid";
+  storage->createUser(subject);
+  storage->addIdentifierForUser(subject, alternativeUid, UserIdFlags::none);
+
+  ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
+    MetadataMap expected{{subject, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be added";
+  }
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType, StructureMetadataFilter{{alternativeUid}, {}}));
+    MetadataMap expected{{alternativeUid, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be returned with the same userID as specified in the filter";
+  }
+  storage->setDisplayIdentifierForUser(alternativeUid);
+  {
+    const auto metaMap = MetadataToMap(storage->getStructureMetadata(TimeNow(), subjectType));
+    MetadataMap expected{{alternativeUid, {{key, value}}}};
+    ASSERT_EQ(metaMap, expected) << "metadata should be returned with the displayId, if no filter is specified";
+  }
+}
+
+TEST_F(AccessManagerStorageTest, setGetMetadataUserGroup) {
+  constexpr StructureMetadataType subjectType = StructureMetadataType::UserGroup;
+
+  const StructureMetadataKey key{"meta_group", "meta_key"};
+  const std::string value = "meta value";
+  EXPECT_THROW(storage->setStructureMetadata(subjectType, "NonExisting", key, value),
+      Error) << "setStructureMetadata should refuse non-existing user group";
+  const std::string subject = "UserGroupWithMetadata";
+  storage->createUserGroup(UserGroup(subject, {}));
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {

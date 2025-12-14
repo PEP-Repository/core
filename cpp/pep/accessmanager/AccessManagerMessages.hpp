@@ -78,11 +78,11 @@ class KeyRequestEntry {
 public:
   KeyRequestEntry() = default;
   inline KeyRequestEntry(
-    Metadata metadata,
+    const Metadata& metadata,
     EncryptedKey polymorphEncryptionKey,
     KeyBlindMode keyBlindMode,
     uint32_t pseudonymIndex = 0
-  ) : mMetadata(std::move(metadata)),
+  ) : mMetadata(metadata.getBound()),
     mPolymorphEncryptionKey(polymorphEncryptionKey),
     mKeyBlindMode(keyBlindMode),
     mPseudonymIndex(pseudonymIndex) {}
@@ -204,6 +204,8 @@ enum class StructureMetadataType : uint8_t {
   Column,
   ColumnGroup,
   ParticipantGroup,
+  User,
+  UserGroup,
 };
 
 /// \see StructureMetadataFilter

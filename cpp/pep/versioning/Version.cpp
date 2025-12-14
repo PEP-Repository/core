@@ -55,7 +55,7 @@ BinaryVersion::BinaryVersion(
     std::string projectPath,
     std::string reference,
     std::string revision,
-    unsigned int majorVersion, 
+    unsigned int majorVersion,
     unsigned int minorVersion,
     unsigned int pipelineId,
     unsigned int jobId,
@@ -80,12 +80,12 @@ std::string BinaryVersion::getSummary() const {
 }
 
 std::string BinaryVersion::prettyPrint() const {
-  std::stringstream result;
-  result 
+  std::ostringstream result;
+  result
     << "Binary version for " << getTarget() << '\n'
     << GitlabVersion::prettyPrint()
     << "ProtocolChecksum: " << getProtocolChecksum() << '\n';
-  return result.str();
+  return std::move(result).str();
 }
 
 ConfigVersion::ConfigVersion(
@@ -152,9 +152,9 @@ std::string ConfigVersion::getSummary() const {
 }
 
 std::string ConfigVersion::prettyPrint() const {
-  std::stringstream result;
-  result 
+  std::ostringstream result;
+  result
     << "Project version for " << getProjectCaption() <<" (" << getReference() << ")"<< '\n'
     << GitlabVersion::prettyPrint();
-  return result.str();
+  return std::move(result).str();
 }

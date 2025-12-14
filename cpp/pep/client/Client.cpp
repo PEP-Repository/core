@@ -125,11 +125,11 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 
   // Legacy: early participants were registered using an external identifier that was (initially) not stored. Completion
   // of such registrations must store the identifier retroactively
-  return enumerateData2({},                        // groups
+  return enumerateData({},                        // groups
                         {pp},                      // pps
                         {},                        // columnGroups
                         {"ParticipantIdentifier"}) // columns
-      .flat_map([this, identifier, pp](std::vector<EnumerateResult> result) -> rxcpp::observable<DataStorageResult2> {
+      .flat_map([this, identifier, pp](std::vector<std::shared_ptr<EnumerateResult>> result) -> rxcpp::observable<DataStorageResult2> {
         if (!result.empty()) {
           LOG(LOG_TAG, info) << "Participant identifier already present in PEP";
           // We do not store the participant ID again, but continue with the storage of other stuff in case this failed
@@ -180,15 +180,23 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 }
 
 std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
-  return GetConstServerProxy(keyServerProxy, "Key Server", require);
+  return GetConstServerProxy(keyServerProxy, ServerTraits::KeyServer(), require);
 }
 
 std::shared_ptr<const AuthServerProxy> Client::getAuthServerProxy(bool require) const {
-  return GetConstServerProxy(authServerProxy, "Auth Server", require);
+  return GetConstServerProxy(authServerProxy, ServerTraits::AuthServer(), require);
 }
 
 std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProxy(bool require) const {
-  return GetConstServerProxy(registrationServerProxy, "Registration Server", require);
+  return GetConstServerProxy(registrationServerProxy, ServerTraits::RegistrationServer(), require);
+}
+
+Client::ServerProxies Client::getServerProxies(bool requireAll) const {
+  auto result = CoreClient::getServerProxies(requireAll);
+  AddServerProxy(result, ServerTraits::AuthServer(), this->getAuthServerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::KeyServer(), this->getKeyServerProxy(requireAll));
+  AddServerProxy(result, ServerTraits::RegistrationServer(), this->getRegistrationServerProxy(requireAll));
+  return result;
 }
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
@@ -220,15 +228,15 @@ void Client::Builder::initialize(const Configuration& config,
     this->setPublicKeyShadowAdministration(AsymmetricKey(ReadFile(*shadowPublicKeyFile)));
   }
 
-  if (auto ksConfig = config.get<std::optional<EndPoint>>("KeyServer")) {
+  if (auto ksConfig = config.get<std::optional<EndPoint>>(ServerTraits::KeyServer().configNode())) {
     this->setKeyServerEndPoint(*ksConfig);
   }
 
-  if (auto asConfig = config.get<std::optional<EndPoint>>("Authserver")) {
+  if (auto asConfig = config.get<std::optional<EndPoint>>(ServerTraits::AuthServer().configNode())) {
     this->setAuthserverEndPoint(*asConfig);
   }
 
-  if (auto rsConfig = config.get<std::optional<EndPoint>>("RegistrationServer")) {
+  if (auto rsConfig = config.get<std::optional<EndPoint>>(ServerTraits::RegistrationServer().configNode())) {
     this->setRegistrationServerEndPoint(*rsConfig);
   }
 }

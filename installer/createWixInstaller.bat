@@ -64,7 +64,7 @@ REM Specify %pipelinenumber% and %jobnumber% to ensure that configVersion.json h
 powershell -ExecutionPolicy Bypass -File "%OwnDir%\..\scripts\invoke-sh.ps1" "../scripts/createConfigVersionJson.sh" "%unixinfradir%" "%unixprojectdir%" "%pipelinenumber%" "%jobnumber%" > "%artifactsdir%\configVersion.json" || exit /B 1
 popd
 if not exist "%artifactsdir%\configVersion.json" (
-  echo Config version file was not created at %artifactsdir%\configVersion.json 2>&1
+  echo Config version file was not created at %artifactsdir%\configVersion.json
   exit /B 1
 )
 
@@ -87,20 +87,17 @@ echo Compiling WiX sources
 "%WIX%\bin\candle.exe" -nologo -dArtifactsDir="%artifactsdir%" -arch x64 -out "%wixdir%\configFiles.wixobj" "%wixdir%\configFiles.wxs" || exit /B 1
 "%WIX%\bin\candle.exe" -nologo -dMajorVersion="%majorVersion%" -dMinorVersion="%minorVersion%" -dPipelineNumber="%pipelinenumber%" -dJobNumber=%jobnumber% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
 
-REM Work around "light.exe : error LGHT0001 : A required privilege is not held by the client" when invoked from an elevated context.
-REM See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1272#note_16345
-REM The "PEP_PSEXEC64_EXE" variable is set by the "windows-ci-runner.bat", which also ensures that the utility is installed.
-if not "%PEP_PSEXEC64_EXE%" == "" (
-  echo Manipulating linker's user context with %PEP_PSEXEC64_EXE%.
-  set MANIPULATE_UAC=%PEP_PSEXEC64_EXE% -accepteula -h -w "%CD%"
-)
-
 echo Linking MSI installer
 REM Suppress "warning LGHT1076 : ICE69: Mismatched component reference", which is issued because
 REM shortcuts are in other components than the files targeted by those shortcuts.
 REM See https://github.com/wixtoolset/issues/issues/5938 and/or http://lists.wixtoolset.org/pipermail/wix-users-wixtoolset.org/2020-March/008799.html
 set IGNORE_CROSS_COMPONENT_REFS=-sw1076
 
-%MANIPULATE_UAC% "%WIX%\bin\light.exe" -nologo %IGNORE_CROSS_COMPONENT_REFS% -ext WixUIExtension -ext WixUtilExtension -cultures:nl-NL -out "%wixdir%\pep.msi" "%wixdir%\main.wixobj" "%wixdir%\configFiles.wixobj" "%wixLibPath%" -loc "%OwnDir%\nl-NL.wxl" -loc "%OwnDir%\en-US.wxl" || exit /B 1
+REM ICE validation only available for admin accounts & interactive sessions: https://stackoverflow.com/q/1064580
+set WIX_CI_NO_ICE_VALIDATION=-sval
+
+REM Note: light.exe may fail with "error LGHT0001 : A required privilege is not held by the client" when invoked from an elevated context. Execute as non-admin instead.
+REM  See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1272#note_16345
+"%WIX%\bin\light.exe" -nologo %IGNORE_CROSS_COMPONENT_REFS% %WIX_CI_NO_ICE_VALIDATION% -ext WixUIExtension -ext WixUtilExtension -cultures:nl-NL -out "%wixdir%\pep.msi" "%wixdir%\main.wixobj" "%wixdir%\configFiles.wixobj" "%wixLibPath%" -loc "%OwnDir%\nl-NL.wxl" -loc "%OwnDir%\en-US.wxl" || exit /B 1
 
 echo Successfully produced MSI installer at "%wixdir%\pep.msi"

@@ -11,7 +11,7 @@
 namespace pep {
 
 HTTPMessage::HTTPMessage(
-  std::vector<std::shared_ptr<std::string>> bodyparts, 
+  std::vector<std::shared_ptr<std::string>> bodyparts,
   std::map<std::string, std::string, CaseInsensitiveCompare> headers)
   : headers(std::move(headers)), bodyparts(std::move(bodyparts)) {}
 
@@ -30,7 +30,7 @@ std::string HTTPMessage::header(const std::string& name) const {
   return headers.at(name);
 }
 
-const std::map<std::string, std::string, CaseInsensitiveCompare>& 
+const std::map<std::string, std::string, CaseInsensitiveCompare>&
   HTTPMessage::getHeaders() const
 {
   return headers;
@@ -120,14 +120,14 @@ HTTPResponse::HTTPResponse(
 std::string HTTPResponse::toString() const {
   std::ostringstream ss;
   ss << "HTTP/1.1 " << statuscode << " " << statusMessage << "\r\n";
-  
+
   for(const auto& header : HTTPMessage::headers) {
     ss << header.first << ": " << header.second << "\r\n";
   }
 
   ss << "\r\n";
   ss << HTTPMessage::getBody();
-  return ss.str();
+  return std::move(ss).str();
 }
 
 void HTTPResponse::completeHeaders()  {
@@ -185,7 +185,7 @@ HTTPRequest::HTTPRequest(
 std::string HTTPRequest::headerToString() const {
   std::ostringstream ss;
   ss << mMethod << " " << mUri.encoded_target();
- 
+
   ss << " HTTP/1.1\r\n";
 
   for(const auto& header : HTTPMessage::headers) {
@@ -193,7 +193,7 @@ std::string HTTPRequest::headerToString() const {
   }
 
   ss << "\r\n";
-  return ss.str();
+  return std::move(ss).str();
 }
 
 std::string HTTPRequest::toString() const {

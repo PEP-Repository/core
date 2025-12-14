@@ -21,5 +21,5 @@ class NotConnectedWidget : public QWidget {
  private:
   Ui::NotConnectedWidget* ui;
 
-  void appendConnectionStatus(QString& destination, QString facility, pep::ConnectionStatus status) const;
+  void appendConnectionStatus(QString& destination, const std::string& server, pep::ConnectionStatus status) const;
 };

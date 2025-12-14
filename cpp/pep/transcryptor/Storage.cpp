@@ -810,7 +810,7 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
       leafs.push_back(Serialization::ToString(cert));
       os_fingerprint << Sha256().digest(leafs.back());
     }
-    fingerprint = os_fingerprint.str();
+    fingerprint = std::move(os_fingerprint).str();
   }
   auto fingerprint_it = fingerprint.begin();
 
@@ -953,7 +953,7 @@ void TranscryptorStorage::logIssuedTicket(
         << std::quoted(accessGroup)
         << ") does not match access group on request ("
         << std::quoted(reqRecord->accessGroup) <<  ")";
-    throw Error(os.str());
+    throw Error(std::move(os).str());
   }
 
   auto drift = Abs(timestamp - TimeNow());
