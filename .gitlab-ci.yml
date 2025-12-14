@@ -941,6 +941,7 @@ windows-test:
   variables:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "none"
+    TESTS: "$UNIT_TESTS_BASE"
   tags:
     - windows
   needs: [windows-all-targets]
