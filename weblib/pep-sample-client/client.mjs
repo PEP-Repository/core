@@ -176,7 +176,7 @@ saveBtn.addEventListener('click', () => void (async () => {
       a.download = fileName;
       a.click();
       // Unclear if a delay is required, but let's be sure the download started,
-      //  see https://stackoverflow.com/a/71164969/4454665
+      //  see https://stackoverflow.com/a/71164969
       setTimeout(() => {
         URL.revokeObjectURL(blobUrl);
         void tmpDir.removeEntry(tmpFile.name);
