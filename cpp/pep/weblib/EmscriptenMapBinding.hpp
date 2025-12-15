@@ -18,8 +18,16 @@ public:
   static WireType toWireType(const Map &map, rvp::default_tag t) {
     val jsMap = val::global("Map").new_();
     for (const auto& [key, value] : map) {
-      //TODO ideally we would move elements, but see https://github.com/emscripten-core/emscripten/issues/25412
       jsMap.call<void>("set", key, value);
+    }
+    return ValBinding::toWireType(std::move(jsMap), t);
+  }
+  /// Serialize
+  static WireType toWireType(Map &&map, rvp::default_tag t) {
+    val jsMap = val::global("Map").new_();
+    for (auto& [key, value] : map) {
+      //XXX This does not actually move elements yet, see https://github.com/emscripten-core/emscripten/issues/25412
+      jsMap.call<void>("set", key, std::move(value));
     }
     return ValBinding::toWireType(std::move(jsMap), t);
   }
