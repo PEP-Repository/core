@@ -196,6 +196,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       CreateCommandToken(*this),
       CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
       CreateCommandStructureMetadata(*this),
+      CreateCommandServer(*this),
   };
   assert(std::ranges::none_of(commands, [](auto& ptr) { return ptr == nullptr; }));
   return commands;

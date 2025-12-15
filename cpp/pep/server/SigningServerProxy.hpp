@@ -10,7 +10,7 @@ private:
   std::string mExpectedCommonName;
   std::shared_ptr<X509RootCertificates> mRootCertificates;
 
-  void assertValidCertificateChain(const X509CertificateChain& chain, bool force);
+  void assertValidCertificateChain(const X509CertificateChain& chain, bool force) const;
 
   rxcpp::observable<SignedPingResponse> requestSignedPing(const PingRequest& request) const;
 
@@ -30,8 +30,8 @@ public:
   rxcpp::observable<PingResponse> requestPing() const override;
   rxcpp::observable<X509CertificateChain> requestCertificateChain() const;
   rxcpp::observable<X509CertificateSigningRequest> requestCertificateSigningRequest() const;
-  rxcpp::observable<FakeVoid> requestCertificateReplacement(const X509CertificateChain& newCertificateChain, bool force);
-  rxcpp::observable<FakeVoid> commitCertificateReplacement(const X509CertificateChain& newCertificateChain);
+  rxcpp::observable<FakeVoid> requestCertificateReplacement(const X509CertificateChain& newCertificateChain, bool force) const;
+  rxcpp::observable<FakeVoid> commitCertificateReplacement(const X509CertificateChain& newCertificateChain) const;
 };
 
 }

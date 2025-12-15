@@ -28,7 +28,7 @@ messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<Signed
   mNewPrivateKey = newKeyPair.getPrivateKey();
   CsrResponse response;
   response.mCsr = X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(newKeyPair, mIdentityFilesConfig->identity()->getCertificateChain().front());
-  return messaging::BatchSingleMessage(Serialization::ToString(response));
+  return messaging::BatchSingleMessage(Serialization::ToString(sign(response)));
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std::shared_ptr<SignedCertificateReplacementRequest> signedRequest) {
