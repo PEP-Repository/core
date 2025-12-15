@@ -4,7 +4,6 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
-#include <pep/weblib/EmscriptenBuffer.hpp>
 
 #include <rxcpp/rx-lite.hpp>
 
