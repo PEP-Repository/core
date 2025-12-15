@@ -26,7 +26,6 @@ public:
   X509Certificate& operator=(X509Certificate&& other) noexcept;
 
   explicit X509Certificate(X509& cert) noexcept : mRaw(&cert) {} // Takes ownership
-  [[nodiscard]] const X509& raw() const noexcept;
 
   AsymmetricKey getPublicKey() const;
   std::optional<std::string> getCommonName() const;
@@ -59,7 +58,7 @@ public:
  private:
   X509* mRaw = nullptr;
 
-  [[nodiscard]] X509* rawPointer() const noexcept; // Some of our "const" methods require the X509 structure to be mutable
+  [[nodiscard]] X509& raw() const noexcept; // Some of our "const" methods require the X509 structure to be mutable
   std::optional<std::string> searchOIDinSubject(int nid) const;
 
   static X509Certificate MakeUnsigned(const AsymmetricKey& publicKey, const X509_NAME& subjectName, std::chrono::seconds validityPeriod);

@@ -172,7 +172,7 @@ AsymmetricKey X509Certificate::getPublicKey() const {
 }
 
 bool X509Certificate::hasBasicConstraints() const {
-  return HasExtensionFlag(*this->rawPointer(), EXFLAG_BCONS);
+  return HasExtensionFlag(this->raw(), EXFLAG_BCONS);
 }
 
 /**
@@ -181,15 +181,15 @@ bool X509Certificate::hasBasicConstraints() const {
  *      returns false for unrestricted keys.
  */
 bool X509Certificate::hasDigitalSignatureKeyUsage() const {
-  auto internal = this->rawPointer();
+  auto& internal = this->raw();
 
   // Check if the KU extension is present
-  if (!HasExtensionFlag(*internal, EXFLAG_KUSAGE)) {
+  if (!HasExtensionFlag(internal, EXFLAG_KUSAGE)) {
     return false;
   }
 
   // Check if the digital signature key KU is set
-  uint32_t keyUsage = X509_get_key_usage(internal);
+  uint32_t keyUsage = X509_get_key_usage(&internal);
   return (keyUsage & KU_DIGITAL_SIGNATURE) != 0;
 }
 
@@ -199,15 +199,15 @@ bool X509Certificate::hasDigitalSignatureKeyUsage() const {
  *      returns false for unrestricted keys.
  */
 bool X509Certificate::hasTLSServerEKU() const {
-  auto internal = this->rawPointer();
+  auto& internal = this->raw();
 
   // Check if the EKU extension is present
-  if (!HasExtensionFlag(*internal, EXFLAG_XKUSAGE)) {
+  if (!HasExtensionFlag(internal, EXFLAG_XKUSAGE)) {
     return false;
   }
 
   // Check if the TLS server EKU is set
-  uint32_t extKeyUsage = X509_get_extended_key_usage(internal);
+  uint32_t extKeyUsage = X509_get_extended_key_usage(&internal);
   return (extKeyUsage & XKU_SSL_SERVER) != 0;
 }
 
@@ -232,7 +232,7 @@ bool X509Certificate::isSelfSigned() const {
  */
 //NOLINTBEGIN(google-runtime-int)
 std::optional<unsigned long> X509Certificate::pathLengthConstraint() const {
-  long pathLength = X509_get_pathlen(this->rawPointer());
+  long pathLength = X509_get_pathlen(&this->raw());
   if (pathLength == -1) {
     return std::nullopt;
   }
@@ -241,30 +241,26 @@ std::optional<unsigned long> X509Certificate::pathLengthConstraint() const {
 //NOLINTEND(google-runtime-int)
 
 bool X509Certificate::verifySubjectKeyIdentifier() const {
-  auto internal = this->rawPointer();
+  auto& internal = this->raw();
 
   // Retrieve the Subject Key Identifier (SKI)
-  const ASN1_OCTET_STRING* ski = X509_get0_subject_key_id(internal);
-  return VerifyKeyIdentifier(ski, *internal);
+  const ASN1_OCTET_STRING* ski = X509_get0_subject_key_id(&internal);
+  return VerifyKeyIdentifier(ski, internal);
 }
 
 bool X509Certificate::verifyAuthorityKeyIdentifier(const X509Certificate& issuerCert) const {
   // Retrieve the Authority Key Identifier (AKI) from this certificate
-  const ASN1_OCTET_STRING* aki = X509_get0_authority_key_id(this->rawPointer());
+  const ASN1_OCTET_STRING* aki = X509_get0_authority_key_id(&this->raw());
   return VerifyKeyIdentifier(aki, issuerCert.raw());
 }
 
-const X509& X509Certificate::raw() const noexcept {
-  return *this->rawPointer();
-}
-
-[[nodiscard]] X509* X509Certificate::rawPointer() const noexcept {
+X509& X509Certificate::raw() const noexcept {
   assert(mRaw != nullptr);
-  return mRaw;
+  return *mRaw;
 }
 
 std::optional<std::string> X509Certificate::searchOIDinSubject(int nid) const {
-  X509_NAME* subjectName = X509_get_subject_name(this->rawPointer());
+  X509_NAME* subjectName = X509_get_subject_name(&this->raw());
   return SearchOIDinName(subjectName, nid);
 }
 
@@ -505,7 +501,7 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
 
   // Add root certificates to the trusted stack
   for (const X509Certificate& rootCert : rootCAs.items()) {
-    if (sk_X509_push(trusted, rootCert.rawPointer()) <= 0) {
+    if (sk_X509_push(trusted, &rootCert.raw()) <= 0) {
       throw pep::OpenSSLError("Failed to push root certificate to trusted STACK_OF(X509) in X509CertificateChain::verify.");
     }
   }
@@ -519,7 +515,7 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
 
   // Add the certificates to the untrusted stack
   for (const X509Certificate& cert : mCertificates) {
-    if (sk_X509_push(untrusted, cert.rawPointer()) <= 0) {
+    if (sk_X509_push(untrusted, &cert.raw()) <= 0) {
       throw pep::OpenSSLError("Failed to push certificate to untrusted STACK_OF(X509) in X509CertificateChain::verify.");
     }
   }
@@ -532,7 +528,7 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
   PEP_DEFER(X509_STORE_CTX_free(ctx));
 
   // Initialize the X509_STORE_CTX with the certificate chain
-  if (X509_STORE_CTX_init(ctx, nullptr, leaf().rawPointer(), untrusted) <= 0) {
+  if (X509_STORE_CTX_init(ctx, nullptr, &leaf().raw(), untrusted) <= 0) {
     throw pep::OpenSSLError("Failed to initialize X509_STORE_CTX in X509CertificateChain::verify.");
   }
 
@@ -866,7 +862,7 @@ X509Certificate X509Certificate::MakeUnsigned(const AsymmetricKey& publicKey, co
 }
 
 void X509Certificate::sign(const AsymmetricKey& caPrivateKey, const X509_NAME& caName) {
-  auto internal = this->rawPointer();
+  auto internal = &this->raw();
 
   // Set issuer name from CA's subject
   if (X509_set_issuer_name(internal, &caName) <= 0) {
@@ -895,10 +891,10 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     throw std::invalid_argument("CA private key is not set in X509CertificateSigningRequest::signCertificate.");
   }
 
-  auto rawCaCert = caCert.rawPointer();
+  auto rawCaCert = &caCert.raw();
 
   auto result = X509Certificate::MakeUnsigned(this->getPublicKey(), *X509_REQ_get_subject_name(mCSR), validityPeriod);
-  auto cert = result.rawPointer();
+  auto cert = &result.raw();
 
   X509V3_CTX ctx;
   X509V3_set_ctx(&ctx, rawCaCert, cert, mCSR, nullptr, 0);
