@@ -177,7 +177,8 @@ constexpr auto MoveElements = std::views::transform([](auto& elem) { return std:
 constexpr auto CheckedCopy(
   std::ranges::input_range auto&& src,
   std::ranges::output_range<std::ranges::range_value_t<decltype(src)>> auto& dst,
-  bool exact = false) {
+  bool exact = false)
+requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<decltype(dst)>) {
   using namespace std::ranges;
   if (exact ? std::cmp_not_equal(size(dst), size(src)) : std::cmp_less(size(dst), size(src))) {
     throw std::out_of_range("src range does not fit in dst");
