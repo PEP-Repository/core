@@ -46,6 +46,12 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 ####################
 
 if should_run_test basic; then
+  # Store a PEP ID...
+  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  # ... then verify that we can read it back (see #2750)
+  pepcli validate data
+  # Clean up: delete the ID that we stored
+  write_registration_server_cell ParticipantIdentifier delete -p "$id"
 
   pepcli --oauth-token-group "Research Assessor" pull -P '*' -C ShortPseudonyms -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo --output-directory "$DEST_DIR/pulled-data"
   pepcli list -l -P '*' -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo
