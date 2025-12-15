@@ -241,7 +241,7 @@ windows-installer:
   rules:
     - !reference [.on-deployed-branches, rules]
   tags:
-    - windows
+    - windows-parallel
   needs: [provide-binaries, load-version]
   timeout: 1h 30m
   script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)

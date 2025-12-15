@@ -16,9 +16,6 @@ if "%MINOR_VERSION%"=="" (
     exit /B 1
 )
 
-echo Invoking Windows CI runner provisioning script.
-call "%OwnDir%\windows-ci-runner.bat" || exit /B 1
-
 REM Set BUILD_DIR to BUILD_DIRECTORY if defined, otherwise default to "build"
 if "%BUILD_DIRECTORY%" == "" (
   set BUILD_DIR=build
