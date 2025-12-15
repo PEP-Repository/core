@@ -15,7 +15,7 @@ struct WeblibApiPromiseAwaitTransform {
   template <typename TValue, typename TSourceOperator>
   auto await_transform(const rxcpp::observable<TValue, TSourceOperator>& observable) {
     // Return to previous thread after co_await
-    return observable.observe_on(observe_on_emscripten());
+    return observable.observe_on(observe_on_emscripten_main_thread());
   }
 };
 }
