@@ -26,8 +26,7 @@ int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   int retval = RUN_ALL_TESTS();
 
-  // getrusage not supported on Emscripten and
-  // even the stub is broken: https://github.com/emscripten-core/emscripten/issues/18083
+  // getrusage not supported on Emscripten
 #ifndef __EMSCRIPTEN__
   uint64_t maxmem{};
 #ifndef _WIN32
