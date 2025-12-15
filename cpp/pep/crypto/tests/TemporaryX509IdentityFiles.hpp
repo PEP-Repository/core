@@ -36,12 +36,12 @@ private:
   }
 
 public:
-  static TemporaryX509IdentityFiles Make(std::string organization, std::string commonName, std::filesystem::path directory = std::filesystem::current_path()) {
+  static TemporaryX509IdentityFiles Make(std::string_view organization, std::string_view commonName, std::filesystem::path directory = std::filesystem::current_path()) {
     if (!exists(directory)) {
       throw std::runtime_error("Can't create temporary file in nonexistent directory " + directory.string());
     }
 
-    auto identity = pep::X509Identity::MakeSelfSigned(std::move(organization), std::move(commonName));
+    auto identity = pep::X509Identity::MakeSelfSigned(organization, commonName);
 
     auto priv = CreateTemporary(directory, identity.getPrivateKey().toPem());
     auto cert = CreateTemporary(directory, pep::X509CertificatesToPem(identity.getCertificateChain().certificates()));

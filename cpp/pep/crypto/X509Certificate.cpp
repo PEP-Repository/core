@@ -361,16 +361,16 @@ X509Certificate X509Certificate::FromDer(const std::string& der) {
   return X509Certificate(*cert);
 }
 
-X509Certificate X509Certificate::MakeSelfSigned(const AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode, std::chrono::seconds validityPeriod) {
+X509Certificate X509Certificate::MakeSelfSigned(const AsymmetricKeyPair& keys, std::string_view organization, std::string_view commonName, std::string_view countryCode, std::chrono::seconds validityPeriod) {
   X509_NAME* name = X509_NAME_new();
   if (name == nullptr) {
     throw pep::OpenSSLError("Failed to create X509_NAME for self-signed certificate");
   }
   PEP_DEFER(X509_NAME_free(name));
 
-  X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, reinterpret_cast<unsigned char*>(countryCode.data()), -1, -1, 0); // "country code"
-  X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, reinterpret_cast<unsigned char*>(organization.data()), -1, -1, 0); // "organization ('O')"
-  X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<unsigned char*>(commonName.data()), -1, -1, 0); // "common name ('CN')"
+  X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(countryCode.data()), -1, -1, 0); // "country code"
+  X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(organization.data()), -1, -1, 0); // "organization ('O')"
+  X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(commonName.data()), -1, -1, 0); // "common name ('CN')"
 
   auto pub = keys.getPublicKey();
   assert(pub.mKey != nullptr);
@@ -937,9 +937,9 @@ X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certif
   }
 }
 
-X509Identity X509Identity::MakeSelfSigned(std::string organization, std::string commonName, std::string countryCode, std::chrono::seconds validityPeriod) {
+X509Identity X509Identity::MakeSelfSigned(std::string_view organization, std::string_view commonName, std::string_view countryCode, std::chrono::seconds validityPeriod) {
   auto keys = AsymmetricKeyPair::GenerateKeyPair();
-  auto cert = X509Certificate::MakeSelfSigned(keys, std::move(organization), std::move(commonName), std::move(countryCode), validityPeriod);
+  auto cert = X509Certificate::MakeSelfSigned(keys, organization, commonName, countryCode, validityPeriod);
   return X509Identity(std::move(keys).getPrivateKey(), X509CertificateChain({ std::move(cert) }));
 }
 

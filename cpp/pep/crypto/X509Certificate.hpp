@@ -50,7 +50,7 @@ public:
 
   static X509Certificate FromPem(const std::string& pem);
   static X509Certificate FromDer(const std::string& der);
-  static X509Certificate MakeSelfSigned(const AsymmetricKeyPair& keys, std::string organization, std::string commonName, std::string countryCode = defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = defaultSelfSignedValidity);
+  static X509Certificate MakeSelfSigned(const AsymmetricKeyPair& keys, std::string_view organization, std::string_view commonName, std::string_view countryCode = defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = defaultSelfSignedValidity);
 
   bool operator==(const X509Certificate& rhs) const;
   bool operator!=(const X509Certificate& rhs) const { return !(*this == rhs); }
@@ -158,7 +158,7 @@ private:
 public:
   X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain);
 
-  static X509Identity MakeSelfSigned(std::string organization, std::string commonName, std::string countryCode = X509Certificate::defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = X509Certificate::defaultSelfSignedValidity);
+  static X509Identity MakeSelfSigned(std::string_view organization, std::string_view commonName, std::string_view countryCode = X509Certificate::defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = X509Certificate::defaultSelfSignedValidity);
 
   const AsymmetricKey& getPrivateKey() const noexcept { return mPrivateKey; }
   const X509CertificateChain& getCertificateChain() const noexcept { return mCertificateChain; }
