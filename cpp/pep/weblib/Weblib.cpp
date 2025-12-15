@@ -65,6 +65,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
 
     // Start client
     client_ = Client::OpenClient(clientConfig_, std::move(io_context));
+    // Run event loop in background thread. Calls from JS will still come from the main thread.
     thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
       std::stop_callback onStop(std::move(stop), [io_context] {
         LOG(LOG_TAG, debug) << "stopping io_context...";
@@ -126,7 +127,7 @@ public:
   /// Register \p callback to be called when the connection status changes.
   void onStatusChange(val callback) {
     connectionStatusChange() // Safe to call outside io_context thread
-        .observe_on(observe_on_emscripten())
+        .observe_on(observe_on_emscripten_main_thread())
         // Even move constructor only allowed on main thread, avoid calling it when copying lambda
         .subscribe([callback = EmscriptenValPtr(std::move(callback))](bool connected) {
           (*callback)(connected);
@@ -334,7 +335,7 @@ public:
                       signedTicket),
                   signedTicket);
               return rxcpp::observable<>::just(entries)
-                  .observe_on(observe_on_emscripten(emscripten_main_runtime_thread_id()))
+                  .observe_on(observe_on_emscripten_main_thread())
                   .flat_map([pageBatches](const std::shared_ptr<std::vector<const CellEntry*>>& entries) {
 
                     auto cellStreams = std::make_shared<std::vector<rxcpp::subjects::subject<std::string>>>(entries->size());
@@ -349,7 +350,7 @@ public:
                     pageBatches
                         //TODO Do not request all batches at once, by implementing `pull` with ReadableStream
                         .concat()
-                        .observe_on(observe_on_emscripten(emscripten_main_runtime_thread_id()))
+                        .observe_on(observe_on_emscripten_main_thread())
                         .subscribe(
                             // on next
                             [cellStreams](RetrievePage page) noexcept {

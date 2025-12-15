@@ -3,7 +3,7 @@
 #include <pep/utils/Log.hpp>
 
 #include <emscripten/proxying.h>
-#include <pthread.h>
+#include <emscripten/threading.h>
 
 static const std::string LOG_TAG("emscripten_scheduler");
 
@@ -62,8 +62,8 @@ rxcpp::observe_on_one_worker observe_on_emscripten(::pthread_t thread) {
   return rxcpp::observe_on_one_worker{instance};
 }
 
-rxcpp::observe_on_one_worker observe_on_emscripten() {
-  return observe_on_emscripten(::pthread_self());
+rxcpp::observe_on_one_worker observe_on_emscripten_main_thread() {
+  return observe_on_emscripten(::emscripten_main_runtime_thread_id());
 }
 
 }
