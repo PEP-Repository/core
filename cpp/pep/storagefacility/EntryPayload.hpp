@@ -5,6 +5,7 @@
 #include <pep/storagefacility/PageStore.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 
+#include <typeinfo>
 #include <xxhash.h>
 
 namespace pep {
@@ -31,10 +32,19 @@ protected:
   EntryPayload(const EntryPayload &) = default;
   EntryPayload& operator=(const EntryPayload &) = default;
 
+  virtual bool allMemberVarsAreEqual(const EntryPayload&) const = 0;
+
 public:
   virtual ~EntryPayload() noexcept = default;
 
   virtual std::shared_ptr<EntryPayload> clone() const = 0;
+
+  /// True if both objects are of the exact same type AND they hold equivalent data
+  bool isStrictlyEqualTo(const EntryPayload& other) const {
+    if (this == std::addressof(other)) return true;
+    if (typeid(*this) != typeid(other)) return false;
+    return allMemberVarsAreEqual(other);
+  };
 
   virtual size_t pageCount() const noexcept = 0;
   virtual uint64_t size() const noexcept = 0;
@@ -56,6 +66,8 @@ private:
 
 protected:
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
+
+  bool allMemberVarsAreEqual(const EntryPayload& rhs) const override;
 
 public:
   InlinedEntryPayload(std::string content, uint64_t payloadSize) : mContent(std::move(content)), mPayloadSize(payloadSize) {}
@@ -83,6 +95,8 @@ private:
 
 protected:
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
+
+  bool allMemberVarsAreEqual(const EntryPayload& rhs) const override;
 
 public:
   PagedEntryPayload() = default;

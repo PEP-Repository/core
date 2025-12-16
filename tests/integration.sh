@@ -148,13 +148,13 @@ else
     >&2 printGreen "It is not possible to specify a build directory in a non-local build"
     usage
   fi
+  if [ -n "${BUILD_MODE-}" ]; then
+    >&2 printGreen "It is not possible to specify a build mode in a non-local build"
+    usage
+  fi
   readonly BUILD_DIR="builddir" # Must be set to something, actual value is not relevant for non-local use
 fi
 
-if [ -n "${BUILD_MODE-}" ]; then
-  >&2 printGreen "It is not possible to specify a build mode in a non-local build"
-  usage
-fi
 readonly BUILD_MODE="${BUILD_MODE:-.}"
 echo "BUILD_MODE: $BUILD_MODE"
 

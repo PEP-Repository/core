@@ -89,13 +89,6 @@ variables:
     cpp/pep/castor/localhost.cert
     cpp/pep/castor/localhost.key
 
-  FORCE_BUILD_STABLE_RELEASE:
-    value: ''
-    options:
-      - ''
-      - 'yes'
-    description: Always build on stable/release
-
   BUILD_ALL_TARGETS:
     value: ''
     options:
@@ -110,12 +103,6 @@ variables:
   DOCKER_BUILD_LOCKFILE_JOB:
     value: ''
     description: docker-build job number to download conan-ci.lock artifact from
-  FAST_DEPLOY:
-    value: ''
-    options:
-      - ''
-      - 'yes'
-    description: Only build
 
   RUN_CLEANUP:
     value: 'no'
@@ -373,15 +360,14 @@ cleanup:
     exit $DID_JOB_FAIL
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
-# See the ci_cd/windows-ci-runner.bat provisioning script.
 .run-tests-windows: &run-tests-windows
   - |
     $testsArray = $TESTS -split ' ';
     $DID_JOB_FAIL = 0
     foreach ($TEST in $testsArray) {
-      & "C:\Program Files\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
+      & "$env:ProgramFiles\Git\bin\bash.exe" ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST.exe" "--gtest_output=xml:$CI_PROJECT_DIR/temp/"
       if ($LASTEXITCODE -ne 0) {
-          $DID_JOB_FAIL = 1
+        $DID_JOB_FAIL = 1
       }
     }
     exit $DID_JOB_FAIL
@@ -529,8 +515,6 @@ ubuntu-lts-release:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
-  rules:
-    - *not-stable-release
   variables:
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -578,10 +562,8 @@ ubuntu-lts-release-manual-lint:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     VERIFY_HEADERS_STANDALONE: "off"
   rules:
-    - if: $FAST_DEPLOY
-      when: never
     - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - *not-stable-release
+    - when: on_success
 
 ubuntu-rolling-debug:
   extends:
@@ -626,8 +608,6 @@ build-pep-connector:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   tags:
     - docker-small
-  rules:
-    - *not-stable-release
   script:
     # Get major and minor version from version.json
     - MAJOR_VERSION=$(./scripts/parse-version.sh get-major version.json)
@@ -651,8 +631,6 @@ build-flatpak:
   needs:
     - job: retrieve-lockfile
       optional: true
-  rules:
-    - *not-stable-release
   tags:
     - docker
     - fast
@@ -688,11 +666,7 @@ windows-client:
     - job: retrieve-lockfile
       optional: true
   tags:
-    - windows
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - *not-stable-release
+    - windows-parallel
   #language=powershell
   script:
     - *checkout-docker-build-script-powershell-steps
@@ -712,10 +686,8 @@ windows-all-targets:
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
   tags:
-    - windows
+    - windows-parallel
   rules:
-    - if: $FAST_DEPLOY
-      when: never
     - if: $BUILD_ALL_TARGETS
       when: on_success
     - when: manual
@@ -757,10 +729,6 @@ windows-all-targets:
       optional: true
   variables:
     BUILD_GO_SERVERS: "off"
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - *not-stable-release
   script:
     - *checkout-docker-build-script-sh-steps
     - *set-enable-deprecation-errors
@@ -793,8 +761,6 @@ macos-client-arm:
     - job: retrieve-lockfile
       optional: true
   rules:
-    - if: $FAST_DEPLOY
-      when: never
     - if: $BUILD_ALL_TARGETS
       when: on_success
     - when: manual
@@ -831,8 +797,10 @@ macos-client-arm:
     - |
       if [[ -n "$CLEAN_CONAN" ]]; then
       echo 'Cleaning Conan cache.'
-      # Remove old packages
+      # Remove old recipes
       conan remove '*' --lru 4w --confirm
+      # Remove old packages
+      conan remove '*:*' --lru 4w --confirm
       # Remove some temporary build files (excludes binaries)
       conan cache clean --build --temp
       fi
@@ -869,8 +837,6 @@ macos-all-targets-arm:
 build-docker-images:
   stage: build
   extends: .dind
-  rules:
-    - *not-stable-release
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
     - ubuntu-lts-release
@@ -958,10 +924,6 @@ ubuntu-lts-release-test:
     - .ubuntu-test-base
     - .ubuntu-lts-release-settings
   needs: [ubuntu-lts-release]
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - *not-stable-release
 
 ubuntu-rolling-debug-test:
   extends:
@@ -983,12 +945,10 @@ windows-test:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "none"
     TESTS: "$UNIT_TESTS_BASE"
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - when: on_success
   tags:
-    - windows
+    # Do not run in parallel with other tests, as we may bind to static ports.
+    # May still run in parallel with build jobs.
+    - windows-sequential
   needs: [windows-all-targets]
   script:
     - *run-tests-windows
@@ -1004,10 +964,6 @@ windows-test:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: "$UNIT_TESTS_BASE"
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - when: on_success
   script:
     - *run-tests
   artifacts:
@@ -1033,8 +989,6 @@ macos-arm-test:
 pep-services-image-test:
   stage: runtime-analysis
   extends: .dind
-  rules:
-    - *not-stable-release
   variables:
     TESTS: "$UNIT_TESTS_BASE"
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
@@ -1062,11 +1016,7 @@ pep-services-image-test:
 windows-local-integration:
   stage: integration
   tags:
-    - windows
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - when: on_success
+    - windows-sequential
   needs:
     - windows-all-targets
   script:
@@ -1076,10 +1026,6 @@ windows-local-integration:
 
 .macos-local-integration-base:
   stage: integration
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - when: on_success
   script:
     - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
 
@@ -1102,10 +1048,6 @@ macos-local-integration-arm:
 docker-integration:
   stage: integration
   extends: .dind
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - *not-stable-release
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
     - job: build-docker-images
@@ -1126,10 +1068,6 @@ docker-integration:
 docker-integration-on-base-data:
   stage: integration
   extends: .dind
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - *not-stable-release
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
     - job: build-docker-images
@@ -1153,10 +1091,6 @@ docker-integration-on-base-data:
 
 .upload-curl-base:
   extends: .upload-base
-  rules:
-    - if: $FAST_DEPLOY
-      when: never
-    - *not-stable-release
   image: alpine:latest
   before_script:
     - apk add --no-cache curl
@@ -1200,8 +1134,6 @@ upload-flatpak:
 
 retag-pep-docker-images:
   extends: .upload-base
-  rules:
-    - *not-stable-release
   image: docker
   needs:
     - job: pep-services-image-test
@@ -1229,6 +1161,10 @@ update-foss-submodule-in-dtap:
   stage: triggers
   dependencies: []
   rules:
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+      when: never
+    - if: $CI_COMMIT_BRANCH == $PEP_FOSS_LATEST_RELEASE_BRANCH
+      when: never
     - !reference [.skip-for-binaries-for-xyz, rules]
     # Not for tag pipelines
     - if: $CI_COMMIT_BRANCH
@@ -1244,7 +1180,7 @@ update-foss-submodule-in-dtap:
   script:
     # Set the displayed user with the commits that are about to be made
     - NAME_USER="Gitlab_CI_script"
-    - DTAP_PROJ="pep/ops"
+    - DTAP_PROJ="pep/dtap"
     - git config --global user.email "support@pep.cs.ru.nl"
     - git config --global user.name "$NAME_USER"
 
@@ -1295,7 +1231,7 @@ update-foss-submodule-in-dtap:
         if [ "$tip" != "$CI_COMMIT_SHA" ]; then
           >&2 echo "This ($CI_COMMIT_SHA) is not the latest $CI_PROJECT_NAME commit for $CI_COMMIT_BRANCH, that is $tip"
           >&2 echo 'Skipping dtap update'
-          exit 1 # Dont skip silently, so that follow-up ops pipeline wont run with wrong commit
+          exit 1 # Dont skip silently, so that follow-up dtap pipeline wont run with wrong commit
         fi
 
     -   cd ..
@@ -1321,12 +1257,16 @@ trigger-dtap-pipeline:
   needs:
     - job: update-foss-submodule-in-dtap
   trigger:
-    project: pep/ops
+    project: pep/dtap
     branch: $CI_COMMIT_REF_NAME
     strategy: mirror
   variables:
     RUN_CLEANUP: $RUN_CLEANUP
   rules:
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+      when: never
+    - if: $CI_COMMIT_BRANCH == $PEP_FOSS_LATEST_RELEASE_BRANCH
+      when: never
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - if: $CI_COMMIT_BRANCH
       when: on_success

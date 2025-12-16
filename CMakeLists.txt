@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.28)  # Use https://apt.kitware.com/ to get a recent CMake version if needed
+# Keep consistent with conanfile.py build_requirements.
+# Use https://apt.kitware.com/ to get a recent CMake version if needed,
+# or use the version from Conan via build/generators/conanbuild.*
+cmake_minimum_required(VERSION 3.28...4.2)
 
 # We don't use C++ modules yet and don't want to require clang-scan-deps,
 # see https://discourse.cmake.org/t/cmake-3-28-cmake-cxx-compiler-clang-scan-deps-notfound-not-found/9244

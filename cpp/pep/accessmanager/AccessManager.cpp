@@ -725,28 +725,28 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   }).flat_map([ctx](TranscryptorResponse resp) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
     // Now we have local pseudonyms for the orignal PPs.
-    if (resp.mEntries.size() != ctx->pps.size())
-      throw std::runtime_error(
-          "Transcryptor returned wrong number of entries");
+    if (resp.mEntries.size() != ctx->pps.size()) {
+      throw std::runtime_error("Transcryptor returned wrong number of entries");
+    }
 
-            ctx->ticket.mPseudonyms = std::move(resp.mEntries);
-            if (ctx->ticket.mUserGroup == UserGroup::DataAdministrator && !ctx->ticket.mPseudonyms.empty()) {
-              LOG(LOG_TAG, info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mPseudonyms.size() << " participant(s)";
-            }
-            for (size_t i = 0; i < ctx->ticket.mPseudonyms.size(); i++) {
+    ctx->ticket.mPseudonyms = std::move(resp.mEntries);
+    if (ctx->ticket.mUserGroup == UserGroup::DataAdministrator && !ctx->ticket.mPseudonyms.empty()) {
+      LOG(LOG_TAG, info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mPseudonyms.size() << " participant(s)";
+    }
+    for (size_t i = 0; i < ctx->ticket.mPseudonyms.size(); i++) {
       LocalPseudonym localPseudonym = ctx->ticket.mPseudonyms[i].mAccessManager.decrypt(ctx->server->mPseudonymKey);
-              if (ctx->ticket.mUserGroup != UserGroup::DataAdministrator) {
-                ctx->server->backend->assertParticipantAccess(ctx->ticket.mUserGroup, localPseudonym, ctx->participantModes, ctx->ticket.mTimestamp);
-              }
-              if (ctx->pps[i].isClientProvided && !ctx->server->backend->hasLocalPseudonym(localPseudonym)) {
-                if (ctx->ticket.hasMode("write")) {
-                  ctx->server->backend->storeLocalPseudonymAndPP(localPseudonym, ctx->ticket.mPseudonyms[i].mPolymorphic);
-                }
-              }
-            }
+      if (ctx->ticket.mUserGroup != UserGroup::DataAdministrator) {
+        ctx->server->backend->assertParticipantAccess(ctx->ticket.mUserGroup, localPseudonym, ctx->participantModes, ctx->ticket.mTimestamp);
+      }
+      if (ctx->pps[i].isClientProvided && !ctx->server->backend->hasLocalPseudonym(localPseudonym)) {
+        if (ctx->ticket.hasMode("write")) {
+          ctx->server->backend->storeLocalPseudonymAndPP(localPseudonym, ctx->ticket.mPseudonyms[i].mPolymorphic);
+        }
+      }
+    }
 
-            // All seems fine: finally, we log the ticket at the transcryptor
-            ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), *ctx->server->getSigningIdentity());
+    // All seems fine: finally, we log the ticket at the transcryptor
+    ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), *ctx->server->getSigningIdentity());
 
     LogIssuedTicketRequest logReq;
     logReq.mTicket = ctx->signedTicket;

@@ -33,6 +33,8 @@ template <> struct pep::PropertySerializer<PathEncapsulator2> : public PropertyS
 };
 
 
+namespace {
+
 template <typename TEncapsulator>
 void TestContextApplication() {
   using namespace pep;
@@ -56,6 +58,8 @@ void TestContextApplication() {
   deserialized = DeserializeProperties<TEncapsulator>(ptree, context);
   EXPECT_NE(expected.mPath, deserialized.mPath);
   EXPECT_TRUE(deserialized.mPath.is_absolute());
+}
+
 }
 
 TEST(PropertySerializer, AppliesDeserializationContext) {
