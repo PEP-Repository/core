@@ -286,6 +286,7 @@ cat > "Distribution.dist" <<EOF
         <line choice="$PEP_MACOS_ASSESSOR_APP_ROOT"/>
         <line choice="$PEP_MACOS_CLI_APP_ROOT"/>
         <line choice="$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT"/>
+        <line choice="$PEP_MACOS_UPLOAD_TOOL_APP_ROOT"/>
     </choices-outline>
     <choice id="$PEP_MACOS_ASSESSOR_APP_ROOT" title="$PEP_MACOS_ASSESSOR_APP_NAME" description="$PEP_MACOS_ASSESSOR_APP_NAME">
         <pkg-ref id="$PEP_MACOS_ASSESSOR_APP_IDENTIFIER" version="$PEP_MACOS_APP_CONFIG_VERSION" onConclusion="none">$PEP_MACOS_ASSESSOR_APP_INFRA_NAME.pkg</pkg-ref>
@@ -295,6 +296,9 @@ cat > "Distribution.dist" <<EOF
     </choice>
     <choice id="$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT" title="$PEP_MACOS_DOWNLOAD_TOOL_APP_NAME" description="$PEP_MACOS_DOWNLOAD_TOOL_APP_NAME">
         <pkg-ref id="$PEP_MACOS_DOWNLOAD_TOOL_APP_IDENTIFIER" version="$PEP_MACOS_APP_CONFIG_VERSION" onConclusion="none">$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.pkg</pkg-ref>
+    </choice>
+    <choice id="$PEP_MACOS_UPLOAD_TOOL_APP_ROOT" title="$PEP_MACOS_UPLOAD_TOOL_APP_NAME" description="$PEP_MACOS_UPLOAD_TOOL_APP_NAME">
+        <pkg-ref id="$PEP_MACOS_UPLOAD_TOOL_APP_IDENTIFIER" version="$PEP_MACOS_APP_CONFIG_VERSION" onConclusion="none">$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.pkg</pkg-ref>
     </choice>
 </installer-gui-script>
 EOF
@@ -312,6 +316,7 @@ productbuild  --distribution Distribution.dist \
 rm -f "$PEP_MACOS_ASSESSOR_APP_INFRA_NAME.pkg"
 rm -f "$PEP_MACOS_CLI_APP_INFRA_NAME.pkg"
 rm -f "$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.pkg"
+rm -f "$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.pkg"
 
 # Verify the signature
 pkgutil --check-signature "$INSTALLER_NAME"
