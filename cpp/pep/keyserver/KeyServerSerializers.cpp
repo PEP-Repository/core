@@ -16,9 +16,9 @@ void Serializer<EnrollmentRequest>::moveIntoProtocolBuffer(proto::EnrollmentRequ
 }
 
 EnrollmentResponse Serializer<EnrollmentResponse>::fromProtocolBuffer(proto::EnrollmentResponse&& source) const {
-  EnrollmentResponse result;
-  result.mCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()));
-  return result;
+  return EnrollmentResponse{
+    .mCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()))
+  };
 }
 
 void Serializer<EnrollmentResponse>::moveIntoProtocolBuffer(proto::EnrollmentResponse& dest, EnrollmentResponse value) const {

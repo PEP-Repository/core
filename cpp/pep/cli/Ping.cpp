@@ -17,7 +17,7 @@ private:
       .requestCertificateChain()
       .map([](const pep::X509CertificateChain& chain) {
       auto printed = false;
-      for (const auto& certificate : chain) {
+      for (const auto& certificate : chain.certificates()) {
         std::cout << certificate.toPem();
         printed = true;
       }

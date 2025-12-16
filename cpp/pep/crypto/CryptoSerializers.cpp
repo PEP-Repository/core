@@ -41,13 +41,13 @@ void Serializer<X509Certificate>::moveIntoProtocolBuffer(proto::X509Certificate&
 }
 
 X509CertificateChain Serializer<X509CertificateChain>::fromProtocolBuffer(proto::X509CertificateChain&& source) const {
-  X509CertificateChain result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result, std::move(*source.mutable_certificate()));
-  return result;
+  X509Certificates certificates;
+  Serialization::AssignFromRepeatedProtocolBuffer(certificates, std::move(*source.mutable_certificate()));
+  return X509CertificateChain(certificates);
 }
 
 void Serializer<X509CertificateChain>::moveIntoProtocolBuffer(proto::X509CertificateChain& dest, X509CertificateChain value) const {
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_certificate(), std::move(value));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_certificate(), std::move(value).certificates());
 }
 
 X509CertificateSigningRequest Serializer<X509CertificateSigningRequest>::fromProtocolBuffer(proto::X509CertificateSigningRequest&& source) const {

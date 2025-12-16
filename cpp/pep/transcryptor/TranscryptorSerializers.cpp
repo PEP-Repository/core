@@ -8,10 +8,12 @@
 namespace pep {
 
 RekeyRequest Serializer<RekeyRequest>::fromProtocolBuffer(proto::RekeyRequest&& source) const {
-  RekeyRequest result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mKeys, std::move(*source.mutable_keys()));
-  result.mClientCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_client_certificate_chain()));
-  return result;
+  std::vector<EncryptedKey> keys;
+  Serialization::AssignFromRepeatedProtocolBuffer(keys, std::move(*source.mutable_keys()));
+  return RekeyRequest{
+    .mKeys = std::move(keys),
+    .mClientCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_client_certificate_chain()))
+  };
 }
 
 void Serializer<RekeyRequest>::moveIntoProtocolBuffer(proto::RekeyRequest& dest, RekeyRequest value) const {
@@ -130,10 +132,7 @@ void Serializer<LogIssuedTicketResponse>::moveIntoProtocolBuffer(proto::LogIssue
 }
 
 LogIssuedTicketResponse Serializer<LogIssuedTicketResponse>::fromProtocolBuffer(proto::LogIssuedTicketResponse&& source) const {
-  LogIssuedTicketResponse ret;
-  ret.mSignature = Serialization::FromProtocolBuffer(std::move(
-    *source.mutable_signature()));
-  return ret;
+  return LogIssuedTicketResponse(Serialization::FromProtocolBuffer(std::move(*source.mutable_signature())));
 }
 
 }

@@ -85,9 +85,12 @@ variables:
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
 
-  UNIT_TESTS_CASTOR_KEYS: >-
-    cpp/pep/castor/localhost.cert
-    cpp/pep/castor/localhost.key
+  FORCE_BUILD_STABLE_RELEASE:
+    value: ''
+    options:
+      - ''
+      - 'yes'
+    description: Always build on stable/release
 
   BUILD_ALL_TARGETS:
     value: ''
@@ -454,7 +457,6 @@ retrieve-lockfile:
     ARTIFACTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_CASTOR
-      $UNIT_TESTS_CASTOR_KEYS
   artifacts:
     expire_in: 8h
     paths:
@@ -524,7 +526,6 @@ ubuntu-lts-release:
       $UNIT_TESTS_INTEGRATION
       $UNIT_TESTS_BASE
       $UNIT_TESTS_CASTOR
-      $UNIT_TESTS_CASTOR_KEYS
   artifacts:
     expire_in: 8h
     paths:

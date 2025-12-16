@@ -27,17 +27,10 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
   Enroller::setProperties(builder, config);
 
   AsymmetricKey privateKey(ReadFile(this->getParameterValues().get<std::filesystem::path>("private-key-file")));
-  X509CertificateChain certificateChain(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file")));
+  X509CertificateChain certificateChain(X509CertificatesFromPem(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file"))));
 
   if (!mServer.signingIdentityMatches(certificateChain)) {
-    std::string description = "unknown party";
-    if (!certificateChain.empty()) {
-      auto certificate = certificateChain.front();
-      if (auto ou = certificate.getOrganizationalUnit()) {
-        description = *ou;
-      }
-    }
-    throw std::runtime_error("Cannot enroll " + mServer.description() + " with certificate chain for " + description);
+    throw std::runtime_error("Cannot enroll " + mServer.description() + " with certificate chain for " + certificateChain.leaf().getOrganizationalUnit().value_or("unknown party"));
   }
 
   builder.setSigningIdentity(std::make_shared<X509Identity>(std::move(privateKey), std::move(certificateChain)));

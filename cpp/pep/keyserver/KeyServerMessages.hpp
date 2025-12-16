@@ -22,10 +22,7 @@ public:
   X509CertificateSigningRequest mCertificateSigningRequest;
 };
 
-class EnrollmentResponse {
-public:
-  EnrollmentResponse() = default;
-
+struct EnrollmentResponse {
   X509CertificateChain mCertificateChain;
 };
 

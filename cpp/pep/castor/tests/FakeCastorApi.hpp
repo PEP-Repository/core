@@ -5,6 +5,7 @@
 #include <pep/castor/CastorConnection.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/networking/Server.hpp>
+#include <pep/crypto/tests/TemporaryX509IdentityFiles.hpp>
 
 #include <boost/asio/streambuf.hpp>
 
@@ -66,6 +67,7 @@ private:
     void stop(bool force = true);
   };
 
+  TemporaryX509IdentityFiles mIdentity;
   Side mClientSide;
   Side mServerSide;
   std::shared_ptr<FakeCastorApi> mServer;

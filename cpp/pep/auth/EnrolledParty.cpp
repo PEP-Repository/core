@@ -18,10 +18,7 @@ std::optional<EnrolledParty> GetEnrolledParty(const X509Certificate& certificate
 }
 
 std::optional<EnrolledParty> GetEnrolledParty(const X509CertificateChain& chain) {
-  if (chain.empty()) {
-    return std::nullopt;
-  }
-  return GetEnrolledParty(*chain.begin());
+  return GetEnrolledParty(chain.leaf());
 }
 
 bool HasDataAccess(EnrolledParty party) {
