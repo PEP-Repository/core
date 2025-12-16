@@ -3,16 +3,21 @@
 #include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/auth/OAuthToken.hpp>
+#include <pep/servers/tests/Common.hpp>
+
+#include <fstream>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/algorithm/hex.hpp>
+#include <nlohmann/json.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
+
 namespace {
 
-const std::string DATA_ADMIN_TOKEN = "ewogICAgInN1YiI6ICJEYXRhIEFkbWluaXN0cmF0b3IiLAogICAgImdyb3VwIjogIkRhdGEgQWRtaW5pc3RyYXRvciIsCiAgICAiaWF0IjogIjE2NTQ4NjI2MzYiLAogICAgImV4cCI6ICI0Nzk2NjY1MjAwIgp9Cg.3_jQO5IpBYv5TwmFimOAuJRjLXa7idsJAm0I-b08GI8";
-const std::string ACCESS_ADMIN_TOKEN = "ewogICAgInN1YiI6ICJBY2Nlc3MgQWRtaW5pc3RyYXRvciIsCiAgICAiZ3JvdXAiOiAiQWNjZXNzIEFkbWluaXN0cmF0b3IiLAogICAgImlhdCI6ICIxNjU0ODYyNjIyIiwKICAgICJleHAiOiAiNDc5NjY2NTIwMCIKfQo.whgTe3qHtHLRUbTYzyhzECyG9s0Zay8V6XSzE5oQb_I";
-const std::string USER_TOKEN = "ewogICAgInN1YiI6ICJQZXBUZXN0IiwKICAgICJncm91cCI6ICJQZXBUZXN0IiwKICAgICJpYXQiOiAiMTY1NDg2MjE1MCIsCiAgICAiZXhwIjogIjQ3OTY2NjUyMDAiCn0K.9eXY9BKQ2IibrC4-_xU4WUtprPWrp_lcxjKWfO8MTyc";
+using namespace pep::serverstest;
 
 class ServersTest : public ::testing::Test {
 protected:
@@ -23,19 +28,26 @@ protected:
 
   static void SetUpTestSuite() {
     if (mClient == nullptr) {
+      auto oauthTokenSecretJson = nlohmann::json::parse(std::ifstream(constants::configDir / "keyserver/OAuthTokenSecret.json"));
+      auto oauthTokenSecret = boost::algorithm::unhex(oauthTokenSecretJson["OAuthTokenSecret"].get<std::string>());
+      auto now = pep::TimeNow<std::chrono::sys_seconds>();
+      auto dataAdminToken = pep::OAuthToken::Generate(oauthTokenSecret, "Data Administrator", "Data Administrator", now, now + std::chrono::seconds(3600)).getSerializedForm();
+      auto accessAdminToken = pep::OAuthToken::Generate(oauthTokenSecret, "Access Administrator", "Access Administrator", now, now + std::chrono::seconds(3600)).getSerializedForm();
+      auto userToken = pep::OAuthToken::Generate(oauthTokenSecret, "PepTest", "PepTest", now, now + std::chrono::seconds(3600)).getSerializedForm();
+
       mIoContext = std::make_shared<boost::asio::io_context>();
       mIoContextThread = std::make_shared<pep::IoContextThread>(mIoContext, &mKeepRunning);
       mClient = pep::Client::OpenClient(pep::Configuration::FromFile("ClientConfig.json"), mIoContext, false);
-      mClient->enrollUser(DATA_ADMIN_TOKEN).as_blocking().last();
+      mClient->enrollUser(dataAdminToken).as_blocking().last();
       mClient->getAccessManagerProxy()->amaCreateColumn("Test.Servers.Data").as_blocking().last();
       mClient->getAccessManagerProxy()->amaCreateColumnGroup("Test.Servers").as_blocking().last();
       mClient->getAccessManagerProxy()->amaAddColumnToGroup("Test.Servers.Data", "Test.Servers").as_blocking().last();
-      mClient->enrollUser(ACCESS_ADMIN_TOKEN).as_blocking().last();
+      mClient->enrollUser(accessAdminToken).as_blocking().last();
       mClient->getAccessManagerProxy()->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "read").as_blocking().last();
       mClient->getAccessManagerProxy()->amaCreateColumnGroupAccessRule("Test.Servers", "PepTest", "write").as_blocking().last();
       mClient->getAccessManagerProxy()->amaCreateGroupAccessRule("*", "PepTest", "access").as_blocking().last();
       mClient->getAccessManagerProxy()->amaCreateGroupAccessRule("*", "PepTest", "enumerate").as_blocking().last();
-      mClient->enrollUser(USER_TOKEN).as_blocking().last();
+      mClient->enrollUser(userToken).as_blocking().last();
     }
   }
 
