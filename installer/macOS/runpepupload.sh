@@ -32,6 +32,39 @@ get_text_input() {
     osascript -e "try" -e "text returned of (display dialog \"$prompt\" default answer \"$default\" buttons {\"OK\", \"Cancel\"} default button \"OK\")" -e "on error number -128" -e "\"\"" -e "end try"
 }
 
+show_dialog() {
+    local message="$1"
+    local button1="$2"
+    local button2="$3"
+    local default_button="$4"
+    
+    set +e
+    osascript > /dev/null 2>&1 <<EOF
+display dialog "$message" buttons {"$button1", "$button2"} default button "$default_button"
+EOF
+    local exit_code=$?
+    set -e
+    
+    return $exit_code
+}
+
+parse_pep_error() {
+    local error_output="$1"
+    local operation="$2"
+    
+    if echo "$error_output" | grep -q "Unknown column specified"; then
+        echo "Could not find column '$COLUMN' in PEP.\\n\\nPlease check the column name and try again."
+    elif echo "$error_output" | grep -q "Access denied"; then
+        if [ "$operation" = "list" ]; then
+            echo "You do not have permission to check data existence in column '$COLUMN'.\\n\\nPlease contact your administrator if you believe you should have access."
+        else
+            echo "You do not have permission to upload data to column '$COLUMN'.\\n\\nPlease contact your administrator if you believe you should have access."
+        fi
+    else
+        echo "$error_output"
+    fi
+}
+
 # Use Sparkle to check for updates
 if "$SPARKLE_EXECUTABLE" "$PEP_APP_DIR" --probe; then
     # Ask the user if they want to install the updates
@@ -47,60 +80,87 @@ fi
 
 cd "$HOME"
 
-"$PEPLOGON_EXECUTABLE"
-# Give pepLogon time to start
-sleep 2
+# Only run pepLogon if ClientKeys.json doesn't exist
+if [ ! -f "$HOME/ClientKeys.json" ]; then
+    "$PEPLOGON_EXECUTABLE"
+    # Give pepLogon time to start
+    sleep 2
 
-# Wait for pepLogon process to finish
-while pgrep -x "pepLogon" > /dev/null; do
-    sleep 1
-done
-
-# Get column name
-COLUMN=$(get_text_input "Enter the column name to store the file in:" "")
-if [ -z "$COLUMN" ]; then
-    show_alert "Cancelled" "No column name provided. Operation cancelled."
-    exit 0
+    # Wait for pepLogon process to finish
+    while pgrep -x "pepLogon" > /dev/null; do
+        sleep 1
+    done
 fi
 
-# Get pseudonym
-PSEUDONYM=$(get_text_input "Enter the pseudonym to store the file under:" "")
-if [ -z "$PSEUDONYM" ]; then
-    show_alert "Cancelled" "No pseudonym provided. Operation cancelled."
-    exit 0
-fi
+upload_file() {
+    # Get column name
+    COLUMN=$(get_text_input "Enter the column name to store the file in:" "")
+    if [ -z "$COLUMN" ]; then
+        show_alert "Cancelled" "No column name provided. Operation cancelled."
+        return 1
+    fi
 
-# Select file to upload
-FILE_PATH=$(osascript -e 'try' -e 'POSIX path of (choose file with prompt "Select the file to upload:")' -e 'on error number -128' -e '""' -e 'end try')
+    # Get pseudonym
+    PSEUDONYM=$(get_text_input "Enter the pseudonym to store the file under:" "")
+    if [ -z "$PSEUDONYM" ]; then
+        show_alert "Cancelled" "No pseudonym provided. Operation cancelled."
+        return 1
+    fi
 
-if [ -z "$FILE_PATH" ]; then
-    show_alert "Cancelled" "No file selected. Operation cancelled."
-    exit 0
-fi
+    # Check if data already exists for this participant and column
+    set +e
+    LIST_OUTPUT=$("$PEPCLI_EXECUTABLE" list -m -l --no-inline-data -p "$PSEUDONYM" -c "$COLUMN" 2>&1)
+    LIST_EXIT=$?
+    set -e
 
-if [ ! -f "$FILE_PATH" ]; then
-    show_alert "Error" "Selected file does not exist or is not accessible."
-    exit 1
-fi
+    if [ $LIST_EXIT -ne 0 ]; then
+        ERROR_MSG=$(parse_pep_error "$LIST_OUTPUT" "list")
+        show_alert "Error" "$ERROR_MSG"
+        return 1
+    fi
 
-# Check if data already exists for this participant and column
-LIST_OUTPUT=$("$PEPCLI_EXECUTABLE" list -m -l --no-inline-data -P "$PSEUDONYM" -c "$COLUMN" 2>/dev/null || echo "")
+    # Check if data exists by looking for "Listed 0 results"
+    if ! echo "$LIST_OUTPUT" | grep -q "Listed 0 results"; then
+        if ! show_dialog "Data already exists in column '$COLUMN' for pseudonym '$PSEUDONYM'. Do you want to overwrite it?" "Cancel" "Overwrite" "Cancel"; then
+            show_alert "Cancelled" "Upload cancelled by user."
+            return 1
+        fi
+    fi
 
-# If output is not empty and not just "[]", data exists
-if [ -n "$LIST_OUTPUT" ] && [ "$LIST_OUTPUT" != "[]" ]; then
-    osascript -e "display dialog \"Data already exists in column '$COLUMN' for pseudonym '$PSEUDONYM'. Do you want to overwrite it?\" buttons {\"Cancel\", \"Overwrite\"} default button \"Cancel\"" > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        show_alert "Cancelled" "Upload cancelled by user."
+    # Select file to upload
+    FILE_PATH=$(osascript -e 'try' -e 'POSIX path of (choose file with prompt "Select the file to upload:")' -e 'on error number -128' -e '""' -e 'end try')
+
+    if [ -z "$FILE_PATH" ]; then
+        show_alert "Cancelled" "No file selected. Operation cancelled."
+        return 1
+    fi
+
+    if [ ! -f "$FILE_PATH" ]; then
+        show_alert "Error" "Selected file does not exist or is not accessible."
+        return 1
+    fi
+
+    # Upload the file using pepcli
+    set +e
+    STORE_OUTPUT=$("$PEPCLI_EXECUTABLE" store --column "$COLUMN" --participant "$PSEUDONYM" --input-path "$FILE_PATH" 2>&1)
+    STORE_EXIT=$?
+    set -e
+
+    if [ $STORE_EXIT -eq 0 ]; then
+        show_alert "Success" "File uploaded successfully to column '$COLUMN' for pseudonym '$PSEUDONYM'."
+        return 0
+    else
+        ERROR_MSG=$(parse_pep_error "$STORE_OUTPUT" "store")
+        show_alert "Error" "Upload failed:\\n\\n$ERROR_MSG"
+        return 1
+    fi
+}
+
+# Main upload loop
+while true; do
+    upload_file
+
+    if ! show_dialog "Do you want to upload another file?" "No" "Yes" "Yes"; then
         exit 0
     fi
-fi
-
-# Upload the file using pepcli
-ERROR_OUTPUT=$("$PEPCLI_EXECUTABLE" store --column "$COLUMN" --participant "$PSEUDONYM" --file "$FILE_PATH" 2>&1)
-if [ $? -eq 0 ]; then
-    show_alert "Success" "File uploaded successfully to column '$COLUMN' for pseudonym '$PSEUDONYM'."
-else
-    exit_code=$?
-    show_alert "Error" "pepcli store command failed with exit code $exit_code:\\n\\n$ERROR_OUTPUT"
-    exit $exit_code
-fi
+done
