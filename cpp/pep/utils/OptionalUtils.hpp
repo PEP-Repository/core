@@ -20,6 +20,7 @@ OptionalCRef<T> AsOptionalCRef(T* const t) {
   return AsOptionalRef(t);
 }
 
+
 static_assert(
     std::is_same_v<decltype(AsOptionalRef(std::declval<float*>())), OptionalRef<float>>,
     "OptionalRefFromPtr returns a non-const ref if the param type is NOT const");
@@ -29,5 +30,31 @@ static_assert(
 static_assert(
     std::is_same_v<decltype(AsOptionalCRef(std::declval<float*>())), OptionalRef<const float>>,
     "OptionalCRefFromPtr always returns a const ref");
+
+template <typename T>
+requires (!std::is_const_v<T>)
+T& AsRef(OptionalRef<T>& ref) {
+  return ref.value().get();
+}
+
+template <typename T>
+const T& AsCRef(const OptionalRef<T>& ref) {
+  return ref.value().get();
+}
+
+template <typename T>
+const T& AsCRef(const OptionalCRef<T>& ref) {
+  return ref.value().get();
+}
+
+static_assert(
+    std::is_same_v<decltype(AsRef(std::declval<OptionalRef<double>&>())), double&>,
+    "AsRef returns a plain ref");
+static_assert(
+    std::is_same_v<decltype(AsCRef(std::declval<OptionalRef<double>&>())), const double&>,
+    "AsCRef returns a const ref (when the input is non-const)");
+static_assert(
+    std::is_same_v<decltype(AsCRef(std::declval<OptionalCRef<double>&>())), const double&>,
+    "AsCRef returns a const ref (when the input is const)");
 
 } // namespace pep
