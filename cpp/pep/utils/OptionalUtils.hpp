@@ -8,23 +8,26 @@ template <typename T>
 using OptionalRef = std::optional<std::reference_wrapper<T>>;
 
 template <typename T>
-OptionalRef<T> OptionalRefFromPtr(T* const t) {
+using OptionalCRef = OptionalRef<const T>;
+
+template <typename T>
+OptionalRef<T> AsOptionalRef(T* const t) {
   return (t == nullptr) ? OptionalRef<T>{} : OptionalRef<T>{*t};
 }
 
 template <typename T>
-OptionalRef<const T> OptionalCRefFromPtr(T* const t) {
-  return OptionalRefFromPtr(t);
+OptionalCRef<T> AsOptionalCRef(T* const t) {
+  return AsOptionalRef(t);
 }
 
 static_assert(
-    std::is_same_v<decltype(OptionalRefFromPtr(std::declval<float*>())), OptionalRef<float>>,
+    std::is_same_v<decltype(AsOptionalRef(std::declval<float*>())), OptionalRef<float>>,
     "OptionalRefFromPtr returns a non-const ref if the param type is NOT const");
 static_assert(
-    std::is_same_v<decltype(OptionalRefFromPtr(std::declval<const float*>())), OptionalRef<const float>>,
+    std::is_same_v<decltype(AsOptionalRef(std::declval<const float*>())), OptionalRef<const float>>,
     "OptionalRefFromPtr returns a const ref if the param type IS const");
 static_assert(
-    std::is_same_v<decltype(OptionalCRefFromPtr(std::declval<float*>())), OptionalRef<const float>>,
+    std::is_same_v<decltype(AsOptionalCRef(std::declval<float*>())), OptionalRef<const float>>,
     "OptionalCRefFromPtr always returns a const ref");
 
 } // namespace pep
