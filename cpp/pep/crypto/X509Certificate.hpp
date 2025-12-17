@@ -112,13 +112,13 @@ inline X509CertificateChain operator/(X509CertificateChain chain, X509Certificat
 
 class X509CertificateSigningRequest {
  public:
-  X509CertificateSigningRequest() = default;
+  static X509CertificateSigningRequest Make(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit);
+
   /*!
    * \brief Construct a CSR for the provided key pair, common name and organizational unit.
    * \warning No check is performed on the provided data.
    */
   X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit);
-
   X509CertificateSigningRequest(const X509CertificateSigningRequest& other);
   X509CertificateSigningRequest& operator=(X509CertificateSigningRequest other);
   X509CertificateSigningRequest(X509CertificateSigningRequest&& other) noexcept;
@@ -146,6 +146,7 @@ class X509CertificateSigningRequest {
  private:
   X509_REQ* mCSR = nullptr;
 
+  explicit X509CertificateSigningRequest(X509_REQ& csr) noexcept : mCSR(&csr) {} // Takes ownership
   std::optional<std::string> searchOIDinSubject(int nid) const;
 };
 
