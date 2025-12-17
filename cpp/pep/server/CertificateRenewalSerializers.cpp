@@ -8,7 +8,7 @@ CsrResponse Serializer<CsrResponse>::fromProtocolBuffer(proto::CsrResponse&& sou
 }
 
 void Serializer<CsrResponse>::moveIntoProtocolBuffer(proto::CsrResponse& dest, CsrResponse value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_csr(), std::move(value.getCsr()));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_csr(), value.getCsr());
 }
 
 CertificateReplacementRequest Serializer<CertificateReplacementRequest>::fromProtocolBuffer(proto::CertificateReplacementRequest&& source) const {
@@ -18,7 +18,7 @@ CertificateReplacementRequest Serializer<CertificateReplacementRequest>::fromPro
 }
 
 void Serializer<CertificateReplacementRequest>::moveIntoProtocolBuffer(proto::CertificateReplacementRequest& dest, CertificateReplacementRequest value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.getCertificateChain()));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), value.getCertificateChain());
   dest.set_force(value.force());
 }
 
@@ -28,7 +28,7 @@ CertificateReplacementCommitRequest Serializer<CertificateReplacementCommitReque
 }
 
 void Serializer<CertificateReplacementCommitRequest>::moveIntoProtocolBuffer(proto::CertificateReplacementCommitRequest& dest, CertificateReplacementCommitRequest value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.getCertificateChain()));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), value.getCertificateChain());
 }
 
 }
