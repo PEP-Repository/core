@@ -112,7 +112,8 @@ inline X509CertificateChain operator/(X509CertificateChain chain, X509Certificat
 
 class X509CertificateSigningRequest {
  public:
-  X509CertificateSigningRequest() = default;
+  explicit X509CertificateSigningRequest(X509_REQ& csr) noexcept : mCSR(&csr) {} // Takes ownership
+
   /*!
    * \brief Construct a CSR for the provided key pair, common name and organizational unit.
    * \warning No check is performed on the provided data.

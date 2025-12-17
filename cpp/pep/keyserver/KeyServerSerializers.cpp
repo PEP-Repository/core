@@ -4,10 +4,9 @@
 namespace pep {
 
 EnrollmentRequest Serializer<EnrollmentRequest>::fromProtocolBuffer(proto::EnrollmentRequest&& source) const {
-  EnrollmentRequest result;
-  result.mCertificateSigningRequest = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_signing_request()));
-  result.mOAuthToken = source.oauth_token();
-  return result;
+  return EnrollmentRequest(
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_signing_request())),
+    source.oauth_token());
 }
 
 void Serializer<EnrollmentRequest>::moveIntoProtocolBuffer(proto::EnrollmentRequest& dest, EnrollmentRequest value) const {

@@ -620,13 +620,10 @@ X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& 
 }
 
 X509CertificateSigningRequest::X509CertificateSigningRequest(const X509CertificateSigningRequest& other) {
-  if (other.mCSR) {
-    mCSR = X509_REQ_dup(other.mCSR);
-    if (!mCSR) {
-      throw pep::OpenSSLError("Failed to duplicate X509_REQ object in X509CertificateSigningRequest copy constructor.");
-    }
-  } else {
-    mCSR = nullptr;
+  assert(other.mCSR != nullptr);
+  mCSR = X509_REQ_dup(other.mCSR);
+  if (!mCSR) {
+    throw pep::OpenSSLError("Failed to duplicate X509_REQ object in X509CertificateSigningRequest copy constructor.");
   }
 }
 
@@ -644,10 +641,7 @@ X509CertificateSigningRequest::~X509CertificateSigningRequest() {
 }
 
 std::optional<std::string> X509CertificateSigningRequest::searchOIDinSubject(int nid) const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
+  assert(mCSR);
   X509_NAME* subjectName = X509_REQ_get_subject_name(mCSR);
   return SearchOIDinName(subjectName, nid);
 }
@@ -661,18 +655,13 @@ std::optional<std::string> X509CertificateSigningRequest::getOrganizationalUnit(
 }
 
 AsymmetricKey X509CertificateSigningRequest::getPublicKey() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
+  assert(mCSR);
   EVP_PKEY* pkey = X509_REQ_get0_pubkey(mCSR);
   return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, pkey);
 }
 
 bool X509CertificateSigningRequest::verifySignature() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
+  assert(mCSR);
   EVP_PKEY *pubKey = X509_REQ_get0_pubkey(mCSR);
   if (!pubKey) {
     throw pep::OpenSSLError("Couldn't get public key from CSR.");
@@ -692,10 +681,7 @@ bool X509CertificateSigningRequest::verifySignature() const {
 }
 
 std::string X509CertificateSigningRequest::toPem() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
+  assert(mCSR);
   BIO *bio = BIO_new(BIO_s_mem());
   if (!bio) {
     throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509CertificateSigningRequest::toPem.");
@@ -710,10 +696,7 @@ std::string X509CertificateSigningRequest::toPem() const {
 }
 
 std::string X509CertificateSigningRequest::toDer() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
+  assert(mCSR);
   // Create a BIO for the DER-encoded data
   BIO* bio = BIO_new(BIO_s_mem());
   if (!bio) {
@@ -743,10 +726,7 @@ X509CertificateSigningRequest X509CertificateSigningRequest::FromPem(const std::
   }
 
   // Create an X509CertificateSigningRequest object and set its internal CSR
-  X509CertificateSigningRequest request;
-  request.mCSR = csr;
-
-  return request;
+  return X509CertificateSigningRequest(*csr);
 }
 
 X509CertificateSigningRequest X509CertificateSigningRequest::FromDer(const std::string& der) {
@@ -765,10 +745,7 @@ X509CertificateSigningRequest X509CertificateSigningRequest::FromDer(const std::
   }
 
   // Create an X509CertificateSigningRequest object and set its internal CSR
-  X509CertificateSigningRequest request;
-  request.mCSR = csr;
-
-  return request;
+  return X509CertificateSigningRequest(*csr);
 }
 
 X509Certificate X509Certificate::MakeUnsigned(const AsymmetricKey& publicKey, const X509_NAME& subjectName, const std::chrono::seconds validityPeriod) {
@@ -884,9 +861,7 @@ void X509Certificate::sign(const AsymmetricKey& caPrivateKey, const X509_NAME& c
  * @return The newly generated certificate.
  */
 X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
+  assert(mCSR);
   if (!caPrivateKey.isSet()) {
     throw std::invalid_argument("CA private key is not set in X509CertificateSigningRequest::signCertificate.");
   }
