@@ -9,7 +9,7 @@ using DisplayFlags = DisplayConfig::Flags;
 
 std::ostream& appendYamlListHeader(std::ostream& stream, std::string_view text, std::size_t size) {
   const auto colon_unless_empty = (size != 0 ? ":" : "");
-  return stream << text << colon_unless_empty << " # size=" << size << "\n";
+  return stream << text << colon_unless_empty << " # item count: " << size << "\n";
 }
 
 std::ostream& appendYaml(std::ostream& stream,
@@ -127,7 +127,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
 
       if (isAtomic(*it)) { stream << " "; }
       else {
-        if (it->is_array() && config.includeArraySizeComments) { stream << " # size = " << it->size(); }
+        if (it->is_array() && config.includeArraySizeComments) { stream << " # item count: " << it->size(); }
         stream << '\n' << indent << "  ";
       }
       SerializeJsonAsYaml(stream, config, it.value(), indentLevel + 1);
@@ -139,7 +139,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
       stream << "- ";
 
       if (element.is_array() && !element.empty()) {
-        if (config.includeArraySizeComments) stream << "# size = " << element.size();
+        if (config.includeArraySizeComments) stream << "# item count: " << element.size();
         stream << '\n' << indent << "  ";
       }
       SerializeJsonAsYaml(stream, config, element, indentLevel + 1);

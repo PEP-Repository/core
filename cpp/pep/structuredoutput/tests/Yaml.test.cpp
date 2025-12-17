@@ -91,15 +91,15 @@ TEST(structuredOutputYaml, ObjectOfArrays) {
 
   EXPECT_EQ(
       yaml::to_string(tree, {.includeArraySizeComments = true}),
-      "flags: # size = 3\n"
+      "flags: # item count: 3\n"
       "  - true\n"
       "  - false\n"
       "  - true\n"
-      "fruits: # size = 3\n"
+      "fruits: # item count: 3\n"
       "  - \"apple\"\n"
       "  - \"banana\"\n"
       "  - \"cherry\"\n"
-      "numbers: # size = 3\n"
+      "numbers: # item count: 3\n"
       "  - 33\n"
       "  - 22\n"
       "  - 11\n");
@@ -125,20 +125,20 @@ TEST(structuredOutputYaml, NestedArrays) {
       yaml::to_string(
           Tree::FromJson({{"matrix4x3", {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {4, 4, 4}}}}),
           {.includeArraySizeComments = true}),
-      "matrix4x3: # size = 4\n"
-      "  - # size = 3\n"
+      "matrix4x3: # item count: 4\n"
+      "  - # item count: 3\n"
       "    - 1\n"
       "    - 0\n"
       "    - 0\n"
-      "  - # size = 3\n"
+      "  - # item count: 3\n"
       "    - 0\n"
       "    - 1\n"
       "    - 0\n"
-      "  - # size = 3\n"
+      "  - # item count: 3\n"
       "    - 0\n"
       "    - 0\n"
       "    - 1\n"
-      "  - # size = 3\n"
+      "  - # item count: 3\n"
       "    - 4\n"
       "    - 4\n"
       "    - 4\n");
@@ -152,9 +152,9 @@ TEST(structuredOutputYaml, MixedTree) {
                {"number", 141},
                {"object", {{"left", {false, true}}, {"right", {{"first", njs::array()}, {"second", njs::object()}}}}}}),
           {.includeArraySizeComments = true}),
-      "list: # size = 4\n"
+      "list: # item count: 4\n"
       "  - 1\n"
-      "  - # size = 3\n"
+      "  - # item count: 3\n"
       "    - 2\n"
       "    - 3\n"
       "    - 2\n"
@@ -162,7 +162,7 @@ TEST(structuredOutputYaml, MixedTree) {
       "  - 5\n"
       "number: 141\n"
       "object:\n"
-      "  left: # size = 2\n"
+     "  left: # item count: 2\n"
       "    - false\n"
       "    - true\n"
       "  right:\n"
