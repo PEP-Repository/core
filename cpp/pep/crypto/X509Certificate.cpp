@@ -399,6 +399,9 @@ X509CertificateChain::X509CertificateChain(X509Certificates certificates)
 }
 
 std::strong_ordering X509Certificate::operator<=>(const X509Certificate& other) const {
+  if (this == &other) {
+    return std::strong_ordering::equal;
+  }
   int result = X509_cmp(mRaw, other.mRaw);
   switch (result) {
   case 0:
