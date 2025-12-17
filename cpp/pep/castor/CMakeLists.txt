@@ -41,7 +41,4 @@ target_link_libraries(${PROJECT_NAME}Castorlib
 verify_headers_standalone(${PROJECT_NAME}Castorlib)
 if (WITH_TESTS)
   add_unit_tests(Castor)
-
-  configure_executable_companion(${CMAKE_CURRENT_SOURCE_DIR}/tests/localhost.cert)
-  configure_executable_companion(${CMAKE_CURRENT_SOURCE_DIR}/tests/localhost.key)
 endif ()

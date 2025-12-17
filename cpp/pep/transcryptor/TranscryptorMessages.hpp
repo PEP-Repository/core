@@ -83,7 +83,6 @@ public:
 
 class LogIssuedTicketResponse {
 public:
-  LogIssuedTicketResponse() = default;
   LogIssuedTicketResponse(Signature sig) : mSignature(std::move(sig)) { }
   Signature mSignature;
 };

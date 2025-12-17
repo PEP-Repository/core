@@ -459,12 +459,12 @@ AsymmetricKeyPair AsymmetricKeyPair::GenerateKeyPair() {
   return keyPair;
 }
 
-AsymmetricKey AsymmetricKeyPair::getPublicKey() {
+AsymmetricKey AsymmetricKeyPair::getPublicKey() const {
   std::lock_guard<std::mutex> lock(m);
   return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, mKeyPair);
 }
 
-AsymmetricKey AsymmetricKeyPair::getPrivateKey() {
+AsymmetricKey AsymmetricKeyPair::getPrivateKey() const {
   std::lock_guard<std::mutex> lock(m);
   return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PRIVATE, mKeyPair);
 }

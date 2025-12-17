@@ -507,8 +507,10 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     * we can't deal with this ourselves, we need the transcryptor for this
                     */
                   LOG(LOG_TAG, debug) << "Rekey request has a BLIND_MODE_UNBLIND entry -> forwarding to transcryptor";
-                  RekeyRequest rkReq;
-                  rkReq.mClientCertificateChain = signedRequest->mSignature.mCertificateChain;
+                  RekeyRequest rkReq{
+                    .mKeys{},
+                    .mClientCertificateChain = signedRequest->mSignature.mCertificateChain,
+                  };
                   rkReq.mKeys.reserve(dwNumUnblind);
 
                   // Index of the entry into Rekey{Request,Response}.
@@ -638,41 +640,39 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // struct, so that we don't have to put everything into shared_ptrs
   struct Context {
     std::shared_ptr<AccessManager> server;
-    uintmax_t requestNumber{};
+    uintmax_t requestNumber;
     TicketRequest2 request;
     Ticket2 ticket;
-    SignedTicket2 signedTicket;
+    SignedTicket2 signedTicket{};
     std::vector<AccessManager::Backend::pp_t> pps;
     decltype(time) start_time;
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
     std::vector<std::string> participantModes;
-    TranscryptorRequest tsReq;
-    TranscryptorRequestEntries tsReqEntries;
+    TranscryptorRequest tsReq{};
+    TranscryptorRequestEntries tsReqEntries{};
     Signature signature; // signature (for the AM) on the TicketRequest
   };
 
-  auto ctx = std::make_shared<Context>();
-
-  ctx->server = SharedFrom(*this);
-  ctx->requestNumber = requestNumber;
-  ctx->request = std::move(request);
-  ctx->ticket = std::move(ticket);
-
-  ctx->pps = std::move(prePPs);
-  ctx->start_time = time;
-  ctx->columnGroupMap = std::move(columnGroupMap);
-  ctx->participantGroupMap = std::move(participantGroupMap);
-  ctx->participantModes = std::move(modes);
-
-  // Prepare transcryptor request
-  ctx->tsReq.mRequest = std::move(*signedRequest);
-  ctx->tsReqEntries.mEntries.resize(ctx->pps.size());
+  auto ctx = MakeSharedCopy(Context{
+    .server = SharedFrom(*this),
+    .requestNumber = requestNumber,
+    .request = std::move(request),
+    .ticket = std::move(ticket),
+    .pps = std::move(prePPs),
+    .start_time = time,
+    .columnGroupMap = std::move(columnGroupMap),
+    .participantGroupMap = std::move(participantGroupMap),
+    .participantModes = std::move(modes),
+    .signature = std::move(*signedRequest->mSignature),
+    });
 
   // Remove the main client signature to prevent reuse of
   // the SignedTicketRequest2.
-  ctx->signature = std::move(*ctx->tsReq.mRequest.mSignature);
-  ctx->tsReq.mRequest.mSignature = std::nullopt;
+  signedRequest->mSignature.reset();
+
+  // Prepare transcryptor request
+  ctx->tsReq.mRequest = std::move(*signedRequest);
   ctx->tsReqEntries.mEntries.resize(ctx->pps.size());
 
   LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";

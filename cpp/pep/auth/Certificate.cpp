@@ -58,10 +58,7 @@ std::optional<std::string> GetSubjectIfServerSigningCertificate(const X509Certif
 }
 
 std::optional<std::string> GetSubjectIfServerSigningCertificate(const X509CertificateChain& chain) {
-  if (chain.empty()) {
-    return std::nullopt;
-  }
-  return GetSubjectIfServerSigningCertificate(chain.front());
+  return GetSubjectIfServerSigningCertificate(chain.leaf());
 }
 
 }

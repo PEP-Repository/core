@@ -17,6 +17,7 @@
 #include <pep/utils/OpensslUtils.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <pep/crypto/X509Certificate.hpp>
 
@@ -80,7 +81,7 @@ std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
 // Warning: We are assuming that the KI extension is a SHA-1 hash of the public key,
 // which is not by RFC definition always the case. Openssl may change this behavior in the future, breaking our test.
 // In that case re-evaluate the testing of the certificate extensions or fix this function.
-bool VerifyKeyIdentifier(const ASN1_OCTET_STRING* ki, const X509* cert) {
+bool VerifyKeyIdentifier(const ASN1_OCTET_STRING* ki, const X509& cert) {
   // If KI extension is missing
   if (!ki) {
     throw std::invalid_argument("Key Identifier extension is missing in VerifyKeyIdentifier.");
@@ -93,7 +94,7 @@ bool VerifyKeyIdentifier(const ASN1_OCTET_STRING* ki, const X509* cert) {
   // Compute SHA-1 hash of the public key
   std::array<unsigned char, SHA_DIGEST_LENGTH> hash{};
   unsigned int hashLength = 0;
-  if (X509_pubkey_digest(cert, EVP_sha1(), hash.data(), &hashLength) <= 0) {
+  if (X509_pubkey_digest(&cert, EVP_sha1(), hash.data(), &hashLength) <= 0) {
     throw pep::OpenSSLError("Failed to compute public key digest in VerifyKeyIdentifier.");
   }
 
@@ -117,41 +118,53 @@ std::chrono::sys_seconds ConvertASN1TimeToTimePoint(const ASN1_TIME* asn1Time) {
   return time_point_cast<std::chrono::seconds>(std::chrono::system_clock::from_time_t(time_in_time_t));
 }
 
+bool HasExtensionFlag(X509& x509, uint32_t flag) {
+  auto flags = X509_get_extension_flags(&x509);
+  return (flags & flag) != 0;
+}
+
 } // namespace
 
-X509Certificate::~X509Certificate() {
-  X509_free(mInternal);
+X509Certificate::~X509Certificate() noexcept {
+  X509_free(mRaw); // https://docs.openssl.org/master/man3/X509_new/#description: "If the argument is NULL, nothing is done."
 }
 
 X509Certificate::X509Certificate(const X509Certificate& other) {
-  if (!other.isInitialized()) {
-    throw std::invalid_argument("Input X509* object is nullptr in X509Certificate copy constructor.");
-  }
-  mInternal = X509_dup(other.mInternal);
-  if (!mInternal) {
-    throw pep::OpenSSLError("Failed to duplicate X509 certificate in X509Certificate copy constructor.");
-  }
-  // Rebuilds cached data: https://www.openssl.org/docs/manmaster/man3/X509_dup.html
-  int result = X509_check_purpose(mInternal, -1, 0);
-  if (result != 1) {
-      throw pep::OpenSSLError("Failed to rebuild cached data by X509_check_purpose in X509Certificate copy constructor.");
-  }
+  *this = other;
 }
 
-X509Certificate& X509Certificate::operator=(X509Certificate other) {
-  std::swap(this->mInternal, other.mInternal);
+X509Certificate& X509Certificate::operator=(const X509Certificate& other) {
+  if (this != &other) {
+    X509* clone = X509_dup(&other.raw());
+    if (!clone) {
+      throw pep::OpenSSLError("Failed to duplicate X509 certificate in X509Certificate assignment operator.");
+    }
+    PEP_DEFER(X509_free(clone));
+
+    // Rebuilds cached data: https://www.openssl.org/docs/manmaster/man3/X509_dup.html
+    int result = X509_check_purpose(clone, -1, 0);
+    if (result != 1) {
+      throw pep::OpenSSLError("Failed to rebuild cached data by X509_check_purpose in X509Certificate assignment operator.");
+    }
+
+    // Save the new state and let the PEP_DEFERred code invoke X509_free on the state that we used to have (if any).
+    // https://docs.openssl.org/master/man3/X509_new/#description about X509_free: "If the argument is NULL, nothing is done."
+    std::swap(mRaw, clone);
+  }
   return *this;
 }
 
-X509Certificate::X509Certificate(X509Certificate&& other) noexcept : mInternal(other.mInternal) {
-  other.mInternal = nullptr;
+X509Certificate& X509Certificate::operator=(X509Certificate&& other) noexcept {
+  std::swap(this->mRaw, other.mRaw);
+  return *this;
+}
+
+X509Certificate::X509Certificate(X509Certificate&& other) noexcept {
+  *this = std::move(other);
 }
 
 AsymmetricKey X509Certificate::getPublicKey() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-  EVP_PKEY* pkey = X509_get0_pubkey(mInternal);
+  EVP_PKEY* pkey = X509_get0_pubkey(&this->raw());
   if (!pkey) {
     throw pep::OpenSSLError("Failed to get public key from X509 certificate in X509Certificate::getPublicKey.");
   }
@@ -159,12 +172,7 @@ AsymmetricKey X509Certificate::getPublicKey() const {
 }
 
 bool X509Certificate::hasBasicConstraints() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
-  auto flags = X509_get_extension_flags(mInternal);
-  return (flags & EXFLAG_BCONS) != 0;
+  return HasExtensionFlag(this->raw(), EXFLAG_BCONS);
 }
 
 /**
@@ -173,18 +181,15 @@ bool X509Certificate::hasBasicConstraints() const {
  *      returns false for unrestricted keys.
  */
 bool X509Certificate::hasDigitalSignatureKeyUsage() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
+  auto& internal = this->raw();
 
   // Check if the KU extension is present
-  uint32_t flags = X509_get_extension_flags(mInternal);
-  if ((flags & EXFLAG_KUSAGE) == 0) {
+  if (!HasExtensionFlag(internal, EXFLAG_KUSAGE)) {
     return false;
   }
 
   // Check if the digital signature key KU is set
-  uint32_t keyUsage = X509_get_key_usage(mInternal);
+  uint32_t keyUsage = X509_get_key_usage(&internal);
   return (keyUsage & KU_DIGITAL_SIGNATURE) != 0;
 }
 
@@ -194,19 +199,31 @@ bool X509Certificate::hasDigitalSignatureKeyUsage() const {
  *      returns false for unrestricted keys.
  */
 bool X509Certificate::hasTLSServerEKU() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
+  auto& internal = this->raw();
 
   // Check if the EKU extension is present
-  uint32_t flags = X509_get_extension_flags(mInternal);
-  if ((flags & EXFLAG_XKUSAGE) == 0) {
+  if (!HasExtensionFlag(internal, EXFLAG_XKUSAGE)) {
     return false;
   }
 
   // Check if the TLS server EKU is set
-  uint32_t extKeyUsage = X509_get_extended_key_usage(mInternal);
+  uint32_t extKeyUsage = X509_get_extended_key_usage(&internal);
   return (extKeyUsage & XKU_SSL_SERVER) != 0;
+}
+
+bool X509Certificate::isSelfSigned() const {
+  auto result = X509_self_signed(mRaw, 1);
+
+  switch (result) { // https://docs.openssl.org/3.3/man3/X509_verify/#return-values
+  case 1: // "if the signature is valid"
+    return true;
+  case 0: // "if the signature check fails"
+    return false;
+  case -1: // "If the signature could not be checked at all"
+    throw OpenSSLError("Could not determine if certificate was self signed");
+  default:
+    throw OpenSSLError("Undocumented return value " + std::to_string(result) + " from X509_self_signed");
+  }
 }
 
 /**
@@ -214,12 +231,8 @@ bool X509Certificate::hasTLSServerEKU() const {
  * @return The path length constraint, or std::nullopt if not present.
  */
 //NOLINTBEGIN(google-runtime-int)
-std::optional<unsigned long> X509Certificate::getPathLength() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
-  long pathLength = X509_get_pathlen(mInternal);
+std::optional<unsigned long> X509Certificate::pathLengthConstraint() const {
+  long pathLength = X509_get_pathlen(&this->raw());
   if (pathLength == -1) {
     return std::nullopt;
   }
@@ -228,35 +241,26 @@ std::optional<unsigned long> X509Certificate::getPathLength() const {
 //NOLINTEND(google-runtime-int)
 
 bool X509Certificate::verifySubjectKeyIdentifier() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
+  auto& internal = this->raw();
 
   // Retrieve the Subject Key Identifier (SKI)
-  const ASN1_OCTET_STRING* ski = X509_get0_subject_key_id(mInternal);
-  return VerifyKeyIdentifier(ski, mInternal);
+  const ASN1_OCTET_STRING* ski = X509_get0_subject_key_id(&internal);
+  return VerifyKeyIdentifier(ski, internal);
 }
 
 bool X509Certificate::verifyAuthorityKeyIdentifier(const X509Certificate& issuerCert) const {
-  if (!issuerCert.isInitialized()) {
-    throw std::invalid_argument("Invalid issuer X509 structure");
-  }
-
-  if (!isInitialized()) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
   // Retrieve the Authority Key Identifier (AKI) from this certificate
-  const ASN1_OCTET_STRING* aki = X509_get0_authority_key_id(mInternal);
-  return VerifyKeyIdentifier(aki, issuerCert.mInternal);
+  const ASN1_OCTET_STRING* aki = X509_get0_authority_key_id(&this->raw());
+  return VerifyKeyIdentifier(aki, issuerCert.raw());
+}
+
+X509& X509Certificate::raw() const noexcept {
+  assert(mRaw != nullptr);
+  return *mRaw;
 }
 
 std::optional<std::string> X509Certificate::searchOIDinSubject(int nid) const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
-  X509_NAME* subjectName = X509_get_subject_name(mInternal);
+  X509_NAME* subjectName = X509_get_subject_name(&this->raw());
   return SearchOIDinName(subjectName, nid);
 }
 
@@ -269,28 +273,17 @@ std::optional<std::string> X509Certificate::getOrganizationalUnit() const {
 }
 
 std::optional<std::string> X509Certificate::getIssuerCommonName() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-  X509_NAME* issuerName = X509_get_issuer_name(mInternal);
+  X509_NAME* issuerName = X509_get_issuer_name(&this->raw());
   return SearchOIDinName(issuerName, NID_commonName);
 }
 
 std::chrono::sys_seconds X509Certificate::getNotBefore() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
-  const ASN1_TIME* notBefore = X509_get0_notBefore(mInternal);
+  const ASN1_TIME* notBefore = X509_get0_notBefore(&this->raw());
   return ConvertASN1TimeToTimePoint(notBefore);
 }
 
 std::chrono::sys_seconds X509Certificate::getNotAfter() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
-  const ASN1_TIME* notAfter = X509_get0_notAfter(mInternal);
+  const ASN1_TIME* notAfter = X509_get0_notAfter(&this->raw());
   return ConvertASN1TimeToTimePoint(notAfter);
 }
 
@@ -303,17 +296,13 @@ bool X509Certificate::isCurrentTimeInValidityPeriod() const {
 }
 
 std::string X509Certificate::toPem() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
   BIO *bio = BIO_new(BIO_s_mem());
   if (!bio) {
     throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509Certificate::toPem.");
   }
   PEP_DEFER(BIO_free(bio));
 
-  if (PEM_write_bio_X509(bio, mInternal) <= 0) {
+  if (PEM_write_bio_X509(bio, &this->raw()) <= 0) {
     throw pep::OpenSSLError("Failed to write certificate to IO buffer (BIO) in X509Certificate::toPem.");
   }
 
@@ -321,10 +310,6 @@ std::string X509Certificate::toPem() const {
 }
 
 std::string X509Certificate::toDer() const {
-  if (!mInternal) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
   // Create a BIO for the DER-encoded data
   BIO* bio = BIO_new(BIO_s_mem());
   if (!bio) {
@@ -333,7 +318,7 @@ std::string X509Certificate::toDer() const {
   PEP_DEFER(BIO_free(bio));
 
   // Convert the X509 structure to DER format and write it to the BIO
-  if (i2d_X509_bio(bio, mInternal) <= 0) {
+  if (i2d_X509_bio(bio, &this->raw()) <= 0) {
     throw pep::OpenSSLError("Failed to convert X509 to DER in X509Certificate::toDer.");
   }
 
@@ -341,7 +326,7 @@ std::string X509Certificate::toDer() const {
 }
 
 bool X509Certificate::hasSameSubject(const X509Certificate& other) const {
-  int result = X509_subject_name_cmp(mInternal, other.mInternal);
+  int result = X509_subject_name_cmp(mRaw, other.mRaw);
   if (result == -2) {
     throw OpenSSLError("Failed to compare certificate subjects.");
   }
@@ -363,7 +348,7 @@ X509Certificate X509Certificate::FromPem(const std::string& pem) {
     throw pep::OpenSSLError("Failed to parse PEM-encoded certificate in X509Certificate::FromPem.");
   }
 
-  return X509Certificate(cert);
+  return X509Certificate(*cert);
 }
 
 X509Certificate X509Certificate::FromDer(const std::string& der) {
@@ -381,11 +366,40 @@ X509Certificate X509Certificate::FromDer(const std::string& der) {
     throw pep::OpenSSLError("Failed to parse DER-encoded certificate in X509Certificate::FromDer.");
   }
 
-  return X509Certificate(cert);
+  return X509Certificate(*cert);
+}
+
+X509Certificate X509Certificate::MakeSelfSigned(const AsymmetricKeyPair& keys, std::string_view organization, std::string_view commonName, std::string_view countryCode, std::chrono::seconds validityPeriod) {
+  X509_NAME* name = X509_NAME_new();
+  if (name == nullptr) {
+    throw pep::OpenSSLError("Failed to create X509_NAME for self-signed certificate");
+  }
+  PEP_DEFER(X509_NAME_free(name));
+
+  X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(countryCode.data()), -1, -1, 0); // "country code"
+  X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(organization.data()), -1, -1, 0); // "organization ('O')"
+  X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(commonName.data()), -1, -1, 0); // "common name ('CN')"
+
+  auto pub = keys.getPublicKey();
+  assert(pub.mKey != nullptr);
+  auto result = MakeUnsigned(pub, *name, validityPeriod);
+
+  auto priv = keys.getPrivateKey();
+  assert(priv.mKey != nullptr);
+  result.sign(priv, *name);
+
+  return result;
+}
+
+X509CertificateChain::X509CertificateChain(X509Certificates certificates)
+  : mCertificates(std::move(certificates)) {
+  if (mCertificates.empty()) {
+    throw std::runtime_error("Certificate chain cannot be empty"); // We need (to be able to produce) a leaf certificate
+  }
 }
 
 std::strong_ordering X509Certificate::operator<=>(const X509Certificate& other) const {
-  int result = X509_cmp(mInternal, other.mInternal);
+  int result = X509_cmp(mRaw, other.mRaw);
   switch (result) {
   case 0:
     return std::strong_ordering::equal;
@@ -398,20 +412,21 @@ std::strong_ordering X509Certificate::operator<=>(const X509Certificate& other) 
 }
 
 /**
- * @brief Constructor for X509Certificates that takes a PEM-encoded certificate chain.
+ * @brief Factory method for X509Certificates that takes a PEM-encoded list of certificates.
  * @param in The PEM-encoded certificate chain.
  */
-X509Certificates::X509Certificates(const std::string& in) {
+X509Certificates X509CertificatesFromPem(const std::string& in) {
   if (in.empty()) {
-    throw std::runtime_error("Certificates input is empty in X509Certificates constructor.");
+    throw std::runtime_error("Certificates input is empty in X509Certificates PEM reader.");
   }
 
   BIO *bio = BIO_new_mem_buf(in.data(), boost::numeric_cast<int>(in.size()));
   if (!bio) {
-    throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509Certificates constructor.");
+    throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509Certificates PEM reader.");
   }
   PEP_DEFER(BIO_free(bio));
 
+  X509Certificates result;
   while (true) {
     X509* cert = nullptr;
     cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
@@ -419,7 +434,7 @@ X509Certificates::X509Certificates(const std::string& in) {
       // Break out of the loop if cert is nullptr, indicating either end of file or an error
       break;
     }
-    emplace_back(X509Certificate(cert));
+    result.emplace_back(X509Certificate(*cert));
   }
 
   // When the while loop ends, it's usually just EOF, otherwise throw the error
@@ -427,74 +442,94 @@ X509Certificates::X509Certificates(const std::string& in) {
   if (ERR_GET_LIB(err) == ERR_LIB_PEM && ERR_GET_REASON(err) == PEM_R_NO_START_LINE) {
     ERR_clear_error();
   } else {
-    throw pep::OpenSSLError("Failed to parse certificate chain from IO buffer (BIO) in X509Certificates constructor.");
+    throw pep::OpenSSLError("Failed to parse certificate chain from IO buffer (BIO) in X509Certificates PEM reader.");
   }
+
+  return result;
 }
 
 /**
  * @brief Convert the X509Certificates to PEM format.
  * @return The PEM-encoded certificate chain.
  */
-std::string X509Certificates::toPem() const {
+std::string X509CertificatesToPem(const X509Certificates& certificates) {
   std::string out;
 
-  for (const X509Certificate& cert : *this) {
+  for (const X509Certificate& cert : certificates) {
     out += cert.toPem();
   }
 
   return out;
 }
 
-bool X509Certificates::isCurrentTimeInValidityPeriod() const {
-  return std::all_of(this->begin(), this->end(), std::mem_fn(&X509Certificate::isCurrentTimeInValidityPeriod));
+X509RootCertificates::X509RootCertificates(X509Certificates certificates)
+  : mItems(std::move(certificates)) {
+  for (const auto& cert : mItems) {
+    if (!cert.isSelfSigned()) {
+      throw std::runtime_error("Root CA certificate is not self signed");
+    }
+    if (!cert.isCurrentTimeInValidityPeriod()) {
+      throw std::runtime_error("Root CA certificate has expired");
+    }
+    /* TODO: perform (the) proper validation that this is a root CA
+    if (!cert.hasDigitalSignatureKeyUsage()) { // Untrue for certificates generated using X509Certificate::MakeSelfSigned
+      throw std::runtime_error("Root CA certificate cannot be used for digital signatures");
+    }
+    */
+  }
+}
+
+X509RootCertificates X509RootCertificates::FromFile(const std::filesystem::path& caCertFilePath) {
+  return X509RootCertificates(X509CertificatesFromPem(ReadFile(caCertFilePath)));
+}
+
+bool X509CertificateChain::isCurrentTimeInValidityPeriod() const {
+  return std::all_of(mCertificates.begin(), mCertificates.end(), std::mem_fn(&X509Certificate::isCurrentTimeInValidityPeriod));
 }
 
 bool X509CertificateChain::certifiesPrivateKey(const AsymmetricKey& privateKey) const {
-  if (empty()) {
-    return false;
-  }
   // Check whether the given private key corresponds to the public key of the leaf certificate
-  return privateKey.isPrivateKeyFor(front().getPublicKey());
+  return privateKey.isPrivateKeyFor(this->leaf().getPublicKey());
 }
 
-bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const {
+const X509Certificate& X509CertificateChain::leaf() const {
+  assert(!mCertificates.empty());
+  return mCertificates.front();
+}
+
+X509CertificateChain& X509CertificateChain::operator/=(X509Certificate leaf) {
+  mCertificates.push_front(std::move(leaf));
+  return *this;
+}
+
+bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { // TODO: move code to constructor; validate correct order (leaf first)
   // https://stackoverflow.com/questions/16291809/programmatically-verify-certificate-chain-using-openssl-api
   // https://stackoverflow.com/questions/3412032/how-do-you-verify-a-public-key-was-issued-by-your-private-ca
-  if(empty()) {
-    LOG(LOG_TAG, warning) << "Certificate chain is empty in X509CertificateChain::verify.";
-    return false;
-  }
 
   // Create a stack for the trusted root certificates
-  STACK_OF(X509)* trusted = sk_X509_new_reserve(nullptr, static_cast<int>(size()));
+  STACK_OF(X509)* trusted = sk_X509_new_reserve(nullptr, static_cast<int>(mCertificates.size()));
   if (!trusted) {
     throw pep::OpenSSLError("Failed to create trusted STACK_OF(X509) root certificates in X509CertificateChain::verify.");
   }
   PEP_DEFER(sk_X509_free(trusted));
 
   // Add root certificates to the trusted stack
-  for (const X509Certificate& rootCert : rootCAs) {
-    if (!rootCert.isInitialized()) {
-      throw std::invalid_argument("Root certificate is nullptr in X509CertificateChain::verify.");
-    }
-    if (sk_X509_push(trusted, rootCert.mInternal) <= 0) {
+  for (const X509Certificate& rootCert : rootCAs.items()) {
+    if (sk_X509_push(trusted, &rootCert.raw()) <= 0) {
       throw pep::OpenSSLError("Failed to push root certificate to trusted STACK_OF(X509) in X509CertificateChain::verify.");
     }
   }
 
   // Create a stack for the untrusted certificates
-  STACK_OF(X509)* untrusted = sk_X509_new_reserve(nullptr, static_cast<int>(size()));
+  STACK_OF(X509)* untrusted = sk_X509_new_reserve(nullptr, static_cast<int>(mCertificates.size()));
   if (!untrusted) {
     throw pep::OpenSSLError("Failed to create untrusted STACK_OF(X509) in X509CertificateChain::verify.");
   }
   PEP_DEFER(sk_X509_free(untrusted));
 
   // Add the certificates to the untrusted stack
-  for (const X509Certificate& cert : *this) {
-    if (!cert.isInitialized()) {
-      throw std::runtime_error("CertificateChain is nullptr in X509CertificateChain::verify.");
-    }
-    if (sk_X509_push(untrusted, cert.mInternal) <= 0) {
+  for (const X509Certificate& cert : mCertificates) {
+    if (sk_X509_push(untrusted, &cert.raw()) <= 0) {
       throw pep::OpenSSLError("Failed to push certificate to untrusted STACK_OF(X509) in X509CertificateChain::verify.");
     }
   }
@@ -507,7 +542,7 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const {
   PEP_DEFER(X509_STORE_CTX_free(ctx));
 
   // Initialize the X509_STORE_CTX with the certificate chain
-  if (X509_STORE_CTX_init(ctx, nullptr, front().mInternal, untrusted) <= 0) {
+  if (X509_STORE_CTX_init(ctx, nullptr, &leaf().raw(), untrusted) <= 0) {
     throw pep::OpenSSLError("Failed to initialize X509_STORE_CTX in X509CertificateChain::verify.");
   }
 
@@ -538,8 +573,9 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const {
     throw pep::OpenSSLError("Failure during certificate chain verification in X509CertificateChain::verify.");
   } else if (result == 0) {
     PEP_DEFER(ERR_clear_error());
-    LOG(LOG_TAG, error) << "Verification failed with error string: " << X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)) << " in X509CertificateChain::verify.";
-    LOG(LOG_TAG, error) << "Leaf certificate public key: " << front().getPublicKey().toPem();
+    std::string diagnostic = X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx));
+    LOG(LOG_TAG, error) << "Verification failed with error string: " << diagnostic << " in X509CertificateChain::verify.";
+    LOG(LOG_TAG, error) << "Leaf certificate public key: " << leaf().getPublicKey().toPem();
     return false;
   }
 
@@ -731,13 +767,13 @@ X509CertificateSigningRequest X509CertificateSigningRequest::CreateWithSubjectFr
   X509CertificateSigningRequest result(keyPair);
 
   // pointer must not be freed
-  X509_NAME* subject = X509_get_subject_name(certificate.mInternal);
+  X509_NAME* subject = X509_get_subject_name(certificate.mRaw);
   if (!subject) {
     throw OpenSSLError("Failed to get subject name from certificate.");
   }
 
   //X509_REQ_set_subject_name will make an internal copy of the X509_NAME*
-  if (X509_REQ_set_subject_name(result.mCSR, X509_get_subject_name(certificate.mInternal)) == 0) {
+  if (X509_REQ_set_subject_name(result.mCSR, X509_get_subject_name(certificate.mRaw)) == 0) {
     throw OpenSSLError("Failed to set subject name of certificate signing request.");
   }
 
@@ -746,26 +782,7 @@ X509CertificateSigningRequest X509CertificateSigningRequest::CreateWithSubjectFr
   return result;
 }
 
-/**
- * @brief Sign a certificate based on the X509CertificateSigningRequest.
- * @param caCert The issuer's certificate.
- * @param caPrivateKey The private key of the CA used to sign the certificate.
- * @param validityPeriod seconds that the certificate should be valid.
- * @return The newly generated certificate.
- */
-X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
-  if (!caCert.isInitialized()) {
-    throw std::invalid_argument("CA certificate is nullptr in X509CertificateSigningRequest::signCertificate.");
-  }
-
-  if (!caPrivateKey.isSet()) {
-    throw std::invalid_argument("CA private key is not set in X509CertificateSigningRequest::signCertificate.");
-  }
-
+X509Certificate X509Certificate::MakeUnsigned(const AsymmetricKey& publicKey, const X509_NAME& subjectName, const std::chrono::seconds validityPeriod) {
   // Sanity check on the validity period
   if (validityPeriod <= std::chrono::seconds{0}) {
     throw std::invalid_argument("Validity period must be greater than zero");
@@ -779,6 +796,8 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
   if (!cert) {
     throw pep::OpenSSLError("Failed to create X509 certificate in X509CertificateSigningRequest::signCertificate.");
   }
+  // Take ownership of the X509 structure immediately to prevent it from being leaked if an exception is raised below
+  X509Certificate result(*cert);
 
   // Set version to 2 (which corresponds to X509v3)
   if (X509_set_version(cert, X509_VERSION_3) <= 0) {
@@ -814,12 +833,6 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     throw pep::OpenSSLError("Failed to set serial number for certificate.");
   }
 
-  // Set issuer name from CA's subject
-  X509_NAME* issuerName = X509_get_subject_name(caCert.mInternal);
-  if (X509_set_issuer_name(cert, issuerName) <= 0) {
-    throw pep::OpenSSLError("Failed to set issuer name.");
-  }
-
   // Set the validity period, start 60 seconds before the current time
   if (!X509_gmtime_adj(X509_getm_notBefore(cert), -60)) {
     throw pep::OpenSSLError("Failed to set notBefore time in X509CertificateSigningRequest::signCertificate.");
@@ -829,20 +842,15 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     throw pep::OpenSSLError("Failed to set notAfter time in X509CertificateSigningRequest::signCertificate.");
   }
 
-  // Set subject name from CSR
-  X509_NAME* subjectName = X509_REQ_get_subject_name(mCSR);
-  if (X509_set_subject_name(cert, subjectName) <= 0) {
+  // Set subject name
+  if (X509_set_subject_name(cert, &subjectName) <= 0) {
     throw pep::OpenSSLError("Failed to set subject name.");
   }
 
-  // Set public key from CSR
-  auto csrPublicKey = getPublicKey();
-  if (X509_set_pubkey(cert, csrPublicKey.mKey) <= 0) {
+  // Set public key
+  if (X509_set_pubkey(cert, publicKey.mKey) <= 0) {
     throw pep::OpenSSLError("Failed to set public key.");
   }
-
-  X509V3_CTX ctx;
-  X509V3_set_ctx(&ctx, caCert.mInternal, cert, mCSR, nullptr, 0);
 
   // The function `X509V3_EXT_conf_nid` is not documented, but we are using it as we lack a good alternative.
   // When a better documented high level function to create x509 extensions is found, this function should be replaced.
@@ -860,6 +868,47 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
       throw pep::OpenSSLError("Failed to add Key Usage extension to certificate.");
     }
   }
+
+  return result;
+}
+
+void X509Certificate::sign(const AsymmetricKey& caPrivateKey, const X509_NAME& caName) {
+  auto internal = &this->raw();
+
+  // Set issuer name from CA's subject
+  if (X509_set_issuer_name(internal, &caName) <= 0) {
+    throw pep::OpenSSLError("Failed to set issuer name.");
+  }
+
+  // Sign the certificate with CA's private key, X509_sign returns the size
+  // of the signature in bytes for success and zero for failure.
+  if (X509_sign(internal, caPrivateKey.mKey, EVP_sha256()) <= 0) {
+    throw pep::OpenSSLError("Failed to sign the certificate.");
+  }
+}
+
+/**
+ * @brief Sign a certificate based on the X509CertificateSigningRequest.
+ * @param caCert The issuer's certificate.
+ * @param caPrivateKey The private key of the CA used to sign the certificate.
+ * @param validityPeriod seconds that the certificate should be valid.
+ * @return The newly generated certificate.
+ */
+X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const {
+  if (!mCSR) {
+    throw std::runtime_error("Invalid X509_REQ structure");
+  }
+  if (!caPrivateKey.isSet()) {
+    throw std::invalid_argument("CA private key is not set in X509CertificateSigningRequest::signCertificate.");
+  }
+
+  auto rawCaCert = &caCert.raw();
+
+  auto result = X509Certificate::MakeUnsigned(this->getPublicKey(), *X509_REQ_get_subject_name(mCSR), validityPeriod);
+  auto cert = &result.raw();
+
+  X509V3_CTX ctx;
+  X509V3_set_ctx(&ctx, rawCaCert, cert, mCSR, nullptr, 0);
 
   // Add Subject Key Identifier extension
   {
@@ -887,13 +936,9 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
     }
   }
 
-  // Sign the certificate with CA's private key, X509_sign returns the size
-  // of the signature in bytes for success and zero for failure.
-  if (X509_sign(cert, caPrivateKey.mKey, EVP_sha256()) <= 0) {
-    throw pep::OpenSSLError("Failed to sign the certificate.");
-  }
+  result.sign(caPrivateKey, *X509_get_subject_name(rawCaCert));
 
-  return X509Certificate(cert);
+  return result;
 }
 
 X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair) {
@@ -925,37 +970,35 @@ void X509CertificateSigningRequest::sign(const AsymmetricKeyPair& keyPair) {
   }
 }
 
-X509Identity::X509Identity(AsymmetricKey privateKey)
-  : mPrivateKey(std::move(privateKey)) {
-  if (!mPrivateKey.isSet()) {
-    throw std::runtime_error("privateKey must be set");
-  }
-}
-
 X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain)
-  : X509Identity(std::move(privateKey)) {
-  mCertificateChain = std::move(certificateChain);
-  if (mCertificateChain.empty()) {
-    throw std::runtime_error("certificateChain must not be empty");
-  }
+  : mPrivateKey(std::move(privateKey)), mCertificateChain(std::move(certificateChain)) {
   if (!mCertificateChain.certifiesPrivateKey(mPrivateKey)) {
     throw std::runtime_error("certificateChain does not match private key");
   }
 }
 
-X509Identity X509Identity::MakeUncertified(AsymmetricKey privateKey) {
-  return X509Identity(std::move(privateKey));
+X509Identity X509Identity::MakeSelfSigned(std::string_view organization, std::string_view commonName, std::string_view countryCode, std::chrono::seconds validityPeriod) {
+  auto keys = AsymmetricKeyPair::GenerateKeyPair();
+  auto cert = X509Certificate::MakeSelfSigned(keys, organization, commonName, countryCode, validityPeriod);
+  return X509Identity(std::move(keys).getPrivateKey(), X509CertificateChain({ std::move(cert) }));
 }
 
-X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const Configuration& config, const std::string& keyPrefix)
-  : X509IdentityFilesConfiguration(config.get<std::filesystem::path>(keyPrefix + "PrivateKeyFile"), config.get<std::filesystem::path>(keyPrefix + "CertificateFile")) {
-}
-
-X509IdentityFilesConfiguration::X509IdentityFilesConfiguration(const std::filesystem::path& privateKeyFilePath, const std::filesystem::path& certificateChainFilePath)
-  : mPrivateKeyFilePath(privateKeyFilePath),
-  mCertificateChainFilePath(certificateChainFilePath),
-  mIdentity(std::make_shared<X509Identity>(AsymmetricKey(ReadFile(mPrivateKeyFilePath)), X509CertificateChain(ReadFile(mCertificateChainFilePath)))) {
+X509IdentityFiles::X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath)
+  : mPrivateKeyFilePath(std::move(privateKeyFilePath)),
+  mCertificateChainFilePath(std::move(certificateChainFilePath)),
+  mIdentity(std::make_shared<X509Identity>(AsymmetricKey(ReadFile(mPrivateKeyFilePath)),
+    X509CertificateChain(X509CertificatesFromPem(ReadFile(mCertificateChainFilePath))))) {
   LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
+  if (!mIdentity->getCertificateChain().verify(X509RootCertificates::FromFile(rootCaCertFilePath))) {
+    throw std::runtime_error("X509 identity does not pass validation against root CAs");
+  }
+}
+
+X509IdentityFiles X509IdentityFiles::FromConfig(const Configuration& config, const std::string& keyPrefix) {
+  return X509IdentityFiles(
+    config.get<std::filesystem::path>(keyPrefix + "PrivateKeyFile"),
+    config.get<std::filesystem::path>(keyPrefix + "CertificateFile"),
+    config.get<std::filesystem::path>("CACertificateFile"));
 }
 
 }

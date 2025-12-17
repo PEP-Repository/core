@@ -7,11 +7,8 @@
 
 namespace pep {
 void SigningServerProxy::assertValidCertificateChain(const X509CertificateChain& chain, bool force) const {
-  if (chain.begin() == chain.end()) {
-    throw std::runtime_error("Certificate chain is empty");
-  }
-  if (!force && chain.front().getCommonName() != mExpectedCommonName) {
-    throw std::runtime_error(std::format("Certificate chain has common name {} but the expected common name is {}", chain.front().getCommonName().value_or("<NOT SET>"), mExpectedCommonName));
+  if (!force && chain.leaf().getCommonName() != mExpectedCommonName) {
+    throw std::runtime_error(std::format("Certificate chain has common name {} but the expected common name is {}", chain.leaf().getCommonName().value_or("<NOT SET>"), mExpectedCommonName));
   }
   if (!chain.verify(*mRootCertificates)) {
     throw std::runtime_error("Certificate chain is not valid");
@@ -43,13 +40,13 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
   .op(RxGetOne("Signed CSR Response"))
   .map([&rootCAs=*mRootCertificates, &expectedCommonName=mExpectedCommonName](const SignedCsrResponse& signedResponse) {
     auto response = signedResponse.open(rootCAs, expectedCommonName);
-    if (response.mCsr.getCommonName() != expectedCommonName) {
+    if (response.getCsr().getCommonName() != expectedCommonName) {
       throw std::runtime_error("Received certificate signing request does not have expected common name");
     }
-    if (!response.mCsr.verifySignature()) {
+    if (!response.getCsr().verifySignature()) {
       throw std::runtime_error("Received certificate signing request does not have a valid signature");
     }
-    return response.mCsr;
+    return response.getCsr();
   });
 }
 

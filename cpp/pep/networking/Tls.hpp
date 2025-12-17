@@ -94,7 +94,7 @@ public:
 /// \copydoc TcpBasedProtocolImplementor<Tls>::ServerParameters
 class Tls::ServerParameters : public TcpBasedProtocolImplementor<Tls>::ServerParameters {
 private:
-  X509IdentityFilesConfiguration mIdentity;
+  X509IdentityFiles mIdentity;
   bool mSkipCertificateSecurityLevelCheck = false;
 
 public:
@@ -103,12 +103,12 @@ public:
    * \param endPoint The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RANDOM_PORT.
    * \param identity Configuration specifying the server's TLS identity.
    */
-  ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFilesConfiguration identity);
+  ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFiles identity);
 
   /* \brief Gets the configuration containing the server's TLS identity.
    * \return (A reference to) this instance's TLS identity configuration.
    */
-  const X509IdentityFilesConfiguration& identity() const noexcept { return mIdentity; }
+  const X509IdentityFiles& identity() const noexcept { return mIdentity; }
 
   /* \brief Gets whether the server will skip the security check of its certificate.
    * \return TRUE if the server will skip its certificate security level check; FALSE if it will perform said check.

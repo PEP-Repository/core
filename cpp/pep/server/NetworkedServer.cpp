@@ -11,7 +11,7 @@ const std::string LOG_TAG = "Networked server";
 
 std::shared_ptr<messaging::Node> CreateNetworkingNode(boost::asio::io_context& ioContext, std::shared_ptr<Server> server, const Configuration& config) {
   auto port = config.get<uint16_t>("ListenPort");
-  X509IdentityFilesConfiguration identity(config, "TLS");
+  auto identity = X509IdentityFiles::FromConfig(config, "TLS");
   auto binaryParameters = pep::messaging::BinaryProtocol::CreateServerParameters(ioContext, port, std::move(identity));
   return messaging::Node::Create(*binaryParameters, *server);
 }

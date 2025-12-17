@@ -127,7 +127,7 @@ protected:
     bool force = this->getParameterValues().has("force");
 
     return this->executeEventLoopFor(eventLoopCallBack(params, "chain", [force](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
-      X509CertificateChain chain(ReadFile(targetPath));
+      X509CertificateChain chain(X509CertificatesFromPem(ReadFile(targetPath)));
       return proxy.requestCertificateReplacement(chain, force);
     }));
   }
@@ -147,7 +147,7 @@ protected:
     commonParams params(true, this->getParameterValues());
 
     return this->executeEventLoopFor(eventLoopCallBack(params, "chain", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
-      X509CertificateChain chain(ReadFile(targetPath));
+      X509CertificateChain chain(X509CertificatesFromPem(ReadFile(targetPath)));
       return proxy.commitCertificateReplacement(chain);
     }));
   }

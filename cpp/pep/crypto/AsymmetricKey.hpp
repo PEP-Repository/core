@@ -62,8 +62,8 @@ class AsymmetricKeyPair {
 
   static AsymmetricKeyPair GenerateKeyPair();
 
-  AsymmetricKey getPublicKey();
-  AsymmetricKey getPrivateKey();
+  AsymmetricKey getPublicKey() const;
+  AsymmetricKey getPrivateKey() const;
 
  private:
   EVP_PKEY* mKeyPair = nullptr;

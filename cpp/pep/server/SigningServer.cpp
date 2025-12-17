@@ -8,7 +8,7 @@
 namespace pep {
 
 SigningServer::SigningServer(std::shared_ptr<Parameters> parameters)
-  : Server(parameters), MessageSigner(parameters->getSigningIdentity()), mIdentityFilesConfig(parameters->getIdentityFilesConfig()) {
+  : Server(parameters), MessageSigner(parameters->getSigningIdentity()), mIdentityFiles(parameters->getIdentityFilesConfig()) {
   RegisterRequestHandlers(*this,
     &SigningServer::handlePingRequest,
     &SigningServer::handleCsrRequest,
@@ -26,8 +26,8 @@ messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<Signed
 
   AsymmetricKeyPair newKeyPair = AsymmetricKeyPair::GenerateKeyPair();
   mNewPrivateKey = newKeyPair.getPrivateKey();
-  CsrResponse response;
-  response.mCsr = X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(newKeyPair, mIdentityFilesConfig->identity()->getCertificateChain().front());
+  CsrResponse response(
+  X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(newKeyPair, mIdentityFiles->identity()->getCertificateChain().leaf()));
   return messaging::BatchSingleMessage(Serialization::ToString(sign(response)));
 }
 
@@ -39,23 +39,23 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
     throw Error("Cannot replace certificate for server, since the server does not have a new private key.");
   }
 
-  if (!request.mCertificateChain.certifiesPrivateKey(*mNewPrivateKey)) {
+  if (!request.getCertificateChain().certifiesPrivateKey(*mNewPrivateKey)) {
     throw Error("Cannot replace certificate for server, since the certificate does not match the new private key of the server.");
   }
 
-  if (!request.mForce && !request.mCertificateChain.front().hasSameSubject(mIdentityFilesConfig->identity()->getCertificateChain().front())) {
+  if (!request.force() && !request.getCertificateChain().leaf().hasSameSubject(mIdentityFiles->identity()->getCertificateChain().leaf())) {
     throw Error("New certificate has a different subject from the current certificate. Use --force to force replacing the certificate.");
   }
 
-  if (!IsServerSigningCertificate(mIdentityFilesConfig->identity()->getCertificateChain().front())) {
+  if (!IsServerSigningCertificate(mIdentityFiles->identity()->getCertificateChain().leaf())) {
     throw std::runtime_error("New certificate is not a server signing certificate");
   }
 
-  if (!request.mCertificateChain.verify(*getRootCAs())) {
+  if (!request.getCertificateChain().verify(*getRootCAs())) {
     throw Error("Cannot replace certificate for server, since the new certificate chain cannot be verified.");
   }
 
-  *mIdentityFilesConfig->identity() = X509Identity(*mNewPrivateKey, request.mCertificateChain);
+  *mIdentityFiles->identity() = X509Identity(*mNewPrivateKey, request.getCertificateChain());
 
   return messaging::BatchSingleMessage(Serialization::ToString(this->sign(CertificateReplacementResponse()))); //Sign with the new certificate, so requestor can check that it is correctly deployed
 }
@@ -65,7 +65,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Committing renewed certificates");
 
 
-  if (request.mCertificateChain != mIdentityFilesConfig->identity()->getCertificateChain()) {
+  if (request.getCertificateChain() != mIdentityFiles->identity()->getCertificateChain()) {
     throw Error("Cannot commit replaced certificate for server, since the certificate chain in the request does not match the current certificate chain of the server");
   }
 
@@ -73,26 +73,26 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
     throw Error("Cannot commit replaced certificate for server, since the server does not have a new private key.");
   }
 
-  if (mIdentityFilesConfig->identity()->getPrivateKey() != *mNewPrivateKey) {
+  if (mIdentityFiles->identity()->getPrivateKey() != *mNewPrivateKey) {
     throw Error("Cannot commit the certificate and private key that are currently in use, because the current private key is different from the new private key.");
   }
 
-  if (!mIdentityFilesConfig->identity()->getCertificateChain().certifiesPrivateKey(*mNewPrivateKey)) {
+  if (!mIdentityFiles->identity()->getCertificateChain().certifiesPrivateKey(*mNewPrivateKey)) {
     throw Error("Cannot commit replaced certificate for server, since the certificate does not match the new private key of the server.");
   }
 
-  if (!mIdentityFilesConfig->identity()->getCertificateChain().verify(*getRootCAs())) {
+  if (!mIdentityFiles->identity()->getCertificateChain().verify(*getRootCAs())) {
     throw Error("Cannot commit replaced certificate for server, since the new certificate chain cannot be verified.");
   }
 
-  WriteFile(mIdentityFilesConfig->getPrivateKeyFilePath(), mIdentityFilesConfig->identity()->getPrivateKey().toPem());
-  WriteFile(mIdentityFilesConfig->getCertificateChainFilePath(), mIdentityFilesConfig->identity()->getCertificateChain().toPem());
+  WriteFile(mIdentityFiles->getPrivateKeyFilePath(), mIdentityFiles->identity()->getPrivateKey().toPem());
+  WriteFile(mIdentityFiles->getCertificateChainFilePath(), X509CertificatesToPem(mIdentityFiles->identity()->getCertificateChain().certificates()));
 
   return messaging::BatchSingleMessage(Serialization::ToString(CertificateReplacementCommitResponse()));
 }
 
 SigningServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : Server::Parameters(io_context, config), mIdentityFilesConfig(std::make_shared<X509IdentityFilesConfiguration>(config, "PEP")) {
+  : Server::Parameters(io_context, config), mIdentityFiles(MakeSharedCopy(X509IdentityFiles::FromConfig(config, "PEP"))) {
 }
 
 }

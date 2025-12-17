@@ -567,6 +567,8 @@ protected:
     CurveScalar alpha, beta;
     CurveScalar gamma, delta;
     SignedKeyComponentRequest keyComponentRequest;
+
+    explicit EnrollmentContext(std::shared_ptr<const X509Identity> enroller);
   };
 
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);

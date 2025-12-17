@@ -3,35 +3,32 @@
 namespace pep {
 
 CsrResponse Serializer<CsrResponse>::fromProtocolBuffer(proto::CsrResponse&& source) const {
-  CsrResponse result;
-  result.mCsr = Serialization::FromProtocolBuffer(std::move(*source.mutable_csr()));
-  return result;
+  return CsrResponse(
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_csr())));
 }
 
 void Serializer<CsrResponse>::moveIntoProtocolBuffer(proto::CsrResponse& dest, CsrResponse value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_csr(), std::move(value.mCsr));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_csr(), std::move(value.getCsr()));
 }
 
 CertificateReplacementRequest Serializer<CertificateReplacementRequest>::fromProtocolBuffer(proto::CertificateReplacementRequest&& source) const {
-  CertificateReplacementRequest result;
-  result.mCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()));
-  result.mForce = source.force();
-  return result;
+  return CertificateReplacementRequest(
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain())),
+    source.force());
 }
 
 void Serializer<CertificateReplacementRequest>::moveIntoProtocolBuffer(proto::CertificateReplacementRequest& dest, CertificateReplacementRequest value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.mCertificateChain));
-  dest.set_force(value.mForce);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.getCertificateChain()));
+  dest.set_force(value.force());
 }
 
 CertificateReplacementCommitRequest Serializer<CertificateReplacementCommitRequest>::fromProtocolBuffer(proto::CertificateReplacementCommitRequest&& source) const {
-  CertificateReplacementCommitRequest result;
-  result.mCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()));
-  return result;
+  return CertificateReplacementCommitRequest(
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain())));
 }
 
 void Serializer<CertificateReplacementCommitRequest>::moveIntoProtocolBuffer(proto::CertificateReplacementCommitRequest& dest, CertificateReplacementCommitRequest value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.mCertificateChain));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.getCertificateChain()));
 }
 
 }

@@ -60,7 +60,7 @@ CoreClient::CoreClient(const Builder& builder) :
   MessageSigner(builder.getSigningIdentity()),
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
   caCertFilepath(builder.getCaCertFilepath()),
-  rootCAs(std::make_shared<X509RootCertificates>(ReadFile(builder.getCaCertFilepath()))),
+  rootCAs(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
   privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
   publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
   accessManagerEndPoint(builder.getAccessManagerEndPoint()),
@@ -235,7 +235,7 @@ void CoreClient::Builder::initialize(
           this->setPrivateKeyData(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("DataKey")));
           this->setSigningIdentity(std::make_shared<X509Identity>(
             AsymmetricKey(keysConfig.get<std::string>("PrivateKey")),
-            X509CertificateChain(keysConfig.get<std::string>("CertificateChain"))));
+            X509CertificateChain(X509CertificatesFromPem(keysConfig.get<std::string>("CertificateChain")))));
         }
         else {
           LOG(LOG_TAG, info) << "Skipped loading keys file because it is from an older version";
