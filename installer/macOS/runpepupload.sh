@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=all
-
-set -e
+set -x
 
 PEP_SCRIPT_DIR_REL="$(dirname -- "$0")"
 PEP_SCRIPT_DIR=$(cd "$PEP_SCRIPT_DIR_REL" && pwd)
@@ -17,13 +16,17 @@ PEPCLI_EXECUTABLE="$PEP_EXECUTABLE_DIR/pepcli"
 show_alert() {
     local title="$1"
     local message="$2"
-    osascript -e "display alert \"$title\" message \"$message\" buttons {\"OK\"} default button \"OK\"" > /dev/null
+    osascript > /dev/null <<EOF
+display alert "$title" message "$message" buttons {"OK"} default button "OK"
+EOF
 }
 
 show_notification() {
     local title="$1"
     local message="$2"
-    osascript -e "display notification \"$message\" with title \"$title\""
+    osascript <<EOF
+display notification "$message" with title "$title"
+EOF
 }
 
 get_text_input() {
@@ -38,14 +41,17 @@ show_dialog() {
     local button2="$3"
     local default_button="$4"
     
-    set +e
-    osascript > /dev/null 2>&1 <<EOF
+    local result=$(osascript 2>&1 <<EOF
 display dialog "$message" buttons {"$button1", "$button2"} default button "$default_button"
 EOF
-    local exit_code=$?
-    set -e
+)
     
-    return $exit_code
+    # Check if user clicked button1 (returns "button returned:button1")
+    if echo "$result" | grep -q "button returned:$button1"; then
+        return 1
+    else
+        return 0
+    fi
 }
 
 parse_pep_error() {
@@ -60,9 +66,34 @@ parse_pep_error() {
         else
             echo "You do not have permission to upload data to column '$COLUMN'.\\n\\nPlease contact your administrator if you believe you should have access."
         fi
+    elif echo "$error_output" | grep -q -e "Not enrolled or certificate expired"; then
+        show_alert "Authentication Required" "Your session has expired. Please log in again."
+        run_peplogon > /dev/null 2>&1
+        echo "REAUTHENTICATED"
     else
         echo "$error_output"
     fi
+}
+
+run_peplogon() {
+    local reauth="$1"
+    "$PEPLOGON_EXECUTABLE"
+    PEPLOGON_EXIT=$?
+    
+    if [ $PEPLOGON_EXIT -ne 0 ]; then
+        show_alert "Login Failed" "Authentication failed. Please try again."
+        return 1
+    fi
+    
+    # Give pepLogon time to start
+    sleep 2
+
+    # Wait for pepLogon process to finish
+    while pgrep -x "pepLogon" > /dev/null; do
+        sleep 1
+    done
+    
+    return 0
 }
 
 # Use Sparkle to check for updates
@@ -82,14 +113,7 @@ cd "$HOME"
 
 # Only run pepLogon if ClientKeys.json doesn't exist
 if [ ! -f "$HOME/ClientKeys.json" ]; then
-    "$PEPLOGON_EXECUTABLE"
-    # Give pepLogon time to start
-    sleep 2
-
-    # Wait for pepLogon process to finish
-    while pgrep -x "pepLogon" > /dev/null; do
-        sleep 1
-    done
+    run_peplogon
 fi
 
 upload_file() {
@@ -108,13 +132,14 @@ upload_file() {
     fi
 
     # Check if data already exists for this participant and column
-    set +e
     LIST_OUTPUT=$("$PEPCLI_EXECUTABLE" list -m -l --no-inline-data -p "$PSEUDONYM" -c "$COLUMN" 2>&1)
     LIST_EXIT=$?
-    set -e
 
     if [ $LIST_EXIT -ne 0 ]; then
         ERROR_MSG=$(parse_pep_error "$LIST_OUTPUT" "list")
+        if [ "$ERROR_MSG" = "REAUTHENTICATED" ]; then
+            return 2
+        fi
         show_alert "Error" "$ERROR_MSG"
         return 1
     fi
@@ -141,16 +166,17 @@ upload_file() {
     fi
 
     # Upload the file using pepcli
-    set +e
     STORE_OUTPUT=$("$PEPCLI_EXECUTABLE" store --column "$COLUMN" --participant "$PSEUDONYM" --input-path "$FILE_PATH" 2>&1)
     STORE_EXIT=$?
-    set -e
 
     if [ $STORE_EXIT -eq 0 ]; then
         show_alert "Success" "File uploaded successfully to column '$COLUMN' for pseudonym '$PSEUDONYM'."
         return 0
     else
         ERROR_MSG=$(parse_pep_error "$STORE_OUTPUT" "store")
+        if [ "$ERROR_MSG" = "REAUTHENTICATED" ]; then
+            return 2
+        fi
         show_alert "Error" "Upload failed:\\n\\n$ERROR_MSG"
         return 1
     fi
@@ -159,8 +185,17 @@ upload_file() {
 # Main upload loop
 while true; do
     upload_file
-
-    if ! show_dialog "Do you want to upload another file?" "No" "Yes" "Yes"; then
+    UPLOAD_RESULT=$?
+    
+    # If return code is 2 we just reauthenticated, so we dont need continue dialog
+    if [ $UPLOAD_RESULT -eq 2 ]; then
+        continue
+    fi
+    
+    # Ask user if they want to continue
+    if show_dialog "Do you want to continue uploading?" "No" "Yes" "Yes"; then
+        continue
+    else
         exit 0
     fi
 done
