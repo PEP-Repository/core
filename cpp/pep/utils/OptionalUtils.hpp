@@ -31,17 +31,20 @@ static_assert(
     std::is_same_v<decltype(AsOptionalCRef(std::declval<float*>())), OptionalRef<const float>>,
     "OptionalCRefFromPtr always returns a const ref");
 
+/// Convenience function aliasing ref.value.get()
 template <typename T>
 requires (!std::is_const_v<T>)
 T& AsRef(OptionalRef<T>& ref) {
   return ref.value().get();
 }
 
+/// Convenience function aliasing ref.value.get()
 template <typename T>
 const T& AsCRef(const OptionalRef<T>& ref) {
   return ref.value().get();
 }
 
+/// Convenience function aliasing ref.value.get()
 template <typename T>
 const T& AsCRef(const OptionalCRef<T>& ref) {
   return ref.value().get();
