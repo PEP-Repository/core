@@ -586,13 +586,13 @@ X509CertificateSigningRequest X509CertificateSigningRequest::Make(AsymmetricKeyP
   // Create a new X509_REQ object
   auto csr = X509_REQ_new();
   if (!csr) {
-    throw pep::OpenSSLError("Failed to create X509_REQ object in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to create X509_REQ object for X509CertificateSigningRequest.");
   }
   // Take ownership of the X509_REQ structure immediately to prevent it from being leaked if an exception is raised below
   X509CertificateSigningRequest result(*csr);
 
   if (X509_REQ_set_version(csr, X509_REQ_VERSION_1) <= 0) {
-    throw pep::OpenSSLError("Failed to set version in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to set version for X509CertificateSigningRequest.");
   }
 
   // Obtain the subject name of the X509 request, pointer must not be freed
@@ -601,21 +601,21 @@ X509CertificateSigningRequest X509CertificateSigningRequest::Make(AsymmetricKeyP
   // Add the common name and organizational unit to the subject (name, OID, type, value, length, position, set)
   // position of -1 means it is appended, and set of 0 means a new RDN is created
   if(X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(commonName.data()), static_cast<int>(commonName.size()), -1, 0) <= 0) {
-    throw pep::OpenSSLError("Failed to add CN in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to add CN to X509CertificateSigningRequest.");
   }
 
   if(X509_NAME_add_entry_by_NID(name, NID_organizationalUnitName, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(organizationalUnit.data()), static_cast<int>(organizationalUnit.size()), -1, 0) <= 0) {
-    throw pep::OpenSSLError("Failed to add OU in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to add OU to X509CertificateSigningRequest.");
   }
 
   // Set the public key
   if(X509_REQ_set_pubkey(csr, keyPair.mKeyPair) <= 0) {
-    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest.");
   }
 
   // Sign the X509 request
   if(X509_REQ_sign(csr, keyPair.mKeyPair, EVP_sha256()) <= 0) {
-    throw pep::OpenSSLError("Failed to sign X509 request in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to sign certificate for X509CertificateSigningRequest.");
   }
 
   return result;
