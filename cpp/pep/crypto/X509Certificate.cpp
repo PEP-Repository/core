@@ -584,19 +584,19 @@ X509CertificateSigningRequest X509CertificateSigningRequest::Make(AsymmetricKeyP
   }
 
   // Create a new X509_REQ object
-  auto mCSR = X509_REQ_new();
-  if (!mCSR) {
+  auto csr = X509_REQ_new();
+  if (!csr) {
     throw pep::OpenSSLError("Failed to create X509_REQ object in X509CertificateSigningRequest constructor.");
   }
   // Take ownership of the X509_REQ structure immediately to prevent it from being leaked if an exception is raised below
-  X509CertificateSigningRequest result(*mCSR);
+  X509CertificateSigningRequest result(*csr);
 
-  if (X509_REQ_set_version(mCSR, X509_REQ_VERSION_1) <= 0) {
+  if (X509_REQ_set_version(csr, X509_REQ_VERSION_1) <= 0) {
     throw pep::OpenSSLError("Failed to set version in X509CertificateSigningRequest constructor.");
   }
 
   // Obtain the subject name of the X509 request, pointer must not be freed
-  X509_NAME* name = X509_REQ_get_subject_name(mCSR);
+  X509_NAME* name = X509_REQ_get_subject_name(csr);
 
   // Add the common name and organizational unit to the subject (name, OID, type, value, length, position, set)
   // position of -1 means it is appended, and set of 0 means a new RDN is created
@@ -609,12 +609,12 @@ X509CertificateSigningRequest X509CertificateSigningRequest::Make(AsymmetricKeyP
   }
 
   // Set the public key
-  if(X509_REQ_set_pubkey(mCSR, keyPair.mKeyPair) <= 0) {
+  if(X509_REQ_set_pubkey(csr, keyPair.mKeyPair) <= 0) {
     throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest constructor.");
   }
 
   // Sign the X509 request
-  if(X509_REQ_sign(mCSR, keyPair.mKeyPair, EVP_sha256()) <= 0) {
+  if(X509_REQ_sign(csr, keyPair.mKeyPair, EVP_sha256()) <= 0) {
     throw pep::OpenSSLError("Failed to sign X509 request in X509CertificateSigningRequest constructor.");
   }
 
