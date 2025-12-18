@@ -31,4 +31,20 @@ TEST(OptionalUtils, AsRef_and_AsCRef) {
   EXPECT_ANY_THROW(AsCRef(constNoRef));
 }
 
+TEST(OptionalUtils, AsPtr_and_AsPtrToConst) {
+  auto value = 50.0f;
+  auto refToVal = AsOptionalRef(&value);
+  auto constRefToVal = AsOptionalCRef(&value);
+  auto noRef = AsOptionalRef<int>(nullptr);
+  auto constNoRef = AsOptionalCRef<char>(nullptr);
+
+  EXPECT_EQ(AsPtr(refToVal), std::addressof(value));
+  EXPECT_EQ(AsPtrToConst(refToVal), std::addressof(value));
+  EXPECT_EQ(AsPtrToConst(constRefToVal), std::addressof(value));
+
+  EXPECT_EQ(AsPtr(noRef), nullptr);
+  EXPECT_EQ(AsPtrToConst(noRef), nullptr);
+  EXPECT_EQ(AsPtrToConst(constNoRef), nullptr);
+}
+
 } // namespace
