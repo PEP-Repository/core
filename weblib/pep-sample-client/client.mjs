@@ -9,6 +9,7 @@ let pep;
  * @param {Event} ev
  */
 function handleMaybeWasmException(ex, ev) {
+  // Note: This is slightly broken for Emscripten EH, as the error type is not WebAssembly.Exception
   if (pep && ex && ex instanceof WebAssembly.Exception) {
     const error = pep.handleWasmException(ex);
     alert(error);
@@ -19,6 +20,7 @@ function handleMaybeWasmException(ex, ev) {
 
 addEventListener('error', ev => {
   // Ignore noise from background threads, see /cpp/weblib/prejs.js
+  // See also https://github.com/emscripten-core/emscripten/issues/18016
   if (ev.error instanceof ErrorEvent || (!ev.error && ev.message === 'Uncaught [object WebAssembly.Exception]')) {
     return;
   }
@@ -65,9 +67,11 @@ loginBtn.disabled = false;
 subjectGroupsBtn.addEventListener('click', () => void (async () => {
   output.value = JSON.stringify(await pep.listSubjectGroups(), null, '  ');
 })());
+
 columnsBtn.addEventListener('click', () => void (async () => {
   output.value = JSON.stringify(await pep.listColumns(), null, '  ');
 })());
+
 /** @type {import("pep-repo-client").CellEntry[] | undefined} */
 let entries;
 listBtn.addEventListener('click', () => void (async () => {
@@ -87,6 +91,7 @@ listBtn.addEventListener('click', () => void (async () => {
     subjectLocalPseudonym: entry.subjectLocalPseudonym,
     column: entry.column,
     fileSize: entry.fileSize.toString(),
+    // Assume all metadata is text
     partialMetadata: Object.fromEntries(
         [...entry.partialMetadataView().entries()]
             .map(([key, value]) =>
@@ -95,6 +100,7 @@ listBtn.addEventListener('click', () => void (async () => {
   }));
   output.value = JSON.stringify(jsonEntries, null, '  ');
 })());
+
 retrieveBtn.addEventListener('click', () => void (async () => {
   const res = pep.retrieve(entries.filter(e => e.fileSize < 1024));
   const jsonEntries = [];
@@ -109,6 +115,8 @@ retrieveBtn.addEventListener('click', () => void (async () => {
         });
 
       } finally {
+        // Note: In modern browsers one can use `using`:
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
         data.delete();
       }
     }
@@ -117,6 +125,7 @@ retrieveBtn.addEventListener('click', () => void (async () => {
   }
   output.value = JSON.stringify(jsonEntries, null, '  ');
 })());
+
 saveBtn.addEventListener('click', () => void (async () => {
   const entry = entries.find(e => e.fileSize > 10e6 /*10 MB*/);
   if (!entry) {
@@ -184,6 +193,7 @@ saveBtn.addEventListener('click', () => void (async () => {
     data?.delete();
   }
 })());
+
 registerParticipantBtn.addEventListener('click', () => void (async () => {
   output.value = await pep.registerParticipant({
     firstName: participantFirstName.value,

@@ -25,7 +25,7 @@ set(separate_dwarf_copy_args_debug
 )
 add_custom_target(pep-sample-client-separate-dwarf
     COMMENT "Copy -gseparate-dwarf debug info"
-    # Use cat to skip trying to skip in Release mode
+    # Use cat to skip in Release mode
     COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
     COMMAND_EXPAND_LISTS
     VERBATIM
