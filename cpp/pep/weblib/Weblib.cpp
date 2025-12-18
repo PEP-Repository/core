@@ -280,7 +280,7 @@ public:
 
   /// \returns ReadableStream<CellEntry>
   auto list(weblib::ListQuery query) {
-    return CreateReadableStream(
+    return CreateReadableStreamOnMain(
         onIoThread()
         .flat_map([query = MakeSharedCopy(std::move(query))](const std::shared_ptr<Weblib>& self) {
           auto pps = query->subjects
@@ -315,7 +315,7 @@ public:
   }
 
   auto retrieve(std::vector<const CellEntry*> entries) {
-    return CreateReadableStream(
+    return CreateReadableStreamOnMain(
         onIoThread()
         .flat_map([entries = MakeSharedCopy(std::move(entries))](
             const std::shared_ptr<Weblib>& self) -> rxcpp::observable<CellData> {
