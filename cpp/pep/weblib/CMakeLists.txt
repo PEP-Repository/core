@@ -48,6 +48,7 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
 
     -sINITIAL_MEMORY=209715200 # 200 MiB
     -sNO_ABORTING_MALLOC
+    -sTEXTDECODER=2 # Require TextDecoder from browser
     -sFETCH
     -lembind
     -lidbfs.js
