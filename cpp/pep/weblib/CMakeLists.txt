@@ -71,6 +71,6 @@ add_custom_command(
     VERBATIM
 )
 
-file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT package.json)
+file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT package.in.json)
 
 verify_headers_standalone(${PROJECT_NAME}Weblib)
