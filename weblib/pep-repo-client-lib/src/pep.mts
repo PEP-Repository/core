@@ -43,8 +43,6 @@ export interface InitConfig {
   clientConfig: URL | ClientConfig;
   configFileContentOverrides?: { [key in keyof ConfigFiles]?: string | undefined };
   authLandingPage?: URL | null;
-  onOut?: ((msg: string) => void) | null;
-  onError?: ((msg: string) => void) | null;
 }
 
 export interface EnrolledUser {
@@ -213,15 +211,6 @@ export default class Pep {
     let Module: MainModule | { thisProgram: string, print?: (...msg: any[]) => void; printErr?: (...msg: any[]) => void; } = {
       thisProgram: 'pepWeblib',
     };
-
-    if (config.onOut) {
-      const onOut = config.onOut;
-      Module.print = (...msg) => onOut(msg.join(' '));
-    }
-    if (config.onError) {
-      const onError = config.onError;
-      Module.printErr = (...msg) => onError(msg.join(' '));
-    }
 
     Module = await initModule(Module) as MainModule;
 
