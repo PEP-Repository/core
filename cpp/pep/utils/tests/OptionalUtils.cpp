@@ -15,4 +15,20 @@ TEST(OptionalUtils, AsOptionalRef_and_AsOptionalCRef) {
   EXPECT_FALSE(AsOptionalCRef<float>(nullptr).has_value());
 }
 
+TEST(OptionalUtils, AsRef_and_AsCRef) {
+  auto value = 64.35;
+  auto refToVal = AsOptionalRef(&value);
+  auto constRefToVal = AsOptionalCRef(&value);
+  auto noRef = AsOptionalRef<int>(nullptr);
+  auto constNoRef = AsOptionalCRef<char>(nullptr);
+
+  EXPECT_EQ(std::addressof(AsRef(refToVal)), std::addressof(value));
+  EXPECT_EQ(std::addressof(AsCRef(refToVal)), std::addressof(value));
+  EXPECT_EQ(std::addressof(AsCRef(constRefToVal)), std::addressof(value));
+
+  EXPECT_ANY_THROW(AsRef(noRef));
+  EXPECT_ANY_THROW(AsCRef(noRef));
+  EXPECT_ANY_THROW(AsCRef(constNoRef));
+}
+
 } // namespace
