@@ -115,20 +115,27 @@ function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDay().toString().padStart(2, '0')}`;
 }
 
-/** Are we using Emscripten EH instead of WASM EH? */
-const EmscriptenExceptionHandling = false;
+/**
+ * Inspects the exception via `callback` and then frees it.
+ */
+function consumeWasmException<TReturn>(
+    mod: MainModule, wasmEx: WebAssembly.Exception, //TODO For Emscripten EH this should be Error
+    callback: (wasmEx: WebAssembly.Exception) => TReturn): TReturn {
+  //TODO Fix when using Emscripten EH, see https://github.com/emscripten-core/emscripten/issues/17115
+
+  try {
+    return callback(wasmEx);
+  } finally {
+    mod.decrementExceptionRefcount(wasmEx);
+  }
+}
 
 /**
  * Transforms a WASM exception into an Error with the correct message, and stack when available.
  * After obtaining message, frees the WASM exception object.
  */
 function handleWasmExceptionForModule(mod: MainModule, wasmEx: WebAssembly.Exception): Error {
-  if (EmscriptenExceptionHandling) {
-    //XXX When using Emscripten EH, we should call incrementExceptionRefcount first,
-    // see https://github.com/emscripten-core/emscripten/issues/17115
-    mod.incrementExceptionRefcount(wasmEx);
-  }
-  try {
+  return consumeWasmException(mod, wasmEx, () => {
     const [type, message] = mod.getExceptionMessage(wasmEx) as [string, string];
     const error = new Error(message || type, {cause: wasmEx});
     if (wasmEx.stack) {
@@ -136,12 +143,11 @@ function handleWasmExceptionForModule(mod: MainModule, wasmEx: WebAssembly.Excep
     }
     console.warn(`WebAssembly.Exception: ${type}: ${message}${wasmEx.stack ? `\n${wasmEx.stack}` : ''}`);
     return error;
-  } finally {
-    mod.decrementExceptionRefcount(wasmEx);
-  }
+  });
 }
 
 function throwPotentialWasmException(mod: MainModule, ex: WebAssembly.Exception | Error | unknown): never {
+  //TODO Fix when using Emscripten EH
   if (ex instanceof WebAssembly.Exception) {
     throw handleWasmExceptionForModule(mod, ex);
   }
