@@ -35,9 +35,13 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
     -Wl,--no-demangle # https://github.com/llvm/llvm-project/issues/126919
     -gsource-map
-    -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
     -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
-    -sNO_PTHREAD_POOL_SIZE_STRICT # We don't block the main thread # TODO preallocate some threads in the pool?
+
+    -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
+    "-sPTHREAD_POOL_SIZE=Math.min(navigator.hardwareConcurrency, 8 /*WorkerPool*/ + 1 /*io_context*/ + 1 /*Boost async_resolve*/)"
+    -sPTHREAD_POOL_DELAY_LOAD
+    -sNO_PTHREAD_POOL_SIZE_STRICT # Disable this to allow spawning more threads, but we cannot immediately join them.
+
     -sINITIAL_MEMORY=209715200 # 200 MiB
     -sNO_ABORTING_MALLOC
     -sFETCH
