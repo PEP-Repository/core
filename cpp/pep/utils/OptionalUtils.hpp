@@ -60,4 +60,33 @@ static_assert(
     std::is_same_v<decltype(AsCRef(std::declval<OptionalCRef<double>&>())), const double&>,
     "AsCRef returns a const ref (when the input is const)");
 
+/// Returns a pointer to the value, if there is one, and returns `nullptr` if there is no value
+template <typename T>
+requires (!std::is_const_v<T>)
+T* AsPtr(OptionalRef<T>& ref) {
+  return (ref.has_value()) ? &ref.value().get() : nullptr;
+}
+
+/// Returns a pointer to the value, if there is one, and returns `nullptr` if there is no value
+template <typename T>
+const T* AsPtrToConst(const OptionalRef<T>& ref) {
+  return (ref.has_value()) ? &ref.value().get() : nullptr;
+}
+
+/// Returns a pointer to the value, if there is one, and returns `nullptr` if there is no value
+template <typename T>
+const T* AsPtrToConst(const OptionalCRef<T>& ref) {
+  return (ref.has_value()) ? &ref.value().get() : nullptr;
+}
+
+static_assert(
+    std::is_same_v<decltype(AsPtr(std::declval<OptionalRef<double>&>())), double*>,
+    "AsPtr returns a plain ptr");
+static_assert(
+    std::is_same_v<decltype(AsPtrToConst(std::declval<OptionalRef<double>&>())), const double*>,
+    "AsPtrToConst returns a ptr to a const value");
+static_assert(
+    std::is_same_v<decltype(AsPtrToConst(std::declval<OptionalCRef<double>&>())), const double*>,
+    "AsPtrToConst returns a ptr to a const value");
+
 } // namespace pep
