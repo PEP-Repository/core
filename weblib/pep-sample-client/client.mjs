@@ -1,5 +1,5 @@
 import Pep from 'pep-repo-client';
-import {binaryToString, concatStringsAsync, deleteObjectsAsync} from 'pep-repo-client/utils';
+import {binaryToString, byteStreamToString, deleteObjectsAsync} from 'pep-repo-client/utils';
 
 /** @type {Pep|undefined} */
 let pep;
@@ -107,7 +107,7 @@ retrieveBtn.addEventListener('click', () => void (async () => {
           id: data.entry.id,
           subjectLocalPseudonym: data.entry.subjectLocalPseudonym,
           column: data.entry.column,
-          content: await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream())),
+          content: await byteStreamToString(data.content),
         });
 
       } finally {

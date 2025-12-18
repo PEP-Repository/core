@@ -44,3 +44,8 @@ export async function concatStringsAsync(stream: AsyncIterable<string>): Promise
   }
   return content
 }
+
+/** Decode UTF-8 byte stream a single string */
+export function byteStreamToString(stream: ReadableStream<Uint8Array<ArrayBuffer>>) {
+  return concatStringsAsync(stream.pipeThrough(new TextDecoderStream()));
+}
