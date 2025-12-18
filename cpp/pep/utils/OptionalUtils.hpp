@@ -32,6 +32,7 @@ static_assert(
     "OptionalCRefFromPtr always returns a const ref");
 
 /// Convenience function aliasing ref.value.get()
+/// @throws std::bad_optional_access if \p ref does not contain a value.
 template <typename T>
 requires (!std::is_const_v<T>)
 T& AsRef(OptionalRef<T>& ref) {
@@ -39,12 +40,14 @@ T& AsRef(OptionalRef<T>& ref) {
 }
 
 /// Convenience function aliasing ref.value.get()
+/// @throws std::bad_optional_access if \p ref does not contain a value.
 template <typename T>
 const T& AsCRef(const OptionalRef<T>& ref) {
   return ref.value().get();
 }
 
 /// Convenience function aliasing ref.value.get()
+/// @throws std::bad_optional_access if \p ref does not contain a value.
 template <typename T>
 const T& AsCRef(const OptionalCRef<T>& ref) {
   return ref.value().get();
@@ -60,20 +63,20 @@ static_assert(
     std::is_same_v<decltype(AsCRef(std::declval<OptionalCRef<double>&>())), const double&>,
     "AsCRef returns a const ref (when the input is const)");
 
-/// Returns a pointer to the value, if there is one, and returns `nullptr` if there is no value
+/// Returns a pointer to the value, if \p ref has a value, and returns `nullptr` if \p ref has no value
 template <typename T>
 requires (!std::is_const_v<T>)
 T* AsPtr(OptionalRef<T>& ref) {
   return (ref.has_value()) ? &ref.value().get() : nullptr;
 }
 
-/// Returns a pointer to the value, if there is one, and returns `nullptr` if there is no value
+/// Returns a pointer to the value, if \p ref has a value, and returns `nullptr` if \p ref has no value
 template <typename T>
 const T* AsPtrToConst(const OptionalRef<T>& ref) {
   return (ref.has_value()) ? &ref.value().get() : nullptr;
 }
 
-/// Returns a pointer to the value, if there is one, and returns `nullptr` if there is no value
+/// Returns a pointer to the value, if \p ref has a value, and returns `nullptr` if \p ref has no value
 template <typename T>
 const T* AsPtrToConst(const OptionalCRef<T>& ref) {
   return (ref.has_value()) ? &ref.value().get() : nullptr;
