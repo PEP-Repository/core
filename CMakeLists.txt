@@ -240,14 +240,17 @@ if(DEFINED EMSCRIPTEN)
   add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG>>>:${default_emscripten_exe_config}>")
 endif()
 
-function(make_js_executable target)
-  get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
-  if(NOT skip)
-    if(CMAKE_HOST_LINUX AND DEFINED EMSCRIPTEN AND NOT EMSCRIPTEN_BROWSER)
+# Add shebang to JS file, if target is such a file
+# See proposal: https://github.com/emscripten-core/emscripten/issues/25490
+function(make_js_file_executable target)
+  if (DEFINED EMSCRIPTEN AND NOT EMSCRIPTEN_BROWSER AND CMAKE_HOST_LINUX)
+    get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
+    get_target_property(suffix ${target} SUFFIX)
+    if(NOT skip AND suffix STREQUAL .js)
       add_custom_command(
           TARGET ${target} POST_BUILD
           # Add node shebang
-          COMMAND sed --in-place "1s;^;#!/usr/bin/env node\\n;" "$<TARGET_FILE:${target}>"
+          COMMAND sed --in-place "1 i #!/usr/bin/env node" "$<TARGET_FILE:${target}>"
           # Make file executable
           COMMAND chmod +x "$<TARGET_FILE:${target}>"
           VERBATIM
