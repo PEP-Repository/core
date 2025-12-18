@@ -20,7 +20,7 @@ struct WeblibApiPromiseAwaitTransform {
 };
 }
 
-// Promise<any>
+/// Create coroutine returning Promise<any>.
 /// Automatically switches back to starting thread before awaiting an observable
 struct WeblibApiPromise : emscripten::val {
   using val::val;
@@ -30,7 +30,7 @@ struct WeblibApiPromise : emscripten::val {
   struct promise_type : val::promise_type, detail::WeblibApiPromiseAwaitTransform {};
 };
 
-// Promise<undefined>
+/// Create coroutine returning Promise<undefined>.
 /// Automatically switches back to starting thread before awaiting an observable
 struct WeblibApiVoidPromise : emscripten::val {
   using val::val;

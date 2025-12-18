@@ -25,7 +25,6 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
-#include <emscripten/threading.h>
 #include <pep/async/RxInstead.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
@@ -125,6 +124,7 @@ public:
   Weblib(Weblib &&) = delete;
 
   /// Register \p callback to be called when the connection status changes.
+  /// \param callback <code>(connected: bool) => void</code>
   void onStatusChange(val callback) {
     connectionStatusChange() // Safe to call outside io_context thread
         .observe_on(observe_on_emscripten_main_thread())
@@ -156,6 +156,7 @@ public:
       });
   }
 
+  /// Helper object for OAuth authentication flow
   class OAuthClient {
     rxcpp::subjects::replay<AuthorizationResult, decltype(asioWorker_)::value_type> authorizationCodeChan_;
     rxcpp::observable<FakeVoid> run_;
@@ -213,6 +214,7 @@ public:
     }
   };
 
+  /// Start OAuth authentication flow
   OAuthClient authenticate(std::string redirectUri, val openAuthPage) {
     LOG(LOG_TAG, debug) << "authenticate";
     return OAuthClient(shared_from_this(), std::move(redirectUri), std::move(openAuthPage));
@@ -225,7 +227,8 @@ public:
       });
   }
 
-  /// \returns Promise<string>
+  /// For development use: generate OAuth token from secret
+  /// \returns \c Promise<string>
   auto internalGenerateToken(std::string tokenSecretHex, std::string userGroup) {
     using namespace std::chrono;
     auto now = TimeNow<sys_seconds>();
@@ -238,7 +241,7 @@ public:
       .getSerializedForm();
   }
 
-  /// \returns Promise<ColumnGroup[]>
+  /// \returns \c Promise<ColumnGroup[]>
   WeblibApiPromise listColumns() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
@@ -258,7 +261,7 @@ public:
         });
   }
 
-  /// \returns Promise<SubjectGroup[]>
+  /// \returns \c Promise<SubjectGroup[]>
   WeblibApiPromise listSubjectGroups() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
@@ -278,7 +281,7 @@ public:
         });
   }
 
-  /// \returns ReadableStream<CellEntry>
+  /// \returns \c ReadableStream<CellEntry>
   auto list(weblib::ListQuery query) {
     return CreateReadableStreamOnMain(
         onIoThread()
@@ -314,6 +317,7 @@ public:
       );
   }
 
+  /// \returns \c ReadableStream<CellData>
   auto retrieve(std::vector<const CellEntry*> entries) {
     return CreateReadableStreamOnMain(
         onIoThread()
@@ -348,7 +352,7 @@ public:
                     }
 
                     pageBatches
-                        //TODO Do not request all batches at once, by implementing `pull` with ReadableStream
+                        //TODO Do not request all batches at once, by implementing `pull` with ReadableStream!
                         .concat()
                         .observe_on(observe_on_emscripten_main_thread())
                         .subscribe(
@@ -385,6 +389,7 @@ public:
         );
   }
 
+  /// \returns \c Promise<string>
   WeblibApiPromise registerParticipant(ParticipantPersonalia personalia, bool isTestParticipant) {
     co_return co_await onIoThread()
         .flat_map([personalia = std::move(personalia), isTestParticipant](const std::shared_ptr<Weblib>& self) {
@@ -433,7 +438,7 @@ int main() {
       std::exception_ptr ex = std::current_exception();
       if (!ex) {
         std::cerr << "Originally thrown exception could not be retrieved in WASM EH, see https://github.com/emscripten-core/emscripten/issues/23779\n"
-          << "Either add a 'caught exception' breakpoint in the debugger or switch to Emscripted EH" << std::endl;
+          << "Either add a 'caught exception' breakpoint in the debugger or switch to Emscripten EH" << std::endl;
       }
       std::cerr << "Error: " << GetExceptionMessage(std::move(ex)) << std::endl;
     } catch (...) {
@@ -443,5 +448,6 @@ int main() {
   });
   Logging::Initialize({std::make_shared<JsConsoleLogging>(debug /*TODO*/)});
 
+  // Keep running until JS calls exit
   ::emscripten_exit_with_live_runtime();
 }
