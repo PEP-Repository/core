@@ -1,3 +1,7 @@
+/**
+ * @file This is run in integration.sh
+ */
+
 import {describe} from 'mocha';
 import {expect} from 'chai';
 import Pep, {CellEntry, ClientConfig} from "./pep.mjs";

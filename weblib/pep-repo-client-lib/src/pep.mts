@@ -38,7 +38,7 @@ export type ClientConfig = {
   };
 };
 
-
+/** Configuration to initialize Pep */
 export interface InitConfig {
   clientConfig: URL | ClientConfig;
   configFileContentOverrides?: { [key in keyof ConfigFiles]?: string | undefined };
@@ -63,11 +63,13 @@ export interface ParticipantPersonalia {
   firstName: string;
   middleName: string;
   lastName: string;
+  /** Time part is ignored */
   dateOfBirth: Date;
 }
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
+  /** Loose subjects to request (any format taht would be recognized by pepcli) */
   subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
@@ -98,6 +100,7 @@ export interface Buffer extends rawTypes.Buffer {
  * @warning This object must be deleted after use
  */
 export interface CellData extends rawTypes.CellData {
+  /** Reference to the original CellEntry */
   readonly entry: CellEntry;
 
   /**
@@ -266,6 +269,7 @@ export default class Pep {
     }
   }
 
+  /** Stop event loop and delete instance */
   delete() {
     const client = this.#client;
     this.#client = null!; // Prevent usage
@@ -285,22 +289,27 @@ export default class Pep {
     });
   }
 
+  /** Register handler to observe when methods are executing */
   onBusyChange(callback: ((busy: boolean) => void) | null) {
     this.#onBusyChange = callback;
   }
 
+  /** Register handler to observe when connection drops or restores */
   onStatusChange(callback: (connected: boolean) => void) {
     this.#wrapExec(() => this.#client.onStatusChange(callback));
   }
 
+  /** Get currently enrolled (logged-in) user. May persist between sessions. */
   getEnrolledUser(): Promise<EnrolledUser | undefined> {
     return this.#wrapExec(() => this.#client.getEnrolledUser());
   }
 
+  /** Un-enroll (log out) current user */
   unenroll() {
     return this.#wrapExec(() => this.#client.unenroll());
   }
 
+  /** Start OAuth authentication to enroll user */
   async authenticate(): Promise<void> {
     const landingPage = this.#config.authLandingPage;
     if (!landingPage) {
@@ -334,10 +343,15 @@ export default class Pep {
     }
   }
 
+  /** Enroll user with OAuth token */
   authenticateWithToken(token: string) {
     return this.#wrapExec(() => this.#client.authenticateWithToken(token));
   }
 
+  /**
+   * For development: Generate OAuth token from secret
+   * @internal
+   */
   internalGenerateToken(tokenSecret: string, userGroup: string) {
     return this.#wrapExec(() => this.#client.internalGenerateToken(tokenSecret, userGroup));
   }
@@ -350,6 +364,7 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.listSubjectGroups());
   }
 
+  /** Register a subject */
   registerParticipant(personalia: ParticipantPersonalia, isTestParticipant: boolean = false): Promise<string> {
     return this.#wrapExec(() => this.#client.registerParticipant({
       ...personalia,
@@ -358,8 +373,8 @@ export default class Pep {
   }
 
   list(query: ListQuery) : ReadableStream<CellEntry> {
-    //@ts-ignore TODO
-    return this.#wrapExec(() => this.#client.list(query));
+    //XXX Cast to Required<ListQuery> because of https://github.com/emscripten-core/emscripten/issues/25978
+    return this.#wrapExec(() => this.#client.list(query as Required<ListQuery>));
   }
 
   retrieve(entries: CellEntry[]) : ReadableStream<CellData> {
