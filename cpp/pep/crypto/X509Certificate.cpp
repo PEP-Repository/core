@@ -605,11 +605,6 @@ X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& 
     throw pep::OpenSSLError("Failed to add OU to X509CertificateSigningRequest.");
   }
 
-  // Set the public key
-  if(X509_REQ_set_pubkey(mCSR, keyPair.mKeyPair) <= 0) {
-    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest.");
-  }
-
   sign(keyPair);
 }
 
