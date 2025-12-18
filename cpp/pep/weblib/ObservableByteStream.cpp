@@ -142,6 +142,6 @@ val pep::CreateReadableByteStream(rxcpp::observable<std::string> data, std::size
   // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
   val underlyingSource(ByteStreamSource(std::move(data), chunkSize));
   underlyingSource.as<ByteStreamSource*>(allow_raw_pointers{})->self = underlyingSource;
-  // We need withIndirectCancel, because the ReadableStream will call the functions originally present on the object
-  return val::global("ReadableStream").new_(val::module_property("withIndirectCancel")(std::move(underlyingSource)));
+  // We need pepWithIndirectCancel, because the ReadableStream will call the functions originally present on the object
+  return val::global("ReadableStream").new_(val::module_property("pepWithIndirectCancel")(std::move(underlyingSource)));
 }

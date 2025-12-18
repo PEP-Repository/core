@@ -81,6 +81,6 @@ val pep::CreateReadableStream(rxcpp::observable<val> data) {
   // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
   val underlyingSource(StreamSource(std::move(data)));
   underlyingSource.as<StreamSource*>(allow_raw_pointers{})->self = underlyingSource;
-  // We need withIndirectCancel, because the ReadableStream will call the functions originally present on the object
-  return val::global("ReadableStream").new_(val::module_property("withIndirectCancel")(std::move(underlyingSource)));
+  // We need pepWithIndirectCancel, because the ReadableStream will call the functions originally present on the object
+  return val::global("ReadableStream").new_(val::module_property("pepWithIndirectCancel")(std::move(underlyingSource)));
 }
