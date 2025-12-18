@@ -30,8 +30,12 @@ set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
     PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG ON
     LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
-#TODO limit -sENVIRONMENT?
+
+set(PEP_WEBLIB_ENVIRONMENT "web,node" CACHE STRING "Environment(s) to build ${PROJECT_NAME}Weblib for")
+
+# See https://emscripten.org/docs/tools_reference/settings_reference.html
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
+    "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
     -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
     -Wl,--no-demangle # https://github.com/llvm/llvm-project/issues/126919
     -gsource-map

@@ -207,6 +207,8 @@ if(DEFINED EMSCRIPTEN)
       BRIEF_DOCS "Do not add default config for Emscripten executables"
   )
 
+  # Default Emscripten config for CLI executables
+  # See https://emscripten.org/docs/tools_reference/settings_reference.html
   set(default_emscripten_exe_config
       -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
       -Wl,--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
@@ -222,12 +224,14 @@ if(DEFINED EMSCRIPTEN)
   if(EMSCRIPTEN_BROWSER)
     set(CMAKE_EXECUTABLE_SUFFIX ".html")  # Create HTML shell
     list(APPEND default_emscripten_exe_config
+        -sENVIRONMENT=web
         -sPROXY_TO_PTHREAD  # Put main thread in separate worker to prevent blocking UI thread
     )
   else()
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js")
     file(SHA256 "${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js" node_emscripten_prejs_hash)
     list(APPEND default_emscripten_exe_config
+        -sENVIRONMENT=node
         -sNODERAWFS # Use host file system
 
         "--pre-js=${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js"
