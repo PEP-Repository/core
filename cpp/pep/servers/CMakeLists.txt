@@ -147,6 +147,8 @@ target_link_libraries(
     ${PROJECT_NAME}ServiceApplicationlib
     )
 
+verify_headers_standalone(${PROJECT_NAME}Servers)
+
 configure_debug_command_line_parameter(${PROJECT_NAME}Servers ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/)
 
 configure_executable_config_version(${PROJECT_NAME}Servers local)
