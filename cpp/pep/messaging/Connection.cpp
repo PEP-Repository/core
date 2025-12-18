@@ -503,16 +503,19 @@ void Connection::handleError(std::exception_ptr exception) {
 
   if (mBinary != nullptr) {
     /* HACK / FIXME / TODO: workaround for https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
-     * - We invoke networking::Connection::close on our binary connection,
-     * - which signals its onConnectivityChange event,
-     * - which notifies our handleBinaryConnectivityChange method,
-     * - which invokes our own close method,
-     * - which sets our mBinary member to NULL,
-     * - which destroys the associated networking::Connection object (if no one else holds a shared_ptr to it).
-     * The object then gets destroyed while a method is running on it, causing a segfault. (Concretely, its
-     * onConnectivityChange member tries to update its state but the instance has already been destroyed).
+     * 1. We invoke networking::Connection::close on our binary connection,
+     * 2. which signals its onConnectivityChange event,
+     * 3. which notifies our handleBinaryConnectivityChange method,
+     * 4. which invokes our own close method,
+     * 5. which sets our mBinary member to NULL,
+     * 6. which destroys the associated networking::Connection object (if no one else holds a shared_ptr to it).
+     * The object then gets destroyed while a method is running on it, causing a segfault. Concretely, its
+     * onConnectivityChange member
+     * - is active in step 2, then
+     * - notifies us in step 3, then
+     * - regains control and tries to update its state, but the instance has already been destroyed.
      * We prevent this by making a (temporary, local) second shared_ptr to the networking::Connection, preventing
-     * it from being destroyed until this method exits.
+     * it (and its onConnectivityChange member) from being destroyed until this method exits.
      */
     auto binary = mBinary;
     binary->close();
