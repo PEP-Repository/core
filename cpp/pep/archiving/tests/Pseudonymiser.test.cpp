@@ -95,7 +95,7 @@ const std::string PseudonymiserTest::textContentNewLongerPseudonym{"The text of 
 const std::string PseudonymiserTest::textContentNewShorterPseudonym{"The text of the file, including the " + PseudonymiserTest::newShorterPseudonym + " in it."};
 
 const pep::filesystem::Temporary PseudonymiserTest::testDirectory{
-    std::filesystem::temp_directory_path() / pep::filesystem::RandomizedName("pepTest-psuedonymiser-%%%%-%%%%-%%%%")};
+    std::filesystem::temp_directory_path() / pep::filesystem::RandomizedName("pepTest-pseudonymiser-%%%%-%%%%-%%%%")};
 const Path& PseudonymiserTest::basePath{PseudonymiserTest::testDirectory.path()};
 const Path PseudonymiserTest::oldPseudonymFilename{basePath / ("file_with_" + PseudonymiserTest::oldPseudonym + "_in_it.txt")};
 const Path PseudonymiserTest::placeholderFilename{basePath / ("file_with_" + PseudonymiserTest::placeholder + "_in_it.txt")};
