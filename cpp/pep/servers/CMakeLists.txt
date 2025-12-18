@@ -157,32 +157,3 @@ configure_debug_command_line_parameter(${PROJECT_NAME}Servers ${CMAKE_CURRENT_BI
 configure_executable_config_version(${PROJECT_NAME}Servers local)
 
 add_shared_companion_files(".")
-
-if (WITH_TESTS)
-  add_unit_tests(Servers)
-  target_link_libraries(${PROJECT_NAME}ServersUnitTests ${PROJECT_NAME}Clientlib)
-
-  add_dependencies(
-    ${PROJECT_NAME}ServersUnitTests
-    serverstest_accessmanager_pki
-    serverstest_keyserver_pki
-    serverstest_registrationserver_pki
-    serverstest_storagefacility_pki
-    serverstest_transcryptor_pki
-    serverstest_authserver_pki
-    serverstest_pki
-  )
-
-  configure_executable_config_version(${PROJECT_NAME}ServersUnitTests local)
-
-  configure_executable_companion(${PEP_LOCAL_INFRA_DIR}/client/ClientConfig.json)
-  configure_executable_companion(${PEP_LOCAL_INFRA_DIR}/ShadowAdministration.pub)
-  copy_pki_files(
-    TARGET
-    serverstest_pki
-    FILES
-    rootCA.cert
-  )
-
-  add_shared_companion_files("serverstest")
-endif ()
