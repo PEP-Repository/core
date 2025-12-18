@@ -17,6 +17,7 @@ const std::string LOG_TAG("ObservableStream");
 class StreamSource {
   rxcpp::observable<val> data_;
   rxcpp::composite_subscription subscription_ = rxcpp::composite_subscription::empty();
+  /// <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController">ReadableStreamDefaultController</a>
   val controller_;
 
 public:
@@ -30,11 +31,11 @@ public:
     LOG(LOG_TAG, debug) << this << " deleted self";
   }
 
-  /// \param controller https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController
-  void start(const val& controller) {
+  /// \param controller <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController">ReadableStreamDefaultController</a>
+  void start(val controller) {
     LOG(LOG_TAG, debug) << this << " start() called";
     assert(!subscription_.is_subscribed() && "Do not call start twice");
-    controller_ = controller;
+    controller_ = std::move(controller);
     subscription_ = data_
       .subscribe(
         // on next
@@ -47,6 +48,8 @@ public:
           try {
             std::rethrow_exception(std::move(ex));
           } catch (...) {
+            // Listener should decrement exception reference count when handled
+            //XXX Uses internal API, see https://github.com/emscripten-core/emscripten/issues/25963
             controller_.call<void>("error", val::take_ownership(emscripten::internal::_emval_from_current_cxa_exception()));
           }
           deleteSelf();
@@ -75,7 +78,7 @@ EMSCRIPTEN_BINDINGS(ObservableStream) {
 }
 
 val pep::CreateReadableStream(rxcpp::observable<val> data) {
-  // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
+  // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
   val underlyingSource(StreamSource(std::move(data)));
   underlyingSource.as<StreamSource*>(allow_raw_pointers{})->self = underlyingSource;
   // We need withIndirectCancel, because the ReadableStream will call the functions originally present on the object

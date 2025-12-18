@@ -19,6 +19,8 @@ class ByteStreamSource {
   rxcpp::observable<std::string> data_;
   std::size_t chunkSize_;
   rxcpp::composite_subscription subscription_ = rxcpp::composite_subscription::empty();
+  /// <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableByteStreamController">ReadableByteStreamController</a>
+  /// | <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController">ReadableStreamDefaultController</a>
   val controller_;
 
 public:
@@ -33,53 +35,66 @@ public:
     LOG(LOG_TAG, debug) << "deleted self";
   }
 
-  /// \param controller https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController
-  void start(const val& controller) {
+  /// \param controller
+  ///   <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableByteStreamController">ReadableByteStreamController</a>
+  ///   | <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController">ReadableStreamDefaultController</a>
+  void start(val controller) {
     LOG(LOG_TAG, debug) << this << " start() called";
     assert(!subscription_.is_subscribed() && "Do not call start twice");
-    controller_ = controller;
+    controller_ = std::move(controller);
+    val byteStreamControllerClass = val::global("ReadableByteStreamController");
+    if (!byteStreamControllerClass || !controller_.instanceof(byteStreamControllerClass)) {
+      LOG(LOG_TAG, debug) << "ReadableStream BYOB mode not supported by browser, using less-efficient buffer-copying method";
+    }
     subscription_ = data_
       .subscribe(
         // on next
         [this](std::string_view chunk) noexcept {
           std::span chunkSpan = pep::ConvertBytes<std::uint8_t>(chunk);
 
-          // ReadableStreamBYOBRequest | null
+          // ReadableStreamBYOBRequest | null | undefined (if unsupported).
+          // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBRequest
           val byobRequest = controller_["byobRequest"];
 
+          // Uint8Array<SharedArrayBuffer>
           val chunkView(typed_memory_view(chunkSpan.size(), chunkSpan.data()));
           if (!!byobRequest) {
+            // Uint8Array<ArrayBuffer>
             val byobBuf = byobRequest["view"];
             auto byobSize = byobBuf["length"].as<std::size_t>();
             if (byobSize >= chunkSpan.size()) {
               // Copy to provided buffer
-              byobBuf.call<void>("set", chunkView);
+              byobBuf.call<void>("set", std::move(chunkView));
               byobRequest.call<void>("respond", chunkSpan.size());
             } else {
-              LOG(LOG_TAG, warning) << this << " Provided buffer too small for chunk: "
+              LOG(LOG_TAG, debug) << this << " Provided buffer too small for chunk: "
                   << byobSize << "<" << chunkSpan.size() << ", allocating extra buffer";
 
               std::span
                   chunkSpan1 = chunkSpan.subspan(0, byobSize),
                   chunkSpan2 = chunkSpan.subspan(byobSize);
 
+              // Uint8Array<SharedArrayBuffer>
               val chunkView1(typed_memory_view(chunkSpan1.size(), chunkSpan1.data())),
                   chunkView2(typed_memory_view(chunkSpan2.size(), chunkSpan2.data()));
 
               // Copy what fits into provided buffer
-              byobBuf.call<void>("set", chunkView1);
+              byobBuf.call<void>("set", std::move(chunkView1));
               byobRequest.call<void>("respond", chunkSpan1.size());
 
               // Copy rest into new buffer
               controller_.call<void>("enqueue",
-                  val::global("Uint8Array").new_(chunkView2));
+                  val::global("Uint8Array").new_(std::move(chunkView2)));
             }
           } else {
-            LOG(LOG_TAG, warning) << this << " No buffer provided, allocating new buffer";
+            // Only log if the browser supports BYOB mode
+            if (byobRequest.isNull()) {
+              LOG(LOG_TAG, debug) << this << " No buffer provided, allocating new buffer";
+            }
 
             // Copy into new buffer
             controller_.call<void>("enqueue",
-                val::global("Uint8Array").new_(chunkView));
+                val::global("Uint8Array").new_(std::move(chunkView)));
           }
         },
         // on error
@@ -88,6 +103,8 @@ public:
           try {
             std::rethrow_exception(std::move(ex));
           } catch (...) {
+            // Listener should decrement exception reference count when handled
+            //XXX Uses internal API, see https://github.com/emscripten-core/emscripten/issues/25963
             controller_.call<void>("error", val::take_ownership(emscripten::internal::_emval_from_current_cxa_exception()));
           }
           deleteSelf();
@@ -106,8 +123,8 @@ public:
     deleteSelf();
   }
 
+  // Enable BYOB mode
   std::string type() const { return "bytes"; }
-
   std::size_t autoAllocateChunkSize() const { return chunkSize_; }
 };
 }
@@ -122,7 +139,7 @@ EMSCRIPTEN_BINDINGS(ObservableByteStream) {
 }
 
 val pep::CreateReadableByteStream(rxcpp::observable<std::string> data, std::size_t chunkSize) {
-  // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
+  // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
   val underlyingSource(ByteStreamSource(std::move(data), chunkSize));
   underlyingSource.as<ByteStreamSource*>(allow_raw_pointers{})->self = underlyingSource;
   // We need withIndirectCancel, because the ReadableStream will call the functions originally present on the object
