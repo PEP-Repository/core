@@ -26,9 +26,9 @@ TEST(OptionalUtils, AsRef_and_AsCRef) {
   EXPECT_EQ(std::addressof(AsCRef(refToVal)), std::addressof(value));
   EXPECT_EQ(std::addressof(AsCRef(constRefToVal)), std::addressof(value));
 
-  EXPECT_ANY_THROW(AsRef(noRef));
-  EXPECT_ANY_THROW(AsCRef(noRef));
-  EXPECT_ANY_THROW(AsCRef(constNoRef));
+  EXPECT_THROW(AsRef(noRef), std::bad_optional_access);
+  EXPECT_THROW(AsCRef(noRef), std::bad_optional_access);
+  EXPECT_THROW(AsCRef(constNoRef), std::bad_optional_access);
 }
 
 TEST(OptionalUtils, AsPtr_and_AsPtrToConst) {
