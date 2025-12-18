@@ -1,30 +1,14 @@
 import type {ClassHandle} from 'pep-repo-client-wasm';
 
 export function deleteObjects(objects: Iterable<ClassHandle>) {
-  const errors: unknown[] = [];
   for (const obj of objects) {
-    try {
-      obj.delete();
-    } catch (ex: unknown) {
-      errors.push(ex);
-    }
-  }
-  if (errors.length) {
-    throw new AggregateError(errors, 'Failed to delete objects');
+    obj.delete();
   }
 }
 
 export async function deleteObjectsAsync(objects: AsyncIterable<ClassHandle>): Promise<void> {
-  const errors: unknown[] = [];
   for await (const obj of objects) {
-    try {
-      obj.delete();
-    } catch (ex: unknown) {
-      errors.push(ex);
-    }
-  }
-  if (errors.length) {
-    throw new AggregateError(errors, 'Failed to delete objects');
+    obj.delete();
   }
 }
 

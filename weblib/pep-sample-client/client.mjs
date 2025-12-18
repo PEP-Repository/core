@@ -1,5 +1,5 @@
 import Pep from 'pep-repo-client';
-import {binaryToString, byteStreamToString, deleteObjectsAsync} from 'pep-repo-client/utils';
+import {binaryToString, byteStreamToString, deleteObjects, deleteObjectsAsync} from 'pep-repo-client/utils';
 
 /** @type {Pep|undefined} */
 let pep;
@@ -76,9 +76,7 @@ listBtn.addEventListener('click', () => void (async () => {
     subjectGroups: (await pep.listSubjectGroups()).map(sg => sg.name),
   });
   if (entries) {
-    for (const entry of entries) {
-      entry.delete();
-    }
+    deleteObjects(entries);
   }
   entries = await Array.fromAsync(res);
   retrieveBtn.disabled = false;
