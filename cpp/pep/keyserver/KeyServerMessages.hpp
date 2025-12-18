@@ -9,7 +9,6 @@ namespace pep {
 
 class EnrollmentRequest {
 public:
-  EnrollmentRequest() = default;
   inline EnrollmentRequest(
     const X509CertificateSigningRequest csr,
     std::string oauthToken

@@ -7,6 +7,11 @@ Changes in upcoming release (1.6):
 
 ---------------
 
+- #2753:
+   - Changed: The YAML output of user query commands now use `# item count: N` instead of `# size = N` to display array sizes.
+     This removes the ambiguity of the word `size` and makes the meaning of the number more clear.
+   - Added support for YAML output for pepcli export commands.
+
 - #2708: We now store whether a userID is the primary and/or the display ID. Primary ID is set automatically the first time a user logs in.
   The userID given when creating a new user will be set as the display ID. Both can be changed by the access administrator.
   When no displayIDs exist in the database, it tries to auto-assign display IDs for the existing users, by picking the first ID for that user, if that ID has not been removed.
@@ -23,7 +28,7 @@ Past changes, do not edit (except by person doing release):
 
 Release 1.5 (started 2025-09-01):
 
-- #2638: Added `--export` option to `pepcli pull` which does a basic export to json or yaml after downloading the data.
+- #2638: Added `--export` option to `pepcli pull` which does a basic export to json or csv after downloading the data.
 
 - #2320: Section 4 "Data Access" of Design Document updated
 

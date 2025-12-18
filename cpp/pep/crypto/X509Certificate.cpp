@@ -591,36 +591,33 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
  * @param commonName The common name for the CSR.
  * @param organizationalUnit The organizational unit for the CSR.
  */
-X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit) : X509CertificateSigningRequest(keyPair) {
+X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit) : X509CertificateSigningRequest(MakeStub(keyPair)) {
   // Obtain the subject name of the X509 request, pointer must not be freed
   X509_NAME* name = X509_REQ_get_subject_name(mCSR);
 
   // Add the common name and organizational unit to the subject (name, OID, type, value, length, position, set)
   // position of -1 means it is appended, and set of 0 means a new RDN is created
   if(X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(commonName.data()), static_cast<int>(commonName.size()), -1, 0) <= 0) {
-    throw pep::OpenSSLError("Failed to add CN in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to add CN to X509CertificateSigningRequest.");
   }
 
   if(X509_NAME_add_entry_by_NID(name, NID_organizationalUnitName, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(organizationalUnit.data()), static_cast<int>(organizationalUnit.size()), -1, 0) <= 0) {
-    throw pep::OpenSSLError("Failed to add OU in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to add OU to X509CertificateSigningRequest.");
   }
 
   // Set the public key
   if(X509_REQ_set_pubkey(mCSR, keyPair.mKeyPair) <= 0) {
-    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest constructor.");
+    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest.");
   }
 
   sign(keyPair);
 }
 
 X509CertificateSigningRequest::X509CertificateSigningRequest(const X509CertificateSigningRequest& other) {
-  if (other.mCSR) {
-    mCSR = X509_REQ_dup(other.mCSR);
-    if (!mCSR) {
-      throw pep::OpenSSLError("Failed to duplicate X509_REQ object in X509CertificateSigningRequest copy constructor.");
-    }
-  } else {
-    mCSR = nullptr;
+  assert(other.mCSR != nullptr);
+  mCSR = X509_REQ_dup(other.mCSR);
+  if (!mCSR) {
+    throw pep::OpenSSLError("Failed to duplicate X509_REQ object in X509CertificateSigningRequest copy constructor.");
   }
 }
 
@@ -638,10 +635,7 @@ X509CertificateSigningRequest::~X509CertificateSigningRequest() {
 }
 
 std::optional<std::string> X509CertificateSigningRequest::searchOIDinSubject(int nid) const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509 structure");
-  }
-
+  assert(mCSR);
   X509_NAME* subjectName = X509_REQ_get_subject_name(mCSR);
   return SearchOIDinName(subjectName, nid);
 }
@@ -655,18 +649,13 @@ std::optional<std::string> X509CertificateSigningRequest::getOrganizationalUnit(
 }
 
 AsymmetricKey X509CertificateSigningRequest::getPublicKey() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
+  assert(mCSR);
   EVP_PKEY* pkey = X509_REQ_get0_pubkey(mCSR);
   return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, pkey);
 }
 
 bool X509CertificateSigningRequest::verifySignature() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
+  assert(mCSR);
   EVP_PKEY *pubKey = X509_REQ_get0_pubkey(mCSR);
   if (!pubKey) {
     throw pep::OpenSSLError("Couldn't get public key from CSR.");
@@ -686,10 +675,7 @@ bool X509CertificateSigningRequest::verifySignature() const {
 }
 
 std::string X509CertificateSigningRequest::toPem() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
+  assert(mCSR);
   BIO *bio = BIO_new(BIO_s_mem());
   if (!bio) {
     throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509CertificateSigningRequest::toPem.");
@@ -704,10 +690,7 @@ std::string X509CertificateSigningRequest::toPem() const {
 }
 
 std::string X509CertificateSigningRequest::toDer() const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
-
+  assert(mCSR);
   // Create a BIO for the DER-encoded data
   BIO* bio = BIO_new(BIO_s_mem());
   if (!bio) {
@@ -737,10 +720,7 @@ X509CertificateSigningRequest X509CertificateSigningRequest::FromPem(const std::
   }
 
   // Create an X509CertificateSigningRequest object and set its internal CSR
-  X509CertificateSigningRequest request;
-  request.mCSR = csr;
-
-  return request;
+  return X509CertificateSigningRequest(*csr);
 }
 
 X509CertificateSigningRequest X509CertificateSigningRequest::FromDer(const std::string& der) {
@@ -759,15 +739,12 @@ X509CertificateSigningRequest X509CertificateSigningRequest::FromDer(const std::
   }
 
   // Create an X509CertificateSigningRequest object and set its internal CSR
-  X509CertificateSigningRequest request;
-  request.mCSR = csr;
-
-  return request;
+  return X509CertificateSigningRequest(*csr);
 }
 
 X509CertificateSigningRequest X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(
   AsymmetricKeyPair& keyPair, const X509Certificate& certificate) {
-  X509CertificateSigningRequest result(keyPair);
+  X509CertificateSigningRequest result = MakeStub(keyPair);
 
   // pointer must not be freed
   X509_NAME* subject = X509_get_subject_name(certificate.mRaw);
@@ -898,9 +875,7 @@ void X509Certificate::sign(const AsymmetricKey& caPrivateKey, const X509_NAME& c
  * @return The newly generated certificate.
  */
 X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const {
-  if (!mCSR) {
-    throw std::runtime_error("Invalid X509_REQ structure");
-  }
+  assert(mCSR);
   if (!caPrivateKey.isSet()) {
     throw std::invalid_argument("CA private key is not set in X509CertificateSigningRequest::signCertificate.");
   }
@@ -944,27 +919,30 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
   return result;
 }
 
-X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair) {
+X509CertificateSigningRequest X509CertificateSigningRequest::MakeStub(AsymmetricKeyPair& keyPair) {
   if (!keyPair.mKeyPair) {
-    throw std::invalid_argument("Input key pair is nullptr in X509CertificateSigningRequest constructor.");
+    throw std::invalid_argument("Input key pair cannot be nullptr for X509CertificateSigningRequest.");
   }
 
   // Create a new X509_REQ object
-  mCSR = X509_REQ_new();
-  if (!mCSR) {
-    throw pep::OpenSSLError("Failed to create X509_REQ object in X509CertificateSigningRequest constructor.");
+  auto csr = X509_REQ_new();
+  if (!csr) {
+    throw pep::OpenSSLError("Failed to create X509_REQ object for X509CertificateSigningRequest.");
   }
+  // Take ownership of the X509_REQ structure immediately to prevent it from being leaked if an exception is raised below
+  X509CertificateSigningRequest result(*csr);
 
-  if (X509_REQ_set_version(mCSR, X509_REQ_VERSION_1) <= 0) {
-    X509_REQ_free(mCSR);
-    throw pep::OpenSSLError("Failed to set version in X509CertificateSigningRequest constructor.");
+  if (X509_REQ_set_version(csr, X509_REQ_VERSION_1) <= 0) {
+    throw pep::OpenSSLError("Failed to set version for X509CertificateSigningRequest.");
   }
 
   // Set the public key
-  if(X509_REQ_set_pubkey(mCSR, keyPair.mKeyPair) <= 0) {
-    X509_REQ_free(mCSR);
-    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest constructor.");
+  if(X509_REQ_set_pubkey(csr, keyPair.mKeyPair) <= 0) {
+    X509_REQ_free(csr);
+    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest.");
   }
+
+  return result;
 }
 
 void X509CertificateSigningRequest::sign(const AsymmetricKeyPair& keyPair) {

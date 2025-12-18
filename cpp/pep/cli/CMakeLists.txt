@@ -18,6 +18,7 @@ set(PEPCLI_SRCS
     Export.cpp Export.hpp
     export/CommandExportCsv.cpp export/CommandExportCsv.hpp
     export/CommandExportJson.cpp export/CommandExportJson.hpp
+    export/CommandExportYaml.cpp export/CommandExportYaml.hpp
     FileExtension.cpp
     Get.cpp
     History.cpp
