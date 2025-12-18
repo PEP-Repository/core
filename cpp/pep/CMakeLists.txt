@@ -240,11 +240,7 @@ function(add_install_executable name)
   add_windows_manifest(${name})
   include(GNUInstallDirs)
   if(CMAKE_CROSSCOMPILING)
-    install(TARGETS ${name} COMPONENT ${name}
-      #TODO This may not be what we want
-      BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Required for MACOSX_BUNDLE
-      FRAMEWORK DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Also for macOS
-    )
+    install(TARGETS ${name} COMPONENT ${name})
   else()
     install(TARGETS ${name} COMPONENT ${name}
 
