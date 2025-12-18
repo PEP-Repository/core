@@ -110,20 +110,6 @@ function(add_shared_companion_files subdir)
   endforeach()
 endfunction()
 
-add_library(${PROJECT_NAME}Serverslib STATIC
-  Servers.hpp Servers.cpp
-)
-target_link_libraries(${PROJECT_NAME}Serverslib
-    ${PROJECT_NAME}AccessManagerlib
-    ${PROJECT_NAME}KeyServerlib
-    ${PROJECT_NAME}RegistrationServerlib
-    ${PROJECT_NAME}StorageFacilitylib
-    ${PROJECT_NAME}Transcryptorlib
-    ${PROJECT_NAME}Authserverlib
-    ${PROJECT_NAME}ServiceApplicationlib
-)
-verify_headers_standalone(${PROJECT_NAME}Serverslib)
-
 
 # Stage s3proxy so we can use it as a backend for Storage Facility's "s3" page store.
 # We stage to the "storagefacility" subdirectory so we can switch (SF configuration)
@@ -132,7 +118,10 @@ verify_headers_standalone(${PROJECT_NAME}Serverslib)
 include(${PROJECT_SOURCE_DIR}/s3proxy/s3proxy.cmake)
 stage_s3proxy("${PROJECT_NAME}Servers_s3proxy" "storagefacility")
 
-add_cli_install_executable(${PROJECT_NAME}Servers Main.cpp)
+add_cli_install_executable(${PROJECT_NAME}Servers
+  Main.cpp
+  Servers.hpp Servers.cpp
+)
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}Servers PRIVATE VersionInfo.rc)
 endif()
@@ -148,8 +137,14 @@ add_dependencies(
     )
 target_link_libraries(
     ${PROJECT_NAME}Servers
-    ${PROJECT_NAME}Serverslib
-    ${PROJECT_NAME}Applicationlib
+
+    ${PROJECT_NAME}AccessManagerlib
+    ${PROJECT_NAME}KeyServerlib
+    ${PROJECT_NAME}RegistrationServerlib
+    ${PROJECT_NAME}StorageFacilitylib
+    ${PROJECT_NAME}Transcryptorlib
+    ${PROJECT_NAME}Authserverlib
+    ${PROJECT_NAME}ServiceApplicationlib
     )
 
 configure_debug_command_line_parameter(${PROJECT_NAME}Servers ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/)
