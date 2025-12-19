@@ -228,16 +228,9 @@ if(DEFINED EMSCRIPTEN)
         -sPROXY_TO_PTHREAD  # Put main thread in separate worker to prevent blocking UI thread
     )
   else()
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js")
-    file(SHA256 "${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js" node_emscripten_prejs_hash)
     list(APPEND default_emscripten_exe_config
         -sENVIRONMENT=node
         -sNODERAWFS # Use host file system
-
-        "--pre-js=${CMAKE_SOURCE_DIR}/node_emscripten_prejs.js"
-        -sINCOMING_MODULE_JS_API=preRun
-        # Rebuild if file changes
-        "-DPEP_DUMMY_node_emscripten_prejs_hash=${node_emscripten_prejs_hash}"
     )
   endif()
 
