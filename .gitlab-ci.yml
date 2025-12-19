@@ -418,7 +418,7 @@ retrieve-lockfile:
       -o &:with_castor=$WITH_CASTOR
   #language=bash
   script:
-    # Add stuff like emsdk to PATH (profile is not loaded for docker runners (https://docs.gitlab.com/runner/shells/index.html#shell-profile-loading )
+    # Add stuff like emsdk to PATH (profile is not loaded for docker runners: https://docs.gitlab.com/runner/shells/index.html#shell-profile-loading )
     - . ~/.profile
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit

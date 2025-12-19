@@ -2,6 +2,7 @@
 set -eu
 
 # Start Nginx in the background, serving pep-sample-client
+# If already running, just updates configuration
 
 scriptdir="$(realpath "$(dirname -- "$0")")"
 cd "$scriptdir"

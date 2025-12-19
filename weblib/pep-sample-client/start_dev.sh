@@ -2,6 +2,7 @@
 set -eu
 
 # Quickly build weblib, start pepServers, server pep-sample-client
+# Assumes you performed conan install & CMake configure first
 # Also watch JS sources so that you only need to rebuild pepWeblib if C++ changes,
 #  other builds happen automatically
 # You need to open http://localhost:2280/weblib/pep-sample-client/ in browser
