@@ -32,14 +32,14 @@ public:
   void deleteSelf() {
     self.set("cancel", val::undefined()); // Prevent calling into freed object
     self.call<void>("delete"); // This deletes this, we must not access members after this
-    LOG(LOG_TAG, debug) << "deleted self";
+    LOG(LOG_TAG, verbose) << "deleted self";
   }
 
   /// \param controller
   ///   <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableByteStreamController">ReadableByteStreamController</a>
   ///   | <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController">ReadableStreamDefaultController</a>
   void start(val controller) {
-    LOG(LOG_TAG, debug) << this << " start() called";
+    LOG(LOG_TAG, verbose) << this << " start() called";
     assert(!subscription_.is_subscribed() && "Do not call start twice");
     controller_ = std::move(controller);
     val byteStreamControllerClass = val::global("ReadableByteStreamController");
@@ -111,7 +111,7 @@ public:
         },
         // on completed
         [this]() noexcept {
-           LOG(LOG_TAG, debug) << this << " on_completed";
+           LOG(LOG_TAG, verbose) << this << " on_completed";
            controller_.call<void>("close");
            deleteSelf();
         });
