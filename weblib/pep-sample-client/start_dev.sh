@@ -2,7 +2,8 @@
 set -eu
 
 # Quickly build weblib, start pepServers, server pep-sample-client
-# Assumes you performed conan install & CMake configure first
+# Assumes you performed conan install & CMake configure first,
+#  with -DPKI_DIR on the wasm32 build set to the pki/ dir in the build folder of the server
 # Also watch JS sources so that you only need to rebuild pepWeblib if C++ changes,
 #  other builds happen automatically
 # You need to open http://localhost:2280/weblib/pep-sample-client/ in browser
