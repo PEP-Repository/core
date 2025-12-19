@@ -446,7 +446,8 @@ int main() {
     }
     std::abort();
   });
-  Logging::Initialize({std::make_shared<JsConsoleLogging>(debug /*TODO*/)});
+  // Can likely be filtered via browser console (labeled 'debug', see JsConsoleLogging)
+  Logging::Initialize({std::make_shared<JsConsoleLogging>(verbose)});
 
   // Keep running until JS calls exit
   ::emscripten_exit_with_live_runtime();
