@@ -944,6 +944,7 @@ windows-test:
   variables:
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "none"
+    TESTS: "$UNIT_TESTS_BASE"
   tags:
     # Do not run in parallel with other tests, as we may bind to static ports.
     # May still run in parallel with build jobs.
