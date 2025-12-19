@@ -127,8 +127,16 @@ retrieveBtn.addEventListener('click', () => void (async () => {
 })());
 
 saveBtn.addEventListener('click', () => void (async () => {
-  const entry = entries.find(e => e.fileSize > 10e6 /*10 MB*/);
-  if (!entry) {
+  let maxSize = 0n;
+  /** @type {import("pep-repo-client").CellEntry | undefined} */
+  let entry;
+  for (const aEntry of entries) {
+    if (aEntry.fileSize > maxSize) {
+      maxSize = aEntry.fileSize;
+      entry = aEntry;
+    }
+  }
+  if (entry.fileSize < 10e6) {
     throw new Error('No cells over 10MB, upload one via pepcli');
   }
   output.value = JSON.stringify({
