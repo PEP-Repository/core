@@ -1,4 +1,4 @@
-# NPM wants to be ran in the source folder, so we need to link/copy stuff from the build folder to there
+# NPM wants to be run in the source folder, so we need to link/copy stuff from the build folder to there
 
 # Note: We're using add_custom_target instead of add_custom_command because we always want this to run,
 # especially when some other configuration might've messed with the folders

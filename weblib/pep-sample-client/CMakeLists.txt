@@ -1,4 +1,4 @@
-# NPM wants to be ran in the source folder, so we need to link/copy stuff from the build folder to there
+# NPM wants to be run in the source folder, so we need to link/copy stuff from the build folder to there
 
 add_custom_target(pep-sample-client-npm
     COMMENT "Install dependencies"
