@@ -651,6 +651,13 @@ class MailSender(Connector):
                 elif repetition_type == "schedule" and not start_dates:
                     raise ValueError("For report types with 'schedule' repetition, either 'template_survey_ids' or 'start_dates' must be provided.")
 
+        # Validate start_dates_column if present
+        start_dates_column = config.get("start_dates_column")
+        if start_dates_column:
+            if not isinstance(start_dates_column, str):
+                self.log("start_dates_column must be a string", level=logging.ERROR, tag=self.LOG_TAG)
+                raise ValueError("start_dates_column must be a string")
+
         # Common validation for start_dates
         if start_dates:
             if not isinstance(start_dates, list):
@@ -701,7 +708,7 @@ class MailSender(Connector):
             if end_date:
                 self.log("For 'sequence' repetition type, 'end_date' must not be provided.", level=logging.ERROR, tag=self.LOG_TAG)
                 raise ValueError("For 'sequence' repetition type, 'end_date' must not be provided.")
-            
+
             # For 'sequence' repetition type, start_dates should have at most one date
             if start_dates and len(start_dates) > 1:
                 self.log("start_dates must contain at most one date for 'sequence' repetition type.", level=logging.ERROR, tag=self.LOG_TAG)
@@ -1104,6 +1111,7 @@ class MailSender(Connector):
 
         # Load optional config items
         recipient_name_column = config.get("pep_name_column")
+        start_dates_column = config.get("start_dates_column")
         custom_html_file = config.get("custom_html_file")
 
         custom_html = None
@@ -1112,6 +1120,9 @@ class MailSender(Connector):
 
         if recipient_name_column:
             pep_columns.append(recipient_name_column)
+        
+        if start_dates_column:
+            pep_columns.append(start_dates_column)
 
         # Surveys are not copied by default if no parameter is provided
         copy_survey = config.get("copy_survey", False)
@@ -1277,6 +1288,33 @@ class MailSender(Connector):
             # Recipient name is optional
             recipient_name = data["columns"].get(recipient_name_column) if recipient_name_column else None
 
+            # Parse start_date from PEP column if specified (single date only)
+            subject_start_dates = start_dates  # Default to config dates
+            if start_dates_column:
+                start_dates_data = data["columns"].get(start_dates_column)
+                if start_dates_data:
+                    # Only accept single date string
+                    try:
+                        pep_date = datetime.fromisoformat(start_dates_data)
+                        
+                        # For schedule type: replace first date with PEP date
+                        if repetition_type == "schedule" and start_dates:
+                            subject_start_dates = [pep_date.isoformat()] + start_dates[1:]
+
+                            self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Replaced first date with PEP date {pep_date.date()}", 
+                                        level=logging.DEBUG, tag=self.LOG_TAG)
+                        else:
+                            # For non-schedule types (once, sequence), just use the PEP date
+                            subject_start_dates = [pep_date.isoformat()]
+                            
+                    except ValueError as e:
+                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Invalid date format in column {start_dates_column}: {start_dates_data}. Error: {str(e)}", 
+                                level=logging.ERROR, tag=self.LOG_TAG)
+                        raise ValueError(f"Invalid date format in PEP column {start_dates_column} for {short_pseudonym}: {start_dates_data}")
+                else:
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: start_dates_column specified but no data in column {start_dates_column}, using config dates", 
+                            level=logging.WARNING, tag=self.LOG_TAG)
+
             # Email Address is required to send emails
             email = data["columns"].get(recipient_email_column)
             if not email:
@@ -1418,7 +1456,7 @@ class MailSender(Connector):
                                                               survey_type=survey_type,
                                                               max_reminders=max_reminders,
                                                               days_between_reminders=days_between_reminders,
-                                                              start_dates=start_dates,
+                                                              start_dates=subject_start_dates,
                                                               interval_days=interval_days,
                                                               position=survey_index,
                                                               repetition_type=repetition_type,
@@ -1434,9 +1472,9 @@ class MailSender(Connector):
 
                 # Calculate deadline as start_date + 14 days
                 deadline = "over 2 weken"
-                if start_dates and survey_index < len(start_dates):
+                if subject_start_dates and survey_index < len(subject_start_dates):
                     try:
-                        deadline_date = datetime.fromisoformat(start_dates[survey_index])+ timedelta(days=14)
+                        deadline_date = datetime.fromisoformat(subject_start_dates[survey_index])+ timedelta(days=14)
                         deadline = deadline_date.date().isoformat()
                     except ValueError:
                         self.log(f"Invalid date format for start_date at index {survey_index}", 
