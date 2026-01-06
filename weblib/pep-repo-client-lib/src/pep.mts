@@ -88,15 +88,6 @@ export interface CellEntry extends rawTypes.CellEntry {
 }
 
 /**
- * A buffer containing binary data.
- * @warning This object must be deleted after use
- */
-export interface Buffer extends rawTypes.Buffer {
-  /** The `Uint8Array` has the same lifetime as the `Buffer`. */
-  view(): Uint8Array<SharedArrayBuffer>;
-}
-
-/**
  * @warning This object must be deleted after use
  */
 export interface CellData extends rawTypes.CellData {
