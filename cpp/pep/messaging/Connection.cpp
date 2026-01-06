@@ -497,7 +497,7 @@ void Connection::handleError(std::exception_ptr exception) {
 
   if (shouldLog(exception)) {
     LOG(LOG_TAG, severity_level::warning)
-      << "Error with " << this->describe()
+      << "Error encountered by " << this->describe()
       << ": " << GetExceptionMessage(exception);
   }
 
