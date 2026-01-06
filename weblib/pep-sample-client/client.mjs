@@ -1,3 +1,7 @@
+/**
+ * @file Sample client page that consumes PEP Weblib
+ */
+
 import Pep from 'pep-repo-client';
 import {binaryToString, byteStreamToString, deleteObjects, deleteObjectsAsync} from 'pep-repo-client/utils';
 

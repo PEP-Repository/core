@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -eu
 
-original_host_override="${1-}"
+# Proxy servers from ClientConfig.json over WebSockets
+# Requires websockify (pipx install websockify)
 
-# Requires websockify
+original_host_override="${1-}"
 
 scriptdir="$(realpath -- "$(dirname -- "$0")")"
 

@@ -1,3 +1,7 @@
+/**
+ * @file JS helpers used from C++ and background-thread exception handling
+ */
+
 /** @var {Object} Module */
 /** @var {boolean} ENVIRONMENT_IS_WORKER */
 
