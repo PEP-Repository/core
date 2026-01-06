@@ -98,15 +98,14 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
     std::string msg;
     severity_level severity;
     if (refuse) {
-      msg = "Refusing";
+      msg = "Rejected: " + description + " refusing";
       severity = error;
     } else {
-      msg = "Development genuflection: allowing";
+      msg = "Development genuflection: " + description + " allowing";
       severity = warning;
     }
 
-    msg += " connection between incompatible remote " + description + " (" + binary.getProtocolChecksum()
-      + " at " + address
+    msg += " connection between incompatible remote (" + binary.getProtocolChecksum() + " at " + address
       + ") and local (" + BinaryVersion::current.getProtocolChecksum() + ") software versions";
 
     // Always log if we're not keeping track of incompatible remotes (i.e. this is a client node)
