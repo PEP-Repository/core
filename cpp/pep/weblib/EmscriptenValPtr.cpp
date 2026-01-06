@@ -1,4 +1,4 @@
-#include <pep/async/EmscriptenValPtr.hpp>
+#include <pep/weblib/EmscriptenValPtr.hpp>
 
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>

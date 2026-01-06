@@ -1,13 +1,16 @@
 add_executable(${PROJECT_NAME}Weblib
+    EmscriptenBuffer.cpp EmscriptenBuffer.hpp
     EmscriptenJsonConversion.cpp EmscriptenJsonConversion.hpp
     EmscriptenMapBinding.hpp
+    EmscriptenThreadSwitch.cpp EmscriptenThreadSwitch.hpp
+    EmscriptenValPtr.cpp EmscriptenValPtr.hpp
     EmscriptenVectorBinding.hpp
-    Weblib.cpp
-    WeblibStructs.cpp WeblibStructs.hpp
-    EmscriptenBuffer.cpp EmscriptenBuffer.hpp
-    ObservableStream.cpp ObservableStream.hpp
     ObservableByteStream.cpp ObservableByteStream.hpp
+    ObservableStream.cpp ObservableStream.hpp
+    OnEmscriptenThread.cpp OnEmscriptenThread.hpp
+    Weblib.cpp
     WeblibApiPromise.cpp WeblibApiPromise.hpp
+    WeblibStructs.cpp WeblibStructs.hpp
 )
 find_package(nlohmann_json REQUIRED)
 target_link_libraries(${PROJECT_NAME}Weblib

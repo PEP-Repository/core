@@ -1,9 +1,9 @@
 #pragma once
 
-#include <pep/async/EmscriptenValPtr.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
+#include <pep/weblib/EmscriptenValPtr.hpp>
 
 #include <rxcpp/rx-lite.hpp>
 

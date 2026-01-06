@@ -1,15 +1,6 @@
 # Async library: provides support for asynchronous programming
 # using Boost ASIO and RX(CPP).
 
-set(sources "")
-if(DEFINED EMSCRIPTEN)
-  list(APPEND sources
-      EmscriptenThreadSwitch.cpp EmscriptenThreadSwitch.hpp
-      EmscriptenValPtr.cpp EmscriptenValPtr.hpp
-      OnEmscriptenThread.cpp OnEmscriptenThread.hpp
-  )
-endif()
-
 add_library(${PROJECT_NAME}Asynclib STATIC
     ActivityMonitor.cpp ActivityMonitor.hpp
     CreateObservable.hpp
@@ -48,7 +39,6 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     WaitGroup.cpp WaitGroup.hpp
     WorkerPool.cpp WorkerPool.hpp
     WorkGuard.cpp WorkGuard.hpp
-    ${sources}
 )
 
 target_link_libraries(${PROJECT_NAME}Asynclib

@@ -1,4 +1,4 @@
-#include <pep/async/OnEmscriptenThread.hpp>
+#include <pep/weblib/OnEmscriptenThread.hpp>
 
 #include <pep/utils/Log.hpp>
 

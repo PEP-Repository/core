@@ -1,7 +1,5 @@
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/EmscriptenValPtr.hpp>
 #include <pep/async/ObservableAwaiter.hpp>
-#include <pep/async/OnEmscriptenThread.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
@@ -10,9 +8,11 @@
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/ObservableStream.hpp>
+#include <pep/weblib/OnEmscriptenThread.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 

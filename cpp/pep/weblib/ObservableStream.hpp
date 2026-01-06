@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/async/OnEmscriptenThread.hpp>
+#include <pep/weblib/OnEmscriptenThread.hpp>
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>

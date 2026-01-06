@@ -1,4 +1,4 @@
-#include <pep/async/EmscriptenThreadSwitch.hpp>
+#include <pep/weblib/EmscriptenThreadSwitch.hpp>
 
 #include <stdexcept>
 #include <utility>
