@@ -62,7 +62,7 @@ if [ -d "$OUTPUT_DIR/pulled-data" ]; then
     exit 1
 fi
 
-if "$PEPCLI_EXECUTABLE" pull --force --all-accessible --output-directory "$OUTPUT_DIR/pulled-data"; then
+if "$PEPCLI_EXECUTABLE" pull --force --all-accessible --export csv --output-directory "$OUTPUT_DIR/pulled-data"; then
     show_alert "Success" "Files downloaded successfully to '$OUTPUT_DIR'."
 else
     exit_code=$?
