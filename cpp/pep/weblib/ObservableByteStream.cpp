@@ -138,7 +138,7 @@ EMSCRIPTEN_BINDINGS(ObservableByteStream) {
     ;
 }
 
-val pep::CreateReadableByteStream(rxcpp::observable<std::string> data, std::size_t chunkSize) {
+val pep::weblib::CreateReadableByteStream(rxcpp::observable<std::string> data, std::size_t chunkSize) {
   // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
   val underlyingSource(ByteStreamSource(std::move(data), chunkSize));
   underlyingSource.as<ByteStreamSource*>(allow_raw_pointers{})->self = underlyingSource;

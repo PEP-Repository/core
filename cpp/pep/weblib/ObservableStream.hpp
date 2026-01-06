@@ -12,7 +12,7 @@
 #include <concepts>
 #include <utility>
 
-namespace pep {
+namespace pep::weblib {
 
 /// Create ReadableStream that will be fed with items emitted by the observable.
 /// Items will be emitted on the same thread as the observable.

@@ -7,7 +7,7 @@
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-observe_on.hpp>
 
-namespace pep {
+namespace pep::weblib {
 
 namespace detail {
 struct WeblibApiPromiseAwaitTransform {

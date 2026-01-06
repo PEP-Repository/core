@@ -28,7 +28,7 @@ constexpr bool CanRepresentAsFloat(std::integral auto num) {
 }
 }
 
-nlohmann::json pep::EmValToJson(const emscripten::val& v) {
+nlohmann::json pep::weblib::EmValToJson(const emscripten::val& v) {
   using emscripten::val;
   using nlohmann::json;
 
@@ -77,7 +77,7 @@ nlohmann::json pep::EmValToJson(const emscripten::val& v) {
   }
 }
 
-emscripten::val pep::EmValFromJson(const nlohmann::json& v) {
+emscripten::val pep::weblib::EmValFromJson(const nlohmann::json& v) {
   using nlohmann::json;
   using enum json::value_t;
   using emscripten::val;

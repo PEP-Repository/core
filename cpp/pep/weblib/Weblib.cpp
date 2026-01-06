@@ -282,7 +282,7 @@ public:
   }
 
   /// \returns \c ReadableStream<CellEntry>
-  auto list(weblib::ListQuery query) {
+  auto list(ListQuery query) {
     return CreateReadableStreamOnMain(
         onIoThread()
         .flat_map([query = MakeSharedCopy(std::move(query))](const std::shared_ptr<Weblib>& self) {

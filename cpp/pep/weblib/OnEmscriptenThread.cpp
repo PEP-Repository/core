@@ -5,9 +5,11 @@
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 
+using namespace pep;
+
 static const std::string LOG_TAG("emscripten_scheduler");
 
-namespace pep {
+namespace {
 
 class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
   class worker_interface : public rxcpp::schedulers::worker_interface {
@@ -57,13 +59,13 @@ public:
   }
 };
 
-rxcpp::observe_on_one_worker observe_on_emscripten(::pthread_t thread) {
+}
+
+rxcpp::observe_on_one_worker pep::weblib::observe_on_emscripten(::pthread_t thread) {
   rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<emscripten_scheduler>(thread);
   return rxcpp::observe_on_one_worker{instance};
 }
 
-rxcpp::observe_on_one_worker observe_on_emscripten_main_thread() {
+rxcpp::observe_on_one_worker pep::weblib::observe_on_emscripten_main_thread() {
   return observe_on_emscripten(::emscripten_main_runtime_thread_id());
-}
-
 }

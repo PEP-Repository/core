@@ -8,7 +8,7 @@
 // Forward declaration
 namespace emscripten { class val; }
 
-namespace pep {
+namespace pep::weblib {
 
 /// Create a ReadableStream that reuses buffers via \c autoAllocateChunkSize.
 /// Items will be emitted on the same thread as the observable.

@@ -77,7 +77,7 @@ EMSCRIPTEN_BINDINGS(ObservableStream) {
     ;
 }
 
-val pep::CreateReadableStream(rxcpp::observable<val> data) {
+val pep::weblib::CreateReadableStream(rxcpp::observable<val> data) {
   // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
   val underlyingSource(StreamSource(std::move(data)));
   underlyingSource.as<StreamSource*>(allow_raw_pointers{})->self = underlyingSource;

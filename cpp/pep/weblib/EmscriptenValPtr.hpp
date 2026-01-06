@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace pep {
+namespace pep::weblib {
 
 /// emscripten::val smart-pointer wrapper that destructs value on the main thread
 /// and is safe to copy on other threads.
