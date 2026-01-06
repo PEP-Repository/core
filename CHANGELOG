@@ -5,8 +5,6 @@ Note your text below, in the following format (with 42 the issue number of the c
 
 Changes in upcoming release (1.6):
 
----------------
-
 - #2753:
    - Changed: The YAML output of user query commands now use `# item count: N` instead of `# size = N` to display array sizes.
      This removes the ambiguity of the word `size` and makes the meaning of the number more clear.
@@ -23,6 +21,8 @@ MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
   Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
+
+---------------
 
 Past changes, do not edit (except by person doing release):
 
