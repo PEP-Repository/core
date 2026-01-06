@@ -1,8 +1,6 @@
 add_executable(${PROJECT_NAME}Weblib
-    EmscriptenBuffer.cpp EmscriptenBuffer.hpp
     EmscriptenJsonConversion.cpp EmscriptenJsonConversion.hpp
     EmscriptenMapBinding.hpp
-    EmscriptenThreadSwitch.cpp EmscriptenThreadSwitch.hpp
     EmscriptenValPtr.cpp EmscriptenValPtr.hpp
     EmscriptenVectorBinding.hpp
     ObservableByteStream.cpp ObservableByteStream.hpp
