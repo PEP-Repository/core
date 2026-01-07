@@ -5,6 +5,7 @@
 #include <fstream>
 #include <regex>
 #include <cassert>
+#include <iostream>
 
 namespace pep {
 
@@ -46,7 +47,14 @@ std::optional<std::string> ReadFileIfExists(const std::filesystem::path& path) {
 }
 
 void WriteFile(const std::filesystem::path& path, const std::string& content) {
+  std::clog << "WriteFile path: " << path.string() << std::endl;
   std::ofstream output(path.string(), std::ios::out | std::ios::binary);
+  if (!output) {
+    std::clog << "Could not open file for writing: " << path.string() << std::endl;
+    std::clog << "badbit: " << (output.rdstate() & std::ios_base::badbit) << std::endl;
+    std::clog << "failbit: " << (output.rdstate() & std::ios_base::failbit) << std::endl;
+    std::clog << "eofbit: " << (output.rdstate() & std::ios_base::eofbit) << std::endl;
+  }
   output.exceptions(output.exceptions() | std::ios::failbit);
   output << content;
   output.close();
