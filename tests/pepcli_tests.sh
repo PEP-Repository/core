@@ -744,7 +744,6 @@ if should_run_test certificate-renewal; then
 
     printGreen "First, check requesting a CSR, and replacing and committing the new certificate chain for a single server."
     server="${signing_servers[0]}"
-    trace ls -al "$certificate_renewal_data_dir"
     pepcli --oauth-token-group "Access Administrator" server certificate requestCSR --server "$server" --output-directory "$certificate_renewal_data_dir"
     [ "$(find . -name "*.csr" | wc -l)" -eq 1 ] || fail "Expected exactly one *.csr file in current working directory."
     trace sign_csr ./*.csr
