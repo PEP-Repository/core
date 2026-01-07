@@ -1,12 +1,10 @@
 #include <pep/utils/File.hpp>
-#include <pep/utils/Log.hpp>
 
 #include <array>
 #include <string>
 #include <fstream>
 #include <regex>
 #include <cassert>
-#include <iostream>
 
 namespace pep {
 
@@ -48,25 +46,10 @@ std::optional<std::string> ReadFileIfExists(const std::filesystem::path& path) {
 }
 
 void WriteFile(const std::filesystem::path& path, const std::string& content) {
-  try {
-    std::clog << "start" << std::endl;
-    std::ofstream output(path.string(), std::ios::out | std::ios::binary);
-    std::clog << "ofstream constructed" << std::endl;
-    output.exceptions(output.exceptions() | std::ios::failbit);
-    std::clog << "exception mask set" << std::endl;
-    output << content;
-    std::clog << "content written" << std::endl;
-    output.close();
-    std::clog << "closed" << std::endl;
-  }
-  catch (std::ios_base::failure& e) {
-    LOG("WriteFile", error) << "IO Failure: " << e.what() << ". Error code " << e.code() << ": " << e.code().message();
-    throw;
-  }
-  catch (std::exception& e) {
-    LOG("WriteFile", error) << "Exception: " << e.what();
-    throw;
-  }
+  std::ofstream output(path.string(), std::ios::out | std::ios::binary);
+  output.exceptions(output.exceptions() | std::ios::failbit);
+  output << content;
+  output.close();
 }
 
 bool IsValidFileExtension(const std::string& extension) {
