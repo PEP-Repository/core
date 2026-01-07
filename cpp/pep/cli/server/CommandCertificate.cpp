@@ -9,14 +9,6 @@
 using namespace pep::cli;
 
 namespace {
-void loc(const std::source_location location = std::source_location::current())
-{
-    std::clog << "file: "
-              << location.file_name() << '('
-              << location.line() << ':'
-              << location.function_name() << '\n';
-}
-
 pep::commandline::Parameters makeCommonSupportedParameters(bool isInput, std::string_view what, std::string_view extension) {
   auto traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
 
@@ -64,42 +56,32 @@ struct commonParams {
 
 using signingServerAction = std::function<rxcpp::observable<pep::FakeVoid>(const pep::SigningServerProxy&, const std::filesystem::path&)>;
 auto eventLoopCallBack(const commonParams& params, std::string_view extension, signingServerAction action) {
-  loc();
   return [params, extension, action](std::shared_ptr<pep::Client> client) {
-    loc();
     std::unordered_set<pep::ServerTraits> traits;
-    loc();
+
     if (params.servers.empty()) {
       traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
     }
     else {
       traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return std::ranges::find(params.servers, traits.commandLineId()) != params.servers.end(); });
     }
-    loc();
 
     return rxcpp::rxs::iterate(traits)
       .map([client](const pep::ServerTraits& traits) {
-        loc();
         assert(traits.hasSigningIdentity());
         return std::static_pointer_cast<const pep::SigningServerProxy>(client->getServerProxy(traits));
       })
       .concat_map([params, extension, action](std::shared_ptr<const pep::SigningServerProxy> proxy) {
-        loc();
         std::filesystem::path targetFilePath;
         if (params.targetFile) {
-          loc();
           targetFilePath = *params.targetFile;
         }
         else {
-          loc();
           if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"(""*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
-            loc();
             throw std::runtime_error("Expected common name contains characters that are not allowed in filenames on some systems. Can't autodeduce target filename");
           }
-          loc();
           targetFilePath = params.targetDirectory.value_or(".") / std::format("PEP{}.{}", proxy->getExpectedCommonName(), extension);
         }
-        loc();
         return action(*proxy, targetFilePath);
       });
   };
@@ -118,24 +100,14 @@ protected:
   }
 
   int execute() override {
-    try {
-      loc();
-      commonParams params(false, this->getParameterValues());
-      loc();
-      return this->executeEventLoopFor(eventLoopCallBack(params, "csr", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
-        loc();
-        return proxy.requestCertificateSigningRequest().map([targetPath](const X509CertificateSigningRequest& csr) {
-              loc();
-              WriteFile(targetPath, csr.toPem());
-              loc();
-              return FakeVoid();
-            });
-      }));
-    }
-    catch (std::ios_base::failure& e) {
-      LOG(LOG_TAG, error) << "IO Failure: " << e.what() << ". Error code " << e.code() << ": " << e.code().message();
-      throw;
-    }
+    commonParams params(false, this->getParameterValues());
+
+    return this->executeEventLoopFor(eventLoopCallBack(params, "csr", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
+      return proxy.requestCertificateSigningRequest().map([targetPath](const X509CertificateSigningRequest& csr) {
+            WriteFile(targetPath, csr.toPem());
+            return FakeVoid();
+          });
+    }));
   }
 };
 
