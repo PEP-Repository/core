@@ -734,7 +734,7 @@ if should_run_test certificate-renewal; then
   (
     signing_servers=(authserver transcryptor storagefacility registrationserver accessmanager)
     certificate_renewal_data_dir="$DEST_DIR/certificate-renewal"
-    mkdir -p "$certificate_renewal_data_dir/old-chains"
+    execute . mkdir -p "$certificate_renewal_data_dir/old-chains"
     cd "$certificate_renewal_data_dir"
 
     printGreen "Check that all signing servers currently sign their messages with the certificate chain on disk"
