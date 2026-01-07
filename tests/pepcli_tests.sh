@@ -13,12 +13,14 @@ set -o pipefail
 . "$(dirname "$0")/functions.bash"
 
 readonly PEPCLI_COMMAND="$1"
-readonly DATA_DIR="$2"
-readonly CONFIG_DIR="$3"
-readonly TEST_INPUT_DIR="$4"
-readonly LOCAL="$5"
-readonly TESTS_TO_RUN="$6"
-readonly TESTS_TO_SKIP="$7"
+readonly CORE_DIR="$2"
+readonly DATA_DIR="$3"
+readonly CONFIG_DIR="$4"
+readonly TEST_INPUT_DIR="$5"
+readonly PKI_DIR="$6"
+readonly LOCAL="$7"
+readonly TESTS_TO_RUN="$8"
+readonly TESTS_TO_SKIP="$9"
 
 readonly DEST_DIR="$CONFIG_DIR/test_output"
 execute . mkdir -p "$DEST_DIR"
@@ -667,6 +669,108 @@ if should_run_test s3-roundtrip; then
   pepcli --oauth-token-group "Data Administrator" ama column removeFrom LargeColumn LargeColumns
   pepcli --oauth-token-group "Data Administrator" ama columnGroup remove LargeColumns
   pepcli --oauth-token-group "Data Administrator" ama column remove LargeColumn
+fi
+
+####################
+
+if should_run_test certificate-renewal; then
+  ca_key_file_name="${PKI_DIR}/pepServerCA.key"
+  ca_key_cert="${PKI_DIR}/pepServerCA.chain"
+  password_file="${PKI_DIR}/pepServerCA.password"
+  ca_config_file_name="${CORE_DIR}/pki/ca_ext.cnf"
+  extensions="pep_cert"
+  sign_csr() {
+    csr_file_name="$1"
+    file_name_base="${csr_file_name%.csr}"
+    cert_file_name="$file_name_base.cert"
+    chain_file_name="$file_name_base.chain"
+    common_name=${file_name_base#PEP}
+
+    openssl x509 -req -sha256 -in "$csr_file_name" -CAkey "$ca_key_file_name" -CA "$ca_key_cert" \
+     -out "$cert_file_name" -days 365 -extfile <(cat $ca_config_file_name; echo "DNS.2 = \"$common_name\"") -extensions "$extensions"  \
+     -CAcreateserial -CAserial ca_serial.srl -passin file:$password_file
+
+    cat "$cert_file_name" "$ca_key_cert" > "$chain_file_name"
+    rm "$cert_file_name"
+  }
+
+  compare_chains() {
+    server=$1
+    phase=$2
+
+    chain_file_on_disk=$(find "$PKI_DIR" -iname "PEP$server.chain")
+    chain_basename=$(basename "$chain_file_on_disk")
+    new_chain="./$chain_basename"
+    old_chain="./old-chains/$chain_basename"
+
+    reported_certificate_chain="$(pepcli ping --print-certificate-chain --server "$server")"
+    if [ "$phase" == prepare ]; then
+      trace diff -q <(echo "$reported_certificate_chain") "$chain_file_on_disk"
+    else
+      if trace diff -q <(echo "$reported_certificate_chain") "$new_chain"; then
+        trace [ "$phase" == reverted ] && fail "Certificate chain should no longer equal the new chain, after servers have been restarted without committing, for $server"
+      else
+        trace [ "$phase" == replaced ] || trace [ "$phase" == comitted ] && fail "Certificate chain should have been replaced with the new chain for $server"
+      fi
+      if trace diff -q "$new_chain" "$chain_file_on_disk"; then
+        trace [ "$phase" == replaced ] && fail "Certificate chain should have been replaced, but not yet committed to file for $server"
+        trace [ "$phase" == reverted ] && fail "Certificate chain should not have been committed to file, when it was restarted before committing, for $server"
+      else
+        trace [ "$phase" == committed  ] && fail "Certificate chain should have been replaced, as well as committed to file for $server"
+      fi
+      if trace diff -q "$chain_file_on_disk" "$old_chain"; then
+        trace [ "$phase" == committed  ] && fail "Certificate chain on disk should have been changed, after being committed, for $server"
+      else
+        trace [ "$phase" == replaced  ] && fail "Certificate chain on disk should not have been changed, before being committed, for $server"
+        trace [ "$phase" == reverted ] && fail "Certificate chain on disk should not have changed, when it was restarted before committing, for $server"
+      fi
+    fi
+
+    if [ "$phase" != replaced ]; then
+      trace cp "$chain_file_on_disk" "$old_chain"
+    fi
+  }
+
+  (
+    signing_servers=(authserver transcryptor storagefacility registrationserver accessmanager)
+    certificate_renewal_data_dir="$DEST_DIR/certificate-renewal"
+    mkdir -p "$certificate_renewal_data_dir/old-chains"
+    cd "$certificate_renewal_data_dir"
+
+    printGreen "Check that all signing servers currently sign their messages with the certificate chain on disk"
+    for server in "${signing_servers[@]}"; do
+      compare_chains "$server" prepare
+    done
+
+    printGreen "First, check requesting a CSR, and replacing and committing the new certificate chain for a single server."
+    server="${signing_servers[0]}"
+    pepcli --oauth-token-group "Access Administrator" server certificate requestCSR --server "$server" --output-directory "$certificate_renewal_data_dir"
+    [ "$(find . -name "*.csr" | wc -l)" -eq 1 ] || fail "Expected exactly one *.csr file in current working directory."
+    trace sign_csr ./*.csr
+    pepcli --oauth-token-group "Access Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir"
+    compare_chains "$server" replaced
+    pepcli --oauth-token-group "Access Administrator" server certificate commit --server "$server"  --input-directory "$certificate_renewal_data_dir"
+    compare_chains "$server" committed
+
+    rm ./*.csr ./*.chain
+
+    printGreen "Then check requesting a CSR, and replacing and committing the new certificate chain for all servers at the same time"
+    pepcli --oauth-token-group "Access Administrator" server certificate requestCSR --output-directory "$certificate_renewal_data_dir"
+    [ "$(find . -name "*.csr" | wc -l)" -eq "${#signing_servers[@]}" ] || fail "Number of CSRs should match the number of signing servers we have."
+    for file in *.csr; do
+      sign_csr "$file"
+    done
+    pepcli --oauth-token-group "Access Administrator" server certificate replace --input-directory "$certificate_renewal_data_dir"
+    for server in "${signing_servers[@]}"; do
+      compare_chains "$server" replaced
+    done
+    pepcli --oauth-token-group "Access Administrator" server certificate commit  --input-directory "$certificate_renewal_data_dir"
+    for server in "${signing_servers[@]}"; do
+      compare_chains "$server" committed
+    done
+
+    rm ./*.csr ./*.chain
+  )
 fi
 
 ####################
