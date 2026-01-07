@@ -6,6 +6,8 @@
 #include <regex>
 #include <cassert>
 
+#include <pep/utils/Log.hpp>
+
 namespace pep {
 
 namespace {
@@ -48,8 +50,13 @@ std::optional<std::string> ReadFileIfExists(const std::filesystem::path& path) {
 void WriteFile(const std::filesystem::path& path, const std::string& content) {
   std::ofstream output(path.string(), std::ios::out | std::ios::binary);
   output.exceptions(output.exceptions() | std::ios::failbit);
-  output << content;
-  output.close();
+  try {
+    output << content;
+    output.close();
+  } catch (std::ios_base::failure& e) {
+    LOG("WriteFile", error) << "IO Failure: " << e.what() << ". Error code: " << e.code() << " : " << e.code().message();
+    throw;
+  }
 }
 
 bool IsValidFileExtension(const std::string& extension) {
