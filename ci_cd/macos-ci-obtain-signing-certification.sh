@@ -82,7 +82,7 @@ if [[ "${CI:-false}" == "true" ]]; then
     
     local found=1
     if [[ "$check_type" == "identity" ]]; then
-      if security find-identity -v -p codesigning "$keychain" | grep "$check_value"; then
+      if security find-identity -v -p codesigning "$keychain" | grep -F "$check_value"; then
         found=0
       fi
     elif [[ "$check_type" == "certificate" ]]; then
@@ -111,7 +111,7 @@ if [[ "${CI:-false}" == "true" ]]; then
   install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA" apple_root_ca.cer "$PEP_KEYCHAIN" certificate "Apple Root CA" -A
 
   # Determine which operations are allowed without requiring the user to manually unlock the keychain.
-  security -v set-key-partition-list -S apple-tool:,apple:,codesign:,productsign:,pkgbuild: -s -k "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN" >/dev/null
+  security -v set-key-partition-list -S apple-tool:,apple:,codesign:,productsign:,pkgbuild:,productbuild: -s -k "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN" >/dev/null
 
   # Unlock the keychain
   security -v unlock-keychain -p "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN"
@@ -123,19 +123,19 @@ else
 
   # Check for required gitlab variables
   echo "Running macOS signing certification script locally."
-  echo "Importing required secrets, make sure local DTAP secrets are up-to-date."
+  echo "Importing required secrets, make sure local OPS secrets are up-to-date."
 
-  PEP_MACOS_DTAP_DIR="$(dirname "$(git rev-parse --git-common-dir)")"/../ops
+  PEP_MACOS_OPS_DIR="$(dirname "$(git rev-parse --git-common-dir)")"/../ops
   
-  GITLAB_CI_MACOS_CERTIFICATE_APP_NAME=$(cat "$PEP_MACOS_DTAP_DIR/passwords/macos-signing-id-application.txt")
-  GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME=$(cat "$PEP_MACOS_DTAP_DIR/passwords/macos-signing-id-install.txt")
-  GITLAB_CI_MACOS_KEYCHAIN_PWD=$(cat "$PEP_MACOS_DTAP_DIR/passwords/macos-keychain-pw.txt")
+  GITLAB_CI_MACOS_CERTIFICATE_APP_NAME=$(cat "$PEP_MACOS_OPS_DIR/passwords/macos-signing-id-application.txt")
+  GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME=$(cat "$PEP_MACOS_OPS_DIR/passwords/macos-signing-id-install.txt")
+  GITLAB_CI_MACOS_KEYCHAIN_PWD=$(cat "$PEP_MACOS_OPS_DIR/passwords/macos-keychain-pw.txt")
 
   # Unlock the keychain
   security unlock-keychain -p "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN"
   security set-keychain-settings -t 5400 -u "$PEP_KEYCHAIN"
   
-  security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN" >/dev/null
+  security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign:,pkgbuild:,productbuild: -s -k "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN" >/dev/null
 
   export GITLAB_CI_MACOS_CERTIFICATE_APP_NAME
   export GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME
