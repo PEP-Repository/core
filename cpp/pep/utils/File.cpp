@@ -5,7 +5,6 @@
 #include <fstream>
 #include <regex>
 #include <cassert>
-#include <cstring>
 #include <iostream>
 
 namespace pep {
@@ -55,7 +54,6 @@ void WriteFile(const std::filesystem::path& path, const std::string& content) {
     std::clog << "badbit: " << (output.rdstate() & std::ios_base::badbit) << std::endl;
     std::clog << "failbit: " << (output.rdstate() & std::ios_base::failbit) << std::endl;
     std::clog << "eofbit: " << (output.rdstate() & std::ios_base::eofbit) << std::endl;
-    std::clog << "errno:" << std::strerror(errno) << std::endl;
   }
   output.exceptions(output.exceptions() | std::ios::failbit);
   output << content;
