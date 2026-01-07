@@ -60,6 +60,9 @@ if [[ "${CI:-false}" == "true" ]]; then
     exit 1
   fi
 
+  # Unlock the keychain
+  security -v unlock-keychain -p "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN"
+
   # Add the keychain to the search list if not already present
   if ! security list-keychains -d user | grep -q "$PEP_KEYCHAIN"; then
     echo "Adding pep keychain to search list"
@@ -102,19 +105,13 @@ if [[ "${CI:-false}" == "true" ]]; then
     rm -f "$cert_file"
   }
 
-  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APP" app_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
-
-  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL" install_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
-
-  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA" dev_id_ca.cer "$PEP_KEYCHAIN" certificate "Developer ID Certification Authority" -A
-
   install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA" apple_root_ca.cer "$PEP_KEYCHAIN" certificate "Apple Root CA" -A
+  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA" dev_id_ca.cer "$PEP_KEYCHAIN" certificate "Developer ID Certification Authority" -A
+  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APP" app_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL" install_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
 
   # Determine which operations are allowed without requiring the user to manually unlock the keychain.
   security -v set-key-partition-list -S apple-tool:,apple:,codesign:,productsign:,pkgbuild:,productbuild: -s -k "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN" >/dev/null
-
-  # Unlock the keychain
-  security -v unlock-keychain -p "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN"
 
   # And prevent relocking by both system sleep and timeout.
   security -v set-keychain-settings "$PEP_KEYCHAIN"
