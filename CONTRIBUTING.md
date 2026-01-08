@@ -43,6 +43,7 @@ We aim to implement the supposedly [canonical C++ project structure](https://www
 - CMake: Use lowercase function names: CMake functions and macros can be called lower or upper case. Always use lower case. Upper case is for variables.
 
 # Documentation
+
 - when simpler parts of the repository may be described by a single `README.md` file, place it in the respective directory.
 - all other documentation, e.g. on parts of the `core` library, is stored in the `/docs/` folder, using Markdown files. 
 - [Mermaid-js](https://mermaid.live) can be used to insert diagrams in gitlab markdown files. 
