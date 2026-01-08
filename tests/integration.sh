@@ -134,8 +134,8 @@ echo "GENERATED_DATA_DIR: $GENERATED_DATA_DIR"
 
 readonly DATA_DIR="$GENERATED_DATA_DIR/data"
 mkdir -p "$DATA_DIR"
-readonly PKI_DIR="$GENERATED_DATA_DIR/pki"
-mkdir -p "$PKI_DIR"
+readonly PKI_DIR_ON_HOST="$GENERATED_DATA_DIR/pki"
+mkdir -p "$PKI_DIR_ON_HOST"
 readonly S3PROXY_RUNTIME_DIR="$GENERATED_DATA_DIR/s3proxy-runtime"
 mkdir -p "$S3PROXY_RUNTIME_DIR"
 
@@ -143,6 +143,7 @@ if [ "$LOCAL" = true ]; then
   BUILD_DIR="$(make_absolute "${BUILD_DIR:-$CORE_DIR/build}")"
   readonly BUILD_DIR
   echo "BUILD_DIR: $BUILD_DIR"
+  readonly PKI_DIR="$PKI_DIR_ON_HOST"
 else
   if [ -n "${BUILD_DIR-}" ]; then
     >&2 printGreen "It is not possible to specify a build directory in a non-local build"
@@ -153,6 +154,7 @@ else
     usage
   fi
   readonly BUILD_DIR="builddir" # Must be set to something, actual value is not relevant for non-local use
+  readonly PKI_DIR="/pki"
 fi
 
 readonly BUILD_MODE="${BUILD_MODE:-.}"
@@ -274,17 +276,17 @@ if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
   trace cp "$DATA_DIR/keyserver/OAuthTokenSecret.json" "$DATA_DIR/authserver/OAuthTokenSecret.json"
 
   if [ "$LOCAL" = true ]; then
-    trace cd "$PKI_DIR"
+    trace cd "$PKI_DIR_ON_HOST"
     trace "$CORE_DIR/pki/pki.sh"
   else
-    trace docker run --pull=always --rm -v "$PKI_DIR:/pki" -w=/pki "$IMAGE" bash /app/pki.sh all /app/ca_ext.cnf
+    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w=$PKI_DIR "$IMAGE" bash /app/pki.sh all /app/ca_ext.cnf
   fi
 fi
 
 if [ "$USE_DOCKER" = true ]; then
   trace docker network create pep-network
 
-  trace "$CORE_DIR/s3proxy/s3proxy.sh" stage "$S3PROXY_RUNTIME_DIR" "$PKI_DIR/s3certs" "$REUSE_SECRETS_AND_DATA"
+  trace "$CORE_DIR/s3proxy/s3proxy.sh" stage "$S3PROXY_RUNTIME_DIR" "$PKI_DIR_ON_HOST/s3certs" "$REUSE_SECRETS_AND_DATA"
   # Create test buckets for pepStorageFacilityUnitTests, preventing 'NoSuchBucket' error code from s3proxy.
   # Specifying "--parents" to prevent failure when directories already exist, e.g. if
   # this script is run multiple times.
@@ -311,7 +313,7 @@ if [ "$LOCAL" = true ]; then
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace "$CORE_DIR/docker/config_servers.sh" \
       "$DATA_DIR" \
-      "$PKI_DIR" \
+      "$PKI_DIR_ON_HOST" \
       "$BUILD_DIR/cpp/pep/storagefacility/$BUILD_MODE/pepStorageFacility" \
       "$BUILD_DIR/cpp/pep/keyserver/$BUILD_MODE/pepKeyServer" \
       "$BUILD_DIR/cpp/pep/accessmanager/$BUILD_MODE/pepAccessManager" \
@@ -326,9 +328,9 @@ if [ "$LOCAL" = true ]; then
 else
   trace docker run --rm --net pep-network -v "$DATA_DIR:/data" "$IMAGE" bash /app/init_keys.sh "$REUSE_SECRETS_AND_DATA"
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
-    trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" "$IMAGE" bash /app/config_servers.sh
+    trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" "$IMAGE" bash /app/config_servers.sh
   fi
-  trace docker run --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR:/pki:ro" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
+  trace docker run --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
   docker logs --follow pepservertest 2> >(sed -u "s/^/[pep-services]: /" >&2) > >(sed -u "s/^/[pep-services]: /") &
 fi
 

@@ -76,7 +76,11 @@ trace() {
 }
 
 fail() {
-  >&2 printYellow echo "$@"
+  >&2 printYellow "$@"
+  for (( i=1; i<${#FUNCNAME[@]}; i++ )); do
+    >&2 echo "in ${FUNCNAME[$i]} (${BASH_SOURCE[$i]}:${BASH_LINENO[$i-1]})"
+  done
+
   exit 1
 }
 
@@ -142,10 +146,10 @@ execute() {
   else
     if [ "$cmddir" = "."  ]; then
       # shellcheck disable=SC2086
-      trace docker exec $DOCKER_EXEC_ARGS -w "/data/$workingdir" pepservertest "$cmd" "$@"
+      trace docker exec $DOCKER_EXEC_ARGS --interactive -w "/data/$workingdir" pepservertest "$cmd" "$@"
     else
       # shellcheck disable=SC2086
-      trace docker exec $DOCKER_EXEC_ARGS -w "/data/$workingdir" pepservertest "/app/$cmd" "$@"
+      trace docker exec $DOCKER_EXEC_ARGS --interactive -w "/data/$workingdir" pepservertest "/app/$cmd" "$@"
     fi
   fi
 }
