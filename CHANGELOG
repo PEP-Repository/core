@@ -19,6 +19,12 @@ Changes in upcoming release (1.6):
   The output format of `pepcli user query` changes, because of this change. If it is used in scripts, these should be updated for the new format.
   Currently, no one outside the PEP team can use `pepcli user query`, so impact should be limited.
 
+- #1970: We can now request a CSR from servers for their PEP certificates, and replace the certificate after we signed a new one, all using pepcli.
+  This does not apply to the TLS certificates, so is not that useful yet, until we replace those with "normal" TLS certificates from a public CA (#2768).
+  For this to work, the certificates will need to be in a writable location (#2769), which they are currently not. That will need to be solved at some point,
+  before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.  
+
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
