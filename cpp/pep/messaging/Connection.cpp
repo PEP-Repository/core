@@ -59,7 +59,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
       });
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
     this->handleError(std::make_exception_ptr(boost::system::system_error(boost::system::errc::make_error_code(boost::system::errc::errc_t::bad_message))));
   }
 }
@@ -277,7 +277,7 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
     }
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
     // Processed by generic "bad message" handling outside the "catch" clause
   }
 
