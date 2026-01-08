@@ -288,10 +288,14 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
   const auto& messageId = header.properties().messageId();
 
   auto result = mMessageInBody.substr(0U, header.length());
-  assert(result.empty() || result.size() >= sizeof(MessageMagic));
+  std::string messageMagicDescr = "without message magic";
+  if (!result.empty()) {
+    // Throws if too short
+    messageMagicDescr = DescribeMessageMagic(result);
+  }
 
   LOG(LOG_TAG, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
-    << (result.empty() ? std::string("without message magic") : DescribeMessageMagic(result))
+    << messageMagicDescr
     << ", stream id " << messageId.streamId() << ", " << this->describe() << ")";
 
   return result;
