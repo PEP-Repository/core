@@ -38,7 +38,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
     auto length = header.length();
 
     if (length > MAX_SIZE_OF_MESSAGE) {
-      LOG(LOG_TAG, severity_level::error)
+      LOG(LOG_TAG, severity_level::warning)
         << "Connection::handleHeaderReceived: "
         << "refusing " << length << "-byte message from " << describe()
         << " because it's larger than the maximum of " << MAX_SIZE_OF_MESSAGE << " bytes";
