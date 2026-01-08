@@ -236,9 +236,11 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
 
 Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler)
   : mMessageInBody(MAX_SIZE_OF_MESSAGE, '\0'), mKeepAliveTimer(ioContext), mScheduler(Scheduler::Create(ioContext)), mRequestor(Requestor::Create(ioContext, *mScheduler)),
-  mNode(node), mDescription(node->describe()), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
+  mNode(node), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
   assert(mBinary->status() == networking::Transport::ConnectivityStatus::connected);
-  assert(mNode.lock() != nullptr);
+  assert(node != nullptr);
+
+  mDescription = node->describe() + " connected to " + mBinary->remoteAddress();
 
   this->setStatus(Status::initializing);
 
