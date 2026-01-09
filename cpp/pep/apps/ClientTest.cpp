@@ -65,7 +65,7 @@ class ClientTestApplication : public Application {
     );
 
     client->getIoContext()->run();
-    return (*success) ? 0 : -1;
+    return (*success) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
   std::string getDescription() const override {
@@ -220,7 +220,9 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
 }
 
 rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std::shared_ptr<Client> client) {
-  std::cout << "Testing storing of 1000 data items" << std::endl;
+  const unsigned NUM_RECORDS = 10;
+  
+  std::cout << "Testing storing of " << NUM_RECORDS << " data items" << std::endl;
 
   PolymorphicPseudonym pp = client->generateParticipantPolymorphicPseudonym(this->getRecordIdentifier());
 
@@ -228,7 +230,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
 
   // Test storage of data
   std::vector<rxcpp::observable<DataStorageResult2>> pepRequests;
-  for (unsigned i = 0; i < 10; i++) {
+  for (unsigned i = 0; i < NUM_RECORDS; i++) {
     pepRequests.push_back(client->storeData2(pp, "ParticipantInfo",
                 std::make_shared<std::string>(lpPayload), { MetadataXEntry::MakeFileExtension(".txt") }));
     std::cout << i;
@@ -247,39 +249,56 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
 
 rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std::shared_ptr<Client> client) {
   std::shared_ptr<SemanticVersion> ownBinarySemver = std::make_shared<SemanticVersion>(BinaryVersion::current.getSemver());
+
+  std::cout << "Client binary version: " << ownBinarySemver->format() << std::endl;
+
   std::shared_ptr<SemanticVersion> ownConfigSemver{};
   auto configVersion = ConfigVersion::Current();
   if(configVersion){
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  auto result = MakeSharedCopy(true);
+  if (ownConfigSemver) {
+    std::cout << "Client config version: " << ownConfigSemver->format() << std::endl;
+  }
+
   return rxcpp::observable<>::iterate(client->getServerProxies(false))
-    .flat_map([result, ownBinarySemver, ownConfigSemver](const auto& pair) {
-    const ServerTraits& traits = pair.first;
-    const std::shared_ptr<const ServerProxy>& proxy = pair.second;
-    return proxy->requestVersion()
-      .map([result, ownBinarySemver, ownConfigSemver, description = traits.description()](const VersionResponse& response) {
-      std::cout << description
-        << " Binary version " << response.binary.getSummary()
-        << std::endl;
+    .flat_map([ownBinarySemver, ownConfigSemver](const auto& pair) {
+      const ServerTraits& traits = pair.first;
+      const std::shared_ptr<const ServerProxy>& proxy = pair.second;
+      return proxy->requestVersion()
+        .map([ownBinarySemver, ownConfigSemver, description = traits.description()](const VersionResponse& response) {
+          bool result = true;
+          std::ostringstream output;
 
-      if (!IsSemanticVersionEquivalent(*ownBinarySemver, response.binary.getSemver())) {
-        *result = false;
-      }
+          // Check binary version
+          output << description << " binary version: " << response.binary.getSummary() << "\n";
+          
+          if (!IsSemanticVersionEquivalent(*ownBinarySemver, response.binary.getSemver())) {
+            output << "MISMATCH: client " << ownBinarySemver->format() 
+                   << " vs server " << response.binary.getSemver().format() << "\n";
+            result = false;
+          } else {
+            output << "  Match\n";
+          }
 
-      if (ownConfigSemver && response.config.has_value()) {
-        std::cout << description
-          << " Config version " << response.config->getSummary()
-          << std::endl;
-        if (!IsSemanticVersionEquivalent(*ownConfigSemver, response.config->getSemver())) {
-          *result = false;
-        }
-      }
-      return FakeVoid();
+          // Check config version
+          if (ownConfigSemver && response.config.has_value()) {
+            output << description << " config version: " << response.config->getSummary() << "\n";
+            
+            if (!IsSemanticVersionEquivalent(*ownConfigSemver, response.config->getSemver())) {
+              output << "MISMATCH: client " << ownConfigSemver->format() 
+                     << " vs server " << response.config->getSemver().format() << "\n";
+              result = false;
+            } else {
+              output << "  Match\n";
+            }
+          }
+
+          std::cout << output.str() << std::flush;
+          return result;
         });
-      })
-    .op(RxInstead(*result));
+    });
 }
 
 }
