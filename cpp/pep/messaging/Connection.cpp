@@ -38,7 +38,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
     auto length = header.length();
 
     if (length > MAX_SIZE_OF_MESSAGE) {
-      LOG(LOG_TAG, severity_level::error)
+      LOG(LOG_TAG, severity_level::warning)
         << "Connection::handleHeaderReceived: "
         << "refusing " << length << "-byte message from " << describe()
         << " because it's larger than the maximum of " << MAX_SIZE_OF_MESSAGE << " bytes";
@@ -59,7 +59,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
       });
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
     this->handleError(std::make_exception_ptr(boost::system::system_error(boost::system::errc::make_error_code(boost::system::errc::errc_t::bad_message))));
   }
 }
@@ -236,9 +236,11 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
 
 Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler)
   : mMessageInBody(MAX_SIZE_OF_MESSAGE, '\0'), mKeepAliveTimer(ioContext), mScheduler(Scheduler::Create(ioContext)), mRequestor(Requestor::Create(ioContext, *mScheduler)),
-  mNode(node), mDescription(node->describe()), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
+  mNode(node), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
   assert(mBinary->status() == networking::Transport::ConnectivityStatus::connected);
-  assert(mNode.lock() != nullptr);
+  assert(node != nullptr);
+
+  mDescription = node->describe() + " connected to " + mBinary->remoteAddress();
 
   this->setStatus(Status::initializing);
 
@@ -275,7 +277,7 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
     }
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
     // Processed by generic "bad message" handling outside the "catch" clause
   }
 
@@ -286,10 +288,9 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
   const auto& messageId = header.properties().messageId();
 
   auto result = mMessageInBody.substr(0U, header.length());
-  assert(result.empty() || result.size() >= sizeof(MessageMagic));
 
   LOG(LOG_TAG, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
-    << (result.empty() ? std::string("without message magic") : DescribeMessageMagic(result))
+    << (result.size() >= sizeof(MessageMagic) ? DescribeMessageMagic(result) : "no valid message magic")
     << ", stream id " << messageId.streamId() << ", " << this->describe() << ")";
 
   return result;
