@@ -1,15 +1,13 @@
-#include <functional>
-#include <optional>
-#include <type_traits>
+#include <pep/utils/OptionalRef.hpp>
 
 namespace pep {
 
+/// Accepts class specializations of `std::variant`
 template <typename T>
-using OptionalRef = std::optional<std::reference_wrapper<T>>;
+concept OptionalType = detail::is_optional<T>::value;
 
 template <typename T>
 using OptionalCRef = OptionalRef<const T>;
-
 
 /// Constructs a OptionalRef from a pointer
 /// @note Returns a OptionalCRef if T is const
@@ -21,7 +19,7 @@ OptionalRef<T> AsOptionalRef(T* const t) {
 /// Constructs a OptionalCRef from a pointer
 /// @note Use this if you always want to return a const ref even if T is not const
 template <typename T>
-OptionalCRef<T> AsOptionalCRef(T* const t) {
+OptionalCRef<T> AsOptionalCRef(T* t) {
   return AsOptionalRef(t);
 }
 
@@ -39,23 +37,23 @@ static_assert(
 /// @throws std::bad_optional_access if \p ref does not contain a value.
 /// @note Always returns a mutable ref. Does not work for OptionalCRef inputs
 template <typename T>
-requires (!std::is_const_v<T>)
+requires(!std::is_const_v<T>)
 T& AsRef(OptionalRef<T>& ref) {
-  return ref.value().get();
+  return ref.value();
 }
 
 /// Convenience function aliasing ref.value.get()
 /// @throws std::bad_optional_access if \p ref does not contain a value.
 template <typename T>
 const T& AsCRef(const OptionalRef<T>& ref) {
-  return ref.value().get();
+  return ref.value();
 }
 
 /// Convenience function aliasing ref.value.get()
 /// @throws std::bad_optional_access if \p ref does not contain a value.
 template <typename T>
 const T& AsCRef(const OptionalCRef<T>& ref) {
-  return ref.value().get();
+  return ref.value();
 }
 
 static_assert(
@@ -70,21 +68,21 @@ static_assert(
 
 /// Returns a pointer to the value, if \p ref has a value, and returns `nullptr` if \p ref has no value
 template <typename T>
-requires (!std::is_const_v<T>)
+requires(!std::is_const_v<T>)
 T* AsPtr(OptionalRef<T>& ref) {
-  return (ref.has_value()) ? &ref.value().get() : nullptr;
+  return (ref.has_value()) ? &ref.value() : nullptr;
 }
 
 /// Returns a pointer to the value, if \p ref has a value, and returns `nullptr` if \p ref has no value
 template <typename T>
 const T* AsPtrToConst(const OptionalRef<T>& ref) {
-  return (ref.has_value()) ? &ref.value().get() : nullptr;
+  return (ref.has_value()) ? &ref.value() : nullptr;
 }
 
 /// Returns a pointer to the value, if \p ref has a value, and returns `nullptr` if \p ref has no value
 template <typename T>
 const T* AsPtrToConst(const OptionalCRef<T>& ref) {
-  return (ref.has_value()) ? &ref.value().get() : nullptr;
+  return (ref.has_value()) ? &ref.value() : nullptr;
 }
 
 static_assert(
