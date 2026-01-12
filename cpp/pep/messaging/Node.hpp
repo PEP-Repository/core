@@ -20,6 +20,7 @@ private:
   };
 
   boost::asio::io_context& mIoContext;
+  std::optional<networking::Client::ReconnectParameters> mReconnectParameters;
   std::shared_ptr<networking::Node> mBinary;
   EventSubscription mBinaryConnectionAttempt;
   RequestHandler* mRequestHandler = nullptr;
