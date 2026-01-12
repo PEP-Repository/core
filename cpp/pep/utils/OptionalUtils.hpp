@@ -12,7 +12,7 @@ using OptionalCRef = OptionalRef<const T>;
 /// Constructs a OptionalRef from a pointer
 /// @note Returns a OptionalCRef if T is const
 template <typename T>
-OptionalRef<T> AsOptionalRef(T* const t) {
+OptionalRef<T> AsOptionalRef(T* t) {
   return (t == nullptr) ? OptionalRef<T>{} : OptionalRef<T>{*t};
 }
 
