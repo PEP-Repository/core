@@ -26,7 +26,13 @@ private:
   std::optional<rxcpp::subscriber<Connection::Attempt::Result>> mSubscriber;
   std::optional<std::set<IncompatibleRemote>> mIncompatibleRemotes;
 
-  std::vector<std::weak_ptr<networking::Connection>> mExistingConnections;
+  struct ExistingConnection {
+    std::weak_ptr<networking::Connection> binary;
+    std::shared_ptr<Connection> own;
+    EventSubscription establishing;
+  };
+
+  std::vector<ExistingConnection> mExistingConnections;
 
   Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Server> binary, RequestHandler& requestHandler); // TODO: extract io_context from Server instead of requiring it to be passed separately
   Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Client> binary); // TODO: extract io_context from Client instead of requiring it to be passed separately
@@ -35,6 +41,7 @@ private:
   Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters = networking::Client::ReconnectParameters());
 
   void vetConnectionWith(const std::string& description, const std::string& address, const BinaryVersion& binary, const std::optional<ConfigVersion>& config);
+  void handleConnectionEstablishing(std::shared_ptr<Connection> connection, const LifeCycler::StatusChange& change);
 
 public:
   ~Node() noexcept;

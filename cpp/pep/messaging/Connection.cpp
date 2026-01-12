@@ -529,7 +529,8 @@ void Connection::clearState() {
   mRequestor->purge();
 }
 
-void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
+void Connection::handleBinaryConnectionEstablished() {
+  // Keep instance alive until version check has been performed
   auto self = SharedFrom(*this);
 
   assert(!mVersionValidated);
@@ -540,7 +541,7 @@ void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
       [self](VersionResponse response) {
         self->handleVersionResponse(response);
       },
-      [self, notify](std::exception_ptr ep) {
+      [self](std::exception_ptr ep) {
         LOG(LOG_TAG, warning) << "Version check failed: " << GetExceptionMessage(ep);
         auto getReason = [](std::exception_ptr exception) {
           try {
@@ -554,16 +555,11 @@ void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
         auto reason = getReason(ep);
         auto error = std::make_exception_ptr(boost::system::system_error(make_error_code(reason)));
         self->handleError(error);
-        notify(Attempt::Result::Failure(error));
       },
-      [self, notify]() {
+      [self]() {
         if (!self->mVersionValidated) {
           auto error = std::make_exception_ptr(ConnectionFailureException::ForVersionCheckFailure("No version response received"));
           self->handleError(error);
-          notify(Attempt::Result::Failure(error));
-        }
-        else {
-          notify(Attempt::Result::Success(self));
         }
       });
 
@@ -620,7 +616,7 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
     this->setStatus(Status::initializing);
     return;
   case networking::Transport::ConnectivityStatus::connected:
-    this->handleBinaryConnectionEstablished([](const auto&) { /* ignore: "handle" method updates state */});
+    this->handleBinaryConnectionEstablished();
     return;
   case networking::Transport::ConnectivityStatus::disconnecting:
   case networking::Transport::ConnectivityStatus::disconnected:
@@ -639,22 +635,23 @@ bool Connection::isConnected() const noexcept {
   return mBinary != nullptr && mBinary->isConnected();
 }
 
-void Connection::Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler, Attempt::Handler notify) {
-  // Create a Connection so it can perform its version check
+std::shared_ptr<Connection> Connection::Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler) {
   assert(binary->isConnected());
-  auto instance = std::shared_ptr<Connection>(new Connection(node, binary, ioContext, requestHandler));
-  assert(instance->status() == Status::initializing);
+  auto result = std::shared_ptr<Connection>(new Connection(node, binary, ioContext, requestHandler));
+  assert(result->status() == Status::initializing);
 
   // Subscribe the Connection to connectivity changes in the networking::Connection: the constructor couldn't do so because it can't get a shared_ptr to itself
-  instance->mBinaryStatusSubscription = instance->mBinary->onConnectivityChange.subscribe([weak = std::weak_ptr<Connection>(instance)](const networking::Connection::ConnectivityChange& change) {
+  result->mBinaryStatusSubscription = result->mBinary->onConnectivityChange.subscribe([weak = std::weak_ptr<Connection>(result)](const networking::Connection::ConnectivityChange& change) {
     auto self = weak.lock();
     if (self != nullptr) {
       self->handleBinaryConnectivityChange(change);
     }
     });
 
-  // Have the instance initialize itself, invoking the handler when done
-  instance->handleBinaryConnectionEstablished(std::move(notify));
+  // Start initializing: perform version check
+  result->handleBinaryConnectionEstablished();
+
+  return result;
 }
 
 void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_ptr<std::string>> subscriber) {
