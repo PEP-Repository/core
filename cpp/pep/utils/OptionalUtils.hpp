@@ -1,8 +1,8 @@
 #include <pep/utils/OptionalRef.hpp>
 
 namespace pep {
+/// Accepts class specializations of `std::optional` and `pep::OptionalRef`
 
-/// Accepts class specializations of `std::variant`
 template <typename T>
 concept OptionalType = detail::is_optional<T>::value;
 
