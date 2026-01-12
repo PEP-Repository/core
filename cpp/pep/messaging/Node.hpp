@@ -34,9 +34,6 @@ private:
 
   std::vector<ExistingConnection> mExistingConnections;
 
-  Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Server> binary, RequestHandler& requestHandler); // TODO: extract io_context from Server instead of requiring it to be passed separately
-  Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Client> binary); // TODO: extract io_context from Client instead of requiring it to be passed separately
-
   Node(const networking::Protocol::ServerParameters& parameters, RequestHandler& requestHandler);
   Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters = networking::Client::ReconnectParameters());
 

@@ -73,22 +73,14 @@ public:
 };
 }
 
-Node::Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Server> binary, RequestHandler& requestHandler)
-  : mIoContext(ioContext), mBinary(std::move(binary)), mRequestHandler(&requestHandler), mIncompatibleRemotes(std::set<IncompatibleRemote>()) {
-  assert(mBinary->status() == LifeCycler::Status::uninitialized);
-}
-
-Node::Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Client> binary)
-  : mIoContext(ioContext), mBinary(std::move(binary)) {
-  assert(mBinary->status() == LifeCycler::Status::uninitialized);
-}
-
 Node::Node(const networking::Protocol::ServerParameters& parameters, RequestHandler& requestHandler)
-  : Node(parameters.ioContext(), networking::Server::Create(parameters), requestHandler) {
+  : mIoContext(parameters.ioContext()), mBinary(networking::Server::Create(parameters)), mRequestHandler(&requestHandler), mIncompatibleRemotes(std::set<IncompatibleRemote>()) {
+  assert(mBinary->status() == LifeCycler::Status::uninitialized);
 }
 
 Node::Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters)
-  : Node(parameters.ioContext(), networking::Client::Create(parameters, reconnectParameters)) {
+  : mIoContext(parameters.ioContext()), mBinary(networking::Client::Create(parameters, std::move(reconnectParameters))) {
+  assert(mBinary->status() == LifeCycler::Status::uninitialized);
 }
 
 void Node::vetConnectionWith(const std::string& description, const std::string& address, const BinaryVersion& binary, const std::optional<ConfigVersion>& config) {
