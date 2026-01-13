@@ -243,7 +243,7 @@ function(make_js_file_executable target)
   if (DEFINED EMSCRIPTEN AND NOT EMSCRIPTEN_BROWSER AND CMAKE_HOST_LINUX)
     get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
     get_target_property(suffix ${target} SUFFIX)
-    if(NOT skip AND suffix NOT STREQUAL .mjs)
+    if(NOT skip AND (NOT suffix OR suffix MATCHES "^\.?js$"))
       add_custom_command(
           TARGET ${target} POST_BUILD
           # Add node shebang
