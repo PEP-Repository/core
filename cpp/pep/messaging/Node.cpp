@@ -141,6 +141,9 @@ void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, 
       mSubscriber->on_next(Connection::Attempt::Result::Success(connection));
     }
     break;
+  default:
+    // ignore
+    break;
   }
 }
 
