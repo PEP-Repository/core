@@ -109,7 +109,7 @@ retrieveBtn.addEventListener('click', () => void (async () => {
   const res = pep.retrieve(entries.filter(e => e.fileSize < 1024));
   const jsonEntries = [];
   try {
-    for await (const data of res) {
+    for await (const data of res.values({preventCancel: true})) {
       try {
         jsonEntries.push({
           id: data.entry.id,

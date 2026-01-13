@@ -363,11 +363,25 @@ export default class Pep {
     }, isTestParticipant));
   }
 
+  /**
+   * List cell entries matching query.
+   * @warning Objects will be leaked when `cancel()` is called on the stream,
+   *  including when prematurely exiting a `for await` loop.
+   *  There is currently no elegant solution to this, except iterating over
+   *  `stream.values({preventCancel: true})` and iterating again to delete remaining objects.
+   */
   list(query: ListQuery) : ReadableStream<CellEntry> {
     //XXX Cast to Required<ListQuery> because of https://github.com/emscripten-core/emscripten/issues/25978
     return this.#wrapExec(() => this.#client.list(query as Required<ListQuery>));
   }
 
+  /**
+   * Retrieve cell contents. Entries must be obtained from the same `list()` call.
+   * @warning Objects will be leaked when `cancel()` is called on the stream,
+   *  including when prematurely exiting a `for await` loop.
+   *  There is currently no elegant solution to this, except iterating over
+   *  `stream.values({preventCancel: true})` and iterating again to delete remaining objects.
+   */
   retrieve(entries: CellEntry[]) : ReadableStream<CellData> {
     return this.#wrapExec(() => this.#client.retrieve(entries));
   }
