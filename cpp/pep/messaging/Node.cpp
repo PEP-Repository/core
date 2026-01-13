@@ -132,7 +132,6 @@ void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, 
     if (mSubscriber.has_value()) {
       mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Failed to establish messaging connection: will be retried"))));
     }
-    // TODO: prevent immediate retry: use ExponentialBackoff
     break;
   case LifeCycler::Status::initialized: // Established: hand off to subscriber
     LOG(LOG_TAG, debug) << "Messaging connection established";
