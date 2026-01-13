@@ -1,5 +1,6 @@
 #include <pep/weblib/WeblibStructs.hpp>
 
+#include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/weblib/EmscriptenMapBinding.hpp>
