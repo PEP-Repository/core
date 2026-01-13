@@ -240,6 +240,10 @@ Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::C
   assert(mBinary->status() == networking::Transport::ConnectivityStatus::connected);
   assert(mNode.lock() != nullptr);
 
+  if (node->reconnectParameters().has_value()) {
+    mVersionCheckBackoff.emplace(mIoContext, *node->reconnectParameters());
+  }
+
   this->setStatus(Status::initializing);
 
   mSchedulerAvailableSubscription = mScheduler->onAvailable.subscribe([this]() {this->ensureSend(); });
@@ -296,6 +300,9 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
 }
 
 void Connection::close() {
+  if (mVersionCheckBackoff) {
+    mVersionCheckBackoff->stop();
+  }
   mBinaryStatusSubscription.cancel();
   mBinary.reset();
   this->clearState();
@@ -530,10 +537,33 @@ void Connection::clearState() {
 }
 
 void Connection::handleBinaryConnectionEstablished() {
+  if (!mVersionCheckScheduled) {
+    this->performVersionCheck();
+  }
+}
+
+void Connection::postponeVersionCheck() {
+  assert(!mVersionCheckScheduled);
+  if (mVersionCheckBackoff) {
+    mVersionCheckBackoff->retry([weak = WeakFrom(*this)](boost::system::error_code ec) {
+      if (auto self = weak.lock()) {
+        self->mVersionCheckScheduled = false;
+        if (error != boost::asio::error::operation_aborted) {
+          self->performVersionCheck();
+        }
+      }
+      });
+    mVersionCheckScheduled = true;
+  }
+}
+
+void Connection::performVersionCheck() {
+  assert(!mVersionCheckScheduled);
+  assert(!mVersionValidated);
+
   // Keep instance alive until version check has been performed
   auto self = SharedFrom(*this);
 
-  assert(!mVersionValidated);
   this->sendRequest(MakeSharedCopy(Serialization::ToString(VersionRequest())), std::nullopt, true)
     .map([](std::string response) {return Serialization::FromString<VersionResponse>(response); })
     .observe_on(observe_on_asio(mIoContext))
@@ -559,7 +589,11 @@ void Connection::handleBinaryConnectionEstablished() {
       [self]() {
         if (!self->mVersionValidated) {
           auto error = std::make_exception_ptr(ConnectionFailureException::ForVersionCheckFailure("No version response received"));
+          self->postponeVersionCheck();
           self->handleError(error);
+        }
+        else if (self->mVersionCheckBackoff) {
+          self->mVersionCheckBackoff->success();
         }
       });
 
@@ -579,7 +613,13 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
   }
 
   assert(mBinary != nullptr);
-  node->vetConnectionWith(this->describe(), mBinary->remoteAddress(), response.binary, response.config); // Raises an exception if connection should be refused
+  try {
+    node->vetConnectionWith(this->describe(), mBinary->remoteAddress(), response.binary, response.config); // Raises an exception if connection should be refused
+  }
+  catch (...) {
+    this->postponeVersionCheck();
+    throw;
+  }
 
   mVersionValidated = true;
   this->setStatus(Status::initialized);

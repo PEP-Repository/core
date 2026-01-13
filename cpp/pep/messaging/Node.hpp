@@ -44,6 +44,8 @@ private:
 public:
   ~Node() noexcept;
 
+  const std::optional<networking::Client::ReconnectParameters>& reconnectParameters() const noexcept { return mReconnectParameters; }
+
   std::string describe() const;
 
   rxcpp::observable<Connection::Attempt::Result> start();

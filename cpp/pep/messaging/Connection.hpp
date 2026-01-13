@@ -122,8 +122,12 @@ private:
   // ******************** Version verification ********************
 private:
   bool mVersionValidated = false;
+  bool mVersionCheckScheduled = false;
+  std::optional<ExponentialBackoff> mVersionCheckBackoff;
 
   void handleBinaryConnectionEstablished();
+  void postponeVersionCheck();
+  void performVersionCheck();
   MessageBatches handleVersionRequest(std::shared_ptr<std::string> request [[maybe_unused]], MessageSequence chunks [[maybe_unused]]);
   void handleVersionResponse(const VersionResponse& response);
 
