@@ -50,6 +50,7 @@ class OptionalRef {
 
     template <class U = T>
         requires(!detail::is_optional<std::decay_t<U>>::value)
+    //NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward) Forwarding reference to force usage of (const) lvalues
     constexpr explicit(!std::is_convertible_v<U, T>) OptionalRef(U&& u) noexcept
         : value_(std::addressof(u)) {
         static_assert(
@@ -80,6 +81,7 @@ class OptionalRef {
 
     template <class U = T>
         requires(!detail::is_optional<std::decay_t<U>>::value)
+    //NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward) Forwarding reference to force usage of (const) lvalues
     constexpr OptionalRef& operator=(U&& u) {
         static_assert(
             std::is_constructible_v<std::add_lvalue_reference_t<T>, U>,
