@@ -25,7 +25,9 @@ add_executable(${PROJECT_NAME}Weblib
 )
 find_package(nlohmann_json REQUIRED)
 target_link_libraries(${PROJECT_NAME}Weblib
-    ${PROJECT_NAME}Webliblib
+    # Make sure Embind types are registered by running all static constructors.
+    # See https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html#binding-libraries
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,${PROJECT_NAME}Webliblib>"
 
     ${PROJECT_NAME}Applicationlib
     ${PROJECT_NAME}Clientlib
@@ -93,12 +95,9 @@ add_custom_command(
 file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT package.in.json)
 
 # Unit tests
-add_unit_tests(Weblib
-    LINK_LIBS
-      ${PROJECT_NAME}Asynclib
-)
+add_unit_tests(Weblib)
 target_link_options(${PROJECT_NAME}WeblibUnitTests PRIVATE
-    -sPROXY_TO_PTHREAD
+    -sPROXY_TO_PTHREAD # See ./tests/PromiseHelpers.cpp
 )
 if(NOT EMSCRIPTEN_BROWSER)
   set_target_properties(${PROJECT_NAME}WeblibUnitTests PROPERTIES
