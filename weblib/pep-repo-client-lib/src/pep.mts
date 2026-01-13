@@ -208,7 +208,8 @@ export default class Pep {
     // Persist ClientKeys.json to keep user logged in
     clientConfig.KeysFile = '/persist/ClientKeys.json';
 
-    let Module: MainModule | { thisProgram: string, print?: (...msg: any[]) => void; printErr?: (...msg: any[]) => void; } = {
+    // These members must be listed in -sINCOMING_MODULE_JS_API
+    let Module: MainModule | { thisProgram: string } = {
       thisProgram: 'pepWeblib',
     };
 
