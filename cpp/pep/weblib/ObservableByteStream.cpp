@@ -1,10 +1,13 @@
 #include <pep/weblib/ObservableByteStream.hpp>
 
+#include <pep/weblib/ObservableStreamHelpers.hpp>
+
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Exceptions.hpp>
 
+#include <boost/noncopyable.hpp>
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <rxcpp/rx-lite.hpp>
@@ -15,7 +18,7 @@ using namespace pep;
 namespace {
 const std::string LOG_TAG("ObservableByteStream");
 
-class ByteStreamSource {
+class ByteStreamSource : public boost::noncopyable {
   rxcpp::observable<std::string> data_;
   std::size_t chunkSize_;
   rxcpp::composite_subscription subscription_ = rxcpp::composite_subscription::empty();
@@ -46,7 +49,8 @@ public:
     if (!byteStreamControllerClass || !controller_.instanceof(byteStreamControllerClass)) {
       LOG(LOG_TAG, debug) << "ReadableStream BYOB mode not supported by browser, using less-efficient buffer-copying method";
     }
-    subscription_ = data_
+    auto deleted = std::make_shared<bool>(false);
+    auto subscription = data_
       .subscribe(
         // on next
         [this](std::string_view chunk) noexcept {
@@ -98,7 +102,7 @@ public:
           }
         },
         // on error
-        [this](std::exception_ptr ex) noexcept {
+        [this, deleted](std::exception_ptr ex) noexcept {
           LOG(LOG_TAG, debug) << this << " on_error: " << GetExceptionMessage(ex);
           try {
             std::rethrow_exception(std::move(ex));
@@ -107,14 +111,22 @@ public:
             //XXX Uses internal API, see https://github.com/emscripten-core/emscripten/issues/25963
             controller_.call<void>("error", val::take_ownership(emscripten::internal::_emval_from_current_cxa_exception()));
           }
+          *deleted = true;
           deleteSelf();
         },
         // on completed
-        [this]() noexcept {
+        [this, deleted]() noexcept {
            LOG(LOG_TAG, verbose) << this << " on_completed";
            controller_.call<void>("close");
+           *deleted = true;
            deleteSelf();
         });
+    // If the observable completes immediately, we have already been deleted here
+    if (!*deleted) {
+      subscription_ = std::move(subscription);
+    } else {
+      LOG(LOG_TAG, verbose) << this << " completed immediately in start()";
+    }
   }
 
   void cancel(val reason) {
@@ -140,8 +152,10 @@ EMSCRIPTEN_BINDINGS(ObservableByteStream) {
 
 val pep::weblib::CreateReadableByteStream(rxcpp::observable<std::string> data, std::size_t chunkSize) {
   // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
-  val underlyingSource(ByteStreamSource(std::move(data), chunkSize));
+  //XXX `new` is workaround to not copy, see https://github.com/emscripten-core/emscripten/issues/25412
+  val underlyingSource(new ByteStreamSource(std::move(data), chunkSize), allow_raw_pointers{});
   underlyingSource.as<ByteStreamSource*>(allow_raw_pointers{})->self = underlyingSource;
-  // We need pepWithIndirectCancel, because the ReadableStream will call the functions originally present on the object
-  return val::global("ReadableStream").new_(val::module_property("pepWithIndirectCancel")(std::move(underlyingSource)));
+  // We need this, because the ReadableStream will call the functions originally present on the object
+  StreamSourceWithIndirectCancel(underlyingSource);
+  return val::global("ReadableStream").new_(std::move(underlyingSource));
 }

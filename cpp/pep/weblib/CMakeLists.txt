@@ -5,6 +5,7 @@ add_executable(${PROJECT_NAME}Weblib
     EmscriptenVectorBinding.hpp
     ObservableByteStream.cpp ObservableByteStream.hpp
     ObservableStream.cpp ObservableStream.hpp
+    ObservableStreamHelpers.cpp ObservableStreamHelpers.hpp
     OnEmscriptenThread.cpp OnEmscriptenThread.hpp
     Weblib.cpp
     WeblibApiPromise.cpp WeblibApiPromise.hpp
