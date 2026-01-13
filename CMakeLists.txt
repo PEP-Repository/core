@@ -239,6 +239,7 @@ endif()
 
 # Add shebang to JS file, if target is such a file
 # See proposal: https://github.com/emscripten-core/emscripten/issues/25490
+#XXX Replace by -sEXECUTABLE when 4.0.24 releases
 function(make_js_file_executable target)
   if (DEFINED EMSCRIPTEN AND NOT EMSCRIPTEN_BROWSER AND CMAKE_HOST_LINUX)
     get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
