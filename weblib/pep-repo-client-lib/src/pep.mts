@@ -372,8 +372,7 @@ export default class Pep {
    *  `stream.values({preventCancel: true})` and iterating again to delete remaining objects.
    */
   list(query: ListQuery) : ReadableStream<CellEntry> {
-    //XXX Cast to Required<ListQuery> because of https://github.com/emscripten-core/emscripten/issues/25978
-    return this.#wrapExec(() => this.#client.list(query as Required<ListQuery>));
+    return this.#wrapExec(() => this.#client.list(query));
   }
 
   /**
