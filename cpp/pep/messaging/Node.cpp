@@ -198,6 +198,7 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
         ExistingConnection existing{
           .binary = binaryConnection,
           .own = Connection::Open(self, binaryConnection, self->mIoContext, self->mRequestHandler),
+          .establishing{} // Silence clang's -Wmissing-field-initializers
         };
         existing.establishing = existing.own->onStatusChange.subscribe([weak, own = existing.own](const LifeCycler::StatusChange& change) {
           if (auto self = weak.lock()) {
