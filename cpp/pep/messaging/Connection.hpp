@@ -2,6 +2,7 @@
 
 #include <pep/async/FakeVoid.hpp>
 #include <pep/networking/Connection.hpp>
+#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/messaging/RequestHandler.hpp>
