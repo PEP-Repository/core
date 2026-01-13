@@ -548,7 +548,7 @@ void Connection::postponeVersionCheck() {
     mVersionCheckBackoff->retry([weak = WeakFrom(*this)](boost::system::error_code ec) {
       if (auto self = weak.lock()) {
         self->mVersionCheckScheduled = false;
-        if (error != boost::asio::error::operation_aborted) {
+        if (ec != boost::asio::error::operation_aborted) {
           self->performVersionCheck();
         }
       }
