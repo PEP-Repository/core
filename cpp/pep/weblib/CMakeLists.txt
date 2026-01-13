@@ -1,4 +1,5 @@
-add_executable(${PROJECT_NAME}Weblib
+# Common files
+add_library(${PROJECT_NAME}Webliblib
     EmscriptenJsonConversion.cpp EmscriptenJsonConversion.hpp
     EmscriptenMapBinding.hpp
     EmscriptenValPtr.cpp EmscriptenValPtr.hpp
@@ -7,16 +8,28 @@ add_executable(${PROJECT_NAME}Weblib
     ObservableStream.cpp ObservableStream.hpp
     ObservableStreamHelpers.cpp ObservableStreamHelpers.hpp
     OnEmscriptenThread.cpp OnEmscriptenThread.hpp
-    Weblib.cpp
     WeblibApiPromise.cpp WeblibApiPromise.hpp
+)
+target_link_libraries(${PROJECT_NAME}Webliblib
+    ${PROJECT_NAME}Asynclib
+    nlohmann_json::nlohmann_json
+    -lembind
+)
+verify_headers_standalone(${PROJECT_NAME}Webliblib)
+
+# Executable
+add_executable(${PROJECT_NAME}Weblib
     WeblibStructs.cpp WeblibStructs.hpp
+
+    Weblib.cpp
 )
 find_package(nlohmann_json REQUIRED)
 target_link_libraries(${PROJECT_NAME}Weblib
+    ${PROJECT_NAME}Webliblib
+
     ${PROJECT_NAME}Applicationlib
     ${PROJECT_NAME}Clientlib
     ${PROJECT_NAME}OAuthClientlib
-    nlohmann_json::nlohmann_json
 )
 set(weblib_additional_files
     "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts"
@@ -52,7 +65,6 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sNO_ABORTING_MALLOC
     -sTEXTDECODER=2 # Require TextDecoder from browser
     -sFETCH
-    -lembind
     -lidbfs.js
     -sNO_INVOKE_RUN # We call callMain ourselves
     # noExitRuntime required for -sNO_EXIT_RUNTIME
@@ -80,4 +92,16 @@ add_custom_command(
 
 file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT package.in.json)
 
-verify_headers_standalone(${PROJECT_NAME}Weblib)
+# Unit tests
+add_unit_tests(Weblib
+    LINK_LIBS
+      ${PROJECT_NAME}Asynclib
+)
+target_link_options(${PROJECT_NAME}WeblibUnitTests PRIVATE
+    -sPROXY_TO_PTHREAD
+)
+if(NOT EMSCRIPTEN_BROWSER)
+  set_target_properties(${PROJECT_NAME}WeblibUnitTests PROPERTIES
+      SUFFIX .cjs # Override type:module in package.json. Ideally tests would be in a separate directory.
+  )
+endif()
