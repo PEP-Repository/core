@@ -26,7 +26,7 @@ export async function concatStringsAsync(stream: AsyncIterable<string>): Promise
   for await (const chunk of stream) {
     content += chunk;
   }
-  return content
+  return content;
 }
 
 /** Decode UTF-8 byte stream a single string */
