@@ -15,9 +15,10 @@ void TestClientServerBasics(TestServerFactory& factory) {
   pep::RandomBytes(*sent, MESSAGE_SIZE);
   received->resize(MESSAGE_SIZE);
 
-  auto protocol = factory.protocolName();
+  auto protocol = factory.protocol().name();
 
-  auto server = factory.createServer(context, pep::networking::TcpBasedProtocol::ServerParameters::RANDOM_PORT);
+  auto serverParameters = factory.createServerParameters(context, pep::networking::TcpBasedProtocol::ServerParameters::RANDOM_PORT);
+  auto server = pep::networking::Server::Create(*serverParameters);
   auto started = pep::MakeSharedCopy(false), stopped = pep::MakeSharedCopy(false);
   auto serverConnectionAttempt = std::make_shared<pep::EventSubscription>();
   *serverConnectionAttempt = server->onConnectionAttempt.subscribe([MESSAGE_SIZE, sent, server, serverConnectionAttempt, started, stopped, protocol](const pep::networking::Connection::Attempt::Result& result) {
@@ -51,7 +52,8 @@ void TestClientServerBasics(TestServerFactory& factory) {
     });
   server->start();
 
-  auto client = factory.createClient();
+  auto clientParameters = factory.createClientParameters(*server);
+  auto client = pep::networking::Client::Create(*clientParameters);
   auto connected = pep::MakeSharedCopy(false);
   auto clientConnectionAttempt = std::make_shared<pep::EventSubscription>();
   *clientConnectionAttempt = client->onConnectionAttempt.subscribe([MESSAGE_SIZE, &client, clientConnectionAttempt, received, connected, protocol](const pep::networking::Connection::Attempt::Result& result) {
