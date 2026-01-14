@@ -32,11 +32,8 @@ The name for Git(lab) branches for the new release will be `release-X.Y`, where 
 1. [ ] In the newly created `release-X.Y` branch, edit the `CHANGELOG` file so that the `Changes in upcoming release` are moved to an appropriately named (and positioned) `Release X.Y` section. The `Changes in upcoming release` section near the top of the document should be empty afterwards. Update the `Changes in upcoming release` header to the next (future) release's version number.
 1. [ ] Merge the changes back from your `release-X.Y` branch to `main`.
 1. [ ] In **the `main` branch** of the `pep/core` repository, edit the `version.json` file and increase the _minor_ version number by one. E.g. if the `version.json` file currently specifies version "46.2", update it to "46.3". This will be the (provisional) version number for the next (future) release, i.e. the release _after_ the one we're currently preparing.
-1. [ ] In the `pep/core` repository, push your new `release-X.Y` branch and the updated `main` branch to `origin`, triggering CI pipelines in `pep/core` and followup pipelines in other repositories. One or both of the pipelines in the `pep/dtap` repository will fail their `versioning-consistency` job, so:
-1. [ ] In the `pep/dtap` repository, update the `version.json` file to the appropriate values where needed:
-   1. [ ] in the `main` branch (which will definitely have failed because of the version number change).
-   1. [ ] in the `release-X.Y` branch (which may have failed depending on commit/push timing and whether you're releasing a major or minor version).
-1. [ ] In the `pep/dtap` repository, push the updated branch(es) `release-X.Y` and/or `main` to `origin`, triggering CI pipelines. Ensure that these pipelines succeed.
+1. [ ] In the `pep/core` repository, push your new `release-X.Y` branch and the updated `main` branch to `origin`, triggering CI pipelines in `pep/core` and a followup pipeline for `main` in `pep/dtap`. This pipeline will fail their `versioning-consistency` job, so:
+1. [ ] In `main` in the `pep/dtap` repository, update the `version.json` file to the appropriate values and push to `origin`, triggering a CI pipeline. Ensure that this pipeline succeeds.
 1. [ ] In the `pep/docker-build` repository, create a branch named `release-X.Y` based on the current `main` branch. Push the new branch to `origin`, triggering a CI pipeline in `pep/docker-build` and (a) followup pipeline(s) elsewhere. Ensure that these pipelines succeed.
 
 ## Update `stable` code base
