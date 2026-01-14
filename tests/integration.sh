@@ -324,7 +324,7 @@ if [ "$LOCAL" = true ]; then
       "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepEnrollment"
   fi
   printGreen "\$ $BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers &"
-  "$BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers" 2> >(sed -u "s/^/[pepServers]: /" >&2) > >(sed -u "s/^/[pepServers]: /") &
+  trace start_servers_locally
 else
   trace docker run --rm --net pep-network -v "$DATA_DIR:/data" "$IMAGE" bash /app/init_keys.sh "$REUSE_SECRETS_AND_DATA"
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
@@ -379,7 +379,7 @@ else
   CONFIG_DIR="/data"
 fi
 
-bash "$TESTS_DIR/pepcli_tests.sh" "$PEPCLI_COMMAND" "$CORE_DIR" "$DATA_DIR" "$CONFIG_DIR" "$TEST_INPUT_DIR" "$PKI_DIR" "$LOCAL" "$TESTS_TO_RUN" "$TESTS_TO_SKIP"
+. "$TESTS_DIR/pepcli_tests.sh"
 
 ####################
 

@@ -9,19 +9,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# shellcheck source=/dev/null
-. "$(dirname "$0")/functions.bash"
-
-readonly PEPCLI_COMMAND="$1"
-readonly CORE_DIR="$2"
-readonly DATA_DIR="$3"
-readonly CONFIG_DIR="$4"
-readonly TEST_INPUT_DIR="$5"
-readonly PKI_DIR="$6"
-readonly LOCAL="$7"
-readonly TESTS_TO_RUN="$8"
-readonly TESTS_TO_SKIP="$9"
-
 readonly DEST_DIR="$CONFIG_DIR/test_output"
 execute . mkdir -p "$DEST_DIR"
 
@@ -716,8 +703,9 @@ if should_run_test certificate-renewal; then
   }
 
   compare_chains() {
-    server=$1
-    phase=$2
+    server="$1"
+    phase="$2"
+    copy_new_to_old="${3:-""}"
 
     chain_file_on_disk=$(execute "$certificate_renewal_data_dir" find "$PKI_DIR" -iname "PEP$server.chain")
     chain_basename=$(basename "$chain_file_on_disk")
@@ -747,14 +735,17 @@ if should_run_test certificate-renewal; then
       fi
     fi
 
-    if [ "$phase" != replaced ]; then
+    # During preparation we want to make a copy of the current certificate chain, so we can check later whether the current chain on disk has changed.
+    # After committing, we usually want to copy it again, so we can do further testing, and in those tests we again want to check whether the current chain on disk has changed
+    # If we don't want that to happen, we can add "no_copy"  to the compare_chains call
+    if trace [ "$phase" == "prepare" ] || trace [ "$phase" == "committed" ] && trace [ "$copy_new_to_old" != "no_copy" ]; then
       execute "$certificate_renewal_data_dir" cp "$chain_file_on_disk" "$old_chain"
     fi
   }
 
   printGreen "Check that all signing servers currently sign their messages with the certificate chain on disk"
   for server in "${signing_servers[@]}"; do
-    compare_chains "$server" prepare
+    trace compare_chains "$server" prepare
   done
 
   printGreen "First, check requesting a CSR, and replacing and committing the new certificate chain for a single server."
@@ -762,9 +753,9 @@ if should_run_test certificate-renewal; then
   pepcli --oauth-token-group "Access Administrator" server certificate requestCSR --server "$server" --output-directory "$certificate_renewal_data_dir_absolute"
   trace sign_csrs 1
   pepcli --oauth-token-group "Access Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute"
-  compare_chains "$server" replaced
+  trace compare_chains "$server" replaced
   pepcli --oauth-token-group "Access Administrator" server certificate commit --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute"
-  compare_chains "$server" committed
+  trace compare_chains "$server" committed
 
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.csr" -delete
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.chain" -delete
@@ -774,11 +765,29 @@ if should_run_test certificate-renewal; then
   sign_csrs "${#signing_servers[@]}"
   pepcli --oauth-token-group "Access Administrator" server certificate replace --input-directory "$certificate_renewal_data_dir_absolute"
   for server in "${signing_servers[@]}"; do
-    compare_chains "$server" replaced
+    trace compare_chains "$server" replaced
   done
   pepcli --oauth-token-group "Access Administrator" server certificate commit  --input-directory "$certificate_renewal_data_dir_absolute"
   for server in "${signing_servers[@]}"; do
-    compare_chains "$server" committed
+    trace compare_chains "$server" committed no_copy # Don't copy the new chain just yet to $old_chain. We first want to check what happens after a restart
+  done
+
+  printGreen "Check that the committed certificates are still used after restart"
+  restart_servers
+  for server in "${signing_servers[@]}"; do
+    trace compare_chains "$server" committed # Now the new chain can be copied, so we can do further testing
+  done
+
+  printGreen "Check that uncommitted certificates are not still used after restart"
+  pepcli --oauth-token-group "Access Administrator" server certificate requestCSR --output-directory "$certificate_renewal_data_dir_absolute"
+  sign_csrs "${#signing_servers[@]}"
+  pepcli --oauth-token-group "Access Administrator" server certificate replace --input-directory "$certificate_renewal_data_dir_absolute"
+  for server in "${signing_servers[@]}"; do
+    trace compare_chains "$server" replaced
+  done
+  restart_servers
+  for server in "${signing_servers[@]}"; do
+    trace compare_chains "$server" reverted
   done
 
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.csr" -delete

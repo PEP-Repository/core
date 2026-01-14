@@ -1,10 +1,28 @@
 # This script is meant to only be sourced from within integration.sh and related scripts.
 
 printGreen() {
-  IFS=' ' printf "\e[32m%s\e[0m\n" "$*"
+  newline="\n"
+  if [ "${1:-""}" == "-n" ]; then
+    newline=""
+    shift
+  fi
+  IFS=' ' printf "\e[32m%s\e[0m$newline" "$*"
 }
 printYellow() {
+  newline="\n"
+  if [ "${1:-""}" == "-n" ]; then
+    newline=""
+    shift
+  fi
   IFS=' ' printf "\e[33m%s\e[0m\n" "$*"
+}
+printGray() {
+  newline="\n"
+  if [ "${1:-""}" == "-n" ]; then
+    newline=""
+    shift
+  fi
+  IFS=' ' printf "\e[30m%s\e[0m\n" "$*"
 }
 
 trap_ctrl_c() {
@@ -15,6 +33,11 @@ trap_ctrl_c() {
 }
 
 trace() {
+  locationIndex=1
+  if [ "${1:-""}" == "--use-parent-location" ]; then
+    locationIndex=2
+    shift
+  fi
   trace_args='$'
   if [[ "${as_single_string:-0}" -eq "1" ]]; then
     trace_args+=$*;
@@ -24,7 +47,9 @@ trace() {
     done
   fi
 
-  printGreen "$trace_args" >&2
+  printGreen -n "$trace_args" >&2
+  printGray " ${BASH_SOURCE[$locationIndex]}:${BASH_LINENO[locationIndex-1]}" >&2
+
   if [[ "${BP:-0}" -eq "1" ||  "${do_step:-0}" -eq "1" ]]; then
     do_step=0
     while : ; do
@@ -138,20 +163,36 @@ execute() {
     (
     cd "$DATA_DIR/$workingdir"
     if [ "$cmddir" = "." ]; then
-      trace "$cmd" "$@"
+      trace --use-parent-location "$cmd" "$@"
     else
-      trace "$cmddir/$cmd" "$@"
+      trace --use-parent-location "$cmddir/$cmd" "$@"
     fi
     )
   else
     if [ "$cmddir" = "."  ]; then
       # shellcheck disable=SC2086
-      trace docker exec $DOCKER_EXEC_ARGS --interactive -w "/data/$workingdir" pepservertest "$cmd" "$@"
+      trace --use-parent-location docker exec $DOCKER_EXEC_ARGS --interactive -w "/data/$workingdir" pepservertest "$cmd" "$@"
     else
       # shellcheck disable=SC2086
-      trace docker exec $DOCKER_EXEC_ARGS --interactive -w "/data/$workingdir" pepservertest "/app/$cmd" "$@"
+      trace --use-parent-location docker exec $DOCKER_EXEC_ARGS --interactive -w "/data/$workingdir" pepservertest "/app/$cmd" "$@"
     fi
   fi
+}
+
+start_servers_locally() {
+  "$BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers" 2> >(sed -u "s/^/[pepServers]: /" >&2) > >(sed -u "s/^/[pepServers]: /") &
+  PEP_SERVERS_PID=$!
+}
+
+restart_servers() {
+  if [ "$LOCAL" = true ]; then
+    trace cd "$DATA_DIR"
+    trace kill "$PEP_SERVERS_PID"
+    trace start_servers_locally
+  else
+    trace docker restart pepservertest
+  fi
+  trace sleep 10
 }
 
 readonly PEPCLI_TIMEOUT=60s
@@ -160,13 +201,13 @@ pepcli() {
   if [ "$LOCAL" = true ]; then
     (
     cd "$DEST_DIR"
-    trace timeout -v --kill-after=10s "$PEPCLI_TIMEOUT" "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
+    trace --use-parent-location timeout -v --kill-after=10s "$PEPCLI_TIMEOUT" "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
     )
   else
     # Add --interactive to enable piping data via stdin
     # Without the --foreground flag it hangs (on some systems), because of the --interactive flag of docker
     # shellcheck disable=SC2086
-    trace timeout --foreground -v --kill-after=10s "$PEPCLI_TIMEOUT" docker exec --interactive -w "/data/client" pepservertest "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
+    trace --use-parent-location timeout --foreground -v --kill-after=10s "$PEPCLI_TIMEOUT" docker exec --interactive -w "/data/client" pepservertest "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
   fi
 }
 
