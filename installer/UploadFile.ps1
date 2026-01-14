@@ -43,58 +43,58 @@ function EnterString {
   param ([string]$Prompt)
   
   $form = New-Object System.Windows.Forms.Form -Property @{
-	Padding = 5
+    Padding = 5
   }
   $panel1 = New-Object System.Windows.Forms.TableLayoutPanel -Property @{
-	RowCount = 3
-	ColumnCount = 1
-	Padding = 5
-	Dock = 'fill'
+    RowCount = 3
+    ColumnCount = 1
+    Padding = 5
+    Dock = 'fill'
   }
   $form.controls.Add($panel1)
   
   $label1 = New-Object System.Windows.Forms.Label -Property @{
-	Text = $Prompt
-	Dock = 'fill'
+    Text = $Prompt
+    Dock = 'fill'
   }
   $textbox1 = New-Object System.Windows.Forms.TextBox -Property @{
-	Dock = 'fill'
+    Dock = 'fill'
   }
   $panel2 = New-Object System.Windows.Forms.TableLayoutPanel -Property @{
-	RowCount = 1
-	ColumnCount = 3
-	Padding = 5
-	Dock = 'fill'
+    RowCount = 1
+    ColumnCount = 3
+    Padding = 5
+    Dock = 'fill'
   }
   $panel1.controls.Add($label1)
   $panel1.controls.Add($textbox1)
   $panel1.controls.Add($panel2)
   
   $panel3 = New-Object System.Windows.Forms.Panel -Property @{
-	# Just something invisible to fill the first cell
-	Dock = 'fill'
+    # Just something invisible to fill the first cell
+    Dock = 'fill'
   }
   $btnOk = New-Object System.Windows.Forms.Button -Property @{
-	Text = "OK"
-	DialogResult = 'ok'
+    Text = "OK"
+    DialogResult = 'ok'
   }
   $btnCancel = New-Object System.Windows.Forms.Button -Property @{
-	Text = "Cancel"
-	DialogResult = 'cancel'
+    Text = "Cancel"
+    DialogResult = 'cancel'
   }
   $panel2.controls.Add($panel3)
   $panel2.controls.Add($btnOk)
   $panel2.controls.Add($btnCancel)
   
   $stretchStyle = New-Object System.Windows.Forms.ColumnStyle -Property @{
-	SizeType = 'Percent'
-	Width = 100
+    SizeType = 'Percent'
+    Width = 100
   }
   $okStyle = New-Object System.Windows.Forms.ColumnStyle -Property @{
-	SizeType = 'AutoSize'
+    SizeType = 'AutoSize'
   }
   $cancelStyle = New-Object System.Windows.Forms.ColumnStyle -Property @{
-	SizeType = 'AutoSize'
+    SizeType = 'AutoSize'
   }
   $panel2.ColumnStyles.Clear();
   $panel2.ColumnStyles.Add($stretchStyle) | Out-Null
@@ -118,7 +118,7 @@ function EnterNonEmptyString {
   
   do {
     $result = EnterString $Prompt
-	if (!$result) { ShowNotification 'Please enter a non-empty value.' }
+    if (!$result) { ShowNotification 'Please enter a non-empty value.' }
   }
   while (!$result)
   return $result
@@ -159,10 +159,10 @@ try {
     '--metadata'
     '--local-pseudonyms'
     '--no-inline-data'
-	'-p'
-	  "$pseud"
-	'-c'
-	  "$column"
+    '-p'
+      "$pseud"
+    '-c'
+      "$column"
   )
   Write-Output "Running pepcli list to determine current cell contents"
   $ret = Start-Process pepcli $listArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
@@ -186,12 +186,12 @@ try {
 
   $storeArgs = @(
     'store'
-	'-p'
-	  "$pseud"
-	'-c'
-	  "$column"
-	'-i'
-	  "$file"
+    '-p'
+      "$pseud"
+    '-c'
+      "$column"
+    '-i'
+      "$file"
   )
   Write-Output 'Upload'
   $ret = Start-Process pepcli $storeArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
