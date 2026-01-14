@@ -154,7 +154,7 @@ public:
     if (valueDescriptor == nullptr) {
       throw std::runtime_error("Unknown enumerator value " + std::to_string(value));
     }
-    return valueDescriptor->name();
+    return std::string(valueDescriptor->name());
   }
 };
 
