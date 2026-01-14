@@ -1,28 +1,26 @@
 # This script is meant to only be sourced from within integration.sh and related scripts.
 
-printGreen() {
+GREEN="32"
+YELLOW="33"
+GRAY="2;37"
+printColored() {
+  color="$1"
+  shift
   newline="\n"
   if [ "${1:-""}" == "-n" ]; then
     newline=""
     shift
   fi
-  IFS=' ' printf "\e[32m%s\e[0m$newline" "$*"
+  IFS=' ' printf "\e[${color}m%s\e[0m$newline" "$*"
+}
+printGreen() {
+ printColored "$GREEN" "$@"
 }
 printYellow() {
-  newline="\n"
-  if [ "${1:-""}" == "-n" ]; then
-    newline=""
-    shift
-  fi
-  IFS=' ' printf "\e[33m%s\e[0m\n" "$*"
+  printColored "$YELLOW" "$@"
 }
 printGray() {
-  newline="\n"
-  if [ "${1:-""}" == "-n" ]; then
-    newline=""
-    shift
-  fi
-  IFS=' ' printf "\e[30m%s\e[0m\n" "$*"
+  printColored "$GRAY" "$@"
 }
 
 trap_ctrl_c() {
