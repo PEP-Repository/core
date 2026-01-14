@@ -108,7 +108,7 @@ function EnterString {
     return $textbox1.Text
   }
   else {
-    echo Cancelled
+    Write-Output Cancelled
     exit 1
   }
 }
@@ -164,7 +164,7 @@ try {
 	'-c'
 	  "$column"
   )
-  echo "Starting pepcli list"
+  Write-Output "Running pepcli list to determine current cell contents"
   $ret = Start-Process pepcli $listArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
   if ($ret.ExitCode -ne 0) {
     ShowPepError "An error occurred while determining the current cell contents." pepcli
