@@ -143,10 +143,11 @@ private:
   void notify(TArgs... args) const;
 
   class Contract;
+  using Contracts = std::vector<std::shared_ptr<Contract>>;
 
   // Keep state externally (i.e. not in a direct member) so it can be updated from const methods.
   // Keep state in a shared_ptr so it can outlive the Event<> instance: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
-  std::shared_ptr<std::vector<std::shared_ptr<Contract>>> mContracts = std::make_shared<std::vector<std::shared_ptr<Contract>>>();
+  std::shared_ptr<Contracts> mContracts = std::make_shared<Contracts>();
 };
 
 
