@@ -197,7 +197,7 @@ template <class TOwner, typename... TArgs>
 void Event<TOwner, TArgs...>::notify(TArgs... args) const {
   // Apart from sending notifications, this method also performs housekeeping by discarding
   // contracts that have been cancelled (by the subscriber).
-  auto clean = false;
+  auto dirty = false;
 
   // Keep state alive during notification so it can be processed even if the Event<> instance is destroyed: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
   auto contracts = mContracts;
@@ -208,12 +208,12 @@ void Event<TOwner, TArgs...>::notify(TArgs... args) const {
   // We first (attempt to) notify all contracts that we're aware of...
   for (const auto& contract : notifiable) {
     if (!contract->notify(args...)) { // ... and if the contract has been cancelled...
-      clean = true; // ... we'll want to discard it.
+      dirty = true; // ... we'll want to discard it.
     }
   }
 
   // Then we discard cancelled contracts if we found any.
-  if (clean) {
+  if (dirty) {
     std::erase_if(*contracts, [](const auto& contract) { return !contract->active(); });
   }
 }
