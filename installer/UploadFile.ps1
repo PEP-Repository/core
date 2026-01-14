@@ -132,7 +132,7 @@ try {
   $projectCaption = $config.projectCaption
   $reference = $config.reference
 
-  $host.ui.RawUI.WindowTitle = "PEP $projectCaption $reference one-click download log"
+  $host.ui.RawUI.WindowTitle = "PEP $projectCaption $reference one-click upload log"
   $env:Path = "$InstallPath;$env:Path"
 
   pepcli --version
