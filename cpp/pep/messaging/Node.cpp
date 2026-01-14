@@ -73,22 +73,14 @@ public:
 };
 }
 
-Node::Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Server> binary, RequestHandler& requestHandler)
-  : mIoContext(ioContext), mBinary(std::move(binary)), mRequestHandler(&requestHandler), mIncompatibleRemotes(std::set<IncompatibleRemote>()) {
-  assert(mBinary->status() == LifeCycler::Status::uninitialized);
-}
-
-Node::Node(boost::asio::io_context& ioContext, std::shared_ptr<networking::Client> binary)
-  : mIoContext(ioContext), mBinary(std::move(binary)) {
-  assert(mBinary->status() == LifeCycler::Status::uninitialized);
-}
-
 Node::Node(const networking::Protocol::ServerParameters& parameters, RequestHandler& requestHandler)
-  : Node(parameters.ioContext(), networking::Server::Create(parameters), requestHandler) {
+  : mIoContext(parameters.ioContext()), mBinary(networking::Server::Create(parameters)), mRequestHandler(&requestHandler), mIncompatibleRemotes(std::set<IncompatibleRemote>()) {
+  assert(mBinary->status() == LifeCycler::Status::uninitialized);
 }
 
 Node::Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters)
-  : Node(parameters.ioContext(), networking::Client::Create(parameters, reconnectParameters)) {
+  : mIoContext(parameters.ioContext()), mReconnectParameters(std::move(reconnectParameters)), mBinary(networking::Client::Create(parameters, mReconnectParameters)) {
+  assert(mBinary->status() == LifeCycler::Status::uninitialized);
 }
 
 void Node::vetConnectionWith(const std::string& description, const std::string& address, const BinaryVersion& binary, const std::optional<ConfigVersion>& config) {
@@ -125,6 +117,33 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
     if (refuse) {
       throw ConnectionFailureException::ForVersionCheckFailure(msg);
     }
+  }
+}
+
+void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, const LifeCycler::StatusChange& change) {
+  auto existing = std::find_if(mExistingConnections.begin(), mExistingConnections.end(), [connection](const ExistingConnection& candidate) {
+    return candidate.own == connection;
+    });
+  assert(existing != mExistingConnections.end());
+
+  switch (change.updated) {
+  case LifeCycler::Status::reinitializing: // Notify subscriber of our (failed) attempt and retry
+    LOG(LOG_TAG, debug) << "Messaging connection reinitializing";
+    if (mSubscriber.has_value()) {
+      mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Failed to establish messaging connection: will be retried"))));
+    }
+    break;
+  case LifeCycler::Status::initialized: // Established: hand off to subscriber
+    LOG(LOG_TAG, debug) << "Messaging connection established";
+    existing->establishing.cancel();
+    existing->own.reset();
+    if (mSubscriber.has_value()) {
+      mSubscriber->on_next(Connection::Attempt::Result::Success(connection));
+    }
+    break;
+  default:
+    // ignore
+    break;
   }
 }
 
@@ -168,16 +187,26 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
           return;
         }
 
-        std::erase_if(self->mExistingConnections, [](std::weak_ptr<networking::Connection> candidate) {return candidate.lock() == nullptr; });
+        std::erase_if(self->mExistingConnections, [](const ExistingConnection& candidate) {return candidate.binary.lock() == nullptr; });
         auto binaryConnection = *binaryResult;
-        if (std::any_of(self->mExistingConnections.begin(), self->mExistingConnections.end(), [binaryConnection](std::weak_ptr<networking::Connection> existing) {
-          return existing.lock() == binaryConnection;
+        if (std::any_of(self->mExistingConnections.begin(), self->mExistingConnections.end(), [binaryConnection](const ExistingConnection& existing) {
+          return existing.binary.lock() == binaryConnection;
           })) {
           throw std::runtime_error("Node attempting to create a second messaging connection for a single binary connection");
         }
-        self->mExistingConnections.push_back(binaryConnection);
 
-        Connection::Open(self, binaryConnection, self->mIoContext, self->mRequestHandler, [subscriber](Connection::Attempt::Result result) {subscriber.on_next(std::move(result)); });
+        ExistingConnection existing{
+          .binary = binaryConnection,
+          .own = Connection::Open(self, binaryConnection, self->mIoContext, self->mRequestHandler),
+          .establishing{} // Silence clang's -Wmissing-field-initializers
+        };
+        existing.establishing = existing.own->onStatusChange.subscribe([weak, own = existing.own](const LifeCycler::StatusChange& change) {
+          if (auto self = weak.lock()) {
+            self->handleConnectionEstablishing(own, change);
+          }
+          });
+
+        self->mExistingConnections.emplace_back(std::move(existing));
       }
       });
 
@@ -203,6 +232,10 @@ rxcpp::observable<FakeVoid> Node::shutdown() {
   }
 
   mBinaryConnectionAttempt.cancel();
+  for (auto& existing : mExistingConnections) {
+    existing.establishing.cancel();
+    existing.own.reset();
+  }
 
   auto notifier = BinaryFinalizationNotifier::Create(*binary);
   binary->shutdown();
