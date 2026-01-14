@@ -195,16 +195,14 @@ Event<TOwner, TArgs...>::~Event() noexcept {
 
 template <class TOwner, typename... TArgs>
 void Event<TOwner, TArgs...>::notify(TArgs... args) const {
+  // Keep state alive during notification so it can be processed even if the Event<> instance is destroyed: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
+  auto contracts = mContracts;
+  // Work on a copy of the list-of-contracts to prevent state corruption if (the contract is cancelled and) the event is re-signalled during notification
+  auto notifiable = *contracts;
+
   // Apart from sending notifications, this method also performs housekeeping by discarding
   // contracts that have been cancelled (by the subscriber).
   auto dirty = false;
-
-  // Keep state alive during notification so it can be processed even if the Event<> instance is destroyed: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
-  auto contracts = mContracts;
-
-  // Use a copy of the list-of-contracts to prevent state corruption if (the contract is cancelled and) the event is re-signalled during notification
-  auto notifiable = *contracts;
-
   // We first (attempt to) notify all contracts that we're aware of...
   for (const auto& contract : notifiable) {
     if (!contract->notify(args...)) { // ... and if the contract has been cancelled...
