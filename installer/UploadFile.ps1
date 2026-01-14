@@ -172,124 +172,32 @@ try {
     exit $ret.ExitCode
   }
 
+  $browser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
+    Title = "Select file to upload"
+    InitialDirectory  = Join-Path $env:USERPROFILE Downloads
+  }
+  # Try to open dialog on foreground, but this may still fail
+  $choice = $browser.ShowDialog(
+    (New-Object System.Windows.Forms.Form -Property @{TopLevel = $true }))
+  if ($choice -eq [DialogResult]::Cancel) { exit 1 }
+  $file = $browser.FileName
+  $browser.Dispose()
+  if (!$file) { exit 1 }
 
-#  $browser = New-Object System.Windows.Forms.FolderBrowserDialog -Property @{
-#    Description = "Select folder for PEP $projectCaption $reference download"
-#    SelectedPath  = Join-Path $env:USERPROFILE Downloads
-#  }
-#  ShowNotification 'Please select the folder to place the downloaded data in, or select an existing download'
-#  # Try to open dialog on foreground, but this may still fail
-#  $choice = $browser.ShowDialog(
-#    (New-Object System.Windows.Forms.Form -Property @{TopMost = $true; TopLevel = $true }))
-#  if ($choice -eq [DialogResult]::Cancel) { exit 1 }
-#  $folder = $browser.SelectedPath
-#  $browser.Dispose()
-#  if (!$folder) { exit 1 }
-#
-#  # If this is not an existing download folder, use a subfolder
-#  if (!(Get-Item -ErrorAction Ignore (Join-Path $folder 'pepData.specification.json'))) {
-#    $folder = Join-Path $folder "pulled-data-$projectCaption-$reference"
-#  }
-#
-#  $pullArgs = @()
-#
-#  # If the pending folder was selected, strip the suffix
-#  if ($folder.EndsWith('-pending')) {
-#    $folder = $folder.Substring(0, $folder.Length - '-pending'.Length)
-#  }
-#
-#  Get-Item -ErrorAction Ignore (Join-Path $folder 'pepData.specification.json')
-#  $downloadPresent = $?
-#
-#  Get-Item -ErrorAction Ignore (Join-Path "$folder-pending" 'pepData.specification.json')
-#  $partialDownloadPresent = $?
-#
-#  if ($partialDownloadPresent) {
-#    $msg = "Folder $folder-pending apparently already contains a partial download.`n"
-#    $msgFolder = 'folder'
-#    if ($downloadPresent) {
-#      $msg += "Which seems to have been created while updating an existing download in $folder.`n"
-#      $msgFolder += 's'
-#    }
-#    $msg += "To resume the download, press OK.`n" +
-#      "Press Cancel and remove the $msgFolder to initiate a fresh download."
-#
-#    $choice = [MessageBox]::Show(
-#      $msg,
-#      'Resume partial download?',
-#      [MessageBoxButtons]::OKCancel,
-#      [MessageBoxIcon]::Question)
-#    if ($choice -eq [DialogResult]::Cancel) { exit 1 }
-#    $pullArgs += @('--update'; '--resume')
-#
-#  } elseif ($downloadPresent) {
-#    $choice = [MessageBox]::Show(
-#      "Folder $folder apparently already contains a completed download.`n" +
-#      'Do you want to update the existing download?',
-#      'Update existing download?',
-#      [MessageBoxButtons]::OKCancel,
-#      [MessageBoxIcon]::Question)
-#    if ($choice -eq [DialogResult]::Cancel) { exit 1 }
-#    $pullArgs += '--update'
-#
-#  }
-#
-#  $choice = [MessageBox]::Show(
-#    "Data will be downloaded to $folder, this may take a while. We'll notify you when it's done.`n" +
-#    'Press OK to continue',
-#    $null,
-#    [MessageBoxButtons]::OKCancel,
-#    [MessageBoxIcon]::Information)
-#  if ($choice -eq [DialogResult]::Cancel) { exit 1 }
-#
-#  if ($pullArgs.Count -eq 0) {
-#    $pullArgs = @('--all-accessible')
-#  }
-#  $pullArgs = @(
-#    'pull'
-#    '--report-progress'
-#    '--output-directory'
-#    $folder
-#  ) + $pullArgs
-#
-#  Write-Output 'Download'
-#  $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
-#  if ($ret.ExitCode -ne 0) {
-#    ShowPepError "An error occurred while downloading." pepcli
-#    $retry = $false
-#    if ($downloadPresent -or $partialDownloadPresent) {
-#      $choice = [MessageBox]::Show(
-#        "Do you want to retry the download but enable overwriting any local changes?`n" +
-#        'Depending on the error, this may or may not work.',
-#        'Force download?',
-#        [MessageBoxButtons]::YesNo,
-#        [MessageBoxIcon]::Warning)
-#      $retry = $choice -eq [DialogResult]::yes
-#    }
-#    if (!$retry) {
-#      pause
-#      exit $ret.ExitCode
-#    }
-#    if ($partialDownloadPresent) {
-#      $pullArgs = $pullArgs | where { $_ -ne '--resume' } # Remove incompatible flag
-#      if (!$downloadPresent) {
-#        # Remove --update when --resume was present and we don't have a base download
-#        $pullArgs = $pullArgs | where { $_ -ne '--update' }
-#        # Since no specification remains, specify what data we want
-#        $pullArgs += '--all-accessible'
-#      }
-#    }
-#    $pullArgs += '--force'
-#    $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
-#    if ($ret.ExitCode -ne 0) {
-#      ShowPepError "An error occurred while retrying the download." pepcli
-#      pause
-#      exit $ret.ExitCode
-#    }
-#  }
-#
-#  ShowNotification 'Download complete!'
-#  explorer "$folder"
+  $storeArgs = @(
+    'store'
+	'-p'
+	  "$pseud"
+	'-c'
+	  "$column"
+	'-i'
+	  "$file"
+  )
+  Write-Output 'Upload'
+  $ret = Start-Process pepcli $storeArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
+  if ($ret.ExitCode -ne 0) {
+    ShowPepError "An error occurred while uploading." pepcli
+  }
 }
 catch { # Exception is in $_
   # Extra try-catch in case dialog throws
