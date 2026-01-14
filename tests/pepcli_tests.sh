@@ -687,7 +687,7 @@ if should_run_test certificate-renewal; then
     } | execute "$certificate_renewal_data_dir" tee ca_ext.cnf > /dev/null
     execute "$certificate_renewal_data_dir" openssl x509 -req -sha256 -in "$csr_file_name" -CAkey "$ca_key_file_name" -CA "$ca_key_cert" \
      -out "$cert_file_name" -days 365 -extfile ca_ext.cnf -extensions "$extensions"  \
-     -CAcreateserial -CAserial ca_serial.srl -passin file:$password_file
+     -CAcreateserial -CAserial ca_serial.srl -passin file:"$password_file"
 
     execute "$certificate_renewal_data_dir" cat "$cert_file_name" "$ca_key_cert" | execute "$certificate_renewal_data_dir" tee "$chain_file_name" > /dev/null
     execute "$certificate_renewal_data_dir" rm "$cert_file_name"

@@ -11,7 +11,7 @@ SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 git_root="$SCRIPTPATH/.."
 
 # import functions
-# shellcheck source=/dev/null
+# shellcheck source=SCRIPTDIR/functions.bash
 . "$SCRIPTPATH/functions.bash"
 
 readonly default_skip=''
@@ -279,7 +279,7 @@ if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace cd "$PKI_DIR_ON_HOST"
     trace "$CORE_DIR/pki/pki.sh"
   else
-    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w=$PKI_DIR "$IMAGE" bash /app/pki.sh all /app/ca_ext.cnf
+    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w="$PKI_DIR" "$IMAGE" bash /app/pki.sh all /app/ca_ext.cnf
   fi
 fi
 
@@ -379,6 +379,7 @@ else
   CONFIG_DIR="/data"
 fi
 
+# shellcheck source=SCRIPTDIR/pepcli_tests.sh
 . "$TESTS_DIR/pepcli_tests.sh"
 
 ####################
