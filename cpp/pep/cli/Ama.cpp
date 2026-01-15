@@ -10,6 +10,7 @@
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
@@ -823,6 +824,30 @@ private:
       }
     };
 
+    class AmaParticipantGroupClearSubCommand : public AmaParticipantGroupSubCommand {
+    public:
+      AmaParticipantGroupClearSubCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("clear", "Remove all participants from group", parent) {}
+
+    protected:
+      int execute() override {
+        return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
+          pep::requestTicket2Opts requestTicketOpts{
+            .participantGroups{group},
+            .modes{"read-meta"},
+          };
+          return client->requestTicket2(requestTicketOpts)
+            .flat_map([group, client](pep::IndexedTicket2 indexed) {
+            auto ticket = std::move(indexed).openTicketWithoutCheckingSignature();
+            std::vector<pep::PolymorphicPseudonym> pps;
+            pps.reserve(ticket->mPseudonyms.size());
+            std::transform(ticket->mPseudonyms.begin(), ticket->mPseudonyms.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
+            return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
+              });
+          });
+      }
+    };
+
 
     class AmaParticipantGroupingSubCommand : public AmaParticipantGroupSubCommand {
     public:
@@ -889,6 +914,7 @@ private:
     std::vector<std::shared_ptr<Command>> createChildCommands() override {
       return {std::make_shared<AmaParticipantGroupCreateCommand>(*this),
               std::make_shared<AmaParticipantGroupRemoveSubCommand>(*this),
+              std::make_shared<AmaParticipantGroupClearSubCommand>(*this),
               std::make_shared<AmaParticipantGroupingSubCommand>("addTo",
                                                                  "Add participant to group",
                                                                  &pep::AccessManagerProxy::amaAddParticipantToGroup,
