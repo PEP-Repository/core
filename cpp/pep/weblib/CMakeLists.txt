@@ -32,6 +32,8 @@ target_link_libraries(${PROJECT_NAME}Weblib
     ${PROJECT_NAME}Applicationlib
     ${PROJECT_NAME}Clientlib
     ${PROJECT_NAME}OAuthClientlib
+
+    -lidbfs.js
 )
 set(weblib_additional_files
     "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts"
@@ -54,7 +56,7 @@ set(PEP_WEBLIB_ENVIRONMENT "web,node" CACHE STRING "Environment(s) to build ${PR
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
     -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
-    -Wl,--no-demangle # https://github.com/llvm/llvm-project/issues/126919
+    LINKER:--no-demangle # Avoid huge .name section, see https://github.com/llvm/llvm-project/issues/126919
     -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
 
     -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
@@ -66,7 +68,6 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sNO_ABORTING_MALLOC
     -sTEXTDECODER=2 # Require TextDecoder from browser
     -sFETCH
-    -lidbfs.js
     -sNO_INVOKE_RUN # We call callMain ourselves
     # noExitRuntime required for -sNO_EXIT_RUNTIME
     -sINCOMING_MODULE_JS_API=thisProgram,noExitRuntime

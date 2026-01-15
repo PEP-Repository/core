@@ -211,7 +211,7 @@ if(DEFINED EMSCRIPTEN)
   # See https://emscripten.org/docs/tools_reference/settings_reference.html
   set(default_emscripten_exe_config
       -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
-      -Wl,--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
+      LINKER:--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
       -gsource-map
       -sEXIT_RUNTIME  # Run global destructors after main()
       # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
@@ -222,7 +222,7 @@ if(DEFINED EMSCRIPTEN)
   )
 
   if(EMSCRIPTEN_BROWSER)
-    set(CMAKE_EXECUTABLE_SUFFIX ".html")  # Create HTML shell
+    set(CMAKE_EXECUTABLE_SUFFIX .html)  # Create HTML shell
     list(APPEND default_emscripten_exe_config
         -sENVIRONMENT=web
         -sPROXY_TO_PTHREAD  # Put main thread in separate worker to prevent blocking UI thread
