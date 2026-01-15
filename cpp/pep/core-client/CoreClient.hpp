@@ -400,9 +400,6 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    * \brief Generate a polymorphic pseudonym for a registered participant.
    */
   PolymorphicPseudonym generateParticipantPolymorphicPseudonym(const std::string& participantSID);
-  const ElgamalPublicKey& getPublicKeyPseudonyms() const {
-    return publicKeyPseudonyms;
-  }
 
   /*!
    * \brief Interpret each string as a textually represented polymorphic pseudonym, or a participant identifier,
