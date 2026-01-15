@@ -45,7 +45,7 @@ protected:
       + MultiCellQuery::Parameters()
       + pep::cli::TicketFile::GetParameters(true)
       + pep::commandline::Parameter("inline-data-size-limit", "Retrieve data inline if size is less than this. Specify 0 to inline all data.").shorthand('s').value(
-        pep::commandline::Value<uint64_t>().defaultsTo(1000))
+          pep::commandline::Value<uint64_t>().defaultsTo(1000))
       + pep::commandline::Parameter("local-pseudonyms", "Request access group local-pseudonyms").shorthand('l')
       + pep::commandline::Parameter("metadata", "Print metadata - which may contain encrypted entries when only an ID was returned for the file in question; apply pepcli get to the ID to get the decrypted entries").shorthand('m')
       + pep::commandline::Parameter("no-inline-data", "Never retrieve data inline; only return IDs")
