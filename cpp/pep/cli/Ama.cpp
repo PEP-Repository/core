@@ -832,10 +832,9 @@ private:
     protected:
       int execute() override {
         return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
-          pep::requestTicket2Opts requestTicketOpts{
-            .participantGroups{group},
-            .modes{"read-meta"},
-          };
+          pep::requestTicket2Opts requestTicketOpts;
+          requestTicketOpts.participantGroups.emplace_back(group);
+          requestTicketOpts.modes.emplace_back("read-meta");
           return client->requestTicket2(requestTicketOpts)
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
