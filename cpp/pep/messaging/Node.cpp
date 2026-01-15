@@ -79,7 +79,7 @@ Node::Node(const networking::Protocol::ServerParameters& parameters, RequestHand
 }
 
 Node::Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters)
-  : mIoContext(parameters.ioContext()), mReconnectParameters(std::move(reconnectParameters)), mBinary(networking::Client::Create(parameters, mReconnectParameters)) {
+  : mIoContext(parameters.ioContext()), mReconnectParameters(reconnectParameters), mBinary(networking::Client::Create(parameters, mReconnectParameters)) {
   assert(mBinary->status() == LifeCycler::Status::uninitialized);
 }
 
