@@ -31,15 +31,6 @@ add_custom_target(pep-sample-client-separate-dwarf
     VERBATIM
     DEPENDS ${PROJECT_NAME}Weblib
 )
-add_custom_target(pep-sample-client-source-map
-    COMMENT "Copy -gsource-map"
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-      $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.map
-      ${CMAKE_CURRENT_SOURCE_DIR}/dist/${PROJECT_NAME}Weblib.wasm.map
-    COMMAND_EXPAND_LISTS
-    VERBATIM
-    DEPENDS ${PROJECT_NAME}Weblib
-)
 
 add_custom_target(pep-sample-client-config
     COMMENT "Copy config to dist folder"
@@ -64,9 +55,21 @@ add_custom_target(${PROJECT_NAME}WeblibSampleClient ALL
     DEPENDS
       pep-sample-client-build
       pep-sample-client-separate-dwarf
-      pep-sample-client-source-map
       pep-sample-client-config
 )
+
+if(PEP_WEBLIB_SOURCE_MAP)
+  add_custom_target(pep-sample-client-source-map
+      COMMENT "Copy -gsource-map"
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+        $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.map
+        ${CMAKE_CURRENT_SOURCE_DIR}/dist/${PROJECT_NAME}Weblib.wasm.map
+      COMMAND_EXPAND_LISTS
+      VERBATIM
+      DEPENDS ${PROJECT_NAME}Weblib
+  )
+  add_dependencies(${PROJECT_NAME}WeblibSampleClient pep-sample-client-source-map)
+endif()
 
 configure_executable_companion(${PEP_INFRA_DIR}/client/ClientConfig.json REPLACE_VARIABLES)
 configure_executable_companion(${PEP_INFRA_DIR}/rootCA.cert OPTIONAL)

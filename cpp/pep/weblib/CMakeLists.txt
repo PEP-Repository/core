@@ -55,7 +55,6 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
     -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
     -Wl,--no-demangle # https://github.com/llvm/llvm-project/issues/126919
-    -gsource-map
     -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
 
     -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
@@ -80,6 +79,12 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
 
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
+
+# Disabled by default because of https://github.com/emscripten-core/emscripten/issues/26100
+option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib")
+if(PEP_WEBLIB_SOURCE_MAP)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE -gsource-map)
+endif()
 
 # tsc isn't installed by default as it's in EMSDK devDependencies but we need it for --emit-tsd,
 # see related https://github.com/emscripten-core/emsdk/issues/1370
