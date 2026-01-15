@@ -1,6 +1,7 @@
 #include <pep/application/Application.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
+#include <pep/utils/MiscUtil.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/core-client/CoreClient.hpp>
@@ -47,6 +48,7 @@ protected:
       + pep::commandline::Parameter("inline-data-size-limit", "Retrieve data inline if size is less than this. Specify 0 to inline all data.").shorthand('s').value(
           pep::commandline::Value<uint64_t>().defaultsTo(1000))
       + pep::commandline::Parameter("local-pseudonyms", "Request access group local-pseudonyms").shorthand('l')
+      + pep::commandline::Parameter("dataless", "Also output (pseudonyms for) subjects without data")
       + pep::commandline::Parameter("metadata", "Print metadata - which may contain encrypted entries when only an ID was returned for the file in question; apply pepcli get to the ID to get the decrypted entries").shorthand('m')
       + pep::commandline::Parameter("no-inline-data", "Never retrieve data inline; only return IDs")
       + pep::commandline::Parameter("group-output", "Group the output per participant").shorthand('g');
@@ -55,7 +57,7 @@ protected:
   int execute() override {
     class SubjectData {
     private:
-      std::string mPp;
+      pep::PolymorphicPseudonym mPp;
       bool mCollectMetadata;
       std::optional<std::string> mLp;
       pt::ptree mValues;
@@ -64,19 +66,25 @@ protected:
 
     public:
       SubjectData(const pep::EnumerateAndRetrieveResult& ear, bool collectMetadata)
-        : mPp(ear.mLocalPseudonyms->mPolymorphic.text()), mCollectMetadata(collectMetadata) {
+        : mPp(ear.mLocalPseudonyms->mPolymorphic), mCollectMetadata(collectMetadata) {
         if (ear.mAccessGroupPseudonym != nullptr) {
           mLp = ear.mAccessGroupPseudonym->text();
         }
         this->add(ear);
       }
 
+      SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp)
+        : mPp(std::move(pp)), mCollectMetadata(false), mLp(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
+      }
+
+      const pep::PolymorphicPseudonym& pp() const noexcept { return mPp; }
+
       bool hasData() const {
         return !mValues.empty();
       }
 
       void add(const pep::EnumerateAndRetrieveResult& ear) {
-        assert(mPp == ear.mLocalPseudonyms->mPolymorphic.text());
+        assert(mPp == ear.mLocalPseudonyms->mPolymorphic);
 
         if (ear.mDataSet) {
           mValues.push_back(pt::ptree::value_type(
@@ -114,7 +122,7 @@ protected:
           toPrint.add_child("ids", mIds);
         if (!mMetadata.empty())
           toPrint.add_child("metadata", mMetadata);
-        toPrint.put("pp", mPp);
+        toPrint.put("pp", mPp.text());
         if (mLp.has_value())
           toPrint.put("lp", *mLp);
         pt::write_json(std::cout, toPrint);
@@ -130,6 +138,7 @@ protected:
       bool groupOutput = false;
       std::unordered_map<uint32_t, SubjectData> subjects;
       size_t dataCount{ 0 };
+      std::map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> pseudsToReport;
 
       explicit Context(const pep::commandline::NamedValues& parameterValues)
         : parameterValues(parameterValues) {
@@ -147,8 +156,27 @@ protected:
           if (entry.second.hasData()) {
             hasPrintedData = true;
           }
+          pseudsToReport.erase(entry.second.pp());
         }
         subjects.clear();
+      }
+
+      void printRemainingPseudsToReport(std::shared_ptr<pep::CoreClient> client) {
+        assert(subjects.empty());
+
+        // For each pseudonym-to-report that we haven't produced output for...
+        uint32_t index = 0; // ...use a unique (but meaningless) index...
+        for (const auto& report : pseudsToReport) {
+          std::optional<pep::LocalPseudonym> decrypted;
+          if (report.second.has_value()) {
+            decrypted = client->decryptLocalPseudonym(*report.second);
+          }
+          SubjectData data(report.first, decrypted);
+          subjects.emplace(std::make_pair(index++, std::move(data))); // ...to add an entry to our "subjects" field...
+        }
+
+        this->printAndClearSubjects(); // ...then produce output for all the "subjects" that we just stored
+        assert(pseudsToReport.empty());
       }
 
       void processResult(const pep::EnumerateAndRetrieveResult& ear) {
@@ -225,6 +253,12 @@ protected:
             -> rxcpp::observable<pep::EnumerateAndRetrieveResult> {
           ctx->earOpts.ticket = std::make_shared<pep::IndexedTicket2>(
               std::move(ticket));
+          if (ctx->parameterValues.has("dataless")) {
+            auto pseuds = ctx->earOpts.ticket->openTicketWithoutCheckingSignature()->mPseudonyms;
+            std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->pseudsToReport, ctx->pseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
+              return std::make_pair(lps.mPolymorphic, lps.mAccessGroup);
+              });
+          }
           return client->enumerateAndRetrieveData2(ctx->earOpts);
         });
       }).map([ctx](pep::EnumerateAndRetrieveResult result) {
@@ -234,8 +268,9 @@ protected:
       })
       .as_dynamic() // Reduce compiler memory usage
       .op(pep::RxBeforeCompletion(
-      [ctx]() {
+      [ctx, client]() {
         ctx->printAndClearSubjects();
+        ctx->printRemainingPseudsToReport(client);
         std::cout << ']' << std::endl;
         ctx->printQueryInfo();
         if (ctx->hasPrintedData) {
