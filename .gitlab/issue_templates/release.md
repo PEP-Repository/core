@@ -71,7 +71,7 @@ Once you've updated the `stable` branch on `origin`:
 
 ## Create scheduled pipelines
 
-1. [ ] Log in to gitlab using [pep-support's credentials](https://gitlab.pep.cs.ru.nl/pep/dtap/-/blob/main/passwords/gitlab-pepsupport.txt?ref_type=heads). (If you're already logged in to gitlab under a personal account, you'll need to use a second browser or an incognito tab or window.)
+1. [ ] Log in to gitlab using [pep-support's credentials](https://gitlab.pep.cs.ru.nl/pep/ops/-/blob/main/passwords/gitlab-pepsupport.txt?ref_type=heads). (If you're already logged in to gitlab under a personal account, you'll need to use a second browser or an incognito tab or window.)
 1. [ ] Go to Build -> Pipeline schedules and create a new schedule for the new `release-X.Y` branch. Schedule it every week on sunday (e.g. `0 4 * * 0`, see: <https://docs.gitlab.com/ee/topics/cron/>). Make sure to stagger the scheduled pipelines by an hour.
    1. [ ] in the `pep/core` repository. Set the `BUILD_ALL_TARGETS` variable to `yes`.
    1. [ ] in the `pep/docker-build` repository.
