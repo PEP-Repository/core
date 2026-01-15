@@ -1,16 +1,20 @@
 Changelog
 
 Note your text below, in the following format (with 42 the issue number of the change):
-- #42: description
+- repo#42: description
 
 Changes in upcoming release (1.6):
 
-- #2753:
+---------------
+
+- core#2767: Added a tool for MacOS users to easily upload files to PEP using a GUI file picker.
+
+- core#2753:
    - Changed: The YAML output of user query commands now use `# item count: N` instead of `# size = N` to display array sizes.
      This removes the ambiguity of the word `size` and makes the meaning of the number more clear.
    - Added support for YAML output for pepcli export commands.
 
-- #2708: We now store whether a userID is the primary and/or the display ID. Primary ID is set automatically the first time a user logs in.
+- core#2708: We now store whether a userID is the primary and/or the display ID. Primary ID is set automatically the first time a user logs in.
   The userID given when creating a new user will be set as the display ID. Both can be changed by the access administrator.
   When no displayIDs exist in the database, it tries to auto-assign display IDs for the existing users, by picking the first ID for that user, if that ID has not been removed.
   If that first ID has been removed, auto-assignment will fail for that user. They will need to be set manually (see MANUAL CHANGES REQUIRED)

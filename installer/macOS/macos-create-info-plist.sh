@@ -16,8 +16,10 @@ elif [[ "$1" == "PEP Command Line Interface" ]]; then
     source "$script_dir/cli-parameters.conf"
 elif [[ "$1" == "PEP Download Tool" ]]; then
     source "$script_dir/download-tool-parameters.conf"
+elif [[ "$1" == "PEP Upload Tool" ]]; then
+    source "$script_dir/upload-tool-parameters.conf"
 else
-    echo "Error: Invalid script input value. Please provide either 'PEP Assessor', 'PEP Command Line Interface' or 'PEP Download Tool'."
+    echo "Error: Invalid script input value. Please provide either 'PEP Assessor', 'PEP Command Line Interface', 'PEP Download Tool' or 'PEP Upload Tool'."
     exit 1
 fi
 
