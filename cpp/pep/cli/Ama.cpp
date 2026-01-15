@@ -837,8 +837,8 @@ private:
             .modes{"read-meta"},
           };
           return client->requestTicket2(requestTicketOpts)
-            .flat_map([group, client](pep::IndexedTicket2 indexed) {
-            auto ticket = std::move(indexed).openTicketWithoutCheckingSignature();
+            .flat_map([group, client](const pep::IndexedTicket2& indexed) {
+            auto ticket = indexed.openTicketWithoutCheckingSignature();
             std::vector<pep::PolymorphicPseudonym> pps;
             pps.reserve(ticket->mPseudonyms.size());
             std::transform(ticket->mPseudonyms.begin(), ticket->mPseudonyms.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
