@@ -29,11 +29,15 @@ addEventListener('error', ev => {
     return;
   }
   handleMaybeWasmException(ev.error, ev);
-  alert(ev.error || ev.message);
+  if (!ev.defaultPrevented) {
+    alert(ev.error || ev.message);
+  }
 });
 addEventListener('unhandledrejection', ev => {
   handleMaybeWasmException(ev.reason, ev);
-  alert(ev.reason);
+  if (!ev.defaultPrevented) {
+    alert(ev.reason);
+  }
 });
 
 const loading = document.getElementById('loading');
