@@ -22,6 +22,14 @@ export default (env, argv) => ({
     chunkFormat: 'module',
     path: path.resolve(import.meta.dirname, 'dist'),
   },
+  module: {
+    parser: {
+      javascript: {
+        // Leave import.meta.url alone
+        importMeta: false,
+      },
+    },
+  },
   devtool: 'source-map',
   // Enable filesystem cache in non-watch development mode
   ...(argv.mode === 'development' && !argv.watch ? {
