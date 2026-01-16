@@ -19,7 +19,9 @@ add_custom_target(pep-repo-client-lib-npm
     VERBATIM
     DEPENDS pep-repo-client-wasm-symlink
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    BYPRODUCTS "${CMAKE_CURRENT_SOURCE_DIR}/node_modules"
+)
+set_target_properties(pep-repo-client-lib-npm PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/node_modules/"
 )
 
 add_custom_target(pep-repo-client-lib-build
@@ -28,7 +30,9 @@ add_custom_target(pep-repo-client-lib-build
     VERBATIM
     DEPENDS pep-repo-client-lib-npm
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    BYPRODUCTS "${CMAKE_CURRENT_SOURCE_DIR}/dist"
+)
+set_target_properties(pep-repo-client-lib-build PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/dist/"
 )
 
 add_custom_target(pep-repo-client-lib-config

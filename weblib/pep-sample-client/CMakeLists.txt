@@ -5,8 +5,10 @@ add_custom_target(pep-sample-client-npm
     COMMAND ${NPM_PROGRAM} install
     VERBATIM
     DEPENDS ${PROJECT_NAME}WeblibJs
-    BYPRODUCTS "${CMAKE_CURRENT_SOURCE_DIR}/node_modules"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+set_target_properties(pep-sample-client-npm PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/node_modules/"
 )
 
 add_custom_target(pep-sample-client-build
@@ -15,9 +17,12 @@ add_custom_target(pep-sample-client-build
     COMMAND ${NPM_PROGRAM} run "$<IF:$<CONFIG:Debug>,build-dev,build>"
     VERBATIM
     DEPENDS pep-sample-client-npm
-    BYPRODUCTS "${CMAKE_CURRENT_SOURCE_DIR}/dist"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+set_target_properties(pep-sample-client-build PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/dist/"
+)
+
 set(separate_dwarf_copy_args_debug
     create_symlink
     $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
@@ -25,6 +30,7 @@ set(separate_dwarf_copy_args_debug
 )
 add_custom_target(pep-sample-client-separate-dwarf
     COMMENT "Copy -gseparate-dwarf debug info"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist/
     # Use cat to skip in Release mode
     COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
     COMMAND_EXPAND_LISTS
@@ -61,6 +67,7 @@ add_custom_target(${PROJECT_NAME}WeblibSampleClient ALL
 if(PEP_WEBLIB_SOURCE_MAP)
   add_custom_target(pep-sample-client-source-map
       COMMENT "Copy -gsource-map"
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist/
       COMMAND ${CMAKE_COMMAND} -E create_symlink
         $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.map
         ${CMAKE_CURRENT_SOURCE_DIR}/dist/${PROJECT_NAME}Weblib.wasm.map

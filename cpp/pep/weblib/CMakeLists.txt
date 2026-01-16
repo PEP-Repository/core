@@ -36,10 +36,15 @@ target_link_libraries(${PROJECT_NAME}Weblib
     -lidbfs.js
 )
 set(weblib_additional_files
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm"
+    ${PROJECT_NAME}Weblib.d.mts
+    ${PROJECT_NAME}Weblib.wasm
+    ${PROJECT_NAME}Weblib.wasm.debug.wasm
+    ${PROJECT_NAME}Weblib.wasm.map
+
+    node_modules/
+    package-lock.json
 )
+list(TRANSFORM weblib_additional_files PREPEND "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/")
 set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
     ADDITIONAL_CLEAN_FILES "${weblib_additional_files}"
 )
