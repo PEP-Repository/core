@@ -1,9 +1,10 @@
 import path from 'node:path';
+import webpack from 'webpack';
 
 /**
  * @param {Object.<string, *>} env
- * @param {import('webpack').Configuration} argv
- * @return {import('webpack').Configuration}
+ * @param {webpack.Configuration} argv
+ * @return {webpack.Configuration}
  */
 export default (env, argv) => ({
   entry: {
@@ -41,4 +42,10 @@ export default (env, argv) => ({
       type: 'filesystem',
     }
   } : {}),
+  plugins: [
+    new webpack.DefinePlugin({
+      // Optimization: Make ENVIRONMENT_IS_NODE evaluate to false at compile time
+      'globalThis.process': undefined,
+    }),
+  ],
 });
