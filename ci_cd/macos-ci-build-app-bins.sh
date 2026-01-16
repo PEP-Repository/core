@@ -225,6 +225,16 @@ create_cli_app \
     "$PEP_MACOS_ROOT_DIR/installer/macOS/runpepdownload.sh" \
     "false"
 
+PEP_MACOS_UPLOAD_TOOL_APP_NAME="PEP Upload Tool"
+PEP_MACOS_UPLOAD_TOOL_APP_BUILD_ROOT_DIR="$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app"
+
+create_cli_app \
+    "$PEP_MACOS_UPLOAD_TOOL_APP_NAME" \
+    "$PEP_MACOS_UPLOAD_TOOL_APP_BUILD_ROOT_DIR" \
+    "$PEP_MACOS_ROOT_DIR/cpp/pep/assessor/guilib/appicon.icns" \
+    "$PEP_MACOS_ROOT_DIR/installer/macOS/runpepupload.sh" \
+    "false"
+
 MACOS_SYS_ARCH=$(uname -m)
 
 if [[ "$MACOS_SYS_ARCH" != "arm64" ]] && [[ "$MACOS_SYS_ARCH" != "x86_64" ]]; then

@@ -401,9 +401,6 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    * \brief Generate a polymorphic pseudonym for a registered participant.
    */
   PolymorphicPseudonym generateParticipantPolymorphicPseudonym(const std::string& participantSID);
-  const ElgamalPublicKey& getPublicKeyPseudonyms() const {
-    return publicKeyPseudonyms;
-  }
 
   /*!
    * \brief Interpret each string as a textually represented polymorphic pseudonym, or a participant identifier,
@@ -568,6 +565,8 @@ protected:
     CurveScalar alpha, beta;
     CurveScalar gamma, delta;
     SignedKeyComponentRequest keyComponentRequest;
+
+    explicit EnrollmentContext(std::shared_ptr<const X509Identity> enroller);
   };
 
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);

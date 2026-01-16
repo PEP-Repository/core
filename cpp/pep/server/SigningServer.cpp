@@ -14,7 +14,7 @@ messaging::MessageBatches SigningServer::handlePingRequest(std::shared_ptr<PingR
 }
 
 SigningServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : Server::Parameters(io_context, config), identity_(MakeSharedCopy(X509IdentityFilesConfiguration(config, "PEP").identity())) {
+  : Server::Parameters(io_context, config), identity_(MakeSharedCopy(X509IdentityFiles::FromConfig(config, "PEP").identity())) {
 }
 
 }

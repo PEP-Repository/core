@@ -267,8 +267,7 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
     lp.mStorageFacility = p4.encrypt(q);
     ticket.mPseudonyms.push_back(lp);
   }
-  pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
-  auto identity = pep::X509Identity::MakeUncertified(keypair.getPrivateKey());
+  auto identity = pep::X509Identity::MakeSelfSigned("Benchmarker, inc.", "PepBenchmark");
   ret.mTicket2 = std::make_shared<pep::SignedTicket2>(
       ticket, identity);
   for (uint32_t i = 0; i < 1000; i++) {

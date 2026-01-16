@@ -18,7 +18,6 @@ protected:
     std::chrono::seconds timestampLeeway) const;
 
 public:
-  SignedBase() = default;
   SignedBase(
     std::string data,
     const X509Identity& identity);
@@ -37,7 +36,6 @@ public:
 template<typename T>
 class Signed : public SignedBase {
 public:
-  Signed() = default; // TODO get rid of default constructor
   Signed(std::string data, Signature signature)
     : SignedBase(std::move(data), std::move(signature)) { }
   Signed(T o, const X509Identity& identity) :

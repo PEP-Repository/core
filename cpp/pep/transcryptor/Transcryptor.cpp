@@ -389,7 +389,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
     throw std::runtime_error("Requestor does not have data access: " + std::to_string(static_cast<unsigned>(*party)));
   }
 
-  const auto recipient = RekeyRecipientForCertificate(pRequest->mClientCertificateChain.front());
+  const auto recipient = RekeyRecipientForCertificate(pRequest->mClientCertificateChain.leaf());
 
   return mWorkerPool->batched_map<8>(std::move(pRequest->mKeys),
           observe_on_asio(*getIoContext()),

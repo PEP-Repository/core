@@ -790,31 +790,24 @@ private:
       }
     };
 
-    class AmaParticipantGroupExistenceSubCommand : public AmaParticipantGroupSubCommand {
+    class AmaParticipantGroupCreateCommand : public AmaParticipantGroupSubCommand {
     public:
-      using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string) const;
-
-    private:
-      AmProxyMethod mMethod;
-
-    public:
-      AmaParticipantGroupExistenceSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaParticipantGroup& parent)
-        : AmaParticipantGroupSubCommand(name, description, parent), mMethod(method) {
+      AmaParticipantGroupCreateCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("create", "Create new participant group", parent) {
       }
 
     protected:
       int execute() override {
-        return executeEventLoopFor([group = this->getParticipantGroupName(), method = mMethod](std::shared_ptr<pep::CoreClient> client) {
-          auto& am = *client->getAccessManagerProxy();
-          return (am.*method)(group);
+        return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
+          return client->getAccessManagerProxy()->amaCreateParticipantGroup(group);
         });
       }
     };
 
     class AmaParticipantGroupRemoveSubCommand : public AmaParticipantGroupSubCommand {
     public:
-      AmaParticipantGroupRemoveSubCommand(const std::string& name, const std::string& description, CommandAmaParticipantGroup& parent)
-        : AmaParticipantGroupSubCommand(name, description, parent) {
+      AmaParticipantGroupRemoveSubCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("remove", "Remove participant group", parent) {
       }
 
     protected:
@@ -894,13 +887,8 @@ private:
     inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli#ama-group"; }
 
     std::vector<std::shared_ptr<Command>> createChildCommands() override {
-      return {std::make_shared<AmaParticipantGroupExistenceSubCommand>("create",
-                                                                       "Create new participant group",
-                                                                       &pep::AccessManagerProxy::amaCreateParticipantGroup,
-                                                                       *this),
-              std::make_shared<AmaParticipantGroupRemoveSubCommand>("remove",
-                                                                    "Remove participant group",
-                                                                    *this),
+      return {std::make_shared<AmaParticipantGroupCreateCommand>(*this),
+              std::make_shared<AmaParticipantGroupRemoveSubCommand>(*this),
               std::make_shared<AmaParticipantGroupingSubCommand>("addTo",
                                                                  "Add participant to group",
                                                                  &pep::AccessManagerProxy::amaAddParticipantToGroup,

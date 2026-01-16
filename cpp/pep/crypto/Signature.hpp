@@ -25,8 +25,6 @@ class Signature {
   Timestamp mTimestamp;
   bool mIsLogCopy = false;
 
-  Signature() : mTimestamp{/*zero*/} {}
-
   Signature(
       std::string signature,
       X509CertificateChain chain,

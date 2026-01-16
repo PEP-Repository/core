@@ -31,6 +31,8 @@ variables:
   MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
   MACOS_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
   MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
+  MACOS_UPLOAD_TOOL_APPCAST_PATH: macos/Universal/update/upload_tool_app/AppCast.xml
+  MACOS_LEGACY_UPLOAD_TOOL_APPCAST_PATH: macos/Universal/update/upload_tool_app/AppCast.xml
 
   PEP_DEPLOYING_JSON_FILE: config/$CI_COMMIT_REF_NAME/constellation.json
 
@@ -368,6 +370,7 @@ macos-generate-appcast:
     - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_ASSESSOR_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_ASSESSOR_APPCAST_PATH"
     - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_CLI_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_CLI_APPCAST_PATH"
     - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_DOWNLOAD_TOOL_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH"
+    - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_UPLOAD_TOOL_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_UPLOAD_TOOL_APPCAST_PATH"
     # Also find .pkg and zip them with ditto, then remove the .pkg
     - find "${INSTALLER_BASE_DIR}/macos/Universal" -type f -name "*.pkg" -exec ditto -c -k --sequesterRsrc "{}" "{}.zip" \; -exec rm -f "{}" \;
   artifacts:
@@ -554,7 +557,7 @@ deploy-data-sync:
 ## Configuration for the test stage       #
 ###########################################
 
-test-deployment:
+test-client-servers-version-diff:
   stage: test
   dependencies: []
   rules:

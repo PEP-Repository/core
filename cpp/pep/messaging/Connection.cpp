@@ -38,7 +38,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
     auto length = header.length();
 
     if (length > MAX_SIZE_OF_MESSAGE) {
-      LOG(LOG_TAG, severity_level::error)
+      LOG(LOG_TAG, severity_level::warning)
         << "Connection::handleHeaderReceived: "
         << "refusing " << length << "-byte message from " << describe()
         << " because it's larger than the maximum of " << MAX_SIZE_OF_MESSAGE << " bytes";
@@ -59,7 +59,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
       });
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
     this->handleError(std::make_exception_ptr(boost::system::system_error(boost::system::errc::make_error_code(boost::system::errc::errc_t::bad_message))));
   }
 }
@@ -236,9 +236,15 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
 
 Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler)
   : mMessageInBody(MAX_SIZE_OF_MESSAGE, '\0'), mKeepAliveTimer(ioContext), mScheduler(Scheduler::Create(ioContext)), mRequestor(Requestor::Create(ioContext, *mScheduler)),
-  mNode(node), mDescription(node->describe()), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
+  mNode(node), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
   assert(mBinary->status() == networking::Transport::ConnectivityStatus::connected);
-  assert(mNode.lock() != nullptr);
+  assert(node != nullptr);
+
+  mDescription = node->describe() + " connected to " + mBinary->remoteAddress();
+
+  if (node->reconnectParameters().has_value()) {
+    mVersionCheckBackoff.emplace(mIoContext, *node->reconnectParameters());
+  }
 
   this->setStatus(Status::initializing);
 
@@ -275,7 +281,7 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
     }
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
     // Processed by generic "bad message" handling outside the "catch" clause
   }
 
@@ -286,16 +292,18 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
   const auto& messageId = header.properties().messageId();
 
   auto result = mMessageInBody.substr(0U, header.length());
-  assert(result.empty() || result.size() >= sizeof(MessageMagic));
 
   LOG(LOG_TAG, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
-    << (result.empty() ? std::string("without message magic") : DescribeMessageMagic(result))
+    << (result.size() >= sizeof(MessageMagic) ? DescribeMessageMagic(result) : "no valid message magic")
     << ", stream id " << messageId.streamId() << ", " << this->describe() << ")";
 
   return result;
 }
 
 void Connection::close() {
+  if (mVersionCheckBackoff) {
+    mVersionCheckBackoff->stop();
+  }
   mBinaryStatusSubscription.cancel();
   mBinary.reset();
   this->clearState(false);
@@ -499,7 +507,7 @@ void Connection::handleError(std::exception_ptr exception) {
 
   if (shouldLog(exception)) {
     LOG(LOG_TAG, severity_level::warning)
-      << "Error with " << this->describe()
+      << "Error encountered by " << this->describe()
       << ": " << GetExceptionMessage(exception);
   }
 
@@ -531,10 +539,34 @@ void Connection::clearState(bool reconnecting) {
   mRequestor->purge(!reconnecting);
 }
 
-void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
+void Connection::handleBinaryConnectionEstablished() {
+  if (!mVersionCheckScheduled) {
+    this->performVersionCheck();
+  }
+}
+
+void Connection::postponeVersionCheck() {
+  assert(!mVersionCheckScheduled);
+  if (mVersionCheckBackoff) {
+    mVersionCheckBackoff->retry([weak = WeakFrom(*this)](boost::system::error_code ec) {
+      if (auto self = weak.lock()) {
+        self->mVersionCheckScheduled = false;
+        if (ec != boost::asio::error::operation_aborted) {
+          self->performVersionCheck();
+        }
+      }
+      });
+    mVersionCheckScheduled = true;
+  }
+}
+
+void Connection::performVersionCheck() {
+  assert(!mVersionCheckScheduled);
+  assert(!mVersionValidated);
+
+  // Keep instance alive until version check has been performed
   auto self = SharedFrom(*this);
 
-  assert(!mVersionValidated);
   this->sendRequest(MakeSharedCopy(Serialization::ToString(VersionRequest())), std::nullopt, true)
     .map([](std::string_view response) {return Serialization::FromString<VersionResponse>(response); })
     .observe_on(observe_on_asio(mIoContext))
@@ -542,7 +574,7 @@ void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
       [self](VersionResponse response) {
         self->handleVersionResponse(response);
       },
-      [self, notify](std::exception_ptr ep) {
+      [self](std::exception_ptr ep) {
         LOG(LOG_TAG, warning) << "Version check failed: " << GetExceptionMessage(ep);
         auto getReason = [](std::exception_ptr exception) {
           try {
@@ -556,16 +588,15 @@ void Connection::handleBinaryConnectionEstablished(Attempt::Handler notify) {
         auto reason = getReason(ep);
         auto error = std::make_exception_ptr(boost::system::system_error(make_error_code(reason)));
         self->handleError(error);
-        notify(Attempt::Result::Failure(error));
       },
-      [self, notify]() {
+      [self]() {
         if (!self->mVersionValidated) {
           auto error = std::make_exception_ptr(ConnectionFailureException::ForVersionCheckFailure("No version response received"));
+          self->postponeVersionCheck();
           self->handleError(error);
-          notify(Attempt::Result::Failure(error));
         }
-        else {
-          notify(Attempt::Result::Success(self));
+        else if (self->mVersionCheckBackoff) {
+          self->mVersionCheckBackoff->success();
         }
       });
 
@@ -585,7 +616,13 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
   }
 
   assert(mBinary != nullptr);
-  node->vetConnectionWith(this->describe(), mBinary->remoteAddress(), response.binary, response.config); // Raises an exception if connection should be refused
+  try {
+    node->vetConnectionWith(this->describe(), mBinary->remoteAddress(), response.binary, response.config); // Raises an exception if connection should be refused
+  }
+  catch (...) {
+    this->postponeVersionCheck();
+    throw;
+  }
 
   mVersionValidated = true;
   this->setStatus(Status::initialized);
@@ -622,7 +659,7 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
     this->setStatus(Status::initializing);
     return;
   case networking::Transport::ConnectivityStatus::connected:
-    this->handleBinaryConnectionEstablished([](const auto&) { /* ignore: "handle" method updates state */});
+    this->handleBinaryConnectionEstablished();
     return;
   case networking::Transport::ConnectivityStatus::disconnecting:
   case networking::Transport::ConnectivityStatus::disconnected:
@@ -641,22 +678,23 @@ bool Connection::isConnected() const noexcept {
   return mBinary != nullptr && mBinary->isConnected();
 }
 
-void Connection::Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler, Attempt::Handler notify) {
-  // Create a Connection so it can perform its version check
+std::shared_ptr<Connection> Connection::Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler) {
   assert(binary->isConnected());
-  auto instance = std::shared_ptr<Connection>(new Connection(node, binary, ioContext, requestHandler));
-  assert(instance->status() == Status::initializing);
+  auto result = std::shared_ptr<Connection>(new Connection(node, binary, ioContext, requestHandler));
+  assert(result->status() == Status::initializing);
 
   // Subscribe the Connection to connectivity changes in the networking::Connection: the constructor couldn't do so because it can't get a shared_ptr to itself
-  instance->mBinaryStatusSubscription = instance->mBinary->onConnectivityChange.subscribe([weak = std::weak_ptr<Connection>(instance)](const networking::Connection::ConnectivityChange& change) {
+  result->mBinaryStatusSubscription = result->mBinary->onConnectivityChange.subscribe([weak = std::weak_ptr<Connection>(result)](const networking::Connection::ConnectivityChange& change) {
     auto self = weak.lock();
     if (self != nullptr) {
       self->handleBinaryConnectivityChange(change);
     }
     });
 
-  // Have the instance initialize itself, invoking the handler when done
-  instance->handleBinaryConnectionEstablished(std::move(notify));
+  // Start initializing: perform version check
+  result->handleBinaryConnectionEstablished();
+
+  return result;
 }
 
 void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_ptr<std::string>> subscriber) {

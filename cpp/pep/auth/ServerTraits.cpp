@@ -93,10 +93,7 @@ bool ServerTraits::signingIdentityMatches(const X509Certificate& certificate) co
 }
 
 bool ServerTraits::signingIdentityMatches(const X509CertificateChain& chain) const {
-  if (chain.empty()) {
-    return false;
-  }
-  return this->signingIdentityMatches(chain.front());
+  return this->signingIdentityMatches(chain.leaf());
 }
 
 const std::optional<EnrolledParty>& ServerTraits::enrollsAsParty(bool require) const {

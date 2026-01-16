@@ -172,8 +172,7 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
   LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
   return keyServerProxy->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
-    auto ctx = std::make_shared<EnrollmentContext>();
-    ctx->identity = std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain);
+    auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain));
 
     return completeEnrollment(ctx);
       });

@@ -11,7 +11,7 @@ namespace {
 
 }
 
-std::shared_ptr<networking::Protocol::ServerParameters> BinaryProtocol::CreateServerParameters(boost::asio::io_context& context, uint16_t port, X509IdentityFilesConfiguration identity) {
+std::shared_ptr<networking::Protocol::ServerParameters> BinaryProtocol::CreateServerParameters(boost::asio::io_context& context, uint16_t port, X509IdentityFiles identity) {
 #ifdef NO_TLS
   LOG(LOG_TAG, warning) << "Exposing server on port " << port << " over an unencrypted connection";
   return std::make_shared<networking::Tcp::ServerParameters>(context, port);

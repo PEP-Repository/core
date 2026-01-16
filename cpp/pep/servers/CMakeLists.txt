@@ -110,20 +110,6 @@ function(add_shared_companion_files subdir)
   endforeach()
 endfunction()
 
-add_library(${PROJECT_NAME}Serverslib STATIC
-  Servers.hpp Servers.cpp
-)
-target_link_libraries(${PROJECT_NAME}Serverslib
-    ${PROJECT_NAME}AccessManagerlib
-    ${PROJECT_NAME}KeyServerlib
-    ${PROJECT_NAME}RegistrationServerlib
-    ${PROJECT_NAME}StorageFacilitylib
-    ${PROJECT_NAME}Transcryptorlib
-    ${PROJECT_NAME}Authserverlib
-    ${PROJECT_NAME}ServiceApplicationlib
-)
-verify_headers_standalone(${PROJECT_NAME}Serverslib)
-
 
 # Stage s3proxy so we can use it as a backend for Storage Facility's "s3" page store.
 # We stage to the "storagefacility" subdirectory so we can switch (SF configuration)
@@ -132,7 +118,10 @@ verify_headers_standalone(${PROJECT_NAME}Serverslib)
 include(${PROJECT_SOURCE_DIR}/s3proxy/s3proxy.cmake)
 stage_s3proxy("${PROJECT_NAME}Servers_s3proxy" "storagefacility")
 
-add_cli_install_executable(${PROJECT_NAME}Servers Main.cpp)
+add_cli_install_executable(${PROJECT_NAME}Servers
+  Main.cpp
+  Servers.hpp Servers.cpp
+)
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}Servers PRIVATE VersionInfo.rc)
 endif()
@@ -148,41 +137,20 @@ add_dependencies(
     )
 target_link_libraries(
     ${PROJECT_NAME}Servers
-    ${PROJECT_NAME}Serverslib
-    ${PROJECT_NAME}Applicationlib
+
+    ${PROJECT_NAME}AccessManagerlib
+    ${PROJECT_NAME}KeyServerlib
+    ${PROJECT_NAME}RegistrationServerlib
+    ${PROJECT_NAME}StorageFacilitylib
+    ${PROJECT_NAME}Transcryptorlib
+    ${PROJECT_NAME}Authserverlib
+    ${PROJECT_NAME}ServiceApplicationlib
     )
+
+verify_headers_standalone(${PROJECT_NAME}Servers)
 
 configure_debug_command_line_parameter(${PROJECT_NAME}Servers ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/)
 
 configure_executable_config_version(${PROJECT_NAME}Servers local)
 
 add_shared_companion_files(".")
-
-if (WITH_TESTS)
-  add_unit_tests(Servers)
-  target_link_libraries(${PROJECT_NAME}ServersUnitTests ${PROJECT_NAME}Clientlib)
-
-  add_dependencies(
-    ${PROJECT_NAME}ServersUnitTests
-    serverstest_accessmanager_pki
-    serverstest_keyserver_pki
-    serverstest_registrationserver_pki
-    serverstest_storagefacility_pki
-    serverstest_transcryptor_pki
-    serverstest_authserver_pki
-    serverstest_pki
-  )
-
-  configure_executable_config_version(${PROJECT_NAME}ServersUnitTests local)
-
-  configure_executable_companion(${PEP_LOCAL_INFRA_DIR}/client/ClientConfig.json)
-  configure_executable_companion(${PEP_LOCAL_INFRA_DIR}/ShadowAdministration.pub)
-  copy_pki_files(
-    TARGET
-    serverstest_pki
-    FILES
-    rootCA.cert
-  )
-
-  add_shared_companion_files("serverstest")
-endif ()

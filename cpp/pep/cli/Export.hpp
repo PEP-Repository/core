@@ -52,6 +52,7 @@ private:
   friend class ChildCommand; // Allows a ChildCommand to make calls like 'this->getParent().getSupportedParameters()'
   class CommandExportCsv;
   class CommandExportJson;
+  class CommandExportYaml;
 };
 
 }
