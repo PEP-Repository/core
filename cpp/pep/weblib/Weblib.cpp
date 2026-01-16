@@ -48,7 +48,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   Configuration clientConfig_;
   std::shared_ptr<Client> client_;
 
-  std::optional<rxcpp::observe_on_one_worker> asioWorker_;
+  std::optional<rxcpp::observe_on_one_worker> asioWorker_, emscriptenMainWorker_;
 
   // Destruct these first to stop io_service
   std::jthread thread_;
@@ -60,6 +60,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     auto io_context = std::make_shared<boost::asio::io_context>();
     workGuard_.emplace(make_work_guard(*io_context));
     asioWorker_.emplace(observe_on_asio(*io_context));
+    emscriptenMainWorker_.emplace(observe_on_emscripten_main_thread());
 
     clientConfig_ = Configuration::FromFile("ClientConfig.json");
 
@@ -129,7 +130,7 @@ public:
   /// \param callback <code>(connected: bool) => void</code>
   void onStatusChange(val callback) {
     connectionStatusChange() // Safe to call outside io_context thread
-        .observe_on(observe_on_emscripten_main_thread())
+        .observe_on(*emscriptenMainWorker_)
         // Even move constructor only allowed on main thread, avoid calling it when copying lambda
         .subscribe([callback = EmscriptenValPtr(std::move(callback))](bool connected) {
           (*callback)(connected);
@@ -341,8 +342,8 @@ public:
                       signedTicket),
                   signedTicket);
               return rxcpp::observable<>::just(entries)
-                  .observe_on(observe_on_emscripten_main_thread())
-                  .flat_map([pageBatches](const std::shared_ptr<std::vector<const CellEntry*>>& entries) {
+                  .observe_on(*self->emscriptenMainWorker_)
+                  .flat_map([self, pageBatches](const std::shared_ptr<std::vector<const CellEntry*>>& entries) {
 
                     auto cellStreams = std::make_shared<std::vector<rxcpp::subjects::subject<std::string>>>(entries->size());
 
@@ -356,7 +357,7 @@ public:
                     pageBatches
                         //TODO Do not request all batches at once, by implementing `pull` with ReadableStream!
                         .concat()
-                        .observe_on(observe_on_emscripten_main_thread())
+                        .observe_on(*self->emscriptenMainWorker_)
                         .subscribe(
                             // on next
                             [cellStreams](RetrievePage page) noexcept {
