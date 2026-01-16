@@ -14,14 +14,14 @@ struct WeblibApiPromiseAwaitTransform {
   // Well-known name
   template <typename TValue, typename TSourceOperator>
   auto await_transform(const rxcpp::observable<TValue, TSourceOperator>& observable) {
-    // Return to previous thread after co_await
+    // Return to main thread after co_await
     return observable.observe_on(observe_on_emscripten_main_thread());
   }
 };
 }
 
 /// Create coroutine returning Promise<any>.
-/// Automatically switches back to starting thread before awaiting an observable
+/// Automatically switches back to main thread before awaiting an observable
 struct WeblibApiPromise : emscripten::val {
   using val::val;
   WeblibApiPromise(val v) : val(std::move(v)) {}
@@ -31,7 +31,7 @@ struct WeblibApiPromise : emscripten::val {
 };
 
 /// Create coroutine returning Promise<undefined>.
-/// Automatically switches back to starting thread before awaiting an observable
+/// Automatically switches back to main thread before awaiting an observable
 struct WeblibApiVoidPromise : emscripten::val {
   using val::val;
   WeblibApiVoidPromise(val v) : val(std::move(v)) {}
@@ -40,12 +40,17 @@ struct WeblibApiVoidPromise : emscripten::val {
   class promise_type : public detail::WeblibApiPromiseAwaitTransform {
     val::promise_type inner_;
   public:
+    // Well-known name
     WeblibApiVoidPromise get_return_object() { return inner_.get_return_object(); }
+    // Well-known name
     auto initial_suspend() noexcept { return inner_.initial_suspend(); }
+    // Well-known name
     auto final_suspend() noexcept { return inner_.final_suspend(); }
+    // Well-known name
     void unhandled_exception() { inner_.unhandled_exception(); }
     void reject_with(val error) { inner_.reject_with(std::move(error)); }
 
+    // Well-known name
     void return_void() { inner_.return_value(undefined()); }
   };
 };
