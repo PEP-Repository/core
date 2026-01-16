@@ -85,6 +85,14 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
 option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib")
 if(PEP_WEBLIB_SOURCE_MAP)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE -gsource-map)
+else()
+  # Prevent old source map from remaining and being picked up
+  add_custom_command(
+      TARGET ${PROJECT_NAME}Weblib POST_BUILD
+      COMMENT "Removing any leftover source map"
+      COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.map"
+      VERBATIM
+  )
 endif()
 
 # tsc isn't installed by default as it's in EMSDK devDependencies but we need it for --emit-tsd,
