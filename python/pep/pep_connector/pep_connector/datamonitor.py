@@ -293,12 +293,8 @@ class DataMonitor(Connector):
             self.log(f"Processing column: {col} (key: {key})", level=logging.DEBUG)
             
             for lp in participant_info:
-                # Count filled columns
-                if lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
-                    filled_count += 1
-                    self.log(f"Column {col}: Found filled data for participant {lp}", level=logging.DEBUG)
-                
-                # Count sent items (only first send, not reminders)
+                # Determine if this participant was sent this specific survey
+                was_sent = False
                 if config_item_name and survey_id is not None:
                     info_data = participant_info[lp]
                     emails_sent_data = info_data["columns"].get("EmailsSent", "")
@@ -314,9 +310,19 @@ class DataMonitor(Connector):
                                     timestamps = survey_types[config_item_name][survey_id_str]
                                     # Only count first send (index 0), not reminders
                                     if timestamps and len(timestamps) > 0:
+                                        was_sent = True
                                         sent_count += 1
                         except (json.JSONDecodeError, ValueError) as e:
                             self.log(f"Error parsing EmailsSent for {lp}: {e}", level=logging.WARNING)
+                else:
+                    # For columns without email tracking, assume all participants were "sent" it
+                    was_sent = True
+                
+                # Only count as filled if participant was actually sent this specific survey
+                # This prevents counting filled data for surveys that weren't sent to this participant
+                if was_sent and lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
+                    filled_count += 1
+                    self.log(f"Column {col}: Found filled data for participant {lp}", level=logging.DEBUG)
             
             column_counts[key] = {
                 "sent": sent_count,
