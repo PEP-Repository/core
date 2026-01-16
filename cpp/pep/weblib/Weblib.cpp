@@ -1,5 +1,6 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/ObservableAwaiter.hpp>
+#include <pep/async/RxInstead.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
@@ -8,6 +9,7 @@
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/utils/ThreadUtil.hpp>
 #include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableByteStream.hpp>
@@ -25,7 +27,6 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
-#include <pep/async/RxInstead.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -66,6 +67,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     client_ = Client::OpenClient(clientConfig_, std::move(io_context));
     // Run event loop in background thread. Calls from JS will still come from the main thread.
     thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
+      ThreadName::Set("Client");
       std::stop_callback onStop(std::move(stop), [io_context] {
         LOG(LOG_TAG, debug) << "stopping io_context...";
         io_context->stop();
