@@ -16,6 +16,10 @@ export default (env, argv) => ({
   // Do not try to bundle stuff for running with Node.js
   externals: /^node:|^(module|worker_threads)$/,
   output: {
+    clean: {
+      // Delete only temporary files
+      keep: /^(?![a-h0-9]{20}\.\w+$)/,
+    },
     library: {
       type: 'modern-module',
     },
