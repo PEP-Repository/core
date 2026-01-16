@@ -11,6 +11,7 @@ set -eu
 # E.g. Debug/Release/RelWithDebInfo
 build_type="${1:-Debug}"
 server_build_type="${2:-$build_type}"
+subbuild_name="${3:-wasm32}"
 
 build_type_lower=$(echo "$build_type" | tr '[:upper:]' '[:lower:]')
 server_build_type_lower=$(echo "$server_build_type" | tr '[:upper:]' '[:lower:]')
@@ -38,7 +39,7 @@ trap stop_jobs EXIT
 # Initial weblib build incl. C++, place symlinks in source directory
 (
   cd "$foss_dir"
-  cmake --build --preset "wasm32-$build_type_lower" --target pepWeblibSampleClient
+  cmake --build --preset "$subbuild_name-$build_type_lower" --target pepWeblibSampleClient
 )
 
 # Start servers
