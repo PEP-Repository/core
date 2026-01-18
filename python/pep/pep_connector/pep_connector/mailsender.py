@@ -6,6 +6,17 @@ import getpass
 import os
 import time
 import re
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+    ConfigDict,
+    EmailStr,
+    HttpUrl,
+    FilePath
+)
+from typing import Literal, Any
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -14,84 +25,186 @@ from email.utils import formatdate
 from email.utils import make_msgid
 from email import encoders
 from datetime import datetime, timedelta
-from .connectors import Connector
-from .peprepository import PEPRepository
+from .connectors import Connector, ConnectorConfig
+from .peprepository import PEPRepository, PEPConfig
 from .datamonitor import DataMonitor
 from pypdf import PdfWriter
 import weasyprint
 
+
+class EmailConfig(BaseModel):
+    """Configuration for email/SMTP settings."""
+
+    sender: EmailStr
+    smtp_server: str
+    smtp_port: int = Field(..., ge=1, le=65535)
+    reply_to: EmailStr | None = None
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_auth_required: bool = True
+
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class MailSenderSurveyConfig(BaseModel):
+    """Configuration for a mail sender survey type."""
+
+    # Core fields
+    enabled: bool
+    pep_sp_column: str
+    repetition_type: Literal["once", "sequence", "schedule"]
+
+    # Email-related fields
+    pep_email_column: str | None = None
+    pep_name_column: str | None = None
+    pep_emails_sent_column: str | None = None
+    email_subject: str | None = None
+    email_template: str | None = None
+
+    # Survey fields
+    pep_survey_ids_column: str | None = None
+    template_survey_ids: list[int] | None = None
+    survey_base_url: HttpUrl | None = None
+    copy_survey: bool = False
+
+    # Timing fields
+    start_dates: list[str] | None = None
+    start_dates_column: str | None = None
+    interval_days: int = 0
+    max_reminders: int = 0
+    days_between_reminders: int = 7
+    max_days_retroactive: int | None = None
+
+    # Attachments, footer, conditions as dicts (not separate dataclasses)
+    attachments: list[dict[str, Any]] | None = None
+    footer_image: dict[str, Any] | None = None
+    conditions: list[dict[str, Any]] | None = None
+    data_columns: list[str] | None = None
+
+    # PDF merging
+    merge_pdfs: dict[str, Any] | None = None
+    is_report_type: bool = False
+
+    @model_validator(mode='after')
+    def validate_repetition_type(self):
+        if self.enabled:
+            valid_types = ['once', 'sequence', 'schedule']
+            if self.repetition_type not in valid_types:
+                raise ValueError(f"repetition_type must be one of: {', '.join(valid_types)}")
+        return self
+
+    @model_validator(mode='after')
+    def validate_timing_requirements(self):
+        if not self.enabled:
+            return self
+
+        if self.repetition_type in ['sequence', 'schedule']:
+            if not self.start_dates and not self.start_dates_column:
+                raise ValueError(f"repetition_type '{self.repetition_type}' requires either start_dates or start_dates_column")
+
+        return self
+
+    @field_validator('start_dates')
+    @classmethod
+    def validate_start_dates(cls, v):
+        if v:
+            for date_str in v:
+                try:
+                    datetime.fromisoformat(date_str)
+                except ValueError:
+                    raise ValueError(f"start_dates must be in ISO 8601 date format (YYYY-MM-DD), got: {date_str}")
+        return v
+
+    @field_validator('attachments')
+    @classmethod
+    def validate_attachments(cls, v):
+        if v:
+            for att in v:
+                if not isinstance(att, dict) or 'path' not in att:
+                    raise ValueError("Each attachment must be a dict with 'path' field")
+                if not os.path.isfile(att['path']):
+                    raise ValueError(f"Attachment file does not exist: {att['path']}")
+        return v
+
+    @field_validator('footer_image')
+    @classmethod
+    def validate_footer_image(cls, v):
+        if v:
+            if not isinstance(v, dict) or 'path' not in v:
+                raise ValueError("footer_image must be a dict with 'path' field")
+            if not os.path.isfile(v['path']):
+                raise ValueError(f"Footer image file does not exist: {v['path']}")
+        return v
+
+    model_config = ConfigDict(validate_assignment=True)
+
+
+class MailSenderConfig(ConnectorConfig):
+    """Configuration for MailSender connector with comprehensive email and survey settings."""
+
+    model_config = ConfigDict(
+        validate_assignment=True,
+        arbitrary_types_allowed=True  # Allow PEPConfig
+    )
+
+    # Email configuration as a nested config object
+    email_config: EmailConfig | None = None
+    smtp_credentials_file: FilePath | None = None
+
+    # LimeSurvey configuration
+    limesurvey_api_token_path: FilePath | None = None
+
+    # Survey types configuration
+    survey_types: dict[str, MailSenderSurveyConfig] = Field(default_factory=dict)
+
+    # Debug mode
+    debug_mode: bool = False
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], pep_config: PEPConfig) -> "MailSenderConfig":
+        """Create MailSenderConfig from configuration dictionary.
+
+        Args:
+            data: Dictionary with connector configuration
+            pep_config: PEPConfig instance
+
+        Returns:
+            Fully constructed and validated MailSenderConfig
+        """
+        return cls(pep_config=pep_config, **data)
+
+
 class MailSender(Connector):
     """Class for sending emails via SMTP with tracking capabilities"""
-    
+
     LOG_TAG = "MailSender"
 
-    def __init__(self, repository: PEPRepository, 
-                 email_config=None, 
-                 smtp_credentials=None, 
-                 credentials_file=None, 
-                 debug_mode=False, 
-                 smtp_auth_required=True, 
-                 prometheus_dir=None, 
-                 use_prometheus=False, 
-                 env_prefix=None, 
-                 job_name=None):
-        super().__init__(repository, prometheus_dir, use_prometheus, env_prefix, job_name)
+    def __init__(self, repository: PEPRepository, config: MailSenderConfig):
+        """
+        Initialize MailSender with a MailSenderConfig object.
+
+        Args:
+            repository: PEPRepository instance
+            config: MailSenderConfig instance (required)
+        """
+        if not isinstance(config, MailSenderConfig):
+            raise ValueError("config must be an instance of MailSenderConfig")
+
+        # Initialize parent with the config
+        super().__init__(repository, config)
 
         self.repository = repository
+        self.debug_mode = config.debug_mode
+        self.smtp_auth_required = config.smtp_auth_required
+        self.smtp_credentials = {}
 
-        if email_config:
-            self._validate_email_config(email_config)
+        # Load credentials if provided in config
+        if config.smtp_username and config.smtp_password:
+            self.set_smtp_credentials(config.smtp_username, config.smtp_password)
 
-        self.email_config = email_config or {}
-        self.debug_mode = debug_mode
-        self.smtp_credentials = smtp_credentials
-        self.smtp_auth_required = smtp_auth_required
-
-        # Check for credentials in config
-        if email_config and "smtp_username" in email_config and "smtp_password" in email_config:
-            self.set_smtp_credentials(email_config["smtp_username"], email_config["smtp_password"])
-
-        # Check for credentials file path in config
-        if email_config and "smtp_credentials_file" in email_config:
-            self.load_smtp_credentials_from_file(email_config["smtp_credentials_file"])
-
-        # Load credentials from direct file parameter if provided (overrides config-based file)
-        if credentials_file:
-            self.load_smtp_credentials_from_file(credentials_file)
-
-    def _validate_email_config(self, email_config) -> None:
-        """Validate the email configuration"""
-        required_keys = ["sender", "smtp_server", "smtp_port"]
-        missing_keys = [key for key in required_keys if key not in email_config]
-
-        if missing_keys:
-            self.log(f"Email configuration is missing required keys: {', '.join(missing_keys)}", level=logging.ERROR, tag=self.LOG_TAG)
-            raise ValueError(f"Email configuration is missing required keys: {', '.join(missing_keys)}")
-
-        # Validate types
-        if not isinstance(email_config["smtp_port"], int):
-            self.log("SMTP port must be an integer", level=logging.ERROR, tag=self.LOG_TAG)
-            raise ValueError("SMTP port must be an integer")
-
-        # Validate rate_limit_seconds if present
-        if "rate_limit_seconds" in email_config:
-            rate_limit = email_config["rate_limit_seconds"]
-            if not isinstance(rate_limit, int) or rate_limit < 0:
-                self.log("rate_limit_seconds must be a non-negative integer", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("rate_limit_seconds must be a non-negative integer")
-
-        # Validate retry settings if present
-        if "max_retries" in email_config:
-            max_retries = email_config["max_retries"]
-            if not isinstance(max_retries, int) or max_retries < 0:
-                self.log("max_retries must be a non-negative integer", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("max_retries must be a non-negative integer")
-
-        if "retry_delay" in email_config:
-            retry_delay = email_config["retry_delay"]
-            if not isinstance(retry_delay, (int, float)) or retry_delay < 0:
-                self.log("retry_delay must be a non-negative number", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("retry_delay must be a non-negative number")
+        # Load credentials from file if provided
+        if config.smtp_credentials_file:
+            self.load_smtp_credentials_from_file(config.smtp_credentials_file)
 
     def set_debug_mode(self, debug_mode=True) -> None:
         """Set debug mode (prevents actually sending emails)"""
@@ -251,14 +364,14 @@ class MailSender(Connector):
     def _send_email_with_retry(self, message, smtp_server, smtp_port, max_retries, retry_delay):
         """
         Send an email message with retry logic for transient errors
-        
+
         Args:
             message: The email message to send
             smtp_server: SMTP server address
             smtp_port: SMTP server port
             max_retries: Maximum number of retry attempts
             retry_delay: Base delay in seconds between retries (exponential backoff)
-            
+
         Raises:
             Exception: If email sending fails after all retries
         """
@@ -355,7 +468,7 @@ class MailSender(Connector):
 
         # Determine whether to use HTML (required for footer image or if explicitly requested)
         use_html = use_html or footer_image is not None
-        
+
         # If using HTML with a footer image, we need a related MIME structure
         if use_html:
             message = MIMEMultipart('related')
@@ -505,7 +618,7 @@ class MailSender(Connector):
 
             # Send email with retry logic
             self._send_email_with_retry(message, smtp_server, smtp_port, max_retries, retry_delay)
-            
+
             # Make sure to sleep for rate limit avoidance
             rate_limit_seconds = self.email_config.get("rate_limit_seconds", 100)
             self.log(f"Sleeping for {rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
@@ -579,224 +692,6 @@ class MailSender(Connector):
             return False
 
         return True
-
-    def validate_config(self, config) -> None:
-        """Validate the configuration"""
-
-        # Validation for all email types
-        required_keys = [
-            "pep_sp_column", "pep_email_column", "pep_emails_sent_column", "pep_survey_ids_column", 
-            "email_subject", "email_template", "max_reminders"
-        ]
-
-        is_report = "is_report_type" in config
-
-        # Report types don't explicitly require these keys
-        if not is_report:
-            required_keys.extend([
-                "template_survey_ids", "survey_base_url"
-            ])
-
-        for key in required_keys:
-            if key not in config:
-                self.log(f"Missing required config item: {key}", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError(f"Missing required config item: {key}")
-
-        # Validate reminder types
-        max_reminders = config["max_reminders"]
-        if not isinstance(max_reminders, int) or max_reminders < 0:
-            self.log("max_reminders must be a non-negative integer", level=logging.ERROR, tag=self.LOG_TAG)
-            raise ValueError("max_reminders must be a non-negative integer")
-
-        # days_between_reminders is required only if max_reminders > 0
-        if max_reminders > 0:
-            if "days_between_reminders" not in config:
-                self.log("Missing required config item: days_between_reminders (required when max_reminders > 0)", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("Missing required config item: days_between_reminders (required when max_reminders > 0)")
-            
-            days_between_reminders = config["days_between_reminders"]
-            if not isinstance(days_between_reminders, int) or days_between_reminders < 0:
-                self.log("days_between_reminders must be a positive integer when max_reminders > 0", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("days_between_reminders must be a positive integer when max_reminders > 0")
-        elif "days_between_reminders" in config:
-            # Optional check: Warn if days_between_reminders is provided when max_reminders is 0
-            self.log("Warning: 'days_between_reminders' is provided but 'max_reminders' is 0. It will be ignored.", level=logging.WARNING, tag=self.LOG_TAG)
-
-        # Validate max_days_retroactive if present
-        max_days_retroactive = config.get("max_days_retroactive")
-        if max_days_retroactive is not None:
-            if not isinstance(max_days_retroactive, int) or max_days_retroactive < 1:
-                self.log("max_days_retroactive must be a positive integer (minimum 1 day)", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("max_days_retroactive must be a positive integer (minimum 1 day)")
-
-        repetition_type = config.get("repetition_type", "once")
-        template_survey_ids = config.get("template_survey_ids")
-        start_dates = config.get("start_dates")
-        end_date = config.get("end_date")
-        interval_days = config.get("interval_days")
-
-        if is_report:
-            # For report types, validate template_survey_ids based on repetition_type
-            if template_survey_ids:
-                if repetition_type == "sequence":
-                    if not all(isinstance(id, int) for id in template_survey_ids):
-                        self.log(f"Invalid template_survey_ids for report: {template_survey_ids}. All dummy IDs must be integers.", level=logging.ERROR, tag=self.LOG_TAG)
-                        raise ValueError(f"Invalid template_survey_ids for report: {template_survey_ids}. All dummy IDs must be integers.")
-                    if len(template_survey_ids) != len(set(template_survey_ids)):
-                        self.log(f"Invalid template_survey_ids for report: {template_survey_ids}. dummy IDs must be unique.", level=logging.ERROR, tag=self.LOG_TAG)
-                        raise ValueError(f"Invalid template_survey_ids for report: {template_survey_ids}. dummy IDs must be unique.")
-            else:
-                if repetition_type == "sequence":
-                    raise ValueError("For report types with 'sequence' repetition, 'template_survey_ids' must be provided with multiple (dummy) IDs, e.g [0,1,2,3,4,5].")
-                elif repetition_type == "schedule" and not start_dates:
-                    raise ValueError("For report types with 'schedule' repetition, either 'template_survey_ids' or 'start_dates' must be provided.")
-
-        # Validate start_dates_column if present
-        start_dates_column = config.get("start_dates_column")
-        if start_dates_column:
-            if not isinstance(start_dates_column, str):
-                self.log("start_dates_column must be a string", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("start_dates_column must be a string")
-
-        # Common validation for start_dates
-        if start_dates:
-            if not isinstance(start_dates, list):
-                self.log("start_dates must be a list of date strings.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("'start_dates' must be a list of date strings.")
-
-            # Validate date formats for all provided dates
-            for i, date_str in enumerate(start_dates):
-                try:
-                    datetime.fromisoformat(date_str)
-                except ValueError:
-                    self.log(f"Invalid date format for date {i+1}: {date_str}. Use ISO format (YYYY-MM-DD).", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Invalid date format for date {i+1}: {date_str}. Use ISO format (YYYY-MM-DD).")
-
-            # Check that dates are in ascending order
-            parsed_dates = [datetime.fromisoformat(date_str) for date_str in start_dates]
-            for i in range(1, len(parsed_dates)):
-                if parsed_dates[i] <= parsed_dates[i-1]:
-                    self.log(f"Dates must be in ascending order. Date {i+1} is not after date {i}.", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Dates must be in ascending order. Date {i+1} is not after date {i}.")
-
-        # If the repetition_type is "once", the email will be sent once after start_date (if provided), if no start_date is provided,
-        # the default start_date will be the current date. The template_survey_ids list must contain only one survey_id.
-        # If no repetition_type is provided, the default will be "once"
-        if repetition_type == "once":
-            if (is_report and template_survey_ids is not None and len(template_survey_ids) != 1) or (not is_report and len(template_survey_ids) != 1):
-                self.log(f"template_survey_ids must contain exactly one survey ID for 'once' repetition type.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'once' repetition type, 'template_survey_ids' must contain exactly one survey ID.")
-
-            if start_dates and len(start_dates) > 1:
-                self.log("start_dates must contain at most one date for 'once' repetition type.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'once' repetition type, 'start_dates' should contain at most one date.")
-
-            # End date and interval_days should not be provided
-            if end_date:
-                self.log("For 'once' repetition type, 'end_date' must not be provided.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'once' repetition type, 'end_date' must not be provided.")
-            if interval_days:
-                self.log("For 'once' repetition type, 'interval_days' must not be provided.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'once' repetition type, 'interval_days' must not be provided.")
-
-        # If the repetition_type is "sequence", the survey will be sent once after start_date (if provided), and then each subsequent survey_id 
-        # in the list of template_survey_ids will be sent every interval_days until the list is exhausted, the end_date must not be provided.
-        elif repetition_type == "sequence":
-            if not interval_days or not isinstance(interval_days, int):
-                self.log("interval_days must be provided and must be an integer for 'sequence' repetition type.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'sequence' repetition type, 'interval_days' must be provided and must be an integer.")
-            if end_date:
-                self.log("For 'sequence' repetition type, 'end_date' must not be provided.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'sequence' repetition type, 'end_date' must not be provided.")
-
-            # For 'sequence' repetition type, start_dates should have at most one date
-            if start_dates and len(start_dates) > 1:
-                self.log("start_dates must contain at most one date for 'sequence' repetition type.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'sequence' repetition type, 'start_dates' should contain at most one date.")
-
-        # If the repetition_type is "schedule", the survey will be sent at the specified start_dates.
-        # The end_date and interval_days must not be provided.
-        elif repetition_type == "schedule":
-            if not start_dates:
-                self.log("start_dates must be provided for 'schedule' repetition type.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'schedule' repetition type, 'start_dates' must be provided.")
-
-            # For non-report types, validate that template_survey_ids matches start_dates
-            if not is_report and len(start_dates) != len(template_survey_ids):
-                self.log(f"Number of start dates ({len(start_dates)}) must match number of template survey IDs ({len(template_survey_ids)}).", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError(f"Number of start dates ({len(start_dates)}) must match number of template survey IDs ({len(template_survey_ids)}).")
-
-            if interval_days:
-                self.log("For 'schedule' repetition type, 'interval_days' must not be provided.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'schedule' repetition type, 'interval_days' should not be provided.")
-            if end_date:
-                self.log("For 'schedule' repetition type, 'end_date' must not be provided.", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("For 'schedule' repetition type, 'end_date' should not be provided.")
-
-        else:
-            self.log(f"Invalid repetition type: {repetition_type}. Must be one of: once, sequence, schedule.", level=logging.ERROR, tag=self.LOG_TAG)
-            raise ValueError(f"Invalid repetition type: {repetition_type}")
-
-        # Validate conditions if present
-        conditions = config.get("conditions", [])
-        if conditions:
-            for i, condition in enumerate(conditions):
-                if not isinstance(condition, dict):
-                    self.log(f"Condition {i} must be a dictionary", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Condition {i} must be a dictionary")
-
-                if "column" not in condition:
-                    self.log(f"Condition {i} missing required 'column' field", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Condition {i} missing required 'column' field")
-
-                condition_op = condition.get("condition", "is")
-                valid_operators = [
-                    "is", "is_not", "contains", "not_contains", 
-                    "is_empty", "is_not_empty", "is_one_of", "is_not_one_of"
-                ]
-
-                if condition_op not in valid_operators:
-                    self.log(f"Condition {i} has invalid condition '{condition_op}'. Must be one of: {', '.join(valid_operators)}", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Condition {i} has invalid condition '{condition_op}'. Must be one of: {', '.join(valid_operators)}")
-
-                # Value field validation
-                if "value" not in condition and condition_op not in ["is_empty", "is_not_empty"]:
-                    self.log(f"Condition {i} missing required 'value' field for condition type '{condition_op}'", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Condition {i} missing required 'value' field for condition type '{condition_op}'")
-
-        # Validate attachments if present
-        attachments = config.get("attachments", [])
-        if attachments:
-            if not isinstance(attachments, list):
-                attachments = [attachments]
-                
-            for i, attachment in enumerate(attachments):
-                if isinstance(attachment, str):
-                    # Simple path string
-                    file_path = attachment
-                elif isinstance(attachment, dict) and 'path' in attachment:
-                    # Dictionary with path specified
-                    file_path = attachment['path']
-                else:
-                    self.log(f"Attachment {i} must be a string path or a dictionary with a 'path' key", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Attachment {i} must be a string path or a dictionary with a 'path' key")
-                    
-                # Check if file exists
-                if not self._validate_file_exists(file_path, f"Attachment {i+1}"):
-                    self.log(f"Warning: Attachment file doesn't exist: {file_path}", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Attachment file doesn't exist: {file_path}")
-        
-        # Validate footer image if present
-        footer_image = config.get("footer_image")
-        if footer_image:
-            if not isinstance(footer_image, dict) or 'path' not in footer_image:
-                self.log("Footer image must be a dictionary with a 'path' key", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("Footer image must be a dictionary with a 'path' key")
-                
-            # Check if file exists
-            if not self._validate_file_exists(footer_image['path'], "Footer image"):
-                self.log(f"Warning: Footer image file doesn't exist: {footer_image['path']}", level=logging.WARNING, tag=self.LOG_TAG)
-                raise ValueError(f"Footer image file doesn't exist: {footer_image['path']}")
 
     def _format_column_name(self, column, position, format_type=None) -> str:
         """
@@ -918,7 +813,7 @@ class MailSender(Connector):
                     except json.JSONDecodeError as e:
                         self.log(f"Expected value for '{column}' is not a valid JSON list", level=logging.ERROR, tag=self.LOG_TAG)
                         raise e
-                
+
                 if not isinstance(expected_value, list):
                     self.log(f"Expected value for '{column}' is not a list", level=logging.ERROR, tag=self.LOG_TAG)
                     raise ValueError(f"Expected value for '{column}' is not a list")
@@ -1008,10 +903,10 @@ class MailSender(Connector):
     def _load_html_file(self, file_path: str) -> str:
         """
         Load HTML content from a file
-        
+
         Args:
             file_path: Path to the HTML file
-            
+
         Returns:
             HTML content as string, or empty string if file not found
         """
@@ -1046,7 +941,7 @@ class MailSender(Connector):
         """
         Generate grouped HTML reports and PDFs for expert report emailing.
         Returns a dict: {group_name: {"pdf_path": ..., "filename": ..., "mimetype": ...}}
-        
+
         Args:
             monitor_columns: List of dicts with column_name and optional display_name keys
             info_columns: List of dicts with column_name and optional display_name keys
@@ -1120,7 +1015,7 @@ class MailSender(Connector):
 
         if recipient_name_column:
             pep_columns.append(recipient_name_column)
-        
+
         if start_dates_column:
             pep_columns.append(start_dates_column)
 
@@ -1151,7 +1046,7 @@ class MailSender(Connector):
             consent_column = report_info.get("pep_consent_column", "Consent.Bool")
             max_recent_columns = report_info.get("max_recent_columns", 4)
             output_dir = report_info.get("output_dir", "/tmp")
-            
+
             # Ensure columns are added for PEP fetch
             if group_column and group_column not in pep_columns:
                 pep_columns.append(group_column)
@@ -1159,14 +1054,14 @@ class MailSender(Connector):
                 pep_columns.append(expert_teacher_column)
             if pep_report_subject_column and pep_report_subject_column not in pep_columns:
                 pep_columns.append(pep_report_subject_column)
-            
+
             # Add info columns for the report         
             if info_columns:
                 for col in info_columns:
                     col_name = col["column_name"] if isinstance(col, dict) else col
                     if col_name not in pep_columns:
                         pep_columns.append(col_name)
-            
+
             # Add consent column for report generation if not already present
             if consent_column and consent_column not in pep_columns:
                 pep_columns.append(consent_column)
@@ -1235,7 +1130,7 @@ class MailSender(Connector):
             # Only check expert teacher flag if this is an expert report
             if is_expert_report:
                 is_expert_teacher = parse_flag(data["columns"].get(expert_teacher_column))
-                
+
                 if is_expert_teacher is None:
                     skipped_count += 1
                     self.log(
@@ -1296,7 +1191,7 @@ class MailSender(Connector):
                     # Only accept single date string
                     try:
                         pep_date = datetime.fromisoformat(start_dates_data)
-                        
+
                         # For schedule type: replace first date with PEP date
                         if repetition_type == "schedule" and start_dates:
                             subject_start_dates = [pep_date.isoformat()] + start_dates[1:]
@@ -1306,7 +1201,7 @@ class MailSender(Connector):
                         else:
                             # For non-schedule types (once, sequence), just use the PEP date
                             subject_start_dates = [pep_date.isoformat()]
-                            
+
                     except ValueError as e:
                         self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Invalid date format in column {start_dates_column}: {start_dates_data}. Error: {str(e)}", 
                                 level=logging.ERROR, tag=self.LOG_TAG)
@@ -1554,7 +1449,7 @@ class MailSender(Connector):
                 total, skipped, emailed = self.send_survey_emails(limesurvey_connector, survey_config, survey_type)
 
                 processed = total - skipped
-                
+
                 overall_total_subjects += total
                 overall_skipped_count += skipped
                 overall_processed_subjects += processed

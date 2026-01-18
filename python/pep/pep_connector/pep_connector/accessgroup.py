@@ -269,7 +269,7 @@ class AccessGroup:
 
     def upload_file_with_pipe_by_short_pseudonym(self, short_pseudonym: str, column: str, data, file_extension=None):
         self.store_data(column=column, short_pseudonym=short_pseudonym, input_path="-", pipe_data=data, file_extension=file_extension)
-    
+
     def fill_column_by_short_pseudonym(self, short_pseudonym_column_name: str, target_column: str, data: str, file_extension=None):
         self.log(f"Uploading data to all accessible short pseudonyms in column {target_column}.", level=logging.DEBUG)
         short_pseudonyms = self.list_short_pseudonyms(short_pseudonym_column_name)

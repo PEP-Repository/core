@@ -1,22 +1,38 @@
-import logging
+from __future__ import annotations
+
 import os
+import logging
+from typing import Any
 from .peprepository import PEPRepository
-from .connectors import Connector
+from .connectors import Connector, ConnectorConfig
 
 try:
     import pandas as pd
 except ImportError:
     raise ImportError("pandas is required for ExcelConnector. Please make sure it is installed.")
 
+
+class ExcelConnectorConfig(ConnectorConfig):
+    """Configuration for Excel connector."""
+    pass
+
+
 class ExcelConnector(Connector):
     LOG_TAG = "ExcelConnector"
 
-    def __init__(self, repository: PEPRepository,
-                 prometheus_dir=None,
-                 use_prometheus=False,
-                 env_prefix=None,
-                 job_name=None):
-        super().__init__(repository, prometheus_dir, use_prometheus, env_prefix, job_name)
+    def __init__(self, repository: PEPRepository, config: ExcelConnectorConfig):
+        """
+        Initialize ExcelConnector with an ExcelConnectorConfig object.
+
+        Args:
+            repository: PEPRepository instance
+            config: ExcelConnectorConfig instance (required)
+        """
+        if not isinstance(config, ExcelConnectorConfig):
+            raise ValueError("config must be an instance of ExcelConnectorConfig")
+
+        # Initialize parent with the config
+        super().__init__(repository, config)
         self.log("ExcelConnector initialized", logging.DEBUG)
 
     def __validate_excel_config(self, excel_config, file_type):
@@ -84,7 +100,7 @@ class ExcelConnector(Connector):
         try:
             if pd.isna(pseudonym_value) or pseudonym_value == '':
                 return []
-                
+
             # Safely parses the pseudonym value as a Python literal
             return self.parse_pep_python_list(pseudonym_value)
         except (SyntaxError, ValueError) as e:
@@ -99,7 +115,7 @@ class ExcelConnector(Connector):
                 return short_pseudonym in pseudonyms
 
             return df[df[sp_column].apply(is_pseudonym_in_list)]
-            
+
         except Exception as e:
             self.log(f"Failed to filter DataFrame by pseudonym {short_pseudonym}: {str(e)}", logging.ERROR)
             raise e
@@ -164,7 +180,7 @@ class ExcelConnector(Connector):
     def upload_excel_data(self, df, short_pseudonym, target_column, columns_to_remove=None):
         """
         Uploads an entire DataFrame to a PEP column for a subject.
-        
+
         Args:
             df: The DataFrame to upload
             short_pseudonym: The subject's short pseudonym

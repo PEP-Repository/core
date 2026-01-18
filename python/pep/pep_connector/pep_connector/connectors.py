@@ -1,25 +1,78 @@
+from __future__ import annotations
+
 import logging
 import sys
 import json
+import os
+from pydantic import BaseModel, Field, model_validator, ConfigDict, DirectoryPath
+from typing import Any, Self
 from .accessgroup import AccessGroup
-from .peprepository import PEPRepository
+from .peprepository import PEPRepository, PEPConfig
 from .peprepository import PepError
 from datetime import datetime
+
+
+class ConnectorConfig(BaseModel):
+    """Base configuration for all connectors."""
+
+    model_config = ConfigDict(
+        validate_assignment=True,
+        arbitrary_types_allowed=True  # Allow PEPConfig
+    )
+
+    pep_config: PEPConfig
+    prometheus_dir: DirectoryPath | None = None
+    use_prometheus: bool = False
+    env_prefix: str | None = None
+    job_name: str | None = None
+
+    @model_validator(mode='after')
+    def validate_prometheus_dir(self):
+        if self.use_prometheus and not self.prometheus_dir:
+            raise ValueError("prometheus_dir must be provided when use_prometheus is True")
+        return self
+
+
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create ConnectorConfig from a dictionary.
+
+        Args:
+            data: Dictionary with config values
+        """
+        return cls(**data)        
+
 
 class Connector(AccessGroup):
     LOG_TAG = "Connector"
 
-    def __init__(self, repository: PEPRepository, prometheus_dir=None, use_prometheus=False, env_prefix=None, job_name=None):
+    def __init__(self, repository: PEPRepository, config: ConnectorConfig):
+        """
+        Initialize Connector with a ConnectorConfig object.
+
+        Args:
+            repository: PEPRepository instance
+            config: ConnectorConfig instance (required)
+        """
         super().__init__(repository)
-        self.prometheus_dir = prometheus_dir
-        self.env_prefix = env_prefix
-        self.job_name = job_name
-        
-        # Initialize Prometheus metrics with exception handler
+
+        if not isinstance(config, ConnectorConfig):
+            raise ValueError("config must be an instance of ConnectorConfig")
+
+        self.config = config
+        self.prometheus_dir = config.prometheus_dir
+        self.env_prefix = config.env_prefix
+        self.job_name = config.job_name
+
         self.prometheus_metrics = None
-        if use_prometheus and prometheus_dir:
-            self.prometheus_metrics = self.setup_prometheus_metrics(prometheus_dir, env_prefix, job_name)
-        
+        if config.use_prometheus and config.prometheus_dir:
+            self.prometheus_metrics = self.setup_prometheus_metrics(
+                config.prometheus_dir, 
+                config.env_prefix, 
+                config.job_name
+            )
+
         self.log("Connector initialized", logging.DEBUG)
 
     def log(self, message: str, level=logging.INFO, tag=None):
@@ -57,7 +110,7 @@ class Connector(AccessGroup):
             output = self.repository.run_command(command)
             data = json.loads(output)
             self.log(f"Parsed {len(data)} entries from PEP response", level=logging.DEBUG)
-            
+
             result = {}
             for entry in data:
                 lp = entry.get("lp")

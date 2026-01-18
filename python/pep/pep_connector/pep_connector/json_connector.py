@@ -1,14 +1,30 @@
+from __future__ import annotations
+
 import logging
+from typing import Any
 from .peprepository import PEPRepository
-from .connectors import Connector
+from .connectors import Connector, ConnectorConfig
+
+
+class JSONConnectorConfig(ConnectorConfig):
+    """Configuration for JSON connector."""
+    pass
+
 
 class JSONConnector(Connector):
     LOG_TAG = "JSONConnector"
 
-    def __init__(self, repository: PEPRepository,
-                 prometheus_dir=None,
-                 use_prometheus=False,
-                 env_prefix=None,
-                 job_name=None):
-        super().__init__(repository, prometheus_dir, use_prometheus, env_prefix, job_name)
+    def __init__(self, repository: PEPRepository, config: JSONConnectorConfig):
+        """
+        Initialize JSONConnector with a JSONConnectorConfig object.
+
+        Args:
+            repository: PEPRepository instance
+            config: JSONConnectorConfig instance (required)
+        """
+        if not isinstance(config, JSONConnectorConfig):
+            raise ValueError("config must be an instance of JSONConnectorConfig")
+
+        # Initialize parent with the config
+        super().__init__(repository, config)
         self.log("JSONConnector initialized", logging.DEBUG)

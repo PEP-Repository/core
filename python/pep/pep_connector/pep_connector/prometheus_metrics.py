@@ -260,7 +260,7 @@ class PrometheusMetrics:
                 'labels': {'job': self.job_name}
             }
         }
-        
+
         self.create_textfile(metrics, self.exception_metrics_file)
         if not is_exception_occurring:
             self.log(f"Exception tracking initialized with file {self.exception_metrics_file}. Current count: {self.exception_counter}", logging.DEBUG)

@@ -1,8 +1,16 @@
 import json
 import logging
 import os
+from __future__ import annotations
+
 from datetime import datetime, timedelta
-from .connectors import Connector
+from typing import Any
+from .connectors import Connector, ConnectorConfig
+
+
+class DataMonitorConfig(ConnectorConfig):
+    """Configuration for DataMonitor."""
+    pass
 
 
 class DataMonitor(Connector):
@@ -10,12 +18,19 @@ class DataMonitor(Connector):
 
     LOG_TAG = "DataMonitor"
 
-    def __init__(self, repository,
-                 prometheus_dir=None, 
-                 use_prometheus=False, 
-                 env_prefix=None, 
-                 job_name=None):
-        super().__init__(repository, prometheus_dir, use_prometheus, env_prefix, job_name)
+    def __init__(self, repository, config: DataMonitorConfig):
+        """
+        Initialize DataMonitor with a DataMonitorConfig object.
+
+        Args:
+            repository: PEPRepository instance
+            config: DataMonitorConfig instance (required)
+        """
+        if not isinstance(config, DataMonitorConfig):
+            raise ValueError("config must be an instance of DataMonitorConfig")
+
+        # Initialize parent with the config
+        super().__init__(repository, config)
         self.repository = repository
         self.log("DataMonitor initialized", level=logging.DEBUG)
 
@@ -80,10 +95,10 @@ class DataMonitor(Connector):
     def read_prometheus_timestamp(self, metrics_file_path):
         """
         Read a Prometheus metrics file and extract the timestamp value.
-        
+
         Args:
             metrics_file_path: Path to the metrics file
-            
+
         Returns:
             Datetime object if timestamp found, None otherwise
         """
@@ -120,12 +135,12 @@ class DataMonitor(Connector):
     def generate_prometheus_stats_html(self):
         """
         Generate HTML for prometheus metrics statistics
-        
+
         Returns:
             HTML string with prometheus metrics information
         """
         self.log("Generating prometheus stats HTML", level=logging.DEBUG)
-        
+
         # Map component suffixes to descriptive names
         component_descriptions = {
             "Interview": "Interview Upload",
@@ -135,10 +150,10 @@ class DataMonitor(Connector):
             "DataMonitor": "Data Monitor",
             "LogData": "Snappet LogData"
         }
-        
+
         # Dictionary to store the timestamps
         timestamps = {}
-        
+
         # Check each metrics file using all keys from component_descriptions
         for suffix in component_descriptions.keys():
             prefix_without_datamonitor = self.env_prefix.replace("DataMonitor", "")
@@ -149,12 +164,12 @@ class DataMonitor(Connector):
             if timestamp:
                 timestamps[suffix] = timestamp
                 self.log(f"Found timestamp for {suffix}: {timestamp}", level=logging.DEBUG)
-        
+
         # If no timestamps found, return empty string
         if not timestamps:
             self.log("No timestamps found", level=logging.DEBUG)
             return ""
-        
+
         # Build the HTML output with JavaScript for dynamic age calculation
         html = """
         <div class="metrics-section">
@@ -166,14 +181,14 @@ class DataMonitor(Connector):
                     <th>Time Elapsed since last run</th>
                 </tr>
         """
-        
+
         # Add a row for each component with timestamp as data attribute
         for suffix, timestamp in timestamps.items():
             timestamp_iso = timestamp.isoformat()
             timestamp_formatted = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             # Get the descriptive name for the component, or use suffix if not found
             component_display_name = component_descriptions.get(suffix, suffix)
-            
+
             html += f"""
                 <tr>
                     <td>{component_display_name}</td>
@@ -181,7 +196,7 @@ class DataMonitor(Connector):
                     <td class="component-age" data-timestamp="{timestamp_iso}">Calculating...</td>
                 </tr>
             """
-        
+
         html += """
             </table>
             <script>
@@ -189,17 +204,17 @@ class DataMonitor(Connector):
                 function updateComponentAges() {
                     const now = new Date();
                     const ageElements = document.querySelectorAll('.component-age');
-                    
+
                     ageElements.forEach(element => {
                         const timestamp = new Date(element.getAttribute('data-timestamp'));
                         const ageMs = now - timestamp;
-                        
+
                         // Convert to minutes
                         const ageSec = Math.floor(ageMs / 1000);
                         const days = Math.floor(ageSec / 86400);
                         const hours = Math.floor((ageSec % 86400) / 3600);
                         const minutes = Math.floor((ageSec % 3600) / 60);
-                        
+
                         // Format age nicely with minute precision
                         let ageStr = '';
                         if (days > 0) {
@@ -209,37 +224,37 @@ class DataMonitor(Connector):
                         } else {
                             ageStr = `${minutes} minutes`;
                         }
-                        
+
                         element.textContent = ageStr;
                     });
                 }
-                
+
                 // Update immediately and then every minute instead of every second
                 updateComponentAges();
                 setInterval(updateComponentAges, 60000);
             </script>
         </div>
         """
-        
+
         self.log(f"Generated HTML for {len(timestamps)} prometheus components", level=logging.DEBUG)
         return html
 
     def _calculate_column_stats(self, monitor_columns: list[str], participant_info: dict, data_info: dict) -> dict:
         """
         Calculate column completion statistics.
-        
+
         Args:
             monitor_columns: List of columns to calculate stats for
             participant_info: Dictionary of participant information
             data_info: Dictionary of data information
-            
+
         Returns:
             Dictionary with completion statistics for each column
         """
         total_participants = len(participant_info)
         self.log(f"Calculating statistics for {total_participants} participants", level=logging.DEBUG)
         column_stats = {}
-        
+
         for col in monitor_columns:
             filled_count = 0
             for lp in participant_info:
@@ -251,28 +266,28 @@ class DataMonitor(Connector):
                 "percentage": round((filled_count / total_participants) * 100, 1) if total_participants > 0 else 0
             }
             self.log(f"Column {col}: {filled_count}/{total_participants} ({column_stats[col]['percentage']}%)", level=logging.DEBUG)
-        
+
         return column_stats
 
     def _calculate_sent_and_filled_counts(self, monitor_columns: list[str | dict], participant_info: dict, 
                                           data_info: dict) -> dict:
         """
         Calculate sent and filled counts for each monitor column.
-        
+
         Args:
             monitor_columns: List of column dicts with column_name, config_item_name, and survey_id
             participant_info: Dictionary of participant information (must include EmailsSent column)
             data_info: Dictionary of data information
-            
+
         Returns:
             Dictionary mapping column names to {"sent": count, "filled": count}
         """
         total_participants = len(participant_info)
         self.log(f"Calculating sent and filled counts for {total_participants} participants", level=logging.DEBUG)
         self.log(f"data_info has {len(data_info)} participants with data", level=logging.DEBUG)
-        
+
         column_counts = {}
-        
+
         for col_info in monitor_columns:
             # Handle both dict and string column formats
             if isinstance(col_info, dict):
@@ -283,28 +298,28 @@ class DataMonitor(Connector):
                 col = col_info
                 config_item_name = None
                 survey_id = None
-            
+
             filled_count = 0
             sent_count = 0
-            
+
             self.log(f"Processing column: {col}", level=logging.DEBUG)
-            
+
             for lp in participant_info:
                 # Count filled columns
                 if lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
                     filled_count += 1
                     self.log(f"Column {col}: Found filled data for participant {lp}", level=logging.DEBUG)
-                
+
                 # Count sent items (only first send, not reminders)
                 if config_item_name and survey_id is not None:
                     info_data = participant_info[lp]
                     emails_sent_data = info_data["columns"].get("EmailsSent", "")
-                    
+
                     if emails_sent_data:
                         try:
                             emails_sent = json.loads(emails_sent_data)
                             survey_types = emails_sent.get("survey_types", {})
-                            
+
                             if config_item_name in survey_types:
                                 survey_id_str = str(survey_id)
                                 if survey_id_str in survey_types[config_item_name]:
@@ -314,35 +329,35 @@ class DataMonitor(Connector):
                                         sent_count += 1
                         except (json.JSONDecodeError, ValueError) as e:
                             self.log(f"Error parsing EmailsSent for {lp}: {e}", level=logging.WARNING)
-            
+
             column_counts[col] = {
                 "sent": sent_count,
                 "filled": filled_count
             }
-            
+
             self.log(f"Column {col}: {sent_count} sent, {filled_count} filled (out of {total_participants} participants)", level=logging.DEBUG)
-        
+
         return column_counts
 
     def _filter_recent_monitor_columns(self, monitor_columns: list[str | dict], 
                                        participant_info: dict, max_columns: int = 3) -> list[str | dict]:
         """
         Filter monitor columns to only include the most recently sent ones.
-        
+
         Args:
             monitor_columns: List of column dicts with column_name, config_item_name, and survey_id
             participant_info: Dictionary of participant information (must include EmailsSent column)
             max_columns: Maximum number of recent columns to return (default: 3)
-            
+
         Returns:
             Filtered list of monitor columns, ordered by most recent send timestamp
         """
         self.log(f"Filtering monitor columns to {max_columns} most recent", level=logging.DEBUG)
-        
+
         # Separate columns into those that can be filtered (have email tracking) and those that can't
         trackable_columns = []
         non_trackable_columns = []
-        
+
         for col_info in monitor_columns:
             # Handle both dict and string column formats
             if isinstance(col_info, dict):
@@ -351,38 +366,38 @@ class DataMonitor(Connector):
             else:
                 config_item_name = None
                 survey_id = None
-            
+
             # Columns without config_item_name or with null survey_id can't be tracked via EmailsSent
             if not config_item_name or survey_id is None:
                 non_trackable_columns.append(col_info)
             else:
                 trackable_columns.append(col_info)
-        
+
         # If there are no trackable columns, return all columns (limited to max_columns)
         if not trackable_columns:
             self.log(f"No trackable columns found, returning all {len(monitor_columns)} columns", level=logging.DEBUG)
             return monitor_columns[:max_columns]
-        
+
         # Track earliest send timestamp for each trackable column
         column_timestamps = {}
-        
+
         for col_info in trackable_columns:
             col = col_info["column_name"]
             config_item_name = col_info.get("config_item_name")
             survey_id = col_info.get("survey_id")
-            
+
             earliest_send = None
-            
+
             # Find earliest send timestamp across all participants
             for lp in participant_info:
                 info_data = participant_info[lp]
                 emails_sent_data = info_data["columns"].get("EmailsSent", "")
-                
+
                 if emails_sent_data:
                     try:
                         emails_sent = json.loads(emails_sent_data)
                         survey_types = emails_sent.get("survey_types", {})
-                        
+
                         if config_item_name in survey_types:
                             survey_id_str = str(survey_id)
                             if survey_id_str in survey_types[config_item_name]:
@@ -394,38 +409,38 @@ class DataMonitor(Connector):
                                         earliest_send = first_send
                     except (json.JSONDecodeError, ValueError) as e:
                         self.log(f"Error parsing EmailsSent for {lp}: {e}", level=logging.WARNING)
-            
+
             if earliest_send:
                 column_timestamps[col] = earliest_send
                 self.log(f"Column {col}: earliest send at {earliest_send}", level=logging.DEBUG)
-        
+
         # Sort trackable columns by timestamp (most recent first) and take the most recent ones
         sorted_columns = sorted(column_timestamps.items(), key=lambda x: x[1], reverse=True)
         recent_column_names = [col_name for col_name, _ in sorted_columns[:max_columns]]
-        
+
         # Filter original monitor_columns to keep only recent trackable ones
         filtered_trackable = [
             col_info for col_info in trackable_columns
             if (col_info["column_name"] if isinstance(col_info, dict) else col_info) in recent_column_names
         ]
-        
+
         # Combine non-trackable columns (like Snappet LogData) with filtered trackable columns
         # Non-trackable columns are always included
         filtered_columns = non_trackable_columns + filtered_trackable
-        
+
         # Limit to max_columns total
         filtered_columns = filtered_columns[:max_columns]
-        
+
         self.log(f"Filtered to {len(filtered_columns)} columns: {[c['column_name'] if isinstance(c, dict) else c for c in filtered_columns]}", level=logging.DEBUG)
         return filtered_columns
 
     def _generate_html_header(self, include_javascript: bool) -> str:
         """
         Generate HTML header with styles and optional JavaScript.
-        
+
         Args:
             include_javascript: Whether to include JavaScript functionality
-            
+
         Returns:
             HTML header string
         """
@@ -598,16 +613,16 @@ class DataMonitor(Connector):
                 function copyToClipboard(text, btnId, msgId) {
                     const btn = document.getElementById(btnId);
                     const msgBox = document.getElementById(msgId);
-                    
+
                     navigator.clipboard.writeText(text)
                         .then(() => {
                             // Show success message
                             msgBox.textContent = 'Copied!';
                             msgBox.classList.add('show');
-                            
+
                             // Add success style to button
                             btn.classList.add('success');
-                            
+
                             // Reset after animation completes
                             setTimeout(() => {
                                 msgBox.classList.remove('show');
@@ -631,12 +646,12 @@ class DataMonitor(Connector):
     def _generate_table_header(self, participant_info: dict, include_javascript: bool, statistics_only: bool = False) -> str:
         """
         Generate table header with participant columns or statistics-only header.
-        
+
         Args:
             participant_info: Dictionary of participant information
             include_javascript: Whether to include interactive elements
             statistics_only: Whether to generate statistics-only header
-            
+
         Returns:
             HTML table header string
         """
@@ -666,7 +681,7 @@ class DataMonitor(Connector):
         for lp in lp_list:
             info_data = participant_info[lp]
             full_pp = info_data["pp"]
-            
+
             # Add polymorphic pseudonym with copy button and truncation as column header
             if include_javascript:
                 html += f"""
@@ -700,11 +715,11 @@ class DataMonitor(Connector):
     def _generate_info_rows(self, info_columns: list[str | dict], participant_info: dict) -> str:
         """
         Generate HTML rows for info columns including special handling for EmailsSent.
-        
+
         Args:
             info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             participant_info: Dictionary of participant information
-            
+
         Returns:
             HTML rows string
         """
@@ -829,14 +844,14 @@ class DataMonitor(Connector):
         if statistics_only:
             # Use total_consented if provided, otherwise use participant_info length
             total = total_consented if total_consented is not None else len(participant_info)
-            
+
             # Generate statistics-only rows
             html = ""
             for col in monitor_column_names:
                 counts = column_counts[col]
                 sent_count = counts["sent"]
                 filled_count = counts["filled"]
-                
+
                 percentage = round((filled_count / total) * 100, 1) if total > 0 else 0
 
                 # Use different classes and styling for 0% vs non-zero percentages
@@ -913,7 +928,7 @@ class DataMonitor(Connector):
                               total_participants: int = None) -> str:
         """
         Generate the actual HTML content for the report.
-        
+
         Args:
             monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
@@ -926,7 +941,7 @@ class DataMonitor(Connector):
             statistics_only: Whether to only show statistics without individual participant data
             total_consented: Number of consented participants (for stats calculation)
             total_participants: Total number of participants (before filtering)
-            
+
         Returns:
             Complete HTML content as a string
         """
@@ -991,7 +1006,7 @@ class DataMonitor(Connector):
                             statistics_only: bool = False) -> str:
         """
         Generate an HTML report showing the status of monitored data columns for all participants.
-        
+
         Args:
             monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
@@ -999,7 +1014,7 @@ class DataMonitor(Connector):
             include_javascript: Whether to include sections with javascript (default: True)
             report_title: Title for the HTML report
             statistics_only: Whether to only show statistics without individual participant data
-            
+
         Returns:
             HTML file path that was saved, or the HTML content as a string if output_path is None
         """
@@ -1015,13 +1030,13 @@ class DataMonitor(Connector):
 
         # Get all data using find_missing_entries
         missing_entries, data_info, participant_info = self.find_missing_entries(monitor_column_names, info_column_names)
-        
+
         # Create a lookup of missing columns by local pseudonym for quick reference
         missing_by_lp = {}
         for entry in missing_entries:
             lp = entry["local_pseudonym"]
             missing_by_lp[lp] = entry["missing_columns"]
-        
+
         # Calculate column completion statistics
         column_stats = self._calculate_column_stats(monitor_column_names, participant_info, data_info)
 
@@ -1058,7 +1073,7 @@ class DataMonitor(Connector):
                                      statistics_only: bool = False) -> str:
         """
         Generate an HTML report showing the status of monitored data columns for pre-filtered participants.
-        
+
         Args:
             monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
@@ -1067,7 +1082,7 @@ class DataMonitor(Connector):
             include_javascript: Whether to include sections with javascript (default: True)
             report_title: Title for the HTML report
             statistics_only: Whether to only show statistics without individual participant data
-            
+
         Returns:
             HTML file path that was saved, or the HTML content as a string if output_path is None
         """
@@ -1085,10 +1100,10 @@ class DataMonitor(Connector):
         # Get data info for the monitor columns
         self.log("Getting data info for monitor columns", level=logging.DEBUG)
         data_info = self.get_data_info(monitor_column_names)
-        
+
         # Filter data_info to only include participants in the participant_info
         filtered_data_info = {lp: data for lp, data in data_info.items() if lp in participant_info}
-        
+
         # Find missing entries for this filtered set
         missing_entries = []
         for lp, info_data in participant_info.items():
@@ -1113,13 +1128,13 @@ class DataMonitor(Connector):
                     "info_data": info_data,
                     "missing_columns": missing_columns
                 })
-        
+
         # Create a lookup of missing columns by local pseudonym for quick reference
         missing_by_lp = {}
         for entry in missing_entries:
             lp = entry["local_pseudonym"]
             missing_by_lp[lp] = entry["missing_columns"]
-        
+
         # Calculate column completion statistics for the filtered set
         column_stats = self._calculate_column_stats(monitor_column_names, participant_info, filtered_data_info)
 
@@ -1167,7 +1182,7 @@ class DataMonitor(Connector):
         for lp, info_data in participant_info.items():
             # Get the value from the specified column
             group_value = info_data["columns"].get(group_column)
-            
+
             # Skip participants with None or empty string group values
             if group_value is None or group_value == "":
                 skipped_count += 1
@@ -1218,11 +1233,11 @@ class DataMonitor(Connector):
             raise ValueError("Monitor columns must be a list or None, its now: {}".format(type(monitor_columns)))
         if info_columns is not None and not isinstance(info_columns, list):
             raise ValueError("Info columns must be a list or None, its now: {}".format(type(info_columns)))
-        
+
         # At least one of monitor_columns or info_columns must be provided
         if monitor_columns is None and info_columns is None:
             raise ValueError("At least one of monitor_columns or info_columns must be provided")
-        
+
         # Default to empty list if None
         if monitor_columns is None:
             monitor_columns = []
@@ -1231,13 +1246,13 @@ class DataMonitor(Connector):
 
         # Build list of all columns needed for report generation
         all_columns_for_report = []
-        
+
         # Add info columns
         for col in info_columns:
             col_name = col["column_name"] if isinstance(col, dict) else col
             if col_name not in all_columns_for_report:
                 all_columns_for_report.append(col_name)
-        
+
         # Add special columns
         if group_column and group_column not in all_columns_for_report:
             all_columns_for_report.append(group_column)
@@ -1247,7 +1262,7 @@ class DataMonitor(Connector):
             all_columns_for_report.append(survey_participant_column)
         if emails_sent_column and emails_sent_column not in all_columns_for_report:
             all_columns_for_report.append(emails_sent_column)
-        
+
         # Fetch data using LOCAL pseudonyms for DataMonitor compatibility
         self.log(f"Fetching participant data using local pseudonyms for report generation", level=logging.DEBUG)
         all_participant_info = self.list_columndata_by_local_pseudonym(all_columns_for_report)
@@ -1270,7 +1285,7 @@ class DataMonitor(Connector):
             else:
                 group_filtered_participants = group_all_participants
                 total_in_group = len(group_all_participants)
-            
+
             # Then filter by consent within survey participants
             if consent_column:
                 group_filtered_participants = self._filter_participants_by_flag(

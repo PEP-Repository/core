@@ -5,23 +5,141 @@ import base64
 import getpass
 import csv
 import atexit
-from io import StringIO
+import os
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+    ConfigDict,
+    HttpUrl,
+    FilePath
+)
 from typing import Literal, Callable, Any
-from .peprepository import PEPRepository
-from .connectors import Connector
+from io import StringIO
+from .peprepository import PEPRepository, PEPConfig
+from .connectors import Connector, ConnectorConfig
+
+
+class LimeSurveySurveyConfig(BaseModel):
+    """Configuration for a LimeSurvey connector survey type."""
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    # Core fields
+    enabled: bool
+    survey_ids_pep_column: str
+    document_type: Literal["json", "csv"]
+    sp_pep_column: str
+    language_code: str
+
+    # Survey type
+    type: Literal["survey", "consent"] = "survey"
+
+    # Column mappings
+    survey_pep_column_mapping: str | None = None
+    question_pep_column_mapping: dict[str, str] | None = None
+
+    # Behavior settings
+    repetition_type: Literal["once", "sequence", "schedule"] = "once"
+    overwrite: bool = True
+    completion_status: Literal["complete", "incomplete", "all"] = "complete"
+
+    # Consent-specific fields
+    consent_bool_pep_column: str | None = None
+    researcher_check_question_id: str | None = None
+
+    # Survey IDs
+    survey_ids: list[int] | None = None
+
+    # Answer filtering
+    answers_to_remove: list[str] | None = None
+
+    @model_validator(mode='after')
+    def validate_document_type(self):
+        if self.enabled and self.document_type not in ['json', 'csv']:
+            raise ValueError(f"document_type must be 'json' or 'csv', got: {self.document_type}")
+        return self
+
+    @model_validator(mode='after')
+    def validate_type(self):
+        if self.enabled and self.type not in ['survey', 'consent']:
+            raise ValueError(f"type must be 'survey' or 'consent', got: {self.type}")
+        return self
+
+    @model_validator(mode='after')
+    def validate_completion_status(self):
+        if self.enabled and self.completion_status not in ['complete', 'incomplete', 'all']:
+            raise ValueError(f"completion_status must be 'complete', 'incomplete', or 'all', got: {self.completion_status}")
+        return self
+
+    @model_validator(mode='after')
+    def validate_repetition_type(self):
+        if self.enabled and self.repetition_type not in ['once', 'sequence', 'schedule']:
+            raise ValueError(f"repetition_type must be 'once', 'sequence', or 'schedule', got: {self.repetition_type}")
+        return self
+
+    @model_validator(mode='after')
+    def validate_consent_requirements(self):
+        if not self.enabled:
+            return self
+
+        if self.type == 'consent':
+            if not self.researcher_check_question_id:
+                raise ValueError("consent surveys require researcher_check_question_id")
+            if self.document_type != 'json':
+                raise ValueError("consent surveys must use document_type 'json'")
+
+        return self
+
+
+class LimeSurveyConfig(ConnectorConfig):
+    """Configuration for LimeSurvey connector with comprehensive survey settings."""
+
+    url: HttpUrl = "https://questions.socsci.ru.nl/index.php/admin/remotecontrol"
+    limesurvey_api_token_path: FilePath | None = None
+    # Survey types configuration
+    survey_types: dict[str, LimeSurveySurveyConfig] = Field(default_factory=dict)
+
+    model_config = ConfigDict(
+        validate_assignment=True,
+        arbitrary_types_allowed=True  # Allow PEPConfig
+    )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], pep_config: PEPConfig) -> "LimeSurveyConfig":
+        """Create LimeSurveyConfig from configuration dictionary.
+
+        Args:
+            data: Dictionary with connector configuration
+            pep_config: PEPConfig instance
+
+        Returns:
+            Fully constructed and validated LimeSurveyConfig
+        """
+        return cls(pep_config=pep_config, **data)
+
 
 class LimeSurveyConnector(Connector):
     LOG_TAG = "LimeSurveyConnector"
 
-    def __init__(self, repository: PEPRepository, url="https://questions.socsci.ru.nl/index.php/admin/remotecontrol", 
-                 token_file=None, 
-                 prometheus_dir=None, 
-                 use_prometheus=False, 
-                 env_prefix=None, 
-                 job_name=None):
-        super().__init__(repository, prometheus_dir, use_prometheus, env_prefix, job_name)
-        self.url = url
-        self.token_file = token_file
+    def __init__(self, repository: PEPRepository, config: LimeSurveyConfig):
+        """
+        Initialize LimeSurveyConnector with a LimeSurveyConfig object.
+
+        Args:
+            repository: PEPRepository instance
+            config: LimeSurveyConfig instance (required)
+        """
+        if not isinstance(config, LimeSurveyConfig):
+            raise ValueError("config must be an instance of LimeSurveyConfig")
+
+        # Initialize parent with the config
+        super().__init__(repository, config)
+
+        # Set attributes from config
+        self.url = config.url
+        self.limesurvey_api_token_path = config.limesurvey_api_token_path
 
         # Save the ServerProxy function for use in shutdown, as interpreter mightve already dropped the xmlrpc module
         self._server_proxy_func = xmlrpc.client.ServerProxy
@@ -56,9 +174,9 @@ class LimeSurveyConnector(Connector):
         If a token file is provided, read credentials from it.
         Otherwise, prompt for username and password.
         """
-        if self.token_file:
+        if self.limesurvey_api_token_path:
             try:
-                with open(self.token_file, "r") as json_file:
+                with open(self.limesurvey_api_token_path, "r") as json_file:
                     credentials = json.load(json_file)
                     username = credentials["username"]
                     password = credentials["password"]
@@ -105,7 +223,7 @@ class LimeSurveyConnector(Connector):
             if hasattr(self, 'log'):
                 self.log(f"Error releasing session key: {str(e)}", logging.ERROR)
             raise
-    
+
     def _call_ls_api(self, api_call: Callable, max_retries: int = 1, context: str = "API call") -> Any:
         """
         Execute an API call and retry if the session key is invalid.
@@ -164,7 +282,7 @@ class LimeSurveyConnector(Connector):
         try:
             # Try to decode as base64
             responses = base64.b64decode(responses_base64).decode("utf-8")
-            
+
             # Handle empty CSV responses (just newline characters)
             if document_type != "json" and responses.strip() in ["", "\r\n", "\n"]:
                 self.log(f"No data in CSV response for survey ID {survey_id}", logging.INFO)
@@ -216,9 +334,9 @@ class LimeSurveyConnector(Connector):
             raise ValueError("Tokens must be a list")
 
         server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
-        
+
         context = f"get_survey_responses_by_token (survey_id={survey_id}, tokens={tokens})"
-        
+
         responses_base64 = self._call_ls_api(
             lambda: server.export_responses_by_token(
                 self.session_key, survey_id, document_type, tokens, language_code, completion_status), context=context)
@@ -347,7 +465,7 @@ class LimeSurveyConnector(Connector):
         """
         server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
         context = f"add_participants (survey_id={survey_id})"
-        
+
         result = self._call_ls_api(
             lambda: server.add_participants(self.session_key, survey_id, participant_data, create_token), context=context)
 
@@ -369,7 +487,7 @@ class LimeSurveyConnector(Connector):
         """
         participant_data = [{"token": token} for token in tokens]
         return self.add_participants(survey_id, participant_data, create_token=False)
-    
+
     def add_participant_as_token(self, survey_id: int, token: str):
         """
         Add a single participant to the survey with only a token as attribute.
@@ -416,7 +534,7 @@ class LimeSurveyConnector(Connector):
         """
         server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
         context = f"get_uploaded_files (survey_id={survey_id}, token={token})"
-        
+
         try:
             if response_id:
                 result = self._call_ls_api(
@@ -492,7 +610,7 @@ class LimeSurveyConnector(Connector):
         """
         server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
         context = f"activate_survey (survey_id={survey_id})"
-        
+
         if activation_settings:
             result = self._call_ls_api(
                 lambda: server.activate_survey(self.session_key, survey_id, activation_settings),
@@ -507,7 +625,7 @@ class LimeSurveyConnector(Connector):
             self.log(f"Survey {survey_id} is already active", logging.WARNING)
         else:
             self.log(f"Successfully activated survey {survey_id}", logging.INFO)
-            
+
         return result
 
     def activate_tokens(self, survey_id: int, attribute_fields=None) -> dict:
@@ -523,7 +641,7 @@ class LimeSurveyConnector(Connector):
         """
         server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
         context = f"activate_tokens (survey_id={survey_id})"
-        
+
         # Ensure survey_id is an integer
         survey_id = int(survey_id)
 
@@ -547,7 +665,7 @@ class LimeSurveyConnector(Connector):
     def get_survey_properties(self, survey_id: int, survey_settings=None) -> dict:
         """
         Get properties of a survey.
-        
+
         Args:
             survey_id: The id of the Survey to be checked
             survey_settings (optional): The specific properties to get. If None, all properties are returned.
@@ -577,7 +695,7 @@ class LimeSurveyConnector(Connector):
     def set_survey_properties(self, survey_id: int, **survey_settings) -> dict:
         """
         Set properties of a survey.
-        
+
         Args:
             survey_id: The id of the Survey to be checked
             survey_settings: The specific properties to set. 
@@ -588,7 +706,7 @@ class LimeSurveyConnector(Connector):
         """
         server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
         context = f"set_survey_properties (survey_id={survey_id})"
-        
+
         # Ensure survey_id is an integer
         survey_id = int(survey_id)
 
@@ -686,36 +804,7 @@ class LimeSurveyConnector(Connector):
             self.log(f"Failed to upload data for short pseudonym {short_pseudonym}. Error: {e}", logging.ERROR)
             raise
 
-    def _validate_survey_config(self, survey_config):
-
-        required_keys = ["survey_ids_pep_column", "document_type", "sp_pep_column", "language_code"]
-
-        for key in required_keys:
-            if key not in survey_config:
-                raise ValueError(f"Missing required config item: {key}")
-
-        config_item_type = survey_config.get("type", "survey")
-
-        # Special requirement for consent surveys
-        if config_item_type == "consent":
-            if not survey_config.get("researcher_check_question_id"):
-                raise ValueError("researcher_check_question_id is required for consent surveys")
-            if survey_config.get("document_type") != "json":
-                raise ValueError("Consent surveys must have document_type set to 'json'.")
-        
-        # Checks for optional keys
-        completion_status = survey_config.get("completion_status", "complete")
-        if completion_status not in ["complete", "incomplete", "all"]:
-            raise ValueError("completion_status must be 'complete', 'incomplete', or 'all'.")
-
-        # Validate overwrite flag (optional, defaults to True)
-        overwrite = survey_config.get("overwrite", True)
-        if not isinstance(overwrite, bool):
-            raise ValueError("overwrite must be a boolean (true or false).")
-
     def store_survey_responses_in_pep(self, survey_config, config_item_name) -> tuple[int, int, int, int, int, int, int]:
-
-        self._validate_survey_config(survey_config)
 
         config_item_type = survey_config.get("type", "survey")
 
@@ -782,7 +871,7 @@ class LimeSurveyConnector(Connector):
                     pep_survey_ids = json.loads(survey_ids_data)
                 except json.JSONDecodeError as e:
                     skipped_count += 1
-                    
+
                     self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Failed to load survey IDs data: {str(e)}.", 
                     level=logging.ERROR)
                     continue
@@ -900,7 +989,7 @@ class LimeSurveyConnector(Connector):
                         self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping main response upload for survey ID {survey_id}: Data already exists in {current_survey_column} and overwrite is false.", 
                             level=logging.INFO)
                         should_upload_main = False
-                    
+
                     if should_upload_main:
                         self.log(f"{config_item_name}: Processing main response for survey ID: {survey_id}", logging.DEBUG)
                         processed_response = self.process_response(response, document_type=doc_type, answers_to_remove=answers_to_remove)
@@ -942,7 +1031,7 @@ class LimeSurveyConnector(Connector):
                         self.log(f"{config_item_name}: ({index}/{total_subjects}): {short_pseudonym}: Skipping consent status upload: Data already exists in {consent_bool_column} and overwrite is false.", 
                             level=logging.INFO)
                         should_upload_consent = False
-                    
+
                     if should_upload_consent:
                         # store consent bool, using string instead of bytes to make it printable
                         self.upload_data_by_short_pseudonym(short_pseudonym, consent_bool_column, "1")
@@ -1043,7 +1132,7 @@ class LimeSurveyConnector(Connector):
                 try:
                     # Process the first data row
                     row = next(reader)
-                    
+
                     if not row:
                         self.log("Empty data row in CSV response", logging.WARNING)
                     else:
@@ -1051,7 +1140,7 @@ class LimeSurveyConnector(Connector):
                         for question_id, index in question_indices.items():
                             if index < len(row):
                                 column_name = question_columns[question_id]
-                                
+
                                 # Check existence using pre-fetched results
                                 should_upload = True
                                 if existence_results and existence_results.get(column_name, False):
@@ -1069,13 +1158,13 @@ class LimeSurveyConnector(Connector):
                                     except Exception as e:
                                         self.log(f"Failed to upload CSV question {question_id} for {short_pseudonym}: {str(e)}", logging.ERROR)
                                         raise
-                    
+
                     # Check if there are additional rows
                     additional_row = next(reader, None)
                     if additional_row:
                         self.log("Multiple response rows found in CSV data.", logging.ERROR)
                         raise ValueError("Expected only one data row in CSV response, but found multiple rows.")
-                        
+
                 except StopIteration:
                     self.log("No data rows found in CSV response", logging.WARNING)
 
