@@ -386,7 +386,8 @@ update_data_sync() {
   push_c_file="$3"
   
   pull_c_entry=$(get_pull_constellation_entry "$pull_c_json")
-  push_c_json=$($(envsubst < "$push_c_file") | jq -c '.[] | select(has("sync-push"))')
+  push_c_file_contents=$(envsubst < "$push_c_file")
+  push_c_json=$(echo "$push_c_file_contents" | jq -c '.[] | select(has("sync-push"))')
   if [ -z "$pull_c_entry" ]; then
     echo "No pull configuration found in constellation"
   elif [ -z "$push_c_json" ]; then
