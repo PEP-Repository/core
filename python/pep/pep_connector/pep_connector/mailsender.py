@@ -1441,7 +1441,7 @@ class MailSender(Connector):
         # Return statistics for this survey type to be shown in final statistics
         return total_subjects, skipped_count, subjects_emailed_count
 
-    def send_all_survey_emails(self, limesurvey_connector):
+    def send_all_survey_emails(self, limesurvey_connector: LimeSurveyConnector) -> None:
         """Send all enabled survey emails.
         
         Args:
