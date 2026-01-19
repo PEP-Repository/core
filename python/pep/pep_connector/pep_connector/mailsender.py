@@ -30,12 +30,15 @@ from datetime import datetime, timedelta
 from .connectors import Connector, ConnectorConfig
 from .peprepository import PEPRepository
 from .datamonitor import DataMonitor
+from .limesurvey_connector import LimeSurveyConnector
 from pypdf import PdfWriter
 import weasyprint
 
 
 class EmailConfig(BaseModel):
     """Configuration for email/SMTP settings."""
+
+    model_config = ConfigDict(validate_assignment=True)
 
     sender: EmailStr
     smtp_server: str
@@ -44,12 +47,77 @@ class EmailConfig(BaseModel):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_auth_required: bool = True
+    smtp_credentials_file: FilePath | None = None
 
+
+class FooterImage(BaseModel):
+    """Configuration for email footer image."""
+    
     model_config = ConfigDict(validate_assignment=True)
+    
+    path: str
+    alt: str | None = None
+    width: str | None = None
+    height: str | None = None
+    
+    @field_validator('path')
+    @classmethod
+    def validate_path_exists(cls, v):
+        if not os.path.isfile(v):
+            raise ValueError(f"Footer image file does not exist: {v}")
+        return v
+
+
+class Attachment(BaseModel):
+    """Configuration for email attachment."""
+    
+    model_config = ConfigDict(validate_assignment=True)
+    
+    path: str
+    filename: str | None = None
+    mimetype: str | None = None
+    
+    @field_validator('path')
+    @classmethod
+    def validate_path_exists(cls, v):
+        if not os.path.isfile(v):
+            raise ValueError(f"Attachment file does not exist: {v}")
+        return v
+
+
+class Condition(BaseModel):
+    """Configuration for survey condition."""
+    
+    model_config = ConfigDict(validate_assignment=True)
+    
+    column: str
+    condition: str
+    value: Any | None = None
+
+
+class ReportInfo(BaseModel):
+    """Configuration for report generation."""
+    
+    model_config = ConfigDict(validate_assignment=True)
+    
+    subject_column: str | None = None
+    combined_filename: str = "Participatierapport.pdf"
+    monitor_columns: list[dict[str, Any]] | None = None
+    info_columns: list[dict[str, Any]] | None = None
+    filter_by_column: str | None = None
+    pep_consent_column: str = "Consent.Bool"
+    expert_teacher_column: str = "TeacherInfo.IsExpertTeacher"
+    max_recent_columns: int = 4
+    output_dir: str = "/tmp"
 
 
 class MailSenderSurveyConfig(BaseModel):
     """Configuration for a mail sender survey type."""
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    # Survey name/identifier
+    name: str | None = None
 
     # Core fields
     enabled: bool
@@ -78,23 +146,23 @@ class MailSenderSurveyConfig(BaseModel):
     max_days_retroactive: int | None = None
     kickoff_date_column: str | None = None
 
-    # Attachments, footer, conditions as dicts (not separate dataclasses)
-    attachments: list[dict[str, Any]] | None = None
-    footer_image: dict[str, Any] | None = None
-    conditions: list[dict[str, Any]] | None = None
+    # Attachments, footer, conditions as structured config objects
+    attachments: list[Attachment] | None = None
+    footer_image: FooterImage | None = None
+    conditions: list[Condition] | None = None
     data_columns: list[str] | None = None
 
-    # PDF merging
-    merge_pdfs: dict[str, Any] | None = None
-    is_report_type: bool = False
+    # Email configuration options
+    primary_email: bool = True
+    custom_html_file: str | None = None
 
-    @model_validator(mode='after')
-    def validate_repetition_type(self):
-        if self.enabled:
-            valid_types = ['once', 'sequence', 'schedule']
-            if self.repetition_type not in valid_types:
-                raise ValueError(f"repetition_type must be one of: {', '.join(valid_types)}")
-        return self
+    # Survey participation column
+    survey_participant_column: str = "TeacherInfo.IsSurveyParticipant"
+
+    # PDF merging and report configuration
+    merge_pdfs: dict[str, Any] | None = None
+    report_info: ReportInfo | None = None
+    is_report_type: bool = False
 
     @model_validator(mode='after')
     def validate_timing_requirements(self):
@@ -118,41 +186,14 @@ class MailSenderSurveyConfig(BaseModel):
                     raise ValueError(f"start_dates must be in ISO 8601 date format (YYYY-MM-DD), got: {date_str}")
         return v
 
-    @field_validator('attachments')
-    @classmethod
-    def validate_attachments(cls, v):
-        if v:
-            for att in v:
-                if not isinstance(att, dict) or 'path' not in att:
-                    raise ValueError("Each attachment must be a dict with 'path' field")
-                if not os.path.isfile(att['path']):
-                    raise ValueError(f"Attachment file does not exist: {att['path']}")
-        return v
-
-    @field_validator('footer_image')
-    @classmethod
-    def validate_footer_image(cls, v):
-        if v:
-            if not isinstance(v, dict) or 'path' not in v:
-                raise ValueError("footer_image must be a dict with 'path' field")
-            if not os.path.isfile(v['path']):
-                raise ValueError(f"Footer image file does not exist: {v['path']}")
-        return v
-
-    model_config = ConfigDict(validate_assignment=True)
-
 
 class MailSenderConfig(ConnectorConfig):
     """Configuration for MailSender connector with comprehensive email and survey settings."""
 
     model_config = ConfigDict(
         validate_assignment=True,
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True # Allow EmailConfig
     )
-
-    # Email configuration as a nested config object
-    email_config: EmailConfig | None = None
-    smtp_credentials_file: FilePath | None = None
 
     # LimeSurvey configuration
     limesurvey_api_token_path: FilePath | None = None
@@ -160,40 +201,19 @@ class MailSenderConfig(ConnectorConfig):
     # Survey types configuration
     survey_types: dict[str, MailSenderSurveyConfig] = Field(default_factory=dict)
 
+    # Email configuration as nested EmailConfig object
+    email: EmailConfig | None = None
+
     # Debug mode
     debug_mode: bool = False
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any], **kwargs) -> MailSenderConfig:
-        """Create MailSenderConfig from configuration dictionary.
-
-        Args:
-            data: Dictionary with connector configuration
-            **kwargs: Additional keyword arguments to override/supplement dict values
-
-        Returns:
-            Fully constructed and validated MailSenderConfig
-        """
-        # Parse survey_types if present
-        survey_types = {}
-        if "survey_types" in data:
-            for survey_name, survey_data in data["survey_types"].items():
-                survey_types[survey_name] = MailSenderSurveyConfig(**survey_data)
-        
-        # Parse email_config if present
-        email_config = None
-        if "email" in data:
-            email_config = EmailConfig(**data["email"])
-        
-        # Merge data with kwargs (kwargs take precedence)
-        merged = {
-            **data,
-            "survey_types": survey_types,
-            "email_config": email_config,
-            **kwargs
-        }
-        
-        return cls(**merged)
+    @model_validator(mode='after')
+    def set_survey_names(self):
+        """Set survey config names from dict keys if not already set."""
+        for survey_name, survey_config in self.survey_types.items():
+            if survey_config.name is None:
+                survey_config.name = survey_name
+        return self
 
 
 class MailSender(Connector):
@@ -217,16 +237,17 @@ class MailSender(Connector):
 
         self.repository = repository
         self.debug_mode = config.debug_mode
-        self.smtp_auth_required = config.smtp_auth_required
+        self.email_config = config.email
+        self.smtp_auth_required = config.email.smtp_auth_required if config.email else True
         self.smtp_credentials = {}
 
         # Load credentials if provided in config
-        if config.smtp_username and config.smtp_password:
-            self.set_smtp_credentials(config.smtp_username, config.smtp_password)
+        if config.email and config.email.smtp_username and config.email.smtp_password:
+            self.set_smtp_credentials(config.email.smtp_username, config.email.smtp_password)
 
         # Load credentials from file if provided
-        if config.smtp_credentials_file:
-            self.load_smtp_credentials_from_file(config.smtp_credentials_file)
+        if config.email and config.email.smtp_credentials_file:
+            self.load_smtp_credentials_from_file(config.email.smtp_credentials_file)
 
     def set_debug_mode(self, debug_mode=True) -> None:
         """Set debug mode (prevents actually sending emails)"""
@@ -483,8 +504,8 @@ class MailSender(Connector):
         if self.smtp_auth_required and not self.smtp_credentials and not self.debug_mode:
             self.prompt_smtp_credentials()
 
-        sender_email = self.email_config.get("sender")
-        reply_to_email = self.email_config.get("reply_to")
+        sender_email = self.email_config.sender if self.email_config else None
+        reply_to_email = self.email_config.reply_to if self.email_config else None
 
         # Apply template variables to subject if provided
         formatted_subject = subject
@@ -753,12 +774,12 @@ class MailSender(Connector):
         # Default: return original column
         return column
 
-    def _check_conditions(self, conditions, data_columns, short_pseudonym, position) -> tuple[bool, str | None]:
+    def _check_conditions(self, conditions: list[Condition] | None, data_columns: dict, short_pseudonym: str, position: int) -> tuple[bool, str | None]:
         """
         Check if all conditions are met for running this survey
 
         Args:
-            conditions: List of condition dictionaries with column, condition, and value
+            conditions: List of Condition objects
             data_columns: Dictionary of column values from PEP
             short_pseudonym: The short pseudonym to check existence for is_empty/is_not_empty conditions
             position: The position of this survey in a sequence (0-based index)
@@ -774,8 +795,7 @@ class MailSender(Connector):
         value_conditions = []
 
         for condition in conditions:
-            operator = condition.get("condition", "is")
-            if operator in ["is_empty", "is_not_empty"]:
+            if condition.condition in ["is_empty", "is_not_empty"]:
                 existence_conditions.append(condition)
             else:
                 value_conditions.append(condition)
@@ -785,12 +805,11 @@ class MailSender(Connector):
             # Collect all columns to check in a single API call
             columns_to_check = []
             for cond in existence_conditions:
-                if cond.get("column"):
-                    # Apply formatting if format is specified
-                    base_column = cond.get("column")
-                    format_type = cond.get("format")
-                    formatted_column = self._format_column_name(base_column, position, format_type)
-                    columns_to_check.append(formatted_column)
+                # Note: format is not in Condition model, use getattr for backward compatibility
+                base_column = cond.column
+                format_type = getattr(cond, 'format', None)
+                formatted_column = self._format_column_name(base_column, position, format_type)
+                columns_to_check.append(formatted_column)
 
             if columns_to_check:
                 # Check data existence for all columns at once
@@ -816,18 +835,14 @@ class MailSender(Connector):
 
         # Process value conditions (all other condition types)
         for condition in value_conditions:
-            base_column = condition.get("column")
-            format_type = condition.get("format")
+            base_column = condition.column
+            format_type = getattr(condition, 'format', None)
             column = self._format_column_name(base_column, position, format_type)
-            operator = condition.get("condition", "is")
-            expected_value = condition.get("value")
-
-            if not column:
-                self.log("Condition missing required 'column' field", level=logging.WARNING, tag=self.LOG_TAG)
-                continue
+            operator = condition.condition
+            expected_value = condition.value
 
             # Skip validation for conditions that don't require a value
-            if "value" not in condition and operator not in ["is_empty", "is_not_empty"]:
+            if expected_value is None and operator not in ["is_empty", "is_not_empty"]:
                 self.log(f"Condition for column '{column}' missing required 'value' field", level=logging.WARNING, tag=self.LOG_TAG)
                 continue
 
@@ -1011,133 +1026,97 @@ class MailSender(Connector):
             }
         return pdf_paths_dict
 
-    def send_survey_emails(self, limesurvey_connector, config, survey_type) -> tuple[int, int, int]:
-        self.validate_config(config)
+    def send_survey_emails(self, limesurvey_connector: LimeSurveyConnector, config: MailSenderSurveyConfig) -> tuple[int, int, int]:
+        """Send survey emails based on configuration.
+        
+        Args:
+            limesurvey_connector: LimeSurvey connector instance
+            config: Survey configuration object
+            
+        Returns:
+            Tuple of (total_subjects, skipped_count, subjects_emailed_count)
+        """
+        survey_type = config.name
+        
+        # Load primary email setting
+        is_primary_email = config.primary_email
 
-        # Load required config items
-        survey_participant_column = "TeacherInfo.IsSurveyParticipant"
-        template_survey_ids = config.get("template_survey_ids")
-        short_pseudonym_column = config.get("pep_sp_column")
-        recipient_email_column = config.get("pep_email_column")
-        is_primary_email = config.get("primary_email", True)
-        emails_sent_column = config.get("pep_emails_sent_column")
-        survey_ids_column = config.get("pep_survey_ids_column")
-        email_subject = config.get("email_subject")
-        email_template = config.get("email_template")
-        # Load survey-specific reminder settings
-        max_reminders = config.get("max_reminders", 1)
-        days_between_reminders = config.get("days_between_reminders", 7)
-        max_days_retroactive = config.get("max_days_retroactive")
+        pep_columns = [
+            config.survey_participant_column,
+            config.pep_email_column,
+            config.pep_emails_sent_column,
+            config.pep_survey_ids_column
+        ]
 
-        # Get attachments and footer image if specified
-        attachments = config.get("attachments")
-        footer_image = config.get("footer_image")
-
-        pep_columns = [survey_participant_column,
-                       recipient_email_column,
-                       emails_sent_column,
-                       survey_ids_column]
-
-        # Load optional config items
-        recipient_name_column = config.get("pep_name_column")
-        kickoff_date_column = config.get("kickoff_date_column")
-        custom_html_file = config.get("custom_html_file")
-
+        # Load optional custom HTML file
         custom_html = None
-        if custom_html_file:
-            custom_html = self._load_html_file(custom_html_file)
+        if config.custom_html_file:
+            custom_html = self._load_html_file(config.custom_html_file)
 
-        if recipient_name_column:
-            pep_columns.append(recipient_name_column)
+        if config.pep_name_column:
+            pep_columns.append(config.pep_name_column)
 
-        if kickoff_date_column:
-            pep_columns.append(kickoff_date_column)
-
-        # Surveys are not copied by default if no parameter is provided
-        copy_survey = config.get("copy_survey", False)
-
-        repetition_type = config.get("repetition_type", "once")
-        start_dates = config.get("start_dates")
-        _end_date = config.get("end_date")  # Reserved for future time-bounded surveys
-        interval_days = config.get("interval_days")
-
-        # Get conditions if specified
-        conditions = config.get("conditions", [])
-
-        is_report = config.get("is_report_type", False)
+        if config.kickoff_date_column:
+            pep_columns.append(config.kickoff_date_column)
 
         # Check if this is an expert report type that needs school-specific PDFs
-        report_info = config.get("report_info", {})
-        is_expert_report = report_info.get("type") == "expert"
+        is_expert_report = config.merge_pdfs and config.merge_pdfs.get("type") == "expert" if isinstance(config.merge_pdfs, dict) else False
 
         if is_expert_report:
-            expert_teacher_column = "TeacherInfo.IsExpertTeacher"
-            pep_report_subject_column = report_info.get("subject_column")
-            report_filename = report_info.get("combined_filename", "Participatierapport.pdf")
-            monitor_columns = report_info.get("monitor_columns")
-            info_columns = report_info.get("info_columns")
-            group_column = report_info.get("filter_by_column")
-            consent_column = report_info.get("pep_consent_column", "Consent.Bool")
-            max_recent_columns = report_info.get("max_recent_columns", 4)
-            output_dir = report_info.get("output_dir", "/tmp")
-
             # Ensure columns are added for PEP fetch
-            if group_column and group_column not in pep_columns:
-                pep_columns.append(group_column)
-            if expert_teacher_column not in pep_columns:
-                pep_columns.append(expert_teacher_column)
-            if pep_report_subject_column and pep_report_subject_column not in pep_columns:
-                pep_columns.append(pep_report_subject_column)
+            if config.report_info.filter_by_column and config.report_info.filter_by_column not in pep_columns:
+                pep_columns.append(config.report_info.filter_by_column)
+            if config.report_info.expert_teacher_column not in pep_columns:
+                pep_columns.append(config.report_info.expert_teacher_column)
+            if config.report_info.subject_column and config.report_info.subject_column not in pep_columns:
+                pep_columns.append(config.report_info.subject_column)
 
             # Add info columns for the report         
-            if info_columns:
-                for col in info_columns:
+            if config.report_info.info_columns:
+                for col in config.report_info.info_columns:
                     col_name = col["column_name"] if isinstance(col, dict) else col
                     if col_name not in pep_columns:
                         pep_columns.append(col_name)
 
             # Add consent column for report generation if not already present
-            if consent_column and consent_column not in pep_columns:
-                pep_columns.append(consent_column)
+            if config.report_info.pep_consent_column and config.report_info.pep_consent_column not in pep_columns:
+                pep_columns.append(config.report_info.pep_consent_column)
 
-        if is_report:
+        if config.is_report_type:
             # For reports we do not require any survey IDs, but if we want repeating reports,
             # we still need to have set a list of unique "dummy" template survey IDs in config, these should be equal to the number of start_dates
-            if not template_survey_ids:
-                if repetition_type == "once":
+            if not config.template_survey_ids:
+                if config.repetition_type == "once":
                     # Single dummy ID for one-time reports
-                    template_survey_ids = [0]
-                elif repetition_type == "schedule":
+                    config.template_survey_ids = [0]
+                elif config.repetition_type == "schedule":
                     # For schedule, generate dummy IDs based on start_dates
-                    template_survey_ids = list(range(len(start_dates)))
+                    config.template_survey_ids = list(range(len(config.start_dates)))
 
-                self.log(f"Generated {len(template_survey_ids)} dummy template_survey_ids for report type: {template_survey_ids}", level=logging.DEBUG, tag=self.LOG_TAG)
-        else:
-            # Only surveys require survey_base_url
-            survey_base_url = config.get("survey_base_url")
+                self.log(f"Generated {len(config.template_survey_ids)} dummy template_survey_ids for report type: {config.template_survey_ids}", level=logging.DEBUG, tag=self.LOG_TAG)
 
         # Add any condition columns to the columns we need to fetch
         # is_empty and is_not_empty conditions are not added to the list
         # as they are checked separately
-        for condition in conditions:
-            if "column" in condition and condition["condition"] not in ["is_empty", "is_not_empty"] and condition["column"] not in pep_columns:
-                pep_columns.append(condition["column"])
+        for condition in config.conditions or []:
+            if condition.condition not in ["is_empty", "is_not_empty"] and condition.column not in pep_columns:
+                pep_columns.append(condition.column)
 
         # Load config from PEP
-        subject_info = limesurvey_connector.list_columndata_by_short_pseudonym(short_pseudonym_column, pep_columns)
+        subject_info = limesurvey_connector.list_columndata_by_short_pseudonym(config.pep_sp_column, pep_columns)
 
         # Generate PDFs for expert report after fetching all data
         if is_expert_report:
             pdf_paths_dict = self._generate_expert_report_pdfs(
-                monitor_columns=monitor_columns,
-                info_columns=info_columns,
-                group_column=group_column,
-                consent_column=consent_column,
-                survey_participant_column=survey_participant_column,
-                emails_sent_column=emails_sent_column,
-                report_filename=report_filename,
-                output_dir=output_dir,
-                max_recent_columns=max_recent_columns
+                monitor_columns=config.report_info.monitor_columns,
+                info_columns=config.report_info.info_columns,
+                group_column=config.report_info.filter_by_column,
+                consent_column=config.report_info.pep_consent_column,
+                survey_participant_column=config.survey_participant_column,
+                emails_sent_column=config.pep_emails_sent_column,
+                report_filename=config.report_info.combined_filename,
+                output_dir=config.report_info.output_dir,
+                max_recent_columns=config.report_info.max_recent_columns
             )
         else:
             pdf_paths_dict = {}
@@ -1163,13 +1142,13 @@ class MailSender(Connector):
 
             # Only check expert teacher flag if this is an expert report
             if is_expert_report:
-                is_expert_teacher = parse_flag(data["columns"].get(expert_teacher_column))
+                is_expert_teacher = parse_flag(data["columns"].get(config.report_info.expert_teacher_column))
 
                 if is_expert_teacher is None:
                     skipped_count += 1
                     self.log(
                         f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
-                        f"Invalid expert teacher flag in {expert_teacher_column}. Expected '1' or '0'.",
+                        f"Invalid expert teacher flag in {config.report_info.expert_teacher_column}. Expected '1' or '0'.",
                         level=logging.ERROR, tag=self.LOG_TAG,
                     )
                     continue
@@ -1189,13 +1168,13 @@ class MailSender(Connector):
                     continue
             else:
                 # For non-expert reports and surveys, only check survey participant
-                is_survey_participant = parse_flag(data["columns"].get(survey_participant_column))
+                is_survey_participant = parse_flag(data["columns"].get(config.survey_participant_column))
 
                 if is_survey_participant is None:
                     skipped_count += 1
                     self.log(
                         f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
-                        f"Invalid survey participant flag in {survey_participant_column}. Expected '1' or '0'.",
+                        f"Invalid survey participant flag in {config.survey_participant_column}. Expected '1' or '0'.",
                         level=logging.ERROR, tag=self.LOG_TAG,
                     )
                     continue
@@ -1215,12 +1194,12 @@ class MailSender(Connector):
                     continue
 
             # Recipient name is optional
-            recipient_name = data["columns"].get(recipient_name_column) if recipient_name_column else None
+            recipient_name = data["columns"].get(config.pep_name_column) if config.pep_name_column else None
 
             # Get per-subject kickoff date from PEP column if configured
             kickoff_date_for_subject = None
-            if kickoff_date_column:
-                kickoff_date_for_subject = data["columns"].get(kickoff_date_column)
+            if config.kickoff_date_column:
+                kickoff_date_for_subject = data["columns"].get(config.kickoff_date_column)
                 if kickoff_date_for_subject:
                     try:
                         # Validate the date format only
@@ -1228,15 +1207,15 @@ class MailSender(Connector):
                         self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Using subject-specific kickoff date {datetime.fromisoformat(kickoff_date_for_subject).date()}", 
                                     level=logging.DEBUG, tag=self.LOG_TAG)
                     except ValueError as e:
-                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Invalid date format in column {kickoff_date_column}: {kickoff_date_for_subject}. Error: {str(e)}", 
+                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Invalid date format in column {config.kickoff_date_column}: {kickoff_date_for_subject}. Error: {str(e)}", 
                                 level=logging.ERROR, tag=self.LOG_TAG)
-                        raise ValueError(f"Invalid date format in PEP column {kickoff_date_column} for {short_pseudonym}: {kickoff_date_for_subject}")
+                        raise ValueError(f"Invalid date format in PEP column {config.kickoff_date_column} for {short_pseudonym}: {kickoff_date_for_subject}")
                 else:
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Kickoff date column specified but no data in column {kickoff_date_column}, no kickoff date will be used", 
+                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Kickoff date column specified but no data in column {config.kickoff_date_column}, no kickoff date will be used", 
                             level=logging.INFO, tag=self.LOG_TAG)
 
             # Email Address is required to send emails
-            email = data["columns"].get(recipient_email_column)
+            email = data["columns"].get(config.pep_email_column)
             if not email:
                 skipped_count += 1
                 self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping subject: Missing email.", 
@@ -1244,7 +1223,7 @@ class MailSender(Connector):
                 continue
 
             # For expert reports, get school name and prepare school-specific attachments
-            subject_attachments = attachments
+            subject_attachments = config.attachments
             if is_expert_report:
                 # For expert reports, skip non-expert teachers
                 if not is_expert_teacher:
@@ -1254,7 +1233,7 @@ class MailSender(Connector):
                     continue
 
                 # Skip if no report subjects configured
-                report_subjects_raw = data["columns"].get(pep_report_subject_column)
+                report_subjects_raw = data["columns"].get(config.report_info.subject_column)
                 if not report_subjects_raw:
                     skipped_count += 1
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Expert teacher but no report subjects specified.", 
@@ -1275,7 +1254,7 @@ class MailSender(Connector):
                     self._merge_pdfs(pdf_infos, merged_pdf_path)
                     merged_pdf_info = {
                         "path": merged_pdf_path,
-                        "filename": report_filename,
+                        "filename": config.report_info.combined_filename,
                         "mimetype": "application/pdf"
                     }
 
@@ -1293,7 +1272,7 @@ class MailSender(Connector):
                     continue
 
             # Emails sent data is required to track email history
-            emails_sent_data = data["columns"].get(emails_sent_column)
+            emails_sent_data = data["columns"].get(config.pep_emails_sent_column)
             emails_sent = {}
             if emails_sent_data:
                 try:
@@ -1305,7 +1284,7 @@ class MailSender(Connector):
                     continue
 
             # Survey IDs data is required to track which surveys have been sent
-            survey_ids_data = data["columns"].get(survey_ids_column)
+            survey_ids_data = data["columns"].get(config.pep_survey_ids_column)
             pep_survey_ids = {}
             if survey_ids_data:
                 try:
@@ -1321,10 +1300,10 @@ class MailSender(Connector):
                 pep_survey_ids[survey_type] = []
 
             # Loop over each repeated survey, for both survey creation and email sending
-            for survey_index, template_survey_id in enumerate(template_survey_ids):
+            for survey_index, template_survey_id in enumerate(config.template_survey_ids):
 
                 # Check user defined conditions for this specific survey index
-                should_run, condition_reason = self._check_conditions(conditions=conditions, 
+                should_run, condition_reason = self._check_conditions(conditions=config.conditions or [], 
                                                                       data_columns=data["columns"], 
                                                                       short_pseudonym=short_pseudonym, 
                                                                       position=survey_index)
@@ -1344,13 +1323,13 @@ class MailSender(Connector):
                 # Store a new survey for this template survey id
                 else:
                     # Report types do not create surveys, they just send emails
-                    if not is_report:
+                    if not config.is_report_type:
                         survey_id = self._create_survey(limesurvey_connector=limesurvey_connector,
                                                         template_survey_id=template_survey_id,
                                                         survey_type=survey_type,
                                                         short_pseudonym=short_pseudonym,
                                                         survey_index=survey_index,
-                                                        copy_survey=copy_survey)
+                                                        copy_survey=config.copy_survey)
                     else:
                         survey_id = template_survey_id  # For reports, use the dummy ID directly
 
@@ -1365,7 +1344,7 @@ class MailSender(Connector):
 
                     # Save the updated list of survey IDs back to PEP after a new survey creation
                     limesurvey_connector.upload_data_by_short_pseudonym(short_pseudonym=short_pseudonym, 
-                                                                        column=survey_ids_column, 
+                                                                        column=config.pep_survey_ids_column, 
                                                                         data=json.dumps(pep_survey_ids), 
                                                                         file_extension=".json")
 
@@ -1374,13 +1353,13 @@ class MailSender(Connector):
                 should_send, reason = self.should_send_email(emails_sent=emails_sent,
                                                               survey_id=survey_id,
                                                               survey_type=survey_type,
-                                                              max_reminders=max_reminders,
-                                                              days_between_reminders=days_between_reminders,
-                                                              start_dates=start_dates,
-                                                              interval_days=interval_days,
+                                                              max_reminders=config.max_reminders,
+                                                              days_between_reminders=config.days_between_reminders,
+                                                              start_dates=config.start_dates,
+                                                              interval_days=config.interval_days,
                                                               position=survey_index,
-                                                              repetition_type=repetition_type,
-                                                              max_days_retroactive=max_days_retroactive,
+                                                              repetition_type=config.repetition_type,
+                                                              max_days_retroactive=config.max_days_retroactive,
                                                               kickoff_date=kickoff_date_for_subject)
 
                 if not should_send:
@@ -1393,9 +1372,9 @@ class MailSender(Connector):
 
                 # Calculate deadline as start_date + 14 days
                 deadline = "over 2 weken"
-                if start_dates and survey_index < len(start_dates):
+                if config.start_dates and survey_index < len(config.start_dates):
                     try:
-                        deadline_date = datetime.fromisoformat(start_dates[survey_index])+ timedelta(days=14)
+                        deadline_date = datetime.fromisoformat(config.start_dates[survey_index])+ timedelta(days=14)
                         deadline = deadline_date.date().isoformat()
                     except ValueError:
                         self.log(f"Invalid date format for start_date at index {survey_index}", 
@@ -1413,13 +1392,13 @@ class MailSender(Connector):
                     })
 
                 # Extend template vars with survey-specific variables
-                if not is_report:
-                    survey_link = f"{survey_base_url}/{survey_id}?token={short_pseudonym}"
+                if not config.is_report_type:
+                    survey_link = f"{config.survey_base_url}/{survey_id}?token={short_pseudonym}"
 
                     template_vars.update({
                         "survey_link": survey_link, 
                         "survey_number": survey_index + 1,
-                        "survey_count": len(template_survey_ids)
+                        "survey_count": len(config.template_survey_ids)
                     })
 
                 self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Sending {'reminder ' if is_reminder else ''}email for survey {survey_index+1}.", 
@@ -1427,17 +1406,17 @@ class MailSender(Connector):
 
                 # Send the survey email
                 self.send_email(recipient_email=email,
-                                subject=email_subject,
-                                template=email_template,
+                                subject=config.email_subject,
+                                template=config.email_template,
                                 template_vars=template_vars,
                                 attachments=subject_attachments,
-                                footer_image=footer_image,
+                                footer_image=config.footer_image,
                                 use_html=True,
                                 is_reminder=is_reminder)
 
                 # Record the email send for this specific survey
                 self.record_email_send(short_pseudonym=short_pseudonym,
-                                        column=emails_sent_column,
+                                        column=config.pep_emails_sent_column,
                                         emails_sent=emails_sent,
                                         email=email,
                                         is_primary_email=is_primary_email,
@@ -1461,18 +1440,23 @@ class MailSender(Connector):
         # Return statistics for this survey type to be shown in final statistics
         return total_subjects, skipped_count, subjects_emailed_count
 
-    def send_all_survey_emails(self, limesurvey_connector, config):
+    def send_all_survey_emails(self, limesurvey_connector):
+        """Send all enabled survey emails.
+        
+        Args:
+            limesurvey_connector: LimeSurvey connector instance
+        """
         overall_total_subjects = 0
         overall_skipped_count = 0
         overall_processed_subjects = 0
         overall_subjects_emailed_count = 0
         processed_survey_types = []
 
-        for survey_type, survey_config in config.items():
-            if survey_config.get("enabled", False):
+        for survey_type, survey_config in self.config.survey_types.items():
+            if survey_config.enabled:
                 self.log(f"Processing survey type: {survey_type}", level=logging.INFO, tag=self.LOG_TAG)
 
-                total, skipped, emailed = self.send_survey_emails(limesurvey_connector, survey_config, survey_type)
+                total, skipped, emailed = self.send_survey_emails(limesurvey_connector, survey_config)
 
                 processed = total - skipped
 

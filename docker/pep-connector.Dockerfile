@@ -9,5 +9,5 @@ RUN apt-get update && \
 
 # Install the wheel with a bind mount
 RUN --mount=type=bind,source=${STAGING_DIRECTORY}/python/pep/pep_connector/,target=/tmp/pep_connector \
-    pip install --break-system-packages --no-cache-dir /tmp/pep_connector/*.whl
+    pip install --break-system-packages --no-cache-dir pydantic /tmp/pep_connector/*.whl
 
