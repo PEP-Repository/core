@@ -386,12 +386,13 @@ update_data_sync() {
   push_c_file="$3"
   
   pull_c_entry=$(get_pull_constellation_entry "$pull_c_json")
-  push_c_json=$(envsubst < $(cat "$push_c_file" | jq -c '.[] | select(has("sync-push"))'))
+  push_c_json=$(cat "$push_c_file" | jq -c '.[] | select(has("sync-push"))')
   if [ -z "$pull_c_entry" ]; then
     echo "No pull configuration found in constellation"
   elif [ -z "$push_c_json" ]; then
     echo "No push configuration found in $push_c_file"
   else
+    push_c_json=$(envsubst < "$push_c_json")
     # Clear pull host's "data-sync" directory
     prepare_ssh_connectivity "$pull_c_entry" "$pull_c_file_dir"
     run_cmd "$(get_ssh_command "$pull_c_entry" "$pull_c_file_dir" "" "sync-pull") 'rm -R -f data-sync && mkdir data-sync'"
