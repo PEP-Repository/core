@@ -6,6 +6,7 @@ import smtplib
 import hashlib
 import getpass
 import os
+import sys
 import time
 import re
 from pydantic import (
@@ -46,8 +47,80 @@ class EmailConfig(BaseModel):
     reply_to: EmailStr | None = None
     smtp_username: str | None = None
     smtp_password: str | None = None
-    smtp_auth_required: bool = True
-    smtp_credentials_file: FilePath | None = None
+    smtp_auth_required: bool = False
+    smtp_credentials_file: str | None = None
+    max_retries: int = 3
+    retry_delay: int = 60
+    rate_limit_seconds: int = 100
+    
+    @model_validator(mode='after')
+    def load_credentials_from_file(self):
+        """Load SMTP credentials from file if specified and not already set."""
+        if self.smtp_credentials_file and not (self.smtp_username and self.smtp_password):
+            try:
+                with open(self.smtp_credentials_file, 'r') as file:
+                    credentials = json.load(file)
+                
+                if not isinstance(credentials, dict):
+                    raise ValueError("Credentials file must contain a JSON object")
+                
+                if 'username' not in credentials or 'password' not in credentials:
+                    raise ValueError("Credentials file must contain 'username' and 'password' keys")
+                
+                self.smtp_username = credentials['username']
+                self.smtp_password = credentials['password']
+            except json.JSONDecodeError:
+                raise ValueError(f"Invalid JSON format in credentials file: {self.smtp_credentials_file}")
+            except (IOError, OSError) as e:
+                raise ValueError(f"Error reading credentials file {self.smtp_credentials_file}: {str(e)}")
+        
+        return self
+    
+    def prompt_credentials(self) -> None:
+        """Prompt user for SMTP credentials."""
+        username = input("Enter SMTP username: ")
+        password = getpass.getpass("Enter SMTP password: ")
+        self.set_credentials(username, password)
+    
+    def set_credentials(self, username: str, password: str) -> None:
+        """Set SMTP credentials programmatically."""
+        self.smtp_username = username
+        self.smtp_password = password
+    
+    def ensure_credentials(self) -> None:
+        """Ensure SMTP credentials are available when authentication is required.
+        
+        The model_validator load_credentials_from_file already attempts to load from
+        smtp_credentials_file during model creation. This method only handles the case
+        where credentials still aren't available after model creation.
+        
+        Raises:
+            ValueError: If credentials are required but cannot be obtained
+        """
+        # If we already have credentials, we're done
+        if self.smtp_username and self.smtp_password:
+            return
+        
+        # If we have a credentials file but it wasn't loaded (shouldn't happen normally),
+        # the validator would have raised an error. So if we're here without credentials,
+        # either no file was provided or credentials were expected to be set directly.
+        
+        # Check if we're in an interactive terminal to prompt for credentials
+        if sys.stdin.isatty():
+            self.prompt_credentials()
+        else:
+            # Not interactive and no credentials available
+            if self.smtp_credentials_file:
+                raise ValueError(
+                    f"SMTP credentials file was specified ({self.smtp_credentials_file}) but "
+                    "credentials could not be loaded during configuration initialization."
+                )
+            else:
+                raise ValueError(
+                    "SMTP authentication is required but no credentials are available. "
+                    "Either provide smtp_credentials_file in config, set smtp_username/smtp_password directly, "
+                    "or run in an interactive terminal."
+                )
 
 
 class FooterImage(BaseModel):
@@ -224,14 +297,14 @@ class MailSenderConfig(ConnectorConfig):
         arbitrary_types_allowed=True # Allow EmailConfig
     )
 
+    # Email configuration as nested EmailConfig object
+    email: EmailConfig
+
     # LimeSurvey configuration
     limesurvey_api_token_path: FilePath | None = None
 
     # Survey types configuration
     survey_types: dict[str, MailSenderSurveyConfig] = Field(default_factory=dict)
-
-    # Email configuration as nested EmailConfig object
-    email: EmailConfig | None = None
 
     # Debug mode
     debug_mode: bool = False
@@ -268,15 +341,6 @@ class MailSender(Connector):
         self.debug_mode = config.debug_mode
         self.email_config = config.email
         self.smtp_auth_required = config.email.smtp_auth_required if config.email else True
-        self.smtp_credentials = {}
-
-        # Load credentials if provided in config
-        if config.email and config.email.smtp_username and config.email.smtp_password:
-            self.set_smtp_credentials(config.email.smtp_username, config.email.smtp_password)
-
-        # Load credentials from file if provided
-        if config.email and config.email.smtp_credentials_file:
-            self.load_smtp_credentials_from_file(config.email.smtp_credentials_file)
 
     def set_debug_mode(self, debug_mode=True) -> None:
         """Set debug mode (prevents actually sending emails)"""
@@ -285,43 +349,6 @@ class MailSender(Connector):
     def hash_email(self, email: str) -> str:
         """Create a hash of an email address for privacy in logs"""
         return hashlib.sha256(email.lower().encode()).hexdigest()
-
-    def prompt_smtp_credentials(self) -> None:
-        """Prompt user for SMTP credentials"""
-        username = input("Enter SMTP username: ")
-        password = getpass.getpass("Enter SMTP password: ")
-        self.set_smtp_credentials(username, password)
-
-    def set_smtp_credentials(self, username: str, password: str) -> None:
-        """Set SMTP credentials programmatically"""
-        self.smtp_credentials = (username, password)
-
-    def load_smtp_credentials_from_file(self, file_path: str) -> None:
-        """Load SMTP credentials from a JSON file
-
-        Args:
-            file_path: Path to JSON file containing username and password keys
-        """
-        try:
-            with open(file_path, 'r') as file:
-                credentials = json.load(file)
-
-            if not isinstance(credentials, dict):
-                self.log(f"Invalid credentials format in file: {file_path}", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("Credentials file must contain a JSON object")
-
-            if 'username' not in credentials or 'password' not in credentials:
-                self.log(f"Missing username or password in credentials file: {file_path}", level=logging.ERROR, tag=self.LOG_TAG)
-                raise ValueError("Credentials file must contain 'username' and 'password' keys")
-
-            self.set_smtp_credentials(credentials['username'], credentials['password'])
-            self.log(f"SMTP credentials loaded from {file_path}", level=logging.INFO, tag=self.LOG_TAG)
-        except json.JSONDecodeError:
-            self.log(f"Invalid JSON format in credentials file: {file_path}", level=logging.ERROR, tag=self.LOG_TAG)
-            raise ValueError(f"Invalid JSON format in credentials file: {file_path}")
-        except (IOError, OSError) as e:
-            self.log(f"Error reading credentials file {file_path}: {str(e)}", level=logging.ERROR, tag=self.LOG_TAG)
-            raise ValueError(f"Error reading credentials file {file_path}: {str(e)}")
 
     def should_send_email(self,
                           emails_sent: dict,
@@ -470,17 +497,15 @@ class MailSender(Connector):
 
                     # Only authenticate if required
                     if self.smtp_auth_required:
-                        if not self.smtp_credentials:
-                            self.prompt_smtp_credentials()
-
-                        smtp_username, smtp_password = self.smtp_credentials
-
-                        if not smtp_username or not smtp_password:
-                            self.log("SMTP authentication is required but no credentials provided", level=logging.ERROR, tag=self.LOG_TAG)
-                            raise Exception("SMTP authentication is required. Please provide credentials.")
+                        # Ensure we have credentials available
+                        try:
+                            self.email_config.ensure_credentials()
+                        except ValueError as e:
+                            self.log(str(e), level=logging.ERROR, tag=self.LOG_TAG)
+                            raise
 
                         try:
-                            server.login(smtp_username, smtp_password)
+                            server.login(self.email_config.smtp_username, self.email_config.smtp_password)
                         except smtplib.SMTPAuthenticationError:
                             self.log("SMTP authentication failed. Please check your credentials.", level=logging.ERROR, tag=self.LOG_TAG)
                             raise Exception("SMTP authentication failed. Please check your credentials.")
@@ -529,12 +554,8 @@ class MailSender(Connector):
             is_reminder: Whether this is a reminder email (will prefix "Reminder: " to the subject)
         """
 
-        # Only prompt for credentials if authentication is required and not in debug mode
-        if self.smtp_auth_required and not self.smtp_credentials and not self.debug_mode:
-            self.prompt_smtp_credentials()
-
-        sender_email = self.email_config.sender if self.email_config else None
-        reply_to_email = self.email_config.reply_to if self.email_config else None
+        sender_email = self.email_config.sender
+        reply_to_email = self.email_config.reply_to
 
         # Apply template variables to subject if provided
         formatted_subject = subject
@@ -695,18 +716,18 @@ class MailSender(Connector):
                                 level=logging.DEBUG, tag=self.LOG_TAG)
             self.log("===================================\n", level=logging.DEBUG, tag=self.LOG_TAG)
         else:
-            smtp_server = self.email_config.get("smtp_server")
-            smtp_port = self.email_config.get("smtp_port", 587)
-            max_retries = self.email_config.get("max_retries", 3)
-            retry_delay = self.email_config.get("retry_delay", 60)
-
             # Send email with retry logic
-            self._send_email_with_retry(message, smtp_server, smtp_port, max_retries, retry_delay)
+            self._send_email_with_retry(
+                message, 
+                self.email_config.smtp_server, 
+                self.email_config.smtp_port, 
+                self.email_config.max_retries, 
+                self.email_config.retry_delay
+            )
 
             # Make sure to sleep for rate limit avoidance
-            rate_limit_seconds = self.email_config.get("rate_limit_seconds", 100)
-            self.log(f"Sleeping for {rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
-            time.sleep(rate_limit_seconds)
+            self.log(f"Sleeping for {self.email_config.rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
+            time.sleep(self.email_config.rate_limit_seconds)
             self.log("Waking up from sleep", level=logging.DEBUG, tag=self.LOG_TAG)
 
     def record_email_send(self, short_pseudonym: str, column: str, emails_sent: dict, email: str, is_primary_email: bool, survey_id: int, survey_type: str) -> None:
