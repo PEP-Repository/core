@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import smtplib
@@ -26,7 +28,7 @@ from email.utils import make_msgid
 from email import encoders
 from datetime import datetime, timedelta
 from .connectors import Connector, ConnectorConfig
-from .peprepository import PEPRepository, PEPConfig
+from .peprepository import PEPRepository
 from .datamonitor import DataMonitor
 from pypdf import PdfWriter
 import weasyprint
@@ -145,7 +147,7 @@ class MailSenderConfig(ConnectorConfig):
 
     model_config = ConfigDict(
         validate_assignment=True,
-        arbitrary_types_allowed=True  # Allow PEPConfig
+        arbitrary_types_allowed=True
     )
 
     # Email configuration as a nested config object
@@ -162,17 +164,36 @@ class MailSenderConfig(ConnectorConfig):
     debug_mode: bool = False
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], pep_config: PEPConfig) -> "MailSenderConfig":
+    def from_dict(cls, data: dict[str, Any], **kwargs) -> MailSenderConfig:
         """Create MailSenderConfig from configuration dictionary.
 
         Args:
             data: Dictionary with connector configuration
-            pep_config: PEPConfig instance
+            **kwargs: Additional keyword arguments to override/supplement dict values
 
         Returns:
             Fully constructed and validated MailSenderConfig
         """
-        return cls(pep_config=pep_config, **data)
+        # Parse survey_types if present
+        survey_types = {}
+        if "survey_types" in data:
+            for survey_name, survey_data in data["survey_types"].items():
+                survey_types[survey_name] = MailSenderSurveyConfig(**survey_data)
+        
+        # Parse email_config if present
+        email_config = None
+        if "email" in data:
+            email_config = EmailConfig(**data["email"])
+        
+        # Merge data with kwargs (kwargs take precedence)
+        merged = {
+            **data,
+            "survey_types": survey_types,
+            "email_config": email_config,
+            **kwargs
+        }
+        
+        return cls(**merged)
 
 
 class MailSender(Connector):

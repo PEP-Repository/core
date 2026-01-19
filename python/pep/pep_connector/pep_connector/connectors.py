@@ -7,7 +7,7 @@ import os
 from pydantic import BaseModel, Field, model_validator, ConfigDict, DirectoryPath
 from typing import Any, Self
 from .accessgroup import AccessGroup
-from .peprepository import PEPRepository, PEPConfig
+from .peprepository import PEPRepository
 from .peprepository import PepError
 from datetime import datetime
 
@@ -17,10 +17,9 @@ class ConnectorConfig(BaseModel):
 
     model_config = ConfigDict(
         validate_assignment=True,
-        arbitrary_types_allowed=True  # Allow PEPConfig
+        arbitrary_types_allowed=True
     )
 
-    pep_config: PEPConfig
     prometheus_dir: DirectoryPath | None = None
     use_prometheus: bool = False
     env_prefix: str | None = None
@@ -32,16 +31,17 @@ class ConnectorConfig(BaseModel):
             raise ValueError("prometheus_dir must be provided when use_prometheus is True")
         return self
 
-
-
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Self:
+    def from_dict(cls, data: dict[str, Any], **kwargs) -> Self:
         """Create ConnectorConfig from a dictionary.
 
         Args:
             data: Dictionary with config values
+            **kwargs: Additional keyword arguments to override/supplement dict values
         """
-        return cls(**data)        
+        # Merge data with kwargs (kwargs take precedence)
+        merged = {**data, **kwargs}
+        return cls(**merged)        
 
 
 class Connector(AccessGroup):

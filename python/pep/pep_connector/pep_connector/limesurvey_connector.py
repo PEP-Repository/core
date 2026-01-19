@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import xmlrpc.client
@@ -17,7 +19,7 @@ from pydantic import (
 )
 from typing import Literal, Callable, Any
 from io import StringIO
-from .peprepository import PEPRepository, PEPConfig
+from .peprepository import PEPRepository
 from .connectors import Connector, ConnectorConfig
 
 
@@ -103,21 +105,31 @@ class LimeSurveyConfig(ConnectorConfig):
 
     model_config = ConfigDict(
         validate_assignment=True,
-        arbitrary_types_allowed=True  # Allow PEPConfig
+        arbitrary_types_allowed=True
     )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], pep_config: PEPConfig) -> "LimeSurveyConfig":
-        """Create LimeSurveyConfig from configuration dictionary.
+    def from_dict(cls, data: Dict[str, Any], **kwargs) -> LimeSurveyConfig:
+        """Create LimeSurveyConfig from a dictionary.
 
         Args:
-            data: Dictionary with connector configuration
-            pep_config: PEPConfig instance
-
-        Returns:
-            Fully constructed and validated LimeSurveyConfig
+            data: Dictionary with connector config values
+            **kwargs: Additional keyword arguments to override/supplement dict values
         """
-        return cls(pep_config=pep_config, **data)
+        # Parse survey_types if present
+        survey_types = {}
+        if "survey_types" in data:
+            for survey_name, survey_data in data["survey_types"].items():
+                survey_types[survey_name] = LimeSurveySurveyConfig(**survey_data)
+        
+        # Merge data with kwargs (kwargs take precedence)
+        merged = {
+            **data,
+            "survey_types": survey_types,
+            **kwargs
+        }
+        
+        return cls(**merged)
 
 
 class LimeSurveyConnector(Connector):

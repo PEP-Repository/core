@@ -23,7 +23,6 @@ class PEPConfig(BaseModel):
 
     pepcli_path: FilePath
     tokens: dict[str, str] = Field(default_factory=dict)
-    config_version: str | None = None
 
     @field_validator('tokens')
     @classmethod
@@ -39,7 +38,7 @@ class PEPConfig(BaseModel):
         """Create PEPConfig from repo configuration dictionary.
 
         Args:
-            repo_config: Dictionary with 'pepcli_path', 'tokens', and optionally 'config_version'
+            repo_config: Dictionary with 'pepcli_path' and 'tokens'
         """
         return cls(**repo_config)
 
@@ -98,8 +97,6 @@ class PEPRepository:
         self.token = None
 
         self.log(f"PEPRepository version: {self.VERSION}")
-        if pep_config.config_version:
-            self.log(f"Configuration version: {pep_config.config_version}")
 
     def configure_logging(self, logging_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"):
         level = getattr(logging, logging_level, logging.INFO)
