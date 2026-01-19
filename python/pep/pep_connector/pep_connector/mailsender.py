@@ -91,8 +91,37 @@ class Condition(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
     
     column: str
-    condition: str
+    condition: Literal["is", "is_not", "contains", "not_contains", "is_empty", "is_not_empty", "is_one_of", "is_not_one_of"]
     value: Any | None = None
+    format: str | None = None
+    
+    @model_validator(mode='after')
+    def validate_condition_requirements(self):
+        """Validate that the value field is provided when required by the operator."""
+        # Operators that don't require a value
+        no_value_operators = ["is_empty", "is_not_empty"]
+        
+        # Operators that require a list value
+        list_operators = ["is_one_of", "is_not_one_of"]
+        
+        if self.condition not in no_value_operators and self.value is None:
+            raise ValueError(f"Condition '{self.condition}' requires a 'value' field")
+        
+        if self.condition in list_operators:
+            # Parse JSON string if needed
+            if isinstance(self.value, str):
+                try:
+                    self.value = json.loads(self.value)
+                except json.JSONDecodeError:
+                    raise ValueError(f"Value for '{self.condition}' must be a valid JSON list")
+            
+            if not isinstance(self.value, list):
+                raise ValueError(f"Value for '{self.condition}' must be a list")
+            
+            if len(self.value) <= 1:
+                raise ValueError(f"Value for '{self.condition}' must be a list with more than one element")
+        
+        return self
 
 
 class ReportInfo(BaseModel):
@@ -563,11 +592,11 @@ class MailSender(Connector):
             html_body = email_body.replace('\n', '<br>\n')
 
             # Add the footer image
-            if footer_image and isinstance(footer_image, dict) and 'path' in footer_image:
-                img_path = footer_image['path']
-                img_alt = footer_image.get('alt', 'Footer Image')
-                img_width = footer_image.get('width', '')
-                img_height = footer_image.get('height', '')
+            if footer_image:
+                img_path = footer_image.path
+                img_alt = footer_image.alt or 'Footer Image'
+                img_width = footer_image.width or ''
+                img_height = footer_image.height or ''
 
                 # Set dimensions if provided
                 dimensions = ''
@@ -615,15 +644,15 @@ class MailSender(Connector):
                 attachments = [attachments]  # Convert single attachment to list
 
             for attachment in attachments:
-                # Handle both string paths and dict specifications
+                # Handle both Attachment objects and string paths
                 if isinstance(attachment, str):
                     filepath = attachment
                     filename = os.path.basename(filepath)
                     mimetype = None  # Will be guessed based on extension
                 else:
-                    filepath = attachment['path']
-                    filename = attachment.get('filename', os.path.basename(filepath))
-                    mimetype = attachment.get('mimetype')
+                    filepath = attachment.path
+                    filename = attachment.filename or os.path.basename(filepath)
+                    mimetype = attachment.mimetype
 
                 try:
                     with open(filepath, "rb") as file:
@@ -655,14 +684,14 @@ class MailSender(Connector):
             self.log(email_body, level=logging.DEBUG, tag=self.LOG_TAG)
             if footer_image:
                 self.log("\nFooter Image:", level=logging.DEBUG, tag=self.LOG_TAG)
-                self.log(f" - {footer_image.get('path')}", level=logging.DEBUG, tag=self.LOG_TAG)
+                self.log(f" - {footer_image.path}", level=logging.DEBUG, tag=self.LOG_TAG)
             if attachments:
                 self.log("\nAttachments:", level=logging.DEBUG, tag=self.LOG_TAG)
                 for attachment in attachments:
                     if isinstance(attachment, str):
                         self.log(f" - {attachment}", level=logging.DEBUG, tag=self.LOG_TAG)
                     else:
-                        self.log(f" - {attachment.get('path')} as {attachment.get('filename', os.path.basename(attachment.get('path')))}", 
+                        self.log(f" - {attachment.path} as {attachment.filename or os.path.basename(attachment.path)}", 
                                 level=logging.DEBUG, tag=self.LOG_TAG)
             self.log("===================================\n", level=logging.DEBUG, tag=self.LOG_TAG)
         else:
@@ -805,10 +834,7 @@ class MailSender(Connector):
             # Collect all columns to check in a single API call
             columns_to_check = []
             for cond in existence_conditions:
-                # Note: format is not in Condition model, use getattr for backward compatibility
-                base_column = cond.column
-                format_type = getattr(cond, 'format', None)
-                formatted_column = self._format_column_name(base_column, position, format_type)
+                formatted_column = self._format_column_name(cond.column, position, cond.format)
                 columns_to_check.append(formatted_column)
 
             if columns_to_check:
@@ -817,10 +843,8 @@ class MailSender(Connector):
 
                 # Evaluate each existence condition
                 for condition in existence_conditions:
-                    base_column = condition.get("column")
-                    format_type = condition.get("format")
-                    column = self._format_column_name(base_column, position, format_type)
-                    operator = condition.get("condition")
+                    column = self._format_column_name(condition.column, position, condition.format)
+                    operator = condition.condition
 
                     if column and column in existence_results:
                         data_exists = existence_results[column]
@@ -835,16 +859,9 @@ class MailSender(Connector):
 
         # Process value conditions (all other condition types)
         for condition in value_conditions:
-            base_column = condition.column
-            format_type = getattr(condition, 'format', None)
-            column = self._format_column_name(base_column, position, format_type)
+            column = self._format_column_name(condition.column, position, condition.format)
             operator = condition.condition
             expected_value = condition.value
-
-            # Skip validation for conditions that don't require a value
-            if expected_value is None and operator not in ["is_empty", "is_not_empty"]:
-                self.log(f"Condition for column '{column}' missing required 'value' field", level=logging.WARNING, tag=self.LOG_TAG)
-                continue
 
             actual_value = data_columns.get(column)
 
@@ -854,22 +871,6 @@ class MailSender(Connector):
 
             # Handle list of values for is_one_of and is_not_one_of
             if operator in ["is_one_of", "is_not_one_of"]:
-                if not isinstance(expected_value, list):
-                    # Try to parse as JSON list if string
-                    try:
-                        if isinstance(expected_value, str):
-                            expected_value = json.loads(expected_value)
-                    except json.JSONDecodeError as e:
-                        self.log(f"Expected value for '{column}' is not a valid JSON list", level=logging.ERROR, tag=self.LOG_TAG)
-                        raise e
-
-                if not isinstance(expected_value, list):
-                    self.log(f"Expected value for '{column}' is not a list", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Expected value for '{column}' is not a list")
-                if len(expected_value) <= 1:
-                    self.log(f"Expected value for '{column}' is not a list of more than one element", level=logging.ERROR, tag=self.LOG_TAG)
-                    raise ValueError(f"Expected value for '{column}' is not a list of more than one element")
-
                 # Convert all list values to strings
                 expected_values = [str(val) for val in expected_value]
 

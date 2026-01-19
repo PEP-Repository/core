@@ -11,7 +11,12 @@ authors = [
 description = "PEP Connector"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["pydantic>=2.0.0,<3.0.0"]
+dependencies = [
+    "pydantic>=2.0.0,<3.0.0",
+    "email-validator>=2.0.0",
+    "pypdf>=6.0.0",
+    "weasyprint>=67.0"
+]
 
 [project.optional-dependencies]
 google_forms_connector = [
