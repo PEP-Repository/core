@@ -280,7 +280,7 @@ class DataMonitor(Connector):
             data_info: Dictionary of data information
 
         Returns:
-            Dictionary mapping column names to {"sent": count, "filled": count}
+            Dictionary mapping config_item_name (or column_name if no config) to {"sent": count, "filled": count}
         """
         total_participants = len(participant_info)
         self.log(f"Calculating sent and filled counts for {total_participants} participants", level=logging.DEBUG)
@@ -294,23 +294,22 @@ class DataMonitor(Connector):
                 col = col_info["column_name"]
                 config_item_name = col_info.get("config_item_name")
                 survey_id = col_info.get("survey_id")
+                # Use config_item_name as key for uniqueness, fall back to column_name
+                key = config_item_name if config_item_name else col
             else:
                 col = col_info
                 config_item_name = None
                 survey_id = None
+                key = col
 
             filled_count = 0
             sent_count = 0
 
-            self.log(f"Processing column: {col}", level=logging.DEBUG)
+            self.log(f"Processing column: {col} (key: {key})", level=logging.DEBUG)
 
             for lp in participant_info:
-                # Count filled columns
-                if lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
-                    filled_count += 1
-                    self.log(f"Column {col}: Found filled data for participant {lp}", level=logging.DEBUG)
-
-                # Count sent items (only first send, not reminders)
+                # Determine if this participant was sent this specific survey
+                was_sent = False
                 if config_item_name and survey_id is not None:
                     info_data = participant_info[lp]
                     emails_sent_data = info_data["columns"].get("EmailsSent", "")
@@ -326,17 +325,26 @@ class DataMonitor(Connector):
                                     timestamps = survey_types[config_item_name][survey_id_str]
                                     # Only count first send (index 0), not reminders
                                     if timestamps and len(timestamps) > 0:
+                                        was_sent = True
                                         sent_count += 1
                         except (json.JSONDecodeError, ValueError) as e:
                             self.log(f"Error parsing EmailsSent for {lp}: {e}", level=logging.WARNING)
+                else:
+                    # For columns without email tracking, assume all participants were "sent" it
+                    was_sent = True
 
-            column_counts[col] = {
+                # Only count as filled if participant was actually sent this specific survey
+                # This prevents counting filled data for surveys that weren't sent to this participant
+                if was_sent and lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
+                    filled_count += 1
+                    self.log(f"Column {col}: Found filled data for participant {lp}", level=logging.DEBUG)
+
+            column_counts[key] = {
                 "sent": sent_count,
                 "filled": filled_count
             }
 
-            self.log(f"Column {col}: {sent_count} sent, {filled_count} filled (out of {total_participants} participants)", level=logging.DEBUG)
-
+            self.log(f"Key {key} (column {col}): {sent_count} sent, {filled_count} filled (out of {total_participants} participants)", level=logging.DEBUG)
         return column_counts
 
     def _filter_recent_monitor_columns(self, monitor_columns: list[str | dict], 
@@ -820,7 +828,7 @@ class DataMonitor(Connector):
 
         Args:
             monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
-            column_counts: Dictionary with sent and filled counts per column
+            column_counts: Dictionary with sent and filled counts per config_item_name (or column_name)
             participant_info: Dictionary of participant information
             data_info: Dictionary of data information
             missing_by_lp: Dictionary mapping local pseudonyms to missing columns
@@ -830,25 +838,26 @@ class DataMonitor(Connector):
         Returns:
             HTML rows string
         """
-        # Extract column names and build display name mapping
-        if monitor_columns and isinstance(monitor_columns[0], dict):
-            monitor_column_names = [col["column_name"] for col in monitor_columns]
-            monitor_column_display_names = {
-                col["column_name"]: col.get("display_name", col["column_name"]) 
-                for col in monitor_columns
-            }
-        else:
-            monitor_column_names = monitor_columns
-            monitor_column_display_names = None
-
         if statistics_only:
             # Use total_consented if provided, otherwise use participant_info length
             total = total_consented if total_consented is not None else len(participant_info)
 
             # Generate statistics-only rows
             html = ""
-            for col in monitor_column_names:
-                counts = column_counts[col]
+            for col_info in monitor_columns:
+                # Handle both dict and string formats
+                if isinstance(col_info, dict):
+                    col = col_info["column_name"]
+                    display_name = col_info.get("display_name", col)
+                    config_item_name = col_info.get("config_item_name")
+                    # Use same key logic as _calculate_sent_and_filled_counts
+                    key = config_item_name if config_item_name else col
+                else:
+                    col = col_info
+                    display_name = col
+                    key = col
+                
+                counts = column_counts[key]
                 sent_count = counts["sent"]
                 filled_count = counts["filled"]
 
@@ -859,9 +868,6 @@ class DataMonitor(Connector):
                     progress_bar_html = '<div class="progress-bar-empty"></div>'
                 else:
                     progress_bar_html = f'<div class="progress-bar" style="width: {percentage}%;"></div>'
-
-                # Use display name if provided, otherwise use column name
-                display_name = monitor_column_display_names.get(col, col) if monitor_column_display_names else col
 
                 html += f"""
                 <tr>
@@ -882,13 +888,21 @@ class DataMonitor(Connector):
         total = len(participant_info)
 
         # Add rows for each monitor column with completion stats
-        for col in monitor_column_names:
-            counts = column_counts[col]
+        for col_info in monitor_columns:
+            # Handle both dict and string formats
+            if isinstance(col_info, dict):
+                col = col_info["column_name"]
+                display_name = col_info.get("display_name", col)
+                config_item_name = col_info.get("config_item_name")
+                key = config_item_name if config_item_name else col
+            else:
+                col = col_info
+                display_name = col
+                key = col
+            
+            counts = column_counts[key]
             filled_count = counts["filled"]
             percentage = round((filled_count / total) * 100, 1) if total > 0 else 0
-
-            # Use display name if provided, otherwise use column name
-            display_name = monitor_column_display_names.get(col, col) if monitor_column_display_names else col
 
             html += f"""
             <tr>
