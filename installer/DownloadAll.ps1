@@ -54,6 +54,7 @@ try {
   Write-Output ''
 
   Write-Output 'Login: opening browser'
+  Write-Output 'If the script hangs after logging in, try closing the browser'
   $ret = Start-Process pepLogon -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
   if ($ret.ExitCode -ne 0) {
     ShowPepError "An error occurred while logging you in." pepLogon
@@ -196,6 +197,9 @@ try {
       exit $ret.ExitCode
     }
   }
+
+  # Remove keys after download: we rerun pepLogon anyway
+  Remove-Item (Join-Path $pepWorkingDirectory 'ClientKeys.json')
 
   ShowNotification 'Download complete!'
   # Open in parent folder with $folder selected, such that export.csv can be seen besides it
