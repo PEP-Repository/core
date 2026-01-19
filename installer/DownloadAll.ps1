@@ -122,11 +122,30 @@ try {
       [MessageBoxIcon]::Question)
     if ($choice -eq [DialogResult]::Cancel) { exit 1 }
     $pullArgs += '--update'
-
   }
 
+  $exportCsv = $true
+  $csvFile = Join-Path $folder .. export.csv
+  if (Test-Path $csvFile) {
+    $choice = [MessageBox]::Show(
+      "export.csv was already found.`n" +
+      'Do you want to overwrite it?',
+      'Overwrite CSV export?',
+      [MessageBoxButtons]::YesNo,
+      [MessageBoxIcon]::Question)
+    if ($choice -eq [DialogResult]::yes) {
+      Remove-Item $csvFile
+    } else {
+      $exportCsv = $false
+    }
+  }
+
+  $msgCsv = ''
+  if ($exportCsv) {
+    $msgCsv = " with a CSV export in the parent folder"
+  }
   $choice = [MessageBox]::Show(
-    "Data will be downloaded to $folder, this may take a while. We'll notify you when it's done.`n" +
+    "Data will be downloaded to $folder$msgCsv, this may take a while. We'll notify you when it's done.`n" +
     'Press OK to continue',
     $null,
     [MessageBoxButtons]::OKCancel,
@@ -139,9 +158,12 @@ try {
   $pullArgs = @(
     'pull'
     '--report-progress'
-    '--output-directory'
-    $folder
+    '--output-directory'; $folder
   ) + $pullArgs
+
+  if ($exportCsv) {
+    $pullArgs += @('--export'; 'csv')
+  }
 
   Write-Output 'Download'
   $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
@@ -176,7 +198,8 @@ try {
   }
 
   ShowNotification 'Download complete!'
-  explorer "$folder"
+  # Open in parent folder with $folder selected, such that export.csv can be seen besides it
+  explorer "/select,$folder"
 }
 catch { # Exception is in $_
   # Extra try-catch in case dialog throws
