@@ -146,9 +146,14 @@ try {
   Write-Output 'Download'
   $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
   if ($ret.ExitCode -ne 0) {
-    ShowPepError "An error occurred while downloading." pepcli
+    $canForce = $downloadPresent -or $partialDownloadPresent
+    $msg = 'An error occurred while downloading.'
+    if ($canForce) {
+      $msg += ' Press OK for options.'
+    }
+    ShowPepError $msg pepcli
     $retry = $false
-    if ($downloadPresent -or $partialDownloadPresent) {
+    if ($canForce) {
       $choice = [MessageBox]::Show(
         "Do you want to retry the download but enable overwriting any local changes?`n" +
         'Depending on the error, this may or may not work.',
@@ -160,15 +165,6 @@ try {
     if (!$retry) {
       pause
       exit $ret.ExitCode
-    }
-    if ($partialDownloadPresent) {
-      $pullArgs = $pullArgs | where { $_ -ne '--resume' } # Remove incompatible flag
-      if (!$downloadPresent) {
-        # Remove --update when --resume was present and we don't have a base download
-        $pullArgs = $pullArgs | where { $_ -ne '--update' }
-        # Since no specification remains, specify what data we want
-        $pullArgs += '--all-accessible'
-      }
     }
     $pullArgs += '--force'
     $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
