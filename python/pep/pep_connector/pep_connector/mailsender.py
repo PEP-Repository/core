@@ -1216,7 +1216,7 @@ class MailSender(Connector):
                     continue
 
             # Recipient name is optional
-            recipient_name = data["columns"].get(config.pep_name_column) if config.pep_name_column else None
+            recipient_name = data["columns"].get(config.pep_name_column, "") if config.pep_name_column else ""
 
             # Get per-subject kickoff date from PEP column if configured
             kickoff_date_for_subject = None
