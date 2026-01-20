@@ -1,10 +1,10 @@
 #include <pep/weblib/OnEmscriptenThread.hpp>
 
 #include <pep/utils/Log.hpp>
+#include <pep/weblib/ThreadPrintable.hpp>
 
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
-#include <emscripten/val.h>
 
 using namespace pep;
 
@@ -25,15 +25,12 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
     }
 
     void schedule(const rxcpp::schedulers::schedulable& scbl) const override {
-      LOG(LOG_TAG, verbose) << "schedule on emscripten thread 0x" << std::hex << thread_
-        << (thread_ == ::emscripten_main_runtime_thread_id() ? " (main)" : "")
-        << " from thread 0x" << ::pthread_self()
-        << ' ' << (::emscripten_is_main_runtime_thread() ? "main" : emscripten::val::global("name").as<std::string>())
+      LOG(LOG_TAG, verbose) << "schedule on emscripten thread " << weblib::ThreadPrintable{thread_}
+        << " from thread " << weblib::CurrentThreadPrintable{}
         << (thread_ == ::pthread_self() ? " (queuing for current thread)" : "");
 
       bool success = queue_.proxyAsync(thread_, [scbl] {
-        LOG(LOG_TAG, verbose) << "running on emscripten thread 0x" << std::hex << ::pthread_self()
-          << ' ' << (::emscripten_is_main_runtime_thread() ? "main" : emscripten::val::global("name").as<std::string>());
+        LOG(LOG_TAG, verbose) << "running on emscripten thread " << weblib::CurrentThreadPrintable{};
         if (scbl.is_subscribed()) {
           // allow recursion
           rxcpp::schedulers::recursion r(true);

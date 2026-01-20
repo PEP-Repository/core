@@ -15,6 +15,7 @@
 #include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/ObservableStream.hpp>
 #include <pep/weblib/OnEmscriptenThread.hpp>
+#include <pep/weblib/ThreadPrintable.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 
@@ -69,6 +70,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Run event loop in background thread. Calls from JS will still come from the main thread.
     thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
       ThreadName::Set("Client");
+      LOG(LOG_TAG, debug) << "starting io_context on thread " << CurrentThreadPrintable{};
       std::stop_callback onStop(std::move(stop), [io_context] {
         LOG(LOG_TAG, debug) << "stopping io_context...";
         io_context->stop();

@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME}Webliblib
     ObservableStream.cpp ObservableStream.hpp
     ObservableStreamHelpers.cpp ObservableStreamHelpers.hpp
     OnEmscriptenThread.cpp OnEmscriptenThread.hpp
+    ThreadPrintable.cpp ThreadPrintable.hpp
     WeblibApiPromise.cpp WeblibApiPromise.hpp
 )
 target_link_libraries(${PROJECT_NAME}Webliblib
