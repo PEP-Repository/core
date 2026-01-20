@@ -1177,7 +1177,8 @@ class LimeSurveyConnector(Connector):
 
         return successful_uploads
 
-    def store_all_survey_responses_in_pep(self, config):
+    def store_all_survey_responses_in_pep(self) -> None:
+        """Upload all enabled survey responses to PEP."""
         overall_total_subjects = 0
         overall_skipped_count = 0
         overall_processed_subjects = 0
@@ -1187,8 +1188,8 @@ class LimeSurveyConnector(Connector):
         overall_uploaded_consent = 0
         processed_config_item_names = []
 
-        for config_item_name, survey_config in config.items():
-            if survey_config.get("enabled", False):
+        for config_item_name, survey_config in self.config.survey_types.items():
+            if survey_config.enabled:
                 self.log(f"Processing survey type for upload: {config_item_name}", level=logging.INFO, tag=self.LOG_TAG)
 
                 (total, skipped, processed, 
@@ -1203,6 +1204,8 @@ class LimeSurveyConnector(Connector):
                 overall_uploaded_files += uploaded_files
                 overall_uploaded_consent += uploaded_consent
                 processed_config_item_names.append(config_item_name)
+            else:
+                self.log(f"Skipping disabled config item: {config_item_name}", level=logging.INFO, tag=self.LOG_TAG)
 
         self.log("======== Overall Upload Summary ========", level=logging.INFO, tag=self.LOG_TAG)
         self.log(f"Processed survey types for upload: {', '.join(processed_config_item_names) if processed_config_item_names else 'None'}", level=logging.INFO, tag=self.LOG_TAG)

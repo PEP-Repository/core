@@ -1487,6 +1487,8 @@ class MailSender(Connector):
                 overall_processed_subjects += processed
                 overall_subjects_emailed_count += emailed
                 processed_survey_types.append(survey_type)
+            else:
+                self.log(f"Skipping disabled config item: {survey_type}", level=logging.INFO, tag=self.LOG_TAG)
 
         self.log("======== Overall Sending Summary ========", level=logging.INFO, tag=self.LOG_TAG)
         self.log(f"Processed survey types: {', '.join(processed_survey_types) if processed_survey_types else 'None'}", level=logging.INFO, tag=self.LOG_TAG)
