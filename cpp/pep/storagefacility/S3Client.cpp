@@ -21,8 +21,8 @@ namespace
 {
 
   // Client::Create returns an instance of the following class.
-  class ClientImp 
-    : public  Client, 
+  class ClientImp
+    : public  Client,
       public  std::enable_shared_from_this<ClientImp>
   {
 
@@ -67,7 +67,7 @@ namespace
   std::shared_ptr<networking::HttpClient> create_http_client(const Client::Parameters& params) {
 
     bool use_https = params.use_https.value_or(true);
-    
+
     if (use_https && params.ca_cert_path.has_value()) {
       LOG(LOG_TAG, info) << "Using " << params.ca_cert_path->string()
         << " to verify TLS certificate of " << params.endpoint.hostname
@@ -107,12 +107,16 @@ namespace
 #ifndef SIMULATE_S3_BACKEND_FAILURE
     if (std::count(acceptedStatusCodes.begin(),
           acceptedStatusCodes.end(), resp.getStatusCode()) == 0)
+#else
+#ifdef __GNUC__
+# pragma GCC diagnostic warning "-Wunreachable-code"
+#endif
 #endif
     {
 #ifndef SIMULATE_S3_BACKEND_FAILURE
       LOG(LOG_TAG, warning) << "HTTP Request to S3 backend gave unexpected "
         << "status line: " << resp.getStatusCode() << " "
-        << resp.getStatusMessage() 
+        << resp.getStatusMessage()
         << "; " << resp.getBody(); // TODO: remove (as it might leak info)
 #else
       LOG(LOG_TAG, warning) << "Feigning failure of HTTP request"
@@ -122,7 +126,7 @@ namespace
     }
 
     for (const auto& [key, value] : resp.getHeaders()) {
-    
+
       // HTTP headers are case insensitive according to RFC2616
       static const std::set<std::string, CaseInsensitiveCompare> expected_headers = {
           "Accept-Ranges",  // we do not use this feature
@@ -150,7 +154,7 @@ namespace
           "Connection",
 
           // We don't use these from Google Cloud Storage:
-          "Alt-Svc", 
+          "Alt-Svc",
           "X-GUploader-UploadID",
           "x-goog-generation",
           "x-goog-hash", // we get this via the ETag
@@ -188,7 +192,7 @@ namespace
       self->precheck_response(resp, { /* acceptable status code: */ 200 });
 
       if (!resp.hasHeader("ETag")) {
-        throw std::runtime_error("S3 did not return the MD5 hash " 
+        throw std::runtime_error("S3 did not return the MD5 hash "
             "of the uploaded object (the 'ETag' header.)");
       }
 
@@ -204,7 +208,7 @@ namespace
         const std::string& bucket)
   {
     auto request = this->request_template(
-        "/" + bucket + "/" + name, 
+        "/" + bucket + "/" + name,
         networking::HttpMethod::GET);
 
     request::Sign(request, this->credentials);
@@ -213,7 +217,7 @@ namespace
 
     [self = SharedFrom(*this), bucket, name](HTTPResponse resp)
       -> messaging::MessageSequence {
-      
+
       self->precheck_response(resp, { // acceptable status codes:
           200, // everything OK
           404  // it's OK if the key wasn't found
@@ -231,7 +235,7 @@ namespace
       // that the bucket wasn't found we want to throw an error.
       //
       // To this end we check that the error "Code" is "NoSuchKey".
-      
+
       boost::property_tree::ptree errinf;
 
       {
@@ -256,7 +260,7 @@ namespace
       }
 
       return rxcpp::observable<>::empty<std::shared_ptr<std::string>>();
-    
+
     }).concat();
 
   }
