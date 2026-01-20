@@ -324,22 +324,26 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   createUserGroup(UserGroup(UserGroup::Monitor, std::nullopt));
   createUserGroup(UserGroup(UserGroup::DataAdministrator, std::chrono::days{1}));
   createUserGroup(UserGroup(UserGroup::AccessAdministrator, std::nullopt));
+  createUserGroup(UserGroup(UserGroup::SystemAdministrator, std::nullopt));
 
   auto assessorId = createUser("assessor@master.pep.cs.ru.nl");
   auto monitorId = createUser("monitor@master.pep.cs.ru.nl");
   auto dataadminId = createUser("dataadmin@master.pep.cs.ru.nl");
   auto accessadminId = createUser("accessadmin@master.pep.cs.ru.nl");
+  auto systemadminId = createUser("systemadmin@master.pep.cs.ru.nl");
   auto multihatId = createUser("multihat@master.pep.cs.ru.nl");
 
   addUserToGroup(assessorId, UserGroup::ResearchAssessor);
   addUserToGroup(monitorId, UserGroup::Monitor);
   addUserToGroup(dataadminId, UserGroup::DataAdministrator);
   addUserToGroup(accessadminId, UserGroup::AccessAdministrator);
+  addUserToGroup(systemadminId, UserGroup::SystemAdministrator);
 
   addUserToGroup(multihatId, UserGroup::ResearchAssessor);
   addUserToGroup(multihatId, UserGroup::Monitor);
   addUserToGroup(multihatId, UserGroup::DataAdministrator);
   addUserToGroup(multihatId, UserGroup::AccessAdministrator);
+  addUserToGroup(multihatId, UserGroup::SystemAdministrator);
 
 #endif //ENABLE_OAUTH_TEST_USERS
 

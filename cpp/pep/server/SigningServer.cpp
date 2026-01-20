@@ -22,7 +22,7 @@ messaging::MessageBatches SigningServer::handlePingRequest(std::shared_ptr<PingR
 
 messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<SignedCsrRequest> signedRequest) {
   signedRequest->validate(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting CSRs");
+  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting CSRs");
 
   AsymmetricKeyPair newKeyPair = AsymmetricKeyPair::GenerateKeyPair();
   mNewPrivateKey = newKeyPair.getPrivateKey();
@@ -33,7 +33,7 @@ messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<Signed
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std::shared_ptr<SignedCertificateReplacementRequest> signedRequest) {
   auto request = signedRequest->open(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Renewing certificates");
+  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Renewing certificates");
 
   if (!mNewPrivateKey) {
     throw Error("Cannot replace certificate for server, since the server does not have a new private key.");
@@ -67,7 +67,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementCommitRequest(std::shared_ptr<SignedCertificateReplacementCommitRequest> signedRequest) {
   auto request = signedRequest->open(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Committing renewed certificates");
+  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Committing renewed certificates");
 
 
   if (request.getCertificateChain() != mIdentityFiles->identity()->getCertificateChain()) {
