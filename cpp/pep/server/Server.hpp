@@ -26,7 +26,9 @@ public:
   * \brief Produces a human-readable description of the server.
   * \return A string describing the server (type).
   */
-  std::string describe() { return mDescription; }
+  const std::string& describe() const { return mServerTraits.description(); }
+
+  const ServerTraits& getServerTraits() const noexcept { return mServerTraits; }
 
   /*!
   * \brief Produces the path where the server stores its data (if any).
@@ -111,7 +113,7 @@ private:
   std::shared_ptr<Metrics> mMetrics;
   EGCache& mEGCache; // <- for metrics
   unsigned int mUncaughtReadExceptions = 0;
-  std::string mDescription;
+  ServerTraits mServerTraits;
   std::shared_ptr<boost::asio::io_context> mIoContext;
   std::shared_ptr<X509RootCertificates> mRootCAs;
 };

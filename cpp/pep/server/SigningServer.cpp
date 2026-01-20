@@ -47,6 +47,11 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
     throw Error("New certificate has a different subject from the current certificate. Use --force to force replacing the certificate.");
   }
 
+  auto traits = getServerTraits();
+  if (!traits.signingIdentityMatches(request.getCertificateChain())) {
+    throw Error("Signing identity of the new certificate does not match for " + traits.description());
+  }
+
   if (!IsServerSigningCertificate(mIdentityFiles->identity()->getCertificateChain().leaf())) {
     throw std::runtime_error("New certificate is not a server signing certificate");
   }
