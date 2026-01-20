@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import logging
-import os
-from pydantic import BaseModel, Field, field_validator, ConfigDict, FilePath
+from pydantic import BaseModel, Field, ConfigDict, FilePath
 from typing import Literal, Any
 from logging.handlers import RotatingFileHandler
 
@@ -15,23 +14,13 @@ except (ImportError, ModuleNotFoundError):
     # If package metadata not available, fallback to hardcoded version
         __version__ = "1.0.0-dev"
 
-
 class PEPConfig(BaseModel):
     """Configuration for PEP Repository connection."""
 
     model_config = ConfigDict(validate_assignment=True)
 
     pepcli_path: FilePath
-    tokens: dict[str, str] = Field(default_factory=dict)
-
-    @field_validator('tokens')
-    @classmethod
-    def validate_tokens(cls, v):
-        # Validate that token files exist
-        for token_name, token_path in v.items():
-            if not os.path.isfile(token_path):
-                raise ValueError(f"Token file for '{token_name}' does not exist: {token_path}")
-        return v
+    tokens: dict[str, FilePath] = Field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, repo_config: dict[str, Any]) -> PEPConfig:
