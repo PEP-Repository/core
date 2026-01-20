@@ -27,7 +27,10 @@ struct WeblibApiPromise : emscripten::val {
   WeblibApiPromise(val v) : val(std::move(v)) {}
 
   // Well-known name
-  struct promise_type : val::promise_type, detail::WeblibApiPromiseAwaitTransform {};
+  struct promise_type : val::promise_type, detail::WeblibApiPromiseAwaitTransform {
+    // Well-known name
+    WeblibApiPromise get_return_object() { return val::promise_type::get_return_object(); }
+  };
 };
 
 /// Create coroutine returning Promise<undefined>.
