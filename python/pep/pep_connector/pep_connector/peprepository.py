@@ -82,8 +82,7 @@ class PEPRepository:
         self.logger = self.configure_logging(logging_level)
 
         self.pep_config = pep_config
-        self.pepcli_path = pep_config.pepcli_path
-        self.token = None
+        self.current_token = None
 
         self.log(f"PEPRepository version: {self.VERSION}")
 
@@ -122,7 +121,7 @@ class PEPRepository:
     def authenticate(self, target, extra_token=None):
         self.log("Authenticating user")
         if target in self.pep_config.tokens:
-            self.token = self.pep_config.tokens[target]
+            self.current_token = self.pep_config.tokens[target]
         else:
             raise ValueError(f"Invalid target {target}, missing token in configuration")
 
@@ -136,11 +135,11 @@ class PEPRepository:
             raise ValueError("Invalid token")
 
     def __get_base_cmd(self):
-        cmd = [self.pepcli_path, "--oauth-token", self.token]
+        cmd = [self.pep_config.pepcli_path, "--oauth-token", self.current_token]
         return cmd
 
     def run_command(self, command, input_data=None):
-        if not self.token:
+        if not self.current_token:
             raise ValueError("Token not set. Authenticate first.")
         cmd = self.__get_base_cmd() + command
         try:
