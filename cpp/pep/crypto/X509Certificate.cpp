@@ -743,12 +743,9 @@ X509CertificateSigningRequest X509CertificateSigningRequest::CreateWithSubjectFr
 
   // pointer must not be freed
   X509_NAME* subject = X509_get_subject_name(certificate.mRaw);
-  if (!subject) {
-    throw OpenSSLError("Failed to get subject name from certificate.");
-  }
 
   //X509_REQ_set_subject_name will make an internal copy of the X509_NAME*
-  if (X509_REQ_set_subject_name(result.mCSR, X509_get_subject_name(certificate.mRaw)) == 0) {
+  if (X509_REQ_set_subject_name(result.mCSR, subject) <= 0) {
     throw OpenSSLError("Failed to set subject name of certificate signing request.");
   }
 
@@ -933,7 +930,6 @@ X509CertificateSigningRequest X509CertificateSigningRequest::MakeStub(Asymmetric
 
   // Set the public key
   if(X509_REQ_set_pubkey(csr, keyPair.mKeyPair) <= 0) {
-    X509_REQ_free(csr);
     throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest.");
   }
 
