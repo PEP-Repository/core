@@ -8,6 +8,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
 
+#include <cassert>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -102,7 +103,7 @@ public:
   }
 
   /*!
-   * \brief Insert completions for parameter names, or values for positional parameters
+   * \brief Insert completions for parameter names
    * \tparam Range Range of `Parameter` pointers
    */
   template <typename Range>
@@ -110,27 +111,23 @@ public:
     std::vector<CompletionValue> switches;
     for (const auto& paramPtr : params) {
       const Parameter& param = *paramPtr;
-      if (auto canonicalSwitch = param.getCanonicalAnnouncement()) {
-        const std::string canonicalSwitchStr = canonicalSwitch->string();
-        // Canonical switch announcement + aliases
-        std::vector<std::string> switchAliases{ canonicalSwitchStr };
-        for (const SwitchAnnouncement& sw : param.getAnnouncements()) {
-          const std::string switchStr = sw.string();
-          if (switchStr != canonicalSwitchStr) {
-            switchAliases.push_back(switchStr);
-          }
+      auto canonicalSwitch = param.getCanonicalAnnouncement();
+      const std::string canonicalSwitchStr = canonicalSwitch.string();
+      // Canonical switch announcement + aliases
+      std::vector<std::string> switchAliases{ canonicalSwitchStr };
+      for (const SwitchAnnouncement& sw : param.getAnnouncements()) {
+        const std::string switchStr = sw.string();
+        if (switchStr != canonicalSwitchStr) {
+          switchAliases.push_back(switchStr);
         }
-
-        std::string displayValue = boost::algorithm::join(switchAliases, "/");
-        if (const auto valueSpec = param.getValueSpecification()) {
-          displayValue += valueSpec->isRequired() ? " <...>" : " [...]";
-        }
-
-        switches.push_back({ switchAliases, displayValue, param.getDescription().value_or("") });
       }
-      else { // Positional
-        parameterValues(param);
+
+      std::string displayValue = boost::algorithm::join(switchAliases, "/");
+      if (const auto valueSpec = param.getValueSpecification()) {
+        displayValue += valueSpec->isRequired() ? " <...>" : " [...]";
       }
+
+      switches.push_back({ switchAliases, displayValue, param.getDescription().value_or("") });
     }
     mEntries.push_back({ "parameters", "", switches, {} });
   }
@@ -139,29 +136,30 @@ public:
    * \brief Insert completions for values of this parameter
    */
   void parameterValues(const Parameter& param) {
-    if (const auto valueSpec = param.getValueSpecification()) {
-      std::vector<CompletionValue> values;
-      const auto defaultVal = valueSpec->getDefault();
-      if (defaultVal) {
-        // Mark default value
-        const auto& [defaultStr, defaultDescription] = *defaultVal;
-        values.push_back({ {defaultStr},
-          (boost::format("%s (%s)") % defaultStr % defaultDescription.value_or("default")).str(),
-          defaultDescription.value_or("Default") });
-      }
+    const auto valueSpec = param.getValueSpecification();
+    assert(valueSpec && "Parameter without value passed to Autocomplete::parameterValues");
 
-      for (std::string suggestion : valueSpec->getSuggested()) {
-        if (!defaultVal || suggestion != defaultVal->first) {
-          values.push_back({ {std::move(suggestion)}, "", "" });
-        }
-      }
-
-      std::string key = param.getName();
-      if (auto description = param.getDescription()) {
-        key = (boost::format("%s: %s") % param.getName() % *description).str();
-      }
-      mEntries.push_back({ "values", std::move(key), std::move(values), formatType(valueSpec->getType()) });
+    std::vector<CompletionValue> values;
+    const auto defaultVal = valueSpec->getDefault();
+    if (defaultVal) {
+      // Mark default value
+      const auto& [defaultStr, defaultDescription] = *defaultVal;
+      values.push_back({ {defaultStr},
+        (boost::format("%s (%s)") % defaultStr % defaultDescription.value_or("default")).str(),
+        defaultDescription.value_or("Default") });
     }
+
+    for (std::string suggestion : valueSpec->getSuggested()) {
+      if (!defaultVal || suggestion != defaultVal->first) {
+        values.push_back({ {std::move(suggestion)}, "", "" });
+      }
+    }
+
+    std::string key = param.getName();
+    if (auto description = param.getDescription()) {
+      key = (boost::format("%s: %s") % param.getName() % *description).str();
+    }
+    mEntries.push_back({ "values", std::move(key), std::move(values), formatType(valueSpec->getType()) });
   }
 
   /*!

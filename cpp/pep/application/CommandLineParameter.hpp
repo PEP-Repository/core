@@ -51,7 +51,7 @@ public:
   const std::string& getName() const noexcept { return mName; }
   const std::optional<std::string>& getDescription() const noexcept { return mDescription; } 
 
-  std::optional<SwitchAnnouncement> getCanonicalAnnouncement() const;
+  SwitchAnnouncement getCanonicalAnnouncement() const;
   std::set<SwitchAnnouncement> getAnnouncements() const;
   std::shared_ptr<const ValueSpecificationBase> getValueSpecification() const noexcept { return mValueSpecification; }
 
@@ -88,13 +88,19 @@ private:
   void finalize(NamedValues& parsed) const;
 
   /*!
-   * \brief Get the current parameter accepting a value
+   * \brief Get switch requiring a value at this position (`--switch <here>`), if any.
    */
-  const Parameter* firstAcceptingValue(const LexedValues& lexed) const noexcept;
+  const Parameter* currentSwitchRequiringValue(const LexedValues& lexed) const noexcept;
+
   /*!
-   * \brief Get parameters for which switches, or values for positional parameters, should be completed here
+   * \brief Get the first positional parameter from this position accepting a value.
    */
-  std::vector<const Parameter*> getParametersToAutocomplete(const LexedValues& lexed) const noexcept;
+  const Parameter* firstPositional(const LexedValues& lexed) const noexcept;
+
+  /*!
+   * \brief Get parameters for which switches should be completed at this position.
+   */
+  std::vector<const Parameter*> getSwitchesToAutocomplete(const LexedValues& lexed) const noexcept;
 
   inline bool empty() const { return mEntries.empty(); }
   bool hasRequired() const;
@@ -120,9 +126,6 @@ Parameter Parameter::value(Value<T> value) const {
   }
   try {
     value.validate();
-    if (value.isPositional() && !mAliases.empty()) {
-      throw std::runtime_error("Aliased parameter cannot be made positional");
-    }
   }
   catch (const std::exception& error) {
     throw std::runtime_error("Parameter '" + mName + "': " + error.what());
