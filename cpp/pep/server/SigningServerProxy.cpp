@@ -6,9 +6,12 @@
 #include <pep/server/CertificateRenewalSerializers.hpp>
 
 namespace pep {
-void SigningServerProxy::assertExpectedCommonName(const X509CertificateChain& chain, bool force) const {
+void SigningServerProxy::assertValidCertificateChain(const X509CertificateChain& chain, bool force) const {
   if (!force && chain.leaf().getCommonName() != mExpectedCommonName) {
     throw std::runtime_error(std::format("Certificate chain has common name {} but the expected common name is {}", chain.leaf().getCommonName().value_or("<NOT SET>"), mExpectedCommonName));
+  }
+  if (!chain.verify(*mRootCertificates)) {
+    throw std::runtime_error("Certificate chain is not valid");
   }
 }
 
@@ -48,7 +51,7 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
 }
 
 rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(const X509CertificateChain& newCertificateChain, bool force) const {
-  assertExpectedCommonName(newCertificateChain, force);
+  assertValidCertificateChain(newCertificateChain, force);
   return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, force}))
   .op(RxGetOne("Signed Certificate Replacement Response"))
   .map([&rootCAs=*mRootCertificates, &expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
@@ -61,7 +64,7 @@ rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(co
 }
 
 rxcpp::observable<FakeVoid> SigningServerProxy::commitCertificateReplacement(const X509CertificateChain& newCertificateChain) const{
-  assertExpectedCommonName(newCertificateChain, true);
+  assertValidCertificateChain(newCertificateChain, true);
   return this->sendRequest<CertificateReplacementCommitResponse>(this->sign(CertificateReplacementCommitRequest{ newCertificateChain }))
   .op(messaging::ResponseToVoid());
 }

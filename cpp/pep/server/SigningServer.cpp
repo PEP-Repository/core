@@ -49,7 +49,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 
   auto traits = getServerTraits();
   if (!traits.signingIdentityMatches(request.getCertificateChain())) {
-    throw Error("Signing identity of the new certificate does not match that of the server");
+    throw Error("Signing identity of the new certificate does not match for " + traits.description());
   }
 
   if (!IsServerSigningCertificate(mIdentityFiles->identity()->getCertificateChain().leaf())) {

@@ -10,7 +10,7 @@ private:
   std::string mExpectedCommonName;
   std::shared_ptr<X509RootCertificates> mRootCertificates;
 
-  void assertExpectedCommonName(const X509CertificateChain& chain, bool force) const;
+  void assertValidCertificateChain(const X509CertificateChain& chain, bool force) const;
 
   rxcpp::observable<SignedPingResponse> requestSignedPing(const PingRequest& request) const;
 
