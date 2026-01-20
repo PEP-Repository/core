@@ -129,6 +129,18 @@ TEST(X509CertificateTest, SelfSigned) {
   EXPECT_TRUE(chain.verify(rootCAs));
 }
 
+TEST(X509CertificateTest, EqualityInequality) {
+  auto baseCert = pep::X509Certificate::FromPem(pepAuthserverCertPEM);
+  auto equalCert = pep::X509Certificate::FromPem(pepAuthserverCertPEM);
+  auto differentCert = pep::X509Certificate::FromPem(pepServerCACertPEM);
+
+  EXPECT_TRUE(baseCert == equalCert);
+  EXPECT_FALSE(baseCert == differentCert);
+
+  EXPECT_FALSE(baseCert != equalCert);
+  EXPECT_TRUE(baseCert != differentCert);
+}
+
 TEST(X509CertificateSigningRequestTest, GenerationAndSigning) {
   std::string testCN = "TestCN";
   std::string testOU = "TestOU";
@@ -343,6 +355,18 @@ TEST(X509CertificateChainTest, CertifiesPrivateKey) {
   pep::X509CertificateChain certChain(pep::X509CertificatesFromPem(pepServerCACertPEM + rootCACertPEM));
   pep::AsymmetricKey privateKey(pepServerCAPrivateKeyPEM);
   EXPECT_TRUE(certChain.certifiesPrivateKey(privateKey)) << "Certificate chain does not certify the private key";
+}
+
+TEST(X509CertificateChainTest, EqualityInequality) {
+  pep::X509CertificateChain baseChain(pep::X509CertificatesFromPem(pepServerCACertPEM + pepAuthserverCertPEM));
+  pep::X509CertificateChain equalChain(pep::X509CertificatesFromPem(pepServerCACertPEM + pepAuthserverCertPEM));
+  pep::X509CertificateChain differentChain(pep::X509CertificatesFromPem(pepServerCACertPEM));
+
+  EXPECT_TRUE(baseChain == equalChain);
+  EXPECT_FALSE(baseChain == differentChain);
+
+  EXPECT_FALSE(baseChain != equalChain);
+  EXPECT_TRUE(baseChain != differentChain);
 }
 
 TEST(X509CertificateSigningRequestTest, GetPublicKey) {

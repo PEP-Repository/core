@@ -55,8 +55,11 @@ public:
   static X509Certificate MakeSelfSigned(const AsymmetricKeyPair& keys, std::string_view organization, std::string_view commonName, std::string_view countryCode = defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = defaultSelfSignedValidity);
 
   std::strong_ordering operator<=>(const X509Certificate& other) const;
+  // We have a non-defaulted operator<=>. Unfortunately, only a defaulted operator<=> comes with a synthesized operator==.
+  // So we have to add it explicitly.
+  // Furthermore, a defaulted operator== would bypass our operator<=>, so that would just compare the mRaw pointers.
+  // We therefore implement it ourselves so we can explicitly call our custom operator<=>.
   bool operator==(const X509Certificate& other) const { return operator<=>(other) == std::strong_ordering::equal; };
-  bool operator!=(const X509Certificate& rhs) const { return !(*this == rhs); }
 
  private:
   X509* mRaw = nullptr;
@@ -109,9 +112,7 @@ public:
   const X509Certificates& certificates() const& { return mCertificates; }
   X509Certificates certificates()&& { return mCertificates; }
 
-  std::strong_ordering operator<=>(const X509CertificateChain& other) const { return mCertificates <=> other.mCertificates; }
-  bool operator==(const X509CertificateChain& other) const { return operator<=>(other) == std::strong_ordering::equal; }
-  bool operator!=(const X509CertificateChain& other) const { return !(*this == other); }
+  auto operator<=>(const X509CertificateChain&) const = default;
 };
 
 inline X509CertificateChain operator/(X509CertificateChain chain, X509Certificate leaf) { return chain /= std::move(leaf); }
