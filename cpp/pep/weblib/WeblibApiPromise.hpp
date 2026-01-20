@@ -21,10 +21,10 @@ struct WeblibApiPromiseAwaitTransform {
 }
 
 /// Create coroutine returning Promise<any>.
-/// Automatically switches back to main thread before awaiting an observable
+/// Automatically switches back to main thread before awaiting an observable.
+/// Must be used on the main thread.
 struct WeblibApiPromise : emscripten::val {
-  using val::val;
-  WeblibApiPromise(val v) : val(std::move(v)) {}
+  WeblibApiPromise(val jsPromise);
 
   // Well-known name
   struct promise_type : val::promise_type, detail::WeblibApiPromiseAwaitTransform {
@@ -34,10 +34,10 @@ struct WeblibApiPromise : emscripten::val {
 };
 
 /// Create coroutine returning Promise<undefined>.
-/// Automatically switches back to main thread before awaiting an observable
+/// Automatically switches back to main thread before awaiting an observable.
+/// Must be used on the main thread.
 struct WeblibApiVoidPromise : emscripten::val {
-  using val::val;
-  WeblibApiVoidPromise(val v) : val(std::move(v)) {}
+  WeblibApiVoidPromise(val jsPromise);
 
   // Well-known name
   class promise_type : public detail::WeblibApiPromiseAwaitTransform {
