@@ -49,7 +49,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 
   auto traits = getServerTraits();
   if (!traits.signingIdentityMatches(request.getCertificateChain())) {
-    throw Error("Signing identity of the new certificate does not match for " + traits.description());
+    throw Error("Signing identity of the new certificate does not match that of the server");
   }
 
   if (!IsServerSigningCertificate(mIdentityFiles->identity()->getCertificateChain().leaf())) {
@@ -80,14 +80,6 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
 
   if (mIdentityFiles->identity()->getPrivateKey() != *mNewPrivateKey) {
     throw Error("Cannot commit the certificate and private key that are currently in use, because the current private key is different from the new private key.");
-  }
-
-  if (!mIdentityFiles->identity()->getCertificateChain().certifiesPrivateKey(*mNewPrivateKey)) {
-    throw Error("Cannot commit replaced certificate for server, since the certificate does not match the new private key of the server.");
-  }
-
-  if (!mIdentityFiles->identity()->getCertificateChain().verify(*getRootCAs())) {
-    throw Error("Cannot commit replaced certificate for server, since the new certificate chain cannot be verified.");
   }
 
   WriteFile(mIdentityFiles->getPrivateKeyFilePath(), mIdentityFiles->identity()->getPrivateKey().toPem());
