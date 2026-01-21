@@ -26,6 +26,7 @@ interface OAuthTokenSecretFile {
 describe('Pep', function () {
   let pep!: Pep;
   before(async function () {
+    console.debug('Loading config');
     const [
       clientConfig,
       CACertificateFile,
@@ -39,6 +40,7 @@ describe('Pep', function () {
     ]);
     clientConfig.ProjectConfigFile = '';
 
+    console.debug('Initializing Pep');
     pep = await Pep.create({
       clientConfig,
       configFileContentOverrides: {
@@ -46,9 +48,14 @@ describe('Pep', function () {
         ShadowPublicKeyFile,
       },
     });
+    console.debug('Pep initialized');
+
     await pep.runHandleWasmException(async () => {
+      console.debug('Generating token');
       const token = pep.internalGenerateToken(tokenSecretFile.OAuthTokenSecret, 'Research Assessor');
+      console.debug('Authenticating with token');
       await pep.authenticateWithToken(token);
+      console.debug('Authenticated');
     });
   });
   after(function () {
