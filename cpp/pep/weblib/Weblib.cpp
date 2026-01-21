@@ -303,7 +303,7 @@ public:
                 .pps = std::move(*pps),
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = {"read"}, //TODO support more modes
+                .modes = {"read"}, //TODO support more modes. Should this method be split with an explicit ticket request?
                 .includeAccessGroupPseudonyms = true,
               });
           });
@@ -336,6 +336,7 @@ public:
                 throw std::invalid_argument("Entry tickets differ. Can only retrieve entries from the same list call.");
               }
 
+              //TODO Add ability to retrieve metadata. Should this method be split with an explicit getKeys?
               auto pageBatches = self->client_->retrieveData(
                   self->client_->getKeys(
                       rxcpp::observable<>::iterate(
