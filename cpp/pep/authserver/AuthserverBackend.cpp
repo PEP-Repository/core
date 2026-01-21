@@ -82,6 +82,9 @@ void AuthserverBackend::Parameters::check() const {
   if (!accessManager) {
     throw std::runtime_error("AccessManager must be set");
   }
+  if (accessManagerEndpoint.expectedCommonName.empty() || accessManagerEndpoint.hostname.empty() || accessManagerEndpoint.port == 0) {
+    throw std::runtime_error("accessManagerEndpoint must be set");
+  }
   if(storageFile && storageFile->empty()) {
     throw std::runtime_error("If a storageFile is set, it may not be empty");
   }
