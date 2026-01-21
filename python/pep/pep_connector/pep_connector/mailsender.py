@@ -1070,7 +1070,7 @@ class MailSender(Connector):
             pep_columns.append(config.kickoff_date_column)
 
         # Check if this is an expert report type that needs school-specific PDFs
-        is_expert_report = config.report_info.type == "expert" 
+        is_expert_report = config.report_info is not None and config.report_info.type == "expert"
 
         if is_expert_report:
             # Ensure columns are added for PEP fetch
