@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/Export.hpp>
@@ -20,18 +21,32 @@ namespace {
 
 using PathStyle = pep::structuredOutput::TableFromDownloadDirectoryConfig::PathStyle;
 
-std::filesystem::path DefaultToExtension(std::filesystem::path p, std::string_view defaultExtension) {
-  if (!p.has_extension()) { p.replace_extension(defaultExtension); }
-  return p;
+std::optional<std::filesystem::path> DetermineOutputFile(const std::filesystem::path pathOrHyphen, std::string_view defaultExtension) {
+  if (pathOrHyphen.empty()) {
+    throw std::runtime_error{"The output file path should not be empty. Please provide a valid output location."};
+  }
+
+  if (pathOrHyphen == "-") {
+    return std::nullopt;
+  }
+
+  auto absolutePath = absolute(pathOrHyphen);
+  if (!absolutePath.has_extension()) { absolutePath.replace_extension(defaultExtension); }
+  return absolutePath;
 }
 
 PathStyle::Variant DeterminePathStyle(
     std::string_view style,
     const std::filesystem::path& input,
-    const std::filesystem::path& output) {
+    const std::optional<std::filesystem::path>& output) {
   if (style == "uri") return PathStyle::FileUri{};
   if (style == "absolute") return PathStyle::Absolute{};
-  if (style == "relative-to-output") return PathStyle::RelativeTo{output};
+  if (style == "relative-to-output") {
+    if (!output.has_value()) {
+      throw std::runtime_error{"Option \"relative-to-output\" can only be used when outputting to a file."};
+    }
+    return PathStyle::RelativeTo{*output};
+  }
   if (style == "relative-to-input") return PathStyle::RelativeTo{input};
   throw std::logic_error{"No logic to handle path style choice \"" + std::string{style} + "\""};
 }
@@ -76,7 +91,9 @@ pep::commandline::Parameters CommandExport::getSupportedParameters() const {
   return ChildCommandOf<CliApplication>::getSupportedParameters()
       + Parameter("from", "Directory with pull results to use as input (relative to current working directory)")
             .value(Value<std::filesystem::path>().directory().defaultsTo("pulled-data"))
-      + Parameter("output-file", "File to write the export results to (relative to current working directory)")
+      + Parameter("output-file",
+          "File to write the export results to (relative to current working directory). "
+          "Accepts hyphen (-) to write to stdout instead.")
             .shorthand('o')
             .value(Value<std::filesystem::path>().defaultsTo("export"))
       + Parameter("no-auto-extension", "Disables automatic addition of an output-file extension")
@@ -99,10 +116,20 @@ int CommandExport::ChildCommand::execute() {
       };
       const auto config = commonConfiguration(idToText);
       const auto existingDownloadDir = DownloadDirectory::Create(config.inputDirectory, globalConfig, [](std::shared_ptr<const Progress>) {}); // TODO: report (instead of ignore) progress
-      abortIfNotWritable(config.outputFile, config.allowOverwrite); // early check, before doing any work
+
+      if (config.outputFile) {
+        abortIfNotWritable(*config.outputFile, config.allowOverwrite); // early check, before doing any work
+      }
       const auto table = pep::structuredOutput::TableFrom(*existingDownloadDir, config.conversion);
-      safeWriteOutput(table, config.outputFile, config.allowOverwrite);
-      std::cout << config.outputFile.string() << std::endl; // explicit conversion to string to get unquoted output
+
+      if (config.outputFile) {
+        safeWriteOutput(table, *config.outputFile, config.allowOverwrite);
+        std::cout << config.outputFile->string() << std::endl; // explicit conversion to string to get unquoted output
+      }
+      else {
+        writeOutput(table, std::cout);
+      }
+
       return pep::FakeVoid{};
     });
   });
@@ -113,13 +140,15 @@ CommandExport::ChildCommand::CommonConfiguration CommandExport::ChildCommand::co
   const auto& values = getParent().getParameterValues();
   auto config = CommonConfiguration{};
   config.inputDirectory = absolute(values.get<std::filesystem::path>("from"));
-  config.outputFile = absolute(values.get<std::filesystem::path>("output-file"));
-  config.outputFile =
-      DefaultToExtension(config.outputFile, values.has("no-auto-extension") ? "" : preferredExtension());
+  config.outputFile = DetermineOutputFile(
+      values.get<std::filesystem::path>("output-file"),
+      values.has("no-auto-extension") ? "" : preferredExtension());
   config.allowOverwrite = values.has("force") ? AllowOverwrite::Yes : AllowOverwrite::No;
   config.conversion.maxInlineSizeInBytes = values.get<std::size_t>("max-inline-size");
-  config.conversion.pathStyle =
-      DeterminePathStyle(values.get<std::string>("file-reference-style"), config.inputDirectory, config.outputFile);
+  config.conversion.pathStyle = DeterminePathStyle(
+      values.get<std::string>("file-reference-style"),
+      config.inputDirectory,
+      config.outputFile);
   config.conversion.fileReferencePostfix = values.get<std::string>("file-reference-postfix");
   config.conversion.idText = std::move(idTextFunction);
   return config;
