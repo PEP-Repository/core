@@ -28,6 +28,7 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/noncopyable.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -43,7 +44,7 @@ using namespace std::ranges;
 namespace {
 const std::string LOG_TAG = "Weblib";
 
-class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib> {
+class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
   friend class SharedConstructor;
 
   Configuration clientConfig_;
@@ -126,8 +127,6 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   }
 
 public:
-  Weblib(Weblib &&) = delete;
-
   /// Register \p callback to be called when the connection status changes.
   /// \param callback <code>(connected: bool) => void</code>
   void onStatusChange(val callback) {
