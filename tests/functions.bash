@@ -7,7 +7,7 @@ printColored() {
   color="$1"
   shift
   newline="\n"
-  if [ "${1:-""}" == "-n" ]; then
+  if [ "${1:-}" = "-n" ]; then
     newline=""
     shift
   fi
@@ -32,7 +32,7 @@ trap_ctrl_c() {
 
 trace() {
   locationIndex=1
-  if [ "${1:-""}" == "--use-parent-location" ]; then
+  if [ "${1:-""}" = "--use-parent-location" ]; then
     locationIndex=2
     shift
   fi

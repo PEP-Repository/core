@@ -29,7 +29,7 @@ usage() {
   echo "                                this directory should have the /cpp/pep/ sub dirs. Default: CORE_DIR/build"
   echo " --build-mode <MODE>          - Only relevant when building with Visual Studio. Used to indicate sub directories of the build directory, e.g 'Debug' or 'Release'. Default: ."
   echo " --tests-to-run \"<TEST> [<TEST> [...]]\""
-  echo "                              - Subset of tests to run, separated by spaces, see integration.sh & pepcli_tests.sh. Default all"
+  echo "                              - Subset of tests to run, separated by spaces, see integration.sh & pepcli_tests.bash. Default all"
   echo " --tests-to-skip \"<TEST> [<TEST> [...]]\""
   echo "                              - Subset of tests to skip, separated by spaces, see --tests-to-run. Default \"$default_skip\" unless included in --tests-to-run"
   echo " --local                      - Run the tests using your local build. Expects the working directory to be your build directory."
@@ -379,8 +379,8 @@ else
   CONFIG_DIR="/data"
 fi
 
-# shellcheck source=SCRIPTDIR/pepcli_tests.sh
-. "$TESTS_DIR/pepcli_tests.sh"
+# shellcheck source=SCRIPTDIR/pepcli_tests.bash
+. "$TESTS_DIR/pepcli_tests.bash"
 
 ####################
 

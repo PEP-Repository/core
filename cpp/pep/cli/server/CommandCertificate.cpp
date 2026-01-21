@@ -9,14 +9,12 @@
 using namespace pep::cli;
 
 namespace {
-pep::commandline::Parameters makeCommonSupportedParameters(bool isInput, std::string_view what, std::string_view extension) {
+pep::commandline::Parameters MakeCommonSupportedParameters(bool isInput, std::string_view what, std::string_view extension) {
   auto traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
 
-  std::vector<std::string> ids;
-  ids.reserve(traits.size());
-  std::transform(traits.begin(), traits.end(), std::back_inserter(ids), [](const pep::ServerTraits& traits) {return traits.commandLineId(); });
-  // Sort by command line ID: produces nicely sorted child commands
-  std::sort(ids.begin(), ids.end());
+  auto ids = pep::RangeToVector(traits
+    | std::views::transform(&pep::ServerTraits::commandLineId));
+  std::ranges::sort(ids);
 
   return pep::commandline::Parameters()
     + pep::commandline::Parameter("server", "Restrict to specified server(s)").value(pep::commandline::Value<std::string>().multiple()
@@ -55,7 +53,7 @@ struct commonParams {
 };
 
 using signingServerAction = std::function<rxcpp::observable<pep::FakeVoid>(const pep::SigningServerProxy&, const std::filesystem::path&)>;
-auto eventLoopCallBack(const commonParams& params, std::string_view extension, signingServerAction action) {
+auto EventLoopCallBack(const commonParams& params, std::string_view extension, signingServerAction action) {
   return [params, extension, action](std::shared_ptr<pep::Client> client) {
     std::unordered_set<pep::ServerTraits> traits;
 
@@ -77,7 +75,7 @@ auto eventLoopCallBack(const commonParams& params, std::string_view extension, s
           targetFilePath = *params.targetFile;
         }
         else {
-          if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"(""*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
+          if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
             throw std::runtime_error("Expected common name contains characters that are not allowed in filenames on some systems. Can't autodeduce target filename");
           }
           targetFilePath = params.targetDirectory.value_or(".") / std::format("PEP{}.{}", proxy->getExpectedCommonName(), extension);
@@ -91,20 +89,21 @@ auto eventLoopCallBack(const commonParams& params, std::string_view extension, s
 class CommandServer::CommandCertificate::CommandRequestCSR : public ChildCommandOf<CommandCertificate> {
 public:
   CommandRequestCSR(CommandCertificate& parent)
-  : ChildCommandOf<CommandCertificate>("requestCSR", "Request one or more servers to generate a new signing private key, and create a certificate signing request for that.", parent) {}
+  : ChildCommandOf<CommandCertificate>("request-csr", "Request one or more servers to generate a new signing private key, and create a certificate signing request for that.", parent) {}
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     return ChildCommandOf<CommandCertificate>::getSupportedParameters()
-      + makeCommonSupportedParameters(false, "certificate signing request", "csr");
+      + MakeCommonSupportedParameters(false, "certificate signing request", "csr");
   }
 
   int execute() override {
     commonParams params(false, this->getParameterValues());
 
-    return this->executeEventLoopFor(eventLoopCallBack(params, "csr", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
+    return this->executeEventLoopFor(EventLoopCallBack(params, "csr", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       return proxy.requestCertificateSigningRequest().map([targetPath](const X509CertificateSigningRequest& csr) {
             WriteFile(targetPath, csr.toPem());
+            LOG(LOG_TAG, info) << "CSR is saved to " << targetPath;
             return FakeVoid();
           });
     }));
@@ -118,7 +117,7 @@ public:
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     return ChildCommandOf<CommandCertificate>::getSupportedParameters()
-      + makeCommonSupportedParameters(true, "certificate chain", "chain")
+      + MakeCommonSupportedParameters(true, "certificate chain", "chain")
       + pep::commandline::Parameter("force", "Force the certificate to be replaced, even when the subject is different than that of the current certificate.").shorthand('f');
   }
 
@@ -126,7 +125,7 @@ protected:
     commonParams params(true, this->getParameterValues());
     bool force = this->getParameterValues().has("force");
 
-    return this->executeEventLoopFor(eventLoopCallBack(params, "chain", [force](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
+    return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [force](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       X509CertificateChain chain(X509CertificatesFromPem(ReadFile(targetPath)));
       return proxy.requestCertificateReplacement(chain, force);
     }));
@@ -140,13 +139,13 @@ public:
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     return ChildCommandOf<CommandCertificate>::getSupportedParameters()
-      + makeCommonSupportedParameters(true, "certificate chain", "chain");
+      + MakeCommonSupportedParameters(true, "certificate chain", "chain");
   }
 
   int execute() override {
     commonParams params(true, this->getParameterValues());
 
-    return this->executeEventLoopFor(eventLoopCallBack(params, "chain", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
+    return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       X509CertificateChain chain(X509CertificatesFromPem(ReadFile(targetPath)));
       return proxy.commitCertificateReplacement(chain);
     }));
@@ -154,7 +153,7 @@ protected:
 
 };
 
-CommandServer::CommandCertificate::CommandCertificate(CommandServer& parent) : ChildCommandOf<CommandServer>("certificate", "Administer servers", parent) {}
+CommandServer::CommandCertificate::CommandCertificate(CommandServer& parent) : ChildCommandOf<CommandServer>("certificate", "Administer PEP certificates", parent) {}
 
 std::vector<std::shared_ptr<pep::commandline::Command>> CommandServer::CommandCertificate::createChildCommands() {
   return  {

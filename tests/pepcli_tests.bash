@@ -1,13 +1,8 @@
-#!/usr/bin/env bash
 # shellcheck disable=SC2034
 
 # You can add BP=1 in front of any 'pepcli', 'execute' or 'trace' line to add a breakpoint
 
 # This script is meant to only be run from within integration.sh.
-
-set -o errexit
-set -o nounset
-set -o pipefail
 
 readonly DEST_DIR="$CONFIG_DIR/test_output"
 execute . mkdir -p "$DEST_DIR"
@@ -705,7 +700,7 @@ if should_run_test certificate-renewal; then
   compare_chains() {
     server="$1"
     phase="$2"
-    copy_new_to_old="${3:-""}"
+    copy_new_to_old="${3:-}"
 
     chain_file_on_disk=$(execute "$certificate_renewal_data_dir" find "$PKI_DIR" -iname "PEP$server.chain")
     chain_basename=$(basename "$chain_file_on_disk")
@@ -713,32 +708,32 @@ if should_run_test certificate-renewal; then
     old_chain="./old-chains/$chain_basename"
 
     pepcli ping --print-certificate-chain --server "$server" | execute "$certificate_renewal_data_dir" tee reported.chain > /dev/null
-    if [ "$phase" == prepare ]; then
+    if [ "$phase" = prepare ]; then
       execute "$certificate_renewal_data_dir" diff -q reported.chain "$chain_file_on_disk"
     else
       if execute "$certificate_renewal_data_dir" diff -q reported.chain "$new_chain"; then
-        trace [ "$phase" == reverted ] && fail "Certificate chain should no longer equal the new chain, after servers have been restarted without committing, for $server"
+        trace [ "$phase" = reverted ] && fail "Certificate chain should no longer equal the new chain, after servers have been restarted without committing, for $server"
       else
-        trace [ "$phase" == replaced ] || trace [ "$phase" == comitted ] && fail "Certificate chain should have been replaced with the new chain for $server"
+        trace [ "$phase" = replaced ] || trace [ "$phase" = comitted ] && fail "Certificate chain should have been replaced with the new chain for $server"
       fi
       if execute "$certificate_renewal_data_dir" diff -q "$new_chain" "$chain_file_on_disk"; then
-        trace [ "$phase" == replaced ] && fail "Certificate chain should have been replaced, but not yet committed to file for $server"
-        trace [ "$phase" == reverted ] && fail "Certificate chain should not have been committed to file, when it was restarted before committing, for $server"
+        trace [ "$phase" = replaced ] && fail "Certificate chain should have been replaced, but not yet committed to file for $server"
+        trace [ "$phase" = reverted ] && fail "Certificate chain should not have been committed to file, when it was restarted before committing, for $server"
       else
-        trace [ "$phase" == committed  ] && fail "Certificate chain should have been replaced, as well as committed to file for $server"
+        trace [ "$phase" = committed  ] && fail "Certificate chain should have been replaced, as well as committed to file for $server"
       fi
       if execute "$certificate_renewal_data_dir" diff -q "$chain_file_on_disk" "$old_chain"; then
-        trace [ "$phase" == committed  ] && fail "Certificate chain on disk should have been changed, after being committed, for $server"
+        trace [ "$phase" = committed  ] && fail "Certificate chain on disk should have been changed, after being committed, for $server"
       else
-        trace [ "$phase" == replaced  ] && fail "Certificate chain on disk should not have been changed, before being committed, for $server"
-        trace [ "$phase" == reverted ] && fail "Certificate chain on disk should not have changed, when it was restarted before committing, for $server"
+        trace [ "$phase" = replaced  ] && fail "Certificate chain on disk should not have been changed, before being committed, for $server"
+        trace [ "$phase" = reverted ] && fail "Certificate chain on disk should not have changed, when it was restarted before committing, for $server"
       fi
     fi
 
     # During preparation we want to make a copy of the current certificate chain, so we can check later whether the current chain on disk has changed.
     # After committing, we usually want to copy it again, so we can do further testing, and in those tests we again want to check whether the current chain on disk has changed
     # If we don't want that to happen, we can add "no_copy"  to the compare_chains call
-    if trace [ "$phase" == "prepare" ] || trace [ "$phase" == "committed" ] && trace [ "$copy_new_to_old" != "no_copy" ]; then
+    if trace [ "$phase" = "prepare" ] || trace [ "$phase" = "committed" ] && trace [ "$copy_new_to_old" != "no_copy" ]; then
       execute "$certificate_renewal_data_dir" cp "$chain_file_on_disk" "$old_chain"
     fi
   }
