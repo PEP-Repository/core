@@ -31,7 +31,6 @@ public:
     const std::optional<std::filesystem::path>& getStorageFile() const;
 
     std::shared_ptr<X509RootCertificates> getRootCertificates() const;
-    void setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates);
 
     void check() const;
 

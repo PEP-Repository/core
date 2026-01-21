@@ -78,10 +78,6 @@ const std::optional<std::filesystem::path>& AuthserverBackend::Parameters::getSt
 
 std::shared_ptr<X509RootCertificates> AuthserverBackend::Parameters::getRootCertificates() const { return rootCertificates; }
 
-void AuthserverBackend::Parameters::setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates) {
-  this->rootCertificates = std::move(rootCertificates);
-}
-
 void AuthserverBackend::Parameters::check() const {
   if (!accessManager) {
     throw std::runtime_error("AccessManager must be set");
@@ -97,6 +93,12 @@ void AuthserverBackend::Parameters::check() const {
   }
   if (signingIdentity == nullptr) {
     throw std::runtime_error("signingIdentity must be set");
+  }
+  if (!rootCertificates) {
+    throw std::runtime_error("rootCertificates must be set");
+  }
+  if (rootCertificates->items().empty()) {
+    throw std::runtime_error("rootCertificates must not be empty");
   }
 }
 const std::unordered_map<std::string, std::string> checksumNameMappings{
