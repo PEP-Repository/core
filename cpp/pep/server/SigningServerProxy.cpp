@@ -7,6 +7,7 @@
 
 namespace pep {
 void SigningServerProxy::assertValidCertificateChain(const X509CertificateChain& chain, bool force) const {
+  // Validity will also be checked by the server, but is safer to check that both client and server agree that the certificate is valid.
   if (!force && chain.leaf().getCommonName() != mExpectedCommonName) {
     throw std::runtime_error(std::format("Certificate chain has common name {} but the expected common name is {}", chain.leaf().getCommonName().value_or("<NOT SET>"), mExpectedCommonName));
   }
@@ -38,8 +39,8 @@ rxcpp::observable<X509CertificateChain> SigningServerProxy::requestCertificateCh
 rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCertificateSigningRequest() const {
   return this->sendRequest<SignedCsrResponse>(this->sign(CsrRequest{}))
   .op(RxGetOne("Signed CSR Response"))
-  .map([&rootCAs=*mRootCertificates, &expectedCommonName=mExpectedCommonName](const SignedCsrResponse& signedResponse) {
-    auto response = signedResponse.open(rootCAs, expectedCommonName);
+  .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName](const SignedCsrResponse& signedResponse) {
+    auto response = signedResponse.open(*rootCAs, expectedCommonName);
     if (response.getCsr().getCommonName() != expectedCommonName) {
       throw std::runtime_error("Received certificate signing request does not have expected common name");
     }
@@ -54,8 +55,8 @@ rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(co
   assertValidCertificateChain(newCertificateChain, force);
   return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, force}))
   .op(RxGetOne("Signed Certificate Replacement Response"))
-  .map([&rootCAs=*mRootCertificates, &expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
-    signedResponse.validate(rootCAs, expectedCommonName);
+  .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
+    signedResponse.validate(*rootCAs, expectedCommonName);
     if (signedResponse.mSignature.mCertificateChain != newCertificateChain) {
       throw std::runtime_error("The response from the server was not signed by the new certificate chain");
     }
