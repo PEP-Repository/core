@@ -154,6 +154,7 @@ class ReportInfo(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
+    expert_teacher_column: str = "TeacherInfo.IsExpertTeacher"
     type: Literal["expert"] | None = None
     subject_column: str | None = None
     combined_filename: str = "Participatierapport.pdf"
@@ -161,7 +162,6 @@ class ReportInfo(BaseModel):
     info_columns: list[dict[str, Any]] | None = None
     filter_by_column: str | None = None
     pep_consent_column: str = "Consent.Bool"
-    expert_teacher_column: str = "TeacherInfo.IsExpertTeacher"
     max_recent_columns: PositiveInt = 4
     output_dir: DirectoryPath = "/tmp"
 
@@ -186,6 +186,8 @@ class MailSenderSurveyConfig(BaseModel):
     pep_emails_sent_column: str
     email_subject: str
     email_template: str
+    primary_email: bool = True
+    custom_html_file: str | None = None
 
     # Survey fields
     pep_survey_ids_column: str
@@ -195,9 +197,8 @@ class MailSenderSurveyConfig(BaseModel):
 
     # Timing fields
     start_dates: list[str] | None = None
-    start_dates_column: str | None = None
-    interval_days: NonNegativeInt = 0
-    max_reminders: NonNegativeInt = 0
+    interval_days: PositiveInt | None = None
+    max_reminders: NonNegativeInt = 1
     days_between_reminders: NonNegativeInt = 7
     max_days_retroactive: PositiveInt | None = None
     kickoff_date_column: str | None = None
@@ -206,10 +207,6 @@ class MailSenderSurveyConfig(BaseModel):
     attachments: list[Attachment] | None = None
     footer_image: FooterImage | None = None
     conditions: list[Condition] | None = None
-
-    # Email configuration options
-    primary_email: bool = True
-    custom_html_file: str | None = None
 
     # Report configuration
     report_info: ReportInfo | None = None
@@ -282,8 +279,8 @@ class MailSenderSurveyConfig(BaseModel):
 
         elif self.repetition_type == "schedule":
             # start_dates is required
-            if not self.start_dates and not self.start_dates_column:
-                raise ValueError("For 'schedule' repetition type, either start_dates or start_dates_column must be provided")
+            if not self.start_dates:
+                raise ValueError("For 'schedule' repetition type, start_dates must be provided")
 
             # interval_days should not be set
             if self.interval_days and self.interval_days > 0:
@@ -296,10 +293,6 @@ class MailSenderSurveyConfig(BaseModel):
                         f"For 'schedule' repetition type, number of start_dates ({len(self.start_dates)}) "
                         f"must match number of template_survey_ids ({len(self.template_survey_ids)})"
                     )
-
-            # For report types without template_survey_ids, need start_dates
-            if self.is_report_type and not self.template_survey_ids and not self.start_dates:
-                raise ValueError("For report types with 'schedule' repetition, either template_survey_ids or start_dates must be provided")
 
         return self
 
@@ -351,15 +344,6 @@ class MailSender(Connector):
 
         # Initialize parent with the config
         super().__init__(repository, config)
-
-        self.repository = repository
-        self.debug_mode = config.debug_mode
-        self.email_config = config.email
-        self.smtp_auth_required = config.email.smtp_auth_required if config.email else True
-
-    def set_debug_mode(self, debug_mode=True) -> None:
-        """Set debug mode (prevents actually sending emails)"""
-        self.debug_mode = debug_mode
 
     def hash_email(self, email: str) -> str:
         """Create a hash of an email address for privacy in logs"""
@@ -511,15 +495,15 @@ class MailSender(Connector):
                         server.starttls()
 
                     # Only authenticate if required
-                    if self.smtp_auth_required:
-                        if not (self.email_config.smtp_username and self.email_config.smtp_password):
+                    if self.config.email.smtp_auth_required:
+                        if not (self.config.email.smtp_username and self.config.email.smtp_password):
                             raise ValueError(
                                 "SMTP authentication is required but credentials are not available. "
                                 "Either provide smtp_credentials_file in config or set smtp_username/smtp_password directly."
                             )
 
                         try:
-                            server.login(self.email_config.smtp_username, self.email_config.smtp_password)
+                            server.login(self.config.email.smtp_username, self.config.email.smtp_password)
                         except smtplib.SMTPAuthenticationError:
                             self.log("SMTP authentication failed. Please check your credentials.", level=logging.ERROR, tag=self.LOG_TAG)
                             raise Exception("SMTP authentication failed. Please check your credentials.")
@@ -568,8 +552,8 @@ class MailSender(Connector):
             is_reminder: Whether this is a reminder email (will prefix "Reminder: " to the subject)
         """
 
-        sender_email = self.email_config.sender
-        reply_to_email = self.email_config.reply_to
+        sender_email = self.config.email.sender
+        reply_to_email = self.config.email.reply_to
 
         # Apply template variables to subject if provided
         formatted_subject = subject
@@ -707,7 +691,7 @@ class MailSender(Connector):
                     raise
 
         hashed_email = self.hash_email(recipient_email)
-        if self.debug_mode:
+        if self.config.debug_mode:
             self.log("\n=== DEBUG: Email that would be sent ===", level=logging.DEBUG, tag=self.LOG_TAG)
             self.log(f"To: [HASHED]{hashed_email}", level=logging.DEBUG, tag=self.LOG_TAG)
             self.log(f"From: {sender_email}", level=logging.DEBUG, tag=self.LOG_TAG)
@@ -733,15 +717,15 @@ class MailSender(Connector):
             # Send email with retry logic
             self._send_email_with_retry(
                 message, 
-                self.email_config.smtp_server, 
-                self.email_config.smtp_port, 
-                self.email_config.max_retries, 
-                self.email_config.retry_delay
+                self.config.email.smtp_server, 
+                self.config.email.smtp_port, 
+                self.config.email.max_retries, 
+                self.config.email.retry_delay
             )
 
             # Make sure to sleep for rate limit avoidance
-            self.log(f"Sleeping for {self.email_config.rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
-            time.sleep(self.email_config.rate_limit_seconds)
+            self.log(f"Sleeping for {self.config.email.rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
+            time.sleep(self.config.email.rate_limit_seconds)
             self.log("Waking up from sleep", level=logging.DEBUG, tag=self.LOG_TAG)
 
     def record_email_send(self, short_pseudonym: str, column: str, emails_sent: dict, email: str, is_primary_email: bool, survey_id: int, survey_type: str) -> None:
@@ -777,7 +761,7 @@ class MailSender(Connector):
             # Append the current timestamp
             emails_sent["survey_types"][survey_type][str(survey_id)].append(datetime.now().isoformat())
 
-            if self.debug_mode:
+            if self.config.debug_mode:
                 self.log("Skipping saving sent email to PEP in debug mode", level=logging.DEBUG, tag=self.LOG_TAG)
                 self.log("\n=== DEBUG: Entry that would be saved ===", level=logging.DEBUG, tag=self.LOG_TAG)
                 self.log(json.dumps(emails_sent, indent=2), level=logging.DEBUG, tag=self.LOG_TAG)
@@ -879,14 +863,13 @@ class MailSender(Connector):
                 # Evaluate each existence condition
                 for condition in existence_conditions:
                     column = self._format_column_name(condition.column, position, condition.format)
-                    operator = condition.condition
 
                     if column and column in existence_results:
                         data_exists = existence_results[column]
 
-                        if operator == "is_empty" and data_exists:
+                        if condition.condition == "is_empty" and data_exists:
                             return False, f"Not running: {column} is not empty"
-                        elif operator == "is_not_empty" and not data_exists:
+                        elif condition.condition == "is_not_empty" and not data_exists:
                             return False, f"Not running: {column} is empty"
                     else:
                         self.log(f"Column {column} not found in existence check results", 
@@ -904,7 +887,7 @@ class MailSender(Connector):
             if actual_value is not None:
                 actual_value = str(actual_value)
 
-            # Handle list of values for is_one_of and is_not_one_of
+            # Handle list of values (for )is_one_of and is_not_one_of)
             if operator in ["is_one_of", "is_not_one_of"]:
                 # Convert all list values to strings
                 expected_values = [str(val) for val in expected_value]
@@ -913,10 +896,12 @@ class MailSender(Connector):
                     return False, f"Not running: {column} is not one of {', '.join(expected_values)}"
                 elif operator == "is_not_one_of" and actual_value in expected_values:
                     return False, f"Not running: {column} is one of {', '.join(expected_values)}"
+            # Handle single value comparison
             elif operator == "is" and actual_value != str(expected_value):
                 return False, f"Not running: {column} is not {expected_value}"
             elif operator == "is_not" and actual_value == str(expected_value):
                 return False, f"Not running: {column} is {expected_value}"
+            # contains uses substring matching
             elif operator == "contains" and (not actual_value or str(expected_value) not in actual_value):
                 return False, f"Not running: {column} does not contain {expected_value}"
             elif operator == "not_contains" and actual_value and str(expected_value) in actual_value:
@@ -939,7 +924,7 @@ class MailSender(Connector):
         Returns:
             int: The ID of the created or assigned survey
         """
-        if self.debug_mode:
+        if self.config.debug_mode:
             survey_id = survey_index + 1  # Debug mode: use position + 1 as survey ID
             return survey_id
 
@@ -1019,45 +1004,37 @@ class MailSender(Connector):
         merger.close()
         return output_path
 
-    def _generate_expert_report_pdfs(self, monitor_columns, info_columns, group_column, 
-                                    consent_column, survey_participant_column, emails_sent_column="EmailsSent",
-                                    report_filename="Participatierapport.pdf", output_dir="/tmp",
-                                    max_recent_columns=3):
+    def _generate_expert_report_pdfs(self, report_info: ReportInfo, emails_sent_column: str, survey_participant_column: str) -> dict:
         """
         Generate grouped HTML reports and PDFs for expert report emailing.
         Returns a dict: {group_name: {"pdf_path": ..., "filename": ..., "mimetype": ...}}
-
         Args:
-            monitor_columns: List of dicts with column_name and optional display_name keys
-            info_columns: List of dicts with column_name and optional display_name keys
-            group_column: Column to group by
-            consent_column: Column containing consent information
-            survey_participant_column: Column indicating survey participation
+            report_info: ReportInfo object
             emails_sent_column: Column containing emails sent information
-            report_filename: Filename for the generated PDF
-            output_dir: Directory to save PDFs to
-            max_recent_columns: Maximum number of recent columns to display
+            survey_participant_column: Column indicating survey participation
         """
+
         monitor = DataMonitor(self.repository)
         grouped_reports = monitor.generate_grouped_html_reports(
-            monitor_columns=monitor_columns,
-            info_columns=info_columns,
-            group_column=group_column,
-            consent_column=consent_column,
+            monitor_columns=report_info.monitor_columns,
+            info_columns=report_info.info_columns,
+            group_column=report_info.filter_by_column,
+            consent_column=report_info.pep_consent_column,
             emails_sent_column=emails_sent_column,
+            survey_participant_column=survey_participant_column,
             include_javascript=False,
             statistics_only=True,
-            max_recent_columns=max_recent_columns
+            max_recent_columns=report_info.max_recent_columns
         )
 
         pdf_paths_dict = {}
         for grouped_val, report in grouped_reports.items():
             safe_filename = re.sub(r'[^\w-]', '_', grouped_val.strip('. '))[:100]
-            pdf_path = f"{output_dir}/{safe_filename}_report.pdf"
+            pdf_path = f"{report_info.output_dir}/{safe_filename}_report.pdf"
             weasyprint.HTML(string=report).write_pdf(pdf_path)
             pdf_paths_dict[grouped_val] = {
                 "pdf_path": pdf_path,
-                "filename": report_filename,
+                "filename": report_info.combined_filename,
                 "mimetype": "application/pdf"
             }
         return pdf_paths_dict
@@ -1141,15 +1118,9 @@ class MailSender(Connector):
         # Generate PDFs for expert report after fetching all data
         if is_expert_report:
             pdf_paths_dict = self._generate_expert_report_pdfs(
-                monitor_columns=config.report_info.monitor_columns,
-                info_columns=config.report_info.info_columns,
-                group_column=config.report_info.filter_by_column,
-                consent_column=config.report_info.pep_consent_column,
-                survey_participant_column=config.survey_participant_column,
+                config.report_info,
                 emails_sent_column=config.pep_emails_sent_column,
-                report_filename=config.report_info.combined_filename,
-                output_dir=config.report_info.output_dir,
-                max_recent_columns=config.report_info.max_recent_columns
+                survey_participant_column=config.survey_participant_column
             )
         else:
             pdf_paths_dict = {}
@@ -1248,8 +1219,8 @@ class MailSender(Connector):
                             level=logging.INFO, tag=self.LOG_TAG)
 
             # Email Address is required to send emails
-            email = data["columns"].get(config.pep_email_column)
-            if not email:
+            recipient_email = data["columns"].get(config.pep_email_column)
+            if not recipient_email:
                 skipped_count += 1
                 self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping subject: Missing email.", 
                     level=logging.WARNING, tag=self.LOG_TAG)
@@ -1336,7 +1307,7 @@ class MailSender(Connector):
             for survey_index, template_survey_id in enumerate(config.template_survey_ids):
 
                 # Check user defined conditions for this specific survey index
-                should_run, condition_reason = self._check_conditions(conditions=config.conditions or [], 
+                should_run, condition_reason = self._check_conditions(conditions=config.conditions, 
                                                                       data_columns=data["columns"], 
                                                                       short_pseudonym=short_pseudonym, 
                                                                       position=survey_index)
@@ -1438,7 +1409,7 @@ class MailSender(Connector):
                          level=logging.INFO, tag=self.LOG_TAG)
 
                 # Send the survey email
-                self.send_email(recipient_email=email,
+                self.send_email(recipient_email=recipient_email,
                                 subject=config.email_subject,
                                 template=config.email_template,
                                 template_vars=template_vars,
@@ -1451,7 +1422,7 @@ class MailSender(Connector):
                 self.record_email_send(short_pseudonym=short_pseudonym,
                                         column=config.pep_emails_sent_column,
                                         emails_sent=emails_sent,
-                                        email=email,
+                                        email=recipient_email,
                                         is_primary_email=config.primary_email,
                                         survey_id=survey_id,
                                         survey_type=survey_type)
