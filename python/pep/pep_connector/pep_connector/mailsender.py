@@ -17,7 +17,10 @@ from pydantic import (
     ConfigDict,
     EmailStr,
     HttpUrl,
-    FilePath
+    FilePath,
+    NonNegativeInt,
+    PositiveInt,
+    DirectoryPath
 )
 from typing import Literal, Any
 from email.mime.text import MIMEText
@@ -49,159 +52,109 @@ class EmailConfig(BaseModel):
     smtp_password: str | None = None
     smtp_auth_required: bool = False
     smtp_credentials_file: str | None = None
-    max_retries: int = 3
-    retry_delay: int = 60
-    rate_limit_seconds: int = 100
-    
-    @model_validator(mode='after')
-    def load_credentials_from_file(self):
+    max_retries: NonNegativeInt = 3
+    retry_delay: NonNegativeInt = 60
+    rate_limit_seconds: NonNegativeInt = 100
+
+    @model_validator(mode='before')
+    @classmethod
+    def load_credentials_from_file(cls, data: dict) -> dict:
         """Load SMTP credentials from file if specified and not already set."""
-        if self.smtp_credentials_file and not (self.smtp_username and self.smtp_password):
-            try:
-                with open(self.smtp_credentials_file, 'r') as file:
-                    credentials = json.load(file)
-                
-                if not isinstance(credentials, dict):
-                    raise ValueError("Credentials file must contain a JSON object")
-                
-                if 'username' not in credentials or 'password' not in credentials:
-                    raise ValueError("Credentials file must contain 'username' and 'password' keys")
-                
-                self.smtp_username = credentials['username']
-                self.smtp_password = credentials['password']
-            except json.JSONDecodeError:
-                raise ValueError(f"Invalid JSON format in credentials file: {self.smtp_credentials_file}")
-            except (IOError, OSError) as e:
-                raise ValueError(f"Error reading credentials file {self.smtp_credentials_file}: {str(e)}")
-        
-        return self
-    
-    def prompt_credentials(self) -> None:
-        """Prompt user for SMTP credentials."""
-        username = input("Enter SMTP username: ")
-        password = getpass.getpass("Enter SMTP password: ")
-        self.set_credentials(username, password)
-    
-    def set_credentials(self, username: str, password: str) -> None:
-        """Set SMTP credentials programmatically."""
-        self.smtp_username = username
-        self.smtp_password = password
-    
-    def ensure_credentials(self) -> None:
-        """Ensure SMTP credentials are available when authentication is required.
-        
-        The model_validator load_credentials_from_file already attempts to load from
-        smtp_credentials_file during model creation. This method only handles the case
-        where credentials still aren't available after model creation.
-        
-        Raises:
-            ValueError: If credentials are required but cannot be obtained
-        """
-        # If we already have credentials, we're done
-        if self.smtp_username and self.smtp_password:
-            return
-        
-        # If we have a credentials file but it wasn't loaded (shouldn't happen normally),
-        # the validator would have raised an error. So if we're here without credentials,
-        # either no file was provided or credentials were expected to be set directly.
-        
-        # Check if we're in an interactive terminal to prompt for credentials
-        if sys.stdin.isatty():
-            self.prompt_credentials()
-        else:
-            # Not interactive and no credentials available
-            if self.smtp_credentials_file:
-                raise ValueError(
-                    f"SMTP credentials file was specified ({self.smtp_credentials_file}) but "
-                    "credentials could not be loaded during configuration initialization."
-                )
-            else:
-                raise ValueError(
-                    "SMTP authentication is required but no credentials are available. "
-                    "Either provide smtp_credentials_file in config, set smtp_username/smtp_password directly, "
-                    "or run in an interactive terminal."
-                )
+        if isinstance(data, dict):
+            creds_file = data.get('smtp_credentials_file')
+            if creds_file and not (data.get('smtp_username') and data.get('smtp_password')):
+                try:
+                    with open(creds_file, 'r') as file:
+                        credentials = json.load(file)
+
+                    if not isinstance(credentials, dict):
+                        raise ValueError("Credentials file must contain a JSON object")
+
+                    if 'username' not in credentials or 'password' not in credentials:
+                        raise ValueError("Credentials file must contain 'username' and 'password' keys")
+
+                    data['smtp_username'] = credentials['username']
+                    data['smtp_password'] = credentials['password']
+                except json.JSONDecodeError:
+                    raise ValueError(f"Invalid JSON format in credentials file: {creds_file}")
+                except (IOError, OSError) as e:
+                    raise ValueError(f"Error reading credentials file {creds_file}: {str(e)}")
+
+        return data
 
 
 class FooterImage(BaseModel):
     """Configuration for email footer image."""
-    
+
     model_config = ConfigDict(validate_assignment=True)
-    
-    path: str
+
+    path: FilePath
     alt: str | None = None
     width: str | None = None
     height: str | None = None
-    
-    @field_validator('path')
-    @classmethod
-    def validate_path_exists(cls, v):
-        if not os.path.isfile(v):
-            raise ValueError(f"Footer image file does not exist: {v}")
-        return v
 
 
 class Attachment(BaseModel):
     """Configuration for email attachment."""
-    
+
     model_config = ConfigDict(validate_assignment=True)
-    
-    path: str
+
+    path: FilePath
     filename: str | None = None
     mimetype: str | None = None
-    
-    @field_validator('path')
-    @classmethod
-    def validate_path_exists(cls, v):
-        if not os.path.isfile(v):
-            raise ValueError(f"Attachment file does not exist: {v}")
-        return v
 
 
 class Condition(BaseModel):
     """Configuration for survey condition."""
-    
+
     model_config = ConfigDict(validate_assignment=True)
-    
+
     column: str
     condition: Literal["is", "is_not", "contains", "not_contains", "is_empty", "is_not_empty", "is_one_of", "is_not_one_of"]
     value: Any | None = None
     format: str | None = None
-    
+
+    @field_validator('value')
+    @classmethod
+    def parse_value(cls, v, info):
+        """Parse value field - convert JSON strings to lists if needed."""
+        # Only parse for list operators
+        if info.data.get('condition') in ["is_one_of", "is_not_one_of"]:
+            # If it's a string, try to parse as JSON
+            if isinstance(v, str):
+                try:
+                    v = json.loads(v)
+                except json.JSONDecodeError:
+                    raise ValueError(f"Value for '{info.data.get('condition')}' must be a valid JSON list or a list")
+
+            # Validate it's a list
+            if not isinstance(v, list):
+                raise ValueError(f"Value for '{info.data.get('condition')}' must be a list")
+
+            # Validate it has more than one element
+            if len(v) <= 1:
+                raise ValueError(f"Value for '{info.data.get('condition')}' must be a list with more than one element")
+
+        return v
+
     @model_validator(mode='after')
     def validate_condition_requirements(self):
         """Validate that the value field is provided when required by the operator."""
         # Operators that don't require a value
         no_value_operators = ["is_empty", "is_not_empty"]
-        
-        # Operators that require a list value
-        list_operators = ["is_one_of", "is_not_one_of"]
-        
+
         if self.condition not in no_value_operators and self.value is None:
             raise ValueError(f"Condition '{self.condition}' requires a 'value' field")
-        
-        if self.condition in list_operators:
-            # Parse JSON string if needed
-            if isinstance(self.value, str):
-                try:
-                    self.value = json.loads(self.value)
-                except json.JSONDecodeError:
-                    raise ValueError(f"Value for '{self.condition}' must be a valid JSON list")
-            
-            if not isinstance(self.value, list):
-                raise ValueError(f"Value for '{self.condition}' must be a list")
-            
-            if len(self.value) <= 1:
-                raise ValueError(f"Value for '{self.condition}' must be a list with more than one element")
-        
+
         return self
 
 
 class ReportInfo(BaseModel):
     """Configuration for report generation."""
-    
+
     model_config = ConfigDict(validate_assignment=True)
-    
+
+    type: Literal["expert"] | None = None
     subject_column: str | None = None
     combined_filename: str = "Participatierapport.pdf"
     monitor_columns: list[dict[str, Any]] | None = None
@@ -209,8 +162,8 @@ class ReportInfo(BaseModel):
     filter_by_column: str | None = None
     pep_consent_column: str = "Consent.Bool"
     expert_teacher_column: str = "TeacherInfo.IsExpertTeacher"
-    max_recent_columns: int = 4
-    output_dir: str = "/tmp"
+    max_recent_columns: PositiveInt = 4
+    output_dir: DirectoryPath = "/tmp"
 
 
 class MailSenderSurveyConfig(BaseModel):
@@ -225,16 +178,17 @@ class MailSenderSurveyConfig(BaseModel):
     enabled: bool
     pep_sp_column: str
     repetition_type: Literal["once", "sequence", "schedule"]
+    survey_participant_column: str = "TeacherInfo.IsSurveyParticipant"
 
     # Email-related fields
-    pep_email_column: str | None = None
+    pep_email_column: str
     pep_name_column: str | None = None
-    pep_emails_sent_column: str | None = None
-    email_subject: str | None = None
-    email_template: str | None = None
+    pep_emails_sent_column: str
+    email_subject: str
+    email_template: str
 
     # Survey fields
-    pep_survey_ids_column: str | None = None
+    pep_survey_ids_column: str
     template_survey_ids: list[int] | None = None
     survey_base_url: HttpUrl | None = None
     copy_survey: bool = False
@@ -242,51 +196,112 @@ class MailSenderSurveyConfig(BaseModel):
     # Timing fields
     start_dates: list[str] | None = None
     start_dates_column: str | None = None
-    interval_days: int = 0
-    max_reminders: int = 0
-    days_between_reminders: int = 7
-    max_days_retroactive: int | None = None
+    interval_days: NonNegativeInt = 0
+    max_reminders: NonNegativeInt = 0
+    days_between_reminders: NonNegativeInt = 7
+    max_days_retroactive: PositiveInt | None = None
     kickoff_date_column: str | None = None
 
     # Attachments, footer, conditions as structured config objects
     attachments: list[Attachment] | None = None
     footer_image: FooterImage | None = None
     conditions: list[Condition] | None = None
-    data_columns: list[str] | None = None
 
     # Email configuration options
     primary_email: bool = True
     custom_html_file: str | None = None
 
-    # Survey participation column
-    survey_participant_column: str = "TeacherInfo.IsSurveyParticipant"
-
-    # PDF merging and report configuration
-    merge_pdfs: dict[str, Any] | None = None
+    # Report configuration
     report_info: ReportInfo | None = None
     is_report_type: bool = False
-
-    @model_validator(mode='after')
-    def validate_timing_requirements(self):
-        if not self.enabled:
-            return self
-
-        if self.repetition_type in ['sequence', 'schedule']:
-            if not self.start_dates and not self.start_dates_column:
-                raise ValueError(f"repetition_type '{self.repetition_type}' requires either start_dates or start_dates_column")
-
-        return self
 
     @field_validator('start_dates')
     @classmethod
     def validate_start_dates(cls, v):
+        """Validate start_dates format and ordering."""
         if v:
-            for date_str in v:
+            parsed_dates = []
+            for i, date_str in enumerate(v):
                 try:
-                    datetime.fromisoformat(date_str)
+                    parsed_date = datetime.fromisoformat(date_str)
+                    parsed_dates.append(parsed_date)
                 except ValueError:
-                    raise ValueError(f"start_dates must be in ISO 8601 date format (YYYY-MM-DD), got: {date_str}")
+                    raise ValueError(f"start_dates must be in ISO 8601 date format (YYYY-MM-DD), got: {date_str} at position {i+1}")
+
+            # Check dates are in ascending order
+            for i in range(1, len(parsed_dates)):
+                if parsed_dates[i] <= parsed_dates[i-1]:
+                    raise ValueError(f"Dates must be in ascending order. Date at position {i+1} is not after date at position {i}.")
+
         return v
+
+    @model_validator(mode='after')
+    def validate_survey_config(self):
+        """Comprehensive validation of survey configuration."""
+
+        # Validate required fields for non-report types
+        if not self.is_report_type:
+            if not self.template_survey_ids:
+                raise ValueError("template_survey_ids is required for non-report survey types")
+            if not self.survey_base_url:
+                raise ValueError("survey_base_url is required for non-report survey types")
+
+        # Validate template_survey_ids for report types
+        if self.is_report_type and self.template_survey_ids:
+            if self.repetition_type in ["sequence", "schedule"]:
+                # Check all IDs are integers and unique
+                if len(self.template_survey_ids) != len(set(self.template_survey_ids)):
+                    raise ValueError("template_survey_ids for reports must contain unique dummy IDs")
+
+        # Validate repetition_type specific requirements
+        if self.repetition_type == "once":
+            # Only one template_survey_id allowed
+            if self.template_survey_ids and len(self.template_survey_ids) != 1:
+                raise ValueError("For 'once' repetition type, template_survey_ids must contain exactly one survey ID")
+
+            # At most one start_date
+            if self.start_dates and len(self.start_dates) > 1:
+                raise ValueError("For 'once' repetition type, start_dates should contain at most one date")
+
+            # interval_days should not be set
+            if self.interval_days and self.interval_days > 0:
+                raise ValueError("For 'once' repetition type, interval_days must not be provided")
+
+        elif self.repetition_type == "sequence":
+            # interval_days is required
+            if not self.interval_days or self.interval_days < 1:
+                raise ValueError("For 'sequence' repetition type, interval_days must be provided and must be a positive integer")
+
+            # At most one start_date
+            if self.start_dates and len(self.start_dates) > 1:
+                raise ValueError("For 'sequence' repetition type, start_dates should contain at most one date")
+
+            # For report types, template_survey_ids must be provided
+            if self.is_report_type and not self.template_survey_ids:
+                raise ValueError("For report types with 'sequence' repetition, template_survey_ids must be provided with multiple dummy IDs, e.g. [0,1,2,3,4,5]")
+
+        elif self.repetition_type == "schedule":
+            # start_dates is required
+            if not self.start_dates and not self.start_dates_column:
+                raise ValueError("For 'schedule' repetition type, either start_dates or start_dates_column must be provided")
+
+            # interval_days should not be set
+            if self.interval_days and self.interval_days > 0:
+                raise ValueError("For 'schedule' repetition type, interval_days should not be provided")
+
+            # For non-report types, template_survey_ids must match start_dates length
+            if not self.is_report_type and self.start_dates and self.template_survey_ids:
+                if len(self.start_dates) != len(self.template_survey_ids):
+                    raise ValueError(
+                        f"For 'schedule' repetition type, number of start_dates ({len(self.start_dates)}) "
+                        f"must match number of template_survey_ids ({len(self.template_survey_ids)})"
+                    )
+
+            # For report types without template_survey_ids, need start_dates
+            if self.is_report_type and not self.template_survey_ids and not self.start_dates:
+                raise ValueError("For report types with 'schedule' repetition, either template_survey_ids or start_dates must be provided")
+
+        return self
 
 
 class MailSenderConfig(ConnectorConfig):
@@ -497,12 +512,11 @@ class MailSender(Connector):
 
                     # Only authenticate if required
                     if self.smtp_auth_required:
-                        # Ensure we have credentials available
-                        try:
-                            self.email_config.ensure_credentials()
-                        except ValueError as e:
-                            self.log(str(e), level=logging.ERROR, tag=self.LOG_TAG)
-                            raise
+                        if not (self.email_config.smtp_username and self.email_config.smtp_password):
+                            raise ValueError(
+                                "SMTP authentication is required but credentials are not available. "
+                                "Either provide smtp_credentials_file in config or set smtp_username/smtp_password directly."
+                            )
 
                         try:
                             server.login(self.email_config.smtp_username, self.email_config.smtp_password)
@@ -1050,18 +1064,15 @@ class MailSender(Connector):
 
     def send_survey_emails(self, limesurvey_connector: LimeSurveyConnector, config: MailSenderSurveyConfig) -> tuple[int, int, int]:
         """Send survey emails based on configuration.
-        
+
         Args:
             limesurvey_connector: LimeSurvey connector instance
             config: Survey configuration object
-            
+
         Returns:
             Tuple of (total_subjects, skipped_count, subjects_emailed_count)
         """
         survey_type = config.name
-        
-        # Load primary email setting
-        is_primary_email = config.primary_email
 
         pep_columns = [
             config.survey_participant_column,
@@ -1082,7 +1093,7 @@ class MailSender(Connector):
             pep_columns.append(config.kickoff_date_column)
 
         # Check if this is an expert report type that needs school-specific PDFs
-        is_expert_report = config.merge_pdfs and config.merge_pdfs.get("type") == "expert" if isinstance(config.merge_pdfs, dict) else False
+        is_expert_report = config.report_info.type == "expert" 
 
         if is_expert_report:
             # Ensure columns are added for PEP fetch
@@ -1441,7 +1452,7 @@ class MailSender(Connector):
                                         column=config.pep_emails_sent_column,
                                         emails_sent=emails_sent,
                                         email=email,
-                                        is_primary_email=is_primary_email,
+                                        is_primary_email=config.primary_email,
                                         survey_id=survey_id,
                                         survey_type=survey_type)
                 subject_received_email = True
@@ -1464,7 +1475,7 @@ class MailSender(Connector):
 
     def send_all_survey_emails(self, limesurvey_connector: LimeSurveyConnector) -> None:
         """Send all enabled survey emails.
-        
+
         Args:
             limesurvey_connector: LimeSurvey connector instance
         """

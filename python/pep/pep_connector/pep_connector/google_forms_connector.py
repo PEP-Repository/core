@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import importlib.util
-from typing import Any
 from .peprepository import PEPRepository
 from .connectors import Connector, ConnectorConfig
 

@@ -3,8 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 import json
-import os
-from pydantic import BaseModel, Field, model_validator, ConfigDict, DirectoryPath
+from pydantic import BaseModel, model_validator, ConfigDict, DirectoryPath
 from typing import Any, Self
 from .accessgroup import AccessGroup
 from .peprepository import PEPRepository
@@ -61,9 +60,6 @@ class Connector(AccessGroup):
             raise ValueError("config must be an instance of ConnectorConfig")
 
         self.config = config
-        self.prometheus_dir = config.prometheus_dir
-        self.env_prefix = config.env_prefix
-        self.job_name = config.job_name
 
         self.prometheus_metrics = None
         if config.use_prometheus and config.prometheus_dir:

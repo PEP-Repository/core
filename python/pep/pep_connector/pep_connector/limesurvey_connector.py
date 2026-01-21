@@ -7,7 +7,6 @@ import base64
 import getpass
 import csv
 import atexit
-import os
 from pydantic import (
     BaseModel,
     Field,

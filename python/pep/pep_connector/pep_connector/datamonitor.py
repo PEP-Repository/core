@@ -4,8 +4,7 @@ import json
 import logging
 import os
 
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime
 from .connectors import Connector, ConnectorConfig
 
 
@@ -857,7 +856,7 @@ class DataMonitor(Connector):
                     col = col_info
                     display_name = col
                     key = col
-                
+
                 counts = column_counts[key]
                 sent_count = counts["sent"]
                 filled_count = counts["filled"]
@@ -900,7 +899,7 @@ class DataMonitor(Connector):
                 col = col_info
                 display_name = col
                 key = col
-            
+
             counts = column_counts[key]
             filled_count = counts["filled"]
             percentage = round((filled_count / total) * 100, 1) if total > 0 else 0
