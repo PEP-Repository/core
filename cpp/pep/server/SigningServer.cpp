@@ -84,6 +84,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
 
   WriteFile(mIdentityFiles->getPrivateKeyFilePath(), mIdentityFiles->identity()->getPrivateKey().toPem());
   WriteFile(mIdentityFiles->getCertificateChainFilePath(), X509CertificatesToPem(mIdentityFiles->identity()->getCertificateChain().certificates()));
+  mNewPrivateKey = std::nullopt;
 
   return messaging::BatchSingleMessage(Serialization::ToString(CertificateReplacementCommitResponse()));
 }
