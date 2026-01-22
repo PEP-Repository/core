@@ -88,6 +88,9 @@ variables:
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
 
+  UNIT_TESTS_WEBLIB: >-
+    cpp/pep/weblib/pepWeblibUnitTests
+
   FORCE_BUILD_STABLE_RELEASE:
     value: ''
     options:
@@ -630,8 +633,10 @@ ubuntu-rolling-release:
   variables:
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_WEBLIB
     ARTIFACTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_WEBLIB
   artifacts:
     expire_in: 8h
     paths:
