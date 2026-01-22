@@ -119,8 +119,3 @@ add_unit_tests(Weblib)
 target_link_options(${PROJECT_NAME}WeblibUnitTests PRIVATE
     -sPROXY_TO_PTHREAD # See ./tests/PromiseHelpers.cpp
 )
-if(NOT EMSCRIPTEN_BROWSER)
-  set_target_properties(${PROJECT_NAME}WeblibUnitTests PROPERTIES
-      SUFFIX .cjs # Override type:module in package.json. Ideally tests would be in a separate directory.
-  )
-endif()
