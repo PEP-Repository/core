@@ -33,7 +33,7 @@ from email import encoders
 from datetime import datetime, timedelta
 from .connectors import Connector, ConnectorConfig
 from .peprepository import PEPRepository
-from .datamonitor import DataMonitor
+from .datamonitor import DataMonitor, DataMonitorConfig
 from .limesurvey_connector import LimeSurveyConnector
 from pypdf import PdfWriter
 import weasyprint
@@ -1014,7 +1014,7 @@ class MailSender(Connector):
             survey_participant_column: Column indicating survey participation
         """
 
-        monitor = DataMonitor(self.repository)
+        monitor = DataMonitor(self.repository, DataMonitorConfig())
         grouped_reports = monitor.generate_grouped_html_reports(
             monitor_columns=report_info.monitor_columns,
             info_columns=report_info.info_columns,

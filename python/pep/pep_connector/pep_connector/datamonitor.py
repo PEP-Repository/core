@@ -29,9 +29,7 @@ class DataMonitor(Connector):
         if not isinstance(config, DataMonitorConfig):
             raise ValueError("config must be an instance of DataMonitorConfig")
 
-        # Initialize parent with the config
         super().__init__(repository, config)
-        self.repository = repository
         self.log("DataMonitor initialized", level=logging.DEBUG)
 
     def find_missing_entries(self, monitor_columns: list[str], info_columns: list[str]):
