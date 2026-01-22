@@ -294,11 +294,11 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   LOG(LOG_TAG, debug) << "Received DataEnumerationRequest2";
 
   auto time = std::chrono::steady_clock::now();
-  const auto& rootCAs = this->getRootCAs();
+  const auto& rootCAs = *this->getRootCAs();
 
-  auto request = signedRequest->open(*rootCAs);
+  auto request = signedRequest->open(rootCAs);
   auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
-  auto ticket = request.mTicket.open(*rootCAs, accessGroup, "read-meta");
+  auto ticket = request.mTicket.open(rootCAs, accessGroup, "read-meta");
 
   struct ResponseEntry {
     DataEnumerationEntry2 entry;
@@ -428,11 +428,11 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 messaging::MessageBatches
 StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRequest2> signedRequest) {
   return rxcpp::observable<>::just(CreateObservable<std::shared_ptr<std::string>>([signedRequest, server = SharedFrom(*this)](rxcpp::subscriber<std::shared_ptr<std::string>> subscriber) {
-    const auto& rootCAs = server->getRootCAs();
+    const auto& rootCAs = *server->getRootCAs();
 
-    auto request = signedRequest->open(*rootCAs);
+    auto request = signedRequest->open(rootCAs);
     auto ticket = request.mTicket.open(
-      *rootCAs,
+      rootCAs,
       signedRequest->getLeafCertificateOrganizationalUnit(),
       "read-meta"
     );
