@@ -17,6 +17,9 @@ public:
   void ensurePacked() const;
 };
 
+/// Utility function to convert a vector of LocalPseudonyms to a vector of PolymorphicPseudonyms
+std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>&);
+
 class Ticket2 {
 public:
   Timestamp mTimestamp{/*zero*/};
@@ -26,7 +29,6 @@ public:
   std::string mUserGroup;
 
   bool hasMode(const std::string& mode) const;
-  std::vector<PolymorphicPseudonym> getAccessSubjects() const;
 };
 
 template <>

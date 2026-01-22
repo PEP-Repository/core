@@ -44,7 +44,7 @@ std::vector<std::string> IndexedTicket2::getModes() const {
 
 
 std::vector<PolymorphicPseudonym> IndexedTicket2::getAccessSubjects() const {
-  return openTicketWithoutCheckingSignature()->getAccessSubjects();
+  return GetPolymorphicPseudonyms(openTicketWithoutCheckingSignature()->mAccessSubjects);
 }
 
 std::shared_ptr<Ticket2> IndexedTicket2::openTicketWithoutCheckingSignature() const {

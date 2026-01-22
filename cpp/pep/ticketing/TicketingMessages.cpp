@@ -14,6 +14,14 @@ void LocalPseudonyms::ensurePacked() const {
     mAccessGroup->ensurePacked();
 }
 
+std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>& lps) {
+  std::vector<PolymorphicPseudonym> pps;
+  pps.reserve(lps.size());
+  for (const auto& p : lps)
+    pps.push_back(p.mPolymorphic);
+  return pps;
+}
+
 bool Ticket2::hasMode(const std::string& mode) const {
   // Check if the ticket explicitly includes the specified mode
   if (std::find(mModes.begin(), mModes.end(), mode) != mModes.end()) {
