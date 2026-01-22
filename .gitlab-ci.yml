@@ -1033,6 +1033,7 @@ ubuntu-rolling-release-test:
   variables:
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_WEBLIB
   #language=sh
   script:
     # Add Node.js to PATH
