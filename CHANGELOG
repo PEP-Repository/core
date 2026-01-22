@@ -7,7 +7,7 @@ Changes in upcoming release (1.6):
 
 ---------------
 
-- core#2767: Added a tool for MacOS users to easily upload files to PEP using a GUI file picker.
+- core#2767: Added a tool for MacOS and Windows users to easily upload files to PEP using a GUI file picker.
 
 - core#2753:
    - Changed: The YAML output of user query commands now use `# item count: N` instead of `# size = N` to display array sizes.
