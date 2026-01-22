@@ -18,17 +18,17 @@ COPY \
     ${STAGING_DIRECTORY}/cpp/pep/authserver/pepAuthserver \
     ${STAGING_DIRECTORY}/cpp/pep/benchmark/pepbenchmark \
     ${STAGING_DIRECTORY}/cpp/pep/cli/pepcli \
-    ${STAGING_DIRECTORY}/cpp/pep/logon/pepLogon \
     ${STAGING_DIRECTORY}/cpp/pep/content/pepContentUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/crypto/pepCryptoUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/elgamal/pepElgamalUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/keyserver/pepKeyServer \
     ${STAGING_DIRECTORY}/cpp/pep/keyserver/pepKeyServerUnitTests \
+    ${STAGING_DIRECTORY}/cpp/pep/logon/pepLogon \
     ${STAGING_DIRECTORY}/cpp/pep/morphing/pepMorphingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/networking/pepNetworkingUnitTests \
-    ${STAGING_DIRECTORY}/cpp/pep/rsk/pepRskUnitTests \
-    ${STAGING_DIRECTORY}/cpp/pep/rsk-pep/pepRskPepUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/registrationserver/pepRegistrationServer \
+    ${STAGING_DIRECTORY}/cpp/pep/rsk-pep/pepRskPepUnitTests \
+    ${STAGING_DIRECTORY}/cpp/pep/rsk/pepRskUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/serialization/pepSerializationUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/storagefacility/pepStorageFacility \
     ${STAGING_DIRECTORY}/cpp/pep/storagefacility/pepStorageFacilityUnitTests \
