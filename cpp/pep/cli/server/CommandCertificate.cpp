@@ -118,16 +118,16 @@ protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     return ChildCommandOf<CommandCertificate>::getSupportedParameters()
       + MakeCommonSupportedParameters(true, "certificate chain", "chain")
-      + pep::commandline::Parameter("force", "Force the certificate to be replaced, even when the subject is different than that of the current certificate.").shorthand('f');
+      + pep::commandline::Parameter("allow-changing-subject", "Force the certificate to be replaced, even when the subject is different than that of the current certificate.").shorthand('f');
   }
 
   int execute() override {
     commonParams params(true, this->getParameterValues());
-    bool force = this->getParameterValues().has("force");
+    bool allowChangingSubject = this->getParameterValues().has("allow-changing-subject");
 
-    return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [force](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
+    return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [allowChangingSubject](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       X509CertificateChain chain(X509CertificatesFromPem(ReadFile(targetPath)));
-      return proxy.requestCertificateReplacement(chain, force);
+      return proxy.requestCertificateReplacement(chain, allowChangingSubject);
     }));
   }
 };

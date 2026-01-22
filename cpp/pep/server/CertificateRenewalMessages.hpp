@@ -19,12 +19,12 @@ using SignedCsrResponse = Signed<CsrResponse>;
 
 class CertificateReplacementRequest {
   X509CertificateChain mCertificateChain;
-  bool mForce;
+  bool mAllowChangingSubject;
 
 public:
-  CertificateReplacementRequest(X509CertificateChain chain, bool force) : mCertificateChain(std::move(chain)), mForce(force) {}
+  CertificateReplacementRequest(X509CertificateChain chain, bool allowChangingSubject) : mCertificateChain(std::move(chain)), mAllowChangingSubject(allowChangingSubject) {}
   const X509CertificateChain& getCertificateChain() const { return mCertificateChain; }
-  bool force() const { return mForce; }
+  bool allowChangingSubject() const { return mAllowChangingSubject; }
 };
 using SignedCertificateReplacementRequest = Signed<CertificateReplacementRequest>;
 

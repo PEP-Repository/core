@@ -368,7 +368,7 @@ message SignedCsrResponse {
 
 message CertificateReplacementRequest {
   X509CertificateChain certificate_chain = 1;
-  bool force = 2;
+  bool allow_changing_subject = 2;
 }
 
 message SignedCertificateReplacementRequest {

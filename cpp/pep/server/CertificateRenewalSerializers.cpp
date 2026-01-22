@@ -14,12 +14,12 @@ void Serializer<CsrResponse>::moveIntoProtocolBuffer(proto::CsrResponse& dest, C
 CertificateReplacementRequest Serializer<CertificateReplacementRequest>::fromProtocolBuffer(proto::CertificateReplacementRequest&& source) const {
   return CertificateReplacementRequest(
     Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain())),
-    source.force());
+    source.allow_changing_subject());
 }
 
 void Serializer<CertificateReplacementRequest>::moveIntoProtocolBuffer(proto::CertificateReplacementRequest& dest, CertificateReplacementRequest value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), value.getCertificateChain());
-  dest.set_force(value.force());
+  dest.set_allow_changing_subject(value.allowChangingSubject());
 }
 
 CertificateReplacementCommitRequest Serializer<CertificateReplacementCommitRequest>::fromProtocolBuffer(proto::CertificateReplacementCommitRequest&& source) const {

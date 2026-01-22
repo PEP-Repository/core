@@ -6,9 +6,9 @@
 #include <pep/server/CertificateRenewalSerializers.hpp>
 
 namespace pep {
-void SigningServerProxy::assertValidCertificateChain(const X509CertificateChain& chain, bool force) const {
+void SigningServerProxy::assertValidCertificateChain(const X509CertificateChain& chain, bool allowChangingSubject) const {
   // Validity will also be checked by the server, but is safer to check that both client and server agree that the certificate is valid.
-  if (!force && chain.leaf().getCommonName() != mExpectedCommonName) {
+  if (!allowChangingSubject && chain.leaf().getCommonName() != mExpectedCommonName) {
     throw std::runtime_error(std::format("Certificate chain has common name {} but the expected common name is {}", chain.leaf().getCommonName().value_or("<NOT SET>"), mExpectedCommonName));
   }
   if (!chain.verify(*mRootCertificates)) {
@@ -51,9 +51,9 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
   });
 }
 
-rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(const X509CertificateChain& newCertificateChain, bool force) const {
-  assertValidCertificateChain(newCertificateChain, force);
-  return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, force}))
+rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(const X509CertificateChain& newCertificateChain, bool allowChangingSubject) const {
+  assertValidCertificateChain(newCertificateChain, allowChangingSubject);
+  return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, allowChangingSubject}))
   .op(RxGetOne("Signed Certificate Replacement Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
     signedResponse.validate(*rootCAs, expectedCommonName);
