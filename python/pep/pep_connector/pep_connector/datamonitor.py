@@ -154,9 +154,9 @@ class DataMonitor(Connector):
 
         # Check each metrics file using all keys from component_descriptions
         for suffix in component_descriptions.keys():
-            prefix_without_datamonitor = self.env_prefix.replace("DataMonitor", "")
+            prefix_without_datamonitor = self.config.env_prefix.replace("DataMonitor", "")
             metrics_filename = f"{prefix_without_datamonitor}{suffix}_pep_run.prom"
-            metrics_path = os.path.join(self.prometheus_dir, metrics_filename)
+            metrics_path = os.path.join(self.config.prometheus_dir, metrics_filename)
             self.log(f"Checking metrics file: {metrics_path}", level=logging.DEBUG)
             timestamp = self.read_prometheus_timestamp(metrics_path)
             if timestamp:
@@ -982,7 +982,7 @@ class DataMonitor(Connector):
             """
 
         # Generate prometheus metrics section if available
-        if hasattr(self, 'prometheus_dir') and self.prometheus_dir and hasattr(self, 'env_prefix') and self.env_prefix:
+        if self.config.prometheus_dir and self.config.env_prefix:
             if include_javascript:
                 prometheus_html = self.generate_prometheus_stats_html()
                 if prometheus_html:
