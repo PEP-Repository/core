@@ -203,7 +203,7 @@ try {
 
   ShowNotification 'Download complete!'
   # Open in parent folder with $folder selected, such that export.csv can be seen besides it
-  explorer "/select,$folder"
+  explorer '/select,' "$folder"
 }
 catch { # Exception is in $_
   # Extra try-catch in case dialog throws
