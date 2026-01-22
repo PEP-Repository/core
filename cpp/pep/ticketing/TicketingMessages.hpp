@@ -21,12 +21,12 @@ class Ticket2 {
 public:
   Timestamp mTimestamp{/*zero*/};
   std::vector<std::string> mModes;
-  std::vector<LocalPseudonyms> mPseudonyms;
+  std::vector<LocalPseudonyms> mAccessSubjects;  ///< identifiers for subjects that will be accessed
   std::vector<std::string> mColumns;
   std::string mUserGroup;
 
   bool hasMode(const std::string& mode) const;
-  std::vector<PolymorphicPseudonym> getPolymorphicPseudonyms() const;
+  std::vector<PolymorphicPseudonym> getAccessSubjects() const;
 };
 
 template <>

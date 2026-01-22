@@ -31,12 +31,8 @@ bool Ticket2::hasMode(const std::string& mode) const {
   return false;
 }
 
-std::vector<PolymorphicPseudonym> Ticket2::getPolymorphicPseudonyms() const {
-  std::vector<PolymorphicPseudonym> ret;
-  ret.reserve(mPseudonyms.size());
-  for (const auto& p : mPseudonyms)
-    ret.push_back(p.mPolymorphic);
-  return ret;
+std::vector<PolymorphicPseudonym> Ticket2::getAccessSubjects() const {
+  return GetPolymorphicPseudonyms(mAccessSubjects);
 }
 
 void SignedTicket2::addTranscryptorSignature(Signature signature) {

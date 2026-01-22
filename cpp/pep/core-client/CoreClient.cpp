@@ -417,7 +417,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mPseudonyms);
+    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mAccessSubjects);
   });
 
 }
@@ -428,7 +428,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
       && IsSubset(opts.columnGroups, opts.ticket->getColumnGroups())
-      && IsSubset(opts.pps, opts.ticket->getPolymorphicPseudonyms())
+      && IsSubset(opts.pps, opts.ticket->getAccessSubjects())
       && IsSubset(opts.columns, opts.ticket->getColumns())) {
     return rxcpp::observable<>::just(*opts.ticket);
   }
