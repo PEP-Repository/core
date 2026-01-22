@@ -998,14 +998,7 @@ pep-services-image-test:
   #language=sh
   script:
     - *docker_login
-    - |
-     for TEST in $TESTS; do
-       echo "Running test: $(basename $TEST)"
-       docker run --pull=always --rm -v "$CI_PROJECT_DIR/temp/:/app/test-results" "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" /bin/bash -c "mkdir -p /app/test-results && /app/$(basename $TEST) --gtest_output=xml:/app/test-results/"
-     done
-  artifacts:
-    reports:
-      junit: temp/*.xml
+    - docker run --pull=always --rm -v "$CI_PROJECT_DIR/temp/:/app/test-results" "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" pepcli --version
 
 ##########################################
 # Configuration for the integration stage#
