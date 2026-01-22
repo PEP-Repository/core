@@ -138,7 +138,7 @@ protected:
       bool groupOutput = false;
       std::unordered_map<uint32_t, SubjectData> subjects;
       size_t dataCount{ 0 };
-      std::map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> pseudsToReport;
+      std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> pseudsToReport;
 
       explicit Context(const pep::commandline::NamedValues& parameterValues)
         : parameterValues(parameterValues) {
