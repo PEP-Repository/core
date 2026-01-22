@@ -745,7 +745,7 @@ if should_run_test certificate-renewal; then
 
   printGreen "First, check requesting a CSR, and replacing and committing the new certificate chain for a single server."
   server="${signing_servers[0]}"
-  pepcli --oauth-token-group "System Administrator" server certificate requestCSR --server "$server" --output-directory "$certificate_renewal_data_dir_absolute"
+  pepcli --oauth-token-group "System Administrator" server certificate request-csr --server "$server" --output-directory "$certificate_renewal_data_dir_absolute"
   trace sign_csrs 1
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute"
   trace compare_chains "$server" replaced
@@ -756,7 +756,7 @@ if should_run_test certificate-renewal; then
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.chain" -delete
 
   printGreen "Then check requesting a CSR, and replacing and committing the new certificate chain for all servers at the same time"
-  pepcli --oauth-token-group "System Administrator" server certificate requestCSR --output-directory "$certificate_renewal_data_dir_absolute"
+  pepcli --oauth-token-group "System Administrator" server certificate request-csr --output-directory "$certificate_renewal_data_dir_absolute"
   sign_csrs "${#signing_servers[@]}"
   pepcli --oauth-token-group "System Administrator" server certificate replace --input-directory "$certificate_renewal_data_dir_absolute"
   for server in "${signing_servers[@]}"; do
@@ -774,7 +774,7 @@ if should_run_test certificate-renewal; then
   done
 
   printGreen "Check that uncommitted certificates are not still used after restart"
-  pepcli --oauth-token-group "System Administrator" server certificate requestCSR --output-directory "$certificate_renewal_data_dir_absolute"
+  pepcli --oauth-token-group "System Administrator" server certificate request-csr --output-directory "$certificate_renewal_data_dir_absolute"
   sign_csrs "${#signing_servers[@]}"
   pepcli --oauth-token-group "System Administrator" server certificate replace --input-directory "$certificate_renewal_data_dir_absolute"
   for server in "${signing_servers[@]}"; do
