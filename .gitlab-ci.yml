@@ -28,8 +28,7 @@ variables:
   # For CI scripts
   CLEAN_CONAN: 1
 
-  # When adding executables including unit tests below, also add them to /docker/services.Dockerfile
-
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_BASE: >-
     cpp/pep/accessmanager/pepAccessManager
     cpp/pep/apps/pepDumpShadowAdministration
@@ -57,6 +56,7 @@ variables:
   EXECUTABLES_GO: >-
     go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog
 
+  # When adding tests here, also add them to /docker/services.Dockerfile
   UNIT_TESTS_INTEGRATION: >-
     cpp/pep/apps/pepClientTest
     cpp/pep/storagefacility/pepStorageFacilityUnitTests
