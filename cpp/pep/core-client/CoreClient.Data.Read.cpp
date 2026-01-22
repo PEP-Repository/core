@@ -59,7 +59,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
   return accessManagerProxy
       ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
                                                .mParticipantGroups = participantGroups,
-                                               .mPolymorphicPseudonyms = pps,
+                                               .mAccessSubjects = pps,
                                                .mColumnGroups = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})

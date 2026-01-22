@@ -72,7 +72,7 @@ class ClientSideTicketRequest2 {
 public:
   std::vector<std::string> mModes;
   std::vector<std::string> mParticipantGroups;
-  std::vector<PolymorphicPseudonym> mPolymorphicPseudonyms;
+  std::vector<PolymorphicPseudonym> mAccessSubjects;
   std::vector<std::string> mColumnGroups;
   std::vector<std::string> mColumns;
   bool mIncludeUserGroupPseudonyms = false;

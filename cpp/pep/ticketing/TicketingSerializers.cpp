@@ -105,11 +105,11 @@ TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketReque
   result.mRequestIndexedTicket = source.request_indexed_ticket();
   result.mIncludeUserGroupPseudonyms = source.include_user_group_pseudonyms();
 
-  result.mPolymorphicPseudonyms = RangeToVector(
-    *source.mutable_polymorphic_pseudonyms()
-    | std::views::transform([](proto::ElgamalEncryption& pp) {
-      return PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(pp)));
-    }));
+  const auto transformToPolymorphicPseudonym = std::views::transform([](proto::ElgamalEncryption& pp) {
+    return PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(pp)));
+  });
+  result.mAccessSubjects = RangeToVector(
+    *source.mutable_polymorphic_pseudonyms() | transformToPolymorphicPseudonym);
   return result;
 }
 
@@ -131,7 +131,7 @@ void Serializer<TicketRequest2>::moveIntoProtocolBuffer(proto::TicketRequest2& d
 
   Serialization::AssignToRepeatedProtocolBuffer(
     *dest.mutable_polymorphic_pseudonyms(),
-    value.mPolymorphicPseudonyms
+    value.mAccessSubjects
     | std::views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
 }
 

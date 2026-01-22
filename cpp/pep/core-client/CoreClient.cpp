@@ -439,7 +439,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
   return accessManagerProxy->requestIndexedTicket(ClientSideTicketRequest2{
       .mModes = opts.modes,
       .mParticipantGroups = opts.participantGroups,
-      .mPolymorphicPseudonyms = opts.pps,
+      .mAccessSubjects = opts.pps,
       .mColumnGroups = opts.columnGroups,
       .mColumns = opts.columns,
       .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});

@@ -676,7 +676,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       // Decrypt local pseudonym
       if (pseudonymLut.count(entry.mPseudonymIndex) == 0) {
         pseudonymLut[entry.mPseudonymIndex] = MakeSharedCopy(
-          ticket.mPseudonyms.at(entry.mPseudonymIndex)
+          ticket.mAccessSubjects.at(entry.mPseudonymIndex)
           .mStorageFacility.decrypt(mPseudonymKey));
       }
       ctx->pseudonyms[i] = pseudonymLut[entry.mPseudonymIndex];
