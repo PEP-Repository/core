@@ -201,6 +201,9 @@ try {
   else {
     ShowNotification "Upload completed"
   }
+  
+  # Remove keys after download: we rerun pepLogon anyway
+  Remove-Item (Join-Path $pepWorkingDirectory 'ClientKeys.json')
 }
 catch { # Exception is in $_
   # Extra try-catch in case dialog throws
