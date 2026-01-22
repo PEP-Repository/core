@@ -154,24 +154,6 @@ try {
   Write-Output 'Enter pseudonym into dialog'
   $pseud = EnterNonEmptyString 'Pseudonym of subject for which to store the file:'
   
-  $listArgs = @(
-    'list'
-    '--metadata'
-    '--local-pseudonyms'
-    '--no-inline-data'
-    '-p'
-      "$pseud"
-    '-c'
-      "$column"
-  )
-  Write-Output "Running pepcli list to determine current cell contents"
-  $ret = Start-Process pepcli $listArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
-  if ($ret.ExitCode -ne 0) {
-    ShowPepError "An error occurred while determining the current cell contents." pepcli
-    pause
-    exit $ret.ExitCode
-  }
-
   $browser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
     Title = "Select file to upload"
     InitialDirectory  = Join-Path $env:USERPROFILE Downloads
