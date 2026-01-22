@@ -216,6 +216,20 @@
 					</Shortcut>
 				<?endif ?>
 			</Component>
+			<Component Id="UploadFileShortcut" Guid="*">
+				<?define PepUploadFilePowershellArguments = "-NoLogo -ExecutionPolicy Bypass -WindowStyle Minimized -File "[#UploadFile.ps1]"" ?>
+				<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="UploadFileShortcut" Type="string" Value="" KeyPath="yes"/>
+				<Shortcut Id="UploadFileShortcut" Name="!(loc.PepUploadFile)" Directory="ProgramMenuDir"
+					Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepUploadFilePowershellArguments)">
+					<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).UploadFile" />
+				</Shortcut>
+				<?ifdef AdditionalShortcutLocation ?>
+					<Shortcut Id="UploadFileShortcut_Additional" Name="!(loc.PepUploadFile) ($(var.Flavor))" Directory="AdditionalShortcuts"
+						Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepUploadFilePowershellArguments)">
+						<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).UploadFile" />
+					</Shortcut>
+				<?endif ?>
+			</Component>
 		</DirectoryRef>
 
 		<ComponentGroup Id="LogFolderAndShortcut">
@@ -250,11 +264,21 @@
 			<ComponentGroupRef Id="configFiles" />
 		</ComponentGroup>
 
+		<ComponentGroup Id="PowerShellScriptPrereqs">
+			<ComponentGroupRef Id="pepLogon" />
+			<ComponentGroupRef Id="pepcli" />
+		</ComponentGroup>
+
 		<ComponentGroup Id="DownloadAll">
 			<ComponentRef Id="DownloadAll.ps1" />
 			<ComponentRef Id="DownloadAllShortcut" />
-			<ComponentGroupRef Id="pepLogon" />
-			<ComponentGroupRef Id="pepcli" />
+			<ComponentGroupRef Id="PowerShellScriptPrereqs" />
+		</ComponentGroup>
+		
+		<ComponentGroup Id="UploadFile">
+			<ComponentRef Id="UploadFile.ps1" />
+			<ComponentRef Id="UploadFileShortcut" />
+			<ComponentGroupRef Id="PowerShellScriptPrereqs" />
 		</ComponentGroup>
 		
 		<!-- Entries that the user can (de-)select for installation -->
@@ -268,6 +292,9 @@
 		</Feature>
 		<Feature Id="DownloadAll" Description="Download-All utility" Level="1">
 			<ComponentGroupRef Id="DownloadAll" />
+		</Feature>
+		<Feature Id="UploadFile" Description="Upload-File utility" Level="1">
+			<ComponentGroupRef Id="UploadFile" />
 		</Feature>
 	</Product>
 </Wix>
