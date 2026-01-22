@@ -10,9 +10,10 @@ void TestConnectionBasics(TestServerFactory& factory) {
   boost::asio::io_context io_context;
   pep::messaging::RequestHandler handler;
 
-  auto protocol = factory.protocolName();
-  auto server = pep::messaging::Node::Create(io_context, factory.createServer(io_context, 2022), handler); // TODO: support port randomization?
-  auto client = pep::messaging::Node::Create(io_context, factory.createClient());
+  auto protocol = factory.protocol().name();
+  auto serverParameters = factory.createServerParameters(io_context, 2022); // TODO: support port randomization?
+  auto server = pep::messaging::Node::Create(*serverParameters, handler);
+  auto client = pep::messaging::Node::Create(*factory.createClientParameters(*serverParameters));
 
   server->start()
     .subscribe(

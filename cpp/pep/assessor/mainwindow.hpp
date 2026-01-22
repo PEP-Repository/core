@@ -33,9 +33,6 @@ class MainWindow : public QMainWindow {
 
     static const int statusMessageDuration;
 
-  pep::ElgamalPrivateKey userPrivateKeyData;
-  pep::ElgamalPrivateKey userPrivateKeyPseudonyms;
-  pep::AsymmetricKey userPrivateKey;
   static QFont* tooltipFont;
   std::shared_ptr<QTranslator> currentTranslator = nullptr;
   QString enrollmentToken;

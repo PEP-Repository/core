@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=all
-set -x
 
 PEP_SCRIPT_DIR_REL="$(dirname -- "$0")"
 PEP_SCRIPT_DIR=$(cd "$PEP_SCRIPT_DIR_REL" && pwd)
@@ -40,8 +38,8 @@ show_dialog() {
     local button1="$2"
     local button2="$3"
     local default_button="$4"
-    
-    local result=$(osascript 2>&1 <<EOF
+    local result
+    result=$(osascript 2>&1 <<EOF
 display dialog "$message" buttons {"$button1", "$button2"} default button "$default_button"
 EOF
 )
@@ -59,24 +57,23 @@ parse_pep_error() {
     local operation="$2"
     
     if echo "$error_output" | grep -q "Unknown column specified"; then
-        echo "Could not find column '$COLUMN' in PEP.\\n\\nPlease check the column name and try again."
+        printf "Could not find column '%s' in PEP.\\n\\nPlease check the column name and try again." "$COLUMN"
     elif echo "$error_output" | grep -q "Access denied"; then
         if [ "$operation" = "list" ]; then
-            echo "You do not have permission to check data existence in column '$COLUMN'.\\n\\nPlease contact your administrator if you believe you should have access."
+            printf "You do not have permission to check data existence in column '%s'.\\n\\nPlease contact your administrator if you believe you should have access." "$COLUMN"
         else
-            echo "You do not have permission to upload data to column '$COLUMN'.\\n\\nPlease contact your administrator if you believe you should have access."
+            printf "You do not have permission to upload data to column '%s'.\\n\\nPlease contact your administrator if you believe you should have access." "$COLUMN"
         fi
-    elif echo "$error_output" | grep -q -e "Not enrolled or certificate expired"; then
+    elif echo "$error_output" | grep -q "Not enrolled or certificate expired"; then
         show_alert "Authentication Required" "Your session has expired. Please log in again."
         run_peplogon > /dev/null 2>&1
         echo "REAUTHENTICATED"
     else
-        echo "$error_output"
+        printf "%s" "$error_output"
     fi
 }
 
 run_peplogon() {
-    local reauth="$1"
     "$PEPLOGON_EXECUTABLE"
     PEPLOGON_EXIT=$?
     
@@ -99,8 +96,7 @@ run_peplogon() {
 # Use Sparkle to check for updates
 if "$SPARKLE_EXECUTABLE" "$PEP_APP_DIR" --probe; then
     # Ask the user if they want to install the updates
-    osascript -e 'tell app "System Events" to display dialog "Updates are available. Do you want to install them?" buttons {"Yes", "No"} default button "Yes"' > /dev/null
-    if [ $? -eq 0 ]; then
+    if show_dialog "Updates are available. Do you want to install them?" "No" "Yes" "Yes"; then
         "$SPARKLE_EXECUTABLE" "$PEP_APP_DIR" --check-immediately --interactive
         show_notification "PEP Update" "Updates installed successfully."
     else
@@ -109,7 +105,10 @@ if "$SPARKLE_EXECUTABLE" "$PEP_APP_DIR" --probe; then
     fi
 fi
 
-cd "$HOME"
+cd "$HOME" || {
+    show_alert "Error" "Could not change to home directory."
+    exit 1
+}
 
 # Only run pepLogon if ClientKeys.json doesn't exist
 if [ ! -f "$HOME/ClientKeys.json" ]; then

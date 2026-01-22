@@ -57,7 +57,7 @@ void NetworkedServer::start() {
     .subscribe(
       [this](const messaging::Connection::Attempt::Result& result) {
         if (!result) {
-          LOG(LOG_TAG, severity_level::info) << "Incoming connection to " << mServer->describe() << " could not be established: " << GetExceptionMessage(result.exception());
+          LOG(LOG_TAG, severity_level::warning) << "Incoming connection to " << mServer->describe() << " could not be established: " << GetExceptionMessage(result.exception());
         } else {
           ConnectionKeeper::Create(*result, mServer);
         }
