@@ -31,20 +31,20 @@ variables:
   # When adding executables including unit tests below, also add them to /docker/services.Dockerfile
 
   EXECUTABLES_BASE: >-
+    cpp/pep/accessmanager/pepAccessManager
     cpp/pep/apps/pepDumpShadowAdministration
     cpp/pep/apps/pepEnrollment
     cpp/pep/apps/pepGenerateSystemKeys
     cpp/pep/apps/pepRegistration
     cpp/pep/apps/pepToken
-    cpp/pep/accessmanager/pepAccessManager
     cpp/pep/authserver/pepAuthserver
+    cpp/pep/benchmark/pepbenchmark
+    cpp/pep/cli/pepcli
     cpp/pep/keyserver/pepKeyServer
+    cpp/pep/logon/pepLogon
     cpp/pep/registrationserver/pepRegistrationServer
     cpp/pep/storagefacility/pepStorageFacility
     cpp/pep/transcryptor/pepTranscryptor
-    cpp/pep/cli/pepcli
-    cpp/pep/logon/pepLogon
-    cpp/pep/benchmark/pepbenchmark
 
   EXECUTABLE_CASTOR: >-
     cpp/pep/pullcastor/pepPullCastor
@@ -73,8 +73,8 @@ variables:
     cpp/pep/keyserver/pepKeyServerUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
-    cpp/pep/rsk/pepRskUnitTests
     cpp/pep/rsk-pep/pepRskPepUnitTests
+    cpp/pep/rsk/pepRskUnitTests
     cpp/pep/serialization/pepSerializationUnitTests
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
