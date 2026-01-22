@@ -658,7 +658,7 @@ fi
 if should_run_test certificate-renewal; then
   signing_servers=(authserver transcryptor storagefacility registrationserver accessmanager)
   # For execute calls, we need paths relative to $DATA_DIR
-  # But since pepcli, for local runs, always has $DEST_DIR as working directory,these relative paths don't resolve correctly whe passing them to pepcli.
+  # But since pepcli, for local runs, always has $DEST_DIR as working directory, these relative paths don't resolve correctly when passing them to pepcli.
   # so we als make an absolute path that we can pass to pepcli.
   certificate_renewal_data_dir="certificate-renewal"
   execute . mkdir -p "$certificate_renewal_data_dir/old-chains"
@@ -714,7 +714,7 @@ if should_run_test certificate-renewal; then
       if execute "$certificate_renewal_data_dir" diff -q reported.chain "$new_chain"; then
         trace [ "$phase" = reverted ] && fail "Certificate chain should no longer equal the new chain, after servers have been restarted without committing, for $server"
       else
-        trace [ "$phase" = replaced ] || trace [ "$phase" = comitted ] && fail "Certificate chain should have been replaced with the new chain for $server"
+        trace [ "$phase" = replaced ] || trace [ "$phase" = committed ] && fail "Certificate chain should have been replaced with the new chain for $server"
       fi
       if execute "$certificate_renewal_data_dir" diff -q "$new_chain" "$chain_file_on_disk"; then
         trace [ "$phase" = replaced ] && fail "Certificate chain should have been replaced, but not yet committed to file for $server"
