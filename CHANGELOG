@@ -21,6 +21,9 @@ Changes in upcoming release (1.6):
   The output format of `pepcli user query` changes, because of this change. If it is used in scripts, these should be updated for the new format.
   Currently, no one outside the PEP team can use `pepcli user query`, so impact should be limited.
 
+- #2756: Added "pepcli ama group clear" command, which removes all subjects from a subject group (without removing the
+  group itself and/or associated access rules, as "pepcli ama group remove" would do).
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
