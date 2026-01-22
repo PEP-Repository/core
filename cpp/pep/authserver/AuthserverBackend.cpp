@@ -78,6 +78,8 @@ const std::optional<std::filesystem::path>& AuthserverBackend::Parameters::getSt
 
 std::shared_ptr<X509RootCertificates> AuthserverBackend::Parameters::getRootCertificates() const { return rootCertificates; }
 
+void AuthserverBackend::Parameters::setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates) { this->rootCertificates = rootCertificates; }
+
 void AuthserverBackend::Parameters::check() const {
   if (!accessManager) {
     throw std::runtime_error("AccessManager must be set");
