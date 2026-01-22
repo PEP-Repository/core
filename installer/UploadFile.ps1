@@ -198,6 +198,9 @@ try {
   if ($ret.ExitCode -ne 0) {
     ShowPepError "An error occurred while uploading." pepcli
   }
+  else {
+    ShowNotification "Upload completed"
+  }
 }
 catch { # Exception is in $_
   # Extra try-catch in case dialog throws
