@@ -130,63 +130,63 @@ protected:
     };
 
     struct Context {
-      const pep::commandline::NamedValues parameterValues;
-      bool hadPrevious = false;
-      bool hasPrintedData = false;
-      pep::enumerateAndRetrieveData2Opts earOpts;
-      bool printMetadata = false;
-      bool groupOutput = false;
-      std::unordered_map<uint32_t, SubjectData> subjects;
-      size_t dataCount{ 0 };
-      std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> pseudsToReport;
+      const pep::commandline::NamedValues mParameterValues;
+      bool mHadPrevious = false;
+      bool mHasPrintedData = false;
+      pep::enumerateAndRetrieveData2Opts mEarOpts;
+      bool mPrintMetadata = false;
+      bool mGroupOutput = false;
+      std::unordered_map<uint32_t, SubjectData> mSubjects;
+      size_t mDataCount{ 0 };
+      std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> mPseudsToReport;
 
       explicit Context(const pep::commandline::NamedValues& parameterValues)
-        : parameterValues(parameterValues) {
+        : mParameterValues(parameterValues) {
       }
 
       void printAndClearSubjects() {
-        for (const auto& entry : subjects) {
-          if (hadPrevious) {
+        for (const auto& entry : mSubjects) {
+          if (mHadPrevious) {
             std::cout << ",";
           }
           else {
-            hadPrevious = true;
+            mHadPrevious = true;
           }
           entry.second.print(std::cout);
           if (entry.second.hasData()) {
-            hasPrintedData = true;
+            mHasPrintedData = true;
           }
-          pseudsToReport.erase(entry.second.pp());
+          mPseudsToReport.erase(entry.second.pp());
         }
-        subjects.clear();
+        mSubjects.clear();
       }
 
       void printRemainingPseudsToReport(std::shared_ptr<pep::CoreClient> client) {
-        assert(subjects.empty());
+        assert(mSubjects.empty());
 
         // For each pseudonym-to-report that we haven't produced output for...
         uint32_t index = 0; // ...use a unique (but meaningless) index...
-        for (const auto& report : pseudsToReport) {
+        for (const auto& report : mPseudsToReport) {
           std::optional<pep::LocalPseudonym> decrypted;
           if (report.second.has_value()) {
             decrypted = client->decryptLocalPseudonym(*report.second);
           }
           SubjectData data(report.first, decrypted);
-          subjects.emplace(std::make_pair(index++, std::move(data))); // ...to add an entry to our "subjects" field...
+          mSubjects.emplace(std::make_pair(index++, std::move(data))); // ...to add an entry to our "subjects" field...
         }
 
         this->printAndClearSubjects(); // ...then produce output for all the "subjects" that we just stored
-        assert(pseudsToReport.empty());
+        assert(mPseudsToReport.empty());
       }
 
       void processResult(const pep::EnumerateAndRetrieveResult& ear) {
-        dataCount++;
-        auto existing = subjects.find(ear.mLocalPseudonymsIndex);
-        if (existing == subjects.cend()) {
-          if (!groupOutput) {
+        mDataCount++;
+        auto existing = mSubjects.find(ear.mLocalPseudonymsIndex);
+        if (existing == mSubjects.cend()) {
+          if (!mGroupOutput) {
             printAndClearSubjects();
           }
-          [[maybe_unused]] auto emplaced = subjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, printMetadata));
+          [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata));
           assert(emplaced.second);
         }
         else {
@@ -197,19 +197,19 @@ protected:
       void printQueryInfo() {
           std::ostringstream out;
 
-          out << "Listed " << dataCount << " results for: ";
-          if (earOpts.columnGroups.size() > 0 || earOpts.columns.size() == 0) {
-              out << earOpts.columnGroups.size() << " Column Group(s) ";
+          out << "Listed " << mDataCount << " results for: ";
+          if (mEarOpts.columnGroups.size() > 0 || mEarOpts.columns.size() == 0) {
+              out << mEarOpts.columnGroups.size() << " Column Group(s) ";
           }
-          if (earOpts.columns.size() > 0) {
-              out << earOpts.columns.size() << " Column(s) ";
+          if (mEarOpts.columns.size() > 0) {
+              out << mEarOpts.columns.size() << " Column(s) ";
           }
           out << "and ";
-          if (earOpts.pps.size() > 0) {
-              out << earOpts.pps.size() << " Participant(s) ";
+          if (mEarOpts.pps.size() > 0) {
+              out << mEarOpts.pps.size() << " Participant(s) ";
           }
-          if (earOpts.groups.size() > 0 || earOpts.pps.size() == 0) {
-              out << earOpts.groups.size() << " Participant Group(s)";
+          if (mEarOpts.groups.size() > 0 || mEarOpts.pps.size() == 0) {
+              out << mEarOpts.groups.size() << " Participant Group(s)";
           }
           out << std::endl;
 
@@ -221,45 +221,45 @@ protected:
     return this->executeEventLoopFor([ctx](std::shared_ptr<pep::CoreClient> client) {
       std::cout << '[';
 
-      return MultiCellQuery::GetPps(ctx->parameterValues, client)
+      return MultiCellQuery::GetPps(ctx->mParameterValues, client)
         .op(pep::RxToVector())
       .as_dynamic() // Reduce compiler memory usage
       .flat_map([client, ctx](std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> all_pps){
-        ctx->earOpts.groups = MultiCellQuery::GetParticipantGroups(ctx->parameterValues);
-        ctx->earOpts.pps = *all_pps;
-        ctx->earOpts.columnGroups = MultiCellQuery::GetColumnGroups(ctx->parameterValues);
-        ctx->earOpts.columns = MultiCellQuery::GetColumns(ctx->parameterValues);
+        ctx->mEarOpts.groups = MultiCellQuery::GetParticipantGroups(ctx->mParameterValues);
+        ctx->mEarOpts.pps = *all_pps;
+        ctx->mEarOpts.columnGroups = MultiCellQuery::GetColumnGroups(ctx->mParameterValues);
+        ctx->mEarOpts.columns = MultiCellQuery::GetColumns(ctx->mParameterValues);
 
-        if (ctx->parameterValues.has("no-inline-data")) {
-          ctx->earOpts.includeData = false;
+        if (ctx->mParameterValues.has("no-inline-data")) {
+          ctx->mEarOpts.includeData = false;
         } else {
-          ctx->earOpts.includeData = true;
-          ctx->earOpts.dataSizeLimit = ctx->parameterValues.get<uint64_t>("inline-data-size-limit");
+          ctx->mEarOpts.includeData = true;
+          ctx->mEarOpts.dataSizeLimit = ctx->mParameterValues.get<uint64_t>("inline-data-size-limit");
         }
-        ctx->earOpts.forceTicket = true;
-        ctx->earOpts.includeAccessGroupPseudonyms = ctx->parameterValues.has("local-pseudonyms");
-        ctx->printMetadata = ctx->parameterValues.has("metadata");
-        ctx->groupOutput = ctx->parameterValues.has("group-output");
+        ctx->mEarOpts.forceTicket = true;
+        ctx->mEarOpts.includeAccessGroupPseudonyms = ctx->mParameterValues.has("local-pseudonyms");
+        ctx->mPrintMetadata = ctx->mParameterValues.has("metadata");
+        ctx->mGroupOutput = ctx->mParameterValues.has("group-output");
 
         pep::requestTicket2Opts tOpts;
-        tOpts.pps = ctx->earOpts.pps;
-        tOpts.columns = ctx->earOpts.columns;
-        tOpts.columnGroups = ctx->earOpts.columnGroups;
-        tOpts.participantGroups = ctx->earOpts.groups;
-        tOpts.modes = {ctx->earOpts.includeData ? "read" : "read-meta"};
-        tOpts.includeAccessGroupPseudonyms = ctx->earOpts.includeAccessGroupPseudonyms;
-        return pep::cli::TicketFile::GetTicket(*client, ctx->parameterValues, tOpts)
+        tOpts.pps = ctx->mEarOpts.pps;
+        tOpts.columns = ctx->mEarOpts.columns;
+        tOpts.columnGroups = ctx->mEarOpts.columnGroups;
+        tOpts.participantGroups = ctx->mEarOpts.groups;
+        tOpts.modes = {ctx->mEarOpts.includeData ? "read" : "read-meta"};
+        tOpts.includeAccessGroupPseudonyms = ctx->mEarOpts.includeAccessGroupPseudonyms;
+        return pep::cli::TicketFile::GetTicket(*client, ctx->mParameterValues, tOpts)
         .flat_map([client, ctx](pep::IndexedTicket2 ticket)
             -> rxcpp::observable<pep::EnumerateAndRetrieveResult> {
-          ctx->earOpts.ticket = std::make_shared<pep::IndexedTicket2>(
+          ctx->mEarOpts.ticket = std::make_shared<pep::IndexedTicket2>(
               std::move(ticket));
-          if (ctx->parameterValues.has("dataless")) {
-            auto pseuds = ctx->earOpts.ticket->openTicketWithoutCheckingSignature()->mPseudonyms;
-            std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->pseudsToReport, ctx->pseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
+          if (ctx->mParameterValues.has("dataless")) {
+            auto pseuds = ctx->mEarOpts.ticket->openTicketWithoutCheckingSignature()->mPseudonyms;
+            std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->mPseudsToReport, ctx->mPseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
               return std::make_pair(lps.mPolymorphic, lps.mAccessGroup);
               });
           }
-          return client->enumerateAndRetrieveData2(ctx->earOpts);
+          return client->enumerateAndRetrieveData2(ctx->mEarOpts);
         });
       }).map([ctx](pep::EnumerateAndRetrieveResult result) {
         ctx->processResult(result);
@@ -273,7 +273,7 @@ protected:
         ctx->printRemainingPseudsToReport(client);
         std::cout << ']' << std::endl;
         ctx->printQueryInfo();
-        if (ctx->hasPrintedData) {
+        if (ctx->mHasPrintedData) {
           LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
         }
       }));
