@@ -7,7 +7,7 @@ Changes in upcoming release (1.6):
 
 ---------------
 
-- core#2767: Added a tool for MacOS users to easily upload files to PEP using a GUI file picker.
+- core#2767: Added a tool for MacOS and Windows users to easily upload files to PEP using a GUI file picker.
 
 - core#2753:
    - Changed: The YAML output of user query commands now use `# item count: N` instead of `# size = N` to display array sizes.
@@ -21,7 +21,15 @@ Changes in upcoming release (1.6):
   The output format of `pepcli user query` changes, because of this change. If it is used in scripts, these should be updated for the new format.
   Currently, no one outside the PEP team can use `pepcli user query`, so impact should be limited.
 
-- core!2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
+- #2756: Added "pepcli ama group clear" command, which removes all subjects from a subject group (without removing the
+  group itself and/or associated access rules, as "pepcli ama group remove" would do).
+
+- #2755: The "pepcli list" command now supports a "--dataless" switch, which causes output to also include (pseudonyms
+  of) subjects for whom the command retrieves no data. This a.o. allows subject groups to be listed without requiring
+  data presence and accessibility, and without having to specify column(group)(s):
+    pepcli list -P some-subject-group --dataless
+
+- !2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
 
 MANUAL CHANGES REQUIRED:
 

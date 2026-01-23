@@ -45,7 +45,7 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
 
    - This creates a build folder like `./build/Debug` on your system. `Debug` may also be e.g. `Release`. See [`./conanfile.py`](./conanfile.py) for options that you can pass via `-o name=value`, e.g. `-o with_assessor=False` to disable the Qt GUI. These options can also be put in your profile under `[options]` as e.g. `pep/*:with_assessor=False`.
    - If you are not going to use `windeployqt`/`maydeployqt`, you can also pass `-s build_type=Debug` instead of `-s:a ...`, to build tools like `protoc` as `Release`.
-   - It is also possible to build dependencies as `Release` but PEP as `Debug`. For this, use `conan install ./ --build=missing -s "&:build_type=Release"` (`&` means the consuming package, so pep).
+   - It is also possible to build dependencies as `Release` but PEP as `Debug`. For this, use `conan install ./ --build=missing -s:a build_type=Release -s "&:build_type=Debug"` (`&` means the consuming package, so pep).
    - You only need to repeat this command if you: delete the build folder, change `conanfile.py`, change your compiler, or want to update dependencies (pass `--update`).
    - If this fails, you can try using the lockfile that the CI uses, via `--lockfile=./docker-build/builder/conan/conan-ci.lock`.
 5. Configure using cmake:

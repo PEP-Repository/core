@@ -5,4 +5,5 @@
 	<String Id="LaunchPepAssessor" Overridable="yes">PEP Assessor starten</String>
 	<String Id="PepCommandPrompt" Overridable="yes">PEP Opdrachtregel</String>
 	<String Id="PepDownloadAll" Overridable="yes">PEP Download Alles</String>
+	<String Id="PepUploadFile" Overridable="yes">PEP Upload Bestand</String>
 </WixLocalization>

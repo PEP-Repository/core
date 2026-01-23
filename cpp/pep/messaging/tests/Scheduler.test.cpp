@@ -4,6 +4,7 @@
 #include <pep/messaging/Scheduler.hpp>
 #include <pep/serialization/Error.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <cmath>
 #include <numeric>
 
 using namespace std::literals;

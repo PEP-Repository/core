@@ -401,6 +401,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    */
   PolymorphicPseudonym generateParticipantPolymorphicPseudonym(const std::string& participantSID);
 
+  LocalPseudonym decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const;
+
   /*!
    * \brief Interpret each string as a textually represented polymorphic pseudonym, or a participant identifier,
    * or a local pseudonym, or a participant alias (aka user pseudonym, i.e. a shortened local pseudonym).
