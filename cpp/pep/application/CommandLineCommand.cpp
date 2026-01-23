@@ -237,9 +237,7 @@ int Command::printAutocompleteInfo(std::queue<std::string>& arguments) {
       // Complete parameter switches
       auto completeParams = parameters.getSwitchesToAutocomplete(lexed);
       // Put required parameters first
-      std::stable_sort(completeParams.begin(), completeParams.end(), [](const Parameter* a, const Parameter* b) {
-        return a->isRequired() > b->isRequired();
-      });
+      std::ranges::stable_sort(completeParams, std::greater{}, &Parameter::isRequired);
       complete.parameters(completeParams);
     }
   }
@@ -247,7 +245,7 @@ int Command::printAutocompleteInfo(std::queue<std::string>& arguments) {
     // Are we completing a positional parameter? Then we could stop processing with "--" if a value is not required,
     // or already specified, when multiple are allowed
     if (!paramAcceptingValue->isRequired() ||
-      (paramAcceptingValue->allowsMultiple() && lexed.find(paramAcceptingValue->getName()) != lexed.cend())) {
+      (paramAcceptingValue->allowsMultiple() && lexed.contains(paramAcceptingValue->getName()))) {
       complete.stopProcessingMarker();
     }
   }
@@ -269,7 +267,7 @@ int Command::autocompleteChildCommand(std::queue<std::string>& arguments) {
   else { // We have child commands
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::find_if(children.cbegin(), children.cend(), [&command](const std::shared_ptr<Command>& child) {
+    auto child = std::ranges::find_if(children, [&command](const std::shared_ptr<Command>& child) {
       return child->getName() == command && !child->isUndocumented();
     });
     if (child == children.cend()) {
