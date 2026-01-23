@@ -282,10 +282,6 @@ void Parameters::writeHelpText(std::ostream& destination, const std::string& hea
 void Parameters::add(const Parameter& parameter) {
   auto index = mEntries.size();
 
-  if (parameter.isPositional()) {
-    mPositional.push_back(index);
-  }
-
   // Exception safe update: create a copy of our announcements to work with
   auto byAnnouncement = mByAnnouncement;
   for (const auto& announcement : parameter.getAnnouncements()) {
@@ -296,9 +292,7 @@ void Parameters::add(const Parameter& parameter) {
     }
   }
   // No conflicting announcements: update our state
-  if (!parameter.isPositional()) {
-    mNamed.push_back(index);
-  }
+  (parameter.isPositional() ? mPositional : mNamed).push_back(index);
   std::swap(mByAnnouncement, byAnnouncement);
 
   mEntries.push_back(parameter);
@@ -349,6 +343,7 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
         ++positionalIt;
       }
     }
+
     s->lex(result[s->getName()], arguments);
   }
 
