@@ -21,6 +21,8 @@ Changes in upcoming release (1.6):
   The output format of `pepcli user query` changes, because of this change. If it is used in scripts, these should be updated for the new format.
   Currently, no one outside the PEP team can use `pepcli user query`, so impact should be limited.
 
+- core!2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
