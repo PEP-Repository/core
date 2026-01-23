@@ -326,16 +326,22 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
       }
     }
     else { // Not an announcement: process as an unnamed positional parameter
-      if (positionalIt == mPositional.cend()) { // We don't support any further positionals, so the token is not for us
+      if (positionalIt == mPositional.cend()) {
+        // We don't support any further positionals, so the token is not for us.
         break;
       }
 
-      s = &mEntries[*positionalIt];
-      assert(s->isPositional());
       if (positionalSeen == positionalType::Named) {
+        if (!this->firstPositional(result)) {
+          // All positionals were already specified using names. Assume the next token is not for us.
+          break;
+        }
         throw std::runtime_error("Cannot mix named and unnamed positional parameters");
       }
       positionalSeen = positionalType::Unnamed;
+
+      s = &mEntries[*positionalIt];
+      assert(s->isPositional());
 
       auto valueSpec = s->getValueSpecification();
       assert(valueSpec && "Positional without value specification?");
