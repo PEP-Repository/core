@@ -289,7 +289,7 @@ void Parameters::add(const Parameter& parameter) {
   // Exception safe update: create a copy of our announcements to work with
   auto byAnnouncement = mByAnnouncement;
   for (const auto& announcement : parameter.getAnnouncements()) {
-    auto emplaced = byAnnouncement.emplace(announcement, index);
+    auto emplaced = byAnnouncement.emplace(announcement.string(), index);
     if (!emplaced.second) {
       auto existing = mEntries[emplaced.first->second];
       throw std::runtime_error("Announcement " + announcement.string() + " is claimed by multiple switches: " + parameter.getName() + " and " + existing.getName());
@@ -308,6 +308,9 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
   if (terminated) *terminated = false;
   LexedValues result;
 
+  auto positionalIt = mPositional.cbegin();
+  enum class positionalType { None, Named, Unnamed } positionalSeen = positionalType::None;
+
   while (!arguments.empty()) {
     const auto& token = arguments.front();
 
@@ -318,16 +321,32 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
     }
 
     const Parameter* s{};
-    auto named = std::find_if(mByAnnouncement.cbegin(), mByAnnouncement.cend(), [&token](const auto& pair) {return pair.first.string() == token; });
-    if (named != mByAnnouncement.cend()) { // The current token is a "--name" or "-shorthand" announcement
+    if (auto named = mByAnnouncement.find(token); named != mByAnnouncement.cend()) { // The current token is a "--name" or "-shorthand" announcement
       arguments.pop(); // Discard the announcement from remaining arguments
-      auto index = named->second;
-      s = &mEntries[index];
+      s = &mEntries[named->second];
+      if (s->isPositional()) {
+        if (positionalSeen == positionalType::Unnamed) {
+          throw std::runtime_error("Cannot mix named and unnamed positional parameters");
+        }
+        positionalSeen = positionalType::Named;
+      }
     }
-    else { // Not an announcement: process as a positional parameter
-      s = firstPositional(result);
-      if (!s) { // We don't support any further positionals, so the token is not for us
+    else { // Not an announcement: process as an unnamed positional parameter
+      if (positionalIt == mPositional.cend()) { // We don't support any further positionals, so the token is not for us
         break;
+      }
+
+      s = &mEntries[*positionalIt];
+      assert(s->isPositional());
+      if (positionalSeen == positionalType::Named) {
+        throw std::runtime_error("Cannot mix named and unnamed positional parameters");
+      }
+      positionalSeen = positionalType::Unnamed;
+
+      auto valueSpec = s->getValueSpecification();
+      assert(valueSpec && "Positional without value specification?");
+      if (!valueSpec->allowsMultiple()) {
+        ++positionalIt;
       }
     }
     s->lex(result[s->getName()], arguments);
@@ -364,7 +383,7 @@ void Parameters::finalize(NamedValues& parsed) const {
 }
 
 const Parameter* Parameters::currentSwitchRequiringValue(const LexedValues& lexed) const noexcept {
-  for (const auto& s : mEntries) {
+  for (const Parameter& s : mEntries) {
     // If specified without value
     if (auto position = lexed.find(s.getName()); position != lexed.cend()) {
       if (s.isLackingValue(position->second)) {
@@ -376,8 +395,8 @@ const Parameter* Parameters::currentSwitchRequiringValue(const LexedValues& lexe
 }
 
 const Parameter* Parameters::firstPositional(const LexedValues& lexed) const noexcept {
-  for (const auto& s : mEntries) {
-    if (!s.isPositional()) { continue; }
+  for (const Index i : mPositional) {
+    const Parameter& s = mEntries[i];
     if (!lexed.contains(s.getName()) || s.allowsMultiple()) {
       return &s;
     }

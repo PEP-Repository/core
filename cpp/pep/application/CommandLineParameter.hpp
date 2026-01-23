@@ -73,9 +73,12 @@ class Parameters {
 private:
   std::vector<Parameter> mEntries;
   using Index = typename std::vector<Parameter>::size_type;
+  /// Non-positional parameters
   std::vector<Index> mNamed;
-  std::unordered_map<SwitchAnnouncement, Index> mByAnnouncement;
+  /// Positional parameters
   std::vector<Index> mPositional;
+  /// All parameters, including positional
+  std::unordered_map<std::string, Index> mByAnnouncement;
 
   void add(const Parameter& parameter);
   void writeHelpText(std::ostream& destination, const std::string& header, std::vector<Index> indices) const;
