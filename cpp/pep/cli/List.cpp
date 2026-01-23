@@ -74,7 +74,7 @@ protected:
       }
 
       SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp)
-        : mPp(std::move(pp)), mCollectMetadata(false), mLp(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
+        : mPp(pp), mCollectMetadata(false), mLp(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
       }
 
       const pep::PolymorphicPseudonym& pp() const noexcept { return mPp; }
