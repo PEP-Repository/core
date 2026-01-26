@@ -31,7 +31,6 @@
 #if (BUILD_PIPELINE_ID -1 == -1) // Local development version
 # define VER_PIPELINE 0
 #else // Gitlab CI build
-// Keep this version number equal to the one in WiX installer logic.
 # define VER_PIPELINE BUILD_PIPELINE_ID
 #endif
 
@@ -40,14 +39,12 @@
 #if (BUILD_TRUNCATED_PIPELINE_ID -1 == -1) // Local development version
 # define VER_TRUNCATED_PIPELINE 0
 #else // Gitlab CI build
-// Keep this version number equal to the one in WiX installer logic.
 # define VER_TRUNCATED_PIPELINE BUILD_TRUNCATED_PIPELINE_ID
 #endif
 
 #if (BUILD_JOB_ID -1 == -1) // Local development version
 # define VER_JOB 0
 #else // Gitlab CI build
-// Keep this version number equal to the one in WiX installer logic.
 # define VER_JOB BUILD_JOB_ID
 
 #endif
