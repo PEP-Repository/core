@@ -87,8 +87,8 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
 
-# Disabled by default because of https://github.com/emscripten-core/emscripten/issues/26100
-option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib")
+# Originally here to work around huge source map: https://github.com/emscripten-core/emscripten/issues/26100
+option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib" ON)
 if(PEP_WEBLIB_SOURCE_MAP)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE -gsource-map)
 else()
