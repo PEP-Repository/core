@@ -18,6 +18,7 @@
 #include <Windows.h> // Needed for some resource-related macros: see a.o. https://stackoverflow.com/a/17781224
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/stringize.hpp>
+#include <boost/preprocessor/arithmetic/sub.hpp>
 
 /* Gitlab CI builds set (a.o.) the CI_COMMIT_REF_NAME and CI_PIPELINE_ID environment values,
  * which we receive in our C++ build as the BUILD_REF and BUILD_PIPELINE_ID preprocessor symbols.
