@@ -675,13 +675,20 @@ if should_run_test certificate-renewal; then
     cert_file_name="$file_name_base.cert"
     chain_file_name="$file_name_base.chain"
     common_name=${file_name_base#PEP}
+    expired="${2:-}"
+
+    validity_options="-days 365"
+    if [ "$expired" = "expired" ]; then
+      validity_options="-not_before 19700101000001Z -not_after 19700102000001Z"
+    fi
 
     {
       cat "$ca_config_file_name" ;
       echo "DNS.2 = \"$common_name\"" ;
     } | execute "$certificate_renewal_data_dir" tee ca_ext.cnf > /dev/null
+    # shellcheck disable=SC2086 # validity_options should be word-split
     execute "$certificate_renewal_data_dir" openssl x509 -req -sha256 -in "$csr_file_name" -CAkey "$ca_key_file_name" -CA "$ca_key_cert" \
-     -out "$cert_file_name" -days 365 -extfile ca_ext.cnf -extensions "$extensions"  \
+     -out "$cert_file_name" $validity_options -extfile ca_ext.cnf -extensions "$extensions"  \
      -CAcreateserial -CAserial ca_serial.srl -passin file:"$password_file"
 
     execute "$certificate_renewal_data_dir" cat "$cert_file_name" "$ca_key_cert" | execute "$certificate_renewal_data_dir" tee "$chain_file_name" > /dev/null
@@ -690,10 +697,13 @@ if should_run_test certificate-renewal; then
 
   sign_csrs() {
     expected_csr_count="$1"
-    csrs="$(execute "$certificate_renewal_data_dir" find . -name "*.csr")"
-    [ "$(echo "$csrs" | wc -l)" -eq "$expected_csr_count" ] || fail "Expected exactly $expected_csr_count *.csr file(s) in $certificate_renewal_data_dir. Found *.csr files: $csrs"
+    subdir="${2:-"."}"
+    expired="${3:-}"
+
+    csrs="$(execute "$certificate_renewal_data_dir" find "$subdir" -maxdepth 1 -name "*.csr")"
+    [ "$(echo "$csrs" | wc -l)" -eq "$expected_csr_count" ] || fail "Expected exactly $expected_csr_count *.csr file(s) in $certificate_renewal_data_dir/$subdir. Found *.csr files: $csrs"
     for csr in $csrs; do
-      sign_csr "$csr"
+      sign_csr "$csr" "$expired"
     done
   }
 
@@ -745,10 +755,28 @@ if should_run_test certificate-renewal; then
 
   printGreen "First, check requesting a CSR, and replacing and committing the new certificate chain for a single server."
   server="${signing_servers[0]}"
+  execute . mkdir -p "$certificate_renewal_data_dir/first-run"
+
+  pepcli --oauth-token-group "Data Administrator" server certificate request-csr --server "$server" --output-directory "$certificate_renewal_data_dir_absolute/first-run" \
+    && fail "Only System Administrator should be able to request CSRs"
+  pepcli --oauth-token-group "System Administrator" server certificate request-csr --server "$server" --output-directory "$certificate_renewal_data_dir_absolute/first-run"
   pepcli --oauth-token-group "System Administrator" server certificate request-csr --server "$server" --output-directory "$certificate_renewal_data_dir_absolute"
+
+  trace sign_csrs 1 first-run
+  trace sign_csrs 1 . expired
+
+  pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute/first-run" \
+    && fail "After running 'request-csr' a second time, it should no longer be possible to use the CSRs from the first run"
+  pepcli --oauth-token-group "Data Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
+    && fail "Only System Administrator should be able to replace certificates"
+  pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
+    && fail "Replacing certificates with an expired certificate should not be possible"
   trace sign_csrs 1
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute"
   trace compare_chains "$server" replaced
+
+  pepcli --oauth-token-group "Data Administrator" server certificate commit --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
+    && fail "Only System Administrator should be able to commit certificates"
   pepcli --oauth-token-group "System Administrator" server certificate commit --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute"
   trace compare_chains "$server" committed
 
