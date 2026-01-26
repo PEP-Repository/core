@@ -11,6 +11,13 @@
 <?ifndef var.PipelineNumber ?>
 	<?define PipelineNumber = "0" ?>
 <?endif ?>
+<!--
+	Make ProductVersion.build field fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/msi/productversion & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
+	Note: the last number (JobNumber) is not interpreted by Windows installer and has no such restriction.
+-->
+<?ifndef var.TruncatedPipelineNumber ?>
+	<?define TruncatedPipelineNumber = "0" ?>
+<?endif ?>
 <?ifndef var.JobNumber ?>
 	<!--
 		Since CI sets this to CI_JOB_ID, this will usually be a local build.
@@ -24,10 +31,9 @@
 <?endif ?>
 
 
-<!-- Keep this version number equal to the one in PEP's Windows.Exe.VersionInfo.rc file. -->
-<?define Version = "$(var.MajorVersion).$(var.MinorVersion).$(var.PipelineNumber).$(var.JobNumber)" ?>
+<?define Version = "$(var.MajorVersion).$(var.MinorVersion).$(var.TruncatedPipelineNumber).$(var.JobNumber)" ?>
 <?define Flavor = "$(var.ProjectCaption) $(var.EnvironmentName)" ?>
-<?define VersionText = "($(var.Flavor)) $(var.Version)" ?>
+<?define VersionText = "($(var.Flavor)) $(var.MajorVersion).$(var.MinorVersion).$(var.PipelineNumber).$(var.JobNumber)" ?>
 
 <?include $(var.InfraWxiFile) ?>
 
