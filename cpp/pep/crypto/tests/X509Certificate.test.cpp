@@ -279,6 +279,24 @@ TEST(X509CertificateSigningRequestTest, LongStringInField) {
   EXPECT_ANY_THROW(pep::X509CertificateSigningRequest csr(keyPair, testCNSucceeds, testOUFails)) << "Creating a CSR with a too long OU string does not throw an error";
 }
 
+TEST(X509CertificateSigningRequestTest, Extensions) {
+  std::unordered_map<std::string, std::pair<std::string, bool>> expectedExtensions = { // name -> (value, critical)
+    {"X509v3 Certificate Policies",  {"Policy: 1.2.3.4", false}},
+    {"X509v3 Subject Alternative Name", {"DNS:authserver.pep.cs.ru.nl", false}},
+    {"X509v3 Basic Constraints",  {"CA:TRUE", true}}
+  };
+  pep::X509CertificateSigningRequest csr = pep::X509CertificateSigningRequest::FromPem(pepAuthserverCSRWithExtension);
+  auto extensions = csr.getExtensions();
+  EXPECT_EQ(extensions.size(), expectedExtensions.size());
+  for (auto& extension : extensions) {
+    auto found = expectedExtensions.find(extension.getName());
+    ASSERT_NE(found, expectedExtensions.end());
+    auto& [value, isCritical] = found->second;
+    EXPECT_EQ(extension.getValue(), value);
+    EXPECT_EQ(extension.isCritical(), isCritical);
+  }
+}
+
 TEST(X509CertificatesTest, X509CertificatesFormatting) {
 
   // An empty string input should throw an error

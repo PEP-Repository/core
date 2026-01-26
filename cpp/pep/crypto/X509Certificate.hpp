@@ -14,6 +14,23 @@
 
 namespace pep {
 
+class X509Extension {
+public:
+  X509Extension(const X509Extension& other);
+  X509Extension(X509Extension&& other) noexcept;
+  ~X509Extension() noexcept;
+  X509Extension& operator=(X509Extension other);
+  X509Extension& operator=(X509Extension&& other) noexcept;
+
+  explicit X509Extension(X509_EXTENSION* extension) noexcept : mRaw(extension) {}
+
+  bool isCritical() const noexcept;
+  std::string getName() const;
+  std::string getValue() const;
+private:
+  X509_EXTENSION* mRaw;
+};
+
 class X509Certificate {
 public:
   static constexpr const char* defaultSelfSignedCountryCode = "NL";
@@ -48,7 +65,7 @@ public:
   std::string toPem() const;
   std::string toDer() const;
 
-   bool hasSameSubject(const X509Certificate& other) const;
+  bool hasSameSubject(const X509Certificate& other) const;
 
   static X509Certificate FromPem(const std::string& pem);
   static X509Certificate FromDer(const std::string& der);
@@ -133,6 +150,7 @@ class X509CertificateSigningRequest {
   AsymmetricKey getPublicKey() const;
   std::optional<std::string> getCommonName() const;
   std::optional<std::string> getOrganizationalUnit() const;
+  [[nodiscard]] std::vector<X509Extension> getExtensions() const;
   [[nodiscard]] bool verifySignature() const;
   std::string toPem() const;
   std::string toDer() const;

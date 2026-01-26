@@ -47,6 +47,20 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
     if (!response.getCsr().verifySignature()) {
       throw std::runtime_error("Received certificate signing request does not have a valid signature");
     }
+    auto extensions= response.getCsr().getExtensions();
+    if (!extensions.empty()) {
+      std::ostringstream message;
+      message << "Received certificate signing requests should not contain extensions, but it does. Encountered extensions: ";
+      bool first = true;
+      for (auto& extension : response.getCsr().getExtensions()) {
+        if (!first) {
+          message << ", ";
+        }
+        message << extension.getName();
+        first = false;
+      }
+      throw std::runtime_error(message.str());
+    }
     return response.getCsr();
   });
 }

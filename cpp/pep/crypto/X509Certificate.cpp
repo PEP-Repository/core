@@ -129,6 +129,68 @@ X509Certificate::~X509Certificate() noexcept {
   X509_free(mRaw); // https://docs.openssl.org/master/man3/X509_new/#description: "If the argument is NULL, nothing is done."
 }
 
+X509Extension::X509Extension(const X509Extension& other) {
+  assert(other.mRaw != nullptr);
+  mRaw = X509_EXTENSION_dup(other.mRaw);
+  if (!mRaw) {
+    throw pep::OpenSSLError("Failed to duplicate X509_EXTENSION object in X509Extension copy constructor.");
+  }
+}
+
+X509Extension::X509Extension(X509Extension&& other) noexcept : mRaw(other.mRaw) {
+  other.mRaw = nullptr;
+}
+
+X509Extension::~X509Extension() noexcept {
+  X509_EXTENSION_free(mRaw);
+}
+
+X509Extension& X509Extension::operator=(X509Extension other) {
+  std::swap(mRaw, other.mRaw);
+  return *this;
+}
+
+X509Extension& X509Extension::operator=(X509Extension&& other) noexcept {
+  std::swap(this->mRaw, other.mRaw);
+  return *this;
+}
+
+bool X509Extension::isCritical() const noexcept {
+  return X509_EXTENSION_get_critical(mRaw);
+}
+
+std::string X509Extension::getName() const {
+  ASN1_OBJECT* object = X509_EXTENSION_get_object(mRaw); //should not be freed by us
+  int bufsize_result = OBJ_obj2txt(nullptr, 0, object, 0); // Returns the length, excluding the null-terminator
+  if (bufsize_result < 0) {
+    throw OpenSSLError("Failed to get buffer size for extension name");
+  }
+  size_t bufsize = static_cast<size_t>(bufsize_result);
+  std::string buffer;
+  buffer.resize(bufsize + 1); //std::string guarantees a null-terminator at the end of it's internal buffer, but overwriting it is UB. So we need an extra character in the string itself
+  int result = OBJ_obj2txt(&buffer[0], static_cast<int>(buffer.size()), object, 0);
+  if (result < 0) {
+    throw OpenSSLError("Failed to get extension name");
+  }
+  assert(result == bufsize_result);
+  buffer.resize(bufsize); // Remove null-terminator
+  return buffer;
+}
+
+std::string X509Extension::getValue() const {
+  BIO *bio = BIO_new(BIO_s_mem());
+  if (!bio) {
+    throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509Certificate::toPem.");
+  }
+  PEP_DEFER(BIO_free(bio));
+
+  if (X509V3_EXT_print(bio, mRaw, 0, 0) <= 0) {
+    throw pep::OpenSSLError("Failed to write certificate to IO buffer (BIO) in X509Certificate::toPem.");
+  }
+
+  return OpenSSLBIOToString(bio);
+}
+
 X509Certificate::X509Certificate(const X509Certificate& other) {
   *this = other;
 }
@@ -641,6 +703,25 @@ std::optional<std::string> X509CertificateSigningRequest::getCommonName() const 
 
 std::optional<std::string> X509CertificateSigningRequest::getOrganizationalUnit() const {
   return searchOIDinSubject(NID_organizationalUnitName);
+}
+
+std::vector<X509Extension> X509CertificateSigningRequest::getExtensions() const {
+  assert(mCSR);
+
+  STACK_OF(X509_EXTENSION)* extensions = X509_REQ_get_extensions(mCSR);
+  PEP_DEFER(sk_X509_EXTENSION_pop_free(extensions, X509_EXTENSION_free)); //Free up the stack itself, as well as any remaining elements in the stack
+
+  assert(extensions != nullptr); // If the CSR has no extensions, it should just return an empty stack, so extensions should always be set
+  int numExtensions = sk_X509_EXTENSION_num(extensions);
+  assert(numExtensions >= 0); //If extensions!=nullptr, this should always be the case
+  std::vector<X509Extension> result;
+  result.reserve(static_cast<size_t>(numExtensions));
+  while (sk_X509_EXTENSION_num(extensions) > 0) {
+    X509_EXTENSION* extension = sk_X509_EXTENSION_pop(extensions);
+    assert(extension != nullptr);
+    result.emplace_back(extension); //X509Extension is now the owner of the pointer, and responsible for freeing it
+  }
+  return result;
 }
 
 AsymmetricKey X509CertificateSigningRequest::getPublicKey() const {
