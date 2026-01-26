@@ -17,9 +17,10 @@ if "%jobnumber%" == "" (
 )
 
 REM Make config version build number fit in 16 bits, see pep.wxs
-REM Preferably, keep number to subtract consistent with binary pipeline in Windows.Exe.VersionInfo.rc
-if %pipelinenumber% gtr 60000 (
-  set /a "truncatedPipelineNumber=%pipelinenumber% - 60000"
+REM Preferably, keep number to subtract consistent with binary pipeline in /cpp/pep/CMakeLists.txt
+set pipelineSubtract=60000
+if %pipelinenumber% gtr %pipelineSubtract% (
+  set /a "truncatedPipelineNumber=%pipelinenumber% - %pipelineSubtract%"
 ) else (
   set truncatedPipelineNumber=%pipelinenumber%
 )
