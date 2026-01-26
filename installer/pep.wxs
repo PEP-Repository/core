@@ -31,7 +31,6 @@
 <?endif ?>
 
 
-<!-- Keep this version number equal to the one in PEP's Windows.Exe.VersionInfo.rc file. -->
 <?define Version = "$(var.MajorVersion).$(var.MinorVersion).$(var.TruncatedPipelineNumber).$(var.JobNumber)" ?>
 <?define Flavor = "$(var.ProjectCaption) $(var.EnvironmentName)" ?>
 <?define VersionText = "($(var.Flavor)) $(var.MajorVersion).$(var.MinorVersion).$(var.PipelineNumber).$(var.JobNumber)" ?>
