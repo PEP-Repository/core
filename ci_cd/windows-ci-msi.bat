@@ -23,7 +23,7 @@ if "%BUILD_DIRECTORY%" == "" (
   set BUILD_DIR=%BUILD_DIRECTORY%
 )
 
-call "%createWixInstaller%" %BUILD_DIR% pepBinaries.wixlib config %CI_COMMIT_REF_NAME% %CI_PIPELINE_ID% %CI_JOB_ID%|| exit /B 1
+call "%createWixInstaller%" %BUILD_DIR% pepBinaries.wixlib config %CI_COMMIT_REF_NAME% %CI_PIPELINE_ID% %truncatedPipelineId% %CI_JOB_ID%|| exit /B 1
 
 echo Staging WiX installer.
 mkdir "%BUILD_DIR%\wix\msi"

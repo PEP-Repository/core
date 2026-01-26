@@ -12,8 +12,16 @@ REM TODO support installer build for local infra (with the project configuration
 
 if "%jobnumber%" == "" (
 	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<pipelineNumber^> ^<jobNumber^>
-	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 12345 876543
+	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 66123 876543
 	exit /B 1
+)
+
+REM Make config version build number fit in 16 bits, see pep.wxs
+REM Preferably, keep number to subtract consistent with binary pipeline in Windows.Exe.VersionInfo.rc
+if %pipelinenumber% gtr 60000 (
+  set /a "truncatedPipelineNumber=%pipelinenumber% - 60000"
+) else (
+  set truncatedPipelineNumber=%pipelinenumber%
 )
 
 echo Creating build directory
@@ -85,7 +93,7 @@ echo Harvesting project configuration files into WiX source
 
 echo Compiling WiX sources
 "%WIX%\bin\candle.exe" -nologo -dArtifactsDir="%artifactsdir%" -arch x64 -out "%wixdir%\configFiles.wixobj" "%wixdir%\configFiles.wxs" || exit /B 1
-"%WIX%\bin\candle.exe" -nologo -dMajorVersion="%majorVersion%" -dMinorVersion="%minorVersion%" -dPipelineNumber="%pipelinenumber%" -dJobNumber=%jobnumber% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
+"%WIX%\bin\candle.exe" -nologo -dMajorVersion="%majorVersion%" -dMinorVersion="%minorVersion%" -dPipelineNumber="%pipelinenumber%" -dTruncatedPipelineNumber="%truncatedPipelineNumber%" -dJobNumber=%jobnumber% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
 
 echo Linking MSI installer
 REM Suppress "warning LGHT1076 : ICE69: Mismatched component reference", which is issued because
