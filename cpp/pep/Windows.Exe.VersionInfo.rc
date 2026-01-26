@@ -18,7 +18,6 @@
 #include <Windows.h> // Needed for some resource-related macros: see a.o. https://stackoverflow.com/a/17781224
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/stringize.hpp>
-#include <boost/preprocessor/arithmetic/sub.hpp>
 
 /* Gitlab CI builds set (a.o.) the CI_COMMIT_REF_NAME and CI_PIPELINE_ID environment values,
  * which we receive in our C++ build as the BUILD_REF and BUILD_PIPELINE_ID preprocessor symbols.
@@ -38,9 +37,11 @@
 
 // Make VERSIONINFO fields fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
 // Note: Windows doesn't complain when it would be too large, it just truncates it.
-// Preferably, keep number to subtract consistent with config pipeline in createWixInstaller.bat
-#if VER_PIPELINE > 60000
-# define VER_PIPELINE_TRUNC BOOST_PP_SUB(VER_PIPELINE, 60000)
+#if (BUILD_TRUNCATED_PIPELINE_ID -1 == -1) // Local development version
+# define VER_TRUNCATED_PIPELINE 0
+#else // Gitlab CI build
+// Keep this version number equal to the one in WiX installer logic.
+# define VER_TRUNCATED_PIPELINE BUILD_TRUNCATED_PIPELINE_ID
 #endif
 
 #if (BUILD_JOB_ID -1 == -1) // Local development version
@@ -53,7 +54,7 @@
 
 // XXXVERSION directives must be delimited by commas
 // We don't include the job number (400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits
-#define VERSION_NUM BUILD_MAJOR_VERSION,BUILD_MINOR_VERSION,VER_PIPELINE_TRUNC
+#define VERSION_NUM BUILD_MAJOR_VERSION,BUILD_MINOR_VERSION,VER_TRUNCATED_PIPELINE
 
 // "XxxVersion" strings must be delimited by full stops (periods)
 #define VERSION_STR BOOST_PP_STRINGIZE(BUILD_MAJOR_VERSION.BUILD_MINOR_VERSION.VER_PIPELINE.VER_JOB)
