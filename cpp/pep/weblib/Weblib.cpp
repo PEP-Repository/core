@@ -451,8 +451,16 @@ int main() {
     }
     std::abort();
   });
-  // Can likely be filtered via browser console (labeled 'debug', see JsConsoleLogging)
-  Logging::Initialize({std::make_shared<JsConsoleLogging>(verbose)});
+
+  const bool isWeb = val::global("process").isUndefined();
+  if (isWeb) {
+    // Can likely be filtered via browser console (labeled 'debug', see JsConsoleLogging)
+    Logging::Initialize({std::make_shared<JsConsoleLogging>(verbose)});
+  } else {
+    // Do not use console.log on Node as messages from worker threads will not immediately be printed
+    // See https://github.com/nodejs/node/issues/30491
+    Logging::Initialize({std::make_shared<ConsoleLogging>(verbose)});
+  }
 
   // Keep running until JS calls exit
   ::emscripten_exit_with_live_runtime();
