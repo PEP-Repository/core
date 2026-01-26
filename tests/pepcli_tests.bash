@@ -662,33 +662,36 @@ if should_run_test certificate-renewal; then
   # so we als make an absolute path that we can pass to pepcli.
   certificate_renewal_data_dir="certificate-renewal"
   execute . mkdir -p "$certificate_renewal_data_dir/old-chains"
-  certificate_renewal_data_dir_absolute="$(execute $certificate_renewal_data_dir pwd)"
-  ca_key_file_name="${PKI_DIR}/pepServerCA.key"
-  ca_key_cert="${PKI_DIR}/pepServerCA.chain"
-  password_file="${PKI_DIR}/pepServerCA.password"
-  ca_config_file_name="${CORE_DIR}/pki/ca_ext.cnf"
 
-  extensions="pep_cert"
+  certificate_renewal_data_dir_absolute="$(execute $certificate_renewal_data_dir pwd)"
+  ca_config_file_name="$certificate_renewal_data_dir_absolute/ca_ext.cnf"
+  trace cat "${CORE_DIR}/pki/ca_ext.cnf" | execute "$certificate_renewal_data_dir" tee "$ca_config_file_name"
+
+  execute "$certificate_renewal_data_dir" openssl rand -base64 -out "fakeCA.password" 32
+  execute "$certificate_renewal_data_dir" openssl req -x509 -newkey rsa:4096 -keyout fakeCA.key -out fakeCA.cert -passin file:fakeCA.password \
+    -sha256 -days 3650 -nodes -subj "/C=NL/ST=Gelderland/L=Nijmegen/O=Radboud Universiteit/OU=PEP Intermediate PEP Server CA/CN=PEP Intermediate PEP Server CA"
+
   sign_csr() {
     csr_file_name="$1"
     file_name_base="${csr_file_name%.csr}"
     cert_file_name="$file_name_base.cert"
     chain_file_name="$file_name_base.chain"
     common_name=${file_name_base#PEP}
-    expired="${2:-}"
+    validity="${2:-}"
 
-    validity_options="-days 365"
-    if [ "$expired" = "expired" ]; then
-      validity_options="-not_before 19700101000001Z -not_after 19700102000001Z"
+    ca_key_file_name="${PKI_DIR}/pepServerCA.key"
+    ca_key_cert="${PKI_DIR}/pepServerCA.chain"
+    password_file="${PKI_DIR}/pepServerCA.password"
+    extensions="pep_cert"
+
+    if [ "$validity" = "invalid" ]; then
+      ca_key_file_name="fakeCA.key"
+      ca_key_cert="fakeCA.cert"
+      password_file="fakeCA.password"
     fi
 
-    {
-      cat "$ca_config_file_name" ;
-      echo "DNS.2 = \"$common_name\"" ;
-    } | execute "$certificate_renewal_data_dir" tee ca_ext.cnf > /dev/null
-    # shellcheck disable=SC2086 # validity_options should be word-split
     execute "$certificate_renewal_data_dir" openssl x509 -req -sha256 -in "$csr_file_name" -CAkey "$ca_key_file_name" -CA "$ca_key_cert" \
-     -out "$cert_file_name" $validity_options -extfile ca_ext.cnf -extensions "$extensions"  \
+     -out "$cert_file_name" -days 365 -extfile "$ca_config_file_name" -extensions "$extensions"  \
      -CAcreateserial -CAserial ca_serial.srl -passin file:"$password_file"
 
     execute "$certificate_renewal_data_dir" cat "$cert_file_name" "$ca_key_cert" | execute "$certificate_renewal_data_dir" tee "$chain_file_name" > /dev/null
@@ -698,12 +701,12 @@ if should_run_test certificate-renewal; then
   sign_csrs() {
     expected_csr_count="$1"
     subdir="${2:-"."}"
-    expired="${3:-}"
+    validity="${3:-}"
 
     csrs="$(execute "$certificate_renewal_data_dir" find "$subdir" -maxdepth 1 -name "*.csr")"
     [ "$(echo "$csrs" | wc -l)" -eq "$expected_csr_count" ] || fail "Expected exactly $expected_csr_count *.csr file(s) in $certificate_renewal_data_dir/$subdir. Found *.csr files: $csrs"
     for csr in $csrs; do
-      sign_csr "$csr" "$expired"
+      sign_csr "$csr" "$validity"
     done
   }
 
@@ -763,14 +766,14 @@ if should_run_test certificate-renewal; then
   pepcli --oauth-token-group "System Administrator" server certificate request-csr --server "$server" --output-directory "$certificate_renewal_data_dir_absolute"
 
   trace sign_csrs 1 first-run
-  trace sign_csrs 1 . expired
+  trace sign_csrs 1 . invalid
 
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute/first-run" \
     && fail "After running 'request-csr' a second time, it should no longer be possible to use the CSRs from the first run"
   pepcli --oauth-token-group "Data Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
     && fail "Only System Administrator should be able to replace certificates"
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
-    && fail "Replacing certificates with an expired certificate should not be possible"
+    && fail "Replacing certificates with an invalid certificate should not be possible"
   trace sign_csrs 1
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute"
   trace compare_chains "$server" replaced
