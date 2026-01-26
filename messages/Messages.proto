@@ -533,7 +533,7 @@ message Ticket2 {
   repeated string modes = 2;
 
   // The local pseudonyms of the participants to which access was granted.
-  repeated LocalPseudonyms pseudonyms = 3;
+  repeated LocalPseudonyms access_subjects = 3;
 
   // The columns to which access was granted.
   repeated string columns = 4;

@@ -43,7 +43,7 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
     result.mColumns.push_back(std::move(x));
 
   Serialization::AssignFromRepeatedProtocolBuffer(result.mAccessSubjects,
-    std::move(*source.mutable_pseudonyms()));
+    std::move(*source.mutable_access_subjects()));
 
   return result;
 }
@@ -57,7 +57,7 @@ void Serializer<Ticket2>::moveIntoProtocolBuffer(proto::Ticket2& dest, Ticket2 v
   dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
   for (auto& x : value.mColumns)
     dest.add_columns(std::move(x));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_pseudonyms(), std::move(value.mAccessSubjects));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_access_subjects(), std::move(value.mAccessSubjects));
 }
 
 SignedTicket2 Serializer<SignedTicket2>::fromProtocolBuffer(proto::SignedTicket2&& source) const {
