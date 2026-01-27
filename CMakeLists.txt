@@ -27,6 +27,10 @@ endif()
 
 project(pep)
 
+if(DEFINED EMSCRIPTEN)
+  message(STATUS "Emscripten version: ${EMSCRIPTEN_VERSION}")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules/")
 
 # Prevent build time switching between configurations (in Visual Studio), since
