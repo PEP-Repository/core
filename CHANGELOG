@@ -38,6 +38,12 @@ MANUAL CHANGES REQUIRED:
 
 Past changes, do not edit (except by person doing release):
 
+Release 1.6 (started 2026-01-28):
+
+- #1341: This (1.6) release is functionally identical to release 1.5. The increased (minor) version number prevents software upgrades from failing
+  if/when a hotfix is needed. See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341#note_55814 .
+
+
 Release 1.5 (started 2025-09-01):
 
 - #2638: Added `--export` option to `pepcli pull` which does a basic export to json or csv after downloading the data.
