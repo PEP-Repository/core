@@ -1,6 +1,6 @@
 # PEP
 
-PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The software provides a data repository featuring secure and privacy friendly data storage and dissemination. More information is available on the [project home page](https://pep.cs.ru.nl/), which also contains a link to the [user documentation](https://docs.pages.pep.cs.ru.nl/public/core/master/).
+PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The software provides a data repository featuring secure and privacy friendly data storage and dissemination. More information is available on the [project home page](https://pep.cs.ru.nl/), which also contains a link to the [user documentation](https://docs.pages.pep.cs.ru.nl/public/core/main/).
 
 ## Building
 

@@ -209,7 +209,7 @@ message TranscryptorRequestEntry {
 
   // Zero-knowledge proofs that the previous partially RSKed
   // encrypted local pseudonyms were correctly RSKed by the AM.
-  // See https://docs.pages.pep.cs.ru.nl/private/ops/master/development/Design-logger/
+  // See https://docs.pages.pep.cs.ru.nl/private/ops/main/development/Design-logger/
   RSKProof access_manager_proof = 5;
   RSKProof storage_facility_proof = 6;
   RSKProof transcryptor_proof = 7;
@@ -356,7 +356,7 @@ message ConfigVersion {
   // Field indices were defined identically to VersionResponse because it may yield some benefit in the future.
 
   // This message has never had a field with index 1
-  string reference = 2; // 'master', ... (git branches or tags)
+  string reference = 2; // 'main', ... (git branches or tags)
   string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
   string job_id = 4; // '123', ... (GitLab CI job id)
   string revision = 5; // git revision if available
@@ -373,7 +373,7 @@ message VersionResponse {
   // Backward compatible: store binary version values directly instead of encapsulating a GitlabVersion or the likes.
 
   string target = 1; // 'mac', 'win', 'linux'
-  string reference = 2; // 'master', ... (git branches or tags)
+  string reference = 2; // 'main', ... (git branches or tags)
   string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
   string job_id = 4; // '123', ... (GitLab CI job id)
   string revision = 5; // git revision if available
@@ -1155,7 +1155,7 @@ message FindUserResponse {
 //
 // Zero-knowledge proofs used by the Access Manager to show to the
 // Transcryptor that it correctlyRSKed the polymorphic pseudonyms.
-// See https://docs.pages.pep.cs.ru.nl/private/ops/master/development/Design-logger/
+// See https://docs.pages.pep.cs.ru.nl/private/ops/main/development/Design-logger/
 //
 
 // A compositional zero-knowledge proof that curvepoints (A, M, N)
