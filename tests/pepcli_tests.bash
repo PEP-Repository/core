@@ -659,7 +659,7 @@ if should_run_test certificate-renewal; then
   signing_servers=(authserver transcryptor storagefacility registrationserver accessmanager)
   # For execute calls, we need paths relative to $DATA_DIR
   # But since pepcli, for local runs, always has $DEST_DIR as working directory, these relative paths don't resolve correctly when passing them to pepcli.
-  # so we als make an absolute path that we can pass to pepcli.
+  # so we also make an absolute path that we can pass to pepcli.
   certificate_renewal_data_dir="certificate-renewal"
   execute . mkdir -p "$certificate_renewal_data_dir/old-chains"
 
