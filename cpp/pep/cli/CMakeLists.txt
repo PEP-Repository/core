@@ -30,6 +30,8 @@ set(PEPCLI_SRCS
     Pull.cpp
     Query.cpp
     Register.cpp
+    Server.cpp Server.hpp
+    server/CommandCertificate.cpp server/CommandCertificate.hpp
     SingleCellCommand.cpp SingleCellCommand.hpp
     Store.cpp
     structuredoutput/TableFromDownloadDirectory.cpp structuredoutput/TableFromDownloadDirectory.hpp

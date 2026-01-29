@@ -628,7 +628,7 @@ void RegistrationServer::computeChecksumChainChecksum(
 }
 
 messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationRequest(std::shared_ptr<SignedPEPIdRegistrationRequest> signedRequest) {
-  signedRequest->validate(this->getRootCAs());
+  signedRequest->validate(*this->getRootCAs());
 
   struct ParticipantIdentity {
     std::string id;
@@ -669,7 +669,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
 }
 
 messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(std::shared_ptr<SignedRegistrationRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
 
   if (request.mEncryptionPublicKeyPem.empty()) {
     throw std::runtime_error("Participant registration requires the encryption key for shadow storage to be verified. Please ensure that the client provides one.");

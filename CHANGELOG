@@ -28,6 +28,12 @@ Changes in upcoming release (1.7):
   of) subjects for whom the command retrieves no data. This a.o. allows subject groups to be listed without requiring
   data presence and accessibility, and without having to specify column(group)(s):
     pepcli list -P some-subject-group --show-dataless
+    
+- #1970: We can now request a CSR from servers for their PEP certificates, and replace the certificate after we signed a new one, all using pepcli.
+  This does not apply to the TLS certificates, so is not that useful yet, until we replace those with "normal" TLS certificates from a public CA (#2768).
+  For this to work, the certificates will need to be in a writable location (#2769), which they are currently not. That will need to be solved at some point,
+  before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.  
+
 
 MANUAL CHANGES REQUIRED:
 

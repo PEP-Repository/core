@@ -15,6 +15,9 @@ public:
   public:
     Parameters(const Configuration& config);
 
+    const EndPoint& getAccessManagerEndPoint() const;
+    void setAccessManagerEndPoint(EndPoint endPoint);
+
     std::shared_ptr<messaging::ServerConnection> getAccessManager() const;
     void setAccessManager(std::shared_ptr<messaging::ServerConnection> accessManager);
 
@@ -27,14 +30,19 @@ public:
 
     const std::optional<std::filesystem::path>& getStorageFile() const;
 
+    std::shared_ptr<X509RootCertificates> getRootCertificates() const;
+    void setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates);
+
     void check() const;
 
   private:
+    EndPoint accessManagerEndpoint;
     std::shared_ptr<messaging::ServerConnection> accessManager;
     std::shared_ptr<const X509Identity> signingIdentity;
     std::chrono::seconds tokenExpiration = std::chrono::seconds::zero();
     std::string oauthTokenSecret;
     std::optional<std::filesystem::path> storageFile;
+    std::shared_ptr<X509RootCertificates> rootCertificates;
   };
 
 public:
