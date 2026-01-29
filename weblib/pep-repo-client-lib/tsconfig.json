@@ -18,5 +18,5 @@
     // CLI
     "pretty": true
   },
-  "include": ["./src/"]
+  "include": ["./*.mjs", "./src/"]
 }

@@ -2,22 +2,22 @@
  * @file This is run in integration.sh
  */
 
-import {describe} from 'mocha';
 import {expect} from 'chai';
-import Pep, {CellEntry, ClientConfig} from "./pep.mjs";
-import fs from 'node:fs';
-import fsp from 'node:fs/promises';
-import consumers from 'node:stream/consumers';
+import Pep, {CellEntry, ClientConfig, InitConfig} from "./pep.mjs";
 import {binaryToString, concatStringsAsync} from "./utils.mjs";
 
+const isNode = !!globalThis.process;
+
 let mainExited = false;
-process.on('beforeExit', () => {
-  if (!mainExited) {
-    process.exitCode ??= 13;
-    console.error('\nUnexpected exit: Either Node.js was terminated or ' +
-        'it prevented a hang due to a Promise that can never be fulfilled');
-  }
-});
+if (isNode) {
+  process.on('beforeExit', () => {
+    if (!mainExited) {
+      process.exitCode ??= 13;
+      console.error('\nUnexpected exit: Either Node.js was terminated or ' +
+          'it prevented a hang due to a Promise that can never be fulfilled');
+    }
+  });
+}
 
 interface OAuthTokenSecretFile {
   OAuthTokenSecret: string;
@@ -27,32 +27,51 @@ describe('Pep', function () {
   let pep!: Pep;
   before(async function () {
     console.debug('Loading config');
-    const [
-      clientConfig,
-      CACertificateFile,
-      ShadowPublicKeyFile,
-      tokenSecretFile
-    ] = await Promise.all([
-      consumers.json(fs.createReadStream(new URL('../test_config/ClientConfig.json', import.meta.url), 'utf8')) as Promise<ClientConfig>,
-      fsp.readFile(new URL('../test_config/rootCA.cert', import.meta.url), 'utf8'),
-      fsp.readFile(new URL('../test_config/ShadowAdministration.pub', import.meta.url), 'utf8'),
-      consumers.json(fs.createReadStream(new URL('../test_config/OAuthTokenSecret.json', import.meta.url), 'utf8')) as Promise<OAuthTokenSecretFile>,
-    ]);
-    clientConfig.ProjectConfigFile = '';
-
-    console.debug('Initializing Pep');
-    pep = await Pep.create({
-      clientConfig,
-      configFileContentOverrides: {
+    let pepCreateArgs: InitConfig;
+    let tokenSecretObj: OAuthTokenSecretFile;
+    if (isNode) {
+      // Node.js cannot `fetch` `file:` URLs (yet)
+      const [fs, fsp, consumers] = await Promise.all([
+          import('node:fs'),
+          import('node:fs/promises'),
+          import('node:stream/consumers'),
+      ]);
+      const [
+        clientConfig,
         CACertificateFile,
         ShadowPublicKeyFile,
-      },
-    });
+        tokenSecretObj0
+      ] = await Promise.all([
+        consumers.json(fs.createReadStream(new URL('../dist-test/ClientConfig.json', import.meta.url), 'utf8')) as Promise<ClientConfig>,
+        fsp.readFile(new URL('../dist-test/rootCA.cert', import.meta.url), 'utf8'),
+        fsp.readFile(new URL('../dist-test/ShadowAdministration.pub', import.meta.url), 'utf8'),
+        consumers.json(fs.createReadStream(new URL('../dist-test/OAuthTokenSecret.json', import.meta.url), 'utf8')) as Promise<OAuthTokenSecretFile>,
+      ]);
+      tokenSecretObj = tokenSecretObj0;
+      clientConfig.ProjectConfigFile = '';
+
+      pepCreateArgs = {
+        clientConfig,
+        configFileContentOverrides: {
+          CACertificateFile,
+          ShadowPublicKeyFile,
+        },
+      };
+    } else {
+      tokenSecretObj = await fetch(new URL('../dist-test/OAuthTokenSecret.json', import.meta.url))
+          .then(r => r.json()) as OAuthTokenSecretFile;
+      pepCreateArgs = {
+        clientConfig: new URL('../dist-test/ClientConfig.json', import.meta.url),
+      };
+    }
+
+    console.debug('Initializing Pep');
+    pep = await Pep.create(pepCreateArgs);
     console.debug('Pep initialized');
 
     await pep.runHandleWasmException(async () => {
       console.debug('Generating token');
-      const token = pep.internalGenerateToken(tokenSecretFile.OAuthTokenSecret, 'Research Assessor');
+      const token = pep.internalGenerateToken(tokenSecretObj.OAuthTokenSecret, 'Research Assessor');
       console.debug('Authenticating with token');
       await pep.authenticateWithToken(token);
       console.debug('Authenticated');

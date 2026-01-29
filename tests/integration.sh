@@ -414,6 +414,7 @@ fi
 
 ####################
 
+# Requires pepWeblibJs target to be built
 if should_run_test weblib; then
   trace cd "$CORE_DIR/weblib/pep-repo-client-lib/"
 
@@ -441,8 +442,8 @@ if should_run_test weblib; then
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
 
-  trace mkdir -p ./test_config/
-  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR/rootCA.cert" ./test_config/
+  trace mkdir -p ./dist-test/
+  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR/rootCA.cert" ./dist-test/
 
   start_websocket_proxy_flags=()
   if [ -n "${CI-}" ]; then

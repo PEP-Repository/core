@@ -7,32 +7,41 @@ import webpack from 'webpack';
  * @return {webpack.Configuration}
  */
 export default (env, argv) => ({
-  entry: {
-    'pep-repo-client': 'pep-repo-client',
-    'pep-repo-client-utils': 'pep-repo-client/utils',
-  },
-  experiments: {
-    outputModule: true,
-  },
+  entry: [
+      './src/pep.spec.mts',
+  ],
   output: {
     clean: {
       // Delete only temporary files
       keep: /^(?![a-h0-9]{20}\.\w+$)/,
     },
-    library: {
-      type: 'modern-module',
-    },
-    chunkFormat: 'module',
-    path: path.resolve(import.meta.dirname, 'dist'),
+    filename: 'tests.js',
+    path: path.resolve(import.meta.dirname, 'dist-test'),
   },
+  externals: [
+    // Keep consistent with tests.html
+    {
+      mocha: 'script mocha@https://unpkg.com/mocha@11/mocha.js',
+    },
+  ],
+
   module: {
-    parser: {
-      javascript: {
-        // Leave import.meta.url alone
-        importMeta: false,
+    rules: [
+      {
+        test: /\.m?ts$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
       },
+    ],
+  },
+  resolve: {
+    extensions: [".js", ".mjs", ".ts", ".mts"],
+    extensionAlias: {
+      ".js": [".ts", ".js"],
+      ".mjs": [".mts", ".mjs"],
     },
   },
+
   devtool: 'source-map',
   // Enable filesystem cache in non-watch development mode
   ...(argv.mode === 'development' && !argv.watch ? {

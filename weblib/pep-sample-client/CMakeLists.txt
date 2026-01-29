@@ -1,7 +1,7 @@
 # NPM wants to be run in the source folder, so we need to link/copy stuff from the build folder to there
 
 add_custom_target(pep-sample-client-npm
-    COMMENT "Install dependencies"
+    COMMENT "Install dependencies for pep-sample-client"
     COMMAND ${NPM_PROGRAM} install
     VERBATIM
     DEPENDS ${PROJECT_NAME}WeblibJs
@@ -12,7 +12,7 @@ set_target_properties(pep-sample-client-npm PROPERTIES
 )
 
 add_custom_target(pep-sample-client-build
-    COMMENT "Type-check code and bundle dependencies"
+    COMMENT "Type-check code and bundle dependencies for pep-sample-client"
     COMMAND ${NPM_PROGRAM} run types:check
     COMMAND ${NPM_PROGRAM} run "$<IF:$<CONFIG:Debug>,build-dev,build>"
     VERBATIM
@@ -29,7 +29,7 @@ set(separate_dwarf_copy_args_debug
     ${CMAKE_CURRENT_SOURCE_DIR}/dist/${PROJECT_NAME}Weblib.wasm.debug.wasm
 )
 add_custom_target(pep-sample-client-separate-dwarf
-    COMMENT "Copy -gseparate-dwarf debug info"
+    COMMENT "Copy -gseparate-dwarf debug info for pep-sample-client"
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist/
     # Use cat to skip in Release mode
     COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
@@ -66,7 +66,7 @@ add_custom_target(${PROJECT_NAME}WeblibSampleClient ALL
 
 if(PEP_WEBLIB_SOURCE_MAP)
   add_custom_target(pep-sample-client-source-map
-      COMMENT "Copy -gsource-map"
+      COMMENT "Copy -gsource-map for pep-sample-client"
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist/
       COMMAND ${CMAKE_COMMAND} -E create_symlink
         $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.map
