@@ -53,7 +53,7 @@ Project teams that use PEP, or parties interested in doing so, can direct their 
 
 ## NOLAI Workshop 2024/5/23
 
-Go [to the NOLAI PEP Workshop](/public/nolai-sandbox/master/#).
+Go [to the NOLAI PEP Workshop](/public/nolai-sandbox/main/#).
 
 ## Development
 

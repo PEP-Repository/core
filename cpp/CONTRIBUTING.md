@@ -227,7 +227,7 @@ else {
   - or `static const int NUMBER_OF_ATTEMPTS = 4` (because of scoping, no #define);
 - do not use `exit(n)` or `abort()` in your code directly;
 - always use a catch all in your `main` function (or even better, use the infrastructure provided by the `pep::Application` class);
-- use the macros in [the `BuildFlavor.hpp`](https://gitlab.pep.cs.ru.nl/pep/core/-/blob/master/core/BuildFlavor.hpp) header to differentiate between (debug and release) build types, instead of the canonical but [difficult-to-interpret](https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1317) `#ifndef NDEBUG`.
+- use the macros in [the `BuildFlavor.hpp`](https://gitlab.pep.cs.ru.nl/pep/core/-/blob/main/core/BuildFlavor.hpp) header to differentiate between (debug and release) build types, instead of the canonical but [difficult-to-interpret](https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1317) `#ifndef NDEBUG`.
   
 ### Use smart pointers
 
@@ -252,7 +252,7 @@ else {
 
 ### Logging and severity levels
 
-PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/master/core/include/Log.hpp) based on the [Boost.Log library](https://www.boost.org/doc/libs/1_67_0/libs/log/doc/html/index.html). Use the `LOG` macro to add entries.
+PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/core/include/Log.hpp) based on the [Boost.Log library](https://www.boost.org/doc/libs/1_67_0/libs/log/doc/html/index.html). Use the `LOG` macro to add entries.
 <details>
   <summary>Example:</summary>
 

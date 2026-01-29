@@ -11,7 +11,7 @@ class GitlabVersion {
 public:
   SemanticVersion getSemver() const { return mSemver;}
   inline const std::string& getProjectPath() const noexcept { return mProjectPath; } // 'pep/foss', ... (Gitlab project path)
-  inline const std::string& getReference() const noexcept { return mReference; } // 'master', ... (git branches or tags)
+  inline const std::string& getReference() const noexcept { return mReference; } // 'main', ... (git branches or tags)
   inline const std::string& getRevision() const noexcept { return mRevision; } // git revision if available
 
   GitlabVersion(

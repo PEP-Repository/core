@@ -241,12 +241,12 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       humanReadableUidIt = params.find("human_readable_uid");
   if(primaryUidIt == params.end() || humanReadableUidIt == params.end()) {
     std::array<std::pair<std::string, std::string>, 7> testUsers{{
-      {"assessor@master.pep.cs.ru.nl", UserGroup::ResearchAssessor},
-      {"monitor@master.pep.cs.ru.nl", UserGroup::Monitor},
-      {"dataadmin@master.pep.cs.ru.nl", UserGroup::DataAdministrator},
-      {"accessadmin@master.pep.cs.ru.nl", UserGroup::AccessAdministrator},
-      {"systemadmin@master.pep.cs.ru.nl", UserGroup::SystemAdministrator},
-      {"multihat@master.pep.cs.ru.nl", "Someone with all roles"},
+      {"assessor@main.pep.cs.ru.nl", UserGroup::ResearchAssessor},
+      {"monitor@main.pep.cs.ru.nl", UserGroup::Monitor},
+      {"dataadmin@main.pep.cs.ru.nl", UserGroup::DataAdministrator},
+      {"accessadmin@main.pep.cs.ru.nl", UserGroup::AccessAdministrator},
+      {"systemadmin@main.pep.cs.ru.nl", UserGroup::SystemAdministrator},
+      {"multihat@main.pep.cs.ru.nl", "Someone with all roles"},
       {"eve@university-of-adversaries.com", "Someone without access"}
     }};
     auto linkUri = request.uri();

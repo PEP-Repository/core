@@ -326,12 +326,12 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   createUserGroup(UserGroup(UserGroup::AccessAdministrator, std::nullopt));
   createUserGroup(UserGroup(UserGroup::SystemAdministrator, std::nullopt));
 
-  auto assessorId = createUser("assessor@master.pep.cs.ru.nl");
-  auto monitorId = createUser("monitor@master.pep.cs.ru.nl");
-  auto dataadminId = createUser("dataadmin@master.pep.cs.ru.nl");
-  auto accessadminId = createUser("accessadmin@master.pep.cs.ru.nl");
-  auto systemadminId = createUser("systemadmin@master.pep.cs.ru.nl");
-  auto multihatId = createUser("multihat@master.pep.cs.ru.nl");
+  auto assessorId = createUser("assessor@main.pep.cs.ru.nl");
+  auto monitorId = createUser("monitor@main.pep.cs.ru.nl");
+  auto dataadminId = createUser("dataadmin@main.pep.cs.ru.nl");
+  auto accessadminId = createUser("accessadmin@main.pep.cs.ru.nl");
+  auto systemadminId = createUser("systemadmin@main.pep.cs.ru.nl");
+  auto multihatId = createUser("multihat@main.pep.cs.ru.nl");
 
   addUserToGroup(assessorId, UserGroup::ResearchAssessor);
   addUserToGroup(monitorId, UserGroup::Monitor);
