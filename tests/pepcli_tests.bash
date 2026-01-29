@@ -689,6 +689,9 @@ if should_run_test certificate-renewal; then
       ca_key_cert="fakeCA.cert"
       password_file="fakeCA.password"
     fi
+    if [ "$validity" = "tls" ]; then
+      extensions="server_cert"
+    fi
 
     execute "$certificate_renewal_data_dir" openssl x509 -req -sha256 -in "$csr_file_name" -CAkey "$ca_key_file_name" -CA "$ca_key_cert" \
      -out "$cert_file_name" -days 365 -extfile "$ca_config_file_name" -extensions "$extensions"  \
@@ -770,11 +773,14 @@ if should_run_test certificate-renewal; then
 
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute/first-run" \
     && fail "After running 'request-csr' a second time, it should no longer be possible to use the CSRs from the first run"
-  pepcli --oauth-token-group "Data Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
-    && fail "Only System Administrator should be able to replace certificates"
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
     && fail "Replacing certificates with an invalid certificate should not be possible"
+  trace sign_csrs 1 . tls
+  pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
+    && fail "Replacing certificates with a TLS certificate should not be possible"
   trace sign_csrs 1
+  pepcli --oauth-token-group "Data Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute" \
+    && fail "Only System Administrator should be able to replace certificates"
   pepcli --oauth-token-group "System Administrator" server certificate replace --server "$server"  --input-directory "$certificate_renewal_data_dir_absolute"
   trace compare_chains "$server" replaced
 

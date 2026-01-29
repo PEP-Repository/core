@@ -43,6 +43,10 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
     throw Error("Cannot replace certificate for server, since the certificate does not match the new private key of the server.");
   }
 
+  if (request.getCertificateChain().leaf().hasTLSServerEKU()) {
+    throw Error("Cannot replace certificate for server, since it is a TLS certificate. It must be a PEP certificate.");
+  }
+
   if (!request.allowChangingSubject() && !request.getCertificateChain().leaf().hasSameSubject(mIdentityFiles->identity()->getCertificateChain().leaf())) {
     throw Error("New certificate has a different subject from the current certificate. Use --allow-changing-subject to force replacing the certificate.");
   }
