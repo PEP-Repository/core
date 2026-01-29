@@ -9,6 +9,6 @@ var (
 	BuildMinorVersion string
 	BuildPipelineId   string
 	BuildJobId        string
-	BuildRevision     string
+	BuildCommit       string
 	BuildTarget       string
 )

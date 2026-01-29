@@ -11,7 +11,7 @@ public:
   BinaryVersion(
     std::string projectPath,
     std::string reference,
-    std::string revision,
+    std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
     unsigned int pipelineId,
@@ -37,7 +37,7 @@ public:
   ConfigVersion(
     std::string projectPath,
     std::string reference,
-    std::string revision,
+    std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
     unsigned int pipelineId,

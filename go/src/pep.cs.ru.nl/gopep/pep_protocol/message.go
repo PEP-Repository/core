@@ -267,7 +267,7 @@ func GetCurrentBuildVersionResponse() (*pep_proto.VersionResponse, error) {
 		Reference:        build.BuildReference,
 		PipelineId:       build.BuildPipelineId,
 		JobId:            build.BuildJobId,
-		Revision:         build.BuildRevision,
+		Commit:           build.BuildCommit,
 		ProtocolChecksum: (fmt.Sprintf("%02x", build.MANUAL_PROTOCOL_CHECKSUM_COMPONENT) + pep_proto.MESSAGES_PROTO_CHECKSUM)[0:20],
 	}
 
@@ -287,7 +287,7 @@ func GetCurrentBuildVersionResponse() (*pep_proto.VersionResponse, error) {
 			MajorVersion   int    `json:"majorVersion"`
 			MinorVersion   int    `json:"minorVersion"`
 			JobId          int    `json:"jobId"`
-			Revision       string `json:"revision"`
+			Commit         string `json:"commit"`
 			ProjectPath    string `json:"projectPath"`
 			ProjectCaption string `json:"projectCaption"`
 		}
@@ -301,7 +301,7 @@ func GetCurrentBuildVersionResponse() (*pep_proto.VersionResponse, error) {
 			MinorVersion:   strconv.Itoa(configVersionJson.MinorVersion),
 			PipelineId:     strconv.Itoa(configVersionJson.PipelineId),
 			JobId:          strconv.Itoa(configVersionJson.JobId),
-			Revision:       configVersionJson.Revision,
+			Commit:         configVersionJson.Commit,
 			ProjectPath:    configVersionJson.ProjectPath,
 			ProjectCaption: configVersionJson.ProjectCaption,
 		}

@@ -29,7 +29,7 @@ using namespace pep;
 #pragma message("BinaryVersion::Minor() = " BOOST_PP_STRINGIZE(BUILD_MINOR_VERSION))
 #pragma message("BinaryVersion::PipelineId() = " BOOST_PP_STRINGIZE(BUILD_PIPELINE_ID))
 #pragma message("BinaryVersion::JobId() = " BOOST_PP_STRINGIZE(BUILD_JOB_ID))
-#pragma message("BinaryVersion::Revision() = " BUILD_REV)
+#pragma message("BinaryVersion::Commit() = " BUILD_COMMIT)
 #pragma message("BinaryVersion::Target() = " BUILD_TARGET)
 #pragma message("BinaryVersion::MessagesProtoFileChecksum() = " MESSAGES_PROTO_CHECKSUM)
 
@@ -46,7 +46,7 @@ namespace {
   }
 }
 
-const BinaryVersion BinaryVersion::current(BUILD_PROJECT_PATH, BUILD_REF, BUILD_REV, BUILD_MAJOR_VERSION, BUILD_MINOR_VERSION, BUILD_PIPELINE_ID, BUILD_JOB_ID,  BUILD_TARGET, GetCurrentProtocolChecksum());
+const BinaryVersion BinaryVersion::current(BUILD_PROJECT_PATH, BUILD_REF, BUILD_COMMIT, BUILD_MAJOR_VERSION, BUILD_MINOR_VERSION, BUILD_PIPELINE_ID, BUILD_JOB_ID,  BUILD_TARGET, GetCurrentProtocolChecksum());
 std::optional<std::filesystem::path> ConfigVersion::loadDir_;
 std::optional<ConfigVersion> ConfigVersion::loaded_;
 
@@ -54,7 +54,7 @@ std::optional<ConfigVersion> ConfigVersion::loaded_;
 BinaryVersion::BinaryVersion(
     std::string projectPath,
     std::string reference,
-    std::string revision,
+    std::string commit,
     unsigned int majorVersion, 
     unsigned int minorVersion,
     unsigned int pipelineId,
@@ -64,7 +64,7 @@ BinaryVersion::BinaryVersion(
   : GitlabVersion(
       std::move(projectPath),
       std::move(reference),
-      std::move(revision),
+      std::move(commit),
       majorVersion,
       minorVersion,
       pipelineId,
@@ -91,7 +91,7 @@ std::string BinaryVersion::prettyPrint() const {
 ConfigVersion::ConfigVersion(
     std::string projectPath,
     std::string reference,
-    std::string revision,
+    std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
     unsigned int pipelineId,
@@ -100,7 +100,7 @@ ConfigVersion::ConfigVersion(
   : GitlabVersion(
       std::move(projectPath),
       std::move(reference),
-      std::move(revision),
+      std::move(commit),
       majorVersion,
       minorVersion,
       pipelineId,
@@ -130,7 +130,7 @@ std::optional<ConfigVersion> ConfigVersion::TryLoad(const std::filesystem::path&
       loaded_ = ConfigVersion(
         config.get<std::string>("projectPath"),
         config.get<std::string>("reference"),
-        config.get<std::string>("revision"),
+        config.get<std::string>("commit"),
         config.get<unsigned int>("majorVersion"),
         config.get<unsigned int>("minorVersion"),
         config.get<unsigned int>("pipelineId"),

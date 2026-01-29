@@ -16,8 +16,8 @@ namespace {
 #  error Define BUILD_JOB_ID.
 #endif
 
-#ifndef BUILD_REV
-#  error Define BUILD_REV.
+#ifndef BUILD_COMMIT
+#  error Define BUILD_COMMIT.
 #endif
 #ifndef BUILD_REF
 #  error Define BUILD_REF.
@@ -32,20 +32,20 @@ namespace pep {
 GitlabVersion::GitlabVersion(
     std::string projectPath,
     std::string reference,
-    std::string revision,
+    std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
     unsigned int pipelineId,
     unsigned int jobId
     )
   : mProjectPath(std::move(projectPath)),
-    mReference(std::move(reference)), mRevision(std::move(revision)),
+    mReference(std::move(reference)), mCommit(std::move(commit)),
     mSemver(majorVersion, minorVersion, pipelineId, jobId) {}
 
 bool GitlabVersion::isGitlabBuild() const {
   return mSemver.hasGitlabProperties()
     // Not checking mProjectPath because legacy servers will not report this field, making us think that they're development versions
-    && !mRevision.empty()
+    && !mCommit.empty()
     && !mReference.empty();
 }
 
@@ -56,7 +56,7 @@ std::string GitlabVersion::getSummary() const {
 std::string GitlabVersion::prettyPrint() const {
   std::stringstream result{};
   result << "Version: " << mSemver.format() << '\n'
-         << "Revision: " << getRevision() << '\n'
+         << "Commit: " << getCommit() << '\n'
          << "Project path: " << getProjectPath() << '\n';
   return result.str();
 }

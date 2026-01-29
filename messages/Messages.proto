@@ -359,7 +359,7 @@ message ConfigVersion {
   string reference = 2; // 'master', ... (git branches or tags)
   string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
   string job_id = 4; // '123', ... (GitLab CI job id)
-  string revision = 5; // git revision if available
+  string commit = 5; // git commit (SHA) if available
   // This message has never had a field with index 6
   string project_path = 7; // "pep/foss", "pep/ppp", ...
   // This message has never had a field with index 8
@@ -376,7 +376,7 @@ message VersionResponse {
   string reference = 2; // 'master', ... (git branches or tags)
   string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
   string job_id = 4; // '123', ... (GitLab CI job id)
-  string revision = 5; // git revision if available
+  string commit = 5; // git commit (SHA) if available
   string protocol_checksum = 6; // checksum for network protocol compatibility
   string project_path = 7; // "pep/foss", "pep/ppp", ...
 

@@ -41,13 +41,13 @@ minorVersion="$($SCRIPTPATH/parse-version.sh get-minor "$projectRoot/version.jso
 # Use infra directory name for local builds so that the environment has a readable caption.
 reference="${CI_COMMIT_REF_NAME:-$(basename "$infraDir")}"
 
-# Use an empty revision if commit SHA cannot be determined, e.g. when the
+# Use an empty "commit" value if commit SHA cannot be determined, e.g. when the
 # project directory is not stored in a git repository.
 # See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2193
-revision=$("$SCRIPTPATH"/gitdir.sh commit-sha "$projectDir" || true)
+commit=$("$SCRIPTPATH"/gitdir.sh commit-sha "$projectDir" || true)
 if [ -n "${CI_COMMIT_SHA+x}" ]; then # Check if variable is set: https://stackoverflow.com/a/13864829
-  if [ "$revision" != "$CI_COMMIT_SHA" ]; then
-    >&2 echo "The project directory's commit SHA '$revision' does not match the CI_COMMIT_SHA '$CI_COMMIT_SHA'"
+  if [ "$commit" != "$CI_COMMIT_SHA" ]; then
+    >&2 echo "The project directory's commit SHA '$commit' does not match the CI_COMMIT_SHA '$CI_COMMIT_SHA'"
     die
   fi
 fi
@@ -66,7 +66,7 @@ echo "{"
 echo "  \"projectPath\"   : \"$projectPath\","
 echo "  \"projectCaption\": \"$projectCaption\","
 echo "  \"reference\"     : \"$reference\","
-echo "  \"revision\"      : \"$revision\","
+echo "  \"commit\"        : \"$commit\","
 echo "  \"majorVersion\"  : $majorVersion,"
 echo "  \"minorVersion\"  : $minorVersion,"
 echo "  \"pipelineId\"    : $pipelineId,"

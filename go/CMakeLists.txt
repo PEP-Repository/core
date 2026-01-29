@@ -30,7 +30,7 @@ endif()
 set(GO_BUILD_FLAGS "${GO_EXTRA_BUILD_FLAGS}" -ldflags
        "-X pep.cs.ru.nl/gopep/build.BuildProjectPath=$ENV{CI_PROJECT_PATH} \
         -X pep.cs.ru.nl/gopep/build.BuildReference=$ENV{CI_COMMIT_REF_NAME} \
-        -X pep.cs.ru.nl/gopep/build.BuildRevision=$ENV{CI_COMMIT_SHA} \
+        -X pep.cs.ru.nl/gopep/build.BuildCommit=$ENV{CI_COMMIT_SHA} \
         -X pep.cs.ru.nl/gopep/build.BuildMajorVersion=${MAJOR_VERSION} \
         -X pep.cs.ru.nl/gopep/build.BuildMinorVersion=${MINOR_VERSION} \
         -X pep.cs.ru.nl/gopep/build.BuildPipelineId=${CI_PIPELINE_ID} \
