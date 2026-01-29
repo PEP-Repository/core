@@ -706,9 +706,10 @@ std::vector<X509Extension> X509CertificateSigningRequest::getExtensions() const 
   assert(mCSR);
 
   STACK_OF(X509_EXTENSION)* extensions = X509_REQ_get_extensions(mCSR);
+  if(extensions == nullptr) {
+    throw OpenSSLError("Failed to get extensions from CSR.");
+  }
   PEP_DEFER(sk_X509_EXTENSION_pop_free(extensions, X509_EXTENSION_free)); //Free up the stack itself, as well as any remaining elements in the stack
-
-  assert(extensions != nullptr); // If the CSR has no extensions, it should just return an empty stack, so extensions should always be set
   int numExtensions = sk_X509_EXTENSION_num(extensions);
   assert(numExtensions >= 0); //If extensions!=nullptr, this should always be the case
   std::vector<X509Extension> result;
