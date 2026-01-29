@@ -14,8 +14,16 @@ $PSNativeCommandUseErrorActionPreference = $true # PowerShell Core only
 $ConanArgs = $args -replace '(?<=^-[^_]*)__', ':'
 
 # Set PEP_USE_MSVC_VERSION to force using specific version. E.g. 194 to use some VS 2022 version (which must be installed).
+# See also https://learn.microsoft.com/en-us/cpp/overview/compiler-versions
 if (Test-Path env:PEP_USE_MSVC_VERSION) {
   $ConanArgs += @('-s:a'; "compiler.version=$env:PEP_USE_MSVC_VERSION")
+
+  # If we want to use an older compiler with a newer VS, we need to specify the version
+  $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+  $installedVsVersions = &$vswhere -property installationVersion | Select-String '^\d*' | % { $_.Matches[0].Value }
+  if ($installedVsVersions.Count -eq 1) {
+    $ConanArgs += @('-c:a'; "tools.microsoft.msbuild:vs_version=$installedVsVersions")
+  }
 }
 
 while ($true) {

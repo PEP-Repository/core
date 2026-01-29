@@ -176,6 +176,9 @@ PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const s
   return PolymorphicPseudonym::FromIdentifier(publicKeyPseudonyms, participantSID);
 }
 
+LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
+  return encrypted.decrypt(privateKeyPseudonyms);
+}
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
                                            std::shared_ptr<boost::asio::io_context> io_context,

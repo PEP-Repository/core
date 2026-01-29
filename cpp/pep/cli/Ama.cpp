@@ -10,6 +10,7 @@
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
@@ -790,31 +791,24 @@ private:
       }
     };
 
-    class AmaParticipantGroupExistenceSubCommand : public AmaParticipantGroupSubCommand {
+    class AmaParticipantGroupCreateCommand : public AmaParticipantGroupSubCommand {
     public:
-      using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string) const;
-
-    private:
-      AmProxyMethod mMethod;
-
-    public:
-      AmaParticipantGroupExistenceSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaParticipantGroup& parent)
-        : AmaParticipantGroupSubCommand(name, description, parent), mMethod(method) {
+      AmaParticipantGroupCreateCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("create", "Create new participant group", parent) {
       }
 
     protected:
       int execute() override {
-        return executeEventLoopFor([group = this->getParticipantGroupName(), method = mMethod](std::shared_ptr<pep::CoreClient> client) {
-          auto& am = *client->getAccessManagerProxy();
-          return (am.*method)(group);
+        return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
+          return client->getAccessManagerProxy()->amaCreateParticipantGroup(group);
         });
       }
     };
 
     class AmaParticipantGroupRemoveSubCommand : public AmaParticipantGroupSubCommand {
     public:
-      AmaParticipantGroupRemoveSubCommand(const std::string& name, const std::string& description, CommandAmaParticipantGroup& parent)
-        : AmaParticipantGroupSubCommand(name, description, parent) {
+      AmaParticipantGroupRemoveSubCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("remove", "Remove participant group", parent) {
       }
 
     protected:
@@ -827,6 +821,29 @@ private:
         return executeEventLoopFor([group = this->getParticipantGroupName(), force = this->getParameterValues().has("force")](std::shared_ptr<pep::CoreClient> client) {
           return client->getAccessManagerProxy()->amaRemoveParticipantGroup(group, force);
         });
+      }
+    };
+
+    class AmaParticipantGroupClearSubCommand : public AmaParticipantGroupSubCommand {
+    public:
+      AmaParticipantGroupClearSubCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("clear", "Remove all participants from group", parent) {}
+
+    protected:
+      int execute() override {
+        return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
+          pep::requestTicket2Opts requestTicketOpts;
+          requestTicketOpts.participantGroups.emplace_back(group);
+          requestTicketOpts.modes.emplace_back("read-meta");
+          return client->requestTicket2(requestTicketOpts)
+            .flat_map([group, client](const pep::IndexedTicket2& indexed) {
+            auto ticket = indexed.openTicketWithoutCheckingSignature();
+            std::vector<pep::PolymorphicPseudonym> pps;
+            pps.reserve(ticket->mPseudonyms.size());
+            std::transform(ticket->mPseudonyms.begin(), ticket->mPseudonyms.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
+            return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
+              });
+          });
       }
     };
 
@@ -894,13 +911,9 @@ private:
     inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli#ama-group"; }
 
     std::vector<std::shared_ptr<Command>> createChildCommands() override {
-      return {std::make_shared<AmaParticipantGroupExistenceSubCommand>("create",
-                                                                       "Create new participant group",
-                                                                       &pep::AccessManagerProxy::amaCreateParticipantGroup,
-                                                                       *this),
-              std::make_shared<AmaParticipantGroupRemoveSubCommand>("remove",
-                                                                    "Remove participant group",
-                                                                    *this),
+      return {std::make_shared<AmaParticipantGroupCreateCommand>(*this),
+              std::make_shared<AmaParticipantGroupRemoveSubCommand>(*this),
+              std::make_shared<AmaParticipantGroupClearSubCommand>(*this),
               std::make_shared<AmaParticipantGroupingSubCommand>("addTo",
                                                                  "Add participant to group",
                                                                  &pep::AccessManagerProxy::amaAddParticipantToGroup,

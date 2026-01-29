@@ -1,22 +1,34 @@
 Changelog
 
 Note your text below, in the following format (with 42 the issue number of the change):
-- #42: description
+- repo#42: description
 
-Changes in upcoming release (1.6):
+Changes in upcoming release (1.7):
 
-- #2753:
+---------------
+
+- core#2767: Added a tool for MacOS and Windows users to easily upload files to PEP using a GUI file picker.
+
+- core#2753:
    - Changed: The YAML output of user query commands now use `# item count: N` instead of `# size = N` to display array sizes.
      This removes the ambiguity of the word `size` and makes the meaning of the number more clear.
    - Added support for YAML output for pepcli export commands.
 
-- #2708: We now store whether a userID is the primary and/or the display ID. Primary ID is set automatically the first time a user logs in.
+- core#2708: We now store whether a userID is the primary and/or the display ID. Primary ID is set automatically the first time a user logs in.
   The userID given when creating a new user will be set as the display ID. Both can be changed by the access administrator.
   When no displayIDs exist in the database, it tries to auto-assign display IDs for the existing users, by picking the first ID for that user, if that ID has not been removed.
   If that first ID has been removed, auto-assignment will fail for that user. They will need to be set manually (see MANUAL CHANGES REQUIRED)
   The output format of `pepcli user query` changes, because of this change. If it is used in scripts, these should be updated for the new format.
   Currently, no one outside the PEP team can use `pepcli user query`, so impact should be limited.
 
+- #2756: Added "pepcli ama group clear" command, which removes all subjects from a subject group (without removing the
+  group itself and/or associated access rules, as "pepcli ama group remove" would do).
+
+- #2755: The "pepcli list" command now supports a "--show-dataless" switch, which causes output to also include (pseudonyms
+  of) subjects for whom the command retrieves no data. This a.o. allows subject groups to be listed without requiring
+  data presence and accessibility, and without having to specify column(group)(s):
+    pepcli list -P some-subject-group --show-dataless
+    
 - #1970: We can now request a CSR from servers for their PEP certificates, and replace the certificate after we signed a new one, all using pepcli.
   This does not apply to the TLS certificates, so is not that useful yet, until we replace those with "normal" TLS certificates from a public CA (#2768).
   For this to work, the certificates will need to be in a writable location (#2769), which they are currently not. That will need to be solved at some point,
@@ -31,6 +43,12 @@ MANUAL CHANGES REQUIRED:
 ---------------
 
 Past changes, do not edit (except by person doing release):
+
+Release 1.6 (started 2026-01-28):
+
+- #1341: This (1.6) release is functionally identical to release 1.5. The increased (minor) version number prevents software upgrades from failing
+  if/when a hotfix is needed. See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341#note_55814 .
+
 
 Release 1.5 (started 2025-09-01):
 
