@@ -21,6 +21,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
+#include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <filesystem>
 #include <unordered_set>
@@ -1406,13 +1407,16 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
   mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), true));
 }
 
-std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, Timestamp at) const {
-  return RangeToOptional(
-    mImplementor->getCurrentRecords(
-      c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-      && c(&UserIdRecord::identifier) == identifier,
-      &UserIdRecord::internalUserId)
-  );
+std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
+  return (caseSensitivity == CaseSensitive)
+      ? RangeToOptional(mImplementor->getCurrentRecords(
+        c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+        && is_equal(&UserIdRecord::identifier, identifier).collate_nocase(),
+        &UserIdRecord::internalUserId))
+      : RangeToOptional(mImplementor->getCurrentRecords(
+        c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+        && is_equal(&UserIdRecord::identifier, identifier),
+        &UserIdRecord::internalUserId));
 }
 
 int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, Timestamp at) const {
@@ -1423,16 +1427,31 @@ int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view iden
   return internalUserId.value();
 }
 
-std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at) const {
+std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity caseSensitivity, Timestamp at) const {
   using namespace std::ranges;
-  return RangeToOptional(
-    RangeToCollection<std::unordered_set>( // Merge duplicates
-      mImplementor->getCurrentRecords(
-        c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-        && in(&UserIdRecord::identifier, identifiers),
-        &UserIdRecord::internalUserId)
-    )
-  );
+
+  const auto toLower = [](std::vector<std::string> identifiers){
+    for (auto& id: identifiers) { boost::to_lower(id); }
+    return identifiers;
+  };
+
+  return (caseSensitivity == CaseSensitive)
+      ? RangeToOptional(
+        RangeToCollection<std::unordered_set>( // Merge duplicates
+          mImplementor->getCurrentRecords(
+            c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+            && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
+            &UserIdRecord::internalUserId)
+        )
+      )
+      : RangeToOptional(
+        RangeToCollection<std::unordered_set>( // Merge duplicates
+          mImplementor->getCurrentRecords(
+            c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+            && in(&UserIdRecord::identifier, identifiers),
+            &UserIdRecord::internalUserId)
+        )
+      );
 }
 
 std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifiersForUser(int64_t internalUserId, Timestamp at) const {

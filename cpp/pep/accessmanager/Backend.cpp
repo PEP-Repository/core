@@ -211,10 +211,12 @@ void AccessManager::Backend::ensureNoUserData() const {
 FindUserResponse AccessManager::Backend::handleFindUserRequest(
     const FindUserRequest& request,
     const std::string& userGroup) {
+  constexpr auto CaseInsensitive = Storage::CaseInensitive;
+
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
-  std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId);
+  std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId, CaseInsensitive);
   if (!userId) {
-    userId = mStorage->findInternalUserId(request.mAlternativeIds);
+    userId = mStorage->findInternalUserId(request.mAlternativeIds, CaseInsensitive);
     if (userId) {
       mStorage->addIdentifierForUser(*userId, request.mPrimaryId);
     }

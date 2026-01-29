@@ -20,6 +20,10 @@ class AccessManager::Backend::Storage {
 public:
   struct Implementor; // Public to allow access from checksum calculation function
 
+  enum class CaseSensitivity { CaseSensitive, CaseInsensitive };
+  static inline constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
+  static inline constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
+
 private:
   std::shared_ptr<Implementor> mImplementor;
   std::shared_ptr<GlobalConfiguration> mGlobalConf;
@@ -210,10 +214,10 @@ public:
 
   /* Finding user identifiers */
   /// Try to find the internalId for the user that has the given identifier. Returns nullopt if not found.
-  std::optional<int64_t> findInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
+  std::optional<int64_t> findInternalUserId(std::string_view identifier, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
   /// Try to find the internalId for the user that has the given identifier. Throws if not found.
   int64_t getInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
-  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = TimeNow()) const;
+  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
 
   /* Finding userGroupIds */
