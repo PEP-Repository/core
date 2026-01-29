@@ -48,7 +48,7 @@ protected:
       + pep::commandline::Parameter("inline-data-size-limit", "Retrieve data inline if size is less than this. Specify 0 to inline all data.").shorthand('s').value(
           pep::commandline::Value<uint64_t>().defaultsTo(1000))
       + pep::commandline::Parameter("local-pseudonyms", "Request access group local-pseudonyms").shorthand('l')
-      + pep::commandline::Parameter("dataless", "Also output (pseudonyms for) subjects without data")
+      + pep::commandline::Parameter("show-dataless", "Also output (pseudonyms for) subjects without data")
       + pep::commandline::Parameter("metadata", "Print metadata - which may contain encrypted entries when only an ID was returned for the file in question; apply pepcli get to the ID to get the decrypted entries").shorthand('m')
       + pep::commandline::Parameter("no-inline-data", "Never retrieve data inline; only return IDs")
       + pep::commandline::Parameter("group-output", "Group the output per participant").shorthand('g');
@@ -253,7 +253,7 @@ protected:
             -> rxcpp::observable<pep::EnumerateAndRetrieveResult> {
           ctx->mEarOpts.ticket = std::make_shared<pep::IndexedTicket2>(
               std::move(ticket));
-          if (ctx->mParameterValues.has("dataless")) {
+          if (ctx->mParameterValues.has("show-dataless")) {
             auto pseuds = ctx->mEarOpts.ticket->openTicketWithoutCheckingSignature()->mPseudonyms;
             std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->mPseudsToReport, ctx->mPseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
               return std::make_pair(lps.mPolymorphic, lps.mAccessGroup);

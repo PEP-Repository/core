@@ -24,10 +24,10 @@ Changes in upcoming release (1.7):
 - #2756: Added "pepcli ama group clear" command, which removes all subjects from a subject group (without removing the
   group itself and/or associated access rules, as "pepcli ama group remove" would do).
 
-- #2755: The "pepcli list" command now supports a "--dataless" switch, which causes output to also include (pseudonyms
+- #2755: The "pepcli list" command now supports a "--show-dataless" switch, which causes output to also include (pseudonyms
   of) subjects for whom the command retrieves no data. This a.o. allows subject groups to be listed without requiring
   data presence and accessibility, and without having to specify column(group)(s):
-    pepcli list -P some-subject-group --dataless
+    pepcli list -P some-subject-group --show-dataless
 
 MANUAL CHANGES REQUIRED:
 
