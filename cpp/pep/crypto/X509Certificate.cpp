@@ -158,13 +158,15 @@ std::string X509Extension::getName() const {
   }
   size_t bufsize = static_cast<size_t>(bufsize_result);
   std::string buffer;
-  buffer.resize(bufsize + 1); //std::string guarantees a null-terminator at the end of it's internal buffer, but overwriting it is UB. So we need an extra character in the string itself
-  int result = OBJ_obj2txt(buffer.data(), static_cast<int>(buffer.size()), object, 0);
+  buffer.resize(bufsize);
+  // The buffer size passed to OBJ_obj2txt should include the null-terminator.
+  // std::string guarantees a null-terminator at the end of it's internal buffer. Overwriting that is UB, unless it is with another `\0`: https://eel.is/c++draft/basic.string#string.access-2
+  // So this should be fine:
+  int result = OBJ_obj2txt(buffer.data(), static_cast<int>(buffer.size()) + 1, object, 0);
   if (result < 0) {
     throw OpenSSLError("Failed to get extension name");
   }
   assert(result == bufsize_result);
-  buffer.resize(bufsize); // Remove null-terminator
   return buffer;
 }
 
