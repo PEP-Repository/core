@@ -16,7 +16,7 @@ class InvalidProof : public std::exception {
 
 // A compositional non-interactive zero-knowledge proof that
 // CurvePoints (A, M, N) are in fact of the form (x B, M, x M).
-// See https://docs.pages.pep.cs.ru.nl/private/ops/master/development/Design-logger/
+// See https://docs.pages.pep.cs.ru.nl/private/ops/main/development/Design-logger/
 // and §4 of "Lecture Notes Cryptographic Protocols" by Schoenmakers.
 class ScalarMultProof {
   static CurveScalar computeChallenge(
