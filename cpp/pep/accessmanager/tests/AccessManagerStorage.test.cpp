@@ -347,12 +347,14 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
 TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
   storage->createUser("user");
   EXPECT_ANY_THROW(storage->createUser("user"));
+  EXPECT_ANY_THROW(storage->createUser("UsEr"));
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
   int64_t originalId = storage->createUser("user");
   storage->createUser("anotherUser");
   EXPECT_EQ(storage->findInternalUserId("user"), originalId);
+  EXPECT_EQ(storage->findInternalUserId("UsEr"), originalId); // different casing
   EXPECT_EQ(storage->findInternalUserId("NotExisting"), std::nullopt);
 }
 
