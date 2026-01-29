@@ -19,8 +19,7 @@ public:
   X509Extension(const X509Extension& other);
   X509Extension(X509Extension&& other) noexcept;
   ~X509Extension() noexcept;
-  X509Extension& operator=(X509Extension other);
-  X509Extension& operator=(X509Extension&& other) noexcept;
+  X509Extension& operator=(X509Extension other) noexcept;
 
   explicit X509Extension(X509_EXTENSION* extension) noexcept : mRaw(extension) {}
 

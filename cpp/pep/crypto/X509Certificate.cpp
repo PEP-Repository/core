@@ -125,10 +125,6 @@ bool HasExtensionFlag(X509& x509, uint32_t flag) {
 
 } // namespace
 
-X509Certificate::~X509Certificate() noexcept {
-  X509_free(mRaw); // https://docs.openssl.org/master/man3/X509_new/#description: "If the argument is NULL, nothing is done."
-}
-
 X509Extension::X509Extension(const X509Extension& other) {
   assert(other.mRaw != nullptr);
   mRaw = X509_EXTENSION_dup(other.mRaw);
@@ -145,13 +141,8 @@ X509Extension::~X509Extension() noexcept {
   X509_EXTENSION_free(mRaw);
 }
 
-X509Extension& X509Extension::operator=(X509Extension other) {
+X509Extension& X509Extension::operator=(X509Extension other) noexcept {
   std::swap(mRaw, other.mRaw);
-  return *this;
-}
-
-X509Extension& X509Extension::operator=(X509Extension&& other) noexcept {
-  std::swap(this->mRaw, other.mRaw);
   return *this;
 }
 
@@ -160,7 +151,7 @@ bool X509Extension::isCritical() const noexcept {
 }
 
 std::string X509Extension::getName() const {
-  ASN1_OBJECT* object = X509_EXTENSION_get_object(mRaw); //should not be freed by us
+  const ASN1_OBJECT* object = X509_EXTENSION_get_object(mRaw); //should not be freed by us
   int bufsize_result = OBJ_obj2txt(nullptr, 0, object, 0); // Returns the length, excluding the null-terminator
   if (bufsize_result < 0) {
     throw OpenSSLError("Failed to get buffer size for extension name");
@@ -168,7 +159,7 @@ std::string X509Extension::getName() const {
   size_t bufsize = static_cast<size_t>(bufsize_result);
   std::string buffer;
   buffer.resize(bufsize + 1); //std::string guarantees a null-terminator at the end of it's internal buffer, but overwriting it is UB. So we need an extra character in the string itself
-  int result = OBJ_obj2txt(&buffer[0], static_cast<int>(buffer.size()), object, 0);
+  int result = OBJ_obj2txt(buffer.data(), static_cast<int>(buffer.size()), object, 0);
   if (result < 0) {
     throw OpenSSLError("Failed to get extension name");
   }
@@ -223,6 +214,10 @@ X509Certificate& X509Certificate::operator=(X509Certificate&& other) noexcept {
 
 X509Certificate::X509Certificate(X509Certificate&& other) noexcept {
   *this = std::move(other);
+}
+
+X509Certificate::~X509Certificate() noexcept {
+  X509_free(mRaw); // https://docs.openssl.org/master/man3/X509_new/#description: "If the argument is NULL, nothing is done."
 }
 
 AsymmetricKey X509Certificate::getPublicKey() const {
