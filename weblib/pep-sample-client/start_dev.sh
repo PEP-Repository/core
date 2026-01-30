@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -eu
 
-# Quickly build weblib, start pepServers, server pep-sample-client
+# Quickly build weblib, start pepServers, server pep-sample-client and spin up web server
 # Assumes you performed conan install & CMake configure first,
 #  with -DPKI_DIR on the wasm32 build set to the pki/ dir in the build folder of the server
 # Also watch JS sources so that you only need to rebuild pepWeblib if C++ changes,
 #  other builds happen automatically
 # You need to open http://localhost:2280/weblib/pep-sample-client/ in browser
+
+if [ "${1-}" = --help ]; then
+  echo 'Build already-configured Weblib + servers and spin up server at http://localhost:2280/weblib/pep-sample-client/'
+  echo "Usage: $0 [WASM build type (def. Debug)] [pepServers build type (def. WASM build type)] [WASM subbuild name (def. wasm32)]"
+  exit
+fi
 
 # E.g. Debug/Release/RelWithDebInfo
 build_type="${1:-Debug}"
