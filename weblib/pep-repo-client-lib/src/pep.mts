@@ -203,7 +203,7 @@ export default class Pep {
     // TODO should this be here?
     // We let Websockify listen on 15xxx ports instead of 16xxx, so now we need to connect to those
     for (const server of ['AccessManager', 'StorageFacility', 'KeyServer', 'Transcryptor', 'RegistrationServer', 'Authserver'] as const) {
-      clientConfig[server].Port -= 1000;
+      clientConfig[server].Port -= 1_000;
     }
     // Persist ClientKeys.json to keep user logged in
     clientConfig.KeysFile = '/persist/ClientKeys.json';
@@ -243,6 +243,7 @@ export default class Pep {
     return new Pep(config, Module);
   }
 
+  // Should we remove this? It only covers functions directly on Pep
   #wrapExec<Ret>(fun: () => Ret): Ret {
     ++this.#busy;
     this.#onBusyChange?.(true);
@@ -280,6 +281,9 @@ export default class Pep {
       }
     });
   }
+
+  // Symbol.dispose may be null when unsupported
+  [Symbol.dispose]() { this.delete(); }
 
   /** Register handler to observe when methods are executing */
   onBusyChange(callback: ((busy: boolean) => void) | null) {
