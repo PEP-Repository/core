@@ -48,7 +48,7 @@ trap stop_jobs EXIT
   ./pepServers --loglevel debug
 ) &
 ../pep-repo-client-lib/start_websocket_proxy.sh &
-./start_nginx.sh
+../start_nginx.sh
 
 # Start watching
 (

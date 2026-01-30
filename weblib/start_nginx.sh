@@ -7,7 +7,7 @@ set -eu
 scriptdir="$(realpath "$(dirname -- "$0")")"
 cd "$scriptdir"
 
-cat >./dist/nginx_variables.conf <<EOF
+cat >../temp/nginx-variables.conf <<EOF
 set \$home "$HOME";
 EOF
 
