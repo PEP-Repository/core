@@ -213,14 +213,25 @@ if(NOT DEFINED MINOR_VERSION)
 endif()
 
 # If updating these, don't forget to update them for Go too.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_PROJECT_PATH=\\\"$ENV{CI_PROJECT_PATH}\\\"")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_REF=\\\"$ENV{CI_COMMIT_REF_NAME}\\\"")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_REV=\\\"$ENV{CI_COMMIT_SHA}\\\"")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_MAJOR_VERSION=${MAJOR_VERSION}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_MINOR_VERSION=${MINOR_VERSION}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_PIPELINE_ID=${CI_PIPELINE_ID}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_JOB_ID=${CI_JOB_ID}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_TARGET=\\\"${CMAKE_SYSTEM_NAME}\\\"")
+# Make binary version build number fit in 16 bits, see Windows.Exe.VersionInfo.rc
+# Preferably, keep number to subtract consistent with config pipeline in createWixInstaller.bat
+set(pipeline_subtract 60000)
+if(CI_PIPELINE_ID GREATER pipeline_subtract)
+  math(EXPR truncated_pipeline_id "${CI_PIPELINE_ID} - ${pipeline_subtract}")
+else()
+  set(truncated_pipeline_id ${CI_PIPELINE_ID})
+endif()
+add_compile_definitions(
+  "BUILD_PROJECT_PATH=\"$ENV{CI_PROJECT_PATH}\""
+  "BUILD_REF=\"$ENV{CI_COMMIT_REF_NAME}\""
+  "BUILD_REV=\"$ENV{CI_COMMIT_SHA}\""
+  "BUILD_MAJOR_VERSION=${MAJOR_VERSION}"
+  "BUILD_MINOR_VERSION=${MINOR_VERSION}"
+  "BUILD_PIPELINE_ID=${CI_PIPELINE_ID}"
+  "BUILD_TRUNCATED_PIPELINE_ID=${truncated_pipeline_id}"
+  "BUILD_JOB_ID=${CI_JOB_ID}"
+  "BUILD_TARGET=\"${CMAKE_SYSTEM_NAME}\""
+)
 
 function(add_windows_manifest target)
   if(WIN32)
