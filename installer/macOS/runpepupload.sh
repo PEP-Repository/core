@@ -38,7 +38,6 @@ show_dialog() {
     local button1="$2"
     local button2="$3"
     local default_button="$4"
-
     local result
     result=$(osascript 2>&1 <<EOF
 display dialog "$message" buttons {"$button1", "$button2"} default button "$default_button"
@@ -75,7 +74,6 @@ parse_pep_error() {
 }
 
 run_peplogon() {
-    local reauth="$1"
     "$PEPLOGON_EXECUTABLE"
     PEPLOGON_EXIT=$?
     
