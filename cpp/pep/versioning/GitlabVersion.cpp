@@ -6,27 +6,6 @@
 #include <string_view>
 #include <vector>
 
-namespace {
-
-// Default values for these should be set by CMake.
-#ifndef BUILD_PIPELINE_ID
-#  error Define BUILD_PIPELINE_ID.
-#endif
-#ifndef PEP_VERSION_REVISION
-#  error Define PEP_VERSION_REVISION.
-#endif
-
-#ifndef BUILD_COMMIT
-#  error Define BUILD_COMMIT.
-#endif
-#ifndef BUILD_REF
-#  error Define BUILD_REF.
-#endif
-
-}
-
-// Not checking mProjectPath because legacy servers will not report this field, making us think that they're development versions
-
 namespace pep {
 
 GitlabVersion::GitlabVersion(
