@@ -12,8 +12,8 @@ namespace {
 #ifndef BUILD_PIPELINE_ID
 #  error Define BUILD_PIPELINE_ID.
 #endif
-#ifndef BUILD_JOB_ID
-#  error Define BUILD_JOB_ID.
+#ifndef PEP_VERSION_REVISION
+#  error Define PEP_VERSION_REVISION.
 #endif
 
 #ifndef BUILD_COMMIT

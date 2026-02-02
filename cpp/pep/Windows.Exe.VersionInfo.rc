@@ -7,11 +7,11 @@
 #ifndef PEP_EXE_DESCRIPTION
 # error Define PEP_EXE_DESCRIPTION before including this file.
 #endif
-#ifndef BUILD_MAJOR_VERSION
-# error Define BUILD_MAJOR_VERSION before including this file.
+#ifndef PEP_VERSION_MAJOR
+# error Define PEP_VERSION_MAJOR before including this file.
 #endif
-#ifndef BUILD_MINOR_VERSION
-# error Define BUILD_MINOR_VERSION before including this file.
+#ifndef PEP_VERSION_MINOR
+# error Define PEP_VERSION_MINOR before including this file.
 #endif
 // Include headers required for the preprocessing in this file
 #include <pep/utils/BuildFlavor.hpp>
@@ -36,25 +36,24 @@
 
 // Make VERSIONINFO fields fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
 // Note: Windows doesn't complain when it would be too large, it just truncates it.
-#if (BUILD_TRUNCATED_PIPELINE_ID -1 == -1) // Local development version
-# define VER_TRUNCATED_PIPELINE 0
+#if (PEP_VERSION_BUILD -1 == -1) // Local development version
+# define VER_BUILD 0
 #else // Gitlab CI build
-# define VER_TRUNCATED_PIPELINE BUILD_TRUNCATED_PIPELINE_ID
+# define VER_BUILD PEP_VERSION_BUILD
 #endif
 
-#if (BUILD_JOB_ID -1 == -1) // Local development version
-# define VER_JOB 0
+#if (PEP_VERSION_REVISION -1 == -1) // Local development version
+# define VER_REVISION 0
 #else // Gitlab CI build
-# define VER_JOB BUILD_JOB_ID
-
+# define VER_REVISION PEP_VERSION_REVISION
 #endif
 
 // XXXVERSION directives must be delimited by commas
 // We don't include the job number (400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits
-#define VERSION_NUM BUILD_MAJOR_VERSION,BUILD_MINOR_VERSION,VER_TRUNCATED_PIPELINE
+#define VERSION_NUM PEP_VERSION_MAJOR,PEP_VERSION_MINOR,VER_BUILD
 
 // "XxxVersion" strings must be delimited by full stops (periods)
-#define VERSION_STR BOOST_PP_STRINGIZE(BUILD_MAJOR_VERSION.BUILD_MINOR_VERSION.VER_PIPELINE.VER_JOB)
+#define VERSION_STR BOOST_PP_STRINGIZE(PEP_VERSION_MAJOR.PEP_VERSION_MINOR.VER_BUILD.VER_REVISION)
 
 // Settings related to localization
 #define LOC_LANGUAGE_ENGLISH        0409
