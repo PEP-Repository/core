@@ -61,8 +61,8 @@ namespace {
   public:
     unsigned getMajorVersion() const override { return mProperties->get<unsigned>("installer.major"); }
     unsigned getMinorVersion() const override { return mProperties->get<unsigned>("installer.minor"); }
-    unsigned getPipelineId() const override { return mProperties->get<unsigned>("installer.pipeline"); }
-    unsigned getJobId() const override { return mProperties->get<unsigned>("installer.job"); }
+    unsigned getBuild() const override { return mProperties->get<unsigned>("installer.pipeline"); }
+    unsigned getRevision() const override { return mProperties->get<unsigned>("installer.job"); }
 
     bool supersedesRunningVersion() const override;
     static std::shared_ptr<PublishedInstaller> GetAvailable();
@@ -92,8 +92,8 @@ namespace {
   public:
     unsigned getMajorVersion() const override { return 0U; }
     unsigned getMinorVersion() const override { return 0U; }
-    unsigned getPipelineId() const override { return 0U; }
-    virtual unsigned getJobId() const { return 0U; }
+    unsigned getBuild() const override { return 0U; }
+    virtual unsigned getRevision() const { return 0U; }
     virtual bool supersedesRunningVersion() const { return true; }
 
     static std::shared_ptr<LocalInstaller> GetAvailable() {
@@ -233,7 +233,7 @@ void Installer::start(const Context& context) const {
 }
 
 pep::SemanticVersion Installer::getSemver() const {
-  return pep::SemanticVersion(getMajorVersion(), getMinorVersion(), getPipelineId(), getJobId());
+  return pep::SemanticVersion(getMajorVersion(), getMinorVersion(), getBuild(), getRevision());
 }
 
 std::shared_ptr<Installer> Installer::GetAvailable() {

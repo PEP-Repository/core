@@ -20,8 +20,8 @@ public:
     std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
-    unsigned int pipelineId,
-    unsigned int jobId);
+    unsigned int build,
+    unsigned int revision);
 
   GitlabVersion(const GitlabVersion& other) = default;
   GitlabVersion(GitlabVersion&& other) = default;

@@ -14,12 +14,12 @@ GitlabVersion::GitlabVersion(
     std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
-    unsigned int pipelineId,
-    unsigned int jobId
+    unsigned int build,
+    unsigned int revision
     )
   : mProjectPath(std::move(projectPath)),
     mReference(std::move(reference)), mCommit(std::move(commit)),
-    mSemver(majorVersion, minorVersion, pipelineId, jobId) {}
+    mSemver(majorVersion, minorVersion, build, revision) {}
 
 bool GitlabVersion::isGitlabBuild() const {
   return mSemver.hasGitlabProperties()

@@ -26,8 +26,8 @@ using namespace pep;
 #pragma message("BinaryVersion::Reference() = " BUILD_REF)
 #pragma message("BinaryVersion::Major() = " BOOST_PP_STRINGIZE(PEP_VERSION_MAJOR))
 #pragma message("BinaryVersion::Minor() = " BOOST_PP_STRINGIZE(PEP_VERSION_MINOR))
-#pragma message("BinaryVersion::PipelineId() = " BOOST_PP_STRINGIZE(PEP_VERSION_BUILD))
-#pragma message("BinaryVersion::JobId() = " BOOST_PP_STRINGIZE(PEP_VERSION_REVISION))
+#pragma message("BinaryVersion::Build() = " BOOST_PP_STRINGIZE(PEP_VERSION_BUILD))
+#pragma message("BinaryVersion::Revision() = " BOOST_PP_STRINGIZE(PEP_VERSION_REVISION))
 #pragma message("BinaryVersion::Commit() = " BUILD_COMMIT)
 #pragma message("BinaryVersion::Target() = " BUILD_TARGET)
 #pragma message("BinaryVersion::MessagesProtoFileChecksum() = " MESSAGES_PROTO_CHECKSUM)
@@ -56,8 +56,8 @@ BinaryVersion::BinaryVersion(
     std::string commit,
     unsigned int majorVersion, 
     unsigned int minorVersion,
-    unsigned int pipelineId,
-    unsigned int jobId,
+    unsigned int build,
+    unsigned int revision,
     std::string target,
     std::string protocolChecksum)
   : GitlabVersion(
@@ -66,8 +66,8 @@ BinaryVersion::BinaryVersion(
       std::move(commit),
       majorVersion,
       minorVersion,
-      pipelineId,
-      jobId
+      build,
+      revision
       ),
     mTarget(std::move(target)),
     mProtocolChecksum(std::move(protocolChecksum)) {
@@ -93,8 +93,8 @@ ConfigVersion::ConfigVersion(
     std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
-    unsigned int pipelineId,
-    unsigned int jobId,
+    unsigned int build,
+    unsigned int revision,
     std::string projectCaption)
   : GitlabVersion(
       std::move(projectPath),
@@ -102,8 +102,8 @@ ConfigVersion::ConfigVersion(
       std::move(commit),
       majorVersion,
       minorVersion,
-      pipelineId,
-      jobId
+      build,
+      revision
       ),
     mProjectCaption(std::move(projectCaption)) {
 }

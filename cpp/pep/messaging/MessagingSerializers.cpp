@@ -21,8 +21,8 @@ void Serializer<ConfigVersion>::moveIntoProtocolBuffer(proto::ConfigVersion& des
   *dest.mutable_commit() = value.getCommit();
   *dest.mutable_major_version() = std::to_string(value.getSemver().getMajorVersion());
   *dest.mutable_minor_version() = std::to_string(value.getSemver().getMinorVersion());
-  *dest.mutable_pipeline_id() = std::to_string(value.getSemver().getPipelineId());
-  *dest.mutable_job_id() = std::to_string(value.getSemver().getJobId());
+  *dest.mutable_pipeline_id() = std::to_string(value.getSemver().getBuild());
+  *dest.mutable_job_id() = std::to_string(value.getSemver().getRevision());
   *dest.mutable_project_caption() = value.getProjectCaption();
 }
 
@@ -72,8 +72,8 @@ void Serializer<VersionResponse>::moveIntoProtocolBuffer(proto::VersionResponse&
   *dest.mutable_commit() = value.binary.getCommit();
   *dest.mutable_major_version() = std::to_string(value.binary.getSemver().getMajorVersion());
   *dest.mutable_minor_version() = std::to_string(value.binary.getSemver().getMinorVersion());
-  *dest.mutable_pipeline_id() = std::to_string(value.binary.getSemver().getPipelineId());
-  *dest.mutable_job_id() = std::to_string(value.binary.getSemver().getJobId());
+  *dest.mutable_pipeline_id() = std::to_string(value.binary.getSemver().getBuild());
+  *dest.mutable_job_id() = std::to_string(value.binary.getSemver().getRevision());
   *dest.mutable_target() = value.binary.getTarget();
   *dest.mutable_protocol_checksum() = value.binary.getProtocolChecksum();
 
