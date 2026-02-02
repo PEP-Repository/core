@@ -9,25 +9,24 @@
 
 using namespace pep;
 
-#ifndef BUILD_PIPELINE_ID
-#  error Define BUILD_PIPELINE_ID before including this file.
-#endif
-#ifndef PEP_VERSION_REVISION
-#  error Define PEP_VERSION_REVISION before including this file.
-#endif
-
 #ifndef PEP_VERSION_MAJOR
 #  error Define PEP_VERSION_MAJOR before including this file.
 #endif
 #ifndef PEP_VERSION_MINOR
 #  error Define PEP_VERSION_MINOR before including this file.
 #endif
+#ifndef PEP_VERSION_BUILD
+#  error Define PEP_VERSION_BUILD before including this file.
+#endif
+#ifndef PEP_VERSION_REVISION
+#  error Define PEP_VERSION_REVISION before including this file.
+#endif
 
 #pragma message("BinaryVersion::ProjectPath() = " BUILD_PROJECT_PATH)
 #pragma message("BinaryVersion::Reference() = " BUILD_REF)
 #pragma message("BinaryVersion::Major() = " BOOST_PP_STRINGIZE(PEP_VERSION_MAJOR))
 #pragma message("BinaryVersion::Minor() = " BOOST_PP_STRINGIZE(PEP_VERSION_MINOR))
-#pragma message("BinaryVersion::PipelineId() = " BOOST_PP_STRINGIZE(BUILD_PIPELINE_ID))
+#pragma message("BinaryVersion::PipelineId() = " BOOST_PP_STRINGIZE(PEP_VERSION_BUILD))
 #pragma message("BinaryVersion::JobId() = " BOOST_PP_STRINGIZE(PEP_VERSION_REVISION))
 #pragma message("BinaryVersion::Commit() = " BUILD_COMMIT)
 #pragma message("BinaryVersion::Target() = " BUILD_TARGET)
@@ -46,7 +45,7 @@ namespace {
   }
 }
 
-const BinaryVersion BinaryVersion::current(BUILD_PROJECT_PATH, BUILD_REF, BUILD_COMMIT, PEP_VERSION_MAJOR, PEP_VERSION_MINOR, BUILD_PIPELINE_ID, PEP_VERSION_REVISION,  BUILD_TARGET, GetCurrentProtocolChecksum());
+const BinaryVersion BinaryVersion::current(BUILD_PROJECT_PATH, BUILD_REF, BUILD_COMMIT, PEP_VERSION_MAJOR, PEP_VERSION_MINOR, PEP_VERSION_BUILD, PEP_VERSION_REVISION, BUILD_TARGET, GetCurrentProtocolChecksum());
 std::optional<std::filesystem::path> ConfigVersion::loadDir_;
 std::optional<ConfigVersion> ConfigVersion::loaded_;
 

@@ -19,21 +19,6 @@
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
-/* Gitlab CI builds set (a.o.) the CI_COMMIT_REF_NAME and CI_PIPELINE_ID environment values,
- * which we receive in our C++ build as the BUILD_REF and BUILD_PIPELINE_ID preprocessor symbols.
- * But while WiX can test for the presence of CI_COMMIT_REF_NAME in the environment,
- * we can't (conveniently) test for (non-)emptiness of the BUILD_REF string here, so we use the
- * BUILD_PIPELINE_ID symbol instead. The assumption is that CI_COMMIT_REF_NAME and CI_PIPELINE_ID
- * are both either set or not set in the environment (depending on whether this is a Gitlab CI build).
- */
-
-// BOOST_PP_IS_EMPTY didn't work for me, so using the approach suggested by https://stackoverflow.com/a/13262601
-#if (BUILD_PIPELINE_ID -1 == -1) // Local development version
-# define VER_PIPELINE 0
-#else // Gitlab CI build
-# define VER_PIPELINE BUILD_PIPELINE_ID
-#endif
-
 // Make VERSIONINFO fields fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
 // Note: Windows doesn't complain when it would be too large, it just truncates it.
 #if (PEP_VERSION_BUILD -1 == -1) // Local development version
