@@ -1256,17 +1256,17 @@ class MailSender(Connector):
                 if pdf_infos:
                     merged_pdf_path = f"/tmp/merged_{short_pseudonym}.pdf"
                     self._merge_pdfs(pdf_infos, merged_pdf_path)
-                    merged_pdf_info = {
-                        "path": merged_pdf_path,
-                        "filename": config.report_info.combined_filename,
-                        "mimetype": "application/pdf"
-                    }
+                    merged_pdf_attachment = Attachment(
+                        path=merged_pdf_path,
+                        filename=config.report_info.combined_filename,
+                        mimetype="application/pdf"
+                    )
 
                     # Combine with existing attachments if any
                     if subject_attachments:
-                        subject_attachments = subject_attachments + [merged_pdf_info]
+                        subject_attachments = subject_attachments + [merged_pdf_attachment]
                     else:
-                        subject_attachments = [merged_pdf_info]
+                        subject_attachments = [merged_pdf_attachment]
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Added merged PDF for expert teacher: {merged_pdf_path}", 
                             level=logging.DEBUG, tag=self.LOG_TAG)
                 else:
