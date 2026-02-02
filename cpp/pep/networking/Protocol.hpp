@@ -285,7 +285,7 @@ public:
    * \brief Produces a (human-readable) description of the server.
    * \return A string describing the server.
    */
-  std::string describe() const override { return "server at " + this->connectionAddress(); }
+  std::string describe() const override { return "server listening at " + this->connectionAddress(); }
 
   /*!
    * \brief Downcasts this instance to a server component for the specified protocol type.

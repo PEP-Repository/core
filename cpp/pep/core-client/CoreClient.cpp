@@ -60,7 +60,7 @@ CoreClient::CoreClient(const Builder& builder) :
   MessageSigner(builder.getSigningIdentity()),
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
   caCertFilepath(builder.getCaCertFilepath()),
-  rootCAs(X509RootCertificates{ReadFile(builder.getCaCertFilepath())}),
+  rootCAs(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
   privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
   publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
   accessManagerEndPoint(builder.getAccessManagerEndPoint()),
@@ -176,6 +176,9 @@ PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const s
   return PolymorphicPseudonym::FromIdentifier(publicKeyPseudonyms, participantSID);
 }
 
+LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
+  return encrypted.decrypt(privateKeyPseudonyms);
+}
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
                                            std::shared_ptr<boost::asio::io_context> io_context,
@@ -235,7 +238,7 @@ void CoreClient::Builder::initialize(
           this->setPrivateKeyData(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("DataKey")));
           this->setSigningIdentity(std::make_shared<X509Identity>(
             AsymmetricKey(keysConfig.get<std::string>("PrivateKey")),
-            X509CertificateChain(keysConfig.get<std::string>("CertificateChain"))));
+            X509CertificateChain(X509CertificatesFromPem(keysConfig.get<std::string>("CertificateChain")))));
         }
         else {
           LOG(LOG_TAG, info) << "Skipped loading keys file because it is from an older version";
@@ -414,7 +417,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(rootCAs, getEnrolledGroup()).mPseudonyms);
+    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mPseudonyms);
   });
 
 }

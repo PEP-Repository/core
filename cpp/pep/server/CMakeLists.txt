@@ -1,6 +1,8 @@
 # Functionality for PEP servers.
 
 add_library(${PROJECT_NAME}ServerApilib
+  CertificateRenewalMessages.hpp
+  CertificateRenewalSerializers.cpp CertificateRenewalSerializers.hpp
   MonitoringMessages.hpp
   MonitoringSerializers.cpp MonitoringSerializers.hpp
   ServerProxy.cpp ServerProxy.hpp

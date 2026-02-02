@@ -41,8 +41,6 @@ void Signature::assertValid(
     std::optional<std::string> expectedCommonName,
     seconds timestampLeeway,
     bool expectLogCopy) const {
-  if (mCertificateChain.begin() == mCertificateChain.end())
-    throw Error("Invalid signature: empty certificate chain");
   if (!mCertificateChain.verify(rootCAs))
     throw Error("Invalid signature: certificate chain not trusted");
   if (expectedCommonName && *expectedCommonName != getLeafCertificateCommonName()) {
@@ -52,7 +50,7 @@ void Signature::assertValid(
         << Logging::Escape(getLeafCertificateCommonName()) << ")";
     throw Error(msg.str());
   }
-  if (mCertificateChain.begin()->hasTLSServerEKU())
+  if (mCertificateChain.leaf().hasTLSServerEKU())
     throw Error("Invalid signature: TLS certificate used instead of Signing certficiate");
 
   auto diff = Abs(mTimestamp - TimeNow());
@@ -85,27 +83,22 @@ void Signature::assertValid(
     throw Error("Invalid signature: unknown SignatureScheme");
   }
 
-  if (!mCertificateChain.begin()->getPublicKey().verifyDigestSha256(
+  if (!mCertificateChain.leaf().getPublicKey().verifyDigestSha256(
         hasher.digest().substr(0, 32), mSignature))
     throw Error("Invalid signature: data does not match signature or chain");
 }
 
 
 std::string Signature::getLeafCertificateCommonName() const {
-  if (mCertificateChain.begin() == mCertificateChain.end())
-    return "";
-  return mCertificateChain.begin()->getCommonName().value_or("");
+  return mCertificateChain.leaf().getCommonName().value_or("");
 }
 
 std::string Signature::getLeafCertificateOrganizationalUnit() const {
-  if (mCertificateChain.begin() == mCertificateChain.end())
-    return "";
-  return mCertificateChain.begin()->getOrganizationalUnit().value_or("");
+  return mCertificateChain.leaf().getOrganizationalUnit().value_or("");
 }
 
 X509Certificate Signature::getLeafCertificate() const {
-  if (mCertificateChain.begin() == mCertificateChain.end()) return X509Certificate();
-  return *mCertificateChain.begin();
+  return mCertificateChain.leaf();
 }
 
 }

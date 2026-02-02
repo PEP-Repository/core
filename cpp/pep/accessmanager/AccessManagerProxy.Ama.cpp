@@ -99,10 +99,18 @@ AccessManagerProxy::amaAddParticipantToGroup(std::string group, const Polymorphi
 }
 
 rxcpp::observable<FakeVoid>
-AccessManagerProxy::amaRemoveParticipantFromGroup(std::string group, const PolymorphicPseudonym& participant) const {
+AccessManagerProxy::amaRemoveParticipantsFromGroup(const std::string& group, const std::vector<PolymorphicPseudonym>& participants) const {
   AmaMutationRequest request;
-  request.mRemoveParticipantFromGroup.emplace_back(std::move(group), participant);
+  request.mRemoveParticipantFromGroup.reserve(participants.size());
+  std::transform(participants.begin(), participants.end(), std::back_inserter(request.mRemoveParticipantFromGroup), [&group](const PolymorphicPseudonym& pp) {
+    return AmaRemoveParticipantFromGroup(group, pp);
+    });
   return requestAmaMutation(std::move(request));
+}
+
+rxcpp::observable<FakeVoid>
+AccessManagerProxy::amaRemoveParticipantFromGroup(std::string group, const PolymorphicPseudonym& participant) const {
+  return this->amaRemoveParticipantsFromGroup(group, std::vector<PolymorphicPseudonym>{participant});
 }
 
 rxcpp::observable<FakeVoid>

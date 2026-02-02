@@ -18,6 +18,7 @@ set(PEPCLI_SRCS
     Export.cpp Export.hpp
     export/CommandExportCsv.cpp export/CommandExportCsv.hpp
     export/CommandExportJson.cpp export/CommandExportJson.hpp
+    export/CommandExportYaml.cpp export/CommandExportYaml.hpp
     FileExtension.cpp
     Get.cpp
     History.cpp
@@ -29,6 +30,8 @@ set(PEPCLI_SRCS
     Pull.cpp
     Query.cpp
     Register.cpp
+    Server.cpp Server.hpp
+    server/CommandCertificate.cpp server/CommandCertificate.hpp
     SingleCellCommand.cpp SingleCellCommand.hpp
     Store.cpp
     structuredoutput/TableFromDownloadDirectory.cpp structuredoutput/TableFromDownloadDirectory.hpp

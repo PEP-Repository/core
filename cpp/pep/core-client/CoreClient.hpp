@@ -261,7 +261,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   std::shared_ptr<WorkerPool> getWorkerPool();
 
-  X509RootCertificates rootCAs;
+  std::shared_ptr<X509RootCertificates> rootCAs;
 
   ElgamalPrivateKey privateKeyData;
   const ElgamalPublicKey publicKeyData;
@@ -400,9 +400,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    * \brief Generate a polymorphic pseudonym for a registered participant.
    */
   PolymorphicPseudonym generateParticipantPolymorphicPseudonym(const std::string& participantSID);
-  const ElgamalPublicKey& getPublicKeyPseudonyms() const {
-    return publicKeyPseudonyms;
-  }
+
+  LocalPseudonym decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const;
 
   /*!
    * \brief Interpret each string as a textually represented polymorphic pseudonym, or a participant identifier,
@@ -557,6 +556,8 @@ protected:
    */
   CoreClient(const Builder& builder);
 
+  template <std::derived_from<SigningServerProxy> TProxy>
+  std::shared_ptr<TProxy> tryConnectServerProxy(const EndPoint& endPoint) const;
   template <typename TProxy>
   std::shared_ptr<TProxy> tryConnectServerProxy(const EndPoint& endPoint) const;
 
@@ -565,6 +566,8 @@ protected:
     CurveScalar alpha, beta;
     CurveScalar gamma, delta;
     SignedKeyComponentRequest keyComponentRequest;
+
+    explicit EnrollmentContext(std::shared_ptr<const X509Identity> enroller);
   };
 
   rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
@@ -646,6 +649,15 @@ public:
   std::shared_ptr<LocalPseudonyms> getLocalPseudonyms(uint32_t index) const { return mPseudonyms.at(index); }
   std::shared_ptr<LocalPseudonym> getAccessGroupPseudonym(uint32_t index) const; // Returns NULL if ticket didn't include access group pseudonyms
 };
+
+template <std::derived_from<SigningServerProxy> TProxy>
+std::shared_ptr<TProxy> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {
+  auto untyped = messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
+  if (untyped == nullptr) {
+    return nullptr;
+  }
+  return std::make_shared<TProxy>(untyped, static_cast<const MessageSigner&>(*this), endPoint.expectedCommonName, rootCAs);
+}
 
 template <typename TProxy>
 std::shared_ptr<TProxy> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {

@@ -557,7 +557,7 @@ deploy-data-sync:
 ## Configuration for the test stage       #
 ###########################################
 
-test-deployment:
+test-client-servers-version-diff:
   stage: test
   dependencies: []
   rules:

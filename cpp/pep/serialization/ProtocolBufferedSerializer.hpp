@@ -203,9 +203,7 @@ public:
     return this->fromProtocolBuffer(std::move(buffer));
   }
 
-  std::string toString(T value, bool withMagic = true) const override {
-    ProtocolBufferType buffer;
-    this->moveIntoProtocolBuffer(buffer, std::move(value));
+  std::string toString(ProtocolBufferType buffer, bool withMagic = true) const {
     std::string ret;
     if (withMagic) {
       std::ostringstream magicStream;
@@ -214,6 +212,12 @@ public:
     }
     buffer.AppendToString(&ret);
     return ret;
+  }
+
+  std::string toString(T value, bool withMagic = true) const override {
+    ProtocolBufferType buffer;
+    this->moveIntoProtocolBuffer(buffer, std::move(value));
+    return this->toString(std::move(buffer), withMagic);
   }
 
   T fromString(std::string_view szMessage, bool withMagic = true) const override {

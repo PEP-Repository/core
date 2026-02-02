@@ -32,7 +32,7 @@ using namespace std::chrono_literals;
 namespace so = pep::structuredOutput;
 
 namespace {
-constexpr auto SUPPORTED_EXPORT_FORMATS = so::FormatFlags::csv | so::FormatFlags::json;
+constexpr auto SUPPORTED_EXPORT_FORMATS = so::FormatFlags::csv | so::FormatFlags::json | so::FormatFlags::yaml;
 
 struct Context {
   bool update{ false };
@@ -184,13 +184,14 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
 
 so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) {
   static_assert(
-      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::csv | so::FormatFlags::json),
+      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::csv | so::FormatFlags::json | so::FormatFlags::yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
   auto flags = so::FormatFlags::none;
   for (const auto& name : formatNames) {
     if (name == "csv") { flags |= so::FormatFlags::csv; }
     else if (name == "json") { flags |= so::FormatFlags::json; }
+    else if (name == "yaml") { flags |= so::FormatFlags::yaml; }
     else {
       const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
       throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
@@ -397,11 +398,18 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
     write(stream);
   };
 
+  static_assert(
+      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::csv | so::FormatFlags::json | so::FormatFlags::yaml),
+      "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
+
   if (Contains(formats, so::FormatFlags::csv)) {
     exportAs("csv", [&table](std::ofstream& stream) { so::csv::append(stream, table); });
   }
   if (Contains(formats, so::FormatFlags::json)) {
     exportAs("json", [&table](std::ofstream& stream) { so::json::append(stream, table); });
+  }
+  if (Contains(formats, so::FormatFlags::json)) {
+    exportAs("yaml", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
 }
 

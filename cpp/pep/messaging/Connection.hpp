@@ -2,6 +2,7 @@
 
 #include <pep/async/FakeVoid.hpp>
 #include <pep/networking/Connection.hpp>
+#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/messaging/RequestHandler.hpp>
@@ -116,8 +117,12 @@ private:
   // ******************** Version verification ********************
 private:
   bool mVersionValidated = false;
+  bool mVersionCheckScheduled = false;
+  std::optional<ExponentialBackoff> mVersionCheckBackoff;
 
-  void handleBinaryConnectionEstablished(Attempt::Handler notify);
+  void handleBinaryConnectionEstablished();
+  void postponeVersionCheck();
+  void performVersionCheck();
   MessageBatches handleVersionRequest(std::shared_ptr<std::string> request [[maybe_unused]], MessageSequence chunks [[maybe_unused]]);
   void handleVersionResponse(const VersionResponse& response);
 
@@ -133,7 +138,7 @@ protected:
 
 private:
   Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler);
-  static void Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler, Attempt::Handler notify);
+  static std::shared_ptr<Connection> Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler);
 
   std::weak_ptr<Node> mNode;
   std::string mDescription;

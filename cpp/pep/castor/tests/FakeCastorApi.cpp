@@ -21,10 +21,6 @@ namespace {
 
 const std::string LOG_TAG ("FakeCastorApi");
 
-std::filesystem::path GetIdentityFilePath(const std::string& name) {
-  return GetAbsolutePath(name);
-}
-
 }
 
 class FakeCastorApi::Connection : public std::enable_shared_from_this<Connection>, public SharedConstructor<Connection> {
@@ -176,9 +172,10 @@ void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::
   mBinary->asyncWrite(mOutput.data(), mOutput.length(), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {self->handleWrite(result); });
 }
 
-FakeCastorTest::FakeCastorTest() {
+FakeCastorTest::FakeCastorTest()
+  : mIdentity(TemporaryX509IdentityFiles::Make("Fake Castor b.v.", "localhost")) { // Would be cheaper in a (global) RegisteredTestEnvironment, but this is good enough for now
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
-  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, X509IdentityFilesConfiguration(GetIdentityFilePath("localhost.key"), GetIdentityFilePath("localhost.cert")));
+  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, mIdentity.slicedToX509IdentityFiles());
   mServer = FakeCastorApi::Create(parameters, port, options);
   mServer->start();
 
@@ -186,7 +183,7 @@ FakeCastorTest::FakeCastorTest() {
     EndPoint("localhost", port),
     castor::ApiKey{ "SomeID", "SomeSecret" },
     mClientSide.ioContext(),
-    GetIdentityFilePath("localhost.cert"));
+    mIdentity.getCertificateChainFilePath());
 
   mClientSide.start();
   mServerSide.start();

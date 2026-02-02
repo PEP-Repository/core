@@ -29,7 +29,8 @@ private:
   int64_t getOrCreateColumnSet(std::vector<std::string> cols);
   int64_t getOrCreateModeSet(std::vector<std::string> modes);
   std::optional<int64_t> getOrCreateCertificateChain(
-      X509CertificateChain&& chain);
+      X509CertificateChain chain);
+  std::pair<std::string, std::optional<int64_t>> extractCertificateChain(SignedTicketRequest2 request);
   std::optional<uint64_t> getCurrentVersion();
 
  public:

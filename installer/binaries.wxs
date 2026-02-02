@@ -19,6 +19,10 @@
 				<File Source="$(var.ArtifactsDir)\DownloadAll.ps1" KeyPath="yes" />
 			</Component>
 
+			<Component Id="UploadFile.ps1" Guid="*">
+				<File Source="$(var.ArtifactsDir)\UploadFile.ps1" KeyPath="yes" />
+			</Component>
+			
 			<Component Id="pepLogon.exe" Guid="*">
 				<File Source="$(var.ArtifactsDir)\pepLogon.exe" KeyPath="yes" />
 			</Component>

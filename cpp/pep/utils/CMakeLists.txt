@@ -56,6 +56,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     TaggedValue.hpp
     ThreadUtil.cpp ThreadUtil.hpp
     TypeTraits.hpp
+    VariantUtils.hpp
     VectorOfVectors.hpp
     XxHasher.cpp XxHasher.hpp
 )

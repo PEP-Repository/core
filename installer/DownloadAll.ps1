@@ -54,6 +54,7 @@ try {
   Write-Output ''
 
   Write-Output 'Login: opening browser'
+  Write-Output 'If the script hangs after logging in, try closing the browser'
   $ret = Start-Process pepLogon -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
   if ($ret.ExitCode -ne 0) {
     ShowPepError "An error occurred while logging you in." pepLogon
@@ -122,11 +123,30 @@ try {
       [MessageBoxIcon]::Question)
     if ($choice -eq [DialogResult]::Cancel) { exit 1 }
     $pullArgs += '--update'
-
   }
 
+  $exportCsv = $true
+  $csvFile = Join-Path $folder .. export.csv
+  if (Test-Path $csvFile) {
+    $choice = [MessageBox]::Show(
+      "export.csv was already found.`n" +
+      'Do you want to overwrite it?',
+      'Overwrite CSV export?',
+      [MessageBoxButtons]::YesNo,
+      [MessageBoxIcon]::Question)
+    if ($choice -eq [DialogResult]::yes) {
+      Remove-Item $csvFile
+    } else {
+      $exportCsv = $false
+    }
+  }
+
+  $msgCsv = ''
+  if ($exportCsv) {
+    $msgCsv = " with a CSV export in the parent folder"
+  }
   $choice = [MessageBox]::Show(
-    "Data will be downloaded to $folder, this may take a while. We'll notify you when it's done.`n" +
+    "Data will be downloaded to $folder$msgCsv, this may take a while. We'll notify you when it's done.`n" +
     'Press OK to continue',
     $null,
     [MessageBoxButtons]::OKCancel,
@@ -139,16 +159,24 @@ try {
   $pullArgs = @(
     'pull'
     '--report-progress'
-    '--output-directory'
-    $folder
+    '--output-directory'; $folder
   ) + $pullArgs
+
+  if ($exportCsv) {
+    $pullArgs += @('--export'; 'csv')
+  }
 
   Write-Output 'Download'
   $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
   if ($ret.ExitCode -ne 0) {
-    ShowPepError "An error occurred while downloading." pepcli
+    $canForce = $downloadPresent -or $partialDownloadPresent
+    $msg = 'An error occurred while downloading.'
+    if ($canForce) {
+      $msg += ' Press OK for options.'
+    }
+    ShowPepError $msg pepcli
     $retry = $false
-    if ($downloadPresent -or $partialDownloadPresent) {
+    if ($canForce) {
       $choice = [MessageBox]::Show(
         "Do you want to retry the download but enable overwriting any local changes?`n" +
         'Depending on the error, this may or may not work.',
@@ -161,15 +189,6 @@ try {
       pause
       exit $ret.ExitCode
     }
-    if ($partialDownloadPresent) {
-      $pullArgs = $pullArgs | where { $_ -ne '--resume' } # Remove incompatible flag
-      if (!$downloadPresent) {
-        # Remove --update when --resume was present and we don't have a base download
-        $pullArgs = $pullArgs | where { $_ -ne '--update' }
-        # Since no specification remains, specify what data we want
-        $pullArgs += '--all-accessible'
-      }
-    }
     $pullArgs += '--force'
     $ret = Start-Process pepcli $pullArgs -WorkingDirectory $pepWorkingDirectory -NoNewWindow -Wait -PassThru
     if ($ret.ExitCode -ne 0) {
@@ -179,8 +198,12 @@ try {
     }
   }
 
+  # Remove keys after download: we rerun pepLogon anyway
+  Remove-Item (Join-Path $pepWorkingDirectory 'ClientKeys.json')
+
   ShowNotification 'Download complete!'
-  explorer "$folder"
+  # Open in parent folder with $folder selected, such that export.csv can be seen besides it
+  explorer '/select,' "$folder"
 }
 catch { # Exception is in $_
   # Extra try-catch in case dialog throws

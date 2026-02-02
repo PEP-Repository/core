@@ -24,6 +24,7 @@ std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandHistory(CliApplicat
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandFileExtension(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandToken(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandStructureMetadata(CliApplication& parent);
+std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandServer(CliApplication& parent);
 
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateNoLongerSupportedCommand(CliApplication& parent, const std::string& name, const std::string& description);
 

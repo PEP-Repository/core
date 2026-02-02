@@ -30,13 +30,6 @@ std::unique_ptr<tokenBlocking::Blocklist> CreateBlocklist(const KeyServer::Param
   return path.has_value() ? tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(*path) : nullptr;
 }
 
-X509CertificateChain CertificateChainFromHeadAndTail(const X509Certificate& head, const X509CertificateChain& tail) {
-  X509CertificateChain chain;
-  chain.insert(chain.end(), head);
-  chain.insert(chain.end(), tail.begin(), tail.end());
-  return chain;
-}
-
 std::vector<tokenBlocking::Blocklist::Entry> allEntries(tokenBlocking::Blocklist* list) {
   return list ? list->allEntries() : std::vector<tokenBlocking::Blocklist::Entry>{};
 }
@@ -80,7 +73,7 @@ KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_co
   }
 
   setClientCAPrivateKey(AsymmetricKey(ReadFile(clientCAPrivateKeyFile)));
-  setClientCACertificateChain(X509CertificateChain(ReadFile(clientCACertificateChainFile)));
+  setClientCACertificateChain(X509CertificateChain(X509CertificatesFromPem(ReadFile(clientCACertificateChainFile))));
   setBlocklistStoragePath(blocklistStoragePath);
 }
 
@@ -90,7 +83,7 @@ void KeyServer::Parameters::setClientCAPrivateKey(const AsymmetricKey& privateKe
   Parameters::mClientCAPrivateKey = privateKey;
 }
 
-X509CertificateChain& KeyServer::Parameters::getClientCACertificateChain() { return mClientCACertificateChain; }
+const std::optional<X509CertificateChain>& KeyServer::Parameters::getClientCACertificateChain() { return mClientCACertificateChain; }
 
 void KeyServer::Parameters::setClientCACertificateChain(const X509CertificateChain& certificateChain) {
   Parameters::mClientCACertificateChain = certificateChain;
@@ -112,7 +105,7 @@ void KeyServer::Parameters::setBlocklistStoragePath(const std::optional<std::fil
 
 void KeyServer::Parameters::check() const {
   if (!mClientCAPrivateKey.isSet()) throw std::runtime_error("clientCAPrivateKey must be set");
-  if (mClientCACertificateChain.empty()) throw std::runtime_error("clientCACertificateChain must not be empty");
+  if (!mClientCACertificateChain.has_value()) throw std::runtime_error("clientCACertificateChain must be set");
   if (mOauthTokenSecret.empty()) throw std::runtime_error("oauthTokenSecret must not be empty");
   Server::Parameters::check();
 }
@@ -126,10 +119,11 @@ messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
   checkValid(*enrollmentRequest);
   const auto certificate = generateCertificate(enrollmentRequest->mCertificateSigningRequest);
 
-  EnrollmentResponse response;
-  response.mCertificateChain = CertificateChainFromHeadAndTail(certificate, mClientCACertificateChain);
-  LOG(LOG_TAG, debug) << "Sending certificate chain len=" << response.mCertificateChain.size() << ":"
-                      << response.mCertificateChain.toPem();
+  EnrollmentResponse response{
+    .mCertificateChain = mClientCACertificateChain / certificate
+  };
+  LOG(LOG_TAG, debug) << "Sending certificate chain len=" << response.mCertificateChain.certificates().size() << ":"
+                      << X509CertificatesToPem(response.mCertificateChain.certificates());
   return messaging::BatchSingleMessage(std::move(response));
 }
 
@@ -145,7 +139,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingListRequest(
 messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
     std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest) {
    UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, signedRequest->getLeafCertificateOrganizationalUnit(), "token blocklist management");
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs());
   if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
 
   auto entry = tokenBlocking::BlocklistEntry{
@@ -162,7 +156,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
 messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
     std::shared_ptr<SignedTokenBlockingRemoveRequest> signedRequest) {
   EnsureTokenBlockingAdminAccess(signedRequest->getLeafCertificateOrganizationalUnit());
-  const auto request = signedRequest->open(this->getRootCAs());
+  const auto request = signedRequest->open(*this->getRootCAs());
   if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
 
   auto entry = mBlocklist->removeById(request.id);
@@ -173,7 +167,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
 KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
   : Server(parameters),
     mClientCAPrivateKey(parameters->getClientCAPrivateKey()),
-    mClientCACertificateChain(parameters->getClientCACertificateChain()),
+    mClientCACertificateChain(*parameters->getClientCACertificateChain()),
     mOauthTokenSecret(parameters->getOauthTokenSecret()),
     mBlocklist(CreateBlocklist(*parameters)) {
   RegisterRequestHandlers(
@@ -233,7 +227,7 @@ bool KeyServer::isValid(
 X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigningRequest& csr) const {
   try {
     const auto certificate = csr.signCertificate(
-        mClientCACertificateChain.empty() ? X509Certificate() : *mClientCACertificateChain.begin(),
+        mClientCACertificateChain.leaf(),
         mClientCAPrivateKey,
         validityTimeOfGeneratedCertificates);
     assert(GetEnrolledParty(certificate) == EnrolledParty::User);

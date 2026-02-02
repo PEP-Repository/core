@@ -6,6 +6,7 @@
 #include <pep/cli/Export.hpp>
 #include <pep/cli/export/CommandExportCsv.hpp>
 #include <pep/cli/export/CommandExportJson.hpp>
+#include <pep/cli/export/CommandExportYaml.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Table.hpp>
 #include <pep/utils/Filesystem.hpp>
@@ -63,7 +64,10 @@ void CommandExport::ChildCommand::safeWriteOutput(
 }
 
 std::vector<std::shared_ptr<pep::commandline::Command>> CommandExport::createChildCommands() {
-  return {std::make_shared<CommandExportCsv>(*this), std::make_shared<CommandExportJson>(*this)};
+  return {
+      std::make_shared<CommandExportCsv>(*this),
+      std::make_shared<CommandExportJson>(*this),
+      std::make_shared<CommandExportYaml>(*this)};
 }
 
 pep::commandline::Parameters CommandExport::getSupportedParameters() const {
