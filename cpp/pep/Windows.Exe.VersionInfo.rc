@@ -31,22 +31,27 @@
 #if (BUILD_PIPELINE_ID -1 == -1) // Local development version
 # define VER_PIPELINE 0
 #else // Gitlab CI build
-// Keep this version number equal to the one in WiX installer logic.
 # define VER_PIPELINE BUILD_PIPELINE_ID
+#endif
+
+// Make VERSIONINFO fields fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
+// Note: Windows doesn't complain when it would be too large, it just truncates it.
+#if (BUILD_TRUNCATED_PIPELINE_ID -1 == -1) // Local development version
+# define VER_TRUNCATED_PIPELINE 0
+#else // Gitlab CI build
+# define VER_TRUNCATED_PIPELINE BUILD_TRUNCATED_PIPELINE_ID
 #endif
 
 #if (BUILD_JOB_ID -1 == -1) // Local development version
 # define VER_JOB 0
 #else // Gitlab CI build
-// Keep this version number equal to the one in WiX installer logic.
 # define VER_JOB BUILD_JOB_ID
 
 #endif
 
 // XXXVERSION directives must be delimited by commas
-// We don't include the job number (400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits: see https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource
-// TODO: add job number (after subtracting some version-specific number): see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
-#define VERSION_NUM BUILD_MAJOR_VERSION,BUILD_MINOR_VERSION,VER_PIPELINE
+// We don't include the job number (400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits
+#define VERSION_NUM BUILD_MAJOR_VERSION,BUILD_MINOR_VERSION,VER_TRUNCATED_PIPELINE
 
 // "XxxVersion" strings must be delimited by full stops (periods)
 #define VERSION_STR BOOST_PP_STRINGIZE(BUILD_MAJOR_VERSION.BUILD_MINOR_VERSION.VER_PIPELINE.VER_JOB)
