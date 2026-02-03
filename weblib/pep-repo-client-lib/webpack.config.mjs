@@ -13,7 +13,7 @@ export default (env, argv) => ({
   output: {
     clean: {
       // Delete only temporary files
-      keep: /^(?![a-h0-9]{20}\.\w+$)/,
+      keep: /^(?![a-h0-9]{20}\.)/,
     },
     filename: 'tests.js',
     path: path.resolve(import.meta.dirname, 'dist-test'),

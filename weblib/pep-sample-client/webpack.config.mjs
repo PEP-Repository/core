@@ -1,5 +1,6 @@
 import path from 'node:path';
 import webpack from 'webpack';
+import CompressionPlugin from 'compression-webpack-plugin';
 
 /**
  * @param {Object.<string, *>} env
@@ -17,7 +18,7 @@ export default (env, argv) => ({
   output: {
     clean: {
       // Delete only temporary files
-      keep: /^(?![a-h0-9]{20}\.\w+$)/,
+      keep: /^(?![a-h0-9]{20}\.)/,
     },
     library: {
       type: 'modern-module',
@@ -49,5 +50,11 @@ export default (env, argv) => ({
     new webpack.IgnorePlugin({
       resourceRegExp: /^node:|^(module|worker_threads)$/,
     }),
+    ...(argv.mode === 'production' ? [
+      // Pre-compress for Nginx `gzip_static`
+      new CompressionPlugin({
+        threshold: 1 << 20, // 1 MiB
+      }),
+    ] : []),
   ],
 });
