@@ -264,9 +264,9 @@ func GetCurrentBuildVersionResponse() (*pep_proto.VersionResponse, error) {
 		Target:           build.BuildTarget,
 		VersionMajor:     build.BuildVersionMajor,
 		VersionMinor:     build.BuildVersionMinor,
-		Reference:        build.BuildReference,
 		VersionBuild:     build.BuildVersionBuild,
 		VersionRevision:  build.BuildVersionRevision,
+		Reference:        build.BuildReference,
 		Commit:           build.BuildCommit,
 		ProtocolChecksum: (fmt.Sprintf("%02x", build.MANUAL_PROTOCOL_CHECKSUM_COMPONENT) + pep_proto.MESSAGES_PROTO_CHECKSUM)[0:20],
 	}
