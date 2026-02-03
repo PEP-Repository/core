@@ -110,6 +110,9 @@ if [[ "${CI:-false}" == "true" ]]; then
   install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APP" app_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
   install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL" install_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
 
+  # refresh trustd cache (to prevent problem where trustd could sometimes not resolve CERTIFICATE_INSTALL to DEV_ID_CA)
+  killall trustd
+
   # Determine which operations are allowed without requiring the user to manually unlock the keychain.
   security -v set-key-partition-list -S apple-tool:,apple:,codesign:,productsign:,pkgbuild:,productbuild: -s -k "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN" >/dev/null
 
