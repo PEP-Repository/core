@@ -211,7 +211,7 @@ void AccessManager::Backend::ensureNoUserData() const {
 FindUserResponse AccessManager::Backend::handleFindUserRequest(
     const FindUserRequest& request,
     const std::string& userGroup) {
-  constexpr auto CaseInsensitive = Storage::CaseInensitive;
+  constexpr auto CaseInsensitive = Storage::CaseInsensitive;
 
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
   std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId, CaseInsensitive);
