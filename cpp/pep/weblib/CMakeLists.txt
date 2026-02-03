@@ -72,6 +72,7 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
 
     -sINITIAL_MEMORY=209715200 # 200 MiB
     -sNO_ABORTING_MALLOC
+    -sNO_SUPPORT_LONGJMP # We're not using this
     -sTEXTDECODER=2 # Require TextDecoder from browser
     -sFETCH
     -sNO_INVOKE_RUN # We call callMain ourselves
