@@ -34,7 +34,7 @@
 #endif
 
 // XXXVERSION directives must be delimited by commas
-// We don't include the job number (400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits
+// We don't include the revision (i.e. CI job number, which is a 400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits
 #define VERSION_NUM PEP_VERSION_MAJOR,PEP_VERSION_MINOR,VER_BUILD
 
 // "XxxVersion" strings must be delimited by full stops (periods)
