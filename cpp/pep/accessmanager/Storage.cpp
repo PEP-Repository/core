@@ -1408,14 +1408,16 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
+  const auto timeCondition = c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at);
+  const auto idEqualityCondition = is_equal(&UserIdRecord::identifier, identifier); // case-sensitive by default
+
+  // There is some code duplication that is hard to remove, because the types passed to RangeToOptional are different for each case
   return (caseSensitivity == CaseSensitive)
       ? RangeToOptional(mImplementor->getCurrentRecords(
-        c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-        && is_equal(&UserIdRecord::identifier, identifier).collate_nocase(),
+        timeCondition && idEqualityCondition,
         &UserIdRecord::internalUserId))
       : RangeToOptional(mImplementor->getCurrentRecords(
-        c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-        && is_equal(&UserIdRecord::identifier, identifier),
+        timeCondition && idEqualityCondition.collate_nocase(), // make it case-insensitive
         &UserIdRecord::internalUserId));
 }
 
@@ -1430,28 +1432,26 @@ int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view iden
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity caseSensitivity, Timestamp at) const {
   using namespace std::ranges;
 
+  const auto toOptional = [](auto&& range) {
+    // Merges duplicates
+    return RangeToOptional(RangeToCollection<std::unordered_set>(std::forward<decltype(range)>(range)));
+  };
   const auto toLower = [](std::vector<std::string> identifiers){
     for (auto& id: identifiers) { boost::to_lower(id); }
     return identifiers;
   };
+  const auto timeCondition = c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at);
 
+  // There is some code duplication that is hard to remove, because the types passed to RangeToCollection are different for each case
   return (caseSensitivity == CaseSensitive)
-      ? RangeToOptional(
-        RangeToCollection<std::unordered_set>( // Merge duplicates
+      ? toOptional(
           mImplementor->getCurrentRecords(
-            c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-            && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
-            &UserIdRecord::internalUserId)
-        )
-      )
-      : RangeToOptional(
-        RangeToCollection<std::unordered_set>( // Merge duplicates
+            timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
+            &UserIdRecord::internalUserId))
+      : toOptional( // Merge duplicates
           mImplementor->getCurrentRecords(
-            c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-            && in(&UserIdRecord::identifier, identifiers),
-            &UserIdRecord::internalUserId)
-        )
-      );
+            timeCondition && in(&UserIdRecord::identifier, identifiers),
+            &UserIdRecord::internalUserId)) ;
 }
 
 std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifiersForUser(int64_t internalUserId, Timestamp at) const {
