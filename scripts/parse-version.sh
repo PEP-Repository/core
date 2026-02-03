@@ -42,8 +42,8 @@ case $command in
     echo "PEP_VERSION_MAJOR=$version_major"
     echo "PEP_VERSION_MINOR=$version_minor"
     echo "PEP_VERSION_BUILD=$(get_build "$3")"
-	# Don't write PEP_VERSION_REVISION: we never want/need the job ID of the "load-version" CI job,
-	# which is the only location where this command is invoked.
+    # Don't write PEP_VERSION_REVISION: we never want/need the job ID of the "load-version" CI job,
+    # which is the only location where this command is invoked.
     ;;
   *)
     >&2 echo Unsupported command "$command"
