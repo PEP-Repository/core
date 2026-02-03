@@ -11,7 +11,7 @@ die() {
 }
 
 invalid_invocation() {
-  >&2 echo "Usage: $0 <infra-dir> <project-dir> [pipeline-id]"
+  >&2 echo "Usage: $0 <infra-dir> <project-dir> [pipeline-id] [job-id]"
   die
 }
 
@@ -34,8 +34,10 @@ projectPath=$("$SCRIPTPATH"/gitdir.sh origin-path "$infraDir")
 projectRoot=$("$SCRIPTPATH"/gitdir.sh get-project-root "$infraDir")
 projectCaption=$(cat "$projectDir"/caption.txt)
 
-majorVersion="$($SCRIPTPATH/parse-version.sh get-major "$projectRoot/version.json")"
-minorVersion="$($SCRIPTPATH/parse-version.sh get-minor "$projectRoot/version.json")"
+versionMajor="$($SCRIPTPATH/parse-version.sh get-major "$projectRoot/version.json")"
+versionMinor="$($SCRIPTPATH/parse-version.sh get-minor "$projectRoot/version.json")"
+versionBuild="$($SCRIPTPATH/parse-version.sh get-build "$projectRoot/version.json" "$pipelineId")"
+versionRevision="$jobId"
 
 # Use branch/tag name for CI builds, e.g. using feature branch names instead of "review".
 # Use infra directory name for local builds so that the environment has a readable caption.
@@ -63,12 +65,12 @@ fi
 
 # TODO: include details on both infra and project directory?
 echo "{"
-echo "  \"projectPath\"   : \"$projectPath\","
-echo "  \"projectCaption\": \"$projectCaption\","
-echo "  \"reference\"     : \"$reference\","
-echo "  \"commit\"        : \"$commit\","
-echo "  \"majorVersion\"  : $majorVersion,"
-echo "  \"minorVersion\"  : $minorVersion,"
-echo "  \"pipelineId\"    : $pipelineId,"
-echo "  \"jobId\"         : $jobId"
+echo "  \"projectPath\"     : \"$projectPath\","
+echo "  \"projectCaption\"  : \"$projectCaption\","
+echo "  \"reference\"       : \"$reference\","
+echo "  \"commit\"          : \"$commit\","
+echo "  \"versionMajor\"    : $versionMajor,"
+echo "  \"versionMinor\"    : $versionMinor,"
+echo "  \"versionBuild\"    : $versionBuild,"
+echo "  \"versionRevision\" : $versionRevision"
 echo "}"

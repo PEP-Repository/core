@@ -14,6 +14,16 @@ fi
 version_json=$(cat "$versionfile")
 version_major=$(echo "$version_json" | jq -r '.major // error("no major version value found")')
 version_minor=$(echo "$version_json" | jq -r '.minor // error("no minor version value found")')
+version_build_offset=$(echo "$version_json" | jq -r '.build_offset // 0')
+
+get_build() {
+  if [ "$1" -lt "$version_build_offset" ];
+  then
+    echo "$1"
+  else
+    echo $(($1 - $version_build_offset))
+  fi
+}
 
 case $command in
   get-major)
@@ -22,9 +32,13 @@ case $command in
   get-minor)
     echo "$version_minor"
     ;;
+  get-build)
+    get_build "$3"
+    ;;
   env-var-assignments)
     echo "PEP_VERSION_MAJOR=$version_major"
     echo "PEP_VERSION_MINOR=$version_minor"
+	echo "PEP_VERSION_BUILD=$(get_build "$3")"
     ;;
   *)
     >&2 echo Unsupported command "$command"

@@ -176,11 +176,19 @@ file(READ ${CMAKE_CURRENT_LIST_DIR}/version.json VERSION_JSON)
 string(JSON PEP_VERSION_MAJOR GET ${VERSION_JSON} major)
 string(JSON PEP_VERSION_MINOR GET ${VERSION_JSON} minor)
 
-# For local builds, we don't care what the pipeline and job id are, but they must be set to some numeric value
 if("$ENV{CI_PIPELINE_ID}" STREQUAL "")
-    set(CI_PIPELINE_ID 0)
+    # For local builds, we don't care what the pipeline and job id are, but they must be set to some numeric value
+    set(PEP_VERSION_BUILD 0)
 else()
-    set(CI_PIPELINE_ID "$ENV{CI_PIPELINE_ID}")
+    # In Gitlab, the build number is the pipeline ID minus a configured offset to prevent overflow: see core#1341
+    string(JSON PEP_VERSION_BUILD_OFFSET
+      ERROR_VARIABLE PEP_VERSION_BUILD_OFFSET_ERROR # Continue processing if the "build_offset" field is absent
+      GET ${VERSION_JSON} build_offset
+    )
+    if("${PEP_VERSION_BUILD_OFFSET}" STREQUAL "build_offset-NOTFOUND")
+      set(PEP_VERSION_BUILD_OFFSET 0)
+    endif()
+    math(EXPR PEP_VERSION_BUILD "${CI_PIPELINE_ID} - ${PEP_VERSION_BUILD_OFFSET}")
 endif()
 
 if("$ENV{CI_JOB_ID}" STREQUAL "")
