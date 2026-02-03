@@ -87,6 +87,13 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
 
+option(PEP_WEBLIB_DISABLE_DYNAMIC_EXECUTION "Don't use eval & Function" ON)
+if(PEP_WEBLIB_DISABLE_DYNAMIC_EXECUTION)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE
+      -sNO_DYNAMIC_EXECUTION
+  )
+endif()
+
 if(NOT EMSCRIPTEN_NO_SEPARATE_DWARF)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE
       # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
