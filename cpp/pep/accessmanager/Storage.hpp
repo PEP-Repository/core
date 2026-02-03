@@ -21,10 +21,11 @@ public:
   struct Implementor; // Public to allow access from checksum calculation function
 
   enum class CaseSensitivity { CaseSensitive, CaseInsensitive };
+
+private:
   static inline constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
   static inline constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
 
-private:
   std::shared_ptr<Implementor> mImplementor;
   std::shared_ptr<GlobalConfiguration> mGlobalConf;
   std::filesystem::path mStoragePath;
