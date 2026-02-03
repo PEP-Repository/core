@@ -7,7 +7,7 @@ function die() {
 }
 
 function invalid_invocation() {
-    >&2 echo "Usage: $0 <major> <minor> <pipeline> <job> <dir>"
+    >&2 echo "Usage: $0 <major> <minor> <build> <revision> <dir>"
     >&2 echo "  e.g. $0 1 4 6543 98765 <build_dir>/wix/stable"
     die
 }
@@ -32,8 +32,8 @@ metafile=installer.xml
     echo "<installer>"
     echo "  <major>$1</major>"
     echo "  <minor>$2</minor>"
-    echo "  <pipeline>$3</pipeline>"
-    echo "  <job>$4</job>"
+    echo "  <build>$3</build>"
+    echo "  <revision>$4</revision>"
     echo "  <files>"
 } > $metafile
 

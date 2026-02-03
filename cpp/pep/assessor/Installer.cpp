@@ -54,6 +54,8 @@ namespace {
     }
 
     static std::string GetDownloadUrl();
+    static std::string GetPropertyKey(const std::string& partial) { return "installer." + partial; }
+    unsigned getUnsignedProperty(const std::string& key, const std::string& secondary) const;
 
   protected:
     std::filesystem::path getLocalMsiPath() const override;
@@ -61,12 +63,19 @@ namespace {
   public:
     unsigned getMajorVersion() const override { return mProperties->get<unsigned>("installer.major"); }
     unsigned getMinorVersion() const override { return mProperties->get<unsigned>("installer.minor"); }
-    unsigned getBuild() const override { return mProperties->get<unsigned>("installer.pipeline"); }
-    unsigned getRevision() const override { return mProperties->get<unsigned>("installer.job"); }
+    unsigned getBuild() const override { return this->getUnsignedProperty("build", "pipeline"); }
+    unsigned getRevision() const override { return this->getUnsignedProperty("revision", "job"); }
 
     bool supersedesRunningVersion() const override;
     static std::shared_ptr<PublishedInstaller> GetAvailable();
   };
+
+  unsigned PublishedInstaller::getUnsignedProperty(const std::string& key, const std::string& secondary) const {
+    if (auto primary = mProperties->get_optional<unsigned>(GetPropertyKey(key))) {
+      return *primary;
+    }
+    return mProperties->get<unsigned>(GetPropertyKey(secondary));
+  }
 
   bool PublishedInstaller::supersedesRunningVersion() const {
     auto installerSemver = getSemver();
