@@ -6,12 +6,12 @@ set builddir=%1
 set wixlibpath=%2
 set configdir=%3
 set environmentname=%4
-set buildnumber=%5
-set revisionnumber=%6
+set pipelinenumber=%5
+set jobnumber=%6
 REM TODO support installer build for local infra (with the project configuration it's based on)
 
-if "%revisionnumber%" == "" (
-	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<buildNumber^> ^<revisionNumber^>
+if "%jobnumber%" == "" (
+	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<pipelinenumber^> ^<jobnumber^>
 	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 6123 876543
 	exit /B 1
 )
@@ -60,8 +60,8 @@ for /f "tokens=*" %%i in ('%OwnDir%\..\scripts\windows-to-sh-path.bat %infradir%
 for /f "tokens=*" %%i in ('%OwnDir%\..\scripts\windows-to-sh-path.bat %projectdir%') do set unixprojectdir=%%i
 
 pushd %OwnDir%
-REM Specify %buildnumber% and %revisionnumber% to ensure that configVersion.json has the same version as the installer
-powershell -ExecutionPolicy Bypass -File "%OwnDir%\..\scripts\invoke-sh.ps1" "../scripts/createConfigVersionJson.sh" "%unixinfradir%" "%unixprojectdir%" "%buildnumber%" "%revisionnumber%" > "%artifactsdir%\configVersion.json" || exit /B 1
+REM Specify %pipelinenumber% and %jobnumber% to ensure that configVersion.json has the same version as the installer
+powershell -ExecutionPolicy Bypass -File "%OwnDir%\..\scripts\invoke-sh.ps1" "../scripts/createConfigVersionJson.sh" "%unixinfradir%" "%unixprojectdir%" "%pipelinenumber%" "%jobnumber%" > "%artifactsdir%\configVersion.json" || exit /B 1
 popd
 if not exist "%artifactsdir%\configVersion.json" (
   echo Config version file was not created at %artifactsdir%\configVersion.json
