@@ -6,7 +6,7 @@ REM instead of the %OwnDir% that may be set by other (invoked) batch files.
 set createWixInstaller=%OwnDir%\..\installer\createWixInstaller.bat
 set createInstallerMetaXml=%OwnDir%\..\installer\createInstallerMetaXml.sh
 
-REM Check if PEP_VERSION_MAJOR and PEP_VERSION_MINOR are set and not empty
+REM Check if version (environment) variables are set and not empty
 if "%PEP_VERSION_MAJOR%"=="" (
     echo Error: PEP_VERSION_MAJOR is not set or is empty.
     exit /B 1
