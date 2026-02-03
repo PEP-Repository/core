@@ -12,8 +12,8 @@
   ],
   "exports": "./pepWeblib.mjs",
   "types": "./pepWeblib.d.mts",
-  "// dependencies.ws": "ws is for websockets on Node.js (without it you'd get `error: system:23(Host is unreachable)`)",
-  "dependencies": {
+  "// devDependencies.ws": "ws is for websockets on Node.js (without it you'd get `error: system:23(Host is unreachable)`). This is in devDependencies such that it does not get bundled.",
+  "devDependencies": {
     "ws": "^8.18.3"
   }
 }

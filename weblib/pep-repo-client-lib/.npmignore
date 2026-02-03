@@ -1,2 +1,0 @@
-# Do not include tests in package
-/dist/**/*.spec.*

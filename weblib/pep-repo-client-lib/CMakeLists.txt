@@ -32,7 +32,7 @@ add_custom_target(pep-repo-client-lib-build
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 set_target_properties(pep-repo-client-lib-build PROPERTIES
-    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/dist/"
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/pack/dist/"
 )
 
 add_custom_target(pep-repo-client-lib-config

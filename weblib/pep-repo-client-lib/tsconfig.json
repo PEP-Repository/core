@@ -14,7 +14,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "./dist/",
+    "outDir": "./pack/dist/",
     // CLI
     "pretty": true
   },
