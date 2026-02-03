@@ -345,16 +345,18 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
 }
 
 TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
-  storage->createUser("user");
-  EXPECT_ANY_THROW(storage->createUser("user"));
-  EXPECT_ANY_THROW(storage->createUser("UsEr"));
+  storage->createUser("firstname.lastname@pepumc.com"); // typical email as identifier
+
+  EXPECT_ANY_THROW(storage->createUser("firstname.lastname@pepumc.com")); // exactly the same
+  EXPECT_ANY_THROW(storage->createUser("Firstname.Lastname@pepumc.com")); // only casing is different
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
-  int64_t originalId = storage->createUser("user");
-  storage->createUser("anotherUser");
-  EXPECT_EQ(storage->findInternalUserId("user"), originalId);
-  EXPECT_EQ(storage->findInternalUserId("UsEr"), originalId); // different casing
+  const auto originalId = storage->createUser("First.Last@pepumc.com"); // typical email as identifier
+  storage->createUser("another.user@pepumc.com");
+
+  EXPECT_EQ(storage->findInternalUserId("First.Last@pepumc.com"), originalId); // exact match
+  EXPECT_EQ(storage->findInternalUserId("first.last@pepumc.com"), originalId); // different casing
   EXPECT_EQ(storage->findInternalUserId("NotExisting"), std::nullopt);
 }
 
