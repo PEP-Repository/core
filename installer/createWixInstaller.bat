@@ -12,7 +12,7 @@ REM TODO support installer build for local infra (with the project configuration
 
 if "%jobnumber%" == "" (
 	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<pipelinenumber^> ^<jobnumber^>
-	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 6123 876543
+	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 76123 876543
 	exit /B 1
 )
 
