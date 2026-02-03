@@ -24,6 +24,12 @@ endif()
 if(NOT DEFINED PEP_VERSION_MINOR)
   message(FATAL_ERROR "Minor version is not set.")
 endif()
+if(NOT DEFINED PEP_VERSION_BUILD)
+  message(FATAL_ERROR "Build number is not set.")
+endif()
+if(NOT DEFINED PEP_VERSION_REVISION)
+  message(FATAL_ERROR "Revision number is not set.")
+endif()
 
 # If you update the build variables, don't forget to update those
 # for C(++) as well.
