@@ -11,14 +11,7 @@
 <?ifndef var.VersionBuild ?>
 	<?define VersionBuild = "0" ?>
 <?endif ?>
-<!--
-	Make ProductVersion.build field fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/msi/productversion & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
-	Note: the last number (JobNumber) is not interpreted by Windows installer and has no such restriction.
--->
-<?ifndef var.TruncatedPipelineNumber ?>
-	<?define TruncatedPipelineNumber = "0" ?>
-<?endif ?>
-<?ifndef var.JobNumber ?>
+<?ifndef var.VersionRevision ?>
 	<!--
 		Since CI sets this to CI_JOB_ID, this will usually be a local build.
 		Only the first three parts (major, minor, pipeline) are used in the 
@@ -27,7 +20,7 @@
 		This number is purely used as a way to track back the specific
 		build job in order to trace back errors and bugs. 
 	-->
-	<?define JobNumber = "0" ?>
+	<?define VersionRevision = "0" ?>
 <?endif ?>
 
 
