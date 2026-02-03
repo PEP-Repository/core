@@ -56,7 +56,7 @@ namespace {
     static std::string GetDownloadUrl();
 
   protected:
-    std::filesystem::path PublishedInstaller::getLocalMsiPath() const override;
+    std::filesystem::path getLocalMsiPath() const override;
 
   public:
     unsigned getMajorVersion() const override { return mProperties->get<unsigned>("installer.major"); }
