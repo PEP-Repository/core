@@ -214,6 +214,9 @@ endif()
 if(NOT DEFINED PEP_VERSION_BUILD)
   message(FATAL_ERROR "Build number is not set.")
 endif()
+if(NOT DEFINED PEP_VERSION_REVISION)
+  message(FATAL_ERROR "Revision number is not set.")
+endif()
 
 add_compile_definitions(
   "BUILD_PROJECT_PATH=\"$ENV{CI_PROJECT_PATH}\""
