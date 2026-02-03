@@ -34,10 +34,10 @@ projectPath=$("$SCRIPTPATH"/gitdir.sh origin-path "$infraDir")
 projectRoot=$("$SCRIPTPATH"/gitdir.sh get-project-root "$infraDir")
 projectCaption=$(cat "$projectDir"/caption.txt)
 
-versionMajor="$($SCRIPTPATH/parse-version.sh get-major "$projectRoot/version.json")"
-versionMinor="$($SCRIPTPATH/parse-version.sh get-minor "$projectRoot/version.json")"
-versionBuild="$($SCRIPTPATH/parse-version.sh get-build "$projectRoot/version.json" "$pipelineId")"
-versionRevision="$jobId"
+versionMajor="$($SCRIPTPATH/parse-version.sh    get-major    "$projectRoot/version.json" "$pipelineId" "$jobId")"
+versionMinor="$($SCRIPTPATH/parse-version.sh    get-minor    "$projectRoot/version.json" "$pipelineId" "$jobId")"
+versionBuild="$($SCRIPTPATH/parse-version.sh    get-build    "$projectRoot/version.json" "$pipelineId" "$jobId")"
+versionRevision="$($SCRIPTPATH/parse-version.sh get-revision "$projectRoot/version.json" "$pipelineId" "$jobId")"
 
 # Use branch/tag name for CI builds, e.g. using feature branch names instead of "review".
 # Use infra directory name for local builds so that the environment has a readable caption.
