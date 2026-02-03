@@ -205,10 +205,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-reorder-blocks -fno-reorder-blocks-and-partition")
 endif()
 
-if(NOT DEFINED MAJOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MAJOR)
   message(FATAL_ERROR "Major version is not set.")
 endif()
-if(NOT DEFINED MINOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MINOR)
   message(FATAL_ERROR "Minor version is not set.")
 endif()
 
@@ -225,8 +225,8 @@ add_compile_definitions(
   "BUILD_PROJECT_PATH=\"$ENV{CI_PROJECT_PATH}\""
   "BUILD_REF=\"$ENV{CI_COMMIT_REF_NAME}\""
   "BUILD_COMMIT=\"$ENV{CI_COMMIT_SHA}\""
-  "PEP_VERSION_MAJOR=${MAJOR_VERSION}"
-  "PEP_VERSION_MINOR=${MINOR_VERSION}"
+  "PEP_VERSION_MAJOR=${PEP_VERSION_MAJOR}"
+  "PEP_VERSION_MINOR=${PEP_VERSION_MINOR}"
   "PEP_VERSION_BUILD=${truncated_pipeline_id}"
   "PEP_VERSION_REVISION=${CI_JOB_ID}"
   "BUILD_TARGET=\"${CMAKE_SYSTEM_NAME}\""

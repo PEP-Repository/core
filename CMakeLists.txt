@@ -173,8 +173,8 @@ set_property(
 # Read semver parts
 file(READ ${CMAKE_CURRENT_LIST_DIR}/version.json VERSION_JSON)
 
-string(JSON MAJOR_VERSION GET ${VERSION_JSON} major)
-string(JSON MINOR_VERSION GET ${VERSION_JSON} minor)
+string(JSON PEP_VERSION_MAJOR GET ${VERSION_JSON} major)
+string(JSON PEP_VERSION_MINOR GET ${VERSION_JSON} minor)
 
 # For local builds, we don't care what the pipeline and job id are, but they must be set to some numeric value
 if("$ENV{CI_PIPELINE_ID}" STREQUAL "")

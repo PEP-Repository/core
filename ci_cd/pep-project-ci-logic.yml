@@ -136,7 +136,7 @@ load-version:
   before_script:
     - apk --update add --no-cache jq
   script:
-  # Adds the following variables to version.env: MAJOR_VERSION; MINOR_VERSION;
+  # Adds the following variables to version.env: PEP_VERSION_MAJOR; PEP_VERSION_MINOR;
     - ./"$PEP_FOSS_REPO_DIR"/scripts/parse-version.sh env-var-assignments version.json > version.env
     - cat version.env
   artifacts:

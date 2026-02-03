@@ -18,10 +18,10 @@ endif()
 set(PEP_GOPATH ${CMAKE_CURRENT_BINARY_DIR})
 set(GOPATH ${GOPATH}${PATH_DELIMITER}${PEP_GOPATH})
 
-if(NOT DEFINED MAJOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MAJOR)
   message(FATAL_ERROR "Major version is not set.")
 endif()
-if(NOT DEFINED MINOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MINOR)
   message(FATAL_ERROR "Minor version is not set.")
 endif()
 
@@ -31,8 +31,8 @@ set(GO_BUILD_FLAGS "${GO_EXTRA_BUILD_FLAGS}" -ldflags
        "-X pep.cs.ru.nl/gopep/build.BuildProjectPath=$ENV{CI_PROJECT_PATH} \
         -X pep.cs.ru.nl/gopep/build.BuildReference=$ENV{CI_COMMIT_REF_NAME} \
         -X pep.cs.ru.nl/gopep/build.BuildCommit=$ENV{CI_COMMIT_SHA} \
-        -X pep.cs.ru.nl/gopep/build.BuildMajorVersion=${MAJOR_VERSION} \
-        -X pep.cs.ru.nl/gopep/build.BuildMinorVersion=${MINOR_VERSION} \
+        -X pep.cs.ru.nl/gopep/build.BuildMajorVersion=${PEP_VERSION_MAJOR} \
+        -X pep.cs.ru.nl/gopep/build.BuildMinorVersion=${PEP_VERSION_MINOR} \
         -X pep.cs.ru.nl/gopep/build.BuildPipelineId=${CI_PIPELINE_ID} \
         -X pep.cs.ru.nl/gopep/build.BuildJobId=${CI_JOB_ID} \
         -X pep.cs.ru.nl/gopep/build.BuildTarget=${CMAKE_SYSTEM_NAME}")

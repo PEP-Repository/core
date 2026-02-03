@@ -23,8 +23,8 @@ case $command in
     echo "$version_minor"
     ;;
   env-var-assignments)
-    echo "MAJOR_VERSION=$version_major"
-    echo "MINOR_VERSION=$version_minor"
+    echo "PEP_VERSION_MAJOR=$version_major"
+    echo "PEP_VERSION_MINOR=$version_minor"
     ;;
   *)
     >&2 echo Unsupported command "$command"
