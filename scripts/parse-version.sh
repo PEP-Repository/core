@@ -35,10 +35,14 @@ case $command in
   get-build)
     get_build "$3"
     ;;
+  get-revision)
+    echo "$4"
+    ;;
   env-var-assignments)
     echo "PEP_VERSION_MAJOR=$version_major"
     echo "PEP_VERSION_MINOR=$version_minor"
     echo "PEP_VERSION_BUILD=$(get_build "$3")"
+    echo "PEP_VERSION_REVISION=$4"
     ;;
   *)
     >&2 echo Unsupported command "$command"

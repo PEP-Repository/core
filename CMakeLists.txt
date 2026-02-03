@@ -192,9 +192,9 @@ else()
 endif()
 
 if("$ENV{CI_JOB_ID}" STREQUAL "")
-    set(CI_JOB_ID 0)
+    set(PEP_VERSION_REVISION 0)
 else()
-    set(CI_JOB_ID "$ENV{CI_JOB_ID}")
+    set(PEP_VERSION_REVISION "$ENV{CI_JOB_ID}")
 endif()
 
 ##

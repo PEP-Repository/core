@@ -6,23 +6,14 @@ set builddir=%1
 set wixlibpath=%2
 set configdir=%3
 set environmentname=%4
-set pipelinenumber=%5
-set jobnumber=%6
+set buildnumber=%5
+set revisionnumber=%6
 REM TODO support installer build for local infra (with the project configuration it's based on)
 
-if "%jobnumber%" == "" (
-	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<pipelineNumber^> ^<jobNumber^>
-	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 66123 876543
+if "%revisionnumber%" == "" (
+	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<buildNumber^> ^<revisionNumber^>
+	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 6123 876543
 	exit /B 1
-)
-
-REM Make config version build number fit in 16 bits, see pep.wxs
-REM Preferably, keep number to subtract consistent with binary pipeline in /cpp/pep/CMakeLists.txt
-set pipelineSubtract=60000
-if %pipelinenumber% gtr %pipelineSubtract% (
-  set /a "truncatedPipelineNumber=%pipelinenumber% - %pipelineSubtract%"
-) else (
-  set truncatedPipelineNumber=%pipelinenumber%
 )
 
 echo Creating build directory
@@ -69,16 +60,18 @@ for /f "tokens=*" %%i in ('%OwnDir%\..\scripts\windows-to-sh-path.bat %infradir%
 for /f "tokens=*" %%i in ('%OwnDir%\..\scripts\windows-to-sh-path.bat %projectdir%') do set unixprojectdir=%%i
 
 pushd %OwnDir%
-REM Specify %pipelinenumber% and %jobnumber% to ensure that configVersion.json has the same version as the installer
-powershell -ExecutionPolicy Bypass -File "%OwnDir%\..\scripts\invoke-sh.ps1" "../scripts/createConfigVersionJson.sh" "%unixinfradir%" "%unixprojectdir%" "%pipelinenumber%" "%jobnumber%" > "%artifactsdir%\configVersion.json" || exit /B 1
+REM Specify %buildnumber% and %revisionnumber% to ensure that configVersion.json has the same version as the installer
+powershell -ExecutionPolicy Bypass -File "%OwnDir%\..\scripts\invoke-sh.ps1" "../scripts/createConfigVersionJson.sh" "%unixinfradir%" "%unixprojectdir%" "%buildnumber%" "%revisionnumber%" > "%artifactsdir%\configVersion.json" || exit /B 1
 popd
 if not exist "%artifactsdir%\configVersion.json" (
   echo Config version file was not created at %artifactsdir%\configVersion.json
   exit /B 1
 )
 
-for /F "tokens=*" %%g in ('jq .majorVersion "%artifactsdir%\configVersion.json"') do (set majorVersion=%%g)
-for /F "tokens=*" %%g in ('jq .minorVersion "%artifactsdir%\configVersion.json"') do (set minorVersion=%%g)
+for /F "tokens=*" %%g in ('jq .versionMajor "%artifactsdir%\configVersion.json"') do (set versionMajor=%%g)
+for /F "tokens=*" %%g in ('jq .versionMinor "%artifactsdir%\configVersion.json"') do (set versionMinor=%%g)
+for /F "tokens=*" %%g in ('jq .versionBuild "%artifactsdir%\configVersion.json"') do (set versionBuild=%%g)
+for /F "tokens=*" %%g in ('jq .versionRevision "%artifactsdir%\configVersion.json"') do (set versionRevision=%%g)
 
 
 echo Copying infrastructure configuration files
@@ -94,7 +87,7 @@ echo Harvesting project configuration files into WiX source
 
 echo Compiling WiX sources
 "%WIX%\bin\candle.exe" -nologo -dArtifactsDir="%artifactsdir%" -arch x64 -out "%wixdir%\configFiles.wixobj" "%wixdir%\configFiles.wxs" || exit /B 1
-"%WIX%\bin\candle.exe" -nologo -dMajorVersion="%majorVersion%" -dMinorVersion="%minorVersion%" -dPipelineNumber="%pipelinenumber%" -dTruncatedPipelineNumber="%truncatedPipelineNumber%" -dJobNumber=%jobnumber% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
+"%WIX%\bin\candle.exe" -nologo -dVersionMajor="%versionMajor%" -dVersionMinor="%versionMinor%" -dVersionBuild="%versionBuild%" -dVersionRevision=%versionRevision% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
 
 echo Linking MSI installer
 REM Suppress "warning LGHT1076 : ICE69: Mismatched component reference", which is issued because
