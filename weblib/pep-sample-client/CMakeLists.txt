@@ -23,21 +23,6 @@ set_target_properties(pep-sample-client-build PROPERTIES
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/dist/"
 )
 
-set(separate_dwarf_copy_args_debug
-    create_symlink
-    $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
-    ${CMAKE_CURRENT_SOURCE_DIR}/dist/${PROJECT_NAME}Weblib.wasm.debug.wasm
-)
-add_custom_target(pep-sample-client-separate-dwarf
-    COMMENT "Copy -gseparate-dwarf debug info for pep-sample-client"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist/
-    # Use cat to skip in Release mode
-    COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
-    COMMAND_EXPAND_LISTS
-    VERBATIM
-    DEPENDS ${PROJECT_NAME}Weblib
-)
-
 add_custom_target(pep-sample-client-config
     COMMENT "Copy config to dist folder"
     COMMAND ${CMAKE_COMMAND} -E copy
@@ -60,9 +45,26 @@ add_custom_target(${PROJECT_NAME}WeblibSampleClient ALL
     COMMENT "Build full weblib sample client"
     DEPENDS
       pep-sample-client-build
-      pep-sample-client-separate-dwarf
       pep-sample-client-config
 )
+
+if(NOT EMSCRIPTEN_NO_SEPARATE_DWARF)
+  set(separate_dwarf_copy_args_debug
+      create_symlink
+      $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
+      ${CMAKE_CURRENT_SOURCE_DIR}/dist/${PROJECT_NAME}Weblib.wasm.debug.wasm
+  )
+  add_custom_target(pep-sample-client-separate-dwarf
+      COMMENT "Copy -gseparate-dwarf debug info for pep-sample-client"
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist/
+      # Use cat to skip in Release mode
+      COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
+      COMMAND_EXPAND_LISTS
+      VERBATIM
+      DEPENDS ${PROJECT_NAME}Weblib
+  )
+  add_dependencies(${PROJECT_NAME}WeblibSampleClient pep-sample-client-separate-dwarf)
+endif()
 
 if(PEP_WEBLIB_SOURCE_MAP)
   add_custom_target(pep-sample-client-source-map

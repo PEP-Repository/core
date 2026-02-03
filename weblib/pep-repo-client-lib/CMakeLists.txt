@@ -63,40 +63,6 @@ add_custom_target(${PROJECT_NAME}WeblibJs ALL
       pep-repo-client-lib-config
 )
 
-
-set(separate_dwarf_copy_args_debug
-    create_symlink
-    $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
-    ${CMAKE_CURRENT_SOURCE_DIR}/dist-test/${PROJECT_NAME}Weblib.wasm.debug.wasm
-)
-add_custom_target(pep-repo-client-lib-separate-dwarf
-    COMMENT "Copy -gseparate-dwarf debug info for pep-repo-client-lib web tests"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist-test/
-    # Use cat to skip in Release mode
-    COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
-    COMMAND_EXPAND_LISTS
-    VERBATIM
-    DEPENDS ${PROJECT_NAME}Weblib
-)
-
-add_custom_target(pep-repo-client-lib-web-tests-build
-    COMMENT "Type-check & compile to JS for pep-repo-client-lib web tests"
-    COMMAND ${NPM_PROGRAM} run build-web-tests
-    VERBATIM
-    DEPENDS ${PROJECT_NAME}WeblibJs
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-set_target_properties(pep-repo-client-lib-build PROPERTIES
-    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/dist/"
-)
-
-add_custom_target(${PROJECT_NAME}WeblibJsWebTests ALL
-    COMMENT "Build full JS weblib"
-    DEPENDS
-      pep-repo-client-lib-web-tests-build
-      pep-repo-client-lib-separate-dwarf
-)
-
 if(PEP_WEBLIB_SOURCE_MAP)
   add_custom_target(pep-repo-client-lib-source-map
       COMMENT "Copy -gsource-map for pep-repo-client-lib web tests"
@@ -109,6 +75,41 @@ if(PEP_WEBLIB_SOURCE_MAP)
       DEPENDS ${PROJECT_NAME}Weblib
   )
   add_dependencies(${PROJECT_NAME}WeblibJs pep-repo-client-lib-source-map)
+endif()
+
+add_custom_target(pep-repo-client-lib-web-tests-build
+    COMMENT "Type-check & compile to JS for pep-repo-client-lib web tests"
+    COMMAND ${NPM_PROGRAM} run build-web-tests
+    VERBATIM
+    DEPENDS ${PROJECT_NAME}WeblibJs
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+set_target_properties(pep-repo-client-lib-web-tests-build PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/dist-test/"
+)
+
+add_custom_target(${PROJECT_NAME}WeblibJsWebTests ALL
+    COMMENT "Build full JS weblib"
+    DEPENDS
+      pep-repo-client-lib-web-tests-build
+)
+
+if(NOT EMSCRIPTEN_NO_SEPARATE_DWARF)
+  set(separate_dwarf_copy_args_debug
+      create_symlink
+      $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
+      ${CMAKE_CURRENT_SOURCE_DIR}/dist-test/${PROJECT_NAME}Weblib.wasm.debug.wasm
+  )
+  add_custom_target(pep-repo-client-lib-separate-dwarf
+      COMMENT "Copy -gseparate-dwarf debug info for pep-repo-client-lib web tests"
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/dist-test/
+      # Use cat to skip in Release mode
+      COMMAND ${CMAKE_COMMAND} -E "$<IF:$<CONFIG:Debug,RelWithDebInfo>,${separate_dwarf_copy_args_debug},cat;-->"
+      COMMAND_EXPAND_LISTS
+      VERBATIM
+      DEPENDS ${PROJECT_NAME}Weblib
+  )
+  add_dependencies(${PROJECT_NAME}WeblibJsWebTests pep-repo-client-lib-separate-dwarf)
 endif()
 
 

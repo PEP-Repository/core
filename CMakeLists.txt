@@ -207,6 +207,8 @@ if(DEFINED EMSCRIPTEN)
   # Excludes weblib
   option(EMSCRIPTEN_BROWSER "Build Emscripten executables for browser instead of Node.js")
 
+  option(EMSCRIPTEN_NO_SEPARATE_DWARF "Don't put WebAssembly DWARF debug info in a separate .wasm.debug.wasm file, instead of in the .wasm file" OFF)
+
   define_property(TARGET PROPERTY PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG
       BRIEF_DOCS "Do not add default config for Emscripten executables"
   )
@@ -218,12 +220,16 @@ if(DEFINED EMSCRIPTEN)
       LINKER:--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
       -gsource-map
       -sEXIT_RUNTIME  # Run global destructors after main()
-      # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
-      # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-      "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"
       "$<$<CONFIG:Debug,RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
+      # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
       "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
   )
+  if(NOT EMSCRIPTEN_NO_SEPARATE_DWARF)
+    list(APPEND default_emscripten_exe_config
+        # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
+        "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"
+    )
+  endif()
 
   if(EMSCRIPTEN_BROWSER)
     set(CMAKE_EXECUTABLE_SUFFIX .html)  # Create HTML shell

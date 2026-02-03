@@ -79,20 +79,34 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sINCOMING_MODULE_JS_API=thisProgram,noExitRuntime
     -sEXPORTED_RUNTIME_METHODS=FS,FS_createPreloadedFile,IDBFS,callMain,ExitStatus,getExceptionMessage,incrementExceptionRefcount,decrementExceptionRefcount
     "--emit-tsd=$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts"
-    # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
+    "$<$<CONFIG:Debug,RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
     # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-    "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf;-Wno-error=limited-postlink-optimizations>"
     "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
 
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
+
+if(NOT EMSCRIPTEN_NO_SEPARATE_DWARF)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE
+      # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
+      "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"
+  )
+else()
+  # Prevent old debug info from remaining
+  add_custom_command(
+      TARGET ${PROJECT_NAME}Weblib POST_BUILD
+      COMMENT "Removing any leftover -gseparate-dwarf"
+      COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm"
+      VERBATIM
+  )
+endif()
 
 # Originally here to work around huge source map: https://github.com/emscripten-core/emscripten/issues/26100
 option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib" ON)
 if(PEP_WEBLIB_SOURCE_MAP)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE -gsource-map)
 else()
-  # Prevent old source map from remaining and being picked up
+  # Prevent old source map from remaining
   add_custom_command(
       TARGET ${PROJECT_NAME}Weblib POST_BUILD
       COMMENT "Removing any leftover source map"
