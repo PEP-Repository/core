@@ -135,7 +135,7 @@ class PEPRepository:
             raise ValueError("Invalid token")
 
     def __get_base_cmd(self):
-        cmd = [self.pep_config.pepcli_path, "--oauth-token", self.current_token]
+        cmd = [str(self.pep_config.pepcli_path), "--oauth-token", str(self.current_token)]
         return cmd
 
     def run_command(self, command, input_data=None):
