@@ -11,8 +11,8 @@ set jobnumber=%6
 REM TODO support installer build for local infra (with the project configuration it's based on)
 
 if "%jobnumber%" == "" (
-	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<pipelinenumber^> ^<jobnumber^>
-	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 76123 876543
+	echo Usage: %0 ^<buildDir^> ^<wixLibPath^> ^<configDir^> ^<environment^> ^<pipelineNumber^> ^<jobNumber^>
+	echo E.g. : %0 "C:\proj\bin" "C:\pepBinaries.wixlib" C:\proj\config acc 66123 876543
 	exit /B 1
 )
 
