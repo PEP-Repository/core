@@ -38,7 +38,7 @@ case $command in
   env-var-assignments)
     echo "PEP_VERSION_MAJOR=$version_major"
     echo "PEP_VERSION_MINOR=$version_minor"
-	echo "PEP_VERSION_BUILD=$(get_build "$3")"
+    echo "PEP_VERSION_BUILD=$(get_build "$3")"
     ;;
   *)
     >&2 echo Unsupported command "$command"
