@@ -31,10 +31,10 @@ set(GO_BUILD_FLAGS "${GO_EXTRA_BUILD_FLAGS}" -ldflags
        "-X pep.cs.ru.nl/gopep/build.BuildProjectPath=$ENV{CI_PROJECT_PATH} \
         -X pep.cs.ru.nl/gopep/build.BuildReference=$ENV{CI_COMMIT_REF_NAME} \
         -X pep.cs.ru.nl/gopep/build.BuildCommit=$ENV{CI_COMMIT_SHA} \
-        -X pep.cs.ru.nl/gopep/build.BuildMajorVersion=${PEP_VERSION_MAJOR} \
-        -X pep.cs.ru.nl/gopep/build.BuildMinorVersion=${PEP_VERSION_MINOR} \
-        -X pep.cs.ru.nl/gopep/build.BuildPipelineId=${PEP_VERSION_BUILD} \
-        -X pep.cs.ru.nl/gopep/build.BuildJobId=${CI_JOB_ID} \
+        -X pep.cs.ru.nl/gopep/build.BuildVersionMajor=${PEP_VERSION_MAJOR} \
+        -X pep.cs.ru.nl/gopep/build.BuildVersionMinor=${PEP_VERSION_MINOR} \
+        -X pep.cs.ru.nl/gopep/build.BuildVersionBuild=${PEP_VERSION_BUILD} \
+        -X pep.cs.ru.nl/gopep/build.BuildVersionRevision=${CI_JOB_ID} \
         -X pep.cs.ru.nl/gopep/build.BuildTarget=${CMAKE_SYSTEM_NAME}")
 
 # Include external stuff

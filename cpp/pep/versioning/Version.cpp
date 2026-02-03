@@ -130,10 +130,10 @@ std::optional<ConfigVersion> ConfigVersion::TryLoad(const std::filesystem::path&
         config.get<std::string>("projectPath"),
         config.get<std::string>("reference"),
         config.get<std::string>("commit"),
-        config.get<unsigned int>("majorVersion"),
-        config.get<unsigned int>("minorVersion"),
-        config.get<unsigned int>("pipelineId"),
-        config.get<unsigned int>("jobId"),
+        config.get<unsigned int>("versionMajor"),
+        config.get<unsigned int>("versionMinor"),
+        config.get<unsigned int>("versionBuild"),
+        config.get<unsigned int>("versionRevision"),
         config.get<std::string>("projectCaption")
       );
     }
