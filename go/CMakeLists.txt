@@ -33,7 +33,7 @@ set(GO_BUILD_FLAGS "${GO_EXTRA_BUILD_FLAGS}" -ldflags
         -X pep.cs.ru.nl/gopep/build.BuildCommit=$ENV{CI_COMMIT_SHA} \
         -X pep.cs.ru.nl/gopep/build.BuildMajorVersion=${PEP_VERSION_MAJOR} \
         -X pep.cs.ru.nl/gopep/build.BuildMinorVersion=${PEP_VERSION_MINOR} \
-        -X pep.cs.ru.nl/gopep/build.BuildPipelineId=${CI_PIPELINE_ID} \
+        -X pep.cs.ru.nl/gopep/build.BuildPipelineId=${PEP_VERSION_BUILD} \
         -X pep.cs.ru.nl/gopep/build.BuildJobId=${CI_JOB_ID} \
         -X pep.cs.ru.nl/gopep/build.BuildTarget=${CMAKE_SYSTEM_NAME}")
 
