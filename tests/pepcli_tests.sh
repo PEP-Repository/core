@@ -554,6 +554,24 @@ fi
 
 ####################
 
+if should_run_test user-id-collision; then
+  pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl"
+
+  pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl" &&
+    fail "should not accept new ids that exactly match existing ids"
+  pepcli --oauth-token-group "Access Administrator" user create "aart.appel@fake.ru.nl" &&
+    fail "should not accept new ids that only differ by casing"
+
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier "Aart.Appel@fake.ru.nl" "Aart.Appel@fake.ru.nl" &&
+    fail "should not accept new ids that exactly match existing ids"
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier "Aart.Appel@fake.ru.nl" "aart.appel@fake.ru.nl" &&
+    fail "should not accept new ids that only differ by casing"
+
+  pepcli --oauth-token-group "Access Administrator" user remove "Aart.Appel@fake.ru.nl"
+fi
+
+####################
+
 if should_run_test s3-roundtrip; then
   # Set up a column for storage of large(-ish) data by "Research Assessor"
   pepcli --oauth-token-group "Data Administrator" ama column create LargeColumn
