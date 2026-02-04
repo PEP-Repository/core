@@ -64,6 +64,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
       traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return std::ranges::find(params.servers, traits.commandLineId()) != params.servers.end(); });
     }
 
+    //NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks) See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2781#note_55944
     return rxcpp::rxs::iterate(traits)
       .map([client](const pep::ServerTraits& traits) {
         assert(traits.hasSigningIdentity());
@@ -75,7 +76,6 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
           targetFilePath = *params.targetFile;
         }
         else {
-          //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
           if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
             throw std::runtime_error("Expected common name contains characters that are not allowed in filenames on some systems. Can't autodeduce target filename");
           }
@@ -83,6 +83,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
         }
         return action(*proxy, targetFilePath);
       });
+    //NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks) See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2781#note_55944
   };
 }
 }
