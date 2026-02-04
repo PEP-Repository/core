@@ -1433,7 +1433,6 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
   using namespace std::ranges;
 
   const auto toOptional = [](auto&& range) {
-    // Merges duplicates
     return RangeToOptional(RangeToCollection<std::unordered_set>(std::forward<decltype(range)>(range)));
   };
   const auto toLower = [](std::vector<std::string> identifiers){
@@ -1442,16 +1441,14 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
   };
   const auto timeCondition = c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at);
 
-  // There is some code duplication that is hard to remove, because the types passed to RangeToCollection are different for each case
+  // There is some code duplication that is hard to remove, because the types passed to toOptional are different
   return (caseSensitivity == CaseSensitive)
-      ? toOptional(
-          mImplementor->getCurrentRecords(
+      ? toOptional(mImplementor->getCurrentRecords(
             timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
             &UserIdRecord::internalUserId))
-      : toOptional( // Merge duplicates
-          mImplementor->getCurrentRecords(
+      : toOptional(mImplementor->getCurrentRecords(
             timeCondition && in(&UserIdRecord::identifier, identifiers),
-            &UserIdRecord::internalUserId)) ;
+            &UserIdRecord::internalUserId));
 }
 
 std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifiersForUser(int64_t internalUserId, Timestamp at) const {
