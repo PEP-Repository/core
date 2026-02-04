@@ -17,6 +17,10 @@ using namespace std::chrono_literals;
 using namespace std::string_literals;
 
 namespace {
+
+constexpr auto CaseSensitive = AccessManager::Backend::Storage::CaseSensitivity::CaseSensitive;
+constexpr auto CaseInsensitive = AccessManager::Backend::Storage::CaseSensitivity::CaseInsensitive;
+
 void PrepareSortedMine(UserQueryResponse& response) {
   erase_if(response.mUserGroups, [](const UserGroup& group) {
     return !group.mName.starts_with("My");
@@ -345,19 +349,34 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
 }
 
 TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
-  storage->createUser("firstname.lastname@pepumc.com"); // typical email as identifier
+  storage->createUser("Aart.Appel@fake.ru.nl");
+  storage->createUser("QmVydEJyYWFt");
 
-  EXPECT_ANY_THROW(storage->createUser("firstname.lastname@pepumc.com")); // exactly the same
-  EXPECT_ANY_THROW(storage->createUser("Firstname.Lastname@pepumc.com")); // only casing is different
+  EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl")) << "Should reject ids that match exactly";
+  EXPECT_ANY_THROW(storage->createUser("qmvydejyywft")) << "Should reject ids that only differs by case";
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
-  const auto originalId = storage->createUser("First.Last@pepumc.com"); // typical email as identifier
-  storage->createUser("another.user@pepumc.com");
+  const auto idEmail = storage->createUser("Aart.Appel@fake.ru.nl"); // typical email
+  const auto idBase64 = storage->createUser("QmVydEJyYWFt"); // arbitrary base 64 string
 
-  EXPECT_EQ(storage->findInternalUserId("First.Last@pepumc.com"), originalId); // exact match
-  EXPECT_EQ(storage->findInternalUserId("first.last@pepumc.com"), originalId); // different casing
-  EXPECT_EQ(storage->findInternalUserId("NotExisting"), std::nullopt);
+  {
+    const auto section = "case: exact match";
+    EXPECT_NE(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
+    EXPECT_NE(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64) << section;
+  }
+
+  {
+    const auto section = "case: different casing";
+    EXPECT_NE(storage->findInternalUserId("aart.appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
+    EXPECT_NE(storage->findInternalUserId("qmvydejyywft", CaseSensitive), std::nullopt) << section;
+  }
+
+  {
+    const auto section = "case: no match";
+    EXPECT_NE(storage->findInternalUserId("Clara.Citroen@fake.ru.nl", CaseInsensitive), std::nullopt) << section;
+    EXPECT_NE(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
+  }
 }
 
 TEST_F(AccessManagerStorageTest, multipleUserIdentifiers) {
