@@ -44,7 +44,7 @@ At this moment, I see no way around this.*/
 class AccessManagerStorageTest : public ::testing::Test {
 public:
   static std::shared_ptr<AccessManager::Backend::Storage> storage;
-  const std::filesystem::path databasePath{"./testDB.sql"};
+  const std::filesystem::path databasePath{":memory:"};
   static std::shared_ptr<GlobalConfiguration> globalConf;
 
   const PolymorphicPseudonym dummyPP{PolymorphicPseudonym::FromIdentifier(ElgamalPublicKey::Random(), "dummy")};
