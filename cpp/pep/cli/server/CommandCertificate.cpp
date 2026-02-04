@@ -3,6 +3,7 @@
 #include <pep/cli/Command.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/cli/server/CommandCertificate.hpp>
+#include <pep/utils/Algorithm.hpp>
 #include <pep/utils/File.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 
@@ -75,8 +76,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
           targetFilePath = *params.targetFile;
         }
         else {
-          //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
-          if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
+          if (std::ranges::any_of(proxy->getExpectedCommonName(), pep::IsAnyOf(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
             throw std::runtime_error("Expected common name contains characters that are not allowed in filenames on some systems. Can't autodeduce target filename");
           }
           targetFilePath = params.targetDirectory.value_or(".") / std::format("PEP{}.{}", proxy->getExpectedCommonName(), extension);
