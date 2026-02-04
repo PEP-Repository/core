@@ -7,7 +7,7 @@ mkdir -p /secrets_copy
 cp -R /secrets/shibboleth /secrets_copy
 /bin/chown _shibd:_shibd /secrets_copy/shibboleth/*
 
-sed -z 's/\n//g' /secrets/spoofKey > /secrets_copy/spoofKey
+tr --delete "[:cntrl:]" < /secrets/spoofKey > /secrets_copy/spoofKey
 spoofKey=$(cat /secrets_copy/spoofKey)
 sed -i -e "s/\${SPOOFKEY}/${spoofKey}/" /etc/shibboleth/shibboleth2.xml
 
