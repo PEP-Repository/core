@@ -1646,7 +1646,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // List users matching user filter
   for (auto internalId: mImplementor->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && instr(&UserIdRecord::identifier, query.mUserFilter) /*true if filter is empty*/,
+         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.mUserFilter)) /*true if filter is empty*/,
          &UserIdRecord::internalUserId)) {
     // Add internalId, we add all identifiers below
     usersInfo.try_emplace(internalId);
