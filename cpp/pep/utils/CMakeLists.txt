@@ -14,7 +14,6 @@ set(LOGGING ${DEFAULT_LOGGING} CACHE STRING
 add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${LOGGING})
 
 add_library(${PROJECT_NAME}Utilslib STATIC
-    Algorithm.hpp
     ApplicationMetrics.cpp ApplicationMetrics.hpp
     Attributes.hpp
     Base64.cpp Base64.hpp
