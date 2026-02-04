@@ -75,6 +75,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
           targetFilePath = *params.targetFile;
         }
         else {
+          //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
           if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
             throw std::runtime_error("Expected common name contains characters that are not allowed in filenames on some systems. Can't autodeduce target filename");
           }
