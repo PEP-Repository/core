@@ -362,20 +362,20 @@ TEST_F(AccessManagerStorageTest, findInternalUserId) {
 
   {
     const auto section = "case: exact match";
-    EXPECT_NE(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
-    EXPECT_NE(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64) << section;
+    EXPECT_EQ(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
+    EXPECT_EQ(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64) << section;
   }
 
   {
     const auto section = "case: different casing";
-    EXPECT_NE(storage->findInternalUserId("aart.appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
-    EXPECT_NE(storage->findInternalUserId("qmvydejyywft", CaseSensitive), std::nullopt) << section;
+    EXPECT_EQ(storage->findInternalUserId("aart.appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
+    EXPECT_EQ(storage->findInternalUserId("qmvydejyywft", CaseSensitive), std::nullopt) << section;
   }
 
   {
     const auto section = "case: no match";
-    EXPECT_NE(storage->findInternalUserId("Clara.Citroen@fake.ru.nl", CaseInsensitive), std::nullopt) << section;
-    EXPECT_NE(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
+    EXPECT_EQ(storage->findInternalUserId("Clara.Citroen@fake.ru.nl", CaseInsensitive), std::nullopt) << section;
+    EXPECT_EQ(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
   }
 }
 

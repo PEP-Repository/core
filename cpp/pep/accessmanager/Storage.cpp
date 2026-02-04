@@ -1381,7 +1381,7 @@ void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid,
 }
 
 void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier) {
-  if (findInternalUserId(identifier)) {
+  if (findInternalUserId(identifier, CaseInsensitive)) {
     throw Error("The user identifier already exists");
   }
   mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier)));
