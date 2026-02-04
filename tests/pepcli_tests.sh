@@ -557,6 +557,13 @@ fi
 if should_run_test user-id-collision; then
   pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl"
 
+  # pepcli user query --user
+  pepcli --oauth-token-group "Access Administrator" user query --format json --user "Aart.Appel@fake.ru.nl" |
+    grep '"Aart.Appel@fake.ru.nl"'  # output should contain the id with original casing
+  pepcli --oauth-token-group "Access Administrator" user query --format json --user "aart.appel@fake.ru.nl" |
+    grep '"Aart.Appel@fake.ru.nl"'  # output should contain the id with original casing
+
+  # pepcli user create
   pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl" &&
     fail "should not accept new ids that exactly match existing ids"
   pepcli --oauth-token-group "Access Administrator" user create "aart.appel@fake.ru.nl" &&
