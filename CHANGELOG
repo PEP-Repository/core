@@ -11,6 +11,13 @@ Past changes, do not edit (except by person doing release):
 
 Release 1.6 (started 2026-01-28):
 
+- #2771: User IDs are now case-insensitive
+  - User IDs retain their original casing when stored.
+  - `pepcli user query --user <ID>` returns matches regardless of case differences.
+  - Both `pepcli user add <ID>` and `pepcli user addIdentifier <EXISTING_ID> <ALTERNATIVE_ID>`
+    reject new IDs that only differ by case from existing ones.
+  - The logon procedure now accepts user IDs regardless of case variations.
+
 - #1341: This (1.6) release is functionally identical to release 1.5. The increased (minor) version number prevents software upgrades from failing
   if/when a hotfix is needed. See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341#note_55814 .
 
