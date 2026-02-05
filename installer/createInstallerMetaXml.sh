@@ -34,6 +34,10 @@ metafile=installer.xml
     echo "  <minor>$2</minor>"
     echo "  <build>$3</build>"
     echo "  <revision>$4</revision>"
+    # LEGACY: versions <=1.5 read the pipeline+job fields instead of build+revision
+    echo "  <pipeline>$3</pipeline>"
+    echo "  <job>$4</job>"
+    # END LEGACY: versions <=1.5 read the pipeline+job fields instead of build+revision
     echo "  <files>"
 } > $metafile
 
