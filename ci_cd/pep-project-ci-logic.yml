@@ -248,6 +248,7 @@ windows-installer:
   needs: [provide-binaries, load-version]
   timeout: 1h 30m
   script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
+    - $env:PEP_SKIP_ICE_VALIDATION = '1' # The CI does not use admin users
     - cmd /c "call `"./$env:PEP_FOSS_REPO_DIR/ci_cd/windows-ci-msi.bat`""
   artifacts:
     paths:
