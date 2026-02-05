@@ -10,26 +10,26 @@ namespace pep {
 SemanticVersion::SemanticVersion(
   unsigned int majorVersion,
   unsigned int minorVersion,
-  unsigned int pipelineID,
-  unsigned int jobID) : mMajorVersion(majorVersion), mMinorVersion(minorVersion), mPipelineId(pipelineID), mJobId(jobID){}
+  unsigned int build,
+  unsigned int revision) : mMajorVersion(majorVersion), mMinorVersion(minorVersion), mBuild(build), mRevision(revision){}
 
 std::string SemanticVersion::format() const {
   std::vector<std::string> semverParts{
     std::to_string(mMajorVersion), 
     std::to_string(mMinorVersion), 
-    std::to_string(mPipelineId),
-    std::to_string(mJobId)
+    std::to_string(mBuild),
+    std::to_string(mRevision)
   };
   return boost::algorithm::join(semverParts, ".");
 }
 
 bool SemanticVersion::hasGitlabProperties() const noexcept {
-  return mPipelineId > 0U && mJobId > 0U;
+  return mBuild > 0U && mRevision > 0U;
 }
 
 bool IsSemanticVersionEquivalent(const SemanticVersion& lhs, const SemanticVersion& rhs){
-  return std::make_tuple<unsigned int, unsigned int, unsigned int>(lhs.getMajorVersion(), lhs.getMinorVersion(), lhs.getPipelineId()) ==
-  std::make_tuple<unsigned int, unsigned int, unsigned int>(rhs.getMajorVersion(), rhs.getMinorVersion(), rhs.getPipelineId());
+  return std::make_tuple<unsigned int, unsigned int, unsigned int>(lhs.getMajorVersion(), lhs.getMinorVersion(), lhs.getBuild()) ==
+  std::make_tuple<unsigned int, unsigned int, unsigned int>(rhs.getMajorVersion(), rhs.getMinorVersion(), rhs.getBuild());
 }
 
 }

@@ -357,16 +357,16 @@ message ConfigVersion {
 
   // This message has never had a field with index 1
   string reference = 2; // 'master', ... (git branches or tags)
-  string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
-  string job_id = 4; // '123', ... (GitLab CI job id)
-  string revision = 5; // git revision if available
+  string version_build = 3; // '123', ... (based on GitLab CI pipeline id)
+  string version_revision = 4; // '123', ... (GitLab CI job id)
+  string commit = 5; // git commit (SHA) if available
   // This message has never had a field with index 6
   string project_path = 7; // "pep/foss", "pep/ppp", ...
   // This message has never had a field with index 8
   string project_caption = 9; // "dtap", "ppp", ...
 
-  string major_version = 10;
-  string minor_version = 11;
+  string version_major = 10;
+  string version_minor = 11;
 }
 
 message VersionResponse {
@@ -374,16 +374,16 @@ message VersionResponse {
 
   string target = 1; // 'mac', 'win', 'linux'
   string reference = 2; // 'master', ... (git branches or tags)
-  string pipeline_id = 3; // '123', ... (GitLab CI pipeline id)
-  string job_id = 4; // '123', ... (GitLab CI job id)
-  string revision = 5; // git revision if available
+  string version_build = 3; // '123', ... (based on GitLab CI pipeline id)
+  string version_revision = 4; // '123', ... (GitLab CI job id)
+  string commit = 5; // git commit (SHA) if available
   string protocol_checksum = 6; // checksum for network protocol compatibility
   string project_path = 7; // "pep/foss", "pep/ppp", ...
 
   ConfigVersion config_version = 8;
   // 9 is skipped to be consistent with the indices of ConfigVersion
-  string major_version = 10;
-  string minor_version = 11;
+  string version_major = 10;
+  string version_minor = 11;
 }
 
 // Request the names of the available checksumchains

@@ -16,15 +16,6 @@ if "%jobnumber%" == "" (
 	exit /B 1
 )
 
-REM Make config version build number fit in 16 bits, see pep.wxs
-REM Preferably, keep number to subtract consistent with binary pipeline in /cpp/pep/CMakeLists.txt
-set pipelineSubtract=60000
-if %pipelinenumber% gtr %pipelineSubtract% (
-  set /a "truncatedPipelineNumber=%pipelinenumber% - %pipelineSubtract%"
-) else (
-  set truncatedPipelineNumber=%pipelinenumber%
-)
-
 echo Creating build directory
 mkdir "%builddir%"
 REM Get absolute path: https://stackoverflow.com/a/4488734
@@ -77,8 +68,10 @@ if not exist "%artifactsdir%\configVersion.json" (
   exit /B 1
 )
 
-for /F "tokens=*" %%g in ('jq .majorVersion "%artifactsdir%\configVersion.json"') do (set majorVersion=%%g)
-for /F "tokens=*" %%g in ('jq .minorVersion "%artifactsdir%\configVersion.json"') do (set minorVersion=%%g)
+for /F "tokens=*" %%g in ('jq .versionMajor "%artifactsdir%\configVersion.json"') do (set versionMajor=%%g)
+for /F "tokens=*" %%g in ('jq .versionMinor "%artifactsdir%\configVersion.json"') do (set versionMinor=%%g)
+for /F "tokens=*" %%g in ('jq .versionBuild "%artifactsdir%\configVersion.json"') do (set versionBuild=%%g)
+for /F "tokens=*" %%g in ('jq .versionRevision "%artifactsdir%\configVersion.json"') do (set versionRevision=%%g)
 
 
 echo Copying infrastructure configuration files
@@ -94,7 +87,7 @@ echo Harvesting project configuration files into WiX source
 
 echo Compiling WiX sources
 "%WIX%\bin\candle.exe" -nologo -dArtifactsDir="%artifactsdir%" -arch x64 -out "%wixdir%\configFiles.wixobj" "%wixdir%\configFiles.wxs" || exit /B 1
-"%WIX%\bin\candle.exe" -nologo -dMajorVersion="%majorVersion%" -dMinorVersion="%minorVersion%" -dPipelineNumber="%pipelinenumber%" -dTruncatedPipelineNumber="%truncatedPipelineNumber%" -dJobNumber=%jobnumber% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
+"%WIX%\bin\candle.exe" -nologo -dVersionMajor="%versionMajor%" -dVersionMinor="%versionMinor%" -dVersionBuild="%versionBuild%" -dVersionRevision=%versionRevision% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
 
 echo Linking MSI installer
 REM Suppress "warning LGHT1076 : ICE69: Mismatched component reference", which is issued because
