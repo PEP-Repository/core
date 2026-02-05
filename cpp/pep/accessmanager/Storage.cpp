@@ -1375,20 +1375,21 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
     mImplementor->raw.insert(UserIdRecord(internalUserId, uid, true));
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier) {
-  int64_t internalUserId = getInternalUserId(uid);
-  addIdentifierForUser(internalUserId, identifier);
+void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, CaseSensitivity caseSensitivity) {
+  const auto internalUserId = getInternalUserId(uid);
+  addIdentifierForUser(internalUserId, identifier, caseSensitivity);
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier) {
-  if (findInternalUserId(identifier, CaseInsensitive)) {
-    throw Error("The user identifier already exists");
+void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier, CaseSensitivity caseSensitivity) {
+  if (findInternalUserId(identifier, caseSensitivity)) {
+    const auto caseSensitiveStr = std::string{(caseSensitivity == CaseSensitive) ? "case-sensitive" : "case-insensitive"};
+    throw Error("The (" + caseSensitiveStr + ") user identifier already exists");
   }
   mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier)));
 }
 
 void AccessManager::Backend::Storage::removeIdentifierForUser(std::string identifier) {
-  int64_t internalUserId = getInternalUserId(identifier);
+  const auto internalUserId = getInternalUserId(identifier);
   removeIdentifierForUser(internalUserId, std::move(identifier));
 }
 

@@ -219,7 +219,7 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
   if (!userId) {
     userId = mStorage->findInternalUserId(request.mAlternativeIds, CaseInsensitive);
     if (userId) {
-      mStorage->addIdentifierForUser(*userId, request.mPrimaryId);
+      mStorage->addIdentifierForUser(*userId, request.mPrimaryId, CaseSensitive);
     }
   }
   if (!userId) {

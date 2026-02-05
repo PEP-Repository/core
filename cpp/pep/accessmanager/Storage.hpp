@@ -208,8 +208,8 @@ public:
   int64_t createUser(std::string identifier);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
-  void addIdentifierForUser(std::string_view uid, std::string identifier);
-  void addIdentifierForUser(int64_t internalUserId, std::string identifier);
+  void addIdentifierForUser(std::string_view uid, std::string identifier, CaseSensitivity = CaseInsensitive);
+  void addIdentifierForUser(int64_t internalUserId, std::string identifier, CaseSensitivity = CaseInsensitive);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
 
