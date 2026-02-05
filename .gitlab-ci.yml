@@ -998,7 +998,10 @@ pep-services-image-test:
   #language=sh
   script:
     - *docker_login
-    - docker run --pull=always --rm "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" /app/pepcli --version
+    # Test that executables run (all dynamic libraries are present etc.)
+    - for executable in $EXECUTABLES_BASE; do
+    -   docker run --pull=always --rm "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" "/app/$executable" --version
+    - done
 
 ##########################################
 # Configuration for the integration stage#
