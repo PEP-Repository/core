@@ -4,6 +4,8 @@ set -eu
 
 command="$1"
 versionfile="$2"
+pipeline="$3"
+job="$4"
 
 if [ ! -f "$versionfile" ]; then
   >&2 echo "Error reading version file: input file \"$versionfile\" does not exist."
@@ -33,10 +35,10 @@ case $command in
     echo "$version_minor"
     ;;
   get-build)
-    get_build "$3"
+    get_build "$pipeline"
     ;;
   get-revision)
-    echo "$4"
+    echo "$job"
     ;;
   env-var-assignments)
     echo "PEP_VERSION_MAJOR=$version_major"
