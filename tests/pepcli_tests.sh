@@ -333,6 +333,10 @@ if should_run_test authserver-apache; then
     AUTHSERVER=pepservertest
   fi
 
+  toUpperCase() {
+    echo "$1" | tr "[:lower:]" "[:upper:]"
+  }
+
   expectSuccess() {
     grep "Location: http://localhost:16515.*[\?&]code=" "$1"
   }
@@ -378,6 +382,18 @@ if should_run_test authserver-apache; then
   # Test if alternative UIDs with a plus are correctly URL-decoded
   trace curlCmd -i -H "PEP-Primary-Uid: $DIFFICULT_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: difficultuser@example.com" -H "PEP-Alternative-Uids:difficultuser%2Bpep%40example.com" -H "PEP-Spoof-Check: $SPOOF_KEY" \
     "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$DIFFICULT_USER_PRIMARY_UID&human_readable_uid=difficultuser%40example.com&alternative_uids=difficultuser%252Bpep%2540example.com" > "$DATA_DIR/authserverResponse.txt"
+  trace expectSuccess "$DATA_DIR/authserverResponse.txt"
+
+  # Primary uid should be case sensitive
+  trace curlCmd -i -H "PEP-Primary-Uid: $(toUpperCase $INTEGRATION_USER_PRIMARY_UID)" -H "PEP-Human-Readable-Uid: integrationUser@example.com" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
+    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$(toUpperCase $INTEGRATION_USER_PRIMARY_UID)&human_readable_uid=integrationUser%40example.com&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
+  # expect failure
+  trace expectError "$DATA_DIR/authserverResponse.txt"
+
+  # Alternative uids should be case insensitive
+  trace curlCmd -i -H "PEP-Primary-Uid: $INTEGRATION_USER_PRIMARY_UID" -H "PEP-Human-Readable-Uid: $(toUpperCase integrationUser@example.com)" -H "PEP-Alternative-Uids;" -H "PEP-Spoof-Check: $SPOOF_KEY" \
+    "http://$AUTHSERVER:8080/auth?client_id=123&code_challenge=NCXJvk7daJeLDY8xw3KxsX8oRaLcXR-p7Tvzt9yjE80&code_challenge_method=S256&redirect_uri=http://localhost:16515/&response_type=code&primary_uid=$INTEGRATION_USER_PRIMARY_UID&human_readable_uid=$(toUpperCase 'integrationUser%40example.com')&alternative_uids=" > "$DATA_DIR/authserverResponse.txt"
+  # expect success
   trace expectSuccess "$DATA_DIR/authserverResponse.txt"
 
   pepcli --oauth-token-group "Access Administrator" user removeFrom difficultUser integrationGroup
