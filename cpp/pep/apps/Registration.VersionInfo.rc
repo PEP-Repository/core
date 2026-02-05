@@ -1,4 +1,0 @@
-#define PEP_EXE_FILENAME    "pepRegistration"
-#define PEP_EXE_DESCRIPTION "PEP Registration utility"
-
-#include <pep/Windows.Exe.VersionInfo.rc>
