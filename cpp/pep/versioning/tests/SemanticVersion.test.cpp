@@ -29,14 +29,14 @@ TEST(Semver, MinorVersionDiffers) {
   EXPECT_LT(lower, higher) << "SemanticVersion not compared correctly";
 }
 
-TEST(Semver, PipelineIdDiffers) {
+TEST(Semver, BuildDiffers) {
   auto lower = pep::SemanticVersion(10U, 3U, 123456U, 0U);
   auto higher = pep::SemanticVersion(10U, 3U, 123457U, 0U);
 
   EXPECT_LT(lower, higher) << "SemanticVersion not compared correctly";
 }
 
-TEST(Semver, JobIdDiffers) {
+TEST(Semver, RevisionDiffers) {
   auto lower = pep::SemanticVersion(10U, 3U, 123456U, 2345U);
   auto higher = pep::SemanticVersion(10U, 3U, 123456U, 2346U);
 

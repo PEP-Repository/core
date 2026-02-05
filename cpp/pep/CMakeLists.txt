@@ -205,31 +205,27 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-reorder-blocks -fno-reorder-blocks-and-partition")
 endif()
 
-if(NOT DEFINED MAJOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MAJOR)
   message(FATAL_ERROR "Major version is not set.")
 endif()
-if(NOT DEFINED MINOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MINOR)
   message(FATAL_ERROR "Minor version is not set.")
 endif()
-
-# If updating these, don't forget to update them for Go too.
-# Make binary version build number fit in 16 bits, see Windows.Exe.VersionInfo.rc
-# Preferably, keep number to subtract consistent with config pipeline in createWixInstaller.bat
-set(pipeline_subtract 60000)
-if(CI_PIPELINE_ID GREATER pipeline_subtract)
-  math(EXPR truncated_pipeline_id "${CI_PIPELINE_ID} - ${pipeline_subtract}")
-else()
-  set(truncated_pipeline_id ${CI_PIPELINE_ID})
+if(NOT DEFINED PEP_VERSION_BUILD)
+  message(FATAL_ERROR "Build number is not set.")
 endif()
+if(NOT DEFINED PEP_VERSION_REVISION)
+  message(FATAL_ERROR "Revision number is not set.")
+endif()
+
 add_compile_definitions(
   "BUILD_PROJECT_PATH=\"$ENV{CI_PROJECT_PATH}\""
   "BUILD_REF=\"$ENV{CI_COMMIT_REF_NAME}\""
-  "BUILD_REV=\"$ENV{CI_COMMIT_SHA}\""
-  "BUILD_MAJOR_VERSION=${MAJOR_VERSION}"
-  "BUILD_MINOR_VERSION=${MINOR_VERSION}"
-  "BUILD_PIPELINE_ID=${CI_PIPELINE_ID}"
-  "BUILD_TRUNCATED_PIPELINE_ID=${truncated_pipeline_id}"
-  "BUILD_JOB_ID=${CI_JOB_ID}"
+  "BUILD_COMMIT=\"$ENV{CI_COMMIT_SHA}\""
+  "PEP_VERSION_MAJOR=${PEP_VERSION_MAJOR}"
+  "PEP_VERSION_MINOR=${PEP_VERSION_MINOR}"
+  "PEP_VERSION_BUILD=${PEP_VERSION_BUILD}"
+  "PEP_VERSION_REVISION=${PEP_VERSION_REVISION}"
   "BUILD_TARGET=\"${CMAKE_SYSTEM_NAME}\""
 )
 
