@@ -999,7 +999,9 @@ pep-services-image-test:
   script:
     - *docker_login
     # Test that executables run (all dynamic libraries are present etc.)
-    - for executable in $EXECUTABLES_BASE; do
+    - for executable_path in $EXECUTABLES_BASE; do
+    -   executable="$(basename -- "$executable_path")"
+    -   echo "$executable:"
     -   docker run --pull=always --rm "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" "/app/$executable" --version
     - done
 
