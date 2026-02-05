@@ -1,4 +1,5 @@
 {
   "major": 1,
-  "minor": 6
+  "minor": 6,
+  "build_offset": 60000
 }

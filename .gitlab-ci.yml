@@ -608,10 +608,12 @@ build-pep-connector:
     - docker-small
   script:
     # Get major and minor version from version.json
-    - MAJOR_VERSION=$(./scripts/parse-version.sh get-major version.json)
-    - MINOR_VERSION=$(./scripts/parse-version.sh get-minor version.json)
+    - PEP_VERSION_MAJOR=$(./scripts/parse-version.sh get-major version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PEP_VERSION_MINOR=$(./scripts/parse-version.sh get-minor version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PEP_VERSION_BUILD=$(./scripts/parse-version.sh get-build version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PEP_VERSION_REVISION=$(./scripts/parse-version.sh get-revision version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
     # Create dynamic version with pipeline ID and job ID for CI builds
-    - PACKAGE_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${CI_PIPELINE_ID}.${CI_JOB_ID}"
+    - PACKAGE_VERSION="${PEP_VERSION_MAJOR}.${PEP_VERSION_MINOR}.${PEP_VERSION_BUILD}.${PEP_VERSION_REVISION}"
     # Replace version in pyproject.toml, matches 'version ="any chars except double quotes", replaces it with the new version
     - sed -i "s/version = \"[^\"]*\"/version = \"${PACKAGE_VERSION}\"/" python/pep/pep_connector/pyproject.toml
     # The wheel will be picked up from this jobs artifacts to use in the pep-connector dockerfile
