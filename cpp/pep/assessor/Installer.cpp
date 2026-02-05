@@ -54,32 +54,20 @@ namespace {
     }
 
     static std::string GetDownloadUrl();
-    unsigned getUnsignedProperty(std::initializer_list<std::string> keys) const;
+    unsigned getUnsignedProperty(const std::string& partialKey) const { return mProperties->get<unsigned>("installer." + partialKey); }
 
   protected:
     std::filesystem::path getLocalMsiPath() const override;
 
   public:
-    unsigned getMajorVersion() const override { return this->getUnsignedProperty({ "major" }); }
-    unsigned getMinorVersion() const override { return this->getUnsignedProperty({ "minor" }); }
-    unsigned getBuild() const override        { return this->getUnsignedProperty({ "build", "pipeline" }); }
-    unsigned getRevision() const override     { return this->getUnsignedProperty({ "revision", "job" }); }
+    unsigned getMajorVersion() const override { return this->getUnsignedProperty("major"); }
+    unsigned getMinorVersion() const override { return this->getUnsignedProperty("minor"); }
+    unsigned getBuild() const override        { return this->getUnsignedProperty("build"); }
+    unsigned getRevision() const override     { return this->getUnsignedProperty("revision"); }
 
     bool supersedesRunningVersion() const override;
     static std::shared_ptr<PublishedInstaller> GetAvailable();
   };
-
-  unsigned PublishedInstaller::getUnsignedProperty(std::initializer_list<std::string> keys) const {
-    assert(!std::empty(keys));
-
-    for (auto partial : keys) {
-      auto full = "installer." + partial;
-      if (auto value = mProperties->get_optional<unsigned>(full)) {
-        return *value;
-      }
-    }
-    throw std::runtime_error("Installer property not found for key set starting with " + *keys.begin());
-  }
 
   bool PublishedInstaller::supersedesRunningVersion() const {
     auto installerSemver = getSemver();
