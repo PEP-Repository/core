@@ -668,10 +668,9 @@ if should_run_test certificate-renewal; then
   trace cat "${CORE_DIR}/pki/ca_ext.cnf" | execute "$certificate_renewal_data_dir" tee "$ca_config_file_name"
 
   execute "$certificate_renewal_data_dir" openssl rand -base64 -out "fakeCA.password" 32
-  MSYS_NO_PATHCONV=1 # Prevent the "/" at the start of the subject to be replaced by a Windows-path in Git Bash
-  execute "$certificate_renewal_data_dir" openssl req -x509 -newkey rsa:4096 -keyout fakeCA.key -out fakeCA.cert -passin file:fakeCA.password \
+  # MSYS_NO_PATHCONV: Prevent the "/" at the start of the subject to be replaced by a Windows-path in Git Bash
+  MSYS_NO_PATHCONV=1 execute "$certificate_renewal_data_dir" openssl req -x509 -newkey rsa:4096 -keyout fakeCA.key -out fakeCA.cert -passin file:fakeCA.password \
     -sha256 -days 3650 -nodes -subj "/C=NL/ST=Gelderland/L=Nijmegen/O=Radboud Universiteit/OU=PEP Intermediate PEP Server CA/CN=PEP Intermediate PEP Server CA"
-   MSYS_NO_PATHCONV=0
 
   sign_csr() {
     csr_file_name="$1"
@@ -695,6 +694,10 @@ if should_run_test certificate-renewal; then
       extensions="server_cert"
     fi
 
+    if type cygpath &>/dev/null; then
+      # `file:` prefix makes Cygwin not convert the path to Windows style, so we do it here
+      password_file="$(cygpath --windows -- "$password_file")"
+    fi
     execute "$certificate_renewal_data_dir" openssl x509 -req -sha256 -in "$csr_file_name" -CAkey "$ca_key_file_name" -CA "$ca_key_cert" \
      -out "$cert_file_name" -days 365 -extfile "$ca_config_file_name" -extensions "$extensions"  \
      -CAcreateserial -CAserial ca_serial.srl -passin file:"$password_file"
