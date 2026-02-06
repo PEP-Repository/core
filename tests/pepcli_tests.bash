@@ -730,20 +730,20 @@ if should_run_test certificate-renewal; then
 
     pepcli ping --print-certificate-chain --server "$server" | execute "$certificate_renewal_data_dir" tee reported.chain > /dev/null
     if [ "$phase" = prepare ]; then
-      execute "$certificate_renewal_data_dir" diff -q reported.chain "$chain_file_on_disk"
+      execute "$certificate_renewal_data_dir" diff -qw reported.chain "$chain_file_on_disk"
     else
-      if execute "$certificate_renewal_data_dir" diff -q reported.chain "$new_chain"; then
+      if execute "$certificate_renewal_data_dir" diff -qw reported.chain "$new_chain"; then
         trace [ "$phase" = reverted ] && fail "Certificate chain should no longer equal the new chain, after servers have been restarted without committing, for $server"
       else
         trace [ "$phase" = replaced ] || trace [ "$phase" = committed ] && fail "Certificate chain should have been replaced with the new chain for $server"
       fi
-      if execute "$certificate_renewal_data_dir" diff "$new_chain" "$chain_file_on_disk"; then
+      if execute "$certificate_renewal_data_dir" diff -qw "$new_chain" "$chain_file_on_disk"; then
         trace [ "$phase" = replaced ] && fail "Certificate chain should have been replaced, but not yet committed to file for $server"
         trace [ "$phase" = reverted ] && fail "Certificate chain should not have been committed to file, when it was restarted before committing, for $server"
       else
         trace [ "$phase" = committed  ] && fail "Certificate chain should have been replaced, as well as committed to file for $server"
       fi
-      if execute "$certificate_renewal_data_dir" diff -q "$chain_file_on_disk" "$old_chain"; then
+      if execute "$certificate_renewal_data_dir" diff -qw "$chain_file_on_disk" "$old_chain"; then
         trace [ "$phase" = committed  ] && fail "Certificate chain on disk should have been changed, after being committed, for $server"
       else
         trace [ "$phase" = replaced  ] && fail "Certificate chain on disk should not have been changed, before being committed, for $server"
