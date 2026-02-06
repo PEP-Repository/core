@@ -76,6 +76,7 @@ BINDINGS
   FIELD(name)
 BINDINGS_END
 
+//@formatter:on
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
