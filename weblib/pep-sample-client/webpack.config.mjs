@@ -17,8 +17,8 @@ export default (env, argv) => ({
   },
   output: {
     clean: {
-      // Delete only temporary files
-      keep: /^(?![a-h0-9]{20}\.)/,
+      // Delete only temporary files (with hex names and .gz from CompressionPlugin)
+      keep: /^(?![a-h0-9]{20}\.)(?!.*\.gz$)/,
     },
     library: {
       type: 'modern-module',

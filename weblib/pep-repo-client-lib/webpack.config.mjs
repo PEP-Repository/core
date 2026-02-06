@@ -12,7 +12,7 @@ export default (env, argv) => ({
   ],
   output: {
     clean: {
-      // Delete only temporary files
+      // Delete only temporary files (with hex names)
       keep: /^(?![a-h0-9]{20}\.)/,
     },
     filename: 'tests.js',
