@@ -737,7 +737,7 @@ if should_run_test certificate-renewal; then
       else
         trace [ "$phase" = replaced ] || trace [ "$phase" = committed ] && fail "Certificate chain should have been replaced with the new chain for $server"
       fi
-      if execute "$certificate_renewal_data_dir" diff -q "$new_chain" "$chain_file_on_disk"; then
+      if execute "$certificate_renewal_data_dir" diff "$new_chain" "$chain_file_on_disk"; then
         trace [ "$phase" = replaced ] && fail "Certificate chain should have been replaced, but not yet committed to file for $server"
         trace [ "$phase" = reverted ] && fail "Certificate chain should not have been committed to file, when it was restarted before committing, for $server"
       else
