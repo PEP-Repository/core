@@ -108,7 +108,7 @@ std::string CellEntry::subjectEncryptedOriginId() const {
 }
 
 const std::string& CellEntry::column() const { return inner->mColumn; }
-std::uint64_t CellEntry::fileSize() const { return inner->mFileSize; }
+double CellEntry::fileSize() const { return static_cast<double>(inner->mFileSize); }
 
 CellData::CellData(const CellEntry* entry, val contentReadableStream)
       : entry{entry}, contentReadableStream(std::move(contentReadableStream)) {}
