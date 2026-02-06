@@ -14,16 +14,21 @@ if [ "${1-}" = --help ]; then
   exit
 fi
 
-# E.g. Debug/Release/RelWithDebInfo
-build_type="${1:-Debug}"
-server_build_type="${2:-$build_type}"
-subbuild_name="${3:-wasm32}"
+scriptdir="$(realpath -- "$(dirname -- "$0")")"
 
-build_type_lower=$(echo "$build_type" | tr '[:upper:]' '[:lower:]')
+# E.g. Debug/Release/RelWithDebInfo
+wasm_build_type="${1:-Debug}"
+server_build_type="${2:-$wasm_build_type}"
+wasm_subbuild_name="${3:-wasm32}"
+
+wasm_build_type_lower=$(echo "$wasm_build_type" | tr '[:upper:]' '[:lower:]')
 server_build_type_lower=$(echo "$server_build_type" | tr '[:upper:]' '[:lower:]')
 
-cd -- "$(dirname -- "$0")"
-foss_dir="$PWD/../.."
+foss_dir="$scriptdir/../../"
+wasm_build_folder="$foss_dir/build/$wasm_subbuild_name/$wasm_build_type/"
+server_build_folder="$foss_dir/build/$server_build_type/"
+
+cd -- "$scriptdir"
 
 stop_jobs() {
   jobs="$(jobs -rp)"
@@ -38,23 +43,23 @@ trap stop_jobs EXIT
 
 # Build servers
 (
-  cd "$foss_dir"
+  cd -- "$foss_dir"
   cmake --build --preset "conan-$server_build_type_lower" --target pepServers
 )
 
 # Initial weblib build incl. C++, place symlinks in source directory
 (
-  cd "$foss_dir"
-  cmake --build --preset "$subbuild_name-$build_type_lower" --target pepWeblibSampleClient
+  cd -- "$foss_dir"
+  cmake --build --preset "$wasm_subbuild_name-$wasm_build_type_lower" --target pepWeblibSampleClient
 )
 
 # Start servers
 (
-  cd "$foss_dir/build/$server_build_type/cpp/pep/servers/"
+  cd -- "$server_build_folder/cpp/pep/servers/"
   ./pepServers --loglevel debug
 ) &
 ../pep-repo-client-lib/start_websocket_proxy.sh &
-../start_nginx.sh
+../start_nginx.sh "$wasm_build_folder"
 
 # Start watching
 (
