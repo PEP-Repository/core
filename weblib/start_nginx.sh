@@ -12,6 +12,7 @@ cd "$scriptdir"
 
 cat >../temp/nginx-variables.conf <<EOF
 set \$home "$HOME";
+set \$emsdk "${EMSDK:?EMSDK envvar not set, please source emsdk_env in your shell}";
 set \$build_folder "$wasm_build_folder";
 EOF
 
