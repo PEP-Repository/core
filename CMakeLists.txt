@@ -231,6 +231,14 @@ if(DEFINED EMSCRIPTEN)
         -sENVIRONMENT=web
         -sPROXY_TO_PTHREAD  # Put main thread in separate worker to prevent blocking UI thread
     )
+
+    option(PEP_EMSCRIPTEN_EMRUN "Enable emrun support" OFF)
+    if(PEP_EMSCRIPTEN_EMRUN)
+      list(APPEND default_emscripten_exe_config
+          --emrun
+          -sINCOMING_MODULE_JS_API=print,canvas,setStatus,monitorRunDependencies,arguments
+      )
+    endif()
   else()
     list(APPEND default_emscripten_exe_config
         -sENVIRONMENT=node
