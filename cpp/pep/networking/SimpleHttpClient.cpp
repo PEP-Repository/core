@@ -2,7 +2,8 @@
 
 using namespace pep;
 
-// Emscripten proxies TCP over WebSockets, do we'd get WebSocket->TLS->HTTP with the HTTPSClient implementation
+// Emscripten proxies TCP over WebSockets, so we'd get WebSocket->TLS->HTTP with the HTTPSClient implementation.
+// Instead, we use Web APIs to do an HTTP request here.
 #ifdef __EMSCRIPTEN__
 
 #include <pep/async/CreateObservable.hpp>
