@@ -10,3 +10,8 @@ target_link_libraries(${PROJECT_NAME}benchmark
   ${PROJECT_NAME}StorageFacilityApilib
   benchmark::benchmark
 )
+if(DEFINED EMSCRIPTEN)
+  target_link_options(${PROJECT_NAME}benchmark PRIVATE
+      -sINITIAL_MEMORY=629145600 # 600 MiB
+  )
+endif()
