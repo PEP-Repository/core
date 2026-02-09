@@ -24,6 +24,12 @@ void SetBytesProcessed(benchmark::State& state, size_t bytesPerIteration)
 // Silence errors about `auto _`
 //NOLINTBEGIN(clang-analyzer-deadcode.DeadStores)
 
+#ifdef __clang__
+// For Clang >22: Silence warning about __COUNTER__, which now apparently is a C2y extension
+# pragma clang diagnostic ignored "-Wunknown-warning-option"
+# pragma clang diagnostic ignored "-Wc2y-extensions"
+#endif
+
 static void BM_CurvePointUnpack(benchmark::State& state) {
   std::string packed(boost::algorithm::unhex(std::string(
                        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
