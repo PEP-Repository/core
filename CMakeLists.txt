@@ -209,8 +209,6 @@ if(DEFINED EMSCRIPTEN)
   # Excludes weblib
   option(PEP_EMSCRIPTEN_BROWSER "Build Emscripten executables for browser instead of Node.js")
 
-  option(PEP_EMSCRIPTEN_NO_SEPARATE_DWARF "Don't put WebAssembly DWARF debug info in a separate .wasm.debug.wasm file, instead of in the .wasm file" OFF)
-
   define_property(TARGET PROPERTY PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG
       BRIEF_DOCS "Do not add default config for Emscripten executables"
   )
@@ -226,12 +224,6 @@ if(DEFINED EMSCRIPTEN)
       # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
       "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
   )
-  if(NOT PEP_EMSCRIPTEN_NO_SEPARATE_DWARF)
-    list(APPEND default_emscripten_exe_config
-        # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
-        "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"
-    )
-  endif()
 
   if(PEP_EMSCRIPTEN_BROWSER)
     set(CMAKE_EXECUTABLE_SUFFIX .html)  # Create HTML shell
