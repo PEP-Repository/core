@@ -109,8 +109,12 @@ else()
   )
 endif()
 
-# Originally here to work around huge source map: https://github.com/emscripten-core/emscripten/issues/26100
-option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib" ON)
+set(source_map_default ON)
+if(EMSCRIPTEN_VERSION VERSION_GREATER_EQUAL "4.0.22" AND EMSCRIPTEN_VERSION VERSION_LESS "5.0.0")
+  # Work around huge source map in debug mode: https://github.com/emscripten-core/emscripten/issues/26100
+  set(source_map_default OFF)
+endif()
+option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib" ${source_map_default})
 if(PEP_WEBLIB_SOURCE_MAP)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE -gsource-map)
 else()
