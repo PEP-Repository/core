@@ -138,11 +138,11 @@ describe('Pep', function () {
             expect(entriesSimple).satisfies(function someEntryShouldHaveSmallExtensionAndRightSize(entries: typeof entriesSimple) {
               return entries.some(entry =>
                   entry.partialMetadata['fileExtension'] === '.small'
-                  && entry.fileSize === BigInt('Some small test data!'.length));
+                  && entry.fileSize === 'Some small test data!'.length);
             });
             expect(entriesSimple).satisfies(function someEntryShouldHaveLargeExtensionAndRightSize(entries: typeof entriesSimple) {
               return entries.some(entry => entry.partialMetadata['fileExtension'] === '.large'
-                      && entry.fileSize === BigInt('Larger test data!\n'.length) * 700_000n,
+                      && entry.fileSize === 'Larger test data!\n'.length * 700_000,
                   'One entry should have fileExtension .large and specific file size');
             });
           } catch (ex) {

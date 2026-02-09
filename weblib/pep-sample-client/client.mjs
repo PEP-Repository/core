@@ -98,7 +98,7 @@ listBtn.addEventListener('click', () => void (async () => {
     id: entry.id,
     subjectLocalPseudonym: entry.subjectLocalPseudonym,
     column: entry.column,
-    fileSize: entry.fileSize.toString(),
+    fileSize: entry.fileSize,
     // Assume all metadata is text
     partialMetadata: Object.fromEntries(
         [...entry.partialMetadataView().entries()]
@@ -135,7 +135,7 @@ retrieveBtn.addEventListener('click', () => void (async () => {
 })());
 
 saveBtn.addEventListener('click', () => void (async () => {
-  let maxSize = 0n;
+  let maxSize = 0;
   /** @type {import("pep-repo-client").CellEntry | undefined} */
   let entry;
   for (const aEntry of entries) {
@@ -162,15 +162,15 @@ saveBtn.addEventListener('click', () => void (async () => {
   async function getContent() {
     [data] = await Array.fromAsync(pep.retrieve([entry]));
     const startTime = performance.now();
-    let downloaded = 0n;
+    let downloaded = 0;
     let prevTime = startTime;
     return data.content.pipeThrough(new TransformStream({
       transform(chunk, controller) {
-        downloaded += BigInt(chunk.byteLength);
+        downloaded += chunk.byteLength;
         const now = performance.now();
         if (now > prevTime + 500 || downloaded === entry.fileSize) {
           prevTime = now;
-          output.value = `${Number(downloaded) / 1e6} / ${Number(entry.fileSize) / 1e6} MB downloaded (${Math.floor(Number(downloaded) / Number(entry.fileSize) * 100)}% complete)`;
+          output.value = `${downloaded / 1e6} / ${entry.fileSize / 1e6} MB downloaded (${Math.floor(downloaded / entry.fileSize * 100)}% complete)`;
           if (downloaded === entry.fileSize) {
             const endTime = performance.now();
             output.value += `\nDownloaded ${downloaded} B in ${endTime - startTime} ms`;
