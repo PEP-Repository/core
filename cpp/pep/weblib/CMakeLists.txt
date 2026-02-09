@@ -94,7 +94,7 @@ if(PEP_WEBLIB_DISABLE_DYNAMIC_EXECUTION)
   )
 endif()
 
-if(NOT EMSCRIPTEN_NO_SEPARATE_DWARF)
+if(NOT PEP_EMSCRIPTEN_NO_SEPARATE_DWARF)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE
       # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
       "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"

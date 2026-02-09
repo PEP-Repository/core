@@ -48,7 +48,7 @@ add_custom_target(${PROJECT_NAME}WeblibSampleClient ALL
       pep-sample-client-config
 )
 
-if(NOT EMSCRIPTEN_NO_SEPARATE_DWARF)
+if(NOT PEP_EMSCRIPTEN_NO_SEPARATE_DWARF)
   set(separate_dwarf_copy_args_debug
       create_symlink
       $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
