@@ -269,7 +269,6 @@ endfunction()
 function(add_cli_install_executable name)
   set_property(GLOBAL APPEND PROPERTY cli_executables ${name})
   add_install_executable(${ARGV})
-  make_js_file_executable(${name})
 endfunction()
 
 #

@@ -29,6 +29,8 @@ project(pep)
 
 if(DEFINED EMSCRIPTEN)
   message(STATUS "Emscripten version: ${EMSCRIPTEN_VERSION}")
+  # Use empty suffix instead of .js for -sEXECUTABLE behavior
+  set(CMAKE_EXECUTABLE_SUFFIX "")
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules/")
@@ -246,17 +248,6 @@ if(DEFINED EMSCRIPTEN)
 
   add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG>>>:${default_emscripten_exe_config}>")
 endif()
-
-# Add shebang to JS file, if target is such a file
-function(make_js_file_executable target)
-  if (DEFINED EMSCRIPTEN AND NOT EMSCRIPTEN_BROWSER AND CMAKE_HOST_LINUX)
-    get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
-    get_target_property(suffix ${target} SUFFIX)
-    if(NOT skip AND (NOT suffix OR suffix MATCHES "^\.?js$"))
-      target_link_options(${target} PRIVATE -sEXECUTABLE)
-    endif()
-  endif()
-endfunction()
 
 option(ENABLE_TEST_DISCOVERY "Make tests discoverable, to be able to run them from e.g. Visual Studio Test Explorer" OFF)
 if(ENABLE_TEST_DISCOVERY)
