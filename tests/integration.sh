@@ -446,7 +446,7 @@ if should_run_test weblib; then
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
 
   trace mkdir -p ./dist-test/
-  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR/rootCA.cert" ./dist-test/
+  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR_ON_HOST/rootCA.cert" ./dist-test/
 
   start_websocket_proxy_flags=()
   if [ -n "${CI-}" ]; then
