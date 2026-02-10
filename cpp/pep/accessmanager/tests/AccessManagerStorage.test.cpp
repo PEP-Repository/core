@@ -350,10 +350,9 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
 
 TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
   storage->createUser("Aart.Appel@fake.ru.nl");
-  storage->createUser("QmVydEJyYWFt");
 
-  EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl")) << "Should reject ids that match exactly";
-  EXPECT_ANY_THROW(storage->createUser("qmvydejyywft")) << "Should reject ids that only differs by case";
+  EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl")) << "Should reject ids that match exactly";
+  EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl")) << "Should reject ids that only differs by case";
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
