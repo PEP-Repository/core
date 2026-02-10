@@ -7,22 +7,22 @@ ConfigVersion Serializer<ConfigVersion>::fromProtocolBuffer(proto::ConfigVersion
   return ConfigVersion(
     std::move(*source.mutable_project_path()),
     std::move(*source.mutable_reference()),
-    std::move(*source.mutable_revision()),
-    boost::lexical_cast<unsigned int>(source.major_version()),
-    boost::lexical_cast<unsigned int>(source.minor_version()),
-    boost::lexical_cast<unsigned int>(source.pipeline_id()),
-    boost::lexical_cast<unsigned int>(source.job_id()),
+    std::move(*source.mutable_commit()),
+    boost::lexical_cast<unsigned int>(source.version_major()),
+    boost::lexical_cast<unsigned int>(source.version_minor()),
+    boost::lexical_cast<unsigned int>(source.version_build()),
+    boost::lexical_cast<unsigned int>(source.version_revision()),
     std::move(*source.mutable_project_caption()));
 }
 
 void Serializer<ConfigVersion>::moveIntoProtocolBuffer(proto::ConfigVersion& dest, ConfigVersion value) const {
   *dest.mutable_project_path() = value.getProjectPath();
   *dest.mutable_reference() = value.getReference();
-  *dest.mutable_revision() = value.getRevision();
-  *dest.mutable_major_version() = std::to_string(value.getSemver().getMajorVersion());
-  *dest.mutable_minor_version() = std::to_string(value.getSemver().getMinorVersion());
-  *dest.mutable_pipeline_id() = std::to_string(value.getSemver().getPipelineId());
-  *dest.mutable_job_id() = std::to_string(value.getSemver().getJobId());
+  *dest.mutable_commit() = value.getCommit();
+  *dest.mutable_version_major() = std::to_string(value.getSemver().getMajorVersion());
+  *dest.mutable_version_minor() = std::to_string(value.getSemver().getMinorVersion());
+  *dest.mutable_version_build() = std::to_string(value.getSemver().getBuild());
+  *dest.mutable_version_revision() = std::to_string(value.getSemver().getRevision());
   *dest.mutable_project_caption() = value.getProjectCaption();
 }
 
@@ -56,11 +56,11 @@ VersionResponse Serializer<VersionResponse>::fromProtocolBuffer(proto::VersionRe
     BinaryVersion(
       std::move(*source.mutable_project_path()),
       std::move(*source.mutable_reference()),
-      std::move(*source.mutable_revision()),
-      boost::lexical_cast<unsigned int>(source.major_version()),
-      boost::lexical_cast<unsigned int>(source.minor_version()),
-      boost::lexical_cast<unsigned int>(source.pipeline_id()),
-      boost::lexical_cast<unsigned int>(source.job_id()),
+      std::move(*source.mutable_commit()),
+      boost::lexical_cast<unsigned int>(source.version_major()),
+      boost::lexical_cast<unsigned int>(source.version_minor()),
+      boost::lexical_cast<unsigned int>(source.version_build()),
+      boost::lexical_cast<unsigned int>(source.version_revision()),
       std::move(*source.mutable_target()),
       std::move(*source.mutable_protocol_checksum())),
     config };
@@ -69,11 +69,11 @@ VersionResponse Serializer<VersionResponse>::fromProtocolBuffer(proto::VersionRe
 void Serializer<VersionResponse>::moveIntoProtocolBuffer(proto::VersionResponse& dest, VersionResponse value) const {
   *dest.mutable_project_path() = value.binary.getProjectPath();
   *dest.mutable_reference() = value.binary.getReference();
-  *dest.mutable_revision() = value.binary.getRevision();
-  *dest.mutable_major_version() = std::to_string(value.binary.getSemver().getMajorVersion());
-  *dest.mutable_minor_version() = std::to_string(value.binary.getSemver().getMinorVersion());
-  *dest.mutable_pipeline_id() = std::to_string(value.binary.getSemver().getPipelineId());
-  *dest.mutable_job_id() = std::to_string(value.binary.getSemver().getJobId());
+  *dest.mutable_commit() = value.binary.getCommit();
+  *dest.mutable_version_major() = std::to_string(value.binary.getSemver().getMajorVersion());
+  *dest.mutable_version_minor() = std::to_string(value.binary.getSemver().getMinorVersion());
+  *dest.mutable_version_build() = std::to_string(value.binary.getSemver().getBuild());
+  *dest.mutable_version_revision() = std::to_string(value.binary.getSemver().getRevision());
   *dest.mutable_target() = value.binary.getTarget();
   *dest.mutable_protocol_checksum() = value.binary.getProtocolChecksum();
 

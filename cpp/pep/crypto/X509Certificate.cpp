@@ -125,8 +125,63 @@ bool HasExtensionFlag(X509& x509, uint32_t flag) {
 
 } // namespace
 
-X509Certificate::~X509Certificate() noexcept {
-  X509_free(mRaw); // https://docs.openssl.org/master/man3/X509_new/#description: "If the argument is NULL, nothing is done."
+X509Extension::X509Extension(const X509Extension& other) {
+  assert(other.mRaw != nullptr);
+  mRaw = X509_EXTENSION_dup(other.mRaw);
+  if (!mRaw) {
+    throw pep::OpenSSLError("Failed to duplicate X509_EXTENSION object in X509Extension copy constructor.");
+  }
+}
+
+X509Extension::X509Extension(X509Extension&& other) noexcept : mRaw(other.mRaw) {
+  other.mRaw = nullptr;
+}
+
+X509Extension::~X509Extension() noexcept {
+  X509_EXTENSION_free(mRaw);
+}
+
+X509Extension& X509Extension::operator=(X509Extension other) noexcept {
+  std::swap(mRaw, other.mRaw);
+  return *this;
+}
+
+bool X509Extension::isCritical() const noexcept {
+  return X509_EXTENSION_get_critical(mRaw);
+}
+
+std::string X509Extension::getName() const {
+  const ASN1_OBJECT* object = X509_EXTENSION_get_object(mRaw); //should not be freed by us
+  int bufsize_result = OBJ_obj2txt(nullptr, 0, object, 0); // Returns the length, excluding the null-terminator
+  if (bufsize_result < 0) {
+    throw OpenSSLError("Failed to get buffer size for extension name");
+  }
+  size_t bufsize = static_cast<size_t>(bufsize_result);
+  std::string buffer;
+  buffer.resize(bufsize);
+  // The buffer size passed to OBJ_obj2txt should include the null-terminator.
+  // std::string guarantees a null-terminator at the end of it's internal buffer. Overwriting that is UB, unless it is with another `\0`: https://eel.is/c++draft/basic.string#string.access-2
+  // So this should be fine:
+  int result = OBJ_obj2txt(buffer.data(), static_cast<int>(buffer.size()) + 1, object, 0);
+  if (result < 0) {
+    throw OpenSSLError("Failed to get extension name");
+  }
+  assert(result == bufsize_result);
+  return buffer;
+}
+
+std::string X509Extension::getValue() const {
+  BIO *bio = BIO_new(BIO_s_mem());
+  if (!bio) {
+    throw pep::OpenSSLError("Failed to create IO buffer (BIO) in X509Certificate::toPem.");
+  }
+  PEP_DEFER(BIO_free(bio));
+
+  if (X509V3_EXT_print(bio, mRaw, 0, 0) <= 0) {
+    throw pep::OpenSSLError("Failed to write certificate to IO buffer (BIO) in X509Certificate::toPem.");
+  }
+
+  return OpenSSLBIOToString(bio);
 }
 
 X509Certificate::X509Certificate(const X509Certificate& other) {
@@ -161,6 +216,10 @@ X509Certificate& X509Certificate::operator=(X509Certificate&& other) noexcept {
 
 X509Certificate::X509Certificate(X509Certificate&& other) noexcept {
   *this = std::move(other);
+}
+
+X509Certificate::~X509Certificate() noexcept {
+  X509_free(mRaw); // https://docs.openssl.org/master/man3/X509_new/#description: "If the argument is NULL, nothing is done."
 }
 
 AsymmetricKey X509Certificate::getPublicKey() const {
@@ -325,6 +384,14 @@ std::string X509Certificate::toDer() const {
   return OpenSSLBIOToString(bio);
 }
 
+bool X509Certificate::hasSameSubject(const X509Certificate& other) const {
+  int result = X509_subject_name_cmp(mRaw, other.mRaw);
+  if (result == -2) {
+    throw OpenSSLError("Failed to compare certificate subjects.");
+  }
+  return result == 0;
+}
+
 X509Certificate X509Certificate::FromPem(const std::string& pem) {
 
   // Create a BIO for the PEM-encoded data
@@ -383,18 +450,27 @@ X509Certificate X509Certificate::MakeSelfSigned(const AsymmetricKeyPair& keys, s
   return result;
 }
 
-bool X509Certificate::operator==(const X509Certificate& rhs) const {
-  if (this == &rhs) { // Reference equality
-    return true;
-  }
-  return this->toPem() == rhs.toPem(); // TODO: make more efficient
-}
-
 X509CertificateChain::X509CertificateChain(X509Certificates certificates)
   : mCertificates(std::move(certificates)) {
   if (mCertificates.empty()) {
     throw std::runtime_error("Certificate chain cannot be empty"); // We need (to be able to produce) a leaf certificate
   }
+}
+
+std::strong_ordering X509Certificate::operator<=>(const X509Certificate& other) const {
+  if (this == &other) {
+    return std::strong_ordering::equal;
+  }
+  int result = X509_cmp(mRaw, other.mRaw);
+  switch (result) {
+  case 0:
+    return std::strong_ordering::equal;
+  case -1:
+    return std::strong_ordering::less;
+  case 1:
+    return std::strong_ordering::greater;
+  }
+  throw std::runtime_error("Unexpected return code from X509_cmp");
 }
 
 /**
@@ -574,29 +650,9 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
  * @param commonName The common name for the CSR.
  * @param organizationalUnit The organizational unit for the CSR.
  */
-X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit)
-  : X509CertificateSigningRequest(Make(keyPair, commonName, organizationalUnit)) {
-}
-
-X509CertificateSigningRequest X509CertificateSigningRequest::Make(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit) {
-  if (!keyPair.mKeyPair) {
-    throw std::invalid_argument("Input key pair cannot be nullptr for X509CertificateSigningRequest.");
-  }
-
-  // Create a new X509_REQ object
-  auto csr = X509_REQ_new();
-  if (!csr) {
-    throw pep::OpenSSLError("Failed to create X509_REQ object for X509CertificateSigningRequest.");
-  }
-  // Take ownership of the X509_REQ structure immediately to prevent it from being leaked if an exception is raised below
-  X509CertificateSigningRequest result(*csr);
-
-  if (X509_REQ_set_version(csr, X509_REQ_VERSION_1) <= 0) {
-    throw pep::OpenSSLError("Failed to set version for X509CertificateSigningRequest.");
-  }
-
+X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit) : X509CertificateSigningRequest(MakeStub(keyPair)) {
   // Obtain the subject name of the X509 request, pointer must not be freed
-  X509_NAME* name = X509_REQ_get_subject_name(csr);
+  X509_NAME* name = X509_REQ_get_subject_name(mCSR);
 
   // Add the common name and organizational unit to the subject (name, OID, type, value, length, position, set)
   // position of -1 means it is appended, and set of 0 means a new RDN is created
@@ -608,17 +664,7 @@ X509CertificateSigningRequest X509CertificateSigningRequest::Make(AsymmetricKeyP
     throw pep::OpenSSLError("Failed to add OU to X509CertificateSigningRequest.");
   }
 
-  // Set the public key
-  if(X509_REQ_set_pubkey(csr, keyPair.mKeyPair) <= 0) {
-    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest.");
-  }
-
-  // Sign the X509 request
-  if(X509_REQ_sign(csr, keyPair.mKeyPair, EVP_sha256()) <= 0) {
-    throw pep::OpenSSLError("Failed to sign certificate for X509CertificateSigningRequest.");
-  }
-
-  return result;
+  sign(keyPair);
 }
 
 X509CertificateSigningRequest::X509CertificateSigningRequest(const X509CertificateSigningRequest& other) {
@@ -654,6 +700,26 @@ std::optional<std::string> X509CertificateSigningRequest::getCommonName() const 
 
 std::optional<std::string> X509CertificateSigningRequest::getOrganizationalUnit() const {
   return searchOIDinSubject(NID_organizationalUnitName);
+}
+
+std::vector<X509Extension> X509CertificateSigningRequest::getExtensions() const {
+  assert(mCSR);
+
+  STACK_OF(X509_EXTENSION)* extensions = X509_REQ_get_extensions(mCSR);
+  if(extensions == nullptr) {
+    throw OpenSSLError("Failed to get extensions from CSR.");
+  }
+  PEP_DEFER(sk_X509_EXTENSION_pop_free(extensions, X509_EXTENSION_free)); //Free up the stack itself, as well as any remaining elements in the stack
+  int numExtensions = sk_X509_EXTENSION_num(extensions);
+  assert(numExtensions >= 0); //If extensions!=nullptr, this should always be the case
+  std::vector<X509Extension> result;
+  result.reserve(static_cast<size_t>(numExtensions));
+  while (sk_X509_EXTENSION_num(extensions) > 0) {
+    X509_EXTENSION* extension = sk_X509_EXTENSION_pop(extensions);
+    assert(extension != nullptr);
+    result.emplace_back(extension); //X509Extension is now the owner of the pointer, and responsible for freeing it
+  }
+  return result;
 }
 
 AsymmetricKey X509CertificateSigningRequest::getPublicKey() const {
@@ -748,6 +814,23 @@ X509CertificateSigningRequest X509CertificateSigningRequest::FromDer(const std::
 
   // Create an X509CertificateSigningRequest object and set its internal CSR
   return X509CertificateSigningRequest(*csr);
+}
+
+X509CertificateSigningRequest X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(
+  AsymmetricKeyPair& keyPair, const X509Certificate& certificate) {
+  X509CertificateSigningRequest result = MakeStub(keyPair);
+
+  // pointer must not be freed
+  X509_NAME* subject = X509_get_subject_name(certificate.mRaw);
+
+  //X509_REQ_set_subject_name will make an internal copy of the X509_NAME*
+  if (X509_REQ_set_subject_name(result.mCSR, subject) <= 0) {
+    throw OpenSSLError("Failed to set subject name of certificate signing request.");
+  }
+
+  result.sign(keyPair);
+
+  return result;
 }
 
 X509Certificate X509Certificate::MakeUnsigned(const AsymmetricKey& publicKey, const X509_NAME& subjectName, const std::chrono::seconds validityPeriod) {
@@ -907,6 +990,37 @@ X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certifi
   return result;
 }
 
+X509CertificateSigningRequest X509CertificateSigningRequest::MakeStub(AsymmetricKeyPair& keyPair) {
+  if (!keyPair.mKeyPair) {
+    throw std::invalid_argument("Input key pair cannot be nullptr for X509CertificateSigningRequest.");
+  }
+
+  // Create a new X509_REQ object
+  auto csr = X509_REQ_new();
+  if (!csr) {
+    throw pep::OpenSSLError("Failed to create X509_REQ object for X509CertificateSigningRequest.");
+  }
+  // Take ownership of the X509_REQ structure immediately to prevent it from being leaked if an exception is raised below
+  X509CertificateSigningRequest result(*csr);
+
+  if (X509_REQ_set_version(csr, X509_REQ_VERSION_1) <= 0) {
+    throw pep::OpenSSLError("Failed to set version for X509CertificateSigningRequest.");
+  }
+
+  // Set the public key
+  if(X509_REQ_set_pubkey(csr, keyPair.mKeyPair) <= 0) {
+    throw pep::OpenSSLError("Failed to set public key in X509CertificateSigningRequest.");
+  }
+
+  return result;
+}
+
+void X509CertificateSigningRequest::sign(const AsymmetricKeyPair& keyPair) {
+  if(X509_REQ_sign(mCSR, keyPair.mKeyPair, EVP_sha256()) <= 0) {
+    throw pep::OpenSSLError("Failed to sign X509 request.");
+  }
+}
+
 X509Identity::X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain)
   : mPrivateKey(std::move(privateKey)), mCertificateChain(std::move(certificateChain)) {
   if (!mCertificateChain.certifiesPrivateKey(mPrivateKey)) {
@@ -923,10 +1037,10 @@ X509Identity X509Identity::MakeSelfSigned(std::string_view organization, std::st
 X509IdentityFiles::X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath)
   : mPrivateKeyFilePath(std::move(privateKeyFilePath)),
   mCertificateChainFilePath(std::move(certificateChainFilePath)),
-  mIdentity(AsymmetricKey(ReadFile(mPrivateKeyFilePath)),
-    X509CertificateChain(X509CertificatesFromPem(ReadFile(mCertificateChainFilePath)))) {
+  mIdentity(std::make_shared<X509Identity>(AsymmetricKey(ReadFile(mPrivateKeyFilePath)),
+    X509CertificateChain(X509CertificatesFromPem(ReadFile(mCertificateChainFilePath))))) {
   LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
-  if (!mIdentity.getCertificateChain().verify(X509RootCertificates::FromFile(rootCaCertFilePath))) {
+  if (!mIdentity->getCertificateChain().verify(X509RootCertificates::FromFile(rootCaCertFilePath))) {
     throw std::runtime_error("X509 identity does not pass validation against root CAs");
   }
 }

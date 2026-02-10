@@ -17,3 +17,4 @@ extern const std::string accessmanagerTLSCertPEM;
 extern const std::string rootCACertPEMExpired;
 extern const std::string pepServerCACertPEMWithExpiredRoot;
 extern const std::string pepAuthserverCertPEMWithExpiredRoot;
+extern const std::string pepAuthserverCSRWithExtension;

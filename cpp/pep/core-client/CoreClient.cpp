@@ -60,7 +60,7 @@ CoreClient::CoreClient(const Builder& builder) :
   MessageSigner(builder.getSigningIdentity()),
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
   caCertFilepath(builder.getCaCertFilepath()),
-  rootCAs(X509RootCertificates{X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath()))}),
+  rootCAs(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
   privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
   publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
   accessManagerEndPoint(builder.getAccessManagerEndPoint()),
@@ -176,6 +176,9 @@ PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const s
   return PolymorphicPseudonym::FromIdentifier(publicKeyPseudonyms, participantSID);
 }
 
+LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
+  return encrypted.decrypt(privateKeyPseudonyms);
+}
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
                                            std::shared_ptr<boost::asio::io_context> io_context,
@@ -414,7 +417,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(rootCAs, getEnrolledGroup()).mPseudonyms);
+    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mPseudonyms);
   });
 
 }

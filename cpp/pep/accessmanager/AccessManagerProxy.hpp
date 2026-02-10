@@ -40,6 +40,7 @@ public:
   rxcpp::observable<FakeVoid> amaCreateParticipantGroup(std::string name) const;
   rxcpp::observable<FakeVoid> amaRemoveParticipantGroup(std::string name, bool force) const;
   rxcpp::observable<FakeVoid> amaAddParticipantToGroup(std::string group, const PolymorphicPseudonym& participant) const;
+  rxcpp::observable<FakeVoid> amaRemoveParticipantsFromGroup(const std::string& group, const std::vector<PolymorphicPseudonym>& participants) const;
   rxcpp::observable<FakeVoid> amaRemoveParticipantFromGroup(std::string group, const PolymorphicPseudonym& participant) const;
   rxcpp::observable<FakeVoid> amaCreateColumnGroupAccessRule(std::string columnGroup, std::string accessGroup, std::string mode) const;
   rxcpp::observable<FakeVoid> amaRemoveColumnGroupAccessRule(std::string columnGroup, std::string accessGroup, std::string mode) const;

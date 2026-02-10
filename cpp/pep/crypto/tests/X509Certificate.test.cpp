@@ -129,6 +129,18 @@ TEST(X509CertificateTest, SelfSigned) {
   EXPECT_TRUE(chain.verify(rootCAs));
 }
 
+TEST(X509CertificateTest, EqualityInequality) {
+  auto baseCert = pep::X509Certificate::FromPem(pepAuthserverCertPEM);
+  auto equalCert = pep::X509Certificate::FromPem(pepAuthserverCertPEM);
+  auto differentCert = pep::X509Certificate::FromPem(pepServerCACertPEM);
+
+  EXPECT_TRUE(baseCert == equalCert);
+  EXPECT_FALSE(baseCert == differentCert);
+
+  EXPECT_FALSE(baseCert != equalCert);
+  EXPECT_TRUE(baseCert != differentCert);
+}
+
 TEST(X509CertificateSigningRequestTest, GenerationAndSigning) {
   std::string testCN = "TestCN";
   std::string testOU = "TestOU";
@@ -267,6 +279,24 @@ TEST(X509CertificateSigningRequestTest, LongStringInField) {
   EXPECT_ANY_THROW(pep::X509CertificateSigningRequest csr(keyPair, testCNSucceeds, testOUFails)) << "Creating a CSR with a too long OU string does not throw an error";
 }
 
+TEST(X509CertificateSigningRequestTest, Extensions) {
+  std::unordered_map<std::string, std::pair<std::string, bool>> expectedExtensions = { // name -> (value, critical)
+    {"X509v3 Certificate Policies",  {"Policy: 1.2.3.4", false}},
+    {"X509v3 Subject Alternative Name", {"DNS:authserver.pep.cs.ru.nl", false}},
+    {"X509v3 Basic Constraints",  {"CA:TRUE", true}}
+  };
+  pep::X509CertificateSigningRequest csr = pep::X509CertificateSigningRequest::FromPem(pepAuthserverCSRWithExtension);
+  auto extensions = csr.getExtensions();
+  EXPECT_EQ(extensions.size(), expectedExtensions.size());
+  for (auto& extension : extensions) {
+    auto found = expectedExtensions.find(extension.getName());
+    ASSERT_NE(found, expectedExtensions.end());
+    auto& [value, isCritical] = found->second;
+    EXPECT_EQ(extension.getValue(), value);
+    EXPECT_EQ(extension.isCritical(), isCritical);
+  }
+}
+
 TEST(X509CertificatesTest, X509CertificatesFormatting) {
 
   // An empty string input should throw an error
@@ -343,6 +373,18 @@ TEST(X509CertificateChainTest, CertifiesPrivateKey) {
   pep::X509CertificateChain certChain(pep::X509CertificatesFromPem(pepServerCACertPEM + rootCACertPEM));
   pep::AsymmetricKey privateKey(pepServerCAPrivateKeyPEM);
   EXPECT_TRUE(certChain.certifiesPrivateKey(privateKey)) << "Certificate chain does not certify the private key";
+}
+
+TEST(X509CertificateChainTest, EqualityInequality) {
+  pep::X509CertificateChain baseChain(pep::X509CertificatesFromPem(pepServerCACertPEM + pepAuthserverCertPEM));
+  pep::X509CertificateChain equalChain(pep::X509CertificatesFromPem(pepServerCACertPEM + pepAuthserverCertPEM));
+  pep::X509CertificateChain differentChain(pep::X509CertificatesFromPem(pepServerCACertPEM));
+
+  EXPECT_TRUE(baseChain == equalChain);
+  EXPECT_FALSE(baseChain == differentChain);
+
+  EXPECT_FALSE(baseChain != equalChain);
+  EXPECT_TRUE(baseChain != differentChain);
 }
 
 TEST(X509CertificateSigningRequestTest, GetPublicKey) {

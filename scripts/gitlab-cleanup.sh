@@ -99,7 +99,7 @@ if [ -n "${dtap_dir+defined}" ]; then
 fi
 
 chr_tab="$(printf '\t')"
-# A cross-platform sh-compatible way to put just a newline into a variable (`$(...)` trips trailing newlines)
+# A cross-platform sh-compatible way to put just a newline into a variable (`$(...)` strips trailing newlines)
 chr_lf="$(printf '\nX')"
 chr_lf="${chr_lf%X}"
 chr_crlf="$(printf '\r\nX')"

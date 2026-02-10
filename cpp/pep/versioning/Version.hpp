@@ -11,11 +11,11 @@ public:
   BinaryVersion(
     std::string projectPath,
     std::string reference,
-    std::string revision,
+    std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
-    unsigned int pipelineId,
-    unsigned int jobId,
+    unsigned int build,
+    unsigned int revision,
     std::string target,
     std::string protocolChecksum);
 
@@ -37,11 +37,11 @@ public:
   ConfigVersion(
     std::string projectPath,
     std::string reference,
-    std::string revision,
+    std::string commit,
     unsigned int majorVersion,
     unsigned int minorVersion,
-    unsigned int pipelineId,
-    unsigned int jobId,
+    unsigned int build,
+    unsigned int revision,
     std::string projectCaption);
   static std::optional<ConfigVersion> TryRead(const std::filesystem::path& directory);
 

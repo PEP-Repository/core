@@ -7,7 +7,8 @@ mkdir -p /secrets_copy
 cp -R /secrets/shibboleth /secrets_copy
 /bin/chown _shibd:_shibd /secrets_copy/shibboleth/*
 
-spoofKey=$(cat /secrets/spoofKey)
+tr --delete "[:cntrl:]" < /secrets/spoofKey > /secrets_copy/spoofKey
+spoofKey=$(cat /secrets_copy/spoofKey)
 sed -i -e "s/\${SPOOFKEY}/${spoofKey}/" /etc/shibboleth/shibboleth2.xml
 
 # In our repo's, we have files in conf-enabled. This is not what Apache2 expects. The files should be in conf-available,

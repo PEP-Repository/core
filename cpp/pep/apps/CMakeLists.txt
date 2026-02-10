@@ -75,7 +75,6 @@ endif()
 
 if(DEFINED EMSCRIPTEN)
   set_target_properties(
-      ${PROJECT_NAME}Enrollment
       ${PROJECT_NAME}GenerateSystemKeys
       ${PROJECT_NAME}DumpShadowAdministration
       PROPERTIES

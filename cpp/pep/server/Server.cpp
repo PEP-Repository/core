@@ -76,7 +76,7 @@ Server::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
 messaging::MessageBatches
 Server::handleMetricsRequest(
   std::shared_ptr<SignedMetricsRequest> signedRequest) {
-  signedRequest->validate(getRootCAs(), UserGroup::Watchdog);
+  signedRequest->validate(*getRootCAs(), UserGroup::Watchdog);
   auto registry = getMetricsRegistry();
   if (registry == nullptr)
     throw Error("Server does not collect metrics");
@@ -96,7 +96,7 @@ messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
   UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting checksum chains");
-  auto request = signedRequest->open(getRootCAs());
+  auto request = signedRequest->open(*getRootCAs());
   std::optional<uint64_t> maxCheckpoint;
 
   if (!request.mCheckpoint.empty()) {
@@ -123,7 +123,7 @@ messaging::MessageBatches
 Server::handleChecksumChainNamesRequest(
   std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest) {
   UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting checksum chain names");
-  signedRequest->validate(getRootCAs());
+  signedRequest->validate(*getRootCAs());
   ChecksumChainNamesResponse resp;
   resp.mNames = getChecksumChainNames();
   return messaging::BatchSingleMessage(std::move(resp));
@@ -133,7 +133,7 @@ Server::Server(std::shared_ptr<Parameters> parameters)
   : mRegistry(std::make_shared<prometheus::Registry>()),
   mMetrics(std::make_shared<Metrics>(mRegistry)),
   mEGCache(EGCache::get()),
-  mDescription(parameters->serverTraits().description()),
+  mServerTraits(parameters->serverTraits()),
   mIoContext(parameters->getIoContext()),
   mRootCAs(parameters->ensureValid().getRootCAs()) {
   RegisterRequestHandlers(*this,
@@ -178,6 +178,6 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
 Server::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> ioContext, const Configuration& config)
   : mIoContext(std::move(ioContext)),
   rootCACertificatesFilePath_(config.get<std::filesystem::path>("CACertificateFile")),
-  rootCAs_(X509CertificatesFromPem(ReadFile(rootCACertificatesFilePath_))) {}
+  rootCAs_(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(rootCACertificatesFilePath_)))) {}
 
 }
