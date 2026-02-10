@@ -1422,8 +1422,8 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::
         &UserIdRecord::internalUserId));
 }
 
-int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, Timestamp at) const {
-  std::optional<int64_t> internalUserId = findInternalUserId(identifier);
+int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
+  const auto internalUserId = findInternalUserId(identifier, caseSensitivity, at);
   if(!internalUserId) {
     throw Error("Could not find user id");
   }
