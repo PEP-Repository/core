@@ -652,7 +652,6 @@ ubuntu-rolling-release:
     WITH_TESTS: "True"
     MEM_ANALYSIS_TOOL: "none"
     CONAN_FLAGS: --profile:host=./docker-build/builder/conan/conan_profile_wasm32
-    EXECUTABLE_EXTENSION: .js
 
 .weblib-settings-debug:
   extends:
