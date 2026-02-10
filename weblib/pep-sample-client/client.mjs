@@ -13,8 +13,8 @@ let pep;
  * @param {Event} ev
  */
 function handleMaybeWasmException(ex, ev) {
-  // Note: This is slightly broken for Emscripten EH, as the error type is not WebAssembly.Exception
-  if (pep && ex && ex instanceof WebAssembly.Exception) {
+  // Note: Could normally check `instanceof WebAssembly.Exception` instead
+  if (pep && Pep.mayBeWasmException(ex)) {
     const error = pep.handleWasmException(ex);
     alert(error);
     console.error('Uncaught', error);
@@ -25,7 +25,7 @@ function handleMaybeWasmException(ex, ev) {
 addEventListener('error', ev => {
   // Ignore noise from background threads, see /cpp/weblib/prejs.js
   // See also https://github.com/emscripten-core/emscripten/issues/18016
-  if (ev.error instanceof ErrorEvent || (!ev.error && ev.message === 'Uncaught [object WebAssembly.Exception]')) {
+  if (ev.error instanceof ErrorEvent || (!ev.error && ev.message.endsWith('[object WebAssembly.Exception]'))) {
     return;
   }
   handleMaybeWasmException(ev.error, ev);

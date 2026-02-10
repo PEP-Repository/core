@@ -109,14 +109,23 @@ function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDay().toString().padStart(2, '0')}`;
 }
 
+type WasmException =
+    | WebAssembly.Exception // WASM EH (what we normally use)
+    | number /*pointer*/ // Emscripten EH
+    | Error /*CppException*/ // Emscripten EH + assertions
+
+function mayBeWasmException(ex: WasmException | unknown): ex is WasmException {
+  return ex instanceof WebAssembly.Exception
+      || (typeof ex === 'number' && ex > 0)
+      || (ex instanceof Error && Object.getPrototypeOf(ex).constructor.name === 'CppException');
+}
+
 /**
  * Inspects the exception via `callback` and then frees it.
  */
-function consumeWasmException<TReturn>(
-    mod: MainModule, wasmEx: WebAssembly.Exception, //TODO For Emscripten EH this should be Error
-    callback: (wasmEx: WebAssembly.Exception) => TReturn): TReturn {
-  //TODO Fix when using Emscripten EH, see https://github.com/emscripten-core/emscripten/issues/17115
-
+function consumeWasmException<TReturn, TException extends WasmException>(
+    mod: MainModule, wasmEx: TException,
+    callback: (wasmEx: TException) => TReturn): TReturn {
   try {
     return callback(wasmEx);
   } finally {
@@ -128,21 +137,22 @@ function consumeWasmException<TReturn>(
  * Transforms a WASM exception into an Error with the correct message, and stack when available.
  * After obtaining message, frees the WASM exception object.
  */
-function handleWasmExceptionForModule(mod: MainModule, wasmEx: WebAssembly.Exception): Error {
+function handleWasmExceptionForModule(mod: MainModule, wasmEx: WasmException): Error {
   return consumeWasmException(mod, wasmEx, () => {
     const [type, message] = mod.getExceptionMessage(wasmEx) as [string, string];
     const error = new Error(message || type, {cause: wasmEx});
-    if (wasmEx.stack) {
-      error.stack = wasmEx.stack;
+    const stack = typeof wasmEx === 'object' && 'stack' in wasmEx
+        ? wasmEx.stack as string : undefined;
+    if (stack) {
+      error.stack = stack;
     }
-    console.warn(`WebAssembly.Exception: ${type}: ${message}${wasmEx.stack ? `\n${wasmEx.stack}` : ''}`);
+    console.warn(`WebAssembly Exception: ${type}: ${message}${stack ? `\n${stack}` : ''}`);
     return error;
   });
 }
 
-function throwPotentialWasmException(mod: MainModule, ex: WebAssembly.Exception | Error | unknown): never {
-  //TODO Fix when using Emscripten EH
-  if (ex instanceof WebAssembly.Exception) {
+function throwPotentialWasmException(mod: MainModule, ex: WasmException | Error | unknown): never {
+  if (mayBeWasmException(ex)) {
     throw handleWasmExceptionForModule(mod, ex);
   }
   throw ex;
@@ -393,12 +403,16 @@ export default class Pep {
   }
 
   /** @see {@link handleWasmExceptionForModule} */
-  handleWasmException(ex: WebAssembly.Exception) {
+  handleWasmException(ex: WasmException) {
     return handleWasmExceptionForModule(this.#mod, ex);
   }
 
   /** @see {@link runHandleWasmExceptionForModule} */
   runHandleWasmException<Ret>(fun: () => Ret): Ret {
     return runHandleWasmExceptionForModule(this.#mod, fun);
+  }
+
+  static mayBeWasmException(ex: WasmException | unknown) {
+    return mayBeWasmException(ex);
   }
 }
