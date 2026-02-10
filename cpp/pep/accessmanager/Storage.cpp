@@ -1445,10 +1445,10 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
   // There is some code duplication that is hard to remove, because the types passed to toOptional are different
   return (caseSensitivity == CaseSensitive)
       ? toOptional(mImplementor->getCurrentRecords(
-            timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
+            timeCondition && in(&UserIdRecord::identifier, identifiers),
             &UserIdRecord::internalUserId))
       : toOptional(mImplementor->getCurrentRecords(
-            timeCondition && in(&UserIdRecord::identifier, identifiers),
+            timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
             &UserIdRecord::internalUserId));
 }
 
