@@ -35,6 +35,8 @@ Changes in upcoming release (1.7):
   before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.  
 
 
+- !2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
