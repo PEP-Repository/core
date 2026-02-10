@@ -34,7 +34,6 @@ variables:
     cpp/pep/apps/pepDumpShadowAdministration
     cpp/pep/apps/pepEnrollment
     cpp/pep/apps/pepGenerateSystemKeys
-    cpp/pep/apps/pepRegistration
     cpp/pep/apps/pepToken
     cpp/pep/accessmanager/pepAccessManager
     cpp/pep/authserver/pepAuthserver
