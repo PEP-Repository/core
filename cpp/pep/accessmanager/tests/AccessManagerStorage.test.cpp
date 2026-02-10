@@ -353,6 +353,7 @@ TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
 
   EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl")) << "Should reject ids that match exactly";
   EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl")) << "Should reject ids that only differs by case";
+  EXPECT_NO_THROW(storage->createUser("aart.appel@fake.ru.nl", CaseSensitive)) << "Can opt-in for case-sensitive adds";
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {

@@ -205,7 +205,7 @@ public:
   MigrateUserDbToAccessManagerResponse migrateUserDb(const std::filesystem::path& dbPath);
 
   /* Adding and removing users and user identifiers */
-  int64_t createUser(std::string identifier);
+  int64_t createUser(std::string identifier, CaseSensitivity = CaseInsensitive);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
   void addIdentifierForUser(std::string_view uid, std::string identifier, CaseSensitivity = CaseInsensitive);

@@ -1342,9 +1342,9 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
   return 1;
 }
 
-int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
+int64_t AccessManager::Backend::Storage::createUser(std::string identifier, CaseSensitivity caseSensitivity) {
   int64_t internalUserId = getNextInternalUserId();
-  addIdentifierForUser(internalUserId, std::move(identifier));
+  addIdentifierForUser(internalUserId, std::move(identifier), caseSensitivity);
   return internalUserId;
 }
 
