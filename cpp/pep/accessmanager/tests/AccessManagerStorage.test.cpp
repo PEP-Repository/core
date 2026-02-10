@@ -357,25 +357,74 @@ TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
-  const auto idEmail = storage->createUser("Aart.Appel@fake.ru.nl"); // typical email
-  const auto idBase64 = storage->createUser("QmVydEJyYWFt"); // arbitrary base 64 string
+  const auto idEmailA = storage->createUser("Aart.Appel@fake.ru.nl"); // typical email
+  const auto idEmailB = storage->createUser("Bert.Bes@fake.ru.nl"); // typical email
+  const auto idBase64A = storage->createUser("QmVydEJyYWFt", CaseSensitive); // arbitrary base 64 string
+  const auto idBase64B = storage->createUser("qMvYDejYywfT", CaseSensitive); // only differs by casing from previous
 
   {
-    const auto section = "case: exact match";
-    EXPECT_EQ(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
-    EXPECT_EQ(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64) << section;
-  }
-
-  {
-    const auto section = "case: different casing";
-    EXPECT_EQ(storage->findInternalUserId("aart.appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
+    const auto section = "case: case-sensitive matching on a single id";
+    EXPECT_EQ(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64A) << section;
+    EXPECT_EQ(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
     EXPECT_EQ(storage->findInternalUserId("qmvydejyywft", CaseSensitive), std::nullopt) << section;
   }
 
   {
-    const auto section = "case: no match";
+    const auto section = "case: case-sensitive matching on multiple ids";
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QmVydEJyYWFt", "qmvydejyywft"}, CaseSensitive),
+        idBase64A)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QMVYDEJYYWFT", "qMvYDejYywfT"}, CaseSensitive),
+        idBase64B)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QMVYDEJYYWFT", "qmvydejyywft"}, CaseSensitive),
+        std::nullopt)
+        << section;
+  }
+
+  {
+    const auto section = "case: case-insensitive matching on a single id";
+    EXPECT_EQ(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmailA) << section;
+    EXPECT_EQ(storage->findInternalUserId("bert.bes@fake.ru.nl", CaseInsensitive), idEmailB) << section;
     EXPECT_EQ(storage->findInternalUserId("Clara.Citroen@fake.ru.nl", CaseInsensitive), std::nullopt) << section;
-    EXPECT_EQ(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
+  }
+
+  {
+    const auto section = "case: case-insensitive matching on multiple ids";
+    EXPECT_EQ(
+        storage->findInternalUserId(
+            std::vector<std::string>{"Clara.Citroen@fake.ru.nl", "AART.APPEL@FAKE.RU.NL"},
+            CaseInsensitive),
+        idEmailA)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(
+            std::vector<std::string>{"bert.bes@fake.ru.nl", "Clara.Citroen@fake.ru.nl"},
+            CaseInsensitive),
+        idEmailB)
+        << section;
+  }
+
+  {
+    const auto section = "edge cases";
+    EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseInsensitive), std::nullopt) << section;
+    EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseSensitive), std::nullopt) << section;
+
+    EXPECT_ANY_THROW(storage->findInternalUserId("QmVydEJyYWFt", CaseInsensitive)) << section;
+
+    EXPECT_ANY_THROW(
+        storage->findInternalUserId(
+            std::vector<std::string>{"QmVydEJyYWFt", "qMvYDejYywfT"},
+            CaseSensitive))
+        << section;
+    EXPECT_ANY_THROW(
+        storage->findInternalUserId(
+            std::vector<std::string>{"AART.APPEL@FAKE.RU.NL", "BERT.BES@FAKE.RU.NL"},
+            CaseInsensitive))
+        << section;
   }
 }
 
