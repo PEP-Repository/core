@@ -88,7 +88,8 @@ For production, use `-o./hello.js` or `-o./hello.mjs` (module) instead, using cu
 Use [`docker-build/builder/conan/conan_profile_wasm32`](https://gitlab.pep.cs.ru.nl/pep/docker-build/-/blob/wasm/builder/conan/conan_profile_wasm32?ref_type=heads)
 
 - Sets compiler, flags, CMake toolchain, etc.
-- Future work: Use the new [conan-toolchains `emsdk`](https://github.com/conan-io/conan-toolchains/tree/main/conan_config/profiles/emsdk) build tool recipe? But lags behind latest version.
+- Possible to install EMSDK via new [conan-toolchains `emsdk`](https://github.com/conan-io/conan-toolchains/tree/main/conan_config/profiles/emsdk) build tool recipe
+  - Add remote, then `emsdk/<version>` under `[tool_requires]`
 
 ## Installing requirements via Conan
 

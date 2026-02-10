@@ -215,6 +215,7 @@ Future work: add extra wrapping layer that does this automatically?
   - File upload
   - Retrieve encrypted cell metadata
   - ⇒ Should API be split up in explicit `getTicket` (with modes) → `getKeys` → ... after all?
+- Downloading folders (via ZIP/TAR if needed)
 - Structure metadata
 - Publishing package (and semver)
 
