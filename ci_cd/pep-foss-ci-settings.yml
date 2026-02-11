@@ -1,6 +1,7 @@
 variables:
   PEP_FOSS_DEVELOPMENT_BRANCH: main
   PEP_FOSS_TESTING_BRANCH: stable
-  PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN: /^release-\d+\.\d+$*/
+  PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN: /^release-\d+\.\d+$/  # examples: release-1.15, release-2.1
+  PEP_FOSS_HOTFIX_BRANCH_PATTERN: /(-release-\d+\.\d+)|(release-\d+\.\d+-)/  # examples: my-feature-release-1.1, release-1.4-hotfix, some-release-2.4-stuff
   PEP_FOSS_LATEST_RELEASE_BRANCH: latest-release
   PEP_FOSS_PUBLISHED_BRANCH: main
