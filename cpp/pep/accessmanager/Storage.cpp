@@ -1409,17 +1409,7 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
-  const auto timeCondition = c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at);
-  const auto idEqualityCondition = is_equal(&UserIdRecord::identifier, identifier); // case-sensitive by default
-
-  // There is some code duplication that is hard to remove, because the types passed to RangeToOptional are different for each case
-  return (caseSensitivity == CaseSensitive)
-      ? RangeToOptional(mImplementor->getCurrentRecords(
-        timeCondition && idEqualityCondition,
-        &UserIdRecord::internalUserId))
-      : RangeToOptional(mImplementor->getCurrentRecords(
-        timeCondition && idEqualityCondition.collate_nocase(), // make it case-insensitive
-        &UserIdRecord::internalUserId));
+  return findInternalUserId(std::vector{std::string{identifier}}, caseSensitivity, at);
 }
 
 int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
