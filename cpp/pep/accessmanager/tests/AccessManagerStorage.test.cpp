@@ -348,12 +348,24 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
   }
 }
 
-TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
+TEST_F(AccessManagerStorageTest, createUserGuardsAgainstDuplicates) {
   storage->createUser("Aart.Appel@fake.ru.nl");
 
-  EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl")) << "Should reject ids that match exactly";
-  EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl")) << "Should reject ids that only differs by case";
-  EXPECT_NO_THROW(storage->createUser("aart.appel@fake.ru.nl", CaseSensitive)) << "Can opt-in for case-sensitive adds";
+  {
+    const auto section = "always rejects ids that match exactly";
+    EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl")) << section;
+    EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl", CaseSensitive)) << section;
+    EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl", CaseInsensitive)) << section;
+  }
+
+  EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl"))
+      << "rejects ids that only differ by case (by default)";
+
+  EXPECT_ANY_THROW(storage->createUser("AART.APPEL@fake.ru.nl", CaseInsensitive))
+      << "rejects ids that only differ by case, if CaseSensitivity is set to CaseInsensitive";
+
+  EXPECT_NO_THROW(storage->createUser("aart.appel@fake.ru.nl", CaseSensitive))
+      << "accepts ids that only differ by case, if CaseSensitivity is set to CaseInsensitive";
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
