@@ -1423,8 +1423,14 @@ int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view iden
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity caseSensitivity, Timestamp at) const {
   using namespace std::ranges;
 
-  const auto toOptional = [](auto&& range) {
-    return RangeToOptional(RangeToCollection<std::unordered_set>(std::forward<decltype(range)>(range)));
+  const auto toOptional = [](auto&& range) -> std::optional<int64_t> {
+    const auto vector = RangeToVector(std::forward<decltype(range)>(range));
+    if (vector.empty()) { return std::nullopt; }
+
+    const auto allEqual = std::equal(++vector.begin(), vector.end(), vector.begin()); // compares adjacent elements
+    if (!allEqual) { throw Error{"Failed to resolve to a unique internal user id: found multiple matching users"}; }
+
+    return vector.front();
   };
   const auto toLower = [](std::vector<std::string> identifiers){
     for (auto& id: identifiers) { boost::to_lower(id); }
