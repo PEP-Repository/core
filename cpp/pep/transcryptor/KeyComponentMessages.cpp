@@ -20,9 +20,9 @@ KeyComponentResponse KeyComponentResponse::HandleRequest(
 
   auto recipient = RecipientForCertificate(signedRequest.getLeafCertificate());
   KeyComponentResponse response;
-  response.mPseudonymKeyComponent = pseudonymTranslator.generateKeyComponent(recipient);
+  response.mPseudonymEncryptionKeyComponent = pseudonymTranslator.generateKeyComponent(recipient);
   if (HasDataAccess(*party)) {
-    response.mEncryptionKeyComponent = dataTranslator.generateKeyComponent(recipient);
+    response.mDataEncryptionKeyComponent = dataTranslator.generateKeyComponent(recipient);
   }
   return response;
 }
