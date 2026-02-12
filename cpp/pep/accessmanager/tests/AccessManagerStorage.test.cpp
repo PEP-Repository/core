@@ -1,12 +1,14 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <pep/utils/File.hpp>
-#include <pep/structure/StructureSerializers.hpp>
-#include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
+#include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
+#include <pep/structure/StructureSerializers.hpp>
+#include <pep/utils/File.hpp>
 
 #include <chrono>
 #include <filesystem>
+#include <optional>
 #include <thread>
 
 using namespace pep;
@@ -16,10 +18,16 @@ using namespace std::ranges;
 using namespace std::chrono_literals;
 using namespace std::string_literals;
 
-namespace {
+using ::testing::HasSubstr;
 
-constexpr auto CaseSensitive = AccessManager::Backend::Storage::CaseSensitivity::CaseSensitive;
-constexpr auto CaseInsensitive = AccessManager::Backend::Storage::CaseSensitivity::CaseInsensitive;
+using CaseSensitivity = AccessManager::Backend::Storage::CaseSensitivity;
+constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
+constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
+
+#define PEP_EXPECT_THROWS_MESSAGE(statement, exception_type, ...) \
+  EXPECT_THAT([&] { statement; }, ::testing::ThrowsMessage<exception_type>(::testing::AllOf(__VA_ARGS__)))
+
+namespace {
 
 void PrepareSortedMine(UserQueryResponse& response) {
   erase_if(response.mUserGroups, [](const UserGroup& group) {
@@ -351,21 +359,38 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
 TEST_F(AccessManagerStorageTest, createUserGuardsAgainstDuplicates) {
   storage->createUser("Aart.Appel@fake.ru.nl");
 
-  {
-    const auto section = "always rejects ids that match exactly";
-    EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl")) << section;
-    EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl", CaseSensitive)) << section;
-    EXPECT_ANY_THROW(storage->createUser("Aart.Appel@fake.ru.nl", CaseInsensitive)) << section;
-  }
+  const auto msgMatcher = [](std::optional<CaseSensitivity> cs = std::nullopt) {
+    return testing::AllOf(
+        HasSubstr("identifier already exists"), // the reason for throwing
+        HasSubstr(cs == CaseSensitive ? "case-sensitive" : "case-insensitive")); // case-insensitive by default
+  };
 
-  EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl"))
-      << "rejects ids that only differ by case (by default)";
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl"),
+      pep::Error,
+      msgMatcher());
 
-  EXPECT_ANY_THROW(storage->createUser("AART.APPEL@fake.ru.nl", CaseInsensitive))
-      << "rejects ids that only differ by case, if CaseSensitivity is set to CaseInsensitive";
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl", CaseSensitive),
+      pep::Error,
+      msgMatcher(CaseSensitive));
 
-  EXPECT_NO_THROW(storage->createUser("aart.appel@fake.ru.nl", CaseSensitive))
-      << "accepts ids that only differ by case, if CaseSensitivity is set to CaseInsensitive";
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl", CaseInsensitive),
+      pep::Error,
+      msgMatcher(CaseInsensitive));
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("aart.appel@fake.ru.nl"),
+      pep::Error,
+      msgMatcher());
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("AART.APPEL@fake.ru.nl", CaseInsensitive),
+      pep::Error,
+      msgMatcher(CaseInsensitive));
+
+  EXPECT_NO_THROW(storage->createUser("aart.appel@fake.ru.nl", CaseSensitive));
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
