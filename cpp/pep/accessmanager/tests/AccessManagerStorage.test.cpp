@@ -447,21 +447,26 @@ TEST_F(AccessManagerStorageTest, findInternalUserId) {
 
   {
     const auto section = "edge cases";
+    const auto msgMatcher = HasSubstr("multiple matching users");
     EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseInsensitive), std::nullopt) << section;
     EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseSensitive), std::nullopt) << section;
 
-    EXPECT_ANY_THROW(storage->findInternalUserId("QmVydEJyYWFt", CaseInsensitive)) << section;
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId("QmVydEJyYWFt", CaseInsensitive),
+        pep::Error,
+        msgMatcher);
 
-    EXPECT_ANY_THROW(
-        storage->findInternalUserId(
-            std::vector<std::string>{"QmVydEJyYWFt", "qMvYDejYywfT"},
-            CaseSensitive))
-        << section;
-    EXPECT_ANY_THROW(
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId(std::vector<std::string>{"QmVydEJyYWFt", "qMvYDejYywfT"}, CaseSensitive),
+        pep::Error,
+        msgMatcher);
+
+    PEP_EXPECT_THROWS_MESSAGE(
         storage->findInternalUserId(
             std::vector<std::string>{"AART.APPEL@FAKE.RU.NL", "BERT.BES@FAKE.RU.NL"},
-            CaseInsensitive))
-        << section;
+            CaseInsensitive),
+        pep::Error,
+        msgMatcher);
   }
 }
 
