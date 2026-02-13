@@ -30,7 +30,7 @@ ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& pk, const CurvePoin
 
   k = CurveScalar::Random();
   b = CurvePoint::BaseMult(k);
-  c = data.add(pk.mult(k));
+  c = data + (pk * k);
   y = pk;
 }
 
@@ -50,7 +50,7 @@ ElgamalEncryption::ElgamalEncryption(const CurvePoint& b, const CurvePoint& c, c
  * \return The decrypted point.
  */
 CurvePoint ElgamalEncryption::decrypt(const ElgamalPrivateKey& sk) const {
-  return c.sub(b.mult(sk));
+  return c - (b * sk);
 }
 
 /*! \brief rerandomize an ElgamalEncryption triple.
@@ -72,8 +72,8 @@ ElgamalEncryption ElgamalEncryption::rerandomize() const {
   // (g * k + g * z, s + g * x * k + g * x * z) =
   // (a + g * z, b + g * x * z)
 
-  r.b = b.add(CurvePoint::BaseMult(z));
-  r.c = c.add(y.mult(z));
+  r.b = b + CurvePoint::BaseMult(z);
+  r.c = c + (y * z);
 
   r.y = y;
   return r;
@@ -96,9 +96,9 @@ ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& z) const
   // (g * k, s + g * (x + z) * k) =
   // (g * k, s + g * k * x + g * k * z =
   // (a, b + a * z)
-  r.b = b.mult(z.invert());
+  r.b = b * z.invert();
   r.c = c;
-  r.y = y.mult(z);
+  r.y = y * z;
   return r;
 }
 
@@ -118,8 +118,8 @@ ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& z) const {
   // transform to:
   // (g * k * z, s * z + g * x * k * z) =
   // (a * z, b * z)
-  r.b = b.mult(z);
-  r.c = c.mult(z);
+  r.b = b * z;
+  r.c = c * z;
   r.y = y;
   return r;
 }
@@ -153,13 +153,13 @@ ElgamalEncryption ElgamalEncryption::RSK(const CurveScalar& z, const ElgamalTran
 
   auto r = CurveScalar::Random();
   auto rB = CurvePoint::BaseMult(r);
-  auto ry = y.mult(r);
-  auto zOverK = z.mult(k.invert());
+  auto ry = y * r;
+  auto zOverK = z * k.invert();
 
   ElgamalEncryption ret;
-  ret.b = b.add(rB).mult(zOverK);
-  ret.c = c.add(ry).mult(z);
-  ret.y = y.mult(k);
+  ret.b = (b + rB) * zOverK;
+  ret.c = (c + ry) * z;
+  ret.y = y * k;
   return ret;
 }
 

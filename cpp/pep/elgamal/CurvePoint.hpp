@@ -67,11 +67,11 @@ class CurvePoint {
   std::string text() const;
   static CurvePoint FromText(const std::string& text);
 
-  CurvePoint add(const CurvePoint& p) const;
-  CurvePoint sub(const CurvePoint& p) const;
-  CurvePoint dbl() const;
-  CurvePoint mult(const CurveScalar& p) const;
-  CurvePoint publicMult(const CurveScalar& s) const;
+  [[nodiscard]] CurvePoint operator+(const CurvePoint& p) const;
+  [[nodiscard]] CurvePoint operator-(const CurvePoint& p) const;
+  [[nodiscard]] CurvePoint dbl() const;
+  [[nodiscard]] CurvePoint operator*(const CurveScalar& p) const;
+  [[nodiscard]] CurvePoint publicMult(const CurveScalar& s) const;
 
   template<typename RNG>
   static CurvePoint Random(RNG& rng) {

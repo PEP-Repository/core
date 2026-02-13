@@ -96,7 +96,7 @@ CurveScalar RskTranslator::generateKeyComponent(
     const CurveScalar& encryptionKeyFactor,
     const CurveScalar& masterPrivateEncryptionKeyShare
 ) const {
-  return encryptionKeyFactor.mult(masterPrivateEncryptionKeyShare);
+  return encryptionKeyFactor * masterPrivateEncryptionKeyShare;
 }
 
 /// Generate a key factor

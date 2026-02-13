@@ -11,12 +11,12 @@ ScalarMultProof ScalarMultProof::create(
   auto nonce = rng == nullptr ? CurveScalar::Random()
                   : CurveScalar::Random<>(*rng);
   auto cb = CurvePoint::BaseMult(nonce);
-  auto cm = M.mult(nonce);
+  auto cm = M * nonce;
   auto challenge = computeChallenge(A, M, N, cb, cm);
   return ScalarMultProof(
     cb,
     cm,
-    nonce.add(challenge.mult(x))
+    nonce + (challenge * x)
   );
 }
 
@@ -25,8 +25,8 @@ void ScalarMultProof::verify(
     const CurvePoint& M,
     const CurvePoint& N) const {
   auto challenge = computeChallenge(A, M, N, mCB, mCM);
-  if ((CurvePoint::PublicBaseMult(mS) != A.publicMult(challenge).add(mCB))
-      || (M.publicMult(mS) != N.publicMult(challenge).add(mCM)))
+  if ((CurvePoint::PublicBaseMult(mS) != A.publicMult(challenge) + mCB)
+      || (M.publicMult(mS) != N.publicMult(challenge) + mCM))
     throw InvalidProof();
 }
 
@@ -66,8 +66,8 @@ RSKProof RSKProof::create(
     ry,
     rB,
     ScalarMultProof::create(rB, pre.y, ry, r, rng),
-    ScalarMultProof::create(zOverKB, pre.b.add(rB), post.b, zOverK, rng),
-    ScalarMultProof::create(zB, pre.c.add(ry), post.c, z, rng)
+    ScalarMultProof::create(zOverKB, pre.b + rB, post.b, zOverK, rng),
+    ScalarMultProof::create(zB, pre.c + ry, post.c, z, rng)
   );
 }
 
@@ -76,14 +76,14 @@ RSKProof RSKProof::certifiedRSK(
     ElgamalEncryption& out,
     const CurveScalar& z,
     const CurveScalar& k) {
-  auto zOverK = z.mult(k.invert());
+  auto zOverK = z * k.invert();
   auto r = CurveScalar::Random();
-  auto ry = in.y.mult(r);
+  auto ry = in.y * r;
   auto rB = CurvePoint::BaseMult(r);
 
-  out.b = in.b.add(rB).mult(zOverK);
-  out.c = in.c.add(ry).mult(z);
-  out.y = in.y.mult(k);
+  out.b = (in.b + rB) * zOverK;
+  out.c = (in.c + ry) * z;
+  out.y = in.y * k;
 
   return RSKProof::create(
     in,
@@ -111,8 +111,8 @@ void RSKProof::verify(
     const ElgamalEncryption& post,
     const RSKVerifiers& verifiers) const {
   mRP.verify(mRB, pre.y, mRY);
-  mBP.verify(verifiers.mZOverKB, pre.b.add(mRB), post.b);
-  mCP.verify(verifiers.mZB, pre.c.add(mRY), post.c);
+  mBP.verify(verifiers.mZOverKB, pre.b + mRB, post.b);
+  mCP.verify(verifiers.mZB, pre.c + mRY, post.c);
   if (post.y != verifiers.mKY)
     throw InvalidProof();
 }
@@ -122,9 +122,9 @@ RSKVerifiers RSKVerifiers::compute(
     const CurveScalar& k,
     const CurvePoint& y) {
   return RSKVerifiers(
-    CurvePoint::BaseMult(z.mult(k.invert())),
+    CurvePoint::BaseMult(z * k.invert()),
     CurvePoint::BaseMult(z),
-    y.mult(k)
+    y * k
   );
 }
 

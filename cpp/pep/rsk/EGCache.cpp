@@ -440,8 +440,8 @@ ElgamalEncryption EGCacheImp::rerandomize(
     return eg.rerandomize();
 
   auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
-  ret.b = eg.b.add(CurvePoint::BaseMult(r));
-  ret.c = eg.c.add(table->mult(r));
+  ret.b = eg.b + CurvePoint::BaseMult(r);
+  ret.c = eg.c + table->mult(r);
   ret.y = eg.y;
   return ret;
 }
@@ -458,12 +458,12 @@ ElgamalEncryption EGCacheImp::RSKValue::RK(
 
   // ret.b = 1/k (b + r B)
   auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
-  auto bPlusRB = CurvePoint::BaseMult(r).add(b);
-  ret.b = bPlusRB.mult(mKInv);
+  auto bPlusRB = CurvePoint::BaseMult(r) + b;
+  ret.b = bPlusRB * mKInv;
 
   // ret.c = c + ry
   auto ry = mYTable->mult(r);
-  ret.c = c.add(ry);
+  ret.c = c + ry;
 
   // ret.y = ky
   ret.y = mKY;
@@ -479,13 +479,13 @@ ElgamalEncryption EGCacheImp::RSKValue::RSK(
 
   // ret.b = (z * 1/k) (b + r B)
   auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
-  auto zOverK = mKInv.mult(z);
-  auto bPlusRB = CurvePoint::BaseMult(r).add(b);
-  ret.b = bPlusRB.mult(zOverK);
+  auto zOverK = mKInv * z;
+  auto bPlusRB = CurvePoint::BaseMult(r) + b;
+  ret.b = bPlusRB * zOverK;
 
   // ret.c = z(c + ry)
   auto ry = mYTable->mult(r);
-  ret.c = c.add(ry).mult(z);
+  ret.c = (c + ry) * z;
 
   // ret.y = ky
   ret.y = mKY;

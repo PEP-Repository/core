@@ -33,7 +33,7 @@ public:
 
   explicit RskTranslator(Keys keys);
 
-  const Keys& keys() const { return keys_; }
+  [[nodiscard]] const Keys& keys() const { return keys_; }
 
   /// Generate a reshuffle key factor
   /// \note This function does not work for data key blinding, as the HMAC is computed differently

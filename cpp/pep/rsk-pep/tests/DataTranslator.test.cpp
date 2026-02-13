@@ -31,7 +31,7 @@ protected:
     masterPrivateEncryptionKey = CurveScalar::One();
     {
       const auto masterPrivateEncryptionKeyShare = CurveScalar::Random();
-      masterPrivateEncryptionKey = masterPrivateEncryptionKey.mult(masterPrivateEncryptionKeyShare);
+      masterPrivateEncryptionKey = masterPrivateEncryptionKey * masterPrivateEncryptionKeyShare;
       am = DataTranslator(
           {
               .encryptionKeyFactorSecret{RandomArray<64>()},
@@ -49,7 +49,7 @@ protected:
     }
     {
       const auto masterPrivateEncryptionKeyShare = CurveScalar::Random();
-      masterPrivateEncryptionKey = masterPrivateEncryptionKey.mult(masterPrivateEncryptionKeyShare);
+      masterPrivateEncryptionKey = masterPrivateEncryptionKey * masterPrivateEncryptionKeyShare;
       ts = DataTranslator(
           {
               .encryptionKeyFactorSecret{RandomArray<64>()},
@@ -77,7 +77,7 @@ protected:
     if (invertBlindKey) {
       expectedBlindingKey = expectedBlindingKey.invert();
     }
-    const auto expectedBlindedDecrypt = data.mult(expectedBlindingKey);
+    const auto expectedBlindedDecrypt = data * expectedBlindingKey;
     EXPECT_EQ(blindedDecrypt, expectedBlindedDecrypt);
 
     const auto translated1 = am->unblindAndTranslate(blinded, blindAddData, invertBlindKey, user1);
@@ -86,7 +86,7 @@ protected:
     ASSERT_NE(translated2, translated1);
     EXPECT_NE(translated2, encrypted) << "Encryption should be rerandomized";
 
-    const auto sk1 = am->generateKeyComponent(user1).mult(ts->generateKeyComponent(user1));
+    const auto sk1 = am->generateKeyComponent(user1) * ts->generateKeyComponent(user1);
     ASSERT_NE(sk1, CurveScalar{});
     ASSERT_NE(sk1, CurveScalar::One());
     const auto translatedDecrypt = translated2.decrypt(sk1);

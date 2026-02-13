@@ -29,11 +29,11 @@ public:
   std::string text() const;
   static CurveScalar FromText(const std::string& text);
 
-  CurveScalar add(const CurveScalar& s) const;
-  CurveScalar sub(const CurveScalar& s) const;
-  CurveScalar mult(const CurveScalar& s) const;
-  CurveScalar invert() const;
-  CurveScalar square() const;
+  [[nodiscard]] CurveScalar operator+(const CurveScalar& s) const;
+  [[nodiscard]] CurveScalar operator-(const CurveScalar& s) const;
+  [[nodiscard]] CurveScalar operator*(const CurveScalar& s) const;
+  [[nodiscard]] CurveScalar invert() const;
+  [[nodiscard]] CurveScalar square() const;
 
   static CurveScalar One();
 

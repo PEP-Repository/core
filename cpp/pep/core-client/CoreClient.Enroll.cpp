@@ -45,8 +45,8 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
       ctx->dataEncryptionKeyComponentTS = lpResponse.mDataEncryptionKeyComponent;
 
       // Compute final keys
-      this->privateKeyPseudonyms = ctx->pseudonymEncryptionKeyComponentAM.mult(ctx->pseudonymEncryptionKeyComponentTS);
-      this->privateKeyData = ctx->dataEncryptionKeyComponentAM.mult(ctx->dataEncryptionKeyComponentTS);
+      this->privateKeyPseudonyms = ctx->pseudonymEncryptionKeyComponentAM * ctx->pseudonymEncryptionKeyComponentTS;
+      this->privateKeyData = ctx->dataEncryptionKeyComponentAM * ctx->dataEncryptionKeyComponentTS;
 
       // Store identity
       this->setSigningIdentity(ctx->identity);

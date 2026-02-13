@@ -25,7 +25,7 @@ protected:
     masterPrivateEncryptionKey = CurveScalar::One();
     for (unsigned i{}; i < translatorsCount; ++i) {
       const auto masterPrivateEncryptionKeyShare = CurveScalar::Random();
-      masterPrivateEncryptionKey = masterPrivateEncryptionKey.mult(masterPrivateEncryptionKeyShare);
+      masterPrivateEncryptionKey = masterPrivateEncryptionKey * masterPrivateEncryptionKeyShare;
       translators.emplace_back(
           PseudonymTranslationKeys{
               .encryptionKeyFactorSecret{RandomArray<64>()},
@@ -67,7 +67,7 @@ protected:
       for (const auto& translator: translators) {
         const auto comp = translator.generateKeyComponent(userA1);
         ASSERT_NE(comp, CurveScalar::One());
-        sk1 = sk1.mult(comp);
+        sk1 = sk1 * comp;
       }
       ASSERT_NE(sk1, CurveScalar::One());
       ASSERT_NE(sk1, CurveScalar{});

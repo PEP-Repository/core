@@ -71,7 +71,7 @@ CurvePoint::CurvePoint() : mState{gotBoth} {}
  * \param p The CurvePoint to add.
  * \return The resulting CurvePoint.
  */
-CurvePoint CurvePoint::add(const CurvePoint& p) const {
+CurvePoint CurvePoint::operator+(const CurvePoint& p) const {
   CurvePoint r(gotUnpacked);
   group_ge_add(&r.mUnpacked, unpack(), p.unpack());
   return r;
@@ -83,7 +83,7 @@ CurvePoint CurvePoint::add(const CurvePoint& p) const {
  * \param p The CurvePoint to subtract.
  * \return The resulting CurvePoint.
  */
-CurvePoint CurvePoint::sub(const CurvePoint& p) const {
+CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
   CurvePoint r(gotUnpacked);
   group_ge t;
   group_ge_negate(&t, p.unpack());
@@ -108,14 +108,14 @@ CurvePoint CurvePoint::dbl() const {
  * \param p The value to multiply with.
  * \return The resulting CurvePoint.
  */
-CurvePoint CurvePoint::mult(const CurveScalar& p) const {
+CurvePoint CurvePoint::operator*(const CurveScalar& p) const {
   CurvePoint r(gotUnpacked);
   group_ge_scalarmult(&r.mUnpacked, unpack(), &p.inner);
   return r;
 }
 
 /*! \brief Multiply this CurvePoint with a public (not secret!) CurveScalar
- *         You probably want to use CurvePoint::mult instead.
+ *         You probably want to use `*` instead.
  *
  * This CurvePoint remains unaltered.
  * \param s The value to multiply with.  Must not be a secret!
