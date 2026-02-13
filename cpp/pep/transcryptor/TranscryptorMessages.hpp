@@ -43,6 +43,7 @@ public:
 
   PolymorphicPseudonym mPolymorphic;
 
+  // Partially translated
   EncryptedLocalPseudonym mAccessManager;
   EncryptedLocalPseudonym mStorageFacility;
   EncryptedLocalPseudonym mTranscryptor;
