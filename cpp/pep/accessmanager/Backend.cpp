@@ -17,12 +17,10 @@ namespace {
 const std::string LOG_TAG("AccessManager::Backend");
 
 template <typename TValue>
-void EnsureMapContains(std::unordered_map<std::string, TValue>& map, const std::vector<std::string>& keys) {
-  std::for_each(keys.cbegin(), keys.cend(), [&map](const std::string& key) {
-    [[maybe_unused]] auto position = map.try_emplace(key).first;
-    assert(position != map.cend());
-    assert(position == map.find(key));
-  });
+void EnsureMapContains(std::unordered_map<std::string, TValue>& map, std::span<const std::string> keys) {
+  for (const std::string& key : keys) {
+    map.try_emplace(key);
+  }
 }
 
 enum class AccessMode {
@@ -284,7 +282,7 @@ void AccessManager::Backend::addParticipantToGroup(const LocalPseudonym& localPs
   mStorage->addParticipantToGroup(localPseudonym, group);
 }
 
-void AccessManager::Backend::assertParticipantAccess(const std::string& userGroup,
+void AccessManager::Backend::checkParticipantAccess(const std::string& userGroup,
                                                    const LocalPseudonym& localPseudonym,
                                                    const std::vector<std::string>& modes,
                                                    Timestamp at) {
@@ -357,31 +355,35 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
   }
 }
 
-void AccessManager::Backend::checkParticipantGroupAccess(const std::vector<std::string>& participantGroups,
+void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::string> participantGroups,
                                                        const std::string& userGroup,
                                                        std::vector<std::string>& modes,
                                                        const Timestamp& timestamp) {
-  if (!participantGroups.empty() && std::find(modes.cbegin(), modes.cend(), "enumerate") == modes.cend()) {
+  using namespace std::ranges;
+  if (!participantGroups.empty() && find(modes, "enumerate") == modes.cend()) {
     modes.push_back("enumerate");
   }
 
   if (userGroup == UserGroup::DataAdministrator && !participantGroups.empty()) {
     LOG(LOG_TAG, info)
         << "Granting " << Logging::Escape(userGroup)
-        << " unchecked access to participant group(s): " << boost::algorithm::join(participantGroups, ", ");
+        << " unchecked access to participant group(s): "
+        << boost::algorithm::join(std::pair{participantGroups.begin(), participantGroups.end()}, ", ");
   }
   else {
     std::vector<std::string> errorMessageParts;
+    ParticipantGroupAccessRuleFilter filter{
+      .participantGroups = RangeToVector(participantGroups),
+      .userGroups = {{userGroup}},
+      .modes = {{}},
+    };
     for (auto& mode : modes) {
-      auto pgars = mStorage->getParticipantGroupAccessRules(timestamp, {participantGroups, std::vector<std::string>{userGroup}, std::vector<std::string>{mode}});
-      std::vector<std::string> allowedParticipantGroups;
-      allowedParticipantGroups.reserve(pgars.size());
-      std::transform(pgars.cbegin(), pgars.cend(), std::back_inserter(allowedParticipantGroups), [](auto& entry) {
-        return entry.participantGroup;
-      });
+      filter.modes->assign({mode});
+      auto allowedParticipantGroups = RangeToCollection<std::unordered_set>(
+        mStorage->getParticipantGroupAccessRules(timestamp, filter)
+        | views::transform(std::mem_fn(&ParticipantGroupAccessRule::participantGroup)));
       for (auto& pg : participantGroups) {
-        if (find(allowedParticipantGroups.cbegin(), allowedParticipantGroups.cend(), pg)
-            == allowedParticipantGroups.end()) {
+        if (!allowedParticipantGroups.contains(pg)) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to participant-group " + Logging::Escape(pg));
         }
@@ -393,23 +395,26 @@ void AccessManager::Backend::checkParticipantGroupAccess(const std::vector<std::
   }
 }
 
-void AccessManager::Backend::fillParticipantGroupMap(const std::vector<std::string>& participantGroups,
-                                                   std::vector<pp_t>& prePPs,
-                                                   std::unordered_map<std::string, IndexList>& participantGroupMap) {
+std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillParticipantGroupMap(
+    std::span<const std::string> participantGroups,
+    std::vector<pp_t>& pps) {
   // ParticipantGroups by Polymorph Pseudonym
-  auto groupedPps = mStorage->getPPs(participantGroups);
-  auto urbg = CPURBG();
-  while (!groupedPps.empty()) {
-    auto randomIt = std::next(groupedPps.begin(), static_cast<ptrdiff_t>(urbg() % groupedPps.size()));
-    prePPs.push_back(pp_t(randomIt->first, false));
-    for (auto& pg : randomIt->second) {
-      participantGroupMap[pg].mIndices.push_back(static_cast<uint32_t>(prePPs.size() - 1));
+  auto groupedPps = RangeToCollection<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
+    mStorage->getPpGroups(participantGroups));
+  std::ranges::shuffle(groupedPps, CPURBG{});
+
+  std::unordered_map<std::string, pep::IndexList> participantGroupMap;
+  for (const auto& [pp, groups] : groupedPps) {
+    pps.emplace_back(pp, false);
+    for (const std::string& pg : groups) {
+      participantGroupMap[pg].mIndices.push_back(static_cast<uint32_t>(pps.size() - 1));
     }
-    groupedPps.erase(randomIt);
   }
-  if (prePPs.size() > UINT_MAX)
+  if (pps.size() > std::numeric_limits<std::uint32_t>::max())
     throw Error("Too many polymorphic pseudonyms to fill index vector");
+  // Add groups without participants
   EnsureMapContains(participantGroupMap, participantGroups);
+  return participantGroupMap;
 }
 
 void AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string& userGroup,

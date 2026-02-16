@@ -689,7 +689,7 @@ std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {
   return RangeToVector(std::views::values(mLpToPpMap));
 }
 
-std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPPs(const std::vector<std::string>& participantGroups) {
+std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPpGroups(std::span<const std::string> participantGroups) {
   using namespace std::ranges;
 
   std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> ppsAndGroups;
@@ -705,7 +705,7 @@ std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*parti
   {
     // Retrieve participant LPs with groups
     auto lpsAndGroups = mImplementor->getCurrentRecords(
-      in(&ParticipantGroupParticipantRecord::participantGroup, participantGroups),
+      in(&ParticipantGroupParticipantRecord::participantGroup, RangeToVector(participantGroups)),
       &ParticipantGroupParticipantRecord::localPseudonym,
       &ParticipantGroupParticipantRecord::participantGroup);
     // Map LPs to PPs

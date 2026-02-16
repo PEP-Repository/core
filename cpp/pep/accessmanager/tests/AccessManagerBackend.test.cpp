@@ -386,19 +386,19 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
 
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  backend->assertParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
   try {
     // Act
-    backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
+    backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {

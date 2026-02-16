@@ -88,7 +88,7 @@ public:
    * \param participantGroups Vector containing the names of participant groups. If empty, all pps of all groups are returned.
    * \return The polymorphic pseudonyms mapped to participant groups
    */
-  std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> getPPs(const std::vector<std::string>& participantGroups);
+  std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> getPpGroups(std::span<const std::string> participantGroups);
 
 
   /*!

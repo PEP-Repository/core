@@ -611,15 +611,16 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   backend->checkTicketRequest(request);
 
   auto timestamp = TimeNow();
+
+  auto pps = RangeToVector(request.mPolymorphicPseudonyms
+    | std::views::transform([](const PolymorphicPseudonym& pp) { return Backend::pp_t{pp, true}; }));
+
   std::vector<std::string> modes{"access"};
-  backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
-
-  std::vector<AccessManager::Backend::pp_t> prePPs;
-  prePPs.reserve(request.mPolymorphicPseudonyms.size());
-  std::transform(request.mPolymorphicPseudonyms.cbegin(), request.mPolymorphicPseudonyms.cend(), std::back_inserter(prePPs), [](const PolymorphicPseudonym& pp) {return AccessManager::Backend::pp_t(pp, true); });
-
   std::unordered_map<std::string, IndexList> participantGroupMap;
-  backend->fillParticipantGroupMap(request.mParticipantGroups, prePPs, participantGroupMap);
+  if (!request.mParticipantGroups.empty()) {
+    backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
+    participantGroupMap = backend->fillParticipantGroupMap(request.mParticipantGroups, pps);
+  }
 
   // Prepare ticket
 
@@ -644,7 +645,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     TicketRequest2 request;
     Ticket2 ticket;
     SignedTicket2 signedTicket{};
-    std::vector<AccessManager::Backend::pp_t> pps;
+    std::vector<Backend::pp_t> pps;
     decltype(time) start_time;
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
@@ -659,7 +660,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .requestNumber = requestNumber,
     .request = std::move(request),
     .ticket = std::move(ticket),
-    .pps = std::move(prePPs),
+    .pps = std::move(pps),
     .start_time = time,
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
@@ -686,7 +687,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     ctx->server->mWorkerPool->batched_map<8>(std::move(indexes),
         observe_on_asio(*ctx->server->getIoContext()),
       [ctx](size_t i) {
-    AccessManager::Backend::pp_t& pp = ctx->pps[i];
+    const Backend::pp_t& pp = ctx->pps[i];
     TranscryptorRequestEntry& entry = ctx->tsReqEntries.mEntries[i];
 
     // Rerandomize old PPs (ie. from the database)
@@ -736,7 +737,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     for (size_t i = 0; i < ctx->ticket.mPseudonyms.size(); i++) {
       LocalPseudonym localPseudonym = ctx->ticket.mPseudonyms[i].mAccessManager.decrypt(ctx->server->mPseudonymKey);
       if (ctx->ticket.mUserGroup != UserGroup::DataAdministrator) {
-        ctx->server->backend->assertParticipantAccess(ctx->ticket.mUserGroup, localPseudonym, ctx->participantModes, ctx->ticket.mTimestamp);
+        ctx->server->backend->checkParticipantAccess(ctx->ticket.mUserGroup, localPseudonym, ctx->participantModes, ctx->ticket.mTimestamp);
       }
       if (ctx->pps[i].isClientProvided && !ctx->server->backend->hasLocalPseudonym(localPseudonym)) {
         if (ctx->ticket.hasMode("write")) {
