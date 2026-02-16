@@ -393,8 +393,7 @@ private:
     pep::commandline::Parameters getSupportedParameters() const override {
       return ChildCommandOf<CommandAma>::getSupportedParameters()
         + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
-          .defaultsTo("", "all types")
-          .allow(std::vector<std::string>({ "", "columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
+          .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
         + pep::commandline::Parameter("column", "Match these columns").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
@@ -407,7 +406,7 @@ private:
 
     int execute() override {
       const auto& vm = this->getParameterValues();
-      std::string scriptPrintFilter;
+      std::optional<std::string> scriptPrintFilter;
       if(vm.has("script-print")) {
         scriptPrintFilter = vm.get<std::string>("script-print");
       }
@@ -427,19 +426,20 @@ private:
         return client->getAccessManagerProxy()->amaQuery(std::move(query))
         .map([scriptPrintFilter](pep::AmaQueryResponse res) {
 
-          std::string offset = scriptPrintFilter.empty() ? "  " : "";
+          bool prettyPrint = !scriptPrintFilter.has_value();
+          std::string offset = prettyPrint ? "  " : "";
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "columns") {
+          if(!scriptPrintFilter.has_value() || scriptPrintFilter == "columns") {
             std::sort(res.mColumns.begin(), res.mColumns.end(), [](auto& a, auto& b) {return a.mName < b.mName; });
-            if(scriptPrintFilter.empty())
+            if(prettyPrint)
               std::cout << "Columns (" << res.mColumns.size() << "):" << std::endl;
             for (auto &col : res.mColumns)
               std::cout << offset << col.mName << std::endl;
             std::cout << std::endl;
           }
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-groups") {
-            if (scriptPrintFilter.empty())
+          if(!scriptPrintFilter.has_value() || scriptPrintFilter == "column-groups") {
+            if (prettyPrint)
               std::cout << "ColumnGroups (" << res.mColumnGroups.size() << "):" << std::endl;
             std::sort(res.mColumnGroups.begin(), res.mColumnGroups.end(),
                       [](auto &a, auto &b) { return a.mName < b.mName; });
@@ -453,7 +453,7 @@ private:
             std::cout << std::endl;
           }
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-group-access-rules") {
+          if(!scriptPrintFilter.has_value() || scriptPrintFilter == "column-group-access-rules") {
             std::sort(
               res.mColumnGroupAccessRules.begin(),
               res.mColumnGroupAccessRules.end(),
@@ -461,7 +461,7 @@ private:
                 return std::make_tuple(a.mAccessGroup, a.mColumnGroup, a.mMode)
                        < std::make_tuple(b.mAccessGroup, b.mColumnGroup, b.mMode);
               });
-            if (scriptPrintFilter.empty())
+            if (prettyPrint)
               std::cout << "ColumnGroupAccessRules (" << res.mColumnGroupAccessRules.size() << "):" << std::endl;
             for (auto &cgar : res.mColumnGroupAccessRules)
               std::cout << offset
@@ -471,16 +471,16 @@ private:
             std::cout << std::endl;
           }
 
-          if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-groups") {
+          if (!scriptPrintFilter.has_value() || scriptPrintFilter == "participant-groups") {
             std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
-            if (scriptPrintFilter.empty())
+            if (prettyPrint)
               std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
             for (auto &group : res.mParticipantGroups)
               std::cout << offset << group.mName << std::endl;
             std::cout << std::endl;
           }
 
-          if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-group-access-rules") {
+          if (!scriptPrintFilter.has_value() || scriptPrintFilter == "participant-group-access-rules") {
             std::sort(
               res.mParticipantGroupAccessRules.begin(),
               res.mParticipantGroupAccessRules.end(),
@@ -488,7 +488,7 @@ private:
                 return std::make_tuple(a.mUserGroup, a.mParticipantGroup, a.mMode)
                        < std::make_tuple(b.mUserGroup, b.mParticipantGroup, b.mMode);
               });
-            if(scriptPrintFilter.empty())
+            if(prettyPrint)
               std::cout << "ParticipantGroupAccessRules (" << res.mParticipantGroupAccessRules.size() << "):" << std::endl;
             for (auto &cgar : res.mParticipantGroupAccessRules)
               std::cout << offset
@@ -497,11 +497,13 @@ private:
                         << std::setw(10) << cgar.mMode << std::endl;
 
             std::cout << std::endl;
-            std::cerr
-              << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
-              << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
+            if (prettyPrint) {
+              std::cerr
+                << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
+                << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
+                << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
+                << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
+            }
           }
 
           return pep::FakeVoid();

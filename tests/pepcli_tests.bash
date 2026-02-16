@@ -290,6 +290,40 @@ if should_run_test ama; then
   write_registration_server_cell ParticipantIdentifier delete -p "$ID2"
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
+
+  # Test --script-print parameter
+  # First create some test data for querying
+  pepcli --oauth-token-group "Data Administrator" ama column create scriptPrintTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup create scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama column addTo scriptPrintTestColumn scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama group create scriptPrintTestParticipantGroup
+  pepcli --oauth-token-group "Access Administrator" ama cgar create scriptPrintTestColumnGroup "Research Assessor" read
+  pepcli --oauth-token-group "Access Administrator" ama pgar create scriptPrintTestParticipantGroup "Research Assessor" access
+
+  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
+  [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
+  echo "$script_print_columns" | grep -q "scriptPrintTestColumn" || fail "--script-print columns did not include test column"
+  
+  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-groups)
+  [ -n "$script_print_column_groups" ] || fail "--script-print column-groups produced no output"
+  echo "$script_print_column_groups" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-groups did not include test columngroup"
+  
+  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-group-access-rules)
+  [ -n "$script_print_cgars" ] || fail "--script-print column-group-access-rules produced no output"
+  echo "$script_print_cgars" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-group-access-rules did not include test CGAR"
+
+  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-groups)
+  [ -n "$script_print_participant_groups" ] || fail "--script-print participant-groups produced no output"
+  echo "$script_print_participant_groups" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-groups did not include test group"
+  
+  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-group-access-rules)
+  [ -n "$script_print_pgars" ] || fail "--script-print participant-group-access-rules produced no output"
+  echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
+
+  # Clean up
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove --force scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama column remove scriptPrintTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama group remove --force scriptPrintTestParticipantGroup
 fi
 
 ####################
