@@ -45,10 +45,9 @@ private:
   void stop();
   void restart();
 
+  void onError(std::exception_ptr error);
   void ensureSend();
-  bool continueSending(std::exception_ptr error);
-  void finishSending(std::exception_ptr error = nullptr);
-  bool unpend(std::shared_ptr<HTTPRequest> request);
+  void complete(std::exception_ptr error = nullptr);
 
   void handleRequestPartWritten(const SizedTransfer::Result& result, size_t sentBodyParts);
   void handleReadStatusLine(const DelimitedTransfer::Result& result);
@@ -121,8 +120,8 @@ private:
     rxcpp::subscriber<HTTPResponse> subscriber;
   };
 
-  std::queue<std::shared_ptr<PendingRequest>> mPendingRequests;
-  std::shared_ptr<PendingRequest> mSending;
+  std::queue<PendingRequest> mPendingRequests;
+  bool mSending = false;
   HTTPResponse mResponse;
   std::string mContentBuffer;
 };

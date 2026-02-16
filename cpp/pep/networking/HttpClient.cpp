@@ -180,10 +180,16 @@ rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
   onRequest.notify(sendable);
 
   return CreateObservable<HTTPResponse>([self = SharedFrom(*this), sendable](rxcpp::subscriber<HTTPResponse> subscriber) {
-    self->mPendingRequests.push(MakeSharedCopy(PendingRequest{ sendable, subscriber }));
+    self->mPendingRequests.push(PendingRequest{ sendable, subscriber });
 
-    // Stop (re)sending if/when the subscriber unsubscribes
-    subscriber.add([self, sendable]() { self->unpend(sendable); });
+    // Stop sending if/when the subscriber unsubscribes
+    subscriber.add([self, sendable]() {
+      if (!self->mPendingRequests.empty()) {
+        if (sendable == self->mPendingRequests.front().request) {
+          self->complete();
+        }
+      }
+      });
 
     self->ensureSend();
     }).subscribe_on(observe_on_asio(mParameters.ioContext()));
@@ -215,79 +221,56 @@ void HttpClient::restart() {
   this->start();
 }
 
-bool HttpClient::continueSending(std::exception_ptr error) {
-  if (error != nullptr) {
-    LOG(LOG_TAG, debug) << "Error: " << GetExceptionMessage(error);
+void HttpClient::onError(std::exception_ptr error) {
+  assert(error != nullptr);
+  LOG(LOG_TAG, debug) << "Error: " << GetExceptionMessage(error);
 
-    // Reconnect to prevent the binary transport from remaining in a possibly invalid state
-    // TODO: only do this if the binary transport didn't close (or reset) itself already
-    this->restart();
-    this->finishSending(error);
-    return false;
-  }
-
-  if (mPendingRequests.empty() || mPendingRequests.front() != mSending) {
-    this->finishSending();
-    return false;
-  }
-
-  return true;
+  // Reconnect to prevent the binary transport from remaining in a possibly invalid state
+  // TODO: only do this if the binary transport didn't close (or reset) itself already
+  this->restart();
+  this->complete(error);
 }
 
 void HttpClient::ensureSend() {
   auto status = this->status();
   assert(status == Status::finalized || mBinaryClient != nullptr);
-  if (mSending != nullptr || status >= Status::finalizing || mConnection == nullptr || !mConnection->isConnected()) {
+  if (mSending || status >= Status::finalizing || mPendingRequests.empty() || mConnection == nullptr || !mConnection->isConnected()) {
     return;
   }
 
-  // Don't send abandoned requests
-  while (!mPendingRequests.empty() && !mPendingRequests.front()->subscriber.is_subscribed()) {
-    mPendingRequests.pop();
-  }
-  if (mPendingRequests.empty()) {
-    return;
-  }
-
-  mSending = mPendingRequests.front();
+  mSending = true;
   mResponse = HTTPResponse();
 
-  auto header = MakeSharedCopy(mSending->request->headerToString());
+  auto request = mPendingRequests.front().request;
+  auto header = MakeSharedCopy(request->headerToString());
+
   mConnection->asyncWrite(header->data(), header->size(), [self = SharedFrom(*this), header](const SizedTransfer::Result& result) {
     self->handleRequestPartWritten(result, 0);
     });
 }
 
-bool HttpClient::unpend(std::shared_ptr<HTTPRequest> request) {
-  if (!mPendingRequests.empty() && mPendingRequests.front()->request == request) {
-    mPendingRequests.pop();
-    return true;
-  }
+void HttpClient::complete(std::exception_ptr error) {
+  mSending = false;
 
-  return false;
-}
-
-void HttpClient::finishSending(std::exception_ptr error) {
   if (error == nullptr) {
-    assert(mSending != nullptr);
-    auto subscriber = mSending->subscriber;
-    if (this->unpend(mSending->request)) { // Otherwise the subscriber has already unsubscribed
-      subscriber.on_next(mResponse);
-      subscriber.on_completed();
-    }
+    assert(!mPendingRequests.empty());
+    auto subscriber = mPendingRequests.front().subscriber;
+    mPendingRequests.pop();
+    subscriber.on_next(mResponse);
+    subscriber.on_completed();
   }
   // TODO: else notify subscriber of the error (they may wish to abort instead of having us retry)
 
-  mSending.reset();
   this->ensureSend();
 }
 
 void HttpClient::handleRequestPartWritten(const SizedTransfer::Result& result, size_t sentBodyParts) {
-  if (!this->continueSending(result.exception())) {
+  if (!result) {
+    this->onError(result.exception());
     return;
   }
 
-  const auto& parts = mSending->request->getBodyparts();
+  const auto& parts = mPendingRequests.front().request->getBodyparts();
   for (auto i = sentBodyParts; i < parts.size(); ++i) {
     const auto& part = parts[i];
     if (!part->empty()) {
@@ -306,7 +289,8 @@ void HttpClient::handleRequestPartWritten(const SizedTransfer::Result& result, s
 }
 
 void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
-  if (!this->continueSending(result.exception())) {
+  if (!result) {
+    this->onError(result.exception());
     return;
   }
 
@@ -316,7 +300,7 @@ void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
   std::string http_version;
   responseStream >> http_version;
   if (!http_version.starts_with("HTTP/")) {
-    this->finishSending(std::make_exception_ptr(std::runtime_error("Invalid HTTP response: didn't start with required magic bytes")));
+    this->onError(std::make_exception_ptr(std::runtime_error("Invalid HTTP response: didn't start with required magic bytes")));
     return;
   }
 
@@ -327,7 +311,7 @@ void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
   std::string statusMessage;
   std::getline(responseStream, statusMessage);
   if (!responseStream) {
-    this->finishSending(std::make_exception_ptr(std::runtime_error("Invalid HTTP response: status line unreadable")));
+    this->onError(std::make_exception_ptr(std::runtime_error("Invalid HTTP response: status line unreadable")));
     return;
   }
 
@@ -344,7 +328,8 @@ void HttpClient::readHeaderLine() {
 }
 
 void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
-  if (!this->continueSending(result.exception())) {
+  if (!result) {
+    this->onError(result.exception());
     return;
   }
 
@@ -375,7 +360,7 @@ void HttpClient::readBody() {
     if (transferEncodingHeader->second.find("chunked") == std::string::npos) {
       // Since mBinaryClient may have received (or may still receive) stuff that we can't process, we can't (reliably) keep using it
       this->restart();
-      this->finishSending(std::make_exception_ptr(std::runtime_error("Unsupported transfer encoding " + transferEncodingHeader->second)));
+      this->onError(std::make_exception_ptr(std::runtime_error("Unsupported transfer encoding " + transferEncodingHeader->second)));
       return;
     }
     this->readChunkSize();
@@ -391,7 +376,7 @@ void HttpClient::readBody() {
           });
       }
       else {
-        this->finishSending();
+        this->complete();
       }
     }
     else {
@@ -409,7 +394,8 @@ void HttpClient::readChunkSize() {
 }
 
 void HttpClient::handleReadChunkSize(const DelimitedTransfer::Result& result) {
-  if (!this->continueSending(result.exception())) {
+  if (!result) {
+    this->onError(result.exception());
     return;
   }
 
@@ -429,18 +415,20 @@ void HttpClient::handleReadChunkSize(const DelimitedTransfer::Result& result) {
     // We're processing the last (empty) chunk: read the CRLF that's written after its (empty) content
     mContentBuffer.resize(2);
     mConnection->asyncRead(mContentBuffer.data(), mContentBuffer.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
-      if (!self->continueSending(result.exception())) {
+      if (!result) {
+        self->onError(result.exception());
         return;
       }
 
       assert(self->mContentBuffer == CRLF);
-      self->finishSending();
+      self->complete();
       });
   }
 }
 
 void HttpClient::handleReadChunk(const SizedTransfer::Result& result) {
-  if (!this->continueSending(result.exception())) {
+  if (!result) {
+    onError(result.exception());
     return;
   }
 
@@ -452,7 +440,8 @@ void HttpClient::handleReadChunk(const SizedTransfer::Result& result) {
 }
 
 void HttpClient::handleReadKnownSizeBody(const SizedTransfer::Result& result) {
-  if (!this->continueSending(result.exception())) {
+  if (!result) {
+    this->onError(result.exception());
     return;
   }
 
@@ -461,7 +450,8 @@ void HttpClient::handleReadKnownSizeBody(const SizedTransfer::Result& result) {
 }
 
 void HttpClient::handleReadConnectionBoundBody(const DelimitedTransfer::Result& result) {
-  if (!this->continueSending(result.exception())) {
+  if (!result) {
+    this->onError(result.exception());
     return;
   }
   this->handleReadBody(*result);
@@ -469,7 +459,7 @@ void HttpClient::handleReadConnectionBoundBody(const DelimitedTransfer::Result& 
 
 void HttpClient::handleReadBody(std::string body) {
   mResponse.getBodyparts().push_back(MakeSharedCopy(std::move(body)));
-  this->finishSending();
+  this->complete();
 }
 
 }
