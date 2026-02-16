@@ -140,8 +140,8 @@ void TlsSocket::close() {
       && !IsSpecificSslError(error, SSL_R_UNINITIALIZED) // (Our mShutdownRequired has been set, but) SSL initialization was unstarted
       && !IsSpecificSslError(error, SSL_R_SHUTDOWN_WHILE_IN_INIT) // SSL initialization/handshaking was started but not completed
       && !IsSpecificSslError(error, SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY) // Other party sent us data after (or while) we closed the connection: see https://stackoverflow.com/a/72788966
-      && error.default_error_condition().value() != boost::system::errc::connection_reset // Other party already closed the connection: see https://stackoverflow.com/a/39162187
-      && error.default_error_condition().value() != boost::system::errc::connection_aborted // Our side already closed the connection
+      && error != boost::asio::error::make_error_code(boost::asio::error::connection_reset) // Other party already closed the connection: see https://stackoverflow.com/a/39162187
+      && error != boost::asio::error::make_error_code(boost::asio::error::connection_aborted) // Other party already closed the connection: see https://www.chilkatsoft.com/p/p_299.asp
       ) {
       if (error == boost::asio::ssl::error::make_error_code(boost::asio::ssl::error::stream_errors::stream_truncated)  // remote party [...] closed the underlying transport without shutting down the protocol: see https://stackoverflow.com/a/25703699
         || error == boost::asio::error::make_error_code(boost::asio::error::broken_pipe)) { // happens when you write to a socket fully closed on the other [...] side: see https://stackoverflow.com/a/11866962
