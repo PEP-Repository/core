@@ -111,31 +111,8 @@ void TlsSocket::close() {
   }
 
   // TLS was established (or we started to do so): gracefully shut down the existing socket before discarding it. See https://stackoverflow.com/a/32054476.
-
-  // From https://stackoverflow.com/questions/32046034:
-  // "Performing an async_shutdown on an ssl::stream sends an SSL close_notify message and waits for a response from the other end."
-  // We noticed that our callback to async_shutdown is sometimes not invoked until after (more or less exactly) a minute.
-  // It is suspected that in these cases, the "response from the other end" is never received (e.g. because the "other end" have
-  // already closed their side of the connection), and that the operation is flunked by OpenSSL or Boost after a one- minute timeout.
-  // But we don't want to (let the application) wait a full minute! So we subject the async_shutdown operation to our own (shorter) timeout.
-
   auto self = SharedFrom(*this);
-  auto timer = std::make_shared<boost::asio::steady_timer>(this->ioContext());
-  auto finished = MakeSharedCopy(false);
-  auto finishClosing = [self, finished, timer]() {
-    timer->cancel();
-    if (!*finished) {
-      *finished = true;
-      self->finishClosing();
-    }
-    };
-  using namespace std::chrono_literals;
-  timer->expires_after(500ms);
-  timer->async_wait([finishClosing](const boost::system::error_code& ec) {
-    finishClosing();
-    });
-
-  mImplementor.async_shutdown([finishClosing](boost::system::error_code error) {
+  mImplementor.async_shutdown([self](boost::system::error_code error) {
     if (error
       && !IsSpecificSslError(error, SSL_R_UNINITIALIZED) // (Our mShutdownRequired has been set, but) SSL initialization was unstarted
       && !IsSpecificSslError(error, SSL_R_SHUTDOWN_WHILE_IN_INIT) // SSL initialization/handshaking was started but not completed
@@ -151,7 +128,7 @@ void TlsSocket::close() {
         LOG(LOG_TAG, pep::error) << "Unexpected problem shutting down connection: " << error.category().name() << " code " << error.value() << " - " << error.message();
       }
     }
-    finishClosing();
+    self->finishClosing();
     });
 
   // Don't wait for the other party to acknowledge our async_shutdown. See https://stackoverflow.com/a/32054476 and https://stackoverflow.com/a/25703699
