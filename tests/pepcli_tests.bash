@@ -247,10 +247,12 @@ if should_run_test ama; then
   pepcli --oauth-token-group "Data Administrator" ama columnGroup remove columnGroupWithAccessRule --force
 
 
-  # Create participant
+  # Create participants
   SEARCH="Generated participant with identifier: "
   RESULT=$(pepcli --oauth-token-group "Research Assessor" register id 2>&1 | grep "$SEARCH")
   ID="${RESULT:${#SEARCH}}"
+  RESULT=$(pepcli --oauth-token-group "Research Assessor" register id 2>&1 | grep "$SEARCH")
+  ID2="${RESULT:${#SEARCH}}"
 
   # Create a participantgroup
   pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithParticipant
@@ -274,7 +276,18 @@ if should_run_test ama; then
   # Adding the --force flag should make it succeed
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithAccessRule --force
 
+  pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithMultipleMembers
+  pepcli --oauth-token-group "Data Administrator" ama group addTo participantGroupWithMultipleMembers "$ID"
+  pepcli --oauth-token-group "Data Administrator" ama group addTo participantGroupWithMultipleMembers "$ID2"
+  len="$(pepcli --oauth-token-group "Data Administrator" list --show-dataless -P participantGroupWithMultipleMembers | jq length)"
+  [ "$len" = 2 ] || fail "Participant group had $len members"
+  pepcli --oauth-token-group "Data Administrator" ama group clear participantGroupWithMultipleMembers
+  len="$(pepcli --oauth-token-group "Data Administrator" list --show-dataless -P participantGroupWithMultipleMembers | jq length)"
+  [ "$len" = 0 ] || fail "Participant group had $len members"
+  pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithMultipleMembers --force
+
   write_registration_server_cell ParticipantIdentifier delete -p "$ID"
+  write_registration_server_cell ParticipantIdentifier delete -p "$ID2"
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 fi

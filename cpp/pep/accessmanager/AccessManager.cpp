@@ -838,15 +838,17 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
           FillTranscryptorRequestEntry(entry, *self->mPseudonymTranslator);
     }
     return self->mTranscryptorProxy.requestTranscryption(std::move(tsRequest), messaging::MakeSingletonTail(tsRequestEntries))
-      .map([server = SharedFrom(*self), participantGroup = participantGroup, performRemove](TranscryptorResponse resp) -> FakeVoid {
-              LocalPseudonym localPseudonym = resp.mEntries[0].mAccessManager.decrypt(server->mPseudonymKey);
-             if (performRemove)
-               server->backend->removeParticipantFromGroup(localPseudonym, participantGroup);
-             else
-               server->backend->addParticipantToGroup(localPseudonym, participantGroup);
-             return FakeVoid();
-           });
-                });
+      .map([server = SharedFrom(*self), participantGroup, performRemove](const TranscryptorResponse& resp) -> FakeVoid {
+        for (const LocalPseudonyms& pseudonyms : resp.mEntries) {
+          LocalPseudonym localPseudonym = pseudonyms.mAccessManager.decrypt(server->mPseudonymKey);
+          if (performRemove)
+            server->backend->removeParticipantFromGroup(localPseudonym, participantGroup);
+          else
+            server->backend->addParticipantToGroup(localPseudonym, participantGroup);
+        }
+        return FakeVoid();
+      });
+  });
 }
 
 
