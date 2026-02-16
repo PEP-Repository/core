@@ -30,13 +30,14 @@ style: |
 
 # C++ SDK: [Emscripten](https://emscripten.org/)
 
-<img alt="Emscripten logo" src="https://emscripten.org/_static/Emscripten_logo_full.png" height=100 />
+<img alt="Emscripten logo" src="https://emscripten.org/_static/Emscripten_logo_full.png" height=50 />
 
 Install [Emscripten SDK](https://github.com/emscripten-core/emsdk) (EMSDK) and activate in shell.
 
 Components:
 
 - LLVM libc++ STL
+- Emscripten runtime (C++ & JS)
 - LLVM Clang compiler with `WebAssembly` backend
 - Supporting binaries
   - E.g. `wasm-ld` (linker), `wasm-emscripten-finalize`, etc.
@@ -303,6 +304,11 @@ This unfortunately uses an internal Emscripten API.
   - Obtains message (also in Release mode)
   - Frees C++ object
   - Returns as `Error`
+
+# Unix/POSIX API
+
+- Emscripten presents itself as UNIX (e.g. defines `__unix__`)
+- Runtime implements Unix/POSIX functions like `select`/`socket`/`pthread_create`/...
 
 # [Threads](https://emscripten.org/docs/porting/pthreads.html)
 
