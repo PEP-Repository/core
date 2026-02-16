@@ -143,13 +143,18 @@ void TlsSocket::close() {
       && error.default_error_condition().value() != boost::system::errc::connection_reset // Other party already closed the connection: see https://stackoverflow.com/a/39162187
       && error.default_error_condition().value() != boost::system::errc::connection_aborted // Our side already closed the connection
       ) {
+      const char* description = "Unexpected problem shutting down connection";
+      severity_level severity = pep::error;
       if (error == boost::asio::ssl::error::make_error_code(boost::asio::ssl::error::stream_errors::stream_truncated)  // remote party [...] closed the underlying transport without shutting down the protocol: see https://stackoverflow.com/a/25703699
         || error == boost::asio::error::make_error_code(boost::asio::error::broken_pipe)) { // happens when you write to a socket fully closed on the other [...] side: see https://stackoverflow.com/a/11866962
-        LOG(LOG_TAG, pep::debug) << "Remote party did not properly shut down the connection: " << error.category().name() << " code " << error.value() << " - " << error.message();
+        description = "Remote party did not properly shut down the connection";
+        severity = pep::debug;
       }
-      else {
-        LOG(LOG_TAG, pep::error) << "Unexpected problem shutting down connection: " << error.category().name() << " code " << error.value() << " - " << error.message();
-      }
+
+      LOG(LOG_TAG, severity) << description << ": "
+        << error.category().name() << " code " << error.value()
+        << " (condition " << error.default_error_condition().value() << ')'
+        << " - " << error.message();
     }
     finishClosing();
     });
