@@ -22,26 +22,26 @@ std::pair<ElgamalPrivateKey, ElgamalPublicKey> ElgamalEncryption::CreateKeyPair(
 
 /*! \brief Create an ElgamalEncryption triple by encrypting a point.
  *
- * \param pk The public key to encrypt with.
+ * \param publicKey The public key to encrypt with.
  * \param data The point to encrypt.
  */
-ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& pk, const CurvePoint& data) {
+ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& publicKey, const CurvePoint& data) {
   CurveScalar k;
 
   k = CurveScalar::Random();
   b = CurvePoint::BaseMult(k);
-  c = data + (pk * k);
-  y = pk;
+  c = data + (publicKey * k);
+  this->publicKey = publicKey;
 }
 
 /*! \brief Create an ElgamalEncryption triple from its three components.
  *
  * \param b Blinding component
  * \param c Cipher component
- * \param y Public key
+ * \param publicKey Public key
  */
-ElgamalEncryption::ElgamalEncryption(const CurvePoint& b, const CurvePoint& c, const CurvePoint& y)
-  : b(b), c(c), y(y) {
+ElgamalEncryption::ElgamalEncryption(const CurvePoint& b, const CurvePoint& c, const CurvePoint& publicKey)
+  : b(b), c(c), publicKey(publicKey) {
 }
 
 /*! \brief Decrypt the ElgamalEncryption triple.
@@ -73,9 +73,9 @@ ElgamalEncryption ElgamalEncryption::rerandomize() const {
   // (a + g * z, b + g * x * z)
 
   r.b = b + CurvePoint::BaseMult(z);
-  r.c = c + (y * z);
+  r.c = c + (publicKey * z);
 
-  r.y = y;
+  r.publicKey = publicKey;
   return r;
 }
 
@@ -98,7 +98,7 @@ ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& z) const
   // (a, b + a * z)
   r.b = b * z.invert();
   r.c = c;
-  r.y = y * z;
+  r.publicKey = publicKey * z;
   return r;
 }
 
@@ -120,7 +120,7 @@ ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& z) const {
   // (a * z, b * z)
   r.b = b * z;
   r.c = c * z;
-  r.y = y;
+  r.publicKey = publicKey;
   return r;
 }
 
@@ -153,13 +153,13 @@ ElgamalEncryption ElgamalEncryption::RSK(const CurveScalar& z, const ElgamalTran
 
   auto r = CurveScalar::Random();
   auto rB = CurvePoint::BaseMult(r);
-  auto ry = y * r;
+  auto ry = publicKey * r;
   auto zOverK = z * k.invert();
 
   ElgamalEncryption ret;
   ret.b = (b + rB) * zOverK;
   ret.c = (c + ry) * z;
-  ret.y = y * k;
+  ret.publicKey = publicKey * k;
   return ret;
 }
 
@@ -167,7 +167,7 @@ ElgamalEncryption ElgamalEncryption::RSK(const CurveScalar& z, const ElgamalTran
  * \return The public key of the ElgamalEncryption.
  */
 const ElgamalPublicKey& ElgamalEncryption::getPublicKey() const {
-  return y;
+  return publicKey;
 }
 
 size_t ElgamalEncryption::TextLength() {
@@ -182,7 +182,7 @@ size_t ElgamalEncryption::TextLength() {
 }
 
 std::string ElgamalEncryption::text() const {
-  auto result = b.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + c.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + y.text();
+  auto result = b.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + c.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + publicKey.text();
   assert(result.size() == TextLength());
   return result;
 }
@@ -201,7 +201,7 @@ std::string ElgamalEncryption::pack() const {
   packed.reserve(CurvePoint::PACKEDBYTES * 3);
   packed += b.pack();
   packed += c.pack();
-  packed += y.pack();
+  packed += publicKey.pack();
   return packed;
 }
 
@@ -216,13 +216,13 @@ ElgamalEncryption ElgamalEncryption::FromPacked(std::string_view packed) {
 void ElgamalEncryption::ensurePacked() const {
   b.ensurePacked();
   c.ensurePacked();
-  y.ensurePacked();
+  publicKey.ensurePacked();
 }
 
 void ElgamalEncryption::ensureThreadSafe() const {
   b.ensureThreadSafe();
   c.ensureThreadSafe();
-  y.ensureThreadSafe();
+  publicKey.ensureThreadSafe();
 }
 
 }
@@ -233,7 +233,7 @@ namespace std {
     std::hash<pep::CurvePoint> h;
     boost::hash_combine(result, h(k.b));
     boost::hash_combine(result, h(k.c));
-    boost::hash_combine(result, h(k.y));
+    boost::hash_combine(result, h(k.publicKey));
     return result;
   }
 }

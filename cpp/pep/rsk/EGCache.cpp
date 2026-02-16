@@ -290,7 +290,7 @@ private:
   // Used to speed up the ElgamalEncryption::RSK operation and
   // ElgamalEncryption::rekey operations.
   struct RSKKey {
-    RSKKey(CurveScalar k, CurvePoint y)
+    RSKKey(const CurveScalar& k, const CurvePoint& y)
       : mK(k), mY(y) { }
     bool operator== (const RSKKey& p) const;
 
@@ -304,7 +304,7 @@ private:
     RSKValue(EGCacheImp* egcache, const RSKKey& key);
 
     ElgamalEncryption RSK(const CurvePoint& b, const CurvePoint& c,
-            const CurveScalar& z, CPRNG* rng) const;
+            const ElgamalTranslationKey& z, CPRNG* rng) const;
     ElgamalEncryption RK(const CurvePoint& b, const CurvePoint& c,
             CPRNG* rng) const;
 
@@ -400,7 +400,7 @@ ElgamalEncryption EGCacheImp::RSK(
     ElgamalTranslationKey k,
     CPRNG* rng) {
 
-  auto key = RSKKey(k, eg.y);
+  auto key = RSKKey(k, eg.publicKey);
 
   auto opt_it = this->rskCache.get(this, key);
 
@@ -417,7 +417,7 @@ ElgamalEncryption EGCacheImp::RK(
     ElgamalTranslationKey k,
     CPRNG* rng) {
 
-  auto key = RSKKey(k, eg.y);
+  auto key = RSKKey(k, eg.publicKey);
 
   auto opt_it = this->rskCache.get(this, key);
 
@@ -433,7 +433,7 @@ ElgamalEncryption EGCacheImp::rerandomize(
     ElgamalEncryption eg,
     CPRNG* rng) {
 
-  auto table = scalarMultTable(eg.y);
+  auto table = scalarMultTable(eg.publicKey);
   ElgamalEncryption ret;
 
   if (table == nullptr)
@@ -442,7 +442,7 @@ ElgamalEncryption EGCacheImp::rerandomize(
   auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
   ret.b = eg.b + CurvePoint::BaseMult(r);
   ret.c = eg.c + table->mult(r);
-  ret.y = eg.y;
+  ret.publicKey = eg.publicKey;
   return ret;
 }
 
@@ -466,14 +466,14 @@ ElgamalEncryption EGCacheImp::RSKValue::RK(
   ret.c = c + ry;
 
   // ret.y = ky
-  ret.y = mKY;
+  ret.publicKey = mKY;
   return ret;
 }
 
 ElgamalEncryption EGCacheImp::RSKValue::RSK(
     const CurvePoint& b,
     const CurvePoint& c,
-    const CurveScalar& z,
+    const ElgamalTranslationKey& z,
     CPRNG* rng) const {
   ElgamalEncryption ret;
 
@@ -488,7 +488,7 @@ ElgamalEncryption EGCacheImp::RSKValue::RSK(
   ret.c = (c + ry) * z;
 
   // ret.y = ky
-  ret.y = mKY;
+  ret.publicKey = mKY;
   return ret;
 }
 

@@ -65,7 +65,7 @@ RSKProof RSKProof::create(
   return RSKProof(
     ry,
     rB,
-    ScalarMultProof::create(rB, pre.y, ry, r, rng),
+    ScalarMultProof::create(rB, pre.publicKey, ry, r, rng),
     ScalarMultProof::create(zOverKB, pre.b + rB, post.b, zOverK, rng),
     ScalarMultProof::create(zB, pre.c + ry, post.c, z, rng)
   );
@@ -78,12 +78,12 @@ RSKProof RSKProof::certifiedRSK(
     const CurveScalar& k) {
   auto zOverK = z * k.invert();
   auto r = CurveScalar::Random();
-  auto ry = in.y * r;
+  auto ry = in.publicKey * r;
   auto rB = CurvePoint::BaseMult(r);
 
   out.b = (in.b + rB) * zOverK;
   out.c = (in.c + ry) * z;
-  out.y = in.y * k;
+  out.publicKey = in.publicKey * k;
 
   return RSKProof::create(
     in,
@@ -110,10 +110,10 @@ void RSKProof::verify(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const RSKVerifiers& verifiers) const {
-  mRP.verify(mRB, pre.y, mRY);
+  mRP.verify(mRB, pre.publicKey, mRY);
   mBP.verify(verifiers.mZOverKB, pre.b + mRB, post.b);
   mCP.verify(verifiers.mZB, pre.c + mRY, post.c);
-  if (post.y != verifiers.mKY)
+  if (post.publicKey != verifiers.mKY)
     throw InvalidProof();
 }
 

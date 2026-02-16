@@ -11,7 +11,7 @@ public:
   static EGCache& get();
 
   // Caching version of eg.RSK(z, k) --- faster if called ~20 times with
-  // same (eg.y, k).
+  // same (eg.publicKey, k).
   virtual ElgamalEncryption RSK(
     ElgamalEncryption eg,
     const CurveScalar& z,
@@ -20,7 +20,7 @@ public:
   ) = 0;
 
   // Caching version of eg.rerandomize().rekey(k) --- faster if called
-  // same (eg.y, k).
+  // same (eg.publicKey, k).
   virtual ElgamalEncryption RK(
     ElgamalEncryption eg,
     ElgamalTranslationKey k,
@@ -28,7 +28,7 @@ public:
   ) = 0;
 
   // Caching version of eg.rerandomize() --- faster if called
-  // same eg.y.
+  // same eg.publicKey.
   virtual ElgamalEncryption rerandomize(
     ElgamalEncryption eg,
     CPRNG* rng=nullptr

@@ -68,7 +68,7 @@ class RSKVerifiers {
   static RSKVerifiers compute(
     const CurveScalar& z,
     const CurveScalar& k,
-    const CurvePoint& y);
+    const CurvePoint& publicKey);
 
   CurvePoint mZOverKB;
   CurvePoint mZB;
@@ -82,7 +82,7 @@ class RSKVerifiers {
 
 
 // A compositional non-interactive zero-knowledge proof that
-// an ElgamalEncryption (b, c, y) has been (z,k)-RSKed to (b', c', y')
+// an ElgamalEncryption (b, c, publicKey) has been (z,k)-RSKed to (b', c', publicKey')
 class RSKProof {
  public:
   RSKProof() = default;
@@ -101,7 +101,7 @@ class RSKProof {
   CurvePoint mRY;
   CurvePoint mRB;
 
-  ScalarMultProof mRP; // ScalarMultProof for (rb, y, ry)
+  ScalarMultProof mRP; // ScalarMultProof for (rb, publicKey, ry)
   ScalarMultProof mBP; // ScalarMultProof for ((z/k)B, b + rb, b')
   ScalarMultProof mCP; // ScalarMultProof for (z B, c + ry, c')
 
@@ -109,7 +109,7 @@ class RSKProof {
 
   // Constructs a proof that post is the (z,k)-RSK of pre.
   //
-  // Assumes zB = z B, zOverK = z/k, zOverKB = z/k B, ry = r y, rB = r B
+  // Assumes zB = z B, zOverK = z/k, zOverKB = z/k B, ry = r publicKey, rB = r B
   // and (of course) that post is the (z,k)-RSK of pre with random r.
   static RSKProof create(
     const ElgamalEncryption& pre,

@@ -18,13 +18,13 @@ class ElgamalEncryption {
   static constexpr size_t PACKEDBYTES = CurvePoint::PACKEDBYTES * 3;
 
   ElgamalEncryption(
-    const ElgamalPublicKey& pk,
+    const ElgamalPublicKey& publicKey,
     const CurvePoint& data
   );
   ElgamalEncryption(
     const CurvePoint& b,
     const CurvePoint& c,
-    const CurvePoint& y
+    const ElgamalPublicKey& publicKey
   );
   ElgamalEncryption() = default;
 
@@ -57,7 +57,7 @@ class ElgamalEncryption {
 
   CurvePoint b;
   CurvePoint c;
-  CurvePoint y;
+  ElgamalPublicKey publicKey;
 
 };
 

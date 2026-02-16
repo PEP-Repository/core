@@ -38,7 +38,7 @@ TEST(ProofsTest, TestRSKProof) {
     proof.verify(
       pre,
       post,
-      pep::RSKVerifiers::compute(z, k, pre.y)
+      pep::RSKVerifiers::compute(z, k, pre.publicKey)
     );
 
     // Test some invalid proofs --- this only catches the most blatant mistakes.
