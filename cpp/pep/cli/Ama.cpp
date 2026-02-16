@@ -393,7 +393,8 @@ private:
     pep::commandline::Parameters getSupportedParameters() const override {
       return ChildCommandOf<CommandAma>::getSupportedParameters()
         + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
-          .allow(std::vector<std::string>({ "columns", "column-groups", "column-group-access-groups", "groups", "group-access-rules" })))
+          .defaultsTo("", "all types")
+          .allow(std::vector<std::string>({ "", "columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
         + pep::commandline::Parameter("column", "Match these columns").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
@@ -452,7 +453,7 @@ private:
             std::cout << std::endl;
           }
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-group-access-groups") {
+          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-group-access-rules") {
             std::sort(
               res.mColumnGroupAccessRules.begin(),
               res.mColumnGroupAccessRules.end(),
@@ -470,14 +471,14 @@ private:
             std::cout << std::endl;
           }
 
-            if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-groups") {
-              std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
-              if (scriptPrintFilter.empty())
-                std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
-              for (auto &group : res.mParticipantGroups)
-                std::cout << offset << group.mName << std::endl;
-              std::cout << std::endl;
-            }
+          if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-groups") {
+            std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
+            if (scriptPrintFilter.empty())
+              std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
+            for (auto &group : res.mParticipantGroups)
+              std::cout << offset << group.mName << std::endl;
+            std::cout << std::endl;
+          }
 
           if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-group-access-rules") {
             std::sort(
