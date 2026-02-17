@@ -863,7 +863,7 @@ private:
     protected:
       pep::commandline::Parameters getSupportedParameters() const override {
         return AmaParticipantGroupSubCommand::getSupportedParameters()
-          + pep::commandline::Parameter("participant", "Participant identifier or polymorphic pseudonym").value(pep::commandline::Value<std::string>().positional().required());
+          + pep::commandline::Parameter("participant", "Participant identifier, polymorphic pseudonym or local pseudonym").value(pep::commandline::Value<std::string>().positional().required());
       }
 
       int execute() override {
