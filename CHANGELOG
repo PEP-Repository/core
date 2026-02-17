@@ -7,6 +7,8 @@ Changes in upcoming release (1.7):
 
 ---------------
 
+- core#2795: Fixed a bug in the "pepcli ama query --script-print participant-groups" and "pepcli ama query --script-print participant-group-access-rules" commands, which caused them to produce no output.
+
 - core#2767: Added a tool for MacOS and Windows users to easily upload files to PEP using a GUI file picker.
 
 - core#2753:
