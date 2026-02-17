@@ -60,10 +60,10 @@ public:
   *  \param modes
   *  \param at timestamp of moment in time for when to assert access and columnGroup membership.
   *  \param columns Both an in and out parameter. Vector containing the loose requested columns. This vector is appended with the columns found in the requested columnGroups.
-  *  \param columnGroupMap Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
+  *  \returns columnGroupMap Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
   */
-  void unfoldColumnGroupsAndAssertAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, const std::vector<std::string>& modes, Timestamp at,
-                                         std::vector<std::string>& columns, std::unordered_map<std::string, pep::IndexList>& columnGroupMap);
+  std::unordered_map<std::string, IndexList> unfoldColumnGroupsAndAssertAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, const std::vector<std::string>& modes, Timestamp at,
+                                         std::vector<std::string>& columns);
 
   /*!
   * \brief Check the basic assumptions of a EncryptionKeyRequest. The accompanying ticket has to have the required access.

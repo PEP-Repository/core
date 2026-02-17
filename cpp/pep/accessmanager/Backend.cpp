@@ -417,13 +417,11 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
   return participantGroupMap;
 }
 
-void AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string& userGroup,
+std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string& userGroup,
                                                              const std::vector<std::string>& columnGroups,
                                                              const std::vector<std::string>& modes,
                                                              Timestamp at,
-                                                             std::vector<std::string>& columns,
-                                                             std::unordered_map<std::string, IndexList>&
-                                                                 columnGroupMap) {
+                                                             std::vector<std::string>& columns) {
   ColumnAccessRequest request;
   request.includeImplicitlyGranted = true;
   // All columns and Columngroups this usergroup has access to.
@@ -482,7 +480,7 @@ void AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string
 
   // We have access to all columnGroups and columns. Now finish the columnGroupMap and columns vector
   // Prepare columnGroupMap
-  columnGroupMap.clear();
+  std::unordered_map<std::string, IndexList> columnGroupMap;
   columnGroupMap.reserve(columnGroups.size());
   std::set<ColumnGroupColumn> cgcs = {};
   if (!columnGroups.empty()) {
@@ -502,6 +500,7 @@ void AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string
       }
     }
   }
+  return columnGroupMap;
 }
 
 void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<EncryptionKeyRequest> request,

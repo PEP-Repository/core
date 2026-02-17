@@ -3,6 +3,8 @@
 
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
+#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxIndexed.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/auth/EnrolledParty.hpp>
@@ -16,6 +18,7 @@
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/transcryptor/KeyComponentSerializers.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
@@ -24,6 +27,7 @@
 #include <pep/accessmanager/UserSerializers.hpp>
 
 #include <numeric>
+#include <ranges>
 #include <sstream>
 #include <chrono>
 
@@ -32,6 +36,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 
@@ -598,6 +603,8 @@ void AccessManager::computeChecksumChainChecksum(
 
 messaging::MessageBatches
 AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signedRequest) {
+  using namespace std::ranges;
+
   auto time = std::chrono::steady_clock::now();
   auto requestNumber = mNextTicketRequestNumber++;
 
@@ -613,12 +620,14 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto timestamp = TimeNow();
 
   auto pps = RangeToVector(request.mPolymorphicPseudonyms
-    | std::views::transform([](const PolymorphicPseudonym& pp) { return Backend::pp_t{pp, true}; }));
+    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::pp_t{pp, true}; }));
 
   std::vector<std::string> modes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
   if (!request.mParticipantGroups.empty()) {
+    // Access to participants does not mean imply permission to list groups they are in, so first check that
     backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
+
     participantGroupMap = backend->fillParticipantGroupMap(request.mParticipantGroups, pps);
   }
 
@@ -631,11 +640,8 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   ticket.mUserGroup = userGroup;
 
   // Check columns and column groups
-  std::unordered_map<std::string, IndexList> columnGroupMap;
-
-  backend->unfoldColumnGroupsAndAssertAccess(userGroup, request.mColumnGroups, request.mModes, timestamp,
-                                             ticket.mColumns,         // columns (in & out)
-                                             columnGroupMap);         // (out)
+  auto columnGroupMap = backend->unfoldColumnGroupsAndAssertAccess(
+      userGroup, request.mColumnGroups, request.mModes, timestamp, ticket.mColumns /*in & out*/);
 
   // Because of all the asynchronous IO, we move all state into this context
   // struct, so that we don't have to put everything into shared_ptrs
@@ -681,8 +687,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // mWorkerPool->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.  If we need this
   // more often, it's better to change batched_map()
-  std::vector<size_t> indexes(ctx->pps.size());
-  std::iota(indexes.begin(), indexes.end(), 0);
+  auto indexes = RangeToVector(views::iota(std::size_t{}, ctx->pps.size()));
   messaging::MessageBatches result =
     ctx->server->mWorkerPool->batched_map<8>(std::move(indexes),
         observe_on_asio(*ctx->server->getIoContext()),
@@ -703,29 +708,27 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
         ctx->signature);
     return i;
   }).flat_map([ctx](std::vector<size_t> is) {
-    // Send request to transcrypor
-    auto tail = CreateObservable<messaging::TailSegment<TranscryptorRequestEntries>>([ctx](rxcpp::subscriber<messaging::TailSegment<TranscryptorRequestEntries>> subscriber) {
-      size_t ibatch = 0U;
-      for (size_t i = 0; i < ctx->tsReqEntries.mEntries.size(); i += TS_REQUEST_BATCH_SIZE) {
-        ++ibatch;
-        auto count = std::min(TS_REQUEST_BATCH_SIZE, ctx->tsReqEntries.mEntries.size() - i);
-        using index = decltype(ctx->tsReqEntries.mEntries.cbegin())::difference_type;
-        index first = static_cast<index>(i), end = static_cast<index>(i + count);
-        TranscryptorRequestEntries batch;
-        batch.mEntries.reserve(count);
-        std::copy(ctx->tsReqEntries.mEntries.cbegin() + first, ctx->tsReqEntries.mEntries.cbegin() + end, std::back_inserter(batch.mEntries));
-        LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request entry batch " << ibatch << " containing entries " << first << " through " << end;
-        subscriber.on_next(messaging::MakeTailSegment(batch));
-      }
-      subscriber.on_completed();
-      LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sent " << ctx->tsReqEntries.mEntries.size() << " transcryptor request entries in " << ibatch << " batch(es)";
-      });
+    // Send request to transcryptor
+
+    auto numEntries = ctx->tsReqEntries.mEntries.size();
+    auto tail = RxIterate(std::move(ctx->tsReqEntries.mEntries))
+      .buffer(static_cast<int>(TS_REQUEST_BATCH_SIZE))
+      .as_dynamic() // Reduce compiler memory usage
+      .op(RxIndexed<std::uint32_t>())
+      .map([requestNumber = ctx->requestNumber](std::pair<std::uint32_t, std::vector<TranscryptorRequestEntry>> pair) {
+        auto& [batchNum, batch] = pair;
+        LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sending transcryptor request entry batch " << batchNum << " containing " << batch.size() << " entries";
+        return messaging::MakeTailSegment(TranscryptorRequestEntries{std::move(batch)});
+      })
+      .op(RxBeforeCompletion([requestNumber = ctx->requestNumber, numEntries] {
+        LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sent " << numEntries << " transcryptor request entries";
+      }));
 
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
     return ctx->server->mTranscryptorProxy.requestTranscryption(ctx->tsReq, tail);
   }).flat_map([ctx](TranscryptorResponse resp) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
-    // Now we have local pseudonyms for the orignal PPs.
+    // Now we have local pseudonyms for the original PPs.
     if (resp.mEntries.size() != ctx->pps.size()) {
       throw std::runtime_error("Transcryptor returned wrong number of entries");
     }
