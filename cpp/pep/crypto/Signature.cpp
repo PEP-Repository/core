@@ -16,6 +16,7 @@ Signatory::Signatory(X509CertificateChain certificateChain, X509RootCertificates
     throw Error("Invalid signatory: certificate chain not trusted");
   if (mCertificateChain.leaf().hasTLSServerEKU())
     throw Error("Invalid signatory: TLS certificate used instead of Signing certificate");
+  // TODO: verify intermediate CA
 }
 
 
