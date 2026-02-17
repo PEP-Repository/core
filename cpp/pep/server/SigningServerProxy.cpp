@@ -6,7 +6,7 @@
 #include <pep/server/CertificateRenewalSerializers.hpp>
 
 namespace pep {
-void SigningServerProxy::assertValidCertificateChain(const X509CertificateChain& chain, bool allowChangingSubject) const {
+void SigningServerProxy::validateCertificateChain(const X509CertificateChain& chain, bool allowChangingSubject) const {
   // Validity will also be checked by the server, but is safer to check that both client and server agree that the certificate is valid.
   if (!allowChangingSubject && chain.leaf().getCommonName() != mExpectedCommonName) {
     throw std::runtime_error(std::format("Certificate chain has common name {} but the expected common name is {}", chain.leaf().getCommonName().value_or("<NOT SET>"), mExpectedCommonName));
@@ -66,7 +66,7 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
 }
 
 rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(const X509CertificateChain& newCertificateChain, bool allowChangingSubject) const {
-  assertValidCertificateChain(newCertificateChain, allowChangingSubject);
+  validateCertificateChain(newCertificateChain, allowChangingSubject);
   return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, allowChangingSubject}))
   .op(RxGetOne("Signed Certificate Replacement Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
@@ -79,7 +79,7 @@ rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(co
 }
 
 rxcpp::observable<FakeVoid> SigningServerProxy::commitCertificateReplacement(const X509CertificateChain& newCertificateChain) const{
-  assertValidCertificateChain(newCertificateChain, true);
+  validateCertificateChain(newCertificateChain, true);
   return this->sendRequest<CertificateReplacementCommitResponse>(this->sign(CertificateReplacementCommitRequest{ newCertificateChain }))
   .op(messaging::ResponseToVoid());
 }

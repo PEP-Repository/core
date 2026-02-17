@@ -35,7 +35,7 @@ Signature Signature::Make(std::string_view data, const X509Identity& identity, b
   );
 }
 
-void Signature::assertValid(
+void Signature::validate(
     std::string_view data,
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName,

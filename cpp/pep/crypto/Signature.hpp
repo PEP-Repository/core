@@ -39,7 +39,7 @@ class Signature {
       bool isLogCopy=false,
       SignatureScheme scheme=SIGNATURE_SCHEME_V4);
 
-  void assertValid(
+  void validate(
       std::string_view data,
       const X509RootCertificates& rootCAs,
       std::optional<std::string> expectedCommonName,

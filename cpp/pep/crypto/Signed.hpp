@@ -10,12 +10,6 @@ public:
   std::string mData;
   Signature mSignature;
 
-protected:
-  void assertValid(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName,
-    std::chrono::seconds timestampLeeway) const;
-
 public:
   SignedBase(
     std::string data,
@@ -26,6 +20,11 @@ public:
     Signature signature)
     : mData(std::move(data)),
     mSignature(std::move(signature)) { }
+
+  void validate(
+    const X509RootCertificates& rootCAs,
+    std::optional<std::string> expectedCommonName = std::nullopt,
+    std::chrono::seconds timestampLeeway = std::chrono::hours{ 1 }) const;
 
   std::string getLeafCertificateCommonName() const;
   std::string getLeafCertificateOrganizationalUnit() const;
@@ -44,21 +43,13 @@ public:
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
     std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeeway);
+    mSignature.validate(mData, rootCAs, expectedCommonName, timestampLeeway);
     return this->openWithoutCheckingSignature(); // We just validated the signature
-  }
-
-  void validate(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt,
-    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeeway);
   }
 
   T openWithoutCheckingSignature() const {
     return Serialization::FromString<T>(mData);
   }
-
 };
 
 class MessageSigner {

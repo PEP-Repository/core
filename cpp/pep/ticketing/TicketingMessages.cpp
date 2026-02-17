@@ -52,14 +52,14 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
 
   try {
     // A longer leeway is used for long downloads etc.
-    mSignature->assertValid(
+    mSignature->validate(
       mData,
       rootCAs,
       ServerTraits::AccessManager().userGroup(true),
       std::chrono::days{1},
       false
     );
-    mTranscryptorSignature->assertValid(
+    mTranscryptorSignature->validate(
       mData,
       rootCAs,
       ServerTraits::Transcryptor().userGroup(true),
@@ -88,7 +88,7 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const
   if (mTranscryptorSignature)
     throw Error("Transcryptor signature should not be set");
 
-  mSignature->assertValid(
+  mSignature->validate(
     mData,
     rootCAs,
     ServerTraits::AccessManager().userGroup(true),
@@ -122,8 +122,8 @@ TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
   // Check signatures separately
-  mSignature->assertValid(mData, rootCAs, std::nullopt, 1h, false);
-  mLogSignature->assertValid(mData, rootCAs, std::nullopt, 1h, true);
+  mSignature->validate(mData, rootCAs, std::nullopt, 1h, false);
+  mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
 
   // Check signatures are similar enough
   auto diff = Abs(mSignature->mTimestamp - mLogSignature->mTimestamp);
@@ -149,7 +149,7 @@ TicketRequest2 Signed<TicketRequest2>::openAsTranscryptor(
   if (!mLogSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
-  mLogSignature->assertValid(mData, rootCAs, std::nullopt, 1h, true);
+  mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
 
   return Serialization::FromString<TicketRequest2>(mData);
 }
