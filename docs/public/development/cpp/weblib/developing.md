@@ -30,20 +30,24 @@ style: |
 
 # C++ SDK: [Emscripten](https://emscripten.org/)
 
-<img alt="Emscripten logo" src="https://emscripten.org/_static/Emscripten_logo_full.png" height=50 />
+<img alt="Emscripten logo" src="https://emscripten.org/_static/Emscripten_logo_full.png" height=100 />
 
 Install [Emscripten SDK](https://github.com/emscripten-core/emsdk) (EMSDK) and activate in shell.
 
-Components:
+Build tools:
 
-- LLVM libc++ STL
-- Emscripten runtime (C++ & JS)
-- LLVM Clang compiler with `WebAssembly` backend
-- Supporting binaries
+* LLVM Clang compiler with `WebAssembly` backend
+* Supporting binaries
   - E.g. `wasm-ld` (linker), `wasm-emscripten-finalize`, etc.
   - `wasm-opt` [Binaryen](https://github.com/WebAssembly/binaryen) WebAssembly optimizer
-- `emcc` & `em++` Emscripten compiler: Python wrappers around Clang
-- CMake toolchain `Emscripten.cmake`
+* `emcc` & `em++` Emscripten compiler: Python wrappers around Clang
+* CMake toolchain `Emscripten.cmake`
+
+---
+Runtime:
+
+- LLVM libc++ STL, musl libc
+- Emscripten runtime (with C++ & JS components)
 - Node.js JavaScript runtime
 
 ---
@@ -120,18 +124,18 @@ Linking `pepWeblib` will take long.
 
 - `pepWeblib`: `/cpp/pep/weblib/Weblib.cpp` class
   - Compiled to `pepWeblib.wasm` WebAssembly file with `pepWeblib.mjs` JavaScript module
-- `pepWeblibJs`: `/weblib/pep-repo-client-lib/` TypeScript wrapper
-- `pepWeblibSampleClient`: `/weblib/pep-sample-client/` sample client page
+* `pepWeblibJs`: `/weblib/pep-repo-client-lib/` TypeScript wrapper
+* `pepWeblibSampleClient`: `/weblib/pep-sample-client/` sample client page
 
 # Node.js packages
 
 - NPM: Node package manager (abbreviation unrelated)
-- `package.json` (+ `package-lock.json`)
+* `package.json` (+ `package-lock.json`)
   - (dev)dependencies
   - Scripts (e.g. `npm run build:watch`)
-- Builds in source folder (under `dist/`)
-- `pepWeblibJs` (NPM `pep-repo-client-lib`)
-  - Depends on `/build/wasm32/Debug/cpp/pep/weblib/` symlinked to `/weblib/pep-repo-client-wasm`
+* Builds in source folder (under `dist/`)
+* `pepWeblibJs` (NPM `pep-repo-client-lib`)
+  - Depends on e.g. `/build/wasm32/Debug/cpp/pep/weblib/` symlinked to `/weblib/pep-repo-client-wasm`
   - Compile TypeScript to JavaScript
   - Future work: publish
     - `npm pack`: Bundle `pepWeblibJs` files into tarball
@@ -165,6 +169,8 @@ EMSCRIPTEN_BINDINGS(myBindings) {
 
 `em++ -lembind ./bind.cpp -o./bind.js`
 
+<div data-marpit-fragment>
+
 ```shell
 $ node
 > Module = require('./bind.js')
@@ -173,13 +179,14 @@ $ node
 ```
 
 In browser `Module` is global (no `require` needed).
+</div>
 
 ---
 ### Exposing as JS Module (ESM)
 
 `em++ -lembind ./bind.cpp -o./bind.mjs`
 
-`app.mjs`
+Plus `app.mjs`
 ```js
 import loadModule from './bind.mjs';
 const Module = await loadModule();
@@ -203,7 +210,11 @@ static void printSubject(const Subject &subject) {
 }
 
 Subject makeSubject() { return {"Peppa", "Pig"}; }
+```
 
+<div data-marpit-fragment>
+
+```cpp
 EMSCRIPTEN_BINDINGS(subject) {
   emscripten::value_object<Subject>("Subject")
     .field("firstName", &Subject::firstName)
@@ -213,6 +224,7 @@ EMSCRIPTEN_BINDINGS(subject) {
   emscripten::function("makeSubject", makeSubject);
 }
 ```
+</div>
 
 ---
 ```js
@@ -222,9 +234,9 @@ Module.printSubject({firstName: "Weird", lastName: "Duck"});
 console.log(Module.makeSubject());
 ```
 
-## Classes
+Embind marshalls arguments.
 
-JS object just wraps C++ object allocated on heap.
+## Classes
 
 ```cpp
 class Widget {
@@ -234,7 +246,11 @@ public:
   unsigned frobCount() const noexcept { return frobCount_; }
   void frob() { ++frobCount_; }
 };
+```
 
+<div data-marpit-fragment>
+
+```cpp
 EMSCRIPTEN_BINDINGS(widget) {
   emscripten::class_<Widget>("Widget")
     .constructor()
@@ -243,6 +259,9 @@ EMSCRIPTEN_BINDINGS(widget) {
   ;
 }
 ```
+
+JS object just wraps C++ object allocated on heap.
+</div>
 
 ---
 ```js
@@ -281,11 +300,14 @@ EMSCRIPTEN_BINDINGS(doIt) {
 }
 ```
 
+<div data-marpit-fragment>
+
 ```js
 Module.doIt(i => `Called with ${i}`, {arg: 41}); // Called with 42
 ```
 
 `val` can only be accessed from thread that created it.
+</div>
 
 ## Custom bindings
 
@@ -301,14 +323,14 @@ This unfortunately uses an internal Emscripten API.
 - Multiple EH models available (see [extra info](#extra-info))
 - In our case JS catches `WebAssembly.Exception` (non-`Error`)
 - `pep.handleWasmException`
-  - Obtains message (also in Release mode)
-  - Frees C++ object
-  - Returns as `Error`
+  - Obtains error message (also in Release)
+  - Converts to regular JS `Error`
+  - Deletes backing C++ exception object
 
 # Unix/POSIX API
 
 - Emscripten presents itself as UNIX (e.g. defines `__unix__`)
-- Runtime implements Unix/POSIX functions like `select`/`socket`/`pthread_create`/...
+- Runtime implements Unix/POSIX syscalls like `open`/`select`/`socket`/`pthread_create`/...
 
 # [Threads](https://emscripten.org/docs/porting/pthreads.html)
 
@@ -324,7 +346,7 @@ Emscripten maps PThreads to Workers.
 
 ## Threads in PEP weblib
 
-- Should not block main thread
+- Should not block main browser thread
 - `io_context` runs on background thread
 - `main` exits, but PEP remains alive
 
@@ -336,9 +358,9 @@ Emscripten maps PThreads to Workers.
   - `.then` with callbacks
   - `await` can be used in `async` function
 * JS multi item: [`ReadableStream`](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream) (more generally: [async iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols#the_async_iterator_and_async_iterable_protocols))
-  - `for await`
+  - e.g. `for await`
 
-## C++ `rxcpp::observable` to JS `Promise`
+## C++ single-value `rxcpp::observable` to JS `Promise`
 
 * Use Emscripten's `val` coroutine, which creates `Promise`
 * Await `rxcpp::observable` via new observable awaiter implementation
@@ -358,15 +380,17 @@ WeblibApiPromise listColumns() {
     });
 }
 ```
-</div>
 
 (Reverse not yet implemented)
+</div>
 
-## C++ `rxcpp::observable` to JS `ReadableStream`
+## C++ multi-value `rxcpp::observable` to JS `ReadableStream`
 
 - `pep::weblib::CreateReadableStream` returns `ReadableStream` `val`
 - Stream source calls `controller.enqueue(v)` for each item
 - No flow control: RxCpp lacks support
+
+<div data-marpit-fragment>
 
 ```cpp
 auto list(ListQuery query) {
@@ -376,6 +400,7 @@ auto list(ListQuery query) {
   );
 }
 ```
+</div>
 
 # TypeScript wrapper
 
@@ -391,6 +416,8 @@ export interface CellEntry extends ClassHandle {
 }
 ```
 
+<div data-marpit-fragment>
+
 Some types missing, thus we add:
 
 ```ts
@@ -398,6 +425,7 @@ export interface CellEntry extends rawTypes.CellEntry {
   partialMetadataView(): Map<string, Uint8Array<SharedArrayBuffer> | undefined>;
 }
 ```
+</div>
 
 ---
 For functions:
@@ -411,9 +439,11 @@ export default class Pep {
 }
 ```
 
+(`wrapExec` tracks busy state, may be removed.)
+
 # [Debugging](https://emscripten.org/docs/porting/Debugging.html)
 
-<h2>Debug info</h2>
+## Debug info
 
 - DWARF (`-g`)
   - In `.wasm` or separate `.wasm.debug.wasm` via `-gseparate-dwarf`
@@ -425,7 +455,7 @@ export default class Pep {
 ## In browser
 
 - [Chromium](https://developer.chrome.com/docs/devtools/wasm/): use DWARF via extension
-  - Substitute paths via extension settings
+  - Substitute paths via extension settings (see [extra info](#extra-info))
 - Firefox/Safari: use source maps (for now)
 
 ## Node.js
@@ -441,12 +471,12 @@ Emscripten [compiler settings](https://emscripten.org/docs/tools_reference/setti
 
 - `-sASSERTIONS=2` (`CMAKE_EXE_LINKER_FLAGS_DEBUG`)
 * `-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG` (`CMAKE_CXX_FLAGS_DEBUG`)
-* Clang sanitizers (seem broken for us currently?)
+* Clang sanitizers (ASan seems broken for us currently?)
 
 ## Logging
 
 - `-sEXCEPTION_DEBUG`, `-sPTHREADS_DEBUG`, `-sSYSCALL_DEBUG`, `-sFETCH_DEBUG`, `-sSOCKET_DEBUG`, `-sWEBSOCKET_DEBUG` (`CMAKE_EXE_LINKER_FLAGS_DEBUG`)
-- Enable 'debug' log level in browser console
+- Enable 'debug' log level in browser console for verbose PEP logs
 
 # [Sockets](https://emscripten.org/docs/porting/networking.html#emscripten-websockets-api)
 
@@ -475,7 +505,7 @@ Current issues:
 - Existing unit tests
   - Run with Node.js or in browser (`-DPEP_EMSCRIPTEN_BROWSER=ON`)
 * Weblib C++ unit tests
-* Weblib (+ TS wrapper) interation tests
+* Weblib (+ TS wrapper) integration tests
   - Mocha + Node.js
   - Ran from `integration.sh`
   - Browser also supported
@@ -483,7 +513,7 @@ Current issues:
 # Developing
 
 - Build `pepWeblibSampleClient` (incl. `pepWeblib` + `pepWeblibJs`)
-  - `emcc`, TypeScript, Webpack
+  - Uses `emcc`, TypeScript, Webpack
 - Start Nginx
 - Start websockify
 - Start `pepServers`
@@ -513,8 +543,8 @@ Ports: 2280, 8080, 15501, 15519, 15511, 15516, 15518, 15512.
 
 # OAuth
 
-- As mentioned in _PEP Weblib: using the JavaScript API_, we use popup + `BroadcastChannel`
-- C++ uses Web API to request `/token`
+- As mentioned in [_PEP Weblib: using the JavaScript API_](./usage.md), we use popup + `BroadcastChannel`
+- C++ uses Web API to request `/token` on PEP Authserver
   - [CORS](https://developer.mozilla.org/en-US/docs/Glossary/CORS): Server sends `Access-Control-Allow-Origin`
   - Allowed origins from `ExtraRedirectUris` in `Authserver.json`
   - Future work: Use global metadata
@@ -551,11 +581,14 @@ Multiple models:
 
 `-sEXCEPTION_STACK_TRACES` is implied by `-sASSERTIONS` (default for unoptimized).
 
+<div data-marpit-fragment>
+
 - Use `Module.getExceptionMessage` to obtain message
 - Free C++ object by `Module.decrementExceptionRefcount`
 - `pep.handleWasmException` does both and returns as `Error`
 
 Reverse: C++ [*cannot*](https://github.com/emscripten-core/emscripten/issues/11496) catch JS exceptions using normal `try`-`catch`.
+</div>
 
 ## `std::terminate`
 
@@ -563,6 +596,7 @@ Reverse: C++ [*cannot*](https://github.com/emscripten-core/emscripten/issues/114
 - Solutions:
   - Exception breakpoints
   - Switching to Emscripten EH (needs workaround for [Boost issue](https://github.com/conan-io/conan-center-index/issues/28702))
+    <!--TODO: How to do this-->
 
 # [Blocking asynchronous code](https://emscripten.org/docs/porting/asyncify.html)
 

@@ -75,7 +75,7 @@ await pep.authenticate();
 
 > `pep.authenticate()`
 
-Opens AuthServer dialog in popup, redirecting to `authLandingPage` afterwards.
+Opens Authserver dialog in popup, redirecting to `authLandingPage` afterwards.
 This sends OAuth code or error back via [`BroadcastChannel`](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel) in `chan` URL parameter.
 
 `ClientKeys.json` persisted via `IndexedDB`.
