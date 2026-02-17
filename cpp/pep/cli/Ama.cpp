@@ -429,7 +429,7 @@ private:
           bool prettyPrint = !scriptPrintFilter.has_value();
           std::string offset = prettyPrint ? "  " : "";
 
-          if(!scriptPrintFilter.has_value() || scriptPrintFilter == "columns") {
+          if(prettyPrint || scriptPrintFilter == "columns") {
             std::sort(res.mColumns.begin(), res.mColumns.end(), [](auto& a, auto& b) {return a.mName < b.mName; });
             if(prettyPrint)
               std::cout << "Columns (" << res.mColumns.size() << "):" << std::endl;
@@ -438,7 +438,7 @@ private:
             std::cout << std::endl;
           }
 
-          if(!scriptPrintFilter.has_value() || scriptPrintFilter == "column-groups") {
+          if(prettyPrint || scriptPrintFilter == "column-groups") {
             if (prettyPrint)
               std::cout << "ColumnGroups (" << res.mColumnGroups.size() << "):" << std::endl;
             std::sort(res.mColumnGroups.begin(), res.mColumnGroups.end(),
@@ -453,7 +453,7 @@ private:
             std::cout << std::endl;
           }
 
-          if(!scriptPrintFilter.has_value() || scriptPrintFilter == "column-group-access-rules") {
+          if(prettyPrint || scriptPrintFilter == "column-group-access-rules") {
             std::sort(
               res.mColumnGroupAccessRules.begin(),
               res.mColumnGroupAccessRules.end(),
@@ -471,7 +471,7 @@ private:
             std::cout << std::endl;
           }
 
-          if (!scriptPrintFilter.has_value() || scriptPrintFilter == "participant-groups") {
+          if (prettyPrint || scriptPrintFilter == "participant-groups") {
             std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
             if (prettyPrint)
               std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
@@ -480,7 +480,7 @@ private:
             std::cout << std::endl;
           }
 
-          if (!scriptPrintFilter.has_value() || scriptPrintFilter == "participant-group-access-rules") {
+          if (prettyPrint || scriptPrintFilter == "participant-group-access-rules") {
             std::sort(
               res.mParticipantGroupAccessRules.begin(),
               res.mParticipantGroupAccessRules.end(),
