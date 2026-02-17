@@ -212,14 +212,14 @@ TEST_F(AccessManagerStorageTest, store_lp_and_localPseudonymIsStored) {
   const LocalPseudonym localPseudonym{LocalPseudonym::Random()};
   ASSERT_FALSE(storage->hasLocalPseudonym(localPseudonym));
   auto cachedPPsBefore = storage->getPPs();
-  auto cachedStarPPsBefore = storage->getPpGroups({"*"});
+  auto cachedStarPPsBefore = storage->getPpGroups(std::vector<std::string>{"*"});
   // Act
   storage->storeLocalPseudonymAndPP(localPseudonym, dummyPP);
 
   // Assert
   ASSERT_TRUE(storage->hasLocalPseudonym(localPseudonym));
   auto cachedPPsAfter = storage->getPPs();
-  auto cachedStarPPsAfter = storage->getPpGroups({"*"});
+  auto cachedStarPPsAfter = storage->getPpGroups(std::vector<std::string>{"*"});
 
   // PolymorphicPseudonyms (ElgamalEncryptions) can not be tested on equality. Therefore, test vector length.
   ASSERT_TRUE(cachedPPsAfter.size() - cachedPPsBefore.size() == 1U);
