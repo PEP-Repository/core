@@ -1,12 +1,8 @@
 #pragma once
 
-#include <pep/crypto/AsymmetricKey.hpp>
-#include <pep/serialization/Serialization.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/crypto/X509Certificate.hpp>
-
-#include <optional>
-#include <string>
+#include <pep/serialization/Error.hpp>
 
 namespace pep {
 
@@ -49,18 +45,6 @@ class Signature {
       std::optional<std::string> expectedCommonName,
       std::chrono::seconds timestampLeeway,
       bool expectLogCopy=false) const;
-
-  template<typename T>
-  T open(
-      std::string_view data,
-      const X509RootCertificates& rootCAs,
-      std::optional<std::string> expectedCommonName=std::nullopt,
-      std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    // This function checks whether the signature is valid and throws
-    // a network-portable Error exception if it isn't.
-    assertValid(data, rootCAs, expectedCommonName, timestampLeeway);
-    return Serialization::FromString<T>(data);
-  }
 
   std::string getLeafCertificateCommonName() const;
   std::string getLeafCertificateOrganizationalUnit() const;

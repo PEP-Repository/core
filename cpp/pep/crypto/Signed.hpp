@@ -2,7 +2,6 @@
 
 #include <pep/serialization/Serialization.hpp>
 #include <pep/crypto/Signature.hpp>
-#include <pep/crypto/X509Certificate.hpp>
 
 namespace pep {
 
@@ -45,7 +44,8 @@ public:
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
     std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    return mSignature.open<T>(mData, rootCAs, expectedCommonName, timestampLeeway);
+    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeeway);
+    return this->openWithoutCheckingSignature(); // We just validated the signature
   }
 
   void validate(
