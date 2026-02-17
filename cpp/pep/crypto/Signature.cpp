@@ -10,6 +10,15 @@ using namespace std::chrono;
 
 namespace pep {
 
+Signatory::Signatory(X509CertificateChain certificateChain, X509RootCertificates rootCAs)
+  : mCertificateChain(std::move(certificateChain)), mRootCAs(std::move(rootCAs)) {
+  if (!mCertificateChain.verify(mRootCAs))
+    throw Error("Invalid signatory: certificate chain not trusted");
+  if (mCertificateChain.leaf().hasTLSServerEKU())
+    throw Error("Invalid signatory: TLS certificate used instead of Signing certificate");
+}
+
+
 Signature Signature::Make(std::string_view data, const X509Identity& identity, bool isLogCopy, SignatureScheme scheme) {
   auto timestamp = TimeNow();
 
@@ -35,14 +44,14 @@ Signature Signature::Make(std::string_view data, const X509Identity& identity, b
   );
 }
 
-void Signature::validate(
+Signatory Signature::validate(
     std::string_view data,
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName,
     seconds timestampLeeway,
     bool expectLogCopy) const {
-  if (!mCertificateChain.verify(rootCAs))
-    throw Error("Invalid signature: certificate chain not trusted");
+  Signatory result(mCertificateChain, rootCAs);
+
   if (expectedCommonName && *expectedCommonName != getLeafCertificateCommonName()) {
     std::ostringstream msg;
     msg << "Invalid signature: incorrect common name on leaf certificate "
@@ -50,8 +59,6 @@ void Signature::validate(
         << Logging::Escape(getLeafCertificateCommonName()) << ")";
     throw Error(msg.str());
   }
-  if (mCertificateChain.leaf().hasTLSServerEKU())
-    throw Error("Invalid signature: TLS certificate used instead of Signing certficiate");
 
   auto diff = Abs(mTimestamp - TimeNow());
   if (diff > timestampLeeway) {
@@ -86,6 +93,8 @@ void Signature::validate(
   if (!mCertificateChain.leaf().getPublicKey().verifyDigestSha256(
         hasher.digest().substr(0, 32), mSignature))
     throw Error("Invalid signature: data does not match signature or chain");
+
+  return result;
 }
 
 

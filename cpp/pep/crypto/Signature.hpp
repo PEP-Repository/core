@@ -13,6 +13,19 @@ enum SignatureScheme {
 };
 
 
+class Signatory {
+private:
+  X509CertificateChain mCertificateChain;
+  X509RootCertificates mRootCAs;
+
+public:
+  Signatory(X509CertificateChain certificateChain, X509RootCertificates rootCAs);
+
+  const X509CertificateChain& certificateChain() const noexcept { return mCertificateChain; }
+  const X509RootCertificates& rootCAs() const noexcept { return mRootCAs; }
+};
+
+
 class Signature {
  public:
   std::string mSignature;
@@ -39,7 +52,7 @@ class Signature {
       bool isLogCopy=false,
       SignatureScheme scheme=SIGNATURE_SCHEME_V4);
 
-  void validate(
+  Signatory validate(
       std::string_view data,
       const X509RootCertificates& rootCAs,
       std::optional<std::string> expectedCommonName,
