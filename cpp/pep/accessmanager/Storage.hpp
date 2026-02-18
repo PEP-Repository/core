@@ -205,6 +205,11 @@ public:
   MigrateUserDbToAccessManagerResponse migrateUserDb(const std::filesystem::path& dbPath);
 
   /* Adding and removing users and user identifiers */
+
+  /// Creates a new user with an initial identifier while guarding against duplicate entries.
+  /// @details The `CaseSensitivity` parameter determines the strictness of the guard
+  ///   - **CaseInsensitive (default)** reject if there is an existing id that only differs by casing from the new one
+  ///   - **CaseSensitive** reject only if there is an existing id that exactly matches the new one
   int64_t createUser(std::string identifier, CaseSensitivity = CaseInsensitive);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
