@@ -423,6 +423,15 @@ TEST_F(AccessManagerStorageTest, userGroupIsEmpty) {
 
 TEST_F(AccessManagerStorageTest, newUserGroupGetsNewUserGroupId) {
   std::unordered_set<int64_t> createdIds;
+  //First create (and immediately remove) some user groups. They should all get different IDs
+  for(size_t i = 0; i < 10; i++) {
+    auto name = "group" + std::to_string(i);
+    auto newId = storage->createUserGroup(UserGroup(name, {}));
+    auto [iterator, inserted] = createdIds.emplace(newId);
+    EXPECT_TRUE(inserted);
+    storage->removeUserGroup(name);
+  }
+  //Now create new groups with the same names as before. They should still get new IDs
   for(size_t i = 0; i < 10; i++) {
     auto newId = storage->createUserGroup(UserGroup("group" + std::to_string(i), {}));
     auto [iterator, inserted] = createdIds.emplace(newId);
