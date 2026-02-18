@@ -29,9 +29,10 @@ rxcpp::observable<PingResponse> SigningServerProxy::requestPing() const {
 rxcpp::observable<X509CertificateChain> SigningServerProxy::requestCertificateChain() const {
   PingRequest request;
   return this->requestSignedPing(request)
-    .map([request](const SignedPingResponse& response) {
-    response.openWithoutCheckingSignature().validate(request);
-    return response.mSignature.mCertificateChain;
+    .map([request, rootCAs = mRootCertificates](const SignedPingResponse& response) {
+    auto certified = response.open(*rootCAs);
+    certified.message.validate(request);
+    return certified.signatory.certificateChain();
       });
 
 }
@@ -40,7 +41,7 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
   return this->sendRequest<SignedCsrResponse>(this->sign(CsrRequest{}))
   .op(RxGetOne("Signed CSR Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName](const SignedCsrResponse& signedResponse) {
-    auto response = signedResponse.open(*rootCAs, expectedCommonName);
+    auto response = signedResponse.open(*rootCAs, expectedCommonName).message;
     if (response.getCsr().getCommonName() != expectedCommonName) {
       throw std::runtime_error("Received certificate signing request does not have expected common name");
     }
@@ -70,8 +71,8 @@ rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(co
   return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, allowChangingSubject}))
   .op(RxGetOne("Signed Certificate Replacement Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
-    signedResponse.validate(*rootCAs, expectedCommonName);
-    if (signedResponse.mSignature.mCertificateChain != newCertificateChain) {
+    auto signatory = signedResponse.validate(*rootCAs, expectedCommonName);
+    if (signatory.certificateChain() != newCertificateChain) {
       throw std::runtime_error("The response from the server was not signed by the new certificate chain");
     }
     return FakeVoid{};
