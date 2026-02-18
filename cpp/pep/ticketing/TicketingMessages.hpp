@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 
 namespace pep {
 

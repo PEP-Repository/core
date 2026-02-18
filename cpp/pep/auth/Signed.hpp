@@ -1,7 +1,7 @@
 #pragma once
 
+#include <pep/auth/Signature.hpp>
 #include <pep/serialization/Serialization.hpp>
-#include <pep/crypto/Signature.hpp>
 
 namespace pep {
 

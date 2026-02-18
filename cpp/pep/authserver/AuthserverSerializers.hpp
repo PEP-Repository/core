@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 #include <pep/authserver/AuthserverMessages.hpp>
 
 namespace pep {

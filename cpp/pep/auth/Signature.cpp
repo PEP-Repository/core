@@ -1,4 +1,4 @@
-#include <pep/crypto/Signature.hpp>
+#include <pep/auth/Signature.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Log.hpp>

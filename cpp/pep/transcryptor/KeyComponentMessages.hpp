@@ -2,7 +2,7 @@
 
 #include <pep/rsk-pep/DataTranslator.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 
 namespace pep {
 
