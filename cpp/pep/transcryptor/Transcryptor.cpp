@@ -183,11 +183,12 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     bool includeUserGroupPseudonyms{};
     SignedTicketRequest2 ticketRequest;
   };
-  auto ctx = std::make_shared<Context>();
-  ctx->requestNumber = requestNumber;
-  ctx->modes = std::move(unpackedRequest.mModes);
-  ctx->includeUserGroupPseudonyms = unpackedRequest.mIncludeUserGroupPseudonyms;
-  ctx->ticketRequest = std::move(request->mRequest);
+  auto ctx = MakeSharedCopy(Context{
+    .requestNumber = requestNumber,
+    .modes = std::move(unpackedRequest.mModes),
+    .includeUserGroupPseudonyms = unpackedRequest.mIncludeUserGroupPseudonyms,
+    .ticketRequest = std::move(request->mRequest),
+    });
 
   struct Results {
     std::vector<LocalPseudonym> localPseudonyms;
