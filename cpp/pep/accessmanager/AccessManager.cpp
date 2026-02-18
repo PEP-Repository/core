@@ -604,9 +604,9 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " received";
 
-  // certifyForAccessManager checks that mSignature and mLogSignature are set,
+  // openAsAccessManager checks that mSignature and mLogSignature are set,
   // are valid and match.
-  auto certified = signedRequest->certifyForAccessManager(*this->getRootCAs());
+  auto certified = signedRequest->openAsAccessManager(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 

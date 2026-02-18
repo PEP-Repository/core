@@ -114,7 +114,7 @@ Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
   mLogSignature = Signature::Make(mData, identity, true);
 }
 
-Certified<TicketRequest2> Signed<TicketRequest2>::certifyForAccessManager(
+Certified<TicketRequest2> Signed<TicketRequest2>::openAsAccessManager(
   const X509RootCertificates& rootCAs) {
   if (!mSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature");
@@ -145,7 +145,7 @@ Certified<TicketRequest2> Signed<TicketRequest2>::certifyForAccessManager(
   };
 }
 
-Certified<TicketRequest2> Signed<TicketRequest2>::certifyForTranscryptor(
+Certified<TicketRequest2> Signed<TicketRequest2>::openAsTranscryptor(
   const X509RootCertificates& rootCAs) {
   if (mSignature)
     throw Error("Invalid SignedTicketRequest2: signature for AM shouldn't be set");

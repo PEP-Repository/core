@@ -175,7 +175,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   if (!mPseudonymKey)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
 
-  auto unpackedRequest = request->mRequest.certifyForTranscryptor(*this->getRootCAs()).message;
+  auto unpackedRequest = request->mRequest.openAsTranscryptor(*this->getRootCAs()).message;
 
   struct Context {
     uintmax_t requestNumber{};

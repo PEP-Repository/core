@@ -92,8 +92,8 @@ public:
     mLogSignature(std::move(mLogSignature)),
     mData(std::move(mData)) { }
 
-  Certified<TicketRequest2> certifyForAccessManager(const X509RootCertificates& rootCAs);
-  Certified<TicketRequest2> certifyForTranscryptor(const X509RootCertificates& rootCAs);
+  Certified<TicketRequest2> openAsAccessManager(const X509RootCertificates& rootCAs);
+  Certified<TicketRequest2> openAsTranscryptor(const X509RootCertificates& rootCAs);
 
   std::optional<Signature> mSignature;
   std::optional<Signature> mLogSignature;
