@@ -6,11 +6,11 @@
 namespace pep {
 
 class SignedBase {
-public:
+public: // You should have no business accessing these unless you're (de)serializing
   std::string mData;
   Signature mSignature;
 
-public:
+protected:
   SignedBase(
     std::string data,
     const X509Identity& identity);
@@ -21,6 +21,12 @@ public:
     : mData(std::move(data)),
     mSignature(std::move(signature)) { }
 
+  template <typename T>
+  T deserializeAs() const {
+    return Serialization::FromString<T>(mData);
+  }
+
+public:
   Signatory validate(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
@@ -45,7 +51,7 @@ public:
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
     std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    auto signatory = mSignature.validate(mData, rootCAs, expectedCommonName, timestampLeeway);
+    auto signatory = this->validate(rootCAs, std::move(expectedCommonName), timestampLeeway);
     return Certified<T>{
       .signatory = std::move(signatory),
       .message = this->openWithoutCheckingSignature(),
@@ -53,7 +59,7 @@ public:
   }
 
   T openWithoutCheckingSignature() const {
-    return Serialization::FromString<T>(mData);
+    return this->deserializeAs<T>();
   }
 };
 
