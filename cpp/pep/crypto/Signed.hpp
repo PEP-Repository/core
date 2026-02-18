@@ -52,13 +52,6 @@ public:
     };
   }
 
-  [[nodiscard]] T open(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt,
-    std::chrono::seconds timestampLeeway = std::chrono::hours{ 1 }) const {
-    return this->certify(rootCAs, std::move(expectedCommonName), timestampLeeway).message;
-  }
-
   T openWithoutCheckingSignature() const {
     return Serialization::FromString<T>(mData);
   }
