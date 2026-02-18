@@ -272,7 +272,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       if (ctx->includeUserGroupPseudonyms) {
         ret.mAccessGroup = server->mPseudonymTranslator->translateStep(
             *entry.mUserGroup,
-            RecipientForCertificate(ctx->ticketRequest.mLogSignature->certificateChain().leaf())
+            RecipientForCertificate(ctx->ticketRequest.logSignature()->certificateChain().leaf())
         );
       }
 
@@ -348,7 +348,8 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto requestNumber = mNextLogIssuedTicketRequestNumber++;
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " received";
 
-  auto ticket = request->mTicket.openForLogging(*getRootCAs());
+  std::string serialized;
+  auto ticket = request->mTicket.openForLogging(*getRootCAs(), serialized);
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
   auto hash = ComputePseudonymHash(ticket.mPseudonyms);
@@ -367,7 +368,7 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto result = messaging::BatchSingleMessage(
       LogIssuedTicketResponse(
         Signature::Make(
-          request->mTicket.mData,
+          serialized,
           *this->getSigningIdentity()
         )
       )

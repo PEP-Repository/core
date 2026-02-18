@@ -87,7 +87,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
   return ticket;
 }
 
-Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const {
+Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const {
   if (!mSignature)
     throw Error("AccessManager signature is missing");
   if (mTranscryptorSignature)
@@ -102,6 +102,7 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const
   );
 
   auto ticket = Serialization::FromString<Ticket2>(mData);
+  serialized = mData;
   return ticket;
 }
 

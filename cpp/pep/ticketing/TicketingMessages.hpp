@@ -59,7 +59,7 @@ public:
     const std::string& accessGroup,
     const std::optional<std::string>& accessMode = std::nullopt) const;
 
-  Ticket2 openForLogging(const X509RootCertificates& rootCAs) const;
+  Ticket2 openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const;
 };
 
 class SignedTicket2ValidityPeriodError : public DeserializableDerivedError<SignedTicket2ValidityPeriodError> {
