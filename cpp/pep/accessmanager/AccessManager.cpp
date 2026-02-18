@@ -791,7 +791,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
 messaging::MessageBatches AccessManager::handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> signedRequest) {
   auto certified = signedRequest->open(*this->getRootCAs());
-  const AmaMutationRequest& request = certified.message;
+  const auto& request = certified.message;
   std::string userGroup = certified.signatory.organizationalUnit();
   backend->performMutationsForRequest(request, userGroup);
 
