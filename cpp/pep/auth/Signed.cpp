@@ -8,13 +8,12 @@ SignedBase::SignedBase(std::string data, const X509Identity& identity)
 
 Signatory SignedBase::validate(
   const X509RootCertificates& rootCAs,
-  std::optional<std::string> expectedCommonName,
-  std::chrono::seconds timestampLeeway) const {
+  std::optional<std::string> expectedCommonName) const {
   return mSignature.validate(
     mData,
     rootCAs,
     expectedCommonName,
-    timestampLeeway
+    std::chrono::hours{1}
   );
 }
 

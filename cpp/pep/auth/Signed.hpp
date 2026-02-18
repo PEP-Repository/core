@@ -13,8 +13,7 @@ public: // You should have no business accessing these unless you're (de)seriali
 public:
   Signatory validate(
     const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt,
-    std::chrono::seconds timestampLeeway = std::chrono::hours{ 1 }) const;
+    std::optional<std::string> expectedCommonName = std::nullopt) const;
 
 protected:
   SignedBase(
@@ -49,9 +48,8 @@ public:
 
   [[nodiscard]] Certified<T> open(
     const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt,
-    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    auto signatory = this->validate(rootCAs, std::move(expectedCommonName), timestampLeeway);
+    std::optional<std::string> expectedCommonName = std::nullopt) const {
+    auto signatory = this->validate(rootCAs, std::move(expectedCommonName));
     return Certified<T>{
       .signatory = std::move(signatory),
       .message = this->openWithoutCheckingSignature(),
