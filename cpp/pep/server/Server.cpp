@@ -95,7 +95,7 @@ std::unordered_set<std::string> Server::getAllowedChecksumChainRequesters() {
 messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  auto certified = signedRequest->certify(*getRootCAs());
+  auto certified = signedRequest->open(*getRootCAs());
   UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
 
   const auto& request = certified.message;

@@ -41,7 +41,7 @@ public:
   Signed(T o, const X509Identity& identity) :
     SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
-  [[nodiscard]] Certified<T> certify(
+  [[nodiscard]] Certified<T> open(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
     std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {

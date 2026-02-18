@@ -59,7 +59,7 @@ void Authserver::computeChecksumChainChecksum(
 }
 
 messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedTokenRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
   
@@ -67,7 +67,7 @@ messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedT
 }
 
 messaging::MessageBatches Authserver::handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
 

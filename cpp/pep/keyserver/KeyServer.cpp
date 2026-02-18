@@ -139,7 +139,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingListRequest(
 messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
     std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest) {
 
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, certified.signatory.organizationalUnit(), "token blocklist management");
 
   if (mBlocklist == nullptr) { throw Error{ "KeyServer does not have a blocklist" }; }
@@ -158,7 +158,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
 
 messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
     std::shared_ptr<SignedTokenBlockingRemoveRequest> signedRequest) {
-  const auto certified = signedRequest->certify(*this->getRootCAs());
+  const auto certified = signedRequest->open(*this->getRootCAs());
   EnsureTokenBlockingAdminAccess(certified.signatory.organizationalUnit());
 
   if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }

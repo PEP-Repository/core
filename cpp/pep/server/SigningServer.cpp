@@ -32,7 +32,7 @@ messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<Signed
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std::shared_ptr<SignedCertificateReplacementRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, certified.signatory.organizationalUnit(), "Renewing certificates");
 
   const auto& request = certified.message;
@@ -72,7 +72,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementCommitRequest(std::shared_ptr<SignedCertificateReplacementCommitRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, certified.signatory.organizationalUnit(), "Committing renewed certificates");
 
   const auto& request = certified.message;

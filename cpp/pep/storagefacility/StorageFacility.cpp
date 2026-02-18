@@ -296,7 +296,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto time = std::chrono::steady_clock::now();
   const auto& rootCAs = *this->getRootCAs();
 
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
   auto ticket = request.mTicket.open(rootCAs, accessGroup, "read-meta");
@@ -430,7 +430,7 @@ messaging::MessageBatches
 StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRequest2> signedRequest) {
   return rxcpp::observable<>::just(CreateObservable<std::shared_ptr<std::string>>([signedRequest, server = SharedFrom(*this)](rxcpp::subscriber<std::shared_ptr<std::string>> subscriber) {
     auto rootCAs = server->getRootCAs();
-    auto certified = signedRequest->certify(*rootCAs);
+    auto certified = signedRequest->open(*rootCAs);
     const auto& request = certified.message;
     auto userGroup = certified.signatory.organizationalUnit();
 
@@ -502,7 +502,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   auto time = std::chrono::steady_clock::now();
 
   auto rootCAs = this->getRootCAs();
-  auto certified = signedRequest->certify(*rootCAs);
+  auto certified = signedRequest->open(*rootCAs);
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -645,7 +645,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
   const GetDataAlterationResponse& getResponse) {
     auto time = std::chrono::steady_clock::now();
     const auto& rootCAs = this->getRootCAs();
-    auto certified = signedRequest->certify(*rootCAs);
+    auto certified = signedRequest->open(*rootCAs);
     auto request = MakeSharedCopy(std::move(certified.message));
     auto ticket = request->mTicket.open(*rootCAs, certified.signatory.organizationalUnit());
 
@@ -824,7 +824,7 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
 messaging::MessageBatches
 StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> lpRequest) {
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->certify(*rootCAs);
+  auto certified = lpRequest->open(*rootCAs);
   auto request = MakeSharedCopy(std::move(certified.message));
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -962,7 +962,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
 
   auto start_time = std::chrono::steady_clock::now();
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->certify(*rootCAs);
+  auto certified = lpRequest->open(*rootCAs);
   const auto& request = certified.message;
 
   auto accessGroup = certified.signatory.organizationalUnit();

@@ -419,7 +419,7 @@ messaging::MessageBatches AccessManager::handleGlobalConfigurationRequest(std::s
 messaging::MessageBatches
 AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> signedRequest) {
   auto start_time = std::chrono::steady_clock::now();
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   auto userGroup = certified.signatory.organizationalUnit();
   auto request = std::make_shared<EncryptionKeyRequest>(std::move(certified.message));
   auto clientCertificateChain = MakeSharedCopy(certified.signatory.certificateChain());
@@ -790,7 +790,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 }
 
 messaging::MessageBatches AccessManager::handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const AmaMutationRequest& request = certified.message;
   std::string userGroup = certified.signatory.organizationalUnit();
   backend->performMutationsForRequest(request, userGroup);
@@ -901,7 +901,7 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
 
 messaging::MessageBatches
 AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -919,7 +919,7 @@ AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
 }
 
 messaging::MessageBatches AccessManager::handleUserQuery(std::shared_ptr<SignedUserQuery> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
 
@@ -927,7 +927,7 @@ messaging::MessageBatches AccessManager::handleUserQuery(std::shared_ptr<SignedU
 }
 
 messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_ptr<SignedUserMutationRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
 
@@ -956,7 +956,7 @@ messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<
 messaging::MessageBatches
 AccessManager::handleColumnAccessRequest(
   std::shared_ptr<SignedColumnAccessRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -966,7 +966,7 @@ AccessManager::handleColumnAccessRequest(
 messaging::MessageBatches
 AccessManager::handleParticipantGroupAccessRequest(
   std::shared_ptr<SignedParticipantGroupAccessRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -975,7 +975,7 @@ AccessManager::handleParticipantGroupAccessRequest(
 
 messaging::MessageBatches AccessManager::handleColumnNameMappingRequest
 (std::shared_ptr<SignedColumnNameMappingRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -1006,7 +1006,7 @@ messaging::MessageBatches AccessManager::
 
 messaging::MessageBatches AccessManager::handleFindUserRequest(
     std::shared_ptr<SignedFindUserRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -1014,7 +1014,7 @@ messaging::MessageBatches AccessManager::handleFindUserRequest(
 }
 
 messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::shared_ptr<SignedStructureMetadataRequest> signedRequest) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -1030,7 +1030,7 @@ messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::sha
 messaging::MessageBatches AccessManager::handleSetStructureMetadataRequest(
     std::shared_ptr<SignedSetStructureMetadataRequest> signedRequest,
     messaging::MessageSequence chunks) {
-  auto certified = signedRequest->certify(*this->getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 

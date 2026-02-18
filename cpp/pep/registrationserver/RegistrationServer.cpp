@@ -669,7 +669,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
 }
 
 messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(std::shared_ptr<SignedRegistrationRequest> signedRequest) {
-  auto request = signedRequest->certify(*this->getRootCAs()).message;
+  auto request = signedRequest->open(*this->getRootCAs()).message;
 
   if (request.mEncryptionPublicKeyPem.empty()) {
     throw std::runtime_error("Participant registration requires the encryption key for shadow storage to be verified. Please ensure that the client provides one.");
