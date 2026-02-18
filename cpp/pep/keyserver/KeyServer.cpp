@@ -160,9 +160,9 @@ messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
     std::shared_ptr<SignedTokenBlockingRemoveRequest> signedRequest) {
   const auto certified = signedRequest->open(*this->getRootCAs());
   EnsureTokenBlockingAdminAccess(certified.signatory.organizationalUnit());
+  const auto& request = certified.message;
 
   if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
-  const auto& request = certified.message;
 
   auto entry = mBlocklist->removeById(request.id);
   if (!entry.has_value()) { throw Error{"Entry with id=" + std::to_string(request.id) + " does not exist."}; }
