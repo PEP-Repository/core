@@ -1,12 +1,14 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <pep/utils/File.hpp>
-#include <pep/structure/StructureSerializers.hpp>
-#include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
+#include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
+#include <pep/structure/StructureSerializers.hpp>
+#include <pep/utils/File.hpp>
 
 #include <chrono>
 #include <filesystem>
+#include <optional>
 #include <thread>
 
 using namespace pep;
@@ -16,10 +18,16 @@ using namespace std::ranges;
 using namespace std::chrono_literals;
 using namespace std::string_literals;
 
-namespace {
+using ::testing::HasSubstr;
 
-constexpr auto CaseSensitive = AccessManager::Backend::Storage::CaseSensitivity::CaseSensitive;
-constexpr auto CaseInsensitive = AccessManager::Backend::Storage::CaseSensitivity::CaseInsensitive;
+using CaseSensitivity = AccessManager::Backend::Storage::CaseSensitivity;
+constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
+constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
+
+#define PEP_EXPECT_THROWS_MESSAGE(statement, exception_type, ...) \
+  EXPECT_THAT([&] { statement; }, ::testing::ThrowsMessage<exception_type>(::testing::AllOf(__VA_ARGS__)))
+
+namespace {
 
 void PrepareSortedMine(UserQueryResponse& response) {
   erase_if(response.mUserGroups, [](const UserGroup& group) {
@@ -348,34 +356,117 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
   }
 }
 
-TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
+TEST_F(AccessManagerStorageTest, createUserGuardsAgainstDuplicates) {
   storage->createUser("Aart.Appel@fake.ru.nl");
-  storage->createUser("QmVydEJyYWFt");
 
-  EXPECT_ANY_THROW(storage->createUser("aart.appel@fake.ru.nl")) << "Should reject ids that match exactly";
-  EXPECT_ANY_THROW(storage->createUser("qmvydejyywft")) << "Should reject ids that only differs by case";
+  const auto msgMatcher = [](std::optional<CaseSensitivity> cs = std::nullopt) {
+    return testing::AllOf(
+        HasSubstr("identifier already exists"), // the reason for throwing
+        HasSubstr(cs == CaseSensitive ? "case-sensitive" : "case-insensitive")); // case-insensitive by default
+  };
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl"),
+      pep::Error,
+      msgMatcher());
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl", CaseSensitive),
+      pep::Error,
+      msgMatcher(CaseSensitive));
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl", CaseInsensitive),
+      pep::Error,
+      msgMatcher(CaseInsensitive));
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("aart.appel@fake.ru.nl"),
+      pep::Error,
+      msgMatcher());
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("AART.APPEL@fake.ru.nl", CaseInsensitive),
+      pep::Error,
+      msgMatcher(CaseInsensitive));
+
+  EXPECT_NO_THROW(storage->createUser("aart.appel@fake.ru.nl", CaseSensitive));
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
-  const auto idEmail = storage->createUser("Aart.Appel@fake.ru.nl"); // typical email
-  const auto idBase64 = storage->createUser("QmVydEJyYWFt"); // arbitrary base 64 string
+  const auto idEmailA = storage->createUser("Aart.Appel@fake.ru.nl"); // typical email
+  const auto idEmailB = storage->createUser("Bert.Bes@fake.ru.nl"); // typical email
+  const auto idBase64A = storage->createUser("QmVydEJyYWFt", CaseSensitive); // arbitrary base 64 string
+  const auto idBase64B = storage->createUser("qMvYDejYywfT", CaseSensitive); // only differs by casing from previous
 
   {
-    const auto section = "case: exact match";
-    EXPECT_EQ(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
-    EXPECT_EQ(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64) << section;
-  }
-
-  {
-    const auto section = "case: different casing";
-    EXPECT_EQ(storage->findInternalUserId("aart.appel@fake.ru.nl", CaseInsensitive), idEmail) << section;
+    const auto section = "case: case-sensitive matching on a single id";
+    EXPECT_EQ(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64A) << section;
+    EXPECT_EQ(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
     EXPECT_EQ(storage->findInternalUserId("qmvydejyywft", CaseSensitive), std::nullopt) << section;
   }
 
   {
-    const auto section = "case: no match";
+    const auto section = "case: case-sensitive matching on multiple ids";
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QmVydEJyYWFt", "qmvydejyywft"}, CaseSensitive),
+        idBase64A)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QMVYDEJYYWFT", "qMvYDejYywfT"}, CaseSensitive),
+        idBase64B)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QMVYDEJYYWFT", "qmvydejyywft"}, CaseSensitive),
+        std::nullopt)
+        << section;
+  }
+
+  {
+    const auto section = "case: case-insensitive matching on a single id";
+    EXPECT_EQ(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmailA) << section;
+    EXPECT_EQ(storage->findInternalUserId("bert.bes@fake.ru.nl", CaseInsensitive), idEmailB) << section;
     EXPECT_EQ(storage->findInternalUserId("Clara.Citroen@fake.ru.nl", CaseInsensitive), std::nullopt) << section;
-    EXPECT_EQ(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
+  }
+
+  {
+    const auto section = "case: case-insensitive matching on multiple ids";
+    EXPECT_EQ(
+        storage->findInternalUserId(
+            std::vector<std::string>{"Clara.Citroen@fake.ru.nl", "AART.APPEL@FAKE.RU.NL"},
+            CaseInsensitive),
+        idEmailA)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(
+            std::vector<std::string>{"bert.bes@fake.ru.nl", "Clara.Citroen@fake.ru.nl"},
+            CaseInsensitive),
+        idEmailB)
+        << section;
+  }
+
+  {
+    const auto section = "edge cases";
+    const auto msgMatcher = HasSubstr("multiple matching users");
+    EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseInsensitive), std::nullopt) << section;
+    EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseSensitive), std::nullopt) << section;
+
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId("QmVydEJyYWFt", CaseInsensitive),
+        pep::Error,
+        msgMatcher);
+
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId(std::vector<std::string>{"QmVydEJyYWFt", "qMvYDejYywfT"}, CaseSensitive),
+        pep::Error,
+        msgMatcher);
+
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId(
+            std::vector<std::string>{"AART.APPEL@FAKE.RU.NL", "BERT.BES@FAKE.RU.NL"},
+            CaseInsensitive),
+        pep::Error,
+        msgMatcher);
   }
 }
 

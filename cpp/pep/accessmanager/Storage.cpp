@@ -1342,9 +1342,9 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
   return 1;
 }
 
-int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
+int64_t AccessManager::Backend::Storage::createUser(std::string identifier, CaseSensitivity caseSensitivity) {
   int64_t internalUserId = getNextInternalUserId();
-  addIdentifierForUser(internalUserId, std::move(identifier));
+  addIdentifierForUser(internalUserId, std::move(identifier), caseSensitivity);
   return internalUserId;
 }
 
@@ -1409,21 +1409,11 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
-  const auto timeCondition = c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at);
-  const auto idEqualityCondition = is_equal(&UserIdRecord::identifier, identifier); // case-sensitive by default
-
-  // There is some code duplication that is hard to remove, because the types passed to RangeToOptional are different for each case
-  return (caseSensitivity == CaseSensitive)
-      ? RangeToOptional(mImplementor->getCurrentRecords(
-        timeCondition && idEqualityCondition,
-        &UserIdRecord::internalUserId))
-      : RangeToOptional(mImplementor->getCurrentRecords(
-        timeCondition && idEqualityCondition.collate_nocase(), // make it case-insensitive
-        &UserIdRecord::internalUserId));
+  return findInternalUserId(std::vector{std::string{identifier}}, caseSensitivity, at);
 }
 
-int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, Timestamp at) const {
-  std::optional<int64_t> internalUserId = findInternalUserId(identifier);
+int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
+  const auto internalUserId = findInternalUserId(identifier, caseSensitivity, at);
   if(!internalUserId) {
     throw Error("Could not find user id");
   }
@@ -1433,8 +1423,14 @@ int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view iden
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity caseSensitivity, Timestamp at) const {
   using namespace std::ranges;
 
-  const auto toOptional = [](auto&& range) {
-    return RangeToOptional(RangeToCollection<std::unordered_set>(std::forward<decltype(range)>(range)));
+  const auto toOptional = [](auto&& range) -> std::optional<int64_t> {
+    const auto vector = RangeToVector(std::forward<decltype(range)>(range));
+    if (vector.empty()) { return std::nullopt; }
+
+    const auto allEqual = std::equal(++vector.begin(), vector.end(), vector.begin()); // compares adjacent elements
+    if (!allEqual) { throw Error{"Failed to resolve to a unique internal user id: found multiple matching users"}; }
+
+    return vector.front();
   };
   const auto toLower = [](std::vector<std::string> identifiers){
     for (auto& id: identifiers) { boost::to_lower(id); }
@@ -1445,10 +1441,10 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
   // There is some code duplication that is hard to remove, because the types passed to toOptional are different
   return (caseSensitivity == CaseSensitive)
       ? toOptional(mImplementor->getCurrentRecords(
-            timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
+            timeCondition && in(&UserIdRecord::identifier, identifiers),
             &UserIdRecord::internalUserId))
       : toOptional(mImplementor->getCurrentRecords(
-            timeCondition && in(&UserIdRecord::identifier, identifiers),
+            timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
             &UserIdRecord::internalUserId));
 }
 

@@ -205,7 +205,12 @@ public:
   MigrateUserDbToAccessManagerResponse migrateUserDb(const std::filesystem::path& dbPath);
 
   /* Adding and removing users and user identifiers */
-  int64_t createUser(std::string identifier);
+
+  /// Creates a new user with an initial identifier while guarding against duplicate entries.
+  /// @details The `CaseSensitivity` parameter determines the strictness of the guard
+  ///   - **CaseInsensitive (default)** reject if there is an existing id that only differs by casing from the new one
+  ///   - **CaseSensitive** reject only if there is an existing id that exactly matches the new one
+  int64_t createUser(std::string identifier, CaseSensitivity = CaseInsensitive);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
   void addIdentifierForUser(std::string_view uid, std::string identifier, CaseSensitivity = CaseInsensitive);
@@ -217,7 +222,7 @@ public:
   /// Try to find the internalId for the user that has the given identifier. Returns nullopt if not found.
   std::optional<int64_t> findInternalUserId(std::string_view identifier, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
   /// Try to find the internalId for the user that has the given identifier. Throws if not found.
-  int64_t getInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
+  int64_t getInternalUserId(std::string_view identifier, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
   std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
 
