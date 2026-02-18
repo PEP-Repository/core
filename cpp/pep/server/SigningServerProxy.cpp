@@ -41,7 +41,8 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
   return this->sendRequest<SignedCsrResponse>(this->sign(CsrRequest{}))
   .op(RxGetOne("Signed CSR Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName](const SignedCsrResponse& signedResponse) {
-    auto response = signedResponse.open(*rootCAs, expectedCommonName).message;
+    signedResponse.validate(*rootCAs, expectedCommonName);
+    auto response = signedResponse.openWithoutCheckingSignature();
     if (response.getCsr().getCommonName() != expectedCommonName) {
       throw std::runtime_error("Received certificate signing request does not have expected common name");
     }

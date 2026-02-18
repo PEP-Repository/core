@@ -47,9 +47,8 @@ public:
     SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
   [[nodiscard]] Certified<T> open(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt) const {
-    auto signatory = this->validate(rootCAs, std::move(expectedCommonName));
+    const X509RootCertificates& rootCAs) const {
+    auto signatory = this->validate(rootCAs, std::nullopt);
     return Certified<T>{
       .signatory = std::move(signatory),
       .message = this->openWithoutCheckingSignature(),
