@@ -141,9 +141,9 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
 
   auto certified = signedRequest->open(*this->getRootCAs());
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, certified.signatory.organizationalUnit(), "token blocklist management");
+  const auto& request = certified.message;
 
   if (mBlocklist == nullptr) { throw Error{ "KeyServer does not have a blocklist" }; }
-  const auto& request = certified.message;
 
   auto entry = tokenBlocking::BlocklistEntry{
       .id = 0,
