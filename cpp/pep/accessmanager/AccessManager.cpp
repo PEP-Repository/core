@@ -757,7 +757,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     return ctx->server->mTranscryptorProxy.requestLogIssuedTicket(std::move(logReq));
   }).map([ctx](LogIssuedTicketResponse resp) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
-    ctx->signedTicket.mTranscryptorSignature = std::move(resp.mSignature);
+    ctx->signedTicket.addTranscryptorSignature(std::move(resp.mSignature));
 
     std::string response;
     if (!ctx->request.mRequestIndexedTicket) {

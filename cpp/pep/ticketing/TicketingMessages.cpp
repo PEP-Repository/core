@@ -39,6 +39,11 @@ std::vector<PolymorphicPseudonym> Ticket2::getPolymorphicPseudonyms() const {
   return ret;
 }
 
+void SignedTicket2::addTranscryptorSignature(Signature signature) {
+  assert(!mTranscryptorSignature.has_value());
+  mTranscryptorSignature = std::move(signature);
+}
+
 Ticket2 SignedTicket2::openWithoutCheckingSignature() const {
   return Serialization::FromString<Ticket2>(mData);
 }

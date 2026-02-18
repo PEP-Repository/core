@@ -31,6 +31,13 @@ public:
 
 template <>
 class Signed<Ticket2> {
+  friend class Serializer<Signed<Ticket2>>;
+
+private:
+  std::optional<Signature> mSignature;
+  std::optional<Signature> mTranscryptorSignature;
+  std::string mData;
+
 public:
   Signed() = default;
   Signed(
@@ -44,9 +51,7 @@ public:
     mTranscryptorSignature(std::move(mTranscryptorSignature)),
     mData(std::move(mData)) { }
 
-  std::optional<Signature> mSignature;
-  std::optional<Signature> mTranscryptorSignature;
-  std::string mData;
+  void addTranscryptorSignature(Signature signature);
 
   Ticket2 openWithoutCheckingSignature() const;
 
