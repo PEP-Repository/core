@@ -1,10 +1,10 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
+#include <pep/enrollment/KeyComponentSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 

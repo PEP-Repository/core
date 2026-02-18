@@ -1,5 +1,5 @@
 #include <pep/async/RxRequireCount.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
+#include <pep/enrollment/KeyComponentSerializers.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
 

@@ -8,6 +8,7 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/enrollment/KeyComponentSerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
@@ -15,7 +16,6 @@
 #include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>

@@ -1,8 +1,7 @@
-#include <pep/transcryptor/KeyComponentMessages.hpp>
+#include <pep/enrollment/KeyComponentMessages.hpp>
 
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 
 namespace pep {
 

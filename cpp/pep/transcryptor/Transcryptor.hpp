@@ -1,12 +1,12 @@
 #pragma once
 
 #include <pep/async/WorkerPool.hpp>
+#include <pep/enrollment/KeyComponentMessages.hpp>
 #include <pep/rsk-pep/DataTranslator.hpp>
 #include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/server/SigningServer.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
 #include <pep/transcryptor/TranscryptorMessages.hpp>
 
 #include <pep/transcryptor/Storage.hpp>

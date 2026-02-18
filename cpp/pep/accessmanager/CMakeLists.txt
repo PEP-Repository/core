@@ -32,7 +32,7 @@ if (WITH_SERVERS)
     ${PROJECT_NAME}AccessManagerApilib
     ${PROJECT_NAME}Databaselib
     ${PROJECT_NAME}KeyServerApilib
-    ${PROJECT_NAME}Serverlib
+    ${PROJECT_NAME}EnrollmentServerlib
     ${PROJECT_NAME}TranscryptorApilib
   )
 

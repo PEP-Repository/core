@@ -4,9 +4,9 @@
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/enrollment/KeyComponentMessages.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
 
 namespace pep {
 

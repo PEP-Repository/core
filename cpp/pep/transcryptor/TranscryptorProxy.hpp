@@ -1,7 +1,7 @@
 #pragma once
 
+#include <pep/enrollment/KeyComponentMessages.hpp>
 #include <pep/server/SigningServerProxy.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
 #include <pep/transcryptor/TranscryptorMessages.hpp>
 
 namespace pep {

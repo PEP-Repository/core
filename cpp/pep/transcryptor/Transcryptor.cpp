@@ -1,10 +1,10 @@
 #include <pep/transcryptor/Transcryptor.hpp>
 
 #include <pep/auth/EnrolledParty.hpp>
+#include <pep/enrollment/KeyComponentSerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/rsk/RskSerializers.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/utils/Configuration.hpp>
