@@ -175,7 +175,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   if (!mPseudonymKey)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
 
-  auto unpackedRequest = request->mRequest.openAsTranscryptor(*this->getRootCAs());
+  auto unpackedRequest = request->mRequest.certifyForTranscryptor(*this->getRootCAs()).message;
 
   struct Context {
     uintmax_t requestNumber{};
@@ -272,7 +272,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       if (ctx->includeUserGroupPseudonyms) {
         ret.mAccessGroup = server->mPseudonymTranslator->translateStep(
             *entry.mUserGroup,
-            RecipientForCertificate(ctx->ticketRequest.mLogSignature->getLeafCertificate())
+            RecipientForCertificate(ctx->ticketRequest.mLogSignature->certificateChain().leaf())
         );
       }
 

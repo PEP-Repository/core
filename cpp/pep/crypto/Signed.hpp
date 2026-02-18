@@ -21,14 +21,16 @@ public:
     : mData(std::move(data)),
     mSignature(std::move(signature)) { }
 
-  void validate(
+  Signatory validate(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
     std::chrono::seconds timestampLeeway = std::chrono::hours{ 1 }) const;
+};
 
-  std::string getLeafCertificateCommonName() const;
-  std::string getLeafCertificateOrganizationalUnit() const;
-  X509Certificate getLeafCertificate() const;
+template <typename T>
+struct Certified {
+  Signatory signatory;
+  T message;
 };
 
 template<typename T>
@@ -39,12 +41,22 @@ public:
   Signed(T o, const X509Identity& identity) :
     SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
-  [[nodiscard]] T open(
+  [[nodiscard]] Certified<T> certify(
     const X509RootCertificates& rootCAs,
     std::optional<std::string> expectedCommonName = std::nullopt,
     std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    mSignature.validate(mData, rootCAs, expectedCommonName, timestampLeeway);
-    return this->openWithoutCheckingSignature(); // We just validated the signature
+    auto signatory = mSignature.validate(mData, rootCAs, expectedCommonName, timestampLeeway);
+    return Certified<T>{
+      .signatory = std::move(signatory),
+      .message = this->openWithoutCheckingSignature(),
+    };
+  }
+
+  [[nodiscard]] T open(
+    const X509RootCertificates& rootCAs,
+    std::optional<std::string> expectedCommonName = std::nullopt,
+    std::chrono::seconds timestampLeeway = std::chrono::hours{ 1 }) const {
+    return this->certify(rootCAs, std::move(expectedCommonName), timestampLeeway).message;
   }
 
   T openWithoutCheckingSignature() const {

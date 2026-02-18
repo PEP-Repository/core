@@ -854,7 +854,7 @@ std::pair<std::string, std::optional<int64_t>> TranscryptorStorage::extractCerti
   // If the request('s log signature) has a certificate chain, store it separately
   std::optional<int64_t> chainId;
   if (request.mLogSignature.has_value()) {
-    chainId = this->getOrCreateCertificateChain(request.mLogSignature->mCertificateChain);
+    chainId = this->getOrCreateCertificateChain(request.mLogSignature->certificateChain());
     if (!chainId.has_value()) {
       throw std::runtime_error("No certificate chain stored for log signature");
     }
@@ -931,7 +931,7 @@ std::string TranscryptorStorage::logTicketRequest(
   // Already compute the access group now,
   // because we move the certificate chain from ticketRequest to its own table.
   std::string accessGroup
-      = ticketRequest.mLogSignature->getLeafCertificateOrganizationalUnit();
+      = ticketRequest.mLogSignature->certificateChain().leaf().getOrganizationalUnit().value_or("");
 
   auto [serialized, chainId] = this->extractCertificateChain(std::move(ticketRequest));
 

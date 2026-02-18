@@ -21,8 +21,8 @@ messaging::MessageBatches SigningServer::handlePingRequest(std::shared_ptr<PingR
 }
 
 messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<SignedCsrRequest> signedRequest) {
-  signedRequest->validate(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting CSRs");
+  auto signatory = signedRequest->validate(*this->getRootCAs());
+  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signatory.organizationalUnit(), "Requesting CSRs");
 
   AsymmetricKeyPair newKeyPair = AsymmetricKeyPair::GenerateKeyPair();
   mNewPrivateKey = newKeyPair.getPrivateKey();
@@ -32,8 +32,10 @@ messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<Signed
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std::shared_ptr<SignedCertificateReplacementRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Renewing certificates");
+  auto certified = signedRequest->certify(*this->getRootCAs());
+  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, certified.signatory.organizationalUnit(), "Renewing certificates");
+
+  const auto& request = certified.message;
 
   if (!mNewPrivateKey) {
     throw Error("Cannot replace certificate for server, since the server does not have a new private key.");
@@ -70,9 +72,10 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 }
 
 messaging::MessageBatches SigningServer::handleCertificateReplacementCommitRequest(std::shared_ptr<SignedCertificateReplacementCommitRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signedRequest->getLeafCertificateOrganizationalUnit(), "Committing renewed certificates");
+  auto certified = signedRequest->certify(*this->getRootCAs());
+  UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, certified.signatory.organizationalUnit(), "Committing renewed certificates");
 
+  const auto& request = certified.message;
 
   if (request.getCertificateChain() != mIdentityFiles->identity()->getCertificateChain()) {
     throw Error("Cannot commit replaced certificate for server, since the certificate chain in the request does not match the current certificate chain of the server");

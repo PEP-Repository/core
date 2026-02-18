@@ -14,9 +14,27 @@ Signatory::Signatory(X509CertificateChain certificateChain, X509RootCertificates
   : mCertificateChain(std::move(certificateChain)), mRootCAs(std::move(rootCAs)) {
   if (!mCertificateChain.verify(mRootCAs))
     throw Error("Invalid signatory: certificate chain not trusted");
-  if (mCertificateChain.leaf().hasTLSServerEKU())
+
+  const auto& cert = mCertificateChain.leaf();
+  if (cert.hasTLSServerEKU()) {
     throw Error("Invalid signatory: TLS certificate used instead of Signing certificate");
+  }
   // TODO: verify intermediate CA
+
+  if (!cert.getCommonName().has_value()) {
+    throw Error("Invalid signatory: no common name specified");
+  }
+  if (!cert.getOrganizationalUnit().has_value()) {
+    throw Error("Invalid signatory: no organizational unit specified");
+  }
+}
+
+std::string Signatory::commonName() const {
+  return mCertificateChain.leaf().getCommonName().value();
+}
+
+std::string Signatory::organizationalUnit() const {
+  return mCertificateChain.leaf().getOrganizationalUnit().value();
 }
 
 
@@ -53,11 +71,11 @@ Signatory Signature::validate(
     bool expectLogCopy) const {
   Signatory result(mCertificateChain, rootCAs);
 
-  if (expectedCommonName && *expectedCommonName != getLeafCertificateCommonName()) {
+  if (expectedCommonName && *expectedCommonName != result.commonName()) {
     std::ostringstream msg;
     msg << "Invalid signature: incorrect common name on leaf certificate "
         << "(expected " << Logging::Escape(*expectedCommonName) << " but got "
-        << Logging::Escape(getLeafCertificateCommonName()) << ")";
+        << Logging::Escape(result.commonName()) << ")";
     throw Error(msg.str());
   }
 
@@ -96,19 +114,6 @@ Signatory Signature::validate(
     throw Error("Invalid signature: data does not match signature or chain");
 
   return result;
-}
-
-
-std::string Signature::getLeafCertificateCommonName() const {
-  return mCertificateChain.leaf().getCommonName().value_or("");
-}
-
-std::string Signature::getLeafCertificateOrganizationalUnit() const {
-  return mCertificateChain.leaf().getOrganizationalUnit().value_or("");
-}
-
-X509Certificate Signature::getLeafCertificate() const {
-  return mCertificateChain.leaf();
 }
 
 }

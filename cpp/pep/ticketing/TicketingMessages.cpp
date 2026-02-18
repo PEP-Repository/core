@@ -114,7 +114,7 @@ Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
   mLogSignature = Signature::Make(mData, identity, true);
 }
 
-TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
+Certified<TicketRequest2> Signed<TicketRequest2>::certifyForAccessManager(
   const X509RootCertificates& rootCAs) {
   if (!mSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature");
@@ -122,11 +122,11 @@ TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
   // Check signatures separately
-  mSignature->validate(mData, rootCAs, std::nullopt, 1h, false);
-  mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
+  auto signatory = mSignature->validate(mData, rootCAs, std::nullopt, 1h, false);
+  auto logSignatory = mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
 
   // Check signatures are similar enough
-  auto diff = Abs(mSignature->mTimestamp - mLogSignature->mTimestamp);
+  auto diff = Abs(mSignature->timestamp() - mLogSignature->timestamp());
   if (diff > 1min)
     throw Error("Invalid SignedTicketRequest2: timestamps "
       "of signatures too far apart");
@@ -134,24 +134,29 @@ TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
   // TODO instead it's better to check the public keys are the same.  (Then
   // don't have to check all the other fields of the certificate that might
   // become relevant).
-  if (mSignature->getLeafCertificateOrganizationalUnit()
-    != mLogSignature->getLeafCertificateOrganizationalUnit())
+  if (signatory.organizationalUnit() != logSignatory.organizationalUnit()) {
     throw Error("Invalid SignedTicketRequest2: organizational "
       "units of signatures do not match");
+  }
 
-  return Serialization::FromString<TicketRequest2>(mData);
+  return Certified<TicketRequest2>{
+    .signatory = std::move(signatory),
+    .message = Serialization::FromString<TicketRequest2>(mData),
+  };
 }
 
-TicketRequest2 Signed<TicketRequest2>::openAsTranscryptor(
+Certified<TicketRequest2> Signed<TicketRequest2>::certifyForTranscryptor(
   const X509RootCertificates& rootCAs) {
   if (mSignature)
     throw Error("Invalid SignedTicketRequest2: signature for AM shouldn't be set");
   if (!mLogSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
-  mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
-
-  return Serialization::FromString<TicketRequest2>(mData);
+  auto signatory = mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
+  return Certified<TicketRequest2> {
+    .signatory = std::move(signatory),
+    .message = Serialization::FromString<TicketRequest2>(mData),
+  };
 }
 
 }

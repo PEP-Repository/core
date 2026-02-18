@@ -95,8 +95,10 @@ std::unordered_set<std::string> Server::getAllowedChecksumChainRequesters() {
 messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting checksum chains");
-  auto request = signedRequest->open(*getRootCAs());
+  auto certified = signedRequest->certify(*getRootCAs());
+  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
+
+  const auto& request = certified.message;
   std::optional<uint64_t> maxCheckpoint;
 
   if (!request.mCheckpoint.empty()) {
@@ -122,8 +124,8 @@ Server::handleChecksumChainRequest(
 messaging::MessageBatches
 Server::handleChecksumChainNamesRequest(
   std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest) {
-  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting checksum chain names");
-  signedRequest->validate(*getRootCAs());
+  auto signatory = signedRequest->validate(*getRootCAs());
+  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
   ChecksumChainNamesResponse resp;
   resp.mNames = getChecksumChainNames();
   return messaging::BatchSingleMessage(std::move(resp));
