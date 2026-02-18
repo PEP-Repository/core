@@ -296,7 +296,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto time = std::chrono::steady_clock::now();
   const auto& rootCAs = *this->getRootCAs();
 
-  auto certified = signedRequest->open(*this->getRootCAs());
+  auto certified = signedRequest->open(rootCAs);
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
   auto ticket = request.mTicket.open(rootCAs, accessGroup, "read-meta");
