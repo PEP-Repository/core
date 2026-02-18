@@ -20,7 +20,12 @@ class AccessManager::Backend::Storage {
 public:
   struct Implementor; // Public to allow access from checksum calculation function
 
+  enum class CaseSensitivity { CaseSensitive, CaseInsensitive };
+
 private:
+  static inline constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
+  static inline constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
+
   std::shared_ptr<Implementor> mImplementor;
   std::shared_ptr<GlobalConfiguration> mGlobalConf;
   std::filesystem::path mStoragePath;
@@ -206,20 +211,25 @@ public:
   MigrateUserDbToAccessManagerResponse migrateUserDb(const std::filesystem::path& dbPath);
 
   /* Adding and removing users and user identifiers */
-  int64_t createUser(std::string identifier);
+
+  /// Creates a new user with an initial identifier while guarding against duplicate entries.
+  /// @details The `CaseSensitivity` parameter determines the strictness of the guard
+  ///   - **CaseInsensitive (default)** reject if there is an existing id that only differs by casing from the new one
+  ///   - **CaseSensitive** reject only if there is an existing id that exactly matches the new one
+  int64_t createUser(std::string identifier, CaseSensitivity = CaseInsensitive);
   void removeUser(std::string_view uid);
   void removeUser(int64_t internalUserId);
-  void addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags);
-  void addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags);
+  void addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags, CaseSensitivity = CaseInsensitive);
+  void addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags, CaseSensitivity = CaseInsensitive);
   void removeIdentifierForUser(int64_t internalUserId, std::string identifier);
   void removeIdentifierForUser(std::string identifier);
 
   /* Finding user identifiers */
   /// Try to find the internalId for the user that has the given identifier. Returns nullopt if not found.
-  std::optional<int64_t> findInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
+  std::optional<int64_t> findInternalUserId(std::string_view identifier, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
   /// Try to find the internalId for the user that has the given identifier. Throws if not found.
-  int64_t getInternalUserId(std::string_view identifier, Timestamp at = TimeNow()) const;
-  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at = TimeNow()) const;
+  int64_t getInternalUserId(std::string_view identifier, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
+  std::optional<int64_t> findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity = CaseSensitive, Timestamp at = TimeNow()) const;
   std::unordered_set<std::string> getAllIdentifiersForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
   std::optional<std::string> getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
   std::optional<std::string> getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
