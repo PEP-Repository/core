@@ -10,6 +10,12 @@ public: // You should have no business accessing these unless you're (de)seriali
   std::string mData;
   Signature mSignature;
 
+public:
+  Signatory validate(
+    const X509RootCertificates& rootCAs,
+    std::optional<std::string> expectedCommonName = std::nullopt,
+    std::chrono::seconds timestampLeeway = std::chrono::hours{ 1 }) const;
+
 protected:
   SignedBase(
     std::string data,
@@ -25,12 +31,6 @@ protected:
   T deserializeAs() const {
     return Serialization::FromString<T>(mData);
   }
-
-public:
-  Signatory validate(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt,
-    std::chrono::seconds timestampLeeway = std::chrono::hours{ 1 }) const;
 };
 
 template <typename T>
