@@ -1,3 +1,4 @@
+#include <pep/auth/Certificate.hpp>
 #include <pep/auth/Signature.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/utils/Bitpacking.hpp>
@@ -16,8 +17,8 @@ Signatory::Signatory(X509CertificateChain certificateChain, X509RootCertificates
     throw Error("Invalid signatory: certificate chain not trusted");
 
   const auto& cert = mCertificateChain.leaf();
-  if (cert.hasTLSServerEKU()) {
-    throw Error("Invalid signatory: TLS certificate used instead of Signing certificate");
+  if (!IsSigningCertificate(cert)) {
+    throw Error("Invalid signatory: certificate is not a (PEP) Signing certificate");
   }
   // TODO: verify intermediate CA
 
