@@ -650,7 +650,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
 
     auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
 
-    if (!request.mLogSignature) {
+    if (!request.logSignature()) {
       LOG(LOG_TAG, warning) << "Ticket request record number "
         << record.seqno << " has no log signature!";
       // although troublesome, it does not affect migration, so we ...
@@ -853,8 +853,9 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
 std::pair<std::string, std::optional<int64_t>> TranscryptorStorage::extractCertificateChain(SignedTicketRequest2 request) {
   // If the request('s log signature) has a certificate chain, store it separately
   std::optional<int64_t> chainId;
-  if (request.mLogSignature.has_value()) {
-    chainId = this->getOrCreateCertificateChain(request.mLogSignature->certificateChain());
+  const auto& logSignature = request.logSignature();
+  if (logSignature.has_value()) {
+    chainId = this->getOrCreateCertificateChain(logSignature->certificateChain());
     if (!chainId.has_value()) {
       throw std::runtime_error("No certificate chain stored for log signature");
     }
@@ -926,12 +927,13 @@ std::string TranscryptorStorage::logTicketRequest(
     SignedTicketRequest2 ticketRequest,
     std::string pseudonymHash) {
 
-  if (!ticketRequest.mLogSignature)
+  const auto& logSignature = ticketRequest.logSignature();
+  if (!logSignature)
     throw Error("log signature on ticket request is not set");
   // Already compute the access group now,
   // because we move the certificate chain from ticketRequest to its own table.
   std::string accessGroup
-      = ticketRequest.mLogSignature->certificateChain().leaf().getOrganizationalUnit().value_or("");
+      = logSignature->certificateChain().leaf().getOrganizationalUnit().value_or("");
 
   auto [serialized, chainId] = this->extractCertificateChain(std::move(ticketRequest));
 

@@ -119,6 +119,15 @@ Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
   mLogSignature = Signature::Make(mData, identity, true);
 }
 
+Signature Signed<TicketRequest2>::extractSignature() {
+  if (!mSignature.has_value()) {
+    throw std::runtime_error("Signed ticket request does not contain a signature to extract");
+  }
+  auto result = std::move(*mSignature);
+  mSignature.reset();
+  return result;
+}
+
 Certified<TicketRequest2> Signed<TicketRequest2>::openAsAccessManager(
   const X509RootCertificates& rootCAs) {
   if (!mSignature)

@@ -638,6 +638,10 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
                                              ticket.mColumns,         // columns (in & out)
                                              columnGroupMap);         // (out)
 
+  // Remove the main client signature to prevent reuse of
+  // the SignedTicketRequest2.
+  auto signature = signedRequest->extractSignature();
+
   // Because of all the asynchronous IO, we move all state into this context
   // struct, so that we don't have to put everything into shared_ptrs
   struct Context {
@@ -651,7 +655,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
     std::vector<std::string> participantModes;
-    TranscryptorRequest tsReq{};
+    TranscryptorRequest tsReq;
     TranscryptorRequestEntries tsReqEntries{};
     Signature signature; // signature (for the AM) on the TicketRequest
   };
@@ -666,15 +670,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
-    .signature = std::move(*signedRequest->mSignature),
+    .tsReq {.mRequest = std::move(*signedRequest) },
+    .signature = std::move(signature),
     });
 
-  // Remove the main client signature to prevent reuse of
-  // the SignedTicketRequest2.
-  signedRequest->mSignature.reset();
-
   // Prepare transcryptor request
-  ctx->tsReq.mRequest = std::move(*signedRequest);
   ctx->tsReqEntries.mEntries.resize(ctx->pps.size());
 
   LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";
@@ -830,9 +830,10 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     ticketRequest.mParticipantGroups = {participantGroup};
     ticketRequest.mModes = {"enumerate"};
     ticketRequest.mPolymorphicPseudonyms = list;
-    TranscryptorRequest tsRequest;
     std::string data = Serialization::ToString(ticketRequest);
-    tsRequest.mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data);
+    TranscryptorRequest tsRequest{
+      .mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data)
+    };
     TranscryptorRequestEntries tsRequestEntries;
     tsRequestEntries.mEntries.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
     for (size_t i = 0; i < list.size(); i++) {

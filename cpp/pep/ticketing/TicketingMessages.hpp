@@ -85,8 +85,14 @@ public:
 
 template <>
 class Signed<TicketRequest2> {
+  friend class Serializer<Signed<TicketRequest2>>;
+
+private:
+  std::optional<Signature> mSignature;
+  std::optional<Signature> mLogSignature;
+  std::string mData;
+
 public:
-  Signed() = default;
   Signed(TicketRequest2 ticketRequest,
     const X509Identity& identity);
   Signed(
@@ -97,12 +103,11 @@ public:
     mLogSignature(std::move(mLogSignature)),
     mData(std::move(mData)) { }
 
+  const std::optional<Signature>& logSignature() const noexcept { return mLogSignature; }
+  Signature extractSignature();
+
   Certified<TicketRequest2> openAsAccessManager(const X509RootCertificates& rootCAs);
   Certified<TicketRequest2> openAsTranscryptor(const X509RootCertificates& rootCAs);
-
-  std::optional<Signature> mSignature;
-  std::optional<Signature> mLogSignature;
-  std::string mData;
 };
 
 using SignedTicket2 = Signed<Ticket2>;

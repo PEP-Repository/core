@@ -50,10 +50,9 @@ void Serializer<TranscryptorRequest>::moveIntoProtocolBuffer(proto::Transcryptor
 }
 
 TranscryptorRequest Serializer<TranscryptorRequest>::fromProtocolBuffer(proto::TranscryptorRequest&& source) const {
-  TranscryptorRequest result;
-  result.mRequest = Serialization::FromProtocolBuffer(
-    std::move(*source.mutable_request()));
-  return result;
+  return TranscryptorRequest{
+    .mRequest = Serialization::FromProtocolBuffer(std::move(*source.mutable_request())),
+  };
 }
 
 TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffer(proto::TranscryptorRequestEntry&& source) const {
