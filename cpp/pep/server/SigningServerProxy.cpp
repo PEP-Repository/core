@@ -41,7 +41,10 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
   return this->sendRequest<SignedCsrResponse>(this->sign(CsrRequest{}))
   .op(RxGetOne("Signed CSR Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName](const SignedCsrResponse& signedResponse) {
-    signedResponse.validate(*rootCAs, expectedCommonName);
+    auto signatory = signedResponse.validate(*rootCAs);
+    if (signatory.commonName() != expectedCommonName) {
+      throw std::runtime_error("CSR response was signed using an unexpected common name");
+    }
     auto response = signedResponse.openWithoutCheckingSignature();
     if (response.getCsr().getCommonName() != expectedCommonName) {
       throw std::runtime_error("Received certificate signing request does not have expected common name");
@@ -72,7 +75,10 @@ rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(co
   return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, allowChangingSubject}))
   .op(RxGetOne("Signed Certificate Replacement Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
-    auto signatory = signedResponse.validate(*rootCAs, expectedCommonName);
+    auto signatory = signedResponse.validate(*rootCAs);
+    if (signatory.commonName() != expectedCommonName) {
+      throw std::runtime_error("Certificate replacement response was signed using an unexpected common name");
+    }
     if (signatory.certificateChain() != newCertificateChain) {
       throw std::runtime_error("The response from the server was not signed by the new certificate chain");
     }

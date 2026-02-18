@@ -6,13 +6,11 @@ SignedBase::SignedBase(std::string data, const X509Identity& identity)
   : mData(std::move(data)), mSignature(Signature::Make(mData, identity)) {
 }
 
-Signatory SignedBase::validate(
-  const X509RootCertificates& rootCAs,
-  std::optional<std::string> expectedCommonName) const {
+Signatory SignedBase::validate(const X509RootCertificates& rootCAs) const {
   return mSignature.validate(
     mData,
     rootCAs,
-    expectedCommonName,
+    std::nullopt,
     std::chrono::hours{1}
   );
 }

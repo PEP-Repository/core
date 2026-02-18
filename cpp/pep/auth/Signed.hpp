@@ -11,9 +11,7 @@ public: // You should have no business accessing these unless you're (de)seriali
   Signature mSignature;
 
 public:
-  Signatory validate(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt) const;
+  Signatory validate(const X509RootCertificates& rootCAs) const;
 
 protected:
   SignedBase(
@@ -46,9 +44,8 @@ public:
   Signed(T o, const X509Identity& identity) :
     SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
-  [[nodiscard]] Certified<T> open(
-    const X509RootCertificates& rootCAs) const {
-    auto signatory = this->validate(rootCAs, std::nullopt);
+  [[nodiscard]] Certified<T> open(const X509RootCertificates& rootCAs) const {
+    auto signatory = this->validate(rootCAs);
     return Certified<T>{
       .signatory = std::move(signatory),
       .message = this->openWithoutCheckingSignature(),

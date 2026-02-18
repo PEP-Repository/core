@@ -76,7 +76,8 @@ Server::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
 messaging::MessageBatches
 Server::handleMetricsRequest(
   std::shared_ptr<SignedMetricsRequest> signedRequest) {
-  signedRequest->validate(*getRootCAs(), UserGroup::Watchdog);
+  auto signatory = signedRequest->validate(*getRootCAs());
+  UserGroup::EnsureAccess({ UserGroup::Watchdog }, signatory.organizationalUnit(), "Metrics retrieval");
   auto registry = getMetricsRegistry();
   if (registry == nullptr)
     throw Error("Server does not collect metrics");
