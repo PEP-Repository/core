@@ -20,7 +20,6 @@ Signatory::Signatory(X509CertificateChain certificateChain, X509RootCertificates
   if (!IsSigningCertificate(cert)) {
     throw Error("Invalid signatory: certificate is not a (PEP) Signing certificate");
   }
-  // TODO: verify intermediate CA
 
   if (!cert.getCommonName().has_value()) {
     throw Error("Invalid signatory: no common name specified");
