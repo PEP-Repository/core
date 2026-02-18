@@ -1,4 +1,5 @@
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/rsk/RskSerializers.hpp>
