@@ -1,16 +1,14 @@
 #pragma once
 
-#include <pep/enrollment/KeyComponentMessages.hpp>
-#include <pep/server/SigningServerProxy.hpp>
+#include <pep/enrollment/EnrollmentServerProxy.hpp>
 #include <pep/transcryptor/TranscryptorMessages.hpp>
 
 namespace pep {
 
-class TranscryptorProxy : public SigningServerProxy {
+class TranscryptorProxy : public EnrollmentServerProxy {
 public:
-  using SigningServerProxy::SigningServerProxy;
+  using EnrollmentServerProxy::EnrollmentServerProxy;
 
-  rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const;
   rxcpp::observable<TranscryptorResponse> requestTranscryption(TranscryptorRequest request, messaging::Tail<TranscryptorRequestEntries> entries) const;
   rxcpp::observable<RekeyResponse> requestRekey(RekeyRequest request) const;
   rxcpp::observable<LogIssuedTicketResponse> requestLogIssuedTicket(LogIssuedTicketRequest request) const;

@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME}EnrollmentApilib
 
 target_link_libraries(${PROJECT_NAME}EnrollmentApilib
   ${PROJECT_NAME}Morphinglib
+  ${PROJECT_NAME}ServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}EnrollmentApilib)
 

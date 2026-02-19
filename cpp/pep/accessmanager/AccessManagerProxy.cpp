@@ -1,6 +1,5 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
-#include <pep/enrollment/KeyComponentSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
@@ -9,12 +8,6 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace pep {
-
-rxcpp::observable<KeyComponentResponse> AccessManagerProxy::requestKeyComponent(SignedKeyComponentRequest request) const {
-  // TODO: consolidate duplicate code with TranscryptorProxy::requestKeyComponent
-  return this->sendRequest<KeyComponentResponse>(std::move(request))
-    .op(RxGetOne());
-}
 
 rxcpp::observable<SignedTicket2> AccessManagerProxy::requestTicket(ClientSideTicketRequest2 request) const {
   TicketRequest2 sendable{
