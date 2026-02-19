@@ -186,7 +186,7 @@ include:
 
 .not-stable-release: &not-stable-release
   # Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
-  if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN && $CI_COMMIT_BRANCH != $PEP_FOSS_LATEST_RELEASE_BRANCH)
+  if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN)
 
 .skip-for-binaries-for-xyz:
   rules:
@@ -253,7 +253,7 @@ check-docker-build-versions:
   image: alpine
   rules:
     # Allow failure on feature branches for submodule updates where a new builder image is not immediately required
-    - if: $CI_COMMIT_BRANCH != $PEP_FOSS_DEVELOPMENT_BRANCH && $CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN && $CI_COMMIT_BRANCH != $PEP_FOSS_LATEST_RELEASE_BRANCH
+    - if: $CI_COMMIT_BRANCH != $PEP_FOSS_DEVELOPMENT_BRANCH && $CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
       allow_failure: true
     - when: on_success
   before_script:
@@ -336,7 +336,6 @@ cleanup:
   - if [[ $CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$ ]]
     || [ "$CI_COMMIT_BRANCH" = "$PEP_FOSS_TESTING_BRANCH" ]
     || [[ $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN ]]
-    || [ "$CI_COMMIT_BRANCH" = "$PEP_FOSS_LATEST_RELEASE_BRANCH" ]
   - then
   -   enable_deprecation_errors=OFF
   - else
@@ -1263,8 +1262,9 @@ update-foss-submodule-in-dtap:
   rules:
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
       when: never
-    - if: $CI_COMMIT_BRANCH == $PEP_FOSS_LATEST_RELEASE_BRANCH
-      when: never
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
+      when: manual
+      allow_failure: true
     - !reference [.skip-for-binaries-for-xyz, rules]
     # Not for tag pipelines
     - if: $CI_COMMIT_BRANCH
@@ -1365,11 +1365,6 @@ trigger-dtap-pipeline:
   rules:
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
       when: never
-    - if: $CI_COMMIT_BRANCH == $PEP_FOSS_LATEST_RELEASE_BRANCH
-      when: never
-    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
-      when: manual
-      allow_failure: true
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - if: $CI_COMMIT_BRANCH
       when: on_success
