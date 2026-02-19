@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/enrollment/KeyComponentMessages.hpp>
+#include <pep/key-components/KeyComponentMessages.hpp>
 #include <pep/server/SigningServerProxy.hpp>
 
 namespace pep {

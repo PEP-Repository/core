@@ -5,8 +5,7 @@ add_library(${PROJECT_NAME}TranscryptorApilib
 )
 
 target_link_libraries(${PROJECT_NAME}TranscryptorApilib
-  ${PROJECT_NAME}EnrollmentApilib
-  ${PROJECT_NAME}ServerApilib
+  ${PROJECT_NAME}KeyComponentApilib
   ${PROJECT_NAME}Ticketinglib
 )
 verify_headers_standalone(${PROJECT_NAME}TranscryptorApilib)
@@ -21,7 +20,7 @@ if (WITH_SERVERS)
 
   target_link_libraries(${PROJECT_NAME}Transcryptorlib
     ${PROJECT_NAME}TranscryptorApilib
-    ${PROJECT_NAME}EnrollmentServerlib
+    ${PROJECT_NAME}KeyComponentServerlib
     ${PROJECT_NAME}Databaselib
   )
 

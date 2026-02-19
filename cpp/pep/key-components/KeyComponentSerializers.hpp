@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/crypto/CryptoSerializers.hpp>
-#include <pep/enrollment/KeyComponentMessages.hpp>
+#include <pep/key-components/KeyComponentMessages.hpp>
 
 namespace pep {
 

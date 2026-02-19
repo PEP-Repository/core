@@ -1,4 +1,4 @@
-#include <pep/enrollment/KeyComponentMessages.hpp>
+#include <pep/key-components/KeyComponentMessages.hpp>
 
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/morphing/RepoRecipient.hpp>

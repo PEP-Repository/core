@@ -1,6 +1,6 @@
 #include <pep/async/RxRequireCount.hpp>
-#include <pep/enrollment/EnrollmentServerProxy.hpp>
-#include <pep/enrollment/KeyComponentSerializers.hpp>
+#include <pep/key-components/EnrollmentServerProxy.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 
 namespace pep {
 

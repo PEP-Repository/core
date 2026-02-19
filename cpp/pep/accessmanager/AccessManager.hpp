@@ -6,7 +6,7 @@
 #include <pep/async/WorkerPool.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
 #include <pep/rsk/Verifiers.hpp>
-#include <pep/enrollment/EnrollmentServer.hpp>
+#include <pep/key-components/EnrollmentServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 

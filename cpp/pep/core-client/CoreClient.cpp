@@ -6,7 +6,7 @@
 #include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
-#include <pep/enrollment/KeyComponentSerializers.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>

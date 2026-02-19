@@ -1,6 +1,6 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/enrollment/KeyComponentSerializers.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/utils/Log.hpp>
 
 #include <boost/algorithm/hex.hpp>

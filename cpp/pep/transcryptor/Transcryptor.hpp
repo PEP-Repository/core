@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/async/WorkerPool.hpp>
-#include <pep/enrollment/EnrollmentServer.hpp>
+#include <pep/key-components/EnrollmentServer.hpp>
 #include <pep/rsk-pep/DataTranslator.hpp>
 #include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>

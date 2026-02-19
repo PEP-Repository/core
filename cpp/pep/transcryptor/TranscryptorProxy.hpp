@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/enrollment/EnrollmentServerProxy.hpp>
+#include <pep/key-components/EnrollmentServerProxy.hpp>
 #include <pep/transcryptor/TranscryptorMessages.hpp>
 
 namespace pep {

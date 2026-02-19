@@ -1,5 +1,5 @@
-#include <pep/enrollment/EnrollmentServer.hpp>
-#include <pep/enrollment/KeyComponentSerializers.hpp>
+#include <pep/key-components/EnrollmentServer.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Log.hpp>
