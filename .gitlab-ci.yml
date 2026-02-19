@@ -30,26 +30,46 @@ variables:
 
   # When adding executables including unit tests below, also add them to /docker/services.Dockerfile
 
-  EXECUTABLES_BASE: >-
+  EXECUTABLES_APPS: >-
     cpp/pep/apps/pepDumpShadowAdministration
     cpp/pep/apps/pepEnrollment
     cpp/pep/apps/pepGenerateSystemKeys
     cpp/pep/apps/pepToken
+
+  EXECUTABLES_PEP_SERVICES: >-
     cpp/pep/accessmanager/pepAccessManager
     cpp/pep/authserver/pepAuthserver
     cpp/pep/keyserver/pepKeyServer
     cpp/pep/registrationserver/pepRegistrationServer
     cpp/pep/storagefacility/pepStorageFacility
     cpp/pep/transcryptor/pepTranscryptor
+
+  EXECUTABLES_CLIENT: >-
     cpp/pep/cli/pepcli
     cpp/pep/logon/pepLogon
+
+  EXECUTABLES_BENCHMARK: >-
     cpp/pep/benchmark/pepbenchmark
 
-  EXECUTABLE_CASTOR: >-
+  LOCAL_CONFIG_CLIENT: >-
+    cpp/pep/cli/ClientConfig.json
+    cpp/pep/cli/rootCA.cert
+    cpp/pep/cli/configVersion.json
+    cpp/pep/cli/ShadowAdministration.pub
+
+  EXECUTABLE_PULLCASTOR: >-
     cpp/pep/pullcastor/pepPullCastor
 
-  EXECUTABLE_SERVERS: >-
+  # Monolithic pepServers executable with bundled configuration files
+  PEPSERVERS_MONOLITH: >-
     cpp/pep/servers/pepServers
+    cpp/pep/servers/accessmanager
+    cpp/pep/servers/authserver
+    cpp/pep/servers/keyserver
+    cpp/pep/servers/registrationserver
+    cpp/pep/servers/storagefacility
+    cpp/pep/servers/transcryptor
+    cpp/pep/servers/configVersion.json
 
   PATH_AUTOCOMPLETION: >-
     autocomplete
@@ -134,6 +154,7 @@ variables:
   IMAGE_PEP_SCHEDULER:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-scheduler
   IMAGE_PEP_CONNECTOR:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-connector
   IMAGE_PEP_COMPOSE:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/docker-compose
+  IMAGE_PEP_SANDBOX:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-sandbox
   # authserver itself is now part of the pep-services container, so we only need a separate apache/shibboleth container
   IMAGE_PEP_AUTHSERVER_APACHE: ${CI_REGISTRY}/${CI_PROJECT_PATH}/authserver_apache
 
@@ -404,6 +425,8 @@ retrieve-lockfile:
   needs:
     - job: retrieve-lockfile
       optional: true
+  variables:
+    HTTPSERVER_WITH_TLS: "OFF"
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
@@ -439,7 +462,7 @@ retrieve-lockfile:
       -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
       -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
       -DENABLE_OAUTH_TEST_USERS=OFF
-      -DHTTPSERVER_WITH_TLS=Off
+      -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
     - cmake --build --preset conan-$build_type_lower
@@ -519,8 +542,11 @@ ubuntu-lts-release:
   variables:
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
-      $EXECUTABLES_BASE
-      $EXECUTABLE_CASTOR
+      $EXECUTABLES_APPS
+      $EXECUTABLES_PEP_SERVICES
+      $EXECUTABLES_CLIENT
+      $EXECUTABLES_BENCHMARK
+      $EXECUTABLE_PULLCASTOR
       $EXECUTABLES_GO
       $UNIT_TESTS_INTEGRATION
       $UNIT_TESTS_BASE
@@ -544,6 +570,32 @@ ubuntu-lts-release-manual-lint:
       allow_failure: true
   variables:
     ENABLE_LINTER: yes
+
+#################### Ubuntu LTS Release w/o Castor ####################
+
+ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
+  extends:
+    - .ubuntu-build-base
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+    BUILD_GO_SERVERS: "off"
+    WITH_CASTOR: "False"
+    WITH_TESTS: "False"
+    MEM_ANALYSIS_TOOL: "none"
+    WITH_BENCHMARK: "False"
+    HTTPSERVER_WITH_TLS: "ON"
+    ARTIFACTS: >-
+      $PATH_AUTOCOMPLETION
+      $EXECUTABLES_CLIENT
+      $LOCAL_CONFIG_CLIENT
+      $PEPSERVERS_MONOLITH
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
 
 #################### Ubuntu Rolling Debug ####################
 
@@ -699,8 +751,11 @@ windows-all-targets:
   script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
     - *checkout-docker-build-script-powershell-steps
     - cmd /c "call ./ci_cd/windows-ci-build.bat all-targets $CMAKE_BUILD_TYPE"
-    - $EXECUTABLES = "$EXECUTABLES_BASE
-                      $EXECUTABLE_SERVERS
+    - $EXECUTABLES = "$EXECUTABLES_APPS
+                      $EXECUTABLES_PEP_SERVICES
+                      $EXECUTABLES_CLIENT
+                      $EXECUTABLES_BENCHMARK
+                      $PEPSERVERS_MONOLITH
                       $UNIT_TESTS_INTEGRATION
                       $UNIT_TESTS_BASE"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
@@ -772,8 +827,11 @@ macos-client-arm:
     WITH_CASTOR: "False" # Currently castor does not compile on macOS
     MEM_ANALYSIS_TOOL: "none"
     ARTIFACTS: >-
-      $EXECUTABLES_BASE
-      $EXECUTABLE_SERVERS
+      $EXECUTABLES_APPS
+      $EXECUTABLES_PEP_SERVICES
+      $EXECUTABLES_CLIENT
+      $EXECUTABLES_BENCHMARK
+      $PEPSERVERS_MONOLITH
       $EXECUTABLES_GO
       $UNIT_TESTS_INTEGRATION
       $UNIT_TESTS_BASE
@@ -880,6 +938,23 @@ build-docker-images:
                           --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST"
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" .
+
+build-sandbox-docker-image:
+  stage: build
+  extends: .dind
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  needs:
+    - ubuntu-lts-release-without-castor
+  #language=sh
+  script:
+    - *docker_login
+    - docker buildx build --pull
+                          --push --file "docker/pep-sandbox.Dockerfile"
+                          --tag "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST"
+                          --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
+                          --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
 
 ###############################################
 # Configuration for the runtime-analysis stage#
@@ -1066,7 +1141,6 @@ docker-integration:
     paths:
       - ./integration_data
 
-
 docker-integration-on-base-data:
   stage: integration
   extends: .dind
@@ -1154,6 +1228,30 @@ retag-pep-docker-images:
     - docker buildx imagetools create "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
     - docker buildx imagetools create "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+
+##########################################
+# Configuration for the publish stage    #
+##########################################
+
+publish-sandbox-image:
+  stage: publish
+  extends: .upload-base
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  rules:
+    - if: $CI_COMMIT_BRANCH == $PEP_FOSS_DEVELOPMENT_BRANCH
+  needs:
+    - job: build-sandbox-docker-image
+      artifacts: false
+    - job: pep-services-image-test
+      artifacts: false
+    - job: docker-integration
+      artifacts: false
+    - job: docker-integration-on-base-data
+      artifacts: false
+  #language=sh
+  script:
+    - *docker_login
+    - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "${CI_REGISTRY}/pep-public/core/pep-sandbox:latest"
 
 ##########################################
 # Configuration for the trigger stage    #
