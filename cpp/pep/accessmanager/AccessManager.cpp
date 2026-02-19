@@ -168,7 +168,7 @@ AccessManager::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) 
 
 
 AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : EnrollmentServer::Parameters(io_context, config) {
+  : KeyComponentServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path globalConfFile;
   ElgamalPublicKey publicKeyPseudonyms;
@@ -310,11 +310,11 @@ void AccessManager::Parameters::check() const {
   if (!backend)
     throw std::runtime_error("backend must be set");
 
-  EnrollmentServer::Parameters::check();
+  KeyComponentServer::Parameters::check();
 }
 
 AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> parameters)
-  : EnrollmentServer(parameters),
+  : KeyComponentServer(parameters),
   mPseudonymKey(parameters->getPseudonymKey()),
   mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
   mTranscryptorProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getTranscryptorEndPoint().expectedCommonName, getRootCAs()),

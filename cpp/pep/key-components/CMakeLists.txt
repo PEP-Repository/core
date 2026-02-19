@@ -1,7 +1,7 @@
 add_library(${PROJECT_NAME}KeyComponentApilib
   KeyComponentMessages.cpp KeyComponentMessages.hpp
   KeyComponentSerializers.cpp KeyComponentSerializers.hpp
-  EnrollmentServerProxy.cpp EnrollmentServerProxy.hpp
+  KeyComponentServerProxy.cpp KeyComponentServerProxy.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}KeyComponentApilib
@@ -13,7 +13,7 @@ verify_headers_standalone(${PROJECT_NAME}KeyComponentApilib)
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}KeyComponentServerlib
-    EnrollmentServer.cpp EnrollmentServer.hpp
+    KeyComponentServer.cpp KeyComponentServer.hpp
   )
 
   target_link_libraries(${PROJECT_NAME}KeyComponentServerlib

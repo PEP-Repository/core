@@ -44,7 +44,7 @@ Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   { }
 
 Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : EnrollmentServer::Parameters(io_context, config) {
+  : KeyComponentServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path storageFile;
   std::filesystem::path verifiersFile; // used to check RSK proofs made by access manager
@@ -104,7 +104,7 @@ void Transcryptor::Parameters::check() const {
     throw std::runtime_error("storage must be set");
   if(!verifiers)
     throw std::runtime_error("verifiers must be set");
-  EnrollmentServer::Parameters::check();
+  KeyComponentServer::Parameters::check();
 }
 
 messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_ptr<TranscryptorRequest> request, messaging::MessageSequence entriesObservable) {
@@ -349,7 +349,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
 }
 
 Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
-  : EnrollmentServer(parameters),
+  : KeyComponentServer(parameters),
   mWorkerPool(WorkerPool::getShared()),
   mPseudonymKey(parameters->getPseudonymKey()),
   mStorage(parameters->getStorage()),

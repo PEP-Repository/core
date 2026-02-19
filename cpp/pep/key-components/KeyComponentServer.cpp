@@ -1,5 +1,5 @@
-#include <pep/key-components/EnrollmentServer.hpp>
 #include <pep/key-components/KeyComponentSerializers.hpp>
+#include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Log.hpp>
@@ -16,12 +16,12 @@ const std::string LOG_TAG = "Enrollment server";
 }
 
 
-struct EnrollmentServer::Metrics : public RegisteredMetrics {
+struct KeyComponentServer::Metrics : public RegisteredMetrics {
   Metrics(std::shared_ptr<prometheus::Registry> registry, const ServerTraits& serverTraits);
   prometheus::Summary& keyComponent_request_duration;
 };
 
-EnrollmentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry, const ServerTraits& serverTraits) :
+KeyComponentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry, const ServerTraits& serverTraits) :
   RegisteredMetrics(registry),
   keyComponent_request_duration(prometheus::BuildSummary()
     .Name("pep_" + serverTraits.metricsId() + "_keyComponent_request_duration_seconds")
@@ -32,16 +32,16 @@ EnrollmentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registr
 }
 
 
-EnrollmentServer::EnrollmentServer(std::shared_ptr<Parameters> parameters) :
+KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
   SigningServer(parameters),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
   mDataTranslator(parameters->getDataTranslator()),
-  mMetrics(std::make_shared<EnrollmentServer::Metrics>(mRegistry, parameters->serverTraits())) {
+  mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())) {
 
-  RegisterRequestHandlers(*this, &EnrollmentServer::handleKeyComponentRequest);
+  RegisterRequestHandlers(*this, &KeyComponentServer::handleKeyComponentRequest);
 }
 
-messaging::MessageBatches EnrollmentServer::handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest) {
+messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest) {
   // Generate response
   auto start_time = std::chrono::steady_clock::now();
   auto response = KeyComponentResponse::HandleRequest(
@@ -57,7 +57,7 @@ messaging::MessageBatches EnrollmentServer::handleKeyComponentRequest(std::share
 }
 
 
-EnrollmentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
+KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config) {
   std::filesystem::path systemKeysFile;
 
@@ -83,23 +83,23 @@ EnrollmentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context
 
 }
 
-std::shared_ptr<PseudonymTranslator> EnrollmentServer::Parameters::getPseudonymTranslator() const {
+std::shared_ptr<PseudonymTranslator> KeyComponentServer::Parameters::getPseudonymTranslator() const {
   return pseudonymTranslator;
 }
 
-std::shared_ptr<DataTranslator> EnrollmentServer::Parameters::getDataTranslator() const {
+std::shared_ptr<DataTranslator> KeyComponentServer::Parameters::getDataTranslator() const {
   return dataTranslator;
 }
 
-void EnrollmentServer::Parameters::setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator) {
+void KeyComponentServer::Parameters::setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator) {
   Parameters::pseudonymTranslator = pseudonymTranslator;
 }
 
-void EnrollmentServer::Parameters::setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator) {
+void KeyComponentServer::Parameters::setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator) {
   Parameters::dataTranslator = dataTranslator;
 }
 
-void EnrollmentServer::Parameters::check() const {
+void KeyComponentServer::Parameters::check() const {
   if (!pseudonymTranslator)
     throw std::runtime_error("pseudonymTranslator must be set");
   if (!dataTranslator)

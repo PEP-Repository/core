@@ -5,7 +5,7 @@
 
 namespace pep {
 
-class EnrollmentServer : public SigningServer {
+class KeyComponentServer : public SigningServer {
 public:
   class Parameters;
 
@@ -19,14 +19,14 @@ private:
   messaging::MessageBatches handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest);
 
 protected:
-  explicit EnrollmentServer(std::shared_ptr<Parameters> parameters);
+  explicit KeyComponentServer(std::shared_ptr<Parameters> parameters);
 
   const PseudonymTranslator& pseudonymTranslator() const { return *mPseudonymTranslator; }
   const DataTranslator& dataTranslator() const { return *mDataTranslator; }
 };
 
 
-class EnrollmentServer::Parameters : public SigningServer::Parameters {
+class KeyComponentServer::Parameters : public SigningServer::Parameters {
 public:
   std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
   std::shared_ptr<DataTranslator> getDataTranslator() const;

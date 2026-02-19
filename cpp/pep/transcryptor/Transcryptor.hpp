@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/async/WorkerPool.hpp>
-#include <pep/key-components/EnrollmentServer.hpp>
+#include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/rsk-pep/DataTranslator.hpp>
 #include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
@@ -14,7 +14,7 @@
 
 namespace pep {
 
-class Transcryptor : public EnrollmentServer {
+class Transcryptor : public KeyComponentServer {
  private:
   class Metrics : public RegisteredMetrics {
    public:
@@ -24,7 +24,7 @@ class Transcryptor : public EnrollmentServer {
   };
 
  public:
-  class Parameters : public EnrollmentServer::Parameters {
+  class Parameters : public KeyComponentServer::Parameters {
   protected:
     ServerTraits serverTraits() const noexcept override { return ServerTraits::Transcryptor(); }
 

@@ -4,9 +4,9 @@
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/WorkerPool.hpp>
+#include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
 #include <pep/rsk/Verifiers.hpp>
-#include <pep/key-components/EnrollmentServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 
@@ -14,11 +14,11 @@
 
 namespace pep {
 
-class AccessManager : public EnrollmentServer {
+class AccessManager : public KeyComponentServer {
 public:
   class Backend; // Public to allow unit testing
 
-  class Parameters : public EnrollmentServer::Parameters {
+  class Parameters : public KeyComponentServer::Parameters {
   protected:
     ServerTraits serverTraits() const noexcept override { return ServerTraits::AccessManager(); }
 
