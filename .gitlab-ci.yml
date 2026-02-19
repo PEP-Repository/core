@@ -1249,7 +1249,13 @@ publish-sandbox-image:
       artifacts: false
   #language=sh
   script:
-    - *docker_login
+    # login with job token doesnt work for pushing to different repository, so we need to use the group api token
+    - |
+      if [ -z "$PEP_GROUP_API_TOKEN" ]; then
+        echo "PEP_GROUP_API_TOKEN is not set, cannot login to registry to push sandbox image"
+        exit 1
+      fi
+    - echo "$PEP_GROUP_API_TOKEN" | docker login "${CI_REGISTRY}" -u "-" --password-stdin
     - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "${CI_REGISTRY}/pep-public/core/pep-sandbox:latest"
 
 ##########################################
