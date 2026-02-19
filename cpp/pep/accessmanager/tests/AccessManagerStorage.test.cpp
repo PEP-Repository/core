@@ -482,6 +482,19 @@ TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
   storage->createUserGroup(UserGroup(originalName, {}));
   storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
   EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt);
+  storage->removeUserGroup(alternativeName);
+  EXPECT_EQ(storage->findUserGroupId(alternativeName), std::nullopt);
+  EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt) << "Removing a userGroup should not only tombstone it's current name";
+}
+
+TEST_F(AccessManagerStorageTest, changing_usergroup_name_allows_adding_new_group_with_the_old_name) {
+  std::string originalName = "MyGroup";
+  std::string alternativeName = "MyGroupAlternative";
+  int64_t originalId = storage->createUserGroup(UserGroup(originalName, {}));
+  storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
+  int64_t newId;
+  EXPECT_NO_THROW(newId = storage->createUserGroup(UserGroup(originalName, {})));
+  EXPECT_NE(originalId, newId);
 }
 
 // ==== executeQuery ====
