@@ -44,6 +44,12 @@ std::string ServerTraits::commandLineId() const {
   return result;
 }
 
+std::string ServerTraits::metricsId() const {
+  auto result = this->defaultId();
+  boost::algorithm::to_lower(result);
+  return result;
+}
+
 std::string ServerTraits::certificateSubject() const {
   return this->id();
 }

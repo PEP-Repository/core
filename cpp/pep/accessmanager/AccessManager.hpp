@@ -6,7 +6,7 @@
 #include <pep/async/WorkerPool.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
 #include <pep/rsk/Verifiers.hpp>
-#include <pep/server/SigningServer.hpp>
+#include <pep/enrollment/EnrollmentServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 
@@ -14,11 +14,11 @@
 
 namespace pep {
 
-class AccessManager : public SigningServer {
+class AccessManager : public EnrollmentServer {
 public:
   class Backend; // Public to allow unit testing
 
-  class Parameters : public SigningServer::Parameters {
+  class Parameters : public EnrollmentServer::Parameters {
   protected:
     ServerTraits serverTraits() const noexcept override { return ServerTraits::AccessManager(); }
 
@@ -50,12 +50,6 @@ public:
     */
     const EndPoint& getKeyServerEndPoint() const;
 
-    std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
-    std::shared_ptr<DataTranslator> getDataTranslator() const;
-    void setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator);
-    void setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator);
-
-
     std::shared_ptr<Backend> getBackend() const;
     void setBackend(std::shared_ptr<Backend> backend);
 
@@ -68,8 +62,6 @@ public:
     std::optional<ElgamalPublicKey> publicKeyPseudonyms;
     EndPoint transcryptorEndPoint;
     EndPoint keyServerEndPoint;
-    std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
-    std::shared_ptr<DataTranslator> dataTranslator;
     std::shared_ptr<Backend> backend;
   };
 private:
@@ -80,7 +72,6 @@ private:
 
     prometheus::Summary& enckey_request_duration;
     prometheus::Summary& ticket_request2_duration;
-    prometheus::Summary& keyComponent_request_duration;
     prometheus::Summary& ticket_request_duration;
   };
 
@@ -99,7 +90,6 @@ protected:
     uint64_t& checksum, uint64_t& checkpoint) override;
 
 private:
-  messaging::MessageBatches handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> pRequest);
   messaging::MessageBatches handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> pClientRequest);
   messaging::MessageBatches handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> pClientRequest);
   messaging::MessageBatches handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> pRequest);
@@ -143,8 +133,6 @@ private:
   ElgamalPublicKey mPublicKeyPseudonyms;
   TranscryptorProxy mTranscryptorProxy;
   KeyServerProxy mKeyServerProxy;
-  std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
-  std::shared_ptr<DataTranslator> mDataTranslator;
   std::shared_ptr<Backend> backend;
   std::shared_ptr<GlobalConfiguration> globalConf;
   std::shared_ptr<Metrics> lpMetrics;
