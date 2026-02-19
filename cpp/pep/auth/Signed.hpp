@@ -1,23 +1,19 @@
 #pragma once
 
+#include <pep/auth/Signature.hpp>
 #include <pep/serialization/Serialization.hpp>
-#include <pep/crypto/Signature.hpp>
-#include <pep/crypto/X509Certificate.hpp>
 
 namespace pep {
 
 class SignedBase {
-public:
+public: // You should have no business accessing these unless you're (de)serializing
   std::string mData;
   Signature mSignature;
 
-protected:
-  void assertValid(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName,
-    std::chrono::seconds timestampLeeway) const;
-
 public:
+  Signatory validate(const X509RootCertificates& rootCAs) const;
+
+protected:
   SignedBase(
     std::string data,
     const X509Identity& identity);
@@ -28,9 +24,16 @@ public:
     : mData(std::move(data)),
     mSignature(std::move(signature)) { }
 
-  std::string getLeafCertificateCommonName() const;
-  std::string getLeafCertificateOrganizationalUnit() const;
-  X509Certificate getLeafCertificate() const;
+  template <typename T>
+  T deserializeAs() const {
+    return Serialization::FromString<T>(mData);
+  }
+};
+
+template <typename T>
+struct Certified {
+  Signatory signatory;
+  T message;
 };
 
 template<typename T>
@@ -41,24 +44,17 @@ public:
   Signed(T o, const X509Identity& identity) :
     SignedBase(Serialization::ToString(std::move(o)), identity) { }
 
-  [[nodiscard]] T open(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt,
-    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    return mSignature.open<T>(mData, rootCAs, expectedCommonName, timestampLeeway);
-  }
-
-  void validate(
-    const X509RootCertificates& rootCAs,
-    std::optional<std::string> expectedCommonName = std::nullopt,
-    std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    mSignature.assertValid(mData, rootCAs, expectedCommonName, timestampLeeway);
+  [[nodiscard]] Certified<T> open(const X509RootCertificates& rootCAs) const {
+    auto signatory = this->validate(rootCAs);
+    return Certified<T>{
+      .signatory = std::move(signatory),
+      .message = this->openWithoutCheckingSignature(),
+    };
   }
 
   T openWithoutCheckingSignature() const {
-    return Serialization::FromString<T>(mData);
+    return this->deserializeAs<T>();
   }
-
 };
 
 class MessageSigner {

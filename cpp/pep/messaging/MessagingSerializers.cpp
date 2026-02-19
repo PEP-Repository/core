@@ -1,3 +1,4 @@
+#include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <boost/lexical_cast.hpp>
 

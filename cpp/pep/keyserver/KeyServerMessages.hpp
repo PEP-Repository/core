@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
 #include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>

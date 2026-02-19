@@ -86,6 +86,12 @@ struct Storage : public BasicStorage {
         case sqlite_orm::sync_schema_result::new_table_created:
         case sqlite_orm::sync_schema_result::new_columns_added:
           break;
+        // sqlite_orm is sometimes able to make a backup of the data before dropping and recreating, and sometimes it is not.
+        // This means the following case sometimes has data loss, and sometimes it doesn't. We can't distinguish.
+        // This has now been fixed in the `dev` branch of sqlite_orm: https://github.com/fnc12/sqlite_orm/issues/1462
+        // Once this lands in a release, and our version of sqlite_orm gets updated, this will cause a compiler error,
+        // because we are no longer handling all enum cases. The new dropped_and_recreated_with_data_loss case should
+        // then produce an error, and the dropped_and_recreated case should no longer produce one.
         case sqlite_orm::sync_schema_result::dropped_and_recreated:
           throw SchemaError(tableName, SchemaError::Reason::dropped_and_recreated);
         case sqlite_orm::sync_schema_result::old_columns_removed:

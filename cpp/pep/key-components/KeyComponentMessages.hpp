@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
 
 namespace pep {

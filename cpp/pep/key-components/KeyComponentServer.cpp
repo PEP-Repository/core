@@ -45,13 +45,13 @@ KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
 messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest) {
   auto start_time = std::chrono::steady_clock::now();
 
-  signedRequest->validate(*this->getRootCAs());
-  auto party = GetEnrolledParty(signedRequest->mSignature.mCertificateChain);
+  auto signatory = signedRequest->validate(*this->getRootCAs());
+  auto party = GetEnrolledParty(signatory.certificateChain());
   if (!party.has_value()) {
     throw Error("KeyComponentRequest denied");
   }
 
-  auto recipient = RecipientForCertificate(signedRequest->getLeafCertificate());
+  auto recipient = RecipientForCertificate(signatory.certificateChain().leaf());
   KeyComponentResponse response;
   response.mPseudonymKeyComponent = mPseudonymTranslator->generateKeyComponent(recipient);
   if (HasDataAccess(*party)) {

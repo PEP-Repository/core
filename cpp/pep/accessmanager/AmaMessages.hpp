@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 

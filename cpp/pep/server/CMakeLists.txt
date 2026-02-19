@@ -23,7 +23,6 @@ if (WITH_SERVERS)
   target_link_libraries(${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}Messaginglib
     ${PROJECT_NAME}Rsklib
-    ${PROJECT_NAME}Authlib
     ${PROJECT_NAME}Metricslib
     ${PROJECT_NAME}ServerApilib
   )
