@@ -68,6 +68,7 @@ foss_container_image_names=\
 'pep-monitoring
 authserver_apache
 pep-services
+pep-sandbox
 client
 pep-scheduler
 pep-connector
