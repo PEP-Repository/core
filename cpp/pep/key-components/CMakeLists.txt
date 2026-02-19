@@ -1,5 +1,5 @@
 add_library(${PROJECT_NAME}KeyComponentApilib
-  KeyComponentMessages.cpp KeyComponentMessages.hpp
+  KeyComponentMessages.hpp
   KeyComponentSerializers.cpp KeyComponentSerializers.hpp
   KeyComponentServerProxy.cpp KeyComponentServerProxy.hpp
 )

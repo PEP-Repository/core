@@ -1,6 +1,7 @@
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/morphing/RepoKeys.hpp>
+#include <pep/morphing/RepoRecipient.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Log.hpp>
 
@@ -42,17 +43,23 @@ KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
 }
 
 messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest) {
-  // Generate response
   auto start_time = std::chrono::steady_clock::now();
-  auto response = KeyComponentResponse::HandleRequest(
-    *signedRequest,
-    *mPseudonymTranslator,
-    *mDataTranslator,
-    *this->getRootCAs());
+
+  signedRequest->validate(*this->getRootCAs());
+  auto party = GetEnrolledParty(signedRequest->mSignature.mCertificateChain);
+  if (!party.has_value()) {
+    throw Error("KeyComponentRequest denied");
+  }
+
+  auto recipient = RecipientForCertificate(signedRequest->getLeafCertificate());
+  KeyComponentResponse response;
+  response.mPseudonymKeyComponent = mPseudonymTranslator->generateKeyComponent(recipient);
+  if (HasDataAccess(*party)) {
+    response.mEncryptionKeyComponent = mDataTranslator->generateKeyComponent(recipient);
+  }
 
   mMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
 
-  //Return result
   return messaging::BatchSingleMessage(response);
 }
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <pep/key-components/KeyComponentMessages.hpp>
+#include <pep/rsk-pep/DataTranslator.hpp>
+#include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/server/SigningServer.hpp>
 
 namespace pep {
