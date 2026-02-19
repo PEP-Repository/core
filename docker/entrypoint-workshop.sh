@@ -41,25 +41,17 @@ create_participant(){
   MATHS_LEVEL="$6"
   MATHS_GRADE="$7"
   SEARCH="Generated participant with identifier: "
-  echo "Creating participant: $NAME" >&2
+  echo "Creating Participant: $NAME" >&2
   RESULT=$("$PEPCLI_EXECUTABLE" --suppress-version-info --oauth-token-secret "$TOKEN_SECRET_FILE" --oauth-token-group "Research Assessor" register id 2>/dev/null | grep "$SEARCH")
   ID="${RESULT:${#SEARCH}}"
-  echo "Registered participant $NAME with ID: $ID" >&2
   pepcli_run "Research Assessor" store -p "$ID" -c Name -d "$NAME" --file-extension .txt
-  echo "Stored Name for $NAME" >&2
   pepcli_run "Research Assessor" store -p "$ID" -c Address -d "$ADDRESS" --file-extension .txt
-  echo "Stored Address for $NAME" >&2
   pepcli_run "Research Assessor" store -p "$ID" -c Class -d "$CLASS" --file-extension .txt
-  echo "Stored Class for $NAME" >&2
   pepcli_run "Research Assessor" store -p "$ID" -c French_Level -d "$FRENCH_LEVEL" --file-extension .txt
-  echo "Stored French_Level for $NAME" >&2
   pepcli_run "Research Assessor" store -p "$ID" -c French_Grade -d "$FRENCH_GRADE" --file-extension .txt
-  echo "Stored French_Grade for $NAME" >&2
   pepcli_run "Research Assessor" store -p "$ID" -c Maths_Level -d "$MATHS_LEVEL" --file-extension .txt
-  echo "Stored Maths_Level for $NAME" >&2
   pepcli_run "Research Assessor" store -p "$ID" -c Maths_Grade -d "$MATHS_GRADE" --file-extension .txt
-  echo "Stored Maths_Grade for $NAME" >&2
-  echo "$ID"
+  echo "Registered Participant $NAME with ID: $ID" >&2
 }
 
 echo "Starting PEP Servers in background..."
@@ -77,15 +69,15 @@ fi
 
 echo "Servers ready. Running tutorial setup..."
 
-echo "Clearing PEP repo..."
+echo "Clearing PEP Repository..."
 cleanup_pep_configuration
 
-echo "Creating UserGroups..."
+echo "Creating User Groups..."
 pepcli_run "Access Administrator" user group create "Access Administrator"
 pepcli_run "Access Administrator" user group create "Data Administrator"
 pepcli_run "Access Administrator" user group create "Research Assessor"
 
-echo "Creating columns..."
+echo "Creating Columns..."
 pepcli_run "Data Administrator" ama column create Name
 pepcli_run "Data Administrator" ama column create Address
 pepcli_run "Data Administrator" ama column create Class
@@ -96,13 +88,11 @@ pepcli_run "Data Administrator" ama column create Maths_Grade
 pepcli_run "Data Administrator" ama column create Average_Grade
 pepcli_run "Data Administrator" ama column create History_Grade
 
-echo "Creating Column groups..."
+echo "Creating Column Groups..."
 pepcli_run "Data Administrator" ama columnGroup create PersonalInfo
 pepcli_run "Data Administrator" ama columnGroup create NonPersonalInfo
 pepcli_run "Data Administrator" ama columnGroup create History_Grade
 pepcli_run "Data Administrator" ama columnGroup create ShortPseudonym.History
-
-echo "Adding Columns to ColumnGroups..."
 pepcli_run "Data Administrator" ama column addTo Name PersonalInfo
 pepcli_run "Data Administrator" ama column addTo Address PersonalInfo
 pepcli_run "Data Administrator" ama column addTo Class NonPersonalInfo
@@ -114,7 +104,7 @@ pepcli_run "Data Administrator" ama column addTo Average_Grade NonPersonalInfo
 pepcli_run "Data Administrator" ama column addTo History_Grade History_Grade
 pepcli_run "Data Administrator" ama column addTo ShortPseudonym.History ShortPseudonym.History
 
-echo "Creating column group access rules..."
+echo "Creating Access Rules..."
 pepcli_run "Access Administrator" ama cgar create PersonalInfo "Research Assessor" read
 pepcli_run "Access Administrator" ama cgar create PersonalInfo "Research Assessor" write
 pepcli_run "Access Administrator" ama cgar create NonPersonalInfo "Research Assessor" read
@@ -132,7 +122,7 @@ rm /data/OAuthToken.json || true
 
 echo ""
 echo "================================================================"
-echo "PEP Tutorial sandbox ready!"
+echo "PEP Tutorial Sandbox ready!"
 echo "================================================================"
 echo "The container is running with pepServers and sample data loaded."
 echo ""

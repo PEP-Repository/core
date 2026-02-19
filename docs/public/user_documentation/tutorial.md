@@ -40,7 +40,7 @@ The PEP tutorial is a self-contained environment that runs in a Docker container
 
     ```plaintext
     ================================================================
-    PEP Tutorial sandbox ready!
+    PEP Tutorial Sandbox ready!
     ================================================================
     ```
 
@@ -57,7 +57,7 @@ You are now inside the PEP tutorial environment. We will refer to this as *the t
 ### Disclaimers
 
 !!! warning "Simplified setup"
-    Please note that this is a simplified setup for demonstration purposes of a small subset of the features of the command line interface. Do not use any parts of the pep-sandbox setup for any other purpose than demonstration, as it is has no persistent storage and is not secure.
+    Please note that this is a simplified setup for demonstration purposes of a small subset of the features of the command line interface. Do not use any parts of the pep-sandbox setup for any other purpose than demonstration, as it has no persistent storage and is not secure.
 
 !!! warning "pepcli output"
     When using pepcli (explained later), the terminal might show: `2026-02-12 15:53:49: <warning> [Networking client] Could not establish connection for client to tls://Authserver:16512: boost::system::system_error: Connection refused [system:111]. Retrying in 1000ms`. This is due to the way the tutorial environment is set up, and can be safely ignored.
