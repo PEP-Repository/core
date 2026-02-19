@@ -208,6 +208,9 @@ class MailSenderSurveyConfig(BaseModel):
     footer_image: FooterImage | None = None
     conditions: list[Condition] | None = None
 
+    # Email configuration
+    email: EmailConfig
+
     # Report configuration
     report_info: ReportInfo | None = None
     is_report_type: bool = False
@@ -304,9 +307,6 @@ class MailSenderConfig(ConnectorConfig):
         validate_assignment=True,
         arbitrary_types_allowed=True # Allow EmailConfig
     )
-
-    # Email configuration as nested EmailConfig object
-    email: EmailConfig
 
     # LimeSurvey configuration
     limesurvey_api_token_path: FilePath | None = None
@@ -536,13 +536,14 @@ class MailSender(Connector):
                 self.log(f"Email sending failed after {max_retries + 1} attempts: {str(last_exception)}", level=logging.ERROR, tag=self.LOG_TAG)
                 raise last_exception
 
-    def send_email(self, recipient_email, subject, body=None, template=None, template_vars=None, 
+    def send_email(self, recipient_email, subject, email_config: EmailConfig, body=None, template=None, template_vars=None, 
                    attachments=None, footer_image=None, use_html=True, is_reminder=False) -> None:
         """Send an email to a recipient with optional template, variables, attachments, and footer image
 
         Args:
             recipient_email: Email address of the recipient
             subject: Subject of the email (can contain template variables)
+            email_config: EmailConfig instance with SMTP settings
             body: Plain text body of the email (used if no template is provided)
             template: Email template string with placeholders for template_vars
             template_vars: Dictionary of variables to substitute in the template and subject
@@ -552,8 +553,8 @@ class MailSender(Connector):
             is_reminder: Whether this is a reminder email (will prefix "Reminder: " to the subject)
         """
 
-        sender_email = self.config.email.sender
-        reply_to_email = self.config.email.reply_to
+        sender_email = email_config.sender
+        reply_to_email = email_config.reply_to
 
         # Apply template variables to subject if provided
         formatted_subject = subject
@@ -717,15 +718,15 @@ class MailSender(Connector):
             # Send email with retry logic
             self._send_email_with_retry(
                 message, 
-                self.config.email.smtp_server, 
-                self.config.email.smtp_port, 
-                self.config.email.max_retries, 
-                self.config.email.retry_delay
+                email_config.smtp_server, 
+                email_config.smtp_port, 
+                email_config.max_retries, 
+                email_config.retry_delay
             )
 
             # Make sure to sleep for rate limit avoidance
-            self.log(f"Sleeping for {self.config.email.rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
-            time.sleep(self.config.email.rate_limit_seconds)
+            self.log(f"Sleeping for {email_config.rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
+            time.sleep(email_config.rate_limit_seconds)
             self.log("Waking up from sleep", level=logging.DEBUG, tag=self.LOG_TAG)
 
     def record_email_send(self, short_pseudonym: str, column: str, emails_sent: dict, email: str, is_primary_email: bool, survey_id: int, survey_type: str) -> None:
@@ -1411,6 +1412,7 @@ class MailSender(Connector):
                 # Send the survey email
                 self.send_email(recipient_email=recipient_email,
                                 subject=config.email_subject,
+                                email_config=config.email,
                                 template=config.email_template,
                                 template_vars=template_vars,
                                 attachments=subject_attachments,

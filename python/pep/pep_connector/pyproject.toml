@@ -25,7 +25,8 @@ google_forms_connector = [
 mailsender = [
     "weasyprint>=67.0",
     "email-validator>=2.0.0",
-    "pypdf>=6.0.0"
+    "pypdf>=6.0.0",
+    "deepmerge>=2.0"
 ]
 excel_connector = ["pandas==2.2.3"]
 prometheus = ["prometheus_client==0.21.1"]

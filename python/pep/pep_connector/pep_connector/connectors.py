@@ -5,6 +5,7 @@ import sys
 import json
 from pydantic import BaseModel, model_validator, ConfigDict, DirectoryPath
 from typing import Any, Self
+from deepmerge import always_merger
 from .accessgroup import AccessGroup
 from .peprepository import PEPRepository
 from .peprepository import PepError
@@ -38,6 +39,16 @@ class ConnectorConfig(BaseModel):
             data: Dictionary with config values
             **kwargs: Additional keyword arguments to override/supplement dict values
         """
+        # Apply defaults to survey types using deep merge (if applicable)
+        if "defaults" in data and "survey_types" in data:
+            defaults = data["defaults"]
+            for survey_name, survey_config in data["survey_types"].items():
+                merged = defaults.copy()  # Start with copy of defaults, else the original defaults are modified in-place by deepmerge
+                merged = always_merger.merge(merged, survey_config)  # Apply survey config on top
+                data["survey_types"][survey_name] = merged
+            # Remove defaults section after merging
+            del data["defaults"]
+        
         # Merge data with kwargs (kwargs take precedence)
         merged = {**data, **kwargs}
         return cls(**merged)        
