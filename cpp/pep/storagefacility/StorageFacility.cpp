@@ -436,7 +436,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
 
     auto ticket = request.mTicket.open(
       *rootCAs,
-      certified.signatory.organizationalUnit(),
+      userGroup,
       "read-meta"
     );
 
@@ -828,7 +828,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   auto request = MakeSharedCopy(std::move(certified.message));
   auto userGroup = certified.signatory.organizationalUnit();
 
-  auto ticket = request->mTicket.open(*rootCAs, certified.signatory.organizationalUnit());
+  auto ticket = request->mTicket.open(*rootCAs, userGroup);
 
   if (!ticket.hasMode("write-meta")) {
     throw Error("Ticket is missing write-meta access mode");
