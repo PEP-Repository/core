@@ -1,3 +1,4 @@
+#include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/server/CertificateRenewalSerializers.hpp>
 
 namespace pep {

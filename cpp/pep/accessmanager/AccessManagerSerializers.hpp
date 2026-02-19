@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerMessages.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 
 namespace pep {
 

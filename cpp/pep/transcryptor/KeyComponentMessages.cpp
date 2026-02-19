@@ -12,13 +12,13 @@ KeyComponentResponse KeyComponentResponse::HandleRequest(
   const DataTranslator& dataTranslator,
   const X509RootCertificates& rootCAs
 ) {
-  signedRequest.validate(rootCAs);
-  auto party = GetEnrolledParty(signedRequest.mSignature.mCertificateChain);
+  auto signatory = signedRequest.validate(rootCAs);
+  auto party = GetEnrolledParty(signatory.certificateChain());
   if (!party.has_value()) {
     throw Error("KeyComponentRequest denied");
   }
 
-  auto recipient = RecipientForCertificate(signedRequest.getLeafCertificate());
+  auto recipient = RecipientForCertificate(signatory.certificateChain().leaf());
   KeyComponentResponse response;
   response.mPseudonymKeyComponent = pseudonymTranslator.generateKeyComponent(recipient);
   if (HasDataAccess(*party)) {

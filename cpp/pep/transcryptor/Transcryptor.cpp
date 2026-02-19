@@ -175,7 +175,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   if (!mPseudonymKey)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
 
-  auto unpackedRequest = request->mRequest.openAsTranscryptor(*this->getRootCAs());
+  auto unpackedRequest = request->mRequest.openAsTranscryptor(*this->getRootCAs()).message;
 
   struct Context {
     uintmax_t requestNumber{};
@@ -183,11 +183,12 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     bool includeUserGroupPseudonyms{};
     SignedTicketRequest2 ticketRequest;
   };
-  auto ctx = std::make_shared<Context>();
-  ctx->requestNumber = requestNumber;
-  ctx->modes = std::move(unpackedRequest.mModes);
-  ctx->includeUserGroupPseudonyms = unpackedRequest.mIncludeUserGroupPseudonyms;
-  ctx->ticketRequest = std::move(request->mRequest);
+  auto ctx = MakeSharedCopy(Context{
+    .requestNumber = requestNumber,
+    .modes = std::move(unpackedRequest.mModes),
+    .includeUserGroupPseudonyms = unpackedRequest.mIncludeUserGroupPseudonyms,
+    .ticketRequest = std::move(request->mRequest),
+    });
 
   struct Results {
     std::vector<LocalPseudonym> localPseudonyms;
@@ -272,7 +273,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       if (ctx->includeUserGroupPseudonyms) {
         ret.mAccessGroup = server->mPseudonymTranslator->translateStep(
             *entry.mUserGroup,
-            RecipientForCertificate(ctx->ticketRequest.mLogSignature->getLeafCertificate())
+            RecipientForCertificate(ctx->ticketRequest.logSignature()->certificateChain().leaf())
         );
       }
 
@@ -348,7 +349,8 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto requestNumber = mNextLogIssuedTicketRequestNumber++;
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " received";
 
-  auto ticket = request->mTicket.openForLogging(*getRootCAs());
+  std::string serialized;
+  auto ticket = request->mTicket.openForLogging(*getRootCAs(), serialized);
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
   auto hash = ComputePseudonymHash(ticket.mPseudonyms);
@@ -367,7 +369,7 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto result = messaging::BatchSingleMessage(
       LogIssuedTicketResponse(
         Signature::Make(
-          request->mTicket.mData,
+          serialized,
           *this->getSigningIdentity()
         )
       )

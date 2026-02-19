@@ -129,7 +129,7 @@ messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
 
 messaging::MessageBatches KeyServer::handleTokenBlockingListRequest(
     std::shared_ptr<SignedTokenBlockingListRequest> signedRequest) {
-  EnsureTokenBlockingAdminAccess(signedRequest->getLeafCertificateOrganizationalUnit());
+  EnsureTokenBlockingAdminAccess(signedRequest->validate(*this->getRootCAs()).organizationalUnit());
 
   TokenBlockingListResponse response;
   response.entries = allEntries(mBlocklist.get());
@@ -138,16 +138,19 @@ messaging::MessageBatches KeyServer::handleTokenBlockingListRequest(
 
 messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
     std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest) {
-   UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, signedRequest->getLeafCertificateOrganizationalUnit(), "token blocklist management");
-  auto request = signedRequest->open(*this->getRootCAs());
-  if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
+
+  auto certified = signedRequest->open(*this->getRootCAs());
+  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, certified.signatory.organizationalUnit(), "token blocklist management");
+  const auto& request = certified.message;
+
+  if (mBlocklist == nullptr) { throw Error{ "KeyServer does not have a blocklist" }; }
 
   auto entry = tokenBlocking::BlocklistEntry{
       .id = 0,
       .target = std::move(request.target),
       .metadata{
           .note = std::move(request.note),
-          .issuer = signedRequest->getLeafCertificateCommonName(),
+          .issuer = certified.signatory.commonName(),
           .creationDateTime = TimeNow()}};
   entry.id = mBlocklist->add(entry.target, entry.metadata);
   return messaging::BatchSingleMessage(TokenBlockingCreateResponse{std::move(entry)});
@@ -155,8 +158,10 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
 
 messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
     std::shared_ptr<SignedTokenBlockingRemoveRequest> signedRequest) {
-  EnsureTokenBlockingAdminAccess(signedRequest->getLeafCertificateOrganizationalUnit());
-  const auto request = signedRequest->open(*this->getRootCAs());
+  const auto certified = signedRequest->open(*this->getRootCAs());
+  EnsureTokenBlockingAdminAccess(certified.signatory.organizationalUnit());
+  const auto& request = certified.message;
+
   if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
 
   auto entry = mBlocklist->removeById(request.id);

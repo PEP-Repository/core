@@ -79,7 +79,7 @@ void FillTranscryptorRequestEntry(
     std::tie(entry.mUserGroup.emplace(), entry.mUserGroupProof.emplace()) =
         pseudonymTranslator.certifiedTranslateStep(
             entry.mPolymorphic,
-            RecipientForCertificate(signature.getLeafCertificate()));
+            RecipientForCertificate(signature.certificateChain().leaf()));
   }
   FillTranscryptorRequestEntry(entry, pseudonymTranslator);
 }
@@ -419,10 +419,11 @@ messaging::MessageBatches AccessManager::handleGlobalConfigurationRequest(std::s
 messaging::MessageBatches
 AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> signedRequest) {
   auto start_time = std::chrono::steady_clock::now();
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
-  auto request = std::make_shared<EncryptionKeyRequest>(
-    signedRequest->open(*this->getRootCAs()));
-  const auto party = GetEnrolledParty(signedRequest->mSignature.mCertificateChain);
+  auto certified = signedRequest->open(*this->getRootCAs());
+  auto userGroup = certified.signatory.organizationalUnit();
+  auto request = std::make_shared<EncryptionKeyRequest>(std::move(certified.message));
+  auto clientCertificateChain = MakeSharedCopy(certified.signatory.certificateChain());
+  const auto party = GetEnrolledParty(clientCertificateChain->leaf());
   if (!party.has_value()) {
     throw std::runtime_error("Cannot produce encryption key for this requestor");
   }
@@ -431,7 +432,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   }
 
   const auto recipient = std::make_shared<RekeyRecipient>(
-    RekeyRecipientForCertificate(signedRequest->getLeafCertificate()));
+    RekeyRecipientForCertificate(clientCertificateChain->leaf()));
 
   if (request->mTicket2 == nullptr)
     throw Error("Invalid signature or missing ticket");
@@ -461,7 +462,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
         [server, localPseudonyms](LocalPseudonyms elp) -> LocalPseudonym {
           return elp.mAccessManager.decrypt(server->mPseudonymKey);
         })
-      .flat_map([start_time, server, dwNumUnblind, lpResponse, request, signedRequest, recipient, localPseudonyms
+      .flat_map([start_time, server, dwNumUnblind, lpResponse, request, clientCertificateChain, recipient, localPseudonyms
         ](std::vector<LocalPseudonym> localPseudonymsOnStack) {
           *localPseudonyms = std::move(localPseudonymsOnStack);
           return server->mWorkerPool->batched_map<8>(request->mEntries,
@@ -493,7 +494,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   }
                   return key;
                 })
-              .flat_map([start_time, server, dwNumUnblind, lpResponse, request, signedRequest, recipient, localPseudonyms
+              .flat_map([start_time, server, dwNumUnblind, lpResponse, request, clientCertificateChain, recipient, localPseudonyms
                 ](std::vector<EncryptedKey> keys) -> messaging::MessageBatches {
                   lpResponse->mKeys = std::move(keys);
 
@@ -509,7 +510,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   LOG(LOG_TAG, debug) << "Rekey request has a BLIND_MODE_UNBLIND entry -> forwarding to transcryptor";
                   RekeyRequest rkReq{
                     .mKeys{},
-                    .mClientCertificateChain = signedRequest->mSignature.mCertificateChain,
+                    .mClientCertificateChain = *clientCertificateChain,
                   };
                   rkReq.mKeys.reserve(dwNumUnblind);
 
@@ -530,7 +531,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   }
 
                   return server->mTranscryptorProxy.requestRekey(std::move(rkReq)).flat_map(
-                    [server, rkIndices, start_time, request, signedRequest, recipient, lpResponse, localPseudonyms
+                    [server, rkIndices, start_time, request, recipient, lpResponse, localPseudonyms
                     ](RekeyResponse transRespOnStack) {
 
                       auto transResp = std::make_shared<RekeyResponse>(std::move(transRespOnStack));
@@ -542,7 +543,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       std::iota(is.begin(), is.end(), 0);
                       return server->mWorkerPool->batched_map<8>(is,
                             observe_on_asio(*server->getIoContext()),
-                            [server, request, lpResponse, signedRequest, transResp, rkIndices, localPseudonyms, recipient
+                            [server, request, lpResponse, transResp, rkIndices, localPseudonyms, recipient
                             ](size_t i) {
                               auto& entry = request->mEntries[i];
                               auto& key = lpResponse->mKeys[i];
@@ -605,8 +606,9 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   // openAsAccessManager checks that mSignature and mLogSignature are set,
   // are valid and match.
-  auto request = signedRequest->openAsAccessManager(*this->getRootCAs());
-  auto userGroup = signedRequest->mSignature->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->openAsAccessManager(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   backend->checkTicketRequest(request);
 
@@ -636,6 +638,10 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
                                              ticket.mColumns,         // columns (in & out)
                                              columnGroupMap);         // (out)
 
+  // Remove the main client signature to prevent reuse of
+  // the SignedTicketRequest2.
+  auto signature = signedRequest->extractSignature();
+
   // Because of all the asynchronous IO, we move all state into this context
   // struct, so that we don't have to put everything into shared_ptrs
   struct Context {
@@ -649,7 +655,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
     std::vector<std::string> participantModes;
-    TranscryptorRequest tsReq{};
+    TranscryptorRequest tsReq;
     TranscryptorRequestEntries tsReqEntries{};
     Signature signature; // signature (for the AM) on the TicketRequest
   };
@@ -664,15 +670,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
-    .signature = std::move(*signedRequest->mSignature),
+    .tsReq {.mRequest = std::move(*signedRequest) },
+    .signature = std::move(signature),
     });
 
-  // Remove the main client signature to prevent reuse of
-  // the SignedTicketRequest2.
-  signedRequest->mSignature.reset();
-
   // Prepare transcryptor request
-  ctx->tsReq.mRequest = std::move(*signedRequest);
   ctx->tsReqEntries.mEntries.resize(ctx->pps.size());
 
   LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";
@@ -755,7 +757,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     return ctx->server->mTranscryptorProxy.requestLogIssuedTicket(std::move(logReq));
   }).map([ctx](LogIssuedTicketResponse resp) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
-    ctx->signedTicket.mTranscryptorSignature = std::move(resp.mSignature);
+    ctx->signedTicket.addTranscryptorSignature(std::move(resp.mSignature));
 
     std::string response;
     if (!ctx->request.mRequestIndexedTicket) {
@@ -788,8 +790,9 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 }
 
 messaging::MessageBatches AccessManager::handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> signedRequest) {
-  AmaMutationRequest request = signedRequest->open(*this->getRootCAs());
-  std::string userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  std::string userGroup = certified.signatory.organizationalUnit();
   backend->performMutationsForRequest(request, userGroup);
 
   // Perform the adding of participants operations (and return 0..n FakeVoid items)
@@ -827,9 +830,10 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     ticketRequest.mParticipantGroups = {participantGroup};
     ticketRequest.mModes = {"enumerate"};
     ticketRequest.mPolymorphicPseudonyms = list;
-    TranscryptorRequest tsRequest;
     std::string data = Serialization::ToString(ticketRequest);
-    tsRequest.mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data);
+    TranscryptorRequest tsRequest{
+      .mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data)
+    };
     TranscryptorRequestEntries tsRequestEntries;
     tsRequestEntries.mEntries.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
     for (size_t i = 0; i < list.size(); i++) {
@@ -898,8 +902,9 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
 
 messaging::MessageBatches
 AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   auto resp = backend->performAMAQuery(request, userGroup);
 
@@ -915,15 +920,17 @@ AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
 }
 
 messaging::MessageBatches AccessManager::handleUserQuery(std::shared_ptr<SignedUserQuery> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->performUserQuery(request, accessGroup));
 }
 
 messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_ptr<SignedUserMutationRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
 
   return backend->performUserMutationsForRequest(request, accessGroup).map([](UserMutationResponse response) -> messaging::MessageSequence {
     return rxcpp::rxs::just(std::make_shared<std::string>(Serialization::ToString(response)));
@@ -950,8 +957,9 @@ messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<
 messaging::MessageBatches
 AccessManager::handleColumnAccessRequest(
   std::shared_ptr<SignedColumnAccessRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleColumnAccessRequest(request, userGroup));
 }
@@ -959,24 +967,26 @@ AccessManager::handleColumnAccessRequest(
 messaging::MessageBatches
 AccessManager::handleParticipantGroupAccessRequest(
   std::shared_ptr<SignedParticipantGroupAccessRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleParticipantGroupAccessRequest(request, userGroup));
 }
 
 messaging::MessageBatches AccessManager::handleColumnNameMappingRequest
 (std::shared_ptr<SignedColumnNameMappingRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleColumnNameMappingRequest(request, userGroup));
 }
 
 messaging::MessageBatches AccessManager::
     handleMigrateUserDbToAccessManagerRequest(std::shared_ptr<SignedMigrateUserDbToAccessManagerRequest> signedRequest, messaging::MessageSequence chunksObservable) {
-  UserGroup::EnsureAccess(UserGroup::Authserver, signedRequest->getLeafCertificateOrganizationalUnit());
-  signedRequest->validate(*this->getRootCAs()); //The request itself is empty, but we do want to check the signature
+  auto signatory = signedRequest->validate(*this->getRootCAs()); //The request itself is empty, but we do want to check the signature
+  UserGroup::EnsureAccess(UserGroup::Authserver, signatory.organizationalUnit());
   assert(getStoragePath().has_value());
   backend->ensureNoUserData();
   auto tmpUserDbMigrationPath = getStoragePath().value() / pep::filesystem::RandomizedName("AuthserverStorage-%%%%%%.sqlite");
@@ -997,15 +1007,17 @@ messaging::MessageBatches AccessManager::
 
 messaging::MessageBatches AccessManager::handleFindUserRequest(
     std::shared_ptr<SignedFindUserRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleFindUserRequest(request, userGroup));
 }
 
 messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::shared_ptr<SignedStructureMetadataRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   auto entries = backend->handleStructureMetadataRequest(request, userGroup);
   return
@@ -1019,8 +1031,9 @@ messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::sha
 messaging::MessageBatches AccessManager::handleSetStructureMetadataRequest(
     std::shared_ptr<SignedSetStructureMetadataRequest> signedRequest,
     messaging::MessageSequence chunks) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   backend->handleSetStructureMetadataRequestHead(request, userGroup);
 
