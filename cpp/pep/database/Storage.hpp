@@ -116,6 +116,16 @@ struct Storage : public BasicStorage {
   template <Record RecordType>
   [[nodiscard]] bool currentRecordExists(auto whereCondition);
 
+  /// Return whether any non-tombstone records exist without retrieving them.
+  ///
+  /// Example: check if a column group is not empty
+  /// \code
+  ///   myStorage->currentRecordExists<ColumnGroupColumnRecord>(storage,
+  ///     c(&ColumnGroupColumnRecord::columnGroup) == columnGroup)
+  /// \endcode
+  template <Record RecordType, typename havingT>
+  [[nodiscard]] bool currentRecordExists(auto whereCondition, having<havingT> havingCondition);
+
 
   /// Return non-tombstone records.
   /// The where-clause is evaluated for all records, before determining which records are current. The having-clause is only evaluated for the current records.
@@ -158,6 +168,11 @@ struct Storage : public BasicStorage {
 
 template <auto MakeRaw> template <Record RecordType>
 [[nodiscard]] bool Storage<MakeRaw>::currentRecordExists(auto whereCondition) {
+  return currentRecordExists<RecordType>(whereCondition, having(true));
+}
+
+template <auto MakeRaw> template <Record RecordType, typename havingT>
+[[nodiscard]] bool Storage<MakeRaw>::currentRecordExists(auto whereCondition, having<havingT> havingCondition) {
   using namespace sqlite_orm;
   auto result = raw.iterate(select(
     columns(max(&RecordType::seqno)),
@@ -165,7 +180,7 @@ template <auto MakeRaw> template <Record RecordType>
     std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     // SQLite will pick this column from the row with the max() value:
     // https://www.sqlite.org/lang_select.html#bareagg
-    .having(c(&RecordType::tombstone) == false),
+    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr),
     limit(1)
   ));
   return result.begin() != result.end();

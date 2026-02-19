@@ -476,6 +476,14 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
   EXPECT_EQ(storage->findUserGroupId(group2.mName), group2_id);
 }
 
+TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
+  std::string originalName = "MyGroup";
+  std::string alternativeName = "MyGroupAlternative";
+  storage->createUserGroup(UserGroup(originalName, {}));
+  storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
+  EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt);
+}
+
 // ==== executeQuery ====
 
 TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_groups) {
