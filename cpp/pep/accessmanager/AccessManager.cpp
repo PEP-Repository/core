@@ -663,7 +663,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto ctx = MakeSharedCopy(Context{
     .server = SharedFrom(*this),
     .requestNumber = requestNumber,
-    .request = std::move(request),
+    .request = request,
     .ticket = std::move(ticket),
     .pps = std::move(prePPs),
     .start_time = time,
