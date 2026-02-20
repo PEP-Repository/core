@@ -147,9 +147,9 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
 
   auto entry = tokenBlocking::BlocklistEntry{
       .id = 0,
-      .target = std::move(request.target),
+      .target = request.target,
       .metadata{
-          .note = std::move(request.note),
+          .note = request.note,
           .issuer = certified.signatory.commonName(),
           .creationDateTime = TimeNow()}};
   entry.id = mBlocklist->add(entry.target, entry.metadata);
