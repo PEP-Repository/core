@@ -36,6 +36,13 @@ The PEP tutorial is a self-contained environment that runs in a Docker container
     docker run -d --rm --name pep-sandbox gitlabregistry.pep.cs.ru.nl/pep-public/core/pep-sandbox:latest && docker logs -f pep-sandbox
     ```
 
+!!! note "Note"
+    Note that if you use MacOS with Apple Silicon, you may need to run the above command with the extra flag `--platform linux/amd64` to emulate the correct CPU architecture, like this:
+
+    ```shell
+    docker run -d --rm --name pep-sandbox --platform linux/amd64 gitlabregistry.pep.cs.ru.nl/pep-public/core/pep-sandbox:latest && docker logs -f pep-sandbox
+    ```
+
   This will start the PEP tutorial environment and show you the setup logs. Wait until you see the message:
 
     ```plaintext
