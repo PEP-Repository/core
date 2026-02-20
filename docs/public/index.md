@@ -8,8 +8,8 @@
 
 ## Development Resources
 
-1. [Getting started](development/building_pep/getting-started.md)
-2. [Setting up a windows dev box](development/building_pep/windows-development-machine.md)
+1. [Getting started](development/building_pep/)
+2. [Setting up a windows dev box](development/building_pep/building-pep-on-windows.md)
 3. [Building PEP on macOS](development/building_pep/building-pep-on-macos.md)
 4. [Package management](development/cpp/conan.md)
 5. [Library dependencies](development/cpp/library-dependencies.md)

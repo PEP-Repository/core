@@ -104,4 +104,4 @@ While PEP's own C++ code can be maintained using Visual Studio, several projects
 
 ## Next steps
 
-Now that your Windows development environment is set up, continue to the [Getting Started](getting-started.md) guide to clone the repository and build PEP.
+Now that your Windows development environment is set up, continue to the [Getting Started](index.md) guide to clone the repository and build PEP.
