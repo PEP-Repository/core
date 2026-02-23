@@ -45,7 +45,7 @@ for filepath in $FILES; do
   else # If path is a file, copy it normally
     FULL_SOURCE_PATH="$SOURCE_PATH/$(dirname "$filepath")/$BUILD_MODE/$(basename "$filepath")"
     # Append extension (e.g. ".exe") if the specified file (name) doesn't exist
-    if [ ! -f "$FULL_SOURCE_PATH" ]
+    if [ ! -f "$FULL_SOURCE_PATH" ]; then
       FULL_SOURCE_PATH="${FULL_SOURCE_PATH}${EXTENSION}"
     fi
 
