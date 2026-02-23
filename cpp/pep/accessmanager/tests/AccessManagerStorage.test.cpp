@@ -479,9 +479,10 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
 TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
   std::string originalName = "MyGroup";
   std::string alternativeName = "MyGroupAlternative";
-  storage->createUserGroup(UserGroup(originalName, {}));
+  int64_t id = storage->createUserGroup(UserGroup(originalName, {}));
   storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
   EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt);
+  EXPECT_EQ(storage->findUserGroupId(alternativeName), id);
   storage->removeUserGroup(alternativeName);
   EXPECT_EQ(storage->findUserGroupId(alternativeName), std::nullopt);
   EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt) << "Removing a userGroup should not only tombstone it's current name";
