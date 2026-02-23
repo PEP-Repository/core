@@ -1683,7 +1683,7 @@ void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, Use
     throw Error(msg.str());
   }
 
-  auto userGroupId = getUserGroupId(name); // Prevent use-after-move
+  auto userGroupId = getUserGroupId(name);
   mImplementor->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.mName), to_optional_uint64(userGroup.mMaxAuthValidity)));
 }
 
