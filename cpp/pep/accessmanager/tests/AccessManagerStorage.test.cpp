@@ -607,7 +607,7 @@ TEST_F(AccessManagerStorageTest, changing_usergroup_name_allows_adding_new_group
   std::string alternativeName = "MyGroupAlternative";
   int64_t originalId = storage->createUserGroup(UserGroup(originalName, {}));
   storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
-  int64_t newId;
+  int64_t newId{};
   EXPECT_NO_THROW(newId = storage->createUserGroup(UserGroup(originalName, {})));
   EXPECT_NE(originalId, newId);
 }
