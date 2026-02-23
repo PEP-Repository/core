@@ -1,7 +1,7 @@
 #pragma once
 
-#include <pep/transcryptor/KeyComponentMessages.hpp>
 #include <pep/auth/SigningSerializers.hpp>
+#include <pep/key-components/KeyComponentMessages.hpp>
 
 namespace pep {
 

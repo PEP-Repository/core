@@ -1,4 +1,4 @@
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
 namespace pep {

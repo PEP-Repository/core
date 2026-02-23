@@ -4,7 +4,6 @@
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/rsk/RskSerializers.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -31,12 +30,6 @@ const severity_level CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY = debug;
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
-  keyComponent_request_duration(prometheus::BuildSummary()
-    .Name("pep_transcryptor_keyComponent_request_duration_seconds")
-    .Help("Duration of generating key component")
-    .Register(*registry)
-    .Add({}, prometheus::Summary::Quantiles{
-      {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
   transcryptor_request_duration(prometheus::BuildSummary()
   .Name("pep_transcryptor_request_duration_seconds")
     .Help("Duration of a transcryptor request")
@@ -51,23 +44,13 @@ Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   { }
 
 Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : SigningServer::Parameters(io_context, config) {
+  : KeyComponentServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
-  std::filesystem::path systemKeysFile;
   std::filesystem::path storageFile;
   std::filesystem::path verifiersFile; // used to check RSK proofs made by access manager
 
   try {
     keysFile = config.get<std::filesystem::path>("KeysFile");
-
-    if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
-      systemKeysFile = optionalSystemKeysFile.value();
-    }
-    else {
-      //Legacy version, from when we still had a (Soft)HSM. TODO: use new version in configuration for all environments, and remove legacy version.
-      systemKeysFile = config.get<std::filesystem::path>("HSM.ConfigFile");
-    }
-
     storageFile = config.get<std::filesystem::path>("StorageFile");
     verifiersFile = config.get<std::filesystem::path>("VerifiersFile");
   }
@@ -88,34 +71,11 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
          "this is an error" << std::endl;
   }
 
-  boost::property_tree::ptree systemKeys;
-  boost::property_tree::read_json(std::filesystem::absolute(systemKeysFile).string(), systemKeys);
-  systemKeys = systemKeys.get_child_optional("Keys") //Old HSMKeys.json files have the keys in a Keys-object
-      .get_value_or(systemKeys); //we now also allow them to be directly in the root, resulting in cleaner SystemKeys-files
-  setPseudonymTranslator(std::make_shared<PseudonymTranslator>(ParsePseudonymTranslationKeys(systemKeys)));
-  setDataTranslator(std::make_shared<DataTranslator>(ParseDataTranslationKeys(systemKeys)));
-
   setStorage(std::make_shared<TranscryptorStorage>(storageFile));
 
   setVerifiers(
     Serialization::FromJsonString<VerifiersResponse>(ReadFile(verifiersFile)));
 
-}
-
-std::shared_ptr<PseudonymTranslator> Transcryptor::Parameters::getPseudonymTranslator() const {
-  return pseudonymTranslator;
-}
-
-std::shared_ptr<DataTranslator> Transcryptor::Parameters::getDataTranslator() const {
-  return dataTranslator;
-}
-
-void Transcryptor::Parameters::setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator) {
-  Parameters::pseudonymTranslator = pseudonymTranslator;
-}
-
-void Transcryptor::Parameters::setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator) {
-  Parameters::dataTranslator = dataTranslator;
 }
 
 void Transcryptor::Parameters::setStorage(std::shared_ptr<TranscryptorStorage> storage) {
@@ -140,30 +100,11 @@ const VerifiersResponse& Transcryptor::Parameters::getVerifiers() const {
 }
 
 void Transcryptor::Parameters::check() const {
-  if(!pseudonymTranslator)
-    throw std::runtime_error("pseudonymTranslator must be set");
-  if(!dataTranslator)
-    throw std::runtime_error("dataTranslator must be set");
   if(!storage)
     throw std::runtime_error("storage must be set");
   if(!verifiers)
     throw std::runtime_error("verifiers must be set");
-  SigningServer::Parameters::check();
-}
-
-messaging::MessageBatches Transcryptor::handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest) {
-  // Generate response
-  auto start_time = std::chrono::steady_clock::now();
-  auto response = KeyComponentResponse::HandleRequest(
-    *signedRequest,
-    *mPseudonymTranslator,
-    *mDataTranslator,
-    *this->getRootCAs());
-
-  lpMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
-
-  //Return result
-  return messaging::BatchSingleMessage(response);
+  KeyComponentServer::Parameters::check();
 }
 
 messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_ptr<TranscryptorRequest> request, messaging::MessageSequence entriesObservable) {
@@ -239,15 +180,16 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
             "includeAccessGroupPseudonyms is not set");
       }
 
+      const PseudonymTranslator& pseudonymTranslator = server->pseudonymTranslator();
       // Verify that the AM has properly RSKed the pseudonyms.
       try {
-        server->mPseudonymTranslator->checkTranslationProof(
+        pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mAccessManager,
             entry.mAccessManagerProof, server->mVerifiers.mAccessManager);
-        server->mPseudonymTranslator->checkTranslationProof(
+        pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mStorageFacility,
             entry.mStorageFacilityProof, server->mVerifiers.mStorageFacility);
-        server->mPseudonymTranslator->checkTranslationProof(
+        pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mTranscryptor,
             entry.mTranscryptorProof, server->mVerifiers.mTranscryptor);
 
@@ -259,19 +201,19 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
       // All seems fine: create final encrypted pseudonyms
       ret.mPolymorphic = entry.mPolymorphic;
-      ret.mStorageFacility = server->mPseudonymTranslator->translateStep(
+      ret.mStorageFacility = pseudonymTranslator.translateStep(
           entry.mStorageFacility,
           RecipientForServer(EnrolledParty::StorageFacility));
-      ret.mAccessManager = server->mPseudonymTranslator->translateStep(
+      ret.mAccessManager = pseudonymTranslator.translateStep(
           entry.mAccessManager,
           RecipientForServer(EnrolledParty::AccessManager));
-      localPseudonym = server->mPseudonymTranslator->translateStep(
+      localPseudonym = pseudonymTranslator.translateStep(
           entry.mTranscryptor,
           RecipientForServer(EnrolledParty::Transcryptor)
       ).decrypt(*server->mPseudonymKey);
 
       if (ctx->includeUserGroupPseudonyms) {
-        ret.mAccessGroup = server->mPseudonymTranslator->translateStep(
+        ret.mAccessGroup = pseudonymTranslator.translateStep(
             *entry.mUserGroup,
             RecipientForCertificate(ctx->ticketRequest.logSignature()->certificateChain().leaf())
         );
@@ -397,7 +339,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
           observe_on_asio(*getIoContext()),
       [server = SharedFrom(*this), recipient](EncryptedKey entry) {
 
-    EncryptedKey retEntry = server->mDataTranslator->translateStep(entry, recipient);
+    EncryptedKey retEntry = server->dataTranslator().translateStep(entry, recipient);
     retEntry.ensurePacked();
 
     return retEntry;
@@ -409,16 +351,13 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
 }
 
 Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
-  : SigningServer(parameters),
+  : KeyComponentServer(parameters),
   mWorkerPool(WorkerPool::getShared()),
   mPseudonymKey(parameters->getPseudonymKey()),
-  mPseudonymTranslator(parameters->getPseudonymTranslator()),
-  mDataTranslator(parameters->getDataTranslator()),
   mStorage(parameters->getStorage()),
   lpMetrics(std::make_shared<Metrics>(mRegistry)),
   mVerifiers(parameters->getVerifiers()) {
   RegisterRequestHandlers(*this,
-                          &Transcryptor::handleKeyComponentRequest,
                           &Transcryptor::handleTranscryptorRequest,
                           &Transcryptor::handleRekeyRequest,
                           &Transcryptor::handleLogIssuedTicketRequest);

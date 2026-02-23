@@ -8,14 +8,12 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
-#include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
@@ -154,33 +152,26 @@ AccessManager::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) 
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-      ticket_request2_duration(prometheus::BuildSummary()
-      .Name("pep_accessmanager_ticket_request2_duration_seconds")
-      .Help("Duration of a successful ticket2 request")
-      .Register(*registry)
-      .Add({}, prometheus::Summary::Quantiles{
-        {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-        keyComponent_request_duration(prometheus::BuildSummary()
-        .Name("pep_accessmanager_keyComponent_request_duration_seconds")
-        .Help("Duration of a successful keyComponent request")
-        .Register(*registry)
-        .Add({}, prometheus::Summary::Quantiles{
-          {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-          ticket_request_duration(prometheus::BuildSummary()
-          .Name("pep_accessmanager_ticket_request_duration_seconds")
-            .Help("Duration of a successful ticket request")
-            .Register(*registry)
-            .Add({}, prometheus::Summary::Quantiles{
-              {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})) {}
+  ticket_request2_duration(prometheus::BuildSummary()
+    .Name("pep_accessmanager_ticket_request2_duration_seconds")
+    .Help("Duration of a successful ticket2 request")
+    .Register(*registry)
+    .Add({}, prometheus::Summary::Quantiles{
+      {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
+  ticket_request_duration(prometheus::BuildSummary()
+    .Name("pep_accessmanager_ticket_request_duration_seconds")
+    .Help("Duration of a successful ticket request")
+    .Register(*registry)
+    .Add({}, prometheus::Summary::Quantiles{
+      {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})) {
+}
 
 
 AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : SigningServer::Parameters(io_context, config) {
+  : KeyComponentServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path globalConfFile;
   ElgamalPublicKey publicKeyPseudonyms;
-
-  std::filesystem::path systemKeysFile;
 
   std::string strPseudonymKey;
 
@@ -193,14 +184,6 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     publicKeyPseudonyms = config.get<ElgamalPublicKey>("PublicKeyPseudonyms");
     transcryptorEndPoint = config.get<EndPoint>(ServerTraits::Transcryptor().configNode());
     keyServerEndPoint = config.get<EndPoint>(ServerTraits::KeyServer().configNode());
-
-    if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
-      systemKeysFile = optionalSystemKeysFile.value();
-    }
-    else {
-      //Legacy version, from when we still had a (Soft)HSM. TODO: use new version in configuration for all environments, and remove legacy version.
-      systemKeysFile = config.get<std::filesystem::path>("HSM.ConfigFile");
-    }
 
     storageFile = config.get<std::filesystem::path>("StorageFile");
   }
@@ -218,12 +201,6 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     throw;
   }
 
-  boost::property_tree::ptree systemKeys;
-  boost::property_tree::read_json(std::filesystem::canonical(systemKeysFile).string(), systemKeys);
-  systemKeys = systemKeys.get_child_optional("Keys") //Old HSMKeys.json files have the keys in a Keys-object
-      .get_value_or(systemKeys); //we now also allow them to be directly in the root, resulting in cleaner SystemKeys-files
-  setPseudonymTranslator(std::make_shared<PseudonymTranslator>(ParsePseudonymTranslationKeys(systemKeys)));
-  setDataTranslator(std::make_shared<DataTranslator>(ParseDataTranslationKeys(systemKeys)));
 
   setPseudonymKey(ElgamalPrivateKey(strPseudonymKey));
   setPublicKeyPseudonyms(publicKeyPseudonyms);
@@ -318,22 +295,6 @@ const EndPoint& AccessManager::Parameters::getKeyServerEndPoint() const {
   return keyServerEndPoint;
 }
 
-std::shared_ptr<PseudonymTranslator> AccessManager::Parameters::getPseudonymTranslator() const {
-  return pseudonymTranslator;
-}
-
-std::shared_ptr<DataTranslator> AccessManager::Parameters::getDataTranslator() const {
-  return dataTranslator;
-}
-
-void AccessManager::Parameters::setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator) {
-  Parameters::pseudonymTranslator = pseudonymTranslator;
-}
-
-void AccessManager::Parameters::setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator) {
-  Parameters::dataTranslator = dataTranslator;
-}
-
 std::shared_ptr<AccessManager::Backend> AccessManager::Parameters::getBackend() const {
   return backend;
 }
@@ -346,45 +307,24 @@ void AccessManager::Parameters::check() const {
     throw std::runtime_error("pseudonymKey must be set");
   if (!publicKeyPseudonyms)
     throw std::runtime_error("publicKeyPseudonyms must be set");
-  if(!pseudonymTranslator)
-    throw std::runtime_error("pseudonymTranslator must be set");
-  if(!dataTranslator)
-    throw std::runtime_error("dataTranslator must be set");
   if (!backend)
     throw std::runtime_error("backend must be set");
 
-  SigningServer::Parameters::check();
-}
-
-messaging::MessageBatches AccessManager::handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> pRequest) {
-  // Generate response
-  auto start_time = std::chrono::steady_clock::now();
-  auto response = KeyComponentResponse::HandleRequest(
-    *pRequest,
-    *mPseudonymTranslator,
-    *mDataTranslator,
-    *this->getRootCAs());
-  lpMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count());
-
-  //Return result
-  return messaging::BatchSingleMessage(response);
+  KeyComponentServer::Parameters::check();
 }
 
 AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> parameters)
-  : SigningServer(parameters),
+  : KeyComponentServer(parameters),
   mPseudonymKey(parameters->getPseudonymKey()),
   mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
   mTranscryptorProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getTranscryptorEndPoint().expectedCommonName, getRootCAs()),
   mKeyServerProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getKeyServerEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
-  mPseudonymTranslator(parameters->getPseudonymTranslator()),
-  mDataTranslator(parameters->getDataTranslator()),
   backend(parameters->getBackend()),
   globalConf(parameters->getGlobalConfiguration()),
   lpMetrics(std::make_shared<AccessManager::Metrics>(mRegistry)),
   mWorkerPool(WorkerPool::getShared()) {
   backend->setAccessManager(this);
   RegisterRequestHandlers(*this,
-                          &AccessManager::handleKeyComponentRequest,
                           &AccessManager::handleTicketRequest2,
                           &AccessManager::handleEncryptionKeyRequest,
                           &AccessManager::handleGlobalConfigurationRequest,
@@ -479,7 +419,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       throw;
                     }
                     auto blindingAD = entry.mMetadata.computeKeyBlindingAdditionalData(mLocalPseudonym);
-                    key = server->mDataTranslator->blind(
+                    key = server->dataTranslator().blind(
                       entry.mPolymorphEncryptionKey,
                       blindingAD.content,
                       blindingAD.invertComponent
@@ -569,7 +509,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                                 throw;
                               }
 
-                              key = server->mDataTranslator->unblindAndTranslate(
+                              key = server->dataTranslator().unblindAndTranslate(
                                 encryptedKey,
                                 blindingAD.content,
                                 blindingAD.invertComponent,
@@ -699,7 +639,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
     FillTranscryptorRequestEntry(
         entry,
-        *ctx->server->mPseudonymTranslator,
+        ctx->server->pseudonymTranslator(),
         ctx->request.mIncludeUserGroupPseudonyms,
         ctx->signature);
     return i;
@@ -839,7 +779,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     for (size_t i = 0; i < list.size(); i++) {
       TranscryptorRequestEntry& entry = tsRequestEntries.mEntries[i];
       entry.mPolymorphic = list[i];
-          FillTranscryptorRequestEntry(entry, *self->mPseudonymTranslator);
+          FillTranscryptorRequestEntry(entry, self->pseudonymTranslator());
     }
     return self->mTranscryptorProxy.requestTranscryption(std::move(tsRequest), messaging::MakeSingletonTail(tsRequestEntries))
       .map([server = SharedFrom(*self), participantGroup, performRemove](const TranscryptorResponse& resp) -> FakeVoid {
@@ -938,16 +878,18 @@ messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_p
 }
 
 messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request) {
+  const auto& pseudonymTranslator = this->pseudonymTranslator();
+
   return messaging::BatchSingleMessage(VerifiersResponse(
-      mPseudonymTranslator->computeTranslationProofVerifiers(
+      pseudonymTranslator.computeTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::AccessManager),
           mPublicKeyPseudonyms
       ),
-      mPseudonymTranslator->computeTranslationProofVerifiers(
+      pseudonymTranslator.computeTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::StorageFacility),
           mPublicKeyPseudonyms
       ),
-      mPseudonymTranslator->computeTranslationProofVerifiers(
+      pseudonymTranslator.computeTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::Transcryptor),
           mPublicKeyPseudonyms
       )

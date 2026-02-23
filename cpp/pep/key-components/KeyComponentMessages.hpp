@@ -1,8 +1,7 @@
 #pragma once
 
-#include <pep/rsk-pep/DataTranslator.hpp>
-#include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/auth/Signed.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
 
 namespace pep {
 
@@ -32,12 +31,6 @@ public:
 
   CurveScalar mPseudonymKeyComponent;
   CurveScalar mEncryptionKeyComponent;
-
-  static KeyComponentResponse HandleRequest(
-    const SignedKeyComponentRequest& request,
-    const PseudonymTranslator& pseudonymTranslator,
-    const DataTranslator& dataTranslator,
-    const X509RootCertificates& rootCAs);
 };
 
 }
