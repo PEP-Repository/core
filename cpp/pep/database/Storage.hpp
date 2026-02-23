@@ -110,18 +110,24 @@ struct Storage : public BasicStorage {
   ///
   /// Example: check if a column group is not empty
   /// \code
-  ///   myStorage->currentRecordExists<ColumnGroupColumnRecord>(storage,
+  ///   myStorage->currentRecordExists<ColumnGroupColumnRecord>(
   ///     c(&ColumnGroupColumnRecord::columnGroup) == columnGroup)
   /// \endcode
   template <Record RecordType>
   [[nodiscard]] bool currentRecordExists(auto whereCondition);
 
   /// Return whether any non-tombstone records exist without retrieving them.
+  /// The where-clause is evaluated for all records, before determining which records are current. The having-clause is only evaluated for the current records.
   ///
-  /// Example: check if a column group is not empty
+  /// Example: check if a UserGroupRecord with a certain name exists
+  /// The name has to be checked in the having-clause. We first need to decide which records are current, before checking the name.
+  /// Otherwise records that used to have the given name, but no longer do, will match the query.
+  /// Even worse, if the record is tombstoned with a different name, that tombstone record will be eliminated before checking which records are current.
+  /// So the method would incorrectly return true.
   /// \code
-  ///   myStorage->currentRecordExists<ColumnGroupColumnRecord>(storage,
-  ///     c(&ColumnGroupColumnRecord::columnGroup) == columnGroup)
+  ///   myStorage->currentRecordExists<UserGroupRecord>(
+  ///     true,
+  ///     having(c(&UserGroupRecord::name) == name))
   /// \endcode
   template <Record RecordType, typename havingT>
   [[nodiscard]] bool currentRecordExists(auto whereCondition, having<havingT> havingCondition);
