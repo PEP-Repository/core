@@ -102,16 +102,20 @@ CurvePoint CurvePoint::dbl() const {
   return r;
 }
 
-/*! \brief Multiply this CurvePoint with a CurveScalar
+CurvePoint CurvePoint::mult(const CurveScalar& s) const {
+  CurvePoint r(CurvePoint::gotUnpacked);
+  group_ge_scalarmult(&r.mUnpacked, unpack(), &s.inner);
+  return r;
+}
+
+/*! \brief Multiply a CurvePoint with a CurveScalar
  *
  * This CurvePoint remains unaltered.
- * \param p The value to multiply with.
+ * \param s The value to multiply with.
  * \return The resulting CurvePoint.
  */
-CurvePoint CurvePoint::operator*(const CurveScalar& p) const {
-  CurvePoint r(gotUnpacked);
-  group_ge_scalarmult(&r.mUnpacked, unpack(), &p.inner);
-  return r;
+CurvePoint operator*(const CurveScalar& s, const CurvePoint& p) {
+  return p.mult(s);
 }
 
 /*! \brief Multiply this CurvePoint with a public (not secret!) CurveScalar

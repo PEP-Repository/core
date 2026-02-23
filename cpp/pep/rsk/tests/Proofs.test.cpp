@@ -10,7 +10,7 @@ TEST(ProofsTest, TestScalarMultProof) {
     auto x = pep::CurveScalar::Random();
     auto A = pep::CurvePoint::BaseMult(x);
     auto M = pep::CurvePoint::Random();
-    auto N = M * x;
+    auto N = x * M;
 
     auto proof = pep::ScalarMultProof::create(A, M, N, x);
 

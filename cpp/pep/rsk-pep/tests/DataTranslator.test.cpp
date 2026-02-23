@@ -77,7 +77,7 @@ protected:
     if (invertBlindKey) {
       expectedBlindingKey = expectedBlindingKey.invert();
     }
-    const auto expectedBlindedDecrypt = data * expectedBlindingKey;
+    const auto expectedBlindedDecrypt = expectedBlindingKey * data;
     EXPECT_EQ(blindedDecrypt, expectedBlindedDecrypt);
 
     const auto translated1 = am->unblindAndTranslate(blinded, blindAddData, invertBlindKey, user1);

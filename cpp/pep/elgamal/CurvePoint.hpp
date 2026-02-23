@@ -70,7 +70,7 @@ class CurvePoint {
   [[nodiscard]] CurvePoint operator+(const CurvePoint& p) const;
   [[nodiscard]] CurvePoint operator-(const CurvePoint& p) const;
   [[nodiscard]] CurvePoint dbl() const;
-  [[nodiscard]] CurvePoint operator*(const CurveScalar& p) const;
+  friend CurvePoint operator*(const CurveScalar& s, const CurvePoint& p);
   [[nodiscard]] CurvePoint publicMult(const CurveScalar& s) const;
 
   template<typename RNG>
@@ -106,8 +106,12 @@ class CurvePoint {
   // it first, if necessary).
   group_ge* unpack() const;
 
+  [[nodiscard]] CurvePoint mult(const CurveScalar& s) const;
+
   explicit CurvePoint(state_t state) : mState(state) { }
 };
+
+[[nodiscard]] CurvePoint operator*(const CurveScalar& s, const CurvePoint& p);
 
 }
 

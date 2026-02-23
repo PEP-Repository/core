@@ -22,8 +22,8 @@ namespace {
 std::string ToHex(std::span<const std::byte> bytes) { return boost::algorithm::hex(std::string(SpanToString(bytes))); }
 
 SkRecipient SomeRecipient(unsigned index) {
-  auto facilityType = static_cast<FacilityType>(index % 5 + 1);
-  if (facilityType == FacilityType::User) {
+  auto facilityType = static_cast<EnrolledParty>(index % 5 + 1);
+  if (facilityType == EnrolledParty::User) {
     return SkRecipient(
         static_cast<RecipientBase::Type>(facilityType),
         {
@@ -50,7 +50,7 @@ void GenerateKeyFactorTestcases(std::ostream& out, const unsigned count) {
     out << "Domain: " << unsigned{domain} << '\n';
     out << "Key factor secret (HMAC key): " << ToHex(rekey.hmacKey()) << '\n';
 
-    auto facilityType = static_cast<FacilityType>(i % 5 + 1);
+    auto facilityType = static_cast<EnrolledParty>(i % 5 + 1);
     RekeyRecipient recipient(static_cast<const RekeyRecipient&>(SomeRecipient(i)));
 
     out << "Recipient:\n"
@@ -80,7 +80,7 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
   ElgamalPrivateKey masterPrivateEncryptionKey = CurveScalar::One();
   for (unsigned i{}; i < translatorsCount; ++i) {
     const auto masterPrivateEncryptionKeyShare = CurveScalar::Random();
-    masterPrivateEncryptionKey = masterPrivateEncryptionKey.mult(masterPrivateEncryptionKeyShare);
+    masterPrivateEncryptionKey = masterPrivateEncryptionKey * masterPrivateEncryptionKeyShare;
     PseudonymTranslationKeys translationKeys{
         .encryptionKeyFactorSecret{RandomArray<64>()},
         .pseudonymizationKeyFactorSecret{RandomArray<64>()},
@@ -154,7 +154,7 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
     for (unsigned transcryptorNum{}; const auto& translator : translators) {
       const auto comp = translator.generateKeyComponent(recipient);
       out << "  Key component @ transcryptor #" << transcryptorNum << " (CurveScalar): " << comp.text() << '\n';
-      keyRecipient = keyRecipient.mult(comp);
+      keyRecipient = keyRecipient * comp;
       ++transcryptorNum;
     }
     out << ">>User private key (product of components): " << keyRecipient.text() << '\n';

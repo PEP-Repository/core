@@ -44,7 +44,7 @@ TEST(CurvePointTest, TestPrecomputedTable) {
     auto pt = pep::CurvePoint::Random();
     auto s = pep::CurveScalar::Random();
     pep::CurvePoint::ScalarMultTable table(pt);
-    EXPECT_EQ(pt * s, table.mult(s));
+    EXPECT_EQ(s * pt, table.mult(s));
   }
 }
 
@@ -52,7 +52,7 @@ TEST(CurvePointTest, TestBaseMult) {
   const auto base = pep::CurvePoint::FromText("e2f2ae0a6abc4e71a884a961c500515f58e30b6aa582dd8db6a65945e08d2d76");
   for (int i = 0; i < 1000; i++) {
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(pep::CurvePoint::BaseMult(s), base * s);
+    EXPECT_EQ(pep::CurvePoint::BaseMult(s), s * base);
   }
 }
 
@@ -67,7 +67,7 @@ TEST(CurvePointTest, TestPublicMult) {
   for (int i = 0; i < 1000; i++) {
     pep::CurvePoint b = pep::CurvePoint::Random();
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(b * s, b.publicMult(s));
+    EXPECT_EQ(s * b, b.publicMult(s));
   }
 }
 

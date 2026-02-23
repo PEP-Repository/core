@@ -95,7 +95,7 @@ static void BM_ScalarMult(benchmark::State& state) {
   pep::CurvePoint pt(boost::algorithm::unhex(std::string(
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
-    benchmark::DoNotOptimize(pt * scalar);
+    benchmark::DoNotOptimize(scalar * pt);
 }
 BENCHMARK(BM_ScalarMult);
 

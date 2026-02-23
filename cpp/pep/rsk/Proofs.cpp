@@ -11,7 +11,7 @@ ScalarMultProof ScalarMultProof::create(
   auto nonce = rng == nullptr ? CurveScalar::Random()
                   : CurveScalar::Random<>(*rng);
   auto cb = CurvePoint::BaseMult(nonce);
-  auto cm = M * nonce;
+  auto cm = nonce * M;
   auto challenge = computeChallenge(A, M, N, cb, cm);
   return ScalarMultProof(
     cb,
@@ -78,12 +78,12 @@ RSKProof RSKProof::certifiedRSK(
     const CurveScalar& k) {
   auto zOverK = z * k.invert();
   auto r = CurveScalar::Random();
-  auto ry = in.publicKey * r;
+  auto ry = r * in.publicKey;
   auto rB = CurvePoint::BaseMult(r);
 
-  out.b = (in.b + rB) * zOverK;
-  out.c = (in.c + ry) * z;
-  out.publicKey = in.publicKey * k;
+  out.b = zOverK * (in.b + rB);
+  out.c = z * (in.c + ry);
+  out.publicKey = k * in.publicKey;
 
   return RSKProof::create(
     in,
@@ -124,7 +124,7 @@ RSKVerifiers RSKVerifiers::compute(
   return RSKVerifiers(
     CurvePoint::BaseMult(z * k.invert()),
     CurvePoint::BaseMult(z),
-    y * k
+    k * y
   );
 }
 

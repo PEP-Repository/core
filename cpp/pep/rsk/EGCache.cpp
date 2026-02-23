@@ -459,7 +459,7 @@ ElgamalEncryption EGCacheImp::RSKValue::RK(
   // ret.b = 1/k (b + r B)
   auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
   auto bPlusRB = CurvePoint::BaseMult(r) + b;
-  ret.b = bPlusRB * mKInv;
+  ret.b = mKInv * bPlusRB;
 
   // ret.c = c + ry
   auto ry = mYTable->mult(r);
@@ -481,11 +481,11 @@ ElgamalEncryption EGCacheImp::RSKValue::RSK(
   auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
   auto zOverK = mKInv * z;
   auto bPlusRB = CurvePoint::BaseMult(r) + b;
-  ret.b = bPlusRB * zOverK;
+  ret.b = zOverK * bPlusRB;
 
   // ret.c = z(c + ry)
   auto ry = mYTable->mult(r);
-  ret.c = (c + ry) * z;
+  ret.c = z * (c + ry);
 
   // ret.y = ky
   ret.publicKey = mKY;
