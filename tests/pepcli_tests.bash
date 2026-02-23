@@ -31,7 +31,7 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 
 if should_run_test basic; then
   # Store a PEP ID...
-  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
   # ... then verify that we can read it back (see #2750)
   pepcli validate data
   # Clean up: delete the ID that we stored
@@ -594,10 +594,10 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group "Access Administrator" ama cgar create SOTD SOAG write
 
   # Prerare Structured-Output Test Participants (SOTP)
-  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
 
   pepcli --oauth-token-group "Data Administrator" ama group create SOTPGroup
   pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP1}"
@@ -633,7 +633,7 @@ if should_run_test structured-output; then
 
   # Check if the correct delimiter was used via a count
   EXPECTED_CSV_DELIMITER_COUNT=10
-  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ',' | wc -l | xargs)
+  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ',' | wc -l | tr -d '[:space:]')
   if [ "$ACTUAL_CSV_DELIMITER_COUNT" -ne "$EXPECTED_CSV_DELIMITER_COUNT" ]; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} commas but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
@@ -642,7 +642,7 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group SOAG export\
     --from "$DEST_DIR/pulled-data" --output-file "$CSV_PATH" --force csv --delimiter semicolon
   CSV_CONTENT=$(execute . cat "${CSV_PATH}")
-  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | xargs)
+  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | tr -d '[:space:]')
   if [ "$ACTUAL_CSV_DELIMITER_COUNT" -ne "$EXPECTED_CSV_DELIMITER_COUNT" ]; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} semicolons but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
