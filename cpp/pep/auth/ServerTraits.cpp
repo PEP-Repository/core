@@ -19,6 +19,13 @@ std::string ServerTraits::id() const {
   return this->defaultId();
 }
 
+std::string ServerTraits::lowercaseId() const {
+  auto result = this->id();
+  boost::algorithm::to_lower(result);
+  assert(result == boost::algorithm::to_lower_copy(this->defaultId()) && "Default and custom IDs should differ only in cAsInG");
+  return result;
+}
+
 ServerTraits::ServerTraits(std::string abbreviation, std::string description) noexcept
   : mAbbreviation(std::move(abbreviation)), mDescription(std::move(description)) {
 }
@@ -39,15 +46,11 @@ std::string ServerTraits::configNode() const {
 }
 
 std::string ServerTraits::commandLineId() const {
-  auto result = this->defaultId();
-  boost::algorithm::to_lower(result);
-  return result;
+  return this->lowercaseId();
 }
 
 std::string ServerTraits::metricsId() const {
-  auto result = this->defaultId();
-  boost::algorithm::to_lower(result);
-  return result;
+  return this->lowercaseId();
 }
 
 std::string ServerTraits::certificateSubject() const {

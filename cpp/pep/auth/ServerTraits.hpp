@@ -16,6 +16,7 @@ private:
 
   std::string defaultId() const;
   std::string id() const;
+  std::string lowercaseId() const;
 
   // Private constructors ensure that all instances have been created by this class itself, i.e. are valid
   ServerTraits(std::string abbreviation, std::string description) noexcept;
