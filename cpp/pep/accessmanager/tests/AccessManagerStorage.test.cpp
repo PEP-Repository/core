@@ -537,6 +537,15 @@ TEST_F(AccessManagerStorageTest, userGroupIsEmpty) {
 
 TEST_F(AccessManagerStorageTest, newUserGroupGetsNewUserGroupId) {
   std::unordered_set<int64_t> createdIds;
+  //First create (and immediately remove) some user groups. They should all get different IDs
+  for(size_t i = 0; i < 10; i++) {
+    auto name = "group" + std::to_string(i);
+    auto newId = storage->createUserGroup(UserGroup(name, {}));
+    auto [iterator, inserted] = createdIds.emplace(newId);
+    EXPECT_TRUE(inserted);
+    storage->removeUserGroup(name);
+  }
+  //Now create new groups with the same names as before. They should still get new IDs
   for(size_t i = 0; i < 10; i++) {
     auto newId = storage->createUserGroup(UserGroup("group" + std::to_string(i), {}));
     auto [iterator, inserted] = createdIds.emplace(newId);
@@ -579,6 +588,28 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
 
   EXPECT_EQ(storage->findUserGroupId(group1.mName), group1_id);
   EXPECT_EQ(storage->findUserGroupId(group2.mName), group2_id);
+}
+
+TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
+  std::string originalName = "MyGroup";
+  std::string alternativeName = "MyGroupAlternative";
+  int64_t id = storage->createUserGroup(UserGroup(originalName, {}));
+  storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
+  EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt);
+  EXPECT_EQ(storage->findUserGroupId(alternativeName), id);
+  storage->removeUserGroup(alternativeName);
+  EXPECT_EQ(storage->findUserGroupId(alternativeName), std::nullopt);
+  EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt) << "Removing a userGroup should not only tombstone it's current name";
+}
+
+TEST_F(AccessManagerStorageTest, changing_usergroup_name_allows_adding_new_group_with_the_old_name) {
+  std::string originalName = "MyGroup";
+  std::string alternativeName = "MyGroupAlternative";
+  int64_t originalId = storage->createUserGroup(UserGroup(originalName, {}));
+  storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
+  int64_t newId;
+  EXPECT_NO_THROW(newId = storage->createUserGroup(UserGroup(originalName, {})));
+  EXPECT_NE(originalId, newId);
 }
 
 // ==== executeQuery ====

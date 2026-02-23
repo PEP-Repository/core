@@ -1586,20 +1586,11 @@ void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t intern
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
-  auto records = mImplementor->getCurrentRecords(
-      c(&UserGroupRecord::name) == name
-      && c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
-      &UserGroupRecord::seqno, &UserGroupRecord::userGroupId);
-
-  if (records.begin() == records.end()) {
-    return std::nullopt;
-  }
-
-  auto [seqno, userGroupId] = std::ranges::max(records, {}, [](const std::tuple<int64_t, int64_t>& tuple) {
-    auto [seqno, userGroupId] = tuple;
-    return seqno;
-  });
-  return userGroupId;
+  using pep::database::having;
+  return RangeToOptional(mImplementor->getCurrentRecords(
+    c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
+      having(c(&UserGroupRecord::name) == name),
+      &UserGroupRecord::userGroupId));
 }
 
 int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, Timestamp at) const {
@@ -1641,14 +1632,16 @@ std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int
 }
 
 bool AccessManager::Backend::Storage::hasUserGroup(std::string_view name) const {
-  return mImplementor->currentRecordExists<UserGroupRecord>(c(&UserGroupRecord::name) == name);
+  using pep::database::having;
+  return mImplementor->currentRecordExists<UserGroupRecord>(true, having(c(&UserGroupRecord::name) == name));
 }
 
 std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthValidity(const std::string& group, Timestamp at) const {
   using namespace std::ranges;
+  using pep::database::having;
   auto result = RangeToOptional(
-    mImplementor->getCurrentRecords(
-      c(&UserGroupRecord::name) == group,
+    mImplementor->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
+      having(c(&UserGroupRecord::name) == group),
       &UserGroupRecord::maxAuthValiditySeconds)
     | views::transform(to_optional_seconds)
   );
@@ -1693,13 +1686,17 @@ int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(UserGroup userGroup) {
-  if (!hasUserGroup(userGroup.mName)) {
+  modifyUserGroup(userGroup.mName, userGroup);
+}
+
+void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, UserGroup userGroup) {
+  if (!hasUserGroup(name)) {
     std::ostringstream msg;
-    msg << "User group " << Logging::Escape(userGroup.mName) << " doesn't exist";
+    msg << "User group " << Logging::Escape(std::string(name)) << " doesn't exist";
     throw Error(msg.str());
   }
 
-  auto userGroupId = getUserGroupId(userGroup.mName); // Prevent use-after-move
+  auto userGroupId = getUserGroupId(name);
   mImplementor->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.mName), to_optional_uint64(userGroup.mMaxAuthValidity)));
 }
 

@@ -260,6 +260,7 @@ public:
   /* Manage user groups */
   int64_t createUserGroup(UserGroup userGroup);
   void modifyUserGroup(UserGroup userGroup);
+  void modifyUserGroup(std::string_view name, UserGroup userGroup);
   void removeUserGroup(std::string name);
   void addUserToGroup(std::string_view uid, std::string group);
   void addUserToGroup(int64_t internalUserId, std::string group);
