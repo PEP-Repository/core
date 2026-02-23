@@ -12,7 +12,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG = "Enrollment server";
+const std::string LOG_TAG = "Key component server";
 
 }
 
