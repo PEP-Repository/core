@@ -6,6 +6,9 @@ add_library(${PROJECT_NAME}Authlib STATIC
   OAuthError.cpp OAuthError.hpp
   OAuthToken.cpp OAuthToken.hpp
   ServerTraits.cpp ServerTraits.hpp
+  Signature.cpp Signature.hpp
+  Signed.cpp Signed.hpp
+  SigningSerializers.cpp SigningSerializers.hpp
   UserGroup.cpp UserGroup.hpp
   UserGroupSerializers.cpp UserGroupSerializers.hpp
 )

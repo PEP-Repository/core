@@ -1,5 +1,6 @@
 #include <pep/accessmanager/AmaSerializers.hpp>
 
+#include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
 namespace pep {

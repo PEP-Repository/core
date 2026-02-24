@@ -121,6 +121,11 @@ MetadataXEntry MetadataXEntry::prepareForStore(const std::string& aeskey) const 
 
   // Only encrypt if desired
   if (result.mStoreEncrypted && !result.mIsEncrypted) {
+    if (result.mBound) {
+      // Protobuf serialization is not stable,
+      // see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2525
+      throw std::runtime_error("encrypted bound metadata is currently not supported");
+    }
     result.mPayload = Serialization::ToString(
         EncryptedBytes(aeskey, Bytes(std::move(result.mPayload))), false);
     result.mIsEncrypted = true;

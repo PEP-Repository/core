@@ -26,6 +26,7 @@ add_library(${PROJECT_NAME}Messaginglib STATIC
 )
 
 target_link_libraries(${PROJECT_NAME}Messaginglib
+  ${PROJECT_NAME}Authlib
   ${PROJECT_NAME}Networkinglib
   ${PROJECT_NAME}Versioninglib
 )

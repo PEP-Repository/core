@@ -1,6 +1,7 @@
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/serialization/IndexListSerializer.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 

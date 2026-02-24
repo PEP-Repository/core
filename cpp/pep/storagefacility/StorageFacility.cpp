@@ -296,8 +296,9 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto time = std::chrono::steady_clock::now();
   const auto& rootCAs = *this->getRootCAs();
 
-  auto request = signedRequest->open(rootCAs);
-  auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(rootCAs);
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
   auto ticket = request.mTicket.open(rootCAs, accessGroup, "read-meta");
 
   struct ResponseEntry {
@@ -428,12 +429,14 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 messaging::MessageBatches
 StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRequest2> signedRequest) {
   return rxcpp::observable<>::just(CreateObservable<std::shared_ptr<std::string>>([signedRequest, server = SharedFrom(*this)](rxcpp::subscriber<std::shared_ptr<std::string>> subscriber) {
-    const auto& rootCAs = *server->getRootCAs();
+    auto rootCAs = server->getRootCAs();
+    auto certified = signedRequest->open(*rootCAs);
+    const auto& request = certified.message;
+    auto userGroup = certified.signatory.organizationalUnit();
 
-    auto request = signedRequest->open(rootCAs);
     auto ticket = request.mTicket.open(
-      rootCAs,
-      signedRequest->getLeafCertificateOrganizationalUnit(),
+      *rootCAs,
+      userGroup,
       "read-meta"
     );
 
@@ -496,13 +499,16 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
 
 messaging::MessageBatches
 StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> signedRequest) {
-  const auto& rootCAs = this->getRootCAs();
   auto time = std::chrono::steady_clock::now();
 
-  auto request = signedRequest->open(*rootCAs);
+  auto rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
+
   auto ticket = request.mTicket.open(
     *rootCAs,
-    signedRequest->getLeafCertificateOrganizationalUnit(),
+    userGroup,
     "read"
   );
 
@@ -639,8 +645,9 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
   const GetDataAlterationResponse& getResponse) {
     auto time = std::chrono::steady_clock::now();
     const auto& rootCAs = this->getRootCAs();
-    auto request = MakeSharedCopy(signedRequest->open(*rootCAs));
-    auto ticket = request->mTicket.open(*rootCAs, signedRequest->getLeafCertificateOrganizationalUnit());
+    auto certified = signedRequest->open(*rootCAs);
+    auto request = MakeSharedCopy(std::move(certified.message));
+    auto ticket = request->mTicket.open(*rootCAs, certified.signatory.organizationalUnit());
 
     if (!ticket.hasMode("write")) {
       throw Error("Ticket is missing \"write\" access mode");
@@ -817,8 +824,11 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
 messaging::MessageBatches
 StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> lpRequest) {
   const auto& rootCAs = this->getRootCAs();
-  auto request = MakeSharedCopy(lpRequest->open(*rootCAs));
-  auto ticket = request->mTicket.open(*rootCAs, lpRequest->getLeafCertificateOrganizationalUnit());
+  auto certified = lpRequest->open(*rootCAs);
+  auto request = MakeSharedCopy(std::move(certified.message));
+  auto userGroup = certified.signatory.organizationalUnit();
+
+  auto ticket = request->mTicket.open(*rootCAs, userGroup);
 
   if (!ticket.hasMode("write-meta")) {
     throw Error("Ticket is missing write-meta access mode");
@@ -952,9 +962,10 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
 
   auto start_time = std::chrono::steady_clock::now();
   const auto& rootCAs = this->getRootCAs();
+  auto certified = lpRequest->open(*rootCAs);
+  const auto& request = certified.message;
 
-  auto request = lpRequest->open(*rootCAs);
-  auto accessGroup = lpRequest->getLeafCertificateOrganizationalUnit();
+  auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
   auto ticket = request.mTicket.open(*rootCAs, accessGroup, "read-meta");

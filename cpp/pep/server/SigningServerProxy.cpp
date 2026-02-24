@@ -6,7 +6,21 @@
 #include <pep/server/CertificateRenewalSerializers.hpp>
 
 namespace pep {
-void SigningServerProxy::assertValidCertificateChain(const X509CertificateChain& chain, bool allowChangingSubject) const {
+
+namespace {
+
+template <typename T>
+Signatory ValidateCsrMessage(const Signed<T>& message, const X509RootCertificates& rootCAs, const std::string& expectedCommonName) {
+  auto result = message.validate(rootCAs);
+  if (result.commonName() != expectedCommonName) {
+    throw std::runtime_error(GetNormalizedTypeName<T>() + " was signed using an unexpected common name");
+  }
+  return result;
+}
+
+}
+
+void SigningServerProxy::validateCertificateChain(const X509CertificateChain& chain, bool allowChangingSubject) const {
   // Validity will also be checked by the server, but is safer to check that both client and server agree that the certificate is valid.
   if (!allowChangingSubject && chain.leaf().getCommonName() != mExpectedCommonName) {
     throw std::runtime_error(std::format("Certificate chain has common name {} but the expected common name is {}", chain.leaf().getCommonName().value_or("<NOT SET>"), mExpectedCommonName));
@@ -29,9 +43,10 @@ rxcpp::observable<PingResponse> SigningServerProxy::requestPing() const {
 rxcpp::observable<X509CertificateChain> SigningServerProxy::requestCertificateChain() const {
   PingRequest request;
   return this->requestSignedPing(request)
-    .map([request](const SignedPingResponse& response) {
-    response.openWithoutCheckingSignature().validate(request);
-    return response.mSignature.mCertificateChain;
+    .map([request, rootCAs = mRootCertificates](const SignedPingResponse& response) {
+    auto certified = response.open(*rootCAs);
+    certified.message.validate(request);
+    return certified.signatory.certificateChain();
       });
 
 }
@@ -40,7 +55,8 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
   return this->sendRequest<SignedCsrResponse>(this->sign(CsrRequest{}))
   .op(RxGetOne("Signed CSR Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName](const SignedCsrResponse& signedResponse) {
-    auto response = signedResponse.open(*rootCAs, expectedCommonName);
+    ValidateCsrMessage(signedResponse, *rootCAs, expectedCommonName);
+    auto response = signedResponse.openWithoutCheckingSignature();
     if (response.getCsr().getCommonName() != expectedCommonName) {
       throw std::runtime_error("Received certificate signing request does not have expected common name");
     }
@@ -66,12 +82,12 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
 }
 
 rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(const X509CertificateChain& newCertificateChain, bool allowChangingSubject) const {
-  assertValidCertificateChain(newCertificateChain, allowChangingSubject);
+  validateCertificateChain(newCertificateChain, allowChangingSubject);
   return this->sendRequest<SignedCertificateReplacementResponse>(this->sign(CertificateReplacementRequest{newCertificateChain, allowChangingSubject}))
   .op(RxGetOne("Signed Certificate Replacement Response"))
   .map([rootCAs=mRootCertificates, expectedCommonName=mExpectedCommonName, newCertificateChain](const SignedCertificateReplacementResponse& signedResponse) {
-    signedResponse.validate(*rootCAs, expectedCommonName);
-    if (signedResponse.mSignature.mCertificateChain != newCertificateChain) {
+    auto signatory = ValidateCsrMessage(signedResponse, *rootCAs, expectedCommonName);
+    if (signatory.certificateChain() != newCertificateChain) {
       throw std::runtime_error("The response from the server was not signed by the new certificate chain");
     }
     return FakeVoid{};
@@ -79,7 +95,7 @@ rxcpp::observable<FakeVoid> SigningServerProxy::requestCertificateReplacement(co
 }
 
 rxcpp::observable<FakeVoid> SigningServerProxy::commitCertificateReplacement(const X509CertificateChain& newCertificateChain) const{
-  assertValidCertificateChain(newCertificateChain, true);
+  validateCertificateChain(newCertificateChain, true);
   return this->sendRequest<CertificateReplacementCommitResponse>(this->sign(CertificateReplacementCommitRequest{ newCertificateChain }))
   .op(messaging::ResponseToVoid());
 }

@@ -6,7 +6,7 @@
 namespace {
 
 TEST(MetadataTest, encryptionTest) {
-  const pep::MetadataXEntry me = pep::MetadataXEntry::FromPlaintext("Hi there!", true, true);
+  const pep::MetadataXEntry me = pep::MetadataXEntry::FromPlaintext("Hi there!", true, false);
   EXPECT_TRUE(me.storeEncrypted());
   EXPECT_FALSE(me.isEncrypted());
 

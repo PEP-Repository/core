@@ -1,4 +1,4 @@
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 
 namespace pep {
 
@@ -6,28 +6,13 @@ SignedBase::SignedBase(std::string data, const X509Identity& identity)
   : mData(std::move(data)), mSignature(Signature::Make(mData, identity)) {
 }
 
-void SignedBase::assertValid(
-  const X509RootCertificates& rootCAs,
-  std::optional<std::string> expectedCommonName,
-  std::chrono::seconds timestampLeeway) const {
-  mSignature.assertValid(
+Signatory SignedBase::validate(const X509RootCertificates& rootCAs) const {
+  return mSignature.validate(
     mData,
     rootCAs,
-    expectedCommonName,
-    timestampLeeway
+    std::nullopt,
+    std::chrono::hours{1}
   );
-}
-
-std::string SignedBase::getLeafCertificateCommonName() const {
-  return mSignature.getLeafCertificateCommonName();
-}
-
-std::string SignedBase::getLeafCertificateOrganizationalUnit() const {
-  return mSignature.getLeafCertificateOrganizationalUnit();
-}
-
-X509Certificate SignedBase::getLeafCertificate() const {
-  return mSignature.getLeafCertificate();
 }
 
 MessageSigner::MessageSigner(std::shared_ptr<const X509Identity> signingIdentity) noexcept

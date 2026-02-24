@@ -1,16 +1,15 @@
 #pragma once
 
-#include <pep/server/SigningServerProxy.hpp>
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/key-components/KeyComponentServerProxy.hpp>
 #include <pep/rsk/Verifiers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
 
 namespace pep {
 
-class AccessManagerProxy : public SigningServerProxy {
+class AccessManagerProxy : public KeyComponentServerProxy {
 private:
   rxcpp::observable<FakeVoid> requestAmaMutation(AmaMutationRequest request) const;
   rxcpp::observable<FakeVoid> requestUserMutation(UserMutationRequest request) const;
@@ -19,9 +18,8 @@ private:
   rxcpp::observable<FakeVoid> requestSetStructureMetadata(SetStructureMetadataRequest request, messaging::Tail<StructureMetadataEntry> entries = messaging::MakeEmptyTail<StructureMetadataEntry>()) const;
 
 public:
-  using SigningServerProxy::SigningServerProxy;
+  using KeyComponentServerProxy::KeyComponentServerProxy;
 
-  rxcpp::observable<KeyComponentResponse> requestKeyComponent(SignedKeyComponentRequest request) const; // Must be pre-signed because caller (who is presumably our MessageSigner) is enrolling
   rxcpp::observable<SignedTicket2> requestTicket(ClientSideTicketRequest2 request) const;
   rxcpp::observable<IndexedTicket2> requestIndexedTicket(ClientSideTicketRequest2 request) const;
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
