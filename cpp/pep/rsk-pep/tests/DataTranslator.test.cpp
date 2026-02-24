@@ -57,7 +57,7 @@ protected:
               .masterPrivateEncryptionKeyShare{std::as_bytes(ToSizedSpan<32>(masterPrivateEncryptionKeyShare.pack()))},
           });
     }
-    masterPublicEncryptionKey = CurvePoint::BaseMult(masterPrivateEncryptionKey);
+    masterPublicEncryptionKey = masterPrivateEncryptionKey * CurvePoint::Base;
   }
 
   void testTranslate(const bool invertBlindKey) {

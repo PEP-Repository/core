@@ -100,7 +100,7 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
 
   out << "Master private encryption key (CurveScalar, product of shares): " << masterPrivateEncryptionKey.text()
       << '\n';
-  ElgamalPublicKey masterPublicEncryptionKey = CurvePoint::BaseMult(masterPrivateEncryptionKey);
+  ElgamalPublicKey masterPublicEncryptionKey = masterPrivateEncryptionKey * CurvePoint::Base;
   out << "Master public encryption key (CurvePoint): " << masterPrivateEncryptionKey.text() << '\n';
 
   out << "\nTestcases:\n\n";

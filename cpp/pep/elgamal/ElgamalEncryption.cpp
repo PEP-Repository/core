@@ -16,7 +16,7 @@ const char ELGAMAL_ENCRYPTION_TEXT_DELIMITER = ':';
 
 std::pair<ElgamalPrivateKey, ElgamalPublicKey> ElgamalEncryption::CreateKeyPair() {
   ElgamalPrivateKey sk = ElgamalPrivateKey::Random();
-  ElgamalPublicKey pk = ElgamalPublicKey::BaseMult(sk);
+  ElgamalPublicKey pk = sk * CurvePoint::Base;
   return {sk, pk};
 }
 
@@ -29,7 +29,7 @@ ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& publicKey, const Cu
   CurveScalar k;
 
   k = CurveScalar::Random();
-  b = CurvePoint::BaseMult(k);
+  b = k * CurvePoint::Base;
   c = data + (k * publicKey);
   this->publicKey = publicKey;
 }
@@ -72,7 +72,7 @@ ElgamalEncryption ElgamalEncryption::rerandomize() const {
   // (g * k + g * z, s + g * x * k + g * x * z) =
   // (a + g * z, b + g * x * z)
 
-  r.b = b + CurvePoint::BaseMult(z);
+  r.b = b + (z * CurvePoint::Base);
   r.c = c + (z * publicKey);
 
   r.publicKey = publicKey;
@@ -152,7 +152,7 @@ ElgamalEncryption ElgamalEncryption::RSK(const CurveScalar& z, const ElgamalTran
 
 
   auto r = CurveScalar::Random();
-  auto rB = CurvePoint::BaseMult(r);
+  auto rB = r * CurvePoint::Base;
   auto ry = r * publicKey;
   auto zOverK = z * k.invert();
 

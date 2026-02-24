@@ -52,14 +52,18 @@ TEST(CurvePointTest, TestBaseMult) {
   const auto base = pep::CurvePoint::FromText("e2f2ae0a6abc4e71a884a961c500515f58e30b6aa582dd8db6a65945e08d2d76");
   for (int i = 0; i < 1000; i++) {
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(pep::CurvePoint::BaseMult(s), s * base);
+    EXPECT_EQ(
+      s * pep::CurvePoint::Base,
+      s * base);
   }
 }
 
 TEST(CurvePointTest, TestPublicBaseMult) {
   for (int i = 0; i < 1000; i++) {
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(pep::CurvePoint::BaseMult(s), pep::CurvePoint::PublicBaseMult(s));
+    EXPECT_EQ(
+      s * pep::CurvePoint::Base,
+      pep::PublicCurveScalar(s) * pep::CurvePoint::Base);
   }
 }
 
@@ -67,7 +71,9 @@ TEST(CurvePointTest, TestPublicMult) {
   for (int i = 0; i < 1000; i++) {
     pep::CurvePoint b = pep::CurvePoint::Random();
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(s * b, b.publicMult(s));
+    EXPECT_EQ(
+      s * b,
+      pep::PublicCurveScalar(s) * b);
   }
 }
 

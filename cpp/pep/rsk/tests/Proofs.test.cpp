@@ -8,7 +8,7 @@ namespace {
 TEST(ProofsTest, TestScalarMultProof) {
   for (int i = 0; i < 100; i++) {
     auto x = pep::CurveScalar::Random();
-    auto A = pep::CurvePoint::BaseMult(x);
+    auto A = x * pep::CurvePoint::Base;
     auto M = pep::CurvePoint::Random();
     auto N = x * M;
 
