@@ -251,6 +251,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
 
   auto request = std::make_shared<DataHistoryRequest2>();
   request->mTicket = std::move(ticket);
+  auto openedTicket = request->mTicket.openWithoutCheckingSignature();
 
   std::optional<Ticket2> unsignedTicket;
   FillHistoryRequestIndices<LocalPseudonyms, PolymorphicPseudonym>(
@@ -263,8 +264,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
       return response.mEntries;
     })
     .op(RxConcatenateVectors())
-    .flat_map([this, request](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {
-      const auto& ticket = request->mTicket.openWithoutCheckingSignature();
+    .flat_map([this, ticket = std::move(openedTicket)](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {
       std::vector<HistoryResult> results;
       results.reserve(entries->size());
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
