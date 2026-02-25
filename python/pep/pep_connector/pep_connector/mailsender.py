@@ -471,39 +471,36 @@ class MailSender(Connector):
                     level=logging.ERROR, tag=self.LOG_TAG)
             raise RuntimeError("Unexpected state in should_send_email")
 
-    def _send_email_with_retry(self, message, smtp_server, smtp_port, max_retries, retry_delay):
+    def _send_email_with_retry(self, message, email_config: EmailConfig):
         """
         Send an email message with retry logic for transient errors
 
         Args:
             message: The email message to send
-            smtp_server: SMTP server address
-            smtp_port: SMTP server port
-            max_retries: Maximum number of retry attempts
-            retry_delay: Base delay in seconds between retries (exponential backoff)
+            email_config: EmailConfig instance with SMTP settings and authentication
 
         Raises:
             Exception: If email sending fails after all retries
         """
         last_exception = None
-        for attempt in range(max_retries + 1):
+        for attempt in range(email_config.max_retries + 1):
             try:
-                with smtplib.SMTP(smtp_server, smtp_port, timeout=30) as server:
+                with smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=30) as server:
 
                     # port 587 is used for TLS, port 25 is used for non-TLS
-                    if smtp_port != 25:
+                    if email_config.smtp_port != 25:
                         server.starttls()
 
                     # Only authenticate if required
-                    if self.config.email.smtp_auth_required:
-                        if not (self.config.email.smtp_username and self.config.email.smtp_password):
+                    if email_config.smtp_auth_required:
+                        if not (email_config.smtp_username and email_config.smtp_password):
                             raise ValueError(
                                 "SMTP authentication is required but credentials are not available. "
                                 "Either provide smtp_credentials_file in config or set smtp_username/smtp_password directly."
                             )
 
                         try:
-                            server.login(self.config.email.smtp_username, self.config.email.smtp_password)
+                            server.login(email_config.smtp_username, email_config.smtp_password)
                         except smtplib.SMTPAuthenticationError:
                             self.log("SMTP authentication failed. Please check your credentials.", level=logging.ERROR, tag=self.LOG_TAG)
                             raise Exception("SMTP authentication failed. Please check your credentials.")
@@ -517,9 +514,9 @@ class MailSender(Connector):
 
             except smtplib.SMTPSenderRefused as e:
                 last_exception = e
-                if e.smtp_code == 451 and attempt < max_retries:
-                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
-                    self.log(f"Temporary SMTP error (451): {e.smtp_error}. Retrying in {wait_time} seconds (attempt {attempt + 1}/{max_retries})...", 
+                if e.smtp_code == 451 and attempt < email_config.max_retries:
+                    wait_time = email_config.retry_delay * (2 ** attempt)  # Exponential backoff
+                    self.log(f"Temporary SMTP error (451): {e.smtp_error}. Retrying in {wait_time} seconds (attempt {attempt + 1}/{email_config.max_retries})...", 
                             level=logging.WARNING, tag=self.LOG_TAG)
                     time.sleep(wait_time)
                     continue
@@ -533,7 +530,7 @@ class MailSender(Connector):
         else:
             # Loop completed without break (all retries exhausted)
             if last_exception:
-                self.log(f"Email sending failed after {max_retries + 1} attempts: {str(last_exception)}", level=logging.ERROR, tag=self.LOG_TAG)
+                self.log(f"Email sending failed after {email_config.max_retries + 1} attempts: {str(last_exception)}", level=logging.ERROR, tag=self.LOG_TAG)
                 raise last_exception
 
     def send_email(self, recipient_email, subject, email_config: EmailConfig, body=None, template=None, template_vars=None, 
@@ -716,13 +713,7 @@ class MailSender(Connector):
             self.log("===================================\n", level=logging.DEBUG, tag=self.LOG_TAG)
         else:
             # Send email with retry logic
-            self._send_email_with_retry(
-                message, 
-                email_config.smtp_server, 
-                email_config.smtp_port, 
-                email_config.max_retries, 
-                email_config.retry_delay
-            )
+            self._send_email_with_retry(message, email_config)
 
             # Make sure to sleep for rate limit avoidance
             self.log(f"Sleeping for {email_config.rate_limit_seconds} seconds to avoid rate limit", level=logging.INFO, tag=self.LOG_TAG)
