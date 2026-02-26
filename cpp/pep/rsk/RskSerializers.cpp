@@ -31,8 +31,8 @@ RSKVerifiers Serializer<RSKVerifiers>::fromProtocolBuffer(proto::RSKVerifiers&& 
 }
 
 void Serializer<RSKVerifiers>::moveIntoProtocolBuffer(proto::RSKVerifiers& dest, RSKVerifiers value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_z_over_kb(), value.mZOverKB);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_zb(), value.mZB);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_z_over_kb(), value.mReshuffleOverRekeyPoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_zb(), value.mReshufflePoint);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ky(), value.mNewPublicKey);
 }
 
@@ -47,8 +47,8 @@ RSKProof Serializer<RSKProof>::fromProtocolBuffer(proto::RSKProof&& source) cons
 }
 
 void Serializer<RSKProof>::moveIntoProtocolBuffer(proto::RSKProof& dest, RSKProof value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ry(), value.mRY);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rb(), value.mRB);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ry(), value.mRerandomizePubKey);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rb(), value.mRerandomizePoint);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_rp(), value.mRP);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_bp(), value.mBP);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_cp(), value.mCP);

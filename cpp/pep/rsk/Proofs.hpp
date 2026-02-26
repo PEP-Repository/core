@@ -15,12 +15,12 @@ class InvalidProof : public std::exception {
 };
 
 // A compositional non-interactive zero-knowledge proof that
-// CurvePoints (A, pre, post) are in fact of the form (x B, pre, x pre).
+// CurvePoints (secretTimesBase, pre, post) are in fact of the form (secret B, pre, secret pre).
 // See https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/
 // and §4 of "Lecture Notes Cryptographic Protocols" by Schoenmakers.
 class ScalarMultProof {
   static CurveScalar computeChallenge(
-      const CurvePoint& A,
+      const CurvePoint& secretTimesBase,
       const CurvePoint& pre,
       const CurvePoint& post,
       const CurvePoint& cb,
@@ -37,19 +37,19 @@ class ScalarMultProof {
 
   void ensurePacked() const; // See CurvePoint::ensurePacked()
 
-  // Constructs a proof from A, pre, post and x.
+  // Constructs a proof from secretTimesBase, pre, post and secret.
   //
-  // Assumes A = x B and post = x pre.
+  // Assumes secretTimesBase = secret B and post = secret pre.
   static ScalarMultProof create(
-    const CurvePoint& A,
+    const CurvePoint& secretTimesBase,
     const CurvePoint& pre,
     const CurvePoint& post,
-    const CurveScalar& x,
+    const CurveScalar& secret,
     CPRNG* rng=nullptr);
 
   // Checks the proof. Throws InvalidProof if the proof is invalid.
   void verify(
-    const CurvePoint& A,
+    const CurvePoint& secretTimesBase,
     const CurvePoint& pre,
     const CurvePoint& post) const;
 };
@@ -59,19 +59,19 @@ class RSKVerifiers {
  public:
   RSKVerifiers() = default;
   RSKVerifiers(
-      const CurvePoint& zOverKB,
-      const CurvePoint& zB,
+      const CurvePoint& reshuffleOverRekeyPoint,
+      const CurvePoint& reshufflePoint,
       const CurvePoint& newPublicKey)
-  : mZOverKB(zOverKB),
-    mZB(zB),
+  : mReshuffleOverRekeyPoint(reshuffleOverRekeyPoint),
+    mReshufflePoint(reshufflePoint),
     mNewPublicKey(newPublicKey) { }
   static RSKVerifiers compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
     const CurvePoint& publicKey);
 
-  CurvePoint mZOverKB;
-  CurvePoint mZB;
+  CurvePoint mReshuffleOverRekeyPoint;
+  CurvePoint mReshufflePoint;
   CurvePoint mNewPublicKey;
 
   [[nodiscard]] auto operator<=>(const RSKVerifiers& right) const = default;
@@ -81,46 +81,46 @@ class RSKVerifiers {
 
 
 
-// A compositional non-interactive zero-knowledge proof that
+// secretTimesBase compositional non-interactive zero-knowledge proof that
 // an ElgamalEncryption (b, c, publicKey) has been (reshuffle,rekey)-RSKed to (b', c', publicKey')
 class RSKProof {
  public:
   RSKProof() = default;
   RSKProof(
-      CurvePoint rY,
-      CurvePoint rB,
+      CurvePoint rerandomizePubKey,
+      CurvePoint rerandomizePoint,
       ScalarMultProof rp,
       ScalarMultProof bp,
       ScalarMultProof cp)
-    : mRY(rY),
-      mRB(rB),
+    : mRerandomizePubKey(rerandomizePubKey),
+      mRerandomizePoint(rerandomizePoint),
       mRP(rp),
       mBP(bp),
       mCP(cp) { }
 
-  CurvePoint mRY;
-  CurvePoint mRB;
+  CurvePoint mRerandomizePubKey;
+  CurvePoint mRerandomizePoint;
 
-  ScalarMultProof mRP; // ScalarMultProof for (rb, publicKey, ry)
-  ScalarMultProof mBP; // ScalarMultProof for ((reshuffle/rekey)B, b + rb, b')
-  ScalarMultProof mCP; // ScalarMultProof for (reshuffle B, c + ry, c')
+  ScalarMultProof mRP; // ScalarMultProof for (rerandomize B, publicKey, rerandomizePubKey)
+  ScalarMultProof mBP; // ScalarMultProof for ((reshuffle/rekey)B, b + rerandomize B, b')
+  ScalarMultProof mCP; // ScalarMultProof for (reshuffle B, c + rerandomizePubKey, c')
 
   void ensurePacked() const; // See CurvePoint::ensurePacked()
 
   // Constructs a proof that post is the (reshuffle,rekey)-RSK of pre.
   //
-  // Assumes zB = reshuffle B, zOverK = reshuffle/rekey, zOverKB = reshuffle/rekey B, ry = r publicKey, rB = r B
-  // and (of course) that post is the (reshuffle,rekey)-RSK of pre with random r.
+  // Assumes reshufflePoint = reshuffle B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey B, rerandomizePubKey = rerandomize publicKey, rerandomizePoint = rerandomize B
+  // and (of course) that post is the (reshuffle,rekey)-RSK of pre with random rerandomize.
   static RSKProof create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const CurveScalar& reshuffle,
-    const CurvePoint& zB,
-    const CurveScalar& zOverK,
-    const CurvePoint& zOverKB,
-    const CurveScalar& r,
-    const CurvePoint& ry,
-    const CurvePoint& rB,
+    const CurvePoint& reshufflePoint,
+    const CurveScalar& reshuffleOverRekey,
+    const CurvePoint& reshuffleOverRekeyPoint,
+    const CurveScalar& rerandomize,
+    const CurvePoint& rerandomizePubKey,
+    const CurvePoint& rerandomizePoint,
     CPRNG* rng=nullptr);
 
   // Stores the (reshuffle,rekey)-RSKed version of ElgamalEncryption in to out and
