@@ -252,7 +252,9 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   auto openedTicket = ticket.openWithoutCheckingSignature();
 
   DataHistoryRequest2 request{
-    .mTicket = std::move(ticket)
+    .mTicket = std::move(ticket),
+    .mColumns{},
+    .mPseudonyms{},
   };
   std::optional<Ticket2> unsignedTicket;
   FillHistoryRequestIndices<LocalPseudonyms, PolymorphicPseudonym>(
