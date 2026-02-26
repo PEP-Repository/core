@@ -72,7 +72,7 @@ Also see [glossary](../user_documentation/glossary.md).
 - Origin ID (randomly generated, human readable, e.g. `POM1234567890`)
   - Polymorphic Pseudonym (encrypted Origin ID, can be randomized)
     - Local Pseudonym (32 bytes; variants: user, transcryptor, storage facility, access manager)
-      - Brief Local Pseudonym (prefix + first (e.g. 10) characters of HEX representation of local pseudonym, e.g. `POM12345ABCDE`)
+      - Brief Local Pseudonym (prefix + first (e.g. 10) characters of HEX representation of local pseudonym, e.g. `POMU12345ABCDE`)
 - Reference ID (mapping, human readable for uploaders, e.g. `POM1PL1234549`)
 
 ## Pseudonyms
