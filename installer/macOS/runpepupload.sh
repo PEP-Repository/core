@@ -33,6 +33,22 @@ get_text_input() {
     osascript -e "try" -e "text returned of (display dialog \"$prompt\" default answer \"$default\" buttons {\"OK\", \"Cancel\"} default button \"OK\")" -e "on error number -128" -e "\"\"" -e "end try"
 }
 
+get_pseudonym_input() {
+    local result
+    result=$(osascript 2>&1 <<'EOF'
+try
+    set dialogResult to display dialog "Enter the pseudonym or Reference ID:" default answer "" buttons {"Participant", "Reference ID", "Cancel"} default button "Participant"
+    set buttonPressed to button returned of dialogResult
+    set textEntered to text returned of dialogResult
+    return buttonPressed & "|" & textEntered
+on error number -128
+    return ""
+end try
+EOF
+)
+    echo "$result"
+}
+
 show_dialog() {
     local message="$1"
     local button1="$2"
@@ -123,15 +139,35 @@ upload_file() {
         return 1
     fi
 
-    # Get pseudonym
-    PSEUDONYM=$(get_text_input "Enter the pseudonym to store the file under:" "")
+    # Get pseudonym and type in one dialog
+    PSEUDONYM_RESULT=$(get_pseudonym_input)
+    
+    if [ -z "$PSEUDONYM_RESULT" ]; then
+        show_alert "Cancelled" "Operation cancelled."
+        return 1
+    fi
+    
+    PSEUDONYM_TYPE=$(echo "$PSEUDONYM_RESULT" | cut -d'|' -f1)
+    PSEUDONYM=$(echo "$PSEUDONYM_RESULT" | cut -d'|' -f2)
+    
+    if [ "$PSEUDONYM_TYPE" = "Cancel" ] || [ -z "$PSEUDONYM" ]; then
+        show_alert "Cancelled" "No pseudonym provided. Operation cancelled."
+        return 1
+    fi
+    
+    if [ "$PSEUDONYM_TYPE" = "Reference ID" ]; then
+        PSEUDONYM_FLAG="--sp"
+    else
+        PSEUDONYM_FLAG="--participant"
+    fi
+
     if [ -z "$PSEUDONYM" ]; then
         show_alert "Cancelled" "No pseudonym provided. Operation cancelled."
         return 1
     fi
 
-    # Check if data already exists for this participant and column
-    LIST_OUTPUT=$("$PEPCLI_EXECUTABLE" list -m -l --no-inline-data -p "$PSEUDONYM" -c "$COLUMN" 2>&1)
+    # Check if data already exists for this subject and column
+    LIST_OUTPUT=$("$PEPCLI_EXECUTABLE" list -m -l --no-inline-data "$PSEUDONYM_FLAG" "$PSEUDONYM" -c "$COLUMN" 2>&1)
     LIST_EXIT=$?
 
     if [ $LIST_EXIT -ne 0 ]; then
@@ -165,7 +201,7 @@ upload_file() {
     fi
 
     # Upload the file using pepcli
-    STORE_OUTPUT=$("$PEPCLI_EXECUTABLE" store --column "$COLUMN" --participant "$PSEUDONYM" --input-path "$FILE_PATH" 2>&1)
+    STORE_OUTPUT=$("$PEPCLI_EXECUTABLE" store --column "$COLUMN" "$PSEUDONYM_FLAG" "$PSEUDONYM" --input-path "$FILE_PATH" 2>&1)
     STORE_EXIT=$?
 
     if [ $STORE_EXIT -eq 0 ]; then
