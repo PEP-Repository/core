@@ -150,12 +150,11 @@ function GetPseudonymInput {
   $buttons.Controls.Add($btnC)
   
   # Make spacer stretch, buttons auto-size
-  $buttons.ColumnStyles.AddRange(@(
-    (New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'Percent'; Width = 100 }),
-    (New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' }),
-    (New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' }),
-    (New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })
-  ))
+  $buttons.ColumnStyles.Clear()
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'Percent'; Width = 100 })) | Out-Null
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })) | Out-Null
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })) | Out-Null
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })) | Out-Null
   
   # Set default buttons for Enter/Escape keys
   $form.AcceptButton = $btnP
