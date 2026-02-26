@@ -45,11 +45,11 @@ The PEP tutorial is a self-contained environment that runs in a Docker container
 
   This will start the PEP tutorial environment and show you the setup logs. Wait until you see the message:
 
-    ```plaintext
-    ================================================================
-    PEP Tutorial Sandbox ready!
-    ================================================================
-    ```
+  ```plaintext
+  ================================================================
+  PEP Tutorial Sandbox ready!
+  ================================================================
+  ```
 
 2. Press ++ctrl+c++ to stop following the logs (the container keeps running in the background).
 

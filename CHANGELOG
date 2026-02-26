@@ -36,8 +36,10 @@ Changes in upcoming release (1.7):
   For this to work, the certificates will need to be in a writable location (#2769), which they are currently not. That will need to be solved at some point,
   before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.  
 
-
 - !2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
+
+- #2794: CSV export no longer lists cell header(s) if no rows are exported.
+
 
 MANUAL CHANGES REQUIRED:
 
