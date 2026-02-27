@@ -169,7 +169,7 @@ EMSCRIPTEN_BINDINGS(myBindings) {
 
 `em++ -lembind ./bind.cpp -o./bind.js`
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```shell
 $ node
@@ -212,7 +212,7 @@ static void printSubject(const Subject &subject) {
 Subject makeSubject() { return {"Peppa", "Pig"}; }
 ```
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```cpp
 EMSCRIPTEN_BINDINGS(subject) {
@@ -248,7 +248,7 @@ public:
 };
 ```
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```cpp
 EMSCRIPTEN_BINDINGS(widget) {
@@ -300,7 +300,7 @@ EMSCRIPTEN_BINDINGS(doIt) {
 }
 ```
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```js
 Module.doIt(i => `Called with ${i}`, {arg: 41}); // Called with 42
@@ -366,7 +366,7 @@ Emscripten maps PThreads to Workers.
 * Await `rxcpp::observable` via new observable awaiter implementation
 * Modify the `val` coroutine such that it calls `.observe_on(browser main)` on each awaited observable
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```cpp
 WeblibApiPromise listColumns() {
@@ -390,7 +390,7 @@ WeblibApiPromise listColumns() {
 - Stream source calls `controller.enqueue(v)` for each item
 - No flow control: RxCpp lacks support
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```cpp
 auto list(ListQuery query) {
@@ -416,7 +416,7 @@ export interface CellEntry extends ClassHandle {
 }
 ```
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 Some types missing, thus we add:
 
@@ -486,7 +486,7 @@ Emscripten [compiler settings](https://emscripten.org/docs/tools_reference/setti
 - Proxied by websockify
 - PEP speaks TLS (via OpenSSL) over plaintext WebSocket (`ws://`)
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 Future work:
 
@@ -518,7 +518,7 @@ Current issues:
 - Start websockify
 - Start `pepServers`
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 Convenience script: `start_dev.sh`
 
@@ -581,7 +581,7 @@ Multiple models:
 
 `-sEXCEPTION_STACK_TRACES` is implied by `-sASSERTIONS` (default for unoptimized).
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 - Use `Module.getExceptionMessage` to obtain message
 - Free C++ object by `Module.decrementExceptionRefcount`
@@ -621,8 +621,8 @@ You may need to substitute paths, especially when debugging remotely. E.g.:
 
 ```json
 {
-	"name": "pepUtilsUnitTests",
-	"program": "${workspaceFolder}/build/wasm32/Debug/cpp/pep/utils/pepUtilsUnitTests",
+  "name": "pepUtilsUnitTests",
+  "program": "${workspaceFolder}/build/wasm32/Debug/cpp/pep/utils/pepUtilsUnitTests",
 
   "type": "node",
 	"request": "launch",

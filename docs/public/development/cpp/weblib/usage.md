@@ -116,7 +116,7 @@ Future work: Pause between file batches until reader catches up (pausing between
 Deletes backing C++ object on scope end.
 Unsupported in Safari: instead, use `try`-`finally` with `obj.delete()`, or backport with TypeScript/Babel.
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 Stream loops should ideally look like this:
 
@@ -157,14 +157,14 @@ const tmpDir = await rootDir.getDirectoryHandle('tmp-retrieve', {create: true});
 const tmpFile = await tmpDir.getFileHandle(`file-${crypto.randomUUID()}`, {create: true});
 ```
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```js
 await data.content.pipeTo(await tmpFile.createWritable());
 ```
 </div>
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```js
 const blob = await tmpFile.getFile();
@@ -176,7 +176,7 @@ a.click();
 ```
 </div>
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 ```js
 // Unclear if a delay is required
@@ -195,7 +195,7 @@ Future work: Compare with (more complex) Service Worker implementation from SURF
 
 Weblib functions may throw C++ exceptions represented in JS by `WebAssembly.Exception`.
 
-<div data-marpit-fragment>
+<div data-marpit-fragment markdown>
 
 Pass to `pep.handleWasmException(ex)`:
 
