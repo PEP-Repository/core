@@ -143,10 +143,10 @@ function GetPseudonymInput {
   
   # Add spacer to push buttons to the right, then add three buttons
   $buttons.Controls.Add((New-Object System.Windows.Forms.Panel))  # Spacer
-  $btnP = New-Object System.Windows.Forms.Button -Property @{ Text = 'Participant'; DialogResult = 'Yes' }
+  $btnP = New-Object System.Windows.Forms.Button -Property @{ Text = 'Participant'; DialogResult = 'Yes'; AutoSize = $true }
   $buttons.Controls.Add($btnP)
-  $buttons.Controls.Add((New-Object System.Windows.Forms.Button -Property @{ Text = 'Reference ID'; DialogResult = 'No' }))
-  $btnC = New-Object System.Windows.Forms.Button -Property @{ Text = 'Cancel'; DialogResult = 'Cancel' }
+  $buttons.Controls.Add((New-Object System.Windows.Forms.Button -Property @{ Text = 'Reference ID'; DialogResult = 'No'; AutoSize = $true }))
+  $btnC = New-Object System.Windows.Forms.Button -Property @{ Text = 'Cancel'; DialogResult = 'Cancel'; AutoSize = $true }
   $buttons.Controls.Add($btnC)
   
   # Make spacer stretch, buttons auto-size
