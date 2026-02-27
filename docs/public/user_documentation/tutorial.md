@@ -264,7 +264,7 @@ You can use whichever address you like, instead of `Rainbow Road 123`. Then, we 
 pepcli store --participant <IDENTIFIER> --column Address --input-path participantAddress.txt
 ```
 
-- Use one of the above methods to upload the `Class` for the new subject. Make sure they are in the second class! This will be important in a bit.
+- Use one of the above methods to upload the `Class` for the new subject, using `--column Class`. Make sure they are in the second class! This will be important in a bit.
 - Use the one of the commands above to fill the `Maths_Grade` column.
 - (Optional) Fill in the remaining columns (`Maths_Level`, `French_Level`, `French_Grade`).
 
