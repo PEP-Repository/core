@@ -145,11 +145,10 @@ The `id` column shows **Local Pseudonyms**, unique identifiers for subjects that
 
 Imagine you're an analyst studying student achievement. This data would be useful, but also contains a lot of information that is not required. You have *no need* for the actual names of the students, let alone the address where the students live. As long as you can consistently identify single subjects, you have enough information to perform your analysis.
 
-### Intermezzo: Privacy by design
+!!! example "Intermezzo: Privacy by design" {#intermezzo-privacy-by-design}
+    The ground rule for working with personal data (and all data in the table above is personal data, not just the names and the addresses) is that the person working with these data should only have access to the data that is required for the purpose. This concept is called *data minimisation*.
 
-The ground rule for working with personal data (and all data in the table above is personal data, not just the names and the addresses) is that the person working with these data should only have access to the data that is required for the purpose. This concept is called *data minimisation*.
-
-Another important aspect to keep in mind is *proportionality* and *purpose limitation*, for example: it might be valuable to register mental conditions of subjects when performing a study, but on the other hand this imposes a much larger impact on the privacy of an individual than for example sharing a math grade. Although efforts are made to prevent identification of individuals, this can never be completely prevented. Therefore the proportionality of using such details should be considered, and in the case of very sensitive data, (even) stronger ethical checks should be performed concerning the consent basis and the taken privacy and security measures. But the bottom line about data sharing is: less is more, which concerns both the amount of data and the resolution and sensitivity of data. Instead of, for example, sharing a birth date (day), in many cases the year of birth may suffice. In those cases, only this year of birth (a lower resolution) should be shared/used.
+    Another important aspect to keep in mind is *proportionality* and *purpose limitation*, for example: it might be valuable to register mental conditions of subjects when performing a study, but on the other hand this imposes a much larger impact on the privacy of an individual than for example sharing a math grade. Although efforts are made to prevent identification of individuals, this can never be completely prevented. Therefore the proportionality of using such details should be considered, and in the case of very sensitive data, (even) stronger ethical checks should be performed concerning the consent basis and the taken privacy and security measures. But the bottom line about data sharing is: less is more, which concerns both the amount of data and the resolution and sensitivity of data. Instead of, for example, sharing a birth date (day), in many cases the year of birth may suffice. In those cases, only this year of birth (a lower resolution) should be shared/used.
 
 ## Using a different scope
 
@@ -190,23 +189,22 @@ Performing the same download as **Access Administrator** will show you that this
 
 This demonstrates how PEP enforces *data minimisation* through access control: each **User Group** sees only what's necessary for their purpose, and even the identifiers differ between **User Groups** to prevent unauthorized data linkage.
 
-### Intermezzo: Polymorphic pseudonymisation
+!!! example "Intermezzo: Polymorphic pseudonymisation" {#intermezzo-polymorphic-pseudonymisation}
+    The fact that every **User Group** has their own pseudonyms is a very important concept within PEP. So much so, that it is half of the namesake of the system, **Polymorphic Encryption and Pseudonymisation**. PEP uses multiple types of pseudonyms for different purposes:
 
-The fact that every **User Group** has their own pseudonyms is a very important concept within PEP. So much so, that it is half of the namesake of the system, **Polymorphic Encryption and Pseudonymisation**. PEP uses multiple types of pseudonyms for different purposes:
+    1. **Origin IDs**: The original identifiers for a subject in the system, you saw this before as `ParticipantIdentifier` when downloading. This identifier can be randomly generated when registering a new subject, or could be derived from an existing one (e.g. a student number, or a BSN). **Origin IDs** are never shared with users, they are only used internally for data management and encryption, in this case by the **Research Assessor** who registers the subjects and generates the Origin IDs for them.
+    2. **Polymorphic Pseudonyms**: El-Gamal encrypted **Origin IDs**, which are randomized and rekeyed. Due to this prodecure, these pseudonyms are not fixed, ensuring they cannot be compared to link data.
+    3. **Local Pseudonyms**: Derived from polymorphic pseudonyms, these are fixed identifiers for a specific **User Group**. Every **User Group** sees different local pseudonyms for the same subjects. Abbreviated versions are also available for easier handling, which you saw as **Brief Local Pseudonyms** in the folder names.
+    4. **Reference IDs**: Fixed identifiers generated for specific external use cases, such as linking physical specimens, survey responses, or file uploads to subjects in PEP, more one these [in the bonus section](#bonus-using-reference-ids-for-privacy-preserving-data-upload).
 
-1. **Origin IDs**: The original identifiers for a subject in the system, you saw this before as `ParticipantIdentifier` when downloading. This identifier can be randomly generated when registering a new subject, or could be derived from an existing one (e.g. a student number, or a BSN). **Origin IDs** are never shared with users, they are only used internally for data management and encryption, in this case by the **Research Assessor** who registers the subjects and generates the Origin IDs for them.
-2. **Polymorphic Pseudonyms**: El-Gamal encrypted **Origin IDs**, which are randomized and rekeyed. Due to this prodecure, these pseudonyms are not fixed, ensuring they cannot be compared to link data.
-3. **Local Pseudonyms**: Derived from polymorphic pseudonyms, these are fixed identifiers for a specific **User Group**. Every **User Group** sees different local pseudonyms for the same subjects. Abbreviated versions are also available for easier handling, which you saw as **Brief Local Pseudonyms** in the folder names.
-4. **Reference IDs**: Fixed identifiers generated for specific external use cases, such as linking physical specimens, survey responses, or file uploads to subjects in PEP, more one these [in the bonus section](#bonus-using-reference-ids-for-privacy-preserving-data-upload).
+    Imagine two research groups each receive a subset of data:
 
-Imagine two research groups each receive a subset of data:
+    - Group A downloads math grades with pseudonyms like `BLPS111`, `BLPS222`, `BLPS333`
+    - Group B downloads french grades with pseudonyms like `BLPS444`, `BLPS555`, `BLPS666`
 
-- Group A downloads math grades with pseudonyms like `BLPS111`, `BLPS222`, `BLPS333`
-- Group B downloads french grades with pseudonyms like `BLPS444`, `BLPS555`, `BLPS666`
+    Even if both groups share their data publicly or the data leaks, *no one can determine which math grades belong to which french grades* because the pseudonyms are completely different. Combining datasets creates a more complete profile of individuals, increasing privacy risks. Math grades alone reveal little, but combining math grades, french grades, address, absentee data etc. builds a profile and could enable re-identification.
 
-Even if both groups share their data publicly or the data leaks, *no one can determine which math grades belong to which french grades* because the pseudonyms are completely different. Combining datasets creates a more complete profile of individuals, increasing privacy risks. Math grades alone reveal little, but combining math grades, french grades, address, absentee data etc. builds a profile and could enable re-identification.
-
-Within PEP, the only way to link data across **User Groups** is through the system itself, under controlled authorisation.
+    Within PEP, the only way to link data across **User Groups** is through the system itself, under controlled authorisation.
 
 ## Registering new subjects and uploading data
 
@@ -268,20 +266,19 @@ pepcli store --participant <IDENTIFIER> --column Address --input-path participan
 - Use the one of the commands above to fill the `Maths_Grade` column.
 - (Optional) Fill in the remaining columns (`Maths_Level`, `French_Level`, `French_Grade`).
 
-### Intermezzo: Four Eyes principle
+!!! example "Intermezzo: Four Eyes principle" {#intermezzo-four-eyes-principle}
+    The administrative superpowers in PEP are divided over two specific types of predefined **User Groups**. One is the **Data Administrator** and the other is the **Access Administrator**. Both administrators work together and need each other to administer the PEP repository. This separation is called the **four-eyes principle**. The reason for this separation of tasks is that a potential breach of one of the administrator **User Groups** will not immediately lead to a data leak. In this tutorial, you will act as both **User Groups** although this should never be the case in operational environments.
 
-The administrative superpowers in PEP are divided over two specific types of predefined **User Groups**. One is the **Data Administrator** and the other is the **Access Administrator**. Both administrators work together and need each other to administer the PEP repository. This separation is called the **four-eyes principle**. The reason for this separation of tasks is that a potential breach of one of the administrator **User Groups** will not immediately lead to a data leak. In this tutorial, you will act as both **User Groups** although this should never be the case in operational environments.
+    The **Data Administrator** is intended for repository managers, they create columns, organising them into **Column Groups**. They also add **Subjects** to **Subject Groups**. They typically work with pseudonymised data and need only read access to non-personal information. When temporary access to personal data is required for organisational tasks (such as grouping subjects by characteristics), such access should be granted for a limited time by the **Access Administrator**.
 
-The **Data Administrator** is intended for repository managers, they create columns, organising them into **Column Groups**. They also add **Subjects** to **Subject Groups**. They typically work with pseudonymised data and need only read access to non-personal information. When temporary access to personal data is required for organisational tasks (such as grouping subjects by characteristics), such access should be granted for a limited time by the **Access Administrator**.
+    The **Access Administrator** is intended for people who manage the access control of the repository. They do not need access to any data, but they can:
 
-The **Access Administrator** is intended for people who manage the access control of the repository. They do not need access to any data, but they can:
+    - Create **User Groups**.
+    - Add users.
+    - Grant users access to **User Groups**.
+    - Can grant **User Groups** access to **Column Groups**, and **Subject Groups**.
 
-- Create **User Groups**.
-- Add users.
-- Grant users access to **User Groups**.
-- Can grant **User Groups** access to **Column Groups**, and **Subject Groups**.
-
-A final predefined **User Group** is the **Research Assessor**. This group is intended for people who have direct contact with the subjects, such as those handling enrollment or coordinating data collection. Because they interact directly with subjects, they require read and write access to personal data including names and addresses.
+    A final predefined **User Group** is the **Research Assessor**. This group is intended for people who have direct contact with the subjects, such as those handling enrollment or coordinating data collection. Because they interact directly with subjects, they require read and write access to personal data including names and addresses.
 
 ## Demonstrating selective data access
 
@@ -372,48 +369,47 @@ pepcli ama group addTo SecondYearStudents <FOUND_IDENTIFIER>
 
 Don't forget to replace `<FOUND_IDENTIFIER>` with the `lp` you have selected. Repeat this step for all second year students.
 
-### Intermezzo: Encryption
+!!! example "Intermezzo: Encryption" {#intermezzo-encryption}
+    **End-to-end encryption** {#end-to-end-encryption}
 
-#### End-to-end encryption
+    The process just used is rather tedious. It would be nice if PEP supported data driven processes such as the one above (e.g., "add all subjects where `Class` starts with '2' to the `SecondYearStudents` group"). However, there is a very good reason we do not. PEP is *end-to-end encrypted*, another principle of Privacy by Design, this means:
 
-The process just used is rather tedious. It would be nice if PEP supported data driven processes such as the one above (e.g., "add all subjects where `Class` starts with '2' to the `SecondYearStudents` group"). However, there is a very good reason we do not. PEP is *end-to-end encrypted*, another principle of Privacy by Design, this means:
+    - Data is encrypted on your device before being sent to the PEP servers
+    - The PEP servers store only encrypted data, they cannot read it
+    - Data is decrypted on your device when you download it
+    - Even if someone gains access to the PEP servers, they cannot read the data
 
-- Data is encrypted on your device before being sent to the PEP servers
-- The PEP servers store only encrypted data, they cannot read it
-- Data is decrypted on your device when you download it
-- Even if someone gains access to the PEP servers, they cannot read the data
+    The whole time data is in the PEP repository, it is encrypted, meaning that the PEP servers can only perform very limited logic on it. Things as automating **Subject Group** assignment based on data contents is by choice impossible to do. Logic like this will have to be performed or scripted by the **Data Administrator** after retrieving the data in an unencrypted form.
 
-The whole time data is in the PEP repository, it is encrypted, meaning that the PEP servers can only perform very limited logic on it. Things as automating **Subject Group** assignment based on data contents is by choice impossible to do. Logic like this will have to be performed or scripted by the **Data Administrator** after retrieving the data in an unencrypted form.
+    This is fundamentally different from typical database systems where the server can read all the data it stores.
 
-This is fundamentally different from typical database systems where the server can read all the data it stores.
+    **Polymorphic encryption** {#polymorphic-encryption}
 
-#### Polymorphic encryption
+    While PEP provides end-to-end encryption like many other systems, it adds an important layer of protection through *trust distribution*. In typical end-to-end encrypted systems, you must trust the server operator not to:
 
-While PEP provides end-to-end encryption like many other systems, it adds an important layer of protection through *trust distribution*. In typical end-to-end encrypted systems, you must trust the server operator not to:
+    - Modify the server software to capture encryption keys.
+    - Be compelled by legal orders to provide access.
+    - Have their server compromised by attackers.
 
-- Modify the server software to capture encryption keys.
-- Be compelled by legal orders to provide access.
-- Have their server compromised by attackers.
+    PEP addresses this through **polymorphic encryption**, a cryptographic technique that distributes trust across multiple independent servers. These servers can be operated by different organisations, even in different legal jurisdictions or continents. Here's how it works:
 
-PEP addresses this through **polymorphic encryption**, a cryptographic technique that distributes trust across multiple independent servers. These servers can be operated by different organisations, even in different legal jurisdictions or continents. Here's how it works:
+    When you upload data to PEP:
 
-When you upload data to PEP:
+    1. Your device retrieves the public keys of two different PEP servers.
+    2. Your device encrypts the data in two layers using both public keys.
+    3. The **Storage Facility** (one of the PEP servers) stores data with two layers of encryption and cannot read it.
 
-1. Your device retrieves the public keys of two different PEP servers.
-2. Your device encrypts the data in two layers using both public keys.
-3. The **Storage Facility** (one of the PEP servers) stores data with two layers of encryption and cannot read it.
+    When you download data from PEP:
 
-When you download data from PEP:
+    1. A PEP server re-encrypts the data with your public key.
+    2. Access is checked, and one layer of encryption is removed by one server.
+    3. Access is logged by a different PEP server, and another layer of encryption is removed.
+    4. After both servers process the data, the remaining encryption is your public key.
+    5. You receive the data and decrypt it locally using your private key.
 
-1. A PEP server re-encrypts the data with your public key.
-2. Access is checked, and one layer of encryption is removed by one server.
-3. Access is logged by a different PEP server, and another layer of encryption is removed.
-4. After both servers process the data, the remaining encryption is your public key.
-5. You receive the data and decrypt it locally using your private key.
+    The ability to remove one layer of encryption while the data remains encrypted with other keys is called **polymorphic encryption**.
 
-The ability to remove one layer of encryption while the data remains encrypted with other keys is called **polymorphic encryption**.
-
-This cryptographic design means that privacy protection is built into the fundamental architecture, not just added as a feature. The system is designed so that no single party can decrypt the data alone, data remains confidential *even if servers are compromised* and *even the server administrators cannot read your data or link records across User Groups*.
+    This cryptographic design means that privacy protection is built into the fundamental architecture, not just added as a feature. The system is designed so that no single party can decrypt the data alone, data remains confidential *even if servers are compromised* and *even the server administrators cannot read your data or link records across User Groups*.
 
 ### Creating the User Group
 
