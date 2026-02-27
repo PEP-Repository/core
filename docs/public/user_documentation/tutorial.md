@@ -145,8 +145,8 @@ The `id` column shows **Local Pseudonyms**, unique identifiers for subjects that
 
 Imagine you're an analyst studying student achievement. This data would be useful, but also contains a lot of information that is not required. You have *no need* for the actual names of the students, let alone the address where the students live. As long as you can consistently identify single subjects, you have enough information to perform your analysis.
 
+<span id="intermezzo-privacy-by-design"></span>
 !!! example "Intermezzo: Privacy by design"
-    {: #intermezzo-privacy-by-design}
     The ground rule for working with personal data (and all data in the table above is personal data, not just the names and the addresses) is that the person working with these data should only have access to the data that is required for the purpose. This concept is called *data minimisation*.
 
     Another important aspect to keep in mind is *proportionality* and *purpose limitation*, for example: it might be valuable to register mental conditions of subjects when performing a study, but on the other hand this imposes a much larger impact on the privacy of an individual than for example sharing a math grade. Although efforts are made to prevent identification of individuals, this can never be completely prevented. Therefore the proportionality of using such details should be considered, and in the case of very sensitive data, (even) stronger ethical checks should be performed concerning the consent basis and the taken privacy and security measures. But the bottom line about data sharing is: less is more, which concerns both the amount of data and the resolution and sensitivity of data. Instead of, for example, sharing a birth date (day), in many cases the year of birth may suffice. In those cases, only this year of birth (a lower resolution) should be shared/used.
@@ -190,8 +190,8 @@ Performing the same download as **Access Administrator** will show you that this
 
 This demonstrates how PEP enforces *data minimisation* through access control: each **User Group** sees only what's necessary for their purpose, and even the identifiers differ between **User Groups** to prevent unauthorized data linkage.
 
+<span id="intermezzo-polymorphic-pseudonymisation"></span>
 !!! example "Intermezzo: Polymorphic pseudonymisation"
-    {: #intermezzo-polymorphic-pseudonymisation}
     The fact that every **User Group** has their own pseudonyms is a very important concept within PEP. So much so, that it is half of the namesake of the system, **Polymorphic Encryption and Pseudonymisation**. PEP uses multiple types of pseudonyms for different purposes:
 
     1. **Origin IDs**: The original identifiers for a subject in the system, you saw this before as `ParticipantIdentifier` when downloading. This identifier can be randomly generated when registering a new subject, or could be derived from an existing one (e.g. a student number, or a BSN). **Origin IDs** are never shared with users, they are only used internally for data management and encryption, in this case by the **Research Assessor** who registers the subjects and generates the Origin IDs for them.
@@ -268,8 +268,8 @@ pepcli store --participant <IDENTIFIER> --column Address --input-path participan
 - Use the one of the commands above to fill the `Maths_Grade` column.
 - (Optional) Fill in the remaining columns (`Maths_Level`, `French_Level`, `French_Grade`).
 
+<span id="intermezzo-four-eyes-principle"></span>
 !!! example "Intermezzo: Four Eyes principle"
-    {: #intermezzo-four-eyes-principle}
     The administrative superpowers in PEP are divided over two specific types of predefined **User Groups**. One is the **Data Administrator** and the other is the **Access Administrator**. Both administrators work together and need each other to administer the PEP repository. This separation is called the **four-eyes principle**. The reason for this separation of tasks is that a potential breach of one of the administrator **User Groups** will not immediately lead to a data leak. In this tutorial, you will act as both **User Groups** although this should never be the case in operational environments.
 
     The **Data Administrator** is intended for repository managers, they create columns, organising them into **Column Groups**. They also add **Subjects** to **Subject Groups**. They typically work with pseudonymised data and need only read access to non-personal information. When temporary access to personal data is required for organisational tasks (such as grouping subjects by characteristics), such access should be granted for a limited time by the **Access Administrator**.
@@ -372,9 +372,10 @@ pepcli ama group addTo SecondYearStudents <FOUND_IDENTIFIER>
 
 Don't forget to replace `<FOUND_IDENTIFIER>` with the `lp` you have selected. Repeat this step for all second year students.
 
+<span id="intermezzo-encryption"></span>
 !!! example "Intermezzo: Encryption"
-    {: #intermezzo-encryption}
-    **End-to-end encryption** {#end-to-end-encryption}
+    <span id="end-to-end-encryption"></span>
+    **End-to-end encryption**
 
     The process just used is rather tedious. It would be nice if PEP supported data driven processes such as the one above (e.g., "add all subjects where `Class` starts with '2' to the `SecondYearStudents` group"). However, there is a very good reason we do not. PEP is *end-to-end encrypted*, another principle of Privacy by Design, this means:
 
