@@ -37,7 +37,7 @@ get_pseudonym_input() {
     local result
     result=$(osascript 2>&1 <<'EOF'
 try
-    set dialogResult to display dialog "Enter the pseudonym or Reference ID:" default answer "" buttons {"Participant", "Reference ID", "Cancel"} default button "Participant"
+    set dialogResult to display dialog "Enter the subject pseudonym or Reference ID:" default answer "" buttons {"Subject", "Reference ID", "Cancel"} default button "Subject"
     set buttonPressed to button returned of dialogResult
     set textEntered to text returned of dialogResult
     return buttonPressed & "|" & textEntered

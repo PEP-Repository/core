@@ -128,7 +128,7 @@ function GetPseudonymInput {
   # Create main form
   $form = New-Object System.Windows.Forms.Form -Property @{ Width = 420; Height = 180 }
   
-  # Create main vertical layout (label -> textbox -> buttons)
+  # Create main vertical layout (label + textbox + buttons)
   $panel = New-Object System.Windows.Forms.TableLayoutPanel -Property @{ RowCount = 3; ColumnCount = 1; Dock = 'fill'; Padding = 10 }
   $form.Controls.Add($panel)
   
@@ -137,14 +137,14 @@ function GetPseudonymInput {
   $textbox = New-Object System.Windows.Forms.TextBox -Property @{ Dock = 'fill' }
   $panel.Controls.Add($textbox)
   
-  # Create button row (spacer -> Participant -> Reference ID -> Cancel)
+  # Create button row (spacer + Subject + Reference ID + Cancel)
   $buttons = New-Object System.Windows.Forms.TableLayoutPanel -Property @{ RowCount = 1; ColumnCount = 4; Dock = 'fill' }
   $panel.Controls.Add($buttons)
   
   # Add spacer to push buttons to the right, then add three buttons
   $buttons.Controls.Add((New-Object System.Windows.Forms.Panel))  # Spacer
-  $btnP = New-Object System.Windows.Forms.Button -Property @{ Text = 'Participant'; DialogResult = 'Yes'; AutoSize = $true }
-  $buttons.Controls.Add($btnP)
+  $btnS = New-Object System.Windows.Forms.Button -Property @{ Text = 'Subject'; DialogResult = 'Yes'; AutoSize = $true }
+  $buttons.Controls.Add($btnS)
   $buttons.Controls.Add((New-Object System.Windows.Forms.Button -Property @{ Text = 'Reference ID'; DialogResult = 'No'; AutoSize = $true }))
   $btnC = New-Object System.Windows.Forms.Button -Property @{ Text = 'Cancel'; DialogResult = 'Cancel'; AutoSize = $true }
   $buttons.Controls.Add($btnC)
@@ -157,7 +157,7 @@ function GetPseudonymInput {
   $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })) | Out-Null
   
   # Set default buttons for Enter/Escape keys
-  $form.AcceptButton = $btnP
+  $form.AcceptButton = $btnS
   $form.CancelButton = $btnC
   
   # Return both the button clicked and the text entered
@@ -206,7 +206,7 @@ try {
     $pseudFlag = '--sp'
   }
   else {
-    Write-Output 'Using Participant pseudonym'
+    Write-Output 'Using Subject pseudonym'
     $pseudFlag = '-p'
   }
   
