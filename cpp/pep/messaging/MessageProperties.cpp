@@ -118,7 +118,7 @@ bool Flags::empty() const noexcept {
 Flags::Flags(bool close, bool error, bool payload)
   : mClose(close), mError(error), mPayload(payload) {
   if (!areValid()) {
-    throw std::invalid_argument((boost::format("These flags cannot be combined: %s") % *this).str());
+    throw std::invalid_argument((boost::format("Inconsistent set of message flags: %s") % *this).str());
   }
 }
 
@@ -128,6 +128,7 @@ Flags Flags::operator|(const Flags& other) const {
 
 std::ostream& operator<<(std::ostream& out, Flags flags) {
   bool first = true;
+  out << '{';
   auto printFlag = [&](std::string_view flag) {
     if (!std::exchange(first, false)) { out << ", "; }
     out << flag;
@@ -135,6 +136,7 @@ std::ostream& operator<<(std::ostream& out, Flags flags) {
   if (flags.close()) { printFlag("close"); }
   if (flags.error()) { printFlag("error"); }
   if (flags.payload()) { printFlag("payload"); }
+  out << '}';
   return out;
 }
 
