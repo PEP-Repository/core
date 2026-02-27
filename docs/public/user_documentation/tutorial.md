@@ -374,8 +374,7 @@ Don't forget to replace `<FOUND_IDENTIFIER>` with the `lp` you have selected. Re
 
 <span id="intermezzo-encryption"></span>
 !!! example "Intermezzo: Encryption"
-    <span id="end-to-end-encryption"></span>
-    **End-to-end encryption**
+    <strong id="end-to-end-encryption">End-to-end encryption</strong>
 
     The process just used is rather tedious. It would be nice if PEP supported data driven processes such as the one above (e.g., "add all subjects where `Class` starts with '2' to the `SecondYearStudents` group"). However, there is a very good reason we do not. PEP is *end-to-end encrypted*, another principle of Privacy by Design, this means:
 
@@ -388,7 +387,7 @@ Don't forget to replace `<FOUND_IDENTIFIER>` with the `lp` you have selected. Re
 
     This is fundamentally different from typical database systems where the server can read all the data it stores.
 
-    **Polymorphic encryption** {#polymorphic-encryption}
+    <strong id="polymorphic-encryption">Polymorphic encryption</strong>
 
     While PEP provides end-to-end encryption like many other systems, it adds an important layer of protection through *trust distribution*. In typical end-to-end encrypted systems, you must trust the server operator not to:
 
