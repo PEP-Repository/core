@@ -74,8 +74,8 @@ ElgamalEncryption EncryptedPseudonym::FromPacked(std::string_view packed) {
   return ElgamalEncryption::FromPacked(packed);
 }
 
-ElgamalEncryption EncryptedPseudonym::rerandomize() const {
-  return getValidElgamalEncryption().rerandomize();
+ElgamalEncryption EncryptedPseudonym::rerandomize(CPRNG* rng) const {
+  return getValidElgamalEncryption().rerandomize(rng);
 }
 
 size_t EncryptedPseudonym::TextLength() {

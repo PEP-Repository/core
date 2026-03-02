@@ -638,6 +638,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     TranscryptorRequestEntry& entry = ctx->tsReqEntries.mEntries[i];
 
     // Rerandomize old PPs (ie. from the database)
+    // To prevent multiple users receiving identical PPs
     if (pp.isClientProvided)
       entry.mPolymorphic = pp.pp;
     else

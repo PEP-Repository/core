@@ -45,48 +45,47 @@ RskTranslator::generateKeyFactors(const SkRecipient& recipient) const {
   };
 }
 
-ElgamalEncryption RskTranslator::rsk(
+ElgamalEncryption RskTranslator::reshuffleRekey(
     const ElgamalEncryption& encryption,
     const KeyFactors& recipientKeyFactors) const {
-  return cache_->RSK(
+  return cache_->reshuffleRekey(
       CheckValidEncryption(encryption),
       recipientKeyFactors.reshuffle,
-      recipientKeyFactors.rekey,
-      rng_.get());
+      recipientKeyFactors.rekey);
 }
 
-ElgamalEncryption RskTranslator::rk(
+ElgamalEncryption RskTranslator::rekey(
     const ElgamalEncryption& encryption,
     const ElgamalTranslationKey& recipientRekeyKeyFactor) const {
-  return cache_->RK(
+  return cache_->rekey(
       CheckValidEncryption(encryption),
-      recipientRekeyKeyFactor,
-      rng_.get());
+      recipientRekeyKeyFactor);
 }
 
-ElgamalEncryption RskTranslator::rs(
+ElgamalEncryption RskTranslator::reshuffle(
     const ElgamalEncryption& encryption,
     const CurveScalar& recipientReshuffleKeyFactor) const {
   //TODO This could potentially be cached?
-  return CheckValidEncryption(encryption).rerandomize().reshuffle(recipientReshuffleKeyFactor);
+  return CheckValidEncryption(encryption).reshuffle(recipientReshuffleKeyFactor);
 }
 
-std::pair<ElgamalEncryption, RSKProof> RskTranslator::certifiedRsk(
+std::pair<ElgamalEncryption, ReshuffleRekeyProof> RskTranslator::certifiedReshuffleRekey(
     const ElgamalEncryption& encryption,
     const KeyFactors& recipientKeyFactors) const {
   ElgamalEncryption encryptionOut;
-  //TODO Why is this not cached, and why does it not take a RNG?
-  RSKProof proofOut = RSKProof::certifiedRSK(
+  //TODO Why is this not cached?
+  ReshuffleRekeyProof proofOut = ReshuffleRekeyProof::CertifiedReshuffleRekey(
       CheckValidEncryption(encryption), encryptionOut,
       recipientKeyFactors.reshuffle,
-      recipientKeyFactors.rekey);
+      recipientKeyFactors.rekey,
+      rng_.get());
   return {encryptionOut, proofOut};
 }
 
-RSKVerifiers RskTranslator::computeRskProofVerifiers(
+ReshuffleRekeyVerifiers RskTranslator::computeReshuffleRekeyVerifiers(
     const KeyFactors& recipientKeyFactors,
     const ElgamalPublicKey& masterPublicEncryptionKey) const {
-  return RSKVerifiers::compute(
+  return ReshuffleRekeyVerifiers::Compute(
       recipientKeyFactors.reshuffle,
       recipientKeyFactors.rekey,
       masterPublicEncryptionKey);

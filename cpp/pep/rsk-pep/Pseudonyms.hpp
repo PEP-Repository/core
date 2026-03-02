@@ -75,7 +75,7 @@ protected:
   [[nodiscard]] static ElgamalEncryption FromPacked(std::string_view packed);
 
   /// \throws std::invalid_argument for invalid encrypted pseudonym
-  [[nodiscard]] ElgamalEncryption rerandomize() const;
+  [[nodiscard]] ElgamalEncryption rerandomize(CPRNG* rng = nullptr) const;
 
 public:
   /// Construct invalid encrypted pseudonym
@@ -128,8 +128,8 @@ public:
   }
 
   /// \copydoc EncryptedPseudonym::rerandomize
-  [[nodiscard]] Derived rerandomize() const /*override*/ {
-    return Derived(EncryptedPseudonym::rerandomize());
+  [[nodiscard]] Derived rerandomize(CPRNG* rng = nullptr) const /*override*/ {
+    return Derived(EncryptedPseudonym::rerandomize(rng));
   }
 };
 
