@@ -124,6 +124,46 @@ function EnterNonEmptyString {
   return $result
 }
 
+function GetPseudonymInput {
+  # Create main form
+  $form = New-Object System.Windows.Forms.Form -Property @{ Width = 420; Height = 180 }
+  
+  # Create main vertical layout (label + textbox + buttons)
+  $panel = New-Object System.Windows.Forms.TableLayoutPanel -Property @{ RowCount = 3; ColumnCount = 1; Dock = 'fill'; Padding = 10 }
+  $form.Controls.Add($panel)
+  
+  # Add label and textbox
+  $panel.Controls.Add((New-Object System.Windows.Forms.Label -Property @{ Text = 'Enter the pseudonym or Reference ID:'; Dock = 'fill' }))
+  $textbox = New-Object System.Windows.Forms.TextBox -Property @{ Dock = 'fill' }
+  $panel.Controls.Add($textbox)
+  
+  # Create button row (spacer + Subject + Reference ID + Cancel)
+  $buttons = New-Object System.Windows.Forms.TableLayoutPanel -Property @{ RowCount = 1; ColumnCount = 4; Dock = 'fill' }
+  $panel.Controls.Add($buttons)
+  
+  # Add spacer to push buttons to the right, then add three buttons
+  $buttons.Controls.Add((New-Object System.Windows.Forms.Panel))  # Spacer
+  $btnS = New-Object System.Windows.Forms.Button -Property @{ Text = 'Subject'; DialogResult = 'Yes'; AutoSize = $true }
+  $buttons.Controls.Add($btnS)
+  $buttons.Controls.Add((New-Object System.Windows.Forms.Button -Property @{ Text = 'Reference ID'; DialogResult = 'No'; AutoSize = $true }))
+  $btnC = New-Object System.Windows.Forms.Button -Property @{ Text = 'Cancel'; DialogResult = 'Cancel'; AutoSize = $true }
+  $buttons.Controls.Add($btnC)
+  
+  # Make spacer stretch, buttons auto-size
+  $buttons.ColumnStyles.Clear()
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'Percent'; Width = 100 })) | Out-Null
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })) | Out-Null
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })) | Out-Null
+  $buttons.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle -Property @{ SizeType = 'AutoSize' })) | Out-Null
+  
+  # Set default buttons for Enter/Escape keys
+  $form.AcceptButton = $btnS
+  $form.CancelButton = $btnC
+  
+  # Return both the button clicked and the text entered
+  return @{ DialogResult = $form.ShowDialog(); Text = $textbox.Text }
+}
+
 $ErrorActionPreference = 'Stop'
 try {
   Add-Type -AssemblyName System.Windows.Forms  # Load types MessageBox, FolderBrowserDialog, ...
@@ -151,8 +191,24 @@ try {
   # Note: dialog style & available properties differ between pwsh & Windows powershell
   $column = EnterNonEmptyString 'Column to store file into:'
  
-  Write-Output 'Enter pseudonym into dialog'
-  $pseud = EnterNonEmptyString 'Pseudonym of subject for which to store the file:'
+  Write-Output 'Enter pseudonym and select type'
+  $pseudInput = GetPseudonymInput
+  
+  if ($pseudInput.DialogResult -eq [System.Windows.Forms.DialogResult]::Cancel -or !$pseudInput.Text) {
+    ShowNotification 'No pseudonym provided. Operation cancelled.'
+    exit 1
+  }
+  
+  $pseud = $pseudInput.Text
+  
+  if ($pseudInput.DialogResult -eq [System.Windows.Forms.DialogResult]::No) {
+    Write-Output 'Using Reference ID'
+    $pseudFlag = '--sp'
+  }
+  else {
+    Write-Output 'Using Subject pseudonym'
+    $pseudFlag = '-p'
+  }
   
   $browser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
     Title = "Select file to upload"
@@ -168,7 +224,7 @@ try {
 
   $storeArgs = @(
     'store'
-    '-p'
+    "$pseudFlag"
       "$pseud"
     '-c'
       "$column"
