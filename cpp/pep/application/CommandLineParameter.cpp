@@ -15,9 +15,6 @@ Parameter::Parameter(const std::string& name, const std::optional<std::string>& 
 }
 
 Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
-  if (this->isPositional()) {
-    throw std::runtime_error("Cannot add alias to parameter " + mName + " because it's positional");
-  }
   auto announcements = this->getAnnouncements();
   if (announcements.find(alias) != announcements.cend()) {
     throw std::runtime_error("Switch " + mName + " already has announcement " + alias.string());
@@ -29,20 +26,14 @@ Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   return result;
 }
 
-std::optional<SwitchAnnouncement> Parameter::getCanonicalAnnouncement() const {
-  if (this->isPositional()) {
-    return std::nullopt;
-  }
+SwitchAnnouncement Parameter::getCanonicalAnnouncement() const {
   return SwitchAnnouncement(mName);
 }
 
 std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
   auto result = mAliases;
-  auto canonical = this->getCanonicalAnnouncement();
-  if (canonical.has_value()) {
-    [[maybe_unused]] auto emplaced = result.emplace(*canonical).second;
-    assert(emplaced);
-  }
+  [[maybe_unused]] auto emplaced = result.emplace(this->getCanonicalAnnouncement()).second;
+  assert(emplaced);
   return result;
 }
 
@@ -137,11 +128,11 @@ bool Parameter::allowsMultiple() const noexcept {
 }
 
 std::optional<std::string> Parameter::getInvocationSummary(bool indicateOptionality) const {
-  auto announcement = this->getCanonicalAnnouncement();
-  if (announcement.has_value()) {
-    return this->getInvocationSummary(announcement->getPrefix(), announcement->getText(), indicateOptionality);
+  if (this->isPositional()) {
+    return this->getInvocationSummary(std::string(), mName, indicateOptionality);
   }
-  return this->getInvocationSummary(std::string(), mName, indicateOptionality);
+  auto announcement = this->getCanonicalAnnouncement();
+  return this->getInvocationSummary(announcement.getPrefix(), announcement.getText(), indicateOptionality);
 }
 
 std::unordered_map<SwitchAnnouncement, std::string> Parameter::getAliasInvocationSummaries() const {
@@ -291,23 +282,18 @@ void Parameters::writeHelpText(std::ostream& destination, const std::string& hea
 void Parameters::add(const Parameter& parameter) {
   auto index = mEntries.size();
 
-  if (parameter.isPositional()) {
-    mPositional.push_back(index);
-  }
-  else {
-    // Exception safe update: create a copy of our announcements to work with
-    auto byAnnouncement = mByAnnouncement;
-    for (const auto& announcement : parameter.getAnnouncements()) {
-      auto emplaced = byAnnouncement.emplace(announcement, index);
-      if (!emplaced.second) {
-        auto existing = mEntries[emplaced.first->second];
-        throw std::runtime_error("Announcement " + announcement.string() + " is claimed by multiple switches: " + parameter.getName() + " and " + existing.getName());
-      }
+  // Exception safe update: create a copy of our announcements to work with
+  auto byAnnouncement = mByAnnouncement;
+  for (const auto& announcement : parameter.getAnnouncements()) {
+    auto emplaced = byAnnouncement.emplace(announcement.string(), index);
+    if (!emplaced.second) {
+      auto existing = mEntries[emplaced.first->second];
+      throw std::runtime_error("Announcement " + announcement.string() + " is claimed by multiple switches: " + parameter.getName() + " and " + existing.getName());
     }
-    // No conflicting announcements: update our state
-    mNamed.push_back(index);
-    std::swap(mByAnnouncement, byAnnouncement);
   }
+  // No conflicting announcements: update our state
+  (parameter.isPositional() ? mPositional : mNamed).push_back(index);
+  std::swap(mByAnnouncement, byAnnouncement);
 
   mEntries.push_back(parameter);
 }
@@ -316,7 +302,8 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
   if (terminated) *terminated = false;
   LexedValues result;
 
-  auto positional = mPositional.cbegin(), positionals_end = mPositional.cend();
+  auto positionalIt = mPositional.cbegin();
+  enum class positionalType { None, Named, Unnamed } positionalSeen = positionalType::None;
 
   while (!arguments.empty()) {
     const auto& token = arguments.front();
@@ -328,24 +315,41 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
     }
 
     const Parameter* s{};
-    auto named = std::find_if(mByAnnouncement.cbegin(), mByAnnouncement.cend(), [&token](const auto& pair) {return pair.first.string() == token; });
-    if (named != mByAnnouncement.cend()) { // The current token is a "--name" or "-shorthand" announcement
+    if (auto named = mByAnnouncement.find(token); named != mByAnnouncement.cend()) { // The current token is a "--name" or "-shorthand" announcement
       arguments.pop(); // Discard the announcement from remaining arguments
-      auto index = named->second;
-      s = &mEntries[index];
+      s = &mEntries[named->second];
+      if (s->isPositional()) {
+        if (positionalSeen == positionalType::Unnamed) {
+          throw std::runtime_error("Cannot mix named and unnamed positional parameters");
+        }
+        positionalSeen = positionalType::Named;
+      }
     }
-    else { // Not an announcement: process as a positional parameter
-      if (positional == positionals_end) { // We don't support any further positionals, so the token is not for us
+    else { // Not an announcement: process as an unnamed positional parameter
+      if (positionalIt == mPositional.cend()) {
+        // We don't support any further positionals, so the token is not for us.
         break;
       }
-      auto index = *positional;
-      s = &mEntries[index];
-      // If the current positional can be specified only once, advance to the next positional
-      assert(s->getValueSpecification() != nullptr);
-      if (!s->getValueSpecification()->allowsMultiple()) {
-        ++positional;
+
+      if (positionalSeen == positionalType::Named) {
+        if (!this->firstPositional(result)) {
+          // All positionals were already specified using names. Assume the next token is not for us.
+          break;
+        }
+        throw std::runtime_error("Cannot mix named and unnamed positional parameters");
+      }
+      positionalSeen = positionalType::Unnamed;
+
+      s = &mEntries[*positionalIt];
+      assert(s->isPositional());
+
+      auto valueSpec = s->getValueSpecification();
+      assert(valueSpec && "Positional without value specification?");
+      if (!valueSpec->allowsMultiple()) {
+        ++positionalIt;
       }
     }
+
     s->lex(result[s->getName()], arguments);
   }
 
@@ -379,45 +383,37 @@ void Parameters::finalize(NamedValues& parsed) const {
   }
 }
 
-const Parameter* Parameters::firstAcceptingValue(const LexedValues& lexed) const noexcept {
-  // First check switches, then positional,
-  //  as a specified switch with missing value must first get a value
-  //  (note that there can only be one such switch)
-  // (Positional parameters are already sorted in mEntries)
-  for (bool positional = false; ; positional = true) {
-    for (const auto& s : mEntries) {
-      if (s.isPositional() != positional) {
-        continue;
+const Parameter* Parameters::currentSwitchRequiringValue(const LexedValues& lexed) const noexcept {
+  for (const Parameter& s : mEntries) {
+    // If specified without value
+    if (auto position = lexed.find(s.getName()); position != lexed.cend()) {
+      if (s.isLackingValue(position->second)) {
+        return &s;
       }
-      const auto& name = s.getName();
-      auto position = lexed.find(name);
-      if (position != lexed.cend()) {
-        if (s.isLackingValue(position->second)) {
-          return &s;
-        }
-      }
-    }
-    if (positional) {
-      return {};
     }
   }
+  return {};
 }
 
-std::vector<const Parameter*> Parameters::getParametersToAutocomplete(const LexedValues& lexed) const noexcept {
+const Parameter* Parameters::firstPositional(const LexedValues& lexed) const noexcept {
+  for (const Index i : mPositional) {
+    const Parameter& s = mEntries[i];
+    if (!lexed.contains(s.getName()) || s.allowsMultiple()) {
+      return &s;
+    }
+  }
+  return {};
+}
+
+std::vector<const Parameter*> Parameters::getSwitchesToAutocomplete(const LexedValues& lexed) const noexcept {
   std::vector<const Parameter*> params;
-  // Only return the first positional accepting values
-  bool positionalAutocompleteSeen = false;
   for (const auto& param : mEntries) {
     if (!param.isDocumented()) {
       continue;
     }
-    const auto& name = param.getName();
-    auto position = lexed.find(name);
     const auto valueSpec = param.getValueSpecification();
-    if (position == lexed.end() || (valueSpec && valueSpec->allowsMultiple())) {
-      if (!param.isPositional() || !std::exchange(positionalAutocompleteSeen, true)) {
-        params.push_back(&param);
-      }
+    if (!lexed.contains(param.getName()) || (valueSpec && valueSpec->allowsMultiple())) {
+      params.push_back(&param);
     }
   }
   return params;

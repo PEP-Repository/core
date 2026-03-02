@@ -27,7 +27,6 @@ perf.data.old
 CMakeSettings.json
 /.flatpak-builder
 .cache/
-/s3proxy-runtime/
 
 # Build directories
 /bin
@@ -54,3 +53,11 @@ uv.lock
 /CMakeUserPresets.json
 /.vs
 /.vscode
+
+# PEP-specific
+*_Crash.dmp
+*_CrashReport.txt
+ClientKeys.json
+OAuthToken.json
+pulled-data-pending/
+pulled-data/

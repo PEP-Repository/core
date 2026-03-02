@@ -8,14 +8,12 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
-#include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
@@ -79,7 +77,7 @@ void FillTranscryptorRequestEntry(
     std::tie(entry.mUserGroup.emplace(), entry.mUserGroupProof.emplace()) =
         pseudonymTranslator.certifiedTranslateStep(
             entry.mPolymorphic,
-            RecipientForCertificate(signature.getLeafCertificate()));
+            RecipientForCertificate(signature.certificateChain().leaf()));
   }
   FillTranscryptorRequestEntry(entry, pseudonymTranslator);
 }
@@ -154,33 +152,26 @@ AccessManager::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) 
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-      ticket_request2_duration(prometheus::BuildSummary()
-      .Name("pep_accessmanager_ticket_request2_duration_seconds")
-      .Help("Duration of a successful ticket2 request")
-      .Register(*registry)
-      .Add({}, prometheus::Summary::Quantiles{
-        {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-        keyComponent_request_duration(prometheus::BuildSummary()
-        .Name("pep_accessmanager_keyComponent_request_duration_seconds")
-        .Help("Duration of a successful keyComponent request")
-        .Register(*registry)
-        .Add({}, prometheus::Summary::Quantiles{
-          {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-          ticket_request_duration(prometheus::BuildSummary()
-          .Name("pep_accessmanager_ticket_request_duration_seconds")
-            .Help("Duration of a successful ticket request")
-            .Register(*registry)
-            .Add({}, prometheus::Summary::Quantiles{
-              {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})) {}
+  ticket_request2_duration(prometheus::BuildSummary()
+    .Name("pep_accessmanager_ticket_request2_duration_seconds")
+    .Help("Duration of a successful ticket2 request")
+    .Register(*registry)
+    .Add({}, prometheus::Summary::Quantiles{
+      {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
+  ticket_request_duration(prometheus::BuildSummary()
+    .Name("pep_accessmanager_ticket_request_duration_seconds")
+    .Help("Duration of a successful ticket request")
+    .Register(*registry)
+    .Add({}, prometheus::Summary::Quantiles{
+      {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})) {
+}
 
 
 AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : SigningServer::Parameters(io_context, config) {
+  : KeyComponentServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path globalConfFile;
   ElgamalPublicKey publicKeyPseudonyms;
-
-  std::filesystem::path systemKeysFile;
 
   std::string strPseudonymKey;
 
@@ -193,14 +184,6 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     publicKeyPseudonyms = config.get<ElgamalPublicKey>("PublicKeyPseudonyms");
     transcryptorEndPoint = config.get<EndPoint>(ServerTraits::Transcryptor().configNode());
     keyServerEndPoint = config.get<EndPoint>(ServerTraits::KeyServer().configNode());
-
-    if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
-      systemKeysFile = optionalSystemKeysFile.value();
-    }
-    else {
-      //Legacy version, from when we still had a (Soft)HSM. TODO: use new version in configuration for all environments, and remove legacy version.
-      systemKeysFile = config.get<std::filesystem::path>("HSM.ConfigFile");
-    }
 
     storageFile = config.get<std::filesystem::path>("StorageFile");
   }
@@ -218,12 +201,6 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     throw;
   }
 
-  boost::property_tree::ptree systemKeys;
-  boost::property_tree::read_json(std::filesystem::canonical(systemKeysFile).string(), systemKeys);
-  systemKeys = systemKeys.get_child_optional("Keys") //Old HSMKeys.json files have the keys in a Keys-object
-      .get_value_or(systemKeys); //we now also allow them to be directly in the root, resulting in cleaner SystemKeys-files
-  setPseudonymTranslator(std::make_shared<PseudonymTranslator>(ParsePseudonymTranslationKeys(systemKeys)));
-  setDataTranslator(std::make_shared<DataTranslator>(ParseDataTranslationKeys(systemKeys)));
 
   setPseudonymKey(ElgamalPrivateKey(strPseudonymKey));
   setPublicKeyPseudonyms(publicKeyPseudonyms);
@@ -318,22 +295,6 @@ const EndPoint& AccessManager::Parameters::getKeyServerEndPoint() const {
   return keyServerEndPoint;
 }
 
-std::shared_ptr<PseudonymTranslator> AccessManager::Parameters::getPseudonymTranslator() const {
-  return pseudonymTranslator;
-}
-
-std::shared_ptr<DataTranslator> AccessManager::Parameters::getDataTranslator() const {
-  return dataTranslator;
-}
-
-void AccessManager::Parameters::setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator) {
-  Parameters::pseudonymTranslator = pseudonymTranslator;
-}
-
-void AccessManager::Parameters::setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator) {
-  Parameters::dataTranslator = dataTranslator;
-}
-
 std::shared_ptr<AccessManager::Backend> AccessManager::Parameters::getBackend() const {
   return backend;
 }
@@ -346,45 +307,24 @@ void AccessManager::Parameters::check() const {
     throw std::runtime_error("pseudonymKey must be set");
   if (!publicKeyPseudonyms)
     throw std::runtime_error("publicKeyPseudonyms must be set");
-  if(!pseudonymTranslator)
-    throw std::runtime_error("pseudonymTranslator must be set");
-  if(!dataTranslator)
-    throw std::runtime_error("dataTranslator must be set");
   if (!backend)
     throw std::runtime_error("backend must be set");
 
-  SigningServer::Parameters::check();
-}
-
-messaging::MessageBatches AccessManager::handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> pRequest) {
-  // Generate response
-  auto start_time = std::chrono::steady_clock::now();
-  auto response = KeyComponentResponse::HandleRequest(
-    *pRequest,
-    *mPseudonymTranslator,
-    *mDataTranslator,
-    *this->getRootCAs());
-  lpMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count());
-
-  //Return result
-  return messaging::BatchSingleMessage(response);
+  KeyComponentServer::Parameters::check();
 }
 
 AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> parameters)
-  : SigningServer(parameters),
+  : KeyComponentServer(parameters),
   mPseudonymKey(parameters->getPseudonymKey()),
   mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
   mTranscryptorProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getTranscryptorEndPoint().expectedCommonName, getRootCAs()),
   mKeyServerProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getKeyServerEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
-  mPseudonymTranslator(parameters->getPseudonymTranslator()),
-  mDataTranslator(parameters->getDataTranslator()),
   backend(parameters->getBackend()),
   globalConf(parameters->getGlobalConfiguration()),
   lpMetrics(std::make_shared<AccessManager::Metrics>(mRegistry)),
   mWorkerPool(WorkerPool::getShared()) {
   backend->setAccessManager(this);
   RegisterRequestHandlers(*this,
-                          &AccessManager::handleKeyComponentRequest,
                           &AccessManager::handleTicketRequest2,
                           &AccessManager::handleEncryptionKeyRequest,
                           &AccessManager::handleGlobalConfigurationRequest,
@@ -419,10 +359,11 @@ messaging::MessageBatches AccessManager::handleGlobalConfigurationRequest(std::s
 messaging::MessageBatches
 AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> signedRequest) {
   auto start_time = std::chrono::steady_clock::now();
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
-  auto request = std::make_shared<EncryptionKeyRequest>(
-    signedRequest->open(*this->getRootCAs()));
-  const auto party = GetEnrolledParty(signedRequest->mSignature.mCertificateChain);
+  auto certified = signedRequest->open(*this->getRootCAs());
+  auto userGroup = certified.signatory.organizationalUnit();
+  auto request = std::make_shared<EncryptionKeyRequest>(std::move(certified.message));
+  auto clientCertificateChain = MakeSharedCopy(certified.signatory.certificateChain());
+  const auto party = GetEnrolledParty(clientCertificateChain->leaf());
   if (!party.has_value()) {
     throw std::runtime_error("Cannot produce encryption key for this requestor");
   }
@@ -431,7 +372,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   }
 
   const auto recipient = std::make_shared<RekeyRecipient>(
-    RekeyRecipientForCertificate(signedRequest->getLeafCertificate()));
+    RekeyRecipientForCertificate(clientCertificateChain->leaf()));
 
   if (request->mTicket2 == nullptr)
     throw Error("Invalid signature or missing ticket");
@@ -461,7 +402,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
         [server, localPseudonyms](LocalPseudonyms elp) -> LocalPseudonym {
           return elp.mAccessManager.decrypt(server->mPseudonymKey);
         })
-      .flat_map([start_time, server, dwNumUnblind, lpResponse, request, signedRequest, recipient, localPseudonyms
+      .flat_map([start_time, server, dwNumUnblind, lpResponse, request, clientCertificateChain, recipient, localPseudonyms
         ](std::vector<LocalPseudonym> localPseudonymsOnStack) {
           *localPseudonyms = std::move(localPseudonymsOnStack);
           return server->mWorkerPool->batched_map<8>(request->mEntries,
@@ -478,7 +419,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       throw;
                     }
                     auto blindingAD = entry.mMetadata.computeKeyBlindingAdditionalData(mLocalPseudonym);
-                    key = server->mDataTranslator->blind(
+                    key = server->dataTranslator().blind(
                       entry.mPolymorphEncryptionKey,
                       blindingAD.content,
                       blindingAD.invertComponent
@@ -493,7 +434,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   }
                   return key;
                 })
-              .flat_map([start_time, server, dwNumUnblind, lpResponse, request, signedRequest, recipient, localPseudonyms
+              .flat_map([start_time, server, dwNumUnblind, lpResponse, request, clientCertificateChain, recipient, localPseudonyms
                 ](std::vector<EncryptedKey> keys) -> messaging::MessageBatches {
                   lpResponse->mKeys = std::move(keys);
 
@@ -509,7 +450,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   LOG(LOG_TAG, debug) << "Rekey request has a BLIND_MODE_UNBLIND entry -> forwarding to transcryptor";
                   RekeyRequest rkReq{
                     .mKeys{},
-                    .mClientCertificateChain = signedRequest->mSignature.mCertificateChain,
+                    .mClientCertificateChain = *clientCertificateChain,
                   };
                   rkReq.mKeys.reserve(dwNumUnblind);
 
@@ -530,7 +471,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   }
 
                   return server->mTranscryptorProxy.requestRekey(std::move(rkReq)).flat_map(
-                    [server, rkIndices, start_time, request, signedRequest, recipient, lpResponse, localPseudonyms
+                    [server, rkIndices, start_time, request, recipient, lpResponse, localPseudonyms
                     ](RekeyResponse transRespOnStack) {
 
                       auto transResp = std::make_shared<RekeyResponse>(std::move(transRespOnStack));
@@ -542,7 +483,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       std::iota(is.begin(), is.end(), 0);
                       return server->mWorkerPool->batched_map<8>(is,
                             observe_on_asio(*server->getIoContext()),
-                            [server, request, lpResponse, signedRequest, transResp, rkIndices, localPseudonyms, recipient
+                            [server, request, lpResponse, transResp, rkIndices, localPseudonyms, recipient
                             ](size_t i) {
                               auto& entry = request->mEntries[i];
                               auto& key = lpResponse->mKeys[i];
@@ -568,7 +509,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                                 throw;
                               }
 
-                              key = server->mDataTranslator->unblindAndTranslate(
+                              key = server->dataTranslator().unblindAndTranslate(
                                 encryptedKey,
                                 blindingAD.content,
                                 blindingAD.invertComponent,
@@ -605,8 +546,9 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   // openAsAccessManager checks that mSignature and mLogSignature are set,
   // are valid and match.
-  auto request = signedRequest->openAsAccessManager(*this->getRootCAs());
-  auto userGroup = signedRequest->mSignature->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->openAsAccessManager(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   backend->checkTicketRequest(request);
 
@@ -636,6 +578,10 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
                                              ticket.mColumns,         // columns (in & out)
                                              columnGroupMap);         // (out)
 
+  // Remove the main client signature to prevent reuse of
+  // the SignedTicketRequest2.
+  auto signature = signedRequest->extractSignature();
+
   // Because of all the asynchronous IO, we move all state into this context
   // struct, so that we don't have to put everything into shared_ptrs
   struct Context {
@@ -649,7 +595,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
     std::vector<std::string> participantModes;
-    TranscryptorRequest tsReq{};
+    TranscryptorRequest tsReq;
     TranscryptorRequestEntries tsReqEntries{};
     Signature signature; // signature (for the AM) on the TicketRequest
   };
@@ -657,22 +603,18 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto ctx = MakeSharedCopy(Context{
     .server = SharedFrom(*this),
     .requestNumber = requestNumber,
-    .request = std::move(request),
+    .request = request,
     .ticket = std::move(ticket),
     .pps = std::move(prePPs),
     .start_time = time,
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
-    .signature = std::move(*signedRequest->mSignature),
+    .tsReq {.mRequest = std::move(*signedRequest) },
+    .signature = std::move(signature),
     });
 
-  // Remove the main client signature to prevent reuse of
-  // the SignedTicketRequest2.
-  signedRequest->mSignature.reset();
-
   // Prepare transcryptor request
-  ctx->tsReq.mRequest = std::move(*signedRequest);
   ctx->tsReqEntries.mEntries.resize(ctx->pps.size());
 
   LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";
@@ -697,7 +639,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
     FillTranscryptorRequestEntry(
         entry,
-        *ctx->server->mPseudonymTranslator,
+        ctx->server->pseudonymTranslator(),
         ctx->request.mIncludeUserGroupPseudonyms,
         ctx->signature);
     return i;
@@ -755,7 +697,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     return ctx->server->mTranscryptorProxy.requestLogIssuedTicket(std::move(logReq));
   }).map([ctx](LogIssuedTicketResponse resp) {
     LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
-    ctx->signedTicket.mTranscryptorSignature = std::move(resp.mSignature);
+    ctx->signedTicket.addTranscryptorSignature(std::move(resp.mSignature));
 
     std::string response;
     if (!ctx->request.mRequestIndexedTicket) {
@@ -788,8 +730,9 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 }
 
 messaging::MessageBatches AccessManager::handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> signedRequest) {
-  AmaMutationRequest request = signedRequest->open(*this->getRootCAs());
-  std::string userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  std::string userGroup = certified.signatory.organizationalUnit();
   backend->performMutationsForRequest(request, userGroup);
 
   // Perform the adding of participants operations (and return 0..n FakeVoid items)
@@ -827,26 +770,29 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     ticketRequest.mParticipantGroups = {participantGroup};
     ticketRequest.mModes = {"enumerate"};
     ticketRequest.mPolymorphicPseudonyms = list;
-    TranscryptorRequest tsRequest;
     std::string data = Serialization::ToString(ticketRequest);
-    tsRequest.mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data);
+    TranscryptorRequest tsRequest{
+      .mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data)
+    };
     TranscryptorRequestEntries tsRequestEntries;
     tsRequestEntries.mEntries.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
     for (size_t i = 0; i < list.size(); i++) {
       TranscryptorRequestEntry& entry = tsRequestEntries.mEntries[i];
       entry.mPolymorphic = list[i];
-          FillTranscryptorRequestEntry(entry, *self->mPseudonymTranslator);
+          FillTranscryptorRequestEntry(entry, self->pseudonymTranslator());
     }
     return self->mTranscryptorProxy.requestTranscryption(std::move(tsRequest), messaging::MakeSingletonTail(tsRequestEntries))
-      .map([server = SharedFrom(*self), participantGroup = participantGroup, performRemove](TranscryptorResponse resp) -> FakeVoid {
-              LocalPseudonym localPseudonym = resp.mEntries[0].mAccessManager.decrypt(server->mPseudonymKey);
-             if (performRemove)
-               server->backend->removeParticipantFromGroup(localPseudonym, participantGroup);
-             else
-               server->backend->addParticipantToGroup(localPseudonym, participantGroup);
-             return FakeVoid();
-           });
-                });
+      .map([server = SharedFrom(*self), participantGroup, performRemove](const TranscryptorResponse& resp) -> FakeVoid {
+        for (const LocalPseudonyms& pseudonyms : resp.mEntries) {
+          LocalPseudonym localPseudonym = pseudonyms.mAccessManager.decrypt(server->mPseudonymKey);
+          if (performRemove)
+            server->backend->removeParticipantFromGroup(localPseudonym, participantGroup);
+          else
+            server->backend->addParticipantToGroup(localPseudonym, participantGroup);
+        }
+        return FakeVoid();
+      });
+  });
 }
 
 
@@ -896,8 +842,9 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
 
 messaging::MessageBatches
 AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   auto resp = backend->performAMAQuery(request, userGroup);
 
@@ -913,15 +860,17 @@ AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
 }
 
 messaging::MessageBatches AccessManager::handleUserQuery(std::shared_ptr<SignedUserQuery> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->performUserQuery(request, accessGroup));
 }
 
 messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_ptr<SignedUserMutationRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
 
   return backend->performUserMutationsForRequest(request, accessGroup).map([](UserMutationResponse response) -> messaging::MessageSequence {
     return rxcpp::rxs::just(std::make_shared<std::string>(Serialization::ToString(response)));
@@ -929,16 +878,18 @@ messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_p
 }
 
 messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request) {
+  const auto& pseudonymTranslator = this->pseudonymTranslator();
+
   return messaging::BatchSingleMessage(VerifiersResponse(
-      mPseudonymTranslator->computeTranslationProofVerifiers(
+      pseudonymTranslator.computeTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::AccessManager),
           mPublicKeyPseudonyms
       ),
-      mPseudonymTranslator->computeTranslationProofVerifiers(
+      pseudonymTranslator.computeTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::StorageFacility),
           mPublicKeyPseudonyms
       ),
-      mPseudonymTranslator->computeTranslationProofVerifiers(
+      pseudonymTranslator.computeTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::Transcryptor),
           mPublicKeyPseudonyms
       )
@@ -948,8 +899,9 @@ messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<
 messaging::MessageBatches
 AccessManager::handleColumnAccessRequest(
   std::shared_ptr<SignedColumnAccessRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleColumnAccessRequest(request, userGroup));
 }
@@ -957,24 +909,26 @@ AccessManager::handleColumnAccessRequest(
 messaging::MessageBatches
 AccessManager::handleParticipantGroupAccessRequest(
   std::shared_ptr<SignedParticipantGroupAccessRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleParticipantGroupAccessRequest(request, userGroup));
 }
 
 messaging::MessageBatches AccessManager::handleColumnNameMappingRequest
 (std::shared_ptr<SignedColumnNameMappingRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleColumnNameMappingRequest(request, userGroup));
 }
 
 messaging::MessageBatches AccessManager::
     handleMigrateUserDbToAccessManagerRequest(std::shared_ptr<SignedMigrateUserDbToAccessManagerRequest> signedRequest, messaging::MessageSequence chunksObservable) {
-  UserGroup::EnsureAccess(UserGroup::Authserver, signedRequest->getLeafCertificateOrganizationalUnit());
-  signedRequest->validate(*this->getRootCAs()); //The request itself is empty, but we do want to check the signature
+  auto signatory = signedRequest->validate(*this->getRootCAs()); //The request itself is empty, but we do want to check the signature
+  UserGroup::EnsureAccess(UserGroup::Authserver, signatory.organizationalUnit());
   assert(getStoragePath().has_value());
   backend->ensureNoUserData();
   auto tmpUserDbMigrationPath = getStoragePath().value() / pep::filesystem::RandomizedName("AuthserverStorage-%%%%%%.sqlite");
@@ -995,15 +949,17 @@ messaging::MessageBatches AccessManager::
 
 messaging::MessageBatches AccessManager::handleFindUserRequest(
     std::shared_ptr<SignedFindUserRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   return messaging::BatchSingleMessage(backend->handleFindUserRequest(request, userGroup));
 }
 
 messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::shared_ptr<SignedStructureMetadataRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   auto entries = backend->handleStructureMetadataRequest(request, userGroup);
   return
@@ -1017,8 +973,9 @@ messaging::MessageBatches AccessManager::handleStructureMetadataRequest(std::sha
 messaging::MessageBatches AccessManager::handleSetStructureMetadataRequest(
     std::shared_ptr<SignedSetStructureMetadataRequest> signedRequest,
     messaging::MessageSequence chunks) {
-  auto request = signedRequest->open(*this->getRootCAs());
-  auto userGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
 
   backend->handleSetStructureMetadataRequestHead(request, userGroup);
 

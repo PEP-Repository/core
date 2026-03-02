@@ -1,12 +1,8 @@
 #pragma once
 
-#include <pep/crypto/AsymmetricKey.hpp>
-#include <pep/serialization/Serialization.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/crypto/X509Certificate.hpp>
-
-#include <optional>
-#include <string>
+#include <pep/serialization/Error.hpp>
 
 namespace pep {
 
@@ -17,14 +13,33 @@ enum SignatureScheme {
 };
 
 
+class Signatory {
+private:
+  X509CertificateChain mCertificateChain;
+  X509RootCertificates mRootCAs;
+
+public:
+  Signatory(X509CertificateChain certificateChain, X509RootCertificates rootCAs);
+
+  const X509CertificateChain& certificateChain() const noexcept { return mCertificateChain; }
+  const X509RootCertificates& rootCAs() const noexcept { return mRootCAs; }
+
+  std::string commonName() const;
+  std::string organizationalUnit() const;
+};
+
+
 class Signature {
- public:
+  friend class Serializer<Signature>;
+
+private:
   std::string mSignature;
   X509CertificateChain mCertificateChain;
   SignatureScheme mScheme = SIGNATURE_SCHEME_V4;
   Timestamp mTimestamp;
   bool mIsLogCopy = false;
 
+public:
   Signature(
       std::string signature,
       X509CertificateChain chain,
@@ -43,28 +58,15 @@ class Signature {
       bool isLogCopy=false,
       SignatureScheme scheme=SIGNATURE_SCHEME_V4);
 
-  void assertValid(
+  const X509CertificateChain& certificateChain() const noexcept { return mCertificateChain; }
+  Timestamp timestamp() const { return mTimestamp; }
+
+  Signatory validate(
       std::string_view data,
       const X509RootCertificates& rootCAs,
       std::optional<std::string> expectedCommonName,
       std::chrono::seconds timestampLeeway,
       bool expectLogCopy=false) const;
-
-  template<typename T>
-  T open(
-      std::string_view data,
-      const X509RootCertificates& rootCAs,
-      std::optional<std::string> expectedCommonName=std::nullopt,
-      std::chrono::seconds timestampLeeway = std::chrono::hours{1}) const {
-    // This function checks whether the signature is valid and throws
-    // a network-portable Error exception if it isn't.
-    assertValid(data, rootCAs, expectedCommonName, timestampLeeway);
-    return Serialization::FromString<T>(data);
-  }
-
-  std::string getLeafCertificateCommonName() const;
-  std::string getLeafCertificateOrganizationalUnit() const;
-  X509Certificate getLeafCertificate() const;
 };
 
 class SignatureValidityPeriodError : public DeserializableDerivedError<SignatureValidityPeriodError> {

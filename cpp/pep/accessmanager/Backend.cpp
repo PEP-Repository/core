@@ -244,8 +244,11 @@ void AccessManager::Backend::ensureNoUserData() const {
 FindUserResponse AccessManager::Backend::handleFindUserRequest(
     const FindUserRequest& request,
     const std::string& userGroup) {
+  constexpr auto CaseInsensitive = Storage::CaseSensitivity::CaseInsensitive;
+  constexpr auto CaseSensitive = Storage::CaseSensitivity::CaseSensitive;
+
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
-  std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId);
+  std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId, CaseSensitive);
   if (userId) {
     auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
     if (!primary) {
@@ -258,11 +261,11 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
     }
   }
   else {
-    userId = mStorage->findInternalUserId(request.mAlternativeIds);
+    userId = mStorage->findInternalUserId(request.mAlternativeIds, CaseInsensitive);
     if (userId) {
       auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
       if (!primary) {
-        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId);
+        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId, CaseSensitive);
       }
       else{
         LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID (" << *primary

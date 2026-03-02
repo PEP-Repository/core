@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/versioning/Version.hpp>
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/crypto/Timestamp.hpp>
 
 namespace pep {
