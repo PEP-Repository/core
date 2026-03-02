@@ -582,7 +582,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   ticket.mUserGroup = userGroup;
 
   // Check columns and column groups
-  auto columnGroupMap = backend->unfoldColumnGroupsAndAssertAccess(
+  auto columnGroupMap = backend->unfoldColumnGroupsAndCheckAccess(
       userGroup, request.mColumnGroups, request.mModes, timestamp, ticket.mColumns /*in & out*/);
 
   // Remove the main client signature to prevent reuse of
