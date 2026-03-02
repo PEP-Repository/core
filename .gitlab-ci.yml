@@ -1150,6 +1150,7 @@ docker-integration-on-base-data:
   script:
     - *docker_login
     - tar xzf tests/test_input/base_integration_data.tar.gz
+    - cd base_integration_data/pki && ../../pki/pki.sh no-root && cd -
     - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir base_integration_data
 
 ##########################################
