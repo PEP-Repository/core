@@ -167,7 +167,7 @@ AccessManagerBackendTest::Constants AccessManagerBackendTest::constants;
 std::shared_ptr<AccessManager::Backend::Storage> AccessManagerBackendTest::storage;
 std::shared_ptr<GlobalConfiguration> AccessManagerBackendTest::globalConf;
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
 
   const std::vector<std::string> columngroups{constants.r_cg1};
   const std::vector<std::string> modes{"read"};
@@ -175,7 +175,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
   std::vector<std::string> columns;
 
   auto columnGroupMap =
-      backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
+      backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
   std::unordered_map<std::string, IndexList> expectedColumnGroupMap{{constants.r_cg1, IndexList({0, 1, 2})}};
   std::vector<std::string> expectedColumns = {constants.double_col, constants.r_col1, constants.r_col2};
@@ -190,14 +190,14 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
   EXPECT_EQ(columns, expectedColumns);
 }
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.double_col};
   auto columnGroupMap =
-      backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
+      backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
   std::unordered_map<std::string, IndexList> expectedColumnGroupMap{};
   std::vector<std::string> expectedColumns = {constants.double_col};
@@ -206,7 +206,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access
   EXPECT_EQ(columns, expectedColumns);
 }
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_no_column_access_no_column_groups_in_request) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_no_column_access_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
@@ -215,7 +215,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_no_column_acc
 
   try {
     // Act
-    (void) backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
+    (void) backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
     FAIL() << "This should not have run without exceptions.";
   }

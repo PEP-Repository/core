@@ -75,14 +75,13 @@ const std::size_t AMA_QUERY_RESPONSE_STRINGS_WARNING_THRESHOLD = static_cast<std
 void FillTranscryptorRequestEntry(
     TranscryptorRequestEntry& entry,
     const PseudonymTranslator& pseudonymTranslator,
-    bool includeUserGroupPseudonyms,
-    const Signature& signature
+    const std::optional<PseudonymTranslator::Recipient>& userRecipient
 ) {
-  if (includeUserGroupPseudonyms) {
+  if (userRecipient) {
     std::tie(entry.mUserGroup.emplace(), entry.mUserGroupProof.emplace()) =
         pseudonymTranslator.certifiedTranslateStep(
             entry.mPolymorphic,
-            RecipientForCertificate(signature.certificateChain().leaf()));
+            *userRecipient);
   }
   FillTranscryptorRequestEntry(entry, pseudonymTranslator);
 }
@@ -582,7 +581,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   ticket.mUserGroup = userGroup;
 
   // Check columns and column groups
-  auto columnGroupMap = backend->unfoldColumnGroupsAndAssertAccess(
+  auto columnGroupMap = backend->unfoldColumnGroupsAndCheckAccess(
       userGroup, request.mColumnGroups, request.mModes, timestamp, ticket.mColumns /*in & out*/);
 
   // Remove the main client signature to prevent reuse of
@@ -604,8 +603,12 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     std::vector<std::string> participantModes;
     TranscryptorRequest tsReq;
     TranscryptorRequestEntries tsReqEntries{};
-    Signature signature; // signature (for the AM) on the TicketRequest
+    std::optional<PseudonymTranslator::Recipient> userRecipient;
   };
+
+  auto userRecipient = request.mIncludeUserGroupPseudonyms
+    ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
+    : std::nullopt;
 
   auto ctx = MakeSharedCopy(Context{
     .server = SharedFrom(*this),
@@ -618,7 +621,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
     .tsReq {.mRequest = std::move(*signedRequest) },
-    .signature = std::move(signature),
+    .userRecipient = userRecipient,
     });
 
   // Prepare transcryptor request
@@ -647,8 +650,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     FillTranscryptorRequestEntry(
         entry,
         ctx->server->pseudonymTranslator(),
-        ctx->request.mIncludeUserGroupPseudonyms,
-        ctx->signature);
+        ctx->userRecipient);
     return i;
   }).flat_map([ctx](std::vector<size_t> is) {
     // Send request to transcryptor

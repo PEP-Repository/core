@@ -420,7 +420,7 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
   return participantGroupMap;
 }
 
-std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string& userGroup,
+std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnGroupsAndCheckAccess(const std::string& userGroup,
                                                              const std::vector<std::string>& columnGroups,
                                                              const std::vector<std::string>& modes,
                                                              Timestamp at,
