@@ -81,7 +81,7 @@ class RSKVerifiers {
 
 
 
-// secretTimesBase compositional non-interactive zero-knowledge proof that
+// A compositional non-interactive zero-knowledge proof that
 // an ElgamalEncryption (b, c, publicKey) has been (reshuffle,rekey)-RSKed to (b', c', publicKey')
 class RSKProof {
  public:
