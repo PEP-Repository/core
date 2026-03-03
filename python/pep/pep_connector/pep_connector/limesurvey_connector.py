@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import xmlrpc.client
 import base64
 import getpass
@@ -164,8 +165,8 @@ class LimeSurveyConnector(Connector):
             password = getpass.getpass("Enter your LimeSurvey password: ")
             auth_plugin = "AuthLDAP"
 
-        server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
-        try:
+        def _attempt():
+            server = xmlrpc.client.ServerProxy(self.url, allow_none=True)
             if auth_plugin is None:
                 session_key = server.get_session_key(username, password)
             else:
@@ -174,6 +175,9 @@ class LimeSurveyConnector(Connector):
                 self.log(f"Error: {session_key['status']}", logging.ERROR)
                 raise ValueError(session_key["status"])
             return session_key
+
+        try:
+            return self._call_with_connection_retry(_attempt, context="get_session_key")
         except xmlrpc.client.Fault as err:
             self.log(f"Error: {err.faultString}", logging.ERROR)
             raise RuntimeError(f"Failed to get session key: {err.faultString}")
@@ -198,6 +202,29 @@ class LimeSurveyConnector(Connector):
                 self.log(f"Error releasing session key: {str(e)}", logging.ERROR)
             raise
 
+    def _call_with_connection_retry(self, func: Callable, context: str) -> Any:
+        """
+        Execute func() retrying on OSError (connection failures) with exponential backoff.
+
+        Args:
+            func: The callable to execute
+            context: Context string for log messages
+        """
+        max_retries = 3
+        retry_delay = 5
+
+        for attempt in range(max_retries):
+            try:
+                return func()
+            except OSError as e:
+                if attempt < max_retries - 1:
+                    self.log(f"Connection error in {context} (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {retry_delay}s...", logging.WARNING)
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    self.log(f"Connection to LimeSurvey failed in {context} after {max_retries} attempts: {e}", logging.ERROR)
+                    raise RuntimeError(f"Connection to LimeSurvey failed in {context} after {max_retries} attempts") from e
+
     def _call_ls_api(self, api_call: Callable, max_retries: int = 1, context: str = "API call") -> Any:
         """
         Execute an API call and retry if the session key is invalid.
@@ -211,7 +238,7 @@ class LimeSurveyConnector(Connector):
 
         while True:
             try:
-                result = api_call()
+                result = self._call_with_connection_retry(api_call, context=context)
 
                 # First check if the session has expired
                 if isinstance(result, dict) and 'status' in result and 'Invalid session key' in result['status']:
