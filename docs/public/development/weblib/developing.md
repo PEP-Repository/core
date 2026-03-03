@@ -543,7 +543,7 @@ Ports: 2280, 8080, 15501, 15519, 15511, 15516, 15518, 15512.
 
 # OAuth
 
-- As mentioned in [_PEP Weblib: using the JavaScript API_](./usage.md), we use popup + `BroadcastChannel`
+- As mentioned in [_PEP Weblib: using the JavaScript API_](usage.md), we use popup + `BroadcastChannel`
 - C++ uses Web API to request `/token` on PEP Authserver
   - [CORS](https://developer.mozilla.org/en-US/docs/Glossary/CORS): Server sends `Access-Control-Allow-Origin`
   - Allowed origins from `ExtraRedirectUris` in `Authserver.json`
