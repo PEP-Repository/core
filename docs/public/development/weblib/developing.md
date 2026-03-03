@@ -18,6 +18,10 @@ style: |
 
 # <u>PEP Weblib: development</u>
 
+Get started with the [Quickstart manual](./quickstart.md).
+
+For using the Weblib, see [_PEP Weblib: using the JavaScript API_](../../user_documentation/using-weblib.md).
+
 # [WebAssembly](https://webassembly.org/)
 
 <img alt="WebAssembly logo" src="https://webassembly.org/css/webassembly.svg" height=100 />
@@ -85,6 +89,7 @@ em++ ./hello.cpp -o./hello.html
 ```
 
 Outputs HTML shell loading `.js` file + `.wasm` file.
+Opening in browser via `file:` URL does not work, use [emrun](#emrun) or a local webserver instead.
 
 For production, use `-o./hello.js` or `-o./hello.mjs` (module) instead, using custom HTML.
 
@@ -105,6 +110,7 @@ Use [`docker-build/builder/conan/conan_profile_wasm32`](https://gitlab.pep.cs.ru
 # subbuild_name: pep option: build in ./build/wasm32/Debug/
 conan install \
   --profile=./docker-build/builder/conan/conan_profile_wasm32 \
+  -s"&:build_type=Debug" \
   --build=missing \
   -o'&:subbuild_name=wasm32'
 ```
@@ -543,7 +549,7 @@ Ports: 2280, 8080, 15501, 15519, 15511, 15516, 15518, 15512.
 
 # OAuth
 
-- As mentioned in [_PEP Weblib: using the JavaScript API_](usage.md), we use popup + `BroadcastChannel`
+- As mentioned in [_PEP Weblib: using the JavaScript API_](../../user_documentation/using-weblib.md), we use popup + `BroadcastChannel`
 - C++ uses Web API to request `/token` on PEP Authserver
   - [CORS](https://developer.mozilla.org/en-US/docs/Glossary/CORS): Server sends `Access-Control-Allow-Origin`
   - Allowed origins from `ExtraRedirectUris` in `Authserver.json`
