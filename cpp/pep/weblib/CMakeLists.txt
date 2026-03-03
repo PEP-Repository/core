@@ -87,14 +87,22 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
 
-option(PEP_WEBLIB_DISABLE_DYNAMIC_EXECUTION "Don't use eval & Function" ON)
-if(PEP_WEBLIB_DISABLE_DYNAMIC_EXECUTION)
+option(PEP_WEBLIB_NO_DYNAMIC_EXECUTION "Don't use eval & Function")
+if(PEP_WEBLIB_NO_DYNAMIC_EXECUTION)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE
       -sNO_DYNAMIC_EXECUTION
   )
 endif()
 
-option(PEP_WEBLIB_NO_SEPARATE_DWARF "Don't put WebAssembly DWARF debug info in a separate .wasm.debug.wasm file, instead of in the .wasm file" OFF)
+# Avoid calling very slow wasm-emscripten-finalize during build
+option(PEP_WEBLIB_NO_STACK_OVERFLOW_CHECK "Disable stack overflow check" ON)
+if(PEP_WEBLIB_NO_STACK_OVERFLOW_CHECK)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE
+      -sNO_STACK_OVERFLOW_CHECK
+  )
+endif()
+
+option(PEP_WEBLIB_NO_SEPARATE_DWARF "Don't put WebAssembly DWARF debug info in a separate .wasm.debug.wasm file, instead of in the .wasm file")
 if(NOT PEP_WEBLIB_NO_SEPARATE_DWARF)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE
       # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
