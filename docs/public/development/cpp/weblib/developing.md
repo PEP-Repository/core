@@ -596,7 +596,7 @@ Reverse: C++ [*cannot*](https://github.com/emscripten-core/emscripten/issues/114
 - Solutions:
   - Exception breakpoints
   - Switching to Emscripten EH (needs workaround for [Boost issue](https://github.com/conan-io/conan-center-index/issues/28702))
-    <!--TODO: How to do this-->
+    - Use `conan_profile_wasm32_emscripten_eh`
 
 # [Blocking asynchronous code](https://emscripten.org/docs/porting/asyncify.html)
 
