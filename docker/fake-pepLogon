@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Query available user groups
+USER_QUERY_JSON=$(/app/pepcli --suppress-version-info --oauth-token-secret /app/authserver/OAuthTokenSecret.json --oauth-token-group "Access Administrator" user query --format json 2>/dev/null)
+
+if [ -z "$USER_QUERY_JSON" ]; then
+    echo "Error: Could not query user groups"
+    exit 1
+fi
+
+# Extract user groups into an array
+mapfile -t USER_GROUPS < <(echo "$USER_QUERY_JSON" | jq -r '."All User Groups" | keys[]')
+
+if [ ${#USER_GROUPS[@]} -eq 0 ]; then
+    echo "Error: No user groups found"
+    exit 1
+fi
+
+# Display menu
+echo "PEP Workshop, select UserGroup:"
+echo "=========================="
+for i in "${!USER_GROUPS[@]}"; do
+    echo "$((i+1))) ${USER_GROUPS[$i]}"
+done
+echo ""
+
+# Read user choice
+read -p "Enter your choice (1-${#USER_GROUPS[@]}): " choice
+
+# Validate and select usergroup
+if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#USER_GROUPS[@]} ]; then
+    echo "Invalid choice. Please run pepLogon again and select a valid option."
+    exit 1
+fi
+
+ROLE="${USER_GROUPS[$((choice-1))]}"
+
+echo "Logging in as: $ROLE"
+/app/pepcli --suppress-version-info --oauth-token-secret /app/authserver/OAuthTokenSecret.json --oauth-token-group "$ROLE" query enrollment &>/dev/null

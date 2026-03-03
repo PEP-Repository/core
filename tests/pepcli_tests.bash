@@ -28,7 +28,7 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 
 if should_run_test basic; then
   # Store a PEP ID...
-  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
   # ... then verify that we can read it back (see #2750)
   pepcli validate data
   # Clean up: delete the ID that we stored
@@ -244,10 +244,12 @@ if should_run_test ama; then
   pepcli --oauth-token-group "Data Administrator" ama columnGroup remove columnGroupWithAccessRule --force
 
 
-  # Create participant
+  # Create participants
   SEARCH="Generated participant with identifier: "
   RESULT=$(pepcli --oauth-token-group "Research Assessor" register id 2>&1 | grep "$SEARCH")
   ID="${RESULT:${#SEARCH}}"
+  RESULT=$(pepcli --oauth-token-group "Research Assessor" register id 2>&1 | grep "$SEARCH")
+  ID2="${RESULT:${#SEARCH}}"
 
   # Create a participantgroup
   pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithParticipant
@@ -271,9 +273,54 @@ if should_run_test ama; then
   # Adding the --force flag should make it succeed
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithAccessRule --force
 
+  pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithMultipleMembers
+  pepcli --oauth-token-group "Data Administrator" ama group addTo participantGroupWithMultipleMembers "$ID"
+  pepcli --oauth-token-group "Data Administrator" ama group addTo participantGroupWithMultipleMembers "$ID2"
+  len="$(pepcli --oauth-token-group "Data Administrator" list --show-dataless -P participantGroupWithMultipleMembers | jq length)"
+  [ "$len" = 2 ] || fail "Participant group had $len members"
+  pepcli --oauth-token-group "Data Administrator" ama group clear participantGroupWithMultipleMembers
+  len="$(pepcli --oauth-token-group "Data Administrator" list --show-dataless -P participantGroupWithMultipleMembers | jq length)"
+  [ "$len" = 0 ] || fail "Participant group had $len members"
+  pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithMultipleMembers --force
+
   write_registration_server_cell ParticipantIdentifier delete -p "$ID"
+  write_registration_server_cell ParticipantIdentifier delete -p "$ID2"
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
+
+  # Test --script-print parameter
+  # First create some test data for querying
+  pepcli --oauth-token-group "Data Administrator" ama column create scriptPrintTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup create scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama column addTo scriptPrintTestColumn scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama group create scriptPrintTestParticipantGroup
+  pepcli --oauth-token-group "Access Administrator" ama cgar create scriptPrintTestColumnGroup "Research Assessor" read
+  pepcli --oauth-token-group "Access Administrator" ama pgar create scriptPrintTestParticipantGroup "Research Assessor" access
+
+  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
+  [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
+  echo "$script_print_columns" | grep -q "scriptPrintTestColumn" || fail "--script-print columns did not include test column"
+
+  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-groups)
+  [ -n "$script_print_column_groups" ] || fail "--script-print column-groups produced no output"
+  echo "$script_print_column_groups" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-groups did not include test columngroup"
+
+  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-group-access-rules)
+  [ -n "$script_print_cgars" ] || fail "--script-print column-group-access-rules produced no output"
+  echo "$script_print_cgars" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-group-access-rules did not include test CGAR"
+
+  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-groups)
+  [ -n "$script_print_participant_groups" ] || fail "--script-print participant-groups produced no output"
+  echo "$script_print_participant_groups" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-groups did not include test group"
+
+  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-group-access-rules)
+  [ -n "$script_print_pgars" ] || fail "--script-print participant-group-access-rules produced no output"
+  echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
+
+  # Clean up
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove --force scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama column remove scriptPrintTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama group remove --force scriptPrintTestParticipantGroup
 fi
 
 ####################
@@ -360,6 +407,10 @@ if should_run_test authserver-apache; then
     fi
   }
 
+  toUpperCase() {
+    echo "$1" | tr "[:lower:]" "[:upper:]"
+  }
+
   pepcli --oauth-token-group "Access Administrator" user create integrationUser
   pepcli --oauth-token-group "Access Administrator" user group create integrationGroup
   pepcli --oauth-token-group "Access Administrator" user addTo integrationUser integrationGroup
@@ -388,6 +439,12 @@ if should_run_test authserver-apache; then
 
   # Test if alternative UIDs with a plus are correctly URL-decoded
   test_authserver_request "$DIFFICULT_USER_PRIMARY_UID" difficultuser@example.com difficultuser%2Bpep%40example.com
+
+  printYellow "When a user logs in, the primary UID is handled as a case-sensitive ID"
+  test_authserver_request "$(toUpperCase $INTEGRATION_USER_PRIMARY_UID)" integrationUser@example.com "" access_denied
+
+  printYellow "When a user logs in, the alternative UID (email) is handled as a case-INsensitive ID"
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" "$(toUpperCase integrationUser@example.com)" ""
 
   pepcli --oauth-token-group "Access Administrator" user removeFrom difficultUser integrationGroup
   pepcli --oauth-token-group "Access Administrator" user removeIdentifier "difficultuser+pep@example.com"
@@ -534,10 +591,10 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group "Access Administrator" ama cgar create SOTD SOAG write
 
   # Prerare Structured-Output Test Participants (SOTP)
-  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
 
   pepcli --oauth-token-group "Data Administrator" ama group create SOTPGroup
   pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP1}"
@@ -573,7 +630,7 @@ if should_run_test structured-output; then
 
   # Check if the correct delimiter was used via a count
   EXPECTED_CSV_DELIMITER_COUNT=10
-  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ',' | wc -l | xargs)
+  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ',' | wc -l | tr -d '[:space:]')
   if [ "$ACTUAL_CSV_DELIMITER_COUNT" -ne "$EXPECTED_CSV_DELIMITER_COUNT" ]; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} commas but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
@@ -582,7 +639,7 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group SOAG export\
     --from "$DEST_DIR/pulled-data" --output-file "$CSV_PATH" --force csv --delimiter semicolon
   CSV_CONTENT=$(execute . cat "${CSV_PATH}")
-  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | xargs)
+  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | tr -d '[:space:]')
   if [ "$ACTUAL_CSV_DELIMITER_COUNT" -ne "$EXPECTED_CSV_DELIMITER_COUNT" ]; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} semicolons but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
@@ -607,6 +664,33 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group "Data Administrator" ama group remove SOTPGroup
 
   pepcli --oauth-token-group "Access Administrator" user group remove SOAG
+fi
+
+####################
+
+if should_run_test user-id-collision; then
+  pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl"
+
+  # pepcli user query --user
+  pepcli --oauth-token-group "Access Administrator" user query --format json --user "Aart.Appel@fake.ru.nl" |
+    grep '"Aart.Appel@fake.ru.nl"'  # output should contain the id with original casing
+  pepcli --oauth-token-group "Access Administrator" user query --format json --user "aart.appel@fake.ru.nl" |
+    grep '"Aart.Appel@fake.ru.nl"'  # output should contain the id with original casing
+
+  # pepcli user create
+  pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl" &&
+    fail "should not accept new ids that exactly match existing ids"
+  pepcli --oauth-token-group "Access Administrator" user create "aart.appel@fake.ru.nl" &&
+    fail "should not accept new ids that only differ by casing"
+
+  # pepcli user addIdentifier
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier "Aart.Appel@fake.ru.nl" "Aart.Appel@fake.ru.nl" &&
+    fail "should not accept new ids that exactly match existing ids"
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier "Aart.Appel@fake.ru.nl" "aart.appel@fake.ru.nl" &&
+    fail "should not accept new ids that only differ by casing"
+
+  # cleanup
+  pepcli --oauth-token-group "Access Administrator" user remove "Aart.Appel@fake.ru.nl"
 fi
 
 ####################

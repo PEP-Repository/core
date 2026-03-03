@@ -16,6 +16,7 @@ private:
 
   std::string defaultId() const;
   std::string id() const;
+  std::string lowercaseId() const;
 
   // Private constructors ensure that all instances have been created by this class itself, i.e. are valid
   ServerTraits(std::string abbreviation, std::string description) noexcept;
@@ -28,6 +29,7 @@ public:
   const std::string& description() const noexcept { return mDescription; }
   std::string configNode() const;
   std::string commandLineId() const;
+  std::string metricsId() const;
 
   // Properties related to certificates (both TLS and signing)
   std::string certificateSubject() const; // The primary one, i.e. the custom ID if available ("Authserver" for AS)

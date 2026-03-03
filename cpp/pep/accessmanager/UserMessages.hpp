@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <vector>
 

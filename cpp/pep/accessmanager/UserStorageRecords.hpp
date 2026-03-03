@@ -55,7 +55,6 @@ struct UserGroupRecord {
   std::optional<uint64_t> maxAuthValiditySeconds;
 
   static inline const std::tuple RecordIdentifier{
-    &UserGroupRecord::name,
     &UserGroupRecord::userGroupId
   };
 };

@@ -5,7 +5,7 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/auth/UserGroup.hpp>
 

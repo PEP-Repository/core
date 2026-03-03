@@ -53,6 +53,10 @@ bool IsUserSigningCertificate(const X509Certificate& certificate) {
   return CertificateMatchesCA(certificate, intermediateClientCaCommonName, false);
 }
 
+bool IsSigningCertificate(const X509Certificate& certificate) {
+  return IsServerSigningCertificate(certificate) || IsUserSigningCertificate(certificate);
+}
+
 std::optional<std::string> GetSubjectIfServerSigningCertificate(const X509Certificate& certificate) {
   return GetServerSubjectIfValidCertificate(certificate, intermediateServerCaCommonName, false);
 }

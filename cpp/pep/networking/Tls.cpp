@@ -111,24 +111,52 @@ void TlsSocket::close() {
   }
 
   // TLS was established (or we started to do so): gracefully shut down the existing socket before discarding it. See https://stackoverflow.com/a/32054476.
+
+  // From https://stackoverflow.com/questions/32046034:
+  // "Performing an async_shutdown on an ssl::stream sends an SSL close_notify message and waits for a response from the other end."
+  // We noticed that our callback to async_shutdown is sometimes not invoked until after (more or less exactly) a minute.
+  // It is suspected that in these cases, the "response from the other end" is never received (e.g. because the "other end" have
+  // already closed their side of the connection), and that the operation is flunked by OpenSSL or Boost after a one- minute timeout.
+  // But we don't want to (let the application) wait a full minute! So we subject the async_shutdown operation to our own (shorter) timeout.
+
   auto self = SharedFrom(*this);
-  mImplementor.async_shutdown([self](boost::system::error_code error) {
+  auto timer = std::make_shared<boost::asio::steady_timer>(this->ioContext());
+  auto finished = MakeSharedCopy(false);
+  auto finishClosing = [self, finished, timer]() {
+    timer->cancel();
+    if (!*finished) {
+      *finished = true;
+      self->finishClosing();
+    }
+    };
+  using namespace std::chrono_literals;
+  timer->expires_after(500ms);
+  timer->async_wait([finishClosing](const boost::system::error_code& ec) {
+    finishClosing();
+    });
+
+  mImplementor.async_shutdown([finishClosing](boost::system::error_code error) {
     if (error
       && !IsSpecificSslError(error, SSL_R_UNINITIALIZED) // (Our mShutdownRequired has been set, but) SSL initialization was unstarted
       && !IsSpecificSslError(error, SSL_R_SHUTDOWN_WHILE_IN_INIT) // SSL initialization/handshaking was started but not completed
       && !IsSpecificSslError(error, SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY) // Other party sent us data after (or while) we closed the connection: see https://stackoverflow.com/a/72788966
-      && error != boost::asio::error::make_error_code(boost::asio::error::connection_reset) // Other party already closed the connection: see https://stackoverflow.com/a/39162187
-      && error != boost::asio::error::make_error_code(boost::asio::error::connection_aborted) // Other party already closed the connection: see https://www.chilkatsoft.com/p/p_299.asp
+      && error.default_error_condition().value() != boost::system::errc::connection_reset // Other party already closed the connection: see https://stackoverflow.com/a/39162187
+      && error.default_error_condition().value() != boost::system::errc::connection_aborted // Our side already closed the connection
       ) {
+      const char* description = "Unexpected problem shutting down connection";
+      severity_level severity = pep::error;
       if (error == boost::asio::ssl::error::make_error_code(boost::asio::ssl::error::stream_errors::stream_truncated)  // remote party [...] closed the underlying transport without shutting down the protocol: see https://stackoverflow.com/a/25703699
         || error == boost::asio::error::make_error_code(boost::asio::error::broken_pipe)) { // happens when you write to a socket fully closed on the other [...] side: see https://stackoverflow.com/a/11866962
-        LOG(LOG_TAG, pep::debug) << "Remote party did not properly shut down the connection: " << error.category().name() << " code " << error.value() << " - " << error.message();
+        description = "Remote party did not properly shut down the connection";
+        severity = pep::debug;
       }
-      else {
-        LOG(LOG_TAG, pep::error) << "Unexpected problem shutting down connection: " << error.category().name() << " code " << error.value() << " - " << error.message();
-      }
+
+      LOG(LOG_TAG, severity) << description << ": "
+        << error.category().name() << " code " << error.value()
+        << " (condition " << error.default_error_condition().value() << ')'
+        << " - " << error.message();
     }
-    self->finishClosing();
+    finishClosing();
     });
 
   // Don't wait for the other party to acknowledge our async_shutdown. See https://stackoverflow.com/a/32054476 and https://stackoverflow.com/a/25703699

@@ -11,6 +11,7 @@ enum class Delimiter : char { comma = ',', semicolon = ';', tab = '\t' };
 struct Config final {
   // With European regional settings on Windows, MS Excel expects semicolon delimiters by default, when importing CSV
   Delimiter delimiter = Delimiter::semicolon;  ///< The character used to delimit individual fields
+  bool force_header = false; ///< Produce a header even if there's no data
 };
 
 /// Appends the CSV representation of the table object to the stream.

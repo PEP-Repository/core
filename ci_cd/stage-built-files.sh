@@ -36,16 +36,15 @@ mkdir -p "$DEST_PATH"
 
 for filepath in $FILES; do
   echo "Staging $filepath"
-  if [ -d "$SOURCE_PATH/$filepath" ]; then
-    # If path is a directory, copy it recursively
+  if [ -d "$SOURCE_PATH/$filepath" ]; then # If path is a directory, copy it recursively
     # Don't process $BUILD_MODE and/or extension glob in this case: we'll find (executable) files
     # regardless of output (sub)directory and file extension.
     cp -R "$SOURCE_PATH/$filepath" "$DEST_PATH/$filepath"
-  else
+  else # If path is a file, copy it normally
     FULL_SOURCE_PATH="$SOURCE_PATH/$(dirname "$filepath")/$BUILD_MODE/$(basename "$filepath")"
-    DEST_DIR="$DEST_PATH/$(dirname "$filepath")"
 
     # Ensure the destination directory exists
+    DEST_DIR="$DEST_PATH/$(dirname "$filepath")"
     mkdir -p "$DEST_DIR"
     # If path is a file, copy it normally
     cp "${FULL_SOURCE_PATH}"* "$DEST_DIR"
