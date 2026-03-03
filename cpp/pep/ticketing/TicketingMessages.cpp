@@ -39,10 +39,6 @@ bool Ticket2::hasMode(const std::string& mode) const {
   return false;
 }
 
-std::vector<PolymorphicPseudonym> Ticket2::getAccessSubjects() const {
-  return GetPolymorphicPseudonyms(mAccessSubjects);
-}
-
 void SignedTicket2::addTranscryptorSignature(Signature signature) {
   assert(!mTranscryptorSignature.has_value());
   mTranscryptorSignature = std::move(signature);
@@ -60,6 +56,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     throw Error("Transcryptor signature is missing");
 
   try {
+
     // A longer leeway is used for long downloads etc.
     mSignature->validate(
       mData,
