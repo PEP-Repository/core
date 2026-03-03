@@ -60,7 +60,7 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/Debug/pki/
 
 ## Build & run sample page
 
-Install Nginx and the [websockify](https://github.com/novnc/websockify) Python package (e.g. via [pipx](https://pipx.pypa.io/latest/installation/)).
+Install Nginx and the [websockify](https://github.com/novnc/websockify) Python package (e.g. via [pipx](https://pipx.pypa.io/latest/installation/)). For Windows, use `winget install nginxinc.nginx`.
 
 Build Debug & start local servers:
 
@@ -71,4 +71,4 @@ Build Debug & start local servers:
 When EMSDK was installed via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script in your build folder.
 
 !!! bug "TODO: Windows support"
-  This doesn't currently work on Windows. A normal `cmake --build --preset=wasm32-debug` could be used instead, after which some web server, websockify, and `pepServers` need to be started manually.
+  This doesn't currently work on Windows. A normal `cmake --build --preset=wasm32-debug` could be used instead, after which Nginx, websockify, and `pepServers` need to be started manually.
