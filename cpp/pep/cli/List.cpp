@@ -19,6 +19,10 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <pep/structuredoutput/Tree.hpp>
+#include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Yaml.hpp>
+
 #include <google/protobuf/util/json_util.h>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -51,7 +55,8 @@ protected:
       + pep::commandline::Parameter("show-dataless", "Also output (pseudonyms for) subjects without data")
       + pep::commandline::Parameter("metadata", "Print metadata - which may contain encrypted entries when only an ID was returned for the file in question; apply pepcli get to the ID to get the decrypted entries").shorthand('m')
       + pep::commandline::Parameter("no-inline-data", "Never retrieve data inline; only return IDs")
-      + pep::commandline::Parameter("group-output", "Group the output per participant").shorthand('g');
+      + pep::commandline::Parameter("group-output", "Group the output per participant").shorthand('g')
+      + pep::commandline::Parameter("format", "The format of the output.").value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"yaml", "json"})).defaultsTo("json", "json"));
   }
 
   int execute() override {
@@ -121,7 +126,7 @@ protected:
         }
       }
 
-      void print(std::ostream& destination) const {
+      pt::ptree toPropertyTree() const {
         pt::ptree toPrint;
         if (!mValues.empty())
           toPrint.add_child("data", mValues);
@@ -134,35 +139,30 @@ protected:
           toPrint.put("lp", *mLp);
         if (mBlp.has_value())
           toPrint.put("blp", *mBlp);
-        pt::write_json(std::cout, toPrint);
+        return toPrint;
       }
     };
 
     struct Context {
       const pep::commandline::NamedValues mParameterValues;
-      bool mHadPrevious = false;
       bool mHasPrintedData = false;
       pep::enumerateAndRetrieveData2Opts mEarOpts;
       bool mPrintMetadata = false;
       bool mGroupOutput = false;
+      std::string mFormat;
       std::shared_ptr<pep::GlobalConfiguration> mGlobalConfig;
       std::unordered_map<uint32_t, SubjectData> mSubjects;
       size_t mDataCount{ 0 };
       std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> mPseudsToReport;
+      pt::ptree mResults;
 
       explicit Context(const pep::commandline::NamedValues& parameterValues)
         : mParameterValues(parameterValues) {
       }
 
-      void printAndClearSubjects() {
+      void collectSubjects() {
         for (const auto& entry : mSubjects) {
-          if (mHadPrevious) {
-            std::cout << ",";
-          }
-          else {
-            mHadPrevious = true;
-          }
-          entry.second.print(std::cout);
+          mResults.push_back(pt::ptree::value_type("", entry.second.toPropertyTree()));
           if (entry.second.hasData()) {
             mHasPrintedData = true;
           }
@@ -185,7 +185,7 @@ protected:
           mSubjects.emplace(std::make_pair(index++, std::move(data))); // ...to add an entry to our "subjects" field...
         }
 
-        this->printAndClearSubjects(); // ...then produce output for all the "subjects" that we just stored
+        this->collectSubjects(); // ...then produce output for all the "subjects" that we just stored
         assert(mPseudsToReport.empty());
       }
 
@@ -194,7 +194,7 @@ protected:
         auto existing = mSubjects.find(ear.mLocalPseudonymsIndex);
         if (existing == mSubjects.cend()) {
           if (!mGroupOutput) {
-            printAndClearSubjects();
+            collectSubjects();
           }
           [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata, mGlobalConfig));
           assert(emplaced.second);
@@ -229,8 +229,6 @@ protected:
     auto ctx = std::make_shared<Context>(this->getParameterValues());
 
     return this->executeEventLoopFor([ctx](std::shared_ptr<pep::CoreClient> client) {
-      std::cout << '[';
-
       return MultiCellQuery::GetPps(ctx->mParameterValues, client)
         .op(pep::RxToVector())
       .as_dynamic() // Reduce compiler memory usage
@@ -250,6 +248,7 @@ protected:
         ctx->mEarOpts.includeAccessGroupPseudonyms = ctx->mParameterValues.has("local-pseudonyms");
         ctx->mPrintMetadata = ctx->mParameterValues.has("metadata");
         ctx->mGroupOutput = ctx->mParameterValues.has("group-output");
+        ctx->mFormat = ctx->mParameterValues.get<std::string>("format");
 
         // Only fetch GlobalConfiguration if we need it for brief local pseudonyms
         rxcpp::observable<pep::FakeVoid> configObservable;
@@ -293,9 +292,17 @@ protected:
       .as_dynamic() // Reduce compiler memory usage
       .op(pep::RxBeforeCompletion(
       [ctx, client]() {
-        ctx->printAndClearSubjects();
+        ctx->collectSubjects();
         ctx->printRemainingPseudsToReport(client);
-        std::cout << ']' << std::endl;
+        
+        // Convert ptree to Tree and output with selected format
+        auto tree = pep::structuredOutput::Tree::FromPropertyTree(ctx->mResults);
+        if (ctx->mFormat == "json") {
+          pep::structuredOutput::json::append(std::cout, tree) << std::endl;
+        } else {
+          pep::structuredOutput::yaml::append(std::cout, tree) << std::endl;
+        }
+        
         ctx->printQueryInfo();
         if (ctx->mHasPrintedData) {
           LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
