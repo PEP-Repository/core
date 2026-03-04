@@ -254,7 +254,7 @@ protected:
           ctx->mEarOpts.ticket = std::make_shared<pep::IndexedTicket2>(
               std::move(ticket));
           if (ctx->mParameterValues.has("show-dataless")) {
-            auto pseuds = ctx->mEarOpts.ticket->openTicketWithoutCheckingSignature()->mPseudonyms;
+            auto pseuds = ctx->mEarOpts.ticket->openTicketWithoutCheckingSignature()->mAccessSubjects;
             std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->mPseudsToReport, ctx->mPseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
               return std::make_pair(lps.mPolymorphic, lps.mAccessGroup);
               });

@@ -138,11 +138,11 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
               }
             }
             if (!ctx->requestTicketOpts->pps.empty()) {
-              auto ticketPseuds = indexedTicket.getPolymorphicPseudonyms();
+              auto accessSubjects = indexedTicket.getAccessSubjects();
               std::unordered_map<pep::PolymorphicPseudonym, uint32_t> lut;
-              lut.reserve(ticketPseuds.size());
-              for (size_t i = 0; i < ticketPseuds.size(); i++) {
-                lut[ticketPseuds[i]] = static_cast<uint32_t>(i);
+              lut.reserve(accessSubjects.size());
+              for (size_t i = 0; i < accessSubjects.size(); i++) {
+                lut[accessSubjects[i]] = static_cast<uint32_t>(i);
               }
 
               pseudIdxs.reserve(pseudIdxs.size() + ctx->requestTicketOpts->pps.size());
