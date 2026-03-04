@@ -272,7 +272,11 @@ void ValueSpecificationTemplate<Derived, T>::writeHelpText(std::ostream& destina
   if (mDefault.has_value()) {
     std::ostringstream text;
     if (mDefaultDescription.has_value()) {
-      text << *mDefaultDescription << " (" << format<T>()(*mDefault) << ')';
+      auto formattedDefault = format<T>()(*mDefault);
+      text << *mDefaultDescription;
+      if (!formattedDefault.empty()) {
+        text << " (" << formattedDefault << ')';
+      }
     }
     else {
       text << format<T>()(*mDefault);

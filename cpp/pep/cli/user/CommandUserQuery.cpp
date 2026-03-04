@@ -29,13 +29,11 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
        + pep::commandline::Parameter("format", "The format of the output.")
              .value(pep::commandline::Value<std::string>()
                         .allow(std::vector<std::string>({"yaml", "json"}))
-                        .defaultsTo("yaml", "yaml"))
+                        .defaultsTo("yaml"))
        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
              .value(pep::commandline::Value<milliseconds::rep>())
-       + pep::commandline::Parameter("group", "Match these groups")
-             .value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-       + pep::commandline::Parameter("user", "Match these users")
-             .value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"));
+       + pep::commandline::Parameter("group", "Match this group").value(pep::commandline::Value<std::string>())
+       + pep::commandline::Parameter("user", "Match this user").value(pep::commandline::Value<std::string>());
 }
 
 int CommandUser::CommandUserQuery::execute() {
@@ -85,7 +83,7 @@ pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandlin
       .mAt = GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
         return Timestamp(milliseconds{ms});
       }),
-      .mGroupFilter = values.get<std::string>("group"),
-      .mUserFilter = values.get<std::string>("user"),
+      .mGroupFilter = values.getOptional<std::string>("group").value_or(""),
+      .mUserFilter = values.getOptional<std::string>("user").value_or(""),
   };
 }
