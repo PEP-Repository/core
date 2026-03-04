@@ -71,7 +71,7 @@ class AccessGroup:
         Reads a set of short pseudonyms and data from a set of columns and returns a dictionary with
         the short pseudonym as key and a dict with the column name as key and the data as value.
         """
-        command = ["list", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{short_pseudonym_column_name}", "-P", "*"]
+        command = ["list", "--group-output", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{short_pseudonym_column_name}", "-P", "*"]
         for column in columns:
             command.extend(["-c", column])
         try:
@@ -105,7 +105,7 @@ class AccessGroup:
         Lists the data for a set of columns and returns a dictionary with the local pseudonym as key
         and a dict with the column name as key and the data as value.
         """
-        command = ["list", "--inline-data-size-limit", "0", "--local-pseudonyms", "-P", "*"]
+        command = ["list", "--group-output", "--inline-data-size-limit", "0", "--local-pseudonyms", "-P", "*"]
         for column in columns:
             command.extend(["-c", column])
         try:

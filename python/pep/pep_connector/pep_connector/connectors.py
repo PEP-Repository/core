@@ -110,7 +110,7 @@ class Connector(AccessGroup):
             raise ValueError("Columns must be a list of strings")
         if not columns:
             raise ValueError("At least one column must be provided")
-        command = ["list", "--metadata", "--no-inline-data", "--local-pseudonyms", "-P", "*"]
+        command = ["list", "--group-output", "--metadata", "--no-inline-data", "--local-pseudonyms", "-P", "*"]
         for column in columns:
             command.extend(["-c", column])
         try:
@@ -162,7 +162,7 @@ class Connector(AccessGroup):
             raise ValueError("Columns must be a list of strings")
         if not columns:
             raise ValueError("At least one column must be provided")
-        command = ["list", "--metadata", "--no-inline-data", "--local-pseudonyms", "--sp", short_pseudonym]
+        command = ["list", "--group-output", "--metadata", "--no-inline-data", "--local-pseudonyms", "--sp", short_pseudonym]
         for column in columns:
             command.extend(["-c", column])
         try:
