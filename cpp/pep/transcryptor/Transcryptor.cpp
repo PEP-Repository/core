@@ -295,7 +295,7 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto ticket = request->mTicket.openForLogging(*getRootCAs(), serialized);
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
-  auto hash = ComputePseudonymHash(ticket.mPseudonyms);
+  auto hash = ComputePseudonymHash(ticket.mAccessSubjects);
   LOG(LOG_TAG, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " calculated hash";
 
   mStorage->logIssuedTicket(

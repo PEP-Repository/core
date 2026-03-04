@@ -232,7 +232,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_happy) {
   // Existing participantGroup
   request.mParticipantGroups.push_back(constants.pg1);
   // Not both participantGroups and participants
-  request.mPolymorphicPseudonyms = {};
+  request.mAccessSubjects = {};
   // Existing columnGroup
   request.mColumnGroups.push_back(constants.w_cg);
   // Existing column
@@ -246,7 +246,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
   // Existing participantGroup
   request.mParticipantGroups.push_back(constants.pg1);
   // Both participantGroups and participants
-  request.mPolymorphicPseudonyms.push_back(constants.dummyPP); // Nonsense pp, the content is irrelevant
+  request.mAccessSubjects.push_back(constants.dummyPP); // Nonsense pp, the content is irrelevant
   // Existing columnGroup
   request.mColumnGroups.push_back(constants.w_cg);
   // Existing column
@@ -270,7 +270,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
   // Existing participantGroup
   request.mParticipantGroups.push_back("Non existing participantGroup");
   // Not both participantGroups and participants
-  request.mPolymorphicPseudonyms = {};
+  request.mAccessSubjects = {};
   // Existing columnGroup
   request.mColumnGroups.push_back("Non existing columnGroup");
   // Existing column

@@ -61,14 +61,14 @@ public:
       mColumns[ticket.mColumns[i]] = static_cast<Index>(i);
     }
 
-    if (ticket.mPseudonyms.size() > std::numeric_limits<Index>::max()) {
-      throw std::runtime_error("Ticket contains too many pseudonyms to map into an IndexList");
+    if (ticket.mAccessSubjects.size() > std::numeric_limits<Index>::max()) {
+      throw std::runtime_error("Ticket contains too many subjects to map into an IndexList");
     }
     // TODO keep a decryption cache?  If a ticket with a lot of pseudonyms is
     // reused often (for each file), then we're wasting a lot of time.
     // See issue #592.
-    for (size_t i = 0U; i < ticket.mPseudonyms.size(); ++i) {
-      LocalPseudonym sfPseud = ticket.mPseudonyms[i].mStorageFacility.decrypt(pseudonymKey);
+    for (size_t i = 0U; i < ticket.mAccessSubjects.size(); ++i) {
+      LocalPseudonym sfPseud = ticket.mAccessSubjects[i].mStorageFacility.decrypt(pseudonymKey);
       mPseudonyms[sfPseud] = static_cast<Index>(i);
     }
   }
@@ -329,7 +329,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
     columnIndex[ticket.mColumns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mPseudonyms, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry mIndex
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
@@ -676,7 +676,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       // Decrypt local pseudonym
       if (pseudonymLut.count(entry.mPseudonymIndex) == 0) {
         pseudonymLut[entry.mPseudonymIndex] = MakeSharedCopy(
-          ticket.mPseudonyms.at(entry.mPseudonymIndex)
+          ticket.mAccessSubjects.at(entry.mPseudonymIndex)
           .mStorageFacility.decrypt(mPseudonymKey));
       }
       ctx->pseudonyms[i] = pseudonymLut[entry.mPseudonymIndex];
@@ -840,7 +840,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   std::transform(request->mEntries.cbegin(), request->mEntries.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.mPseudonymIndex; });
 
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mPseudonyms, &pseudIndices);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, &pseudIndices);
 
   std::vector<std::shared_ptr<FileStore::EntryChange>> changes;
   for (const auto& entry : request->mEntries) {
@@ -992,7 +992,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     columnIndex[ticket.mColumns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mPseudonyms, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry mIndex
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {

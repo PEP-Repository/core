@@ -42,8 +42,8 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
   for (auto& x : *source.mutable_columns())
     result.mColumns.push_back(std::move(x));
 
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mPseudonyms,
-    std::move(*source.mutable_pseudonyms()));
+  Serialization::AssignFromRepeatedProtocolBuffer(result.mAccessSubjects,
+    std::move(*source.mutable_access_subjects()));
 
   return result;
 }
@@ -57,7 +57,7 @@ void Serializer<Ticket2>::moveIntoProtocolBuffer(proto::Ticket2& dest, Ticket2 v
   dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
   for (auto& x : value.mColumns)
     dest.add_columns(std::move(x));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_pseudonyms(), std::move(value.mPseudonyms));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_access_subjects(), std::move(value.mAccessSubjects));
 }
 
 SignedTicket2 Serializer<SignedTicket2>::fromProtocolBuffer(proto::SignedTicket2&& source) const {
@@ -105,11 +105,11 @@ TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketReque
   result.mRequestIndexedTicket = source.request_indexed_ticket();
   result.mIncludeUserGroupPseudonyms = source.include_user_group_pseudonyms();
 
-  result.mPolymorphicPseudonyms = RangeToVector(
-    *source.mutable_polymorphic_pseudonyms()
-    | std::views::transform([](proto::ElgamalEncryption& pp) {
-      return PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(pp)));
-    }));
+  const auto transformToPolymorphicPseudonym = std::views::transform([](proto::ElgamalEncryption& pp) {
+    return PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(pp)));
+  });
+  result.mAccessSubjects = RangeToVector(
+    *source.mutable_access_subjects() | transformToPolymorphicPseudonym);
   return result;
 }
 
@@ -130,8 +130,8 @@ void Serializer<TicketRequest2>::moveIntoProtocolBuffer(proto::TicketRequest2& d
   dest.set_include_user_group_pseudonyms(value.mIncludeUserGroupPseudonyms);
 
   Serialization::AssignToRepeatedProtocolBuffer(
-    *dest.mutable_polymorphic_pseudonyms(),
-    value.mPolymorphicPseudonyms
+    *dest.mutable_access_subjects(),
+    value.mAccessSubjects
     | std::views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
 }
 

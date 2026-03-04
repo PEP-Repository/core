@@ -842,8 +842,8 @@ private:
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
             std::vector<pep::PolymorphicPseudonym> pps;
-            pps.reserve(ticket->mPseudonyms.size());
-            std::transform(ticket->mPseudonyms.begin(), ticket->mPseudonyms.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
+            pps.reserve(ticket->mAccessSubjects.size());
+            std::transform(ticket->mAccessSubjects.begin(), ticket->mAccessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });
