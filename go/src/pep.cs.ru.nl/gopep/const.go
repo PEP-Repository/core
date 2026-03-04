@@ -57,19 +57,19 @@ func (m *Metadata) setProto(v *pep_proto.Metadata) {
 
 // New-style ticket request
 type TicketRequest struct {
-	Modes                 []string  // Modes of access to request
-	ParticipantGroups     []string  // groups of participants to request access to
-	PolymorphicPseudonyms []*Triple // (additional) pps to request access to
-	ColumnGroups          []string  // column groups to request access to
-	Columns               []string  // (additional) columns to request access to
+	Modes             []string  // Modes of access to request
+	ParticipantGroups []string  // groups of participants to request access to
+	AccessSubjects    []*Triple // (additional) pps to request access to
+	ColumnGroups      []string  // column groups to request access to
+	Columns           []string  // (additional) columns to request access to
 }
 
 func (t *TicketRequest) proto() *pep_proto.TicketRequest2 {
 	var ret pep_proto.TicketRequest2
-	ret.PolymorphicPseudonyms = make([]*pep_proto.ElgamalEncryption,
-		len(t.PolymorphicPseudonyms))
-	for i := 0; i < len(t.PolymorphicPseudonyms); i++ {
-		ret.PolymorphicPseudonyms[i] = t.PolymorphicPseudonyms[i].proto()
+	ret.AccessSubjects = make([]*pep_proto.ElgamalEncryption,
+		len(t.AccessSubjects))
+	for i := 0; i < len(t.AccessSubjects); i++ {
+		ret.AccessSubjects[i] = t.AccessSubjects[i].proto()
 	}
 	ret.Modes = t.Modes
 	ret.ParticipantGroups = t.ParticipantGroups
