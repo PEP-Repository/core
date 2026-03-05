@@ -396,12 +396,12 @@ private:
           .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
-        + pep::commandline::Parameter("column", "Match this column").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("column-group", "Match this column group").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("user-group", "Match this user group").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("participant-group", "Match this participant group").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("column-mode", "Match this column-mode").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("participant-group-mode", "Match this participant-group-mode").value(pep::commandline::Value<std::string>());
+        + pep::commandline::Parameter("column", "Match results related to this column. You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-group", "Match results related to this column group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("user-group", "Match results related to this user group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group", "Match results related to this participant group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-mode", "Match results related to this column-mode").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group-mode", "Match results related to this participant-group-mode").value(pep::commandline::Value<std::string>());
     }
 
     int execute() override {

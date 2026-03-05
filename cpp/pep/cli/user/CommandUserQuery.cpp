@@ -32,8 +32,8 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
                         .defaultsTo("yaml"))
        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
              .value(pep::commandline::Value<milliseconds::rep>())
-       + pep::commandline::Parameter("group", "Match this group").value(pep::commandline::Value<std::string>())
-       + pep::commandline::Parameter("user", "Match this user").value(pep::commandline::Value<std::string>());
+       + pep::commandline::Parameter("group", "Match user groups containing this text").value(pep::commandline::Value<std::string>())
+       + pep::commandline::Parameter("user", "Match user identifiers containing this text").value(pep::commandline::Value<std::string>());
 }
 
 int CommandUser::CommandUserQuery::execute() {
