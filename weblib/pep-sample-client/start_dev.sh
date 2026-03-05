@@ -27,6 +27,12 @@ server_build_type_lower=$(echo "$server_build_type" | tr '[:upper:]' '[:lower:]'
 foss_dir="$scriptdir/../../"
 wasm_build_folder="$foss_dir/build/$wasm_subbuild_name/$wasm_build_type/"
 server_build_folder="$foss_dir/build/$server_build_type/"
+servers_exe=./pepServers
+# Multi-config
+if ! [ -d "$server_build_folder" ] && [ -d "$foss_dir/build/cpp/pep/servers/$server_build_type/" ]; then
+  server_build_folder="$foss_dir/build/"
+  servers_exe="./$server_build_type/pepServers"
+fi
 
 cd -- "$scriptdir"
 
@@ -56,7 +62,7 @@ trap stop_jobs EXIT
 # Start servers
 (
   cd -- "$server_build_folder/cpp/pep/servers/"
-  ./pepServers --loglevel debug
+  "$servers_exe" --loglevel debug
 ) &
 ../pep-repo-client-lib/start_websocket_proxy.sh &
 ../start_nginx.sh "$wasm_build_folder"
