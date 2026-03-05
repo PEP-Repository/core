@@ -151,6 +151,8 @@ file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INP
 
 # Unit tests
 add_unit_tests(Weblib)
-target_link_options(${PROJECT_NAME}WeblibUnitTests PRIVATE
-    -sPROXY_TO_PTHREAD # See ./tests/PromiseHelpers.cpp
-)
+if(WITH_TESTS)
+  target_link_options(${PROJECT_NAME}WeblibUnitTests PRIVATE
+      -sPROXY_TO_PTHREAD # See ./tests/PromiseHelpers.cpp
+  )
+endif()
