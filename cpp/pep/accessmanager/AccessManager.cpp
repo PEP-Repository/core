@@ -566,7 +566,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   std::vector<std::string> modes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
   if (!request.mParticipantGroups.empty()) {
-    // Access to participants does not mean imply permission to list groups they are in, so first check that
+    // Access to participants does not imply permission to list groups they are in, so first check that
     backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
 
     participantGroupMap = backend->fillParticipantGroupMap(request.mParticipantGroups, pps);

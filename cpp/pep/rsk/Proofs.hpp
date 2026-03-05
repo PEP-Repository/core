@@ -15,7 +15,7 @@ class InvalidProof : public std::exception {
 };
 
 // A compositional non-interactive zero-knowledge proof that
-// CurvePoints (secretTimesBase, pre, post) are in fact of the form (secret B, pre, secret pre).
+// CurvePoints (secretTimesBase, pre, post) are in fact of the form (secret*B, pre, secret*pre).
 // See https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/
 // and §4 of "Lecture Notes Cryptographic Protocols" by Schoenmakers.
 class ScalarMultProof {
@@ -39,7 +39,7 @@ class ScalarMultProof {
 
   // Constructs a proof from secretTimesBase, pre, post and secret.
   //
-  // Assumes secretTimesBase = secret B and post = secret pre.
+  // Assumes secretTimesBase = secret*B and post = secret*pre.
   static ScalarMultProof create(
     const CurvePoint& secretTimesBase,
     const CurvePoint& pre,
@@ -101,15 +101,15 @@ class RSKProof {
   CurvePoint mRerandomizePubKey;
   CurvePoint mRerandomizePoint;
 
-  ScalarMultProof mRP; // ScalarMultProof for (rerandomize B, publicKey, rerandomizePubKey)
-  ScalarMultProof mBP; // ScalarMultProof for ((reshuffle/rekey)B, b + rerandomize B, b')
-  ScalarMultProof mCP; // ScalarMultProof for (reshuffle B, c + rerandomizePubKey, c')
+  ScalarMultProof mRP; // ScalarMultProof for (rerandomize*B, publicKey, rerandomizePubKey)
+  ScalarMultProof mBP; // ScalarMultProof for ((reshuffle/rekey)B, b + rerandomize*B, b')
+  ScalarMultProof mCP; // ScalarMultProof for (reshuffle*B, c + rerandomizePubKey, c')
 
   void ensurePacked() const; // See CurvePoint::ensurePacked()
 
   // Constructs a proof that post is the (reshuffle,rekey)-RSK of pre.
   //
-  // Assumes reshufflePoint = reshuffle B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey B, rerandomizePubKey = rerandomize publicKey, rerandomizePoint = rerandomize B
+  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B, rerandomizePubKey = rerandomize*publicKey, rerandomizePoint = rerandomize*B
   // and (of course) that post is the (reshuffle,rekey)-RSK of pre with random rerandomize.
   static RSKProof create(
     const ElgamalEncryption& pre,

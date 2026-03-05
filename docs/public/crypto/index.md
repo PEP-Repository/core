@@ -135,7 +135,7 @@ The blinding key is there to prevent the following attack. A malicious Storage F
 
 ## Proofs
 
-### Schnorns identification protocol
+### Schnorr's identification protocol
 
 Zero Knowledge Proof that you know logarithm $x$ of $X = xB$.
 
