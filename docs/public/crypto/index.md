@@ -14,7 +14,7 @@ Originally based on [2020 PEP blueprint](https://docs.pages.pep.cs.ru.nl/private
   - User certificates
     - Subject CN = user name, OU = user group
     - Issued on enrollment by Key Server on presentation of OAuth token
-      - User authenticates with OAuth2 via Authserver in collaboration with Access Manager
+      - User authenticates with variant of OAuth2 via Authserver in collaboration with Access Manager
         - Contains user name + user group + issuance & expiry
         - MACed using auth token secret
         - Prove identity to IdP, e.g. SURFconext
