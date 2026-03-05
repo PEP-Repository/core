@@ -31,6 +31,6 @@ EOF
 # `-e stderr` is there to keep Windows Nginx from complaining about missing logs folder
 nginx -p "$PWD" -c nginx.conf -t -e stderr
 # Try to reload daemon, otherwise spawn new one
-nginx -p "$PWD" -s reload -c nginx.conf -e stderr || nginx -p "$PWD" -c nginx.conf -e stderr
+nginx -p "$PWD" -s reload -c nginx.conf -e stderr 2>/dev/null || nginx -p "$PWD" -c nginx.conf -e stderr
 
 echo 'Open http://localhost:2280/weblib/pep-sample-client/ in browser'
