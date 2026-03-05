@@ -264,15 +264,18 @@ function(make_js_file_executable target)
     get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
     get_target_property(suffix ${target} SUFFIX)
     if(NOT skip AND (NOT suffix OR suffix MATCHES "^\.?js$"))
-      add_custom_command(
-          TARGET ${target} POST_BUILD
-          # Add node shebang
-          COMMAND sed --in-place "1 i #!/usr/bin/env node" "$<TARGET_FILE:${target}>"
-          # Make file executable
-          COMMAND chmod +x "$<TARGET_FILE:${target}>"
-          VERBATIM
-          COMMENT "Make JS file executable"
-      )
+      find_program(SED_PROGRAM sed)
+      if(SED_PROGRAM AND NOT APPLE) # We filter out macOS because it doesn't support this syntax
+        add_custom_command(
+            TARGET ${target} POST_BUILD
+            # Add node shebang
+            COMMAND ${SED_PROGRAM} "-i''" "1 i #!/usr/bin/env node" "$<TARGET_FILE:${target}>"
+            # Make file executable
+            COMMAND chmod +x "$<TARGET_FILE:${target}>"
+            VERBATIM
+            COMMENT "Make JS file executable"
+        )
+      endif()
     endif()
   endif()
 endfunction()
