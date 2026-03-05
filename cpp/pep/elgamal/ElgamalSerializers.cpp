@@ -36,14 +36,14 @@ ElgamalEncryption Serializer<ElgamalEncryption>::fromProtocolBuffer(proto::Elgam
   ElgamalEncryption result;
   result.b = Serialization::FromProtocolBuffer(std::move(*source.mutable_b()));
   result.c = Serialization::FromProtocolBuffer(std::move(*source.mutable_c()));
-  result.y = Serialization::FromProtocolBuffer(std::move(*source.mutable_y()));
+  result.publicKey = Serialization::FromProtocolBuffer(std::move(*source.mutable_y()));
   return result;
 }
 
 void Serializer<ElgamalEncryption>::moveIntoProtocolBuffer(proto::ElgamalEncryption& dest, ElgamalEncryption value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_b(), value.b);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_c(), value.c);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_y(), value.y);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_y(), value.publicKey);
 }
 
 } // namespace pep

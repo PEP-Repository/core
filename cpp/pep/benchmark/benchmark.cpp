@@ -35,7 +35,7 @@ BENCHMARK(BM_CurvePointUnpack);
 static void BM_CurvePointPack(benchmark::State& state) {
   // For proper measurement, we have to prevent CurvePoint from caching
   // the packed result.
-  auto pt = pep::CurvePoint::Random().add(pep::CurvePoint::Random());
+  auto pt = pep::CurvePoint::Random() + pep::CurvePoint::Random();
   for (auto _ : state)
     benchmark::DoNotOptimize(pep::CurvePoint(pt).pack());
 }
@@ -45,7 +45,7 @@ static void BM_CurvePointAdd(benchmark::State& state) {
   pep::CurvePoint pt(boost::algorithm::unhex(std::string(
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
-    benchmark::DoNotOptimize(pt.add(pt));
+    benchmark::DoNotOptimize(pt + pt);
 }
 BENCHMARK(BM_CurvePointAdd);
 
@@ -78,15 +78,15 @@ BENCHMARK(BM_ScalarMultTable);
 static void BM_ScalarBaseMult(benchmark::State& state) {
   auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
   for (auto _ : state)
-    benchmark::DoNotOptimize(pep::CurvePoint::BaseMult(scalar));
+    benchmark::DoNotOptimize(scalar * pep::CurvePoint::Base);
 }
 BENCHMARK(BM_ScalarBaseMult);
 
 static void BM_ScalarPublicBaseMult(benchmark::State& state) {
-  auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
+  pep::PublicCurveScalar scalar(pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234"));
   // Not really fair to use fixed scalar as this is not a constant-time operation
   for (auto _ : state)
-    benchmark::DoNotOptimize(pep::CurvePoint::PublicBaseMult(scalar));
+    benchmark::DoNotOptimize(scalar * pep::CurvePoint::Base);
 }
 BENCHMARK(BM_ScalarPublicBaseMult);
 
@@ -95,17 +95,17 @@ static void BM_ScalarMult(benchmark::State& state) {
   pep::CurvePoint pt(boost::algorithm::unhex(std::string(
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
-    benchmark::DoNotOptimize(pt.mult(scalar));
+    benchmark::DoNotOptimize(scalar * pt);
 }
 BENCHMARK(BM_ScalarMult);
 
 static void BM_PublicScalarMult(benchmark::State& state) {
-  auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
+  pep::PublicCurveScalar scalar(pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234"));
   pep::CurvePoint pt(boost::algorithm::unhex(std::string(
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   // Not really fair to use fixed scalar as publicMult is not constant-time.
   for (auto _ : state)
-    benchmark::DoNotOptimize(pt.publicMult(scalar));
+    benchmark::DoNotOptimize(scalar * pt);
 }
 BENCHMARK(BM_PublicScalarMult);
 
@@ -125,7 +125,7 @@ BENCHMARK(BM_CurveScalarInvert);
 static void BM_CurveScalarMul(benchmark::State& state) {
   auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
   for (auto _ : state)
-    benchmark::DoNotOptimize(scalar.mult(scalar));
+    benchmark::DoNotOptimize(scalar * scalar);
 }
 BENCHMARK(BM_CurveScalarMul);
 

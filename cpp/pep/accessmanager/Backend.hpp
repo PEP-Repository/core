@@ -28,7 +28,7 @@ public:
 
   void addParticipantToGroup(const LocalPseudonym& localPseudonym, const std::string& group);
   void removeParticipantFromGroup(const LocalPseudonym& localPseudonym, const std::string& group);
-  void assertParticipantAccess(const std::string& userGroup, const LocalPseudonym& localPseudonym, const std::vector<std::string>& modes, Timestamp at);
+  void checkParticipantAccess(const std::string& userGroup, const LocalPseudonym& localPseudonym, const std::vector<std::string>& modes, Timestamp at);
   bool hasLocalPseudonym(const LocalPseudonym& localPseudonym);
   void storeLocalPseudonymAndPP(const LocalPseudonym& localPseudonym, const PolymorphicPseudonym& polymorphicPseudonym);
 
@@ -42,14 +42,14 @@ public:
   * \brief Check whether or not the userGroup at the timestamp is granted the access modes for the participantGroups.
   * \throws Error when not all access modes are granted.
   */
-  void checkParticipantGroupAccess(const std::vector<std::string>& participantGroups, const std::string& userGroup, std::vector<std::string>& modes, const Timestamp& timestamp);
+  void checkParticipantGroupAccess(std::span<const std::string> participantGroups, const std::string& userGroup, std::vector<std::string>& modes, const Timestamp& timestamp);
 
   /*!
   * \brief Fill the pre_PPs vector with polymorph pseudonyms found in the participantGroup. For each participantGroup, add an entry to the participantGroupMap containing all indexes
   *        of the pps that are in the participantGroup.
-  * \param pre_PPs Both an in and out parameter. Vector containing the loose requested polymorph pseudonyms. This vector is appended with the pps found in the requested participantGroups.
+  * \param pps Both an in and out parameter. Vector containing the loose requested polymorph pseudonyms. This vector is appended with the pps found in the requested participantGroups.
   */
-  void fillParticipantGroupMap(const std::vector<std::string>& participantGroups, std::vector<pp_t>& pre_PPs, std::unordered_map<std::string, pep::IndexList>& participantGroupMap);
+  std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<pp_t>& pps);
 
   /* !
   * \brief For each column in columns, look up the associated columngroups. Then check whether or not the userGroup has the required access to ANY of those columnGroups. If not, throw an error.
@@ -60,10 +60,10 @@ public:
   *  \param modes
   *  \param at timestamp of moment in time for when to assert access and columnGroup membership.
   *  \param columns Both an in and out parameter. Vector containing the loose requested columns. This vector is appended with the columns found in the requested columnGroups.
-  *  \param columnGroupMap Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
+  *  \returns Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
   */
-  void unfoldColumnGroupsAndAssertAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, const std::vector<std::string>& modes, Timestamp at,
-                                         std::vector<std::string>& columns, std::unordered_map<std::string, pep::IndexList>& columnGroupMap);
+  std::unordered_map<std::string, IndexList> unfoldColumnGroupsAndCheckAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, const std::vector<std::string>& modes, Timestamp at,
+                                         std::vector<std::string>& columns);
 
   /*!
   * \brief Check the basic assumptions of a EncryptionKeyRequest. The accompanying ticket has to have the required access.

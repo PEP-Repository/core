@@ -26,11 +26,11 @@ public:
   inline KeyComponentResponse(
     const CurveScalar& pseudonymKeyComponent,
     const CurveScalar& encryptionKeyComponent
-  ) : mPseudonymKeyComponent(pseudonymKeyComponent),
-    mEncryptionKeyComponent(encryptionKeyComponent) {}
+  ) : mPseudonymEncryptionKeyComponent(pseudonymKeyComponent),
+    mDataEncryptionKeyComponent(encryptionKeyComponent) {}
 
-  CurveScalar mPseudonymKeyComponent;
-  CurveScalar mEncryptionKeyComponent;
+  CurveScalar mPseudonymEncryptionKeyComponent;
+  CurveScalar mDataEncryptionKeyComponent;
 };
 
 }

@@ -29,11 +29,11 @@ public:
   std::string text() const;
   static CurveScalar FromText(const std::string& text);
 
-  CurveScalar add(const CurveScalar& s) const;
-  CurveScalar sub(const CurveScalar& s) const;
-  CurveScalar mult(const CurveScalar& s) const;
-  CurveScalar invert() const;
-  CurveScalar square() const;
+  [[nodiscard]] CurveScalar operator+(const CurveScalar& s) const;
+  [[nodiscard]] CurveScalar operator-(const CurveScalar& s) const;
+  [[nodiscard]] CurveScalar operator*(const CurveScalar& s) const;
+  [[nodiscard]] CurveScalar invert() const;
+  [[nodiscard]] CurveScalar square() const;
 
   static CurveScalar One();
 
@@ -68,11 +68,19 @@ protected:
   group_scalar inner;
 };
 
+/// A public (not secret) curve scalar.
+/// Will select faster non-constant time algorithms in some cases.
+class PublicCurveScalar : public CurveScalar {
+public:
+  using CurveScalar::CurveScalar;
+  explicit PublicCurveScalar(const CurveScalar& s) : CurveScalar(s) {}
+};
+
 }
 
 namespace std {
-//TODO It is not safe to put secret scalars in a hashmap.
-// Insertion & lookup time will depend on the value of the (secret!) scalar and scalars already in the map
+//TODO Use secure hash function for secret scalars.
+// Insertion & lookup time will otherwise depend on the value of the (secret!) scalar and scalars already in the map
 template <> struct hash<pep::CurveScalar> {
   size_t operator()(const pep::CurveScalar& k) const;
 };

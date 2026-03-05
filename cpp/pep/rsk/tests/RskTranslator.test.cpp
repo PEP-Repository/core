@@ -125,7 +125,7 @@ TEST_F(RskTranslatorTest, rsk) {
 
   const auto skRecipient = rsk.generateKeyComponent(factors.rekey, sk);
   const auto decrypted = transformed.decrypt(skRecipient);
-  const auto dataReshuffle = data.mult(factors.reshuffle);
+  const auto dataReshuffle = factors.reshuffle * data;
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
@@ -167,7 +167,7 @@ TEST_F(RskTranslatorTest, rs) {
   const auto transformed = rsk.rs(encryption, factor);
 
   const auto decrypted = transformed.decrypt(sk);
-  const auto dataReshuffle = data.mult(factor);
+  const auto dataReshuffle = factor * data;
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
@@ -184,7 +184,7 @@ TEST_F(RskTranslatorTest, certifiedRsk) {
 
   const auto skRecipient = rsk.generateKeyComponent(factors.rekey, sk);
   const auto decrypted = transformed.decrypt(skRecipient);
-  const auto dataReshuffle = data.mult(factors.reshuffle);
+  const auto dataReshuffle = factors.reshuffle * data;
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 

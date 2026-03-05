@@ -167,15 +167,15 @@ AccessManagerBackendTest::Constants AccessManagerBackendTest::constants;
 std::shared_ptr<AccessManager::Backend::Storage> AccessManagerBackendTest::storage;
 std::shared_ptr<GlobalConfiguration> AccessManagerBackendTest::globalConf;
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
 
   const std::vector<std::string> columngroups{constants.r_cg1};
   const std::vector<std::string> modes{"read"};
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns;
-  std::unordered_map<std::string, IndexList> columnGroupMap{};
 
-  backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
+  auto columnGroupMap =
+      backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
   std::unordered_map<std::string, IndexList> expectedColumnGroupMap{{constants.r_cg1, IndexList({0, 1, 2})}};
   std::vector<std::string> expectedColumns = {constants.double_col, constants.r_col1, constants.r_col2};
@@ -190,14 +190,14 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
   EXPECT_EQ(columns, expectedColumns);
 }
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.double_col};
-  std::unordered_map<std::string, IndexList> columnGroupMap{};
-  backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
+  auto columnGroupMap =
+      backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
   std::unordered_map<std::string, IndexList> expectedColumnGroupMap{};
   std::vector<std::string> expectedColumns = {constants.double_col};
@@ -206,18 +206,16 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access
   EXPECT_EQ(columns, expectedColumns);
 }
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_no_column_access_no_column_groups_in_request) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_no_column_access_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.w_col};
-  std::unordered_map<std::string, IndexList> columnGroupMap{};
-
 
   try {
     // Act
-    backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
+    (void) backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
     FAIL() << "This should not have run without exceptions.";
   }
@@ -293,7 +291,7 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
 
   std::vector<std::string> modes{"access", "enumerate"};
   Timestamp timestamp = TimeNow();
-  backend->checkParticipantGroupAccess({constants.pg1}, constants.userGroup1, modes, timestamp);
+  backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, modes, timestamp);
   // No thrown exceptions means correct behaviour.
 }
 
@@ -301,7 +299,7 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
   std::vector<std::string> modes{"access", "enumerate"};
   Timestamp timestamp = TimeNow();
   try {
-    backend->checkParticipantGroupAccess({constants.pg2}, constants.userGroup1, modes, timestamp);
+    backend->checkParticipantGroupAccess(std::vector{constants.pg2}, constants.userGroup1, modes, timestamp);
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {
@@ -314,10 +312,10 @@ TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
   // Two polymorph pseudonyms without known participantgroups. Used to test the offset in IndexList
   std::vector<AccessManager::Backend::pp_t> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
   const std::vector<std::string> participantgroups{constants.pg1, constants.pg2};
-  std::unordered_map<std::string, IndexList> actualParticipantGroupMap{};
 
   // Act
-  backend->fillParticipantGroupMap(participantgroups, prePPs, actualParticipantGroupMap);
+  auto actualParticipantGroupMap =
+      backend->fillParticipantGroupMap(participantgroups, prePPs);
 
   // Assert
   EXPECT_EQ(actualParticipantGroupMap.size(), 2U); // The two participantGroups
@@ -386,19 +384,19 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
 
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  backend->assertParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
   try {
     // Act
-    backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
+    backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {

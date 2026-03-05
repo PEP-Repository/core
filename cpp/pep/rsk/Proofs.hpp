@@ -15,43 +15,43 @@ class InvalidProof : public std::exception {
 };
 
 // A compositional non-interactive zero-knowledge proof that
-// CurvePoints (A, M, N) are in fact of the form (x B, M, x M).
-// See https://docs.pages.pep.cs.ru.nl/private/ops/main/development/Design-logger/
+// CurvePoints (secretTimesBase, pre, post) are in fact of the form (secret*B, pre, secret*pre).
+// See https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/
 // and §4 of "Lecture Notes Cryptographic Protocols" by Schoenmakers.
 class ScalarMultProof {
   static CurveScalar computeChallenge(
-      const CurvePoint& A,
-      const CurvePoint& M,
-      const CurvePoint& N,
+      const CurvePoint& secretTimesBase,
+      const CurvePoint& pre,
+      const CurvePoint& post,
       const CurvePoint& cb,
       const CurvePoint& cm);
 
  public:
   CurvePoint mCB;
   CurvePoint mCM;
-  CurveScalar mS;
+  PublicCurveScalar mS;
 
   ScalarMultProof() = default;
-  ScalarMultProof(CurvePoint cb, CurvePoint cm, CurveScalar s)
+  ScalarMultProof(const CurvePoint& cb, const CurvePoint& cm, const PublicCurveScalar& s)
     : mCB(cb), mCM(cm), mS(s) { }
 
   void ensurePacked() const; // See CurvePoint::ensurePacked()
 
-  // Constructs a proof from A, M, N and x.
+  // Constructs a proof from secretTimesBase, pre, post and secret.
   //
-  // Assumes A = x B and N = x M.
+  // Assumes secretTimesBase = secret*B and post = secret*pre.
   static ScalarMultProof create(
-    const CurvePoint& A,
-    const CurvePoint& M,
-    const CurvePoint& N,
-    const CurveScalar& x,
+    const CurvePoint& secretTimesBase,
+    const CurvePoint& pre,
+    const CurvePoint& post,
+    const CurveScalar& secret,
     CPRNG* rng=nullptr);
 
   // Checks the proof. Throws InvalidProof if the proof is invalid.
   void verify(
-    const CurvePoint& A,
-    const CurvePoint& M,
-    const CurvePoint& N) const;
+    const CurvePoint& secretTimesBase,
+    const CurvePoint& pre,
+    const CurvePoint& post) const;
 };
 
 // Public data required to verify an RSKProof.
@@ -59,20 +59,20 @@ class RSKVerifiers {
  public:
   RSKVerifiers() = default;
   RSKVerifiers(
-      CurvePoint zOverKB,
-      CurvePoint zB,
-      CurvePoint ky)
-  : mZOverKB(zOverKB),
-    mZB(zB),
-    mKY(ky) { }
+      const CurvePoint& reshuffleOverRekeyPoint,
+      const CurvePoint& reshufflePoint,
+      const CurvePoint& newPublicKey)
+  : mReshuffleOverRekeyPoint(reshuffleOverRekeyPoint),
+    mReshufflePoint(reshufflePoint),
+    mNewPublicKey(newPublicKey) { }
   static RSKVerifiers compute(
-    const CurveScalar& z,
-    const CurveScalar& k,
-    const CurvePoint& y);
+    const CurveScalar& reshuffle,
+    const CurveScalar& rekey,
+    const CurvePoint& publicKey);
 
-  CurvePoint mZOverKB;
-  CurvePoint mZB;
-  CurvePoint mKY;
+  CurvePoint mReshuffleOverRekeyPoint;
+  CurvePoint mReshufflePoint;
+  CurvePoint mNewPublicKey;
 
   [[nodiscard]] auto operator<=>(const RSKVerifiers& right) const = default;
 
@@ -82,56 +82,56 @@ class RSKVerifiers {
 
 
 // A compositional non-interactive zero-knowledge proof that
-// an ElgamalEncryption (b, c, y) has been (z,k)-RSKed to (b', c', y')
+// an ElgamalEncryption (b, c, publicKey) has been (reshuffle,rekey)-RSKed to (b', c', publicKey')
 class RSKProof {
  public:
   RSKProof() = default;
   RSKProof(
-      CurvePoint rY,
-      CurvePoint rB,
+      CurvePoint rerandomizePubKey,
+      CurvePoint rerandomizePoint,
       ScalarMultProof rp,
       ScalarMultProof bp,
       ScalarMultProof cp)
-    : mRY(rY),
-      mRB(rB),
+    : mRerandomizePubKey(rerandomizePubKey),
+      mRerandomizePoint(rerandomizePoint),
       mRP(rp),
       mBP(bp),
       mCP(cp) { }
 
-  CurvePoint mRY;
-  CurvePoint mRB;
+  CurvePoint mRerandomizePubKey;
+  CurvePoint mRerandomizePoint;
 
-  ScalarMultProof mRP; // ScalarMultProof for (rb, y, ry)
-  ScalarMultProof mBP; // ScalarMultProof for ((z/k)B, b + rb, b')
-  ScalarMultProof mCP; // ScalarMultProof for (z B, c + ry, c')
+  ScalarMultProof mRP; // ScalarMultProof for (rerandomize*B, publicKey, rerandomizePubKey)
+  ScalarMultProof mBP; // ScalarMultProof for ((reshuffle/rekey)B, b + rerandomize*B, b')
+  ScalarMultProof mCP; // ScalarMultProof for (reshuffle*B, c + rerandomizePubKey, c')
 
   void ensurePacked() const; // See CurvePoint::ensurePacked()
 
-  // Constructs a proof that post is the (z,k)-RSK of pre.
+  // Constructs a proof that post is the (reshuffle,rekey)-RSK of pre.
   //
-  // Assumes zB = z B, zOverK = z/k, zOverKB = z/k B, ry = r y, rB = r B
-  // and (of course) that post is the (z,k)-RSK of pre with random r.
+  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B, rerandomizePubKey = rerandomize*publicKey, rerandomizePoint = rerandomize*B
+  // and (of course) that post is the (reshuffle,rekey)-RSK of pre with random rerandomize.
   static RSKProof create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
-    const CurveScalar& z,
-    const CurvePoint& zB,
-    const CurveScalar& zOverK,
-    const CurvePoint& zOverKB,
-    const CurveScalar& r,
-    const CurvePoint& ry,
-    const CurvePoint& rB,
+    const CurveScalar& reshuffle,
+    const CurvePoint& reshufflePoint,
+    const CurveScalar& reshuffleOverRekey,
+    const CurvePoint& reshuffleOverRekeyPoint,
+    const CurveScalar& rerandomize,
+    const CurvePoint& rerandomizePubKey,
+    const CurvePoint& rerandomizePoint,
     CPRNG* rng=nullptr);
 
-  // Stores the (z,k)-RSKed version of ElgamalEncryption in to out and
+  // Stores the (reshuffle,rekey)-RSKed version of ElgamalEncryption in to out and
   // returns a zero-knowledge proof of correctness.
   //
   // XXX Add optimised version to EGCache
   static RSKProof certifiedRSK(
     const ElgamalEncryption& in,
     ElgamalEncryption& out,
-    const CurveScalar& z,
-    const CurveScalar& k);
+    const CurveScalar& reshuffle,
+    const CurveScalar& rekey);
 
   // Checks the proof. Throws InvalidProof if the proof is invalid.
   void verify(

@@ -71,7 +71,7 @@ CurvePoint::CurvePoint() : mState{gotBoth} {}
  * \param p The CurvePoint to add.
  * \return The resulting CurvePoint.
  */
-CurvePoint CurvePoint::add(const CurvePoint& p) const {
+CurvePoint CurvePoint::operator+(const CurvePoint& p) const {
   CurvePoint r(gotUnpacked);
   group_ge_add(&r.mUnpacked, unpack(), p.unpack());
   return r;
@@ -83,7 +83,7 @@ CurvePoint CurvePoint::add(const CurvePoint& p) const {
  * \param p The CurvePoint to subtract.
  * \return The resulting CurvePoint.
  */
-CurvePoint CurvePoint::sub(const CurvePoint& p) const {
+CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
   CurvePoint r(gotUnpacked);
   group_ge t;
   group_ge_negate(&t, p.unpack());
@@ -102,26 +102,13 @@ CurvePoint CurvePoint::dbl() const {
   return r;
 }
 
-/*! \brief Multiply this CurvePoint with a CurveScalar
- *
- * This CurvePoint remains unaltered.
- * \param p The value to multiply with.
- * \return The resulting CurvePoint.
- */
-CurvePoint CurvePoint::mult(const CurveScalar& p) const {
+CurvePoint CurvePoint::mult(const CurveScalar& s) const {
   CurvePoint r(gotUnpacked);
-  group_ge_scalarmult(&r.mUnpacked, unpack(), &p.inner);
+  group_ge_scalarmult(&r.mUnpacked, unpack(), &s.inner);
   return r;
 }
 
-/*! \brief Multiply this CurvePoint with a public (not secret!) CurveScalar
- *         You probably want to use CurvePoint::mult instead.
- *
- * This CurvePoint remains unaltered.
- * \param s The value to multiply with.  Must not be a secret!
- * \return The resulting CurvePoint.
- */
-CurvePoint CurvePoint::publicMult(const CurveScalar& s) const {
+CurvePoint CurvePoint::mult(const PublicCurveScalar& s) const {
   CurvePoint r(gotUnpacked);
   group_ge_scalarmult_publicinputs(&r.mUnpacked, unpack(), &s.inner);
   return r;
@@ -140,26 +127,15 @@ CurvePoint CurvePoint::Hash(std::string_view s) {
   return r;
 }
 
-/*! \brief Create a point by multiplying a scalar with the base.
- *
- * \param p The value to multiply the base with.
- * \return The resulting CurvePoint.
- */
-CurvePoint CurvePoint::BaseMult(const CurveScalar& p) {
+CurvePoint CurvePoint::BaseMult(const CurveScalar& s) {
   CurvePoint r(gotUnpacked);
-  group_ge_scalarmult_base(&r.mUnpacked, &p.inner);
+  group_ge_scalarmult_base(&r.mUnpacked, &s.inner);
   return r;
 }
 
-/*! \brief Create a point by multiplying a public (not secret!) scalar with the base.
- *         You probably want to use CurvePoint::BaseMult instead
- *
- * \param p The public value to multiply the base with.
- * \return The resulting CurvePoint.
- */
-CurvePoint CurvePoint::PublicBaseMult(const CurveScalar& p) {
+CurvePoint CurvePoint::BaseMult(const PublicCurveScalar& s) {
   CurvePoint r(gotUnpacked);
-  group_ge_scalarmult_base_publicinputs(&r.mUnpacked, &p.inner);
+  group_ge_scalarmult_base_publicinputs(&r.mUnpacked, &s.inner);
   return r;
 }
 
@@ -210,7 +186,7 @@ CurvePoint CurvePoint::ScalarMultTable::mult(const CurveScalar& s) const {
   return r;
 }
 
-CurvePoint CurvePoint::ScalarMultTable::publicMult(const CurveScalar& s) const {
+CurvePoint CurvePoint::ScalarMultTable::mult(const PublicCurveScalar& s) const {
   CurvePoint r(gotUnpacked);
   group_ge_scalarmult_table_publicinputs(&r.mUnpacked, &mInternal, &s.inner);
   return r;
