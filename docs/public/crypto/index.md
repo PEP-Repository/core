@@ -34,8 +34,8 @@ Originally based on [2020 PEP blueprint](https://docs.pages.pep.cs.ru.nl/private
   - Code: `CurveScalar`
 - Designated base point $B$ generating large subgroup $\mathbb{Z}B$
   - Code: `CurvePoint`
-- Small subgroup $\mathbb{Z}Q$ of 8 elements (including $\bold 0$)
-- Each element in $\mathbb{E}$ is the sum of one in $\mathbb{Z}B$ and $\mathbb{Z}Q$ (including $\bold 0$, which is in both)
+- Small subgroup $\mathbb{Z}Q$ of 8 elements (including $\mathbf 0$)
+- Each element in $\mathbb{E}$ is the sum of one in $\mathbb{Z}B$ and $\mathbb{Z}Q$ (including $\mathbf 0$, which is in both)
 - Dangers:
   - Point must lie on $\mathbb{E}$
   - Point must be in $\mathbb{Z}B$, because otherwise we can compute the logarithm (modulo 8)
@@ -72,7 +72,7 @@ Also see [glossary](../user_documentation/glossary.md).
 - Origin ID (randomly generated, human readable, e.g. `POM1234567890`)
   - Polymorphic Pseudonym (encrypted Origin ID, can be randomized)
     - Local Pseudonym (32 bytes; variants: user, transcryptor, storage facility, access manager)
-      - Brief Local Pseudonym (prefix + first (e.g. 10) characters of HEX representation of local pseudonym, e.g. `POM12345ABCDE`)
+      - Brief Local Pseudonym (prefix + first (e.g. 10) characters of HEX representation of local pseudonym, e.g. `POMU12345ABCDE`)
 - Reference ID (mapping, human readable for uploaders, e.g. `POM1PL1234549`)
 
 ## Pseudonyms
