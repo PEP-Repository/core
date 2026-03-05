@@ -42,7 +42,7 @@ conan install \
   --profile=./docker-build/builder/conan/conan_profile_wasm32 \
   -s"&:build_type=Debug" \
   --build=missing \
-  -o'&:subbuild_name=wasm32'
+  -o"&:subbuild_name=wasm32"
 ```
 
 - `--profile` == `--profile:host`: the target platform
@@ -56,7 +56,7 @@ conan install \
 cmake --preset=wasm32-debug -DPKI_DIR=./build/Debug/pki/
 ```
 
-- `PKI_DIR` should point to an existing `pepServers` build if you want to test with local servers
+- `PKI_DIR` should point to an existing `pepServers` build if you want to test with local servers. Without this you will likely see `boost::system::system_error: certificate verify failed (SSL routines)` when connecting.
 
 ## Build & run sample page
 
@@ -70,5 +70,7 @@ Build Debug & start local servers:
 
 When EMSDK was installed via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script in your build folder.
 
-!!! bug "TODO: Windows support"
-  This doesn't currently work on Windows. A normal `cmake --build --preset=wasm32-debug` could be used instead, after which Nginx, websockify, and `pepServers` need to be started manually.
+!!! bug "Windows quirks"
+    - Nginx may not go to the background or want to shut down with ctrl+C, kill it via the task manager instead.
+    - When installing EMSDK via Conan, you may get "Command line too long" while building. In the emsdk recipe, replace the body of `_define_tool_var` with `return f"python -E \"{os.path.join(self._emscripten, f'{value}.py')}\""`.
+    - websockify may log `WARNING: no 'resource' module, daemonizing is disabled`. This can be ignored.
