@@ -7,6 +7,8 @@ Changes in upcoming release (1.7):
 
 ---------------
 
+- Added --format option to "pepcli list" command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
+
 - Also print brief local pseudonyms (participant aliases) when using --local-pseudonym flag.
 
 - core#2795: Fixed a bug in the "pepcli ama query --script-print participant-groups" and "pepcli ama query --script-print participant-group-access-rules" commands, which caused them to produce no output.
