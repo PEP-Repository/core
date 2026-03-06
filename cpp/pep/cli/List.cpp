@@ -60,21 +60,28 @@ protected:
       pep::PolymorphicPseudonym mPp;
       bool mCollectMetadata;
       std::optional<std::string> mLp;
+      std::optional<std::string> mBlp;
       pt::ptree mValues;
       pt::ptree mMetadata;
       pt::ptree mIds;
 
     public:
-      SubjectData(const pep::EnumerateAndRetrieveResult& ear, bool collectMetadata)
+      SubjectData(const pep::EnumerateAndRetrieveResult& ear, bool collectMetadata, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
         : mPp(ear.mLocalPseudonyms->mPolymorphic), mCollectMetadata(collectMetadata) {
         if (ear.mAccessGroupPseudonym != nullptr) {
           mLp = ear.mAccessGroupPseudonym->text();
+          if (globalConfig) {
+            mBlp = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*ear.mAccessGroupPseudonym);
+          }
         }
         this->add(ear);
       }
 
-      SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp)
+      SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
         : mPp(pp), mCollectMetadata(false), mLp(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
+        if (lp.has_value() && globalConfig) {
+          mBlp = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*lp);
+        }
       }
 
       const pep::PolymorphicPseudonym& pp() const noexcept { return mPp; }
@@ -125,6 +132,8 @@ protected:
         toPrint.put("pp", mPp.text());
         if (mLp.has_value())
           toPrint.put("lp", *mLp);
+        if (mBlp.has_value())
+          toPrint.put("blp", *mBlp);
         pt::write_json(std::cout, toPrint);
       }
     };
@@ -136,6 +145,7 @@ protected:
       pep::enumerateAndRetrieveData2Opts mEarOpts;
       bool mPrintMetadata = false;
       bool mGroupOutput = false;
+      std::shared_ptr<pep::GlobalConfiguration> mGlobalConfig;
       std::unordered_map<uint32_t, SubjectData> mSubjects;
       size_t mDataCount{ 0 };
       std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> mPseudsToReport;
@@ -171,7 +181,7 @@ protected:
           if (report.second.has_value()) {
             decrypted = client->decryptLocalPseudonym(*report.second);
           }
-          SubjectData data(report.first, decrypted);
+          SubjectData data(report.first, decrypted, mGlobalConfig);
           mSubjects.emplace(std::make_pair(index++, std::move(data))); // ...to add an entry to our "subjects" field...
         }
 
@@ -186,7 +196,7 @@ protected:
           if (!mGroupOutput) {
             printAndClearSubjects();
           }
-          [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata));
+          [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata, mGlobalConfig));
           assert(emplaced.second);
         }
         else {
@@ -241,6 +251,19 @@ protected:
         ctx->mPrintMetadata = ctx->mParameterValues.has("metadata");
         ctx->mGroupOutput = ctx->mParameterValues.has("group-output");
 
+        // Only fetch GlobalConfiguration if we need it for brief local pseudonyms
+        rxcpp::observable<pep::FakeVoid> configObservable;
+        if (ctx->mEarOpts.includeAccessGroupPseudonyms) {
+          configObservable = client->getGlobalConfiguration().map([ctx](std::shared_ptr<pep::GlobalConfiguration> gc) { 
+              ctx->mGlobalConfig = gc; 
+              return pep::FakeVoid(); 
+            });
+        } else {
+          configObservable = rxcpp::observable<>::just(pep::FakeVoid());
+        }
+
+        return configObservable.flat_map([ctx, client](pep::FakeVoid) {
+
         pep::requestTicket2Opts tOpts;
         tOpts.pps = ctx->mEarOpts.pps;
         tOpts.columns = ctx->mEarOpts.columns;
@@ -260,6 +283,7 @@ protected:
               });
           }
           return client->enumerateAndRetrieveData2(ctx->mEarOpts);
+        });
         });
       }).map([ctx](pep::EnumerateAndRetrieveResult result) {
         ctx->processResult(result);

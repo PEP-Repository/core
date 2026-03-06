@@ -38,7 +38,12 @@ if should_run_test basic; then
   write_registration_server_cell ParticipantIdentifier delete -p "$id"
 
   pepcli --oauth-token-group "Research Assessor" pull -P '*' -C ShortPseudonyms -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo --output-directory "$DEST_DIR/pulled-data"
-  pepcli list -l -P '*' -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo
+
+  # Verify all participants have lp and blp fields with --local-pseudonyms
+  list_output=$(pepcli list --local-pseudonyms --show-dataless -P '*' -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo)
+  echo "$list_output" | jq -e 'all(.[]; (.lp  // "") | test("^[0-9A-F]{64}$"))' > /dev/null || fail "Expected all participants (incl. those without data) to have valid 'lp' field with --local-pseudonyms"
+  echo "$list_output" | jq -e 'all(.[]; (.blp // "") | test("^GUMU[0-9A-F]{16}$"))' > /dev/null || fail "Expected all participants (incl. those without data) to have valid 'blp' field with --local-pseudonyms"
+  echo "$list_output" | jq -e 'all(.[]; (.pp  // "") | test("^[0-9A-F]{64}:[0-9A-F]{64}:[0-9A-F]{64}$"))' > /dev/null || fail "Expected all participants (incl. those without data) to have valid 'pp' field"
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   # Store data in a not yet existing row
