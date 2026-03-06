@@ -56,7 +56,7 @@ protected:
       + pep::commandline::Parameter("metadata", "Print metadata - which may contain encrypted entries when only an ID was returned for the file in question; apply pepcli get to the ID to get the decrypted entries").shorthand('m')
       + pep::commandline::Parameter("no-inline-data", "Never retrieve data inline; only return IDs")
       + pep::commandline::Parameter("group-output", "Group the output per participant").shorthand('g')
-      + pep::commandline::Parameter("format", "The format of the output.").value(pep::commandline::Value<std::string>().allow({"yaml", "json"}).defaultsTo("json"));
+      + pep::commandline::Parameter("format", "The format of the output.").value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"yaml", "json"})).defaultsTo("json"));
   }
 
   int execute() override {
