@@ -1,9 +1,14 @@
 #include <benchmark/benchmark.h>
 
 #include <boost/algorithm/hex.hpp>
+#include <boost/random/random_device.hpp>
 
+#include <openssl/rand.h>
+
+#include <random>
 #include <vector>
 
+#include <pep/utils/OpensslUtils.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
@@ -29,6 +34,7 @@ static void BM_CurvePointUnpack(benchmark::State& state) {
                        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
     benchmark::DoNotOptimize(pep::CurvePoint(packed, true));
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurvePointUnpack);
 
@@ -38,6 +44,7 @@ static void BM_CurvePointPack(benchmark::State& state) {
   auto pt = pep::CurvePoint::Random() + pep::CurvePoint::Random();
   for (auto _ : state)
     benchmark::DoNotOptimize(pep::CurvePoint(pt).pack());
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurvePointPack);
 
@@ -46,6 +53,7 @@ static void BM_CurvePointAdd(benchmark::State& state) {
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
     benchmark::DoNotOptimize(pt + pt);
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurvePointAdd);
 
@@ -54,6 +62,7 @@ static void BM_CurvePointDouble(benchmark::State& state) {
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
     benchmark::DoNotOptimize(pt.dbl());
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurvePointDouble);
 
@@ -62,6 +71,7 @@ static void BM_ScalarMultTableCompute(benchmark::State& state) {
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
     benchmark::DoNotOptimize(pep::CurvePoint::ScalarMultTable(pt));
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ScalarMultTableCompute);
 
@@ -72,6 +82,7 @@ static void BM_ScalarMultTable(benchmark::State& state) {
   pep::CurvePoint::ScalarMultTable table(pt);
   for (auto _ : state)
     benchmark::DoNotOptimize(table.mult(scalar));
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ScalarMultTable);
 
@@ -79,6 +90,7 @@ static void BM_ScalarBaseMult(benchmark::State& state) {
   auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
   for (auto _ : state)
     benchmark::DoNotOptimize(scalar * pep::CurvePoint::Base);
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ScalarBaseMult);
 
@@ -87,6 +99,7 @@ static void BM_ScalarPublicBaseMult(benchmark::State& state) {
   // Not really fair to use fixed scalar as this is not a constant-time operation
   for (auto _ : state)
     benchmark::DoNotOptimize(scalar * pep::CurvePoint::Base);
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ScalarPublicBaseMult);
 
@@ -96,6 +109,7 @@ static void BM_ScalarMult(benchmark::State& state) {
        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
   for (auto _ : state)
     benchmark::DoNotOptimize(scalar * pt);
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_ScalarMult);
 
@@ -106,12 +120,14 @@ static void BM_PublicScalarMult(benchmark::State& state) {
   // Not really fair to use fixed scalar as publicMult is not constant-time.
   for (auto _ : state)
     benchmark::DoNotOptimize(scalar * pt);
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_PublicScalarMult);
 
 static void BM_CurvePointElligatorHash(benchmark::State& state) {
   for (auto _ : state)
     pep::CurvePoint::Hash("test string");
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurvePointElligatorHash);
 
@@ -119,6 +135,7 @@ static void BM_CurveScalarInvert(benchmark::State& state) {
   auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
   for (auto _ : state)
     benchmark::DoNotOptimize(scalar.invert());
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurveScalarInvert);
 
@@ -126,6 +143,7 @@ static void BM_CurveScalarMul(benchmark::State& state) {
   auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
   for (auto _ : state)
     benchmark::DoNotOptimize(scalar * scalar);
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurveScalarMul);
 
@@ -133,6 +151,7 @@ static void BM_CurveScalarSquare(benchmark::State& state) {
   auto scalar = pep::CurveScalar::From64Bytes("1234567890123456789012345678901234567890123456789012345678901234");
   for (auto _ : state)
     benchmark::DoNotOptimize(scalar.square());
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_CurveScalarSquare);
 
@@ -140,6 +159,7 @@ static void BM_Sha512Short(benchmark::State& state) {
   std::string msg("Some input message ..........");
   for (auto _ : state)
     benchmark::DoNotOptimize(pep::Sha512().digest(msg));
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_Sha512Short);
 
@@ -156,6 +176,7 @@ static void BM_Sha256Short(benchmark::State& state) {
   std::string msg("Some input message ..........");
   for (auto _ : state)
     benchmark::DoNotOptimize(pep::Sha256().digest(msg));
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_Sha256Short);
 
@@ -323,6 +344,7 @@ static void BM_SignDigest(benchmark::State& state) {
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
   for (auto _ : state)
     benchmark::DoNotOptimize(keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST));
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_SignDigest);
 
@@ -331,39 +353,67 @@ static void BM_VerifyDigest(benchmark::State& state) {
   auto sig = keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST);
   for (auto _ : state)
     benchmark::DoNotOptimize(keypair.getPublicKey().verifyDigestSha256(SAMPLE_SHA256_DIGEST, sig));
+  state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_VerifyDigest);
 
-static void BM_RandomBytes(benchmark::State& state) {
-  std::string s;
-  for (auto _ : state) {
-    pep::RandomBytes(s, 16);
-    benchmark::DoNotOptimize(&s);
-  }
-  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()*8));
-}
-BENCHMARK(BM_RandomBytes);
+static constexpr std::size_t NumRandomBytes = 64; // For CurveScalar::Random
 
-static void BM_CPURBG(benchmark::State& state) {
-  pep::CPURBG gen;
+static void BM_RNG_RandomBytes(benchmark::State& state) {
+  std::array<std::uint8_t, NumRandomBytes> buffer{};
   for (auto _ : state) {
-    benchmark::DoNotOptimize(gen());
+    pep::RandomBytes(buffer.data(), buffer.size());
+    benchmark::DoNotOptimize(buffer);
   }
-  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()*8));
+  SetBytesProcessed(state, buffer.size());
 }
-BENCHMARK(BM_CPURBG);
+BENCHMARK(BM_RNG_RandomBytes);
 
-static void BM_CPRNG(benchmark::State& state) {
+template <std::uniform_random_bit_generator URBG>
+static void BM_RNG_URBG(benchmark::State& state) {
+  URBG gen;
+  std::array<typename URBG::result_type, NumRandomBytes / sizeof(typename URBG::result_type)> buffer{};
+  for (auto _ : state) {
+    std::ranges::generate(buffer, [&gen] { return gen(); }); // Prevent copying gen
+    benchmark::DoNotOptimize(buffer);
+  }
+  SetBytesProcessed(state, std::span(buffer).size_bytes());
+}
+BENCHMARK(BM_RNG_URBG<pep::CPURBG>);
+BENCHMARK(BM_RNG_URBG<std::random_device>);
+BENCHMARK(BM_RNG_URBG<boost::random_device>);
+
+static void BM_RNG_CPRNG(benchmark::State& state) {
   pep::CPRNG gen;
-  std::array<uint8_t, 32> buffer{};
+  std::array<std::uint8_t, NumRandomBytes> buffer{};
   for (auto _ : state) {
     gen(buffer);
     benchmark::DoNotOptimize(buffer);
   }
-  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()*32));
+  SetBytesProcessed(state, buffer.size());
 }
-BENCHMARK(BM_CPRNG);
+BENCHMARK(BM_RNG_CPRNG);
+
+static void BM_RNG_OSSL(benchmark::State& state) {
+  std::array<std::uint8_t, NumRandomBytes> buffer{};
+  for (auto _ : state) {
+    if (RAND_bytes(buffer.data(), buffer.size()) <= 0) {
+      throw pep::OpenSSLError("RAND_bytes failed");
+    }
+    benchmark::DoNotOptimize(buffer);
+  }
+  SetBytesProcessed(state, buffer.size());
+}
+BENCHMARK(BM_RNG_OSSL);
 
 //NOLINTEND(clang-analyzer-deadcode.DeadStores)
 
 BENCHMARK_MAIN();
+
+#ifndef NDEBUG
+static struct WarnDebugImpl : boost::noncopyable {
+  WarnDebugImpl() {
+    std::cerr << "NDEBUG is not defined, are you benchmarking a Debug build?" << std::endl;
+  }
+} WarnDebug;
+#endif
