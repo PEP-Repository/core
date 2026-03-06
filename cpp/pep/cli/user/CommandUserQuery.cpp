@@ -28,7 +28,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
                                                                                            groupsPerUserOpt})))
        + pep::commandline::Parameter("format", "The format of the output.")
              .value(pep::commandline::Value<std::string>()
-                        .allow(std::vector<std::string>({"yaml", "json"}))
+                        .allow({"yaml", "json"})
                         .defaultsTo("yaml", "yaml"))
        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
              .value(pep::commandline::Value<milliseconds::rep>())

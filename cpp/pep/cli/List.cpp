@@ -56,7 +56,7 @@ protected:
       + pep::commandline::Parameter("metadata", "Print metadata - which may contain encrypted entries when only an ID was returned for the file in question; apply pepcli get to the ID to get the decrypted entries").shorthand('m')
       + pep::commandline::Parameter("no-inline-data", "Never retrieve data inline; only return IDs")
       + pep::commandline::Parameter("group-output", "Group the output per participant").shorthand('g')
-      + pep::commandline::Parameter("format", "The format of the output.").value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"yaml", "json"})).defaultsTo("json"));
+      + pep::commandline::Parameter("format", "The format of the output.").value(pep::commandline::Value<std::string>().allow({"yaml", "json"}).defaultsTo("json"));
   }
 
   int execute() override {
@@ -127,19 +127,19 @@ protected:
       }
 
       pt::ptree toPropertyTree() const {
-        pt::ptree toPrint;
+        pt::ptree tree;
         if (!mValues.empty())
-          toPrint.add_child("data", mValues);
+          tree.add_child("data", mValues);
         if (!mIds.empty())
-          toPrint.add_child("ids", mIds);
+          tree.add_child("ids", mIds);
         if (!mMetadata.empty())
-          toPrint.add_child("metadata", mMetadata);
-        toPrint.put("pp", mPp.text());
+          tree.add_child("metadata", mMetadata);
+        tree.put("pp", mPp.text());
         if (mLp.has_value())
-          toPrint.put("lp", *mLp);
+          tree.put("lp", *mLp);
         if (mBlp.has_value())
-          toPrint.put("blp", *mBlp);
-        return toPrint;
+          tree.put("blp", *mBlp);
+        return tree;
       }
     };
 
