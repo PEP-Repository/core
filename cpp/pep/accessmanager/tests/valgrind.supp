@@ -1,4 +1,4 @@
-## Added (3.20, 6.30] ##
+## Last updated for protobuf 6.30 ##
 {
    ProtobufJsonParseUninitialized
    Memcheck:Cond
