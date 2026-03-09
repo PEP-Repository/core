@@ -44,7 +44,6 @@ public:
     return std::numeric_limits<result_type>::max();
   }
 };
-static_assert(std::uniform_random_bit_generator<SecureUrbg>);
 
 /// Generate secure random numbers
 void RandomBytes(std::span<std::byte> out);

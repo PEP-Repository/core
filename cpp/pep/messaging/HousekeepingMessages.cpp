@@ -1,6 +1,8 @@
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/utils/Random.hpp>
 
+#include <random>
+
 namespace pep {
 
 PingRequest::PingRequest(): mId{/*placeholder*/} {

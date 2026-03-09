@@ -5,6 +5,7 @@
 #include <openssl/rand.h>
 
 #include <cassert>
+#include <random>
 
 void pep::UnbufferedRandomBytes(std::span<std::byte> out) {
   auto outInts = ConvertBytes<unsigned char>(out);
@@ -12,6 +13,8 @@ void pep::UnbufferedRandomBytes(std::span<std::byte> out) {
     throw pep::OpenSSLError("RAND_bytes failed");
   }
 }
+
+static_assert(std::uniform_random_bit_generator<pep::SecureUrbg>);
 
 void pep::RandomBytes(std::span<std::byte> out) {
   static_assert(

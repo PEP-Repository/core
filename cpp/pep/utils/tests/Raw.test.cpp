@@ -70,7 +70,7 @@ TEST(Raw, Map) {
 }
 
 TEST(Raw, PackedBE) {
-  uint64_t value{0xcafebabe'deafbeef};
+  const uint64_t value{0xcafebabe'deafbeef};
   auto packed = pep::PackUint64BE(value);
 
   std::ostringstream stream;

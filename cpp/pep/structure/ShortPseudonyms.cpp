@@ -4,6 +4,8 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 
+#include <random>
+
 namespace {
 
 const char SHORT_PSEUDONYM_SECTION_DELIMITER = '.';
