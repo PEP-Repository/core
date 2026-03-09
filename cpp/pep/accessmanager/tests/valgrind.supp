@@ -1,4 +1,4 @@
-## Last updated for protobuf 6.30 ##
+## Last updated for protobuf 6.32 ##
 {
    ProtobufJsonParseUninitialized
    Memcheck:Cond
@@ -17,6 +17,17 @@
    fun:_ZN6google8protobuf4json19JsonStringToMessageESt17basic_string_viewIcSt11char_traitsIcEEPNS0_7MessageERKNS1_12ParseOptionsE
    fun:_ZN3pep33ProtocolBufferedMessageSerializerINS_19GlobalConfigurationEE14fromJsonStringERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
    fun:_ZN12_GLOBAL__N_124AccessManagerBackendTest14SetUpTestSuiteEv
+}
+{
+   ProtobufAddDescriptorsLeak
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_ZN6google8protobuf14DescriptorPool6TablesC1Ev
+   fun:_ZN6google8protobuf14DescriptorPoolC1EPNS0_18DescriptorDatabaseEPNS1_14ErrorCollectorE
+   fun:_ZN6google8protobuf12_GLOBAL__N_116NewGeneratedPoolEv
+   fun:_ZN6google8protobuf14DescriptorPool24InternalAddGeneratedFileEPKvi
+   fun:_ZN6google8protobuf8internal14AddDescriptorsEPKNS1_15DescriptorTableE
 }
 {
    ProtobufParseProto2DescriptorSetBoolOrEnumUninitialized
