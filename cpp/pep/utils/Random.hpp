@@ -10,6 +10,7 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <utility>
 
 namespace pep {
 
@@ -34,7 +35,8 @@ public:
       UnbufferedRandomBytes(std::as_writable_bytes(std::span{buffer_}));
       bufferOffset_ = 0;
     }
-    return buffer_[bufferOffset_++];
+    // Also zero-out data such that secrets don't remain here in memory
+    return std::exchange(buffer_[bufferOffset_++], 0);
   }
 
   [[nodiscard]] static constexpr result_type min() noexcept {
