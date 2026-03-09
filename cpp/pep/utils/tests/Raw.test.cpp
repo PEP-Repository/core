@@ -1,5 +1,4 @@
 #include <pep/utils/Bitpacking.hpp>
-#include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <sstream>
 
@@ -71,8 +70,7 @@ TEST(Raw, Map) {
 }
 
 TEST(Raw, PackedBE) {
-  uint64_t value{};
-  pep::RandomBytes(reinterpret_cast<uint8_t*>(&value), sizeof(uint64_t) / sizeof(uint8_t));
+  uint64_t value{0xcafebabe'deafbeef};
   auto packed = pep::PackUint64BE(value);
 
   std::ostringstream stream;

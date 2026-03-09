@@ -8,12 +8,10 @@ ScalarMultProof ScalarMultProof::Create(
     const CurvePoint& secretTimesBase,
     const CurvePoint& pre,
     const CurvePoint& post,
-    const CurveScalar& secret,
-    CPRNG* rng) {
+    const CurveScalar& secret) {
   PEP_CryptoAssert(secretTimesBase == secret * CurvePoint::Base);
   PEP_CryptoAssert(post == secret * pre);
-  auto nonce = rng == nullptr ? CurveScalar::Random()
-                  : CurveScalar::Random<>(*rng);
+  auto nonce = CurveScalar::Random();
   auto cb = nonce * CurvePoint::Base;
   auto cm = nonce * pre;
   auto challenge = ComputeChallenge(secretTimesBase, pre, post, cb, cm);
@@ -62,21 +60,19 @@ ReshuffleRekeyProof ReshuffleRekeyProof::Create(
     const CurveScalar& reshuffle,
     const CurvePoint& reshufflePoint,
     const CurveScalar& reshuffleOverRekey,
-    const CurvePoint& reshuffleOverRekeyPoint,
-    CPRNG* rng) {
+    const CurvePoint& reshuffleOverRekeyPoint) {
   PEP_CryptoAssert(reshufflePoint == reshuffle * CurvePoint::Base);
   PEP_CryptoAssert(reshuffleOverRekeyPoint == reshuffleOverRekey * CurvePoint::Base);
   return ReshuffleRekeyProof(
-    ScalarMultProof::Create(reshuffleOverRekeyPoint, pre.b, post.b, reshuffleOverRekey, rng),
-    ScalarMultProof::Create(reshufflePoint, pre.c, post.c, reshuffle, rng));
+    ScalarMultProof::Create(reshuffleOverRekeyPoint, pre.b, post.b, reshuffleOverRekey),
+    ScalarMultProof::Create(reshufflePoint, pre.c, post.c, reshuffle));
 }
 
 ReshuffleRekeyProof ReshuffleRekeyProof::CertifiedReshuffleRekey(
     const ElgamalEncryption& in,
     ElgamalEncryption& out,
     const CurveScalar& reshuffle,
-    const ElgamalTranslationKey& rekey,
-    CPRNG* rng) {
+    const ElgamalTranslationKey& rekey) {
 
   auto reshuffleOverRekey = reshuffle * rekey.invert();
   out = {
@@ -91,8 +87,7 @@ ReshuffleRekeyProof ReshuffleRekeyProof::CertifiedReshuffleRekey(
     reshuffle,
     reshuffle * CurvePoint::Base,
     reshuffleOverRekey,
-    reshuffleOverRekey * CurvePoint::Base,
-    rng
+    reshuffleOverRekey * CurvePoint::Base
   );
 }
 
@@ -111,21 +106,19 @@ RerandomizeProof RerandomizeProof::Create(
     const ElgamalPublicKey& publicKey,
     const CurveScalar& rerandomize,
     const CurvePoint& rerandomizePubKey,
-    const CurvePoint& rerandomizePoint,
-    CPRNG* rng) {
+    const CurvePoint& rerandomizePoint) {
   PEP_CryptoAssert(rerandomizePubKey == rerandomize * publicKey);
   PEP_CryptoAssert(rerandomizePoint == rerandomize * CurvePoint::Base);
   return RerandomizeProof(
     rerandomizePubKey,
     rerandomizePoint,
-    ScalarMultProof::Create(rerandomizePoint, publicKey, rerandomizePubKey, rerandomize, rng));
+    ScalarMultProof::Create(rerandomizePoint, publicKey, rerandomizePubKey, rerandomize));
 }
 
 RerandomizeProof RerandomizeProof::CertifiedRerandomize(
     const ElgamalEncryption& in,
-    ElgamalEncryption& out,
-    CPRNG* rng) {
-  auto rerandomize = rng ? CurveScalar::Random(*rng) : CurveScalar::Random();
+    ElgamalEncryption& out) {
+  auto rerandomize = CurveScalar::Random();
   auto rerandomizePubKey = rerandomize * in.publicKey;
   auto rerandomizePoint = rerandomize * CurvePoint::Base;
 
@@ -139,8 +132,7 @@ RerandomizeProof RerandomizeProof::CertifiedRerandomize(
     in.publicKey,
     rerandomize,
     rerandomizePubKey,
-    rerandomizePoint,
-    rng
+    rerandomizePoint
   );
 }
 

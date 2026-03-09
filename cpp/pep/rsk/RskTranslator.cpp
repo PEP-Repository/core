@@ -77,8 +77,7 @@ std::pair<ElgamalEncryption, ReshuffleRekeyProof> RskTranslator::certifiedReshuf
   ReshuffleRekeyProof proofOut = ReshuffleRekeyProof::CertifiedReshuffleRekey(
       CheckValidEncryption(encryption), encryptionOut,
       recipientKeyFactors.reshuffle,
-      recipientKeyFactors.rekey,
-      rng_.get());
+      recipientKeyFactors.rekey);
   return {encryptionOut, proofOut};
 }
 

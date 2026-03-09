@@ -1,6 +1,6 @@
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <pep/utils/Math.hpp>
 
 using namespace std::literals;
 

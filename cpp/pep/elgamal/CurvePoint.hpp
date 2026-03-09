@@ -83,14 +83,6 @@ class CurvePoint {
   [[nodiscard]] friend CurvePoint operator*(const CurveScalar& s, const CurvePoint& p) { return p.mult(s); }
   [[nodiscard]] friend CurvePoint operator*(const PublicCurveScalar& s, const CurvePoint& p)  { return p.mult(s); }
 
-  template<typename RNG>
-  static CurvePoint Random(RNG& rng) {
-    //NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    std::array<uint8_t, 32> randomBuf;
-    rng(randomBuf.data(), randomBuf.size());
-    return CurvePoint::Hash(SpanToString(randomBuf));
-  }
-
   static CurvePoint Random();
 
   static CurvePoint Hash(std::string_view s);

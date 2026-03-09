@@ -4,7 +4,7 @@
 namespace pep {
 
 PingRequest::PingRequest(): mId{/*placeholder*/} {
-  RandomBytes(reinterpret_cast<uint8_t*>(&mId), sizeof(mId));
+  mId = std::uniform_int_distribution<decltype(mId)>{}(ThreadUrbg);
 }
 
 void PingResponse::validate(const PingRequest& isReplyTo) const {

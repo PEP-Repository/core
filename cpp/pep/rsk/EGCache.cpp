@@ -8,6 +8,7 @@
 #include <boost/functional/hash.hpp>
 
 #include <unordered_map>
+#include <mutex>
 #include <shared_mutex>
 #include <atomic>
 
@@ -362,8 +363,7 @@ private:
   ) override;
 
   ElgamalEncryption rerandomize(
-    const ElgamalEncryption& eg,
-    CPRNG* rng=nullptr
+    const ElgamalEncryption& eg
   ) override;
 
   std::shared_ptr<CurvePoint::ScalarMultTable>
@@ -424,16 +424,15 @@ ElgamalEncryption EGCacheImp::rekey(
 }
 
 ElgamalEncryption EGCacheImp::rerandomize(
-    const ElgamalEncryption& eg,
-    CPRNG* rng) {
+    const ElgamalEncryption& eg) {
 
   auto table = scalarMultTable(eg.publicKey);
   ElgamalEncryption ret;
 
   if (table == nullptr)
-    return eg.rerandomize(rng);
+    return eg.rerandomize();
 
-  auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
+  auto r = CurveScalar::Random();
   ret.b = eg.b + (r * CurvePoint::Base);
   ret.c = eg.c + table->mult(r);
   ret.publicKey = eg.publicKey;

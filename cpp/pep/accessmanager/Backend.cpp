@@ -3,7 +3,7 @@
 #include <pep/keyserver/KeyServerMessages.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/async/RxInstead.hpp>
-#include <pep/crypto/CPRNG.hpp>
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 
@@ -404,7 +404,7 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
   // ParticipantGroups by Polymorph Pseudonym
   auto groupedPps = RangeToCollection<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
     mStorage->getPpGroups(participantGroups));
-  std::ranges::shuffle(groupedPps, CPURBG{});
+  std::ranges::shuffle(groupedPps, ThreadUrbg);
 
   std::unordered_map<std::string, pep::IndexList> participantGroupMap;
   for (const auto& [pp, groups] : groupedPps) {

@@ -112,9 +112,4 @@ std::function<TReturn(TClass&&)> MethodAsFree(TReturn (TClass::* fun)() &&) { re
 template <typename TReturn, typename TClass>
 std::function<TReturn(const TClass&&)> MethodAsFree(TReturn (TClass::* fun)() const &&) { return fun; }
 
-/// Generic version of \c std::abs
-[[nodiscard]] constexpr auto Abs(auto v) {
-  return v < decltype(v){/*default*/} ? -std::move(v) : std::move(v);
-}
-
 }

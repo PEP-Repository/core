@@ -1,7 +1,9 @@
 #pragma once
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
-#include <pep/crypto/CPRNG.hpp>
+
+#include <memory>
+
 namespace pep {
 
 // Caches operations on ElgamalEncryption such as RSK.
@@ -28,8 +30,7 @@ public:
   // Caching version of eg.rerandomize() --- faster if called
   // same eg.publicKey.
   [[nodiscard]] virtual ElgamalEncryption rerandomize(
-    const ElgamalEncryption& eg,
-    CPRNG* rng=nullptr
+    const ElgamalEncryption& eg
   ) = 0;
 
   // Caching version of std::make_shared<CurvePoint::ScalarMultTable>(b).

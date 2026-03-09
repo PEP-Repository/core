@@ -140,8 +140,7 @@ bool CurveScalar::operator==(const CurveScalar& other) const {
 }
 
 CurveScalar CurveScalar::Random() {
-  // Compiler can't seem to deduce template parameter RNG itself
-  return CurveScalar::Random<void(uint8_t*,uint64_t)>(RandomBytes);
+  return CurveScalar::From64Bytes(SpanToString(RandomArray<64>()));
 }
 
 CurveScalar CurveScalar::ShortHash(std::string_view s) {

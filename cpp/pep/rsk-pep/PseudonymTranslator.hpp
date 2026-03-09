@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/crypto/CPRNG.hpp>
 #include <pep/rsk-pep/PseudonymTranslationKeys.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/rsk/EGCache.hpp>

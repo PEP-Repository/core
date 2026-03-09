@@ -30,7 +30,7 @@ class ElgamalEncryption {
 
   CurvePoint decrypt(const ElgamalPrivateKey&) const;
 
-  [[nodiscard]] ElgamalEncryption rerandomize(class CPRNG* rng = nullptr) const;
+  [[nodiscard]] ElgamalEncryption rerandomize() const;
   [[nodiscard]] ElgamalEncryption rekey(const ElgamalTranslationKey& rekey) const;
   [[nodiscard]] ElgamalEncryption reshuffle(const CurveScalar& reshuffle) const;
   [[nodiscard]] ElgamalEncryption reshuffleRekey(const CurveScalar& reshuffle, const ElgamalTranslationKey& rekey) const;

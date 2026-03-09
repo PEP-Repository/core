@@ -5,7 +5,8 @@
 #include <pep/rsk/Proofs.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <pep/utils/Math.hpp>
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
@@ -66,7 +67,7 @@ struct MigrationRecord {
   MigrationRecord() = default;
   MigrationRecord(uint64_t toVersion) {
 
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
     this->toVersion = toVersion;
     this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   }
@@ -97,13 +98,11 @@ struct TicketRequestRecord {
       std::string accessGroup,
       std::optional<int64_t> certificateChain) : accessGroup(std::move(accessGroup)), pseudonymSet(pseudonymSet), modeSet(modeSet) {
 
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
 
     // Work around https://github.com/fnc12/sqlite_orm/issues/245 (again).
     // See #826
-    std::string idBytes;
-    RandomBytes(idBytes, 16);
-    this->id = boost::algorithm::hex(idBytes);
+    this->id = boost::algorithm::hex(RandomString(16));
 
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
@@ -184,7 +183,7 @@ struct CertificateChainRecord {
      leaf(std::move(leaf)),
      fingerprint(std::move(fingerprint))
   {
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -211,7 +210,7 @@ struct TicketIssueRecord {
   TicketIssueRecord() = default;
   TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts)
   : timestamp(TicksSinceEpoch<milliseconds>(ts)), request(request), columnSet(columnSet) {
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -233,7 +232,7 @@ struct TicketIssueRecord {
 struct PseudonymSetRecord {
   PseudonymSetRecord() = default;
   PseudonymSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -258,7 +257,7 @@ struct PseudonymSetPseudonymRecord {
   PseudonymSetPseudonymRecord() = default;
   PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set) : set(set) {
     this->pseudonym = RangeToVector(Serialization::ToString(pseudonym.getValidCurvePoint()));
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -279,7 +278,7 @@ struct PseudonymSetPseudonymRecord {
 struct ColumnSetRecord {
   ColumnSetRecord() = default;
   ColumnSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -302,7 +301,7 @@ struct ColumnSetRecord {
 struct ColumnSetColumnRecord {
   ColumnSetColumnRecord() = default;
   ColumnSetColumnRecord(const std::string& column, int64_t set) : set(set), column(column) {
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -322,7 +321,7 @@ struct ColumnSetColumnRecord {
 struct ModeSetRecord {
   ModeSetRecord() = default;
   ModeSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -345,7 +344,7 @@ struct ModeSetRecord {
 struct ModeSetModeRecord {
   ModeSetModeRecord() = default;
   ModeSetModeRecord(const std::string& mode, int64_t set) : set(set), mode(mode) {
-    RandomBytes(this->checksumNonce, 16);
+    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {

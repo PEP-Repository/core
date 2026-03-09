@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
-#include <pep/crypto/CPRNG.hpp>
 
 namespace pep {
 
@@ -44,8 +43,7 @@ class ScalarMultProof {
     const CurvePoint& secretTimesBase,
     const CurvePoint& pre,
     const CurvePoint& post,
-    const CurveScalar& secret,
-    CPRNG* rng=nullptr);
+    const CurveScalar& secret);
 
   // Checks the proof. Throws InvalidProof if the proof is invalid.
   void verify(
@@ -110,8 +108,7 @@ class ReshuffleRekeyProof {
     const CurveScalar& reshuffle,
     const CurvePoint& reshufflePoint,
     const CurveScalar& reshuffleOverRekey,
-    const CurvePoint& reshuffleOverRekeyPoint,
-    CPRNG* rng = nullptr);
+    const CurvePoint& reshuffleOverRekeyPoint);
 
   // Stores the reshuffled & rekeyed version of ElgamalEncryption in to out and
   // returns a zero-knowledge proof of correctness.
@@ -121,8 +118,7 @@ class ReshuffleRekeyProof {
     const ElgamalEncryption& in,
     ElgamalEncryption& out,
     const CurveScalar& reshuffle,
-    const ElgamalTranslationKey& rekey,
-    CPRNG* rng = nullptr);
+    const ElgamalTranslationKey& rekey);
 
   // Checks the proof. Throws InvalidProof if the proof is invalid.
   void verify(
@@ -158,14 +154,12 @@ class RerandomizeProof {
     const ElgamalPublicKey& publicKey,
     const CurveScalar& rerandomize,
     const CurvePoint& rerandomizePubKey,
-    const CurvePoint& rerandomizePoint,
-    CPRNG* rng = nullptr);
+    const CurvePoint& rerandomizePoint);
 
   // XXX Add optimised version to EGCache
   static RerandomizeProof CertifiedRerandomize(
     const ElgamalEncryption& in,
-    ElgamalEncryption& out,
-    CPRNG* rng = nullptr);
+    ElgamalEncryption& out);
 
   // Checks the proof. Throws InvalidProof if the proof is invalid.
   void verify(

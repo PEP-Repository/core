@@ -1,93 +1,41 @@
-#include <pep/utils/Platform.hpp>
 #include <pep/utils/Random.hpp>
 
-#include <chrono>
-#include <system_error>
-#include <thread>
+#include <pep/utils/OpensslUtils.hpp>
 
-using namespace std::chrono_literals;
+#include <openssl/rand.h>
 
-namespace pep {
+#include <cassert>
 
-#ifndef _WIN32
-class URandom {
- private:
-  int fd;
-
- public:
-  URandom() : fd(-1) {
-    fd = open("/dev/urandom", O_RDONLY);
-    if (fd == -1) {
-      throw std::system_error(errno, std::generic_category());
-    }
+void pep::UnbufferedRandomBytes(std::span<std::byte> out) {
+  auto outInts = ConvertBytes<unsigned char>(out);
+  if (RAND_bytes(outInts.data(), static_cast<int>(outInts.size())) <= 0) {
+    throw pep::OpenSSLError("RAND_bytes failed");
   }
+}
 
-  ~URandom() noexcept {
-    close(fd);
-  }
+void pep::RandomBytes(std::span<std::byte> out) {
+  static_assert(
+    SecureUrbg::min() == std::numeric_limits<SecureUrbg::result_type>::min()
+    && SecureUrbg::max() == std::numeric_limits<SecureUrbg::result_type>::max());
 
-  void read(uint8_t* p, uint64_t len) const {
-    ssize_t i{};
+  std::span outLarge(
+    reinterpret_cast<SecureUrbg::result_type*>(out.data()),
+    out.size() / sizeof(typename SecureUrbg::result_type));
+  assert(outLarge.size_bytes() <= out.size());
+  //XXX Replace by std::generate_random in C++26
+  std::ranges::generate(outLarge, std::ref(ThreadUrbg));
 
-    while (len > 0) {
-      i = (len < (1 << 10)) ? static_cast<ssize_t>(len) : (1 << 10);
-      i = ::read(fd, p, static_cast<size_t>(i));
-      if (i < 1) {
-        std::this_thread::sleep_for(100ms);
-        continue;
+  if constexpr (sizeof(typename SecureUrbg::result_type) > 1) {
+    auto outLeftover = out.subspan(outLarge.size_bytes());
+    if (!outLeftover.empty()) {
+      assert(outLeftover.size() < sizeof(typename SecureUrbg::result_type));
+      auto finalNum = static_cast<std::make_unsigned_t<SecureUrbg::result_type>>(ThreadUrbg());
+      for (auto& to : outLeftover) {
+        to = static_cast<std::byte>(finalNum & 0xff);
+        finalNum >>= 8;
       }
-
-      p += i;
-      len -= static_cast<uint64_t>(i);
     }
   }
-};
-#endif
-
-/*! \brief Generates random bytes.
- *
- *  Reads random bytes from /dev/urandom.
- *
- *  \param [out] p The buffer to place the bytes in.
- *  \param len The number of bytes to generate.
- */
-void RandomBytes(uint8_t* p, uint64_t len) {
-  // use Rtl rather than Crypt since we want to avoid loading all the CryptAPI stuff
-#ifdef _WIN32
-  static HMODULE hAdvapi = nullptr;
-  static BOOLEAN (WINAPI *pRtlGenRandom)(
-    PVOID RandomBuffer,
-    ULONG RandomBufferLength
-  ) = nullptr;
-  if (hAdvapi == nullptr)
-    hAdvapi = ::LoadLibrary("Advapi32.dll");
-  if (pRtlGenRandom == nullptr)
-    pRtlGenRandom = (BOOLEAN (WINAPI*)(PVOID, ULONG))::GetProcAddress(hAdvapi, "SystemFunction036");
-
-  if (pRtlGenRandom == nullptr || !pRtlGenRandom(p, static_cast<ULONG>(len))) {
-    throw RandomException();
-  }
-#else
-  static URandom urandom;
-  urandom.read(p, len);
-#endif
 }
 
-void RandomBytes(std::vector<char>& s, size_t len) {
-  s.resize(len);
-  RandomBytes(reinterpret_cast<uint8_t*>(s.data()), len);
-}
-
-void RandomBytes(std::string& s, size_t len) {
-  s.resize(len);
-  RandomBytes(reinterpret_cast<uint8_t*>(s.data()), len);
-}
-
-std::string RandomString(size_t len)
-{
-  std::string result(len, '\0');
-  RandomBytes(result, len);
-  return result;
-}
-
-}
+thread_local pep::SecureUrbg pep::ThreadUrbg;

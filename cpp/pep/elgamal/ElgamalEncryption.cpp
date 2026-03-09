@@ -1,6 +1,5 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
 
-#include <pep/crypto/CPRNG.hpp>
 #include <pep/utils/Sha.hpp>
 
 #include <boost/container_hash/hash.hpp>
@@ -61,8 +60,8 @@ CurvePoint ElgamalEncryption::decrypt(const ElgamalPrivateKey& sk) const {
  * The original point is not changed.
  * \return The rerandomized triple.
  */
-ElgamalEncryption ElgamalEncryption::rerandomize(CPRNG* rng) const {
-  auto rerandomize = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random(*rng);
+ElgamalEncryption ElgamalEncryption::rerandomize() const {
+  auto rerandomize = CurveScalar::Random();
   return {
     b + (rerandomize * CurvePoint::Base),
     c + (rerandomize * publicKey),

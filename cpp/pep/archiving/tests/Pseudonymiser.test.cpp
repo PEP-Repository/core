@@ -1,11 +1,11 @@
 #include <fstream>
+#include <numeric>
 #include <random>
 
 #include <gtest/gtest.h>
 
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
-#include <pep/utils/Random.hpp>
 #include <pep/archiving/Pseudonymiser.hpp>
 #include <pep/archiving/Tar.hpp>
 
@@ -18,7 +18,7 @@ std::vector<size_t> GeneratePositions(size_t size, size_t pseudonymLength) {
   std::vector<size_t> positions{};
   size_t cursor{0};
 
-  std::default_random_engine rng(std::random_device{}());
+  std::default_random_engine rng; //NOLINT(cert-msc51-cpp) Use static default seed
   std::uniform_int_distribution<size_t> dist(0, size - 1);
   for (;;) {
     // Make a jump and add that position to the output. Add at least the pseudonymLength to make sure there will be no overlapping issues.
@@ -51,7 +51,8 @@ void CreateFile(const Path& path, const std::string& contents) {
 
 void CreateFilePair(const Path& inputPath, const Path& expectedPath, const std::string& oldPseudonym, const std::string& newPseudonym, size_t fileSize) {
   std::vector<size_t> positions = GeneratePositions(fileSize, oldPseudonym.length());
-  std::string binaryContent = pep::RandomString(fileSize);
+  std::string binaryContent(fileSize, '\0');
+  std::iota(binaryContent.begin(), binaryContent.end(), '\0');
   InsertPseudonym(binaryContent, oldPseudonym, positions);
   CreateFile(inputPath, binaryContent);
   InsertPseudonym(binaryContent, newPseudonym, positions);

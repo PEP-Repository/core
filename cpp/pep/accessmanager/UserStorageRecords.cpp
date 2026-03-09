@@ -15,7 +15,7 @@ UserIdRecord::UserIdRecord(
     UserIdFlags flags,
     bool tombstone,
     Timestamp timestamp) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(timestamp);
   this->internalUserId = internalUserId;
   this->identifier = std::move(identifier);
@@ -38,7 +38,7 @@ uint64_t UserIdRecord::checksum() const {
 }
 
 UserGroupRecord::UserGroupRecord(int64_t userGroupId, std::string name, std::optional<uint64_t> maxAuthValiditySeconds, bool tombstone) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->userGroupId = userGroupId;
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   this->name = std::move(name);
@@ -65,7 +65,7 @@ UserGroupUserRecord::UserGroupUserRecord(
     int64_t internalUserId,
     int64_t userGroupId,
     bool tombstone) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   this->internalUserId = internalUserId;
   this->userGroupId = userGroupId;

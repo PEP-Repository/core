@@ -49,7 +49,7 @@ PolymorphicPseudonym SelectStarPseudonymRecord::getPolymorphicPseudonym() const 
 }
 
 ParticipantGroupRecord::ParticipantGroupRecord(std::string name, bool tombstone) : tombstone(tombstone), name(std::move(name)) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
 }
 
@@ -64,7 +64,7 @@ ParticipantGroupParticipantRecord::ParticipantGroupParticipantRecord(
   LocalPseudonym localPseudonym,
   std::string participantGroup,
   bool tombstone) : tombstone(tombstone), participantGroup(std::move(participantGroup)) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   this->localPseudonym = RangeToVector(localPseudonym.pack());
 }
@@ -91,7 +91,7 @@ LocalPseudonym ParticipantGroupParticipant::getLocalPseudonym() const {
 
 
 ColumnGroupRecord::ColumnGroupRecord(std::string name, bool tombstone) : tombstone(tombstone), name(std::move(name)) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
 }
 
@@ -104,7 +104,7 @@ uint64_t ColumnGroupRecord::checksum() const {
 
 
 ColumnRecord::ColumnRecord(std::string name, bool tombstone) : tombstone(tombstone), name(std::move(name)) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
 }
 
@@ -119,7 +119,7 @@ ColumnGroupColumnRecord::ColumnGroupColumnRecord(
   std::string column,
   std::string columnGroup,
   bool tombstone) : tombstone(tombstone), columnGroup(std::move(columnGroup)), column(std::move(column)) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
 }
 
@@ -135,7 +135,7 @@ ColumnGroupAccessRuleRecord::ColumnGroupAccessRuleRecord(
   std::string userGroup,
   std::string mode,
   bool tombstone) : tombstone(tombstone), columnGroup(std::move(columnGroup)), userGroup(std::move(userGroup)), mode(std::move(mode)) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
 }
 
@@ -152,7 +152,7 @@ ParticipantGroupAccessRuleRecord::ParticipantGroupAccessRuleRecord(
   std::string userGroup,
   std::string mode,
   bool tombstone) : tombstone(tombstone), participantGroup(std::move(group)), userGroup(std::move(userGroup)), mode(std::move(mode)) {
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
 }
 
@@ -190,7 +190,7 @@ StructureMetadataRecord::StructureMetadataRecord(
     value(std::move(value)) {
   assert((!this->tombstone || this->value.empty()) && "Tombstone with non-empty value");
   assert(!HasInternalId(subjectType));
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
 }
 
 StructureMetadataRecord::StructureMetadataRecord(
@@ -209,7 +209,7 @@ StructureMetadataRecord::StructureMetadataRecord(
     value(std::move(value)) {
   assert((!this->tombstone || this->value.empty()) && "Tombstone with non-empty value");
   assert(HasInternalId(subjectType));
-  RandomBytes(checksumNonce, 16);
+  checksumNonce = RandomVector<char>(16);
 }
 
 uint64_t StructureMetadataRecord::checksum() const {

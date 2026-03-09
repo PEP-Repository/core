@@ -1,7 +1,7 @@
 #include <benchmark/benchmark.h>
 
 #include <boost/algorithm/hex.hpp>
-#include <boost/random/random_device.hpp>
+// #include <boost/random/random_device.hpp>
 
 #include <openssl/rand.h>
 
@@ -12,10 +12,10 @@
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Sha.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
-#include <pep/crypto/CPRNG.hpp>
 
 namespace {
 void SetBytesProcessed(benchmark::State& state, size_t bytesPerIteration)
@@ -357,12 +357,24 @@ static void BM_VerifyDigest(benchmark::State& state) {
 }
 BENCHMARK(BM_VerifyDigest);
 
-static constexpr std::size_t NumRandomBytes = 64; // For CurveScalar::Random
+static constexpr std::size_t NumRandomBytes{64}; // For CurveScalar::Random
 
-static void BM_RNG_RandomBytes(benchmark::State& state) {
-  std::array<std::uint8_t, NumRandomBytes> buffer{};
+// Around 180 MiB/s on my laptop
+static void BM_RNG_UnbufferedRandomBytes(benchmark::State& state) {
+  std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
-    pep::RandomBytes(buffer.data(), buffer.size());
+    pep::UnbufferedRandomBytes(buffer);
+    benchmark::DoNotOptimize(buffer);
+  }
+  SetBytesProcessed(state, buffer.size());
+}
+BENCHMARK(BM_RNG_UnbufferedRandomBytes);
+
+// Around 1 GiB/s on my laptop
+static void BM_RNG_RandomBytes(benchmark::State& state) {
+  std::array<std::byte, NumRandomBytes> buffer{};
+  for (auto _ : state) {
+    pep::RandomBytes(buffer);
     benchmark::DoNotOptimize(buffer);
   }
   SetBytesProcessed(state, buffer.size());
@@ -374,37 +386,14 @@ static void BM_RNG_URBG(benchmark::State& state) {
   URBG gen;
   std::array<typename URBG::result_type, NumRandomBytes / sizeof(typename URBG::result_type)> buffer{};
   for (auto _ : state) {
-    std::ranges::generate(buffer, [&gen] { return gen(); }); // Prevent copying gen
+    std::ranges::generate(buffer, std::ref(gen));
     benchmark::DoNotOptimize(buffer);
   }
   SetBytesProcessed(state, std::span(buffer).size_bytes());
 }
-BENCHMARK(BM_RNG_URBG<pep::CPURBG>);
+BENCHMARK(BM_RNG_URBG<pep::SecureUrbg>); // Approxmiately equal to BM_RNG_RandomBytes
 BENCHMARK(BM_RNG_URBG<std::random_device>);
-BENCHMARK(BM_RNG_URBG<boost::random_device>);
-
-static void BM_RNG_CPRNG(benchmark::State& state) {
-  pep::CPRNG gen;
-  std::array<std::uint8_t, NumRandomBytes> buffer{};
-  for (auto _ : state) {
-    gen(buffer);
-    benchmark::DoNotOptimize(buffer);
-  }
-  SetBytesProcessed(state, buffer.size());
-}
-BENCHMARK(BM_RNG_CPRNG);
-
-static void BM_RNG_OSSL(benchmark::State& state) {
-  std::array<std::uint8_t, NumRandomBytes> buffer{};
-  for (auto _ : state) {
-    if (RAND_bytes(buffer.data(), buffer.size()) <= 0) {
-      throw pep::OpenSSLError("RAND_bytes failed");
-    }
-    benchmark::DoNotOptimize(buffer);
-  }
-  SetBytesProcessed(state, buffer.size());
-}
-BENCHMARK(BM_RNG_OSSL);
+// BENCHMARK(BM_RNG_URBG<boost::random_device>);
 
 //NOLINTEND(clang-analyzer-deadcode.DeadStores)
 
@@ -413,7 +402,7 @@ BENCHMARK_MAIN();
 #ifndef NDEBUG
 static struct WarnDebugImpl : boost::noncopyable {
   WarnDebugImpl() {
-    std::cerr << "NDEBUG is not defined, are you benchmarking a Debug build?" << std::endl;
+    std::cerr << "WARNING: NDEBUG is not defined, are you benchmarking a Debug build?" << std::endl;
   }
 } WarnDebug;
 #endif

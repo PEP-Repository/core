@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/crypto/CPRNG.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk/EGCache.hpp>
 #include <pep/rsk/Proofs.hpp>
@@ -91,9 +90,6 @@ public:
 private:
   Keys keys_;
   EGCache* cache_; // Pointer instead of reference to allow copy/move operations on RskTranslator
-
-  // This is a pointer so that RskTranslator remains movable (mutex is not)
-  std::unique_ptr<CPRNG> rng_; //TODO Is this actually more performant than RandomBytes? As it currently uses locks internally (see note)
 
   [[nodiscard]] CurveScalar generateKeyFactor(
       const KeyFactorSecret& keyFactorSecret,
