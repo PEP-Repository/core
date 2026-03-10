@@ -76,10 +76,6 @@ private:
     // the table cache.
     static_assert(std::is_constructible_v<Value, EGCacheImp*, const Key&>);
 
-    // 'Value' should have an explicit operator bool that indicates whether
-    // it was constructed successfully.
-    // TODO: static_assert this.
-
     struct Entry {
       Entry(EGCacheImp* egcache, const Key& key, uint64_t generation)
         : value(egcache, key), lastUse(generation) {
@@ -100,10 +96,6 @@ private:
 
       inline Value& getValue() {
         return this->value;
-      }
-
-      inline explicit operator bool() const {
-        return value ? true : false;
       }
     };
 
@@ -197,17 +189,6 @@ private:
           std::make_tuple(egcache, key, ++this->generation));
 
       assert(inserted);
-
-      if (!it->second) {
-        // Creation of the entry failed.  The creation of an RSK entry used to be able to
-        // fail, for example, when the table cache was disabled.
-        LOG(LOG_TAG, warning)
-          << "Failed to add entry to " << Options::Name << " cache; "
-            << "disabling. ";
-        this->data.erase(it);
-        this->disable_under_unique_lock();
-        return std::nullopt;
-      }
 
       LOG(LOG_TAG, debug)
         << "Entry added to " << Options::Name << " cache.  size: "
@@ -308,13 +289,6 @@ private:
 
     CurveScalar mKInv;
     CurvePoint mKY;
-
-    // returns whether the value was successfully initialized.
-    // Used to fail when table cache for public key was disabled,
-    // which was used for rerandomization
-    inline explicit operator bool() const {
-      return true;
-    }
   };
 
   struct RSKOptions {
@@ -332,8 +306,6 @@ private:
   struct TableValue {
     TableValue(EGCacheImp* egcache, const CurvePoint& p);
     std::shared_ptr<CurvePoint::ScalarMultTable> mTable;
-
-    inline explicit operator bool() const { return true; }
   };
 
   struct TableOptions {
