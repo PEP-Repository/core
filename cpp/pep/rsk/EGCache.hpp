@@ -18,14 +18,14 @@ public:
     const ElgamalTranslationKey& rekey
   ) = 0;
 
-  // Caching version of eg.rekey(k) --- faster if called
+  // Caching version of eg.rekey(k) --- faster if called many times with
   // same (eg.publicKey, k).
   [[nodiscard]] virtual ElgamalEncryption rekey(
     const ElgamalEncryption& eg,
     const ElgamalTranslationKey& rekey
   ) = 0;
 
-  // Caching version of eg.rerandomize() --- faster if called
+  // Caching version of eg.rerandomize() --- faster if called many times with
   // same eg.publicKey.
   [[nodiscard]] virtual ElgamalEncryption rerandomize(
     const ElgamalEncryption& eg,
