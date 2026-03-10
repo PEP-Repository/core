@@ -15,7 +15,7 @@ Just follow the steps in the [Emscripten docs](https://emscripten.org/docs/getti
 
 Clone https://github.com/conan-io/conan-toolchains and it as Conan remote as described in their [README](https://github.com/conan-io/conan-toolchains?tab=readme-ov-file#-getting-started).
 
-Now reference the [recipe](https://github.com/conan-io/conan-toolchains/tree/main/conan_config/profiles/emsdk) and inform Conan its compiler version by adding the following to the Conan host profile that you will be using for compiling WebAssembly (see next section). You may want to make a local copy that includes the profile from docker-build.
+Now reference the [recipe](https://github.com/conan-io/conan-toolchains/tree/main/conan_config/profiles/emsdk) and inform Conan its compiler version by adding the following to the Conan host profile that you will be using for compiling WebAssembly (see next section).
 
 ```ini
 {% set compiler_version = '4.0.22' %}
@@ -29,6 +29,9 @@ emsdk/{{compiler_version}}
 ```
 
 Substitute `4.0.22` by the specific version you want to use.
+
+!!! info "Adapting Conan profiles from docker-build"
+    When adapting Conan profiles in docker-build, you can either copy them (plus included files) to `~/.conan2/profiles/`, or create a new profile there and include the one from docker-build via `include(/path/to/docker-build/conan_profile)`.
 
 ## Install requirements via Conan
 
@@ -70,7 +73,10 @@ Build Debug & start local servers:
 
 When EMSDK was installed via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script in your build folder.
 
-!!! bug "Windows quirks"
+!!! warning "Windows quirks"
+    - To use scripts like `start_dev.sh`, you'll need to open e.g. Git Bash.
+    - The `conanbuild` script generated will not be compatible Git Bash. Instead, source it in the appropriate Windows shell and then start Git Bash from `C:\Program Files\Git\bin\bash`.
+    - When using PowerShell, sourcing `conanbuild.bat` will not work. Instead, set e.g. `-c tools.env.virtualenv:powershell=...` according to [the docs](https://docs.conan.io/2/reference/config_files/global_conf.html).
     - Nginx may not go to the background or want to shut down with ctrl+C, kill it via the task manager instead.
-    - When installing EMSDK via Conan, you may get "Command line too long" while building. In the emsdk recipe, replace the body of `_define_tool_var` with `return f"python -E \"{os.path.join(self._emscripten, f'{value}.py')}\""`.
+    - When installing EMSDK via Conan, you may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. In the emsdk recipe, replace the body of `_define_tool_var` with `return f"python -E \"{os.path.join(self._emscripten, f'{value}.py')}\""`.
     - websockify may log `WARNING: no 'resource' module, daemonizing is disabled`. This can be ignored.
