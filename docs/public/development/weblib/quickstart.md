@@ -60,7 +60,7 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/Debug/pki/
 
 ## Build & run sample page
 
-Install Nginx and the [websockify](https://github.com/novnc/websockify) Python package (e.g. via [pipx](https://pipx.pypa.io/latest/installation/)). For Windows, use `winget install nginxinc.nginx`.
+Install Nginx and the [websockify](https://github.com/novnc/websockify) Python package (e.g. via [pipx](https://pipx.pypa.io/latest/installation/)). For Windows, use `winget install nginxinc.nginx` (or `freenginx.nginx`).
 
 Build Debug & start local servers:
 
