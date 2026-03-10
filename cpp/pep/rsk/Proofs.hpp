@@ -14,7 +14,7 @@ class InvalidProof : public std::exception {
 };
 
 // A compositional non-interactive zero-knowledge proof that
-// CurvePoints (secretTimesBase, pre, post) are in fact of the form (secret B, pre, secret pre).
+// CurvePoints (secretTimesBase, pre, post) are in fact of the form (secret*B, pre, secret*pre).
 // See https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/
 // and §4 of "Lecture Notes Cryptographic Protocols" by Schoenmakers.
 class ScalarMultProof {
@@ -38,7 +38,7 @@ class ScalarMultProof {
 
   // Constructs a proof from secretTimesBase, pre, post and secret.
   //
-  // Assumes secretTimesBase = secret B and post = secret pre.
+  // Assumes secretTimesBase = secret*B and post = secret*pre.
   static ScalarMultProof Create(
     const CurvePoint& secretTimesBase,
     const CurvePoint& pre,
@@ -100,7 +100,7 @@ class ReshuffleRekeyProof {
 
   // Constructs a proof that pre is reshuffled & rekeyed to post.
   //
-  // Assumes reshufflePoint = reshuffle B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey B
+  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B
   // and (of course) that post is the reshuffled & rekeyed version of pre.
   static ReshuffleRekeyProof Create(
     const ElgamalEncryption& pre,
@@ -149,7 +149,7 @@ class RerandomizeProof {
     mRerandomizeTimesPubKeyProof.ensurePacked();
   }
 
-  // Assumes rerandomizePubKey = rerandomize publicKey, rerandomizePoint = rerandomize B
+  // Assumes rerandomizePubKey = rerandomize*publicKey, rerandomizePoint = rerandomize*B
   static RerandomizeProof Create(
     const ElgamalPublicKey& publicKey,
     const CurveScalar& rerandomize,

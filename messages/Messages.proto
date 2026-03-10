@@ -483,8 +483,8 @@ message TicketRequest2 {
   // Groups of participants to request access to.
   repeated string participant_groups = 2;
 
-  // (Additional) polymorphic pseudonyms to request access to.
-  repeated ElgamalEncryption polymorphic_pseudonyms = 3;
+  // Polymorphic pseudonyms of individual subjects to request access to.
+  repeated ElgamalEncryption access_subjects = 3;
 
   // Column-groups to request access to.
   repeated string column_groups = 4;
@@ -533,7 +533,7 @@ message Ticket2 {
   repeated string modes = 2;
 
   // The local pseudonyms of the participants to which access was granted.
-  repeated LocalPseudonyms pseudonyms = 3;
+  repeated LocalPseudonyms access_subjects = 3;
 
   // The columns to which access was granted.
   repeated string columns = 4;

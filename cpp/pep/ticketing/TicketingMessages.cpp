@@ -14,6 +14,14 @@ void LocalPseudonyms::ensurePacked() const {
     mAccessGroup->ensurePacked();
 }
 
+std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>& lps) {
+  std::vector<PolymorphicPseudonym> pps;
+  pps.reserve(lps.size());
+  for (const auto& p : lps)
+    pps.push_back(p.mPolymorphic);
+  return pps;
+}
+
 bool Ticket2::hasMode(const std::string& mode) const {
   // Check if the ticket explicitly includes the specified mode
   if (std::find(mModes.begin(), mModes.end(), mode) != mModes.end()) {
@@ -29,14 +37,6 @@ bool Ticket2::hasMode(const std::string& mode) const {
   }
   // Mode not covered by the ticket
   return false;
-}
-
-std::vector<PolymorphicPseudonym> Ticket2::getPolymorphicPseudonyms() const {
-  std::vector<PolymorphicPseudonym> ret;
-  ret.reserve(mPseudonyms.size());
-  for (const auto& p : mPseudonyms)
-    ret.push_back(p.mPolymorphic);
-  return ret;
 }
 
 void SignedTicket2::addTranscryptorSignature(Signature signature) {
@@ -56,6 +56,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     throw Error("Transcryptor signature is missing");
 
   try {
+
     // A longer leeway is used for long downloads etc.
     mSignature->validate(
       mData,

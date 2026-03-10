@@ -401,7 +401,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   // Decrypt local pseudonyms
   auto server = SharedFrom(*this);
   auto localPseudonyms = std::make_shared<std::vector<LocalPseudonym>>();
-  return server->mWorkerPool->batched_map<8>(ticket.mPseudonyms,
+  return server->mWorkerPool->batched_map<8>(ticket.mAccessSubjects,
         observe_on_asio(*server->getIoContext()),
         [server, localPseudonyms](LocalPseudonyms elp) -> LocalPseudonym {
           return elp.mAccessManager.decrypt(server->mPseudonymKey);
@@ -560,13 +560,13 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   auto timestamp = TimeNow();
 
-  auto pps = RangeToVector(request.mPolymorphicPseudonyms
+  auto pps = RangeToVector(request.mAccessSubjects
     | views::transform([](const PolymorphicPseudonym& pp) { return Backend::pp_t{pp, true}; }));
 
   std::vector<std::string> modes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
   if (!request.mParticipantGroups.empty()) {
-    // Access to participants does not mean imply permission to list groups they are in, so first check that
+    // Access to participants does not imply permission to list groups they are in, so first check that
     backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
 
     participantGroupMap = backend->fillParticipantGroupMap(request.mParticipantGroups, pps);
@@ -678,18 +678,18 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
       throw std::runtime_error("Transcryptor returned wrong number of entries");
     }
 
-    ctx->ticket.mPseudonyms = std::move(resp.mEntries);
-    if (ctx->ticket.mUserGroup == UserGroup::DataAdministrator && !ctx->ticket.mPseudonyms.empty()) {
-      LOG(LOG_TAG, info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mPseudonyms.size() << " participant(s)";
+    ctx->ticket.mAccessSubjects = std::move(resp.mEntries);
+    if (ctx->ticket.mUserGroup == UserGroup::DataAdministrator && !ctx->ticket.mAccessSubjects.empty()) {
+      LOG(LOG_TAG, info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mAccessSubjects.size() << " participant(s)";
     }
-    for (size_t i = 0; i < ctx->ticket.mPseudonyms.size(); i++) {
-      LocalPseudonym localPseudonym = ctx->ticket.mPseudonyms[i].mAccessManager.decrypt(ctx->server->mPseudonymKey);
+    for (size_t i = 0; i < ctx->ticket.mAccessSubjects.size(); i++) {
+      LocalPseudonym localPseudonym = ctx->ticket.mAccessSubjects[i].mAccessManager.decrypt(ctx->server->mPseudonymKey);
       if (ctx->ticket.mUserGroup != UserGroup::DataAdministrator) {
         ctx->server->backend->checkParticipantAccess(ctx->ticket.mUserGroup, localPseudonym, ctx->participantModes, ctx->ticket.mTimestamp);
       }
       if (ctx->pps[i].isClientProvided && !ctx->server->backend->hasLocalPseudonym(localPseudonym)) {
         if (ctx->ticket.hasMode("write")) {
-          ctx->server->backend->storeLocalPseudonymAndPP(localPseudonym, ctx->ticket.mPseudonyms[i].mPolymorphic);
+          ctx->server->backend->storeLocalPseudonymAndPP(localPseudonym, ctx->ticket.mAccessSubjects[i].mPolymorphic);
         }
       }
     }
@@ -776,7 +776,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     TicketRequest2 ticketRequest;
     ticketRequest.mParticipantGroups = {participantGroup};
     ticketRequest.mModes = {"enumerate"};
-    ticketRequest.mPolymorphicPseudonyms = list;
+    ticketRequest.mAccessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
     TranscryptorRequest tsRequest{
       .mRequest = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data)

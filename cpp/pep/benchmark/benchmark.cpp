@@ -286,7 +286,7 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
     lp.mAccessManager = p1.encrypt(q);
     lp.mPolymorphic = pep::PolymorphicPseudonym::FromIdentifier(q, "1234");
     lp.mStorageFacility = p4.encrypt(q);
-    ticket.mPseudonyms.push_back(lp);
+    ticket.mAccessSubjects.push_back(lp);
   }
   auto identity = pep::X509Identity::MakeSelfSigned("Benchmarker, inc.", "PepBenchmark");
   ret.mTicket2 = std::make_shared<pep::SignedTicket2>(

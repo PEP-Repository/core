@@ -319,7 +319,7 @@ void AccessManager::Backend::storeLocalPseudonymAndPP(const LocalPseudonym& loca
 }
 
 void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
-  if (request.mPolymorphicPseudonyms.size() > 0 && request.mParticipantGroups.size() > 0) {
+  if (request.mAccessSubjects.size() > 0 && request.mParticipantGroups.size() > 0) {
     // We decided to not support this situation any more, since we don't expect this to be used often.
     // At the time of writing this comment, the code was not written with this assumption in mind, so could possibly be
     // simplified The problem we want to solve with this assumption is that if a participant group is given, as well as
@@ -329,7 +329,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
                 "supported. Use either groups or specific participants.");
   }
 
-  auto duplicate = TryFindDuplicateValue(request.mPolymorphicPseudonyms);
+  auto duplicate = TryFindDuplicateValue(request.mAccessSubjects);
   if (duplicate != std::nullopt) {
     LOG(LOG_TAG, error) << "Failing ticket request due to duplicate PP " << duplicate->text();
     throw Error("Ticket request failed due to duplicate polymorphic pseudonym. Please request access to unique "

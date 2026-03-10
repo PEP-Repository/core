@@ -1150,6 +1150,8 @@ docker-integration-on-base-data:
   script:
     - *docker_login
     - tar xzf tests/test_input/base_integration_data.tar.gz
+    # Replace outdated PKI materials that we extracted from the tarball: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2813#note_56966
+    - cd base_integration_data/pki && ../../pki/pki.sh no-root && cd -
     - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir base_integration_data
 
 ##########################################
