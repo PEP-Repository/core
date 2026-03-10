@@ -12,13 +12,7 @@ constexpr uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
 
 namespace pep::messaging {
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
-  return pep::CreateObservable<MessageSequence>([stream, first = std::make_shared<bool>(true)](rxcpp::subscriber<MessageSequence> subscriber) {
-    // Rewind stream to beginning
-    if (!*first) {
-      stream->seekg(0);
-    }
-    *first = false;
-
+  return pep::CreateObservable<MessageSequence>([stream](rxcpp::subscriber<MessageSequence> subscriber) {
     // Try to iteratively emit data in page-sized chunks
     // However: there is no guarantee that read() will do this
     while (stream->good()) {
