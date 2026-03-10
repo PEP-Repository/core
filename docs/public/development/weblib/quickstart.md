@@ -38,7 +38,7 @@ Substitute `4.0.22` by the specific version you want to use.
 As host profile, you can use `docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
 
 !!! bug "Emscripten version detection"
-  Currently, Emscripten version detection for manually installed EMSDK is broken (1) on Windows or (2) with a fresh install, see [this issue](https://github.com/conan-io/conan/issues/19677). For (1), manually specify `compiler.version`. For (2), the second try it should work.
+    Currently, Emscripten version detection for manually installed EMSDK is broken (1) on Windows or (2) with a fresh install, see [this issue](https://github.com/conan-io/conan/issues/19677). For (1), manually specify `compiler.version`. For (2), the second try it should work.
 
 ```shell
 conan install \
@@ -76,7 +76,7 @@ When EMSDK was installed via Conan, you need to put Node.js in PATH by sourcing 
 !!! warning "Windows quirks"
     - To use scripts like `start_dev.sh`, you'll need to open e.g. Git Bash.
     - The `conanbuild` script generated will not be compatible Git Bash. Instead, source it in the appropriate Windows shell and then start Git Bash from `C:\Program Files\Git\bin\bash`.
-    - When using PowerShell, sourcing `conanbuild.bat` will not work. Instead, set e.g. `-c tools.env.virtualenv:powershell=...` according to [the docs](https://docs.conan.io/2/reference/config_files/global_conf.html).
+    - When using PowerShell, sourcing `conanbuild.bat` will not work. Instead, set e.g. `-c tools.env.virtualenv:powershell=...` according to [the docs](https://docs.conan.io/2/reference/config_files/global_conf.html) and source `conanbuild.ps1`.
     - Nginx may not go to the background or want to shut down with ctrl+C, kill it via the task manager instead.
     - When installing EMSDK via Conan, you may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. In the emsdk recipe, replace the body of `_define_tool_var` with `return f"python -E \"{os.path.join(self._emscripten, f'{value}.py')}\""`.
     - websockify may log `WARNING: no 'resource' module, daemonizing is disabled`. This can be ignored.
