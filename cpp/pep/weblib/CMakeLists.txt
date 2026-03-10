@@ -143,7 +143,7 @@ add_custom_command(
     TARGET ${PROJECT_NAME}Weblib PRE_BUILD
     COMMENT "Make sure typescript is installed"
     COMMAND ${NPM_PROGRAM} install --no-audit --omit=dev --save-prod typescript
-    WORKING_DIRECTORY "$ENV{EMSDK}/upstream/emscripten/"
+    WORKING_DIRECTORY "${EMSCRIPTEN_ROOT_PATH}"
     VERBATIM
 )
 

@@ -49,7 +49,7 @@ if(DEFINED ENV{CI_COMMIT_REF_NAME})
     message("CI build for branch: $ENV{CI_COMMIT_REF_NAME}")
 endif()
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
+if(CMAKE_HOST_SYSTEM_NAME MATCHES "Windows")
     set(INVOKE_SH powershell -ExecutionPolicy Bypass -File ${PROJECT_SOURCE_DIR}/scripts/invoke-sh.ps1)
 else()
     set(INVOKE_SH "")
