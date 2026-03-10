@@ -15,9 +15,9 @@
     "pep-repo-client": "file:../pep-repo-client-lib"
   },
   "devDependencies": {
-    "compression-webpack-plugin": "^11.1.0",
+    "compression-webpack-plugin": "^12.0.0",
     "typescript": "^5.9.3",
-    "webpack": "^5.104.1",
+    "webpack": "^5.105.4",
     "webpack-cli": "^6.0.1"
   }
 }
