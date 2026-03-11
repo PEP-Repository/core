@@ -1,3 +1,4 @@
+#include <pep/async/RxFinallyExhaust.hpp>
 #include <pep/messaging/Node.hpp>
 #include <pep/networking/tests/TestServerFactory.test.hpp>
 #include <pep/utils/Defer.hpp>
@@ -16,30 +17,37 @@ void TestConnectionBasics(TestServerFactory& factory) {
   auto client = pep::messaging::Node::Create(*factory.createClientParameters(*serverParameters));
 
   server->start()
+    .concat_map([server, protocol](const pep::messaging::Connection::Attempt::Result& result) {
+    EXPECT_TRUE(result) << protocol << " server connection attempt failed";
+    if (result) {
+      auto connection = *result;
+      EXPECT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " server produced non-initialized connection";
+    }
+    return server->shutdown();
+      })
+    .op(pep::RxFinallyExhaust(io_context, [server]() { return server->shutdown(); })) // Ensure that the server is shut down even if exceptions are raised
     .subscribe(
-      [server, protocol](const pep::messaging::Connection::Attempt::Result& result) {
-        PEP_DEFER(server->shutdown()); // Ensure that the server is shut down even if test assertions fail
-        ASSERT_TRUE(result) << protocol << " server connection attempt failed";
-        auto connection = *result;
-        ASSERT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " server produced non-initialized connection";
-      },
+      [](pep::FakeVoid) { /* ignore */ },
       [server, protocol](std::exception_ptr error) {
-        PEP_DEFER(server->shutdown()); // Ensure that the server is shut down even when FAIL() 
         FAIL() << protocol << " server connectivity produced an error: " << pep::GetExceptionMessage(error);
       },
       []() { /* ignore */}
     );
 
   client->start()
-    .subscribe(
+    .concat_map(
       [client, protocol](const pep::messaging::Connection::Attempt::Result& result) {
-        PEP_DEFER(client->shutdown()); // Ensure that the client is shut down even if test assertions fail
-        ASSERT_TRUE(result) << protocol << " client connection attempt failed";
-        auto connection = *result;
-        ASSERT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " client produced non-initialized connection";
-      },
+        EXPECT_TRUE(result) << protocol << " client connection attempt failed";
+        if (result) {
+          auto connection = *result;
+          EXPECT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " client produced non-initialized connection";
+        }
+        return client->shutdown();
+      })
+    .op(pep::RxFinallyExhaust(io_context, [client]() { return client->shutdown(); })) // Ensure that the server is shut down even if exceptions are raised
+    .subscribe(
+      [](pep::FakeVoid) { /* ignore */ },
       [client, protocol](std::exception_ptr error) {
-        PEP_DEFER(client->shutdown()); // Ensure that the client is shut down even when FAIL() 
         FAIL() << protocol << " client connectivity produced an error: " << pep::GetExceptionMessage(error);
       },
       []() { /* ignore */}
