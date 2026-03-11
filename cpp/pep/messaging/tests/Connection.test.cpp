@@ -18,6 +18,7 @@ void TestConnectionBasics(TestServerFactory& factory) {
 
   server->start()
     .concat_map([server, protocol](const pep::messaging::Connection::Attempt::Result& result) {
+    std::cerr << protocol << " server connection attempt" << std::endl;
     EXPECT_TRUE(result) << protocol << " server connection attempt failed";
     if (result) {
       auto connection = *result;
@@ -27,16 +28,22 @@ void TestConnectionBasics(TestServerFactory& factory) {
       })
     .op(pep::RxFinallyExhaust(io_context, [server]() { return server->shutdown(); })) // Ensure that the server is shut down even if exceptions are raised
     .subscribe(
-      [](pep::FakeVoid) { /* ignore */ },
+      [protocol](pep::FakeVoid) {
+        std::cerr << protocol << " server shutdown result" << std::endl;
+      },
       [server, protocol](std::exception_ptr error) {
+        std::cerr << protocol << " server connectivity error" << pep::GetExceptionMessage(error) << std::endl;
         FAIL() << protocol << " server connectivity produced an error: " << pep::GetExceptionMessage(error);
       },
-      []() { /* ignore */}
+      [protocol]() {
+        std::cerr << protocol << " server shutdown complete" << std::endl;
+      }
     );
 
   client->start()
     .concat_map(
       [client, protocol](const pep::messaging::Connection::Attempt::Result& result) {
+        std::cerr << protocol << " client connection attempt" << std::endl;
         EXPECT_TRUE(result) << protocol << " client connection attempt failed";
         if (result) {
           auto connection = *result;
@@ -46,11 +53,16 @@ void TestConnectionBasics(TestServerFactory& factory) {
       })
     .op(pep::RxFinallyExhaust(io_context, [client]() { return client->shutdown(); })) // Ensure that the server is shut down even if exceptions are raised
     .subscribe(
-      [](pep::FakeVoid) { /* ignore */ },
+      [protocol](pep::FakeVoid) {
+        std::cerr << protocol << " client shutdown result" << std::endl;
+      },
       [client, protocol](std::exception_ptr error) {
+        std::cerr << protocol << " client connectivity error" << pep::GetExceptionMessage(error) << std::endl;
         FAIL() << protocol << " client connectivity produced an error: " << pep::GetExceptionMessage(error);
       },
-      []() { /* ignore */}
+      [protocol]() {
+        std::cerr << protocol << " client shutdown complete" << std::endl;
+      }
     );
 
   ASSERT_NO_FATAL_FAILURE(io_context.run());
