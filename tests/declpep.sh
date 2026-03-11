@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 json_file="$1"
 if [ ! -f "$json_file" ]; then
