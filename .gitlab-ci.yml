@@ -90,6 +90,7 @@ variables:
     cpp/pep/crypto/pepCryptoUnitTests
     cpp/pep/elgamal/pepElgamalUnitTests
     cpp/pep/keyserver/pepKeyServerUnitTests
+    cpp/pep/messaging/pepMessagingUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
     cpp/pep/rsk/pepRskUnitTests
