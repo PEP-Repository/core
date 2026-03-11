@@ -1,0 +1,18 @@
+{ "userGroups": [{ "name": "TestUserGroup" }],
+  "columnGroups": [{
+    "name": "TestColumnGroup",
+    "columns": [
+      { "name": "TestColumnGroup.columnA" },
+      {"name": "TestColumnGroup.columnB" }
+    ],
+    "cgars": [{ "userGroup": "TestUserGroup", "permissions": [ "read", "write" ] }]
+  }],
+  "participantGroups": [{
+    "name": "TestParticipants",
+    "participants": [
+      { "TestColumnGroup.columnA": "A1", "TestColumnGroup.columnB": "B1" },
+      { "TestColumnGroup.columnA": "A2", "TestColumnGroup.columnB": "B2" }
+    ],
+    "pgars": [{ "userGroup": "TestUserGroup", "permissions": [ "enumerate", "access" ] }]
+  }]
+}
