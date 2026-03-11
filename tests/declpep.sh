@@ -8,7 +8,7 @@ fi
 
 # user groups
 jq -r '.userGroups[] |
-  "pepcli --oauth-token-group \"Access Administrator\" user group create \(.name)"' \
+  "pepcli --oauth-token-group \"Access Administrator\" user group create \(.)"' \
   "$json_file"
 
 echo ""
@@ -27,7 +27,7 @@ echo ""
 
 # individual columns
 jq -r '.columnGroups[] | .name as $group | .columns[] |
-  "pepcli --oauth-token-group \"Data Administrator\" ama column create \(.name)\npepcli --oauth-token-group \"Data Administrator\" ama column addTo \(.name) \($group)"' \
+  "pepcli --oauth-token-group \"Data Administrator\" ama column create \(.)\npepcli --oauth-token-group \"Data Administrator\" ama column addTo \(.) \($group)"' \
   "$json_file"
 
 echo ""

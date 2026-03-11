@@ -1,10 +1,7 @@
-{ "userGroups": [{ "name": "TestUserGroup" }],
+{ "userGroups": [ "TestUserGroup" ],
   "columnGroups": [{
     "name": "TestColumnGroup",
-    "columns": [
-      { "name": "TestColumnGroup.columnA" },
-      {"name": "TestColumnGroup.columnB" }
-    ],
+    "columns": [ "TestColumnGroup.columnA", "TestColumnGroup.columnB" ],
     "cgars": [{ "userGroup": "TestUserGroup", "permissions": [ "read", "write" ] }]
   }],
   "participantGroups": [{
