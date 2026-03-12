@@ -24,7 +24,7 @@ class CurvePoint {
   // and Panda doesn't have a constant for the base point.
   // In any case, you'll probably just want to scale it anyway.
   /// Tag to represent base point.
-  static const class BaseT {} Base;
+  static inline constexpr class BaseT {} Base{};
 
   // The number of bytes in the CurvePoint's packed representation
   static constexpr size_t PACKEDBYTES = GROUP_GE_PACKEDBYTES;
