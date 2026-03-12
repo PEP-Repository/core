@@ -13,9 +13,9 @@ template <typename T>
 }
 
 template <std::unsigned_integral T>
-[[nodiscard]] constexpr T CeilDiv(const T divident, const T divisor) noexcept {
-  auto quotient = divident / divisor;
-  const auto remainder = divident % divisor;
+[[nodiscard]] constexpr T CeilDiv(const T dividend, const T divisor) noexcept {
+  auto quotient = dividend / divisor;
+  const auto remainder = dividend % divisor;
   if (remainder) {
     ++quotient;
   }
