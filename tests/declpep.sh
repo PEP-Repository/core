@@ -33,8 +33,7 @@ partition_by_substring() {
   readonly substring="$1"
 
   local tempfile
-  tempfile=$(mktemp)
-  trap 'rm -f "$tempfile"' RETURN
+  tempfile=$(mktemp) && trap 'rm -f "$tempfile"' RETURN
 
   tee "$tempfile" | grep -e "$substring"
   cat "$tempfile" | grep -v "$substring"
