@@ -18,7 +18,8 @@ void pep::UnbufferedRandomBytes(std::span<std::byte> out) {
 
 static_assert(std::uniform_random_bit_generator<pep::CryptoUrbg>);
 
-static void AssignLeftoverRandomBytes(std::span<std::byte> outLeftover) {
+namespace {
+void AssignLeftoverRandomBytes(std::span<std::byte> outLeftover) {
   if (!outLeftover.empty()) {
     assert(outLeftover.size() < sizeof(typename pep::CryptoUrbg::result_type));
     auto finalNum = static_cast<std::make_unsigned_t<pep::CryptoUrbg::result_type>>(pep::ThreadUrbg());
@@ -27,6 +28,7 @@ static void AssignLeftoverRandomBytes(std::span<std::byte> outLeftover) {
       finalNum >>= 8;
     }
   }
+}
 }
 
 void pep::RandomBytes(std::span<std::byte> out) {
