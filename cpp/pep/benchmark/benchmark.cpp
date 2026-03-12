@@ -361,7 +361,7 @@ static constexpr std::size_t NumRandomBytes{64}; // For CurveScalar::Random
 
 // Around 180 MiB/s on my laptop
 static void BM_RNG_UnbufferedRandomBytes(benchmark::State& state) {
-  std::array<std::byte, NumRandomBytes> buffer{};
+  alignas(std::uint64_t) std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
     pep::UnbufferedRandomBytes(buffer);
     benchmark::DoNotOptimize(buffer);
@@ -372,7 +372,7 @@ BENCHMARK(BM_RNG_UnbufferedRandomBytes);
 
 // Around 1 GiB/s on my laptop
 static void BM_RNG_RandomBytes(benchmark::State& state) {
-  std::array<std::byte, NumRandomBytes> buffer{};
+  alignas(pep::SecureUrbg::result_type) std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
     pep::RandomBytes(buffer);
     benchmark::DoNotOptimize(buffer);
@@ -384,7 +384,10 @@ BENCHMARK(BM_RNG_RandomBytes);
 template <std::uniform_random_bit_generator URBG>
 static void BM_RNG_URBG(benchmark::State& state) {
   URBG gen;
-  std::array<typename URBG::result_type, NumRandomBytes / sizeof(typename URBG::result_type)> buffer{};
+  alignas(typename URBG::result_type) std::array<
+    typename URBG::result_type,
+    NumRandomBytes / sizeof(typename URBG::result_type)
+  > buffer{};
   for (auto _ : state) {
     std::ranges::generate(buffer, std::ref(gen));
     benchmark::DoNotOptimize(buffer);
