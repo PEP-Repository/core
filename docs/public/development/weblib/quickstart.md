@@ -73,6 +73,8 @@ Build Debug & start local servers:
 
 When EMSDK was installed via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script in your build folder.
 
+Now you can finally open http://localhost:2280/weblib/pep-sample-client/ in your browser. Try to log in as Research Assessor and list columns, for example.
+
 !!! warning "Windows quirks"
     - To use scripts like `start_dev.sh`, you'll need to open e.g. Git Bash.
     - The `conanbuild` script generated will not be compatible Git Bash. Instead, source it in the appropriate Windows shell and then start Git Bash from `C:\Program Files\Git\bin\bash`.
