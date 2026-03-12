@@ -384,7 +384,7 @@ BENCHMARK(BM_RNG_RandomBytes);
 template <std::uniform_random_bit_generator URBG>
 static void BM_RNG_URBG(benchmark::State& state) {
   URBG gen;
-  alignas(typename URBG::result_type) std::array<
+  std::array<
     typename URBG::result_type,
     NumRandomBytes / sizeof(typename URBG::result_type)
   > buffer{};
