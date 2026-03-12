@@ -36,7 +36,7 @@ constexpr To CheckedCast(std::integral auto from) {
     || std::cmp_greater(from, std::numeric_limits<To>::max())) {
     detail::CheckedCastThrow();
   }
-  return from;
+  return static_cast<To>(from);
 }
   
 }
