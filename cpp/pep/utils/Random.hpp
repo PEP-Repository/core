@@ -67,6 +67,7 @@ template <ByteLike Byte = std::byte>
 
 template<std::size_t Length>
 [[nodiscard]] std::array<std::byte, Length> RandomArray() {
+  // Try to align contents for efficiency
   alignas(SecureUrbg::result_type) std::array<std::byte, Length> buf; //NOLINT(cppcoreguidelines-pro-type-member-init)
   RandomBytes(buf);
   return buf;

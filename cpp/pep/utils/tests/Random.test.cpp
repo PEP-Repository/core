@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <type_traits>
 
 namespace {
 
@@ -14,6 +15,10 @@ TEST(RandomBytes, largeZerosFraction) {
   EXPECT_LT(numZeros, buf.size() / sizeof(std::uint64_t))
     << "Found suspiciously many zeros in random buffer: " << numZeros << '/' << buf.size() << " bytes";
 }
+
+// Assert that the first member of the array will be at the same address as the array,
+// which is necessary for alignas to work as intended.
+static_assert(std::is_standard_layout_v<std::array<std::byte, 2>>);
 
 TEST(RandomBytes, wordZero) {
   std::array<bool, sizeof(std::uint64_t) * 3> nonzeroSeen{};

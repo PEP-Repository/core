@@ -1,7 +1,6 @@
 #include <benchmark/benchmark.h>
 
 #include <boost/algorithm/hex.hpp>
-// #include <boost/random/random_device.hpp>
 
 #include <openssl/rand.h>
 
@@ -361,6 +360,7 @@ static constexpr std::size_t NumRandomBytes{64}; // For CurveScalar::Random
 
 // Around 180 MiB/s on my laptop
 static void BM_RNG_UnbufferedRandomBytes(benchmark::State& state) {
+  // Try to align contents, which might provide a speedup
   alignas(std::uint64_t) std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
     pep::UnbufferedRandomBytes(buffer);
@@ -372,6 +372,7 @@ BENCHMARK(BM_RNG_UnbufferedRandomBytes);
 
 // Around 1 GiB/s on my laptop
 static void BM_RNG_RandomBytes(benchmark::State& state) {
+  // Try to align contents for efficiency
   alignas(pep::SecureUrbg::result_type) std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
     pep::RandomBytes(buffer);
@@ -396,7 +397,6 @@ static void BM_RNG_URBG(benchmark::State& state) {
 }
 BENCHMARK(BM_RNG_URBG<pep::SecureUrbg>); // Approxmiately equal to BM_RNG_RandomBytes
 BENCHMARK(BM_RNG_URBG<std::random_device>);
-// BENCHMARK(BM_RNG_URBG<boost::random_device>);
 
 //NOLINTEND(clang-analyzer-deadcode.DeadStores)
 
