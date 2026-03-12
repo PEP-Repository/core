@@ -4,9 +4,9 @@
     "columns": [ "TestColumnGroup.columnA", "TestColumnGroup.columnB" ],
     "cgars": [{ "userGroup": "TestUserGroup", "permissions": [ "read", "write" ] }]
   }],
-  "participantGroups": [{
-    "name": "TestParticipants",
-    "participants": [
+  "subjectGroups": [{
+    "name": "TestSubjects",
+    "subjects": [
       { "TestColumnGroup.columnA": "A1", "TestColumnGroup.columnB": "B1" },
       { "TestColumnGroup.columnA": "A2", "TestColumnGroup.columnB": "B2" }
     ],

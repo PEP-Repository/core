@@ -52,21 +52,21 @@ jqr '.columnGroups[] | .name as $group | .columns[]' \
 empty_line
 
 # subject groups
-jqr '.participantGroups[]' \
+jqr '.subjectGroups[]' \
   'pepcli --oauth-token-group "Data Administrator" ama group create \(.name)'
 
 # subject group access rules
-jqr '.participantGroups[].pgars[]' \
+jqr '.subjectGroups[].pgars[]' \
   'pepcli --oauth-token-group "Access Administrator" ama pgar create \(.userGroup) \(.permissions[])'
 
 empty_line
 
 # individual subjects
-jqr '.participantGroups[] | .name as $group | .participants | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
+jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
   '\($bash_var)="$(pepcli --oauth-token-group "Data Administrator" register id)"' "\n" \
   'pepcli --oauth-token-group "Data Administrator" ama group addTo \($group) "${\($bash_var)}"'
 
 empty_line
 
-jqr '.participantGroups[] | .name as $group | .participants | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
+jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
   'pepcli --oauth-token-group "Data Administrator" store -p "${\($bash_var)}" -c "\(.key)" -d "\(.value)"'
