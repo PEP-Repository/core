@@ -35,27 +35,28 @@ void pep::RandomBytes(std::span<std::byte> out) {
     && SecureUrbg::max() == std::numeric_limits<SecureUrbg::result_type>::max());
 
   // First try to assign values as returned from the URBG.
-  // We align the pointer if necessary for a multi-byte data type.
+  // We align the pointer if necessary for a multi-byte data type,
+  // because not all platforms support unaligned writes to larger types.
   void* alignPtr = out.data();
   std::size_t spaceExclAlign = out.size();
   static_assert(alignof(SecureUrbg::result_type) <= sizeof(SecureUrbg::result_type));
   if constexpr (alignof(SecureUrbg::result_type) > 1) {
     (void) std::align(alignof(SecureUrbg::result_type), 0, alignPtr, spaceExclAlign);
   }
-  std::span outAligned(
+  std::span outAlignedWords(
     static_cast<SecureUrbg::result_type*>(alignPtr),
     spaceExclAlign / sizeof(typename SecureUrbg::result_type));
-  assert(outAligned.size_bytes() <= out.size());
+  assert(outAlignedWords.size_bytes() <= out.size());
   //XXX Replace by std::generate_random in C++26
-  std::ranges::generate(outAligned, std::ref(ThreadUrbg));
+  std::ranges::generate(outAlignedWords, std::ref(ThreadUrbg));
 
-  [[maybe_unused]] auto outAlignedBytes = std::as_writable_bytes(outAligned);
+  [[maybe_unused]] auto outAlignedBytes = std::as_writable_bytes(outAlignedWords);
   if constexpr (alignof(SecureUrbg::result_type) > 1) {
-    // Assign start
+    // Assign start: left of outAlignedWords
     AssignLeftoverRandomBytes(std::span(out.data(), outAlignedBytes.data()));
   }
   if constexpr (sizeof(SecureUrbg::result_type) > 1) {
-    // Assign end
+    // Assign end: right of outAlignedWords
     AssignLeftoverRandomBytes(std::span(outAlignedBytes.data() + outAlignedBytes.size(), out.data() + out.size()));
   }
 }
