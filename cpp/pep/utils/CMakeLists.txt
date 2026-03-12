@@ -34,7 +34,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     LifeCycler.cpp LifeCycler.hpp
     LocalSettings.cpp LocalSettings.hpp
     Log.cpp Log.hpp
-    Math.hpp
+    Math.cpp Math.hpp
     Md5.cpp Md5.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp

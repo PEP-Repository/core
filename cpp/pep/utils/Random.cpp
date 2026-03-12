@@ -1,5 +1,6 @@
 #include <pep/utils/Random.hpp>
 
+#include <pep/utils/Math.hpp>
 #include <pep/utils/OpensslUtils.hpp>
 
 #include <openssl/rand.h>
@@ -10,7 +11,7 @@
 
 void pep::UnbufferedRandomBytes(std::span<std::byte> out) {
   auto outInts = ConvertBytes<unsigned char>(out);
-  if (RAND_bytes(outInts.data(), static_cast<int>(outInts.size())) <= 0) {
+  if (RAND_bytes(outInts.data(), CheckedCast<int>(outInts.size())) <= 0) {
     throw pep::OpenSSLError("RAND_bytes failed");
   }
 }

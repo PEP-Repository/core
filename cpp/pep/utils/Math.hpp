@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <limits>
 #include <utility>
 
 namespace pep {
@@ -19,6 +20,23 @@ template <std::unsigned_integral T>
     ++quotient;
   }
   return quotient;
+}
+
+namespace detail {
+// Avoids <stdexcept> header inclusion
+/// \throws std::range_error
+[[noreturn]] void CheckedCastThrow();
+}
+
+/// Narrowing integer cast, alternative for \c static_cast
+/// \throws std::range_error if \p from does not fit in \c To
+template <std::integral To>
+constexpr To CheckedCast(std::integral auto from) {
+  if (std::cmp_less(from, std::numeric_limits<To>::min())
+    || std::cmp_greater(from, std::numeric_limits<To>::max())) {
+    detail::CheckedCastThrow();
+  }
+  return from;
 }
   
 }
