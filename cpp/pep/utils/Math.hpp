@@ -24,7 +24,7 @@ template <std::unsigned_integral T>
 
 namespace detail {
 // Avoids <stdexcept> header inclusion
-/// \throws std::range_error
+/// \throws std::range_error Always
 [[noreturn]] void CheckedCastThrow();
 }
 
