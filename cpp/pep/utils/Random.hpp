@@ -19,7 +19,7 @@ void UnbufferedRandomBytes(std::span<std::byte> out);
 // A cryptographically secure pseudo-random number generator compatible
 // with std::random_device. (An "URBG".)
 // Not thread-safe.
-class SecureUrbg : boost::noncopyable {
+class CryptoUrbg : boost::noncopyable {
 public:
   // 64-bit is much faster than 8-bit
   using result_type = std::uint64_t;
@@ -68,11 +68,11 @@ template <ByteLike Byte = std::byte>
 template<std::size_t Length>
 [[nodiscard]] std::array<std::byte, Length> RandomArray() {
   // Try to align contents for efficiency
-  alignas(SecureUrbg::result_type) std::array<std::byte, Length> buf; //NOLINT(cppcoreguidelines-pro-type-member-init)
+  alignas(CryptoUrbg::result_type) std::array<std::byte, Length> buf; //NOLINT(cppcoreguidelines-pro-type-member-init)
   RandomBytes(buf);
   return buf;
 }
 
-extern thread_local SecureUrbg ThreadUrbg;
+extern thread_local CryptoUrbg ThreadUrbg;
 
 }

@@ -373,7 +373,7 @@ BENCHMARK(BM_RNG_UnbufferedRandomBytes);
 // Around 1 GiB/s on my laptop
 static void BM_RNG_RandomBytes(benchmark::State& state) {
   // Try to align contents for efficiency
-  alignas(pep::SecureUrbg::result_type) std::array<std::byte, NumRandomBytes> buffer{};
+  alignas(pep::CryptoUrbg::result_type) std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
     pep::RandomBytes(buffer);
     benchmark::DoNotOptimize(buffer);
@@ -395,7 +395,7 @@ static void BM_RNG_URBG(benchmark::State& state) {
   }
   SetBytesProcessed(state, std::span(buffer).size_bytes());
 }
-BENCHMARK(BM_RNG_URBG<pep::SecureUrbg>); // Approxmiately equal to BM_RNG_RandomBytes
+BENCHMARK(BM_RNG_URBG<pep::CryptoUrbg>); // Approxmiately equal to BM_RNG_RandomBytes
 BENCHMARK(BM_RNG_URBG<std::random_device>);
 
 //NOLINTEND(clang-analyzer-deadcode.DeadStores)
