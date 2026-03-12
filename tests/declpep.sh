@@ -58,7 +58,8 @@ empty_line
 # individual columns
 jqr '.columnGroups[] | .name as $group | .columns[]' \
   'pepcli --oauth-token-group "Data Administrator" ama column create \(.)' "\n" \
-  'pepcli --oauth-token-group "Data Administrator" ama column addTo \(.) \($group)'
+  'pepcli --oauth-token-group "Data Administrator" ama column addTo \(.) \($group)' |
+  partition_by_substring "ama column create"
 
 empty_line
 
