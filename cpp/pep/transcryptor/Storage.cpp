@@ -65,9 +65,8 @@ struct MigrationRecord {
   constexpr static uint64_t TargetVersion = 2;
 
   MigrationRecord() = default;
-  MigrationRecord(uint64_t toVersion) {
-
-    checksumNonce = RandomVector<char>(16);
+  MigrationRecord(uint64_t toVersion)
+    : checksumNonce(RandomVector<char>(16)) {
     this->toVersion = toVersion;
     this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   }
@@ -96,9 +95,11 @@ struct TicketRequestRecord {
       int64_t modeSet,
       std::string pseudonymHash,
       std::string accessGroup,
-      std::optional<int64_t> certificateChain) : accessGroup(std::move(accessGroup)), pseudonymSet(pseudonymSet), modeSet(modeSet) {
-
-    checksumNonce = RandomVector<char>(16);
+      std::optional<int64_t> certificateChain)
+    : checksumNonce(RandomVector<char>(16)),
+      accessGroup(std::move(accessGroup)),
+      pseudonymSet(pseudonymSet),
+      modeSet(modeSet) {
 
     // Work around https://github.com/fnc12/sqlite_orm/issues/245 (again).
     // See #826
@@ -179,11 +180,10 @@ struct CertificateChainRecord {
       std::vector<char>&& leaf,
       std::optional<int64_t> parent,
       std::vector<char>&& fingerprint)
-   : parent(parent),
-     leaf(std::move(leaf)),
-     fingerprint(std::move(fingerprint))
-  {
-    checksumNonce = RandomVector<char>(16);
+    : checksumNonce(RandomVector<char>(16)),
+      parent(parent),
+      leaf(std::move(leaf)),
+      fingerprint(std::move(fingerprint)) {
   }
 
   uint64_t checksum() const {
@@ -209,8 +209,10 @@ struct CertificateChainRecord {
 struct TicketIssueRecord {
   TicketIssueRecord() = default;
   TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts)
-  : timestamp(TicksSinceEpoch<milliseconds>(ts)), request(request), columnSet(columnSet) {
-    checksumNonce = RandomVector<char>(16);
+    : checksumNonce(RandomVector<char>(16)),
+      timestamp(TicksSinceEpoch<milliseconds>(ts)),
+      request(request),
+      columnSet(columnSet) {
   }
 
   uint64_t checksum() const {
@@ -231,8 +233,9 @@ struct TicketIssueRecord {
 // Records an immutable set of local logger pseudonyms.
 struct PseudonymSetRecord {
   PseudonymSetRecord() = default;
-  PseudonymSetRecord(std::string key) : key(std::move(key)) {
-    checksumNonce = RandomVector<char>(16);
+  PseudonymSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -255,9 +258,10 @@ struct PseudonymSetRecord {
 // Records which pseudonym to which pseudonym record
 struct PseudonymSetPseudonymRecord {
   PseudonymSetPseudonymRecord() = default;
-  PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set) : set(set) {
+  PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set) {
     this->pseudonym = RangeToVector(Serialization::ToString(pseudonym.getValidCurvePoint()));
-    checksumNonce = RandomVector<char>(16);
   }
 
   uint64_t checksum() const {
@@ -277,8 +281,9 @@ struct PseudonymSetPseudonymRecord {
 // Records an immutable set of local logger pseudonyms.
 struct ColumnSetRecord {
   ColumnSetRecord() = default;
-  ColumnSetRecord(std::string key) : key(std::move(key)) {
-    checksumNonce = RandomVector<char>(16);
+  ColumnSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -300,8 +305,10 @@ struct ColumnSetRecord {
 // Records which column belongs to which column set
 struct ColumnSetColumnRecord {
   ColumnSetColumnRecord() = default;
-  ColumnSetColumnRecord(const std::string& column, int64_t set) : set(set), column(column) {
-    checksumNonce = RandomVector<char>(16);
+  ColumnSetColumnRecord(const std::string& column, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set),
+      column(column) {
   }
 
   uint64_t checksum() const {
@@ -320,8 +327,9 @@ struct ColumnSetColumnRecord {
 // Records an immutable set of modes.
 struct ModeSetRecord {
   ModeSetRecord() = default;
-  ModeSetRecord(std::string key) : key(std::move(key)) {
-    checksumNonce = RandomVector<char>(16);
+  ModeSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -343,8 +351,10 @@ struct ModeSetRecord {
 // Records which mode belongs to which mode set
 struct ModeSetModeRecord {
   ModeSetModeRecord() = default;
-  ModeSetModeRecord(const std::string& mode, int64_t set) : set(set), mode(mode) {
-    checksumNonce = RandomVector<char>(16);
+  ModeSetModeRecord(const std::string& mode, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set),
+      mode(mode) {
   }
 
   uint64_t checksum() const {
