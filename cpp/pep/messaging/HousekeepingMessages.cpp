@@ -5,9 +5,8 @@
 
 namespace pep {
 
-PingRequest::PingRequest(): mId{/*placeholder*/} {
-  mId = std::uniform_int_distribution<decltype(mId)>{}(ThreadUrbg);
-}
+PingRequest::PingRequest()
+  : mId{std::uniform_int_distribution<decltype(mId)>{}(ThreadUrbg)} {}
 
 void PingResponse::validate(const PingRequest& isReplyTo) const {
   if (mId != isReplyTo.mId) {
