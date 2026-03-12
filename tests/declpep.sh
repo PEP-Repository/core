@@ -68,8 +68,8 @@ jqr '.subjectGroups[]' \
   'pepcli --oauth-token-group "Data Administrator" ama group create \(.name)'
 
 # subject group access rules
-jqr '.subjectGroups[].pgars[]' \
-  'pepcli --oauth-token-group "Access Administrator" ama pgar create \(.userGroup) \(.permissions[])'
+jqr '.subjectGroups[] | .name as $group | .pgars[]' \
+  'pepcli --oauth-token-group "Access Administrator" ama pgar create \($group) \(.userGroup) \(.permissions[])'
 
 empty_line
 
