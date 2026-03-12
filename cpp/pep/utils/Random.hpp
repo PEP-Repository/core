@@ -30,6 +30,7 @@ private:
   unsigned bufferOffset_ = static_cast<decltype(bufferOffset_)>(buffer_.size());
 
 public:
+  // Define inline for performance
   [[nodiscard]] result_type operator()() {
     if (bufferOffset_ == buffer_.size()) {
       UnbufferedRandomBytes(std::as_writable_bytes(std::span{buffer_}));
@@ -59,7 +60,7 @@ inline void RandomBytes(std::span<unsigned char> out) { RandomBytes(std::as_writ
 }
 
 template <ByteLike Byte = std::byte>
-[[nodiscard]] inline std::vector<Byte> RandomVector(std::size_t len) {
+[[nodiscard]] std::vector<Byte> RandomVector(std::size_t len) {
   std::vector<Byte> result(len);
   RandomBytes(result);
   return result;
