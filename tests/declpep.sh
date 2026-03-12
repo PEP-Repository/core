@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016 # Reason: we are intentionally using single quoted strings to avoid expansion
 
-json_file="$1"
-if [ ! -f "$json_file" ]; then
-  echo "Error: JSON file not found."
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 {cleanup|setup} <json>"
   exit 1
 fi
+
+command="$1"
+json="$2"
 
 # Runs a jq filter on $json_file and then feeds this into a jq format string
 # The first argument specifies the filter
@@ -20,7 +22,7 @@ jqr() {
   shift
   local genlines=${*//\"/\\\"}
 
-  jq -r "$filter | \"$genlines\"" "$json_file" | trim
+  echo "$json" | jq -r "$filter | \"$genlines\"" | trim
 }
 
 # Prints an empty line
@@ -30,7 +32,7 @@ empty_line() {
 
 # Move lines with the substring before those without it
 partition_by_substring() {
-  readonly substring="$1"
+  local substring="$1"
 
   local tempfile
   tempfile=$(mktemp) && trap 'rm -f "$tempfile"' RETURN
@@ -39,47 +41,66 @@ partition_by_substring() {
   cat "$tempfile" | grep -v "$substring"
 }
 
-# user groups
-jqr '.userGroups[]' \
-  'pepcli --oauth-token-group "Access Administrator" user group create \(.)'
+generate_pep_commands_in_setup_order() {
+  createOrRemove=$([ "$command" == "setup" ] && echo "create" || echo "remove")
+  addOrRemove=$([ "$command" == "setup" ] && echo "addTo" || echo "removeFrom")
 
-empty_line
+  # user groups
+  jqr '.userGroups[]' \
+    'pepcli --oauth-token-group "Access Administrator" user group' "$createOrRemove" '\(.)'
 
-# column groups
-jqr '.columnGroups[]' \
-  'pepcli --oauth-token-group "Data Administrator" ama columnGroup create \(.name)'
+  empty_line
 
-# column group access rules
-jqr '.columnGroups[] | .name as $group | .cgars[]' \
-  'pepcli --oauth-token-group "Access Administrator" ama cgar create \($group) \(.userGroup) \(.permissions[])'
+  # column groups
+  jqr '.columnGroups[]' \
+    'pepcli --oauth-token-group "Data Administrator" ama columnGroup' "$createOrRemove" '\(.name)'
 
-empty_line
+  # column group access rules
+  jqr '.columnGroups[] | .name as $group | .cgars[]' \
+    'pepcli --oauth-token-group "Access Administrator" ama cgar' "$createOrRemove" '\($group) \(.userGroup) \(.permissions[])'
 
-# individual columns
-jqr '.columnGroups[] | .name as $group | .columns[]' \
-  'pepcli --oauth-token-group "Data Administrator" ama column create \(.)' "\n" \
-  'pepcli --oauth-token-group "Data Administrator" ama column addTo \(.) \($group)' |
-  partition_by_substring "ama column create"
+  empty_line
 
-empty_line
+  # individual columns
+  jqr '.columnGroups[] | .name as $group | .columns[]' \
+    'pepcli --oauth-token-group "Data Administrator" ama column' "$createOrRemove" '\(.)' "\n" \
+    'pepcli --oauth-token-group "Data Administrator" ama column' "$addOrRemove" '\(.) \($group)' |
+    partition_by_substring "ama column create"
 
-# subject groups
-jqr '.subjectGroups[]' \
-  'pepcli --oauth-token-group "Data Administrator" ama group create \(.name)'
+  empty_line
 
-# subject group access rules
-jqr '.subjectGroups[] | .name as $group | .pgars[]' \
-  'pepcli --oauth-token-group "Access Administrator" ama pgar create \($group) \(.userGroup) \(.permissions[])'
+  # subject groups
+  jqr '.subjectGroups[]' \
+    'pepcli --oauth-token-group "Data Administrator" ama group' "$createOrRemove" '\(.name)'
 
-empty_line
+  # subject group access rules
+  jqr '.subjectGroups[] | .name as $group | .pgars[]' \
+    'pepcli --oauth-token-group "Access Administrator" ama pgar' "$createOrRemove" '\($group) \(.userGroup) \(.permissions[])'
 
-# individual subjects
-jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
-  '\($bash_var)="$(pepcli --oauth-token-group "Data Administrator" register id)"' "\n" \
-  'pepcli --oauth-token-group "Data Administrator" ama group addTo \($group) "${\($bash_var)}"' |
-  partition_by_substring "register id"
+  empty_line
 
-empty_line
+  # individual subjects
+  if [ "$command" == "setup" ]; then
+    jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
+      '\($bash_var)="$(pepcli --oauth-token-group "Data Administrator" register id)"'
+  fi
 
-jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
-  'pepcli --oauth-token-group "Data Administrator" store -p "${\($bash_var)}" -c "\(.key)" -d "\(.value)"'
+  jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
+    'pepcli --oauth-token-group "Data Administrator" ama group' "$addOrRemove" '\($group) "${\($bash_var)}"'
+
+  if [ "$command" == "setup" ]; then
+    empty_line
+
+    jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
+      'pepcli --oauth-token-group "Data Administrator" store -p "${\($bash_var)}" -c "\(.key)" -d "\(.value)"'
+  fi
+}
+
+if [[ "$1" == "setup" ]]; then
+  generate_pep_commands_in_setup_order
+elif [[ "$1" == "cleanup" ]]; then
+  generate_pep_commands_in_setup_order | tac
+else
+  echo "\"$command\" is not a supported command."
+  exit 1
+fi
