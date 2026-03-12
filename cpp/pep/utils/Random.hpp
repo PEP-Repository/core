@@ -16,9 +16,8 @@ namespace pep {
 
 void UnbufferedRandomBytes(std::span<std::byte> out);
 
-// A cryptographically secure pseudo-random number generator compatible
-// with std::random_device. (An "URBG".)
-// Not thread-safe.
+/// A cryptographically secure pseudo-random number generator satisfying \c std::uniform_random_bit_generator
+/// \warning Not thread-safe
 class CryptoUrbg : boost::noncopyable {
 public:
   // 64-bit is much faster than 8-bit
