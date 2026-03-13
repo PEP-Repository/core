@@ -176,12 +176,13 @@ constexpr auto CopyToRange(
   std::ranges::output_range<std::ranges::range_value_t<decltype(src)>> auto&& dst)
 requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<decltype(dst)>) {
   using namespace std::ranges;
-  using iter_diff = range_difference_t<decltype(src)>;
+  using IterDiff = range_difference_t<decltype(src)>;
+  const IterDiff copySize{std::min(
+      static_cast<IterDiff>(size(src)),
+      static_cast<IterDiff>(size(dst)))};
   return copy_n(
     begin(std::forward<decltype(src)>(src)),
-    std::min(
-      static_cast<iter_diff>(size(src)),
-      static_cast<iter_diff>(size(dst))),
+    copySize,
     begin(std::forward<decltype(dst)>(dst)));
 }
 
