@@ -242,7 +242,7 @@ private:
                                    sp.getColumn().getFullName(),
                                    std::make_shared<std::string>(pep::GenerateShortPseudonym(
                                      sp.getPrefix(),
-                                     static_cast<int>(sp.getLength()))),
+                                     sp.getLength())),
                                    std::vector<pep::NamedMetadataXEntry>({ pep::MetadataXEntry::MakeFileExtension(".txt") }));
 
             return client->storeData2(entries);

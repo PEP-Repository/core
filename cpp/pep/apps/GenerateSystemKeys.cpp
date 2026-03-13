@@ -18,9 +18,7 @@ class GenerateSystemKeysApplication : public pep::Application {
   class GenerateKeysFileCommand : public pep::commandline::ChildCommandOf<GenerateSystemKeysApplication> {
   private:
     static std::string GenerateHMACKey() {
-      std::string randomBytes;
-      RandomBytes(randomBytes, HMAC_BYTES);
-      return boost::algorithm::hex(randomBytes);
+      return boost::algorithm::hex(RandomString(HMAC_BYTES));
     }
 
   protected:

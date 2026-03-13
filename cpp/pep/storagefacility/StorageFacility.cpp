@@ -4,7 +4,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/async/CreateObservable.hpp>
-#include <pep/crypto/CPRNG.hpp>
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Hasher.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
@@ -156,9 +156,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   std::filesystem::path encIdKeyFile;
   auto pageStoreConfig = std::make_shared<Configuration>();
 
-  std::string strPseudonymKey;
-  std::string encIdKey;
-
   try {
     auto pw = config.get<std::optional<uint8_t>>("ParallelisationWidth");
     if (pw.has_value()) {
@@ -180,6 +177,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     throw;
   }
 
+  std::string strPseudonymKey;
   try {
     Configuration keysConfig = Configuration::FromFile(keysFile);
     strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
@@ -192,11 +190,12 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   // Why a seperate file for the EncIdKey?  Well, we want the key to be
   // auto-generated (if it doesn't exist yet) and it is likely that the
   // main keysfile is read-only.  (We wouldn't want to risk to overwrite it.)
+  std::string encIdKey;
   if (!std::filesystem::exists(encIdKeyFile)) {
     LOG(LOG_TAG, warning)
       << "The file " << encIdKeyFile << " does not exist. "
       << "Generating new one.  This should occur only once!";
-    RandomBytes(encIdKey, 32);
+    encIdKey = RandomString(32);
     boost::property_tree::ptree root;
     root.add<std::string>(
       "Key",
@@ -372,7 +371,6 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 
   struct StreamContext {
     // Context used earlier
-    CPRNG cprng;
     decltype(time) start_time;
   };
   auto ctx = std::make_shared<StreamContext>();
@@ -384,8 +382,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
     observe_on_asio(*getIoContext()),
     [ctx, this](ResponseEntry re) {
       re.entry.mPolymorphicKey = this->getEgCache().rerandomize(
-        re.entry.mPolymorphicKey,
-        &ctx->cprng
+        re.entry.mPolymorphicKey
       );
       re.entry.mPolymorphicKey.ensurePacked();
 
@@ -455,7 +452,6 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response = std::make_shared<DataEnumerationResponse2>();
     };
 
-    CPRNG cprng;
     for (size_t i = 0; i < request.mIds.size(); i++) {
       // TODO execute decryption in WorkerPool
       auto sfid = server->decryptId(request.mIds[i]);
@@ -476,7 +472,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       DataEnumerationEntry2 entry;
       entry.mMetadata = server->compileMetadata(column, *sfentry);
       // TODO execute rerandomization in WorkerPool
-      entry.mPolymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey(), &cprng);
+      entry.mPolymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
       entry.mFileSize = sfcontent->payload()->size();
       entry.mId = request.mIds[i];
       entry.mIndex = static_cast<uint32_t>(i);
