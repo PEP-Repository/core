@@ -11,19 +11,6 @@
 
 namespace pep {
 
-namespace {
-void AssignLeftoverRandomBytes(std::span<std::byte> outLeftover) {
-  if (!outLeftover.empty()) {
-    assert(outLeftover.size() < sizeof(typename CryptoUrbg::result_type));
-    auto finalNum = static_cast<std::make_unsigned_t<CryptoUrbg::result_type>>(ThreadUrbg());
-    for (auto& to : outLeftover) {
-      to = static_cast<std::byte>(finalNum & 0xff);
-      finalNum >>= 8;
-    }
-  }
-}
-}
-
 void UnbufferedRandomBytes(std::span<std::byte> out) {
   auto outInts = ConvertBytes<unsigned char>(out);
   if (RAND_bytes(outInts.data(), CheckedCast<int>(outInts.size())) <= 0) {
@@ -55,14 +42,35 @@ void RandomBytes(std::span<std::byte> out) {
   //XXX Replace by std::generate_random in C++26
   std::ranges::generate(outAlignedWords, std::ref(ThreadUrbg));
 
-  [[maybe_unused]] auto outAlignedBytes = std::as_writable_bytes(outAlignedWords);
-  if constexpr (alignof(CryptoUrbg::result_type) > 1) {
-    // Assign start: left of outAlignedWords
-    AssignLeftoverRandomBytes(std::span(out.data(), outAlignedBytes.data()));
-  }
   if constexpr (sizeof(CryptoUrbg::result_type) > 1) {
+    const auto assignLeftoverRandomBytes = [](std::span<std::byte> outLeftover) {
+      if (!outLeftover.empty()) {
+        assert(outLeftover.size() < sizeof(CryptoUrbg::result_type));
+        auto finalNum = static_cast<CryptoUrbg::result_type>(ThreadUrbg());
+        for (auto& to : outLeftover) {
+          to = static_cast<std::byte>(finalNum & 0xff);
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+// Nonsensical warning: we check sizeof above
+# pragma GCC diagnostic ignored "-Wshift-count-overflow"
+#endif
+          finalNum >>= 8;
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
+        }
+      }
+    };
+
+    auto outAlignedBytes = std::as_writable_bytes(outAlignedWords);
+
+    if constexpr (alignof(CryptoUrbg::result_type) > 1) {
+      // Assign start: left of outAlignedWords
+      assignLeftoverRandomBytes(std::span(out.data(), outAlignedBytes.data()));
+    }
+
     // Assign end: right of outAlignedWords
-    AssignLeftoverRandomBytes(std::span(outAlignedBytes.data() + outAlignedBytes.size(), out.data() + out.size()));
+    assignLeftoverRandomBytes(std::span(outAlignedBytes.data() + outAlignedBytes.size(), out.data() + out.size()));
   }
 }
 
