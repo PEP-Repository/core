@@ -360,8 +360,7 @@ static constexpr std::size_t NumRandomBytes{64}; // For CurveScalar::Random
 
 // Around 180 MiB/s on my laptop
 static void BM_RNG_UnbufferedRandomBytes(benchmark::State& state) {
-  // Try to align contents, which might provide a speedup
-  alignas(std::uint64_t) std::array<std::byte, NumRandomBytes> buffer{};
+  std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
     pep::UnbufferedRandomBytes(buffer);
     benchmark::DoNotOptimize(buffer);
@@ -372,8 +371,7 @@ BENCHMARK(BM_RNG_UnbufferedRandomBytes);
 
 // Around 1 GiB/s on my laptop
 static void BM_RNG_RandomBytes(benchmark::State& state) {
-  // Try to align contents for efficiency
-  alignas(pep::CryptoUrbg::result_type) std::array<std::byte, NumRandomBytes> buffer{};
+  std::array<std::byte, NumRandomBytes> buffer{};
   for (auto _ : state) {
     pep::RandomBytes(buffer);
     benchmark::DoNotOptimize(buffer);
@@ -395,7 +393,10 @@ static void BM_RNG_URBG(benchmark::State& state) {
   }
   SetBytesProcessed(state, std::span(buffer).size_bytes());
 }
-BENCHMARK(BM_RNG_URBG<pep::CryptoUrbg>); // Approxmiately equal to BM_RNG_RandomBytes
+// Around 380 MiB/s on my laptop
+// Slower than RandomBytes because result_type is small
+BENCHMARK(BM_RNG_URBG<pep::CryptoUrbg>);
+// Around 2 MiB/s on my laptop
 BENCHMARK(BM_RNG_URBG<std::random_device>);
 
 //NOLINTEND(clang-analyzer-deadcode.DeadStores)
