@@ -9,20 +9,13 @@
 #include <memory>
 #include <random>
 
-void pep::UnbufferedRandomBytes(std::span<std::byte> out) {
-  auto outInts = ConvertBytes<unsigned char>(out);
-  if (RAND_bytes(outInts.data(), CheckedCast<int>(outInts.size())) <= 0) {
-    throw pep::OpenSSLError("RAND_bytes failed");
-  }
-}
-
-static_assert(std::uniform_random_bit_generator<pep::CryptoUrbg>);
+namespace pep {
 
 namespace {
 void AssignLeftoverRandomBytes(std::span<std::byte> outLeftover) {
   if (!outLeftover.empty()) {
-    assert(outLeftover.size() < sizeof(typename pep::CryptoUrbg::result_type));
-    auto finalNum = static_cast<std::make_unsigned_t<pep::CryptoUrbg::result_type>>(pep::ThreadUrbg());
+    assert(outLeftover.size() < sizeof(typename CryptoUrbg::result_type));
+    auto finalNum = static_cast<std::make_unsigned_t<CryptoUrbg::result_type>>(ThreadUrbg());
     for (auto& to : outLeftover) {
       to = static_cast<std::byte>(finalNum & 0xff);
       finalNum >>= 8;
@@ -31,7 +24,16 @@ void AssignLeftoverRandomBytes(std::span<std::byte> outLeftover) {
 }
 }
 
-void pep::RandomBytes(std::span<std::byte> out) {
+void UnbufferedRandomBytes(std::span<std::byte> out) {
+  auto outInts = ConvertBytes<unsigned char>(out);
+  if (RAND_bytes(outInts.data(), CheckedCast<int>(outInts.size())) <= 0) {
+    throw OpenSSLError("RAND_bytes failed");
+  }
+}
+
+static_assert(std::uniform_random_bit_generator<CryptoUrbg>);
+
+void RandomBytes(std::span<std::byte> out) {
   // Confirm that the URBG generates the full range
   static_assert(
     CryptoUrbg::min() == std::numeric_limits<CryptoUrbg::result_type>::min()
@@ -64,4 +66,5 @@ void pep::RandomBytes(std::span<std::byte> out) {
   }
 }
 
-thread_local pep::CryptoUrbg pep::ThreadUrbg;
+thread_local CryptoUrbg ThreadUrbg;
+}

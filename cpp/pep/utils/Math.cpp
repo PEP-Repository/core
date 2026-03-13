@@ -2,6 +2,12 @@
 
 #include <stdexcept>
 
-void pep::detail::CheckedCastThrow() {
+namespace pep {
+
+namespace detail {
+void CheckedCastThrow() {
   throw std::range_error("CheckedCast: number out of range");
+}
+}
+
 }
