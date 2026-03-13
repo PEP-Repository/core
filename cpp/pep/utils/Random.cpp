@@ -5,8 +5,6 @@
 
 #include <openssl/rand.h>
 
-#include <cassert>
-#include <memory>
 #include <random>
 
 namespace pep {

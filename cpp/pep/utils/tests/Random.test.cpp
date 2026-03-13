@@ -3,8 +3,7 @@
 #include <pep/utils/Random.hpp>
 
 #include <algorithm>
-#include <functional>
-#include <type_traits>
+#include <vector>
 
 namespace {
 
@@ -13,7 +12,7 @@ TEST(RandomBytes, zerosFraction) {
     std::vector<std::byte> buf(size);
     pep::RandomBytes(buf);
     auto numZeros = std::ranges::count(buf, std::byte{});
-    EXPECT_LT(numZeros, buf.size() / sizeof(std::uint64_t))
+    EXPECT_LT(numZeros, buf.size() / 8)
       << "Found suspiciously many zeros in random buffer: " << numZeros << '/' << buf.size() << " bytes";
   }
 }
