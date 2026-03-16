@@ -16,48 +16,29 @@ void TestConnectionBasics(TestServerFactory& factory) {
   auto server = pep::messaging::Node::Create(*serverParameters, handler);
   auto client = pep::messaging::Node::Create(*factory.createClientParameters(*serverParameters));
 
-  // Ensure that the test terminates even if one of the parties doesn't signal a connection attempt, e.g. because the other side closes the connection before it's fully established
-  auto shutdown = [server, client]() {
-    return server->shutdown()
-      .concat(client->shutdown());
+  auto runNode = [&io_context, protocol](std::shared_ptr<pep::messaging::Node> node, const std::string& type, std::shared_ptr<pep::messaging::Node> other) {
+    auto description = protocol + ' ' + type;
+    node->start()
+      .concat_map([node, description](const pep::messaging::Connection::Attempt::Result& result) {
+      EXPECT_TRUE(result) << description << " connection attempt failed";
+      if (result) {
+        auto connection = *result;
+        EXPECT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << description << " produced non-initialized connection";
+      }
+      return node->shutdown();
+        })
+      .op(pep::RxFinallyExhaust(io_context, [other]() { return other->shutdown(); })) // Ensure that the test terminates even if the other party doesn't signal a connection attempt, e.g. because its (TLS) connection is never fully established
+      .subscribe(
+        [](pep::FakeVoid) { /* ignore */ },
+        [description](std::exception_ptr error) {
+          FAIL() << description << " connectivity produced an error : " << pep::GetExceptionMessage(error);
+        },
+        []() { /* ignore */}
+      );
     };
 
-  server->start()
-    .concat_map([server, protocol](const pep::messaging::Connection::Attempt::Result& result) {
-    EXPECT_TRUE(result) << protocol << " server connection attempt failed";
-    if (result) {
-      auto connection = *result;
-      EXPECT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " server produced non-initialized connection";
-    }
-    return server->shutdown();
-      })
-    .op(pep::RxFinallyExhaust(io_context, [shutdown]() { return shutdown(); }))
-    .subscribe(
-      [](pep::FakeVoid) { /* ignore */ },
-      [server, protocol](std::exception_ptr error) {
-        FAIL() << protocol << " server connectivity produced an error: " << pep::GetExceptionMessage(error);
-      },
-      []() { /* ignore */}
-    );
-
-  client->start()
-    .concat_map(
-      [client, protocol](const pep::messaging::Connection::Attempt::Result& result) {
-        EXPECT_TRUE(result) << protocol << " client connection attempt failed";
-        if (result) {
-          auto connection = *result;
-          EXPECT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << protocol << " client produced non-initialized connection";
-        }
-        return client->shutdown();
-      })
-    .op(pep::RxFinallyExhaust(io_context, [shutdown]() { return shutdown(); }))
-    .subscribe(
-      [](pep::FakeVoid) { /* ignore */ },
-      [client, protocol](std::exception_ptr error) {
-        FAIL() << protocol << " client connectivity produced an error: " << pep::GetExceptionMessage(error);
-      },
-      []() { /* ignore */}
-    );
+  runNode(server, "server", client);
+  runNode(client, "client", server);
 
   ASSERT_NO_FATAL_FAILURE(io_context.run());
 }
