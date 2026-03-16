@@ -134,7 +134,7 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def pull_data_for_column_groups_and_subject_groups(self, column_groups: list[str], subject_groups : list[str]):
+    def pull_data_for_column_groups_and_subject_groups(self, column_groups: list[str], subject_groups : list[str], force: bool = False, output_directory: str = None):
         if not isinstance(column_groups, list):
             raise ValueError("Column groups must be a list of strings")
         if not isinstance(subject_groups, list):
@@ -144,6 +144,10 @@ class AccessGroup:
             command.extend(["-C", column_group])
         for part_group in subject_groups:
             command.extend(["-P", part_group])
+        if force:
+            command.extend(["--force"])
+        if output_directory:
+            command.extend(["--output-directory", output_directory])
         try:
             self.repository.run_command(command)
             self.log("Successfully downloaded data")
@@ -156,6 +160,7 @@ class AccessGroup:
         try:
             output = self.repository.run_command(command)
             self.log("Successfully listed column access")
+            output = output.decode('utf-8')  # Decode bytes to string
             column_groups = []
             columns = []
             lines = output.split("\n")

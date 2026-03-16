@@ -63,7 +63,7 @@ class Connector(AccessGroup):
 
         Args:
             repository: PEPRepository instance
-            config: ConnectorConfig instance (required)
+            config: ConnectorConfig instance
         """
         super().__init__(repository)
 
@@ -95,9 +95,9 @@ class Connector(AccessGroup):
             if level == logging.CRITICAL:
                 self.prometheus_metrics.track_fatal_error(message)
 
-    def get_data_info(self, columns: list[str]) -> dict[str, dict[str, dict]]:
+    def get_column_timestamps(self, columns: list[str]) -> dict[str, dict[str, dict]]:
         """
-        Get local pseudonyms and timestamps for a given participant and column.
+        Get local pseudonyms and timestamps for given column names.
 
         Args:
             columns: The column names to check

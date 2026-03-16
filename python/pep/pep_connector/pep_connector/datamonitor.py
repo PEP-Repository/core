@@ -43,7 +43,7 @@ class DataMonitor(Connector):
         Returns:
             Tuple containing:
             - List of dictionaries with missing entries information
-            - Dictionary with data_info
+            - Dictionary with column_timestamps
             - Dictionary with participant_info
         """
         self.log(f"Finding missing entries. Monitor columns: {monitor_columns}, Info columns: {info_columns}", level=logging.DEBUG)
@@ -59,7 +59,7 @@ class DataMonitor(Connector):
 
         # Get data info for the monitor columns
         self.log("Getting data info for monitor (metadata only)", level=logging.DEBUG)
-        data_info = self.get_data_info(monitor_columns)
+        column_timestamps = self.get_column_timestamps(monitor_columns)
 
         missing_entries = []
 
@@ -67,15 +67,15 @@ class DataMonitor(Connector):
         for lp, info_data in participant_info.items():
             missing_columns = []
 
-            # Check if this local pseudonym exists in data_info
-            if lp not in data_info:
+            # Check if this local pseudonym exists in column_timestamps
+            if lp not in column_timestamps:
                 # All monitor columns are missing
                 missing_columns = monitor_columns.copy()
                 self.log(f"Participant {lp} is missing all monitor columns", level=logging.DEBUG)
             else:
                 # Check each monitor column
                 for column in monitor_columns:
-                    if column not in data_info[lp] or "timestamp" not in data_info[lp][column]:
+                    if column not in column_timestamps[lp] or "timestamp" not in column_timestamps[lp][column]:
                         missing_columns.append(column)
                         self.log(f"Participant {lp} is missing column {column}", level=logging.DEBUG)
 
@@ -88,7 +88,7 @@ class DataMonitor(Connector):
                 })
 
         self.log(f"Found {len(missing_entries)} participants with missing data", level=logging.DEBUG)
-        return missing_entries, data_info, participant_info
+        return missing_entries, column_timestamps, participant_info
 
     def read_prometheus_timestamp(self, metrics_file_path):
         """
@@ -237,14 +237,14 @@ class DataMonitor(Connector):
         self.log(f"Generated HTML for {len(timestamps)} prometheus components", level=logging.DEBUG)
         return html
 
-    def _calculate_column_stats(self, monitor_columns: list[str], participant_info: dict, data_info: dict) -> dict:
+    def _calculate_column_stats(self, monitor_columns: list[str | dict], participant_info: dict, column_timestamps: dict) -> dict:
         """
         Calculate column completion statistics.
 
         Args:
-            monitor_columns: List of columns to calculate stats for
+            monitor_columns: List of column names or column metadata dicts
             participant_info: Dictionary of participant information
-            data_info: Dictionary of data information
+            column_timestamps: Dictionary mapping local pseudonyms to columns with their timestamps
 
         Returns:
             Dictionary with completion statistics for each column
@@ -253,10 +253,16 @@ class DataMonitor(Connector):
         self.log(f"Calculating statistics for {total_participants} participants", level=logging.DEBUG)
         column_stats = {}
 
-        for col in monitor_columns:
+        for col_info in monitor_columns:
+            # Accept both plain column names and metadata dict entries.
+            if isinstance(col_info, dict):
+                col = col_info["column_name"]
+            else:
+                col = col_info
+
             filled_count = 0
             for lp in participant_info:
-                if lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
+                if lp in column_timestamps and col in column_timestamps[lp] and "timestamp" in column_timestamps[lp][col]:
                     filled_count += 1
             column_stats[col] = {
                 "filled": filled_count,
@@ -268,21 +274,21 @@ class DataMonitor(Connector):
         return column_stats
 
     def _calculate_sent_and_filled_counts(self, monitor_columns: list[str | dict], participant_info: dict, 
-                                          data_info: dict) -> dict:
+                                          column_timestamps: dict) -> dict:
         """
         Calculate sent and filled counts for each monitor column.
 
         Args:
             monitor_columns: List of column dicts with column_name, config_item_name, and survey_id
             participant_info: Dictionary of participant information (must include EmailsSent column)
-            data_info: Dictionary of data information
+            column_timestamps: Dictionary mapping local pseudonyms to columns with their timestamps
 
         Returns:
-            Dictionary mapping config_item_name (or column_name if no config) to {"sent": count, "filled": count}
+            Dictionary mapping column_name to {"sent": count, "filled": count}
         """
         total_participants = len(participant_info)
         self.log(f"Calculating sent and filled counts for {total_participants} participants", level=logging.DEBUG)
-        self.log(f"data_info has {len(data_info)} participants with data", level=logging.DEBUG)
+        self.log(f"column_timestamps has {len(column_timestamps)} participants with data", level=logging.DEBUG)
 
         column_counts = {}
 
@@ -292,18 +298,15 @@ class DataMonitor(Connector):
                 col = col_info["column_name"]
                 config_item_name = col_info.get("config_item_name")
                 survey_id = col_info.get("survey_id")
-                # Use config_item_name as key for uniqueness, fall back to column_name
-                key = config_item_name if config_item_name else col
             else:
                 col = col_info
                 config_item_name = None
                 survey_id = None
-                key = col
 
             filled_count = 0
             sent_count = 0
 
-            self.log(f"Processing column: {col} (key: {key})", level=logging.DEBUG)
+            self.log(f"Processing column: {col}", level=logging.DEBUG)
 
             for lp in participant_info:
                 # Determine if this participant was sent this specific survey
@@ -333,16 +336,16 @@ class DataMonitor(Connector):
 
                 # Only count as filled if participant was actually sent this specific survey
                 # This prevents counting filled data for surveys that weren't sent to this participant
-                if was_sent and lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
+                if was_sent and lp in column_timestamps and col in column_timestamps[lp] and "timestamp" in column_timestamps[lp][col]:
                     filled_count += 1
                     self.log(f"Column {col}: Found filled data for participant {lp}", level=logging.DEBUG)
 
-            column_counts[key] = {
+            column_counts[col] = {
                 "sent": sent_count,
                 "filled": filled_count
             }
 
-            self.log(f"Key {key} (column {col}): {sent_count} sent, {filled_count} filled (out of {total_participants} participants)", level=logging.DEBUG)
+            self.log(f"Column {col}: {sent_count} sent, {filled_count} filled (out of {total_participants} participants)", level=logging.DEBUG)
         return column_counts
 
     def _filter_recent_monitor_columns(self, monitor_columns: list[str | dict], 
@@ -819,16 +822,16 @@ class DataMonitor(Connector):
         return html
 
     def _generate_monitor_rows(self, monitor_columns: list[str | dict], column_counts: dict, 
-                              participant_info: dict, data_info: dict, missing_by_lp: dict,
+                              participant_info: dict, column_timestamps: dict, missing_by_lp: dict,
                               statistics_only: bool = False, total_consented: int = None) -> str:
         """
         Generate HTML rows for monitor columns with completion stats.
 
         Args:
             monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
-            column_counts: Dictionary with sent and filled counts per config_item_name (or column_name)
+            column_counts: Dictionary with sent and filled counts per column_name
             participant_info: Dictionary of participant information
-            data_info: Dictionary of data information
+            column_timestamps: Dictionary mapping local pseudonyms to columns with their timestamps
             missing_by_lp: Dictionary mapping local pseudonyms to missing columns
             statistics_only: Whether to generate statistics-only rows
             total_consented: Total number of consented participants (for percentage calculation)
@@ -847,15 +850,11 @@ class DataMonitor(Connector):
                 if isinstance(col_info, dict):
                     col = col_info["column_name"]
                     display_name = col_info.get("display_name", col)
-                    config_item_name = col_info.get("config_item_name")
-                    # Use same key logic as _calculate_sent_and_filled_counts
-                    key = config_item_name if config_item_name else col
                 else:
                     col = col_info
                     display_name = col
-                    key = col
 
-                counts = column_counts[key]
+                counts = column_counts[col]
                 sent_count = counts["sent"]
                 filled_count = counts["filled"]
 
@@ -891,14 +890,11 @@ class DataMonitor(Connector):
             if isinstance(col_info, dict):
                 col = col_info["column_name"]
                 display_name = col_info.get("display_name", col)
-                config_item_name = col_info.get("config_item_name")
-                key = config_item_name if config_item_name else col
             else:
                 col = col_info
                 display_name = col
-                key = col
 
-            counts = column_counts[key]
+            counts = column_counts[col]
             filled_count = counts["filled"]
             percentage = round((filled_count / total) * 100, 1) if total > 0 else 0
 
@@ -923,8 +919,8 @@ class DataMonitor(Connector):
                 else:
                     # Column is present, get timestamp if available
                     timestamp = ""
-                    if lp in data_info and col in data_info[lp] and "timestamp" in data_info[lp][col]:
-                        dt_timestamp = data_info[lp][col]["timestamp"]
+                    if lp in column_timestamps and col in column_timestamps[lp] and "timestamp" in column_timestamps[lp][col]:
+                        dt_timestamp = column_timestamps[lp][col]["timestamp"]
                         # Format to seconds accuracy only
                         timestamp = dt_timestamp.strftime("%Y-%m-%d %H:%M:%S")
                     html += f'<td class="present">Present<br><span class="timestamp">{timestamp}</span></td>\n'
@@ -934,7 +930,7 @@ class DataMonitor(Connector):
         return html
 
     def _generate_html_content(self, monitor_columns: list[str | dict], info_columns: list[str | dict], 
-                              participant_info: dict, data_info: dict, missing_by_lp: dict, 
+                              participant_info: dict, column_timestamps: dict, missing_by_lp: dict, 
                               column_counts: dict, report_title: str, include_javascript: bool,
                               statistics_only: bool = False, total_consented: int = None,
                               total_participants: int = None) -> str:
@@ -945,7 +941,7 @@ class DataMonitor(Connector):
             monitor_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             info_columns: List of column name strings OR list of dicts with 'column_name' and optional 'display_name' keys
             participant_info: Dictionary of participant information
-            data_info: Dictionary of data information
+            column_timestamps: Dictionary mapping local pseudonyms to columns with their timestamps
             missing_by_lp: Dictionary mapping local pseudonyms to missing columns
             column_counts: Dictionary with sent and filled counts per column
             report_title: Title for the HTML report
@@ -1001,7 +997,7 @@ class DataMonitor(Connector):
         if not statistics_only:
             html += self._generate_info_rows(info_columns, participant_info)
 
-        html += self._generate_monitor_rows(monitor_columns, column_counts, participant_info, data_info, missing_by_lp, 
+        html += self._generate_monitor_rows(monitor_columns, column_counts, participant_info, column_timestamps, missing_by_lp, 
                                            statistics_only, total_consented)
 
         # Close table and HTML
@@ -1041,7 +1037,7 @@ class DataMonitor(Connector):
         info_column_names = [col["column_name"] if isinstance(col, dict) else col for col in info_columns]
 
         # Get all data using find_missing_entries
-        missing_entries, data_info, participant_info = self.find_missing_entries(monitor_column_names, info_column_names)
+        missing_entries, column_timestamps, participant_info = self.find_missing_entries(monitor_column_names, info_column_names)
 
         # Create a lookup of missing columns by local pseudonym for quick reference
         missing_by_lp = {}
@@ -1050,14 +1046,14 @@ class DataMonitor(Connector):
             missing_by_lp[lp] = entry["missing_columns"]
 
         # Calculate column completion statistics
-        column_stats = self._calculate_column_stats(monitor_column_names, participant_info, data_info)
+        column_stats = self._calculate_column_stats(monitor_columns, participant_info, column_timestamps)
 
         # Generate the HTML content
         html = self._generate_html_content(
             monitor_columns=monitor_columns,
             info_columns=info_columns,
             participant_info=participant_info,
-            data_info=data_info,
+            column_timestamps=column_timestamps,
             missing_by_lp=missing_by_lp,
             column_counts=column_stats,
             report_title=report_title,
@@ -1111,25 +1107,25 @@ class DataMonitor(Connector):
 
         # Get data info for the monitor columns
         self.log("Getting data info for monitor columns", level=logging.DEBUG)
-        data_info = self.get_data_info(monitor_column_names)
+        column_timestamps = self.get_column_timestamps(monitor_column_names)
 
-        # Filter data_info to only include participants in the participant_info
-        filtered_data_info = {lp: data for lp, data in data_info.items() if lp in participant_info}
+        # Filter column_timestamps to only include participants in the participant_info
+        filtered_column_timestamps = {lp: data for lp, data in column_timestamps.items() if lp in participant_info}
 
         # Find missing entries for this filtered set
         missing_entries = []
         for lp, info_data in participant_info.items():
             missing_columns = []
 
-            # Check if this local pseudonym exists in filtered_data_info
-            if lp not in filtered_data_info:
+            # Check if this local pseudonym exists in filtered_column_timestamps
+            if lp not in filtered_column_timestamps:
                 # All monitor columns are missing
                 missing_columns = monitor_column_names.copy()
                 self.log(f"Participant {lp} is missing all monitor columns", level=logging.DEBUG)
             else:
                 # Check each monitor column
                 for column in monitor_column_names:
-                    if column not in filtered_data_info[lp] or "timestamp" not in filtered_data_info[lp][column]:
+                    if column not in filtered_column_timestamps[lp] or "timestamp" not in filtered_column_timestamps[lp][column]:
                         missing_columns.append(column)
                         self.log(f"Participant {lp} is missing column {column}", level=logging.DEBUG)
 
@@ -1148,14 +1144,14 @@ class DataMonitor(Connector):
             missing_by_lp[lp] = entry["missing_columns"]
 
         # Calculate column completion statistics for the filtered set
-        column_stats = self._calculate_column_stats(monitor_column_names, participant_info, filtered_data_info)
+        column_stats = self._calculate_column_stats(monitor_columns, participant_info, filtered_column_timestamps)
 
         # Generate the HTML content
         html = self._generate_html_content(
             monitor_columns=monitor_columns,
             info_columns=info_columns,
             participant_info=participant_info,
-            data_info=filtered_data_info,
+            column_timestamps=filtered_column_timestamps,
             missing_by_lp=missing_by_lp,
             column_counts=column_stats,
             report_title=report_title,
@@ -1331,25 +1327,25 @@ class DataMonitor(Connector):
 
                 # Get data info for filtered monitor columns
                 self.log(f"Getting data info for filtered monitor columns: {filtered_monitor_column_names}", level=logging.DEBUG)
-                data_info = self.get_data_info(filtered_monitor_column_names)
+                column_timestamps = self.get_column_timestamps(filtered_monitor_column_names)
 
-                # Filter data_info to only include filtered participants in this group
-                filtered_data_info = {lp: data for lp, data in data_info.items() if lp in group_filtered_participants}
+                # Filter column_timestamps to only include filtered participants in this group
+                filtered_column_timestamps = {lp: data for lp, data in column_timestamps.items() if lp in group_filtered_participants}
 
                 # Calculate sent and filled counts
                 column_counts = self._calculate_sent_and_filled_counts(
-                    filtered_monitor_columns, group_filtered_participants, filtered_data_info
+                    filtered_monitor_columns, group_filtered_participants, filtered_column_timestamps
                 )
 
                 # Find missing entries for this group
                 missing_by_lp = {}
                 for lp in group_filtered_participants.keys():
                     missing_columns = []
-                    if lp not in filtered_data_info:
+                    if lp not in filtered_column_timestamps:
                         missing_columns = filtered_monitor_column_names.copy()
                     else:
                         for column in filtered_monitor_column_names:
-                            if column not in filtered_data_info[lp] or "timestamp" not in filtered_data_info[lp][column]:
+                            if column not in filtered_column_timestamps[lp] or "timestamp" not in filtered_column_timestamps[lp][column]:
                                 missing_columns.append(column)
                     if missing_columns:
                         missing_by_lp[lp] = missing_columns
@@ -1359,7 +1355,7 @@ class DataMonitor(Connector):
                     monitor_columns=filtered_monitor_columns,
                     info_columns=info_columns,
                     participant_info=group_filtered_participants,
-                    data_info=filtered_data_info,
+                    column_timestamps=filtered_column_timestamps,
                     missing_by_lp=missing_by_lp,
                     column_counts=column_counts,
                     report_title=report_title,

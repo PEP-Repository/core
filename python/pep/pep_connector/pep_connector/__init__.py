@@ -10,7 +10,7 @@ from .peprepository import PEPRepository, PEPConfig
 from .accessgroup import AccessGroup
 from .dataadmin import DataAdmin
 from .accessadmin import AccessAdmin
-from .connectors import ConnectorConfig
+from .connectors import Connector, ConnectorConfig
 from .json_connector import JSONConnector, JSONConnectorConfig
 from .datamonitor import DataMonitor, DataMonitorConfig
 
@@ -51,6 +51,7 @@ __all__ = [
     "AccessGroup",
     "DataAdmin",
     "AccessAdmin",
+    "Connector",
     "ConnectorConfig",
     "PEPConfig",
     "JSONConnector",
