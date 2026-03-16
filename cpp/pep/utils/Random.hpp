@@ -70,8 +70,8 @@ struct CryptoUrbg {
   }
 };
 
-template <typename T>
-[[nodiscard]] std::enable_if_t<std::is_integral_v<T>, T> RandomInteger() {
+template <std::integral T>
+[[nodiscard]] T RandomInteger() {
   std::uniform_int_distribution<T> distribution;
   CryptoUrbg urbg;
   return distribution(urbg);
