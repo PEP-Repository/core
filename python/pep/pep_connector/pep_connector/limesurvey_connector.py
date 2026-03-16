@@ -224,6 +224,21 @@ class LimeSurveyConnector(Connector):
                 else:
                     self.log(f"Connection to LimeSurvey failed in {context} after {max_retries} attempts: {e}", logging.ERROR)
                     raise RuntimeError(f"Connection to LimeSurvey failed in {context} after {max_retries} attempts") from e
+            except xmlrpc.client.ProtocolError as e:
+                retryable_statuses = {429, 500, 502, 503, 504} # transient upstream/service errors: 429 Too Many Requests, 500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout
+                is_retryable = e.errcode in retryable_statuses
+
+                if is_retryable and attempt < max_retries - 1:
+                    self.log(f"Protocol error in {context} (attempt {attempt + 1}/{max_retries}): HTTP {e.errcode} {e.errmsg}. Retrying in {retry_delay}s...", logging.WARNING)
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                elif is_retryable:
+                    msg = f"Protocol error in {context} after {max_retries} attempts: HTTP {e.errcode} {e.errmsg}"
+                    self.log(msg, logging.ERROR)
+                    raise RuntimeError(msg) from e
+                else:
+                    # Non-transient protocol errors should fail fast.
+                    raise
 
     def _call_ls_api(self, api_call: Callable, max_retries: int = 1, context: str = "API call") -> Any:
         """
