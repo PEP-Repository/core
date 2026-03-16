@@ -16,6 +16,12 @@ void TestConnectionBasics(TestServerFactory& factory) {
   auto server = pep::messaging::Node::Create(*serverParameters, handler);
   auto client = pep::messaging::Node::Create(*factory.createClientParameters(*serverParameters));
 
+  // Ensure that the test terminates even if one of the parties doesn't signal a connection attempt, e.g. because the other side closes the connection before it's fully established
+  auto shutdown = [server, client]() {
+    return server->shutdown()
+      .concat(client->shutdown());
+    };
+
   server->start()
     .concat_map([server, protocol](const pep::messaging::Connection::Attempt::Result& result) {
     std::cerr << protocol << " server connection attempt" << std::endl;
@@ -26,7 +32,7 @@ void TestConnectionBasics(TestServerFactory& factory) {
     }
     return server->shutdown();
       })
-    .op(pep::RxFinallyExhaust(io_context, [server]() { return server->shutdown(); })) // Ensure that the server is shut down even if exceptions are raised
+    .op(pep::RxFinallyExhaust(io_context, [shutdown]() { return shutdown(); }))
     .subscribe(
       [protocol](pep::FakeVoid) {
         std::cerr << protocol << " server shutdown result" << std::endl;
@@ -51,7 +57,7 @@ void TestConnectionBasics(TestServerFactory& factory) {
         }
         return client->shutdown();
       })
-    .op(pep::RxFinallyExhaust(io_context, [client]() { return client->shutdown(); })) // Ensure that the server is shut down even if exceptions are raised
+    .op(pep::RxFinallyExhaust(io_context, [shutdown]() { return shutdown(); }))
     .subscribe(
       [protocol](pep::FakeVoid) {
         std::cerr << protocol << " client shutdown result" << std::endl;
