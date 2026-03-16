@@ -29,7 +29,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Exceptions.cpp Exceptions.hpp
     File.cpp File.hpp
     Filesystem.cpp Filesystem.hpp
-    Hasher.hpp
+    Hasher.cpp Hasher.hpp
     InstanceTracker.hpp
     LifeCycler.cpp LifeCycler.hpp
     LocalSettings.cpp LocalSettings.hpp
@@ -49,7 +49,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
     SelfRegistering.hpp
-    Sha.hpp
+    Sha.cpp Sha.hpp
     Shared.hpp
     Singleton.hpp
     Stream.cpp Stream.hpp
