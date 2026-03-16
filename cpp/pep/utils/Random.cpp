@@ -4,6 +4,7 @@
 #include <pep/utils/OpensslUtils.hpp>
 
 #include <openssl/rand.h>
+#include <cstring>
 
 namespace pep {
 
@@ -22,9 +23,9 @@ private:
     auto result = std::min(available, max);
 
     auto source = content_.data() + index_;
-    memcpy(destination, source, result);
+    std::memcpy(destination, source, result);
 
-    memset(source, 0, result); // Zero-fill consumed randomness so that secrets don't remain in memory
+    std::memset(source, 0, result); // Zero-fill consumed randomness so that secrets don't remain in memory
     index_ += result;
 
     return result;
