@@ -2,7 +2,7 @@
 #include <pep/versioning/Version.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Win32Api.hpp>
 #include <pep/assessor/Installer.hpp>
 

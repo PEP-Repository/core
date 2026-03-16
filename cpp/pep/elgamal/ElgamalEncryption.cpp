@@ -1,6 +1,6 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
 
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <boost/container_hash/hash.hpp>
 

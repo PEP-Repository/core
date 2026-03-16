@@ -7,7 +7,7 @@
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Math.hpp>
 #include <pep/utils/Random.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>

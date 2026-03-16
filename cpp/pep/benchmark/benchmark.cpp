@@ -12,7 +12,7 @@
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/utils/Random.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 

@@ -18,7 +18,7 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/async/OnAsio.hpp>
