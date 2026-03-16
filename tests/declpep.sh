@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016 # Reason: we are intentionally using single quoted strings to avoid expansion
 
+set -uo pipefail
+
 if [ "$#" -ne 2 ]; then
   echo "Usage: $0 {cleanup|setup} <json>"
   exit 1
