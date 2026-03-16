@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 #include <pep/utils/OpenSSLHasher.hpp>
-#include <pep/utils/OpenSSLHasher.hpp>
 
 namespace {
 

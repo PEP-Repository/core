@@ -5,7 +5,6 @@
 #include <vector>
 
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/OpenSSLHasher.hpp>
 
 namespace pep {
 
