@@ -17,16 +17,18 @@ public:
   void ensurePacked() const;
 };
 
+/// Utility function to convert a vector of LocalPseudonyms to a vector of PolymorphicPseudonyms
+std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>&);
+
 class Ticket2 {
 public:
   Timestamp mTimestamp{/*zero*/};
   std::vector<std::string> mModes;
-  std::vector<LocalPseudonyms> mPseudonyms;
+  std::vector<LocalPseudonyms> mAccessSubjects;  ///< identifiers for subjects that will be accessed
   std::vector<std::string> mColumns;
   std::string mUserGroup;
 
   bool hasMode(const std::string& mode) const;
-  std::vector<PolymorphicPseudonym> getPolymorphicPseudonyms() const;
 };
 
 template <>
@@ -72,7 +74,7 @@ class ClientSideTicketRequest2 {
 public:
   std::vector<std::string> mModes;
   std::vector<std::string> mParticipantGroups;
-  std::vector<PolymorphicPseudonym> mPolymorphicPseudonyms;
+  std::vector<PolymorphicPseudonym> mAccessSubjects;
   std::vector<std::string> mColumnGroups;
   std::vector<std::string> mColumns;
   bool mIncludeUserGroupPseudonyms = false;

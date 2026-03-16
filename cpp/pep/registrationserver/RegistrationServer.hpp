@@ -114,7 +114,7 @@ private:
   std::shared_ptr<castor::CastorConnection> getCastorConnection() const;
   rxcpp::observable<std::shared_ptr<castor::Participant>> storeShortPseudonymInCastor(std::shared_ptr<castor::Study> study, ShortPseudonymDefinition definition);
 #endif
-  rxcpp::observable<std::string> generatePseudonym(std::string prefix, int len);
+  rxcpp::observable<std::string> generatePseudonym(std::string prefix, std::size_t len);
 
   rxcpp::observable<ShortPseudonymDefinition> getShortPseudonymDefinitions() const;
 

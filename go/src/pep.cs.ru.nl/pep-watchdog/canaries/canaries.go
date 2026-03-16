@@ -46,7 +46,7 @@ func Get() (
 
 	bufs, fileInfos, err := shared.Pep.HistoryAndReadFiles(
 		pep.EnumerateAndOpenFilesOptions{
-			PolymorphicPseudonyms: []*pep.Triple{pp},
+			AccessSubjects: []*pep.Triple{pp},
 			Columns: []string{
 				shared.Conf.CanaryFile.Tag},
 		})

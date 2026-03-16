@@ -1,8 +1,9 @@
 #include <pep/networking/tests/TestServerFactory.test.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/Random.hpp>
 
 #include <gtest/gtest.h>
+
+#include <numeric>
 
 namespace {
 
@@ -11,9 +12,9 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
   boost::asio::io_context context;
 
-  auto sent = std::make_shared<std::string>(), received = std::make_shared<std::string>();
-  pep::RandomBytes(*sent, MESSAGE_SIZE);
-  received->resize(MESSAGE_SIZE);
+  auto sent = std::make_shared<std::string>(MESSAGE_SIZE, '\0'),
+    received = std::make_shared<std::string>(MESSAGE_SIZE, '\0');
+  std::iota(sent->begin(), sent->end(), '\0');
 
   auto protocol = factory.protocol().name();
 
@@ -63,7 +64,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
     *connected = connection->isConnected();
     ASSERT_TRUE(*connected) << protocol << " client produced non-connected connection";
 
-    connection->asyncRead(received->data(), MESSAGE_SIZE, [MESSAGE_SIZE, &client, clientConnectionAttempt, protocol](const pep::networking::SizedTransfer::Result& result) {
+    connection->asyncRead(received->data(), received->size(), [MESSAGE_SIZE, &client, clientConnectionAttempt, protocol](const pep::networking::SizedTransfer::Result& result) {
       // Ensure that the client is discarded (and hence the process exits) even if a test assertion (below) fails
       clientConnectionAttempt->cancel();
       client.reset();

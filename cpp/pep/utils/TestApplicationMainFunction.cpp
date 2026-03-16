@@ -1,6 +1,5 @@
 #include <pep/utils/RegisteredTestEnvironment.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/Random.hpp>
 
 #ifndef _WIN32
 #include <sys/resource.h>
@@ -18,10 +17,6 @@ int main(int argc, char* argv[]) {
   // Ensure that LOG(...) messages are properly formatted, filtered, and sent to a file sink...
   pep::Logging::Initialize({ std::make_shared<pep::FileLogging>(pep::info) });
   // pep::Logging::Initialize({ std::make_shared<pep::ConsoleLogging>(pep::info) }); // ... but not to the console to prevent clutter
-
-  unsigned int seed{};
-  pep::RandomBytes(reinterpret_cast<uint8_t*>(&seed), sizeof(seed));
-  std::srand(seed);
 
   ::testing::InitGoogleTest(&argc, argv);
   int retval = RUN_ALL_TESTS();

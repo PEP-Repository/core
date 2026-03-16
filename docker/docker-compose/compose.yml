@@ -295,12 +295,13 @@ volumes:
   # This is where mod_md stores the Let's Encrypt certificates and related files. Makes sure we don't run into rate limits when the container is restarted a lot.
   acme_certificates:
 
+# We should only set depends_on in the compose.override.yml, because in a more distributed environment we don't want it at the compose level.
 services:
   # Core PEP Services
   transcryptor:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepTranscryptor"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}16:${PORT_NUMBER_PREFIX}16"
@@ -318,7 +319,7 @@ services:
   keyserver:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepKeyServer"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}11:${PORT_NUMBER_PREFIX}11"
@@ -336,7 +337,7 @@ services:
   s3proxy:
     image: andrewgaul/s3proxy
     container_name: "s3proxy"
-    restart: unless-stopped
+    restart: always
     networks:
       - pepnetwork
     ports:
@@ -357,7 +358,7 @@ services:
   storagefacility:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepStorageFacility"
-    restart: unless-stopped
+    restart: always
     init: true
     networks:
       - pepnetwork
@@ -377,7 +378,7 @@ services:
   accessmanager:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepAccessManager"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}01:${PORT_NUMBER_PREFIX}01"
@@ -395,7 +396,7 @@ services:
   registrationserver:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepRegistrationServer"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}18:${PORT_NUMBER_PREFIX}18"
@@ -413,7 +414,7 @@ services:
   authserver:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pep_authserver"
-    restart: unless-stopped
+    restart: always
     init: true
     networks:
       - authservernetwork
@@ -433,7 +434,7 @@ services:
   authserver-apache:
     image: "${DOCKER_IMAGE_BASE}/authserver_apache:${DOCKER_IMAGE_TAG}"
     container_name: "pep_authserver_apache"
-    restart: unless-stopped
+    restart: always
     networks:
       - authservernetwork
     ports:
@@ -456,7 +457,7 @@ services:
   watchdog:
     image: "${DOCKER_IMAGE_BASE}/pep-monitoring:${DOCKER_IMAGE_TAG}"
     container_name: "watchdog"
-    restart: unless-stopped
+    restart: always
     ports:
       - "8082:8082"
     volumes:
@@ -473,7 +474,7 @@ services:
   prometheus-node-exporter:
     image: quay.io/prometheus/node-exporter
     container_name: "prometheus-node-exporter"
-    restart: unless-stopped
+    restart: always
     ports:
       - "9100:9100"
     volumes:
@@ -487,7 +488,7 @@ services:
   nginx:
     image: "${DOCKER_IMAGE_BASE}/nginx:${DOCKER_IMAGE_TAG}"
     container_name: "nginx"
-    restart: unless-stopped
+    restart: always
       # port mappings and volumes are quite environment-specific, set those in compose.override in target repos instead
     volumes:
       - "${SECRETS_DIR_BASE}/nginx/ssl:/etc/nginx/ssl"

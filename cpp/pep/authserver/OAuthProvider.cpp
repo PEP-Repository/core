@@ -253,7 +253,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     std::ostringstream body;
     body << "<html><body>";
     for(auto& [uid, description] : testUsers) {
-      linkUri.params().set("primary_uid", encodeBase64URL(uid));
+      linkUri.params().set("primary_uid", EncodeBase64Url(uid));
       linkUri.params().set("human_readable_uid", uid);
       body << "<a href=\"" << linkUri << "\">" << description << "</a><br>";
     }
@@ -408,7 +408,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       }
     }
 
-    std::string code = encodeBase64URL(RandomString(32));
+    std::string code = EncodeBase64Url(RandomString(32));
     self->addActiveGrant(code, grant(clientId, humanReadableUid,  std::move(group), redirectUriString, codeChallenge, validityDuration));
     url returnUri = redirectUri;
     returnUri.params().set("code", code);
@@ -451,7 +451,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     if(!grant) {
       return MakeErrorJsonHttpResponse(ERROR_INVALID_GRANT, "Code is unknown or expired");
     }
-    if(grant->codeChallenge != encodeBase64URL(Sha256().digest(codeVerifier))) {
+    if(grant->codeChallenge != EncodeBase64Url(Sha256().digest(codeVerifier))) {
       return MakeErrorJsonHttpResponse(ERROR_INVALID_GRANT, "Code challenge failed");
     }
     if(grant->clientId != clientId) {

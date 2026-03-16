@@ -149,6 +149,28 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wno-unused-parameter
   )
 
+  if(distcc IN_LIST CMAKE_CXX_COMPILER_LAUNCHER)
+    set(distcc_default ON)
+  else()
+    set(distcc_default OFF)
+  endif()
+  option(PEP_DISTCC_COMPATIBLE "Use options compatible with distcc" ${distcc_default})
+  if(PEP_DISTCC_COMPATIBLE)
+    message(STATUS "Disabling warnings introduced when using distcc")
+    set(distcc_options
+        -Wno-unknown-warning-option
+
+        # Warnings are generated because preprocessing is run locally,
+        # so macros are expanded, etc.
+        -Wno-extra-semi-stmt
+        -Wno-gnu-line-marker
+        -Wno-old-style-cast
+        -Wno-unreachable-code
+        -Wno-zero-as-null-pointer-constant
+    )
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:${distcc_options}>")
+  endif()
+
   if(NOT DEPRECATED_WARNINGS_AS_ERROR)
     warn_no_error(CXX
         deprecated-declarations

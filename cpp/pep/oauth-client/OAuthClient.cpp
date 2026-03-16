@@ -22,95 +22,12 @@
 #include <pep/utils/Sha.hpp>
 
 namespace {
-  class RandomByteProvider {
-  public:
-    virtual uint8_t get() = 0;
-    virtual ~RandomByteProvider() = default;
-  };
-
-  class SimpleRandomByteProvider : public RandomByteProvider {
-  private:
-    size_t mBufferSize;
-    std::vector<uint8_t> mBuffer;
-    size_t mIndex;
-
-  public:
-    explicit SimpleRandomByteProvider(size_t bufferSize = 32U) : mBufferSize(bufferSize), mBuffer(bufferSize), mIndex(bufferSize) {}
-
-    uint8_t get() override {
-      // Reinitialize buffer if we're out of random values
-      if (mIndex >= mBufferSize) {
-        pep::RandomBytes(mBuffer.data(), mBufferSize);
-        mIndex = 0U;
-      }
-
-      // Return next randomly produced value
-      return mBuffer[mIndex++];
-    }
-  };
-
-  class MaximizedRandomByteProvider : public RandomByteProvider {
-  private:
-    SimpleRandomByteProvider &mRawProvider;
-    uint8_t mExcludedMaximum;
-    uint8_t mRawMaximum;
-
-  public:
-    MaximizedRandomByteProvider(SimpleRandomByteProvider &rawProvider, uint8_t excludedMaximum) : mRawProvider(rawProvider), mExcludedMaximum(excludedMaximum) {
-      if (mExcludedMaximum <= 1) {
-        throw std::runtime_error("Randomization range must allow for multiple values");
-      }
-
-      // Prevent modulo bias (see https://stackoverflow.com/a/10984975)
-      mRawMaximum = (std::numeric_limits<uint8_t>::max() / mExcludedMaximum) * mExcludedMaximum;
-    }
-
-    uint8_t get() override {
-      uint8_t raw{};
-      do {
-        raw = mRawProvider.get();
-      } while (raw >= mRawMaximum);
-      return raw % mExcludedMaximum;
-    }
-  };
-
-  class RangedRandomByteProvider : public RandomByteProvider {
-  private:
-    uint8_t mMinimum;
-    uint8_t mMaximum;
-    MaximizedRandomByteProvider mImplementor;
-
-  public:
-    RangedRandomByteProvider(SimpleRandomByteProvider &rawProvider, uint8_t minimum, uint8_t maximum) : mMinimum(minimum), mMaximum(maximum), mImplementor(rawProvider, static_cast<uint8_t>(maximum - minimum + 1)) {
-      if (mMaximum <= mMinimum) {
-        throw std::runtime_error("Randomization range must allow for multiple values");
-      }
-    }
-
-    uint8_t get() override {
-      auto result = mImplementor.get() + mMinimum;
-      assert(result >= mMinimum);
-      assert(result <= mMaximum);
-      return static_cast<uint8_t>(result);
-    }
-  };
-
-  const size_t CODE_VERIFIER_MIN_CHARS = 43;
-  const size_t CODE_VERIFIER_MAX_CHARS = 128;
-  const std::string CODE_VERIFIER_ALLOWED_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._~";
-  const auto CODE_VERIFIER_ALLOWED_CHAR_COUNT = CODE_VERIFIER_ALLOWED_CHARS.length();
-
   std::string GenerateCodeVerifier() {
-    SimpleRandomByteProvider rawProvider;
-    size_t length{RangedRandomByteProvider(rawProvider, CODE_VERIFIER_MIN_CHARS, CODE_VERIFIER_MAX_CHARS).get()};
-    auto result = std::string(length, '\0');
+    // While the code verifier can be any random 43-128 char alphanumeric (plus -/./_/~) string,
+    // the recommended generation method is base64url-encoding 32 bytes.
+    // See https://datatracker.ietf.org/doc/html/rfc7636#section-4.1.
 
-    auto provider = MaximizedRandomByteProvider(rawProvider, static_cast<uint8_t>(CODE_VERIFIER_ALLOWED_CHAR_COUNT));
-    for (size_t i = 0; i < length; ++i) {
-      auto index = provider.get();
-      result[i] = CODE_VERIFIER_ALLOWED_CHARS[index];
-    }
-    return result;
+    return pep::EncodeBase64Url(pep::RandomString(32));
   }
 
   const std::string ClientId = "123";
@@ -134,7 +51,7 @@ boost::urls::url OAuthClient::getAuthorizationUri() const {
   uri.set_params({
     {"client_id", ClientId},
     {"response_type", "code"},
-    {"code_challenge", encodeBase64URL(Sha256().digest(mCodeVerifier))},
+    {"code_challenge", EncodeBase64Url(Sha256().digest(mCodeVerifier))},
     {"code_challenge_method", "S256"},
     {"redirect_uri", mRedirectUrl},
   });
