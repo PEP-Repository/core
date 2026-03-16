@@ -4,6 +4,7 @@
 #include <pep/utils/OpensslUtils.hpp>
 
 #include <openssl/rand.h>
+#include <cassert>
 #include <cstring>
 
 namespace pep {
