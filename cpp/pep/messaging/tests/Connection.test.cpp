@@ -41,6 +41,9 @@ void TestConnectionBasics(TestServerFactory& factory) {
   runNode(client, "client", server);
 
   ASSERT_NO_FATAL_FAILURE(io_context.run());
+
+  ASSERT_EQ(client.use_count(), 1U) << "Messaging client not discardable (due to circular dependency?)";
+  ASSERT_EQ(server.use_count(), 1U) << "Messaging server not discardable (due to circular dependency?)";
 }
 
 } // End anonymous namespace
@@ -81,4 +84,6 @@ TEST(Connection, ClientReconnects) {
 
   ASSERT_NO_FATAL_FAILURE(io_context.run());
   ASSERT_EQ(*attempts, MAX_ATTEMPTS) << "Client didn't make " << MAX_ATTEMPTS << " connection attempt(s)";
+
+  ASSERT_EQ(client.use_count(), 1U) << "Messaging client not discardable (due to circular dependency?)";
 }
