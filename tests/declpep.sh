@@ -84,7 +84,9 @@ generate_pep_commands_in_setup_order() {
   # individual subjects
   if [ "$command" == "setup" ]; then
     jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
-      '\($bash_var)="$(pepcli --oauth-token-group "Data Administrator" register id)"'
+      '\($bash_var)="$(' \
+      "pepcli --oauth-token-group 'Data Administrator' register id | grep 'identifier:' | cut -d ':' -f2 | tr -d '[:space:]'" \
+      ')"'
   fi
 
   jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
