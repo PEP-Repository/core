@@ -680,7 +680,7 @@ ubuntu-rolling-debug-manual-lint:
     - .ubuntu-build-base
     - .ubuntu-rolling-debug-settings
   rules:
-    # Redundant if we're already linting
+    # Redundant if CI already includes the "ubuntu-rolling-debug-linted" job
     - if: $ENABLE_LINTER == "yes"
       when: never
     - <<: *not-stable-release
