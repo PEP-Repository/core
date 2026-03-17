@@ -569,6 +569,7 @@ ubuntu-lts-release-unlinted:
       when: never
 
 ubuntu-lts-release:
+  stage: build
   rules:
     - if: $ENABLE_LINTER == "yes"
       needs: [ "ubuntu-lts-release-linted" ]
