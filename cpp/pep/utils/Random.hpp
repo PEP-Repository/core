@@ -53,7 +53,7 @@ struct CryptoUrbg {
   }
 
   [[nodiscard]] result_type operator()() {
-    result_type result;
+    result_type result{};
     this->generate_random(std::span<result_type>(&result, 1U));
     return result;
   }

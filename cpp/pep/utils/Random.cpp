@@ -17,7 +17,7 @@ public:
   static constexpr size_t capacity = 512;
 
 private:
-  std::array<std::byte, capacity> content_;
+  std::array<std::byte, capacity> content_{};
   size_t index_ = capacity;
 
   std::span<std::byte> bufferedData() {
@@ -55,6 +55,7 @@ public:
       // ... then fill remaining bytes
       filled = this->fillFromBuffer(remaining);
       assert(filled == remaining.size());
+      std::ignore = filled; // Get rid of clang-analyzer-deadcode.DeadStores in non-debug builds
     }
   }
 };
