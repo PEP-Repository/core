@@ -1215,7 +1215,7 @@ class LimeSurveyConnector(Connector):
         stats_template = RunStatistics({
             'total_subjects': {'description': 'Total subjects considered'},
             'skipped_count': {'description': 'Subjects skipped'},
-            'processed_subjects': {'description': 'Subjects processed (upload attempted)'},
+            'processed_subjects': {'description': 'Subjects processed'},
             'uploaded_main': {'description': 'Successful uploads - Main responses'},
             'uploaded_questions': {'description': 'Successful uploads - Specific questions'},
             'uploaded_files': {'description': 'Successful uploads - Files'},
