@@ -44,35 +44,35 @@ generate_pep_commands_in_setup_order() {
 
   # user groups
   jqr '.userGroups[]' \
-    'pepcli --oauth-token-group "Access Administrator" user group '"$createOrRemove"' \(.)'
+    'pepcli --oauth-token-group "Access Administrator" user group '"$createOrRemove"' "\(.)"'
 
   empty_line
 
   # column groups
   jqr '.columnGroups[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama columnGroup '"$createOrRemove"' \(.name)'
+    'pepcli --oauth-token-group "Data Administrator" ama columnGroup '"$createOrRemove"' "\(.name)"'
 
   # column group access rules
   jqr '.columnGroups[] | .name as $group | .cgars[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' \($group) \(.userGroup) \(.permissions[])'
+    'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' "\($group)" "\(.userGroup)" "\(.permissions[])"'
 
   empty_line
 
   # individual columns
   jqr '.columnGroups[] | .name as $group | .columns[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' \(.)' "\n" \
-    'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' \(.) \($group)' |
+    'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' "\(.)"' "\n" \
+    'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' "\(.)" "\($group)"' |
     partition_by_substring "ama column create"
 
   empty_line
 
   # subject groups
   jqr '.subjectGroups[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama group '"$createOrRemove"' \(.name)'
+    'pepcli --oauth-token-group "Data Administrator" ama group '"$createOrRemove"' "\(.name)"'
 
   # subject group access rules
   jqr '.subjectGroups[] | .name as $group | .pgars[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' \($group) \(.userGroup) \(.permissions[])'
+    'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' "\($group)" "\(.userGroup)" "\(.permissions[])"'
 
   empty_line
 
@@ -85,7 +85,7 @@ generate_pep_commands_in_setup_order() {
   fi
 
   jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
-    'pepcli --oauth-token-group "Data Administrator" ama group '"$addOrRemove"' \($group) "${\($bash_var)}"'
+    'pepcli --oauth-token-group "Data Administrator" ama group '"$addOrRemove"' "\($group)" "${\($bash_var)}"'
 
   if [ "$command" == "setup" ]; then
     empty_line
