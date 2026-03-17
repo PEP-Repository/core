@@ -21,6 +21,10 @@ public:
     KeyDomainType domain;
     std::optional<KeyFactorSecret> reshuffle;
     KeyFactorSecret rekey;
+
+    Keys(KeyDomainType domain_, std::optional<KeyFactorSecret> reshuffle_, KeyFactorSecret rekey_)
+      : domain(domain_), reshuffle(std::move(reshuffle_)), rekey(std::move(rekey_)) {
+    }
   };
 
   struct KeyFactors {
