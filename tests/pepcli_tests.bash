@@ -419,8 +419,12 @@ if should_run_test authserver-apache; then
     echo "$1" | tr "[:lower:]" "[:upper:]"
   }
 
+  AUTH_SERV_AP_CONFIG='{
+    "userGroups": [ "integrationGroup" ]
+  }'
+
+  test_setup "$AUTH_SERV_AP_CONFIG"
   pepcli --oauth-token-group "Access Administrator" user create integrationUser
-  pepcli --oauth-token-group "Access Administrator" user group create integrationGroup
   pepcli --oauth-token-group "Access Administrator" user addTo integrationUser integrationGroup
 
   pepcli --oauth-token-group "Access Administrator" user create difficultUser
@@ -461,7 +465,8 @@ if should_run_test authserver-apache; then
 
   pepcli --oauth-token-group "Access Administrator" user removeFrom integrationUser integrationGroup
   pepcli --oauth-token-group "Access Administrator" user remove integrationUser
-  pepcli --oauth-token-group "Access Administrator" user group remove integrationGroup
+
+  test_cleanup "$AUTH_SERV_AP_CONFIG"
 fi
 
 ####################

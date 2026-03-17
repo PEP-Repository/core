@@ -62,7 +62,7 @@ generate_pep_commands_in_setup_order() {
   jqr '.columnGroups[] | .name as $group | .columns[]' \
     'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' "\(.)"' "\n" \
     'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' "\(.)" "\($group)"' |
-    partition_by_substring "ama column create"
+    partition_by_substring "ama column $createOrRemove"
 
   empty_line
 
