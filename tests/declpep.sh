@@ -15,7 +15,13 @@ json="$2"
 # The first argument specifies the filter
 # The other arguments are concatenated into a single format string
 jqr() {
-  local -r filter=$1
+  # Treat missing or null array fields as empty arrays by replacing each array value iterator with a defaulted version.
+  # For instance, `.field_name[]` becomes `(.field_name // [])[]`.
+  missing_arrays_as_empty() {
+    sed -E 's/\.([a-zA-Z_][a-zA-Z0-9_]*)\[]/(.\1 \/\/ [])[]/g'
+  }
+
+  local -r filter=$(echo "$1" | missing_arrays_as_empty)
   shift
   local -r genlines=$(printf "%s" "${@//\"/\\\"}")
 
