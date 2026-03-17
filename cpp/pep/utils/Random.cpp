@@ -3,6 +3,7 @@
 #include <pep/utils/Math.hpp>
 #include <pep/utils/OpensslUtils.hpp>
 
+#include <boost/noncopyable.hpp>
 #include <openssl/rand.h>
 #include <cassert>
 #include <cstring>
@@ -11,7 +12,7 @@ namespace pep {
 
 namespace {
 
-class RandomBytesBuffer {
+class RandomBytesBuffer : boost::noncopyable {
 public:
   static constexpr size_t capacity = 512;
 

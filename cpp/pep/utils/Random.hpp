@@ -2,8 +2,6 @@
 
 #include <pep/utils/CollectionUtils.hpp>
 
-#include <boost/noncopyable.hpp>
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
