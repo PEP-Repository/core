@@ -19,12 +19,12 @@ private:
   std::array<std::byte, capacity> content_;
   size_t index_ = capacity;
 
-  size_t fillFromBuffer(std::byte* destination, size_t max) {
+  size_t fillFromBuffer(std::span<std::byte> destination) {
     auto available = capacity - index_;
-    auto result = std::min(available, max);
+    auto result = std::min(available, destination.size());
 
     auto source = content_.data() + index_;
-    std::memcpy(destination, source, result);
+    std::memcpy(destination.data(), source, result);
 
     std::memset(source, 0, result); // Zero-fill consumed randomness so that secrets don't remain in memory
     index_ += result;
@@ -33,21 +33,22 @@ private:
   }
 
 public:
-  void fill(std::byte* destination, size_t size) {
-    assert(size <= capacity);
+  void fill(std::span<std::byte> destination) {
+    assert(destination.size() <= capacity);
 
     // (Try to) fill destination from what we still had buffered.
-    auto filled = this->fillFromBuffer(destination, size);
+    auto filled = this->fillFromBuffer(destination);
 
-    if (filled != size) [[unlikely]] { // If we didn't have sufficient data buffered...
-
+    // If we didn't have enough buffered data to fill destination entirely...
+    auto remaining = destination.subspan(filled);
+    if (remaining.size() != 0U) [[unlikely]] {
       // ... re-fill our buffer...
       UnbufferedRandomBytes(content_);
       index_ = 0U;
 
-      // ... then fill remaining bytes in "destination"
-      filled += this->fillFromBuffer(destination + filled, size - filled);
-      assert(filled == size);
+      // ... then fill remaining bytes
+      filled = this->fillFromBuffer(remaining);
+      assert(filled == remaining.size());
     }
   }
 };
@@ -62,14 +63,13 @@ void UnbufferedRandomBytes(std::span<std::byte> out) {
 }
 
 void RandomBytes(std::span<std::byte> out) {
-  auto size = out.size();
-  if (size > RandomBytesBuffer::capacity) [[unlikely]] {
+  if (out.size() > RandomBytesBuffer::capacity) [[unlikely]] {
     // Fill directly if our buffer is smaller
     UnbufferedRandomBytes(out);
   }
   else {
     thread_local RandomBytesBuffer buffer;
-    buffer.fill(out.data(), size);
+    buffer.fill(out);
   }
 }
 
