@@ -31,7 +31,7 @@ from email.utils import formatdate
 from email.utils import make_msgid
 from email import encoders
 from datetime import datetime, timedelta
-from .connectors import Connector, ConnectorConfig
+from .connectors import Connector, ConnectorConfig, RunStatistics
 from .peprepository import PEPRepository
 from .datamonitor import DataMonitor, DataMonitorConfig
 from .limesurvey_connector import LimeSurveyConnector
@@ -1031,15 +1031,16 @@ class MailSender(Connector):
             }
         return pdf_paths_dict
 
-    def send_survey_emails(self, limesurvey_connector: LimeSurveyConnector, config: MailSenderSurveyConfig) -> tuple[int, int, int]:
+    def send_survey_emails(self, limesurvey_connector: LimeSurveyConnector, config: MailSenderSurveyConfig, stats: RunStatistics) -> RunStatistics:
         """Send survey emails based on configuration.
 
         Args:
             limesurvey_connector: LimeSurvey connector instance
             config: Survey configuration object
+            stats: RunStatistics instance to populate
 
         Returns:
-            Tuple of (total_subjects, skipped_count, subjects_emailed_count)
+            RunStatistics: Statistics for this survey type
         """
         survey_type = config.name
 
@@ -1117,9 +1118,9 @@ class MailSender(Connector):
         else:
             pdf_paths_dict = {}
 
+        # Set total subjects count
         total_subjects = len(subject_info)
-        subjects_emailed_count = 0
-        skipped_count = 0
+        stats.set('total_subjects', 'Total subjects considered', total_subjects)
 
         # Iterate over each subject
         for subject_index, (short_pseudonym, data) in enumerate(subject_info.items(), start=1):
@@ -1141,7 +1142,7 @@ class MailSender(Connector):
                 is_expert_teacher = parse_flag(data["columns"].get(config.report_info.expert_teacher_column))
 
                 if is_expert_teacher is None:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(
                         f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
                         f"Invalid expert teacher flag in {config.report_info.expert_teacher_column}. Expected '1' or '0'.",
@@ -1155,7 +1156,7 @@ class MailSender(Connector):
                         level=logging.DEBUG, tag=self.LOG_TAG,
                     )
                 else:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(
                         f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
                         f"Skipping: Not an expert teacher.",
@@ -1167,7 +1168,7 @@ class MailSender(Connector):
                 is_survey_participant = parse_flag(data["columns"].get(config.survey_participant_column))
 
                 if is_survey_participant is None:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(
                         f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
                         f"Invalid survey participant flag in {config.survey_participant_column}. Expected '1' or '0'.",
@@ -1181,7 +1182,7 @@ class MailSender(Connector):
                         level=logging.DEBUG, tag=self.LOG_TAG,
                     )
                 else:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(
                         f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
                         f"Skipping: Not a survey participant.",
@@ -1213,7 +1214,7 @@ class MailSender(Connector):
             # Email Address is required to send emails
             recipient_email = data["columns"].get(config.pep_email_column)
             if not recipient_email:
-                skipped_count += 1
+                stats.increment('skipped_count')
                 self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping subject: Missing email.", 
                     level=logging.WARNING, tag=self.LOG_TAG)
                 continue
@@ -1223,7 +1224,7 @@ class MailSender(Connector):
             if is_expert_report:
                 # For expert reports, skip non-expert teachers
                 if not is_expert_teacher:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Not an expert teacher.", 
                             level=logging.INFO, tag=self.LOG_TAG)
                     continue
@@ -1231,7 +1232,7 @@ class MailSender(Connector):
                 # Skip if no report subjects configured
                 report_subjects_raw = data["columns"].get(config.report_info.subject_column)
                 if not report_subjects_raw:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Expert teacher but no report subjects specified.", 
                             level=logging.WARNING, tag=self.LOG_TAG)
                     continue
@@ -1262,7 +1263,7 @@ class MailSender(Connector):
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Added merged PDF for expert teacher: {merged_pdf_path}", 
                             level=logging.DEBUG, tag=self.LOG_TAG)
                 else:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: No PDFs to merge for expert teacher.", 
                             level=logging.WARNING, tag=self.LOG_TAG)
                     continue
@@ -1274,7 +1275,7 @@ class MailSender(Connector):
                 try:
                     emails_sent = json.loads(emails_sent_data)
                 except json.JSONDecodeError as e:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping data subject: Failed to load emails sent data: {str(e)}.", 
                     level=logging.ERROR, tag=self.LOG_TAG)
                     continue
@@ -1286,7 +1287,7 @@ class MailSender(Connector):
                 try:
                     pep_survey_ids = json.loads(survey_ids_data)
                 except json.JSONDecodeError as e:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping data subject: Failed to load survey IDs data: {str(e)}.", 
                     level=logging.ERROR, tag=self.LOG_TAG)
                     continue
@@ -1423,19 +1424,11 @@ class MailSender(Connector):
 
             # If any email was sent
             if subject_received_email:
-                subjects_emailed_count += 1
+                stats.increment('subjects_emailed_count')
 
-        # After all subjects are processed, log statistics
-        processed_subjects = total_subjects - skipped_count
-        self.log(f"------ {survey_type.upper()} Sending Summary ------", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Total subjects found: {total_subjects}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Subjects skipped (missing data/errors): {skipped_count}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Subjects processed: {processed_subjects}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Subjects who received at least one email: {subjects_emailed_count}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log("-----------------------------------------", level=logging.INFO, tag=self.LOG_TAG)
-
-        # Return statistics for this survey type to be shown in final statistics
-        return total_subjects, skipped_count, subjects_emailed_count
+        # Calculate processed_subjects based on total - skipped
+        stats.set('processed_subjects', 'Subjects processed', total_subjects - stats.get('skipped_count'))
+        return stats
 
     def send_all_survey_emails(self, limesurvey_connector: LimeSurveyConnector) -> None:
         """Send all enabled survey emails.
@@ -1443,32 +1436,35 @@ class MailSender(Connector):
         Args:
             limesurvey_connector: LimeSurvey connector instance
         """
-        overall_total_subjects = 0
-        overall_skipped_count = 0
-        overall_processed_subjects = 0
-        overall_subjects_emailed_count = 0
-        processed_survey_types = []
+        # Create statistics template (shared structure for all surveys)
+        stats_template = RunStatistics({
+            'total_subjects': {'description': 'Total subjects considered'},
+            'skipped_count': {'description': 'Subjects skipped'},
+            'processed_subjects': {'description': 'Subjects processed'},
+            'subjects_emailed_count': {'description': 'Subjects who received at least one email'}
+        })
 
+        # Initialize overall statistics from template
+        self.run_statistics = stats_template.copy()
+
+        processed_survey_types = []
         for survey_type, survey_config in self.config.survey_types.items():
             if survey_config.enabled:
                 self.log(f"Processing survey type: {survey_type}", level=logging.INFO, tag=self.LOG_TAG)
-
-                total, skipped, emailed = self.send_survey_emails(limesurvey_connector, survey_config)
-
-                processed = total - skipped
-
-                overall_total_subjects += total
-                overall_skipped_count += skipped
-                overall_processed_subjects += processed
-                overall_subjects_emailed_count += emailed
                 processed_survey_types.append(survey_type)
+
+                # Pass a fresh copy to the survey method
+                survey_stats = self.send_survey_emails(limesurvey_connector, survey_config, stats_template.copy())
+                
+                # Print per-survey statistics
+                survey_stats.print(f"{survey_type.upper()} Sending Summary", self.log)
+                
+                # Accumulate into overall statistics
+                self.run_statistics += survey_stats
             else:
                 self.log(f"Skipping disabled config item: {survey_type}", level=logging.INFO, tag=self.LOG_TAG)
 
-        self.log("======== Overall Sending Summary ========", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Processed survey types: {', '.join(processed_survey_types) if processed_survey_types else 'None'}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall total subjects considered: {overall_total_subjects}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall subjects skipped: {overall_skipped_count}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall subjects processed: {overall_processed_subjects}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall subjects who received at least one email: {overall_subjects_emailed_count}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log("=========================================", level=logging.INFO, tag=self.LOG_TAG)
+        # Print overall statistics and write to Prometheus
+        self.log(f"Processed survey types: {', '.join(processed_survey_types)}", level=logging.INFO, tag=self.LOG_TAG)
+        self.run_statistics.print("Overall Sending Summary", self.log)
+        self.write_prometheus_statistics()

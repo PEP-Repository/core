@@ -134,7 +134,7 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def pull_data_for_column_groups_and_subject_groups(self, column_groups: list[str], subject_groups : list[str], force: bool = False, output_directory: str = None):
+    def pull_data_for_column_groups_and_subject_groups(self, column_groups: list[str], subject_groups : list[str], force: bool = False, output_directory: str = None, suppress_file_extensions: bool = False):
         if not isinstance(column_groups, list):
             raise ValueError("Column groups must be a list of strings")
         if not isinstance(subject_groups, list):
@@ -144,6 +144,8 @@ class AccessGroup:
             command.extend(["-C", column_group])
         for part_group in subject_groups:
             command.extend(["-P", part_group])
+        if suppress_file_extensions:
+            command.append("--suppress-file-extensions")
         if force:
             command.extend(["--force"])
         if output_directory:

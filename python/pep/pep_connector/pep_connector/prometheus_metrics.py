@@ -3,6 +3,7 @@ import sys
 import tempfile
 import logging
 import time
+from typing import Any
 from prometheus_client import CollectorRegistry, Counter, Gauge, Info, generate_latest
 
 class PrometheusMetrics:
@@ -50,7 +51,7 @@ class PrometheusMetrics:
 
             # Other initializations
             self.track_exception(exception_handler_callback)
-            self.track_run()
+            self.track_run()  # Write initial timestamp at start
             self.track_error_count()
 
     def log(self, message: str, level=logging.INFO, tag=None) -> None:
@@ -268,17 +269,55 @@ class PrometheusMetrics:
             self.log(f"Exception recorded in {self.exception_metrics_file}. Count set to {self.exception_counter}")
 
     def track_run(self) -> None:
-        """Record the current run time in a metrics file"""
-        timestamp = time.time()
+        """Record the start timestamp in run metrics file.
+        
+        Called at initialization to mark when the connector started.
+        """
+        self.run_start_timestamp = time.time()
         metrics = {
             "pep_importTimestamp_seconds": {
-                'value': timestamp,
+                'value': self.run_start_timestamp,
                 'help': "Unix Timestamp of the last execution", 
                 'type': "gauge",
                 'labels': {'job': self.job_name}
             }
         }
-
         self.create_textfile(metrics, self.run_metrics_file)
-        self.log(f"Recorded current run time: {timestamp}", logging.DEBUG)
-        self.log(f"Run tracking initialized with file {self.run_metrics_file}", logging.DEBUG)
+        self.log(f"Recorded run start timestamp: {self.run_start_timestamp}", logging.DEBUG)
+
+    def write_extra_run_statistics(self, statistics: dict[str, dict[str, Any]] | None = None) -> None:
+        """Write extra run statistics to the Prometheus metrics file.
+        
+        This preserves the original start timestamp and adds statistics metrics.
+        Should be called at the end of connector execution.
+        
+        Args:
+            statistics: Optional dictionary mapping stat names to dicts with 'description' and 'value'
+                       Example: {'total_subjects': {'description': 'Total subjects considered', 'value': 10}}
+        """
+        # Start with the original timestamp metric
+        metrics = {
+            "pep_importTimestamp_seconds": {
+                'value': self.run_start_timestamp if hasattr(self, 'run_start_timestamp') else time.time(),
+                'help': "Unix Timestamp of the last execution", 
+                'type': "gauge",
+                'labels': {'job': self.job_name}
+            }
+        }
+        
+        # Add each statistic as a separate metric if provided
+        if statistics:
+            for stat_name, stat_data in statistics.items():
+                metric_name = f"pep_{stat_name}"
+                metrics[metric_name] = {
+                    'value': stat_data['value'],
+                    'help': stat_data.get('description', f"Run statistic: {stat_name}"),
+                    'type': "gauge",
+                    'labels': {'job': self.job_name}
+                }
+        
+        self.create_textfile(metrics, self.run_metrics_file)
+        if statistics:
+            self.log(f"Finalized run with {len(statistics)} statistics", logging.DEBUG)
+        else:
+            self.log(f"Finalized run (no statistics provided)", logging.DEBUG)

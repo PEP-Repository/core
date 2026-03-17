@@ -12,6 +12,100 @@ from .peprepository import PepError
 from datetime import datetime
 
 
+class RunStatistics:
+    """Container for run statistics that supports accumulation via += operator."""
+    
+    def __init__(self, statistics: dict[str, dict[str, Any]] = None):
+        """
+        Initialize statistics.
+
+        Args:
+            statistics: Dict mapping slugs to config dicts with 'description' and optional 'value'.
+                       If 'value' is omitted, defaults to 0 for numeric stats.
+                       Example: {'total_subjects': {'description': 'Total subjects', 'value': 10}}
+                       Or: {'total_subjects': {'description': 'Total subjects'}}  # defaults to 0
+        """
+        self.stats = {}
+        if statistics:
+            for slug, config in statistics.items():
+                self.stats[slug] = {
+                    'description': config['description'],
+                    'value': config.get('value', 0)
+                }
+
+    def __iadd__(self, other: 'RunStatistics') -> 'RunStatistics':
+        """
+        Add another RunStatistics instance to this one using +=.
+
+        Numeric values are summed.
+        Descriptions are preserved from self.
+
+        Args:
+            other: Another RunStatistics instance to add
+
+        Returns:
+            self (for chaining)
+        """
+        if not isinstance(other, RunStatistics):
+            raise TypeError(f"unsupported operand type(s) for +=: 'RunStatistics' and '{type(other).__name__}'")
+
+        for slug, data in other.stats.items():
+            if slug in self.stats:
+                # Sum numeric values
+                if isinstance(data['value'], (int, float)):
+                    self.stats[slug]['value'] += data['value']
+            else:
+                # Add new statistic if it doesn't exist
+                self.stats[slug] = data.copy()
+
+        return self
+    
+    def get(self, slug: str, default: Any = None) -> Any:
+        """Get the value of a statistic by slug."""
+        return self.stats.get(slug, {}).get('value', default)
+
+    def set(self, slug: str, description: str, value: Any) -> None:
+        """Set a single statistic."""
+        self.stats[slug] = {'description': description, 'value': value}
+
+    def increment(self, slug: str, amount: int | float = 1) -> None:
+        """Increment a numeric statistic by the given amount.
+
+        Args:
+            slug: The statistic identifier
+            amount: Amount to add (default: 1)
+        """
+        if slug in self.stats:
+            if isinstance(self.stats[slug]['value'], (int, float)):
+                self.stats[slug]['value'] += amount
+            else:
+                raise TypeError(f"Cannot increment non-numeric statistic '{slug}'")
+        else:
+            raise KeyError(f"Statistic '{slug}' not found")
+    
+    def copy(self) -> 'RunStatistics':
+        """Create a deep copy of this RunStatistics instance."""
+        new_stats = RunStatistics()
+        for slug, data in self.stats.items():
+            new_stats.stats[slug] = {'description': data['description'], 'value': data['value']}
+        return new_stats
+    
+    def print(self, title: str, logger_func) -> None:
+        """
+        Print statistics in a formatted way.
+        
+        Args:
+            title: Title for the statistics section
+            logger_func: Function to call for logging (e.g., self.log)
+        """
+        separator = "=" * (len(title) + 4)
+        logger_func(separator, level=logging.INFO)
+        logger_func(title, level=logging.INFO)
+        for slug, data in self.stats.items():
+            logger_func(f"{data['description']}: {data['value']}", level=logging.INFO)
+        logger_func(separator, level=logging.INFO)
+
+
 class ConnectorConfig(BaseModel):
     """Base configuration for all connectors."""
 
@@ -71,6 +165,7 @@ class Connector(AccessGroup):
             raise ValueError("config must be an instance of ConnectorConfig")
 
         self.config = config
+        self.run_statistics = None
 
         self.prometheus_metrics = None
         if config.use_prometheus and config.prometheus_dir:
@@ -219,6 +314,14 @@ class Connector(AccessGroup):
             self.prometheus_metrics.track_exception(is_exception_occurring=True)
         # Exit with error code
         sys.exit(1)
+
+    def write_prometheus_statistics(self) -> None:
+        """
+        Write run statistics to Prometheus metrics files if enabled.
+        Should be called at the end of connector execution.
+        """
+        if self.prometheus_metrics and self.run_statistics:
+            self.prometheus_metrics.write_extra_run_statistics(self.run_statistics.stats)
 
     def parse_pep_python_list(self, value: str) -> list:
         """

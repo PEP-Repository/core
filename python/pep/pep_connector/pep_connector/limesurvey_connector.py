@@ -20,7 +20,7 @@ from pydantic import (
 from typing import Literal, Callable, Any
 from io import StringIO
 from .peprepository import PEPRepository
-from .connectors import Connector, ConnectorConfig
+from .connectors import Connector, ConnectorConfig, RunStatistics
 
 
 class LimeSurveySurveyConfig(BaseModel):
@@ -820,7 +820,16 @@ class LimeSurveyConnector(Connector):
             self.log(f"Failed to upload data for short pseudonym {short_pseudonym}. Error: {e}", logging.ERROR)
             raise
 
-    def store_survey_responses_in_pep(self, survey_config: LimeSurveySurveyConfig) -> tuple[int, int, int, int, int, int, int]:
+    def store_survey_responses_in_pep(self, survey_config: LimeSurveySurveyConfig, stats: RunStatistics) -> RunStatistics:
+        """Store survey responses in PEP.
+        
+        Args:
+            survey_config: Survey configuration object
+            stats: RunStatistics instance to populate
+            
+        Returns:
+            RunStatistics: Statistics for this survey type
+        """
 
         config_item_name = survey_config.name
         config_item_type = survey_config.type
@@ -833,14 +842,9 @@ class LimeSurveyConnector(Connector):
         # Load config from PEP
         subject_info = self.list_columndata_by_short_pseudonym(survey_config.sp_pep_column, pep_columns)
 
+        # Set total subjects count
         total_subjects = len(subject_info)
-        processed_count = 0
-        skipped_count = 0
-
-        uploaded_main_count = 0
-        uploaded_question_count = 0
-        uploaded_file_count = 0
-        uploaded_consent_count = 0
+        stats.set('total_subjects', 'Total subjects considered', total_subjects)
 
         for index, (short_pseudonym, data) in enumerate(subject_info.items(), start=1):
 
@@ -852,7 +856,7 @@ class LimeSurveyConnector(Connector):
                 try:
                     pep_survey_ids = json.loads(survey_ids_data)
                 except json.JSONDecodeError as e:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
 
                     self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Failed to load survey IDs data: {str(e)}.", 
                     level=logging.ERROR)
@@ -862,13 +866,13 @@ class LimeSurveyConnector(Connector):
                 # For consent surveys, skip if consent already given
                 consent_bool = data["columns"].get(survey_config.consent_bool_pep_column)
                 if consent_bool:
-                    skipped_count += 1
+                    stats.increment('skipped_count')
                     self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Consent already given.", 
                         level=logging.INFO)
                     continue
 
             if config_item_name not in pep_survey_ids or pep_survey_ids.get(config_item_name) is None:
-                skipped_count += 1
+                stats.increment('skipped_count')
                 self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: No survey IDs found for {config_item_name}.", 
                     level=logging.INFO)
                 continue
@@ -940,19 +944,19 @@ class LimeSurveyConnector(Connector):
                     researcher_check = response.get(survey_config.researcher_check_question_id)
 
                     if researcher_check == "":
-                        skipped_count += 1
+                        stats.increment('skipped_count')
                         self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher check not yet completed.", 
                         level=logging.INFO)
                         continue
 
                     if not researcher_check:
-                        skipped_count += 1
+                        stats.increment('skipped_count')
                         self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher check field '{survey_config.researcher_check_question_id}' changed or nonexistent.", 
                         level=logging.ERROR)
                         continue
 
                     if researcher_check == "N":
-                        skipped_count += 1
+                        stats.increment('skipped_count')
                         self.log(f"{config_item_name} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: Researcher marked no consent.", 
                         level=logging.INFO)
                         continue
@@ -978,7 +982,7 @@ class LimeSurveyConnector(Connector):
 
                         self.log(f"{config_item_name}: Uploading main response for survey ID: {survey_id}", logging.DEBUG)
                         self.upload_response(processed_response, short_pseudonym, current_survey_column, file_extension=f".{survey_config.document_type}")
-                        uploaded_main_count += 1
+                        stats.increment('uploaded_main')
                         self.log(f"{config_item_name}: Uploaded main response for survey ID: {survey_id}", logging.INFO)
 
                 # Handle question-specific column mapping
@@ -989,7 +993,7 @@ class LimeSurveyConnector(Connector):
                                                     question_columns=current_question_columns,
                                                     document_type=survey_config.document_type,
                                                     existence_results=existence_results)
-                    uploaded_question_count += question_uploads
+                    stats.increment('uploaded_questions', question_uploads)
                     self.log(f"{config_item_name}: Finished processing specific question columns for {short_pseudonym} (Uploaded: {question_uploads})", logging.INFO)
 
                 # Handle file uploads
@@ -1002,7 +1006,7 @@ class LimeSurveyConnector(Connector):
                                                 short_pseudonym=short_pseudonym,
                                                 file_upload_columns=current_file_upload_columns,
                                                 existence_results=existence_results)
-                    uploaded_file_count += file_uploads
+                    stats.increment('uploaded_files', file_uploads)
                     self.log(f"{config_item_name}: Finished processing file uploads for {short_pseudonym} (Uploaded: {file_uploads})", logging.INFO)
 
                 # Consent survey specific handling
@@ -1017,25 +1021,12 @@ class LimeSurveyConnector(Connector):
                     if should_upload_consent:
                         # store consent bool, using string instead of bytes to make it printable
                         self.upload_data_by_short_pseudonym(short_pseudonym, survey_config.consent_bool_pep_column, "1")
-                        uploaded_consent_count += 1
+                        stats.increment('uploaded_consent')
                         self.log(f"{config_item_name}: Set consent status for {short_pseudonym}", logging.INFO)
 
-            processed_count += 1
+            stats.increment('processed_subjects')
 
-        self.log(f"------ {config_item_name.upper()} Upload Summary ------", logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Total subjects found: {total_subjects}", logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Subjects skipped (no survey ID, consent given/denied, etc.): {skipped_count}", logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Subjects processed (attempted upload): {processed_count}", logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Successfully uploaded main responses: {uploaded_main_count}", logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Successfully uploaded question-specific values: {uploaded_question_count}", logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Successfully uploaded files: {uploaded_file_count}", logging.INFO, tag=self.LOG_TAG)
-        if config_item_type == "consent":
-            self.log(f"Successfully uploaded consent statuses: {uploaded_consent_count}", logging.INFO, tag=self.LOG_TAG)
-        self.log("-----------------------------------------", logging.INFO, tag=self.LOG_TAG)
-
-        # Return statistics for this survey type including successful uploads
-        return (total_subjects, skipped_count, processed_count, 
-                uploaded_main_count, uploaded_question_count, uploaded_file_count, uploaded_consent_count)
+        return stats
 
     def _process_question_columns(self, response, short_pseudonym: str, question_columns: dict[str, str], document_type: Literal["csv", "json"], existence_results: dict | None) -> int:
         """
@@ -1220,41 +1211,38 @@ class LimeSurveyConnector(Connector):
 
     def store_all_survey_responses_in_pep(self) -> None:
         """Upload all enabled survey responses to PEP."""
-        overall_total_subjects = 0
-        overall_skipped_count = 0
-        overall_processed_subjects = 0
-        overall_uploaded_main = 0
-        overall_uploaded_questions = 0
-        overall_uploaded_files = 0
-        overall_uploaded_consent = 0
-        processed_config_item_names = []
+        # Create statistics template (shared structure for all surveys)
+        stats_template = RunStatistics({
+            'total_subjects': {'description': 'Total subjects considered'},
+            'skipped_count': {'description': 'Subjects skipped'},
+            'processed_subjects': {'description': 'Subjects processed (upload attempted)'},
+            'uploaded_main': {'description': 'Successful uploads - Main responses'},
+            'uploaded_questions': {'description': 'Successful uploads - Specific questions'},
+            'uploaded_files': {'description': 'Successful uploads - Files'},
+            'uploaded_consent': {'description': 'Successful uploads - Consent status'}
+        })
+        
+        # Initialize overall statistics from template
+        self.run_statistics = stats_template.copy()
 
+        processed_survey_types = []
         for config_item_name, survey_config in self.config.survey_types.items():
             if survey_config.enabled:
                 self.log(f"Processing survey type for upload: {config_item_name}", level=logging.INFO, tag=self.LOG_TAG)
+                processed_survey_types.append(config_item_name)
 
-                (total, skipped, processed, 
-                  uploaded_main, uploaded_questions, uploaded_files, uploaded_consent) = self.store_survey_responses_in_pep(survey_config)
-
-                # Aggregate overall counts
-                overall_total_subjects += total
-                overall_skipped_count += skipped
-                overall_processed_subjects += processed
-                overall_uploaded_main += uploaded_main
-                overall_uploaded_questions += uploaded_questions
-                overall_uploaded_files += uploaded_files
-                overall_uploaded_consent += uploaded_consent
-                processed_config_item_names.append(config_item_name)
+                # Pass a fresh copy to the survey method
+                survey_stats = self.store_survey_responses_in_pep(survey_config, stats_template.copy())
+                
+                # Print per-survey statistics
+                survey_stats.print(f"{config_item_name.upper()} Upload Summary", self.log)
+                
+                # Accumulate into overall statistics
+                self.run_statistics += survey_stats
             else:
                 self.log(f"Skipping disabled config item: {config_item_name}", level=logging.INFO, tag=self.LOG_TAG)
 
-        self.log("======== Overall Upload Summary ========", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Processed survey types for upload: {', '.join(processed_config_item_names) if processed_config_item_names else 'None'}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall total subjects considered: {overall_total_subjects}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall subjects skipped: {overall_skipped_count}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall subjects processed (upload attempted): {overall_processed_subjects}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall successful uploads - Main responses: {overall_uploaded_main}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall successful uploads - Specific questions: {overall_uploaded_questions}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall successful uploads - Files: {overall_uploaded_files}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log(f"Overall successful uploads - Consent status: {overall_uploaded_consent}", level=logging.INFO, tag=self.LOG_TAG)
-        self.log("=========================================", level=logging.INFO, tag=self.LOG_TAG)
+        # Print overall statistics and write to Prometheus
+        self.log(f"Processed survey types: {', '.join(processed_survey_types)}", level=logging.INFO, tag=self.LOG_TAG)
+        self.run_statistics.print("Overall Upload Summary", self.log)
+        self.write_prometheus_statistics()

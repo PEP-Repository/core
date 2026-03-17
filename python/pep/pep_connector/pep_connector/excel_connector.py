@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import logging
 from .peprepository import PEPRepository
-from .connectors import Connector, ConnectorConfig
+from .connectors import Connector, ConnectorConfig, RunStatistics
 
 try:
     import pandas as pd
@@ -176,7 +176,7 @@ class ExcelConnector(Connector):
 
         return uploaded_count
 
-    def upload_excel_data(self, df, short_pseudonym, target_column, columns_to_remove=None):
+    def upload_excel_data(self, df, short_pseudonym, target_column, columns_to_remove=None) -> bool:
         """
         Uploads an entire DataFrame to a PEP column for a subject.
 
@@ -185,6 +185,9 @@ class ExcelConnector(Connector):
             short_pseudonym: The subject's short pseudonym
             target_column: The PEP column to store the data
             columns_to_remove: Optional list of columns to remove before upload
+            
+        Returns:
+            bool: True if successful, False otherwise
         """
         try:
             # Remove specified columns if any
@@ -205,7 +208,7 @@ class ExcelConnector(Connector):
             self.log(f"Failed to upload Excel data to {target_column} for {short_pseudonym}: {str(e)}", logging.ERROR)
             return False
 
-    def upload_row_selected_data(self, df, short_pseudonym, selector_config, columns_to_remove=None, existence_results=None, overwrite=True):
+    def upload_row_selected_data(self, df, short_pseudonym, selector_config, columns_to_remove=None, existence_results=None, overwrite=True) -> int:
         """
         Uploads rows from a DataFrame based on values in a selector column.
 
@@ -267,8 +270,17 @@ class ExcelConnector(Connector):
 
         return uploaded_count
 
-    def process_excel_file(self, excel_config, file_type):
-        """Processes an Excel file according to configuration and uploads data to PEP."""
+    def process_excel_file(self, excel_config, file_type, stats: RunStatistics) -> RunStatistics:
+        """Processes an Excel file according to configuration and uploads data to PEP.
+        
+        Args:
+            excel_config: Configuration dictionary for this Excel file
+            file_type: String identifier for the file type
+            stats: RunStatistics instance to track processing
+            
+        Returns:
+            RunStatistics instance with processing results
+        """
         self.log(f"Processing {file_type} Excel file", logging.INFO)
 
         self.__validate_excel_config(excel_config, file_type)
@@ -293,7 +305,7 @@ class ExcelConnector(Connector):
         df = self.read_excel_file(file_path, sheet_name)
         if df is None or df.empty:
             self.log(f"No data found in Excel file {file_path}", logging.WARNING)
-            return
+            return stats
 
         # Get all unique pseudonyms from the file
         all_pseudonyms = set()
@@ -307,20 +319,19 @@ class ExcelConnector(Connector):
         pep_pseudonyms = self.list_short_pseudonyms(sp_pep_column)
 
         total_subjects = len(pep_pseudonyms)
-        processed_count = 0
-        skipped_count = 0
-        pep_subjects_not_in_file = 0
+        stats.set('total_subjects', 'Total subjects considered', total_subjects)
 
         # Check for PEP subjects not in file
         pep_sp_not_in_file = set(pep_pseudonyms) - all_pseudonyms
         if pep_sp_not_in_file:
             self.log(f"Warning: {len(pep_sp_not_in_file)} subjects in PEP not found in Excel file: {pep_sp_not_in_file}", logging.WARNING)
-            pep_subjects_not_in_file = len(pep_sp_not_in_file)
+            stats.set('pep_subjects_not_in_file', 'PEP subjects not found in Excel file', len(pep_sp_not_in_file))
 
         # Check for file pseudonyms not in PEP
         file_sp_not_in_pep = all_pseudonyms - set(pep_pseudonyms)
         if file_sp_not_in_pep:
             self.log(f"Warning: {len(file_sp_not_in_pep)} pseudonyms in Excel file not found in PEP: {file_sp_not_in_pep}", logging.WARNING)
+            stats.set('file_subjects_not_in_pep', 'Excel file subjects not found in PEP', len(file_sp_not_in_pep))
 
         for index, short_pseudonym in enumerate(pep_pseudonyms, start=1):
 
@@ -331,7 +342,7 @@ class ExcelConnector(Connector):
             filtered_df = self.filter_dataframe_by_pseudonym(df, sp_column, short_pseudonym)
             if filtered_df.empty:
                 self.log(f"{file_type} ({index}/{total_subjects}): {short_pseudonym}: Skipping subject: No data found", logging.WARNING)
-                skipped_count += 1
+                stats.increment('skipped_count')
                 continue
 
             columns_to_check = []
@@ -353,12 +364,13 @@ class ExcelConnector(Connector):
 
             # Process unique column mapping first (before columns are removed)
             if unique_column_mapping:
-                self.upload_unique_column_data(
+                unique_uploads = self.upload_unique_column_data(
                     filtered_df,
                     short_pseudonym,
                     unique_column_mapping,
                     existence_results,
                     overwrite)
+                stats.increment('unique_column_uploads', unique_uploads)
 
             # Process excel_pep_column_mapping (store entire filtered Excel data to one pep column)
             if excel_pep_column:
@@ -369,25 +381,48 @@ class ExcelConnector(Connector):
                     should_upload = False
 
                 if should_upload:
-                    self.upload_excel_data(filtered_df, short_pseudonym, excel_pep_column, columns_to_remove)
+                    if self.upload_excel_data(filtered_df, short_pseudonym, excel_pep_column, columns_to_remove):
+                        stats.increment('excel_file_uploads')
 
             # Process row_selector (store specific rows to pep based on value in selector column 
             # e.g. store rows which have value "25-05-2025" in column "date" to pep column "Data_Week1")
             if row_selector:
-                self.upload_row_selected_data(
+                row_uploads = self.upload_row_selected_data(
                     filtered_df, 
                     short_pseudonym, 
                     row_selector, 
                     columns_to_remove, 
                     existence_results, 
                     overwrite)
+                stats.increment('row_selected_uploads', row_uploads)
 
-            processed_count += 1
-
-        self.log(f"Completed processing {file_type}. Successful: {processed_count}, Failed: {skipped_count}, PEP subjects not in file: {pep_subjects_not_in_file}", logging.INFO)
+            stats.increment('processed_count')
+        
+        return stats
 
     def store_all_excel_data_in_pep(self, config):
         """Processes all Excel files defined in the configuration."""
+        stats_template = RunStatistics({
+            'total_subjects': {'description': 'Total subjects considered'},
+            'skipped_count': {'description': 'Subjects skipped'},
+            'processed_count': {'description': 'Subjects processed'},
+            'pep_subjects_not_in_file': {'description': 'PEP subjects not found in Excel file'},
+            'file_subjects_not_in_pep': {'description': 'Excel file subjects not found in PEP'},
+            'unique_column_uploads': {'description': 'Unique column data uploads'},
+            'excel_file_uploads': {'description': 'Complete Excel file uploads'},
+            'row_selected_uploads': {'description': 'Row-selected data uploads'}
+        })
+
+        # Initialize overall statistics from template
+        self.run_statistics = stats_template.copy()
+
         for file_type, excel_config in config.items():
             if excel_config.get("enabled", False):
-                self.process_excel_file(excel_config, file_type)
+                file_stats = self.process_excel_file(excel_config, file_type, stats_template.copy())
+                file_stats.print(f"{file_type} Excel Processing Statistics", self.log)
+                self.run_statistics += file_stats
+
+        # Print and write statistics
+        if self.run_statistics:
+            self.run_statistics.print("Excel Connector Run Statistics", self.log)
+            self.write_prometheus_statistics()
