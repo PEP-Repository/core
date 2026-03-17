@@ -114,14 +114,14 @@ TEST_F(RskTranslatorTest, missingReshuffleKey) {
   EXPECT_THROW((void) rk.generateKeyFactors(recipient), std::logic_error);
 }
 
-TEST_F(RskTranslatorTest, rsk) {
+TEST_F(RskTranslatorTest, reshuffleRekey) {
   const auto data = CurvePoint::Random();
   const auto [sk, pk] = ElgamalEncryption::CreateKeyPair();
   const ElgamalEncryption encryption(pk, data);
 
   const SkRecipient recipient(1, {.reshuffle = "Group1", .rekey = "User1"});
   const auto factors = rsk.generateKeyFactors(recipient);
-  const auto transformed = rsk.rsk(encryption, factors);
+  const auto transformed = rsk.reshuffleRekey(encryption, factors);
 
   const auto skRecipient = rsk.generateKeyComponent(factors.rekey, sk);
   const auto decrypted = transformed.decrypt(skRecipient);
@@ -129,7 +129,7 @@ TEST_F(RskTranslatorTest, rsk) {
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
-TEST_F(RskTranslatorTest, rskZeroEncryption) {
+TEST_F(RskTranslatorTest, reshuffleRekeyZeroEncryption) {
   const auto data = CurvePoint::Random();
   const ElgamalPublicKey pk;
   ASSERT_TRUE(pk.isZero());
@@ -137,49 +137,49 @@ TEST_F(RskTranslatorTest, rskZeroEncryption) {
 
   const SkRecipient recipient(1, {.reshuffle = "Group1", .rekey = "User1"});
   const auto factors = rsk.generateKeyFactors(recipient);
-  EXPECT_THROW((void) rsk.rsk(encryption, factors), std::invalid_argument);
-  EXPECT_THROW((void) rsk.rk(encryption, factors.rekey), std::invalid_argument);
-  EXPECT_THROW((void) rsk.rs(encryption, factors.reshuffle), std::invalid_argument);
-  EXPECT_THROW((void) rsk.certifiedRsk(encryption, factors), std::invalid_argument);
+  EXPECT_THROW((void) rsk.reshuffleRekey(encryption, factors), std::invalid_argument);
+  EXPECT_THROW((void) rsk.rekey(encryption, factors.rekey), std::invalid_argument);
+  EXPECT_THROW((void) rsk.reshuffle(encryption, factors.reshuffle), std::invalid_argument);
+  EXPECT_THROW((void) rsk.certifiedReshuffleRekey(encryption, factors), std::invalid_argument);
 }
 
-TEST_F(RskTranslatorTest, rk) {
+TEST_F(RskTranslatorTest, rekey) {
   const auto data = CurvePoint::Random();
   const auto [sk, pk] = ElgamalEncryption::CreateKeyPair();
   const ElgamalEncryption encryption(pk, data);
 
   const RekeyRecipient recipient(1, "User1");
   const auto factor = rsk.generateKeyFactor(recipient);
-  const auto transformed = rsk.rk(encryption, factor);
+  const auto transformed = rsk.rekey(encryption, factor);
 
   const auto skRecipient = rsk.generateKeyComponent(factor, sk);
   const auto decrypted = transformed.decrypt(skRecipient);
   EXPECT_EQ(decrypted, data);
 }
 
-TEST_F(RskTranslatorTest, rs) {
+TEST_F(RskTranslatorTest, reshuffle) {
   const auto data = CurvePoint::Random();
   const auto [sk, pk] = ElgamalEncryption::CreateKeyPair();
   const ElgamalEncryption encryption(pk, data);
 
   const ReshuffleRecipient recipient(1, "User1");
   const auto factor = rsk.generateKeyFactor(recipient);
-  const auto transformed = rsk.rs(encryption, factor);
+  const auto transformed = rsk.reshuffle(encryption, factor);
 
   const auto decrypted = transformed.decrypt(sk);
   const auto dataReshuffle = factor * data;
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
-TEST_F(RskTranslatorTest, certifiedRsk) {
+TEST_F(RskTranslatorTest, certifiedReshuffleRekey) {
   const auto data = CurvePoint::Random();
   const auto [sk, pk] = ElgamalEncryption::CreateKeyPair();
   const ElgamalEncryption encryption(pk, data);
 
   const SkRecipient recipient(1, {.reshuffle = "Group1", .rekey = "User1"});
   const auto factors = rsk.generateKeyFactors(recipient);
-  const auto verifiers = rsk.computeRskProofVerifiers(factors, pk);
-  const auto [transformed, proof] = rsk.certifiedRsk(encryption, factors);
+  const auto verifiers = rsk.computeReshuffleRekeyVerifiers(factors, pk);
+  const auto [transformed, proof] = rsk.certifiedReshuffleRekey(encryption, factors);
   EXPECT_NO_THROW(proof.verify(encryption, transformed, verifiers));
 
   const auto skRecipient = rsk.generateKeyComponent(factors.rekey, sk);
@@ -188,7 +188,7 @@ TEST_F(RskTranslatorTest, certifiedRsk) {
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
-TEST_F(RskTranslatorTest, rskProofVerifiers) {
+TEST_F(RskTranslatorTest, ReshuffleRekeyProofVerifiers) {
   const ElgamalPublicKey pk = point(
       {0x04, 0x5C, 0xB4, 0xE3, 0x40, 0x49, 0x5A, 0x2B,
        0x5A, 0x30, 0xDD, 0x44, 0xA7, 0xB8, 0x25, 0x02,
@@ -197,8 +197,8 @@ TEST_F(RskTranslatorTest, rskProofVerifiers) {
 
   const SkRecipient recipient(1, {.reshuffle = "Group1", .rekey = "User1"});
   const auto factors = rsk.generateKeyFactors(recipient);
-  const auto verifiers = rsk.computeRskProofVerifiers(factors, pk);
-  const RSKVerifiers expectedVerifiers(
+  const auto verifiers = rsk.computeReshuffleRekeyVerifiers(factors, pk);
+  const ReshuffleRekeyVerifiers expectedVerifiers(
       point({0xEC, 0x6E, 0x89, 0x57, 0xF8, 0xBB, 0x91, 0x1D,
              0x11, 0x18, 0x60, 0x84, 0x43, 0x6F, 0x3E, 0x15,
              0xE6, 0xDF, 0x32, 0x7B, 0x56, 0x8B, 0xA9, 0x42,

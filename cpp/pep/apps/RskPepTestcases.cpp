@@ -125,20 +125,14 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
         const auto [afterStep, proof] = translator.certifiedTranslateStep(*encLocal, recipient);
         out << "  Encrypted pseudonym: " << afterStep.text() << '\n';
         out << "  Proof:\n"
-            << "    RY: " << proof.mRerandomizePubKey.text() << '\n'
-            << "    RB: " << proof.mRerandomizePoint.text() << '\n'
-            << "    RP:\n"
-            << "      CB: " << proof.mRP.mCB.text() << '\n'
-            << "      CM: " << proof.mRP.mCM.text() << '\n'
-            << "      S (CurveScalar): " << proof.mRP.mS.text() << '\n'
             << "    BP:\n"
-            << "      CB: " << proof.mBP.mCB.text() << '\n'
-            << "      CM: " << proof.mBP.mCM.text() << '\n'
-            << "      S (CurveScalar): " << proof.mBP.mS.text() << '\n'
+            << "      CB: " << proof.mReshuffleOverRekeyTimesBProof.mCB.text() << '\n'
+            << "      CM: " << proof.mReshuffleOverRekeyTimesBProof.mCM.text() << '\n'
+            << "      S (CurveScalar): " << proof.mReshuffleOverRekeyTimesBProof.mS.text() << '\n'
             << "    CP:\n"
-            << "      CB: " << proof.mCP.mCB.text() << '\n'
-            << "      CM: " << proof.mCP.mCM.text() << '\n'
-            << "      S (CurveScalar): " << proof.mCP.mS.text() << '\n';
+            << "      CB: " << proof.mReshuffleTimesCProof.mCB.text() << '\n'
+            << "      CM: " << proof.mReshuffleTimesCProof.mCM.text() << '\n'
+            << "      S (CurveScalar): " << proof.mReshuffleTimesCProof.mS.text() << '\n';
         *encLocal = afterStep;
       }
       else {

@@ -1,11 +1,12 @@
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/utils/Random.hpp>
 
+#include <random>
+
 namespace pep {
 
-PingRequest::PingRequest(): mId{/*placeholder*/} {
-  RandomBytes(reinterpret_cast<uint8_t*>(&mId), sizeof(mId));
-}
+PingRequest::PingRequest()
+  : mId{std::uniform_int_distribution<decltype(mId)>{}(ThreadUrbg)} {}
 
 void PingResponse::validate(const PingRequest& isReplyTo) const {
   if (mId != isReplyTo.mId) {

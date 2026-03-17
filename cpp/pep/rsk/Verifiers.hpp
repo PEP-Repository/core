@@ -11,16 +11,16 @@ class VerifiersResponse {
 public:
   VerifiersResponse() = default;
   VerifiersResponse(
-    RSKVerifiers am,
-    RSKVerifiers sf,
-    RSKVerifiers ts)
+    const ReshuffleRekeyVerifiers& am,
+    const ReshuffleRekeyVerifiers& sf,
+    const ReshuffleRekeyVerifiers& ts)
     : mAccessManager(am),
     mStorageFacility(sf),
     mTranscryptor(ts) { }
 
-  RSKVerifiers mAccessManager;
-  RSKVerifiers mStorageFacility;
-  RSKVerifiers mTranscryptor;
+  ReshuffleRekeyVerifiers mAccessManager;
+  ReshuffleRekeyVerifiers mStorageFacility;
+  ReshuffleRekeyVerifiers mTranscryptor;
 
   void ensureThreadSafe() const; // See CurvePoint::ensureThreadSafe()
 };

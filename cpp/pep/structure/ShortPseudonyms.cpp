@@ -1,9 +1,10 @@
 #include <pep/structure/ShortPseudonyms.hpp>
 #include <pep/utils/Mod97.hpp>
+#include <pep/utils/Random.hpp>
 
-#include <boost/random/random_device.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+
+#include <random>
 
 namespace {
 
@@ -19,22 +20,18 @@ const size_t SHORT_PSEUDONYM_PREAMBLE_LENGTH = SHORT_PSEUDONYM_PREAMBLE.size();
 
 namespace pep {
 
-std::string GenerateShortPseudonym(const std::string& prefix, const int len) {
-  constexpr std::string_view SP_CHARS = "0123456789";
+std::string GenerateShortPseudonym(std::string_view prefix, const std::size_t len) {
+  static constexpr std::string_view SP_CHARS = "0123456789";
+  std::string pseudonym;
+  pseudonym.reserve(prefix.length() + len + 2);
+  pseudonym += prefix;
 
-  static boost::random::random_device sp_rng;
-  static boost::random::uniform_int_distribution<> sp_distribution = boost::random::uniform_int_distribution<>(
-    0, static_cast<int>(SP_CHARS.size() - 1));
+  std::uniform_int_distribution sp_distribution(std::size_t{}, SP_CHARS.size() - 1);
+  std::generate_n(std::back_inserter(pseudonym), len, [&sp_distribution] {
+    return SP_CHARS[sp_distribution(ThreadUrbg)];
+  });
 
-  std::string pseudonym{prefix};
-  pseudonym.reserve(pseudonym.length() + static_cast<unsigned int>(len) + 2);
-
-  for(int i = 0; i < len; ++i) {
-    pseudonym += SP_CHARS[static_cast<size_t>(sp_distribution(sp_rng))];
-  }
-
-  std::string checkDigits = Mod97::ComputeCheckDigits(pseudonym);
-  pseudonym += checkDigits;
+  pseudonym += Mod97::ComputeCheckDigits(pseudonym);
 
   return pseudonym;
 }

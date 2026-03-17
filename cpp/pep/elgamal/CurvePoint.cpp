@@ -193,8 +193,7 @@ CurvePoint CurvePoint::ScalarMultTable::mult(const PublicCurveScalar& s) const {
 }
 
 CurvePoint CurvePoint::Random() {
-  // Compiler can't seem to deduce template parameter RNG itself
-  return CurvePoint::Random<void(uint8_t*,uint64_t)>(RandomBytes);
+  return CurvePoint::Hash(SpanToString(RandomArray<32>()));
 }
 
 }

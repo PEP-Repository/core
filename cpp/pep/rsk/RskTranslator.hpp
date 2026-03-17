@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/crypto/CPRNG.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk/EGCache.hpp>
 #include <pep/rsk/Proofs.hpp>
@@ -48,34 +47,34 @@ public:
   /// \returns Key factors
   [[nodiscard]] KeyFactors generateKeyFactors(const SkRecipient& recipient) const;
 
-  /// Rerandomize, reshuffle, and rekey encryption without proof
+  /// Reshuffle and rekey encryption without proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] ElgamalEncryption rsk(
+  [[nodiscard]] ElgamalEncryption reshuffleRekey(
       const ElgamalEncryption& encryption,
       const KeyFactors& recipientKeyFactors) const;
 
-  /// Rerandomize and rekey encryption without proof
+  /// Rekey encryption without proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] ElgamalEncryption rk(
+  [[nodiscard]] ElgamalEncryption rekey(
       const ElgamalEncryption& encryption,
       const ElgamalTranslationKey& recipientRekeyKeyFactor) const;
 
-  /// Rerandomize and reshuffle encryption without proof
+  /// Reshuffle encryption without proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] ElgamalEncryption rs(
+  [[nodiscard]] ElgamalEncryption reshuffle(
       const ElgamalEncryption& encryption,
       const CurveScalar& recipientReshuffleKeyFactor) const;
 
-  /// Rerandomize, reshuffle, and rekey encryption with proof
+  /// Reshuffle and rekey encryption with proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] std::pair<ElgamalEncryption, RSKProof> certifiedRsk(
+  [[nodiscard]] std::pair<ElgamalEncryption, ReshuffleRekeyProof> certifiedReshuffleRekey(
       const ElgamalEncryption& encryption,
       const KeyFactors& recipientKeyFactors) const;
 
   /// Compute static public data necessary for verifying RSK proofs for a recipient
   /// \param recipientKeyFactors Recipient key factors
   /// \param masterPublicEncryptionKey Master public encryption key
-  [[nodiscard]] RSKVerifiers computeRskProofVerifiers(
+  [[nodiscard]] ReshuffleRekeyVerifiers computeReshuffleRekeyVerifiers(
       const KeyFactors& recipientKeyFactors,
       const ElgamalPublicKey& masterPublicEncryptionKey) const;
 
@@ -91,9 +90,6 @@ public:
 private:
   Keys keys_;
   EGCache* cache_; // Pointer instead of reference to allow copy/move operations on RskTranslator
-
-  // This is a pointer so that RskTranslator remains movable (mutex is not)
-  std::unique_ptr<CPRNG> rng_; //TODO Is this actually more performant than RandomBytes? As it currently uses locks internally (see note)
 
   [[nodiscard]] CurveScalar generateKeyFactor(
       const KeyFactorSecret& keyFactorSecret,

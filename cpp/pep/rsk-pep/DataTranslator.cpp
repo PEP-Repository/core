@@ -47,7 +47,7 @@ ElgamalEncryption DataTranslator::blind(
     std::string_view blindAddData,
     bool invertBlindKey
 ) const {
-  return rsk_.rs(unblinded, generateBlindingKey(BlindMode::Blind, blindAddData, invertBlindKey));
+  return rsk_.reshuffle(unblinded, generateBlindingKey(BlindMode::Blind, blindAddData, invertBlindKey));
 }
 
 ElgamalEncryption DataTranslator::unblindAndTranslate(
@@ -56,7 +56,7 @@ ElgamalEncryption DataTranslator::unblindAndTranslate(
     bool invertBlindKey,
     const Recipient& recipient
 ) const {
-  return rsk_.rsk(blinded, {
+  return rsk_.reshuffleRekey(blinded, {
       .reshuffle = generateBlindingKey(BlindMode::Unblind, blindingAddData, invertBlindKey),
       .rekey = rsk_.generateKeyFactor(recipient),
   });
@@ -66,7 +66,7 @@ ElgamalEncryption DataTranslator::translateStep(
     const ElgamalEncryption& encrypted,
     const Recipient& recipient
 ) const {
-  return rsk_.rk(encrypted, rsk_.generateKeyFactor(recipient));
+  return rsk_.rekey(encrypted, rsk_.generateKeyFactor(recipient));
 }
 
 CurveScalar DataTranslator::generateKeyComponent(const Recipient& recipient) const {

@@ -168,7 +168,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
           throw Error("AccessGroup pseudonym missing "
             "even though includeAccessGroupPseudonyms is set");
         if (!entry.mUserGroupProof)
-          throw Error("AccessGroup RSKProof missing "
+          throw Error("AccessGroup ReshuffleRekeyProof missing "
             "even though includeAccessGroupPseudonyms is set");
       }
       else {
@@ -176,7 +176,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
           throw Error("AccessGroup pseudonym set even though "
             "includeAccessGroupPseudonyms is not set");
         if (entry.mUserGroupProof)
-          throw Error("AccessGroup RSKProof set even though "
+          throw Error("AccessGroup ReshuffleRekeyProof set even though "
             "includeAccessGroupPseudonyms is not set");
       }
 

@@ -99,9 +99,4 @@ boost::property_tree::path RawPtreePath(const std::string& path);
     return (fun)(std::forward<decltype(args)>(args)...); \
   })
 
-/// Generic version of \c std::abs
-[[nodiscard]] constexpr auto Abs(auto v) {
-  return v < decltype(v){/*default*/} ? -std::move(v) : std::move(v);
-}
-
 }

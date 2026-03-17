@@ -37,14 +37,6 @@ public:
 
   static CurveScalar One();
 
-  template<typename RNG>
-  static CurveScalar Random(RNG& rng) {
-    //NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    std::array<uint8_t, 64> randomBuf;
-    rng(randomBuf.data(), randomBuf.size());
-    return CurveScalar::From64Bytes(SpanToString(randomBuf));
-  }
-
   static CurveScalar Random();
 
   static CurveScalar From64Bytes(std::string_view bytes);
