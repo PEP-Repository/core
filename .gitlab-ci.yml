@@ -569,13 +569,14 @@ ubuntu-lts-release-unlinted:
 
 ubuntu-lts-release:
   stage: build
+  tags: [docker-small]
   rules:
     - if: $ENABLE_LINTER == "yes"
       needs: [ "ubuntu-lts-release-linted" ]
     - if: $ENABLE_LINTER != "yes"
       needs: [ "ubuntu-lts-release-unlinted" ]
   script:
-    echo "Producing artifacts from the ubuntu-lts-release-[un]linted job"
+    echo "Collecting artifacts from the ubuntu-lts-release-[un]linted job"
   artifacts:
     expire_in: 8h
     paths:
