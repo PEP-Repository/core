@@ -14,6 +14,20 @@ git_root="$SCRIPTPATH/.."
 # shellcheck source=SCRIPTDIR/functions.bash
 . "$SCRIPTPATH/functions.bash"
 
+# Takes a JSON string describing a test data configuration and
+# runs the necessary `pepcli` commands to generate that data
+test_setup() {
+  # shellcheck disable=SC1090
+  source <("$SCRIPTPATH/declpep.sh" setup "$@")
+}
+
+# Takes a JSON string describing a test data configuration and
+# runs the necessary `pepcli` commands to remove that data
+test_cleanup() {
+  # shellcheck disable=SC1090
+  source <("$SCRIPTPATH/declpep.sh" cleanup "$@")
+}
+
 readonly default_skip=''
 
 usage() {

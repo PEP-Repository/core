@@ -584,42 +584,31 @@ fi
 ####################
 
 if should_run_test structured-output; then
-  # Prepare Structured-Output Test Data (SOAG)
-  pepcli --oauth-token-group "Access Administrator" user group create SOAG
+  # All SOTD.shortText strings are <= 7 bytes long (max inline length)
+  # language=json
+  SO_CONFIG='{
+    "userGroups": [ "SOAG" ],
+    "columnGroups": [{
+      "name": "SOTD",
+      "columns": [ "SOTD.shortText", "SOTD.longText" ],
+      "cgars": [
+        { "userGroup": "SOAG", "permissions": [ "read", "write" ] },
+        { "userGroup": "Data Administrator", "permissions": [ "read", "write" ] }
+      ]
+    }],
+    "subjectGroups": [{
+      "name": "SOTPGroup",
+      "subjects": [
+        { "SOTD.shortText": "yellow", "SOTD.longText": "Canary Yellow" },
+        { "SOTD.shortText": "blue", "SOTD.longText": "Celestial Blue" },
+        { "SOTD.shortText": "green" },
+        { "SOTD.longText": "Cadmium Red" }
+      ],
+      "pgars": [{ "userGroup": "SOAG", "permissions": [ "enumerate", "access" ] }]
+    }]
+  }'
 
-  # Prepapre Structured-Output Test Data (SOTD)
-  pepcli --oauth-token-group "Data Administrator" ama column create SOTD.shortText
-  pepcli --oauth-token-group "Data Administrator" ama column create SOTD.longText
-
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column addTo SOTD.shortText SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column addTo SOTD.longText SOTD
-
-  pepcli --oauth-token-group "Access Administrator" ama cgar create SOTD SOAG read
-  pepcli --oauth-token-group "Access Administrator" ama cgar create SOTD SOAG write
-
-  # Prerare Structured-Output Test Participants (SOTP)
-  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-
-  pepcli --oauth-token-group "Data Administrator" ama group create SOTPGroup
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP1}"
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP2}"
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP3}"
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP4}"
-  pepcli --oauth-token-group "Access Administrator" ama pgar create SOTPGroup SOAG "enumerate"
-  pepcli --oauth-token-group "Access Administrator" ama pgar create SOTPGroup SOAG "access"
-
-  pepcli --oauth-token-group SOAG store -p "${SOTP1}" -c SOTD.shortText -d "yellow" # exactly 7 bytes
-  pepcli --oauth-token-group SOAG store -p "${SOTP1}" -c SOTD.longText -d "Canary Yellow"
-  pepcli --oauth-token-group SOAG store -p "${SOTP2}" -c SOTD.shortText -d "blue"
-  pepcli --oauth-token-group SOAG store -p "${SOTP2}" -c SOTD.longText -d "Celestial Blue"
-  pepcli --oauth-token-group SOAG store -p "${SOTP3}" -c SOTD.shortText -d "green"
-  # skipping SOTP3 longText
-  pepcli --oauth-token-group SOAG store -p "${SOTP4}" -c SOTD.longText -d "Cadmium Red"
-  # skipping SOTP4 shortText
+  test_setup "$SO_CONFIG"
 
   # Pull and export to csv
   CSV_PATH="$DEST_DIR/pulled-data/export.csv"
@@ -655,23 +644,7 @@ if should_run_test structured-output; then
   # Clean up
   execute . rm -rf "$DEST_DIR/pulled-data"
 
-  pepcli --oauth-token-group "Data Administrator" ama column removeFrom SOTD.shortText SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column remove SOTD.shortText
-  pepcli --oauth-token-group "Data Administrator" ama column removeFrom SOTD.longText SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column remove SOTD.longText
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove SOTD SOAG read
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove SOTD SOAG write
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove SOTD
-
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP1}"
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP2}"
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP3}"
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP4}"
-  pepcli --oauth-token-group "Access Administrator" ama pgar remove SOTPGroup SOAG "enumerate"
-  pepcli --oauth-token-group "Access Administrator" ama pgar remove SOTPGroup SOAG "access"
-  pepcli --oauth-token-group "Data Administrator" ama group remove SOTPGroup
-
-  pepcli --oauth-token-group "Access Administrator" user group remove SOAG
+  test_cleanup "$SO_CONFIG"
 fi
 
 ####################
