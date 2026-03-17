@@ -1,5 +1,6 @@
 #include <pep/rsk/RskSerializers.hpp>
 
+#include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
@@ -24,16 +25,31 @@ void Serializer<ScalarMultProof>::moveIntoProtocolBuffer(proto::ScalarMultProof&
 
 ReshuffleRekeyVerifiers Serializer<ReshuffleRekeyVerifiers>::fromProtocolBuffer(proto::ReshuffleRekeyVerifiers&& source) const {
   return ReshuffleRekeyVerifiers(
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_z_over_kb())),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_zb())),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_ky()))
-  );
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_reshuffle_point())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_point())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_reshuffle_over_rekey_point())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekeyed_public_key())));
+}
+void Serializer<ReshuffleRekeyVerifiers>::moveIntoProtocolBuffer(proto::ReshuffleRekeyVerifiers& dest, ReshuffleRekeyVerifiers value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_reshuffle_point(), value.mReshufflePoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_point(), value.mRekeyPoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_reshuffle_over_rekey_point(), value.mReshuffleOverRekeyPoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekeyed_public_key(), value.mRekeyedPublicKey);
 }
 
-void Serializer<ReshuffleRekeyVerifiers>::moveIntoProtocolBuffer(proto::ReshuffleRekeyVerifiers& dest, ReshuffleRekeyVerifiers value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_z_over_kb(), value.mReshuffleOverRekeyPoint);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_zb(), value.mReshufflePoint);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ky(), value.mRekeyedPublicKey);
+ReshuffleRekeyVerifiersProof Serializer<ReshuffleRekeyVerifiersProof>::fromProtocolBuffer(proto::ReshuffleRekeyVerifiersProof&& source) const {
+  return ReshuffleRekeyVerifiersProof(
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_inverse_point())),
+    InverseProof(Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_inverse_proof()))),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_reshuffle_times_rekey_inverse_proof())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_times_public_key_proof())));
+}
+
+void Serializer<ReshuffleRekeyVerifiersProof>::moveIntoProtocolBuffer(proto::ReshuffleRekeyVerifiersProof& dest, ReshuffleRekeyVerifiersProof value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_inverse_point(), value.mRekeyInversePoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_inverse_proof(), value.mRekeyInverseProof.mSecretInverseTimesPointProof);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_reshuffle_times_rekey_inverse_proof(), value.mReshuffleTimesRekeyInverseProof);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_times_public_key_proof(), value.mRekeyTimesPublicKeyProof);
 }
 
 ReshuffleRekeyProof Serializer<ReshuffleRekeyProof>::fromProtocolBuffer(proto::ReshuffleRekeyProof&& source) const {
@@ -60,6 +76,26 @@ void Serializer<VerifiersResponse>::moveIntoProtocolBuffer(proto::VerifiersRespo
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.mAccessManager);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.mStorageFacility);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor(), value.mTranscryptor);
+}
+
+UserVerifiersRequest Serializer<UserVerifiersRequest>::fromProtocolBuffer(proto::UserVerifiersRequest&& source) const {
+  return UserVerifiersRequest{
+    .userCertificate = Serialization::FromProtocolBuffer(std::move(*source.mutable_user_certificate())),
+  };
+}
+void Serializer<UserVerifiersRequest>::moveIntoProtocolBuffer(proto::UserVerifiersRequest& dest, UserVerifiersRequest value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_certificate(), value.userCertificate);
+}
+
+UserVerifiersResponse Serializer<UserVerifiersResponse>::fromProtocolBuffer(proto::UserVerifiersResponse&& source) const {
+  return UserVerifiersResponse{
+    .verifiers = Serialization::FromProtocolBuffer(std::move(*source.mutable_verifiers())),
+    .proof = Serialization::FromProtocolBuffer(std::move(*source.mutable_proof())),
+  };
+}
+void Serializer<UserVerifiersResponse>::moveIntoProtocolBuffer(proto::UserVerifiersResponse& dest, UserVerifiersResponse value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_verifiers(), value.verifiers);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_proof(), value.proof);
 }
 
 }

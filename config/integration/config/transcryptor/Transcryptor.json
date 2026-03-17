@@ -1,4 +1,5 @@
 {
+  "PublicKeyPseudonyms": "",
   "KeysFile": "TranscryptorKeys.json",
   "StorageFile": "transcryptorStorage.sqlite",
   "VerifiersFile": "Verifiers.json",

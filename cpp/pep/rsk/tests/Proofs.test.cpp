@@ -6,7 +6,7 @@
 
 namespace {
 
-TEST(ProofsTest, TestScalarMultProof) {
+TEST(Proofs, ScalarMultProof) {
   for (int i = 0; i < 10; i++) {
     auto x = pep::CurveScalar::Random();
     auto A = x * pep::CurvePoint::Base;
@@ -18,12 +18,44 @@ TEST(ProofsTest, TestScalarMultProof) {
     EXPECT_NO_THROW(proof.verify(A, M, N));
 
     // Test some invalid proofs --- this only catches the most blatant mistakes.
-    EXPECT_THROW(proof.verify(M, A, N), pep::InvalidProof) << "Bogus proof should fail to validate";
-    EXPECT_THROW(proof.verify(M, N, A), pep::InvalidProof) << "Bogus proof should fail to validate";
+    EXPECT_THROW(proof.verify(M, A, N), pep::InvalidProof) << "Proof should fail to validate with bogus verifiers";
+    EXPECT_THROW(proof.verify(M, N, A), pep::InvalidProof) << "Proof should fail to validate with bogus verifiers";
   }
 }
 
-TEST(ProofsTest, TestReshuffleRekeyProof) {
+TEST(Proofs, InverseProof) {
+  const auto secret = pep::CurveScalar::Random();
+  const auto secretAsPoint = secret * pep::CurvePoint::Base;
+  const auto secretInverse = secret.invert();
+  const auto secretInversePoint = secretInverse * pep::CurvePoint::Base;
+
+  const auto proof = pep::InverseProof::Create(secretInversePoint, secretAsPoint, secretInverse);
+  EXPECT_NO_THROW(proof.verify(secretInversePoint, secretAsPoint));
+
+  // Test some invalid proofs --- this only catches the most blatant mistakes:
+  //NOLINTNEXTLINE(readability-suspicious-call-argument) verify parameters intentionally swapped
+  EXPECT_THROW(proof.verify(secretAsPoint, secretInversePoint),
+    pep::InvalidProof) << "Proof should fail to validate with bogus verifiers";
+  // Test inverse unrelated to secret
+  EXPECT_THROW(pep::InverseProof(pep::ScalarMultProof::Create(
+      pep::CurvePoint{}, secretAsPoint, pep::CurvePoint{}, pep::CurveScalar{}))
+    .verify(pep::CurvePoint{}, secretAsPoint),
+    pep::InvalidProof) << "Bogus proof should fail to validate";
+}
+
+TEST(Proofs, ReshuffleRekeyVerifiersProof) {
+  auto globalKey = pep::CurvePoint::Random();
+  const auto [verifiers, proof] = pep::ReshuffleRekeyVerifiersProof::ComputeCertified(
+    pep::CurveScalar::Random(),
+    pep::CurveScalar::Random(),
+    globalKey);
+
+  EXPECT_NO_THROW(proof.verify(verifiers, globalKey));
+
+  //TODO Test invalid proofs
+}
+
+TEST(Proofs, ReshuffleRekeyProof) {
   for (int i = 0; i < 10; i++) {
     auto pre = pep::ElgamalEncryption(
         pep::CurvePoint::Random(),
@@ -54,7 +86,7 @@ TEST(ProofsTest, TestReshuffleRekeyProof) {
   }
 }
 
-TEST(ProofsTest, TestRerandomizeProof) {
+TEST(Proofs, RerandomizeProof) {
   for (int i = 0; i < 10; i++) {
     const pep::ElgamalEncryption pre(
         pep::CurvePoint::Random(),

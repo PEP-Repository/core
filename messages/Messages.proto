@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option cc_enable_arenas = true;
-
 package pep.proto;
+
+option cc_enable_arenas = true;
 // The "option go_package" is needed to get rid of breaking protoc change causing
 //   protoc-gen-go: unable to determine Go import path for "Messages.proto"
 // We specify package name "pep_proto" to retain backward compatibility.
@@ -60,7 +60,6 @@ enum EnrollmentScheme {
   ENROLLMENT_SCHEME_V2 = 1;
 }
 
-
 enum FileOpenType {
   FILE_OPEN_UNKNOWN = 0;
   FILE_OPEN_CREATE = 1;
@@ -91,7 +90,7 @@ message Metadata {
   Timestamp timestamp = 2; // warning: not the one used for historical queries
   EncryptionScheme encryption_scheme = 4;
 
-  map<string,MetadataXEntry> extra = 5;
+  map<string, MetadataXEntry> extra = 5;
 
   // (Encrypted storage facility) Identifier of the file that contained the original payload.
   // Empty if the original payload was stored with this entry.
@@ -289,8 +288,7 @@ message RekeyResponse {
   repeated ElgamalEncryption keys = 2;
 }
 
-message PEPIdRegistrationRequest {
-}
+message PEPIdRegistrationRequest {}
 
 message SignedPEPIdRegistrationRequest {
   Signature signature = 3;
@@ -312,8 +310,7 @@ message SignedRegistrationRequest {
   bytes data = 4;
 }
 
-message RegistrationResponse {
-}
+message RegistrationResponse {}
 
 message ListCastorImportColumnsRequest {
   string sp_column = 1;
@@ -328,8 +325,7 @@ message SignedMetricsRequest {
   Signature signature = 3;
   bytes data = 4;
 }
-message MetricsRequest {
-}
+message MetricsRequest {}
 
 message MetricsResponse {
   bytes metrics = 1;
@@ -349,8 +345,7 @@ message SignedPingResponse {
   bytes data = 4;
 }
 
-message CsrRequest {
-}
+message CsrRequest {}
 
 message SignedCsrRequest {
   Signature signature = 1;
@@ -376,8 +371,7 @@ message SignedCertificateReplacementRequest {
   bytes data = 2;
 }
 
-message CertificateReplacementResponse {
-}
+message CertificateReplacementResponse {}
 
 message SignedCertificateReplacementResponse {
   Signature signature = 1;
@@ -393,11 +387,9 @@ message SignedCertificateReplacementCommitRequest {
   bytes data = 2;
 }
 
-message CertificateReplacementCommitResponse {
-}
+message CertificateReplacementCommitResponse {}
 
-message VersionRequest {
-}
+message VersionRequest {}
 
 message ConfigVersion {
   // Field indices were defined identically to VersionResponse because it may yield some benefit in the future.
@@ -438,8 +430,7 @@ message SignedChecksumChainNamesRequest {
   Signature signature = 3;
   bytes data = 4;
 }
-message ChecksumChainNamesRequest {
-}
+message ChecksumChainNamesRequest {}
 message ChecksumChainNamesResponse {
   repeated string names = 1;
 }
@@ -452,14 +443,13 @@ message SignedChecksumChainRequest {
 }
 message ChecksumChainRequest {
   string name = 1;
-  /* optional */ bytes checkpoint = 2;
+  /* optional */
+  bytes checkpoint = 2;
 }
 message ChecksumChainResponse {
   bytes checkpoint = 1; // The last checkpoint included in the XOR
   bytes xorredChecksums = 2;
 }
-
-
 
 // New API
 // ////////////////////////////////////////////////////////////////////////////
@@ -501,7 +491,7 @@ message TicketRequest2 {
 
 message SignedTicketRequest2 {
   Signature signature = 3;
-  Signature log_signature = 5;   // signature to be stored at logger
+  Signature log_signature = 5; // signature to be stored at logger
 
   bytes data = 4;
 }
@@ -520,8 +510,8 @@ message IndexList {
 message IndexedTicket2 {
   SignedTicket2 ticket = 1;
 
-  map<string,IndexList> column_groups = 2;
-  map<string,IndexList> groups = 3;
+  map<string, IndexList> column_groups = 2;
+  map<string, IndexList> groups = 3;
 }
 
 // A ticket which (when signed) grants access to data
@@ -775,8 +765,7 @@ message SFId {
 //
 
 // Sent to the accessmanager to request the global configuration.
-message GlobalConfigurationRequest {
-}
+message GlobalConfigurationRequest {}
 
 message GlobalConfiguration {
   repeated ShortPseudonymDefinition short_pseudonyms = 1;
@@ -805,8 +794,8 @@ message ShortPseudonymDefinition {
   bool suppress_additional_stickers = 8;
 }
 message UserPseudonymFormat {
-    string prefix = 1;
-    uint32 length = 3;
+  string prefix = 1;
+  uint32 length = 3;
 }
 message CastorShortPseudonymDefinition {
   string study_slug = 1;
@@ -872,9 +861,8 @@ message StudyContext {
 
 message ColumnSpecification {
   string column = 1;
-  string associated_short_pseudonym_column  = 2; //optional. If provided, indicates pseudonymisation should be done.
+  string associated_short_pseudonym_column = 2; //optional. If provided, indicates pseudonymisation should be done.
   bool requires_directory = 3;
-
 }
 message ShortPseudonymErratum {
   string value = 1;
@@ -1012,8 +1000,7 @@ message AmaMutationRequest {
   bool force_column_group_removal = 15;
   bool force_participant_group_removal = 16;
 }
-message AmaMutationResponse {
-}
+message AmaMutationResponse {}
 
 // Requests the state of the AM (which columns, groups, column groups,
 // group/column access rules, etc exist) at a given timestamp matching
@@ -1033,10 +1020,10 @@ message SignedAmaQuery {
   Signature signature = 3;
   bytes data = 4;
 }
-message  AmaQRColumn {
+message AmaQRColumn {
   string name = 1;
 }
-message  AmaQRColumnGroup {
+message AmaQRColumnGroup {
   string name = 1;
   repeated string columns = 2;
 }
@@ -1046,7 +1033,7 @@ message AmaQRColumnGroupAccessRule {
   string mode = 3;
 }
 message AmaQRParticipantGroup {
-    string name = 1;
+  string name = 1;
 }
 message AmaQRParticipantGroupAccessRule {
   string participant_group = 1;
@@ -1062,15 +1049,13 @@ message AmaQueryResponse {
 }
 
 // The actual data comes as a raw sqlite database, in chunks, in the tail of the message
-message MigrateUserDbToAccessManagerRequest {
-}
+message MigrateUserDbToAccessManagerRequest {}
 message SignedMigrateUserDbToAccessManagerRequest {
   Signature signature = 1;
   bytes data = 2;
 }
 
-message MigrateUserDbToAccessManagerResponse{
-}
+message MigrateUserDbToAccessManagerResponse {}
 
 //
 // User administration interface.
@@ -1092,22 +1077,22 @@ message TokenResponse {
 
 message CreateUser {
   string uid = 1;
-};
+}
 
 message RemoveUser {
   string uid = 1;
-};
+}
 
 message AddUserIdentifier {
   string existingUid = 1;
   string newUid = 2;
   bool is_primary_id = 3;
   bool is_display_id = 4;
-};
+}
 
 message RemoveUserIdentifier {
   string uid = 1;
-};
+}
 
 message UserGroup {
   string name = 1;
@@ -1159,8 +1144,7 @@ message SignedUserMutationRequest {
   bytes data = 4;
 }
 
-message UserMutationResponse {
-}
+message UserMutationResponse {}
 
 message UserQuery {
   // Optional
@@ -1178,7 +1162,6 @@ message QRUser {
   optional string primary_id = 4;
   repeated string other_uids = 5;
   repeated string groups = 2;
-
 }
 message UserQueryResponse {
   repeated QRUser users = 3;
@@ -1226,19 +1209,34 @@ message ReshuffleRekeyProof {
   ScalarMultProof cp = 5; // for (z B, c + ry, c')
 }
 
-message VerifiersRequest {
-}
+message VerifiersRequest {}
 message VerifiersResponse {
   ReshuffleRekeyVerifiers access_manager = 1;
   ReshuffleRekeyVerifiers storage_facility = 2;
   ReshuffleRekeyVerifiers transcryptor = 3;
 }
 
+message UserVerifiersRequest {
+  X509Certificate user_certificate = 1;
+}
+message UserVerifiersResponse {
+  ReshuffleRekeyVerifiers verifiers = 1;
+  ReshuffleRekeyVerifiersProof proof = 2;
+}
+
 // Public information required to verify a ReshuffleRekeyProof.
 message ReshuffleRekeyVerifiers {
-  CurvePoint z_over_kb = 1;
-  CurvePoint zb = 2;
-  CurvePoint ky = 3;
+  CurvePoint reshuffle_over_rekey_point = 1;
+  CurvePoint reshuffle_point = 2;
+  CurvePoint rekeyed_public_key = 3;
+  CurvePoint rekey_point = 4;
+}
+
+message ReshuffleRekeyVerifiersProof {
+  CurvePoint rekey_inverse_point = 1;
+  ScalarMultProof rekey_inverse_proof = 2;
+  ScalarMultProof reshuffle_times_rekey_inverse_proof = 3;
+  ScalarMultProof rekey_times_public_key_proof = 4;
 }
 
 message SignedColumnAccessRequest {
@@ -1344,8 +1342,7 @@ message TokenBlockingBlocklistEntry {
   Timestamp metadataCreationDateTime = 5;
 }
 
-message TokenBlockingListRequest {
-}
+message TokenBlockingListRequest {}
 
 message SignedTokenBlockingListRequest {
   Signature signature = 1;

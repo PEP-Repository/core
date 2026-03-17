@@ -1,4 +1,4 @@
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/accessmanager/Storage.hpp>
@@ -45,7 +45,7 @@ void PrepareSortedMine(UserQueryResponse& response) {
 }
 
 /*
-The following tests attempt to test the basic interactions with the database behind AccessManager::Backend::Storage. At times, there exists a depecdency on other functionality. For example, to
+The following tests attempt to test the basic interactions with the database behind AccessManager::Backend::Storage. At times, there exists a dependency on other functionality. For example, to
 test whether or not a participant has been correctly added to a participantGroup, we depend on createParticipantGroup(), and hasParticipantInGroup().
 At this moment, I see no way around this.*/
 

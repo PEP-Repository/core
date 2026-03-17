@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/crypto/X509Certificate.hpp>
 #include <pep/rsk/Proofs.hpp>
 
 namespace pep {
@@ -23,6 +24,15 @@ public:
   ReshuffleRekeyVerifiers mTranscryptor;
 
   void ensureThreadSafe() const; // See CurvePoint::ensureThreadSafe()
+};
+
+struct UserVerifiersRequest {
+  X509Certificate userCertificate;
+};
+
+struct UserVerifiersResponse {
+  ReshuffleRekeyVerifiers verifiers;
+  ReshuffleRekeyVerifiersProof proof;
 };
 
 }

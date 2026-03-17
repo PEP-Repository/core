@@ -65,7 +65,6 @@ ElgamalEncryption RskTranslator::rekey(
 ElgamalEncryption RskTranslator::reshuffle(
     const ElgamalEncryption& encryption,
     const CurveScalar& recipientReshuffleKeyFactor) const {
-  //TODO This could potentially be cached?
   return CheckValidEncryption(encryption).reshuffle(recipientReshuffleKeyFactor);
 }
 
@@ -85,6 +84,16 @@ ReshuffleRekeyVerifiers RskTranslator::computeReshuffleRekeyVerifiers(
     const KeyFactors& recipientKeyFactors,
     const ElgamalPublicKey& masterPublicEncryptionKey) const {
   return ReshuffleRekeyVerifiers::Compute(
+      recipientKeyFactors.reshuffle,
+      recipientKeyFactors.rekey,
+      masterPublicEncryptionKey);
+}
+
+std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+RskTranslator::computeCertifiedReshuffleRekeyVerifiers(
+    const KeyFactors& recipientKeyFactors,
+    const ElgamalPublicKey& masterPublicEncryptionKey) const {
+  return ReshuffleRekeyVerifiersProof::ComputeCertified(
       recipientKeyFactors.reshuffle,
       recipientKeyFactors.rekey,
       masterPublicEncryptionKey);

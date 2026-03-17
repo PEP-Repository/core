@@ -52,31 +52,82 @@ class ScalarMultProof {
     const CurvePoint& post) const;
 };
 
+/// Proof that a point X^{-1} is in the form of x^{-1}B, given X = xB
+class InverseProof {
+public:
+  ScalarMultProof mSecretInverseTimesPointProof;
+
+  InverseProof() = default;
+  explicit InverseProof(const ScalarMultProof& secretInverseTimesPointProof)
+    : mSecretInverseTimesPointProof(secretInverseTimesPointProof) {}
+
+  static InverseProof Create(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint,
+    const CurveScalar& secretInverse);
+
+  void verify(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint) const;
+};
+
 // Public data required to verify a ReshuffleRekeyProof.
 class ReshuffleRekeyVerifiers {
  public:
   ReshuffleRekeyVerifiers() = default;
   ReshuffleRekeyVerifiers(
-      const CurvePoint& reshuffleOverRekeyPoint,
       const CurvePoint& reshufflePoint,
-      const CurvePoint& rekeyedPublicKey)
-  : mReshuffleOverRekeyPoint(reshuffleOverRekeyPoint),
-    mReshufflePoint(reshufflePoint),
+      const CurvePoint& rekeyPoint,
+      const CurvePoint& reshuffleOverRekeyPoint,
+      const ElgamalPublicKey& rekeyedPublicKey)
+  : mReshufflePoint(reshufflePoint),
+    mRekeyPoint(rekeyPoint),
+    mReshuffleOverRekeyPoint(reshuffleOverRekeyPoint),
     mRekeyedPublicKey(rekeyedPublicKey) { }
   static ReshuffleRekeyVerifiers Compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
-    const CurvePoint& publicKey);
+    const ElgamalPublicKey& globalKey);
 
-  CurvePoint mReshuffleOverRekeyPoint;
   CurvePoint mReshufflePoint;
-  CurvePoint mRekeyedPublicKey;
+  CurvePoint mRekeyPoint;
+  CurvePoint mReshuffleOverRekeyPoint;
+  ElgamalPublicKey mRekeyedPublicKey;
 
   [[nodiscard]] auto operator<=>(const ReshuffleRekeyVerifiers& right) const = default;
 
   void ensureThreadSafe() const; // See CurvePoint::ensureThreadSafe()
 };
 
+/// Proof of internal consistency of ReshuffleRekeyVerifiers
+class ReshuffleRekeyVerifiersProof {
+public:
+  ReshuffleRekeyVerifiersProof() = default;
+  ReshuffleRekeyVerifiersProof(
+    const CurvePoint& rekeyInversePoint,
+    const InverseProof& rekeyInverseProof,
+    const ScalarMultProof& reshuffleTimesRekeyInverseProof,
+    const ScalarMultProof& rekeyTimesPublicKeyProof)
+  : mRekeyInversePoint(rekeyInversePoint),
+    mRekeyInverseProof(rekeyInverseProof),
+    mReshuffleTimesRekeyInverseProof(reshuffleTimesRekeyInverseProof),
+    mRekeyTimesPublicKeyProof(rekeyTimesPublicKeyProof) {}
+
+  CurvePoint mRekeyInversePoint;
+  InverseProof mRekeyInverseProof;
+  ScalarMultProof mReshuffleTimesRekeyInverseProof;
+  ScalarMultProof mRekeyTimesPublicKeyProof;
+
+  static std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+  ComputeCertified(
+    const CurveScalar& reshuffle,
+    const CurveScalar& rekey,
+    const ElgamalPublicKey& globalKey);
+
+  void verify(
+    const ReshuffleRekeyVerifiers& verifiers,
+    const ElgamalPublicKey& globalKey) const;
+};
 
 
 // A compositional non-interactive zero-knowledge proof that

@@ -36,6 +36,7 @@ COPY \
     ${STAGING_DIRECTORY}/cpp/pep/structuredoutput/pepStructuredOutputUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/ticketing/pepTicketingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/transcryptor/pepTranscryptor \
+    ${STAGING_DIRECTORY}/cpp/pep/transcryptor/pepTranscryptorUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/utils/pepUtilsUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/versioning/pepVersioningUnitTests \
     ${STAGING_DIRECTORY}/go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog \

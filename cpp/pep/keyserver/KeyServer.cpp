@@ -230,19 +230,14 @@ bool KeyServer::isValid(
 }
 
 X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigningRequest& csr) const {
-  try {
-    const auto certificate = csr.signCertificate(
-        mClientCACertificateChain.leaf(),
-        mClientCAPrivateKey,
-        validityTimeOfGeneratedCertificates);
-    assert(GetEnrolledParty(certificate) == EnrolledParty::User);
-    LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
-                        << " in OU=" << csr.getOrganizationalUnit().value_or("");
-    return certificate;
-  }
-  catch (...) {
-    throw Error{"Certificate generation failed"};
-  }
+  const auto certificate = csr.signCertificate(
+      mClientCACertificateChain.leaf(),
+      mClientCAPrivateKey,
+      validityTimeOfGeneratedCertificates);
+  assert(GetEnrolledParty(certificate) == EnrolledParty::User);
+  LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
+                      << " in OU=" << csr.getOrganizationalUnit().value_or("");
+  return certificate;
 }
 
 } // namespace pep

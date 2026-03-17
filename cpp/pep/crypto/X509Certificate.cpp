@@ -37,8 +37,7 @@ namespace pep {
 
 static const std::string LOG_TAG ("X509Certificate");
 
-// Max duration of certificate issued is 2 years, change this to std::chrono::years{2} when this is fully supported
-constexpr std::chrono::seconds MAX_PEP_CERTIFICATE_VALIDITY_PERIOD = std::chrono::hours{17520};
+constexpr std::chrono::seconds MAX_PEP_CERTIFICATE_VALIDITY_PERIOD = std::chrono::years{2};
 
 namespace {
 

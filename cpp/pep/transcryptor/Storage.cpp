@@ -2,7 +2,6 @@
 
 #include <pep/transcryptor/Storage.hpp>
 
-#include <pep/rsk/Proofs.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Math.hpp>
@@ -370,6 +369,62 @@ struct ModeSetModeRecord {
   std::string mode;
 };
 
+/// Packed CurvePoint as stored in the database
+using DbCurvePoint = std::vector<char>;
+
+struct PseudonymizationDomainVerifiersRecord {
+  PseudonymizationDomainVerifiersRecord() = default;
+  PseudonymizationDomainVerifiersRecord(
+    std::string pseudonymizationDomain,
+    const CurvePoint& reshufflePoint)
+    : pseudonymizationDomain(std::move(pseudonymizationDomain)),
+      reshufflePoint(RangeToVector(reshufflePoint.pack())) {}
+  
+  std::string pseudonymizationDomain; // Primary key
+
+  DbCurvePoint reshufflePoint;
+
+  CurvePoint getReshufflePoint() const {
+    return CurvePoint(SpanToString(reshufflePoint));
+  }
+};
+
+struct SessionVerifiersRecord {
+  SessionVerifiersRecord() = default;
+  SessionVerifiersRecord(
+    std::string certificateHash,
+    Timestamp expiryTimestamp,
+    std::string pseudonymizationDomain,
+    const CurvePoint& rekeyPoint,
+    const CurvePoint& reshuffleOverRekeyPoint,
+    const ElgamalPublicKey& rekeyedPublicKey)
+    : certificateHash(std::move(certificateHash)),
+      expiryTimestamp{TicksSinceEpoch<milliseconds>(expiryTimestamp)},
+      pseudonymizationDomain(std::move(pseudonymizationDomain)),
+      rekeyPoint(RangeToVector(rekeyPoint.pack())),
+      reshuffleOverRekeyPoint(RangeToVector(reshuffleOverRekeyPoint.pack())),
+      rekeyedPublicKey(RangeToVector(rekeyedPublicKey.pack())) {}
+
+  std::string certificateHash; // Primary key
+
+  database::UnixMillis expiryTimestamp{};
+  std::string pseudonymizationDomain; // Refers to PseudonymizationDomainVerifiersRecord
+  DbCurvePoint
+    rekeyPoint,
+    reshuffleOverRekeyPoint,
+    rekeyedPublicKey;
+
+  CurvePoint getRekeyPoint() const {
+    return CurvePoint(SpanToString(rekeyPoint));
+  }
+  CurvePoint getReshuffleOverRekeyPoint() const {
+    return CurvePoint(SpanToString(reshuffleOverRekeyPoint));
+  }
+  ElgamalPublicKey getRekeyedPublicKey() const {
+    return CurvePoint(SpanToString(rekeyedPublicKey));
+  }
+};
+
 // This function defines the database scheme used.
 auto ts_create_db(const std::string& path) {
   // BEWARE!  Changing a column below causes the whole table to be dropped!
@@ -488,7 +543,23 @@ auto ts_create_db(const std::string& path) {
       make_column("checksumNonce", &ModeSetModeRecord::checksumNonce),
       make_column("seqno",
         &ModeSetModeRecord::seqno,
-        primary_key().autoincrement()))
+        primary_key().autoincrement())),
+
+    make_table("PseudonymizationDomainVerifiers",
+      make_column("pseudonymizationDomain", &PseudonymizationDomainVerifiersRecord::pseudonymizationDomain,
+        primary_key()),
+      make_column("reshufflePoint", &PseudonymizationDomainVerifiersRecord::reshufflePoint)),
+
+    make_table("SessionVerifiers",
+      make_column("certificateHash", &SessionVerifiersRecord::certificateHash,
+        primary_key()),
+      make_column("expiryTimestamp", &SessionVerifiersRecord::expiryTimestamp),
+      make_column("pseudonymizationDomain", &SessionVerifiersRecord::pseudonymizationDomain),
+      make_column("rekeyPoint", &SessionVerifiersRecord::rekeyPoint),
+      make_column("reshuffleOverRekeyPoint", &SessionVerifiersRecord::reshuffleOverRekeyPoint),
+      make_column("rekeyedPublicKey", &SessionVerifiersRecord::rekeyedPublicKey),
+      foreign_key(&SessionVerifiersRecord::pseudonymizationDomain)
+        .references(&PseudonymizationDomainVerifiersRecord::pseudonymizationDomain))
   );
 }
 
@@ -500,6 +571,7 @@ struct TranscryptorStorageBackend : database::Storage<ts_create_db> {
 };
 
 namespace {
+
 template <typename TRecord>
 class ChecksumChainFor : public transcryptor::ChecksumChain {
 protected:
@@ -528,6 +600,11 @@ protected:
 public:
   explicit ChecksumChainFor(std::string name) noexcept : ChecksumChain(std::move(name)) {}
 };
+
+[[nodiscard]] std::string CertificateHash(const X509Certificate& cert) {
+  return Sha256{}.digest(cert.toDer());
+}
+
 }
 
 TranscryptorStorage::TranscryptorStorage(
@@ -535,6 +612,7 @@ TranscryptorStorage::TranscryptorStorage(
   mStorage = std::make_shared<TranscryptorStorageBackend>(path.string());
 
   ensureInitialized();
+  removeOutdatedRecords();
 
   // Can't assign an { initializer-list } to mChecksumChains because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
   mChecksumChains.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>("migration"));
@@ -593,7 +671,7 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
       throw Error("Detected potentially incomplete migration.");
     }
 
-    // the folliwing should be ensured by this->getCurrentVersion()
+    // the following should be ensured by this->getCurrentVersion()
     assert(version==MigrationRecord::TargetVersion);
 
     LOG(LOG_TAG, info) << "Database has already been migrated to "
@@ -602,7 +680,7 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
 
     return;
   }
-  // Not everyting was in sync, but no tables or columns were removed.
+  // Not everything was in sync, but no tables or columns were removed.
   // This happens in two cases:
   //   I.  when the database was empty;
   //   II. when a database of a different version was loaded.
@@ -685,6 +763,13 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
 
   // record successful migration
   this->mStorage->raw.insert(MigrationRecord(2));
+}
+
+void TranscryptorStorage::removeOutdatedRecords() {
+  auto now = TimeNow();
+  database::UnixMillis nowMillis = TicksSinceEpoch<milliseconds>(now);
+  // Remove outdated session verifiers
+  mStorage->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expiryTimestamp) <= nowMillis));
 }
 
 void TranscryptorStorage::computeChecksum(const std::string& chain,
@@ -929,6 +1014,56 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
   return latest.toVersion;
 }
 
+
+std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(const X509Certificate& userCertificate) {
+  auto domain = userCertificate.getOrganizationalUnit().value();
+  auto hash = CertificateHash(userCertificate);
+  if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
+    LOG(LOG_TAG, debug) << "Found existing verifiers for "
+      << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
+    auto domainVerifiers = mStorage->raw.get<PseudonymizationDomainVerifiersRecord>(domain);
+    return ReshuffleRekeyVerifiers(
+      domainVerifiers.getReshufflePoint(),
+      sessionVerifiers->getRekeyPoint(),
+      sessionVerifiers->getReshuffleOverRekeyPoint(),
+      sessionVerifiers->getRekeyedPublicKey());
+  }
+  return {};
+}
+
+void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& userCertificate, const ReshuffleRekeyVerifiers& verifiers) {
+  auto domain = userCertificate.getOrganizationalUnit().value();
+  if (auto domainVerifiers = mStorage->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
+    LOG(LOG_TAG, debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
+    if (domainVerifiers->getReshufflePoint() != verifiers.mReshufflePoint) {
+      throw std::runtime_error("Inconsistent reshuffle verifier for pseudonymization domain " + Logging::Escape(domain));
+    }
+  } else {
+    LOG(LOG_TAG, debug) << "Storing domain verifiers for " << Logging::Escape(domain);
+    mStorage->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshufflePoint));
+  }
+
+  auto hash = CertificateHash(userCertificate);
+  if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
+    LOG(LOG_TAG, debug) << "Found existing session verifiers for "
+      << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
+    if (sessionVerifiers->getRekeyPoint() != verifiers.mRekeyPoint
+      || sessionVerifiers->getReshuffleOverRekeyPoint() != verifiers.mReshuffleOverRekeyPoint
+      || sessionVerifiers->getRekeyedPublicKey() != verifiers.mRekeyedPublicKey) {
+      throw std::runtime_error("Inconsistent verifiers for session for " + userCertificate.getCommonName().value());
+    }
+  } else {
+    LOG(LOG_TAG, debug) << "Storing session verifiers for "
+      << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
+    mStorage->raw.replace(SessionVerifiersRecord(
+      hash,
+      userCertificate.getNotAfter(),
+      domain,
+      verifiers.mRekeyPoint,
+      verifiers.mReshuffleOverRekeyPoint,
+      verifiers.mRekeyedPublicKey));
+  }
+}
 
 std::string TranscryptorStorage::logTicketRequest(
     const std::vector<LocalPseudonym>& localPseudonyms,

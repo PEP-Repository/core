@@ -71,10 +71,19 @@ public:
       const ElgamalEncryption& encryption,
       const KeyFactors& recipientKeyFactors) const;
 
-  /// Compute static public data necessary for verifying RSK proofs for a recipient
+  /// Compute static public data necessary for verifying SK proofs for a recipient
   /// \param recipientKeyFactors Recipient key factors
   /// \param masterPublicEncryptionKey Master public encryption key
   [[nodiscard]] ReshuffleRekeyVerifiers computeReshuffleRekeyVerifiers(
+      const KeyFactors& recipientKeyFactors,
+      const ElgamalPublicKey& masterPublicEncryptionKey) const;
+
+  /// Compute static public data necessary for verifying SK proofs for a recipient,
+  /// with proof
+  /// \param recipientKeyFactors Recipient key factors
+  /// \param masterPublicEncryptionKey Master public encryption key
+  [[nodiscard]] std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+  computeCertifiedReshuffleRekeyVerifiers(
       const KeyFactors& recipientKeyFactors,
       const ElgamalPublicKey& masterPublicEncryptionKey) const;
 

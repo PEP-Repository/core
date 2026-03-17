@@ -2,6 +2,8 @@
 
 Originally based on [2020 PEP blueprint](https://docs.pages.pep.cs.ru.nl/private/ops/main/uploads/blueprint_aug_2020_main.pdf).
 
+Elements were also taken from "Verifiable Pseudonymization via Polymorphic Encryption using Zero-Knowledge Proofs" by Job Doesburg, which has currently not been published yet.
+
 ## Authentication
 
 - Servers authenticated using TLS certificates
@@ -139,7 +141,7 @@ The blinding key is there to prevent the following attack. A malicious Storage F
 
 Zero Knowledge Proof that you know logarithm $x$ of $X = xB$.
 
-- Prover chooses random nonce $r$
+- Prover chooses secret random nonce $r$
 - Sends commitment $R = rB$ to verifier
 - Verifier sends random challenge $c$
 - Prover sends $z = r + cx$
@@ -149,7 +151,7 @@ Zero Knowledge Proof that you know logarithm $x$ of $X = xB$.
 
 Transformed using Fiat-Shamir heuristic to use cryptographic hash for challenge.
 
-- Prover chooses random nonce $r$
+- Prover chooses secret random nonce $r$
 - Computes commitment $R = rB$
 - Computes challenge $c = h(X,R)$
 - Computes $z = r + cx$
@@ -163,7 +165,7 @@ Prove that you know scalar $x$ in $N = xM$ without giving $x$.
 
 Chaum-Pedersen protocol + Fiat-Shamir heuristic, similar to Schnorr NI-ZKP:
 
-- Prover chooses random nonce $r$
+- Prover chooses secret random nonce $r$
 - Computes commitments $R_B = rB$ & $R_M = rM$
 - Computes challenge $c = h(M,N,R_B,R_M)$
 - Computes $z = r + cx$
@@ -172,7 +174,15 @@ Chaum-Pedersen protocol + Fiat-Shamir heuristic, similar to Schnorr NI-ZKP:
 - Checks $zB \overset?= R_B + cX$
 - Checks $zM \overset?= R_M + cN$
 
-We also add $X$ in the challenge hash. _Is this redundant?_
+We also add $X$ in the challenge hash, although this is redundant.
+
+### Inverse
+
+Prove that $X^{-1} = x^{-1}B$ for secret $x$.
+
+- Prover constructs scalar multiplication proof for $B = x^{-1} \cdot X$
+- Publishes $X$ and scalar multiplication proof (includes $X^{-1}$)
+- Verifier checks scalar multiplication proof
 
 ### RSK proof
 
@@ -195,4 +205,4 @@ We can also verify rerandomization via a proof for $\underline{r} \cdot xB$ and 
 
 ### In PEP
 
-In PEP, the Access Manager proves to the Transcryptor that it performed the RSKs correctly: with consistent factors, starting at the same polymorphic pseudonym. The Transcryptor can then [log](https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/) the consistent set of pseudonyms for auditing.
+In PEP, the Access Manager proves to the Transcryptor that it performed the SKs correctly: with consistent factors, starting at the same polymorphic pseudonym. The Transcryptor can then [log](https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/) the consistent set of pseudonyms for auditing.

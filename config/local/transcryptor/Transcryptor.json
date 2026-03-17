@@ -1,4 +1,5 @@
 {
+  "PublicKeyPseudonyms": "CAB97D7E594B0DCA79BDFBDB090B08C153E761CF964CDA32D829BB746934B34B",
   "KeysFile": "TranscryptorKeys.json",
   "StorageFile": "transcryptorStorage.sqlite",
   "VerifiersFile": "Verifiers.json",
@@ -7,6 +8,11 @@
   "PEPPrivateKeyFile": "PEPTranscryptor.key",
   "PEPCertificateFile": "PEPTranscryptor.chain",
   "CACertificateFile": "rootCA.cert",
+  "AccessManager": {
+    "Name": "AccessManager",
+    "Address": "localhost",
+    "Port": 16501
+  },
   "KeyServer": {
     "Name": "KeyServer",
     "Address": "localhost",

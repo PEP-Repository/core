@@ -54,6 +54,20 @@ CurveScalar ScalarMultProof::ComputeChallenge(
   return CurveScalar::ShortHash(packed);
 }
 
+InverseProof InverseProof::Create(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint,
+    const CurveScalar& secretInverse) {
+  // x^{-1} * X = B
+  return InverseProof(ScalarMultProof::Create(secretInversePoint, secretAsPoint, CurvePoint::Base, secretInverse));
+}
+
+void InverseProof::verify(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint) const {
+  return mSecretInverseTimesPointProof.verify(secretInversePoint, secretAsPoint, CurvePoint::Base);
+}
+
 ReshuffleRekeyProof ReshuffleRekeyProof::Create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
@@ -153,11 +167,13 @@ void RerandomizeProof::verify(
 ReshuffleRekeyVerifiers ReshuffleRekeyVerifiers::Compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
-    const CurvePoint& publicKey) {
+    const ElgamalPublicKey& globalKey) {
+  CurvePoint reshufflePoint = reshuffle * CurvePoint::Base;
   return ReshuffleRekeyVerifiers(
-    reshuffle * rekey.invert() * CurvePoint::Base,
-    reshuffle * CurvePoint::Base,
-    rekey * publicKey
+    reshufflePoint,
+    rekey * CurvePoint::Base,
+    rekey.invert() * reshufflePoint,
+    rekey * globalKey
   );
 }
 
@@ -165,6 +181,39 @@ void ReshuffleRekeyVerifiers::ensureThreadSafe() const {
   mReshuffleOverRekeyPoint.ensureThreadSafe();
   mReshufflePoint.ensureThreadSafe();
   mRekeyedPublicKey.ensureThreadSafe();
+}
+
+void ReshuffleRekeyVerifiersProof::verify(
+    const ReshuffleRekeyVerifiers& verifiers,
+    const ElgamalPublicKey& globalKey) const {
+  // Check rekeyPoint & rekeyInversePoint are related
+  mRekeyInverseProof.verify(mRekeyInversePoint, verifiers.mRekeyPoint);
+  // Check log(reshufflePoint) * rekeyInversePoint = reshuffleOverRekeyPoint
+  mReshuffleTimesRekeyInverseProof.verify(verifiers.mReshufflePoint, mRekeyInversePoint, verifiers.mReshuffleOverRekeyPoint);
+  // Check public key
+  mRekeyTimesPublicKeyProof.verify(verifiers.mRekeyPoint, globalKey, verifiers.mRekeyedPublicKey);
+}
+
+std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+ReshuffleRekeyVerifiersProof::ComputeCertified(
+    const CurveScalar& reshuffle,
+    const CurveScalar& rekey,
+    const ElgamalPublicKey& globalKey) {
+  CurveScalar rekeyInverse = rekey.invert();
+  CurvePoint rekeyInversePoint = rekeyInverse * CurvePoint::Base;
+  CurvePoint reshufflePoint = reshuffle * CurvePoint::Base; //TODO only calculate when not yet known
+  ReshuffleRekeyVerifiers verifiers(
+    reshufflePoint,
+    rekey * CurvePoint::Base,
+    rekeyInverse * reshufflePoint,
+    rekey * globalKey
+  );
+  ReshuffleRekeyVerifiersProof proof(
+    rekeyInversePoint,
+    InverseProof::Create(rekeyInversePoint, verifiers.mRekeyPoint, rekeyInverse),
+    ScalarMultProof::Create(reshufflePoint, rekeyInversePoint, verifiers.mReshuffleOverRekeyPoint, reshuffle),
+    ScalarMultProof::Create(verifiers.mRekeyPoint, globalKey, verifiers.mRekeyedPublicKey, rekey));
+  return {verifiers, proof};
 }
 
 }
