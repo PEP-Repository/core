@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <random>
 #include <ranges>
 #include <span>
 #include <string>
@@ -65,5 +66,12 @@ struct CryptoUrbg {
     return std::numeric_limits<result_type>::max();
   }
 };
+
+template <std::integral T>
+[[nodiscard]] T RandomInteger() {
+  std::uniform_int_distribution<T> distribution;
+  CryptoUrbg urbg;
+  return distribution(urbg);
+}
 
 }

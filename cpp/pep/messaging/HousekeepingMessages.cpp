@@ -6,9 +6,7 @@
 namespace pep {
 
 PingRequest::PingRequest()
-  : mId{ CryptoUrbg{}() } {
-  static_assert(std::is_same_v<decltype(mId), CryptoUrbg::result_type>, "Need a random value for mId's full range");
-}
+  : mId{ RandomInteger<decltype(mId)>() } {}
 
 void PingResponse::validate(const PingRequest& isReplyTo) const {
   if (mId != isReplyTo.mId) {

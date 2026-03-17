@@ -23,8 +23,7 @@ namespace {
 const std::string CHECKSUM_SUBSTITUTE_KEY = "checksum-substitute";
 
 uint64_t GenerateChecksumSubstitute() {
-  static_assert(std::is_same_v<uint64_t, CryptoUrbg::result_type>, "Need a random uint64_t value");
-  return CryptoUrbg{}();
+  return RandomInteger<uint64_t>();
 }
 
 const std::string ENTRY_FILE_TYPE("pepentry");
