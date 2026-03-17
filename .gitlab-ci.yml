@@ -534,7 +534,7 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
     WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
 
-ubuntu-lts-release:
+.ubuntu-lts-release-build:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
@@ -555,12 +555,36 @@ ubuntu-lts-release:
     paths:
       - $STAGING_DIRECTORY
 
+ubuntu-lts-release-linted:
+  extends:
+    - .ubuntu-lts-release-build
+  rules:
+    - if: $ENABLE_LINTER == "yes"
+
+ubuntu-lts-release-unlinted:
+  extends:
+    - .ubuntu-lts-release-build
+  rules:
+    - if: $ENABLE_LINTER == "yes"
+      when: never
+
+ubuntu-lts-release:
+  rules:
+    - if: $ENABLE_LINTER == "yes"
+      needs: [ "ubuntu-lts-release-linted" ]
+    - if: $ENABLE_LINTER != "yes"
+      needs: [ "ubuntu-lts-release-unlinted" ]
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
 ubuntu-lts-release-manual-lint:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
   rules:
-    # Redundant if we're already linting
+    # Redundant if CI already includes the "ubuntu-lts-release-linted" job
     - if: $ENABLE_LINTER == "yes"
       when: never
     - <<: *not-stable-release
