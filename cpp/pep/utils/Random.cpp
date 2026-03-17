@@ -62,6 +62,7 @@ public:
 
 void UnbufferedRandomBytes(std::span<std::byte> out) {
   auto outInts = ConvertBytes<unsigned char>(out);
+  // Benchmarking indicates that OpenSSL function RAND_bytes has better performance (on some platforms) than std::random_device
   if (RAND_bytes(outInts.data(), CheckedCast<int>(outInts.size())) <= 0) {
     throw OpenSSLError("RAND_bytes failed");
   }
