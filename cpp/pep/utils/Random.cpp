@@ -76,7 +76,7 @@ void RandomBytes(std::span<std::byte> out) {
     UnbufferedRandomBytes(out);
   }
   else {
-    thread_local RandomBytesBuffer buffer;
+    static thread_local RandomBytesBuffer buffer;
     buffer.fill(out);
   }
 }
