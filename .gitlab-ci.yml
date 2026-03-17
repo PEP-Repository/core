@@ -643,10 +643,37 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - when: on_success
 
-ubuntu-rolling-debug:
+.ubuntu-rolling-debug-build:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-rolling-debug-settings
+
+ubuntu-rolling-debug-linted:
+  extends:
+    - .ubuntu-rolling-debug-build
+  rules:
+    - if: $ENABLE_LINTER == "yes"
+
+ubuntu-rolling-debug-unlinted:
+  extends:
+    - .ubuntu-rolling-debug-build
+  rules:
+    - if: $ENABLE_LINTER != "yes"
+
+ubuntu-rolling-debug:
+  stage: build
+  tags: [docker-small]
+  rules:
+    - if: $ENABLE_LINTER == "yes"
+      needs: [ "ubuntu-rolling-debug-linted" ]
+    - if: $ENABLE_LINTER != "yes"
+      needs: [ "ubuntu-rolling-debug-unlinted" ]
+  script:
+    echo "Collecting artifacts from the ubuntu-rolling-debug-[un]linted job"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
 
 ubuntu-rolling-debug-manual-lint:
   extends:
