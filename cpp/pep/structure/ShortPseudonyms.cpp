@@ -27,8 +27,9 @@ std::string GenerateShortPseudonym(std::string_view prefix, const std::size_t le
   pseudonym += prefix;
 
   std::uniform_int_distribution sp_distribution(std::size_t{}, SP_CHARS.size() - 1);
-  std::generate_n(std::back_inserter(pseudonym), len, [&sp_distribution] {
-    return SP_CHARS[sp_distribution(ThreadUrbg)];
+  CryptoUrbg urbg;
+  std::generate_n(std::back_inserter(pseudonym), len, [&sp_distribution, &urbg] {
+    return SP_CHARS[sp_distribution(urbg)];
   });
 
   pseudonym += Mod97::ComputeCheckDigits(pseudonym);

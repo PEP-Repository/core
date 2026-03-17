@@ -8,11 +8,11 @@ using namespace pep;
 // Public interface: doc comments in declaration
 
 PseudonymTranslator::PseudonymTranslator(PseudonymTranslationKeys keys)
-    : rsk_({
-               .domain = static_cast<RskTranslator::KeyDomainType>(KeyDomain::Pseudonym),
-               .reshuffle = keys.pseudonymizationKeyFactorSecret,
-               .rekey = keys.encryptionKeyFactorSecret,
-           }),
+    : rsk_(RskTranslator::Keys(
+               static_cast<RskTranslator::KeyDomainType>(KeyDomain::Pseudonym),
+               keys.pseudonymizationKeyFactorSecret,
+               keys.encryptionKeyFactorSecret
+           )),
       masterPrivateEncryptionKeyShare_(keys.masterPrivateEncryptionKeyShare) {}
 
 EncryptedLocalPseudonym PseudonymTranslator::translateStep(
