@@ -169,6 +169,12 @@ workflow:
     # As soon as we use one `rules:` tag in a job, that job would run on any MR pipeline, unless specified otherwise.
     # Prevent that by disabling the whole pipeline in this case
     - if: $CI_PIPELINE_SOURCE != 'merge_request_event'
+    - if: $ENABLE_LINTER == 'yes'
+      variables:
+        AUTOLINTED: 'linted'
+    - if: $ENABLE_LINTER != 'yes'
+      variables:
+        AUTOLINTED: 'unlinted'
 
 include:
   - local: /ci_cd/pep-foss-ci-settings.yml
@@ -570,13 +576,9 @@ ubuntu-lts-release-unlinted:
 ubuntu-lts-release:
   stage: build
   tags: [docker-small]
-  rules:
-    - if: $ENABLE_LINTER == "yes"
-      needs: [ "ubuntu-lts-release-linted" ]
-    - if: $ENABLE_LINTER != "yes"
-      needs: [ "ubuntu-lts-release-unlinted" ]
+  needs: [ "ubuntu-lts-release-$AUTOLINTED" ]
   script:
-    echo "Collecting artifacts from the ubuntu-lts-release-[un]linted job"
+    echo "Collecting artifacts from the ubuntu-lts-release-$AUTOLINTED job"
   artifacts:
     expire_in: 8h
     paths:
@@ -663,13 +665,9 @@ ubuntu-rolling-debug-unlinted:
 ubuntu-rolling-debug:
   stage: build
   tags: [docker-small]
-  rules:
-    - if: $ENABLE_LINTER == "yes"
-      needs: [ "ubuntu-rolling-debug-linted" ]
-    - if: $ENABLE_LINTER != "yes"
-      needs: [ "ubuntu-rolling-debug-unlinted" ]
+  needs: [ "ubuntu-rolling-debug-$AUTOLINTED" ]
   script:
-    echo "Collecting artifacts from the ubuntu-rolling-debug-[un]linted job"
+    echo "Collecting artifacts from the ubuntu-rolling-debug-$AUTOLINTED job"
   artifacts:
     expire_in: 8h
     paths:
