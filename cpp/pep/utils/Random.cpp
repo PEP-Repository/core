@@ -19,15 +19,20 @@ private:
   std::array<std::byte, capacity> content_;
   size_t index_ = capacity;
 
+  std::span<std::byte> bufferedData() {
+    return std::span<std::byte>(content_).subspan(index_);
+  }
+
   size_t fillFromBuffer(std::span<std::byte> destination) {
-    auto available = capacity - index_;
-    auto result = std::min(available, destination.size());
+    auto source = this->bufferedData();
+    auto result = std::min(source.size(), destination.size());
 
-    auto source = content_.data() + index_;
-    std::memcpy(destination.data(), source, result);
-
-    std::memset(source, 0, result); // Zero-fill consumed randomness so that secrets don't remain in memory
+    CopyToRange(source, destination);
     index_ += result;
+
+    // Zero-fill consumed randomness so that secrets don't remain in memory
+    auto consumed = source.subspan(0U, result);
+    std::ranges::fill(consumed.begin(), consumed.end(), std::byte{});
 
     return result;
   }
