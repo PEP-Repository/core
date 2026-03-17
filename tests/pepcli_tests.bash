@@ -420,17 +420,16 @@ if should_run_test authserver-apache; then
   }
 
   AUTH_SERV_AP_CONFIG='{
-    "userGroups": [ "integrationGroup" ]
+    "userGroups": [{
+      "name": "integrationGroup",
+      "users": ["integrationUser", "difficultUser"],
+      "additionalIdentifiers": {
+        "difficultUser": ["\"something with comma'\''s, and spaces\"@example.com",  "difficultuser+pep@example.com"]
+      }
+    }]
   }'
 
   test_setup "$AUTH_SERV_AP_CONFIG"
-  pepcli --oauth-token-group "Access Administrator" user create integrationUser
-  pepcli --oauth-token-group "Access Administrator" user addTo integrationUser integrationGroup
-
-  pepcli --oauth-token-group "Access Administrator" user create difficultUser
-  pepcli --oauth-token-group "Access Administrator" user addIdentifier difficultUser "\"something with comma's, and spaces\"@example.com" # comma's and spaces are allowed if the part before the @ is between quotes.
-  pepcli --oauth-token-group "Access Administrator" user addIdentifier difficultUser "difficultuser+pep@example.com"
-  pepcli --oauth-token-group "Access Administrator" user addTo difficultUser integrationGroup
 
   INTEGRATION_USER_PRIMARY_UID="TRnQNJSLx5RFD8VxfzD2HfTsEZ9cT4UsilWw8aiB1ZY"
   DIFFICULT_USER_PRIMARY_UID="MWE8U4BPnAJr27HjAqWD8DucHkFUTgDxLa4zSw7R9Bg"
@@ -457,14 +456,6 @@ if should_run_test authserver-apache; then
 
   printYellow "When a user logs in, the alternative UID (email) is handled as a case-INsensitive ID"
   test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" "$(toUpperCase integrationUser@example.com)" ""
-
-  pepcli --oauth-token-group "Access Administrator" user removeFrom difficultUser integrationGroup
-  pepcli --oauth-token-group "Access Administrator" user removeIdentifier "difficultuser+pep@example.com"
-  pepcli --oauth-token-group "Access Administrator" user removeIdentifier "\"something with comma's, and spaces\"@example.com"
-  pepcli --oauth-token-group "Access Administrator" user remove difficultUser
-
-  pepcli --oauth-token-group "Access Administrator" user removeFrom integrationUser integrationGroup
-  pepcli --oauth-token-group "Access Administrator" user remove integrationUser
 
   test_cleanup "$AUTH_SERV_AP_CONFIG"
 fi

@@ -15,13 +15,21 @@ json="$2"
 # The first argument specifies the filter
 # The other arguments are concatenated into a single format string
 jqr() {
-  # Treat missing or null array fields as empty arrays by replacing each array value iterator with a defaulted version.
-  # For instance, `.field_name[]` becomes `(.field_name // [])[]`.
-  missing_arrays_as_empty() {
-    sed -E 's/\.([a-zA-Z_][a-zA-Z0-9_]*)\[]/(.\1 \/\/ [])[]/g'
+  # Treat missing or null array fields as empty by replacing each array value iterator with a defaulted version.
+  missing_arrays_as_empty(){
+    local -r target='\.([a-zA-Z_][a-zA-Z0-9_]*)\[]' # .<FIELD_NAME>[]
+    local -r replacement='(.\1 \/\/ \[])\[]'        # (.<FIELD_NAME> // [])[]
+    sed -E "s/$target/$replacement/g"
   }
 
-  local -r filter=$(echo "$1" | missing_arrays_as_empty)
+  # Treat missing or null map fields as empty by replacing each map value iterator with a defaulted version.
+  missing_maps_as_empty() {
+    local -r target='\.([a-zA-Z_][a-zA-Z0-9_]*) \| to_entries\[]' # .<FIELD_NAME> | to_entries[]
+    local -r replacement='.\1 \/\/ {} | to_entries\[]'            # .<FIELD_NAME> // {} | to_entries[]
+    sed -E "s/$target/$replacement/g"
+  }
+
+  local -r filter=$(echo "$1" | missing_arrays_as_empty | missing_maps_as_empty)
   shift
   local -r genlines=$(printf "%s" "${@//\"/\\\"}")
 
@@ -50,41 +58,50 @@ generate_pep_commands_in_setup_order() {
 
   # user groups
   jqr '.userGroups[]' \
-    'pepcli --oauth-token-group "Access Administrator" user group '"$createOrRemove"' "\(.name)"'
+    'pepcli --oauth-token-group "Access Administrator" user group '"$createOrRemove"' \(.name | @sh)'
 
   # individual users
   jqr '.userGroups[] | .name as $group | .users[]' \
-    'pepcli --oauth-token-group "Access Administrator" user '"$createOrRemove"' "\(.)"' "\n" \
-    'pepcli --oauth-token-group "Access Administrator" user '"$addOrRemove"' "\(.)" "\($group)"' |
-    partition_by_substring "ama column $createOrRemove"
+    'pepcli --oauth-token-group "Access Administrator" user '"$createOrRemove"' \(. | @sh)' "\n" \
+    'pepcli --oauth-token-group "Access Administrator" user '"$addOrRemove"' \(. | @sh) \($group | @sh)' |
+    partition_by_substring "user $createOrRemove"
+
+  # additional identifiers
+  if [ "$command" == "setup" ]; then
+    jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .key as $user | .value[]' \
+      'pepcli --oauth-token-group "Access Administrator" user addIdentifier \($user | @sh) \(. | @sh)'
+  else
+    jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .value[]' \
+      'pepcli --oauth-token-group "Access Administrator" user removeIdentifier \(. | @sh)'
+  fi
 
   empty_line
 
   # column groups
   jqr '.columnGroups[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama columnGroup '"$createOrRemove"' "\(.name)"'
+    'pepcli --oauth-token-group "Data Administrator" ama columnGroup '"$createOrRemove"' \(.name | @sh)'
 
   # column group access rules
   jqr '.columnGroups[] | .name as $group | .cgars[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' "\($group)" "\(.userGroup)" "\(.permissions[])"'
+    'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' \($group | @sh) \(.userGroup | @sh) \(.permissions[] | @sh)'
 
   empty_line
 
   # individual columns
   jqr '.columnGroups[] | .name as $group | .columns[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' "\(.)"' "\n" \
-    'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' "\(.)" "\($group)"' |
+    'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' \(. | @sh)' "\n" \
+    'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' \(. | @sh) \($group | @sh)' |
     partition_by_substring "ama column $createOrRemove"
 
   empty_line
 
   # subject groups
   jqr '.subjectGroups[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama group '"$createOrRemove"' "\(.name)"'
+    'pepcli --oauth-token-group "Data Administrator" ama group '"$createOrRemove"' \(.name | @sh)'
 
   # subject group access rules
   jqr '.subjectGroups[] | .name as $group | .pgars[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' "\($group)" "\(.userGroup)" "\(.permissions[])"'
+    'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' \($group | @sh) \(.userGroup | @sh) \(.permissions[] | @sh)'
 
   empty_line
 
@@ -97,13 +114,13 @@ generate_pep_commands_in_setup_order() {
   fi
 
   jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
-    'pepcli --oauth-token-group "Data Administrator" ama group '"$addOrRemove"' "\($group)" "${\($bash_var)}"'
+    'pepcli --oauth-token-group "Data Administrator" ama group '"$addOrRemove"' \($group | @sh) ${\($bash_var)}'
 
   if [ "$command" == "setup" ]; then
     empty_line
 
     jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
-      'pepcli --oauth-token-group "Data Administrator" store -p "${\($bash_var)}" -c "\(.key)" -d "\(.value)"'
+      'pepcli --oauth-token-group "Data Administrator" store -p ${\($bash_var)} -c \(.key | @sh) -d \(.value | @sh)'
   fi
 }
 

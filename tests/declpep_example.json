@@ -1,4 +1,10 @@
-{ "userGroups": [ "TestUserGroup" ],
+{ "userGroups": [{
+    "name": "TestUserGroup",
+    "users": ["integrationUser", "difficultUser"],
+    "additionalIdentifiers": {
+      "difficultUser": ["\"something with comma's, and spaces\"@example.com",  "difficultuser+pep@example.com"]
+    }
+  }],
   "columnGroups": [{
     "name": "TestColumnGroup",
     "columns": [ "TestColumnGroup.columnA", "TestColumnGroup.columnB" ],
