@@ -574,6 +574,8 @@ ubuntu-lts-release:
       needs: [ "ubuntu-lts-release-linted" ]
     - if: $ENABLE_LINTER != "yes"
       needs: [ "ubuntu-lts-release-unlinted" ]
+  script:
+    echo "Producing artifacts from the ubuntu-lts-release-[un]linted job"
   artifacts:
     expire_in: 8h
     paths:
