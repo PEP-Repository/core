@@ -23,7 +23,7 @@ public:
     KeyFactorSecret rekey;
 
     Keys(KeyDomainType domain_, std::optional<KeyFactorSecret> reshuffle_, KeyFactorSecret rekey_)
-      : domain(domain_), reshuffle(std::move(reshuffle_)), rekey(std::move(rekey_)) {
+      : domain(domain_), reshuffle(reshuffle_), rekey(rekey_) {
     }
   };
 
