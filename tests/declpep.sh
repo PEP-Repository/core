@@ -44,7 +44,13 @@ generate_pep_commands_in_setup_order() {
 
   # user groups
   jqr '.userGroups[]' \
-    'pepcli --oauth-token-group "Access Administrator" user group '"$createOrRemove"' "\(.)"'
+    'pepcli --oauth-token-group "Access Administrator" user group '"$createOrRemove"' "\(.name)"'
+
+  # individual users
+  jqr '.userGroups[] | .name as $group | .users[]' \
+    'pepcli --oauth-token-group "Access Administrator" user '"$createOrRemove"' "\(.)"' "\n" \
+    'pepcli --oauth-token-group "Access Administrator" user '"$addOrRemove"' "\(.)" "\($group)"' |
+    partition_by_substring "ama column $createOrRemove"
 
   empty_line
 

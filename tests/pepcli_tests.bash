@@ -592,7 +592,7 @@ if should_run_test structured-output; then
   # All SOTD.shortText strings are <= 7 bytes long (max inline length)
   # language=json
   SO_CONFIG='{
-    "userGroups": [ "SOAG" ],
+    "userGroups": [{ "name": "SOAG" }],
     "columnGroups": [{
       "name": "SOTD",
       "columns": [ "SOTD.shortText", "SOTD.longText" ],
