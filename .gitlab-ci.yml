@@ -565,8 +565,7 @@ ubuntu-lts-release-unlinted:
   extends:
     - .ubuntu-lts-release-build
   rules:
-    - if: $ENABLE_LINTER == "yes"
-      when: never
+    - if: $ENABLE_LINTER != "yes"
 
 ubuntu-lts-release:
   stage: build
