@@ -3,7 +3,7 @@ spec:
     autolinting:
       options: ['linted', 'unlinted']
       default: unlinted
-      description: Enable linter during compilation.
+      description: Enable linter during compilation
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
