@@ -1,3 +1,4 @@
+# check=skip=InvalidDefaultArgInFrom
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
@@ -79,4 +80,4 @@ COPY ./docker/zsh.zshrc /root/.zshrc
 WORKDIR /data
 ENV PEP_LOGON_LIMITED=1
 
-CMD bash /app/run.sh
+CMD ["bash", "/app/run.sh"]

@@ -86,7 +86,7 @@ include:
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH) && ($DEPLOYMENT_TYPE_PROD == "compose" || $DEPLOYMENT_TYPE_PROD == "both")'
 
 .docker_login: &docker_login
-  docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" --username gitlab-ci-token --password-stdin
 
 ###############################################
 # Configuration for the static-analysis stage #
