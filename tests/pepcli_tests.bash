@@ -350,8 +350,19 @@ fi
 ####################
 
 if should_run_test token-block; then
+  TOKEN_BLOCK_CONFIG='{
+    "userGroups": [{ "name": "integrationGroup" }],
+    "columnGroups": [{
+      "name": "tokenBlockingColumnGroup",
+      "columns": [ "tokenBlockingColumn" ],
+      "cgars": [{
+        "userGroup": "integrationGroup",
+        "permissions": [ "read" ]
+      }]
+    }]
+  }'
 
-  pepcli --oauth-token-group "Access Administrator"  user group create integrationGroup
+  test_setup "$TOKEN_BLOCK_CONFIG"
 
   # Attempt to print the blocklist as an access administrator
   pepcli --oauth-token-group "Access Administrator" token block list
@@ -364,12 +375,6 @@ if should_run_test token-block; then
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user create userWithFreshToken
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user addTo userWithFreshToken integrationGroup
   TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "$($DATE_CMD -d '2 days' +%s)")
-
-  # Ensure that integrationGroup has read access to at least one column
-  pepcli --oauth-token-group "Data Administrator" ama column create tokenBlockingColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create tokenBlockingColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama column addTo tokenBlockingColumn tokenBlockingColumnGroup
-  pepcli --oauth-token-group "Access Administrator" ama cgar create tokenBlockingColumnGroup integrationGroup read
 
   # Attempt to do a query with the generated token
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
@@ -395,10 +400,9 @@ if should_run_test token-block; then
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access &&
       fail "Removing a user from a user group should block tokens for that user/usergroup"
 
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove tokenBlockingColumnGroup --force
-  pepcli --oauth-token-group "Data Administrator" ama column remove tokenBlockingColumn
   pepcli --oauth-token-group "Access Administrator" user remove userWithFreshToken
-  pepcli --oauth-token-group "Access Administrator" user group remove integrationGroup
+
+  test_cleanup "$TOKEN_BLOCK_CONFIG"
 fi
 
 ####################
