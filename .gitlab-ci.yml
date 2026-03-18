@@ -595,7 +595,7 @@ ubuntu-lts-release-manual-lint:
     - .ubuntu-lts-release-settings
   rules:
     # Redundant if CI already includes the "ubuntu-lts-release-linted" job
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
     - <<: *not-stable-release
       when: manual
@@ -692,7 +692,7 @@ ubuntu-rolling-debug-manual-lint:
     - .ubuntu-rolling-debug-settings
   rules:
     # Redundant if CI already includes the "ubuntu-rolling-debug-linted" job
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
     - <<: *not-stable-release
       when: manual
