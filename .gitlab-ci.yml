@@ -580,7 +580,8 @@ ubuntu-lts-release-unlinted:
 ubuntu-lts-release:
   stage: build
   tags: [docker-small]
-  needs: ubuntu-lts-release-$[[ inputs.autolinting ]]
+  needs:
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
   script:
     echo "Collecting artifacts from the ubuntu-lts-release-$[[ inputs.autolinting ]] job"
   artifacts:
@@ -676,7 +677,8 @@ ubuntu-rolling-debug-unlinted:
 ubuntu-rolling-debug:
   stage: build
   tags: [docker-small]
-  needs: ubuntu-rolling-debug-$[[ inputs.autolinting ]]
+  needs:
+    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
   script:
     echo "Collecting artifacts from the ubuntu-rolling-debug-$[[ inputs.autolinting ]] job"
   artifacts:
