@@ -162,11 +162,56 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 source: timestamp
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
+            # Malicious requests
+            - template:
+                source: attack
+                template: >
+                  {{- if or
+
+                    # Path traversal / Apache RCE probing
+                    # CVE-2021-41773, CVE-2021-42013
+                    (contains .message "AH10244")
+
+                    # OGNL injection (Apache Struts RCE)
+                    # CVE-2017-5638
+                    (contains .message "@java.lang.")
+
+                    # Denied sensitive files (probing for .htaccess/.htpasswd)
+                    (contains .message "AH01630")
+                    (contains .message ".htaccess")
+                    (contains .message ".htpasswd")
+                  -}}true{{- else -}}false{{- end }}
+            # Internet background noise
+            - template:
+                source: noise
+                template: >
+                  {{- if or
+                    .attack                                           # all blocked attacks are noise
+                    (contains .message "AH01276")                     # blocked directory listing (/icons/)
+                    (contains .message "Unsafe URL with %3f")         # malformed/evasive requests
+                    (contains .message "AH00036")                     # file too long / rejected
+                    (contains .message "File name too long")          # rejected
+                  -}}true{{- else -}}false{{- end }}
+            # Level normalization with noise override
             - template:
                 source: level
-                template: '{{ if eq .Value "emerg" }}fatal{{ else if eq .Value "alert" }}critical{{ else if eq .Value "crit" }}critical{{ else if eq .Value "error" }}error{{ else if eq .Value "warn" }}warn{{ else if eq .Value "notice" }}info{{ else if eq .Value "info" }}info{{ else if eq .Value "debug" }}debug{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
+                template: >
+                  {{- if and (eq .Value "error") (eq .noise "true") -}}
+                    warn
+                  {{- else if eq .Value "emerg" -}} fatal
+                  {{- else if or (eq .Value "alert") (eq .Value "crit") -}} critical
+                  {{- else if eq .Value "error" -}} error
+                  {{- else if eq .Value "warn" -}} warn
+                  {{- else if eq .Value "notice" -}} info
+                  {{- else if eq .Value "info" -}} info
+                  {{- else if eq .Value "debug" -}} debug
+                  {{- else if hasPrefix .Value "trace" -}} trace
+                  {{- else -}} {{ ToLower .Value }}
+                  {{- end }}
             - labels:
                 level:
+                attack:
+                noise:
             - structured_metadata:
                 module:
                 pid:
