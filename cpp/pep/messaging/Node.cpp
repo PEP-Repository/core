@@ -211,12 +211,15 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
       });
 
     auto binaryFinalization = std::make_shared<EventSubscription>();
-    *binaryFinalization = self->mBinary->onStatusChange.subscribe([subscriber, binaryFinalization](const LifeCycler::StatusChange& change) {
+    *binaryFinalization = self->mBinary->onStatusChange.subscribe([weak, subscriber, binaryFinalization](const LifeCycler::StatusChange& change) {
       if (change.updated == LifeCycler::Status::finalizing) {
         binaryFinalization->cancel();
         if (subscriber.is_subscribed()) {
           subscriber.on_completed();
           subscriber.unsubscribe();
+        }
+        if (auto self = weak.lock()) {
+          self->mSubscriber.reset();
         }
       }
       });

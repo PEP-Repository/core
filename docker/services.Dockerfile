@@ -25,6 +25,7 @@ COPY \
     ${STAGING_DIRECTORY}/cpp/pep/elgamal/pepElgamalUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/keyserver/pepKeyServer \
     ${STAGING_DIRECTORY}/cpp/pep/keyserver/pepKeyServerUnitTests \
+    ${STAGING_DIRECTORY}/cpp/pep/messaging/pepMessagingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/morphing/pepMorphingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/networking/pepNetworkingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/rsk/pepRskUnitTests \
