@@ -166,15 +166,14 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
             - template:
                 source: level
                 template: >
-                  {{- $noise := or
-                    (contains .message "AH10244")             /* Path traversal / Apache RCE probing */
-                    (contains .message "@java.lang.")         /* OGNL / Struts RCE */
+                  {{- if and (eq .Value "error") (or
+                    (contains .message "AH10244")             /* Path traversal / Apache RCE probing (CVE-2021-41773, CVE-2021-42013) */
+                    (contains .message "@java.lang.")         /* OGNL / Struts RCE (CVE-2017-5638) */
                     (contains .message "AH01630")             /* Denied sensitive files */
                     (contains .message "AH01276")             /* Blocked directory listing */
                     (contains .message "Unsafe URL with %3f") /* Malformed/evasive URL */
                     (contains .message "AH00036")             /* File name too long / injection attempt */
-                  -}}
-                  {{- if and (eq .Value "error") $noise -}}warn
+                  ) -}}warn
                   {{- else if eq .Value "emerg" -}}fatal
                   {{- else if or (eq .Value "alert") (eq .Value "crit") -}}critical
                   {{- else if eq .Value "notice" -}}info
