@@ -1,3 +1,4 @@
+# check=skip=InvalidDefaultArgInFrom
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
@@ -24,6 +25,7 @@ COPY \
     ${STAGING_DIRECTORY}/cpp/pep/elgamal/pepElgamalUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/keyserver/pepKeyServer \
     ${STAGING_DIRECTORY}/cpp/pep/keyserver/pepKeyServerUnitTests \
+    ${STAGING_DIRECTORY}/cpp/pep/messaging/pepMessagingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/morphing/pepMorphingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/networking/pepNetworkingUnitTests \
     ${STAGING_DIRECTORY}/cpp/pep/rsk/pepRskUnitTests \
@@ -79,4 +81,4 @@ COPY ./docker/zsh.zshrc /root/.zshrc
 WORKDIR /data
 ENV PEP_LOGON_LIMITED=1
 
-CMD bash /app/run.sh
+CMD ["bash", "/app/run.sh"]

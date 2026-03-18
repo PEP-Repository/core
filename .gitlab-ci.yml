@@ -90,6 +90,7 @@ variables:
     cpp/pep/crypto/pepCryptoUnitTests
     cpp/pep/elgamal/pepElgamalUnitTests
     cpp/pep/keyserver/pepKeyServerUnitTests
+    cpp/pep/messaging/pepMessagingUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
     cpp/pep/rsk/pepRskUnitTests
@@ -182,7 +183,7 @@ include:
       - if: $CI_COMMIT_REF_PROTECTED != "true"
 
 .docker_login: &docker_login
-  docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" --username gitlab-ci-token --password-stdin
 
 .not-stable-release: &not-stable-release
   # Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
@@ -1257,7 +1258,7 @@ publish-sandbox-image:
         echo "PEP_GROUP_API_TOKEN is not set, cannot login to registry to push sandbox image"
         exit 1
       fi
-    - echo "$PEP_GROUP_API_TOKEN" | docker login "${CI_REGISTRY}" -u "-" --password-stdin
+    - echo "$PEP_GROUP_API_TOKEN" | docker login "${CI_REGISTRY}" --username "-" --password-stdin
     - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "${CI_REGISTRY}/pep-public/core/pep-sandbox:latest"
 
 ##########################################
