@@ -163,16 +163,22 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
             # Downgrade error to warn if it matches any malicious/noisy pattern
+            # "AH10244": Path traversal / Apache RCE probing (CVE-2021-41773, CVE-2021-42013)
+            # "@java.lang.": OGNL / Struts RCE (CVE-2017-5638)
+            # "AH01630": Denied sensitive files
+            # "AH01276": Blocked directory listing
+            # "Unsafe URL with %3f": Malformed/evasive URL
+            # "AH00036": File name too long / injection attempt
             - template:
                 source: level
                 template: >
                   {{- if and (eq .Value "error") (or
-                    (contains .message "AH10244")             /* Path traversal / Apache RCE probing (CVE-2021-41773, CVE-2021-42013) */
-                    (contains .message "@java.lang.")         /* OGNL / Struts RCE (CVE-2017-5638) */
-                    (contains .message "AH01630")             /* Denied sensitive files */
-                    (contains .message "AH01276")             /* Blocked directory listing */
-                    (contains .message "Unsafe URL with %3f") /* Malformed/evasive URL */
-                    (contains .message "AH00036")             /* File name too long / injection attempt */
+                    (contains .message "AH10244")
+                    (contains .message "@java.lang.")
+                    (contains .message "AH01630")
+                    (contains .message "AH01276")
+                    (contains .message "Unsafe URL with %3f")
+                    (contains .message "AH00036")
                   ) -}}warn
                   {{- else if eq .Value "emerg" -}}fatal
                   {{- else if or (eq .Value "alert") (eq .Value "crit") -}}critical
