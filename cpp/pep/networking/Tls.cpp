@@ -122,7 +122,10 @@ void TlsSocket::close() {
   auto self = SharedFrom(*this);
   auto timer = std::make_shared<boost::asio::steady_timer>(this->ioContext());
   auto finished = MakeSharedCopy(false);
-  auto finishClosing = [self, finished, timer]() {
+  auto finishClosing = [self, finished, timer](bool timedOut = false) {
+    if (timedOut) {
+      LOG(LOG_TAG, warning) << "TLS socket shutdown timed out"; // TODO: remove when core#2834 has been resolved: this logging is meant to help track down the cause of "system code 125 (condition 125) - Operation canceled"
+    }
     timer->cancel();
     if (!*finished) {
       *finished = true;
@@ -132,7 +135,7 @@ void TlsSocket::close() {
   using namespace std::chrono_literals;
   timer->expires_after(500ms);
   timer->async_wait([finishClosing](const boost::system::error_code& ec) {
-    finishClosing();
+    finishClosing(true);
     });
 
   mImplementor.async_shutdown([finishClosing](boost::system::error_code error) {
