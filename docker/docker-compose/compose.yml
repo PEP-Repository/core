@@ -162,55 +162,27 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 source: timestamp
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
-            # Malicious requests detection
-            # - Path traversal / Apache RCE probing (CVE-2021-41773, CVE-2021-42013)
-            # - OGNL injection / Apache Struts RCE (CVE-2017-5638)
-            # - Denied sensitive files (probing for .htaccess/.htpasswd)
-            - template:
-                source: attack
-                template: >
-                  {{- if or
-                    (contains .message "AH10244")
-                    (contains .message "@java.lang.")
-                    (contains .message "AH01630")
-                    (contains .message ".htaccess")
-                    (contains .message ".htpasswd")
-                  -}}true{{- else -}}false{{- end }}
-            # Internet background noise detection
-            # - All blocked attacks are noise
-            # - Blocked directory listing
-            # - Malformed/evasive requests
-            # - File too long
-            - template:
-                source: noise
-                template: >
-                  {{- if or
-                    .attack
-                    (contains .message "AH01276")
-                    (contains .message "Unsafe URL with %3f")
-                    (contains .message "AH00036")
-                  -}}true{{- else -}}false{{- end }}
-            # Level normalization
-            # Downgrade errors to warnings if they're classified as noise
+            # Downgrade error to warn if it matches any malicious/noisy pattern
             - template:
                 source: level
                 template: >
-                  {{- if and (eq .Value "error") (eq .Labels.noise "true") -}}
-                    warn
-                  {{- else if eq .Value "emerg" -}} fatal
-                  {{- else if or (eq .Value "alert") (eq .Value "crit") -}} critical
-                  {{- else if eq .Value "error" -}} error
-                  {{- else if eq .Value "warn" -}} warn
-                  {{- else if eq .Value "notice" -}} info
-                  {{- else if eq .Value "info" -}} info
-                  {{- else if eq .Value "debug" -}} debug
-                  {{- else if hasPrefix .Value "trace" -}} trace
-                  {{- else -}} {{ ToLower .Value }}
+                  {{- $noise := or
+                    (contains .message "AH10244")             /* Path traversal / Apache RCE probing */
+                    (contains .message "@java.lang.")         /* OGNL / Struts RCE */
+                    (contains .message "AH01630")             /* Denied sensitive files */
+                    (contains .message "AH01276")             /* Blocked directory listing */
+                    (contains .message "Unsafe URL with %3f") /* Malformed/evasive URL */
+                    (contains .message "AH00036")             /* File name too long / injection attempt */
+                  -}}
+                  {{- if and (eq .Value "error") $noise -}}warn
+                  {{- else if eq .Value "emerg" -}}fatal
+                  {{- else if or (eq .Value "alert") (eq .Value "crit") -}}critical
+                  {{- else if eq .Value "notice" -}}info
+                  {{- else if hasPrefix .Value "trace" -}}trace
+                  {{- else -}}{{ ToLower .Value }}
                   {{- end }}
             - labels:
                 level:
-                attack:
-                noise:
             - structured_metadata:
                 module:
                 pid:
