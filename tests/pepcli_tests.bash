@@ -693,12 +693,18 @@ fi
 ####################
 
 if should_run_test s3-roundtrip; then
-  # Set up a column for storage of large(-ish) data by "Research Assessor"
-  pepcli --oauth-token-group "Data Administrator" ama column create LargeColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create LargeColumns
-  pepcli --oauth-token-group "Data Administrator" ama column addTo LargeColumn LargeColumns
-  pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" read
-  pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" write
+  S3_ROUNDTRIP_CONFIG='{
+    "columnGroups": [{
+      "name": "LargeColumns",
+      "columns": [ "LargeColumn" ],
+      "cgars": [{
+        "userGroup": "Research Assessor",
+        "permissions": [ "read", "write" ]
+      }]
+    }]
+  }'
+
+  test_setup "$S3_ROUNDTRIP_CONFIG"
 
   # Store a large (i.e. stored in S3) file with some participants
   readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
@@ -724,11 +730,8 @@ if should_run_test s3-roundtrip; then
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" delete -p "participant$i" -c LargeColumn
   done
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove LargeColumns "Research Assessor" write
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove LargeColumns "Research Assessor" read
-  pepcli --oauth-token-group "Data Administrator" ama column removeFrom LargeColumn LargeColumns
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove LargeColumns
-  pepcli --oauth-token-group "Data Administrator" ama column remove LargeColumn
+
+  test_cleanup "$S3_ROUNDTRIP_CONFIG"
 fi
 
 ####################
