@@ -195,7 +195,7 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
             - template:
                 source: level
                 template: >
-                  {{- if and (eq .Value "error") (eq .noise "true") -}}
+                  {{- if and (eq .Value "error") (eq .Labels.noise "true") -}}
                     warn
                   {{- else if eq .Value "emerg" -}} fatal
                   {{- else if or (eq .Value "alert") (eq .Value "crit") -}} critical
