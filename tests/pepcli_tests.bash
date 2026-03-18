@@ -160,12 +160,18 @@ fi
 
 if should_run_test file-extension; then
 
-  # Create column and column group for file extension tests
-  pepcli --oauth-token-group "Data Administrator" ama column create FileExtensionTest
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create FileExtensionTestGroup
-  pepcli --oauth-token-group "Data Administrator" ama column addTo FileExtensionTest FileExtensionTestGroup
-  pepcli --oauth-token-group "Access Administrator" ama cgar create FileExtensionTestGroup "Research Assessor" read
-  pepcli --oauth-token-group "Access Administrator" ama cgar create FileExtensionTestGroup "Research Assessor" write
+  FE_CONFIG='{
+    "columnGroups": [{
+      "name": "FileExtensionTestGroup",
+      "columns": [ "FileExtensionTest" ],
+      "cgars": [{
+        "userGroup": "Research Assessor",
+        "permissions": [ "read", "write" ]
+      }]
+    }]
+  }'
+
+  test_setup "$FE_CONFIG"
 
   # create a file with an extension and store it in the column
   pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c FileExtensionTest -i "$TEST_INPUT_DIR"/fileExtensionData1.txt
@@ -204,8 +210,7 @@ if should_run_test file-extension; then
 
   execute . rm -rf "$DEST_DIR/pulled-data"
 
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove FileExtensionTestGroup --force
-  pepcli --oauth-token-group "Data Administrator" ama column remove FileExtensionTest
+  test_cleanup "$FE_CONFIG"
 fi
 
 ####################
