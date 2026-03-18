@@ -565,7 +565,7 @@ ubuntu-lts-release-linted:
   rules:
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
   variables:
-    - ENABLE_LINTER: yes
+    ENABLE_LINTER: yes
 
 # Builds (without linting) binaries for ubuntu-lts-release
 ubuntu-lts-release-unlinted:
@@ -574,7 +574,7 @@ ubuntu-lts-release-unlinted:
   rules:
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
   variables:
-    - ENABLE_LINTER: no
+    ENABLE_LINTER: no
 
 # Collects/provides (linted or unlinted) binaries for ubuntu-lts-release
 ubuntu-lts-release:
@@ -661,7 +661,7 @@ ubuntu-rolling-debug-linted:
   rules:
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
   variables:
-    - ENABLE_LINTER: yes
+    ENABLE_LINTER: yes
 
 # Builds (without linting) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug-unlinted:
@@ -670,7 +670,7 @@ ubuntu-rolling-debug-unlinted:
   rules:
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
   variables:
-    - ENABLE_LINTER: no
+    ENABLE_LINTER: no
 
 # Collects/provides (linted or unlinted) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug:
