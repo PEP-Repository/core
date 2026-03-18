@@ -234,6 +234,7 @@ fi
 ####################
 
 if should_run_test ama; then
+  # We do not want to hide the ama calls that we are testing behind test_setup/test_cleanup calls
 
   # Create a column group, add columns to it and try to remove it.
   pepcli --oauth-token-group "Data Administrator" ama column create blockingColumn
@@ -302,13 +303,25 @@ if should_run_test ama; then
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 
   # Test --script-print parameter
-  # First create some test data for querying
-  pepcli --oauth-token-group "Data Administrator" ama column create scriptPrintTestColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create scriptPrintTestColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama column addTo scriptPrintTestColumn scriptPrintTestColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama group create scriptPrintTestParticipantGroup
-  pepcli --oauth-token-group "Access Administrator" ama cgar create scriptPrintTestColumnGroup "Research Assessor" read
-  pepcli --oauth-token-group "Access Administrator" ama pgar create scriptPrintTestParticipantGroup "Research Assessor" access
+  AMA_QUERYABLE_CONFIG='{
+    "columnGroups": [{
+      "name": "scriptPrintTestColumnGroup",
+      "columns": [ "scriptPrintTestColumn" ],
+      "cgars": [{
+        "userGroup": "Research Assessor",
+        "permissions": [ "read" ]
+      }]
+    }],
+    "subjectGroups": [{
+      "name": "scriptPrintTestParticipantGroup",
+      "pgars": [{
+        "userGroup": "Research Assessor",
+        "permissions": [ "access" ]
+      }]
+    }]
+  }'
+
+  test_setup "$AMA_QUERYABLE_CONFIG"
 
   script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
   [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
@@ -331,9 +344,7 @@ if should_run_test ama; then
   echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
 
   # Clean up
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove --force scriptPrintTestColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama column remove scriptPrintTestColumn
-  pepcli --oauth-token-group "Data Administrator" ama group remove --force scriptPrintTestParticipantGroup
+  test_cleanup "$AMA_QUERYABLE_CONFIG"
 fi
 
 ####################
