@@ -38,8 +38,6 @@ std::function<bool()> GetKeepRunningCallback(bool* keepRunning) {
 }
 }
 
-IoContextThread::IoContextThread() : thread_() {}
-
 IoContextThread::IoContextThread(IoContextThread&& other) noexcept : thread_() {
   std::swap(thread_, other.thread_);
 }

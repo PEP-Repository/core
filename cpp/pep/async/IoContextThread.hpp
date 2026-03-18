@@ -15,7 +15,6 @@ class IoContextThread {
   IoContextThread(std::shared_ptr<boost::asio::io_context> io_context, std::function<bool()> keepRunning);
 
  public:
-  IoContextThread();
   IoContextThread(IoContextThread&& other) noexcept;
   IoContextThread(const IoContextThread&) = delete;
 
