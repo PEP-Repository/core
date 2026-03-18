@@ -162,37 +162,36 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 source: timestamp
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
-            # Malicious requests
+            # Malicious requests detection
+            # - Path traversal / Apache RCE probing (CVE-2021-41773, CVE-2021-42013)
+            # - OGNL injection / Apache Struts RCE (CVE-2017-5638)
+            # - Denied sensitive files (probing for .htaccess/.htpasswd)
             - template:
                 source: attack
                 template: >
                   {{- if or
-
-                    # Path traversal / Apache RCE probing
-                    # CVE-2021-41773, CVE-2021-42013
                     (contains .message "AH10244")
-
-                    # OGNL injection (Apache Struts RCE)
-                    # CVE-2017-5638
                     (contains .message "@java.lang.")
-
-                    # Denied sensitive files (probing for .htaccess/.htpasswd)
                     (contains .message "AH01630")
                     (contains .message ".htaccess")
                     (contains .message ".htpasswd")
                   -}}true{{- else -}}false{{- end }}
-            # Internet background noise
+            # Internet background noise detection
+            # - All blocked attacks are noise
+            # - Blocked directory listing
+            # - Malformed/evasive requests
+            # - File too long
             - template:
                 source: noise
                 template: >
                   {{- if or
-                    .attack                                           # all blocked attacks are noise
-                    (contains .message "AH01276")                     # blocked directory listing (/icons/)
-                    (contains .message "Unsafe URL with %3f")         # malformed/evasive requests
-                    (contains .message "AH00036")                     # file too long / rejected
-                    (contains .message "File name too long")          # rejected
+                    .attack
+                    (contains .message "AH01276")
+                    (contains .message "Unsafe URL with %3f")
+                    (contains .message "AH00036")
                   -}}true{{- else -}}false{{- end }}
-            # Level normalization with noise override
+            # Level normalization
+            # Downgrade errors to warnings if they're classified as noise
             - template:
                 source: level
                 template: >
