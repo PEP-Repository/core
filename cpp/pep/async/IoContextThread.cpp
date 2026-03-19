@@ -4,6 +4,7 @@
 #include <pep/utils/ThreadUtil.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <stop_token>
 
 namespace pep {
 
