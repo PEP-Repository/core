@@ -1083,6 +1083,7 @@ pep-services-image-test:
   #language=sh
   script:
     # First make sure included apps like pepcli work
+    - . ~/.profile  # Put /app in PATH
     - pepcli --version
     # Then run unit tests
     - for TEST in $TESTS; do
