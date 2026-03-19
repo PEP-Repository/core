@@ -1088,11 +1088,11 @@ pep-services-image-test:
     - for TEST in $TESTS; do
     -   |
         echo "Running test: $(basename $TEST)"
-        "$STAGING_DIRECTORY/$TEST" --gtest_output=xml:/pep-test-results/
+        "$STAGING_DIRECTORY/$TEST" --gtest_output=xml:./test-results/
     - done
   artifacts:
     reports:
-      junit: /pep-test-results/*.xml
+      junit: test-results/*.xml
 
 ##########################################
 # Configuration for the integration stage#
