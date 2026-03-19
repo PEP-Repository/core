@@ -10,7 +10,8 @@ namespace pep {
 
 OpenSSLHasher::OpenSSLHasher(const EVP_MD* type) {
   assert(type && "Cannot construct OpenSSLHasher with nullptr as hash algorithm");
-  if (!(mCtx = EVP_MD_CTX_new())) {
+  mCtx = EVP_MD_CTX_new();
+  if (!mCtx) {
     throw pep::OpenSSLError("Failed to create context in OpenSSLHasher constructor");
   }
   if (EVP_DigestInit_ex(mCtx, type, nullptr) <= 0) {
