@@ -1,11 +1,10 @@
-add_cli_install_executable(${PROJECT_NAME}PullCastor
+add_library(${PROJECT_NAME}PullCastorlib
     CastorParticipant.cpp CastorParticipant.hpp
     CellContent.cpp CellContent.hpp
     ColumnBoundParticipantId.cpp ColumnBoundParticipantId.hpp
     CrfAspectPuller.cpp CrfAspectPuller.hpp
     EnvironmentPuller.cpp EnvironmentPuller.hpp
     FieldValue.cpp FieldValue.hpp
-    main.cpp
     Metrics.cpp Metrics.hpp
     PepParticipant.cpp PepParticipant.hpp
     PullCastorUtils.cpp PullCastorUtils.hpp
@@ -20,13 +19,8 @@ add_cli_install_executable(${PROJECT_NAME}PullCastor
     SurveyPackageInstancePuller.cpp SurveyPackageInstancePuller.hpp
     TimestampedSpi.cpp TimestampedSpi.hpp
 )
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_sources(${PROJECT_NAME}PullCastor PRIVATE VersionInfo.rc)
-endif()
-
-target_link_libraries(${PROJECT_NAME}PullCastor
+target_link_libraries(${PROJECT_NAME}PullCastorlib
   ${PROJECT_NAME}Castorlib
-  ${PROJECT_NAME}Applicationlib
   ${PROJECT_NAME}Clientlib
   ${PROJECT_NAME}Metricslib
 )
@@ -45,10 +39,22 @@ try_compile(HAS_CXX20_CHRONO
 )
 if(NOT HAS_CXX20_CHRONO)
   find_package(date REQUIRED)
-  target_link_libraries(${PROJECT_NAME}PullCastor
+  target_link_libraries(${PROJECT_NAME}PullCastorlib
     date::date
   )
 endif()
+
+verify_headers_standalone(${PROJECT_NAME}PullCastorlib)
+
+
+add_cli_install_executable(${PROJECT_NAME}PullCastor main.cpp)
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_sources(${PROJECT_NAME}PullCastor PRIVATE VersionInfo.rc)
+endif()
+
+target_link_libraries(${PROJECT_NAME}PullCastor
+  ${PROJECT_NAME}Applicationlib
+)
 
 configure_executable_companion(${PEP_INFRA_DIR}/client/PullCastor.json OPTIONAL)
 configure_executable_companion(${PEP_INFRA_DIR}/client/ClientConfig.json OPTIONAL)
@@ -85,3 +91,5 @@ if(NOT EXISTS "${PEP_INFRA_DIR}/rootCA.cert")
   copy_pki_files(TARGET pullcastor_pki FILES rootCA.cert)
   add_dependencies(${PROJECT_NAME}PullCastor pullcastor_pki)
 endif()
+
+add_unit_tests(PullCastor)

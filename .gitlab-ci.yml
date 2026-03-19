@@ -104,6 +104,7 @@ variables:
 
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
+    cpp/pep/pullcastor/pepPullCastorUnitTests
 
   FORCE_BUILD_STABLE_RELEASE:
     value: ''
