@@ -1,20 +1,29 @@
 #include <pep/async/IoContextThread.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/ThreadUtil.hpp>
 
 #include <boost/asio/io_context.hpp>
 
 namespace pep {
 
 namespace {
-void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context) noexcept {
+
+const std::string LOG_TAG = "I/O context thread";
+
+void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context, std::stop_token stop) noexcept {
   try {
-    LOG("RunIoContext", debug) << "running io_context: " << io_context.get() << std::endl;
+    ThreadName::Set("I/O context");
+    LOG(LOG_TAG, debug) << "starting io_context " << io_context << " on thread " << std::this_thread::get_id();
+    std::stop_callback onStop(std::move(stop), [io_context] {
+      LOG(LOG_TAG, debug) << "stopping io_context...";
+      io_context->stop();
+      });
     io_context->run();
-    LOG("RunIoContext", debug) << "stopping io_context" << std::endl;
+    LOG(LOG_TAG, debug) << "io_context stopped";
     return;
   } catch (...) {
-    LOG("RunIoContext", severity_level::critical) << "Terminating application due to uncaught exception on I/O context thread: "
+    LOG(LOG_TAG, severity_level::critical) << "Terminating application due to uncaught exception on I/O context thread: "
       << GetExceptionMessage(std::current_exception());
   }
   //NOLINTNEXTLINE(concurrency-mt-unsafe) There's currently not a better way to handle this
@@ -23,29 +32,16 @@ void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context) noexcept 
 
 }
 
-void IoContextThread::stopContext() noexcept {
-  if (context_ != nullptr) {
-    context_->stop();
-    context_.reset();
-  }
-}
-
-IoContextThread::~IoContextThread() noexcept {
-  this->stopContext(); // Ensure that I/O context is stopped even if a previous call to this->stop() didn't do so
-  this->stop();
-}
-
 IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context)
-  : context_(io_context), guard_(std::make_unique<WorkGuard>(*io_context)), thread_(&RunIoContext, io_context) {
+  : guard_(std::make_unique<WorkGuard>(*io_context)) {
+  // Make work guard (in initializer list above) before starting the thread (below) to prevent the I/O context from running out of work immediately
+  thread_ = std::jthread([io_context](std::stop_token stop) { RunIoContext(io_context, std::move(stop)); });
 }
 
 void IoContextThread::stop(bool force) noexcept {
-  if (guard_) { // If we haven't stopped already...
-    guard_.reset(); // ... allow io_context::run to terminate...
-    if (force) {
-      this->stopContext(); // ... stop servicing I/O jobs if instructed to do so...
-    }
-    thread_.join(); // ... and wait until (io_context::run has terminated and) the thread exits
+  guard_.reset(); // Allow io_context::run to terminate
+  if (force) {
+    thread_ = std::jthread(); // Make our thread_ instance clean up and join
   }
 }
 
