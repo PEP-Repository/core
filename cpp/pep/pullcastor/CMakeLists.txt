@@ -53,6 +53,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 target_link_libraries(${PROJECT_NAME}PullCastor
+  ${PROJECT_NAME}PullCastorlib
   ${PROJECT_NAME}Applicationlib
 )
 
