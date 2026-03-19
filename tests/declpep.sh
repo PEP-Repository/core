@@ -16,7 +16,7 @@ readonly json="$2"
 # The other arguments are concatenated into a single format string
 jqr() {
   # Treat missing or null array fields as empty by replacing each array value iterator with a defaulted version.
-  missing_arrays_as_empty(){
+  missing_arrays_as_empty() {
     local -r target='\.([a-zA-Z_][a-zA-Z0-9_]*)\[]' # .<FIELD_NAME>[]
     local -r replacement='(.\1 \/\/ \[])\[]'        # (.<FIELD_NAME> // [])[]
     sed -E "s/$target/$replacement/g"
@@ -58,7 +58,7 @@ generate_pep_commands_in_setup_order() {
   jqr '.userGroups[] | .name as $group | .users[]' \
     'pepcli --oauth-token-group "Access Administrator" user '"$createOrRemove"' \(. | @sh)' "\n" \
     'pepcli --oauth-token-group "Access Administrator" user '"$addOrRemove"' \(. | @sh) \($group | @sh)' |
-    partition_by_substring "user $createOrRemove"
+    partition_by_substring "user $createOrRemove " # the final space distinguishes 'remove' from 'removeFrom'
 
   # additional identifiers
   if [ "$command" == "setup" ]; then
@@ -81,7 +81,7 @@ generate_pep_commands_in_setup_order() {
   jqr '.columnGroups[] | .name as $group | .columns[]' \
     'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' \(. | @sh)' "\n" \
     'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' \(. | @sh) \($group | @sh)' |
-    partition_by_substring "ama column $createOrRemove"
+    partition_by_substring "ama column $createOrRemove " # the final space distinguishes 'remove' from 'removeFrom'
 
   # subject groups
   jqr '.subjectGroups[]' \
@@ -103,8 +103,6 @@ generate_pep_commands_in_setup_order() {
     'pepcli --oauth-token-group "Data Administrator" ama group '"$addOrRemove"' \($group | @sh) ${\($bash_var)}'
 
   if [ "$command" == "setup" ]; then
-    empty_line
-
     jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
       'pepcli --oauth-token-group "Data Administrator" store -p ${\($bash_var)} -c \(.key | @sh) -d \(.value | @sh)'
   fi
