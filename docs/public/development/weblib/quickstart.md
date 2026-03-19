@@ -13,7 +13,7 @@ Just follow the steps in the [Emscripten docs](https://emscripten.org/docs/getti
 
 **Option 2: Via Conan**
 
-Clone https://github.com/conan-io/conan-toolchains and it as Conan remote as described in their [README](https://github.com/conan-io/conan-toolchains?tab=readme-ov-file#-getting-started).
+Clone https://github.com/conan-io/conan-toolchains and set it up as a local recipe index repository as described in their [README](https://github.com/conan-io/conan-toolchains?tab=readme-ov-file#-getting-started).
 
 Now reference the [recipe](https://github.com/conan-io/conan-toolchains/tree/main/conan_config/profiles/emsdk) and inform Conan its compiler version by adding the following to the Conan host profile that you will be using for compiling WebAssembly (see next section).
 
