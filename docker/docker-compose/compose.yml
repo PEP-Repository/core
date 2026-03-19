@@ -163,21 +163,22 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
             # Detect malicious/noisy patterns: AH10244 (CVE-2021-41773, CVE-2021-42013), @java.lang (CVE-2017-5638), AH01630, .htaccess/.htpasswd, AH01276, Unsafe URL, AH00036, File name too long
-            - template:
-                source: is_noise
-                template: '{{ if or (contains .message "AH10244") (contains .message "@java.lang.") (contains .message "AH01630") (contains .message ".htaccess") (contains .message ".htpasswd") (contains .message "AH01276") (contains .message "Unsafe URL with %3f") (contains .message "AH00036") (contains .message "File name too long") }}true{{ else }}false{{ end }}'
-            # Downgrade error to warn if noise detected, normalize other levels
+            - regex:
+                expression: '.*(?P<noise_type>AH10244|@java\.lang\.|AH01630|AH01276|Unsafe URL with %3f|AH00036).*'
+                source: message
+            # Normalize log levels
+            # Downgrade error to warn when background noise detected
             - template:
                 source: level
-                template: '{{ if and (eq .Value "error") (eq .is_noise "true") }}warn{{ else if eq .Value "emerg" }}fatal{{ else if or (eq .Value "alert") (eq .Value "crit") }}critical{{ else if eq .Value "error" }}error{{ else if eq .Value "warn" }}warn{{ else if eq .Value "notice" }}info{{ else if eq .Value "info" }}info{{ else if eq .Value "debug" }}debug{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
+                template: '{{ if and (eq .Value "error") .noise_type }}warn{{ else if eq .Value "emerg" }}fatal{{ else if or (eq .Value "alert") (eq .Value "crit") }}critical{{ else if eq .Value "notice" }}info{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
             - labels:
                 level:
-                is_noise:
             - structured_metadata:
                 module:
                 pid:
                 tid:
                 client:
+                noise_type:
       - labels:
           host: host_part
           vm: vm_part
