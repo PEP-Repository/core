@@ -4,20 +4,13 @@
 
 #include <boost/asio/io_context.hpp>
 
-using namespace std::chrono_literals;
-
 namespace pep {
 
 namespace {
-void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context, std::function<bool()> keepRunning) noexcept {
+void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context) noexcept {
   try {
     LOG("RunIoContext", debug) << "running io_context: " << io_context.get() << std::endl;
-
-    while (keepRunning()) {
-      io_context->run();
-      std::this_thread::sleep_for(100ms);
-      io_context->restart();
-    }
+    io_context->run();
     LOG("RunIoContext", debug) << "stopping io_context" << std::endl;
     return;
   } catch (...) {
@@ -28,30 +21,29 @@ void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context, std::func
   std::exit(EXIT_FAILURE);
 }
 
-std::function<bool()> GetKeepRunningCallback(bool* keepRunning) {
-  if (keepRunning == nullptr) {
-    throw std::runtime_error("Thread termination flag must be a non-NULL pointer");
-  }
-  return [keepRunning]() {
-    return *keepRunning;
-  };
-}
 }
 
-IoContextThread::IoContextThread(IoContextThread&& other) noexcept : thread_() {
+void IoContextThread::swapStateWith(IoContextThread& other) noexcept {
   std::swap(thread_, other.thread_);
+  std::swap(guard_, other.guard_);
 }
 
-IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context) : IoContextThread(io_context, []() {
-  return true;
-}) {}
-IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context, bool* keepRunning) : IoContextThread(io_context, GetKeepRunningCallback(keepRunning)) {}
+IoContextThread::IoContextThread(IoContextThread&& other) noexcept
+  : thread_() {
+  this->swapStateWith(other);
+}
 
-IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context, std::function<bool()> keepRunning) : thread_(std::thread(&RunIoContext, io_context, keepRunning)) {}
+IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context)
+  : guard_(std::make_unique<WorkGuard>(*io_context)), thread_(&RunIoContext, io_context) {
+}
 
 IoContextThread& IoContextThread::operator =(IoContextThread other) {
-  std::swap(thread_, other.thread_);
+  this->swapStateWith(other);
   return *this;
+}
+
+void IoContextThread::allowTermination() noexcept {
+  guard_.reset();
 }
 
 void IoContextThread::detach() {

@@ -16,20 +16,16 @@ public:
 private:
   std::shared_ptr<boost::asio::io_context> mIoContext = std::make_shared<boost::asio::io_context>();
   pep::HTTPServer mServer = pep::HTTPServer(PORT, mIoContext);
-  decltype(boost::asio::make_work_guard(*mIoContext)) mWorkGuard = boost::asio::make_work_guard(*mIoContext); // HTTPServer (doesn't keep I/O context busy but) produces HTTP 500 if the I/O context isn't running
-  bool mRun = true; // Ensure that the IoContextThread (enters its loop and) runs the I/O context
-  pep::IoContextThread mThread = pep::IoContextThread(mIoContext, &mRun);
+  pep::IoContextThread mThread = pep::IoContextThread(mIoContext);
 
 public:
   AsyncHttpServer() = default;
 
   ~AsyncHttpServer() noexcept {
-    mRun = false; // Prevent the IoContextThread from restarting the I/O context when it runs out of work (when we discard our work guard below)
-
     mServer.asyncStop();
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Give the HTTP server time to finalize
 
-    mWorkGuard.reset(); // Allow the I/O service to stop and...
+    mThread.allowTermination(); // Allow the I/O service to stop and...
     mThread.join(); // ...block until (it has done so and) the thread has exited
   }
 

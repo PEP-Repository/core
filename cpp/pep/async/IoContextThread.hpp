@@ -1,28 +1,28 @@
 #pragma once
 
-#include <functional>
-#include <memory>
 #include <thread>
 
 #include <pep/async/IoContext_fwd.hpp>
+#include <pep/async/WorkGuard.hpp>
 
 namespace pep {
 
 class IoContextThread {
  private:
-  std::thread thread_;
+   std::unique_ptr<WorkGuard> guard_;
+   std::thread thread_;
 
-  IoContextThread(std::shared_ptr<boost::asio::io_context> io_context, std::function<bool()> keepRunning);
+   void swapStateWith(IoContextThread& other) noexcept;
 
  public:
   IoContextThread(IoContextThread&& other) noexcept;
   IoContextThread(const IoContextThread&) = delete;
 
   explicit IoContextThread(std::shared_ptr<boost::asio::io_context> io_context);
-  IoContextThread(std::shared_ptr<boost::asio::io_context> io_context, bool* keepRunning);
 
   IoContextThread& operator =(IoContextThread other);
 
+  void allowTermination() noexcept;
   void join();
   void detach();
 };

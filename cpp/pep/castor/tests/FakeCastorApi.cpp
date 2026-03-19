@@ -202,20 +202,21 @@ void FakeCastorTest::Side::start() {
   if (mThread != nullptr) {
     throw std::runtime_error("Can't start FakeCastorTest::Side multiple times");
   }
-  mThread = std::make_shared<IoContextThread>(mIoContext, &mRun);
+  mThread = std::make_shared<IoContextThread>(mIoContext);
 }
 
 void FakeCastorTest::Side::stop(bool force) {
-  if (!mRun) {
+  if (mIoContext == nullptr) {
     throw std::runtime_error("Can't stop FakeCastorTest::Side multiple times");
   }
   if (mThread == nullptr) {
     throw std::runtime_error("Can't stop an unstarted FakeCastorTest::Side");
   }
-  mRun = false; // Don't restart the I/O service if/when it runs out of work
+  mThread->allowTermination();
   if (force) {
     mIoContext->stop();
   }
+  mIoContext.reset();
   mThread->join();
 }
 

@@ -57,7 +57,6 @@ private:
   class Side : boost::noncopyable {
   private:
     std::shared_ptr<boost::asio::io_context> mIoContext = std::make_shared< boost::asio::io_context>();
-    bool mRun = true;
     std::shared_ptr<IoContextThread> mThread;
 
   public:
