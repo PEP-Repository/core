@@ -2,7 +2,7 @@
 #include <pep/accessmanager/LegacyAuthserverStorage.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>
 #include <pep/utils/Random.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <sstream>
 
