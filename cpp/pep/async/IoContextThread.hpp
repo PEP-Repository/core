@@ -14,17 +14,18 @@ class IoContextThread {
    std::thread thread_;
 
    void swapStateWith(IoContextThread& other) noexcept;
+   void stopContext() noexcept;
 
  public:
   IoContextThread(IoContextThread&& other) noexcept;
   IoContextThread(const IoContextThread&) = delete;
+  ~IoContextThread() noexcept;
 
   explicit IoContextThread(std::shared_ptr<boost::asio::io_context> io_context);
 
   IoContextThread& operator =(IoContextThread other);
 
   void stop(bool force = false) noexcept;
-  void detach();
 };
 
 }

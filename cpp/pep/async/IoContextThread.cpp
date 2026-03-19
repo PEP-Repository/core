@@ -29,9 +29,21 @@ void IoContextThread::swapStateWith(IoContextThread& other) noexcept {
   std::swap(guard_, other.guard_);
 }
 
+void IoContextThread::stopContext() noexcept {
+  if (context_ != nullptr) {
+    context_->stop();
+    context_.reset();
+  }
+}
+
 IoContextThread::IoContextThread(IoContextThread&& other) noexcept
   : thread_() {
   this->swapStateWith(other);
+}
+
+IoContextThread::~IoContextThread() noexcept {
+  this->stopContext(); // Ensure that I/O context is stopped even if a previous call to this->stop() didn't do so
+  this->stop();
 }
 
 IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context)
@@ -47,14 +59,10 @@ void IoContextThread::stop(bool force) noexcept {
   if (guard_) { // If we haven't stopped already...
     guard_.reset(); // ... allow io_context::run to terminate...
     if (force) {
-      context_->stop(); // ... stop servicing I/O jobs if instructed to do so...
+      this->stopContext(); // ... stop servicing I/O jobs if instructed to do so...
     }
     thread_.join(); // ... and wait until (io_context::run has terminated and) the thread exits
   }
-}
-
-void IoContextThread::detach() {
-  thread_.detach();
 }
 
 }
