@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016 # Reason: we are intentionally using single quoted strings to avoid expansion
 
-set -uo pipefail
+set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
   echo "Usage: $0 {cleanup|setup} <json>"
   exit 1
 fi
 
-command="$1"
-json="$2"
+readonly command="$1"
+readonly json="$2"
 
 # Runs a jq filter on $json_file and then feeds this into a jq format string
 # The first argument specifies the filter
@@ -43,18 +43,17 @@ empty_line() {
 
 # Move lines with the substring before those without it
 partition_by_substring() {
-  local substring="$1"
+  grep_nofail() { grep "$@" || cat; } # does not fail if there is no match
+  local -r substring="$1"
+  local -r tempfile=$(mktemp) && trap 'rm -f "$tempfile"' RETURN
 
-  local tempfile
-  tempfile=$(mktemp) && trap 'rm -f "$tempfile"' RETURN
-
-  tee "$tempfile" | grep -e "$substring"
-  cat "$tempfile" | grep -v "$substring"
+  tee "$tempfile" | grep_nofail -e "$substring"
+  cat "$tempfile" | grep_nofail -v "$substring"
 }
 
 generate_pep_commands_in_setup_order() {
-  createOrRemove=$([ "$command" == "setup" ] && echo "create" || echo "remove")
-  addOrRemove=$([ "$command" == "setup" ] && echo "addTo" || echo "removeFrom")
+  local -r createOrRemove=$([ "$command" == "setup" ] && echo "create" || echo "remove")
+  local -r addOrRemove=$([ "$command" == "setup" ] && echo "addTo" || echo "removeFrom")
 
   # user groups
   jqr '.userGroups[]' \
