@@ -10,6 +10,7 @@
 #include <pep/utils/OpensslUtils.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
+#include <pep/rsk/RskTranslator.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
@@ -187,6 +188,21 @@ static void BM_Sha256Long(benchmark::State& state) {
   SetBytesProcessed(state, msg.size());
 }
 BENCHMARK(BM_Sha256Long);
+
+static void BM_GenerateKeyFactor(benchmark::State& state) {
+  pep::RskTranslator rsk(pep::RskTranslator::Keys{
+    .domain = 1,
+    .reshuffle{},
+    .rekey = pep::KeyFactorSecret(pep::RandomArray<64>()),
+  });
+  auto fakeDerCertificate = pep::RangeToCollection<std::string>(std::views::iota(0, 970));
+  const pep::RekeyRecipient recipient(1, std::move(fakeDerCertificate));
+  for (auto _ : state)
+    benchmark::DoNotOptimize(rsk.generateKeyFactor(recipient));
+  state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_GenerateKeyFactor);
+
 
 static void BM_PageDecrypt(benchmark::State& state) {
   pep::DataPayloadPage page;
