@@ -15,17 +15,19 @@ readonly json="$2"
 # The first argument specifies the filter
 # The other arguments are concatenated into a single format string
 jqr() {
+  local -r NAME_REGEX='[a-zA-Z_][a-zA-Z0-9_]*'
+
   # Treat missing or null array fields as empty by replacing each array value iterator with a defaulted version.
   missing_arrays_as_empty() {
-    local -r target='\.([a-zA-Z_][a-zA-Z0-9_]*)\[]' # .<FIELD_NAME>[]
-    local -r replacement='(.\1 \/\/ \[])\[]'        # (.<FIELD_NAME> // [])[]
+    local -r target="\.($NAME_REGEX)\[]"     # .<FIELD_NAME>[]
+    local -r replacement='(.\1 \/\/ \[])\[]' # (.<FIELD_NAME> // [])[]
     sed -E "s/$target/$replacement/g"
   }
 
   # Treat missing or null map fields as empty by replacing each map value iterator with a defaulted version.
   missing_maps_as_empty() {
-    local -r target='\.([a-zA-Z_][a-zA-Z0-9_]*) \| to_entries\[]' # .<FIELD_NAME> | to_entries[]
-    local -r replacement='.\1 \/\/ {} | to_entries\[]'            # .<FIELD_NAME> // {} | to_entries[]
+    local -r target="\.($NAME_REGEX) \| to_entries\[]" # .<FIELD_NAME> | to_entries[]
+    local -r replacement='.\1 \/\/ {} | to_entries\[]' # .<FIELD_NAME> // {} | to_entries[]
     sed -E "s/$target/$replacement/g"
   }
 
