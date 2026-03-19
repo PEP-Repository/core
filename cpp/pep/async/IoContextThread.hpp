@@ -23,7 +23,7 @@ class IoContextThread {
 
   explicit IoContextThread(std::shared_ptr<boost::asio::io_context> io_context);
 
-  IoContextThread& operator =(IoContextThread other);
+  IoContextThread& operator =(const IoContextThread&) = delete;
 
   void stop(bool force = false) noexcept;
 };

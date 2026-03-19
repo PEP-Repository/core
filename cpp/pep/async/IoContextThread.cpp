@@ -50,11 +50,6 @@ IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_con
   : context_(io_context), guard_(std::make_unique<WorkGuard>(*io_context)), thread_(&RunIoContext, io_context) {
 }
 
-IoContextThread& IoContextThread::operator =(IoContextThread other) {
-  this->swapStateWith(other);
-  return *this;
-}
-
 void IoContextThread::stop(bool force) noexcept {
   if (guard_) { // If we haven't stopped already...
     guard_.reset(); // ... allow io_context::run to terminate...
