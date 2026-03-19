@@ -36,11 +36,6 @@ jqr() {
   echo "$json" | jq -r "$filter | \"$genlines\""
 }
 
-# Prints an empty line
-empty_line() {
-  echo
-}
-
 # Move lines with the substring before those without it
 partition_by_substring() {
   grep_nofail() { grep "$@" || cat; } # does not fail if there is no match
@@ -74,8 +69,6 @@ generate_pep_commands_in_setup_order() {
       'pepcli --oauth-token-group "Access Administrator" user removeIdentifier \(. | @sh)'
   fi
 
-  empty_line
-
   # column groups
   jqr '.columnGroups[]' \
     'pepcli --oauth-token-group "Data Administrator" ama columnGroup '"$createOrRemove"' \(.name | @sh)'
@@ -84,15 +77,11 @@ generate_pep_commands_in_setup_order() {
   jqr '.columnGroups[] | .name as $cGroup | .cgars | to_entries[]' \
     'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' \($cGroup | @sh) \(.key | @sh) \(.value[] | @sh)'
 
-  empty_line
-
   # individual columns
   jqr '.columnGroups[] | .name as $group | .columns[]' \
     'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' \(. | @sh)' "\n" \
     'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' \(. | @sh) \($group | @sh)' |
     partition_by_substring "ama column $createOrRemove"
-
-  empty_line
 
   # subject groups
   jqr '.subjectGroups[]' \
@@ -101,8 +90,6 @@ generate_pep_commands_in_setup_order() {
   # subject group access rules
   jqr '.subjectGroups[] | .name as $cGroup | .pgars | to_entries[]' \
     'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' \($cGroup | @sh) \(.key | @sh) \(.value[] | @sh)'
-
-  empty_line
 
   # individual subjects
   if [ "$command" == "setup" ]; then
