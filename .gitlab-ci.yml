@@ -980,6 +980,7 @@ build-sandbox-docker-image:
       <(cd "$STAGING_DIRECTORY" && find -name 'pep*UnitTests' | sort | sed 's/^.\///') |
       tee /dev/stderr)" ]; then
     -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml. Should these be added to $UNIT_TESTS_BASE?'
+    -   exit 1
     - fi
     - *run-tests
   artifacts:
