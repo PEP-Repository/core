@@ -49,64 +49,68 @@ partition_by_substring() {
 }
 
 generate_pep_commands_in_setup_order() {
+  pep_as() { echo "pepcli --oauth-token-group '$1'"; }
+  local -r AS_ACCESS_ADMIN=$(pep_as 'Access Administrator')
+  local -r AS_DATA_ADMIN=$(pep_as 'Data Administrator')
+
   local -r createOrRemove=$([ "$command" == "setup" ] && echo "create" || echo "remove")
   local -r addOrRemove=$([ "$command" == "setup" ] && echo "addTo" || echo "removeFrom")
 
   # user groups
   jqr '.userGroups[]' \
-    'pepcli --oauth-token-group "Access Administrator" user group '"$createOrRemove"' \(.name | @sh)'
+    "$AS_ACCESS_ADMIN user group $createOrRemove \\(.name | @sh)"
 
   # individual users
   jqr '.userGroups[] | .name as $group | .users[]' \
-    'pepcli --oauth-token-group "Access Administrator" user '"$createOrRemove"' \(. | @sh)' "\n" \
-    'pepcli --oauth-token-group "Access Administrator" user '"$addOrRemove"' \(. | @sh) \($group | @sh)' |
-    partition_by_substring "user $createOrRemove " # the final space distinguishes 'remove' from 'removeFrom'
+    "$AS_ACCESS_ADMIN user $createOrRemove \\(. | @sh)\n" \
+    "$AS_ACCESS_ADMIN user $addOrRemove \\(. | @sh) \\(\$group | @sh)" |
+    partition_by_substring "$AS_ACCESS_ADMIN user $createOrRemove " # trailing space is significant
 
   # additional identifiers
   if [ "$command" == "setup" ]; then
     jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .key as $user | .value[]' \
-      'pepcli --oauth-token-group "Access Administrator" user addIdentifier \($user | @sh) \(. | @sh)'
+      "$AS_ACCESS_ADMIN user addIdentifier \\(\$user | @sh) \(. | @sh)"
   else
     jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .value[]' \
-      'pepcli --oauth-token-group "Access Administrator" user removeIdentifier \(. | @sh)'
+      "$AS_ACCESS_ADMIN user removeIdentifier \\(. | @sh)"
   fi
 
   # column groups
   jqr '.columnGroups[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama columnGroup '"$createOrRemove"' \(.name | @sh)'
+    "$AS_DATA_ADMIN ama columnGroup $createOrRemove \\(.name | @sh)"
 
   # column group access rules
   jqr '.columnGroups[] | .name as $cGroup | .cgars | to_entries[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' \($cGroup | @sh) \(.key | @sh) \(.value[] | @sh)'
+    "$AS_ACCESS_ADMIN ama cgar $createOrRemove \\(\$cGroup | @sh) \\(.key | @sh) \\(.value[] | @sh)"
 
   # individual columns
   jqr '.columnGroups[] | .name as $group | .columns[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama column '"$createOrRemove"' \(. | @sh)' "\n" \
-    'pepcli --oauth-token-group "Data Administrator" ama column '"$addOrRemove"' \(. | @sh) \($group | @sh)' |
-    partition_by_substring "ama column $createOrRemove " # the final space distinguishes 'remove' from 'removeFrom'
+    "$AS_DATA_ADMIN ama column $createOrRemove \\(. | @sh)\n" \
+    "$AS_DATA_ADMIN ama column $addOrRemove \\(. | @sh) \\(\$group | @sh)" |
+    partition_by_substring "$AS_DATA_ADMIN ama column $createOrRemove " # trailing space is significant
 
   # subject groups
   jqr '.subjectGroups[]' \
-    'pepcli --oauth-token-group "Data Administrator" ama group '"$createOrRemove"' \(.name | @sh)'
+    "$AS_DATA_ADMIN ama group $createOrRemove"' \(.name | @sh)'
 
   # subject group access rules
   jqr '.subjectGroups[] | .name as $cGroup | .pgars | to_entries[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' \($cGroup | @sh) \(.key | @sh) \(.value[] | @sh)'
+    "$AS_ACCESS_ADMIN ama pgar $createOrRemove \\(\$cGroup | @sh) \\(.key | @sh) \\(.value[] | @sh)"
 
   # individual subjects
   if [ "$command" == "setup" ]; then
     jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
       '\($bash_var)="$(' \
-      "pepcli --oauth-token-group 'Data Administrator' register id | grep 'identifier:' | cut -d ':' -f2 | tr -d '[:space:]'" \
+      "$AS_DATA_ADMIN register id | grep 'identifier:' | cut -d ':' -f2 | tr -d '[:space:]'" \
       ')"'
   fi
 
   jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
-    'pepcli --oauth-token-group "Data Administrator" ama group '"$addOrRemove"' \($group | @sh) ${\($bash_var)}'
+    "$AS_DATA_ADMIN ama group $addOrRemove \\(\$group | @sh) \${\\(\$bash_var)}"
 
   if [ "$command" == "setup" ]; then
     jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
-      'pepcli --oauth-token-group "Data Administrator" store -p ${\($bash_var)} -c \(.key | @sh) -d \(.value | @sh)'
+      "$AS_DATA_ADMIN store -p \${\\(\$bash_var)} -c \\(.key | @sh) -d \\(.value | @sh)"
   fi
 }
 
