@@ -6,22 +6,31 @@ ARG STAGING_DIRECTORY=build
 
 # Copy run and configuration scripts, and PEP executables
 COPY \
-    ${STAGING_DIRECTORY}/cpp/pep/accessmanager/pepAccessManager \
+    # EXECUTABLES_APPS
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepDumpShadowAdministration \
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepEnrollment \
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepGenerateSystemKeys \
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepToken \
+    
+    # EXECUTABLES_PEP_SERVICES
+    ${STAGING_DIRECTORY}/cpp/pep/accessmanager/pepAccessManager \
     ${STAGING_DIRECTORY}/cpp/pep/authserver/pepAuthserver \
-    ${STAGING_DIRECTORY}/cpp/pep/benchmark/pepbenchmark \
-    ${STAGING_DIRECTORY}/cpp/pep/cli/pepcli \
     ${STAGING_DIRECTORY}/cpp/pep/keyserver/pepKeyServer \
-    ${STAGING_DIRECTORY}/cpp/pep/logon/pepLogon \
     ${STAGING_DIRECTORY}/cpp/pep/registrationserver/pepRegistrationServer \
     ${STAGING_DIRECTORY}/cpp/pep/storagefacility/pepStorageFacility \
     ${STAGING_DIRECTORY}/cpp/pep/transcryptor/pepTranscryptor \
 
+    # EXECUTABLES_CLIENT
+    ${STAGING_DIRECTORY}/cpp/pep/cli/pepcli \
+    ${STAGING_DIRECTORY}/cpp/pep/logon/pepLogon \
+
+    # EXECUTABLES_BENCHMARK
+    ${STAGING_DIRECTORY}/cpp/pep/benchmark/pepbenchmark \
+
+    # EXECUTABLES_GO
     ${STAGING_DIRECTORY}/go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog \
 
+    # UNIT_TESTS_INTEGRATION
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepClientTest \
     ${STAGING_DIRECTORY}/cpp/pep/storagefacility/pepStorageFacilityUnitTests \
 
