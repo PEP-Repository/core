@@ -172,6 +172,7 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 template: '{{ if and (eq .Value "error") (eq .is_noise "true") }}warn{{ else if eq .Value "emerg" }}fatal{{ else if or (eq .Value "alert") (eq .Value "crit") }}critical{{ else if eq .Value "error" }}error{{ else if eq .Value "warn" }}warn{{ else if eq .Value "notice" }}info{{ else if eq .Value "info" }}info{{ else if eq .Value "debug" }}debug{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
             - labels:
                 level:
+                is_noise:
             - structured_metadata:
                 module:
                 pid:
