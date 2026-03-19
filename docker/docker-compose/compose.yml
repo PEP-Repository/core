@@ -171,21 +171,7 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
             # "AH00036": File name too long / injection attempt
             - template:
                 source: level
-                template: >
-                  {{- if and (eq .Value "error") (or
-                    (contains .message "AH10244")
-                    (contains .message "@java.lang.")
-                    (contains .message "AH01630")
-                    (contains .message "AH01276")
-                    (contains .message "Unsafe URL with %3f")
-                    (contains .message "AH00036")
-                  ) -}}warn
-                  {{- else if eq .Value "emerg" -}}fatal
-                  {{- else if or (eq .Value "alert") (eq .Value "crit") -}}critical
-                  {{- else if eq .Value "notice" -}}info
-                  {{- else if hasPrefix .Value "trace" -}}trace
-                  {{- else -}}{{ ToLower .Value }}
-                  {{- end }}
+                template: '{{ if and (eq .Value "error") (or (contains .message "AH10244") (contains .message "@java.lang.") (contains .message "AH01630") (contains .message "AH01276") (contains .message "Unsafe URL with %3f") (contains .message "AH00036")) }}warn{{ else if eq .Value "emerg" }}fatal{{ else if or (eq .Value "alert") (eq .Value "crit") }}critical{{ else if eq .Value "notice" }}info{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
             - labels:
                 level:
             - structured_metadata:
