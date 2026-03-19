@@ -13,6 +13,7 @@ class HasherBase : private boost::noncopyable {
 protected:
   void update(const void* block, size_t size);
   void update(std::istream& source);
+  /// Mark as finished. \c update or this function should not be called after this.
   void setFinished();
 
   virtual void process(const void* block, size_t size) = 0;
@@ -28,7 +29,7 @@ public:
   using Hash = THash;
 
 protected:
-  virtual Hash finish() = 0;
+  [[nodiscard]] virtual Hash finish() = 0;
 
 public:
   [[nodiscard]] Hash digest() {

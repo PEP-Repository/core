@@ -15,8 +15,8 @@ public:
   OpenSSLHasher(const EVP_MD* type);
   ~OpenSSLHasher() noexcept override;
 
-  std::size_t blockSize() const;
-  std::size_t digestSize() const;
+  [[nodiscard]] std::size_t blockSize() const;
+  [[nodiscard]] std::size_t digestSize() const;
 
   void process(const void* block, size_t size) override;
   Hash finish() override;
