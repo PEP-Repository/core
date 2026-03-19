@@ -15,10 +15,12 @@ Just follow the steps in the [Emscripten docs](https://emscripten.org/docs/getti
 
 Clone https://github.com/conan-io/conan-toolchains and set it up as a local recipe index repository as described in their [README](https://github.com/conan-io/conan-toolchains?tab=readme-ov-file#-getting-started).
 
-Now reference the [recipe](https://github.com/conan-io/conan-toolchains/tree/main/conan_config/profiles/emsdk) and inform Conan its compiler version by adding the following to the Conan host profile that you will be using for compiling WebAssembly (see next section).
+Create a Conan host profile that you will be using to compile WebAssembly. E.g. place a file `wasm32` in `~/.conan2/profiles/` and give it the following contents:
 
 ```ini
 {% set compiler_version = '4.0.22' %}
+
+include(C:\PepSrc\pep\core-3\docker-build\builder\conan\conan_profile_wasm32)
 
 [settings]
 # This line should be below `compiler=...`
@@ -28,21 +30,25 @@ compiler.version={{compiler_version}}
 emsdk/{{compiler_version}}
 ```
 
-Substitute `4.0.22` by the specific version you want to use.
+@@@ NOTE THAT I also put these settings directly in my C:\PepSrc\pep\core-3\docker-build\builder\conan\conan_profile_wasm32 file, so those may have been required for `conan install` (below) to work. @@@
+
+Replace the `include` path by the actual path to the `conan_profile_wasm32` file in your `core/docker_build` subdirectory. Substitute `4.0.22` by the specific version you want to use.
 
 !!! info "Adapting Conan profiles from docker-build"
     When adapting Conan profiles in docker-build, you can either copy them (plus included files) to `~/.conan2/profiles/`, or create a new profile there and include the one from docker-build via `include(/path/to/docker-build/conan_profile)`.
 
 ## Install requirements via Conan
 
-As host profile, you can use `docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
+As host profile, you can use or include `docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
 
 !!! bug "Emscripten version detection"
     Currently, Emscripten version detection for manually installed EMSDK is broken (1) on Windows or (2) with a fresh install, see [this issue](https://github.com/conan-io/conan/issues/19677). For (1), manually specify `compiler.version`. For (2), the second try it should work.
 
+From your git repository's root directory:
+
 ```shell
 conan install \
-  --profile=./docker-build/builder/conan/conan_profile_wasm32 \
+  --profile=wasm32 \
   -s"&:build_type=Debug" \
   --build=missing \
   -o"&:subbuild_name=wasm32"
