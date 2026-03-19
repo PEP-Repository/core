@@ -164,10 +164,7 @@ if should_run_test file-extension; then
     "columnGroups": [{
       "name": "FileExtensionTestGroup",
       "columns": [ "FileExtensionTest" ],
-      "cgars": [{
-        "userGroup": "Research Assessor",
-        "permissions": [ "read", "write" ]
-      }]
+      "cgars": { "Research Assessor": [ "read", "write" ] }
     }]
   }'
 
@@ -307,17 +304,11 @@ if should_run_test ama; then
     "columnGroups": [{
       "name": "scriptPrintTestColumnGroup",
       "columns": [ "scriptPrintTestColumn" ],
-      "cgars": [{
-        "userGroup": "Research Assessor",
-        "permissions": [ "read" ]
-      }]
+      "cgars": { "Research Assessor": [ "read" ] }
     }],
     "subjectGroups": [{
       "name": "scriptPrintTestParticipantGroup",
-      "pgars": [{
-        "userGroup": "Research Assessor",
-        "permissions": [ "access" ]
-      }]
+      "pgars": {  "Research Assessor":  [ "access" ] }
     }]
   }'
 
@@ -355,10 +346,7 @@ if should_run_test token-block; then
     "columnGroups": [{
       "name": "tokenBlockingColumnGroup",
       "columns": [ "tokenBlockingColumn" ],
-      "cgars": [{
-        "userGroup": "integrationGroup",
-        "permissions": [ "read" ]
-      }]
+      "cgars": {  "integrationGroup":  [ "read" ] }
     }]
   }'
 
@@ -607,10 +595,10 @@ if should_run_test structured-output; then
     "columnGroups": [{
       "name": "SOTD",
       "columns": [ "SOTD.shortText", "SOTD.longText" ],
-      "cgars": [
-        { "userGroup": "SOAG", "permissions": [ "read", "write" ] },
-        { "userGroup": "Data Administrator", "permissions": [ "read", "write" ] }
-      ]
+      "cgars": {
+        "SOAG": [ "read", "write" ],
+        "Data Administrator": [ "read", "write" ]
+      }
     }],
     "subjectGroups": [{
       "name": "SOTPGroup",
@@ -620,7 +608,7 @@ if should_run_test structured-output; then
         { "SOTD.shortText": "green" },
         { "SOTD.longText": "Cadmium Red" }
       ],
-      "pgars": [{ "userGroup": "SOAG", "permissions": [ "enumerate", "access" ] }]
+      "pgars": { "SOAG": [ "enumerate", "access" ] }
     }]
   }'
 
@@ -697,10 +685,7 @@ if should_run_test s3-roundtrip; then
     "columnGroups": [{
       "name": "LargeColumns",
       "columns": [ "LargeColumn" ],
-      "cgars": [{
-        "userGroup": "Research Assessor",
-        "permissions": [ "read", "write" ]
-      }]
+      "cgars": {  "Research Assessor": [ "read", "write" ] }
     }]
   }'
 

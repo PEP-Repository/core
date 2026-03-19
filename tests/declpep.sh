@@ -82,8 +82,8 @@ generate_pep_commands_in_setup_order() {
     'pepcli --oauth-token-group "Data Administrator" ama columnGroup '"$createOrRemove"' \(.name | @sh)'
 
   # column group access rules
-  jqr '.columnGroups[] | .name as $group | .cgars[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' \($group | @sh) \(.userGroup | @sh) \(.permissions[] | @sh)'
+  jqr '.columnGroups[] | .name as $cGroup | .cgars | to_entries[]' \
+    'pepcli --oauth-token-group "Access Administrator" ama cgar '"$createOrRemove"' \($cGroup | @sh) \(.key | @sh) \(.value[] | @sh)'
 
   empty_line
 
@@ -100,8 +100,8 @@ generate_pep_commands_in_setup_order() {
     'pepcli --oauth-token-group "Data Administrator" ama group '"$createOrRemove"' \(.name | @sh)'
 
   # subject group access rules
-  jqr '.subjectGroups[] | .name as $group | .pgars[]' \
-    'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' \($group | @sh) \(.userGroup | @sh) \(.permissions[] | @sh)'
+  jqr '.subjectGroups[] | .name as $cGroup | .pgars | to_entries[]' \
+    'pepcli --oauth-token-group "Access Administrator" ama pgar '"$createOrRemove"' \($cGroup | @sh) \(.key | @sh) \(.value[] | @sh)'
 
   empty_line
 

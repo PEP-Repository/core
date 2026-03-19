@@ -8,7 +8,7 @@
   "columnGroups": [{
     "name": "TestColumnGroup",
     "columns": [ "TestColumnGroup.columnA", "TestColumnGroup.columnB" ],
-    "cgars": [{ "userGroup": "TestUserGroup", "permissions": [ "read", "write" ] }]
+    "cgars": { "TestUserGroup":  [ "read", "write" ] }
   }],
   "subjectGroups": [{
     "name": "TestSubjects",
@@ -16,6 +16,6 @@
       { "TestColumnGroup.columnA": "A1", "TestColumnGroup.columnB": "B1" },
       { "TestColumnGroup.columnA": "A2", "TestColumnGroup.columnB": "B2" }
     ],
-    "pgars": [{ "userGroup": "TestUserGroup", "permissions": [ "enumerate", "access" ] }]
+    "pgars": { "TestUserGroup": [ "enumerate", "access" ] }
   }]
 }
