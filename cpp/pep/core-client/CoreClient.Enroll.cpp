@@ -1,6 +1,6 @@
-#include <pep/core-client/CoreClient.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/utils/Log.hpp>
 
 #include <boost/algorithm/hex.hpp>
@@ -33,20 +33,20 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
   return accessManagerProxy->requestKeyComponent(ctx->keyComponentRequest)
     .flat_map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context
-      ctx->alpha = lpResponse.mPseudonymKeyComponent;
-      ctx->beta = lpResponse.mEncryptionKeyComponent;
+      ctx->pseudonymEncryptionKeyComponentAM = lpResponse.mPseudonymEncryptionKeyComponent;
+      ctx->dataEncryptionKeyComponentAM = lpResponse.mDataEncryptionKeyComponent;
 
       // Send request to Transcryptor
         return transcryptorProxy->requestKeyComponent(ctx->keyComponentRequest);
     })
     .map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context
-      ctx->gamma = lpResponse.mPseudonymKeyComponent;
-      ctx->delta = lpResponse.mEncryptionKeyComponent;
+      ctx->pseudonymEncryptionKeyComponentTS = lpResponse.mPseudonymEncryptionKeyComponent;
+      ctx->dataEncryptionKeyComponentTS = lpResponse.mDataEncryptionKeyComponent;
 
       // Compute final keys
-      this->privateKeyPseudonyms = ctx->alpha.mult(ctx->gamma);
-      this->privateKeyData = ctx->beta.mult(ctx->delta);
+      this->privateKeyPseudonyms = ctx->pseudonymEncryptionKeyComponentAM * ctx->pseudonymEncryptionKeyComponentTS;
+      this->privateKeyData = ctx->dataEncryptionKeyComponentAM * ctx->dataEncryptionKeyComponentTS;
 
       // Store identity
       this->setSigningIdentity(ctx->identity);

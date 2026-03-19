@@ -2,7 +2,8 @@
 
 #include <pep/rsk-pep/KeyDomain.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <stdexcept>
 
@@ -30,7 +31,7 @@ CurveScalar DataTranslator::generateBlindingKey(
   if (!blindingKeySecret) {
     throw std::logic_error("Trying to perform key unblinding while blinding key is not set (only AM should call this)");
   }
-  auto key = CurveScalar::From64Bytes(Sha512::HMac(
+  auto key = CurveScalar::From64Bytes(Hmac<Sha512>(
       SpanToString(blindingKeySecret->hmacKey()),
       blindAddData));
   // If invertBlindKey, we invert the blinding key. Otherwise, we invert the unblinding key
@@ -47,7 +48,7 @@ ElgamalEncryption DataTranslator::blind(
     std::string_view blindAddData,
     bool invertBlindKey
 ) const {
-  return rsk_.rs(unblinded, generateBlindingKey(BlindMode::Blind, blindAddData, invertBlindKey));
+  return rsk_.reshuffle(unblinded, generateBlindingKey(BlindMode::Blind, blindAddData, invertBlindKey));
 }
 
 ElgamalEncryption DataTranslator::unblindAndTranslate(
@@ -56,7 +57,7 @@ ElgamalEncryption DataTranslator::unblindAndTranslate(
     bool invertBlindKey,
     const Recipient& recipient
 ) const {
-  return rsk_.rsk(blinded, {
+  return rsk_.reshuffleRekey(blinded, {
       .reshuffle = generateBlindingKey(BlindMode::Unblind, blindingAddData, invertBlindKey),
       .rekey = rsk_.generateKeyFactor(recipient),
   });
@@ -66,7 +67,7 @@ ElgamalEncryption DataTranslator::translateStep(
     const ElgamalEncryption& encrypted,
     const Recipient& recipient
 ) const {
-  return rsk_.rk(encrypted, rsk_.generateKeyFactor(recipient));
+  return rsk_.rekey(encrypted, rsk_.generateKeyFactor(recipient));
 }
 
 CurveScalar DataTranslator::generateKeyComponent(const Recipient& recipient) const {

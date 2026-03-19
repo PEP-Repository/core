@@ -51,9 +51,14 @@ End users (such as researchers working with the data) should contact the support
 
 Project teams that use PEP, or parties interested in doing so, can direct their questions at <support@pep.cs.ru.nl> . Mail can be encrypted using [this GPG public key](PEP_team_0x4CD939B8_public.asc)
 
-## NOLAI Workshop 2024/5/23
+## Tutorial
 
-Go [to the NOLAI PEP Workshop](/public/nolai-sandbox/main/#).
+We've developed a hands-on tutorial to get new users acquainted with PEP, geared toward those involved in access management or data administration. In this tutorial you'll learn how to use the pep command line interface as several different types of users, and explore why PEP is designed the way it is, including its 4 eyes principles and pseudonymisation features.
+
+!!! note "Note"
+     The tutorial requires the use of Docker, and requires the user to be somewhat comfortable with using the command line.
+
+Go to the [PEP Tutorial](tutorial.md).
 
 ## Development
 

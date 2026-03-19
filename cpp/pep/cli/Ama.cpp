@@ -393,20 +393,20 @@ private:
     pep::commandline::Parameters getSupportedParameters() const override {
       return ChildCommandOf<CommandAma>::getSupportedParameters()
         + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
-          .allow(std::vector<std::string>({ "columns", "column-groups", "column-group-access-groups", "groups", "group-access-rules" })))
+          .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
-        + pep::commandline::Parameter("column", "Match these columns").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("column-group", "Match these column groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("user-group", "Match these user groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("participant-group", "Match these participant groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("column-mode", "Match these column-modes").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("participant-group-mode", "Match these participant-group-modes").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"));
+        + pep::commandline::Parameter("column", "Match results related to this column. You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-group", "Match results related to this column group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("user-group", "Match results related to this user group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group", "Match results related to this participant group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-mode", "Match results related to this column-mode").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group-mode", "Match results related to this participant-group-mode").value(pep::commandline::Value<std::string>());
     }
 
     int execute() override {
       const auto& vm = this->getParameterValues();
-      std::string scriptPrintFilter;
+      std::optional<std::string> scriptPrintFilter;
       if(vm.has("script-print")) {
         scriptPrintFilter = vm.get<std::string>("script-print");
       }
@@ -416,29 +416,30 @@ private:
           .mAt = pep::GetOptionalValue(vm.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
             return pep::Timestamp(milliseconds{ms});
           }),
-          .mColumnFilter = vm.get<std::string>("column"),
-          .mColumnGroupFilter = vm.get<std::string>("column-group"),
-          .mParticipantGroupFilter = vm.get<std::string>("participant-group"),
-          .mUserGroupFilter = vm.get<std::string>("user-group"),
-          .mColumnGroupModeFilter = vm.get<std::string>("column-mode"),
-          .mParticipantGroupModeFilter = vm.get<std::string>("participant-group-mode"),
+          .mColumnFilter = vm.getOptional<std::string>("column").value_or(""),
+          .mColumnGroupFilter = vm.getOptional<std::string>("column-group").value_or(""),
+          .mParticipantGroupFilter = vm.getOptional<std::string>("participant-group").value_or(""),
+          .mUserGroupFilter = vm.getOptional<std::string>("user-group").value_or(""),
+          .mColumnGroupModeFilter = vm.getOptional<std::string>("column-mode").value_or(""),
+          .mParticipantGroupModeFilter = vm.getOptional<std::string>("participant-group-mode").value_or(""),
         };
         return client->getAccessManagerProxy()->amaQuery(std::move(query))
         .map([scriptPrintFilter](pep::AmaQueryResponse res) {
 
-          std::string offset = scriptPrintFilter.empty() ? "  " : "";
+          bool prettyPrint = !scriptPrintFilter.has_value();
+          std::string offset = prettyPrint ? "  " : "";
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "columns") {
+          if(prettyPrint || scriptPrintFilter == "columns") {
             std::sort(res.mColumns.begin(), res.mColumns.end(), [](auto& a, auto& b) {return a.mName < b.mName; });
-            if(scriptPrintFilter.empty())
+            if(prettyPrint)
               std::cout << "Columns (" << res.mColumns.size() << "):" << std::endl;
             for (auto &col : res.mColumns)
               std::cout << offset << col.mName << std::endl;
             std::cout << std::endl;
           }
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-groups") {
-            if (scriptPrintFilter.empty())
+          if(prettyPrint || scriptPrintFilter == "column-groups") {
+            if (prettyPrint)
               std::cout << "ColumnGroups (" << res.mColumnGroups.size() << "):" << std::endl;
             std::sort(res.mColumnGroups.begin(), res.mColumnGroups.end(),
                       [](auto &a, auto &b) { return a.mName < b.mName; });
@@ -452,7 +453,7 @@ private:
             std::cout << std::endl;
           }
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-group-access-groups") {
+          if(prettyPrint || scriptPrintFilter == "column-group-access-rules") {
             std::sort(
               res.mColumnGroupAccessRules.begin(),
               res.mColumnGroupAccessRules.end(),
@@ -460,7 +461,7 @@ private:
                 return std::make_tuple(a.mAccessGroup, a.mColumnGroup, a.mMode)
                        < std::make_tuple(b.mAccessGroup, b.mColumnGroup, b.mMode);
               });
-            if (scriptPrintFilter.empty())
+            if (prettyPrint)
               std::cout << "ColumnGroupAccessRules (" << res.mColumnGroupAccessRules.size() << "):" << std::endl;
             for (auto &cgar : res.mColumnGroupAccessRules)
               std::cout << offset
@@ -470,16 +471,16 @@ private:
             std::cout << std::endl;
           }
 
-            if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-groups") {
-              std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
-              if (scriptPrintFilter.empty())
-                std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
-              for (auto &group : res.mParticipantGroups)
-                std::cout << offset << group.mName << std::endl;
-              std::cout << std::endl;
-            }
+          if (prettyPrint || scriptPrintFilter == "participant-groups") {
+            std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
+            if (prettyPrint)
+              std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
+            for (auto &group : res.mParticipantGroups)
+              std::cout << offset << group.mName << std::endl;
+            std::cout << std::endl;
+          }
 
-          if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-group-access-rules") {
+          if (prettyPrint || scriptPrintFilter == "participant-group-access-rules") {
             std::sort(
               res.mParticipantGroupAccessRules.begin(),
               res.mParticipantGroupAccessRules.end(),
@@ -487,7 +488,7 @@ private:
                 return std::make_tuple(a.mUserGroup, a.mParticipantGroup, a.mMode)
                        < std::make_tuple(b.mUserGroup, b.mParticipantGroup, b.mMode);
               });
-            if(scriptPrintFilter.empty())
+            if(prettyPrint)
               std::cout << "ParticipantGroupAccessRules (" << res.mParticipantGroupAccessRules.size() << "):" << std::endl;
             for (auto &cgar : res.mParticipantGroupAccessRules)
               std::cout << offset
@@ -496,11 +497,13 @@ private:
                         << std::setw(10) << cgar.mMode << std::endl;
 
             std::cout << std::endl;
-            std::cerr
-              << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
-              << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
+            if (prettyPrint) {
+              std::cerr
+                << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
+                << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
+                << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
+                << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
+            }
           }
 
           return pep::FakeVoid();
@@ -839,8 +842,8 @@ private:
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
             std::vector<pep::PolymorphicPseudonym> pps;
-            pps.reserve(ticket->mPseudonyms.size());
-            std::transform(ticket->mPseudonyms.begin(), ticket->mPseudonyms.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
+            pps.reserve(ticket->mAccessSubjects.size());
+            std::transform(ticket->mAccessSubjects.begin(), ticket->mAccessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });
@@ -863,7 +866,7 @@ private:
     protected:
       pep::commandline::Parameters getSupportedParameters() const override {
         return AmaParticipantGroupSubCommand::getSupportedParameters()
-          + pep::commandline::Parameter("participant", "Participant identifier or polymorphic pseudonym").value(pep::commandline::Value<std::string>().positional().required());
+          + pep::commandline::Parameter("participant", "Participant identifier, polymorphic pseudonym or local pseudonym").value(pep::commandline::Value<std::string>().positional().required());
       }
 
       int execute() override {

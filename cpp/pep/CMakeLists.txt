@@ -149,6 +149,28 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wno-unused-parameter
   )
 
+  if(distcc IN_LIST CMAKE_CXX_COMPILER_LAUNCHER)
+    set(distcc_default ON)
+  else()
+    set(distcc_default OFF)
+  endif()
+  option(PEP_DISTCC_COMPATIBLE "Use options compatible with distcc" ${distcc_default})
+  if(PEP_DISTCC_COMPATIBLE)
+    message(STATUS "Disabling warnings introduced when using distcc")
+    set(distcc_options
+        -Wno-unknown-warning-option
+
+        # Warnings are generated because preprocessing is run locally,
+        # so macros are expanded, etc.
+        -Wno-extra-semi-stmt
+        -Wno-gnu-line-marker
+        -Wno-old-style-cast
+        -Wno-unreachable-code
+        -Wno-zero-as-null-pointer-constant
+    )
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:${distcc_options}>")
+  endif()
+
   if(NOT DEPRECATED_WARNINGS_AS_ERROR)
     warn_no_error(CXX
         deprecated-declarations
@@ -205,31 +227,27 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-reorder-blocks -fno-reorder-blocks-and-partition")
 endif()
 
-if(NOT DEFINED MAJOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MAJOR)
   message(FATAL_ERROR "Major version is not set.")
 endif()
-if(NOT DEFINED MINOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MINOR)
   message(FATAL_ERROR "Minor version is not set.")
 endif()
-
-# If updating these, don't forget to update them for Go too.
-# Make binary version build number fit in 16 bits, see Windows.Exe.VersionInfo.rc
-# Preferably, keep number to subtract consistent with config pipeline in createWixInstaller.bat
-set(pipeline_subtract 60000)
-if(CI_PIPELINE_ID GREATER pipeline_subtract)
-  math(EXPR truncated_pipeline_id "${CI_PIPELINE_ID} - ${pipeline_subtract}")
-else()
-  set(truncated_pipeline_id ${CI_PIPELINE_ID})
+if(NOT DEFINED PEP_VERSION_BUILD)
+  message(FATAL_ERROR "Build number is not set.")
 endif()
+if(NOT DEFINED PEP_VERSION_REVISION)
+  message(FATAL_ERROR "Revision number is not set.")
+endif()
+
 add_compile_definitions(
   "BUILD_PROJECT_PATH=\"$ENV{CI_PROJECT_PATH}\""
   "BUILD_REF=\"$ENV{CI_COMMIT_REF_NAME}\""
-  "BUILD_REV=\"$ENV{CI_COMMIT_SHA}\""
-  "BUILD_MAJOR_VERSION=${MAJOR_VERSION}"
-  "BUILD_MINOR_VERSION=${MINOR_VERSION}"
-  "BUILD_PIPELINE_ID=${CI_PIPELINE_ID}"
-  "BUILD_TRUNCATED_PIPELINE_ID=${truncated_pipeline_id}"
-  "BUILD_JOB_ID=${CI_JOB_ID}"
+  "BUILD_COMMIT=\"$ENV{CI_COMMIT_SHA}\""
+  "PEP_VERSION_MAJOR=${PEP_VERSION_MAJOR}"
+  "PEP_VERSION_MINOR=${PEP_VERSION_MINOR}"
+  "PEP_VERSION_BUILD=${PEP_VERSION_BUILD}"
+  "PEP_VERSION_REVISION=${PEP_VERSION_REVISION}"
   "BUILD_TARGET=\"${CMAKE_SYSTEM_NAME}\""
 )
 
@@ -408,6 +426,7 @@ add_subdirectory(core-client)
 add_subdirectory(crypto)
 add_subdirectory(database)
 add_subdirectory(elgamal)
+add_subdirectory(key-components)
 add_subdirectory(keyserver)
 add_subdirectory(messaging)
 add_subdirectory(morphing)

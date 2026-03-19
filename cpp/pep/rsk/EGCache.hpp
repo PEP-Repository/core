@@ -1,7 +1,9 @@
 #pragma once
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
-#include <pep/crypto/CPRNG.hpp>
+
+#include <memory>
+
 namespace pep {
 
 // Caches operations on ElgamalEncryption such as RSK.
@@ -10,28 +12,25 @@ class EGCache {
 public:
   static EGCache& get();
 
-  // Caching version of eg.RSK(z, k) --- faster if called ~20 times with
-  // same (eg.y, k).
-  virtual ElgamalEncryption RSK(
-    ElgamalEncryption eg,
-    const CurveScalar& z,
-    ElgamalTranslationKey k,
-    CPRNG* rng=nullptr
+  // Caching version of eg.reshuffleRekey(z, k) --- faster if called many times with
+  // same (eg.publicKey, k).
+  [[nodiscard]] virtual ElgamalEncryption reshuffleRekey(
+    const ElgamalEncryption& eg,
+    const CurveScalar& reshuffle,
+    const ElgamalTranslationKey& rekey
   ) = 0;
 
-  // Caching version of eg.rerandomize().rekey(k) --- faster if called
-  // same (eg.y, k).
-  virtual ElgamalEncryption RK(
-    ElgamalEncryption eg,
-    ElgamalTranslationKey k,
-    CPRNG* rng=nullptr
+  // Caching version of eg.rekey(k) --- faster if called many times with
+  // same (eg.publicKey, k).
+  [[nodiscard]] virtual ElgamalEncryption rekey(
+    const ElgamalEncryption& eg,
+    const ElgamalTranslationKey& rekey
   ) = 0;
 
-  // Caching version of eg.rerandomize() --- faster if called
-  // same eg.y.
-  virtual ElgamalEncryption rerandomize(
-    ElgamalEncryption eg,
-    CPRNG* rng=nullptr
+  // Caching version of eg.rerandomize() --- faster if called many times with
+  // same eg.publicKey.
+  [[nodiscard]] virtual ElgamalEncryption rerandomize(
+    const ElgamalEncryption& eg
   ) = 0;
 
   // Caching version of std::make_shared<CurvePoint::ScalarMultTable>(b).

@@ -4,7 +4,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/async/CreateObservable.hpp>
-#include <pep/crypto/CPRNG.hpp>
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Hasher.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
@@ -61,14 +61,14 @@ public:
       mColumns[ticket.mColumns[i]] = static_cast<Index>(i);
     }
 
-    if (ticket.mPseudonyms.size() > std::numeric_limits<Index>::max()) {
-      throw std::runtime_error("Ticket contains too many pseudonyms to map into an IndexList");
+    if (ticket.mAccessSubjects.size() > std::numeric_limits<Index>::max()) {
+      throw std::runtime_error("Ticket contains too many subjects to map into an IndexList");
     }
     // TODO keep a decryption cache?  If a ticket with a lot of pseudonyms is
     // reused often (for each file), then we're wasting a lot of time.
     // See issue #592.
-    for (size_t i = 0U; i < ticket.mPseudonyms.size(); ++i) {
-      LocalPseudonym sfPseud = ticket.mPseudonyms[i].mStorageFacility.decrypt(pseudonymKey);
+    for (size_t i = 0U; i < ticket.mAccessSubjects.size(); ++i) {
+      LocalPseudonym sfPseud = ticket.mAccessSubjects[i].mStorageFacility.decrypt(pseudonymKey);
       mPseudonyms[sfPseud] = static_cast<Index>(i);
     }
   }
@@ -156,9 +156,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   std::filesystem::path encIdKeyFile;
   auto pageStoreConfig = std::make_shared<Configuration>();
 
-  std::string strPseudonymKey;
-  std::string encIdKey;
-
   try {
     auto pw = config.get<std::optional<uint8_t>>("ParallelisationWidth");
     if (pw.has_value()) {
@@ -180,6 +177,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     throw;
   }
 
+  std::string strPseudonymKey;
   try {
     Configuration keysConfig = Configuration::FromFile(keysFile);
     strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
@@ -192,11 +190,12 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   // Why a seperate file for the EncIdKey?  Well, we want the key to be
   // auto-generated (if it doesn't exist yet) and it is likely that the
   // main keysfile is read-only.  (We wouldn't want to risk to overwrite it.)
+  std::string encIdKey;
   if (!std::filesystem::exists(encIdKeyFile)) {
     LOG(LOG_TAG, warning)
       << "The file " << encIdKeyFile << " does not exist. "
       << "Generating new one.  This should occur only once!";
-    RandomBytes(encIdKey, 32);
+    encIdKey = RandomString(32);
     boost::property_tree::ptree root;
     root.add<std::string>(
       "Key",
@@ -296,8 +295,9 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto time = std::chrono::steady_clock::now();
   const auto& rootCAs = *this->getRootCAs();
 
-  auto request = signedRequest->open(rootCAs);
-  auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(rootCAs);
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
   auto ticket = request.mTicket.open(rootCAs, accessGroup, "read-meta");
 
   struct ResponseEntry {
@@ -328,7 +328,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
     columnIndex[ticket.mColumns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mPseudonyms, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry mIndex
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
@@ -371,7 +371,6 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 
   struct StreamContext {
     // Context used earlier
-    CPRNG cprng;
     decltype(time) start_time;
   };
   auto ctx = std::make_shared<StreamContext>();
@@ -383,8 +382,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
     observe_on_asio(*getIoContext()),
     [ctx, this](ResponseEntry re) {
       re.entry.mPolymorphicKey = this->getEgCache().rerandomize(
-        re.entry.mPolymorphicKey,
-        &ctx->cprng
+        re.entry.mPolymorphicKey
       );
       re.entry.mPolymorphicKey.ensurePacked();
 
@@ -428,12 +426,14 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 messaging::MessageBatches
 StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRequest2> signedRequest) {
   return rxcpp::observable<>::just(CreateObservable<std::shared_ptr<std::string>>([signedRequest, server = SharedFrom(*this)](rxcpp::subscriber<std::shared_ptr<std::string>> subscriber) {
-    const auto& rootCAs = *server->getRootCAs();
+    auto rootCAs = server->getRootCAs();
+    auto certified = signedRequest->open(*rootCAs);
+    const auto& request = certified.message;
+    auto userGroup = certified.signatory.organizationalUnit();
 
-    auto request = signedRequest->open(rootCAs);
     auto ticket = request.mTicket.open(
-      rootCAs,
-      signedRequest->getLeafCertificateOrganizationalUnit(),
+      *rootCAs,
+      userGroup,
       "read-meta"
     );
 
@@ -452,7 +452,6 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response = std::make_shared<DataEnumerationResponse2>();
     };
 
-    CPRNG cprng;
     for (size_t i = 0; i < request.mIds.size(); i++) {
       // TODO execute decryption in WorkerPool
       auto sfid = server->decryptId(request.mIds[i]);
@@ -473,7 +472,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       DataEnumerationEntry2 entry;
       entry.mMetadata = server->compileMetadata(column, *sfentry);
       // TODO execute rerandomization in WorkerPool
-      entry.mPolymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey(), &cprng);
+      entry.mPolymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
       entry.mFileSize = sfcontent->payload()->size();
       entry.mId = request.mIds[i];
       entry.mIndex = static_cast<uint32_t>(i);
@@ -496,13 +495,16 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
 
 messaging::MessageBatches
 StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> signedRequest) {
-  const auto& rootCAs = this->getRootCAs();
   auto time = std::chrono::steady_clock::now();
 
-  auto request = signedRequest->open(*rootCAs);
+  auto rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+  const auto& request = certified.message;
+  auto userGroup = certified.signatory.organizationalUnit();
+
   auto ticket = request.mTicket.open(
     *rootCAs,
-    signedRequest->getLeafCertificateOrganizationalUnit(),
+    userGroup,
     "read"
   );
 
@@ -639,8 +641,9 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
   const GetDataAlterationResponse& getResponse) {
     auto time = std::chrono::steady_clock::now();
     const auto& rootCAs = this->getRootCAs();
-    auto request = MakeSharedCopy(signedRequest->open(*rootCAs));
-    auto ticket = request->mTicket.open(*rootCAs, signedRequest->getLeafCertificateOrganizationalUnit());
+    auto certified = signedRequest->open(*rootCAs);
+    auto request = MakeSharedCopy(std::move(certified.message));
+    auto ticket = request->mTicket.open(*rootCAs, certified.signatory.organizationalUnit());
 
     if (!ticket.hasMode("write")) {
       throw Error("Ticket is missing \"write\" access mode");
@@ -669,7 +672,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       // Decrypt local pseudonym
       if (pseudonymLut.count(entry.mPseudonymIndex) == 0) {
         pseudonymLut[entry.mPseudonymIndex] = MakeSharedCopy(
-          ticket.mPseudonyms.at(entry.mPseudonymIndex)
+          ticket.mAccessSubjects.at(entry.mPseudonymIndex)
           .mStorageFacility.decrypt(mPseudonymKey));
       }
       ctx->pseudonyms[i] = pseudonymLut[entry.mPseudonymIndex];
@@ -817,8 +820,11 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
 messaging::MessageBatches
 StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> lpRequest) {
   const auto& rootCAs = this->getRootCAs();
-  auto request = MakeSharedCopy(lpRequest->open(*rootCAs));
-  auto ticket = request->mTicket.open(*rootCAs, lpRequest->getLeafCertificateOrganizationalUnit());
+  auto certified = lpRequest->open(*rootCAs);
+  auto request = MakeSharedCopy(std::move(certified.message));
+  auto userGroup = certified.signatory.organizationalUnit();
+
+  auto ticket = request->mTicket.open(*rootCAs, userGroup);
 
   if (!ticket.hasMode("write-meta")) {
     throw Error("Ticket is missing write-meta access mode");
@@ -830,7 +836,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   std::transform(request->mEntries.cbegin(), request->mEntries.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.mPseudonymIndex; });
 
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mPseudonyms, &pseudIndices);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, &pseudIndices);
 
   std::vector<std::shared_ptr<FileStore::EntryChange>> changes;
   for (const auto& entry : request->mEntries) {
@@ -952,9 +958,10 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
 
   auto start_time = std::chrono::steady_clock::now();
   const auto& rootCAs = this->getRootCAs();
+  auto certified = lpRequest->open(*rootCAs);
+  const auto& request = certified.message;
 
-  auto request = lpRequest->open(*rootCAs);
-  auto accessGroup = lpRequest->getLeafCertificateOrganizationalUnit();
+  auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
   auto ticket = request.mTicket.open(*rootCAs, accessGroup, "read-meta");
@@ -981,7 +988,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     columnIndex[ticket.mColumns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mPseudonyms, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry mIndex
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {

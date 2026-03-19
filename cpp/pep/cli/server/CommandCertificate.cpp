@@ -64,6 +64,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
       traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return std::ranges::find(params.servers, traits.commandLineId()) != params.servers.end(); });
     }
 
+    //NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks) See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2781#note_55944
     return rxcpp::rxs::iterate(traits)
       .map([client](const pep::ServerTraits& traits) {
         assert(traits.hasSigningIdentity());
@@ -82,6 +83,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
         }
         return action(*proxy, targetFilePath);
       });
+    //NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks) See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2781#note_55944
   };
 }
 }

@@ -5,7 +5,7 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/auth/UserGroup.hpp>
 
@@ -65,7 +65,7 @@ public:
   std::vector<std::string> getParticipantGroups() const;
   std::vector<std::string> getColumns() const;
   std::vector<std::string> getModes() const;
-  std::vector<PolymorphicPseudonym> getPolymorphicPseudonyms() const;
+  std::vector<PolymorphicPseudonym> getAccessSubjects() const;
 };
 
 enum KeyBlindMode {

@@ -86,7 +86,7 @@ include:
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH) && ($DEPLOYMENT_TYPE_PROD == "compose" || $DEPLOYMENT_TYPE_PROD == "both")'
 
 .docker_login: &docker_login
-  docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" --username gitlab-ci-token --password-stdin
 
 ###############################################
 # Configuration for the static-analysis stage #
@@ -104,14 +104,6 @@ project-settings-foss:
     - if [ -z "$PEP_PROJECT_PRODUCTION_BRANCH" ]; then >&2 echo Variable PEP_PROJECT_PRODUCTION_BRANCH not set; exit 1; fi
     - if [ -z "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Variable PEP_PUBLISHING_JSON_FILE not set; exit 1; fi
     - if [ ! -f "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Publishing specification JSON file not found at "$PEP_PUBLISHING_JSON_FILE"; exit 1; fi
-
-versioning-consistency:
-  stage: static-analysis
-  tags: [docker-small]
-  image: alpine:latest
-  script:
-    # Version number should match the version number of the PEP binaries they're based on.
-    - diff version.json "$PEP_FOSS_REPO_DIR/version.json"
 
 ci-yml-include-versions:
   stage: static-analysis
@@ -139,8 +131,8 @@ load-version:
   before_script:
     - apk --update add --no-cache jq
   script:
-  # Adds the following variables to version.env: MAJOR_VERSION; MINOR_VERSION;
-    - ./"$PEP_FOSS_REPO_DIR"/scripts/parse-version.sh env-var-assignments version.json > version.env
+  # Adds the following variables to version.env: PEP_VERSION_MAJOR; PEP_VERSION_MINOR; PEP_VERSION_BUILD;
+    - ./"$PEP_FOSS_REPO_DIR"/scripts/parse-version.sh env-var-assignments version.json $CI_PIPELINE_ID $CI_JOB_ID > version.env
     - cat version.env
   artifacts:
     reports:
@@ -248,6 +240,7 @@ windows-installer:
   needs: [provide-binaries, load-version]
   timeout: 1h 30m
   script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
+    - $env:PEP_SKIP_ICE_VALIDATION = '1' # The CI does not use admin users
     - cmd /c "call `"./$env:PEP_FOSS_REPO_DIR/ci_cd/windows-ci-msi.bat`""
   artifacts:
     paths:

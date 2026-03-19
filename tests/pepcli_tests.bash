@@ -31,14 +31,19 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 
 if should_run_test basic; then
   # Store a PEP ID...
-  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
   # ... then verify that we can read it back (see #2750)
   pepcli validate data
   # Clean up: delete the ID that we stored
   write_registration_server_cell ParticipantIdentifier delete -p "$id"
 
   pepcli --oauth-token-group "Research Assessor" pull -P '*' -C ShortPseudonyms -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo --output-directory "$DEST_DIR/pulled-data"
-  pepcli list -l -P '*' -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo
+
+  # Verify all participants have lp and blp fields with --local-pseudonyms
+  list_output=$(pepcli list --local-pseudonyms --show-dataless -P '*' -c ParticipantIdentifier -c DeviceHistory -c ParticipantInfo)
+  echo "$list_output" | jq -e 'all(.[]; (.lp  // "") | test("^[0-9A-F]{64}$"))' > /dev/null || fail "Expected all participants (incl. those without data) to have valid 'lp' field with --local-pseudonyms"
+  echo "$list_output" | jq -e 'all(.[]; (.blp // "") | test("^GUMU[0-9A-F]{16}$"))' > /dev/null || fail "Expected all participants (incl. those without data) to have valid 'blp' field with --local-pseudonyms"
+  echo "$list_output" | jq -e 'all(.[]; (.pp  // "") | test("^[0-9A-F]{64}:[0-9A-F]{64}:[0-9A-F]{64}$"))' > /dev/null || fail "Expected all participants (incl. those without data) to have valid 'pp' field"
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   # Store data in a not yet existing row
@@ -73,7 +78,7 @@ if should_run_test basic; then
 
   # Ensure we have an SP value in the database that can be pseudonymized in the upload
   write_registration_server_cell ShortPseudonym.Visit1.FMRI store -p "$TEST_PARTICIPANT" -d GUM123456751
-  
+
   pepcli --oauth-token-group "Access Administrator" user group create Read.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama columnGroup create Just.ShortPseudonym.Visit1
   pepcli --oauth-token-group "Data Administrator" ama column addTo ShortPseudonym.Visit1.FMRI Just.ShortPseudonym.Visit1
@@ -247,10 +252,12 @@ if should_run_test ama; then
   pepcli --oauth-token-group "Data Administrator" ama columnGroup remove columnGroupWithAccessRule --force
 
 
-  # Create participant
+  # Create participants
   SEARCH="Generated participant with identifier: "
   RESULT=$(pepcli --oauth-token-group "Research Assessor" register id 2>&1 | grep "$SEARCH")
   ID="${RESULT:${#SEARCH}}"
+  RESULT=$(pepcli --oauth-token-group "Research Assessor" register id 2>&1 | grep "$SEARCH")
+  ID2="${RESULT:${#SEARCH}}"
 
   # Create a participantgroup
   pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithParticipant
@@ -274,9 +281,54 @@ if should_run_test ama; then
   # Adding the --force flag should make it succeed
   pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithAccessRule --force
 
+  pepcli --oauth-token-group "Data Administrator" ama group create participantGroupWithMultipleMembers
+  pepcli --oauth-token-group "Data Administrator" ama group addTo participantGroupWithMultipleMembers "$ID"
+  pepcli --oauth-token-group "Data Administrator" ama group addTo participantGroupWithMultipleMembers "$ID2"
+  len="$(pepcli --oauth-token-group "Data Administrator" list --show-dataless -P participantGroupWithMultipleMembers | jq length)"
+  [ "$len" = 2 ] || fail "Participant group had $len members"
+  pepcli --oauth-token-group "Data Administrator" ama group clear participantGroupWithMultipleMembers
+  len="$(pepcli --oauth-token-group "Data Administrator" list --show-dataless -P participantGroupWithMultipleMembers | jq length)"
+  [ "$len" = 0 ] || fail "Participant group had $len members"
+  pepcli --oauth-token-group "Data Administrator" ama group remove participantGroupWithMultipleMembers --force
+
   write_registration_server_cell ParticipantIdentifier delete -p "$ID"
+  write_registration_server_cell ParticipantIdentifier delete -p "$ID2"
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
+
+  # Test --script-print parameter
+  # First create some test data for querying
+  pepcli --oauth-token-group "Data Administrator" ama column create scriptPrintTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup create scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama column addTo scriptPrintTestColumn scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama group create scriptPrintTestParticipantGroup
+  pepcli --oauth-token-group "Access Administrator" ama cgar create scriptPrintTestColumnGroup "Research Assessor" read
+  pepcli --oauth-token-group "Access Administrator" ama pgar create scriptPrintTestParticipantGroup "Research Assessor" access
+
+  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
+  [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
+  echo "$script_print_columns" | grep -q "scriptPrintTestColumn" || fail "--script-print columns did not include test column"
+
+  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-groups)
+  [ -n "$script_print_column_groups" ] || fail "--script-print column-groups produced no output"
+  echo "$script_print_column_groups" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-groups did not include test columngroup"
+
+  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-group-access-rules)
+  [ -n "$script_print_cgars" ] || fail "--script-print column-group-access-rules produced no output"
+  echo "$script_print_cgars" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-group-access-rules did not include test CGAR"
+
+  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-groups)
+  [ -n "$script_print_participant_groups" ] || fail "--script-print participant-groups produced no output"
+  echo "$script_print_participant_groups" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-groups did not include test group"
+
+  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-group-access-rules)
+  [ -n "$script_print_pgars" ] || fail "--script-print participant-group-access-rules produced no output"
+  echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
+
+  # Clean up
+  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove --force scriptPrintTestColumnGroup
+  pepcli --oauth-token-group "Data Administrator" ama column remove scriptPrintTestColumn
+  pepcli --oauth-token-group "Data Administrator" ama group remove --force scriptPrintTestParticipantGroup
 fi
 
 ####################
@@ -363,6 +415,10 @@ if should_run_test authserver-apache; then
     fi
   }
 
+  toUpperCase() {
+    echo "$1" | tr "[:lower:]" "[:upper:]"
+  }
+
   pepcli --oauth-token-group "Access Administrator" user create integrationUser
   pepcli --oauth-token-group "Access Administrator" user group create integrationGroup
   pepcli --oauth-token-group "Access Administrator" user addTo integrationUser integrationGroup
@@ -391,6 +447,12 @@ if should_run_test authserver-apache; then
 
   # Test if alternative UIDs with a plus are correctly URL-decoded
   test_authserver_request "$DIFFICULT_USER_PRIMARY_UID" difficultuser@example.com difficultuser%2Bpep%40example.com
+
+  printYellow "When a user logs in, the primary UID is handled as a case-sensitive ID"
+  test_authserver_request "$(toUpperCase $INTEGRATION_USER_PRIMARY_UID)" integrationUser@example.com "" access_denied
+
+  printYellow "When a user logs in, the alternative UID (email) is handled as a case-INsensitive ID"
+  test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" "$(toUpperCase integrationUser@example.com)" ""
 
   pepcli --oauth-token-group "Access Administrator" user removeFrom difficultUser integrationGroup
   pepcli --oauth-token-group "Access Administrator" user removeIdentifier "difficultuser+pep@example.com"
@@ -537,10 +599,10 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group "Access Administrator" ama cgar create SOTD SOAG write
 
   # Prerare Structured-Output Test Participants (SOTP)
-  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
-  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | xargs)
+  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
+  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
 
   pepcli --oauth-token-group "Data Administrator" ama group create SOTPGroup
   pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP1}"
@@ -576,7 +638,7 @@ if should_run_test structured-output; then
 
   # Check if the correct delimiter was used via a count
   EXPECTED_CSV_DELIMITER_COUNT=10
-  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ',' | wc -l | xargs)
+  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ',' | wc -l | tr -d '[:space:]')
   if [ "$ACTUAL_CSV_DELIMITER_COUNT" -ne "$EXPECTED_CSV_DELIMITER_COUNT" ]; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} commas but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
@@ -585,7 +647,7 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group SOAG export\
     --from "$DEST_DIR/pulled-data" --output-file "$CSV_PATH" --force csv --delimiter semicolon
   CSV_CONTENT=$(execute . cat "${CSV_PATH}")
-  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | xargs)
+  ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | tr -d '[:space:]')
   if [ "$ACTUAL_CSV_DELIMITER_COUNT" -ne "$EXPECTED_CSV_DELIMITER_COUNT" ]; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} semicolons but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
@@ -610,6 +672,33 @@ if should_run_test structured-output; then
   pepcli --oauth-token-group "Data Administrator" ama group remove SOTPGroup
 
   pepcli --oauth-token-group "Access Administrator" user group remove SOAG
+fi
+
+####################
+
+if should_run_test user-id-collision; then
+  pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl"
+
+  # pepcli user query --user
+  pepcli --oauth-token-group "Access Administrator" user query --format json --user "Aart.Appel@fake.ru.nl" |
+    grep '"Aart.Appel@fake.ru.nl"'  # output should contain the id with original casing
+  pepcli --oauth-token-group "Access Administrator" user query --format json --user "aart.appel@fake.ru.nl" |
+    grep '"Aart.Appel@fake.ru.nl"'  # output should contain the id with original casing
+
+  # pepcli user create
+  pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl" &&
+    fail "should not accept new ids that exactly match existing ids"
+  pepcli --oauth-token-group "Access Administrator" user create "aart.appel@fake.ru.nl" &&
+    fail "should not accept new ids that only differ by casing"
+
+  # pepcli user addIdentifier
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier "Aart.Appel@fake.ru.nl" "Aart.Appel@fake.ru.nl" &&
+    fail "should not accept new ids that exactly match existing ids"
+  pepcli --oauth-token-group "Access Administrator" user addIdentifier "Aart.Appel@fake.ru.nl" "aart.appel@fake.ru.nl" &&
+    fail "should not accept new ids that only differ by casing"
+
+  # cleanup
+  pepcli --oauth-token-group "Access Administrator" user remove "Aart.Appel@fake.ru.nl"
 fi
 
 ####################
@@ -668,7 +757,8 @@ if should_run_test certificate-renewal; then
   trace cat "${CORE_DIR}/pki/ca_ext.cnf" | execute "$certificate_renewal_data_dir" tee "$ca_config_file_name"
 
   execute "$certificate_renewal_data_dir" openssl rand -base64 -out "fakeCA.password" 32
-  execute "$certificate_renewal_data_dir" openssl req -x509 -newkey rsa:4096 -keyout fakeCA.key -out fakeCA.cert -passin file:fakeCA.password \
+  # MSYS_NO_PATHCONV: Prevent the "/" at the start of the subject to be replaced by a Windows-path in Git Bash
+  MSYS_NO_PATHCONV=1 execute "$certificate_renewal_data_dir" openssl req -x509 -newkey rsa:4096 -keyout fakeCA.key -out fakeCA.cert -passin file:fakeCA.password \
     -sha256 -days 3650 -nodes -subj "/C=NL/ST=Gelderland/L=Nijmegen/O=Radboud Universiteit/OU=PEP Intermediate PEP Server CA/CN=PEP Intermediate PEP Server CA"
 
   sign_csr() {
@@ -693,6 +783,10 @@ if should_run_test certificate-renewal; then
       extensions="server_cert"
     fi
 
+    if type cygpath &>/dev/null; then
+      # `file:` prefix makes Cygwin not convert the path to Windows style, so we do it here
+      password_file="$(cygpath --windows -- "$password_file")"
+    fi
     execute "$certificate_renewal_data_dir" openssl x509 -req -sha256 -in "$csr_file_name" -CAkey "$ca_key_file_name" -CA "$ca_key_cert" \
      -out "$cert_file_name" -days 365 -extfile "$ca_config_file_name" -extensions "$extensions"  \
      -CAcreateserial -CAserial ca_serial.srl -passin file:"$password_file"
@@ -725,20 +819,20 @@ if should_run_test certificate-renewal; then
 
     pepcli ping --print-certificate-chain --server "$server" | execute "$certificate_renewal_data_dir" tee reported.chain > /dev/null
     if [ "$phase" = prepare ]; then
-      execute "$certificate_renewal_data_dir" diff -q reported.chain "$chain_file_on_disk"
+      execute "$certificate_renewal_data_dir" diff -qw reported.chain "$chain_file_on_disk"
     else
-      if execute "$certificate_renewal_data_dir" diff -q reported.chain "$new_chain"; then
+      if execute "$certificate_renewal_data_dir" diff -qw reported.chain "$new_chain"; then
         trace [ "$phase" = reverted ] && fail "Certificate chain should no longer equal the new chain, after servers have been restarted without committing, for $server"
       else
         trace [ "$phase" = replaced ] || trace [ "$phase" = committed ] && fail "Certificate chain should have been replaced with the new chain for $server"
       fi
-      if execute "$certificate_renewal_data_dir" diff -q "$new_chain" "$chain_file_on_disk"; then
+      if execute "$certificate_renewal_data_dir" diff -qw "$new_chain" "$chain_file_on_disk"; then
         trace [ "$phase" = replaced ] && fail "Certificate chain should have been replaced, but not yet committed to file for $server"
         trace [ "$phase" = reverted ] && fail "Certificate chain should not have been committed to file, when it was restarted before committing, for $server"
       else
         trace [ "$phase" = committed  ] && fail "Certificate chain should have been replaced, as well as committed to file for $server"
       fi
-      if execute "$certificate_renewal_data_dir" diff -q "$chain_file_on_disk" "$old_chain"; then
+      if execute "$certificate_renewal_data_dir" diff -qw "$chain_file_on_disk" "$old_chain"; then
         trace [ "$phase" = committed  ] && fail "Certificate chain on disk should have been changed, after being committed, for $server"
       else
         trace [ "$phase" = replaced  ] && fail "Certificate chain on disk should not have been changed, before being committed, for $server"

@@ -7,6 +7,12 @@ Changes in upcoming release (1.7):
 
 ---------------
 
+- Added --format option to "pepcli list" command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
+
+- Also print brief local pseudonyms (participant aliases) when using --local-pseudonym flag.
+
+- core#2795: Fixed a bug in the "pepcli ama query --script-print participant-groups" and "pepcli ama query --script-print participant-group-access-rules" commands, which caused them to produce no output.
+
 - core#2767: Added a tool for MacOS and Windows users to easily upload files to PEP using a GUI file picker.
 
 - core#2753:
@@ -34,6 +40,10 @@ Changes in upcoming release (1.7):
   For this to work, the certificates will need to be in a writable location (#2769), which they are currently not. That will need to be solved at some point,
   before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.  
 
+- !2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
+
+- #2794: CSV export no longer lists cell header(s) if no rows are exported.
+
 
 MANUAL CHANGES REQUIRED:
 
@@ -45,6 +55,14 @@ MANUAL CHANGES REQUIRED:
 Past changes, do not edit (except by person doing release):
 
 Release 1.6 (started 2026-01-28):
+
+- #2771: Manually managed user IDs are now case-insensitive
+  - User IDs retain their original casing when stored.
+  - `pepcli user query --user <ID>` returns matches regardless of case differences.
+  - Both `pepcli user add <ID>` and `pepcli user addIdentifier <EXISTING_ID> <ALTERNATIVE_ID>`
+    reject new IDs that only differ by case from existing ones.
+  - The logon procedure now accepts user IDs regardless of case variations.
+  - User IDs that are automatically added by PEP itself remain case-sensitive
 
 - #1341: This (1.6) release is functionally identical to release 1.5. The increased (minor) version number prevents software upgrades from failing
   if/when a hotfix is needed. See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341#note_55814 .

@@ -1,6 +1,6 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
 
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <boost/container_hash/hash.hpp>
 
@@ -16,32 +16,32 @@ const char ELGAMAL_ENCRYPTION_TEXT_DELIMITER = ':';
 
 std::pair<ElgamalPrivateKey, ElgamalPublicKey> ElgamalEncryption::CreateKeyPair() {
   ElgamalPrivateKey sk = ElgamalPrivateKey::Random();
-  ElgamalPublicKey pk = ElgamalPublicKey::BaseMult(sk);
+  ElgamalPublicKey pk = sk * CurvePoint::Base;
   return {sk, pk};
 }
 
 /*! \brief Create an ElgamalEncryption triple by encrypting a point.
  *
- * \param pk The public key to encrypt with.
+ * \param publicKey The public key to encrypt with.
  * \param data The point to encrypt.
  */
-ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& pk, const CurvePoint& data) {
+ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& publicKey, const CurvePoint& data) {
   CurveScalar k;
 
   k = CurveScalar::Random();
-  b = CurvePoint::BaseMult(k);
-  c = data.add(pk.mult(k));
-  y = pk;
+  b = k * CurvePoint::Base;
+  c = data + (k * publicKey);
+  this->publicKey = publicKey;
 }
 
 /*! \brief Create an ElgamalEncryption triple from its three components.
  *
  * \param b Blinding component
  * \param c Cipher component
- * \param y Public key
+ * \param publicKey Public key
  */
-ElgamalEncryption::ElgamalEncryption(const CurvePoint& b, const CurvePoint& c, const CurvePoint& y)
-  : b(b), c(c), y(y) {
+ElgamalEncryption::ElgamalEncryption(const CurvePoint& b, const CurvePoint& c, const CurvePoint& publicKey)
+  : b(b), c(c), publicKey(publicKey) {
 }
 
 /*! \brief Decrypt the ElgamalEncryption triple.
@@ -50,7 +50,7 @@ ElgamalEncryption::ElgamalEncryption(const CurvePoint& b, const CurvePoint& c, c
  * \return The decrypted point.
  */
 CurvePoint ElgamalEncryption::decrypt(const ElgamalPrivateKey& sk) const {
-  return c.sub(b.mult(sk));
+  return c - (sk * b);
 }
 
 /*! \brief rerandomize an ElgamalEncryption triple.
@@ -61,113 +61,67 @@ CurvePoint ElgamalEncryption::decrypt(const ElgamalPrivateKey& sk) const {
  * \return The rerandomized triple.
  */
 ElgamalEncryption ElgamalEncryption::rerandomize() const {
-  ElgamalEncryption r;
-
-  CurveScalar z = CurveScalar::Random();
-  // (a, b) =
-  // (g * k, s + g * x * k)
-  // goal : transform k to k + z
-  // transform to :
-  // (g * (k + z), s + g * x * (k + z)) =
-  // (g * k + g * z, s + g * x * k + g * x * z) =
-  // (a + g * z, b + g * x * z)
-
-  r.b = b.add(CurvePoint::BaseMult(z));
-  r.c = c.add(y.mult(z));
-
-  r.y = y;
-  return r;
+  auto rerandomize = CurveScalar::Random();
+  return {
+    b + (rerandomize * CurvePoint::Base),
+    c + (rerandomize * publicKey),
+    publicKey,
+  };
 }
 
 /*! \brief rekey an ElgamalEncryption triple.
  *
  * PRE: (b,c,y) = EG(k,M,y)
- * POST: (b',c',y') = EG(1/z*k,M,z*y)
+ * POST: (b',c',y') = EG(1/rekey*k,M,rekey*y)
  * The original point is not changed.
- * \param z The translation key.
+ * \param rekey The translation key.
  * \return The rekeyed triple.
  */
-ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& z) const {
-  ElgamalEncryption r;
-  // (a, b) =
-  // (g * k, s + g * x * k)
-  // goal : ability to decrypt with key x + z
-  // transform to :
-  // (g * k, s + g * (x + z) * k) =
-  // (g * k, s + g * k * x + g * k * z =
-  // (a, b + a * z)
-  r.b = b.mult(z.invert());
-  r.c = c;
-  r.y = y.mult(z);
-  return r;
+ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& rekey) const {
+  return {
+    rekey.invert() * b,
+    c,
+    rekey * publicKey,
+  };
 }
 
 /*! \brief reshuffle an ElgamalEncryption triple.
  *
  * PRE: (b,c,y) = EG(k,M,y)
- * POST: (b',c',y') = EG(z*k,z*M,y)
+ * POST: (b',c',y') = EG(reshuffle*k,reshuffle*M,y)
  * The original point is not changed.
- * \param z The value to reshuffle with.
+ * \param reshuffle The value to reshuffle with.
  * \return The reshuffled triple.
  */
-ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& z) const {
-  ElgamalEncryption r;
-  // (a, b) =
-  // (g * k, s + g * x * k)
-  // goal : transform s to s * z
-  // transform to:
-  // (g * k * z, s * z + g * x * k * z) =
-  // (a * z, b * z)
-  r.b = b.mult(z);
-  r.c = c.mult(z);
-  r.y = y;
-  return r;
+ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& reshuffle) const {
+  return {
+    reshuffle * b,
+    reshuffle * c,
+    publicKey,
+  };
 }
 
-/*! \brief rerandomize, reshuffle and rekey an ElgamalEncryption triple.
+/*! \brief reshuffle and rekey an ElgamalEncryption triple.
  *
- *  \param z the CurveScalar to reshuffle with
- *  \param k the ElgamalTranslationKey to rekey along
+ *  \param reshuffle the CurveScalar to reshuffle with
+ *  \param rekey the ElgamalTranslationKey to rekey along
  *
  *  Note: it is important to check that y is non-zero --- otherwise information
  *        about z and k might leak.
  */
-ElgamalEncryption ElgamalEncryption::RSK(const CurveScalar& z, const ElgamalTranslationKey& k) const {
-  //  (b, c, y)
-  //     |
-  //     |  rerandomize with r
-  //     V
-  //  (b + rB, c + ry, y)
-  //     |
-  //     |  reshuffle with z
-  //     V
-  //  (z (b + rB), z (c + ry), y)
-  //     |
-  //     |  rekey with k
-  //     V
-  //  ( (z/k) (b + rB), z (c + ry), ky)
-
-  // XXX we can reuse the precomputation of the multiples for y.
-  //     (ie. cache window3() in Panda)
-
-
-  auto r = CurveScalar::Random();
-  auto rB = CurvePoint::BaseMult(r);
-  auto ry = y.mult(r);
-  auto zOverK = z.mult(k.invert());
-
-  ElgamalEncryption ret;
-  ret.b = b.add(rB).mult(zOverK);
-  ret.c = c.add(ry).mult(z);
-  ret.y = y.mult(k);
-  return ret;
+ElgamalEncryption ElgamalEncryption::reshuffleRekey(const CurveScalar& reshuffle, const ElgamalTranslationKey& rekey) const {
+  return {
+    reshuffle * rekey.invert() * b,
+    reshuffle * c,
+    rekey * publicKey,
+  };
 }
 
 /*!
  * \return The public key of the ElgamalEncryption.
  */
 const ElgamalPublicKey& ElgamalEncryption::getPublicKey() const {
-  return y;
+  return publicKey;
 }
 
 size_t ElgamalEncryption::TextLength() {
@@ -182,7 +136,7 @@ size_t ElgamalEncryption::TextLength() {
 }
 
 std::string ElgamalEncryption::text() const {
-  auto result = b.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + c.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + y.text();
+  auto result = b.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + c.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + publicKey.text();
   assert(result.size() == TextLength());
   return result;
 }
@@ -201,7 +155,7 @@ std::string ElgamalEncryption::pack() const {
   packed.reserve(CurvePoint::PACKEDBYTES * 3);
   packed += b.pack();
   packed += c.pack();
-  packed += y.pack();
+  packed += publicKey.pack();
   return packed;
 }
 
@@ -216,13 +170,13 @@ ElgamalEncryption ElgamalEncryption::FromPacked(std::string_view packed) {
 void ElgamalEncryption::ensurePacked() const {
   b.ensurePacked();
   c.ensurePacked();
-  y.ensurePacked();
+  publicKey.ensurePacked();
 }
 
 void ElgamalEncryption::ensureThreadSafe() const {
   b.ensureThreadSafe();
   c.ensureThreadSafe();
-  y.ensureThreadSafe();
+  publicKey.ensureThreadSafe();
 }
 
 }
@@ -233,7 +187,7 @@ namespace std {
     std::hash<pep::CurvePoint> h;
     boost::hash_combine(result, h(k.b));
     boost::hash_combine(result, h(k.c));
-    boost::hash_combine(result, h(k.y));
+    boost::hash_combine(result, h(k.publicKey));
     return result;
   }
 }

@@ -1,24 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 
-<?ifndef var.MajorVersion ?>
-    <?error Define MajorVersion before compiling pep.wxs?>
+<?ifndef var.VersionMajor ?>
+    <?error Define VersionMajor before compiling pep.wxs?>
 <?endif ?>
-<?ifndef var.MinorVersion ?>
-    <?error Define MinorVersion before compiling pep.wxs?>
+<?ifndef var.VersionMinor ?>
+    <?error Define VersionMinor before compiling pep.wxs?>
 <?endif ?>
 
-<?ifndef var.PipelineNumber ?>
-	<?define PipelineNumber = "0" ?>
+<?ifndef var.VersionBuild ?>
+	<?define VersionBuild = "0" ?>
 <?endif ?>
-<!--
-	Make ProductVersion.build field fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/msi/productversion & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
-	Note: the last number (JobNumber) is not interpreted by Windows installer and has no such restriction.
--->
-<?ifndef var.TruncatedPipelineNumber ?>
-	<?define TruncatedPipelineNumber = "0" ?>
-<?endif ?>
-<?ifndef var.JobNumber ?>
+<?ifndef var.VersionRevision ?>
 	<!--
 		Since CI sets this to CI_JOB_ID, this will usually be a local build.
 		Only the first three parts (major, minor, pipeline) are used in the 
@@ -27,13 +20,13 @@
 		This number is purely used as a way to track back the specific
 		build job in order to trace back errors and bugs. 
 	-->
-	<?define JobNumber = "0" ?>
+	<?define VersionRevision = "0" ?>
 <?endif ?>
 
 
-<?define Version = "$(var.MajorVersion).$(var.MinorVersion).$(var.TruncatedPipelineNumber).$(var.JobNumber)" ?>
+<?define Version = "$(var.VersionMajor).$(var.VersionMinor).$(var.VersionBuild).$(var.VersionRevision)" ?>
 <?define Flavor = "$(var.ProjectCaption) $(var.EnvironmentName)" ?>
-<?define VersionText = "($(var.Flavor)) $(var.MajorVersion).$(var.MinorVersion).$(var.PipelineNumber).$(var.JobNumber)" ?>
+<?define VersionText = "($(var.Flavor)) $(var.Version)" ?>
 
 <?include $(var.InfraWxiFile) ?>
 

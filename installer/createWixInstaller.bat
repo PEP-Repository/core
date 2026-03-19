@@ -16,15 +16,6 @@ if "%jobnumber%" == "" (
 	exit /B 1
 )
 
-REM Make config version build number fit in 16 bits, see pep.wxs
-REM Preferably, keep number to subtract consistent with binary pipeline in /cpp/pep/CMakeLists.txt
-set pipelineSubtract=60000
-if %pipelinenumber% gtr %pipelineSubtract% (
-  set /a "truncatedPipelineNumber=%pipelinenumber% - %pipelineSubtract%"
-) else (
-  set truncatedPipelineNumber=%pipelinenumber%
-)
-
 echo Creating build directory
 mkdir "%builddir%"
 REM Get absolute path: https://stackoverflow.com/a/4488734
@@ -77,8 +68,10 @@ if not exist "%artifactsdir%\configVersion.json" (
   exit /B 1
 )
 
-for /F "tokens=*" %%g in ('jq .majorVersion "%artifactsdir%\configVersion.json"') do (set majorVersion=%%g)
-for /F "tokens=*" %%g in ('jq .minorVersion "%artifactsdir%\configVersion.json"') do (set minorVersion=%%g)
+for /F "tokens=*" %%g in ('jq .versionMajor "%artifactsdir%\configVersion.json"') do (set versionMajor=%%g)
+for /F "tokens=*" %%g in ('jq .versionMinor "%artifactsdir%\configVersion.json"') do (set versionMinor=%%g)
+for /F "tokens=*" %%g in ('jq .versionBuild "%artifactsdir%\configVersion.json"') do (set versionBuild=%%g)
+for /F "tokens=*" %%g in ('jq .versionRevision "%artifactsdir%\configVersion.json"') do (set versionRevision=%%g)
 
 
 echo Copying infrastructure configuration files
@@ -94,7 +87,7 @@ echo Harvesting project configuration files into WiX source
 
 echo Compiling WiX sources
 "%WIX%\bin\candle.exe" -nologo -dArtifactsDir="%artifactsdir%" -arch x64 -out "%wixdir%\configFiles.wixobj" "%wixdir%\configFiles.wxs" || exit /B 1
-"%WIX%\bin\candle.exe" -nologo -dMajorVersion="%majorVersion%" -dMinorVersion="%minorVersion%" -dPipelineNumber="%pipelinenumber%" -dTruncatedPipelineNumber="%truncatedPipelineNumber%" -dJobNumber=%jobnumber% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
+"%WIX%\bin\candle.exe" -nologo -dVersionMajor="%versionMajor%" -dVersionMinor="%versionMinor%" -dVersionBuild="%versionBuild%" -dVersionRevision=%versionRevision% -dProjectCaption="%projectcaption%" -dEnvironmentName="%environmentname%" -dInfraWxiFile="%infradir%\WindowsInstaller.wxi" -arch x64 -ext WixUtilExtension -out "%wixdir%\main.wixobj" "%OwnDir%\pep.wxs" || exit /B 1
 
 echo Linking MSI installer
 REM Suppress "warning LGHT1076 : ICE69: Mismatched component reference", which is issued because
@@ -102,11 +95,14 @@ REM shortcuts are in other components than the files targeted by those shortcuts
 REM See https://github.com/wixtoolset/issues/issues/5938 and/or http://lists.wixtoolset.org/pipermail/wix-users-wixtoolset.org/2020-March/008799.html
 set IGNORE_CROSS_COMPONENT_REFS=-sw1076
 
-REM ICE validation only available for admin accounts & interactive sessions: https://stackoverflow.com/q/1064580
-set WIX_CI_NO_ICE_VALIDATION=-sval
+REM Define this envvar to skip installer validation.
+REM ICE validation is only available for admin accounts & interactive sessions: https://stackoverflow.com/q/1064580
+if not "%PEP_SKIP_ICE_VALIDATION%" == "" (
+  set WIX_SKIP_ICE_VALIDATION_FLAG=-sval
+)
 
 REM Note: light.exe may fail with "error LGHT0001 : A required privilege is not held by the client" when invoked from an elevated context. Execute as non-admin instead.
 REM  See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1272#note_16345
-"%WIX%\bin\light.exe" -nologo %IGNORE_CROSS_COMPONENT_REFS% %WIX_CI_NO_ICE_VALIDATION% -ext WixUIExtension -ext WixUtilExtension -cultures:nl-NL -out "%wixdir%\pep.msi" "%wixdir%\main.wixobj" "%wixdir%\configFiles.wixobj" "%wixLibPath%" -loc "%OwnDir%\nl-NL.wxl" -loc "%OwnDir%\en-US.wxl" || exit /B 1
+"%WIX%\bin\light.exe" -nologo %IGNORE_CROSS_COMPONENT_REFS% %WIX_SKIP_ICE_VALIDATION_FLAG% -ext WixUIExtension -ext WixUtilExtension -cultures:nl-NL -out "%wixdir%\pep.msi" "%wixdir%\main.wixobj" "%wixdir%\configFiles.wixobj" "%wixLibPath%" -loc "%OwnDir%\nl-NL.wxl" -loc "%OwnDir%\en-US.wxl" || exit /B 1
 
 echo Successfully produced MSI installer at "%wixdir%\pep.msi"

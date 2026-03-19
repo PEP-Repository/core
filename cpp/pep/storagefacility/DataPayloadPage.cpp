@@ -1,4 +1,4 @@
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -32,7 +32,7 @@ void DataPayloadPage::setEncrypted(
       const std::string& key,
       const Metadata& metadata) {
   auto ctx = createGcmContext();
-  RandomBytes(mCryptoNonce, 16);
+  mCryptoNonce = RandomString(16);
   mCryptoMac.resize(16);
   mPayloadData.resize(plaintext.size());
   if (key.size() != 32)

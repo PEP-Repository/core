@@ -6,10 +6,10 @@
 #include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/utils/Compare.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -417,7 +417,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mPseudonyms);
+    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mAccessSubjects);
   });
 
 }
@@ -428,7 +428,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
       && IsSubset(opts.columnGroups, opts.ticket->getColumnGroups())
-      && IsSubset(opts.pps, opts.ticket->getPolymorphicPseudonyms())
+      && IsSubset(opts.pps, opts.ticket->getAccessSubjects())
       && IsSubset(opts.columns, opts.ticket->getColumns())) {
     return rxcpp::observable<>::just(*opts.ticket);
   }
@@ -439,7 +439,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
   return accessManagerProxy->requestIndexedTicket(ClientSideTicketRequest2{
       .mModes = opts.modes,
       .mParticipantGroups = opts.participantGroups,
-      .mPolymorphicPseudonyms = opts.pps,
+      .mAccessSubjects = opts.pps,
       .mColumnGroups = opts.columnGroups,
       .mColumns = opts.columns,
       .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});

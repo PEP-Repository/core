@@ -1,5 +1,5 @@
 #include <pep/application/Application.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/utils/File.hpp>
 

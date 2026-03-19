@@ -22,8 +22,8 @@ namespace {
 std::string ToHex(std::span<const std::byte> bytes) { return boost::algorithm::hex(std::string(SpanToString(bytes))); }
 
 SkRecipient SomeRecipient(unsigned index) {
-  auto facilityType = static_cast<FacilityType>(index % 5 + 1);
-  if (facilityType == FacilityType::User) {
+  auto facilityType = static_cast<EnrolledParty>(index % 5 + 1);
+  if (facilityType == EnrolledParty::User) {
     return SkRecipient(
         static_cast<RecipientBase::Type>(facilityType),
         {
@@ -50,7 +50,7 @@ void GenerateKeyFactorTestcases(std::ostream& out, const unsigned count) {
     out << "Domain: " << unsigned{domain} << '\n';
     out << "Key factor secret (HMAC key): " << ToHex(rekey.hmacKey()) << '\n';
 
-    auto facilityType = static_cast<FacilityType>(i % 5 + 1);
+    auto facilityType = static_cast<EnrolledParty>(i % 5 + 1);
     RekeyRecipient recipient(static_cast<const RekeyRecipient&>(SomeRecipient(i)));
 
     out << "Recipient:\n"
@@ -80,7 +80,7 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
   ElgamalPrivateKey masterPrivateEncryptionKey = CurveScalar::One();
   for (unsigned i{}; i < translatorsCount; ++i) {
     const auto masterPrivateEncryptionKeyShare = CurveScalar::Random();
-    masterPrivateEncryptionKey = masterPrivateEncryptionKey.mult(masterPrivateEncryptionKeyShare);
+    masterPrivateEncryptionKey = masterPrivateEncryptionKey * masterPrivateEncryptionKeyShare;
     PseudonymTranslationKeys translationKeys{
         .encryptionKeyFactorSecret{RandomArray<64>()},
         .pseudonymizationKeyFactorSecret{RandomArray<64>()},
@@ -100,7 +100,7 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
 
   out << "Master private encryption key (CurveScalar, product of shares): " << masterPrivateEncryptionKey.text()
       << '\n';
-  ElgamalPublicKey masterPublicEncryptionKey = CurvePoint::BaseMult(masterPrivateEncryptionKey);
+  ElgamalPublicKey masterPublicEncryptionKey = masterPrivateEncryptionKey * CurvePoint::Base;
   out << "Master public encryption key (CurvePoint): " << masterPrivateEncryptionKey.text() << '\n';
 
   out << "\nTestcases:\n\n";
@@ -125,20 +125,14 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
         const auto [afterStep, proof] = translator.certifiedTranslateStep(*encLocal, recipient);
         out << "  Encrypted pseudonym: " << afterStep.text() << '\n';
         out << "  Proof:\n"
-            << "    RY: " << proof.mRY.text() << '\n'
-            << "    RB: " << proof.mRB.text() << '\n'
-            << "    RP:\n"
-            << "      CB: " << proof.mRP.mCB.text() << '\n'
-            << "      CM: " << proof.mRP.mCM.text() << '\n'
-            << "      S (CurveScalar): " << proof.mRP.mS.text() << '\n'
             << "    BP:\n"
-            << "      CB: " << proof.mBP.mCB.text() << '\n'
-            << "      CM: " << proof.mBP.mCM.text() << '\n'
-            << "      S (CurveScalar): " << proof.mBP.mS.text() << '\n'
+            << "      CB: " << proof.mReshuffleOverRekeyTimesBProof.mCB.text() << '\n'
+            << "      CM: " << proof.mReshuffleOverRekeyTimesBProof.mCM.text() << '\n'
+            << "      S (CurveScalar): " << proof.mReshuffleOverRekeyTimesBProof.mS.text() << '\n'
             << "    CP:\n"
-            << "      CB: " << proof.mCP.mCB.text() << '\n'
-            << "      CM: " << proof.mCP.mCM.text() << '\n'
-            << "      S (CurveScalar): " << proof.mCP.mS.text() << '\n';
+            << "      CB: " << proof.mReshuffleTimesCProof.mCB.text() << '\n'
+            << "      CM: " << proof.mReshuffleTimesCProof.mCM.text() << '\n'
+            << "      S (CurveScalar): " << proof.mReshuffleTimesCProof.mS.text() << '\n';
         *encLocal = afterStep;
       }
       else {
@@ -154,7 +148,7 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
     for (unsigned transcryptorNum{}; const auto& translator : translators) {
       const auto comp = translator.generateKeyComponent(recipient);
       out << "  Key component @ transcryptor #" << transcryptorNum << " (CurveScalar): " << comp.text() << '\n';
-      keyRecipient = keyRecipient.mult(comp);
+      keyRecipient = keyRecipient * comp;
       ++transcryptorNum;
     }
     out << ">>User private key (product of components): " << keyRecipient.text() << '\n';

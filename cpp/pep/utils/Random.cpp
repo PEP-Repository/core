@@ -1,93 +1,86 @@
-#include <pep/utils/Platform.hpp>
 #include <pep/utils/Random.hpp>
 
-#include <chrono>
-#include <system_error>
-#include <thread>
+#include <pep/utils/Math.hpp>
+#include <pep/utils/OpensslUtils.hpp>
 
-using namespace std::chrono_literals;
+#include <boost/noncopyable.hpp>
+#include <openssl/rand.h>
+#include <cassert>
+#include <cstring>
 
 namespace pep {
 
-#ifndef _WIN32
-class URandom {
- private:
-  int fd;
+namespace {
 
- public:
-  URandom() : fd(-1) {
-    fd = open("/dev/urandom", O_RDONLY);
-    if (fd == -1) {
-      throw std::system_error(errno, std::generic_category());
-    }
+class RandomBytesBuffer : boost::noncopyable {
+public:
+  static constexpr size_t capacity = 512;
+
+private:
+  std::array<std::byte, capacity> content_{};
+  size_t index_ = capacity;
+
+  std::span<std::byte> bufferedData() {
+    return std::span<std::byte>(content_).subspan(index_);
   }
 
-  ~URandom() noexcept {
-    close(fd);
+  size_t fillFromBuffer(std::span<std::byte> destination) {
+    auto source = this->bufferedData();
+    auto result = std::min(source.size(), destination.size());
+
+    CopyToRange(source, destination);
+    index_ += result;
+
+    // Zero-fill consumed randomness so that secrets don't remain in memory
+    auto consumed = source.subspan(0U, result);
+    std::ranges::fill(consumed.begin(), consumed.end(), std::byte{});
+
+    return result;
   }
 
-  void read(uint8_t* p, uint64_t len) const {
-    ssize_t i{};
+public:
+  void fill(std::span<std::byte> destination) {
+    assert(destination.size() <= capacity);
 
-    while (len > 0) {
-      i = (len < (1 << 10)) ? static_cast<ssize_t>(len) : (1 << 10);
-      i = ::read(fd, p, static_cast<size_t>(i));
-      if (i < 1) {
-        std::this_thread::sleep_for(100ms);
-        continue;
-      }
+    // (Try to) fill destination from what we still had buffered.
+    auto filled = this->fillFromBuffer(destination);
 
-      p += i;
-      len -= static_cast<uint64_t>(i);
+    // If we didn't have enough buffered data to fill destination entirely...
+    auto remaining = destination.subspan(filled);
+    if (remaining.size() != 0U) [[unlikely]] {
+      // ... re-fill our buffer...
+      UnbufferedRandomBytes(content_);
+      index_ = 0U;
+
+      // ... then fill remaining bytes
+      filled = this->fillFromBuffer(remaining);
+      assert(filled == remaining.size());
+      std::ignore = filled; // Get rid of clang-analyzer-deadcode.DeadStores in non-debug builds
     }
   }
 };
-#endif
 
-/*! \brief Generates random bytes.
- *
- *  Reads random bytes from /dev/urandom.
- *
- *  \param [out] p The buffer to place the bytes in.
- *  \param len The number of bytes to generate.
- */
-void RandomBytes(uint8_t* p, uint64_t len) {
-  // use Rtl rather than Crypt since we want to avoid loading all the CryptAPI stuff
-#ifdef _WIN32
-  static HMODULE hAdvapi = nullptr;
-  static BOOLEAN (WINAPI *pRtlGenRandom)(
-    PVOID RandomBuffer,
-    ULONG RandomBufferLength
-  ) = nullptr;
-  if (hAdvapi == nullptr)
-    hAdvapi = ::LoadLibrary("Advapi32.dll");
-  if (pRtlGenRandom == nullptr)
-    pRtlGenRandom = (BOOLEAN (WINAPI*)(PVOID, ULONG))::GetProcAddress(hAdvapi, "SystemFunction036");
+}
 
-  if (pRtlGenRandom == nullptr || !pRtlGenRandom(p, static_cast<ULONG>(len))) {
-    throw RandomException();
+void UnbufferedRandomBytes(std::span<std::byte> out) {
+  auto outInts = ConvertBytes<unsigned char>(out);
+  // Benchmarking indicates that OpenSSL function RAND_bytes has better performance (on some platforms) than std::random_device
+  if (RAND_bytes(outInts.data(), CheckedCast<int>(outInts.size())) <= 0) {
+    throw OpenSSLError("RAND_bytes failed");
   }
-#else
-  static URandom urandom;
-  urandom.read(p, len);
-#endif
 }
 
-void RandomBytes(std::vector<char>& s, size_t len) {
-  s.resize(len);
-  RandomBytes(reinterpret_cast<uint8_t*>(s.data()), len);
+void RandomBytes(std::span<std::byte> out) {
+  if (out.size() > RandomBytesBuffer::capacity) [[unlikely]] {
+    // Fill directly if our buffer is smaller
+    UnbufferedRandomBytes(out);
+  }
+  else {
+    static thread_local RandomBytesBuffer buffer;
+    buffer.fill(out);
+  }
 }
 
-void RandomBytes(std::string& s, size_t len) {
-  s.resize(len);
-  RandomBytes(reinterpret_cast<uint8_t*>(s.data()), len);
-}
-
-std::string RandomString(size_t len)
-{
-  std::string result(len, '\0');
-  RandomBytes(result, len);
-  return result;
-}
+static_assert(std::uniform_random_bit_generator<CryptoUrbg>);
 
 }

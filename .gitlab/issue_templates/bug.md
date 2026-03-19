@@ -51,10 +51,10 @@ _not provided_
 ## Checklist
 <!-- Checkboxes to track the progress of this issue.
 
-- [] Identify cause
-- [] Provide fix
-- [] Test fix
-- [] Update CHANGELOG (if needed)
+- [ ] Identify cause
+- [ ] Provide fix
+- [ ] Test fix
+- [ ] Update CHANGELOG (if needed)
 
 -->
 

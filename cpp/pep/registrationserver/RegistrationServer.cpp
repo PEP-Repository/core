@@ -2,7 +2,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/registrationserver/RegistrationServer.hpp>
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
@@ -508,7 +508,7 @@ void RegistrationServer::storeShortPseudonymShadow(const std::string& encryptedI
   }
 }
 
-rxcpp::observable<std::string> RegistrationServer::generatePseudonym(std::string prefix, int len) {
+rxcpp::observable<std::string> RegistrationServer::generatePseudonym(std::string prefix, std::size_t len) {
   auto sp = GenerateShortPseudonym(prefix, len);
   return mShortPseudonyms->observe()
     .map([sp](std::string existing) {return sp == existing; }) // Compare generated SP to each existing one
@@ -539,7 +539,7 @@ std::shared_ptr<castor::CastorConnection> RegistrationServer::getCastorConnectio
 }
 
 rxcpp::observable<std::shared_ptr<castor::Participant>> RegistrationServer::storeShortPseudonymInCastor(std::shared_ptr<castor::Study> study, ShortPseudonymDefinition definition) {
-  return this->generatePseudonym(definition.getPrefix(), static_cast<int>(definition.getLength()))
+  return this->generatePseudonym(definition.getPrefix(), definition.getLength())
     .flat_map([study](std::string sp) {return study->createParticipant(sp); })
     .on_error_resume_next(
       [self = SharedFrom(*this), study, definition](std::exception_ptr ep) -> rxcpp::observable<std::shared_ptr<castor::Participant>> {
@@ -641,7 +641,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
     auto format = config->getGeneratedParticipantIdentifierFormat();
     assert(format.getNumberOfGeneratedDigits() <= static_cast<unsigned>(std::numeric_limits<int>::max()));
 
-    return server->generatePseudonym(format.getPrefix(), static_cast<int>(format.getNumberOfGeneratedDigits()));
+    return server->generatePseudonym(format.getPrefix(), format.getNumberOfGeneratedDigits());
   })
     .map([server](std::string id) { // Produce a PP for the newly generated PEP ID
     auto pp = server->pClient->generateParticipantPolymorphicPseudonym(id);
@@ -669,7 +669,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
 }
 
 messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(std::shared_ptr<SignedRegistrationRequest> signedRequest) {
-  auto request = signedRequest->open(*this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs()).message;
 
   if (request.mEncryptionPublicKeyPem.empty()) {
     throw std::runtime_error("Participant registration requires the encryption key for shadow storage to be verified. Please ensure that the client provides one.");
@@ -741,7 +741,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
 #endif
       observable = server->generatePseudonym(
         unstored.getPrefix(),
-        static_cast<int>(unstored.getLength())
+        unstored.getLength()
       )
         .map([ctx, unstored](std::string sp) {return ShortPseudonymEntry(ctx->pp, unstored.getColumn().getFullName(), sp); });
 #ifdef WITH_CASTOR

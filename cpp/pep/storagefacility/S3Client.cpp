@@ -2,7 +2,7 @@
 #include <pep/networking/HttpClient.hpp>
 #include <pep/utils/Log.hpp>
 
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <sstream>
 

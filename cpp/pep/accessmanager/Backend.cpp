@@ -3,7 +3,7 @@
 #include <pep/keyserver/KeyServerMessages.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/async/RxInstead.hpp>
-#include <pep/crypto/CPRNG.hpp>
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 
@@ -17,12 +17,10 @@ namespace {
 const std::string LOG_TAG("AccessManager::Backend");
 
 template <typename TValue>
-void EnsureMapContains(std::unordered_map<std::string, TValue>& map, const std::vector<std::string>& keys) {
-  std::for_each(keys.cbegin(), keys.cend(), [&map](const std::string& key) {
-    [[maybe_unused]] auto position = map.try_emplace(key).first;
-    assert(position != map.cend());
-    assert(position == map.find(key));
-  });
+void EnsureMapContains(std::unordered_map<std::string, TValue>& map, std::span<const std::string> keys) {
+  for (const std::string& key : keys) {
+    map.try_emplace(key);
+  }
 }
 
 enum class AccessMode {
@@ -244,8 +242,11 @@ void AccessManager::Backend::ensureNoUserData() const {
 FindUserResponse AccessManager::Backend::handleFindUserRequest(
     const FindUserRequest& request,
     const std::string& userGroup) {
+  constexpr auto CaseInsensitive = Storage::CaseSensitivity::CaseInsensitive;
+  constexpr auto CaseSensitive = Storage::CaseSensitivity::CaseSensitive;
+
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
-  std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId);
+  std::optional<int64_t> userId = mStorage->findInternalUserId(request.mPrimaryId, CaseSensitive);
   if (userId) {
     auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
     if (!primary) {
@@ -258,11 +259,11 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
     }
   }
   else {
-    userId = mStorage->findInternalUserId(request.mAlternativeIds);
+    userId = mStorage->findInternalUserId(request.mAlternativeIds, CaseInsensitive);
     if (userId) {
       auto primary = mStorage->getPrimaryIdentifierForUser(*userId);
       if (!primary) {
-        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId);
+        mStorage->addIdentifierForUser(*userId, request.mPrimaryId, UserIdFlags::isPrimaryId, CaseSensitive);
       }
       else{
         LOG(LOG_TAG, error) << "A user tried to login as a user for which we already have a primary ID (" << *primary
@@ -284,7 +285,7 @@ void AccessManager::Backend::addParticipantToGroup(const LocalPseudonym& localPs
   mStorage->addParticipantToGroup(localPseudonym, group);
 }
 
-void AccessManager::Backend::assertParticipantAccess(const std::string& userGroup,
+void AccessManager::Backend::checkParticipantAccess(const std::string& userGroup,
                                                    const LocalPseudonym& localPseudonym,
                                                    const std::vector<std::string>& modes,
                                                    Timestamp at) {
@@ -318,7 +319,7 @@ void AccessManager::Backend::storeLocalPseudonymAndPP(const LocalPseudonym& loca
 }
 
 void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
-  if (request.mPolymorphicPseudonyms.size() > 0 && request.mParticipantGroups.size() > 0) {
+  if (request.mAccessSubjects.size() > 0 && request.mParticipantGroups.size() > 0) {
     // We decided to not support this situation any more, since we don't expect this to be used often.
     // At the time of writing this comment, the code was not written with this assumption in mind, so could possibly be
     // simplified The problem we want to solve with this assumption is that if a participant group is given, as well as
@@ -328,7 +329,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
                 "supported. Use either groups or specific participants.");
   }
 
-  auto duplicate = TryFindDuplicateValue(request.mPolymorphicPseudonyms);
+  auto duplicate = TryFindDuplicateValue(request.mAccessSubjects);
   if (duplicate != std::nullopt) {
     LOG(LOG_TAG, error) << "Failing ticket request due to duplicate PP " << duplicate->text();
     throw Error("Ticket request failed due to duplicate polymorphic pseudonym. Please request access to unique "
@@ -357,31 +358,35 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
   }
 }
 
-void AccessManager::Backend::checkParticipantGroupAccess(const std::vector<std::string>& participantGroups,
+void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::string> participantGroups,
                                                        const std::string& userGroup,
                                                        std::vector<std::string>& modes,
                                                        const Timestamp& timestamp) {
-  if (!participantGroups.empty() && std::find(modes.cbegin(), modes.cend(), "enumerate") == modes.cend()) {
+  using namespace std::ranges;
+  if (!participantGroups.empty() && find(modes, "enumerate") == modes.cend()) {
     modes.push_back("enumerate");
   }
 
   if (userGroup == UserGroup::DataAdministrator && !participantGroups.empty()) {
     LOG(LOG_TAG, info)
         << "Granting " << Logging::Escape(userGroup)
-        << " unchecked access to participant group(s): " << boost::algorithm::join(participantGroups, ", ");
+        << " unchecked access to participant group(s): "
+        << boost::algorithm::join(std::pair{participantGroups.begin(), participantGroups.end()}, ", ");
   }
   else {
     std::vector<std::string> errorMessageParts;
+    ParticipantGroupAccessRuleFilter filter{
+      .participantGroups = RangeToVector(participantGroups),
+      .userGroups = {{userGroup}},
+      .modes = {{}},
+    };
     for (auto& mode : modes) {
-      auto pgars = mStorage->getParticipantGroupAccessRules(timestamp, {participantGroups, std::vector<std::string>{userGroup}, std::vector<std::string>{mode}});
-      std::vector<std::string> allowedParticipantGroups;
-      allowedParticipantGroups.reserve(pgars.size());
-      std::transform(pgars.cbegin(), pgars.cend(), std::back_inserter(allowedParticipantGroups), [](auto& entry) {
-        return entry.participantGroup;
-      });
+      filter.modes->assign({mode});
+      auto allowedParticipantGroups = RangeToCollection<std::unordered_set>(
+        mStorage->getParticipantGroupAccessRules(timestamp, filter)
+        | views::transform(std::mem_fn(&ParticipantGroupAccessRule::participantGroup)));
       for (auto& pg : participantGroups) {
-        if (find(allowedParticipantGroups.cbegin(), allowedParticipantGroups.cend(), pg)
-            == allowedParticipantGroups.end()) {
+        if (!allowedParticipantGroups.contains(pg)) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to participant-group " + Logging::Escape(pg));
         }
@@ -393,32 +398,33 @@ void AccessManager::Backend::checkParticipantGroupAccess(const std::vector<std::
   }
 }
 
-void AccessManager::Backend::fillParticipantGroupMap(const std::vector<std::string>& participantGroups,
-                                                   std::vector<pp_t>& prePPs,
-                                                   std::unordered_map<std::string, IndexList>& participantGroupMap) {
+std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillParticipantGroupMap(
+    std::span<const std::string> participantGroups,
+    std::vector<pp_t>& pps) {
   // ParticipantGroups by Polymorph Pseudonym
-  auto groupedPps = mStorage->getPPs(participantGroups);
-  auto urbg = CPURBG();
-  while (!groupedPps.empty()) {
-    auto randomIt = std::next(groupedPps.begin(), static_cast<ptrdiff_t>(urbg() % groupedPps.size()));
-    prePPs.push_back(pp_t(randomIt->first, false));
-    for (auto& pg : randomIt->second) {
-      participantGroupMap[pg].mIndices.push_back(static_cast<uint32_t>(prePPs.size() - 1));
+  auto groupedPps = RangeToCollection<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
+    mStorage->getPpGroups(participantGroups));
+  std::ranges::shuffle(groupedPps, CryptoUrbg());
+
+  std::unordered_map<std::string, pep::IndexList> participantGroupMap;
+  for (const auto& [pp, groups] : groupedPps) {
+    pps.emplace_back(pp, false);
+    for (const std::string& pg : groups) {
+      participantGroupMap[pg].mIndices.push_back(static_cast<uint32_t>(pps.size() - 1));
     }
-    groupedPps.erase(randomIt);
   }
-  if (prePPs.size() > UINT_MAX)
+  if (pps.size() > std::numeric_limits<std::uint32_t>::max())
     throw Error("Too many polymorphic pseudonyms to fill index vector");
+  // Add groups without participants
   EnsureMapContains(participantGroupMap, participantGroups);
+  return participantGroupMap;
 }
 
-void AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string& userGroup,
+std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnGroupsAndCheckAccess(const std::string& userGroup,
                                                              const std::vector<std::string>& columnGroups,
                                                              const std::vector<std::string>& modes,
                                                              Timestamp at,
-                                                             std::vector<std::string>& columns,
-                                                             std::unordered_map<std::string, IndexList>&
-                                                                 columnGroupMap) {
+                                                             std::vector<std::string>& columns) {
   ColumnAccessRequest request;
   request.includeImplicitlyGranted = true;
   // All columns and Columngroups this usergroup has access to.
@@ -477,7 +483,7 @@ void AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string
 
   // We have access to all columnGroups and columns. Now finish the columnGroupMap and columns vector
   // Prepare columnGroupMap
-  columnGroupMap.clear();
+  std::unordered_map<std::string, IndexList> columnGroupMap;
   columnGroupMap.reserve(columnGroups.size());
   std::set<ColumnGroupColumn> cgcs = {};
   if (!columnGroups.empty()) {
@@ -497,6 +503,7 @@ void AccessManager::Backend::unfoldColumnGroupsAndAssertAccess(const std::string
       }
     }
   }
+  return columnGroupMap;
 }
 
 void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<EncryptionKeyRequest> request,

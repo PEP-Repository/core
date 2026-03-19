@@ -20,6 +20,12 @@ namespace pep {
 // CurvePoints are not completely thread-safe.  See ensureThreadSafe().
 class CurvePoint {
  public:
+  // This doesn't derive from CurvePoint because it would require actual state
+  // and Panda doesn't have a constant for the base point.
+  // In any case, you'll probably just want to scale it anyway.
+  /// Tag to represent base point.
+  static inline constexpr class BaseT {} Base{};
+
   // The number of bytes in the CurvePoint's packed representation
   static constexpr size_t PACKEDBYTES = GROUP_GE_PACKEDBYTES;
 
@@ -51,7 +57,7 @@ class CurvePoint {
   public:
     explicit ScalarMultTable(const CurvePoint& point);
     CurvePoint mult(const CurveScalar& p) const;
-    CurvePoint publicMult(const CurveScalar& p) const;
+    CurvePoint mult(const PublicCurveScalar& p) const;
 
   private:
     group_scalarmult_table mInternal;
@@ -67,24 +73,18 @@ class CurvePoint {
   std::string text() const;
   static CurvePoint FromText(const std::string& text);
 
-  CurvePoint add(const CurvePoint& p) const;
-  CurvePoint sub(const CurvePoint& p) const;
-  CurvePoint dbl() const;
-  CurvePoint mult(const CurveScalar& p) const;
-  CurvePoint publicMult(const CurveScalar& s) const;
-
-  template<typename RNG>
-  static CurvePoint Random(RNG& rng) {
-    //NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    std::array<uint8_t, 32> randomBuf;
-    rng(randomBuf.data(), randomBuf.size());
-    return CurvePoint::Hash(SpanToString(randomBuf));
-  }
+  [[nodiscard]] CurvePoint operator+(const CurvePoint& p) const;
+  [[nodiscard]] CurvePoint operator-(const CurvePoint& p) const;
+  [[nodiscard]] CurvePoint dbl() const;
+  /// Create a point by multiplying a scalar with the base
+  [[nodiscard]] friend CurvePoint operator*(const CurveScalar& s, BaseT) { return BaseMult(s); }
+  /// Create a point by multiplying a public scalar with the base
+  [[nodiscard]] friend CurvePoint operator*(const PublicCurveScalar& s, BaseT) { return BaseMult(s); }
+  [[nodiscard]] friend CurvePoint operator*(const CurveScalar& s, const CurvePoint& p) { return p.mult(s); }
+  [[nodiscard]] friend CurvePoint operator*(const PublicCurveScalar& s, const CurvePoint& p)  { return p.mult(s); }
 
   static CurvePoint Random();
 
-  static CurvePoint BaseMult(const CurveScalar& s);
-  static CurvePoint PublicBaseMult(const CurveScalar& s);
   static CurvePoint Hash(std::string_view s);
 
   bool isZero() const;
@@ -105,6 +105,11 @@ class CurvePoint {
   // Returns a pointer to the internal unpacked CurvePoint (and unpacks
   // it first, if necessary).
   group_ge* unpack() const;
+
+  [[nodiscard]] CurvePoint mult(const CurveScalar& s) const;
+  [[nodiscard]] CurvePoint mult(const PublicCurveScalar& s) const;
+  [[nodiscard]] static CurvePoint BaseMult(const CurveScalar& s);
+  [[nodiscard]] static CurvePoint BaseMult(const PublicCurveScalar& s);
 
   explicit CurvePoint(state_t state) : mState(state) { }
 };

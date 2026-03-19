@@ -563,8 +563,8 @@ protected:
 
   struct EnrollmentContext {
     std::shared_ptr<const X509Identity> identity;
-    CurveScalar alpha, beta;
-    CurveScalar gamma, delta;
+    CurveScalar pseudonymEncryptionKeyComponentAM, dataEncryptionKeyComponentAM;
+    CurveScalar pseudonymEncryptionKeyComponentTS, dataEncryptionKeyComponentTS;
     SignedKeyComponentRequest keyComponentRequest;
 
     explicit EnrollmentContext(std::shared_ptr<const X509Identity> enroller);
