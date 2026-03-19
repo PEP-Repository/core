@@ -986,24 +986,33 @@ macos-arm-test:
 
 #################### Docker ####################
 
+# We also test directly in services image to try to make sure
+# executables don't depend on something in the builder image
 pep-services-image-test:
   stage: runtime-analysis
   extends: .dind
   variables:
     TESTS: "$UNIT_TESTS_BASE"
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:
     - job: build-docker-images
       artifacts: false
+    # Use tests in $STAGING_DIRECTORY from artifacts
+    - ubuntu-lts-release
   #language=sh
   script:
     - *docker_login
-    # Test that executables run (all dynamic libraries are present etc.)
-    - for executable_path in $EXECUTABLES_BASE; do
-    -   executable="$(basename -- "$executable_path")"
-    -   echo "$executable:"
-    -   docker run --pull=always --rm "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" "/app/$executable" --version
+    # First make sure included apps like pepcli work
+    - pepcli --version
+    # Then run unit tests
+    - for TEST in $TESTS; do
+    -   |
+        echo "Running test: $(basename $TEST)"
+        "$STAGING_DIRECTORY/$TEST" --gtest_output=xml:/tmp/pep-test-results/
     - done
+  artifacts:
+    reports:
+      junit: /tmp/pep-test-results/*.xml
 
 ##########################################
 # Configuration for the integration stage#
