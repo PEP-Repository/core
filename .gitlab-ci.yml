@@ -1001,7 +1001,6 @@ pep-services-image-test:
     - ubuntu-lts-release
   #language=sh
   script:
-    - *docker_login
     # First make sure included apps like pepcli work
     - pepcli --version
     # Then run unit tests
