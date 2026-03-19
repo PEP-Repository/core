@@ -13,11 +13,10 @@ class IoContextThread {
    std::unique_ptr<WorkGuard> guard_;
    std::thread thread_;
 
-   void swapStateWith(IoContextThread& other) noexcept;
    void stopContext() noexcept;
 
  public:
-  IoContextThread(IoContextThread&& other) noexcept;
+  IoContextThread(IoContextThread&& other) noexcept = default;
   IoContextThread(const IoContextThread&) = delete;
   ~IoContextThread() noexcept;
 

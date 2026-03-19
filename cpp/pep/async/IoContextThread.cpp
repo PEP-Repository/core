@@ -23,22 +23,11 @@ void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context) noexcept 
 
 }
 
-void IoContextThread::swapStateWith(IoContextThread& other) noexcept {
-  std::swap(context_, other.context_);
-  std::swap(thread_, other.thread_);
-  std::swap(guard_, other.guard_);
-}
-
 void IoContextThread::stopContext() noexcept {
   if (context_ != nullptr) {
     context_->stop();
     context_.reset();
   }
-}
-
-IoContextThread::IoContextThread(IoContextThread&& other) noexcept
-  : thread_() {
-  this->swapStateWith(other);
 }
 
 IoContextThread::~IoContextThread() noexcept {
