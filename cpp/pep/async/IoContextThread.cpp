@@ -34,7 +34,7 @@ IoContextThread::IoContextThread(IoContextThread&& other) noexcept
 }
 
 IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context)
-  : guard_(std::make_unique<WorkGuard>(*io_context)), thread_(&RunIoContext, io_context) {
+  : context_(io_context), guard_(std::make_unique<WorkGuard>(*io_context)), thread_(&RunIoContext, io_context) {
 }
 
 IoContextThread& IoContextThread::operator =(IoContextThread other) {
@@ -42,15 +42,18 @@ IoContextThread& IoContextThread::operator =(IoContextThread other) {
   return *this;
 }
 
-void IoContextThread::allowTermination() noexcept {
-  guard_.reset();
+void IoContextThread::stop(bool force) noexcept {
+  if (guard_) { // If we haven't stopped already...
+    guard_.reset(); // ... allow io_context::run to terminate...
+    if (force) {
+      context_->stop(); // ... stop servicing I/O jobs if instructed to do so...
+    }
+    thread_.join(); // ... and wait until (io_context::run has terminated and) the thread exits
+  }
 }
 
 void IoContextThread::detach() {
   thread_.detach();
-}
-void IoContextThread::join() {
-  thread_.join();
 }
 
 }

@@ -9,6 +9,7 @@ namespace pep {
 
 class IoContextThread {
  private:
+   std::shared_ptr<boost::asio::io_context> context_;
    std::unique_ptr<WorkGuard> guard_;
    std::thread thread_;
 
@@ -22,8 +23,7 @@ class IoContextThread {
 
   IoContextThread& operator =(IoContextThread other);
 
-  void allowTermination() noexcept;
-  void join();
+  void stop(bool force = false) noexcept;
   void detach();
 };
 

@@ -24,9 +24,7 @@ public:
   ~AsyncHttpServer() noexcept {
     mServer.asyncStop();
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Give the HTTP server time to finalize
-
-    mThread.allowTermination(); // Allow the I/O service to stop and...
-    mThread.join(); // ...block until (it has done so and) the thread has exited
+    mThread.stop(); // Allow the I/O service to stop (and block until the thread has exited)
   }
 
   template <typename... Args>

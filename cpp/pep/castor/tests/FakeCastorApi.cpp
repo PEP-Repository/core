@@ -212,12 +212,8 @@ void FakeCastorTest::Side::stop(bool force) {
   if (mThread == nullptr) {
     throw std::runtime_error("Can't stop an unstarted FakeCastorTest::Side");
   }
-  mThread->allowTermination();
-  if (force) {
-    mIoContext->stop();
-  }
-  mIoContext.reset();
-  mThread->join();
+  mIoContext.reset(); // Allow detection that this instance has already been stop()ped
+  mThread->stop(force);
 }
 
 FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& parameters, uint16_t port, std::shared_ptr<Options> options)
