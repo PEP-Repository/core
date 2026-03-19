@@ -18,13 +18,9 @@ public:
   using KeyDomainType = uint32_t;
 
   struct Keys {
-    KeyDomainType domain;
-    std::optional<KeyFactorSecret> reshuffle;
+    KeyDomainType domain{};
+    std::optional<KeyFactorSecret> reshuffle{};
     KeyFactorSecret rekey;
-
-    Keys(KeyDomainType domain_, std::optional<KeyFactorSecret> reshuffle_, KeyFactorSecret rekey_)
-      : domain(domain_), reshuffle(reshuffle_), rekey(rekey_) {
-    }
   };
 
   struct KeyFactors {

@@ -10,11 +10,11 @@
 using namespace pep;
 
 DataTranslator::DataTranslator(DataTranslationKeys keys)
-    : rsk_(RskTranslator::Keys(
-               static_cast<RskTranslator::KeyDomainType>(KeyDomain::Data),
-               keys.blindingKeySecret,
-               keys.encryptionKeyFactorSecret
-           )),
+    : rsk_({
+               .domain = static_cast<RskTranslator::KeyDomainType>(KeyDomain::Data),
+               .reshuffle = keys.blindingKeySecret,
+               .rekey = keys.encryptionKeyFactorSecret,
+           }),
       masterPrivateEncryptionKeyShare_(keys.masterPrivateEncryptionKeyShare) {}
 
 /// Generate blinding key (reshuffle)
