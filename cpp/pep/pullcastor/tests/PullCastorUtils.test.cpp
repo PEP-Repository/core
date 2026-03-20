@@ -23,4 +23,11 @@ TEST(PullCastorUtils, ParseCastorDateTime_UTC) {
   EXPECT_EQ(castor::ParseCastorDateTime(datetimeObject), Timestamp{1605793784s});
 }
 
+TEST(PullCastorUtils, ParseCastorDateTime_Plus5) {
+  boost::property_tree::ptree datetimeObject;
+  datetimeObject.put("date", "2020-11-19 13:49:44.000000");
+  datetimeObject.put("timezone", "Indian/Maldives"); // UTC+5 a.k.a. Etc/GMT-5
+  EXPECT_EQ(castor::ParseCastorDateTime(datetimeObject), Timestamp{1605775784s});
+}
+
 }
