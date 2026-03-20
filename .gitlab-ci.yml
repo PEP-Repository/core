@@ -87,6 +87,7 @@ variables:
     cpp/pep/async/pepAsyncUnitTests
     cpp/pep/auth/pepAuthUnitTests
     cpp/pep/content/pepContentUnitTests
+    cpp/pep/database/pepDatabaseUnitTests
     cpp/pep/crypto/pepCryptoUnitTests
     cpp/pep/elgamal/pepElgamalUnitTests
     cpp/pep/keyserver/pepKeyServerUnitTests
@@ -477,7 +478,7 @@ retrieve-lockfile:
       <(echo "$UNIT_TESTS_ALL" | tr -s ' ' '\n' | sort)
       <(cd "./$BUILD_DIRECTORY/" && find -name 'pep*UnitTests' | sort | sed 's/^.\///') |
       tee /dev/stderr)" ]; then
-    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml. Should these be added to $UNIT_TESTS_BASE?'
+    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_BASE?'
     -   exit 1
     - fi
   after_script:
