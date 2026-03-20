@@ -1073,7 +1073,9 @@ pep-services-image-test:
   stage: runtime-analysis
   extends: .dind
   variables:
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
   image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:
     - job: build-docker-images
