@@ -38,6 +38,7 @@ try_compile(HAS_CXX20_CHRONO
   LOG_DESCRIPTION "Check C++20 chrono support"
 )
 if(NOT HAS_CXX20_CHRONO)
+  message(STATUS "Using date library for timezone support")
   find_package(date REQUIRED)
   target_link_libraries(${PROJECT_NAME}PullCastorlib
     date::date
