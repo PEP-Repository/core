@@ -68,7 +68,7 @@ pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   -s__a build_type="%BuildType%" ^
   -o "&:with_assessor=True" ^
   -o "&:with_servers=%PEP_CONAN_BUILD_ADDITIONALS%" ^
-  -o "&:with_castor=False" ^
+  -o "&:with_castor=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_tests=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_benchmark=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:custom_build_folder=True" ^
