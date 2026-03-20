@@ -41,7 +41,7 @@ if(NOT HAS_CXX20_CHRONO)
   message(STATUS "Using date library for timezone support")
   find_package(date REQUIRED)
   target_link_libraries(${PROJECT_NAME}PullCastorlib
-    date::date
+    date::date-tz
   )
 endif()
 
