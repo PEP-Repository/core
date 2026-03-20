@@ -979,39 +979,30 @@ std::pair<std::string, std::optional<int64_t>> TranscryptorStorage::extractCerti
 // Creating a database from scratch is (from version 2 onwards) recorded
 // as a migration too, so the result, when non-null should be >= 2.
 std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
-  std::vector<MigrationRecord> records
-    = this->mStorage->raw.get_all<MigrationRecord>();
+  auto latestVersion = RangeToOptional(this->mStorage->raw.select(
+    &MigrationRecord::toVersion,
+    order_by(&MigrationRecord::seqno).desc(),
+    limit(1)));
 
-  if (records.empty())
-    return std::nullopt;
-
-  // sort on timestamp;  the latest record is considered leading
-  std::sort(records.begin(), records.end(),
-    [](const MigrationRecord& a, const MigrationRecord& b) -> bool {
-      return a.timestamp < b.timestamp;
-    });
-
-  MigrationRecord& latest = records.back();
-
-  if (latest.toVersion <= 1) {
+  if (latestVersion <= 1) {
     std::string message = "There cannot have been a migration to version  "
-      + std::to_string(latest.toVersion) + ", yet one has been recorded."
+      + std::to_string(*latestVersion) + ", yet one has been recorded."
       " (The first valid migration is from version 1 to version 2.)";
     LOG(LOG_TAG, error) << message;
     throw Error(message);
   }
 
-  if (latest.toVersion > MigrationRecord::TargetVersion) {
+  if (latestVersion > MigrationRecord::TargetVersion) {
     // This should only happen during a rollback.
     std::string message = "The transcryptor database has version "
-      + std::to_string(latest.toVersion) + ", while this transcryptor only "
+      + std::to_string(*latestVersion) + ", while this transcryptor only "
       "supports versions " + std::to_string(MigrationRecord::TargetVersion)
       + " and older.";
     LOG(LOG_TAG, error) << message;
     throw Error(message);
   }
 
-  return latest.toVersion;
+  return latestVersion;
 }
 
 
