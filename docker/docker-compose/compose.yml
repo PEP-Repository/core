@@ -162,9 +162,14 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 source: timestamp
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
+            # Detect malicious/noisy patterns
+            - regex:
+                expression: '.*(?P<noise_type>AH10244|@java\.lang\.|AH01630|AH01276|Unsafe URL with %3f|AH00036).*'
+                source: message
+            # Normalize log levels, downgrade error to warn when background noise detected
             - template:
                 source: level
-                template: '{{ if eq .Value "emerg" }}fatal{{ else if eq .Value "alert" }}critical{{ else if eq .Value "crit" }}critical{{ else if eq .Value "error" }}error{{ else if eq .Value "warn" }}warn{{ else if eq .Value "notice" }}info{{ else if eq .Value "info" }}info{{ else if eq .Value "debug" }}debug{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
+                template: '{{ if and (eq .Value "error") .noise_type }}warn{{ else if eq .Value "emerg" }}fatal{{ else if or (eq .Value "alert") (eq .Value "crit") }}critical{{ else if eq .Value "notice" }}info{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
             - labels:
                 level:
             - structured_metadata:
@@ -172,6 +177,7 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 pid:
                 tid:
                 client:
+                noise_type:
       - labels:
           host: host_part
           vm: vm_part

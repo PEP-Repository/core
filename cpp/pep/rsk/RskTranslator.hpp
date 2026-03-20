@@ -18,8 +18,8 @@ public:
   using KeyDomainType = uint32_t;
 
   struct Keys {
-    KeyDomainType domain;
-    std::optional<KeyFactorSecret> reshuffle;
+    KeyDomainType domain{};
+    std::optional<KeyFactorSecret> reshuffle{};
     KeyFactorSecret rekey;
   };
 

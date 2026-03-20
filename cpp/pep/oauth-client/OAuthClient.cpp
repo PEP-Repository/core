@@ -17,9 +17,8 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <pep/async/CreateObservable.hpp>
-#include <pep/utils/Hasher.hpp>
 #include <pep/async/OnAsio.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 namespace {
   std::string GenerateCodeVerifier() {

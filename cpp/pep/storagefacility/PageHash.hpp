@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/utils/Md5.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
