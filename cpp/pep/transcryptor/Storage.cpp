@@ -697,8 +697,6 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
     return;
   }
 
-  LOG(LOG_TAG, warning) << "Migrating ...";
-
   migrate();
   migrated = true; // let the caller know he should vacuum
 }
@@ -706,24 +704,20 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
 void TranscryptorStorage::migrate() {
   std::optional<int64_t> version = getCurrentVersion();
 
-  if (version) {
-    std::string message = "The need for a migration of the "
-      "transcryptor database was detected, but we did not expect to find "
-      "a record of a previous migration (to version "
-      + std::to_string(*version) + ".)";
-    LOG(LOG_TAG, error) << message;
-    throw Error(message);
+  if (!version || version == 1) {
+    try {
+      migrate_from_v1_to_v2();
+    } catch (...) {
+      LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
+        " to version 2 failed.";
+      throw;
+    }
+    LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
   }
 
-  try {
-    migrate_from_v1_to_v2();
-  } catch (...) {
-    LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
-       " to version 2 failed.";
-    throw;
-  }
-
-  LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
+  assert(version == 2 && "Unexpected version returned from getCurrentVersion");
+  LOG(LOG_TAG, warning) << "The database structure changed, but a migration from version " << *version
+    << " is not necessary";
 }
 
 
