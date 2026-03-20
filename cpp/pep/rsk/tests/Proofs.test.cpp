@@ -52,7 +52,33 @@ TEST(Proofs, ReshuffleRekeyVerifiersProof) {
 
   EXPECT_NO_THROW(proof.verify(verifiers, globalKey));
 
-  //TODO Test invalid proofs
+  // Test some invalid proofs
+  EXPECT_THROW(proof.verify(verifiers, pep::CurvePoint::Random()),
+    pep::InvalidProof) << "Proof should fail to validate with wrong global key";
+  {
+    auto evilVerifiers = verifiers;
+    evilVerifiers.mRekeyedPublicKey = pep::CurvePoint::Random();
+    EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
+      pep::InvalidProof) << "Proof should fail to validate with wrong rekeyedPublicKey";
+  }
+  {
+    auto evilVerifiers = verifiers;
+    evilVerifiers.mRekeyPoint = pep::CurvePoint::Random();
+    EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
+      pep::InvalidProof) << "Proof should fail to validate with wrong rekeyPoint";
+  }
+  {
+    auto evilVerifiers = verifiers;
+    evilVerifiers.mReshufflePoint = pep::CurvePoint::Random();
+    EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
+      pep::InvalidProof) << "Proof should fail to validate with wrong reshufflePoint";
+  }
+  {
+    auto evilVerifiers = verifiers;
+    evilVerifiers.mReshuffleOverRekeyPoint = pep::CurvePoint::Random();
+    EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
+      pep::InvalidProof) << "Proof should fail to validate with wrong reshuffleOverRekeyPoint";
+  }
 }
 
 TEST(Proofs, ReshuffleRekeyProof) {
