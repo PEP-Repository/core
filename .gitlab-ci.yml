@@ -28,14 +28,14 @@ variables:
   # For CI scripts
   CLEAN_CONAN: 1
 
-  # When adding executables including unit tests below, also add them to /docker/services.Dockerfile
-
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_APPS: >-
     cpp/pep/apps/pepDumpShadowAdministration
     cpp/pep/apps/pepEnrollment
     cpp/pep/apps/pepGenerateSystemKeys
     cpp/pep/apps/pepToken
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_PEP_SERVICES: >-
     cpp/pep/accessmanager/pepAccessManager
     cpp/pep/authserver/pepAuthserver
@@ -44,10 +44,12 @@ variables:
     cpp/pep/storagefacility/pepStorageFacility
     cpp/pep/transcryptor/pepTranscryptor
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_CLIENT: >-
     cpp/pep/cli/pepcli
     cpp/pep/logon/pepLogon
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_BENCHMARK: >-
     cpp/pep/benchmark/pepbenchmark
 
@@ -74,9 +76,11 @@ variables:
   PATH_AUTOCOMPLETION: >-
     autocomplete
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_GO: >-
     go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog
 
+  # When adding tests here, also add them to /docker/services.Dockerfile
   UNIT_TESTS_INTEGRATION: >-
     cpp/pep/apps/pepClientTest
     cpp/pep/storagefacility/pepStorageFacilityUnitTests
@@ -93,8 +97,8 @@ variables:
     cpp/pep/messaging/pepMessagingUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
-    cpp/pep/rsk/pepRskUnitTests
     cpp/pep/rsk-pep/pepRskPepUnitTests
+    cpp/pep/rsk/pepRskUnitTests
     cpp/pep/serialization/pepSerializationUnitTests
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
@@ -1063,26 +1067,34 @@ macos-arm-test:
 
 #################### Docker ####################
 
+# We also test directly in services image to try to make sure
+# executables don't depend on something in the builder image
 pep-services-image-test:
   stage: runtime-analysis
   extends: .dind
   variables:
-    TESTS: "$UNIT_TESTS_BASE"
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+  image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:
     - job: build-docker-images
       artifacts: false
+    # Use tests in $STAGING_DIRECTORY from artifacts
+    - ubuntu-lts-release
   #language=sh
   script:
-    - *docker_login
-    - |
-     for TEST in $TESTS; do
-       echo "Running test: $(basename $TEST)"
-       docker run --pull=always --rm -v "$CI_PROJECT_DIR/temp/:/app/test-results" "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" /bin/bash -c "mkdir -p /app/test-results && /app/$(basename $TEST) --gtest_output=xml:/app/test-results/"
-     done
+    # First make sure included apps like pepcli work
+    - /app/pepcli --version
+    # Then run unit tests
+    - for TEST in $TESTS; do
+    -   |
+        echo "Running test: $(basename $TEST)"
+        "$STAGING_DIRECTORY/$TEST" --gtest_output=xml:./test-results/
+    - done
   artifacts:
     reports:
-      junit: temp/*.xml
+      junit: test-results/*.xml
 
 ##########################################
 # Configuration for the integration stage#
