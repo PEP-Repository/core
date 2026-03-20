@@ -471,6 +471,15 @@ retrieve-lockfile:
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
     - cmake --build --preset conan-$build_type_lower
+
+    # Check for lines only in second file (tests on disk)
+    - if [ -n "$(comm -13
+      <(echo "$UNIT_TESTS_ALL" | tr -s ' ' '\n' | sort)
+      <(cd "./$BUILD_DIRECTORY/" && find -name 'pep*UnitTests' | sort | sed 's/^.\///') |
+      tee /dev/stderr)" ]; then
+    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml. Should these be added to $UNIT_TESTS_BASE?'
+    -   exit 1
+    - fi
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *stage-artifacts
@@ -974,14 +983,6 @@ build-sandbox-docker-image:
   variables:
     TESTS: "$UNIT_TESTS_BASE"
   script:
-    # Check for lines only in second file (tests on disk)
-    - if [ -n "$(comm -13
-      <(echo "$UNIT_TESTS_ALL" | tr -s ' ' '\n' | sort)
-      <(cd "$STAGING_DIRECTORY" && find -name 'pep*UnitTests' | sort | sed 's/^.\///') |
-      tee /dev/stderr)" ]; then
-    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml. Should these be added to $UNIT_TESTS_BASE?'
-    -   exit 1
-    - fi
     - *run-tests
   artifacts:
     reports:
