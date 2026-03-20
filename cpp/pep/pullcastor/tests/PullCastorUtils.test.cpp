@@ -7,6 +7,10 @@
 using namespace std::literals;
 using namespace pep;
 
+#ifdef __GNUC__
+# pragma GCC diagnostic ignored "-Wunreachable-code"  // Suppress warning about GTEST_SKIP
+#endif
+
 namespace {
 
 TEST(ParseCastorDateTime, Amsterdam) {
