@@ -1,3 +1,13 @@
+spec:
+  inputs:
+    autolinting:
+      options: ['linted', 'unlinted']
+      default: unlinted
+      description: Enable linter during compilation
+
+# https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
+---
+
 stages:
   - static-analysis
   - build
@@ -145,13 +155,6 @@ variables:
       - 'main'  # Run if on main branch
       - 'dry'  # Dry run
     description: Cleanup obsolete containers & packages
-
-  ENABLE_LINTER:
-    value: 'no'
-    options:
-      - 'no'
-      - 'yes'
-    description: Enable linter during compilation
 
   LINTER_CONCURRENCY_LIMIT:
     value: '20'
@@ -554,10 +557,18 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
     WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
 
-ubuntu-lts-release:
+# Builds (and optionally lints) binaries for ubuntu-lts-release
+ubuntu-lts-release-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      variables:
+        ENABLE_LINTER: no
   variables:
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -575,13 +586,26 @@ ubuntu-lts-release:
     paths:
       - $STAGING_DIRECTORY
 
+# Collects/provides (linted or unlinted) binaries
+ubuntu-lts-release:
+  stage: build
+  tags: [docker-small]
+  needs:
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
+  script:
+    echo "Collecting artifacts from the ubuntu-lts-release-$[[ inputs.autolinting ]] job"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
 ubuntu-lts-release-manual-lint:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
   rules:
-    # Redundant if we're already linting
-    - if: $ENABLE_LINTER == "yes"
+    # Redundant if CI already auto-lints
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
     - <<: *not-stable-release
       when: manual
@@ -636,18 +660,39 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - when: on_success
 
-ubuntu-rolling-debug:
+# Builds (and optionally lints) binaries for ubuntu-rolling-debug
+ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-rolling-debug-settings
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      variables:
+        ENABLE_LINTER: no
+
+# Collects/provides (linted or unlinted) binaries
+ubuntu-rolling-debug:
+  stage: build
+  tags: [docker-small]
+  needs:
+    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
+  script:
+    echo "Collecting artifacts from the ubuntu-rolling-debug-$[[ inputs.autolinting ]] job"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
 
 ubuntu-rolling-debug-manual-lint:
   extends:
     - .ubuntu-build-base
     - .ubuntu-rolling-debug-settings
   rules:
-    # Redundant if we're already linting
-    - if: $ENABLE_LINTER == "yes"
+    # Redundant if CI already auto-lints
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
     - <<: *not-stable-release
       when: manual
