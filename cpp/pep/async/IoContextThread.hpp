@@ -14,13 +14,13 @@ class IoContextThread {
 
  public:
   IoContextThread(IoContextThread&& other) noexcept = default;
-  IoContextThread(const IoContextThread&) = delete;
+  IoContextThread& operator=(IoContextThread&&) = default;
   ~IoContextThread() noexcept = default;
 
+  IoContextThread(const IoContextThread&) = delete;
+  IoContextThread& operator=(const IoContextThread&) = delete;
+
   explicit IoContextThread(std::shared_ptr<boost::asio::io_context> io_context);
-
-  IoContextThread& operator =(const IoContextThread&) = delete;
-
   void stop(bool force = false) noexcept;
 };
 
