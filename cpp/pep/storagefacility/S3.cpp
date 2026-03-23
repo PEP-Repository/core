@@ -1,6 +1,7 @@
 #include <pep/storagefacility/S3.hpp>
 
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -146,7 +147,7 @@ namespace pep::s3
 
       std::string ComputeSignature(Context& c) {
         return boost::algorithm::to_lower_copy(boost::algorithm::hex(
-              Sha256::HMac(ComputeSigningKey(c),
+              Hmac<Sha256>(ComputeSigningKey(c),
                 ComputeStringToSign(c))));
       }
 
@@ -154,11 +155,11 @@ namespace pep::s3
       std::string ComputeSigningKey(const Context& c) {
         std::string prekey = "AWS4" + c.credentials.secret;
 
-        prekey = Sha256::HMac(prekey, GetDate(c));
-        prekey = Sha256::HMac(prekey, c.credentials.region);
-        prekey = Sha256::HMac(prekey, c.credentials.service);
+        prekey = Hmac<Sha256>(prekey, GetDate(c));
+        prekey = Hmac<Sha256>(prekey, c.credentials.region);
+        prekey = Hmac<Sha256>(prekey, c.credentials.service);
 
-        return Sha256::HMac(prekey, "aws4_request");
+        return Hmac<Sha256>(prekey, "aws4_request");
       }
 
 

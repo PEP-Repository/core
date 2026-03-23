@@ -2,18 +2,19 @@
 
 #include <pep/rsk-pep/KeyDomain.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <stdexcept>
 
 using namespace pep;
 
 DataTranslator::DataTranslator(DataTranslationKeys keys)
-    : rsk_(RskTranslator::Keys(
-               static_cast<RskTranslator::KeyDomainType>(KeyDomain::Data),
-               keys.blindingKeySecret,
-               keys.encryptionKeyFactorSecret
-           )),
+    : rsk_({
+               .domain = static_cast<RskTranslator::KeyDomainType>(KeyDomain::Data),
+               .reshuffle = keys.blindingKeySecret,
+               .rekey = keys.encryptionKeyFactorSecret,
+           }),
       masterPrivateEncryptionKeyShare_(keys.masterPrivateEncryptionKeyShare) {}
 
 /// Generate blinding key (reshuffle)
@@ -30,7 +31,7 @@ CurveScalar DataTranslator::generateBlindingKey(
   if (!blindingKeySecret) {
     throw std::logic_error("Trying to perform key unblinding while blinding key is not set (only AM should call this)");
   }
-  auto key = CurveScalar::From64Bytes(Sha512::HMac(
+  auto key = CurveScalar::From64Bytes(Hmac<Sha512>(
       SpanToString(blindingKeySecret->hmacKey()),
       blindAddData));
   // If invertBlindKey, we invert the blinding key. Otherwise, we invert the unblinding key

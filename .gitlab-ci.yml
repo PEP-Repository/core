@@ -1,3 +1,13 @@
+spec:
+  inputs:
+    autolinting:
+      options: ['linted', 'unlinted']
+      default: unlinted
+      description: Enable linter during compilation
+
+# https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
+---
+
 stages:
   - static-analysis
   - build
@@ -28,14 +38,14 @@ variables:
   # For CI scripts
   CLEAN_CONAN: 1
 
-  # When adding executables including unit tests below, also add them to /docker/services.Dockerfile
-
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_APPS: >-
     cpp/pep/apps/pepDumpShadowAdministration
     cpp/pep/apps/pepEnrollment
     cpp/pep/apps/pepGenerateSystemKeys
     cpp/pep/apps/pepToken
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_PEP_SERVICES: >-
     cpp/pep/accessmanager/pepAccessManager
     cpp/pep/authserver/pepAuthserver
@@ -44,10 +54,12 @@ variables:
     cpp/pep/storagefacility/pepStorageFacility
     cpp/pep/transcryptor/pepTranscryptor
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_CLIENT: >-
     cpp/pep/cli/pepcli
     cpp/pep/logon/pepLogon
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_BENCHMARK: >-
     cpp/pep/benchmark/pepbenchmark
 
@@ -74,9 +86,11 @@ variables:
   PATH_AUTOCOMPLETION: >-
     autocomplete
 
+  # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_GO: >-
     go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog
 
+  # When adding tests here, also add them to /docker/services.Dockerfile
   UNIT_TESTS_INTEGRATION: >-
     cpp/pep/apps/pepClientTest
     cpp/pep/storagefacility/pepStorageFacilityUnitTests
@@ -87,14 +101,15 @@ variables:
     cpp/pep/async/pepAsyncUnitTests
     cpp/pep/auth/pepAuthUnitTests
     cpp/pep/content/pepContentUnitTests
+    cpp/pep/database/pepDatabaseUnitTests
     cpp/pep/crypto/pepCryptoUnitTests
     cpp/pep/elgamal/pepElgamalUnitTests
     cpp/pep/keyserver/pepKeyServerUnitTests
     cpp/pep/messaging/pepMessagingUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
-    cpp/pep/rsk/pepRskUnitTests
     cpp/pep/rsk-pep/pepRskPepUnitTests
+    cpp/pep/rsk/pepRskUnitTests
     cpp/pep/serialization/pepSerializationUnitTests
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
@@ -104,6 +119,12 @@ variables:
 
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
+    cpp/pep/pullcastor/pepPullCastorUnitTests
+
+  UNIT_TESTS_ALL: >-
+    $UNIT_TESTS_INTEGRATION
+    $UNIT_TESTS_BASE
+    $UNIT_TESTS_CASTOR
 
   FORCE_BUILD_STABLE_RELEASE:
     value: ''
@@ -134,13 +155,6 @@ variables:
       - 'main'  # Run if on main branch
       - 'dry'  # Dry run
     description: Cleanup obsolete containers & packages
-
-  ENABLE_LINTER:
-    value: 'no'
-    options:
-      - 'no'
-      - 'yes'
-    description: Enable linter during compilation
 
   LINTER_CONCURRENCY_LIMIT:
     value: '20'
@@ -466,6 +480,15 @@ retrieve-lockfile:
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
     - cmake --build --preset conan-$build_type_lower
+
+    # Check for lines only in second file (tests on disk)
+    - if [ -n "$(comm -13
+      <(echo "$UNIT_TESTS_ALL" | tr -s ' ' '\n' | sort)
+      <(cd "./$BUILD_DIRECTORY/" && find -name 'pep*UnitTests' | sort | sed 's/^.\///') |
+      tee /dev/stderr)" ]; then
+    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_BASE?'
+    -   exit 1
+    - fi
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *stage-artifacts
@@ -475,7 +498,6 @@ retrieve-lockfile:
   extends:
     - .ubuntu-build-base
   variables:
-    TESTS: "$UNIT_TESTS_BASE $UNIT_TESTS_CASTOR"
     ARTIFACTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_CASTOR
@@ -535,10 +557,18 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
     WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
 
-ubuntu-lts-release:
+# Builds (and optionally lints) binaries for ubuntu-lts-release
+ubuntu-lts-release-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      variables:
+        ENABLE_LINTER: no
   variables:
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -556,13 +586,26 @@ ubuntu-lts-release:
     paths:
       - $STAGING_DIRECTORY
 
+# Collects/provides (linted or unlinted) binaries
+ubuntu-lts-release:
+  stage: build
+  tags: [docker-small]
+  needs:
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
+  script:
+    echo "Collecting artifacts from the ubuntu-lts-release-$[[ inputs.autolinting ]] job"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
 ubuntu-lts-release-manual-lint:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
   rules:
-    # Redundant if we're already linting
-    - if: $ENABLE_LINTER == "yes"
+    # Redundant if CI already auto-lints
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
     - <<: *not-stable-release
       when: manual
@@ -617,18 +660,39 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - when: on_success
 
-ubuntu-rolling-debug:
+# Builds (and optionally lints) binaries for ubuntu-rolling-debug
+ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-rolling-debug-settings
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      variables:
+        ENABLE_LINTER: no
+
+# Collects/provides (linted or unlinted) binaries
+ubuntu-rolling-debug:
+  stage: build
+  tags: [docker-small]
+  needs:
+    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
+  script:
+    echo "Collecting artifacts from the ubuntu-rolling-debug-$[[ inputs.autolinting ]] job"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
 
 ubuntu-rolling-debug-manual-lint:
   extends:
     - .ubuntu-build-base
     - .ubuntu-rolling-debug-settings
   rules:
-    # Redundant if we're already linting
-    - if: $ENABLE_LINTER == "yes"
+    # Redundant if CI already auto-lints
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
     - <<: *not-stable-release
       when: manual
@@ -757,7 +821,8 @@ windows-all-targets:
                       $EXECUTABLES_BENCHMARK
                       $PEPSERVERS_MONOLITH
                       $UNIT_TESTS_INTEGRATION
-                      $UNIT_TESTS_BASE"
+                      $UNIT_TESTS_BASE
+                      $UNIT_TESTS_CASTOR"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
                                                                           --build-mode "$CMAKE_BUILD_TYPE"
@@ -967,7 +1032,9 @@ build-sandbox-docker-image:
   tags:
     - docker
   variables:
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
   script:
     - *run-tests
   artifacts:
@@ -983,7 +1050,6 @@ ubuntu-lts-debug-test:
 ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
   extends: .ubuntu-lts-debug-settings
   variables:
-    WITH_CASTOR: "False"
     MEM_ANALYSIS_TOOL: "none"
     TESTS: "$UNIT_TESTS_BASE"
   needs: [ubuntu-lts-debug-without-castor]
@@ -1019,9 +1085,10 @@ ubuntu-rolling-release-test:
 windows-test:
   stage: runtime-analysis
   variables:
-    WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "none"
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
   tags:
     # Do not run in parallel with other tests, as we may bind to static ports.
     # May still run in parallel with build jobs.
@@ -1038,7 +1105,6 @@ windows-test:
 .macos-test-base:
   stage: runtime-analysis
   variables:
-    WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: "$UNIT_TESTS_BASE"
   script:
@@ -1063,26 +1129,34 @@ macos-arm-test:
 
 #################### Docker ####################
 
+# We also test directly in services image to try to make sure
+# executables don't depend on something in the builder image
 pep-services-image-test:
   stage: runtime-analysis
   extends: .dind
   variables:
-    TESTS: "$UNIT_TESTS_BASE"
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+  image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:
     - job: build-docker-images
       artifacts: false
+    # Use tests in $STAGING_DIRECTORY from artifacts
+    - ubuntu-lts-release
   #language=sh
   script:
-    - *docker_login
-    - |
-     for TEST in $TESTS; do
-       echo "Running test: $(basename $TEST)"
-       docker run --pull=always --rm -v "$CI_PROJECT_DIR/temp/:/app/test-results" "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" /bin/bash -c "mkdir -p /app/test-results && /app/$(basename $TEST) --gtest_output=xml:/app/test-results/"
-     done
+    # First make sure included apps like pepcli work
+    - /app/pepcli --version
+    # Then run unit tests
+    - for TEST in $TESTS; do
+    -   |
+        echo "Running test: $(basename $TEST)"
+        "$STAGING_DIRECTORY/$TEST" --gtest_output=xml:./test-results/
+    - done
   artifacts:
     reports:
-      junit: temp/*.xml
+      junit: test-results/*.xml
 
 ##########################################
 # Configuration for the integration stage#

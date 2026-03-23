@@ -3,7 +3,8 @@
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <filesystem>
 
@@ -33,7 +34,7 @@ bool OAuthToken::verify(const std::string& secret, const std::string& requiredSu
   auto result = true;
 
   // Compute the HMAC on the json using the shared secret
-  std::string localHMAC = Sha256::HMac(secret, mData);
+  std::string localHMAC = Hmac<Sha256>(secret, mData);
 
   // Check whether the received HMAC is equal to the computed one
   if(localHMAC != mHmac) {
@@ -137,8 +138,7 @@ OAuthToken OAuthToken::Generate(
     stream << ".";
 
     // and finally the (base64 encoded) hmac of the payload
-    stream << EncodeBase64Url(
-             Sha256::HMac(secret, payload));
+    stream << EncodeBase64Url(Hmac<Sha256>(secret, payload));
 
     return OAuthToken(std::move(stream).str());
 }
