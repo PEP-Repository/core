@@ -10,7 +10,7 @@ namespace pep {
 class IoContextThread {
  private:
    std::jthread thread_;
-   std::unique_ptr<WorkGuard> guard_; // Declared after thread_ so it is destroyed before thread_
+   std::unique_ptr<WorkGuard> guard_; // Declared after thread_ so it is destroyed before thread_ to prevent deadlock
 
  public:
   IoContextThread(IoContextThread&& other) noexcept = default;
