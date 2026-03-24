@@ -1,6 +1,7 @@
 import logging
 import re
 import json
+from pathlib import Path
 from .peprepository import PepError
 
 class AccessGroup:
@@ -33,6 +34,44 @@ class AccessGroup:
             else:
                 self.log("User and group not found in the output.", level=logging.WARNING)
                 return None, None
+        except Exception as e:
+            self.log(f"Error: {e}", level=logging.ERROR)
+            raise
+
+    def list_pseudonym_mapping(self, subject_group: str = "*") -> dict[str, dict]:
+        """
+        Returns a comprehensive mapping of pseudonyms for the specified subject group.
+
+        Args:
+            subject_group: The subject group to query (default: "*" for all)
+
+        Returns:
+            A dictionary with:
+            - Key: Local pseudonym
+            - Value: Dictionary containing:
+                - "blp": Brief local pseudonym
+                - "pp": Polymorphic pseudonym
+        """
+        command = ["list", "-P", subject_group, "--local-pseudonyms", "--show-dataless", "--group-output"]
+        try:
+            output = self.repository.run_command(command)
+            self.log("Successfully obtained pseudonyms from PEP")
+            try:
+                data = json.loads(output)
+                result = {
+                    item["lp"]: {
+                        "blp": item["blp"],
+                        "pp": item["pp"]
+                    }
+                    for item in data
+                }
+                return result
+            except json.JSONDecodeError as e:
+                self.log(f"Error decoding JSON: {e}", logging.ERROR)
+                raise
+        except PepError as e:
+            self.log(f"Failed to list pseudonyms. Error: {e}", logging.ERROR)
+            raise
         except Exception as e:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
@@ -134,16 +173,105 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def pull_data_for_column_groups_and_subject_groups(self, column_groups: list[str], subject_groups : list[str], force: bool = False, output_directory: str = None, suppress_file_extensions: bool = False):
-        if not isinstance(column_groups, list):
+    def map_local_pseudonyms_to_pulled_data(self, columns: list[str], subject_groups: list[str], output_directory: str = "/tmp/pep_connector") -> dict[str, dict[str, str]]:
+        """
+        Pulls data from PEP and creates a mapping from local pseudonyms to their pulled data file paths.
+        This function pulls data to /tmp/pep_connector, then scans the output directory (organized by brief local pseudonyms)
+        and maps it back to local pseudonyms.
+
+        Args:
+            columns: List of columns to pull
+            subject_groups: List of subject groups to pull
+            output_directory: Directory where pulled data is stored
+
+        Returns:
+            A dictionary with:
+            - Key: Local pseudonym (only included if pulled data exists)
+            - Value: Dictionary with column names as keys and file paths as values
+                    {"column_name": "/tmp/pep_connector/blp_dir/column_name", ...}
+        """
+        # Pull the data first
+        self.pull_data_for_column_groups_and_subject_groups(
+            columns=columns,
+            subject_groups=subject_groups,
+            force=True,
+            output_directory=output_directory,
+            suppress_file_extensions=True
+        )
+
+        # Get the lp to blp mapping for all subjects
+        pseudonym_map = self.list_pseudonym_mapping(subject_group="*")
+
+        result = {}
+        output_path = Path(output_directory)
+
+        if not output_path.exists():
+            self.log(f"Output directory does not exist: {output_directory}", logging.WARNING)
+            return result
+
+        # Iterate through each local pseudonym
+        for lp, pseudo_data in pseudonym_map.items():
+            blp = pseudo_data["blp"]
+            blp_dir = output_path / blp
+            
+            if blp_dir.exists() and blp_dir.is_dir():
+                # Get all files in this blp directory
+                column_files = {}
+                for file_path in blp_dir.iterdir():
+                    if file_path.is_file():
+                        # Use the filename as the column name
+                        column_name = file_path.name
+                        column_files[column_name] = str(file_path)
+
+                if column_files:
+                    result[lp] = column_files
+
+        self.log(f"Mapped {len(result)} local pseudonyms to their pulled data files")
+        return result
+
+    def pull_data_for_column_groups_and_subject_groups(self, column_groups: list[str] = None, subject_groups: list[str] = None, 
+                                                        columns: list[str] = None, subjects: list[str] = None,
+                                                        force: bool = False, output_directory: str = None, suppress_file_extensions: bool = False):
+        # Validate inputs
+        if column_groups is not None and not isinstance(column_groups, list):
             raise ValueError("Column groups must be a list of strings")
-        if not isinstance(subject_groups, list):
+        if subject_groups is not None and not isinstance(subject_groups, list):
             raise ValueError("Subject groups must be a list of strings")
+        if columns is not None and not isinstance(columns, list):
+            raise ValueError("Columns must be a list of strings")
+        if subjects is not None and not isinstance(subjects, list):
+            raise ValueError("Subjects must be a list of strings")
+        
+        # Ensure at least one column or column group is provided
+        if not column_groups and not columns:
+            raise ValueError("At least one column or column group must be provided")
+        
+        # Ensure at least one subject or subject group is provided
+        if not subject_groups and not subjects:
+            raise ValueError("At least one subject or subject group must be provided")
+        
         command = ["pull"]
-        for column_group in column_groups:
-            command.extend(["-C", column_group])
-        for part_group in subject_groups:
-            command.extend(["-P", part_group])
+        
+        # Add column groups
+        if column_groups:
+            for column_group in column_groups:
+                command.extend(["-C", column_group])
+        
+        # Add individual columns
+        if columns:
+            for column in columns:
+                command.extend(["-c", column])
+        
+        # Add subject groups
+        if subject_groups:
+            for subject_group in subject_groups:
+                command.extend(["-P", subject_group])
+        
+        # Add individual subjects
+        if subjects:
+            for subject in subjects:
+                command.extend(["-p", subject])
+        
         if suppress_file_extensions:
             command.append("--suppress-file-extensions")
         if force:
