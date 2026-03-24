@@ -1226,10 +1226,10 @@ message UserVerifiersResponse {
 
 // Public information required to verify a ReshuffleRekeyProof.
 message ReshuffleRekeyVerifiers {
-  CurvePoint reshuffle_over_rekey_point = 1;
-  CurvePoint reshuffle_point = 2;
+  CurvePoint reshuffle_over_rekey_commitment = 1;
+  CurvePoint reshuffle_commitment = 2;
   CurvePoint rekeyed_public_key = 3;
-  CurvePoint rekey_point = 4;
+  CurvePoint rekey_commitment = 4;
 }
 
 message ReshuffleRekeyVerifiersProof {

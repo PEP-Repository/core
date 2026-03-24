@@ -76,22 +76,22 @@ class ReshuffleRekeyVerifiers {
  public:
   ReshuffleRekeyVerifiers() = default;
   ReshuffleRekeyVerifiers(
-      const CurvePoint& reshufflePoint,
-      const CurvePoint& rekeyPoint,
-      const CurvePoint& reshuffleOverRekeyPoint,
+      const CurvePoint& reshuffleCommitment,
+      const CurvePoint& rekeyCommitment,
+      const CurvePoint& reshuffleOverRekeyCommitment,
       const ElgamalPublicKey& rekeyedPublicKey)
-  : mReshufflePoint(reshufflePoint),
-    mRekeyPoint(rekeyPoint),
-    mReshuffleOverRekeyPoint(reshuffleOverRekeyPoint),
+  : mReshuffleCommitment(reshuffleCommitment),
+    mRekeyCommitment(rekeyCommitment),
+    mReshuffleOverRekeyCommitment(reshuffleOverRekeyCommitment),
     mRekeyedPublicKey(rekeyedPublicKey) { }
   static ReshuffleRekeyVerifiers Compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
     const ElgamalPublicKey& globalKey);
 
-  CurvePoint mReshufflePoint;
-  CurvePoint mRekeyPoint;
-  CurvePoint mReshuffleOverRekeyPoint;
+  CurvePoint mReshuffleCommitment;
+  CurvePoint mRekeyCommitment;
+  CurvePoint mReshuffleOverRekeyCommitment;
   ElgamalPublicKey mRekeyedPublicKey;
 
   [[nodiscard]] auto operator<=>(const ReshuffleRekeyVerifiers& right) const = default;
@@ -151,15 +151,15 @@ class ReshuffleRekeyProof {
 
   // Constructs a proof that pre is reshuffled & rekeyed to post.
   //
-  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B
+  // Assumes reshuffleCommitment = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyCommitment = reshuffle/rekey*B
   // and (of course) that post is the reshuffled & rekeyed version of pre.
   static ReshuffleRekeyProof Create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const CurveScalar& reshuffle,
-    const CurvePoint& reshufflePoint,
+    const CurvePoint& reshuffleCommitment,
     const CurveScalar& reshuffleOverRekey,
-    const CurvePoint& reshuffleOverRekeyPoint);
+    const CurvePoint& reshuffleOverRekeyCommitment);
 
   // Stores the reshuffled & rekeyed version of ElgamalEncryption in to out and
   // returns a zero-knowledge proof of correctness.

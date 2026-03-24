@@ -376,16 +376,16 @@ struct PseudonymizationDomainVerifiersRecord {
   PseudonymizationDomainVerifiersRecord() = default;
   PseudonymizationDomainVerifiersRecord(
     std::string pseudonymizationDomain,
-    const CurvePoint& reshufflePoint)
+    const CurvePoint& reshuffleCommitment)
     : pseudonymizationDomain(std::move(pseudonymizationDomain)),
-      reshufflePoint(RangeToVector(reshufflePoint.pack())) {}
+      reshuffleCommitment(RangeToVector(reshuffleCommitment.pack())) {}
   
   std::string pseudonymizationDomain; // Primary key
 
-  DbCurvePoint reshufflePoint;
+  DbCurvePoint reshuffleCommitment;
 
-  CurvePoint getReshufflePoint() const {
-    return CurvePoint(SpanToString(reshufflePoint));
+  CurvePoint getReshuffleCommitment() const {
+    return CurvePoint(SpanToString(reshuffleCommitment));
   }
 };
 
@@ -395,14 +395,14 @@ struct SessionVerifiersRecord {
     std::vector<char> certificateHash,
     Timestamp expiryTimestamp,
     std::string pseudonymizationDomain,
-    const CurvePoint& rekeyPoint,
-    const CurvePoint& reshuffleOverRekeyPoint,
+    const CurvePoint& rekeyCommitment,
+    const CurvePoint& reshuffleOverRekeyCommitment,
     const ElgamalPublicKey& rekeyedPublicKey)
     : certificateHash(std::move(certificateHash)),
       expiryTimestamp{TicksSinceEpoch<milliseconds>(expiryTimestamp)},
       pseudonymizationDomain(std::move(pseudonymizationDomain)),
-      rekeyPoint(RangeToVector(rekeyPoint.pack())),
-      reshuffleOverRekeyPoint(RangeToVector(reshuffleOverRekeyPoint.pack())),
+      rekeyCommitment(RangeToVector(rekeyCommitment.pack())),
+      reshuffleOverRekeyCommitment(RangeToVector(reshuffleOverRekeyCommitment.pack())),
       rekeyedPublicKey(RangeToVector(rekeyedPublicKey.pack())) {}
 
   std::vector<char> certificateHash; // Primary key
@@ -410,15 +410,15 @@ struct SessionVerifiersRecord {
   database::UnixMillis expiryTimestamp{};
   std::string pseudonymizationDomain; // Refers to PseudonymizationDomainVerifiersRecord
   DbCurvePoint
-    rekeyPoint,
-    reshuffleOverRekeyPoint,
+    rekeyCommitment,
+    reshuffleOverRekeyCommitment,
     rekeyedPublicKey;
 
-  CurvePoint getRekeyPoint() const {
-    return CurvePoint(SpanToString(rekeyPoint));
+  CurvePoint getRekeyCommitment() const {
+    return CurvePoint(SpanToString(rekeyCommitment));
   }
-  CurvePoint getReshuffleOverRekeyPoint() const {
-    return CurvePoint(SpanToString(reshuffleOverRekeyPoint));
+  CurvePoint getReshuffleOverRekeyCommitment() const {
+    return CurvePoint(SpanToString(reshuffleOverRekeyCommitment));
   }
   ElgamalPublicKey getRekeyedPublicKey() const {
     return CurvePoint(SpanToString(rekeyedPublicKey));
@@ -548,15 +548,15 @@ auto ts_create_db(const std::string& path) {
     make_table("PseudonymizationDomainVerifiers",
       make_column("pseudonymizationDomain", &PseudonymizationDomainVerifiersRecord::pseudonymizationDomain,
         primary_key()),
-      make_column("reshufflePoint", &PseudonymizationDomainVerifiersRecord::reshufflePoint)),
+      make_column("reshuffleCommitment", &PseudonymizationDomainVerifiersRecord::reshuffleCommitment)),
 
     make_table("SessionVerifiers",
       make_column("certificateHash", &SessionVerifiersRecord::certificateHash,
         primary_key()),
       make_column("expiryTimestamp", &SessionVerifiersRecord::expiryTimestamp),
       make_column("pseudonymizationDomain", &SessionVerifiersRecord::pseudonymizationDomain),
-      make_column("rekeyPoint", &SessionVerifiersRecord::rekeyPoint),
-      make_column("reshuffleOverRekeyPoint", &SessionVerifiersRecord::reshuffleOverRekeyPoint),
+      make_column("rekeyCommitment", &SessionVerifiersRecord::rekeyCommitment),
+      make_column("reshuffleOverRekeyCommitment", &SessionVerifiersRecord::reshuffleOverRekeyCommitment),
       make_column("rekeyedPublicKey", &SessionVerifiersRecord::rekeyedPublicKey),
       foreign_key(&SessionVerifiersRecord::pseudonymizationDomain)
         .references(&PseudonymizationDomainVerifiersRecord::pseudonymizationDomain))
@@ -1008,9 +1008,9 @@ std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(con
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
     auto domainVerifiers = mStorage->raw.get<PseudonymizationDomainVerifiersRecord>(domain);
     return ReshuffleRekeyVerifiers(
-      domainVerifiers.getReshufflePoint(),
-      sessionVerifiers->getRekeyPoint(),
-      sessionVerifiers->getReshuffleOverRekeyPoint(),
+      domainVerifiers.getReshuffleCommitment(),
+      sessionVerifiers->getRekeyCommitment(),
+      sessionVerifiers->getReshuffleOverRekeyCommitment(),
       sessionVerifiers->getRekeyedPublicKey());
   }
   return {};
@@ -1020,20 +1020,20 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
   auto domain = userCertificate.getOrganizationalUnit().value();
   if (auto domainVerifiers = mStorage->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
     LOG(LOG_TAG, debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
-    if (domainVerifiers->getReshufflePoint() != verifiers.mReshufflePoint) {
+    if (domainVerifiers->getReshuffleCommitment() != verifiers.mReshuffleCommitment) {
       throw std::runtime_error("Inconsistent reshuffle verifier for pseudonymization domain " + Logging::Escape(domain));
     }
   } else {
     LOG(LOG_TAG, debug) << "Storing domain verifiers for " << Logging::Escape(domain);
-    mStorage->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshufflePoint));
+    mStorage->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshuffleCommitment));
   }
 
   auto hash = RangeToVector(CertificateHash(userCertificate));
   if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
     LOG(LOG_TAG, debug) << "Found existing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
-    if (sessionVerifiers->getRekeyPoint() != verifiers.mRekeyPoint
-      || sessionVerifiers->getReshuffleOverRekeyPoint() != verifiers.mReshuffleOverRekeyPoint
+    if (sessionVerifiers->getRekeyCommitment() != verifiers.mRekeyCommitment
+      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.mReshuffleOverRekeyCommitment
       || sessionVerifiers->getRekeyedPublicKey() != verifiers.mRekeyedPublicKey) {
       throw std::runtime_error("Inconsistent verifiers for session for " + userCertificate.getCommonName().value());
     }
@@ -1044,8 +1044,8 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
       std::move(hash),
       userCertificate.getNotAfter(),
       domain,
-      verifiers.mRekeyPoint,
-      verifiers.mReshuffleOverRekeyPoint,
+      verifiers.mRekeyCommitment,
+      verifiers.mReshuffleOverRekeyCommitment,
       verifiers.mRekeyedPublicKey));
   }
 }

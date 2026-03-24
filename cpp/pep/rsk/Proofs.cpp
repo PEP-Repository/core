@@ -72,14 +72,14 @@ ReshuffleRekeyProof ReshuffleRekeyProof::Create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const CurveScalar& reshuffle,
-    const CurvePoint& reshufflePoint,
+    const CurvePoint& reshuffleCommitment,
     const CurveScalar& reshuffleOverRekey,
-    const CurvePoint& reshuffleOverRekeyPoint) {
-  PEP_CryptoAssert(reshufflePoint == reshuffle * CurvePoint::Base);
-  PEP_CryptoAssert(reshuffleOverRekeyPoint == reshuffleOverRekey * CurvePoint::Base);
+    const CurvePoint& reshuffleOverRekeyCommitment) {
+  PEP_CryptoAssert(reshuffleCommitment == reshuffle * CurvePoint::Base);
+  PEP_CryptoAssert(reshuffleOverRekeyCommitment == reshuffleOverRekey * CurvePoint::Base);
   return ReshuffleRekeyProof(
-    ScalarMultProof::Create(reshuffleOverRekeyPoint, pre.b, post.b, reshuffleOverRekey),
-    ScalarMultProof::Create(reshufflePoint, pre.c, post.c, reshuffle));
+    ScalarMultProof::Create(reshuffleOverRekeyCommitment, pre.b, post.b, reshuffleOverRekey),
+    ScalarMultProof::Create(reshuffleCommitment, pre.c, post.c, reshuffle));
 }
 
 ReshuffleRekeyProof ReshuffleRekeyProof::CertifiedReshuffleRekey(
@@ -110,8 +110,8 @@ void ReshuffleRekeyProof::verify(
     const ElgamalEncryption& post,
     const ReshuffleRekeyVerifiers& verifiers) const {
   // Note: we assume that the factors in ReshuffleRekeyVerifiers are correctly related
-  mReshuffleOverRekeyTimesBProof.verify(verifiers.mReshuffleOverRekeyPoint, pre.b, post.b);
-  mReshuffleTimesCProof.verify(verifiers.mReshufflePoint, pre.c, post.c);
+  mReshuffleOverRekeyTimesBProof.verify(verifiers.mReshuffleOverRekeyCommitment, pre.b, post.b);
+  mReshuffleTimesCProof.verify(verifiers.mReshuffleCommitment, pre.c, post.c);
   if (post.publicKey != verifiers.mRekeyedPublicKey)
     throw InvalidProof();
 }
@@ -168,30 +168,30 @@ ReshuffleRekeyVerifiers ReshuffleRekeyVerifiers::Compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
     const ElgamalPublicKey& globalKey) {
-  CurvePoint reshufflePoint = reshuffle * CurvePoint::Base;
+  CurvePoint reshuffleCommitment = reshuffle * CurvePoint::Base;
   return ReshuffleRekeyVerifiers(
-    reshufflePoint,
+    reshuffleCommitment,
     rekey * CurvePoint::Base,
-    rekey.invert() * reshufflePoint,
+    rekey.invert() * reshuffleCommitment,
     rekey * globalKey
   );
 }
 
 void ReshuffleRekeyVerifiers::ensureThreadSafe() const {
-  mReshuffleOverRekeyPoint.ensureThreadSafe();
-  mReshufflePoint.ensureThreadSafe();
+  mReshuffleOverRekeyCommitment.ensureThreadSafe();
+  mReshuffleCommitment.ensureThreadSafe();
   mRekeyedPublicKey.ensureThreadSafe();
 }
 
 void ReshuffleRekeyVerifiersProof::verify(
     const ReshuffleRekeyVerifiers& verifiers,
     const ElgamalPublicKey& globalKey) const {
-  // Check rekeyPoint & rekeyInversePoint are related
-  mRekeyInverseProof.verify(mRekeyInversePoint, verifiers.mRekeyPoint);
-  // Check log(reshufflePoint) * rekeyInversePoint = reshuffleOverRekeyPoint
-  mReshuffleTimesRekeyInverseProof.verify(verifiers.mReshufflePoint, mRekeyInversePoint, verifiers.mReshuffleOverRekeyPoint);
+  // Check rekeyCommitment & rekeyInversePoint are related
+  mRekeyInverseProof.verify(mRekeyInversePoint, verifiers.mRekeyCommitment);
+  // Check log(reshuffleCommitment) * rekeyInversePoint = reshuffleOverRekeyCommitment
+  mReshuffleTimesRekeyInverseProof.verify(verifiers.mReshuffleCommitment, mRekeyInversePoint, verifiers.mReshuffleOverRekeyCommitment);
   // Check public key
-  mRekeyTimesPublicKeyProof.verify(verifiers.mRekeyPoint, globalKey, verifiers.mRekeyedPublicKey);
+  mRekeyTimesPublicKeyProof.verify(verifiers.mRekeyCommitment, globalKey, verifiers.mRekeyedPublicKey);
 }
 
 std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
@@ -201,18 +201,18 @@ ReshuffleRekeyVerifiersProof::ComputeCertified(
     const ElgamalPublicKey& globalKey) {
   CurveScalar rekeyInverse = rekey.invert();
   CurvePoint rekeyInversePoint = rekeyInverse * CurvePoint::Base;
-  CurvePoint reshufflePoint = reshuffle * CurvePoint::Base; //TODO only calculate when not yet known
+  CurvePoint reshuffleCommitment = reshuffle * CurvePoint::Base; //TODO only calculate when not yet known
   ReshuffleRekeyVerifiers verifiers(
-    reshufflePoint,
+    reshuffleCommitment,
     rekey * CurvePoint::Base,
-    rekeyInverse * reshufflePoint,
+    rekeyInverse * reshuffleCommitment,
     rekey * globalKey
   );
   ReshuffleRekeyVerifiersProof proof(
     rekeyInversePoint,
-    InverseProof::Create(rekeyInversePoint, verifiers.mRekeyPoint, rekeyInverse),
-    ScalarMultProof::Create(reshufflePoint, rekeyInversePoint, verifiers.mReshuffleOverRekeyPoint, reshuffle),
-    ScalarMultProof::Create(verifiers.mRekeyPoint, globalKey, verifiers.mRekeyedPublicKey, rekey));
+    InverseProof::Create(rekeyInversePoint, verifiers.mRekeyCommitment, rekeyInverse),
+    ScalarMultProof::Create(reshuffleCommitment, rekeyInversePoint, verifiers.mReshuffleOverRekeyCommitment, reshuffle),
+    ScalarMultProof::Create(verifiers.mRekeyCommitment, globalKey, verifiers.mRekeyedPublicKey, rekey));
   return {verifiers, proof};
 }
 
