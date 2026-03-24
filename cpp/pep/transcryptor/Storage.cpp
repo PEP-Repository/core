@@ -1002,7 +1002,7 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
 
 std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(const X509Certificate& userCertificate) {
   auto domain = userCertificate.getOrganizationalUnit().value();
-  auto hash = CertificateHash(userCertificate);
+  auto hash = RangeToVector(CertificateHash(userCertificate));
   if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
     LOG(LOG_TAG, debug) << "Found existing verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
