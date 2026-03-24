@@ -1105,8 +1105,13 @@ class MailSender(Connector):
             if condition.condition not in ["is_empty", "is_not_empty"] and condition.column not in pep_columns:
                 pep_columns.append(condition.column)
 
+        # Add the short pseudonym column to fetch
+        short_pseudonym_column = f"ShortPseudonym.{config.pep_sp_column}"
+        if short_pseudonym_column not in pep_columns:
+            pep_columns.append(short_pseudonym_column)
+
         # Load config from PEP
-        subject_info = limesurvey_connector.list_columndata_by_short_pseudonym(config.pep_sp_column, pep_columns)
+        subject_info = limesurvey_connector.list_columndata_by_local_pseudonym(pep_columns)
 
         # Generate PDFs for expert report after fetching all data
         if is_expert_report:
@@ -1123,11 +1128,25 @@ class MailSender(Connector):
         stats.set('total_subjects', 'Total subjects considered', total_subjects)
 
         # Iterate over each subject
-        for subject_index, (short_pseudonym, data) in enumerate(subject_info.items(), start=1):
+        for subject_index, (local_pseudonym, data) in enumerate(subject_info.items(), start=1):
+            log_prefix = f"{survey_type} ({subject_index}/{total_subjects}): "
 
             subject_received_email = False
 
-            self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Processing subject.", level=logging.INFO, tag=self.LOG_TAG)
+            # First extract short pseudonym from PEP data
+            short_pseudonym = data["columns"].get(short_pseudonym_column)
+
+            # Validate short pseudonym existence
+            if not short_pseudonym:
+                stats.increment('skipped_count')
+                self.log(
+                    f"{log_prefix}{local_pseudonym}: "
+                    f"Skipping: Short pseudonym not found in column {short_pseudonym_column}.",
+                    level=logging.ERROR, tag=self.LOG_TAG
+                )
+                continue
+            
+            self.log(f"{log_prefix}Processing subject {short_pseudonym}.", level=logging.INFO, tag=self.LOG_TAG)
 
             # Parse data retrieved from PEP and hardcoded conditions
             def parse_flag(value):
@@ -1143,22 +1162,20 @@ class MailSender(Connector):
 
                 if is_expert_teacher is None:
                     stats.increment('skipped_count')
-                    self.log(
-                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                    self.log(f"{log_prefix}"
                         f"Invalid expert teacher flag in {config.report_info.expert_teacher_column}. Expected '1' or '0'.",
                         level=logging.ERROR, tag=self.LOG_TAG,
                     )
                     continue
 
                 if is_expert_teacher:
-                    self.log(
-                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Included.",
+                    self.log(f"{log_prefix}"
+                        f"Included.",
                         level=logging.DEBUG, tag=self.LOG_TAG,
                     )
                 else:
                     stats.increment('skipped_count')
-                    self.log(
-                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                    self.log(f"{log_prefix}"
                         f"Skipping: Not an expert teacher.",
                         level=logging.INFO, tag=self.LOG_TAG,
                     )
@@ -1169,22 +1186,20 @@ class MailSender(Connector):
 
                 if is_survey_participant is None:
                     stats.increment('skipped_count')
-                    self.log(
-                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                    self.log(f"{log_prefix}"
                         f"Invalid survey participant flag in {config.survey_participant_column}. Expected '1' or '0'.",
                         level=logging.ERROR, tag=self.LOG_TAG,
                     )
                     continue
 
                 if is_survey_participant:
-                    self.log(
-                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Included.",
+                    self.log(f"{log_prefix}"
+                        f"{survey_type} ({subject_index}/{total_subjects}): Included.",
                         level=logging.DEBUG, tag=self.LOG_TAG,
                     )
                 else:
                     stats.increment('skipped_count')
-                    self.log(
-                        f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: "
+                    self.log(f"{log_prefix}"
                         f"Skipping: Not a survey participant.",
                         level=logging.INFO, tag=self.LOG_TAG,
                     )
@@ -1201,21 +1216,21 @@ class MailSender(Connector):
                     try:
                         # Validate the date format only
                         datetime.fromisoformat(kickoff_date_for_subject)
-                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Using subject-specific kickoff date {datetime.fromisoformat(kickoff_date_for_subject).date()}", 
+                        self.log(f"{log_prefix}Using subject-specific kickoff date {datetime.fromisoformat(kickoff_date_for_subject).date()}", 
                                     level=logging.DEBUG, tag=self.LOG_TAG)
                     except ValueError as e:
-                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Invalid date format in column {config.kickoff_date_column}: {kickoff_date_for_subject}. Error: {str(e)}", 
+                        self.log(f"{log_prefix}Invalid date format in column {config.kickoff_date_column}: {kickoff_date_for_subject}. Error: {str(e)}", 
                                 level=logging.ERROR, tag=self.LOG_TAG)
-                        raise ValueError(f"Invalid date format in PEP column {config.kickoff_date_column} for {short_pseudonym}: {kickoff_date_for_subject}")
+                        raise ValueError(f"Invalid date format in PEP column {config.kickoff_date_column} for {local_pseudonym}: {kickoff_date_for_subject}")
                 else:
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Kickoff date column specified but no data in column {config.kickoff_date_column}, no kickoff date will be used", 
+                    self.log(f"{log_prefix}Kickoff date column specified but no data in column {config.kickoff_date_column}, no kickoff date will be used", 
                             level=logging.INFO, tag=self.LOG_TAG)
 
             # Email Address is required to send emails
             recipient_email = data["columns"].get(config.pep_email_column)
             if not recipient_email:
                 stats.increment('skipped_count')
-                self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping subject: Missing email.", 
+                self.log(f"{log_prefix}Skipping subject: Missing email.", 
                     level=logging.WARNING, tag=self.LOG_TAG)
                 continue
 
@@ -1225,7 +1240,7 @@ class MailSender(Connector):
                 # For expert reports, skip non-expert teachers
                 if not is_expert_teacher:
                     stats.increment('skipped_count')
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Not an expert teacher.", 
+                    self.log(f"{log_prefix}Skipping: Not an expert teacher.", 
                             level=logging.INFO, tag=self.LOG_TAG)
                     continue
 
@@ -1233,7 +1248,7 @@ class MailSender(Connector):
                 report_subjects_raw = data["columns"].get(config.report_info.subject_column)
                 if not report_subjects_raw:
                     stats.increment('skipped_count')
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: Expert teacher but no report subjects specified.", 
+                    self.log(f"{log_prefix}Skipping: Expert teacher but no report subjects specified.", 
                             level=logging.WARNING, tag=self.LOG_TAG)
                     continue
 
@@ -1245,7 +1260,7 @@ class MailSender(Connector):
                     if pdf_info:
                         pdf_infos.append(pdf_info)
                     else:
-                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: No PDF info found for subject {report_subject}", level=logging.ERROR, tag=self.LOG_TAG)
+                        self.log(f"{log_prefix}No PDF info found for subject {report_subject}", level=logging.ERROR, tag=self.LOG_TAG)
                 if pdf_infos:
                     merged_pdf_path = f"/tmp/merged_{short_pseudonym}.pdf"
                     self._merge_pdfs(pdf_infos, merged_pdf_path)
@@ -1260,11 +1275,11 @@ class MailSender(Connector):
                         subject_attachments = subject_attachments + [merged_pdf_attachment]
                     else:
                         subject_attachments = [merged_pdf_attachment]
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Added merged PDF for expert teacher: {merged_pdf_path}", 
+                    self.log(f"{log_prefix}Added merged PDF for expert teacher: {merged_pdf_path}", 
                             level=logging.DEBUG, tag=self.LOG_TAG)
                 else:
                     stats.increment('skipped_count')
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping: No PDFs to merge for expert teacher.", 
+                    self.log(f"{log_prefix}Skipping: No PDFs to merge for expert teacher.", 
                             level=logging.WARNING, tag=self.LOG_TAG)
                     continue
 
@@ -1276,7 +1291,7 @@ class MailSender(Connector):
                     emails_sent = json.loads(emails_sent_data)
                 except json.JSONDecodeError as e:
                     stats.increment('skipped_count')
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping data subject: Failed to load emails sent data: {str(e)}.", 
+                    self.log(f"{log_prefix}Skipping data subject: Failed to load emails sent data: {str(e)}.", 
                     level=logging.ERROR, tag=self.LOG_TAG)
                     continue
 
@@ -1288,7 +1303,7 @@ class MailSender(Connector):
                     pep_survey_ids = json.loads(survey_ids_data)
                 except json.JSONDecodeError as e:
                     stats.increment('skipped_count')
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping data subject: Failed to load survey IDs data: {str(e)}.", 
+                    self.log(f"{log_prefix}Skipping data subject: Failed to load survey IDs data: {str(e)}.", 
                     level=logging.ERROR, tag=self.LOG_TAG)
                     continue
 
@@ -1305,7 +1320,7 @@ class MailSender(Connector):
                                                                       short_pseudonym=short_pseudonym, 
                                                                       position=survey_index)
                 if not should_run:
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping survey {survey_index+1}: {condition_reason}", 
+                    self.log(f"{log_prefix}Skipping survey {survey_index+1}: {condition_reason}", 
                         level=logging.INFO, tag=self.LOG_TAG)
                     continue
 
@@ -1332,7 +1347,7 @@ class MailSender(Connector):
 
                     # If survey creation failed, skip to the next survey
                     if survey_id is None:
-                        self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping survey {survey_index+1}, cannot create survey.", 
+                        self.log(f"{log_prefix}Skipping survey {survey_index+1}, cannot create survey.", 
                             level=logging.WARNING, tag=self.LOG_TAG)
                         continue
 
@@ -1360,7 +1375,7 @@ class MailSender(Connector):
                                                               kickoff_date=kickoff_date_for_subject)
 
                 if not should_send:
-                    self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Skipping survey {survey_index+1}: {reason}.", 
+                    self.log(f"{log_prefix}Skipping survey {survey_index+1}: {reason}.", 
                         level=logging.INFO, tag=self.LOG_TAG)
                     continue
 
@@ -1398,7 +1413,7 @@ class MailSender(Connector):
                         "survey_count": len(config.template_survey_ids)
                     })
 
-                self.log(f"{survey_type} ({subject_index}/{total_subjects}): {short_pseudonym}: Sending {'reminder ' if is_reminder else ''}email for survey {survey_index+1}.", 
+                self.log(f"{log_prefix}Sending {'reminder ' if is_reminder else ''}email for survey {survey_index+1}.", 
                          level=logging.INFO, tag=self.LOG_TAG)
 
                 # Send the survey email
