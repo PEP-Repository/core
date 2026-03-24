@@ -392,7 +392,7 @@ struct PseudonymizationDomainVerifiersRecord {
 struct SessionVerifiersRecord {
   SessionVerifiersRecord() = default;
   SessionVerifiersRecord(
-    std::string certificateHash,
+    std::vector<char> certificateHash,
     Timestamp expiryTimestamp,
     std::string pseudonymizationDomain,
     const CurvePoint& rekeyPoint,
@@ -405,7 +405,7 @@ struct SessionVerifiersRecord {
       reshuffleOverRekeyPoint(RangeToVector(reshuffleOverRekeyPoint.pack())),
       rekeyedPublicKey(RangeToVector(rekeyedPublicKey.pack())) {}
 
-  std::string certificateHash; // Primary key
+  std::vector<char> certificateHash; // Primary key
 
   database::UnixMillis expiryTimestamp{};
   std::string pseudonymizationDomain; // Refers to PseudonymizationDomainVerifiersRecord
@@ -1028,7 +1028,7 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
     mStorage->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshufflePoint));
   }
 
-  auto hash = CertificateHash(userCertificate);
+  auto hash = RangeToVector(CertificateHash(userCertificate));
   if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
     LOG(LOG_TAG, debug) << "Found existing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
@@ -1041,7 +1041,7 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
     LOG(LOG_TAG, debug) << "Storing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
     mStorage->raw.replace(SessionVerifiersRecord(
-      hash,
+      std::move(hash),
       userCertificate.getNotAfter(),
       domain,
       verifiers.mRekeyPoint,
