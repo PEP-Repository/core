@@ -1182,7 +1182,7 @@ docker-integration-on-base-data:
     - *docker_login
     # Generate fresh (non-expired) (non-root) certificates: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2813#note_56966
     - foss_dir="$PWD"
-    - cd ./tests/test_input/base_integration_data/pki && "$foss_dir/pki/pki.sh" no-root && cd -
+    - (cd ./tests/test_input/base_integration_data/pki; "$foss_dir/pki/pki.sh" no-root)
     - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir base_integration_data
 
 ##########################################
