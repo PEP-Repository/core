@@ -190,7 +190,7 @@ class Connector(AccessGroup):
             if level == logging.CRITICAL:
                 self.prometheus_metrics.track_fatal_error(message)
 
-    def get_column_timestamps(self, columns: list[str]) -> dict[str, dict[str, dict]]:
+    def get_column_timestamps(self, columns: list[str], subject_group: str = "*") -> dict[str, dict[str, dict]]:
         """
         Get local pseudonyms and timestamps for given column names.
 
@@ -205,7 +205,7 @@ class Connector(AccessGroup):
             raise ValueError("Columns must be a list of strings")
         if not columns:
             raise ValueError("At least one column must be provided")
-        command = ["list", "--group-output", "--metadata", "--no-inline-data", "--local-pseudonyms", "-P", "*"]
+        command = ["list", "--group-output", "--metadata", "--no-inline-data", "--local-pseudonyms", "-P", subject_group]
         for column in columns:
             command.extend(["-c", column])
         try:

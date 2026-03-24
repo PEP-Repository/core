@@ -76,12 +76,12 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def list_short_pseudonyms(self, column_name: str) -> list[str]:
+    def list_short_pseudonyms(self, column_name: str, subject_group: str = "*") -> list[str]:
         """
         Reads all short pseudonyms from a given (short pseudonym) column name and returns 
         a list of those short pseudonyms. Provide the column name without the prefix.
         """
-        command = ["list", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{column_name}", "-P", "*"]
+        command = ["list", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{column_name}", "-P", subject_group]
         try:
             output = self.repository.run_command(command)
             self.log("Successfully obtained short pseudonyms from PEP")
@@ -103,14 +103,14 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def list_columndata_by_short_pseudonym(self, short_pseudonym_column_name: str, columns: list[str]) -> dict:
+    def list_columndata_by_short_pseudonym(self, short_pseudonym_column_name: str, columns: list[str], subject_group: str = "*") -> dict:
         if not isinstance(columns, list):
             raise ValueError("Columns must be a list of strings, even if it is just one column")
         """
         Reads a set of short pseudonyms and data from a set of columns and returns a dictionary with
         the short pseudonym as key and a dict with the column name as key and the data as value.
         """
-        command = ["list", "--group-output", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{short_pseudonym_column_name}", "-P", "*"]
+        command = ["list", "--group-output", "--inline-data-size-limit", "0", "-c", f"ShortPseudonym.{short_pseudonym_column_name}", "-P", subject_group]
         for column in columns:
             command.extend(["-c", column])
         try:
@@ -137,14 +137,14 @@ class AccessGroup:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
 
-    def list_columndata_by_local_pseudonym(self, columns: list[str]):
+    def list_columndata_by_local_pseudonym(self, columns: list[str], subject_group: str = "*"):
         if not isinstance(columns, list):
             raise ValueError("Columns must be a list of strings, even if it is just one column.")
         """
         Lists the data for a set of columns and returns a dictionary with the local pseudonym as key
         and a dict with the column name as key and the data as value.
         """
-        command = ["list", "--group-output", "--inline-data-size-limit", "0", "--local-pseudonyms", "-P", "*"]
+        command = ["list", "--group-output", "--inline-data-size-limit", "0", "--local-pseudonyms", "-P", subject_group]
         for column in columns:
             command.extend(["-c", column])
         try:
@@ -405,16 +405,16 @@ class AccessGroup:
     def upload_file_with_pipe_by_short_pseudonym(self, short_pseudonym: str, column: str, data, file_extension=None):
         self.store_data(column=column, short_pseudonym=short_pseudonym, input_path="-", pipe_data=data, file_extension=file_extension)
 
-    def fill_column_by_short_pseudonym(self, short_pseudonym_column_name: str, target_column: str, data: str, file_extension=None):
+    def fill_column_by_short_pseudonym(self, short_pseudonym_column_name: str, target_column: str, data: str, file_extension=None, subject_group: str = "*"):
         self.log(f"Uploading data to all accessible short pseudonyms in column {target_column}.", level=logging.DEBUG)
-        short_pseudonyms = self.list_short_pseudonyms(short_pseudonym_column_name)
+        short_pseudonyms = self.list_short_pseudonyms(short_pseudonym_column_name, subject_group=subject_group)
         self.log(f"Found {len(short_pseudonyms)} short pseudonyms to upload data to.", level=logging.DEBUG)
         for sp in short_pseudonyms:
             self.upload_data_by_short_pseudonym(short_pseudonym=sp, column=target_column, data=data, file_extension=file_extension)
 
-    def fill_column_by_source_column_existence(self, source_column: str, target_column: str, data: str, file_extension=None):
+    def fill_column_by_source_column_existence(self, source_column: str, target_column: str, data: str, file_extension=None, subject_group: str = "*"):
         self.log(f"Obtaining all accessible local pseudonyms in source column {source_column}.", level=logging.DEBUG)
-        local_pseudonym_data = self.list_columndata_by_local_pseudonym([source_column])
+        local_pseudonym_data = self.list_columndata_by_local_pseudonym([source_column], subject_group=subject_group)
         self.log(f"Found {len(local_pseudonym_data)} local pseudonyms to upload data to.", level=logging.DEBUG)
         for lp in local_pseudonym_data.keys():
             self.store_data(column=target_column, data=data, participant=lp, file_extension=file_extension)
