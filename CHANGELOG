@@ -49,6 +49,14 @@ MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
   Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
+- #2801:
+  - Copy `PublicKeyPseudonyms` and `AccessManager` entries from `AccessManager.json` config over to `Transcryptor.json`
+  - Update `Verifiers.json`:
+    - Rename `zOverKb` → `reshuffleOverRekeyCommitment`, `zb` → `reshuffleCommitment`, `ky` → `rekeyedPublicKey`:
+      ```shell
+      sed -e s/zOverKb/reshuffleOverRekeyCommitment/g -e s/zb/reshuffleCommitment/g -e s/ky/rekeyedPublicKey/g -i'' ./Verifiers.json
+      ```
+    - Execute `pepcli verifiers` to and add `rekeyCommitment` to `Verifiers.json`
 
 ---------------
 
