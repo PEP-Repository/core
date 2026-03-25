@@ -404,7 +404,7 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
   // ParticipantGroups by Polymorph Pseudonym
   auto groupedPps = RangeToCollection<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
     mStorage->getPpGroups(participantGroups));
-  std::ranges::shuffle(groupedPps, ThreadUrbg);
+  std::ranges::shuffle(groupedPps, CryptoUrbg());
 
   std::unordered_map<std::string, pep::IndexList> participantGroupMap;
   for (const auto& [pp, groups] : groupedPps) {

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <pep/crypto/AsymmetricKey.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 namespace {
 

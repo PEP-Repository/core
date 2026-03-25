@@ -142,6 +142,7 @@ void TlsSocket::close() {
       && !IsSpecificSslError(error, SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY) // Other party sent us data after (or while) we closed the connection: see https://stackoverflow.com/a/72788966
       && error.default_error_condition().value() != boost::system::errc::connection_reset // Other party already closed the connection: see https://stackoverflow.com/a/39162187
       && error.default_error_condition().value() != boost::system::errc::connection_aborted // Our side already closed the connection
+      && error.default_error_condition().value() != boost::system::errc::operation_canceled // Our timeout was hit: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2834#note_57593
       ) {
       const char* description = "Unexpected problem shutting down connection";
       severity_level severity = pep::error;

@@ -1,4 +1,4 @@
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>

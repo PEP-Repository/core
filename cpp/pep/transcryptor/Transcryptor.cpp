@@ -8,7 +8,7 @@
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Shared.hpp>
 
 #include <boost/algorithm/hex.hpp>

@@ -1,37 +1,44 @@
 #pragma once
 
-#include <array>
-#include <cassert>
 #include <istream>
 #include <string_view>
 #include <boost/core/noncopyable.hpp>
 
 namespace pep {
 
-template <typename THash>
-class Hasher : private boost::noncopyable {
-public:
-  using Hash = THash;
-
-private:
+namespace detail {
+class HasherBase : private boost::noncopyable {
   bool mFinished = false;
 
 protected:
+  void update(const void* block, size_t size);
+  void update(std::istream& source);
+  /// Mark as finished. \c update or this function should not be called after this.
+  void setFinished();
+
   virtual void process(const void* block, size_t size) = 0;
-  virtual Hash finish() = 0;
 
 public:
-  virtual ~Hasher() noexcept = default;
+  virtual ~HasherBase() noexcept = default;
+};
+}
 
-  Hash digest() {
-    assert(!mFinished);
-    mFinished = true;
+template <typename THash>
+class Hasher : public detail::HasherBase {
+public:
+  using Hash = THash;
+
+protected:
+  [[nodiscard]] virtual Hash finish() = 0;
+
+public:
+  [[nodiscard]] Hash digest() {
+    this->setFinished();
     return this->finish();
   }
 
   Hasher& update(const void* block, size_t size) {
-    assert(!mFinished);
-    this->process(block, size);
+    HasherBase::update(block, size);
     return *this;
   }
 
@@ -40,27 +47,7 @@ public:
   }
 
   Hasher& update(std::istream& source) {
-    constexpr std::streamsize HASH_CHUNK_LENGTH{4096};
-
-    std::array<char, HASH_CHUNK_LENGTH> chunk{};
-    std::streamsize actual{-1};
-    do {
-      source.read(chunk.data(), chunk.size());
-      if (source) {
-        actual = HASH_CHUNK_LENGTH;
-      }
-      else if (source.rdstate() == (std::ios_base::eofbit | std::ios_base::failbit)) {
-        actual = source.gcount();
-      }
-      else {
-        throw std::runtime_error("Read failure on data stream");
-      }
-      if (actual > 0) {
-        auto converted = static_cast<std::make_unsigned_t<std::streamsize>>(actual);
-        this->update(chunk.data(), size_t{converted});
-      }
-    } while (actual == HASH_CHUNK_LENGTH);
-
+    HasherBase::update(source);
     return *this;
   }
 
@@ -72,7 +59,7 @@ public:
   }
 
   template <typename... Args>
-  Hash digest(Args&&... lastPieces) {
+  [[nodiscard]] Hash digest(Args&&... lastPieces) {
     return this->update(std::forward<Args>(lastPieces)...)
       .digest();
   }

@@ -6,7 +6,7 @@
 namespace pep {
 
 PingRequest::PingRequest()
-  : mId{std::uniform_int_distribution<decltype(mId)>{}(ThreadUrbg)} {}
+  : mId{ RandomInteger<decltype(mId)>() } {}
 
 void PingResponse::validate(const PingRequest& isReplyTo) const {
   if (mId != isReplyTo.mId) {

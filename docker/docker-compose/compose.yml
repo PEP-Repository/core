@@ -162,12 +162,11 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 source: timestamp
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
-            # Detect malicious/noisy patterns: AH10244 (CVE-2021-41773, CVE-2021-42013), @java.lang (CVE-2017-5638), AH01630, .htaccess/.htpasswd, AH01276, Unsafe URL, AH00036, File name too long
+            # Detect malicious/noisy patterns
             - regex:
                 expression: '.*(?P<noise_type>AH10244|@java\.lang\.|AH01630|AH01276|Unsafe URL with %3f|AH00036).*'
                 source: message
-            # Normalize log levels
-            # Downgrade error to warn when background noise detected
+            # Normalize log levels, downgrade error to warn when background noise detected
             - template:
                 source: level
                 template: '{{ if and (eq .Value "error") .noise_type }}warn{{ else if eq .Value "emerg" }}fatal{{ else if or (eq .Value "alert") (eq .Value "crit") }}critical{{ else if eq .Value "notice" }}info{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'

@@ -1,7 +1,8 @@
 #include <pep/rsk/RskTranslator.hpp>
 
 #include <pep/utils/Bitpacking.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <stdexcept>
 #include <utility>
@@ -113,5 +114,5 @@ CurveScalar RskTranslator::generateKeyFactor(
   hasher.update(PackUint32BE(keys_.domain));
   hasher.update(PackUint32BE(recipient.type()));
   auto digest = hasher.digest(recipient.payload());
-  return CurveScalar::From64Bytes(Sha512::HMac(SpanToString(keyFactorSecret.hmacKey()), digest));
+  return CurveScalar::From64Bytes(Hmac<Sha512>(SpanToString(keyFactorSecret.hmacKey()), digest));
 }

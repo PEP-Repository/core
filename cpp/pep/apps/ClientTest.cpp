@@ -4,7 +4,7 @@
 #include <pep/versioning/Version.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/async/RxIterate.hpp>

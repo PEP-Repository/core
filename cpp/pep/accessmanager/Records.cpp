@@ -5,7 +5,7 @@
 #include <pep/serialization/Serialization.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Random.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <sqlite_orm/sqlite_orm.h>
 #include <string_view>
