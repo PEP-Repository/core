@@ -42,7 +42,6 @@ declpep_wrapper() {
     fi
 
     printYellow "$OUTPUT_PREFIX Failed ($job_tag:$command)"
-
     fail
   }
 
@@ -58,14 +57,10 @@ declpep_wrapper() {
     fail_verbosely
   fi
 
-  local current_line_number=1
-  for line in "${generated_pep_commands[@]}"; do
-    if [ -n "$line" ]; then
-      printGray "$OUTPUT_PREFIX_LONG $(printf "%3d\n" $current_line_number):  $line" >>"$tempfile"
-      # shellcheck disable=SC1090
-      source <(echo "$line") >>"$tempfile" 2>&1 || fail_verbosely
-      ((++current_line_number))
-    fi
+  for ((i = 0; i < ${#generated_pep_commands[@]}; ++i)); do
+    line="${generated_pep_commands[i]}"
+    printGray "$OUTPUT_PREFIX_LONG $(printf "%3d\n" $i):  $line" >>"$tempfile"
+    eval "$line" >>"$tempfile" 2>&1 || fail_verbosely
   done
   rm -f "$tempfile"
 
