@@ -967,7 +967,7 @@ class MailSender(Connector):
 
             # Check if survey is active, and activate if not
             if survey_properties.get("active") == "N":
-                self.log(f"Skipping subject: Survey {survey_id} is not active. Activating", level=logging.WARNING, tag=self.LOG_TAG)
+                self.log(f"Survey {survey_id} is not active. Activating", level=logging.WARNING, tag=self.LOG_TAG)
                 limesurvey_connector.activate_survey(survey_id)
 
             limesurvey_connector.add_participant_as_token(survey_id, short_pseudonym)  # Ensure token is added
