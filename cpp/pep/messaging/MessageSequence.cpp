@@ -4,18 +4,13 @@
 
 namespace pep::messaging {
 
-#if BUILD_HAS_DEBUG_FLAVOR()
-extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024 / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
-#else
-extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
-#endif
+namespace {
 
-MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
-  return pep::CreateObservable<MessageSequence>([stream](rxcpp::subscriber<MessageSequence> subscriber) {
-    // Try to iteratively emit data in page-sized chunks
-    // However: there is no guarantee that read() will do this
-    while (stream->good()) {
-      // Create instance to store next page
+void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> outer) {
+  if (!stream->good()) {
+    outer.on_completed();
+  } else {
+    outer.on_next(CreateObservable<std::shared_ptr<std::string>>([stream, outer](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
       auto page = std::make_shared<std::string>(DEFAULT_PAGE_SIZE, '\0');
 
       // Read data from stream into page
@@ -28,12 +23,26 @@ MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
 
       // Provide this page to the subscriber
       if (nRead > 0) {
-        subscriber.on_next(rxcpp::observable<>::just(page));
+        inner.on_next(page);
       }
-    }
+      inner.on_completed();
+      ProvideNextBatch(stream, outer);
+      }));
+  }
+}
 
-    subscriber.on_completed();
-  });
+}
+
+#if BUILD_HAS_DEBUG_FLAVOR()
+extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024 / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
+#else
+extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
+#endif
+
+MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
+  return pep::CreateObservable<MessageSequence>([stream](rxcpp::subscriber<MessageSequence> outer) {
+    ProvideNextBatch(stream, outer);
+    });
 }
 
 }
