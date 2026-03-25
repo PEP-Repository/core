@@ -99,10 +99,21 @@ class Attachment(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    path: FilePath
+    path: FilePath | None = None
+    pep_column: str | None = None
+
     filename: str | None = None
     mimetype: str | None = None
+    from_survey_number: int | None = None  # Only include from this survey onwards
 
+    @model_validator(mode='after')
+    def validate_attachment_source(self):
+        """Either path or pep_column must be specified, but not both."""
+        if self.path and self.pep_column:
+            raise ValueError("Cannot specify both 'path' and 'pep_column' for an attachment")
+        if not self.path and not self.pep_column:
+            raise ValueError("Must specify either 'path' or 'pep_column' for an attachment")
+        return self
 
 class Condition(BaseModel):
     """Configuration for survey condition."""
@@ -205,6 +216,7 @@ class MailSenderSurveyConfig(BaseModel):
 
     # Attachments, footer, conditions as structured config objects
     attachments: list[Attachment] | None = None
+    pep_attachment_template_text: str | None = None  # Text to add to email body when attachments from PEP are present
     footer_image: FooterImage | None = None
     conditions: list[Condition] | None = None
 
@@ -984,17 +996,103 @@ class MailSender(Connector):
             self.log(f"Error reading HTML file {file_path}: {e}", level=logging.ERROR, tag=self.LOG_TAG)
             raise
 
-    def _merge_pdfs(self, pdf_infos: list, output_path: str) -> str:
+    def _merge_pdfs(self, collected_pdf_info_for_subject: list, output_path: str) -> str:
         """
         Merge multiple PDFs given by a list of dicts with 'path' keys.
         Returns the output path.
         """
         merger = PdfWriter()
-        for pdf_info in pdf_infos:
-            merger.append(pdf_info["pdf_path"])
+        for pdf_info_by_subject in collected_pdf_info_for_subject:
+            merger.append(pdf_info_by_subject["pdf_path"])
         merger.write(output_path)
         merger.close()
         return output_path
+
+    def _build_attachments_for_survey(
+        self,
+        config: MailSenderSurveyConfig,
+        survey_index: int,
+        pep_attachments_for_subject: dict[str, str],
+        is_expert_report: bool,
+        report_subjects: list[str] | None,
+        expert_report_pdfs: dict[str, dict],
+        short_pseudonym: str,
+        log_prefix: str
+    ) -> tuple[list[Attachment], bool]:
+        """
+        Build attachment list for a specific survey iteration.
+
+        Args:
+            config: Survey configuration
+            survey_index: Current survey index (0-based)
+            pep_attachments_for_subject: Mapping of PEP columns to file paths for this subject
+            is_expert_report: Whether this is an expert report type
+            report_subjects: List of report subjects for expert teachers
+            expert_report_pdfs: Pre-generated expert report PDFs (dict mapping school names to PDF info)
+            short_pseudonym: Short pseudonym for this subject
+            log_prefix: Logging prefix for this subject
+
+        Returns:
+            Tuple of (attachments_list, has_pep_attachment)
+        """
+        subject_attachments = []
+        has_pep_attachment = False
+
+        # Process configured attachments
+        if config.attachments:
+            for attachment_config in config.attachments:
+                # Check if this attachment should be included for this survey index
+                if attachment_config.from_survey_number is not None and survey_index < (attachment_config.from_survey_number - 1):
+                    self.log(f"{log_prefix}Skipping attachment for survey {survey_index+1}: below from_survey_number {attachment_config.from_survey_number}", 
+                            level=logging.DEBUG, tag=self.LOG_TAG)
+                    continue
+
+                if attachment_config.path:
+                    subject_attachments.append(attachment_config)
+                elif attachment_config.pep_column:
+                    file_path = pep_attachments_for_subject.get(attachment_config.pep_column)
+                    if file_path:
+                        has_pep_attachment = True
+                        # Use filename from config if specified, otherwise use column name
+                        attachment_filename = attachment_config.filename or attachment_config.pep_column
+
+                        subject_attachments.append(Attachment(
+                            path=file_path,
+                            filename=attachment_filename,
+                            mimetype=attachment_config.mimetype
+                        ))
+                    else:
+                        self.log(f"{log_prefix}No file found for PEP column {attachment_config.pep_column} for this subject", 
+                                level=logging.WARNING, tag=self.LOG_TAG)
+
+        # Generate and add expert report attachment if this is a report type
+        if is_expert_report and report_subjects:
+            # Collect PDFs for this expert teacher's schools (already generated)
+            collected_pdf_info_for_subject = []
+            for report_subject in report_subjects:
+                pdf_info_by_subject = expert_report_pdfs.get(report_subject)
+                if pdf_info_by_subject:
+                    collected_pdf_info_for_subject.append(pdf_info_by_subject)
+                else:
+                    self.log(f"{log_prefix}No PDF info found for subject {report_subject}", 
+                            level=logging.WARNING, tag=self.LOG_TAG)
+
+            if collected_pdf_info_for_subject:
+                merged_pdf_path = f"/tmp/merged_{short_pseudonym}_survey{survey_index}.pdf"
+                self._merge_pdfs(collected_pdf_info_for_subject, merged_pdf_path)
+                expert_report_attachment = Attachment(
+                    path=merged_pdf_path,
+                    filename=config.report_info.combined_filename,
+                    mimetype="application/pdf"
+                )
+                subject_attachments.append(expert_report_attachment)
+                self.log(f"{log_prefix}Added merged PDF for expert teacher: {merged_pdf_path}", 
+                        level=logging.DEBUG, tag=self.LOG_TAG)
+            else:
+                self.log(f"{log_prefix}No PDFs to merge for expert teacher in survey {survey_index+1}", 
+                        level=logging.WARNING, tag=self.LOG_TAG)
+
+        return subject_attachments, has_pep_attachment
 
     def _generate_expert_report_pdfs(self, report_info: ReportInfo, emails_sent_column: str, survey_participant_column: str) -> dict:
         """
@@ -1050,6 +1148,27 @@ class MailSender(Connector):
             config.pep_emails_sent_column,
             config.pep_survey_ids_column
         ]
+
+        # Pull PEP attachments once if configured in any attachment
+        pep_attachment_data = {}
+        if config.attachments:
+            # Collect all PEP columns from attachments
+            pep_columns_to_pull = []
+
+            for attachment in config.attachments:
+                if attachment.pep_column:
+                    pep_columns_to_pull.append(attachment.pep_column)
+
+            # Pull all PEP attachments in one call if any exist
+            if pep_columns_to_pull:
+                self.log(f"Pulling PEP attachment data for columns: {pep_columns_to_pull}", 
+                        level=logging.INFO, tag=self.LOG_TAG)
+                pep_attachment_data = self.map_local_pseudonyms_to_pulled_data(
+                    columns=pep_columns_to_pull,
+                    subject_groups=["*"]
+                )
+                self.log(f"Retrieved PEP attachment data for {len(pep_attachment_data)} subjects", 
+                        level=logging.DEBUG, tag=self.LOG_TAG)
 
         # Load optional custom HTML file
         custom_html = None
@@ -1113,15 +1232,17 @@ class MailSender(Connector):
         # Load config from PEP
         subject_info = limesurvey_connector.list_columndata_by_local_pseudonym(pep_columns)
 
-        # Generate PDFs for expert report after fetching all data
+        # Generate all possible expert report PDFs once, combine appropriate later per subject
+        expert_report_pdfs = {}
         if is_expert_report:
-            pdf_paths_dict = self._generate_expert_report_pdfs(
+            self.log("Generating expert report PDFs", level=logging.INFO, tag=self.LOG_TAG)
+            expert_report_pdfs = self._generate_expert_report_pdfs(
                 config.report_info,
                 emails_sent_column=config.pep_emails_sent_column,
                 survey_participant_column=config.survey_participant_column
             )
-        else:
-            pdf_paths_dict = {}
+            self.log(f"Generated {len(expert_report_pdfs)} expert report PDFs",
+                    level=logging.INFO, tag=self.LOG_TAG)
 
         # Set total subjects count
         total_subjects = len(subject_info)
@@ -1234,8 +1355,11 @@ class MailSender(Connector):
                     level=logging.WARNING, tag=self.LOG_TAG)
                 continue
 
-            # For expert reports, get school name and prepare school-specific attachments
-            subject_attachments = config.attachments
+            # Prepare base attachment data for this subject
+            pep_attachments_for_subject = pep_attachment_data.get(local_pseudonym, {})
+            
+            # For expert reports, validate that teacher is expert and has report subjects
+            report_subjects = None
             if is_expert_report:
                 # For expert reports, skip non-expert teachers
                 if not is_expert_teacher:
@@ -1253,35 +1377,6 @@ class MailSender(Connector):
                     continue
 
                 report_subjects = self.parse_pep_python_list(report_subjects_raw)
-
-                pdf_infos = []
-                for report_subject in report_subjects:
-                    pdf_info = pdf_paths_dict.get(report_subject)
-                    if pdf_info:
-                        pdf_infos.append(pdf_info)
-                    else:
-                        self.log(f"{log_prefix}No PDF info found for subject {report_subject}", level=logging.ERROR, tag=self.LOG_TAG)
-                if pdf_infos:
-                    merged_pdf_path = f"/tmp/merged_{short_pseudonym}.pdf"
-                    self._merge_pdfs(pdf_infos, merged_pdf_path)
-                    merged_pdf_attachment = Attachment(
-                        path=merged_pdf_path,
-                        filename=config.report_info.combined_filename,
-                        mimetype="application/pdf"
-                    )
-
-                    # Combine with existing attachments if any
-                    if subject_attachments:
-                        subject_attachments = subject_attachments + [merged_pdf_attachment]
-                    else:
-                        subject_attachments = [merged_pdf_attachment]
-                    self.log(f"{log_prefix}Added merged PDF for expert teacher: {merged_pdf_path}", 
-                            level=logging.DEBUG, tag=self.LOG_TAG)
-                else:
-                    stats.increment('skipped_count')
-                    self.log(f"{log_prefix}Skipping: No PDFs to merge for expert teacher.", 
-                            level=logging.WARNING, tag=self.LOG_TAG)
-                    continue
 
             # Emails sent data is required to track email history
             emails_sent_data = data["columns"].get(config.pep_emails_sent_column)
@@ -1313,6 +1408,18 @@ class MailSender(Connector):
 
             # Loop over each repeated survey, for both survey creation and email sending
             for survey_index, template_survey_id in enumerate(config.template_survey_ids):
+
+                # Build attachment list for this specific survey index
+                subject_attachments, has_pep_attachment = self._build_attachments_for_survey(
+                    config=config,
+                    survey_index=survey_index,
+                    pep_attachments_for_subject=pep_attachments_for_subject,
+                    is_expert_report=is_expert_report,
+                    report_subjects=report_subjects,
+                    expert_report_pdfs=expert_report_pdfs,
+                    short_pseudonym=short_pseudonym,
+                    log_prefix=log_prefix
+                )
 
                 # Check user defined conditions for this specific survey index
                 should_run, condition_reason = self._check_conditions(conditions=config.conditions, 
@@ -1396,6 +1503,9 @@ class MailSender(Connector):
                     "recipient_name": recipient_name,
                     "deadline": deadline
                 }
+                
+                # Add PEP attachment template text if configured and has PEP attachments
+                template_vars["pep_attachment_text"] = config.pep_attachment_template_text if (has_pep_attachment and config.pep_attachment_template_text) else ""
 
                 # Load custom HTML content if specified
                 if custom_html:
