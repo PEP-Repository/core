@@ -127,7 +127,7 @@ class PepAssessorApplication : public pep::Application {
 
     loginWidget->show();
 
-    return std::make_unique<pep::IoContextThread>(io_context);
+    return std::make_unique<pep::IoContextThread>("I/O context", io_context);
   }
 
  public:

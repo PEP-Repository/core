@@ -12,9 +12,9 @@ namespace {
 
 const std::string LOG_TAG = "I/O context thread";
 
-void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context, std::stop_token stop) noexcept {
+void RunIoContext(const std::string& name, std::shared_ptr<boost::asio::io_context> io_context, std::stop_token stop) noexcept {
   try {
-    ThreadName::Set("I/O context");
+    ThreadName::Set(name);
     LOG(LOG_TAG, debug) << "starting io_context " << io_context << " on thread " << std::this_thread::get_id();
     std::stop_callback onStop(std::move(stop), [io_context] {
       LOG(LOG_TAG, debug) << "stopping io_context...";
@@ -33,10 +33,10 @@ void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context, std::stop
 
 }
 
-IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context)
+IoContextThread::IoContextThread(const std::string& name, std::shared_ptr<boost::asio::io_context> io_context)
   : guard_(std::make_unique<WorkGuard>(*io_context)) {
   // Make work guard (in initializer list above) before starting the thread (below) to prevent the I/O context from running out of work immediately
-  thread_ = std::jthread([io_context](std::stop_token stop) { RunIoContext(io_context, std::move(stop)); });
+  thread_ = std::jthread([name, io_context](std::stop_token stop) { RunIoContext(name, io_context, std::move(stop)); });
 }
 
 void IoContextThread::stop(bool force) noexcept {

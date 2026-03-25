@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <thread>
 
 #include <pep/async/IoContext_fwd.hpp>
@@ -25,9 +26,10 @@ public:
   ~IoContextThread() noexcept = default;
 
   /// @brief Constructor. (Immediately) runs the specified io_context on a separate thread of execution
+  /// @param name The name to give to the thread
   /// @param io_context The io_context to run.
   /// @remark The io_context is kept run()ning until this (IoContextThread) instance is destroyed or stop()ped.
-  explicit IoContextThread(std::shared_ptr<boost::asio::io_context> io_context);
+  IoContextThread(const std::string& name, std::shared_ptr<boost::asio::io_context> io_context);
 
   /// @brief Schedules the thread to be stopped.
   /// @param force Whether the io_context is to be explicitly stop()ped. If not, it (and associated thread) will keep running until the io_context runs out of work.

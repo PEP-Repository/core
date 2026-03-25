@@ -202,7 +202,7 @@ void FakeCastorTest::Side::start() {
   if (mThread != nullptr) {
     throw std::runtime_error("Can't start FakeCastorTest::Side multiple times");
   }
-  mThread = std::make_shared<IoContextThread>(mIoContext);
+  mThread = std::make_shared<IoContextThread>("Fake Castor test " + this->role(), mIoContext);
 }
 
 void FakeCastorTest::Side::stop(bool force) {

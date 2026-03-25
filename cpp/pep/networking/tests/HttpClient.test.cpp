@@ -16,7 +16,7 @@ public:
 private:
   std::shared_ptr<boost::asio::io_context> mIoContext = std::make_shared<boost::asio::io_context>();
   pep::HTTPServer mServer = pep::HTTPServer(PORT, mIoContext);
-  pep::IoContextThread mThread = pep::IoContextThread(mIoContext);
+  pep::IoContextThread mThread = pep::IoContextThread("HTTP server", mIoContext);
 
 public:
   AsyncHttpServer() = default;
