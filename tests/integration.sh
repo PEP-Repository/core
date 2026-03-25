@@ -30,12 +30,12 @@ declpep_wrapper() {
     printGray "$OUTPUT_PREFIX JSON ($job_tag:$command)"
     printGray "$(echo "$json" | nl)"
 
-    if [[ -v generated_pep_commands ]]; then
+    if [ -n "$generated_pep_commands" ]; then
       printGray "$OUTPUT_PREFIX Generated Commands ($job_tag:$command)"
       printGray "$(echo "$generated_pep_commands" | nl)"
     fi
 
-    if [[ -v tempfile && -f $tempfile ]]; then
+    if [ -n "$tempfile" ] && [ -f "$tempfile" ]; then
       printGray "$OUTPUT_PREFIX Detailed Log ($job_tag:$command)"
       cat "$tempfile"
       rm -f "$tempfile"
