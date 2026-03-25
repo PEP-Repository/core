@@ -2,15 +2,14 @@
 
 #include <pep/async/CreateObservable.hpp>
 
-namespace {
-#if BUILD_HAS_DEBUG_FLAVOR()
-constexpr uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024 / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
-#else
-constexpr uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
-#endif
-}
-
 namespace pep::messaging {
+
+#if BUILD_HAS_DEBUG_FLAVOR()
+extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024 / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
+#else
+extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
+#endif
+
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
   return pep::CreateObservable<MessageSequence>([stream](rxcpp::subscriber<MessageSequence> subscriber) {
     // Try to iteratively emit data in page-sized chunks
@@ -36,4 +35,5 @@ MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
     subscriber.on_completed();
   });
 }
+
 }

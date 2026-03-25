@@ -50,6 +50,8 @@ MessageBatches BatchSingleMessage(T content) {
   return BatchSingleMessage(Serialization::ToString(std::move(content)));
 }
 
+extern const uint64_t DEFAULT_PAGE_SIZE;
+
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream);
 
 }
