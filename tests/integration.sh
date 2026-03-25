@@ -59,14 +59,14 @@ declpep_wrapper() {
   fi
 
   local current_line_number=1
-  while IFS= read -r line; do
+  for line in "${generated_pep_commands[@]}"; do
     if [ -n "$line" ]; then
       printGray "$OUTPUT_PREFIX_LONG $(printf "%3d\n" $current_line_number):  $line" >>"$tempfile"
       # shellcheck disable=SC1090
       source <(echo "$line") >>"$tempfile" 2>&1 || fail_verbosely
       ((++current_line_number))
     fi
-  done < <(echo "$generated_pep_commands")
+  done
   rm -f "$tempfile"
 
   printGray "$OUTPUT_PREFIX Done ($job_tag:command)"
