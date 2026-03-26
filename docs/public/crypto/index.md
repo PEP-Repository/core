@@ -65,6 +65,16 @@ Originally based on [2020 PEP blueprint](https://docs.pages.pep.cs.ru.nl/private
     - $M$ stays intact but can now be decrypted using $sx$
   - Combined RSK: $(\underline{k^{-1}} \cdot \underline{s} \cdot (nB + \underline{rB}), \underline{s} \cdot (M+nxB + \underline{r \cdot xB}), \underline{k} \cdot xB)$
 
+### Security concerns
+
+Rerandomization is useful to produce two unlinkable ciphertexts that decrypt to the same plaintext, but that is not its only use. It's also important to combine it with the other operations in a client-server scenario, to mitigate attacks:
+
+- In a reshuffle/SK without rerandomization, a client can obtain $s \cdot A$ for some point $A$ by sending $(?, A, ?)$ as ciphertext
+- In a rekey without rerandomization, a client can obtain $k \cdot A$ for some point $A$ by sending $(?, ?, A)$ as ciphertext
+- In a rekey without rerandomization, a client can perform the reverse operation by sending a ciphertext with the first and third members swapped
+
+When performing rerandomization, it's important to check that the public key is nonzero, because otherwise it will be a no-op.
+
 ## Identifiers
 
 Also see [glossary](../user_documentation/glossary.md).
