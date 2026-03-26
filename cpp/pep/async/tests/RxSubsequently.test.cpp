@@ -12,7 +12,6 @@ struct Result {
 };
 
 using Inner = rxcpp::observable<Result>;
-using Outer = rxcpp::observable<Inner>;
 
 Inner MakeInner(std::shared_ptr<unsigned> counter, std::function<void()> andInvoke = []() {}) {
   assert(*counter != 0U);
