@@ -32,13 +32,13 @@ Inner MakeInner(std::shared_ptr<unsigned> counter, std::function<void()> andInvo
     });
 }
 
-using ProduceNextInner = std::function<void(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber)>;
+using ProduceNextInnerIfAvailable = std::function<void(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber)>;
 
-unsigned MaxRecursionsDuringCountDown(ProduceNextInner produceNextInner) {
+unsigned MaxRecursionsDuringCountDown(ProduceNextInnerIfAvailable produce) {
   unsigned result = 0U;
 
-  pep::CreateObservable<Inner>([produceNextInner, counter = std::make_shared<unsigned>(5U)](rxcpp::subscriber<Inner> subscriber) {
-    produceNextInner(counter, subscriber);
+  pep::CreateObservable<Inner>([produce, counter = std::make_shared<unsigned>(5U)](rxcpp::subscriber<Inner> subscriber) {
+    produce(counter, subscriber);
     })
     .concat_map([](Inner inner) { return inner; })
     .subscribe([&result](Result entry) {result = std::max(result, entry.recursion_); });
