@@ -6,10 +6,6 @@
 
 namespace {
 
-std::shared_ptr<unsigned> CreateCounter() {
-  return std::make_shared<unsigned>(5U);
-}
-
 struct Result {
   unsigned value_;
   unsigned recursion_;
@@ -42,7 +38,7 @@ using ProduceNextInner = std::function<void(std::shared_ptr<unsigned> counter, r
 unsigned MaxRecursionsDuringCountDown(ProduceNextInner produceNextInner) {
   unsigned result = 0U;
 
-  pep::CreateObservable<Inner>([produceNextInner, counter = CreateCounter()](rxcpp::subscriber<Inner> subscriber) {
+  pep::CreateObservable<Inner>([produceNextInner, counter = std::make_shared<unsigned>(5U)](rxcpp::subscriber<Inner> subscriber) {
     produceNextInner(counter, subscriber);
     })
     .concat_map([](Inner inner) { return inner; })
