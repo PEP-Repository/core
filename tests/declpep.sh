@@ -11,7 +11,7 @@ fi
 readonly command="$1"
 readonly json="$2"
 
-# Runs a jq filter on $json_file and then feeds this into a jq format string
+# Runs a jq filter on $json and then feeds this into a jq format string
 # The first argument specifies the filter
 # The other arguments are concatenated into a single format string
 jq_wrapper() {
