@@ -7,6 +7,9 @@ This page more concretely lays out the steps to get started developing the PEP W
 !!! bug "Emscripten version"
     Currently, Emscripten ≥4.0.23 blocks too long while waiting for WebSocket traffic, see [this issue](https://github.com/emscripten-core/emscripten/issues/26192). Until this is resolved, use version 4.0.22 instead.
 
+!!! info "Node.js"
+    When Node.js is already installed on the system (`node` is in PATH), EMSDK will not add its version to PATH, and we assume `npm` also available with your existing installation.
+
 **Option 1: Manual install**
 
 Just follow the steps in the [Emscripten docs](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended). Make sure to source the environment file in your build shell, and check if the `EMSDK` envvar is indeed set.
@@ -37,8 +40,8 @@ Substitute `4.0.22` by the specific version you want to use.
 
 As host profile, you can use `docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
 
-!!! bug "Emscripten version detection"
-    Currently, Emscripten version detection for manually installed EMSDK is broken (1) on Windows or (2) with a fresh install, see [this issue](https://github.com/conan-io/conan/issues/19677). For (1), manually specify `compiler.version`. For (2), the second try it should work.
+!!! warning "Emscripten version detection"
+    Please make sure you have Conan 2.27 or later for `detect_emcc_compiler` to work correctly.
 
 ```shell
 conan install \
@@ -68,7 +71,7 @@ Install Nginx and the [websockify](https://github.com/novnc/websockify) Python p
 Build Debug & start local servers:
 
 ```shell
-./weblib/start_dev.sh
+./weblib/pep-sample-client/start_dev.sh
 ```
 
 When EMSDK was installed via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script in your build folder.
