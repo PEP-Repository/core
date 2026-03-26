@@ -22,8 +22,7 @@ void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<Me
         page->resize(nRead); // Only pass filled substring to our subscriber
         inner.on_next(page);
       }
-
-      inner.on_completed();
+      inner.on_completed(); // Each batch consists of (a maximum of) a single page
 
       // Now that (the content of) this batch has been processed, provide the next batch to the outer observable
       ProvideNextBatch(stream, outer);
