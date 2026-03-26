@@ -8,8 +8,10 @@ namespace {
 
 void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> outer) {
   if (!stream->good()) {
+    // No more data available: no more batches will be forthcoming
     outer.on_completed();
   } else {
+    // Give the outer observable a MessageSequence ("batch") that'll postpone reading the data into memory until someone .subscribe()s to it
     outer.on_next(CreateObservable<std::shared_ptr<std::string>>([stream, outer](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
       auto page = std::make_shared<std::string>(DEFAULT_PAGE_SIZE, '\0');
 
@@ -21,11 +23,13 @@ void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<Me
         page->resize(nRead);
       }
 
-      // Provide this page to the subscriber
+      // Provide this page to the (inner) subscriber
       if (nRead > 0) {
         inner.on_next(page);
       }
       inner.on_completed();
+
+      // Now that (the content of) this batch has been processed, provide the next batch to the outer observable
       ProvideNextBatch(stream, outer);
       }));
   }
