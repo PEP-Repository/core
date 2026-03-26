@@ -1419,18 +1419,6 @@ class MailSender(Connector):
                         level=logging.INFO, tag=self.LOG_TAG)
                     continue
 
-                # Build attachment list for this specific survey index
-                subject_attachments, has_pep_attachment = self._build_attachments_for_survey(
-                    config=config,
-                    survey_index=survey_index,
-                    pep_attachments_for_subject=pep_attachments_for_subject,
-                    is_expert_report=is_expert_report,
-                    report_subjects=report_subjects,
-                    expert_report_pdfs=expert_report_pdfs,
-                    short_pseudonym=short_pseudonym,
-                    log_prefix=log_prefix
-                )
-
                 #### Optionally create a new survey ####
 
                 # Check if we already have a survey ID for this position
@@ -1467,8 +1455,6 @@ class MailSender(Connector):
                                                                         data=json.dumps(pep_survey_ids), 
                                                                         file_extension=".json")
 
-                #### Now send the email for this survey ####
-
                 should_send, reason = self.should_send_email(emails_sent=emails_sent,
                                                               survey_id=survey_id,
                                                               survey_type=survey_type,
@@ -1485,6 +1471,17 @@ class MailSender(Connector):
                     self.log(f"{log_prefix}Skipping survey {survey_index+1}: {reason}.", 
                         level=logging.INFO, tag=self.LOG_TAG)
                     continue
+
+                subject_attachments, has_pep_attachment = self._build_attachments_for_survey(
+                    config=config,
+                    survey_index=survey_index,
+                    pep_attachments_for_subject=pep_attachments_for_subject,
+                    is_expert_report=is_expert_report,
+                    report_subjects=report_subjects,
+                    expert_report_pdfs=expert_report_pdfs,
+                    short_pseudonym=short_pseudonym,
+                    log_prefix=log_prefix
+                )
 
                 # Check if this is a reminder email
                 is_reminder = (reason == "Reminder")
