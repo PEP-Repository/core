@@ -136,14 +136,10 @@ else()
   )
 endif()
 
-# tsc isn't installed by default as it's in EMSDK devDependencies but we need it for --emit-tsd,
-# see related https://github.com/emscripten-core/emsdk/issues/1370
-find_program(NPM_PROGRAM npm)
 add_custom_command(
-    TARGET ${PROJECT_NAME}Weblib PRE_BUILD
-    COMMENT "Make sure typescript is installed"
-    COMMAND ${NPM_PROGRAM} install --no-audit --omit=dev --save-prod typescript
-    WORKING_DIRECTORY "${EMSCRIPTEN_ROOT_PATH}"
+    TARGET ${PROJECT_NAME}Weblib PRE_LINK
+    COMMENT "Make sure typescript is installed for --emit-tsd"
+    COMMAND ${CMAKE_COMMAND} -E env "EMSCRIPTEN=${EMSCRIPTEN_ROOT_PATH}" -- ${INVOKE_SH} "${CMAKE_CURRENT_SOURCE_DIR}/install-emscripten-typescript.sh"
     VERBATIM
 )
 
