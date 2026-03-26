@@ -14,6 +14,71 @@ git_root="$SCRIPTPATH/.."
 # shellcheck source=SCRIPTDIR/functions.bash
 . "$SCRIPTPATH/functions.bash"
 
+declpep_wrapper() {
+  local -r OUTPUT_PREFIX="======"
+  local -r OUTPUT_PREFIX_LONG="========"
+
+  local -r command=$1
+  local -r json=$2
+  local -r json_hash=$(echo "$json" | sha256sum)
+  local -r job_tag="#${json_hash:0:8}"
+  local -r tempfile=$(mktemp)
+
+  fail_verbosely() {
+    nl() { command nl --number-format rn --number-width 3 --number-separator ':  '; }
+
+    printGray "$OUTPUT_PREFIX JSON ($job_tag:$command)"
+    printGray "$(echo "$json" | nl)"
+
+    if [ -n "${generated_pep_commands[*]}" ]; then
+      printGray "$OUTPUT_PREFIX Generated Commands ($job_tag:$command)"
+      printGray "$(echo "${generated_pep_commands[@]}" | nl)"
+    fi
+
+    if [ -n "$tempfile" ] && [ -f "$tempfile" ]; then
+      printGray "$OUTPUT_PREFIX Detailed Log ($job_tag:$command)"
+      cat "$tempfile"
+      rm -f "$tempfile"
+    fi
+
+    printYellow "$OUTPUT_PREFIX Failed ($job_tag:$command)"
+    fail
+  }
+
+  if [ "$command" == "setup" ]; then
+    printGray "$OUTPUT_PREFIX Building Test Data... ($job_tag:$command)"
+  else
+    printGray "$OUTPUT_PREFIX Cleaning Test Data... ($job_tag:$command)"
+  fi
+
+  local -a generated_pep_commands
+  if ! generated_pep_commands=$("$SCRIPTPATH"/declpep.sh "$command" "$json" 2>>"$tempfile"); then
+    unset generated_pep_commands # so it does not show up in the error log
+    fail_verbosely
+  fi
+
+  for ((i = 0; i < ${#generated_pep_commands[@]}; ++i)); do
+    line="${generated_pep_commands[i]}"
+    printGray "$OUTPUT_PREFIX_LONG $(printf "%3d\n" $i):  $line" >>"$tempfile"
+    eval "$line" >>"$tempfile" 2>&1 || fail_verbosely
+  done
+  rm -f "$tempfile"
+
+  printGray "$OUTPUT_PREFIX Done ($job_tag:command)"
+}
+
+# Takes a JSON string describing a test data configuration and
+# runs the necessary `pepcli` commands to generate that data
+test_setup() {
+  declpep_wrapper setup "$@"
+}
+
+# Takes a JSON string describing a test data configuration and
+# runs the necessary `pepcli` commands to remove that data
+test_cleanup() {
+  declpep_wrapper cleanup "$@"
+}
+
 readonly default_skip=''
 
 usage() {
