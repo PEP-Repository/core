@@ -18,7 +18,7 @@ MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
     size_t nRead = static_cast<size_t>(stream->gcount());
 
     if (nRead > 0) { // Don't pass empty data to our subscriber
-      page->resize(nRead); // Only pass filled substring to our subscriber
+      page->resize(nRead); // Only pass the data to our subscriber that we extracted from the stream
       inner.on_next(page);
     }
     inner.on_completed(); // Each batch consists of (a maximum of) a single page
