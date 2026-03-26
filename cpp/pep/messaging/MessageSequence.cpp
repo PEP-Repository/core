@@ -9,6 +9,10 @@ namespace pep::messaging {
 
 namespace {
 
+/// @brief Produces a MessageSequence ("batch") containing (some) data from an input stream.
+/// @param stream The input stream to read from
+/// @return A MessageSequence containing at most a single string ("page").
+/// @remark Postpones reading data from the input stream until someone .subscribe()s to the MessageSequence
 MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
   return CreateObservable<std::shared_ptr<std::string>>([stream](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
 
@@ -37,23 +41,16 @@ MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
     });
 }
 
-void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> subscriber);
-
-MessageSequence TriggerNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> outer) {
-  return CreateObservable<std::shared_ptr<std::string>>([stream, outer](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
-    ProvideNextBatch(stream, outer);
-    inner.on_completed();
-    });
-}
-
-void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> subscriber) {
+void ProvideBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> outer) {
   if (stream->good()) {
-    // (Ab)use the "concat" operator to ensure that...
-    subscriber.on_next(MakeBatch(stream) // ... the MessageSequence ("batch") is fully exhausted before...
-      .concat(TriggerNextBatch(stream, subscriber))); // ...we (non-recursively) trigger production of the next batch
+    outer.on_next(MakeBatch(stream) // Read data from the stream into a single MessageSequence ("batch")...
+      .concat(CreateObservable<std::shared_ptr<std::string>>([stream, outer](rxcpp::subscriber<std::shared_ptr<std::string>> inner) { // ... then (ab)use the .concat operator to...
+        ProvideBatch(stream, outer); // // ... provide the next batch...
+        inner.on_completed(); // ... from a pseudo-observable that doesn't do anything except ensuring it gets scheduled after the actual batch
+        }))); 
   } else {
     // No more data available: no more batches will be forthcoming
-    subscriber.on_completed();
+    outer.on_completed();
   }
 }
 
@@ -67,7 +64,7 @@ extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
 
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
   return pep::CreateObservable<MessageSequence>([stream](rxcpp::subscriber<MessageSequence> outer) {
-    ProvideNextBatch(stream, outer);
+    ProvideBatch(stream, outer);
     });
 }
 
