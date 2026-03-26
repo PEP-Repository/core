@@ -14,7 +14,7 @@ readonly json="$2"
 # Runs a jq filter on $json_file and then feeds this into a jq format string
 # The first argument specifies the filter
 # The other arguments are concatenated into a single format string
-jqr() {
+jq_wrapper() {
   local -r NAME_REGEX='[a-zA-Z_][a-zA-Z0-9_]*'
 
   # Treat missing or null array fields as empty by replacing each array value iterator with a defaulted version.
@@ -57,59 +57,59 @@ generate_pep_commands_in_setup_order() {
   local -r addOrRemove=$([ "$command" == "setup" ] && echo "addTo" || echo "removeFrom")
 
   # user groups
-  jqr '.userGroups[]' \
+  jq_wrapper '.userGroups[]' \
     "$AS_ACCESS_ADMIN user group $createOrRemove \\(.name | @sh)"
 
   # individual users
-  jqr '.userGroups[] | .name as $group | .users[]' \
+  jq_wrapper '.userGroups[] | .name as $group | .users[]' \
     "$AS_ACCESS_ADMIN user $createOrRemove \\(. | @sh)\n" \
     "$AS_ACCESS_ADMIN user $addOrRemove \\(. | @sh) \\(\$group | @sh)" |
     partition_by_substring "$AS_ACCESS_ADMIN user $createOrRemove " # trailing space is significant
 
   # additional identifiers
   if [ "$command" == "setup" ]; then
-    jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .key as $user | .value[]' \
+    jq_wrapper '.userGroups[] | .additionalIdentifiers | to_entries[] | .key as $user | .value[]' \
       "$AS_ACCESS_ADMIN user addIdentifier \\(\$user | @sh) \\(. | @sh)"
   else
-    jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .value[]' \
+    jq_wrapper '.userGroups[] | .additionalIdentifiers | to_entries[] | .value[]' \
       "$AS_ACCESS_ADMIN user removeIdentifier \\(. | @sh)"
   fi
 
   # column groups
-  jqr '.columnGroups[]' \
+  jq_wrapper '.columnGroups[]' \
     "$AS_DATA_ADMIN ama columnGroup $createOrRemove \\(.name | @sh)"
 
   # column group access rules
-  jqr '.columnGroups[] | .name as $cGroup | .cgars | to_entries[]' \
+  jq_wrapper '.columnGroups[] | .name as $cGroup | .cgars | to_entries[]' \
     "$AS_ACCESS_ADMIN ama cgar $createOrRemove \\(\$cGroup | @sh) \\(.key | @sh) \\(.value[] | @sh)"
 
   # individual columns
-  jqr '.columnGroups[] | .name as $group | .columns[]' \
+  jq_wrapper '.columnGroups[] | .name as $group | .columns[]' \
     "$AS_DATA_ADMIN ama column $createOrRemove \\(. | @sh)\n" \
     "$AS_DATA_ADMIN ama column $addOrRemove \\(. | @sh) \\(\$group | @sh)" |
     partition_by_substring "$AS_DATA_ADMIN ama column $createOrRemove " # trailing space is significant
 
   # subject groups
-  jqr '.subjectGroups[]' \
+  jq_wrapper '.subjectGroups[]' \
     "$AS_DATA_ADMIN ama group $createOrRemove \\(.name | @sh)"
 
   # subject group access rules
-  jqr '.subjectGroups[] | .name as $cGroup | .pgars | to_entries[]' \
+  jq_wrapper '.subjectGroups[] | .name as $cGroup | .pgars | to_entries[]' \
     "$AS_ACCESS_ADMIN ama pgar $createOrRemove \\(\$cGroup | @sh) \\(.key | @sh) \\(.value[] | @sh)"
 
   # individual subjects
   if [ "$command" == "setup" ]; then
-    jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
+    jq_wrapper '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
       '\($bash_var)="$(' \
       "$AS_DATA_ADMIN register id | grep 'identifier:' | cut -d ':' -f2 | tr -d '[:space:]'" \
       ')"'
   fi
 
-  jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
+  jq_wrapper '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var' \
     "$AS_DATA_ADMIN ama group $addOrRemove \\(\$group | @sh) \${\\(\$bash_var)}"
 
   if [ "$command" == "setup" ]; then
-    jqr '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
+    jq_wrapper '.subjectGroups[] | .name as $group | .subjects | to_entries[] | "ID_\($group)_\(.key)" as $bash_var | .value | to_entries[]' \
       "$AS_DATA_ADMIN store -p \${\\(\$bash_var)} -c \\(.key | @sh) -d \\(.value | @sh)"
   fi
 }
