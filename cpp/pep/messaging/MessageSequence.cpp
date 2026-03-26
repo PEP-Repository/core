@@ -47,14 +47,13 @@ MessageSequence TriggerNextBatch(std::shared_ptr<std::istream> stream, rxcpp::su
 }
 
 void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> subscriber) {
-  if (!stream->good()) {
-    // No more data available: no more batches will be forthcoming
-    subscriber.on_completed();
-  } else {
+  if (stream->good()) {
     // (Ab)use the "concat" operator to ensure that...
     subscriber.on_next(MakeBatch(stream) // ... the MessageSequence ("batch") is fully exhausted before...
-      .concat(TriggerNextBatch(stream, subscriber)) // ...we (non-recursively) trigger production of the next batch
-    );
+      .concat(TriggerNextBatch(stream, subscriber))); // ...we (non-recursively) trigger production of the next batch
+  } else {
+    // No more data available: no more batches will be forthcoming
+    subscriber.on_completed();
   }
 }
 
