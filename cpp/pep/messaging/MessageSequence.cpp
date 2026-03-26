@@ -13,20 +13,16 @@ void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<Me
   } else {
     // Give the outer observable a MessageSequence ("batch") that'll postpone reading the data into memory until someone .subscribe()s to it
     outer.on_next(CreateObservable<std::shared_ptr<std::string>>([stream, outer](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
-      auto page = std::make_shared<std::string>(DEFAULT_PAGE_SIZE, '\0');
-
       // Read data from stream into page
+      auto page = std::make_shared<std::string>(DEFAULT_PAGE_SIZE, '\0');
       stream->read(page->data(), static_cast<std::streamsize>(page->size()));
       size_t nRead = static_cast<size_t>(stream->gcount());
-      if (nRead != page->size()) {
-        // Last data read from stream: ensure we don't pass uninitialized string content to our subscriber
-        page->resize(nRead);
-      }
 
-      // Provide this page to the (inner) subscriber
-      if (nRead > 0) {
+      if (nRead > 0) { // Don't pass empty data to our subscriber
+        page->resize(nRead); // Only pass filled substring to our subscriber
         inner.on_next(page);
       }
+
       inner.on_completed();
 
       // Now that (the content of) this batch has been processed, provide the next batch to the outer observable
