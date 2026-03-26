@@ -35,7 +35,10 @@ TEST(MessageSequence, IStreamIsBatchedLazily) {
     .subscribe(
       [bytes, received, stream](std::shared_ptr<std::string> single) {
         *received += single->size();
-        EXPECT_EQ(*received == bytes, !stream->good());
+        auto done = (*received == bytes);
+        auto more = stream->good();
+        EXPECT_EQ(done, !more) << "Stream was " << (more ? "not " : "") << "exhausted"
+          << " after receiving " << *received << " of " << bytes << " bytes";
       },
       [](std::exception_ptr exception) {
         FAIL() << "Error reading istream as message batches: " << pep::GetExceptionMessage(exception);
