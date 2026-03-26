@@ -1,6 +1,7 @@
 #include <pep/messaging/MessageSequence.hpp>
 
 #include <pep/async/CreateObservable.hpp>
+#include <pep/utils/Defer.hpp>
 
 namespace pep::messaging {
 
@@ -13,6 +14,11 @@ void ProvideNextBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<Me
   } else {
     // Give the outer observable a MessageSequence ("batch") that'll postpone reading the data into memory until someone .subscribe()s to it
     outer.on_next(CreateObservable<std::shared_ptr<std::string>>([stream, outer](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
+      thread_local size_t recursions = 0U;
+      [[maybe_unused]] auto current = recursions++;
+      PEP_DEFER(--recursions);
+      assert(current == 0U && "Eliminate recursion");
+
       // Read data from stream into page
       auto page = std::make_shared<std::string>(DEFAULT_PAGE_SIZE, '\0');
       stream->read(page->data(), static_cast<std::streamsize>(page->size()));
