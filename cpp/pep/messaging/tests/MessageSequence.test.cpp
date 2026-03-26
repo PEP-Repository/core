@@ -46,6 +46,6 @@ TEST(MessageSequence, IStreamIsBatchedLazily) {
       []() {}
     );
 
-  EXPECT_TRUE(!stream->good()) << "All data should have been read from stream ";
+  EXPECT_FALSE(stream->good()) << "All data should have been read from stream ";
   EXPECT_EQ(*received, bytes);
 }
