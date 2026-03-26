@@ -1063,7 +1063,7 @@ class MailSender(Connector):
                         ))
                     else:
                         self.log(f"{log_prefix}No file found for PEP column {attachment_config.pep_column} for this subject", 
-                                level=logging.WARNING, tag=self.LOG_TAG)
+                                level=logging.ERROR, tag=self.LOG_TAG)
 
         # Generate and add expert report attachment if this is a report type
         if is_expert_report and report_subjects:
@@ -1075,7 +1075,7 @@ class MailSender(Connector):
                     collected_pdf_info_for_subject.append(pdf_info_by_subject)
                 else:
                     self.log(f"{log_prefix}No PDF info found for subject {report_subject}", 
-                            level=logging.WARNING, tag=self.LOG_TAG)
+                            level=logging.ERROR, tag=self.LOG_TAG)
 
             if collected_pdf_info_for_subject:
                 merged_pdf_path = f"/tmp/merged_{short_pseudonym}_survey{survey_index}.pdf"
@@ -1409,6 +1409,16 @@ class MailSender(Connector):
             # Loop over each repeated survey, for both survey creation and email sending
             for survey_index, template_survey_id in enumerate(config.template_survey_ids):
 
+                # Check user defined conditions for this specific survey index
+                should_run, condition_reason = self._check_conditions(conditions=config.conditions, 
+                                                                      data_columns=data["columns"], 
+                                                                      short_pseudonym=short_pseudonym, 
+                                                                      position=survey_index)
+                if not should_run:
+                    self.log(f"{log_prefix}Skipping survey {survey_index+1}: {condition_reason}", 
+                        level=logging.INFO, tag=self.LOG_TAG)
+                    continue
+
                 # Build attachment list for this specific survey index
                 subject_attachments, has_pep_attachment = self._build_attachments_for_survey(
                     config=config,
@@ -1420,16 +1430,6 @@ class MailSender(Connector):
                     short_pseudonym=short_pseudonym,
                     log_prefix=log_prefix
                 )
-
-                # Check user defined conditions for this specific survey index
-                should_run, condition_reason = self._check_conditions(conditions=config.conditions, 
-                                                                      data_columns=data["columns"], 
-                                                                      short_pseudonym=short_pseudonym, 
-                                                                      position=survey_index)
-                if not should_run:
-                    self.log(f"{log_prefix}Skipping survey {survey_index+1}: {condition_reason}", 
-                        level=logging.INFO, tag=self.LOG_TAG)
-                    continue
 
                 #### Optionally create a new survey ####
 
