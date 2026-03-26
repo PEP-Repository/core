@@ -63,7 +63,6 @@ Originally based on [2020 PEP blueprint](https://docs.pages.pep.cs.ru.nl/private
     - $M \mapsto sM$ but can be decrypted using same $x$
   - ReKey with $k$: $(\underline{k^{-1}} \cdot nB, M+nxB, \underline{k} \cdot xB)$
     - $M$ stays intact but can now be decrypted using $sx$
-  - Combined SK: $(\underline{k^{-1}} \cdot \underline{s} \cdot nB, \underline{s} \cdot (M+nxB), \underline{k} \cdot xB)$
   - Combined RSK: $(\underline{k^{-1}} \cdot \underline{s} \cdot (nB + \underline{rB}), \underline{s} \cdot (M+nxB + \underline{r \cdot xB}), \underline{k} \cdot xB)$
 
 ## Identifiers
@@ -103,10 +102,11 @@ Pseudonyms are shuffled to obtain different local pseudonyms.
     - $t$: facility type  ($01$ = users, $02$-$05$ = SF, AM, T, RS), corresponds to $b$
     - $\sigma_z$: _pseudonymisation key factor secret_ (symmetric key) known by server $z$ (AM/T)
 - Translate polymorphic pseudonym $\operatorname{Enc}_{x_\mathrm{p}B, n}(M_a)$ for party $p$:
-  - SK by AM:
+  - RSK by AM:
+    - ReRandomize: $\operatorname{Enc}_{x_\mathrm{p}B, \underline{n}}(M_a)$
     - ReShuffle: $\operatorname{Enc}_{x_\mathrm{p}B, \underline{n'}}(\underline{s_{p,\mathrm{AM}}} M_a)$
     - ReKey: $\operatorname{Enc}_{\underline{k_{p,\mathrm{p},\mathrm{AM}}} x_\mathrm{p}B, \underline{n''}}(s_{p,\mathrm{AM}} M_a)$
-  - Then same SK by T:<br/> $\operatorname{Enc}_{\underline{k_{p,\mathrm{p},\mathrm{T}}} k_{p,\mathrm{p},\mathrm{AM}} x_\mathrm{p}B, \underline{n'''}}(\underline{s_{p,\mathrm{T}}} s_{p,\mathrm{AM}} M_a)$
+  - Then same RSK by T:<br/> $\operatorname{Enc}_{\underline{k_{p,\mathrm{p},\mathrm{T}}} k_{p,\mathrm{p},\mathrm{AM}} x_\mathrm{p}B, \underline{n'''}}(\underline{s_{p,\mathrm{T}}} s_{p,\mathrm{AM}} M_a)$
   - $\mathrm{Enc}_{k_{p,\mathrm{p},\mathrm{T}} k_{p,\mathrm{p},\mathrm{AM}} x_\mathrm{p}B, n}(s_{p,\mathrm{T}} s_{p,\mathrm{AM}} M_a)$ is the _encrypted local pseudonym_
   - __Local pseudonym__ $s_{p,\mathrm{AM}} s_{p,\mathrm{T}} M_a$ obtained by decrypting with the local pseudonym encryption key $k_{p,\mathrm{p},\mathrm{AM}} k_{p,\mathrm{p},\mathrm{T}} x_\mathrm{p}$ (above)
 
@@ -176,12 +176,13 @@ We also add $X$ in the challenge hash. _Is this redundant?_
 
 ### RSK proof
 
-Remember combined SK (see above): $(\underline{k^{-1}} \cdot \underline{s} \cdot nB, \underline{s} \cdot (M+nxB), \underline{k} \cdot xB)$
+Remember combined RSK (see above): $(\underline{k^{-1}} \cdot \underline{s} \cdot (nB + \underline{rB}), \underline{s} \cdot (M+nxB + \underline{r \cdot xB}), \underline{k} \cdot xB)$
 
 For this, you need 3 multiplication proofs:
 
 1. $\underline{sk^{-1}} \cdot (nB + rB)$
 2. $\underline{s} \cdot (M+nxB + rxB)$
+3. $\underline{r} \cdot xB$
 
 Check multiplication proofs using additional info dependent on just reshuffle & rekey factors:
 
@@ -191,7 +192,7 @@ Check multiplication proofs using additional info dependent on just reshuffle & 
 
 This way, transcryptors enforce use of consistent scalars $s_{p,z}, k_{p,\mathrm{p}}$ for reshuffling & rekeying pseudonyms.
 
-We can also verify rerandomization via a proof for $\underline{r} \cdot xB$ and checking that the new ciphertext is indeed $(nB + \underline{rB}, M+nxB + \underline{r \cdot xB}, xB)$, using $rB$ and $rxB$ attached with the proof.
+Note that $rB$ and $rxB$ to verify proof 3 are attached with the proof.
 
 ### In PEP
 

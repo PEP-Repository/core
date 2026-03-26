@@ -27,10 +27,10 @@ public:
     const EncryptedLocalPseudonym& sf,
     const EncryptedLocalPseudonym& ts,
     const std::optional<EncryptedLocalPseudonym>& ug,
-    const ReshuffleRekeyProof& amProof,
-    const ReshuffleRekeyProof& sfProof,
-    const ReshuffleRekeyProof& tsProof,
-    const std::optional<ReshuffleRekeyProof>& ugProof)
+    const RskProof& amProof,
+    const RskProof& sfProof,
+    const RskProof& tsProof,
+    const std::optional<RskProof>& ugProof)
     : mPolymorphic(pp),
     mAccessManager(am),
     mStorageFacility(sf),
@@ -49,10 +49,10 @@ public:
   EncryptedLocalPseudonym mTranscryptor;
   std::optional<EncryptedLocalPseudonym> mUserGroup;
 
-  ReshuffleRekeyProof mAccessManagerProof;
-  ReshuffleRekeyProof mStorageFacilityProof;
-  ReshuffleRekeyProof mTranscryptorProof;
-  std::optional<ReshuffleRekeyProof> mUserGroupProof;
+  RskProof mAccessManagerProof;
+  RskProof mStorageFacilityProof;
+  RskProof mTranscryptorProof;
+  std::optional<RskProof> mUserGroupProof;
 
   // Ensures the underlying CurvePoint's are pre-packed for serialization.
   // See CurvePoint::ensurePacked().
