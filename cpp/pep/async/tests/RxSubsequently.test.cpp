@@ -34,14 +34,18 @@ Inner MakeInner(std::shared_ptr<unsigned> counter, std::function<void()> andInvo
 
 using ProduceNextInnerIfAvailable = std::function<void(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber)>;
 
-unsigned MaxRecursionsDuringCountDown(ProduceNextInnerIfAvailable produce) {
-  unsigned result = 0U;
+bool RecursDuringCountdown(ProduceNextInnerIfAvailable produce) {
+  bool result = false;
 
   pep::CreateObservable<Inner>([produce, counter = std::make_shared<unsigned>(5U)](rxcpp::subscriber<Inner> subscriber) {
     produce(counter, subscriber);
     })
     .concat_map([](Inner inner) { return inner; })
-    .subscribe([&result](Result entry) {result = std::max(result, entry.recursion_); });
+    .subscribe([&result](Result entry) {
+        if (entry.recursion_ != 0U) {
+          result = true;
+        }
+      });
 
   return result;
 }
@@ -81,8 +85,8 @@ void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::su
 
 TEST(RxSubsequently, PreventsRecursion) {
   // We expect that recursion (for every entry in the outer observable) will cause trouble such as stack overflows...
-  EXPECT_NE(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingBunnyHopping))    << "Bunny hopping causes recursive calls";
-  EXPECT_NE(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingRxNativeTap))     << "Tapping causes recursive calls";
+  EXPECT_TRUE(RecursDuringCountdown(&ProduceNextUsingBunnyHopping))     << "Bunny hopping causes recursive calls";
+  EXPECT_TRUE(RecursDuringCountdown(&ProduceNextUsingRxNativeTap))      << "Tapping causes recursive calls";
   // ...which prompted us to create the non-recursive RxSubsequently
-  EXPECT_EQ(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingRxSubsequently))  << "RxSubsequently shouldn't cause recursive calls";
+  EXPECT_FALSE(RecursDuringCountdown(&ProduceNextUsingRxSubsequently))  << "RxSubsequently shouldn't cause recursive calls";
 }
