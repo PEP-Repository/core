@@ -69,7 +69,7 @@ generate_pep_commands_in_setup_order() {
   # additional identifiers
   if [ "$command" == "setup" ]; then
     jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .key as $user | .value[]' \
-      "$AS_ACCESS_ADMIN user addIdentifier \\(\$user | @sh) \(. | @sh)"
+      "$AS_ACCESS_ADMIN user addIdentifier \\(\$user | @sh) \\(. | @sh)"
   else
     jqr '.userGroups[] | .additionalIdentifiers | to_entries[] | .value[]' \
       "$AS_ACCESS_ADMIN user removeIdentifier \\(. | @sh)"
@@ -91,7 +91,7 @@ generate_pep_commands_in_setup_order() {
 
   # subject groups
   jqr '.subjectGroups[]' \
-    "$AS_DATA_ADMIN ama group $createOrRemove"' \(.name | @sh)'
+    "$AS_DATA_ADMIN ama group $createOrRemove \\(.name | @sh)"
 
   # subject group access rules
   jqr '.subjectGroups[] | .name as $cGroup | .pgars | to_entries[]' \
