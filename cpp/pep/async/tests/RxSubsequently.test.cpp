@@ -36,48 +36,42 @@ Inner MakeInner(std::shared_ptr<unsigned> counter, std::function<void()> andInvo
     });
 }
 
-unsigned MaxRecursionDuring(Outer outer) {
+using ProduceNextInner = std::function<void(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber)>;
+
+unsigned MaxRecursionsDuringCountDown(ProduceNextInner produceNextInner) {
   unsigned result = 0U;
-  outer
+
+  pep::CreateObservable<Inner>([produceNextInner, counter = CreateCounter()](rxcpp::subscriber<Inner> subscriber) {
+    produceNextInner(counter, subscriber);
+    })
     .concat_map([](Inner inner) { return inner; })
     .subscribe([&result](Result entry) {result = std::max(result, entry.recursion_); });
+
   return result;
 }
 
-void ProcessNextBunnyHop(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
+void ProduceNextUsingBunnyHopping(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
   if (*counter != 0U) {
-    subscriber.on_next(MakeInner(counter, [counter, subscriber]() {ProcessNextBunnyHop(counter, subscriber); }));
+    subscriber.on_next(MakeInner(counter, [counter, subscriber]() {ProduceNextUsingBunnyHopping(counter, subscriber); }));
   }
   else {
     subscriber.on_completed();
   }
 }
 
-Outer BunnyHoppingCountDown() {
-  return pep::CreateObservable<Inner>([counter = CreateCounter()](rxcpp::subscriber<Inner> subscriber) {
-    ProcessNextBunnyHop(counter, subscriber);
-    });
-}
-
-void ScheduleNextSubsequent(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
+void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
   if (*counter != 0U) {
     subscriber.on_next(MakeInner(counter)
-      .op(pep::RxSubsequently([counter, subscriber]() {ScheduleNextSubsequent(counter, subscriber); })));
+      .op(pep::RxSubsequently([counter, subscriber]() {ProduceNextUsingRxSubsequently(counter, subscriber); })));
   } else {
     subscriber.on_completed();
   }
 }
 
-Outer RxSubsequentlyCountDown() {
-  return pep::CreateObservable<Inner>([counter = CreateCounter()](rxcpp::subscriber<Inner> subscriber) {
-    ScheduleNextSubsequent(counter, subscriber);
-    });
-}
-
 }
 
 TEST(RxSubsequently, PreventsRecursion) {
-  EXPECT_NE(0U, MaxRecursionDuring(BunnyHoppingCountDown())) << "Bunny hopping causes recursive calls";
+  EXPECT_NE(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingBunnyHopping)) << "Bunny hopping causes recursive calls";
   // TODO: demonstrate recursive calls when using .tap to schedule followup
-  EXPECT_EQ(0U, MaxRecursionDuring(RxSubsequentlyCountDown())) << "RxSubsequently shouldn't cause recursive calls";
+  EXPECT_EQ(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingRxSubsequently)) << "RxSubsequently shouldn't cause recursive calls";
 }
