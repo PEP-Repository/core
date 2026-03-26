@@ -2,6 +2,7 @@
 #include <pep/utils/Defer.hpp>
 #include <gtest/gtest.h>
 #include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 namespace {
 
@@ -59,6 +60,19 @@ void ProduceNextUsingBunnyHopping(std::shared_ptr<unsigned> counter, rxcpp::subs
   }
 }
 
+void ProduceNextUsingRxNativeTap(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
+  if (*counter != 0U) {
+    subscriber.on_next(MakeInner(counter)
+      .tap(
+        [](auto) { /* ignore */},
+        [](std::exception_ptr) { /* ignore (or forward to outer?) */},
+        [counter, subscriber]() {ProduceNextUsingRxNativeTap(counter, subscriber); }
+      ));
+  } else {
+    subscriber.on_completed();
+  }
+}
+
 void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
   if (*counter != 0U) {
     subscriber.on_next(MakeInner(counter)
@@ -71,7 +85,9 @@ void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::su
 }
 
 TEST(RxSubsequently, PreventsRecursion) {
-  EXPECT_NE(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingBunnyHopping)) << "Bunny hopping causes recursive calls";
-  // TODO: demonstrate recursive calls when using .tap to schedule followup
-  EXPECT_EQ(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingRxSubsequently)) << "RxSubsequently shouldn't cause recursive calls";
+  // We expect that recursion (for every entry in the outer observable) will cause trouble such as stack overflows...
+  EXPECT_NE(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingBunnyHopping))    << "Bunny hopping causes recursive calls";
+  EXPECT_NE(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingRxNativeTap))     << "Tapping causes recursive calls";
+  // ...which prompted us to create the non-recursive RxSubsequently
+  EXPECT_EQ(0U, MaxRecursionsDuringCountDown(&ProduceNextUsingRxSubsequently))  << "RxSubsequently shouldn't cause recursive calls";
 }
