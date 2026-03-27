@@ -517,6 +517,8 @@ ubuntu-build-with-sast:
     apt-get update && apt-get install -y bear xz-utils
   script:
     - set -euo pipefail
+    # mkdir the man/man1 directory due to Debian bug #863199
+    - mkdir -p /usr/share/man/man1
     - INFER_VERSION="v1.2.0"
     - INSTALL_DIR="/opt"
     - ARCHIVE="infer-linux-x86_64-${INFER_VERSION}.tar.xz"
@@ -529,17 +531,11 @@ ubuntu-build-with-sast:
     - ln -sfn "${INSTALL_DIR}/infer-linux-x86_64-${INFER_VERSION}" /infer
     - export PATH="/infer/bin:${PATH}"
     - *checkout-docker-build-script-sh-steps
-    - *set_concurrency_limit
-    - |
-      if [ -n "$concurrency_limit" ]; then
-        concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
-      fi
     # Do not build dependencies, should already be built in docker-build
     - >
       conan install ./
       --lockfile=./docker-build/builder/conan/conan-ci.lock
       -s build_type=$CMAKE_BUILD_TYPE
-      $concurrency_option_conan
       -o "&:with_assessor=False"
       -o "&:with_castor=$WITH_CASTOR"
       -o "&:with_tests=$WITH_TESTS"
