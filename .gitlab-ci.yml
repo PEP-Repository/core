@@ -557,7 +557,7 @@ ubuntu-build-with-sast:
       -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
-    - bear -- cmake --build --preset conan--$build_type_lower -j30
+    - bear -- cmake --build --preset conan-$build_type_lower -j30
 
     - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
     - infer analyze
