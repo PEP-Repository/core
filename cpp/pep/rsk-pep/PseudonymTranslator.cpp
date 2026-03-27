@@ -41,7 +41,7 @@ ReshuffleRekeyVerifiers PseudonymTranslator::computeTranslationProofVerifiers(
       masterPublicEncryptionKey);
 }
 
-std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+ReshuffleRekeyVerifiersWithProof
 PseudonymTranslator::computeCertifiedTranslationProofVerifiers(
     const Recipient& recipient,
     const ElgamalPublicKey& masterPublicEncryptionKey

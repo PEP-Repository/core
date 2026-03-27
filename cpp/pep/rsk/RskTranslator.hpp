@@ -82,7 +82,7 @@ public:
   /// with proof
   /// \param recipientKeyFactors Recipient key factors
   /// \param masterPublicEncryptionKey Master public encryption key
-  [[nodiscard]] std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+  [[nodiscard]] ReshuffleRekeyVerifiersWithProof
   computeCertifiedReshuffleRekeyVerifiers(
       const KeyFactors& recipientKeyFactors,
       const ElgamalPublicKey& masterPublicEncryptionKey) const;

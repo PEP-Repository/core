@@ -4,7 +4,6 @@
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/key-components/KeyComponentServerProxy.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 
 namespace pep {

@@ -5,9 +5,7 @@
 #include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/rsk-pep/DataTranslator.hpp>
-#include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/transcryptor/TranscryptorMessages.hpp>
 
 #include <pep/transcryptor/Storage.hpp>
@@ -38,8 +36,8 @@ class Transcryptor : public KeyComponentServer {
     std::shared_ptr<TranscryptorStorage> getStorage() const;
     void setStorage(std::shared_ptr<TranscryptorStorage> storage);
 
-    const VerifiersResponse& getVerifiers() const;
-    void setVerifiers(const VerifiersResponse& verifiers);
+    const ServerVerifiers& getVerifiers() const;
+    void setVerifiers(const ServerVerifiers& verifiers);
 
     std::optional<ElgamalPrivateKey> getPseudonymKey() const;
     void setPseudonymKey(const ElgamalPrivateKey& key);
@@ -55,7 +53,7 @@ class Transcryptor : public KeyComponentServer {
     std::optional<ElgamalPrivateKey> pseudonymKey;
     std::optional<ElgamalPublicKey> publicKeyPseudonyms;
     std::shared_ptr<TranscryptorStorage> storage;
-    std::optional<VerifiersResponse> verifiers;
+    std::optional<ServerVerifiers> verifiers;
 
     EndPoint accessManagerEndPoint;
   };
@@ -86,7 +84,7 @@ private:
   AccessManagerProxy mAccessManagerProxy;
   std::shared_ptr<TranscryptorStorage> mStorage;
   std::shared_ptr<Metrics> lpMetrics;
-  VerifiersResponse mVerifiers;
+  ServerVerifiers mVerifiers;
   uintmax_t mNextTranscryptorRequestNumber = 1U;
   uintmax_t mNextLogIssuedTicketRequestNumber = 1U;
 };

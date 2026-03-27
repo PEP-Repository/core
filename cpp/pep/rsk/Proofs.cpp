@@ -194,7 +194,7 @@ void ReshuffleRekeyVerifiersProof::verify(
   mRekeyTimesPublicKeyProof.verify(verifiers.mRekeyCommitment, globalKey, verifiers.mRekeyedPublicKey);
 }
 
-std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+ReshuffleRekeyVerifiersWithProof
 ReshuffleRekeyVerifiersProof::ComputeCertified(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,

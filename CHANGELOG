@@ -56,7 +56,9 @@ MANUAL CHANGES REQUIRED:
       ```shell
       sed -e s/zOverKb/reshuffleOverRekeyCommitment/g -e s/zb/reshuffleCommitment/g -e s/ky/rekeyedPublicKey/g -i'' ./Verifiers.json
       ```
-    - Execute `pepcli verifiers` and copy over `rekeyCommitment` to `Verifiers.json`
+    - Execute `pepcli verifiers` and save as e.g. `Verifiers2.json`
+    - Diff `Verifiers.json` and `Verifiers2.json` and make sure that the only think that changed was the addition of `rekeyCommitment`
+    - Replace the contents of `Verifiers.json` by those of `Verifiers2.json`
 
 ---------------
 

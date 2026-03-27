@@ -1209,11 +1209,20 @@ message ReshuffleRekeyProof {
   ScalarMultProof cp = 5; // for (z B, c + ry, c')
 }
 
-message VerifiersRequest {}
-message VerifiersResponse {
+message ServerVerifiers {
   ReshuffleRekeyVerifiers access_manager = 1;
   ReshuffleRekeyVerifiers storage_facility = 2;
   ReshuffleRekeyVerifiers transcryptor = 3;
+}
+
+message VerifiersRequest {}
+
+message VerifiersResponse {
+  reserved 1 to 3;
+  ServerVerifiers verifiers = 4;
+  ReshuffleRekeyVerifiersProof access_manager_proof = 5;
+  ReshuffleRekeyVerifiersProof storage_facility_proof = 6;
+  ReshuffleRekeyVerifiersProof transcryptor_proof = 7;
 }
 
 message UserVerifiersRequest {

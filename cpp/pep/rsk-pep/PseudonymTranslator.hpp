@@ -53,7 +53,7 @@ public:
   /// \param masterPublicEncryptionKey Master public pseudonym encryption key
   /// \throws std::invalid_argument for invalid pseudonym
   /// \note This only works if we do the first translation step
-  [[nodiscard]] std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+  [[nodiscard]] ReshuffleRekeyVerifiersWithProof
   computeCertifiedTranslationProofVerifiers(
       const Recipient& recipient,
       const ElgamalPublicKey& masterPublicEncryptionKey) const;

@@ -99,6 +99,8 @@ class ReshuffleRekeyVerifiers {
   void ensureThreadSafe() const; // See CurvePoint::ensureThreadSafe()
 };
 
+using ReshuffleRekeyVerifiersWithProof = std::pair<ReshuffleRekeyVerifiers, class ReshuffleRekeyVerifiersProof>;
+
 /// Proof of internal consistency of ReshuffleRekeyVerifiers
 class ReshuffleRekeyVerifiersProof {
 public:
@@ -118,7 +120,7 @@ public:
   ScalarMultProof mReshuffleTimesRekeyInverseProof;
   ScalarMultProof mRekeyTimesPublicKeyProof;
 
-  static std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+  static ReshuffleRekeyVerifiersWithProof
   ComputeCertified(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,

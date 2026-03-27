@@ -6,7 +6,6 @@
 #include <pep/async/WorkerPool.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 

@@ -90,7 +90,7 @@ ReshuffleRekeyVerifiers RskTranslator::computeReshuffleRekeyVerifiers(
       masterPublicEncryptionKey);
 }
 
-std::pair<ReshuffleRekeyVerifiers, ReshuffleRekeyVerifiersProof>
+ReshuffleRekeyVerifiersWithProof
 RskTranslator::computeCertifiedReshuffleRekeyVerifiers(
     const KeyFactors& recipientKeyFactors,
     const ElgamalPublicKey& masterPublicEncryptionKey) const {

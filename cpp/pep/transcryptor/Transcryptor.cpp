@@ -4,6 +4,7 @@
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
+#include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
@@ -85,7 +86,7 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
 
   try {
     setVerifiers(
-      Serialization::FromJsonString<VerifiersResponse>(ReadFile(verifiersFile)));
+      Serialization::FromJsonString<ServerVerifiers>(ReadFile(verifiersFile)));
     } catch (...) {
       LOG(LOG_TAG, error) << "Failed to load verifiers from " << verifiersFile;
       throw;
@@ -106,10 +107,10 @@ std::optional<ElgamalPrivateKey> Transcryptor::Parameters::getPseudonymKey() con
   return pseudonymKey;
 }
 
-void Transcryptor::Parameters::setVerifiers(const VerifiersResponse& verifiers) {
+void Transcryptor::Parameters::setVerifiers(const ServerVerifiers& verifiers) {
   Parameters::verifiers = verifiers;
 }
-const VerifiersResponse& Transcryptor::Parameters::getVerifiers() const {
+const ServerVerifiers& Transcryptor::Parameters::getVerifiers() const {
   return verifiers.value();
 }
 
@@ -151,10 +152,10 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       userVerifiersObs = mAccessManagerProxy.requestUserVerifiers({userCertificate})
         .map([server, userCertificate](const UserVerifiersResponse& response) {
           // Check internal consistency of verifiers
-          response.proof.verify(response.verifiers, server->mPublicKeyPseudonyms);
+          auto verifiers = response.open(server->mPublicKeyPseudonyms);
           // Cross-reference with existing verifiers and store if consistent
-          server->mStorage->checkAndStoreUserVerifiers(userCertificate, response.verifiers);
-          return std::optional{response.verifiers};
+          server->mStorage->checkAndStoreUserVerifiers(userCertificate, verifiers);
+          return std::optional{verifiers};
         });
     }
   }
@@ -234,13 +235,13 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       try {
         pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mAccessManager,
-            entry.mAccessManagerProof, server->mVerifiers.mAccessManager);
+            entry.mAccessManagerProof, server->mVerifiers.accessManager);
         pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mStorageFacility,
-            entry.mStorageFacilityProof, server->mVerifiers.mStorageFacility);
+            entry.mStorageFacilityProof, server->mVerifiers.storageFacility);
         pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mTranscryptor,
-            entry.mTranscryptorProof, server->mVerifiers.mTranscryptor);
+            entry.mTranscryptorProof, server->mVerifiers.transcryptor);
 
         if (ctx->includeUserGroupPseudonyms) {
           pseudonymTranslator.checkTranslationProof(

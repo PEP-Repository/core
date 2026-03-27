@@ -888,28 +888,29 @@ messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_p
 messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request) {
   const auto& pseudonymTranslator = this->pseudonymTranslator();
 
-  return messaging::BatchSingleMessage(VerifiersResponse(
-      pseudonymTranslator.computeTranslationProofVerifiers(
+  return messaging::BatchSingleMessage(VerifiersResponse{
+      pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::AccessManager),
           mPublicKeyPseudonyms
       ),
-      pseudonymTranslator.computeTranslationProofVerifiers(
+      pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::StorageFacility),
           mPublicKeyPseudonyms
       ),
-      pseudonymTranslator.computeTranslationProofVerifiers(
+      pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::Transcryptor),
           mPublicKeyPseudonyms
-      )
-  ));
+      ),
+  });
 }
 
 messaging::MessageBatches AccessManager::handleUserVerifiersRequest(std::shared_ptr<UserVerifiersRequest> request) {
-  auto [verifiers, proof] = this->pseudonymTranslator().computeCertifiedTranslationProofVerifiers(
-    RecipientForCertificate(request->userCertificate),
-    mPublicKeyPseudonyms
-  );
-  return messaging::BatchSingleMessage(UserVerifiersResponse{verifiers, proof});
+  return messaging::BatchSingleMessage(UserVerifiersResponse{
+    this->pseudonymTranslator().computeCertifiedTranslationProofVerifiers(
+      RecipientForCertificate(request->userCertificate),
+      mPublicKeyPseudonyms
+    )
+  });
 }
 
 messaging::MessageBatches
