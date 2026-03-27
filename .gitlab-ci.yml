@@ -530,12 +530,6 @@ ubuntu-build-with-sast:
     - export PATH="/infer/bin:${PATH}"
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
-    - if [ "$ENABLE_LINTER" = yes ]; then
-        # Cap to $LINTER_CONCURRENCY_LIMIT
-    -   if [ -z "$concurrency_limit" ] || [ "$concurrency_limit" -gt "$LINTER_CONCURRENCY_LIMIT" ]; then
-    -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
-    -   fi
-    - fi
     - |
       if [ -n "$concurrency_limit" ]; then
         concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
@@ -558,7 +552,6 @@ ubuntu-build-with-sast:
       cmake --preset conan-$build_type_lower
       -DCMAKE_C_COMPILER_LAUNCHER=ccache
       -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
       -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
       -DENABLE_OAUTH_TEST_USERS=OFF
       -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
