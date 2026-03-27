@@ -50,7 +50,7 @@ else()
 endif()
 
 if(CMAKE_GENERATOR MATCHES "Ninja")
-  set(PEP_PARALLEL_LINK_JOBS "" CACHE STRING "Maximum number of concurrent link jobs")
+  set(PEP_PARALLEL_LINK_JOBS "" CACHE STRING "Maximum number of concurrent link jobs" "$ENV{PEP_PARALLEL_LINK_JOBS}")
   if(PEP_PARALLEL_LINK_JOBS)
     set_property(GLOBAL APPEND PROPERTY JOB_POOLS link_job_pool=${PEP_PARALLEL_LINK_JOBS})
     set(CMAKE_JOB_POOL_LINK link_job_pool)
