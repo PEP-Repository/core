@@ -554,10 +554,9 @@ ubuntu-build-with-sast:
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
     - bear -- cmake --build --preset conan-$build_type_lower -j30
-
     - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
     - infer analyze
-    - python3 scripts/convert_infer_to_gitlab.py -i infer-out/report.json -o gl-sast-report.json
+    - python3 scripts/convert-infer-to-gitlab.py -i infer-out/report.json -o gl-sast-report.json
   artifacts:
     reports:
       sast: gl-sast-report.json
