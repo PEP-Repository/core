@@ -494,6 +494,78 @@ retrieve-lockfile:
     - *stage-artifacts
     - *ccache-print
 
+ubuntu-build-with-sast:
+  <<: *ccache-configuration
+  stage: build
+  tags:
+    - docker
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  variables:
+    HTTPSERVER_WITH_TLS: "OFF"
+    BUILD_GO_SERVERS: "off"
+    WITH_CASTOR: "True"
+    WITH_TESTS: "False"
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    WITH_BENCHMARK: "False"
+    MEM_ANALYSIS_TOOL: "none"
+    VERIFY_HEADERS_STANDALONE: "off"
+  #language=bash
+  before_script:
+    apt-get update && apt-get install -y bear
+  script:
+    - |
+      INFER_VERSION=v1.2.0
+      cd /opt && curl -sL https://github.com/facebook/infer/releases/download/${INFER_VERSION}/infer-linux-x86_64-${INFER_VERSION}.tar.xz | tar xJ && ln -s ${PWD}/infer-linux-x86_64-$INFER_VERSION /infer
+      export PATH="/infer/bin:${PATH}"
+      cd -
+    - *checkout-docker-build-script-sh-steps
+    - *set_concurrency_limit
+    - if [ "$ENABLE_LINTER" = yes ]; then
+        # Cap to $LINTER_CONCURRENCY_LIMIT
+    -   if [ -z "$concurrency_limit" ] || [ "$concurrency_limit" -gt "$LINTER_CONCURRENCY_LIMIT" ]; then
+    -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
+    -   fi
+    - fi
+    - |
+      if [ -n "$concurrency_limit" ]; then
+        concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
+      fi
+    # Do not build dependencies, should already be built in docker-build
+    - >
+      conan install ./
+      --lockfile=./docker-build/builder/conan/conan-ci.lock
+      -s build_type=$CMAKE_BUILD_TYPE
+      $concurrency_option_conan
+      -o "&:with_assessor=False"
+      -o "&:with_castor=$WITH_CASTOR"
+      -o "&:with_tests=$WITH_TESTS"
+      -o "&:with_benchmark=$WITH_BENCHMARK"
+      -o "&:custom_build_folder=True"
+      --output-folder=./$BUILD_DIRECTORY/
+    - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
+    - *set-enable-deprecation-errors
+    - >
+      cmake --preset conan-$build_type_lower
+      -DCMAKE_C_COMPILER_LAUNCHER=ccache
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+      -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
+      -DENABLE_OAUTH_TEST_USERS=OFF
+      -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
+      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
+      -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    - bear -- cmake --build --preset conan--$build_type_lower -j30
+
+    - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
+    - infer analyze
+  artifacts:
+    expire_in: 8h
+    paths:
+      - infer-out/report.json
+
 .ubuntu-build-with-tests-base:
   extends:
     - .ubuntu-build-base
