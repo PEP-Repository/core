@@ -514,7 +514,7 @@ ubuntu-build-with-sast:
     VERIFY_HEADERS_STANDALONE: "off"
   #language=bash
   before_script:
-    apt-get update && apt-get install -y bear
+    apt-get update && apt-get install -y bear xz-utils
   script:
     - set -euo pipefail
     - INFER_VERSION="v1.2.0"
