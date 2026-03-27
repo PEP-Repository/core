@@ -125,8 +125,10 @@ echo "CORE_DIR: $CORE_DIR"
 GENERATED_DATA_DIR="${GENERATED_DATA_DIR:-"$CORE_DIR"/temp/integration}"
 
 if $REUSE_SECRETS_AND_DATA; then
-  >&2 printYellow "generated-data-dir ($GENERATED_DATA_DIR) does not exist, but reuse-secrets-and-data is enabled"
-  exit 1
+  if ! [ -d "$GENERATED_DATA_DIR" ]; then
+    >&2 printYellow "generated-data-dir ($GENERATED_DATA_DIR) does not exist, but reuse-secrets-and-data is enabled"
+    exit 1
+  fi
 else
   rm -rf "$GENERATED_DATA_DIR" || (printYellow "Attempting to delete files that were created by Docker, using elevated credentials. Please remove $GENERATED_DATA_DIR manually using sudo." && exit 1)
 fi
