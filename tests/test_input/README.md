@@ -1,6 +1,8 @@
 # `base_integration_data`
 
-`base_integration_data` contains data used to test if the current version of the software still works with an older database etc., by calling `integration.sh` with `--generated-data-dir ./tests/test_input/base_integration_data --reuse-secrets-and-data`.
+`base_integration_data` contains data used to test if the current version of the software still works with an older database etc.
+
+See the `docker-integration-on-base-data` GitLab CI job for now to do this (including the `pki.sh` command).
 
 When manual changes are required for a release, this data may need to be updated.
 
