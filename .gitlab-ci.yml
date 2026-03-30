@@ -4,6 +4,14 @@ spec:
       options: ['linted', 'unlinted']
       default: unlinted
       description: Enable linter during compilation
+    use_sast:
+      description: Enable SAST build (yes/no)
+      default: "no"
+      type: string
+      required: false
+      options:
+        - yes
+        - no
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -497,6 +505,8 @@ retrieve-lockfile:
 ubuntu-build-with-sast:
   <<: *ccache-configuration
   stage: build
+  rules:
+    - if: '$[[ inputs.use_sast ]] == "yes"'
   tags:
     - docker
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
@@ -558,8 +568,8 @@ ubuntu-build-with-sast:
     - infer analyze
     - infer report --sarif
   artifacts:
-    reports:
-      sast: infer-out/report.sarif
+    paths:
+      - infer-out/report.sarif
 
 .ubuntu-build-with-tests-base:
   extends:
