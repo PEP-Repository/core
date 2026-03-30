@@ -8,7 +8,6 @@ spec:
       description: Enable SAST build (yes/no)
       default: "no"
       type: string
-      required: false
       options:
         - yes
         - no
