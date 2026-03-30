@@ -438,6 +438,32 @@ retrieve-lockfile:
     paths:
       - ./docker-build/builder/conan/conan-ci.lock
 
+.configure-conan-and-cmake: &configure-conan-and-cmake
+  # Do not build dependencies, should already be built in docker-build
+  - >
+    conan install ./
+    --lockfile=./docker-build/builder/conan/conan-ci.lock
+    -s build_type=$CMAKE_BUILD_TYPE
+    $concurrency_option_conan
+    -o "&:with_assessor=False"
+    -o "&:with_castor=$WITH_CASTOR"
+    -o "&:with_tests=$WITH_TESTS"
+    -o "&:with_benchmark=$WITH_BENCHMARK"
+    -o "&:custom_build_folder=True"
+    --output-folder=./$BUILD_DIRECTORY/
+  - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
+  - *set-enable-deprecation-errors
+  - >
+    cmake --preset conan-$build_type_lower
+    -DCMAKE_C_COMPILER_LAUNCHER=ccache
+    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+    -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+    -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
+    -DENABLE_OAUTH_TEST_USERS=OFF
+    -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
+    -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
+    -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+
 .ubuntu-build-base:
   <<: *ccache-configuration
   stage: build
@@ -462,30 +488,7 @@ retrieve-lockfile:
       if [ -n "$concurrency_limit" ]; then
         concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
       fi
-    # Do not build dependencies, should already be built in docker-build
-    - >
-      conan install ./
-      --lockfile=./docker-build/builder/conan/conan-ci.lock
-      -s build_type=$CMAKE_BUILD_TYPE
-      $concurrency_option_conan
-      -o "&:with_assessor=False"
-      -o "&:with_castor=$WITH_CASTOR"
-      -o "&:with_tests=$WITH_TESTS"
-      -o "&:with_benchmark=$WITH_BENCHMARK"
-      -o "&:custom_build_folder=True"
-      --output-folder=./$BUILD_DIRECTORY/
-    - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
-    - *set-enable-deprecation-errors
-    - >
-      cmake --preset conan-$build_type_lower
-      -DCMAKE_C_COMPILER_LAUNCHER=ccache
-      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
-      -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
-      -DENABLE_OAUTH_TEST_USERS=OFF
-      -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
-      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
-      -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    - *configure-conan-and-cmake
     - cmake --build --preset conan-$build_type_lower
 
     # Check for lines only in second file (tests on disk)
@@ -501,7 +504,7 @@ retrieve-lockfile:
     - *stage-artifacts
     - *ccache-print
 
-ubuntu-build-with-sast:
+ubuntu-lts-debug-with-sast:
   <<: *ccache-configuration
   stage: build
   rules:
@@ -521,6 +524,8 @@ ubuntu-build-with-sast:
     WITH_BENCHMARK: "False"
     MEM_ANALYSIS_TOOL: "none"
     VERIFY_HEADERS_STANDALONE: "off"
+    ENABLE_LINTER: "no"
+    concurrency_option_conan: ""
   #language=bash
   before_script:
     apt-get update && apt-get install -y bear xz-utils
@@ -540,28 +545,7 @@ ubuntu-build-with-sast:
     - ln -sfn "${INSTALL_DIR}/infer-linux-x86_64-${INFER_VERSION}" /infer
     - export PATH="/infer/bin:${PATH}"
     - *checkout-docker-build-script-sh-steps
-    # Do not build dependencies, should already be built in docker-build
-    - >
-      conan install ./
-      --lockfile=./docker-build/builder/conan/conan-ci.lock
-      -s build_type=$CMAKE_BUILD_TYPE
-      -o "&:with_assessor=False"
-      -o "&:with_castor=$WITH_CASTOR"
-      -o "&:with_tests=$WITH_TESTS"
-      -o "&:with_benchmark=$WITH_BENCHMARK"
-      -o "&:custom_build_folder=True"
-      --output-folder=./$BUILD_DIRECTORY/
-    - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
-    - *set-enable-deprecation-errors
-    - >
-      cmake --preset conan-$build_type_lower
-      -DCMAKE_C_COMPILER_LAUNCHER=ccache
-      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
-      -DENABLE_OAUTH_TEST_USERS=OFF
-      -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
-      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
-      -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    - *configure-conan-and-cmake
     - bear -- cmake --build --preset conan-$build_type_lower -j30
     - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
     - infer analyze
