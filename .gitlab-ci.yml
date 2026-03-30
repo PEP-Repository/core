@@ -6,7 +6,7 @@ spec:
       description: Enable linter during compilation
     use_sast:
       description: Enable SAST build (yes/no)
-      default: "no"
+      default: no
       type: string
       options:
         - yes
