@@ -6,11 +6,8 @@ spec:
       description: Enable linter during compilation
     use_sast:
       description: Enable SAST build (yes/no)
-      default: no
-      type: string
-      options:
-        - yes
-        - no
+      type: boolean
+      default: false
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -508,7 +505,7 @@ ubuntu-lts-debug-with-sast:
   <<: *ccache-configuration
   stage: build
   rules:
-    - if: '$[[ inputs.use_sast ]] == "yes"'
+    - if: $[[ inputs.use_sast ]] == true
   tags:
     - docker
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
