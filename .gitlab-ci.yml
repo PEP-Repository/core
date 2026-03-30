@@ -556,10 +556,10 @@ ubuntu-build-with-sast:
     - bear -- cmake --build --preset conan-$build_type_lower -j30
     - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
     - infer analyze
-    - python3 scripts/convert-infer-to-gitlab.py -i infer-out/report.json -o gl-sast-report.json
+    - infer report --sarif
   artifacts:
     reports:
-      sast: gl-sast-report.json
+      sast: infer-out/report.sarif
 
 .ubuntu-build-with-tests-base:
   extends:
