@@ -813,7 +813,7 @@ class LimeSurveyConnector(Connector):
 
         return row_output.getvalue()
 
-    def upload_response(self, response, short_pseudonym: str, column_name: str, file_extension):
+    def upload_response(self, response, short_pseudonym: str, column_name: str, file_extension=None):
         try:
             self.upload_file_with_pipe_by_short_pseudonym(short_pseudonym, column_name, response, file_extension=file_extension)
         except Exception as e:
@@ -1205,16 +1205,16 @@ class LimeSurveyConnector(Connector):
                         try:
                             file_bytes = base64.b64decode(file_content)
                             if file_ext:
-                                self.upload_response(file_bytes,
-                                                     short_pseudonym,
-                                                     target_column,
+                                self.upload_response(response=file_bytes,
+                                                     short_pseudonym=short_pseudonym,
+                                                     column_name=target_column,
                                                      file_extension=f".{file_ext}")
                                 successful_uploads += 1
                                 self.log(f"Uploaded file from question {question_id}, with file extension {file_ext} to {target_column} for {short_pseudonym}", logging.INFO)
                             else:
-                                self.upload_response(file_bytes,
-                                                     short_pseudonym,
-                                                     target_column)
+                                self.upload_response(response=file_bytes,
+                                                     short_pseudonym=short_pseudonym,
+                                                     column_name=target_column)
                                 successful_uploads += 1
                                 self.log(f"Uploaded file from question {question_id} to {target_column} for {short_pseudonym}", logging.INFO)
                         except Exception as e:
