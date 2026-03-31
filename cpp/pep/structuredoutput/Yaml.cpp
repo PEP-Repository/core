@@ -177,7 +177,6 @@ std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& res, Di
 std::string to_string(const Tree& tree, const Config config) {
   std::ostringstream stream;
   append(stream, tree, config);
-  std::cout << stream.str() << std::endl;
   return std::move(stream).str();
 }
 
