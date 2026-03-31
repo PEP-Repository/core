@@ -119,19 +119,19 @@ class AccessAdmin(AccessGroup):
                                               access_group=access_group,
                                               permission="enumerate")
 
-    def create_user_group(self, name: str, max_auth_validity: str = None) -> None:
+    def create_user_group(self, user_group: str, max_auth_validity: str = None) -> None:
         """
         Create a user group with the specified name and optional max_auth_validity with the format YYYYMMDD.
         """
-        command = ["user", "group", "create", name]
+        command = ["user", "group", "create", user_group]
         if max_auth_validity:
             command.extend(["--max-auth-validity", max_auth_validity])
         try:
             self.repository.run_command(command)
-            self.log(f"Successfully created user group {name}")
+            self.log(f"Successfully created user group {user_group}")
         except PepError as e:
             if "already exists" in e.stderr:
-                self.log(f"User group {name} already exists", level=logging.WARNING)
+                self.log(f"User group {user_group} already exists", level=logging.WARNING)
             else:
                 self.log(f"Error: {e}", level=logging.ERROR)
                 raise
@@ -149,16 +149,16 @@ class AccessAdmin(AccessGroup):
             self.create_user_group(user_group=user_group,
                                    max_auth_validity=max_auth_validity)
 
-    def modify_user_group(self, name: str, max_auth_validity: str = None) -> None:
+    def modify_user_group(self, user_group: str, max_auth_validity: str = None) -> None:
         """
         Modify a user group with the specified name and optional max_auth_validity with the format YYYYMMDD.
         """
-        command = ["user", "group", "modify", name]
+        command = ["user", "group", "modify", user_group]
         if max_auth_validity:
             command.extend(["--max-auth-validity", max_auth_validity])
         try:
             self.repository.run_command(command)
-            self.log(f"Successfully modified user group {name}")
+            self.log(f"Successfully modified user group {user_group}")
         except PepError as e:
             self.log(f"Error: {e}", level=logging.ERROR)
             raise
