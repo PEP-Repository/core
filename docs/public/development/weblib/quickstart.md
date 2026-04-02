@@ -76,11 +76,17 @@ conan install \
 
 ## Configure PEP
 
+First configure PEP as you would normally do to develop PEP on your platform. E.g. on Windows:
+
+```shell
+cd build & ..\scripts\cmake-vs.bat .. ..\..\ops\keys
+```
+
+Then (`cd` back to the repo root and) configure the WASM build as shown below. The value for `PKI_DIR` should point to the PKI directory of the regular build that you just configured. This will allow you to test with local servers, without which you will likely see `boost::system::system_error: certificate verify failed (SSL routines)` when connecting.
+
 ```shell
 cmake --preset=wasm32-debug -DPKI_DIR=./build/Debug/pki/
 ```
-
-- `PKI_DIR` should point to an existing `pepServers` build if you want to test with local servers. Without this you will likely see `boost::system::system_error: certificate verify failed (SSL routines)` when connecting.
 
 ## Build & run sample page
 
