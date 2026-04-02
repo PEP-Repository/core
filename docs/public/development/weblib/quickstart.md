@@ -93,7 +93,7 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/Debug/pki/
 Build Debug & start local servers:
 
 ```shell
-./weblib/start_dev.sh
+./weblib/pep-sample-client/start_dev.sh
 ```
 
 When EMSDK was installed via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script in your build folder.
