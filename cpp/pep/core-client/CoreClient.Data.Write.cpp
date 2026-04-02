@@ -116,10 +116,10 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     auto signedTicket = std::move(indexedTicket).getTicket();
     ctx->request->mTicket = *signedTicket;
 
-    auto receivedPps = signedTicket->openWithoutCheckingSignature().mPseudonyms.size();
-    if (receivedPps < requestedPps) {
+    const auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
+    if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
-      msg << "Received ticket for " << receivedPps << " pseudonym(s) but requested access to " << requestedPps;
+      msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
       LOG(LOG_TAG, error) << msg.str();
       throw std::runtime_error(msg.str());
     }
@@ -217,10 +217,10 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     ctx->request->mTicket = *signedTicket;
     ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms);
 
-    auto receivedPps = signedTicket->openWithoutCheckingSignature().mPseudonyms.size();
-    if (receivedPps < requestedPps) {
+    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
+    if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
-      msg << "Received ticket for " << receivedPps << " pseudonym(s) but requested access to " << requestedPps;
+      msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
       LOG(LOG_TAG, error) << msg.str();
       throw std::runtime_error(msg.str());
     }
@@ -275,7 +275,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
             auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
             std::ostringstream message;
             message << "Did not receive existing entry for metadata update"
-              << " for participant " << ticket.mPseudonyms[storeEntry.mPseudonymIndex].mPolymorphic.text()
+              << " for participant " << ticket.mAccessSubjects[storeEntry.mPseudonymIndex].mPolymorphic.text()
               << ", column " << ticket.mColumns[storeEntry.mColumnIndex];
             throw std::runtime_error(message.str());
           }
@@ -404,10 +404,10 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
     auto signedTicket = std::move(indexedTicket).getTicket();
     ctx->request->mTicket = *signedTicket;
 
-    auto receivedPps = signedTicket->openWithoutCheckingSignature().mPseudonyms.size();
-    if (receivedPps < requestedPps) {
+    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
+    if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
-      msg << "Received ticket for " << receivedPps << " pseudonym(s) but requested access to " << requestedPps;
+      msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
       LOG(LOG_TAG, error) << msg.str();
       throw std::runtime_error(msg.str());
     }
@@ -417,10 +417,10 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
       auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
       // TODO: use CreateObservable instead of rxcpp::iterate over a vector<> that we just create for this purpose
       std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms;
-      pseudonyms.reserve(ticket.mPseudonyms.size());
+      pseudonyms.reserve(ticket.mAccessSubjects.size());
       std::optional<bool> includeAccessGroupPseudonyms;
       std::vector<std::shared_ptr<LocalPseudonym>> agPseuds;
-      for (const auto& p : ticket.mPseudonyms) {
+      for (const auto& p : ticket.mAccessSubjects) {
         pseudonyms.push_back(std::make_shared<LocalPseudonyms>(p));
         if (includeAccessGroupPseudonyms.has_value()) {
           if (p.mAccessGroup.has_value() != *includeAccessGroupPseudonyms) {

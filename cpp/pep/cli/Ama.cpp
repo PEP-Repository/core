@@ -396,12 +396,12 @@ private:
           .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
-        + pep::commandline::Parameter("column", "Match these columns").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("column-group", "Match these column groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("user-group", "Match these user groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("participant-group", "Match these participant groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("column-mode", "Match these column-modes").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("participant-group-mode", "Match these participant-group-modes").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"));
+        + pep::commandline::Parameter("column", "Match results related to this column. You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-group", "Match results related to this column group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("user-group", "Match results related to this user group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group", "Match results related to this participant group").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-mode", "Match results related to this column-mode").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group-mode", "Match results related to this participant-group-mode").value(pep::commandline::Value<std::string>());
     }
 
     int execute() override {
@@ -416,12 +416,12 @@ private:
           .mAt = pep::GetOptionalValue(vm.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
             return pep::Timestamp(milliseconds{ms});
           }),
-          .mColumnFilter = vm.get<std::string>("column"),
-          .mColumnGroupFilter = vm.get<std::string>("column-group"),
-          .mParticipantGroupFilter = vm.get<std::string>("participant-group"),
-          .mUserGroupFilter = vm.get<std::string>("user-group"),
-          .mColumnGroupModeFilter = vm.get<std::string>("column-mode"),
-          .mParticipantGroupModeFilter = vm.get<std::string>("participant-group-mode"),
+          .mColumnFilter = vm.getOptional<std::string>("column").value_or(""),
+          .mColumnGroupFilter = vm.getOptional<std::string>("column-group").value_or(""),
+          .mParticipantGroupFilter = vm.getOptional<std::string>("participant-group").value_or(""),
+          .mUserGroupFilter = vm.getOptional<std::string>("user-group").value_or(""),
+          .mColumnGroupModeFilter = vm.getOptional<std::string>("column-mode").value_or(""),
+          .mParticipantGroupModeFilter = vm.getOptional<std::string>("participant-group-mode").value_or(""),
         };
         return client->getAccessManagerProxy()->amaQuery(std::move(query))
         .map([scriptPrintFilter](pep::AmaQueryResponse res) {
@@ -842,8 +842,8 @@ private:
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
             std::vector<pep::PolymorphicPseudonym> pps;
-            pps.reserve(ticket->mPseudonyms.size());
-            std::transform(ticket->mPseudonyms.begin(), ticket->mPseudonyms.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
+            pps.reserve(ticket->mAccessSubjects.size());
+            std::transform(ticket->mAccessSubjects.begin(), ticket->mAccessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });

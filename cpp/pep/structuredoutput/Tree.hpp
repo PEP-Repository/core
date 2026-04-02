@@ -3,6 +3,8 @@
 #include <nlohmann/json.hpp>
 #include <pep/structuredoutput/Table.hpp>
 
+#include <boost/property_tree/ptree_fwd.hpp>
+
 namespace pep::structuredOutput {
 
 /// Generic tree structure that converts to other (more specific) formats
@@ -15,6 +17,7 @@ namespace pep::structuredOutput {
 class Tree final {
 public:
   static Tree FromJson(nlohmann::json json) noexcept { return Tree(std::move(json)); }
+  static Tree FromPropertyTree(const boost::property_tree::ptree&);
 
   const nlohmann::json& toJson() const& noexcept { return mJson; }
   nlohmann::json toJson() && noexcept { return std::move(mJson); }

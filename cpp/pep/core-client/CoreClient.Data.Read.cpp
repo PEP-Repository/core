@@ -59,7 +59,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
   return accessManagerProxy
       ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
                                                .mParticipantGroups = participantGroups,
-                                               .mPolymorphicPseudonyms = pps,
+                                               .mAccessSubjects = pps,
                                                .mColumnGroups = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})
@@ -258,7 +258,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   };
   std::optional<Ticket2> unsignedTicket;
   FillHistoryRequestIndices<LocalPseudonyms, PolymorphicPseudonym>(
-    request.mTicket, unsignedTicket, &Ticket2::mPseudonyms, pps, request.mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
+    request.mTicket, unsignedTicket, &Ticket2::mAccessSubjects, pps, request.mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
   FillHistoryRequestIndices<std::string, std::string>(
     request.mTicket, unsignedTicket, &Ticket2::mColumns, columns, request.mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
@@ -275,7 +275,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
       std::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
         auto ilp = localPseuds.find(entry.mPseudonymIndex);
         if (ilp == localPseuds.cend()) {
-          auto emplaced = localPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ticket.mPseudonyms[entry.mPseudonymIndex])));
+          auto emplaced = localPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ticket.mAccessSubjects[entry.mPseudonymIndex])));
           assert(emplaced.second);
           ilp = emplaced.first;
         }
@@ -311,15 +311,15 @@ CoreClient::getHistory2(SignedTicket2 ticket,
 CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms) {
   auto opened = ticket.openWithoutCheckingSignature();
 
-  mPseudonyms.reserve(opened.mPseudonyms.size());
-  if (!opened.mPseudonyms.empty()) {
-    if (opened.mPseudonyms.front().mAccessGroup.has_value()) {
+  mPseudonyms.reserve(opened.mAccessSubjects.size());
+  if (!opened.mAccessSubjects.empty()) {
+    if (opened.mAccessSubjects.front().mAccessGroup.has_value()) {
       mAgPseuds.emplace(std::vector<std::shared_ptr<LocalPseudonym>>());
-      mAgPseuds->reserve(opened.mPseudonyms.size());
+      mAgPseuds->reserve(opened.mAccessSubjects.size());
     }
   }
 
-  for (const auto& p : opened.mPseudonyms) {
+  for (const auto& p : opened.mAccessSubjects) {
     mPseudonyms.push_back(std::make_shared<LocalPseudonyms>(p));
 
     if (p.mAccessGroup.has_value() != mAgPseuds.has_value()) {

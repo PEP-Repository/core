@@ -1,5 +1,4 @@
 #include <pep/utils/Defer.hpp>
-#include <pep/utils/Random.hpp>
 #include <pep/utils/Win32Api.hpp>
 #include <pep/utils/Log.hpp>
 
@@ -243,10 +242,7 @@ std::filesystem::path GetUniqueTemporaryPath() {
   char path[MAX_PATH];
 
   do {
-    UINT uUnique;
-    pep::RandomBytes(reinterpret_cast<uint8_t *>(&uUnique), sizeof(uUnique));
-
-    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, uUnique, path) == 0U) {
+    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, 0, path) == 0U) {
       win32api::ApiCallFailure::RaiseLastError();
     }
   } while (std::filesystem::exists(path));

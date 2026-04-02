@@ -68,7 +68,7 @@ CurveScalar::CurveScalar(std::string_view packed) { //NOLINT(cppcoreguidelines-p
  * \param s The scalar to add.
  * \return The resulting CurveScalar.
  */
-CurveScalar CurveScalar::add(const CurveScalar& s) const {
+CurveScalar CurveScalar::operator+(const CurveScalar& s) const {
   CurveScalar r;
   group_scalar_add(&r.inner, &inner, &s.inner);
   return r;
@@ -81,7 +81,7 @@ CurveScalar CurveScalar::add(const CurveScalar& s) const {
  * \param s The scalar to add.
  * \return The resulting CurveScalar.
  */
-CurveScalar CurveScalar::sub(const CurveScalar& s) const {
+CurveScalar CurveScalar::operator-(const CurveScalar& s) const {
   CurveScalar r;
   group_scalar_sub(&r.inner, &inner, &s.inner);
   return r;
@@ -94,7 +94,7 @@ CurveScalar CurveScalar::sub(const CurveScalar& s) const {
  * \param s The scalar to multiply with.
  * \return The resulting CurveScalar.
  */
-CurveScalar CurveScalar::mult(const CurveScalar& s) const {
+CurveScalar CurveScalar::operator*(const CurveScalar& s) const {
   CurveScalar r;
   group_scalar_mul(&r.inner, &inner, &s.inner);
   return r;
@@ -140,8 +140,7 @@ bool CurveScalar::operator==(const CurveScalar& other) const {
 }
 
 CurveScalar CurveScalar::Random() {
-  // Compiler can't seem to deduce template parameter RNG itself
-  return CurveScalar::Random<void(uint8_t*,uint64_t)>(RandomBytes);
+  return CurveScalar::From64Bytes(SpanToString(RandomArray<64>()));
 }
 
 CurveScalar CurveScalar::ShortHash(std::string_view s) {

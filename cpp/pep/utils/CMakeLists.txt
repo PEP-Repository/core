@@ -29,14 +29,16 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Exceptions.cpp Exceptions.hpp
     File.cpp File.hpp
     Filesystem.cpp Filesystem.hpp
-    Hasher.hpp
+    Hmac.hpp
+    Hasher.cpp Hasher.hpp
     InstanceTracker.hpp
     LifeCycler.cpp LifeCycler.hpp
     LocalSettings.cpp LocalSettings.hpp
     Log.cpp Log.hpp
-    Md5.cpp Md5.hpp
+    Math.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
+    OpenSSLHasher.hpp OpenSSLHasher.cpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
     Paths.cpp Paths.hpp
@@ -48,7 +50,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
     SelfRegistering.hpp
-    Sha.hpp
     Shared.hpp
     Singleton.hpp
     Stream.cpp Stream.hpp
@@ -70,6 +71,8 @@ find_package(Boost REQUIRED)
 find_package(OpenSSL REQUIRED COMPONENTS
   Crypto
 )
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 find_package(xxHash REQUIRED)
 
 target_link_libraries(${PROJECT_NAME}Utilslib
@@ -80,6 +83,7 @@ target_link_libraries(${PROJECT_NAME}Utilslib
   Boost::log
   Boost::log_setup
   OpenSSL::Crypto
+  Threads::Threads
   xxHash::xxhash
 )
 

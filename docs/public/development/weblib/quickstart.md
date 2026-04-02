@@ -11,6 +11,9 @@ Install Nginx and the [websockify](https://github.com/novnc/websockify) Python p
 !!! bug "Emscripten version"
     Currently, Emscripten ≥4.0.23 blocks too long while waiting for WebSocket traffic, see [this issue](https://github.com/emscripten-core/emscripten/issues/26192). Until this is resolved, use version 4.0.22 instead.
 
+!!! info "Node.js"
+    When Node.js is already installed on the system (`node` is in PATH), EMSDK will not add its version to PATH, and we assume `npm` also available with your existing installation.
+
 **Option 1: Manual install**
 
 Just follow the steps in the [Emscripten docs](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended). Make sure to source the environment file in your build shell, and check if the `EMSDK` envvar is indeed set.
@@ -45,8 +48,8 @@ Replace the `include` path by the actual path to the `conan_profile_wasm32` file
 
 As host profile, you can use or include `docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
 
-!!! bug "Emscripten version detection"
-    Currently, Emscripten version detection for manually installed EMSDK is broken (1) on Windows or (2) with a fresh install, see [this issue](https://github.com/conan-io/conan/issues/19677). For (1), manually specify `compiler.version`. For (2), the second try it should work.
+!!! warning "Emscripten version detection"
+    Please make sure you have Conan 2.27 or later for `detect_emcc_compiler` to work correctly.
 
 !!! warning "Windows quirks"
     - You may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. Work around this by editing the emsdk recipe in `<your-conan2-dir>/p/emsdkXXXXXXXXXXXX/e/conanfile.py` and replacing the body of `_define_tool_var` with `return f"python \"{os.path.join(self._emscripten, f'{value}.py')}\""`.
@@ -95,6 +98,14 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/pki/
     - The `build\wasm32\Debug\generators\conanbuild.bat` script generated will not be compatible with Git Bash. Instead, source (run) it in the appropriate Windows shell and then start Git Bash from that same shell by invoking `"C:\Program Files\Git\bin\bash"`.
     - When using PowerShell, sourcing `conanbuild.bat` will not work. Instead, set e.g. `-c tools.env.virtualenv:powershell=...` according to [the docs](https://docs.conan.io/2/reference/config_files/global_conf.html) and source `conanbuild.ps1`.
     - Nginx may not go to the background or want to shut down with ctrl+C, kill it via the task manager instead.
+    - When installing EMSDK via Conan, you may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. In the emsdk recipe, patch this line in their `conanfile.py`:
+      ```diff
+      104c104
+      <         self.buildenv_info.define_path("AR", self._define_tool_var("emar"))
+      ---
+      >         self.buildenv_info.define_path("AR", f'"{os.path.join(self.package_folder, "bin", "upstream", "bin", "llvm-ar")}"')
+      ```
+      And then add `--build="esmdk/*"` to the `conan install` command.
     - websockify may log `WARNING: no 'resource' module, daemonizing is disabled`. This can be ignored.
 
 If you installed EMSDK via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script from your `wasm32` build folder.
@@ -106,4 +117,3 @@ Build Debug & start local servers:
 ```
 
 Now you can finally open http://localhost:2280/weblib/pep-sample-client/ in your browser. Try to log in as Research Assessor and list columns, for example.
-

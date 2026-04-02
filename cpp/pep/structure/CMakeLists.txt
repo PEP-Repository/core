@@ -14,8 +14,6 @@ find_package(Boost REQUIRED)
 target_link_libraries(${PROJECT_NAME}Structurelib
 PUBLIC
   ${PROJECT_NAME}RskPeplib
-PRIVATE
-  Boost::random
 )
 
 add_unit_tests(Structure)

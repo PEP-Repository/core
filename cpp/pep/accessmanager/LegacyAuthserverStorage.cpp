@@ -2,7 +2,7 @@
 
 #include <pep/auth/UserGroup.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/accessmanager/UserStorageRecords.hpp>
 

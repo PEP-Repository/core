@@ -1,32 +1,35 @@
 #include <pep/rsk/Proofs.hpp>
 
+#include <pep/elgamal/CryptoAssert.hpp>
+
 namespace pep {
 
-ScalarMultProof ScalarMultProof::create(
-    const CurvePoint& A,
-    const CurvePoint& M,
-    const CurvePoint& N,
-    const CurveScalar& x,
-    CPRNG* rng) {
-  auto nonce = rng == nullptr ? CurveScalar::Random()
-                  : CurveScalar::Random<>(*rng);
-  auto cb = CurvePoint::BaseMult(nonce);
-  auto cm = M.mult(nonce);
-  auto challenge = computeChallenge(A, M, N, cb, cm);
+ScalarMultProof ScalarMultProof::Create(
+    const CurvePoint& secretTimesBase,
+    const CurvePoint& pre,
+    const CurvePoint& post,
+    const CurveScalar& secret) {
+  PEP_CryptoAssert(secretTimesBase == secret * CurvePoint::Base);
+  PEP_CryptoAssert(post == secret * pre);
+  auto nonce = CurveScalar::Random();
+  auto cb = nonce * CurvePoint::Base;
+  auto cm = nonce * pre;
+  auto challenge = ComputeChallenge(secretTimesBase, pre, post, cb, cm);
+  pep::PublicCurveScalar s(nonce + (challenge * secret));
   return ScalarMultProof(
     cb,
     cm,
-    nonce.add(challenge.mult(x))
+    s
   );
 }
 
 void ScalarMultProof::verify(
-    const CurvePoint& A,
-    const CurvePoint& M,
-    const CurvePoint& N) const {
-  auto challenge = computeChallenge(A, M, N, mCB, mCM);
-  if ((CurvePoint::PublicBaseMult(mS) != A.publicMult(challenge).add(mCB))
-      || (M.publicMult(mS) != N.publicMult(challenge).add(mCM)))
+    const CurvePoint& secretTimesBase,
+    const CurvePoint& pre,
+    const CurvePoint& post) const {
+  pep::PublicCurveScalar challenge(ComputeChallenge(secretTimesBase, pre, post, mCB, mCM));
+  if ((mS * CurvePoint::Base != challenge * secretTimesBase + mCB)
+      || (mS * pre != challenge * post + mCM))
     throw InvalidProof();
 }
 
@@ -35,103 +38,133 @@ void ScalarMultProof::ensurePacked() const {
   mCM.ensurePacked();
 }
 
-CurveScalar ScalarMultProof::computeChallenge(
-    const CurvePoint& A,
-    const CurvePoint& M,
-    const CurvePoint& N,
+CurveScalar ScalarMultProof::ComputeChallenge(
+    const CurvePoint& secretTimesBase,
+    const CurvePoint& pre,
+    const CurvePoint& post,
     const CurvePoint& cb,
     const CurvePoint& cm) {
   std::string packed;
   packed.reserve(CurvePoint::PACKEDBYTES * 5);
-  packed += A.pack();
-  packed += M.pack();
-  packed += N.pack();
+  packed += secretTimesBase.pack();
+  packed += pre.pack();
+  packed += post.pack();
   packed += cb.pack();
   packed += cm.pack();
   return CurveScalar::ShortHash(packed);
 }
 
-RSKProof RSKProof::create(
+ReshuffleRekeyProof ReshuffleRekeyProof::Create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
-    const CurveScalar& z,
-    const CurvePoint& zB,
-    const CurveScalar& zOverK,
-    const CurvePoint& zOverKB,
-    const CurveScalar& r,
-    const CurvePoint& ry,
-    const CurvePoint& rB,
-    CPRNG* rng) {
-  return RSKProof(
-    ry,
-    rB,
-    ScalarMultProof::create(rB, pre.y, ry, r, rng),
-    ScalarMultProof::create(zOverKB, pre.b.add(rB), post.b, zOverK, rng),
-    ScalarMultProof::create(zB, pre.c.add(ry), post.c, z, rng)
-  );
+    const CurveScalar& reshuffle,
+    const CurvePoint& reshufflePoint,
+    const CurveScalar& reshuffleOverRekey,
+    const CurvePoint& reshuffleOverRekeyPoint) {
+  PEP_CryptoAssert(reshufflePoint == reshuffle * CurvePoint::Base);
+  PEP_CryptoAssert(reshuffleOverRekeyPoint == reshuffleOverRekey * CurvePoint::Base);
+  return ReshuffleRekeyProof(
+    ScalarMultProof::Create(reshuffleOverRekeyPoint, pre.b, post.b, reshuffleOverRekey),
+    ScalarMultProof::Create(reshufflePoint, pre.c, post.c, reshuffle));
 }
 
-RSKProof RSKProof::certifiedRSK(
+ReshuffleRekeyProof ReshuffleRekeyProof::CertifiedReshuffleRekey(
     const ElgamalEncryption& in,
     ElgamalEncryption& out,
-    const CurveScalar& z,
-    const CurveScalar& k) {
-  auto zOverK = z.mult(k.invert());
-  auto r = CurveScalar::Random();
-  auto ry = in.y.mult(r);
-  auto rB = CurvePoint::BaseMult(r);
+    const CurveScalar& reshuffle,
+    const ElgamalTranslationKey& rekey) {
 
-  out.b = in.b.add(rB).mult(zOverK);
-  out.c = in.c.add(ry).mult(z);
-  out.y = in.y.mult(k);
+  auto reshuffleOverRekey = reshuffle * rekey.invert();
+  out = {
+    reshuffleOverRekey * in.b,
+    reshuffle * in.c,
+    rekey * in.publicKey,
+  };
 
-  return RSKProof::create(
+  return Create(
     in,
     out,
-    z,
-    CurvePoint::BaseMult(z),
-    zOverK,
-    CurvePoint::BaseMult(zOverK),
-    r,
-    ry,
-    rB
+    reshuffle,
+    reshuffle * CurvePoint::Base,
+    reshuffleOverRekey,
+    reshuffleOverRekey * CurvePoint::Base
   );
 }
 
-void RSKProof::ensurePacked() const {
-  mRY.ensurePacked();
-  mRB.ensurePacked();
-  mRP.ensurePacked();
-  mBP.ensurePacked();
-  mCP.ensurePacked();
-}
-
-void RSKProof::verify(
+void ReshuffleRekeyProof::verify(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
-    const RSKVerifiers& verifiers) const {
-  mRP.verify(mRB, pre.y, mRY);
-  mBP.verify(verifiers.mZOverKB, pre.b.add(mRB), post.b);
-  mCP.verify(verifiers.mZB, pre.c.add(mRY), post.c);
-  if (post.y != verifiers.mKY)
+    const ReshuffleRekeyVerifiers& verifiers) const {
+  // Note: we assume that the factors in ReshuffleRekeyVerifiers are correctly related
+  mReshuffleOverRekeyTimesBProof.verify(verifiers.mReshuffleOverRekeyPoint, pre.b, post.b);
+  mReshuffleTimesCProof.verify(verifiers.mReshufflePoint, pre.c, post.c);
+  if (post.publicKey != verifiers.mRekeyedPublicKey)
     throw InvalidProof();
 }
 
-RSKVerifiers RSKVerifiers::compute(
-    const CurveScalar& z,
-    const CurveScalar& k,
-    const CurvePoint& y) {
-  return RSKVerifiers(
-    CurvePoint::BaseMult(z.mult(k.invert())),
-    CurvePoint::BaseMult(z),
-    y.mult(k)
+RerandomizeProof RerandomizeProof::Create(
+    const ElgamalPublicKey& publicKey,
+    const CurveScalar& rerandomize,
+    const CurvePoint& rerandomizePubKey,
+    const CurvePoint& rerandomizePoint) {
+  PEP_CryptoAssert(rerandomizePubKey == rerandomize * publicKey);
+  PEP_CryptoAssert(rerandomizePoint == rerandomize * CurvePoint::Base);
+  return RerandomizeProof(
+    rerandomizePubKey,
+    rerandomizePoint,
+    ScalarMultProof::Create(rerandomizePoint, publicKey, rerandomizePubKey, rerandomize));
+}
+
+RerandomizeProof RerandomizeProof::CertifiedRerandomize(
+    const ElgamalEncryption& in,
+    ElgamalEncryption& out) {
+  auto rerandomize = CurveScalar::Random();
+  auto rerandomizePubKey = rerandomize * in.publicKey;
+  auto rerandomizePoint = rerandomize * CurvePoint::Base;
+
+  out = {
+    in.b + rerandomizePoint,
+    in.c + rerandomizePubKey,
+    in.publicKey,
+  };
+
+  return Create(
+    in.publicKey,
+    rerandomize,
+    rerandomizePubKey,
+    rerandomizePoint
   );
 }
 
-void RSKVerifiers::ensureThreadSafe() const {
-  mZOverKB.ensureThreadSafe();
-  mZB.ensureThreadSafe();
-  mKY.ensureThreadSafe();
+void RerandomizeProof::verify(
+    const ElgamalEncryption& pre,
+    const ElgamalEncryption& post) const {
+  // Check the provided factors are related by the public key
+  mRerandomizeTimesPubKeyProof.verify(mRerandomizePoint, pre.publicKey, mRerandomizePubKey);
+  // Then use them to check that the ciphertext was correctly rerandomized
+  // Comparisons don't need to be constant-time
+  if (post.b != pre.b + mRerandomizePoint
+      || post.c != pre.c + mRerandomizePubKey
+      || post.publicKey != pre.publicKey) {
+    throw InvalidProof();
+  }
+}
+
+ReshuffleRekeyVerifiers ReshuffleRekeyVerifiers::Compute(
+    const CurveScalar& reshuffle,
+    const CurveScalar& rekey,
+    const CurvePoint& publicKey) {
+  return ReshuffleRekeyVerifiers(
+    reshuffle * rekey.invert() * CurvePoint::Base,
+    reshuffle * CurvePoint::Base,
+    rekey * publicKey
+  );
+}
+
+void ReshuffleRekeyVerifiers::ensureThreadSafe() const {
+  mReshuffleOverRekeyPoint.ensureThreadSafe();
+  mReshufflePoint.ensureThreadSafe();
+  mRekeyedPublicKey.ensureThreadSafe();
 }
 
 }

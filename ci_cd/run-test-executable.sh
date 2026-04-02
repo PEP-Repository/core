@@ -28,7 +28,7 @@ run_cmd() {
   "$@" && true
   ret=$?
   if [ "$ret" -ne 0 ] ; then
-    printGreen "Failed with exit code $ret"
+    printGreen "$exe failed with exit code $ret"
     return "$ret"
   fi
 }
