@@ -26,14 +26,24 @@ MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
 }
 
 void ProvideBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> outer) {
-  if (stream->good()) {
+  // Check order (bad then eof then fail) was cargo culted from https://en.cppreference.com/w/cpp/io/basic_ios/fail.html
+
+  if (stream->bad()) {
+    outer.on_error(std::make_exception_ptr(std::runtime_error("Can't read message batches from bad stream")));
+  }
+  else if (stream->eof()) {
+    // Failbit may be set as well "if the end-of-file condition occurs on the input stream before all requested
+    // characters could be extracted": see https://en.cppreference.com/w/cpp/io/ios_base/iostate.html
+    outer.on_completed();
+  }
+  else if (stream->fail()) {
+    outer.on_error(std::make_exception_ptr(std::runtime_error("Can't read message batches from failed stream")));
+  }
+  else {
     outer.on_next(MakeBatch(stream) // Provide data from the stream as a single MessageSequence ("batch")...
       .op(RxSubsequently([stream, outer]() { // ...that must be exhausted before...
         ProvideBatch(stream, outer); // ...continuing with the next batch (if any)
         })));
-  } else {
-    // No more data available: no more batches will be forthcoming
-    outer.on_completed();
   }
 }
 
