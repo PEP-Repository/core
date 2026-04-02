@@ -2,6 +2,10 @@
 
 This page more concretely lays out the steps to get started developing the PEP Weblib. For more info, see the [_PEP Weblib: development_](./developing.md) document.
 
+## Install prerequisites
+
+Install Nginx and the [websockify](https://github.com/novnc/websockify) Python package (e.g. via [pipx](https://pipx.pypa.io/latest/installation/)). For Windows, use `winget install nginxinc.nginx` (or `freenginx.nginx`).
+
 ## Obtain the Emscripten SDK
 
 !!! bug "Emscripten version"
@@ -79,8 +83,6 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/Debug/pki/
 - `PKI_DIR` should point to an existing `pepServers` build if you want to test with local servers. Without this you will likely see `boost::system::system_error: certificate verify failed (SSL routines)` when connecting.
 
 ## Build & run sample page
-
-Install Nginx and the [websockify](https://github.com/novnc/websockify) Python package (e.g. via [pipx](https://pipx.pypa.io/latest/installation/)). For Windows, use `winget install nginxinc.nginx` (or `freenginx.nginx`).
 
 Build Debug & start local servers:
 
