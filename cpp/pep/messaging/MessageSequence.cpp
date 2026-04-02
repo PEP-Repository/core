@@ -27,8 +27,10 @@ MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
 
 void ProvideBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<MessageSequence> outer) {
   if (stream->good()) {
-    outer.on_next(MakeBatch(stream) // Read data from the stream into a single MessageSequence ("batch")...
-      .op(RxSubsequently([stream, outer]() { ProvideBatch(stream, outer); }))); // ... before continuing with the next batch (if any)
+    outer.on_next(MakeBatch(stream) // Provide data from the stream as a single MessageSequence ("batch")...
+      .op(RxSubsequently([stream, outer]() { // ...that must be exhausted before...
+        ProvideBatch(stream, outer); // ...continuing with the next batch (if any)
+        })));
   } else {
     // No more data available: no more batches will be forthcoming
     outer.on_completed();
