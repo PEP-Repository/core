@@ -90,4 +90,5 @@ Now you can finally open http://localhost:2280/weblib/pep-sample-client/ in your
       ---
       >         self.buildenv_info.define_path("AR", f'"{os.path.join(self.package_folder, "bin", "upstream", "bin", "llvm-ar")}"')
       ```
+      And then add `--build="esmdk/*"` to the `conan install` command.
     - websockify may log `WARNING: no 'resource' module, daemonizing is disabled`. This can be ignored.
