@@ -33,7 +33,7 @@ TEST(ElgamalEncryptionTest, ReKeyTest) {
   [[maybe_unused]] pep::CurvePoint test_clone_CurvePoint = {test_CurvePoint};
   pep::CurveScalar test_CurveScalar = pep::CurveScalar::Random();
   pep::ElgamalEncryption enc(public_key, test_CurvePoint);
-  pep::ElgamalEncryption enc_clone(enc.b, enc.c, enc.y);
+  pep::ElgamalEncryption enc_clone(enc.b, enc.c, enc.publicKey);
   EXPECT_EQ(enc, enc_clone);
   pep::ElgamalEncryption rekeyed = enc.rekey(pep::ElgamalTranslationKey(test_CurveScalar));
   EXPECT_NE(enc, rekeyed);
@@ -45,7 +45,7 @@ TEST(ElgamalEncryptionTest, ReShuffleTest) {
   [[maybe_unused]] pep::CurvePoint test_clone_CurvePoint = {test_CurvePoint};
   pep::CurveScalar test_CurveScalar = pep::CurveScalar::Random();
   pep::ElgamalEncryption enc(public_key, test_CurvePoint);
-  pep::ElgamalEncryption enc_clone(enc.b, enc.c, enc.y);
+  pep::ElgamalEncryption enc_clone(enc.b, enc.c, enc.publicKey);
   EXPECT_EQ(enc, enc_clone);
   pep::ElgamalEncryption reshuffled = enc.reshuffle(pep::ElgamalTranslationKey(test_CurveScalar));
   EXPECT_NE(enc, reshuffled);
@@ -56,7 +56,7 @@ TEST(ElgamalEncryptionTest, ReRandomizeTest) {
   pep::CurvePoint test_CurvePoint = pep::CurvePoint::Random();
   [[maybe_unused]] pep::CurvePoint test_clone_CurvePoint = {test_CurvePoint};
   pep::ElgamalEncryption enc(public_key, test_CurvePoint);
-  pep::ElgamalEncryption enc_clone(enc.b, enc.c, enc.y);
+  pep::ElgamalEncryption enc_clone(enc.b, enc.c, enc.publicKey);
   EXPECT_EQ(enc, enc_clone);
   pep::ElgamalEncryption reshuffled = enc.rerandomize();
   EXPECT_NE(enc, reshuffled);

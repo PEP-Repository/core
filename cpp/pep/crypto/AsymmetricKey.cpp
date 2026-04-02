@@ -65,8 +65,11 @@ AsymmetricKey::AsymmetricKey(std::string_view buf) {
   if (!PEM_read_bio_PrivateKey(bio, &mKey, nullptr, nullptr)) {
     // If reading the private key fails, attempt to read as a public key
     // If both attempts fail, do nothing, which is what the previous mbed implementation did for some reason
-    BIO_reset(bio); // Reset BIO to attempt to read again
     ERR_clear_error(); // clear error queue
+    // Reset BIO to attempt to read again
+    if (BIO_reset(bio) <= 0) {
+      throw pep::OpenSSLError("Failed reset BIO with key from IO buffer (BIO) in AsymmetricKey constructor.");
+    }
     if (PEM_read_bio_PUBKEY(bio, &mKey, nullptr, nullptr)) {
       set = true;
       keyType = ASYMMETRIC_KEY_TYPE_PUBLIC;

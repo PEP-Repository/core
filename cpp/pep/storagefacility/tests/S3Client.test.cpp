@@ -5,9 +5,10 @@
 
 #include <pep/utils/Exceptions.hpp>
 #include <pep/application/Application.hpp>
-#include <pep/utils/Random.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
 #include <pep/utils/Defer.hpp>
+
+#include <numeric>
 
 using namespace pep;
 using namespace pep::s3;
@@ -29,7 +30,8 @@ namespace {
     client->start();
     PEP_DEFER(client->shutdown(); io_context->run(););
 
-    std::string data = RandomString(10);
+    std::string data(10, '\0');
+    std::iota(data.begin(), data.end(), '\0');
 
     {
       auto results = testutils::exhaust<std::string>(*io_context,

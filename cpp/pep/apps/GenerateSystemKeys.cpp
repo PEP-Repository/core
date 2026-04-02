@@ -18,9 +18,7 @@ class GenerateSystemKeysApplication : public pep::Application {
   class GenerateKeysFileCommand : public pep::commandline::ChildCommandOf<GenerateSystemKeysApplication> {
   private:
     static std::string GenerateHMACKey() {
-      std::string randomBytes;
-      RandomBytes(randomBytes, HMAC_BYTES);
-      return boost::algorithm::hex(randomBytes);
+      return boost::algorithm::hex(RandomString(HMAC_BYTES));
     }
 
   protected:
@@ -116,8 +114,8 @@ class GenerateSystemKeysApplication : public pep::Application {
       auto am = GenerateAmKeysFileCommand::GenerateKeysFile(this->getParameterValues().get<std::filesystem::path>("am-output-path"));
       auto ts = GenerateTsKeysFileCommand::GenerateKeysFile(this->getParameterValues().get<std::filesystem::path>("ts-output-path"));
 
-      CurvePoint masterPublicKeyPseudonymsPoint = CurvePoint::BaseMult(ts.pseudonyms.mult(am.pseudonyms));
-      CurvePoint masterPublicKeyDataPoint = CurvePoint::BaseMult(ts.data.mult(am.data));
+      CurvePoint masterPublicKeyPseudonymsPoint = ts.pseudonyms * am.pseudonyms * CurvePoint::Base;
+      CurvePoint masterPublicKeyDataPoint = ts.data * am.data * CurvePoint::Base;
 
       std::string masterPublicKeyPseudonyms = masterPublicKeyPseudonymsPoint.text();
       std::string masterPublicKeyData = masterPublicKeyDataPoint.text();

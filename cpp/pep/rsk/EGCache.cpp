@@ -8,6 +8,7 @@
 #include <boost/functional/hash.hpp>
 
 #include <unordered_map>
+#include <mutex>
 #include <shared_mutex>
 #include <atomic>
 
@@ -15,8 +16,6 @@
 //
 //    - the precomputed scalar multiples tables cache (~30KB per entry)
 //    - RSK cache (<1KB per entry)
-//
-// Entries in the RSK cache contain shared_ptr to tables in the tables cache.
 //
 // The caches are protected by read/write-locks (shared_mutex), that is,
 // multiple readers (shared_lock), but only wone writer (unique_lock).
@@ -74,13 +73,9 @@ private:
 
     // 'Value' should have a constructor with signature
     //    Value(EGCacheImp* egcache, Key&& key)
-    // The EGCache is passed along, because RSKValue needs to access
+    // The EGCache is passed along, because RekeyValue needs to access
     // the table cache.
     static_assert(std::is_constructible_v<Value, EGCacheImp*, const Key&>);
-
-    // 'Value' should have an explicit operator bool that indicates whether
-    // it was constructed successfully.
-    // TODO: static_assert this.
 
     struct Entry {
       Entry(EGCacheImp* egcache, const Key& key, uint64_t generation)
@@ -102,10 +97,6 @@ private:
 
       inline Value& getValue() {
         return this->value;
-      }
-
-      inline explicit operator bool() const {
-        return value ? true : false;
       }
     };
 
@@ -200,17 +191,6 @@ private:
 
       assert(inserted);
 
-      if (!it->second) {
-        // Creation of the entry failed.  The creation of an RSK entry might
-        // fail, for example, when the table cache is disabled.
-        LOG(LOG_TAG, warning)
-          << "Failed to add entry to " << Options::Name << " cache; "
-            << "disabling. ";
-        this->data.erase(it);
-        this->disable_under_unique_lock();
-        return std::nullopt;
-      }
-
       LOG(LOG_TAG, debug)
         << "Entry added to " << Options::Name << " cache.  size: "
         << this->data.size()
@@ -287,35 +267,29 @@ private:
   // RSK Cache
   //
   // Caches 1/k, k*y and (reference to) scalar multiplication table of y.
-  // Used to speed up the ElgamalEncryption::RSK operation and
+  // Used to speed up the ElgamalEncryption::reshuffleRekey operation and
   // ElgamalEncryption::rekey operations.
-  struct RSKKey {
-    RSKKey(CurveScalar k, CurvePoint y)
+  struct RekeyKey {
+    RekeyKey(const CurveScalar& k, const CurvePoint& y)
       : mK(k), mY(y) { }
-    bool operator== (const RSKKey& p) const;
+    bool operator== (const RekeyKey& p) const;
 
     CurveScalar mK;
     CurvePoint mY;
 
-    struct hash { size_t operator()(const pep::EGCacheImp::RSKKey& k) const; };
+    struct hash { size_t operator()(const pep::EGCacheImp::RekeyKey& k) const; };
   };
 
-  struct RSKValue {
-    RSKValue(EGCacheImp* egcache, const RSKKey& key);
+  struct RekeyValue {
+    RekeyValue(EGCacheImp* egcache, const RekeyKey& key);
 
-    ElgamalEncryption RSK(const CurvePoint& b, const CurvePoint& c,
-            const CurveScalar& z, CPRNG* rng) const;
-    ElgamalEncryption RK(const CurvePoint& b, const CurvePoint& c,
-            CPRNG* rng) const;
+    ElgamalEncryption reshuffleRekey(
+            const CurvePoint& b, const CurvePoint& c,
+            const ElgamalTranslationKey& reshuffle) const;
+    ElgamalEncryption rekey(const CurvePoint& b, const CurvePoint& c) const;
 
     CurveScalar mKInv;
     CurvePoint mKY;
-    std::shared_ptr<CurvePoint::ScalarMultTable> mYTable;
-
-    // returns whether the value was successfully initialized
-    inline explicit operator bool() const {
-      return this->mYTable ? true : false;
-    }
   };
 
   struct RSKOptions {
@@ -326,16 +300,13 @@ private:
     static constexpr auto ReEnableTime = 1h;
   };
 
-  Cache<RSKKey, RSKValue, RSKOptions, RSKKey::hash> rskCache;
+  Cache<RekeyKey, RekeyValue, RSKOptions, RekeyKey::hash> rskCache;
 
 
   // Scalar multiplication (table) cache
   struct TableValue {
     TableValue(EGCacheImp* egcache, const CurvePoint& p);
     std::shared_ptr<CurvePoint::ScalarMultTable> mTable;
-
-    // creation of a TableValue, unlike RSKValue, always succeeds
-    inline explicit operator bool() const { return true; }
   };
 
   struct TableOptions {
@@ -352,22 +323,19 @@ private:
   Cache<CurvePoint, TableValue, TableOptions> tableCache;
 
  public:
-  ElgamalEncryption RSK(
-    ElgamalEncryption eg,
-    const CurveScalar& z,
-    ElgamalTranslationKey k,
-    CPRNG* rng=nullptr
+  ElgamalEncryption reshuffleRekey(
+    const ElgamalEncryption& eg,
+    const CurveScalar& reshuffle,
+    const ElgamalTranslationKey& rekey
   ) override;
 
-  ElgamalEncryption RK(
-    ElgamalEncryption eg,
-    ElgamalTranslationKey k,
-    CPRNG* rng=nullptr
+  ElgamalEncryption rekey(
+    const ElgamalEncryption& eg,
+    const ElgamalTranslationKey& rekey
   ) override;
 
   ElgamalEncryption rerandomize(
-    ElgamalEncryption eg,
-    CPRNG* rng=nullptr
+    const ElgamalEncryption& eg
   ) override;
 
   std::shared_ptr<CurvePoint::ScalarMultTable>
@@ -386,7 +354,7 @@ EGCache& EGCache::get() {
 std::shared_ptr<CurvePoint::ScalarMultTable>
 EGCacheImp::scalarMultTable(const CurvePoint& b) {
 
-  auto optional_it = this->tableCache.get(this, CurvePoint(b));
+  auto optional_it = this->tableCache.get(this, b);
 
   if (!optional_it)
     return nullptr;
@@ -394,119 +362,92 @@ EGCacheImp::scalarMultTable(const CurvePoint& b) {
   return (*optional_it)->second.getValue().mTable;
 }
 
-ElgamalEncryption EGCacheImp::RSK(
-    ElgamalEncryption eg,
-    const CurveScalar& z,
-    ElgamalTranslationKey k,
-    CPRNG* rng) {
+ElgamalEncryption EGCacheImp::reshuffleRekey(
+    const ElgamalEncryption& eg,
+    const CurveScalar& reshuffle,
+    const ElgamalTranslationKey& rekey) {
 
-  auto key = RSKKey(k, eg.y);
+  auto key = RekeyKey(rekey, eg.publicKey);
 
   auto opt_it = this->rskCache.get(this, key);
 
   if (!opt_it) {
-    // fall back to uncached RSK
-    return ElgamalEncryption(eg.b, eg.c, key.mY).RSK(z, key.mK);
+    // fall back to uncached reshuffleRekey
+    return ElgamalEncryption(eg.b, eg.c, key.mY).reshuffleRekey(reshuffle, key.mK);
   }
 
-  return (*opt_it)->second.getValue().RSK(eg.b, eg.c, z, rng);
+  return (*opt_it)->second.getValue().reshuffleRekey(eg.b, eg.c, reshuffle);
 }
 
-ElgamalEncryption EGCacheImp::RK(
-    ElgamalEncryption eg,
-    ElgamalTranslationKey k,
-    CPRNG* rng) {
+ElgamalEncryption EGCacheImp::rekey(
+    const ElgamalEncryption& eg,
+    const ElgamalTranslationKey& rekey) {
 
-  auto key = RSKKey(k, eg.y);
+  auto key = RekeyKey(rekey, eg.publicKey);
 
   auto opt_it = this->rskCache.get(this, key);
 
   if (!opt_it) {
-    // fall back to uncached RK
-    return ElgamalEncryption(eg.b, eg.c, key.mY).rerandomize().rekey(key.mK);
+    // fall back to uncached rekey
+    return ElgamalEncryption(eg.b, eg.c, key.mY).rekey(key.mK);
   }
 
-  return (*opt_it)->second.getValue().RK(eg.b, eg.c, rng);
+  return (*opt_it)->second.getValue().rekey(eg.b, eg.c);
 }
 
 ElgamalEncryption EGCacheImp::rerandomize(
-    ElgamalEncryption eg,
-    CPRNG* rng) {
+    const ElgamalEncryption& eg) {
 
-  auto table = scalarMultTable(eg.y);
+  auto table = scalarMultTable(eg.publicKey);
   ElgamalEncryption ret;
 
   if (table == nullptr)
     return eg.rerandomize();
 
-  auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
-  ret.b = eg.b.add(CurvePoint::BaseMult(r));
-  ret.c = eg.c.add(table->mult(r));
-  ret.y = eg.y;
+  auto r = CurveScalar::Random();
+  ret.b = eg.b + (r * CurvePoint::Base);
+  ret.c = eg.c + table->mult(r);
+  ret.publicKey = eg.publicKey;
   return ret;
 }
 
-bool EGCacheImp::RSKKey::operator== (const EGCacheImp::RSKKey& k) const {
+bool EGCacheImp::RekeyKey::operator== (const EGCacheImp::RekeyKey& k) const {
   return k.mK == mK && k.mY == mY;
 }
 
-ElgamalEncryption EGCacheImp::RSKValue::RK(
+ElgamalEncryption EGCacheImp::RekeyValue::rekey(
     const CurvePoint& b,
-    const CurvePoint& c,
-    CPRNG* rng) const {
-  ElgamalEncryption ret;
-
-  // ret.b = 1/k (b + r B)
-  auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
-  auto bPlusRB = CurvePoint::BaseMult(r).add(b);
-  ret.b = bPlusRB.mult(mKInv);
-
-  // ret.c = c + ry
-  auto ry = mYTable->mult(r);
-  ret.c = c.add(ry);
-
-  // ret.y = ky
-  ret.y = mKY;
-  return ret;
+    const CurvePoint& c) const {
+  return {
+    mKInv * b,
+    c,
+    mKY,
+  };
 }
 
-ElgamalEncryption EGCacheImp::RSKValue::RSK(
+ElgamalEncryption EGCacheImp::RekeyValue::reshuffleRekey(
     const CurvePoint& b,
     const CurvePoint& c,
-    const CurveScalar& z,
-    CPRNG* rng) const {
-  ElgamalEncryption ret;
-
-  // ret.b = (z * 1/k) (b + r B)
-  auto r = rng == nullptr ? CurveScalar::Random() : CurveScalar::Random<>(*rng);
-  auto zOverK = mKInv.mult(z);
-  auto bPlusRB = CurvePoint::BaseMult(r).add(b);
-  ret.b = bPlusRB.mult(zOverK);
-
-  // ret.c = z(c + ry)
-  auto ry = mYTable->mult(r);
-  ret.c = c.add(ry).mult(z);
-
-  // ret.y = ky
-  ret.y = mKY;
-  return ret;
+    const ElgamalTranslationKey& reshuffle) const {
+  return {
+    reshuffle * mKInv * b,
+    reshuffle * c,
+    mKY,
+  };
 }
 
-EGCacheImp::RSKValue::RSKValue(
-    EGCacheImp* egcache, const EGCacheImp::RSKKey& key)  {
+EGCacheImp::RekeyValue::RekeyValue(
+    EGCacheImp* egcache, const EGCacheImp::RekeyKey& key)  {
 
-  this->mYTable = egcache->scalarMultTable(key.mY);
+  // Since we don't do rerandomization anymore in the (R)SK, the table is not as useful anymore.
+  // We should probably benchmark if it's better to just remove it, or maybe leave it for the global public key only.
+  auto yTable = egcache->scalarMultTable(key.mY);
 
-  if (!this->mYTable) {
-    // table cache is disabled; abort
-    return;
-  }
-
-  this->mKY = this->mYTable->mult(key.mK);
+  this->mKY = yTable ? yTable->mult(key.mK) : key.mK * key.mY;
   this->mKInv = key.mK.invert();
 }
 
-size_t EGCacheImp::RSKKey::hash::operator()(const pep::EGCacheImp::RSKKey& k) const {
+size_t EGCacheImp::RekeyKey::hash::operator()(const pep::EGCacheImp::RekeyKey& k) const {
   size_t ret = 0;
   boost::hash_combine(ret, std::hash<CurvePoint>{}(k.mY));
   boost::hash_combine(ret, std::hash<CurveScalar>{}(k.mK));

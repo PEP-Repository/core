@@ -11,7 +11,7 @@
 #include <rxcpp/operators/rx-merge.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/async/RxLazy.hpp>
 #include <pep/async/RxButFirst.hpp>
 #include <pep/async/RxToVector.hpp>

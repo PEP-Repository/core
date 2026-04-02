@@ -113,7 +113,7 @@ template<size_t Extent>
 }
 
 template<ByteLike To>
-[[nodiscard]] auto ConvertBytes(const Slice auto& span)
+[[nodiscard]] auto ConvertBytes(Slice auto&& span)
   requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
   // range_value_t does not retain const
   using From = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
@@ -171,6 +171,22 @@ template <template <typename...> class ResultCollection>
 ///   CollectVec(range | MoveElements)
 /// \endcode
 constexpr auto MoveElements = std::views::transform([](auto& elem) { return std::move(elem); });
+
+/// Copy elements from src to dst, stopping when either range reaches the end
+constexpr auto CopyToRange(
+  std::ranges::input_range auto&& src,
+  std::ranges::output_range<std::ranges::range_value_t<decltype(src)>> auto&& dst)
+requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<decltype(dst)>) {
+  using namespace std::ranges;
+  using IterDiff = range_difference_t<decltype(src)>;
+  const IterDiff copySize{std::min(
+      static_cast<IterDiff>(size(src)),
+      static_cast<IterDiff>(size(dst)))};
+  return copy_n(
+    begin(std::forward<decltype(src)>(src)),
+    copySize,
+    begin(std::forward<decltype(dst)>(dst)));
+}
 
 /// Copy src to dst, checking that it fits
 /// \param exact If \p dst should be required to be the exact same size as \p src

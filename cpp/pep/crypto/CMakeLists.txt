@@ -9,7 +9,6 @@ add_library(${PROJECT_NAME}Cryptolib STATIC
     Bytes.hpp
     BytesSerializer.cpp BytesSerializer.hpp
     ConstTime.hpp
-    CPRNG.cpp CPRNG.hpp
     CryptoSerializers.cpp CryptoSerializers.hpp
     Encrypted.cpp Encrypted.hpp
     GcmContext.hpp

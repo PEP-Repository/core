@@ -7,7 +7,7 @@ namespace pep {
 EncryptedBase::EncryptedBase(const std::string& key,
   const std::string& plaintext) {
   auto ctx = createGcmContext();
-  RandomBytes(mIv, 16);
+  mIv = RandomString(16);
   mTag.resize(16);
   mCiphertext.resize(plaintext.size());
   if (key.size() != 32)

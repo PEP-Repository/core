@@ -14,7 +14,7 @@ namespace pep {
   * \param len Length of random part of the short pseudonym to be generated
   * \return The generated short pseudonym
   */
-std::string GenerateShortPseudonym(const std::string& prefix, const int len);
+std::string GenerateShortPseudonym(std::string_view prefix, std::size_t len);
 
 /*!
   * \brief Verify whether the check digits (last two characters) of the provided short pseudonym are valid.

@@ -1,5 +1,7 @@
 #include <pep/utils/XxHasher.hpp>
 
+#include <cassert>
+
 namespace pep {
 
 void XxHasher::verifyActive() const {
