@@ -62,7 +62,6 @@ rel_to_abs() {
 stage() {
   destination="$1"
   s3certs_src="$2"
-  skip_crypto="$3"
 
   >&2 echo "Copying $(basename "$SCRIPTPATH") to $destination"
   mkdir -p "$destination"
@@ -77,12 +76,10 @@ stage() {
   >&2 echo "Creating configuration directories for s3proxyproxy"
   cp -r "$(rel_to_abs s3proxyproxy_etc_nginx)" "$destination"
 
-  if [ "$skip_crypto" = false ]; then
-    >&2 echo "Creating certificates directory for s3proxyproxy"
-    s3certs_dest=$(rel_to_abs s3certs "$destination")
-    mkdir -p "$s3certs_dest"
-    cp "$s3certs_src"/* "$s3certs_dest/"
-  fi
+  >&2 echo "Creating certificates directory for s3proxyproxy"
+  s3certs_dest=$(rel_to_abs s3certs "$destination")
+  mkdir -p "$s3certs_dest"
+  cp "$s3certs_src"/* "$s3certs_dest/"
 }
 
 pull() {
@@ -156,7 +153,7 @@ run_containers_interactively() {
 }
 
 case $command in
-  "stage") stage "$2" "$3" "${4:-false}";; # stage <destination> <certs-source-dir> [<skip_crypto>]
+  "stage") stage "$2" "$3";; # stage <destination> <certs-source-dir>
   "pull") pull;;
   "start") start_containers;;
   "stop") stop_containers;;
