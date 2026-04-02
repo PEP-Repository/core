@@ -22,7 +22,7 @@ Just follow the steps in the [Emscripten docs](https://emscripten.org/docs/getti
 
 Clone https://github.com/conan-io/conan-toolchains and set it up as a local recipe index repository as described in their [README](https://github.com/conan-io/conan-toolchains?tab=readme-ov-file#-getting-started).
 
-Create a Conan host profile that you will be using to compile WebAssembly. E.g. place a file `wasm32` in `~/.conan2/profiles/` and give it the following contents:
+Create a Conan host profile that you will be using to compile WebAssembly. E.g. place a file `wasm32` in `~/.conan2/profiles/` and give it the following contents. Replace the `include` path by the actual path to the `conan_profile_wasm32` file in your `core/docker_build` subdirectory. Substitute `4.0.22` by the specific version you want to use.
 
 ```ini
 {% set compiler_version = '4.0.22' %}
@@ -38,8 +38,6 @@ emsdk/{{compiler_version}}
 ```
 
 @@@ NOTE THAT I also put these settings directly in my C:\PepSrc\pep\core-3\docker-build\builder\conan\conan_profile_wasm32 file, so those may have been required for `conan install` (below) to work. @@@
-
-Replace the `include` path by the actual path to the `conan_profile_wasm32` file in your `core/docker_build` subdirectory. Substitute `4.0.22` by the specific version you want to use.
 
 !!! info "Adapting Conan profiles from docker-build"
     When adapting Conan profiles in docker-build, you can either copy them (plus included files) to `~/.conan2/profiles/`, or create a new profile there and include the one from docker-build via `include(/path/to/docker-build/conan_profile)`.
