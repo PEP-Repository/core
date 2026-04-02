@@ -70,6 +70,8 @@ find_package(Boost REQUIRED)
 find_package(OpenSSL REQUIRED COMPONENTS
   Crypto
 )
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 find_package(xxHash REQUIRED)
 
 target_link_libraries(${PROJECT_NAME}Utilslib
@@ -80,6 +82,7 @@ target_link_libraries(${PROJECT_NAME}Utilslib
   Boost::log
   Boost::log_setup
   OpenSSL::Crypto
+  Threads::Threads
   xxHash::xxhash
 )
 
