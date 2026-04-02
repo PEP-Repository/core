@@ -92,12 +92,12 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/pki/
 
 !!! warning "Windows quirks"
     - To use scripts like `start_dev.sh`, you'll need to open e.g. Git Bash.
-    - The `generators/conanbuild.bat` script generated will not be compatible with Git Bash. Instead, source it in the appropriate Windows shell and then start Git Bash from `"C:\Program Files\Git\bin\bash"`.
+    - The `build\wasm32\Debug\generators\conanbuild.bat` script generated will not be compatible with Git Bash. Instead, source (run) it in the appropriate Windows shell and then start Git Bash from that same shell by invoking `"C:\Program Files\Git\bin\bash"`.
     - When using PowerShell, sourcing `conanbuild.bat` will not work. Instead, set e.g. `-c tools.env.virtualenv:powershell=...` according to [the docs](https://docs.conan.io/2/reference/config_files/global_conf.html) and source `conanbuild.ps1`.
     - Nginx may not go to the background or want to shut down with ctrl+C, kill it via the task manager instead.
     - websockify may log `WARNING: no 'resource' module, daemonizing is disabled`. This can be ignored.
 
-If you installed EMSDK via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script in your build folder.
+If you installed EMSDK via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script from your `wasm32` build folder.
 
 Build Debug & start local servers:
 
