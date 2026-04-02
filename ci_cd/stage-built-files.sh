@@ -46,7 +46,6 @@ for filepath in $FILES; do
     # Ensure the destination directory exists
     DEST_DIR="$DEST_PATH/$(dirname "$filepath")"
     mkdir -p "$DEST_DIR"
-    # If path is a file, copy it normally
     cp "${FULL_SOURCE_PATH}"* "$DEST_DIR"
   fi
 done
