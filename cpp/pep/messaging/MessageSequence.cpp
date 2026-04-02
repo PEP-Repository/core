@@ -11,8 +11,11 @@ namespace {
 /// @return A MessageSequence containing at most a single string ("page").
 /// @remark Postpones reading data from the input stream until someone .subscribe()s to the MessageSequence
 MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
+  assert(stream->good());
+
   return CreateObservable<std::shared_ptr<std::string>>([stream](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
     // Read data from stream into page
+    assert(stream->good());
     auto page = std::make_shared<std::string>(DEFAULT_PAGE_SIZE, '\0');
     stream->read(page->data(), static_cast<std::streamsize>(page->size()));
     size_t nRead = static_cast<size_t>(stream->gcount());
