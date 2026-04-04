@@ -2,7 +2,7 @@
 
 #include <numeric>
 #include <utility>
-
+#include <iostream>
 
 #include <boost/algorithm/string/join.hpp>
 
@@ -26,6 +26,45 @@ Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   return result;
 }
 
+Parameter Parameter::deprecated(const std::string& message, std::function<ParameterDeprecationResult(Command&, const NamedValues&)> transformer) const {
+  assert(transformer);
+  if (!transformer) {
+    throw std::runtime_error("Deprecation transformer for parameter '" + mName + "' must be provided");
+  }
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+
+  auto result = *this;
+  result.mDeprecationMessage = message;
+  result.mDeprecationTransformer = std::move(transformer);
+  return result;
+}
+
+Parameter Parameter::deprecated(const std::string& newParamName, const std::string& message) const {
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+  const std::string oldName = mName;
+  return this->deprecated(message, [oldName, newParamName](Command&, const NamedValues& values) {
+    NamedValues toAdd;
+    toAdd[newParamName] = values[oldName];
+    return ParameterDeprecationResult{std::move(toAdd)};
+  });
+}
+
+Parameter Parameter::deprecated(const std::string& message) const {
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+  assert(!mDeprecationTransformer && "Cannot combine deprecated(message) and deprecated(message, transformer) on the same parameter");
+  auto result = *this;
+  result.mDeprecationMessage = message;
+  return result;
+}
+
+Parameter Parameter::noLongerSupported(const std::string& message) const {
+  assert(!mDeprecationTransformer && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+
+  auto result = *this;
+  result.mNoLongerSupportedMessage = message;
+  return result;
+}
+
 SwitchAnnouncement Parameter::getCanonicalAnnouncement() const {
   return SwitchAnnouncement(mName);
 }
@@ -35,6 +74,13 @@ std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
   [[maybe_unused]] auto emplaced = result.emplace(this->getCanonicalAnnouncement()).second;
   assert(emplaced);
   return result;
+}
+
+ParameterDeprecationResult Parameter::transformDeprecated(Command& self, const NamedValues& values) const {
+  if (!mDeprecationTransformer) {
+    throw std::runtime_error("No deprecation transformer configured for parameter '" + mName + "'");
+  }
+  return mDeprecationTransformer(self, values);
 }
 
 void Parameter::lex(ProvidedValues& destination, std::queue<std::string>& source) const {

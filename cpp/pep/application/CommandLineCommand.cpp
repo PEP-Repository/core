@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <iostream>
 #include <filesystem>
+#include <vector>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
@@ -150,22 +151,166 @@ void Command::finalizeParameters() {
   mParametersFinalized = true;
 }
 
+int Command::dispatch(std::vector<std::shared_ptr<Command>> children, std::queue<std::string>& remaining) {
+  assert(std::all_of(children.cbegin(), children.cend(), [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
+  if (!children.empty()) {
+    if (remaining.empty()) {
+      return this->issueCommandLineHelp("No command specified.");
+    }
+    std::string command = remaining.front();
+    remaining.pop();
+    auto child = std::find_if(children.cbegin(), children.cend(), [&command](const std::shared_ptr<Command>& child) {
+      return child->getName() == command;
+    });
+    if (child == children.cend()) {
+      return this->issueCommandLineHelp("Unsupported command '" + command + "' issued to " + this->getName() + GetGlobWarning(command));
+    }
+    return (*child)->process(remaining);
+  }
+
+  assert(remaining.empty()); // due to unsupported parameter check above
+  return this->execute();
+}
+
+std::optional<int> Command::checkNoLongerSupportedParameters(const Parameters& parameters) {
+  for (const auto& param : parameters) {
+    if (param.isNoLongerSupported() && mParameterValues->has(param.getName())) {
+      std::cerr << "Error: The parameter '--" << param.getName() << "' is no longer supported. " << *param.getNoLongerSupportedMessage() << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<int> Command::applyParameterDeprecations(const Parameters& parameters) {
+  Command* dispatchAncestor = nullptr;
+  bool anyDeprecated = false;
+  NamedValues mergedToAdd;
+  std::string mergedChildPath;
+
+  for (const auto& param : parameters) {
+    if (!param.getDeprecationMessage().has_value() || !mParameterValues->has(param.getName())) {
+      continue;
+    }
+    std::cerr << "Warning: '--" << param.getName() << "' is deprecated. " << *param.getDeprecationMessage() << std::endl;
+    if (!param.hasDeprecationTransformer()) {
+      continue;
+    }
+    auto depResult = param.transformDeprecated(*this, *mParameterValues);
+
+    if (depResult.ancestor != nullptr) {
+      assert((dispatchAncestor == nullptr || dispatchAncestor == depResult.ancestor)
+        && "Multiple deprecated parameters specified conflicting dispatch ancestors \u2014 programmer error");
+      dispatchAncestor = depResult.ancestor;
+    }
+
+    if (!depResult.childPath.empty()) {
+      assert((mergedChildPath.empty() || mergedChildPath == depResult.childPath)
+        && "Multiple deprecated parameters specified conflicting child paths \u2014 programmer error");
+      mergedChildPath = depResult.childPath;
+    }
+
+    for (const auto& [key, vals] : depResult.toAdd) {
+      mergedToAdd[key] = vals;
+    }
+
+    mParameterValues->erase(param.getName());
+    anyDeprecated = true;
+  }
+
+  if (!anyDeprecated) {
+    return std::nullopt;
+  }
+
+  Command* ancestor = (dispatchAncestor != nullptr) ? dispatchAncestor : this;
+  NamedValues leafValues = *mParameterValues;
+  for (const auto& [key, vals] : mergedToAdd) {
+    leafValues[key] = vals;
+  }
+  return ancestor->dispatchTo(mergedChildPath, std::move(leafValues));
+}
+
+int Command::dispatchTo(const std::string& childPath, NamedValues leafValues, std::queue<std::string> leafArgs) {
+  if (!childPath.empty()) {
+    // Routing: finalize this level with existing values, then recurse into the named child.
+    if (!mParameterValues.has_value()) {
+      mParameterValues.emplace();
+    }
+    mParametersLexed = true;
+    mParametersFinalized = false;
+    try {
+      this->finalizeParameters();
+      assert(mParametersFinalized);
+    }
+    catch (const std::exception& error) {
+      return this->issueCommandLineHelp(error.what());
+    }
+
+    auto children = this->createChildCommands();
+    assert(std::all_of(children.cbegin(), children.cend(), [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
+    const auto pos = childPath.find(' ');
+    const std::string childName = (pos == std::string::npos) ? childPath : childPath.substr(0, pos);
+    const std::string remaining = (pos == std::string::npos) ? std::string{} : childPath.substr(pos + 1);
+    auto it = std::find_if(children.cbegin(), children.cend(), [&childName](const std::shared_ptr<Command>& c) {
+      return c->getName() == childName;
+    });
+    if (it == children.cend()) {
+      return this->issueCommandLineHelp("Unsupported subcommand '" + childName + "' for " + this->getName());
+    }
+    return (*it)->dispatchTo(remaining, std::move(leafValues), std::move(leafArgs));
+  }
+
+  // Leaf: merge values, optionally lex extra args, finalize, execute.
+  if (!mParameterValues.has_value()) {
+    mParameterValues.emplace();
+  }
+  for (const auto& [key, vals] : leafValues) {
+    (*mParameterValues)[key] = vals;
+  }
+  mParametersLexed = true;
+  mParametersFinalized = false;
+
+  if (!leafArgs.empty()) {
+    try {
+      auto leafParams = this->getSupportedParameters();
+      auto lexed = leafParams.lex(leafArgs);
+      auto parsed = leafParams.parse(lexed);
+      for (const auto& [key, vals] : parsed) {
+        (*mParameterValues)[key] = vals;
+      }
+    }
+    catch (const std::exception& error) {
+      return this->issueCommandLineHelp(error.what());
+    }
+  }
+  try {
+    this->finalizeParameters();
+    assert(mParametersFinalized);
+  }
+  catch (const std::exception& error) {
+    return this->issueCommandLineHelp(error.what());
+  }
+  return this->execute();
+}
+
 int Command::process(std::queue<std::string>& arguments) {
   auto children = this->createChildCommands();
 
   try {
-    // Read-and-eat strings from the arguments queue
     auto parameters = this->getSupportedParameters();
     auto argumentsCopy = arguments;
     auto lexed = parameters.lex(arguments);
     if (lexed.find("autocomplete") != lexed.end()) {
       return this->printAutocompleteInfo(argumentsCopy);
     }
-    auto result = this->processLexedParameters(lexed);
-    if (result.has_value()) {
+    if (auto result = this->processLexedParameters(lexed)) {
       return *result;
     }
     assert(mParametersLexed);
+
+    if (auto warning = this->getDeprecationWarning()) {
+      std::cerr << "Warning: The command '" << this->getName() << "' is deprecated. " << *warning << std::endl;
+    }
 
     // Report "unsupported parameter" if we received arguments that we can't pass to a child. See #2041
     if (children.empty() && !arguments.empty()) {
@@ -176,29 +321,19 @@ int Command::process(std::queue<std::string>& arguments) {
     mParameterValues = parameters.parse(lexed);
     this->finalizeParameters();
     assert(mParametersFinalized);
+
+    if (auto exitCode = this->checkNoLongerSupportedParameters(parameters)) {
+      return *exitCode;
+    }
+    if (auto exitCode = this->applyParameterDeprecations(parameters)) {
+      return *exitCode;
+    }
   }
   catch (const std::exception& error) {
     return this->issueCommandLineHelp(error.what());
   }
 
-  assert(std::all_of(children.cbegin(), children.cend(), [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
-  if (!children.empty()) {
-    if (arguments.empty()) {
-      return this->issueCommandLineHelp("No command specified.");
-    }
-    std::string command = arguments.front();
-    arguments.pop();
-    auto child = std::find_if(children.cbegin(), children.cend(), [&command](const std::shared_ptr<Command>& child) {
-      return child->getName() == command;
-    });
-    if (child == children.cend()) {
-      return this->issueCommandLineHelp("Unsupported command '" + command + "' issued to " + this->getName() + GetGlobWarning(command));
-    }
-    return (*child)->process(arguments);
-  }
-
-  assert(arguments.empty()); // due to unsupported parameter check above
-  return this->execute();
+  return this->dispatch(std::move(children), arguments);
 }
 
 int Command::printAutocompleteInfo(std::queue<std::string>& arguments) {

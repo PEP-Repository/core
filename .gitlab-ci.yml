@@ -97,6 +97,7 @@ variables:
 
   UNIT_TESTS_BASE: >-
     cpp/pep/accessmanager/pepAccessManagerUnitTests
+    cpp/pep/application/pepApplicationUnitTests
     cpp/pep/archiving/pepArchivingUnitTests
     cpp/pep/async/pepAsyncUnitTests
     cpp/pep/auth/pepAuthUnitTests

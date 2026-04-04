@@ -17,31 +17,35 @@ using LexedValues = std::unordered_map<std::string, ProvidedValues>;
 class Values {
 private:
   using Implementor = std::vector<std::any>;
-  Implementor mImplementor;
+  Implementor mItems;
 
 public:
   using iterator = Implementor::iterator;
   using const_iterator = Implementor::const_iterator;
 
-  inline iterator begin() { return mImplementor.begin(); }
-  inline iterator end() { return mImplementor.end(); }
-  inline const_iterator begin() const { return mImplementor.begin(); }
-  inline const_iterator end() const { return mImplementor.end(); }
-  inline const_iterator cbegin() const { return mImplementor.cbegin(); }
-  inline const_iterator cend() const { return mImplementor.cend(); }
+  inline iterator begin() { return mItems.begin(); }
+  inline iterator end() { return mItems.end(); }
+  inline const_iterator begin() const { return mItems.begin(); }
+  inline const_iterator end() const { return mItems.end(); }
+  inline const_iterator cbegin() const { return mItems.cbegin(); }
+  inline const_iterator cend() const { return mItems.cend(); }
 
-  template <typename T> void add(const T& value) { mImplementor.push_back(value); }
+  template <typename T> void add(const T& value) { mItems.push_back(value); }
 
-  inline bool empty() const noexcept { return mImplementor.empty(); }
-  inline size_t count() const noexcept { return mImplementor.size(); }
+  inline bool empty() const noexcept { return mItems.empty(); }
+  inline size_t count() const noexcept { return mItems.size(); }
 };
 
 class NamedValues {
 private:
-  std::unordered_map<std::string, Values> mImplementor;
+  std::unordered_map<std::string, Values> mEntries;
 
 public:
-  inline Values& operator[](const std::string& key) { return mImplementor[key]; }
+  inline Values& operator[](const std::string& key) { return mEntries[key]; }
+  inline const Values& operator[](const std::string& key) const { return mEntries.at(key); }
+
+  inline auto begin() const { return mEntries.cbegin(); }
+  inline auto end() const { return mEntries.cend(); }
 
   template <typename T>
   void add(const std::string& key, const T& value) { (*this)[key].add(value); }
@@ -61,8 +65,9 @@ public:
   std::vector<T> getOptionalMultiple(const std::string& key) const;
 
   size_t count(const std::string& key) const noexcept;
-  inline bool has(const std::string& key) const noexcept { return mImplementor.count(key) != 0U; }
+  inline bool has(const std::string& key) const noexcept { return mEntries.count(key) != 0U; }
   bool hasAnyOf(std::initializer_list<std::string> key) const noexcept;
+  inline void erase(const std::string& key) { mEntries.erase(key); }
 };
 
 template <typename T>
@@ -97,8 +102,8 @@ std::vector<T> NamedValues::getMultiple(const std::string& key) const {
 template <typename T>
 std::vector<T> NamedValues::getOptionalMultiple(const std::string& key) const {
   std::vector<T> result;
-  auto position = mImplementor.find(key);
-  if (position != mImplementor.cend()) {
+  auto position = mEntries.find(key);
+  if (position != mEntries.cend()) {
     const auto& untyped = position->second;
     result.reserve(untyped.count());
     for (const auto& item : untyped) {

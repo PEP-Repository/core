@@ -14,7 +14,7 @@ void NamedValues::add(const std::string& key, const Values& values) {
 
 size_t NamedValues::count(const std::string& key) const noexcept {
   if (this->has(key)) {
-    return mImplementor.at(key).count();
+    return mEntries.at(key).count();
   }
   return 0U;
 }

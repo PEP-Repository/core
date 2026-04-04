@@ -1,16 +1,37 @@
 #pragma once
 
 #include <pep/application/CommandLineSwitchAnnouncement.hpp>
+#include <pep/application/CommandLineValue.hpp>
 #include <pep/application/CommandLineValueSpecification.hpp>
 #include <pep/utils/Shared.hpp>
+#include <functional>
 #include <queue>
 #include <set>
+#include <optional>
+#include <string>
 
 namespace pep {
 namespace commandline {
 
 class Parameters;
 class Command;
+
+/*!
+ * \brief Result of a parameter deprecation transformer.
+ * \details Describes what to add at the target and where to dispatch to.
+ * `toAdd` contains values to inject at the target (the deprecated param itself is erased by the framework).
+ * `ancestor` is the command from which `childPath` is navigated; nullptr means dispatch from self.
+ * `childPath` is a space-separated sequence of subcommand names to navigate from `ancestor` to the target.
+ * An empty `childPath` means the ancestor itself is the target.
+ */
+struct ParameterDeprecationResult {
+  NamedValues toAdd;
+  Command* ancestor = nullptr; // nullptr = dispatch from self
+  std::string childPath;       // space-separated child names, empty = target is ancestor/self
+
+  explicit ParameterDeprecationResult(NamedValues toAdd, Command* ancestor = nullptr, std::string childPath = {})
+    : toAdd(std::move(toAdd)), ancestor(ancestor), childPath(std::move(childPath)) {}
+};
 
 /*!
  * \brief Definition of a formal parameter belonging to a command.
@@ -26,6 +47,11 @@ private:
   std::optional<std::string> mDescription;
   std::set<SwitchAnnouncement> mAliases;
   std::shared_ptr<ValueSpecificationBase> mValueSpecification;
+
+  // Deprecation state: at most one of these is set
+  std::optional<std::string> mDeprecationMessage;
+  std::optional<std::string> mNoLongerSupportedMessage;
+  std::function<ParameterDeprecationResult(Command&, const NamedValues&)> mDeprecationTransformer;
 
   Parameter alias(const SwitchAnnouncement& alias) const;
   std::optional<std::string> getInvocationSummary(const std::string& prefix, const std::string& identifier, bool indicateOptionality) const;
@@ -45,20 +71,34 @@ public:
   inline Parameter alias(const std::string& name) const { return this->alias(SwitchAnnouncement(name)); }
   inline Parameter shorthand(char shorthand) const { return this->alias(SwitchAnnouncement(shorthand)); }
 
+  // Deprecation: transformer receives fully-parsed+finalized values, may redirect to a different command
+  Parameter deprecated(const std::string& message, std::function<ParameterDeprecationResult(Command&, const NamedValues&)> transformer) const;
+  // Simple parameter rename: automatically moves the value to newParamName
+  Parameter deprecated(const std::string& newParamName, const std::string& message) const;
+  // In-place deprecation: warns but keeps the parameter at this command (no redirect)
+  Parameter deprecated(const std::string& message) const;
+  // Marks a parameter as completely removed, print error and exit
+  Parameter noLongerSupported(const std::string& message) const;
+
   template <typename T>
   Parameter value(Value<T> value) const;
 
   const std::string& getName() const noexcept { return mName; }
-  const std::optional<std::string>& getDescription() const noexcept { return mDescription; } 
+  const std::optional<std::string>& getDescription() const noexcept { return mDescription; }
 
   SwitchAnnouncement getCanonicalAnnouncement() const;
   std::set<SwitchAnnouncement> getAnnouncements() const;
   std::shared_ptr<const ValueSpecificationBase> getValueSpecification() const noexcept { return mValueSpecification; }
+  bool hasDeprecationTransformer() const noexcept { return static_cast<bool>(mDeprecationTransformer); }
+  const std::optional<std::string>& getDeprecationMessage() const noexcept { return mDeprecationMessage; }
+  bool isNoLongerSupported() const noexcept { return mNoLongerSupportedMessage.has_value(); }
+  const std::optional<std::string>& getNoLongerSupportedMessage() const noexcept { return mNoLongerSupportedMessage; }
+  ParameterDeprecationResult transformDeprecated(Command& self, const NamedValues& values) const;
 
   bool isRequired() const noexcept;
   bool isPositional() const noexcept;
   bool allowsMultiple() const noexcept;
-  bool isDocumented() const noexcept { return mDescription.has_value(); }
+  bool isDocumented() const noexcept { return mDescription.has_value() && !mDeprecationMessage.has_value() && !this->isNoLongerSupported(); }
 
   Values parse(const ProvidedValues& lexed) const;
 };
@@ -113,6 +153,10 @@ private:
   bool hasInfinitePositional() const noexcept;
   std::vector<std::string> getInvocationSummary() const;
   void writeHelpText(std::ostream& destination) const;
+
+  // Range-based iteration over parameters (read-only)
+  inline auto begin() const { return mEntries.cbegin(); }
+  inline auto end() const { return mEntries.cend(); }
 
 public:
   Parameters operator +(const Parameter& parameter) const;
