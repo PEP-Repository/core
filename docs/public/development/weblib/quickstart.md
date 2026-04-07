@@ -37,8 +37,6 @@ compiler.version={{compiler_version}}
 emsdk/{{compiler_version}}
 ```
 
-@@@ NOTE THAT I also put these settings directly in my C:\PepSrc\pep\core-3\docker-build\builder\conan\conan_profile_wasm32 file, so those may have been required for `conan install` (below) to work. @@@
-
 !!! info "Adapting Conan profiles from docker-build"
     When adapting Conan profiles in docker-build, you can either copy them (plus included files) to `~/.conan2/profiles/`, or create a new profile there and include the one from docker-build via `include(/path/to/docker-build/conan_profile)`.
 
