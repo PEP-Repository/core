@@ -160,12 +160,15 @@ fi
 
 if should_run_test file-extension; then
 
-  # Create column and column group for file extension tests
-  pepcli --oauth-token-group "Data Administrator" ama column create FileExtensionTest
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create FileExtensionTestGroup
-  pepcli --oauth-token-group "Data Administrator" ama column addTo FileExtensionTest FileExtensionTestGroup
-  pepcli --oauth-token-group "Access Administrator" ama cgar create FileExtensionTestGroup "Research Assessor" read
-  pepcli --oauth-token-group "Access Administrator" ama cgar create FileExtensionTestGroup "Research Assessor" write
+  FE_CONFIG='{
+    "columnGroups": [{
+      "name": "FileExtensionTestGroup",
+      "columns": [ "FileExtensionTest" ],
+      "cgars": { "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+
+  test_setup "$FE_CONFIG"
 
   # create a file with an extension and store it in the column
   pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c FileExtensionTest -i "$TEST_INPUT_DIR"/fileExtensionData1.txt
@@ -204,8 +207,7 @@ if should_run_test file-extension; then
 
   execute . rm -rf "$DEST_DIR/pulled-data"
 
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove FileExtensionTestGroup --force
-  pepcli --oauth-token-group "Data Administrator" ama column remove FileExtensionTest
+  test_cleanup "$FE_CONFIG"
 fi
 
 ####################
@@ -229,6 +231,7 @@ fi
 ####################
 
 if should_run_test ama; then
+  # We do not want to hide the ama calls that we are testing behind test_setup/test_cleanup calls
 
   # Create a column group, add columns to it and try to remove it.
   pepcli --oauth-token-group "Data Administrator" ama column create blockingColumn
@@ -297,13 +300,19 @@ if should_run_test ama; then
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 
   # Test --script-print parameter
-  # First create some test data for querying
-  pepcli --oauth-token-group "Data Administrator" ama column create scriptPrintTestColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create scriptPrintTestColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama column addTo scriptPrintTestColumn scriptPrintTestColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama group create scriptPrintTestParticipantGroup
-  pepcli --oauth-token-group "Access Administrator" ama cgar create scriptPrintTestColumnGroup "Research Assessor" read
-  pepcli --oauth-token-group "Access Administrator" ama pgar create scriptPrintTestParticipantGroup "Research Assessor" access
+  AMA_QUERYABLE_CONFIG='{
+    "columnGroups": [{
+      "name": "scriptPrintTestColumnGroup",
+      "columns": [ "scriptPrintTestColumn" ],
+      "cgars": { "Research Assessor": [ "read" ] }
+    }],
+    "subjectGroups": [{
+      "name": "scriptPrintTestParticipantGroup",
+      "pgars": {  "Research Assessor":  [ "access" ] }
+    }]
+  }'
+
+  test_setup "$AMA_QUERYABLE_CONFIG"
 
   script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
   [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
@@ -326,16 +335,22 @@ if should_run_test ama; then
   echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
 
   # Clean up
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove --force scriptPrintTestColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama column remove scriptPrintTestColumn
-  pepcli --oauth-token-group "Data Administrator" ama group remove --force scriptPrintTestParticipantGroup
+  test_cleanup "$AMA_QUERYABLE_CONFIG"
 fi
 
 ####################
 
 if should_run_test token-block; then
+  TOKEN_BLOCK_CONFIG='{
+    "userGroups": [{ "name": "integrationGroup" }],
+    "columnGroups": [{
+      "name": "tokenBlockingColumnGroup",
+      "columns": [ "tokenBlockingColumn" ],
+      "cgars": {  "integrationGroup":  [ "read" ] }
+    }]
+  }'
 
-  pepcli --oauth-token-group "Access Administrator"  user group create integrationGroup
+  test_setup "$TOKEN_BLOCK_CONFIG"
 
   # Attempt to print the blocklist as an access administrator
   pepcli --oauth-token-group "Access Administrator" token block list
@@ -348,12 +363,6 @@ if should_run_test token-block; then
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user create userWithFreshToken
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user addTo userWithFreshToken integrationGroup
   TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "$($DATE_CMD -d '2 days' +%s)")
-
-  # Ensure that integrationGroup has read access to at least one column
-  pepcli --oauth-token-group "Data Administrator" ama column create tokenBlockingColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create tokenBlockingColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama column addTo tokenBlockingColumn tokenBlockingColumnGroup
-  pepcli --oauth-token-group "Access Administrator" ama cgar create tokenBlockingColumnGroup integrationGroup read
 
   # Attempt to do a query with the generated token
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
@@ -379,10 +388,9 @@ if should_run_test token-block; then
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access &&
       fail "Removing a user from a user group should block tokens for that user/usergroup"
 
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove tokenBlockingColumnGroup --force
-  pepcli --oauth-token-group "Data Administrator" ama column remove tokenBlockingColumn
   pepcli --oauth-token-group "Access Administrator" user remove userWithFreshToken
-  pepcli --oauth-token-group "Access Administrator" user group remove integrationGroup
+
+  test_cleanup "$TOKEN_BLOCK_CONFIG"
 fi
 
 ####################
@@ -419,14 +427,17 @@ if should_run_test authserver-apache; then
     echo "$1" | tr "[:lower:]" "[:upper:]"
   }
 
-  pepcli --oauth-token-group "Access Administrator" user create integrationUser
-  pepcli --oauth-token-group "Access Administrator" user group create integrationGroup
-  pepcli --oauth-token-group "Access Administrator" user addTo integrationUser integrationGroup
+  AUTH_SERV_AP_CONFIG='{
+    "userGroups": [{
+      "name": "integrationGroup",
+      "users": ["integrationUser", "difficultUser"],
+      "additionalIdentifiers": {
+        "difficultUser": ["\"something with comma'\''s, and spaces\"@example.com",  "difficultuser+pep@example.com"]
+      }
+    }]
+  }'
 
-  pepcli --oauth-token-group "Access Administrator" user create difficultUser
-  pepcli --oauth-token-group "Access Administrator" user addIdentifier difficultUser "\"something with comma's, and spaces\"@example.com" # comma's and spaces are allowed if the part before the @ is between quotes.
-  pepcli --oauth-token-group "Access Administrator" user addIdentifier difficultUser "difficultuser+pep@example.com"
-  pepcli --oauth-token-group "Access Administrator" user addTo difficultUser integrationGroup
+  test_setup "$AUTH_SERV_AP_CONFIG"
 
   INTEGRATION_USER_PRIMARY_UID="TRnQNJSLx5RFD8VxfzD2HfTsEZ9cT4UsilWw8aiB1ZY"
   DIFFICULT_USER_PRIMARY_UID="MWE8U4BPnAJr27HjAqWD8DucHkFUTgDxLa4zSw7R9Bg"
@@ -454,14 +465,7 @@ if should_run_test authserver-apache; then
   printYellow "When a user logs in, the alternative UID (email) is handled as a case-INsensitive ID"
   test_authserver_request "$INTEGRATION_USER_PRIMARY_UID" "$(toUpperCase integrationUser@example.com)" ""
 
-  pepcli --oauth-token-group "Access Administrator" user removeFrom difficultUser integrationGroup
-  pepcli --oauth-token-group "Access Administrator" user removeIdentifier "difficultuser+pep@example.com"
-  pepcli --oauth-token-group "Access Administrator" user removeIdentifier "\"something with comma's, and spaces\"@example.com"
-  pepcli --oauth-token-group "Access Administrator" user remove difficultUser
-
-  pepcli --oauth-token-group "Access Administrator" user removeFrom integrationUser integrationGroup
-  pepcli --oauth-token-group "Access Administrator" user remove integrationUser
-  pepcli --oauth-token-group "Access Administrator" user group remove integrationGroup
+  test_cleanup "$AUTH_SERV_AP_CONFIG"
 fi
 
 ####################
@@ -584,42 +588,31 @@ fi
 ####################
 
 if should_run_test structured-output; then
-  # Prepare Structured-Output Test Data (SOAG)
-  pepcli --oauth-token-group "Access Administrator" user group create SOAG
+  # All SOTD.shortText strings are <= 7 bytes long (max inline length)
+  # language=json
+  SO_CONFIG='{
+    "userGroups": [{ "name": "SOAG" }],
+    "columnGroups": [{
+      "name": "SOTD",
+      "columns": [ "SOTD.shortText", "SOTD.longText" ],
+      "cgars": {
+        "SOAG": [ "read", "write" ],
+        "Data Administrator": [ "read", "write" ]
+      }
+    }],
+    "subjectGroups": [{
+      "name": "SOTPGroup",
+      "subjects": [
+        { "SOTD.shortText": "yellow", "SOTD.longText": "Canary Yellow" },
+        { "SOTD.shortText": "blue", "SOTD.longText": "Celestial Blue" },
+        { "SOTD.shortText": "green" },
+        { "SOTD.longText": "Cadmium Red" }
+      ],
+      "pgars": { "SOAG": [ "enumerate", "access" ] }
+    }]
+  }'
 
-  # Prepapre Structured-Output Test Data (SOTD)
-  pepcli --oauth-token-group "Data Administrator" ama column create SOTD.shortText
-  pepcli --oauth-token-group "Data Administrator" ama column create SOTD.longText
-
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column addTo SOTD.shortText SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column addTo SOTD.longText SOTD
-
-  pepcli --oauth-token-group "Access Administrator" ama cgar create SOTD SOAG read
-  pepcli --oauth-token-group "Access Administrator" ama cgar create SOTD SOAG write
-
-  # Prerare Structured-Output Test Participants (SOTP)
-  SOTP1=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-  SOTP2=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-  SOTP3=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-  SOTP4=$(pepcli --oauth-token-group SOAG register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
-
-  pepcli --oauth-token-group "Data Administrator" ama group create SOTPGroup
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP1}"
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP2}"
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP3}"
-  pepcli --oauth-token-group "Data Administrator" ama group addTo SOTPGroup "${SOTP4}"
-  pepcli --oauth-token-group "Access Administrator" ama pgar create SOTPGroup SOAG "enumerate"
-  pepcli --oauth-token-group "Access Administrator" ama pgar create SOTPGroup SOAG "access"
-
-  pepcli --oauth-token-group SOAG store -p "${SOTP1}" -c SOTD.shortText -d "yellow" # exactly 7 bytes
-  pepcli --oauth-token-group SOAG store -p "${SOTP1}" -c SOTD.longText -d "Canary Yellow"
-  pepcli --oauth-token-group SOAG store -p "${SOTP2}" -c SOTD.shortText -d "blue"
-  pepcli --oauth-token-group SOAG store -p "${SOTP2}" -c SOTD.longText -d "Celestial Blue"
-  pepcli --oauth-token-group SOAG store -p "${SOTP3}" -c SOTD.shortText -d "green"
-  # skipping SOTP3 longText
-  pepcli --oauth-token-group SOAG store -p "${SOTP4}" -c SOTD.longText -d "Cadmium Red"
-  # skipping SOTP4 shortText
+  test_setup "$SO_CONFIG"
 
   # Pull and export to csv
   CSV_PATH="$DEST_DIR/pulled-data/export.csv"
@@ -655,23 +648,7 @@ if should_run_test structured-output; then
   # Clean up
   execute . rm -rf "$DEST_DIR/pulled-data"
 
-  pepcli --oauth-token-group "Data Administrator" ama column removeFrom SOTD.shortText SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column remove SOTD.shortText
-  pepcli --oauth-token-group "Data Administrator" ama column removeFrom SOTD.longText SOTD
-  pepcli --oauth-token-group "Data Administrator" ama column remove SOTD.longText
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove SOTD SOAG read
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove SOTD SOAG write
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove SOTD
-
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP1}"
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP2}"
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP3}"
-  pepcli --oauth-token-group "Data Administrator" ama group removeFrom SOTPGroup "${SOTP4}"
-  pepcli --oauth-token-group "Access Administrator" ama pgar remove SOTPGroup SOAG "enumerate"
-  pepcli --oauth-token-group "Access Administrator" ama pgar remove SOTPGroup SOAG "access"
-  pepcli --oauth-token-group "Data Administrator" ama group remove SOTPGroup
-
-  pepcli --oauth-token-group "Access Administrator" user group remove SOAG
+  test_cleanup "$SO_CONFIG"
 fi
 
 ####################
@@ -704,12 +681,15 @@ fi
 ####################
 
 if should_run_test s3-roundtrip; then
-  # Set up a column for storage of large(-ish) data by "Research Assessor"
-  pepcli --oauth-token-group "Data Administrator" ama column create LargeColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create LargeColumns
-  pepcli --oauth-token-group "Data Administrator" ama column addTo LargeColumn LargeColumns
-  pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" read
-  pepcli --oauth-token-group "Access Administrator" ama cgar create LargeColumns "Research Assessor" write
+  S3_ROUNDTRIP_CONFIG='{
+    "columnGroups": [{
+      "name": "LargeColumns",
+      "columns": [ "LargeColumn" ],
+      "cgars": {  "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+
+  test_setup "$S3_ROUNDTRIP_CONFIG"
 
   # Store a large (i.e. stored in S3) file with some participants
   readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
@@ -735,11 +715,8 @@ if should_run_test s3-roundtrip; then
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" delete -p "participant$i" -c LargeColumn
   done
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove LargeColumns "Research Assessor" write
-  pepcli --oauth-token-group "Access Administrator" ama cgar remove LargeColumns "Research Assessor" read
-  pepcli --oauth-token-group "Data Administrator" ama column removeFrom LargeColumn LargeColumns
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove LargeColumns
-  pepcli --oauth-token-group "Data Administrator" ama column remove LargeColumn
+
+  test_cleanup "$S3_ROUNDTRIP_CONFIG"
 fi
 
 ####################
