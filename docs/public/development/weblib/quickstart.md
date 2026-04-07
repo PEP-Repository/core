@@ -50,15 +50,14 @@ As host profile, you can use or include `docker-build/builder/conan/conan_profil
     Please make sure you have Conan 2.27 or later for `detect_emcc_compiler` to work correctly.
 
 !!! warning "Windows quirks"
-    - You may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. Work around this by editing the emsdk recipe in `<your-conan2-dir>/p/emsdkXXXXXXXXXXXX/e/conanfile.py` and replacing the body of `_define_tool_var` with `return f"python \"{os.path.join(self._emscripten, f'{value}.py')}\""`.
-    - If the workaround for "Command line too long" has been applied, you may get "Could NOT find Threads (missing: Threads_FOUND)", e.g. when building protobuf. In this case, revert the body of `_define_tool_var` to its original state. In my case:
-
-```python
-    def _define_tool_var(self, value):
-        suffix = ".bat" if self.settings.os == "Windows" else ""
-        path = os.path.join(self._emscripten, f"{value}{suffix}")
-        return path
-```
+    - When installing EMSDK via Conan, you may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. In this case, patch this line in their emsdk recipe (located at `<your-conan2-dir>/p/emsdkXXXXXXXXXXXX/e/conanfile.py`):
+      ```diff
+      104c104
+      <         self.buildenv_info.define_path("AR", self._define_tool_var("emar"))
+      ---
+      >         self.buildenv_info.define_path("AR", f'"{os.path.join(self.package_folder, "bin", "upstream", "bin", "llvm-ar")}"')
+      ```
+      And then add `--build="esmdk/*"` to the `conan install` command (below).
 
 From your git repository's root directory:
 
@@ -96,14 +95,6 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/pki/
     - The `build\wasm32\Debug\generators\conanbuild.bat` script generated will not be compatible with Git Bash. Instead, source (run) it in the appropriate Windows shell and then start Git Bash from that same shell by invoking `"C:\Program Files\Git\bin\bash"`.
     - When using PowerShell, sourcing `conanbuild.bat` will not work. Instead, set e.g. `-c tools.env.virtualenv:powershell=...` according to [the docs](https://docs.conan.io/2/reference/config_files/global_conf.html) and source `conanbuild.ps1`.
     - Nginx may not go to the background or want to shut down with ctrl+C, kill it via the task manager instead.
-    - When installing EMSDK via Conan, you may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. In the emsdk recipe, patch this line in their `conanfile.py`:
-      ```diff
-      104c104
-      <         self.buildenv_info.define_path("AR", self._define_tool_var("emar"))
-      ---
-      >         self.buildenv_info.define_path("AR", f'"{os.path.join(self.package_folder, "bin", "upstream", "bin", "llvm-ar")}"')
-      ```
-      And then add `--build="esmdk/*"` to the `conan install` command.
     - websockify may log `WARNING: no 'resource' module, daemonizing is disabled`. This can be ignored.
 
 If you installed EMSDK via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script from your `wasm32` build folder.
