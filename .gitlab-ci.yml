@@ -547,16 +547,16 @@ ubuntu-lts-debug-with-sast:
     - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
     - infer analyze --skip-analysis-in-path "rxcpp"
                     --skip-analysis-in-path ".*rxcpp.*"
-                    --report-suppress-errors "PULSE_CONST_REFABLE"
-                    --report-suppress-errors "PULSE_UNNECESSARY_COPY_INTERMEDIATE"
-                    --report-suppress-errors "PULSE_UNNECESSARY_COPY_ASSIGNMENT"
-                    --report-suppress-errors "PULSE_UNNECESSARY_COPY"
-                    --report-suppress-errors "PULSE_READONLY_SHARED_PTR_PARAM"
-                    --report-suppress-errors "PULSE_UNNECESSARY_COPY_OPTIONAL"
-                    --report-suppress-errors "OPTIONAL_EMPTY_ACCESS"
-                    --report-suppress-errors "DEAD_STORE"
-                    --report-suppress-errors "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
     - infer report --sarif
+                   --report-suppress-errors "PULSE_CONST_REFABLE"
+                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_INTERMEDIATE"
+                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_ASSIGNMENT"
+                   --report-suppress-errors "PULSE_UNNECESSARY_COPY"
+                   --report-suppress-errors "PULSE_READONLY_SHARED_PTR_PARAM"
+                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_OPTIONAL"
+                   --report-suppress-errors "OPTIONAL_EMPTY_ACCESS"
+                   --report-suppress-errors "DEAD_STORE"
+                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
     - |
       cat infer-out/report.sarif | jq '
         .runs[0].results |= map(
@@ -571,7 +571,7 @@ ubuntu-lts-debug-with-sast:
     
   artifacts:
     paths:
-      - infer-out/report.sarif
+      - reportFiltered.sarif
 
 .ubuntu-build-with-tests-base:
   extends:
