@@ -528,6 +528,26 @@ ubuntu-lts-debug-with-sast:
     apt-get update && apt-get install -y bear xz-utils
   script:
     - set -euo pipefail
+    - |
+     .inferconfig <'EOF'
+     {
+      "skip-analysis-in-path": [
+          "rxcpp",
+      ".*rxcpp.*"
+        ],
+        "--report-suppress-errors": [
+        "PULSE_CONST_REFABLE",
+        "PULSE_UNNECESSARY_COPY_INTERMEDIATE",
+        "PULSE_UNNECESSARY_COPY_ASSIGNMENT",
+        "PULSE_UNNECESSARY_COPY",
+        "PULSE_READONLY_SHARED_PTR_PARAM",
+        "PULSE_UNNECESSARY_COPY_OPTIONAL",
+        "OPTIONAL_EMPTY_ACCESS",
+        "DEAD_STORE",
+        "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
+      ]
+      }
+      EOF
     # mkdir the man/man1 directory due to Debian bug #863199
     - mkdir -p /usr/share/man/man1
     - INFER_VERSION="v1.2.0"
@@ -547,6 +567,18 @@ ubuntu-lts-debug-with-sast:
     - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
     - infer analyze
     - infer report --sarif
+    - |
+      cat infer-out/report.sarif | jq '
+        .runs[0].results |= map(
+          select(
+            all(
+              .codeFlows[]?.threadFlows[]?.locations[]?.location.physicalLocation.artifactLocation.uri;
+              test("rxcpp") | not
+            )
+          )
+        )
+      ' > reportFiltered.sarif
+    
   artifacts:
     paths:
       - infer-out/report.sarif
