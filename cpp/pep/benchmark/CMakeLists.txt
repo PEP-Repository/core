@@ -10,3 +10,8 @@ target_link_libraries(${PROJECT_NAME}benchmark
   ${PROJECT_NAME}StorageFacilityApilib
   benchmark::benchmark
 )
+
+# For Clang >=22: Silence warning about __COUNTER__, which now apparently is a C2y extension
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 22)
+  target_compile_options(${PROJECT_NAME}benchmark PRIVATE -Wno-c2y-extensions)
+endif()
