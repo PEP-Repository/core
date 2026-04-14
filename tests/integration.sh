@@ -351,7 +351,7 @@ fi
 if [ "$USE_DOCKER" = true ]; then
   trace docker network create pep-network
 
-  trace "$CORE_DIR/s3proxy/s3proxy.sh" stage "$S3PROXY_RUNTIME_DIR" "$PKI_DIR_ON_HOST/s3certs" "$REUSE_SECRETS_AND_DATA"
+  trace "$CORE_DIR/s3proxy/s3proxy.sh" stage "$S3PROXY_RUNTIME_DIR" "$PKI_DIR_ON_HOST/s3certs"
   # Create test buckets for pepStorageFacilityUnitTests, preventing 'NoSuchBucket' error code from s3proxy.
   # Specifying "--parents" to prevent failure when directories already exist, e.g. if
   # this script is run multiple times.

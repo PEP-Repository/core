@@ -36,4 +36,7 @@ function(copy_pki_files)
         ${target} ALL
         DEPENDS ${output_files}
     )
+    set_target_properties(${target} PROPERTIES
+        FOLDER copy-pki
+    )
 endfunction(copy_pki_files)
