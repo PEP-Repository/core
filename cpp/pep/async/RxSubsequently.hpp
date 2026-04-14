@@ -6,6 +6,8 @@
 namespace pep {
 
 /// @brief Invokes a callback after a primary observable has been exhausted
+/// @remark As opposed to RxBeforeTermination and RxBeforeCompletion, this operator invokes its callback _after_ the
+///         primary observable's resources have been released.
 class RxSubsequently {
 private:
   std::function<void()> callback_;
