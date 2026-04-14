@@ -38,7 +38,7 @@ TEST(MessageSequence, IStreamIsBatchedLazily) {
         auto done = (*received == bytes);
         auto exhausted = stream->eof();
         EXPECT_EQ(done, exhausted) << "Stream was " << (exhausted ? "" : "not ") << "exhausted"
-          << " after receiving " << *received << " of " << bytes << " bytes";
+          << " after receiving " << *received << " of " << bytes << " bytes"; // (A.o.) verifies that the stream is read "lazily", i.e. that it isn't exhausted yet when subscriber receives non-final parts
       },
       [](std::exception_ptr exception) {
         FAIL() << "Error reading istream as message batches: " << pep::GetExceptionMessage(exception);
