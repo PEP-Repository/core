@@ -28,7 +28,7 @@ TEST(MessageSequence, IStreamIsBatchedLazily) {
   auto received = std::make_shared<size_t>(0U);
 
   pep::messaging::IStreamToMessageBatches(stream)
-    .concat_map([stream](pep::messaging::MessageSequence sequence) {
+    .concat_map([stream](pep::messaging::MessageSequence sequence) { // Equivalent to .concat() but our lambda gets invoked for every batch, allowing us to test stuff in it
         EXPECT_TRUE(stream->good());
         return sequence;
       })

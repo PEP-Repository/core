@@ -65,9 +65,9 @@ extern const uint64_t DEFAULT_PAGE_SIZE;
  *         5. When the original stream has been fully exhausted, completion/exhaustion is signalled on the (single, outer) MessageBatches instance.
  *         Thus, the (outer) MessageBatches instance makes no progress until callers subscribe() to each (inner) MessageSequence instance. The consequence is that
  *         (inner) MessageSequence instances must be processed as they are produced (and cannot e.g. be stored for later and/or out-of-order processing).
- *         If you're unsure what to do, let .concat_map take care of things for you:
+ *         If you're unsure what to do, let .concat() take care of things for you:
  *              IStreamToMessageBatches(myStream)
- *                .concat_map([](MessageSequence batch) { return batch; })
+ *                .concat()
  *                .map([](std::shared_ptr<std::string> page) { return ProcessPage(page); })
  *                .subscribe(...);
  */
