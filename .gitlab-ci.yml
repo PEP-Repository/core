@@ -524,11 +524,11 @@ ubuntu-lts-debug-with-sast:
     VERIFY_HEADERS_STANDALONE: "off"
     ENABLE_LINTER: "no"
     concurrency_option_conan: ""
-cache:
-  key: infer-state
-  paths:
-    - .infer_state/
-  policy: pull-push
+  cache:
+    key: infer-state
+    paths:
+      - .infer_state/
+    policy: pull-push
   #language=bash
   before_script:
     apt-get update && apt-get install -y bear xz-utils
