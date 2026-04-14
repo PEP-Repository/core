@@ -1,7 +1,7 @@
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/utils/Defer.hpp>
 #include <gtest/gtest.h>
-#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
 namespace {
@@ -40,7 +40,7 @@ bool RecursDuringCountdown(ProduceNextInnerIfAvailable produce) {
   pep::CreateObservable<Inner>([produce, counter = std::make_shared<unsigned>(5U)](rxcpp::subscriber<Inner> subscriber) {
     produce(counter, subscriber);
     })
-    .concat_map([](Inner inner) { return inner; })
+    .concat()
     .subscribe([&result](Result entry) {
         if (entry.recursion_ != 0U) {
           result = true;
