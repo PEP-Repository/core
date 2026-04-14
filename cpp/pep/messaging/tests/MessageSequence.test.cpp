@@ -36,8 +36,8 @@ TEST(MessageSequence, IStreamIsBatchedLazily) {
       [bytes, received, stream](std::shared_ptr<std::string> single) {
         *received += single->size();
         auto done = (*received == bytes);
-        auto more = stream->good();
-        EXPECT_EQ(done, !more) << "Stream was " << (more ? "not " : "") << "exhausted"
+        auto exhausted = stream->eof();
+        EXPECT_EQ(done, exhausted) << "Stream was " << (exhausted ? "" : "not ") << "exhausted"
           << " after receiving " << *received << " of " << bytes << " bytes";
       },
       [](std::exception_ptr exception) {
@@ -46,6 +46,6 @@ TEST(MessageSequence, IStreamIsBatchedLazily) {
       []() {}
     );
 
-  EXPECT_FALSE(stream->good()) << "All data should have been read from stream ";
+  EXPECT_TRUE(stream->eof()) << "All data should have been read from stream";
   EXPECT_EQ(*received, bytes);
 }
