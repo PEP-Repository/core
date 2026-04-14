@@ -69,7 +69,7 @@ TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffe
     Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility_proof())),
     Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor_proof())),
     source.has_user_group_proof() ?
-    std::optional<ReshuffleRekeyProof>(
+    std::optional<RskProof>(
       Serialization::FromProtocolBuffer(std::move(*source.mutable_user_group_proof()))
     ) : std::nullopt
   );

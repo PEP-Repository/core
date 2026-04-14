@@ -486,7 +486,7 @@ services:
     volumes:
       - "${DATA_DIR_BASE}/prometheus-node-exporter:/data"
       - /etc/localtime:/etc/localtime:ro
-    command: [ "--collector.textfile.directory", "/data/textfiles/", "--no-collector.diskstats" ]
+    command: [ "--collector.textfile.directory", "/data/textfiles/", "--no-collector.diskstats", "--no-collector.kernel_hung"]
     logging:
       <<: *logging-pipeline-prometheus-node-exporter
     profiles: ["prometheus-node-exporter"]
