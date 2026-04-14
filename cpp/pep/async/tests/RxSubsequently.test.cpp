@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <numeric>
 
 namespace {
 
@@ -34,20 +35,30 @@ Inner MakeInner(std::shared_ptr<unsigned> counter, std::function<void()> andInvo
 
 using ProduceNextInnerIfAvailable = std::function<void(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber)>;
 
-bool RecursDuringCountdown(ProduceNextInnerIfAvailable produce) {
-  bool result = false;
+void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, const char* description) {
+  constexpr unsigned count = 5U;
+  std::vector<unsigned> produced;
+  bool recursion_detected = false;
 
-  pep::CreateObservable<Inner>([produce, counter = std::make_shared<unsigned>(5U)](rxcpp::subscriber<Inner> subscriber) {
+  pep::CreateObservable<Inner>([produce, counter = std::make_shared<unsigned>(count)](rxcpp::subscriber<Inner> subscriber) {
     produce(counter, subscriber);
     })
     .concat()
-    .subscribe([&result](Result entry) {
+    .subscribe([&recursion_detected, &produced](Result entry) {
+        produced.emplace_back(entry.value_);
         if (entry.recursion_ != 0U) {
-          result = true;
+          recursion_detected = true;
         }
       });
 
-  return result;
+  // Validate our primary concern
+  EXPECT_EQ(recurs, recursion_detected) << description << (recurs ? "should" : "shouldn't") << " cause recursive calls";
+
+  // Validate the "produce" function's results
+  std::vector<unsigned> expected(count);
+  std::iota(expected.begin(), expected.end(), 1U);
+  std::reverse(expected.begin(), expected.end());
+  EXPECT_EQ(produced, expected);
 }
 
 void ProduceNextUsingBunnyHopping(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
@@ -85,8 +96,8 @@ void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::su
 
 TEST(RxSubsequently, PreventsRecursion) {
   // We expect that recursion (for every entry in the outer observable) will cause trouble such as stack overflows...
-  EXPECT_TRUE(RecursDuringCountdown(&ProduceNextUsingBunnyHopping))     << "Bunny hopping causes recursive calls";
-  EXPECT_TRUE(RecursDuringCountdown(&ProduceNextUsingRxNativeTap))      << "Tapping causes recursive calls";
+  TestIterativeCountDown(&ProduceNextUsingBunnyHopping, true, "Bunny hopping");
+  TestIterativeCountDown(&ProduceNextUsingRxNativeTap,  true, "Tapping");
   // ...which prompted us to create the non-recursive RxSubsequently
-  EXPECT_FALSE(RecursDuringCountdown(&ProduceNextUsingRxSubsequently))  << "RxSubsequently shouldn't cause recursive calls";
+  TestIterativeCountDown(&ProduceNextUsingRxSubsequently, false, "RxSubsequently");
 }
