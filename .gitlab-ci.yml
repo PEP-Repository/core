@@ -508,6 +508,7 @@ ubuntu-lts-debug-with-sast:
     - if: $[[ inputs.use_sast ]] == true
   tags:
     - docker
+    - sast
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
     - job: retrieve-lockfile
@@ -523,11 +524,38 @@ ubuntu-lts-debug-with-sast:
     VERIFY_HEADERS_STANDALONE: "off"
     ENABLE_LINTER: "no"
     concurrency_option_conan: ""
+cache:
+  key: infer-state
+  paths:
+    - .infer_state/
+  policy: pull-push
   #language=bash
   before_script:
     apt-get update && apt-get install -y bear xz-utils
   script:
     - set -euo pipefail
+
+    - mkdir -p .infer_state
+    - echo "7e817c72867530bb87c3f70750b9af7a336e4b4a" > .infer_state/last_sha
+    - CURRENT_SHA="$CI_COMMIT_SHA"
+    - |
+      if [ -f .infer_state/last_sha ]; then
+        LAST_PROCESSED_SHA=$(cat .infer_state/last_sha)
+        echo "Cached SHA: $LAST_PROCESSED_SHA"
+      else
+        echo "No cached SHA found"
+        LAST_PROCESSED_SHA=""
+      fi
+    - |
+      if [ -z "${LAST_PROCESSED_SHA}" ]; then
+        echo "Using fallback (HEAD~1)"
+        if git rev-parse HEAD~1 >/dev/null 2>&1; then
+          LAST_PROCESSED_SHA=$(git rev-parse HEAD~1)
+        else
+          LAST_PROCESSED_SHA="$CURRENT_SHA"
+        fi
+      fi
+    - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" > index.txt
     # mkdir the man/man1 directory due to Debian bug #863199
     - mkdir -p /usr/share/man/man1
     - INFER_VERSION="v1.2.0"
@@ -544,8 +572,10 @@ ubuntu-lts-debug-with-sast:
     - *checkout-docker-build-script-sh-steps
     - *configure-conan-and-cmake
     - bear -- cmake --build --preset conan-$build_type_lower -j30
-    - infer capture --compilation-database-escaped ./compile_commands.json --keep-going
-    - infer analyze --skip-analysis-in-path "rxcpp"
+    - infer capture --reactive --mark-if-unchanged --compilation-database-escaped ./compile_commands.json --keep-going
+    - infer analyze --incremental-analysis
+                    --changed-files-index index.txt
+                    --skip-analysis-in-path "rxcpp"
                     --skip-analysis-in-path ".*rxcpp.*"
     - infer report --sarif
                    --report-suppress-errors "PULSE_CONST_REFABLE"
@@ -568,7 +598,8 @@ ubuntu-lts-debug-with-sast:
           )
         )
       ' > reportFiltered.sarif
-    
+    - echo "${CURRENT_SHA}" > .infer_state/last_sha
+    - echo "Saved SHA to cache"
   artifacts:
     paths:
       - reportFiltered.sarif

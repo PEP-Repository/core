@@ -60,3 +60,6 @@ ClientKeys.json
 OAuthToken.json
 pulled-data-pending/
 pulled-data/
+
+# infer cache
+.infer_state/
