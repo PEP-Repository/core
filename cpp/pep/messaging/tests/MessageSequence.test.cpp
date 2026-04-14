@@ -23,7 +23,7 @@ TEST(MessageSequence, IStreamIsBatchedLazily) {
   // </rant>
 
   auto file = pep::filesystem::Temporary::MakeFile(pep::RandomString(bytes));
-  auto stream = std::make_shared<std::ifstream>(file.path().c_str(), std::ios_base::in | std::ios_base::binary);
+  auto stream = std::make_shared<std::ifstream>(file.path(), std::ios_base::in | std::ios_base::binary);
 
   auto received = std::make_shared<size_t>(0U);
 
