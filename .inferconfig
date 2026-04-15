@@ -1,4 +1,5 @@
 {
+  "debug-level": 1,
   "skip-analysis-in-path": [
     "rxcpp",
 	  ".*rxcpp.*"
