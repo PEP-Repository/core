@@ -524,7 +524,6 @@ ubuntu-lts-debug-with-sast:
     ENABLE_LINTER: "no"
     concurrency_option_conan: ""
     INFER_VERSION: "v1.2.0"
-    GIT_DEPTH: "0" # git diff needs the full git history for infer
   cache:
     - key: "ccache"
       paths:
@@ -555,6 +554,8 @@ ubuntu-lts-debug-with-sast:
           exit 1
         fi
       fi
+    # We have global GIT_DEPTH=20 in the gitlab gui, obtain the SHA in case it's older
+    - git fetch origin "$LAST_PROCESSED_SHA"
     - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" > index.txt
     # mkdir the man/man1 directory due to Debian bug #863199
     - mkdir -p /usr/share/man/man1
