@@ -524,6 +524,7 @@ ubuntu-lts-debug-with-sast:
     VERIFY_HEADERS_STANDALONE: "off"
     ENABLE_LINTER: "no"
     concurrency_option_conan: ""
+    INFER_VERSION: "v1.2.0"
   cache:
     key: infer-state
     paths:
@@ -536,21 +537,18 @@ ubuntu-lts-debug-with-sast:
     - set -euo pipefail
     - mkdir -p .infer_state
     - CURRENT_SHA="$CI_COMMIT_SHA"
+    - echo "Using current SHA $CURRENT_SHA"
     - |
       if [ -f .infer_state/last_sha ]; then
         LAST_PROCESSED_SHA=$(cat .infer_state/last_sha)
-        echo "Cached SHA: $LAST_PROCESSED_SHA"
+        echo "Using cached SHA $LAST_PROCESSED_SHA"
       else
-        echo "No cached SHA found"
-        LAST_PROCESSED_SHA=""
-      fi
-    - |
-      if [ -z "${LAST_PROCESSED_SHA}" ]; then
-        echo "Using fallback (HEAD~1)"
+        echo "No cached SHA found, using fallback (HEAD~1)"
         if git rev-parse HEAD~1 >/dev/null 2>&1; then
           LAST_PROCESSED_SHA=$(git rev-parse HEAD~1)
         else
-          LAST_PROCESSED_SHA="$CURRENT_SHA"
+          echo "No fallback SHA found using git rev-parse HEAD~1, cannot run incremental analysis"
+          exit 1
         fi
       fi
     - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" > index.txt
@@ -570,7 +568,7 @@ ubuntu-lts-debug-with-sast:
     - *checkout-docker-build-script-sh-steps
     - *configure-conan-and-cmake
     - bear -- cmake --build --preset conan-$build_type_lower -j30
-    - infer capture --reactive --mark-if-unchanged --compilation-database-escaped ./compile_commands.json --keep-going
+    - infer capture --reactive --compilation-database-escaped ./compile_commands.json --keep-going
     - infer analyze --incremental-analysis
                     --changed-files-index index.txt
                     --skip-analysis-in-path "rxcpp"
@@ -599,9 +597,9 @@ ubuntu-lts-debug-with-sast:
     - |
       if [ "$(jq '.runs[0].results | length' reportFiltered.sarif)" -eq 0 ]; then
         echo "${CURRENT_SHA}" > .infer_state/last_sha
-        echo "Saved SHA to cache"
+        echo "Saved SHA to cache."
       else
-        echo "Not saving SHA: issues found in reportFiltered.sarif"
+        echo "Not saving SHA to cache, issues found in reportFiltered.sarif"
         exit 1
       fi
   artifacts:
