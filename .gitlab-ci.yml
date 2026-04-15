@@ -502,7 +502,6 @@ retrieve-lockfile:
     - *ccache-print
 
 ubuntu-lts-debug-with-sast:
-  <<: *ccache-configuration
   stage: build
   rules:
     - if: $[[ inputs.use_sast ]] == true
@@ -526,10 +525,13 @@ ubuntu-lts-debug-with-sast:
     concurrency_option_conan: ""
     INFER_VERSION: "v1.2.0"
   cache:
-    key: infer-state
-    paths:
-      - .infer_state/
-    policy: pull-push
+    - key: "ccache"
+      paths:
+        - ccache/
+    - key: "infer-state"
+      paths:
+        - .infer_state/
+      policy: pull-push
   #language=bash
   before_script:
     apt-get update && apt-get install -y bear xz-utils
@@ -597,9 +599,9 @@ ubuntu-lts-debug-with-sast:
     - |
       if [ "$(jq '.runs[0].results | length' reportFiltered.sarif)" -eq 0 ]; then
         echo "${CURRENT_SHA}" > .infer_state/last_sha
-        echo "Saved SHA to cache."
+        echo "No issues found, saved SHA to cache."
       else
-        echo "Not saving SHA to cache, issues found in reportFiltered.sarif"
+        echo "Issues found in reportFiltered.sarif, not saving SHA to cache."
         exit 1
       fi
   artifacts:
