@@ -607,6 +607,7 @@ ubuntu-lts-debug-with-sast:
         exit 1
       fi
   artifacts:
+    when: always
     paths:
       - reportFiltered.sarif
 
