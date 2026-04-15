@@ -538,6 +538,7 @@ ubuntu-lts-debug-with-sast:
   script:
     - set -euo pipefail
     - mkdir -p .infer_state
+    - echo -n "5c8fb1346d8b883f79af19abded71a7741221441" > .infer_state/last_sha
     - CURRENT_SHA="$CI_COMMIT_SHA"
     - echo "Using current SHA $CURRENT_SHA"
     - |
@@ -598,7 +599,7 @@ ubuntu-lts-debug-with-sast:
       ' > reportFiltered.sarif
     - |
       if [ "$(jq '.runs[0].results | length' reportFiltered.sarif)" -eq 0 ]; then
-        echo "${CURRENT_SHA}" > .infer_state/last_sha
+        echo -n "${CURRENT_SHA}" > .infer_state/last_sha
         echo "No issues found, saved SHA to cache."
       else
         echo "Issues found in reportFiltered.sarif, not saving SHA to cache."
