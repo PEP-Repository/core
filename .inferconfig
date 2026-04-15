@@ -2,7 +2,7 @@
   "debug-level": 1,
   "skip-analysis-in-path": [
     ".*rxcpp.*",
-    ".*/usr/include/c++/.*",
+    ".*/usr/include/c\\+\\+/.*",
     ".*\\\\Tools\\\\MSVC.*"
   ],
   "report-suppress-errors": [
