@@ -524,6 +524,7 @@ ubuntu-lts-debug-with-sast:
     ENABLE_LINTER: "no"
     concurrency_option_conan: ""
     INFER_VERSION: "v1.2.0"
+    GIT_DEPTH: "0" # git diff needs the full git history for infer
   cache:
     - key: "ccache"
       paths:
