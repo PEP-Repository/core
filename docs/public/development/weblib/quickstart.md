@@ -2,11 +2,13 @@
 
 This page more concretely lays out the steps to get started developing the PEP Weblib. For more info, see the [_PEP Weblib: development_](./developing.md) document.
 
-## Install prerequisites
+## Prepare your machine
+
+### Install prerequisites
 
 Install Nginx and the [websockify](https://github.com/novnc/websockify) Python package (e.g. via [pipx](https://pipx.pypa.io/latest/installation/)). For Windows, use `winget install nginxinc.nginx` (or `freenginx.nginx`).
 
-## Obtain the Emscripten SDK
+### Obtain the Emscripten SDK
 
 !!! bug "Emscripten version"
     Currently, Emscripten ≥4.0.23 blocks too long while waiting for WebSocket traffic, see [this issue](https://github.com/emscripten-core/emscripten/issues/26192). Until this is resolved, use version 4.0.22 instead.
@@ -40,7 +42,9 @@ emsdk/{{compiler_version}}
 !!! info "Adapting Conan profiles from docker-build"
     When adapting Conan profiles in docker-build, you can either copy them (plus included files) to `~/.conan2/profiles/`, or create a new profile there and include the one from docker-build via `include(/path/to/docker-build/conan_profile)`.
 
-## Install requirements via Conan
+## Configure and build
+
+### Install requirements via Conan
 
 As host profile, you can use or include `docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
 
@@ -72,7 +76,7 @@ conan install \
 - `-s"&:build_type=Debug"`: Same as normal, this builds pep as Debug, but dependencies as Release according to the profile
 - `subbuild_name` is a pep option: build in subfolder `./build/wasm32/Debug/`
 
-## Configure PEP
+### Configure PEP
 
 First configure PEP as you would normally do to develop PEP on your platform. E.g. on Windows:
 
@@ -86,7 +90,7 @@ Then (`cd` back to the repo root and) configure the WASM build as shown below. T
 cmake --preset=wasm32-debug -DPKI_DIR=./build/pki/
 ```
 
-## Build & run sample page
+### Build & run sample page
 
 !!! warning "Windows quirks"
     - To use scripts like `start_dev.sh`, you'll need to open e.g. Git Bash, but
