@@ -1,0 +1,25 @@
+{
+  "skip-analysis-in-path": [
+    "rxcpp",
+	  ".*rxcpp.*"
+  ],
+  "report-suppress-errors": [
+    "PULSE_CONST_REFABLE",
+    "PULSE_UNNECESSARY_COPY_INTERMEDIATE",
+    "PULSE_UNNECESSARY_COPY_ASSIGNMENT",
+    "PULSE_UNNECESSARY_COPY",
+    "PULSE_READONLY_SHARED_PTR_PARAM",
+    "PULSE_UNNECESSARY_COPY_OPTIONAL",
+    "OPTIONAL_EMPTY_ACCESS",
+    "DEAD_STORE",
+    "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
+  ],
+  "report-block-list-spec": [
+    {
+      "bug_type": "USE_AFTER_DELETE",
+      "class_name": "RskRecipient.hpp",
+      "procedure_name": "__infer_inner_destructor_~SkRecipient",
+      "comment": "This is a fp because..."
+    }
+  ]
+}

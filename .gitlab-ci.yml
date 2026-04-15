@@ -572,21 +572,12 @@ ubuntu-lts-debug-with-sast:
     - *checkout-docker-build-script-sh-steps
     - *configure-conan-and-cmake
     - bear -- cmake --build --preset conan-$build_type_lower -j30
-    - infer capture --reactive --compilation-database-escaped ./compile_commands.json --keep-going
+    - infer capture --reactive
+                    --compilation-database-escaped ./compile_commands.json
+                    --keep-going
     - infer analyze --incremental-analysis
                     --changed-files-index index.txt
-                    --skip-analysis-in-path "rxcpp"
-                    --skip-analysis-in-path ".*rxcpp.*"
     - infer report --sarif
-                   --report-suppress-errors "PULSE_CONST_REFABLE"
-                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_INTERMEDIATE"
-                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_ASSIGNMENT"
-                   --report-suppress-errors "PULSE_UNNECESSARY_COPY"
-                   --report-suppress-errors "PULSE_READONLY_SHARED_PTR_PARAM"
-                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_OPTIONAL"
-                   --report-suppress-errors "OPTIONAL_EMPTY_ACCESS"
-                   --report-suppress-errors "DEAD_STORE"
-                   --report-suppress-errors "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
     - |
       cat infer-out/report.sarif | jq '
         .runs[0].results |= map(
