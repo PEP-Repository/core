@@ -1,9 +1,9 @@
 {
   "debug-level": 1,
   "skip-analysis-in-path": [
-	  ".*rxcpp.*",
-    ".*/usr/include/c\\+\\+/.*",
-    ".*\\Tools\\MSVC.*"
+    ".*rxcpp.*",
+    ".*/usr/include/c++/.*",
+    ".*\\\\Tools\\\\MSVC.*"
   ],
   "report-suppress-errors": [
     "PULSE_CONST_REFABLE",
