@@ -530,20 +530,19 @@ ubuntu-lts-debug-with-sast:
         - ccache/
     - key: "infer-state"
       paths:
-        - .infer_state/
-      policy: pull-push
+        - infer_state/
   #language=bash
   before_script:
     apt-get update && apt-get install -y bear xz-utils
   script:
     - set -euo pipefail
-    - mkdir -p .infer_state
-    - echo -n "5c8fb1346d8b883f79af19abded71a7741221441" > .infer_state/last_sha
+    - mkdir -p infer_state
+    - echo -n "5c8fb1346d8b883f79af19abded71a7741221441" > infer_state/last_sha
     - CURRENT_SHA="$CI_COMMIT_SHA"
     - echo "Using current SHA $CURRENT_SHA"
     - |
-      if [ -f .infer_state/last_sha ]; then
-        LAST_PROCESSED_SHA=$(cat .infer_state/last_sha)
+      if [ -f infer_state/last_sha ]; then
+        LAST_PROCESSED_SHA=$(cat infer_state/last_sha)
         echo "Using cached SHA $LAST_PROCESSED_SHA"
       else
         echo "No cached SHA found, using fallback (HEAD~1)"
@@ -601,7 +600,7 @@ ubuntu-lts-debug-with-sast:
       ' > reportFiltered.sarif
     - |
       if [ "$(jq '.runs[0].results | length' reportFiltered.sarif)" -eq 0 ]; then
-        echo -n "${CURRENT_SHA}" > .infer_state/last_sha
+        echo -n "${CURRENT_SHA}" > infer_state/last_sha
         echo "No issues found, saved SHA to cache."
       else
         echo "Issues found in reportFiltered.sarif, not saving SHA to cache."
