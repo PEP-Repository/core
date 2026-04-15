@@ -534,9 +534,7 @@ ubuntu-lts-debug-with-sast:
     apt-get update && apt-get install -y bear xz-utils
   script:
     - set -euo pipefail
-
     - mkdir -p .infer_state
-    - echo "7e817c72867530bb87c3f70750b9af7a336e4b4a" > .infer_state/last_sha
     - CURRENT_SHA="$CI_COMMIT_SHA"
     - |
       if [ -f .infer_state/last_sha ]; then
@@ -598,8 +596,14 @@ ubuntu-lts-debug-with-sast:
           )
         )
       ' > reportFiltered.sarif
-    - echo "${CURRENT_SHA}" > .infer_state/last_sha
-    - echo "Saved SHA to cache"
+    - |
+      if [ "$(jq '.runs[0].results | length' reportFiltered.sarif)" -eq 0 ]; then
+        echo "${CURRENT_SHA}" > .infer_state/last_sha
+        echo "Saved SHA to cache"
+      else
+        echo "Not saving SHA: issues found in reportFiltered.sarif"
+        exit 1
+      fi
   artifacts:
     paths:
       - reportFiltered.sarif
