@@ -1,8 +1,9 @@
 {
   "debug-level": 1,
   "skip-analysis-in-path": [
-    "rxcpp",
-	  ".*rxcpp.*"
+	  ".*rxcpp.*",
+    ".*/usr/include/c\\+\\+/.*",
+    ".*\\Tools\\MSVC.*"
   ],
   "report-suppress-errors": [
     "PULSE_CONST_REFABLE",
@@ -14,5 +15,13 @@
     "OPTIONAL_EMPTY_ACCESS",
     "DEAD_STORE",
     "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
+  ],
+  "report-block-list-spec": [
+    {
+      "bug_type": "USE_AFTER_DELETE",
+      "file": "cpp/pep/rsk/RskRecipient.hpp",
+      "procedure_name": "~SkRecipient",
+      "comment": "This is a fp because..."
+    }
   ]
 }
