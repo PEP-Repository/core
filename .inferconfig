@@ -13,13 +13,5 @@
     "OPTIONAL_EMPTY_ACCESS",
     "DEAD_STORE",
     "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
-  ],
-  "report-block-list-spec": [
-    {
-      "bug_type": "USE_AFTER_DELETE",
-      "class_name": "RskRecipient.hpp",
-      "procedure_name": "__infer_inner_destructor_~SkRecipient",
-      "comment": "This is a fp because..."
-    }
   ]
 }

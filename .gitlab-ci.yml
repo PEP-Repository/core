@@ -555,7 +555,7 @@ ubuntu-lts-debug-with-sast:
       fi
     # We have global GIT_DEPTH=20 in the gitlab gui, obtain the SHA in case it's older
     - git fetch origin "$LAST_PROCESSED_SHA"
-    - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" > index.txt
+    - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" --no-relative cpp/pep > index.txt
     # mkdir the man/man1 directory due to Debian bug #863199
     - mkdir -p /usr/share/man/man1
     - INFER_VERSION="v1.2.0"
