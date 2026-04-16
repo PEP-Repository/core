@@ -1,5 +1,6 @@
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/utils/Defer.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 #include <gtest/gtest.h>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
@@ -14,7 +15,30 @@ struct Result {
 
 using Inner = rxcpp::observable<Result>;
 
-Inner MakeInner(std::shared_ptr<unsigned> counter, std::function<void()> andInvoke = []() {}) {
+// Helper class to track down linted memory leak: see #2862
+class InstanceCountedCallback {
+private:
+  using Raw = std::function<void()>;
+  Raw raw_;
+
+  static size_t instances;
+
+public:
+  explicit InstanceCountedCallback(Raw raw) : raw_(std::move(raw)) { ++instances; }
+
+  InstanceCountedCallback(const InstanceCountedCallback& other) : raw_(other.raw_) { ++instances; }
+  InstanceCountedCallback(InstanceCountedCallback&& other) noexcept : raw_(std::move(other.raw_)) { ++instances; }
+  ~InstanceCountedCallback() noexcept { --instances; }
+
+  void operator()() const { raw_(); }
+
+  static size_t InstanceCount() { return instances; }
+
+};
+
+size_t InstanceCountedCallback::instances = 0U;
+
+Inner MakeInner(std::shared_ptr<unsigned> counter, InstanceCountedCallback andInvoke = InstanceCountedCallback([]() {})) {
   assert(*counter != 0U);
 
   return pep::CreateObservable<Result>([counter, andInvoke](rxcpp::subscriber<Result> subscriber) {
@@ -40,6 +64,8 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
   std::vector<unsigned> produced;
   bool recursion_detected = false;
 
+  auto callbackInstancesBefore = InstanceCountedCallback::InstanceCount();
+
   pep::CreateObservable<Inner>([produce, counter = std::make_shared<unsigned>(count)](rxcpp::subscriber<Inner> subscriber) {
     produce(counter, subscriber);
     })
@@ -59,11 +85,14 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
   std::iota(expected.begin(), expected.end(), 1U);
   std::reverse(expected.begin(), expected.end());
   EXPECT_EQ(produced, expected);
+
+  // Verify that we don't leak callback instances as reported/suspected by linter: see #2862
+  EXPECT_EQ(callbackInstancesBefore, InstanceCountedCallback::InstanceCount()) << "Callback leaked by " << boost::algorithm::to_lower_copy(std::string(description));
 }
 
 void ProduceNextUsingBunnyHopping(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
   if (*counter != 0U) {
-    subscriber.on_next(MakeInner(counter, [counter, subscriber]() {ProduceNextUsingBunnyHopping(counter, subscriber); }));
+    subscriber.on_next(MakeInner(counter, InstanceCountedCallback([counter, subscriber]() {ProduceNextUsingBunnyHopping(counter, subscriber); })));
   }
   else {
     subscriber.on_completed();
@@ -76,7 +105,7 @@ void ProduceNextUsingRxNativeTap(std::shared_ptr<unsigned> counter, rxcpp::subsc
       .tap(
         [](auto) { /* ignore */},
         [](std::exception_ptr) { /* ignore (or forward to outer?) */},
-        [counter, subscriber]() {ProduceNextUsingRxNativeTap(counter, subscriber); }
+        InstanceCountedCallback([counter, subscriber]() {ProduceNextUsingRxNativeTap(counter, subscriber); })
       ));
   } else {
     subscriber.on_completed();
@@ -86,7 +115,7 @@ void ProduceNextUsingRxNativeTap(std::shared_ptr<unsigned> counter, rxcpp::subsc
 void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
   if (*counter != 0U) {
     subscriber.on_next(MakeInner(counter)
-      .op(pep::RxSubsequently([counter, subscriber]() {ProduceNextUsingRxSubsequently(counter, subscriber); })));
+      .op(pep::RxSubsequently(InstanceCountedCallback([counter, subscriber]() {ProduceNextUsingRxSubsequently(counter, subscriber); }))));
   } else {
     subscriber.on_completed();
   }
