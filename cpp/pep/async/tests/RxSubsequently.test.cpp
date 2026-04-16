@@ -90,8 +90,6 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
   EXPECT_EQ(callbackInstancesBefore, InstanceCountedCallback::InstanceCount()) << "Callback leaked by " << boost::algorithm::to_lower_copy(std::string(description));
 }
 
-#if 0 // Disabled to track down linted memory leak: see #2862
-
 void ProduceNextUsingBunnyHopping(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
   if (*counter != 0U) {
     subscriber.on_next(MakeInner(counter, InstanceCountedCallback([counter, subscriber]() {ProduceNextUsingBunnyHopping(counter, subscriber); })));
@@ -114,8 +112,6 @@ void ProduceNextUsingRxNativeTap(std::shared_ptr<unsigned> counter, rxcpp::subsc
   }
 }
 
-#endif // Disabled to track down linted memory leak: see #2862
-
 void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::subscriber<Inner> subscriber) {
   if (*counter != 0U) {
     subscriber.on_next(MakeInner(counter)
@@ -128,10 +124,9 @@ void ProduceNextUsingRxSubsequently(std::shared_ptr<unsigned> counter, rxcpp::su
 }
 
 TEST(RxSubsequently, PreventsRecursion) {
-  // Recursion (for every entry in the outer observable) will cause trouble such as stack overflows...
-  // TestIterativeCountDown(&ProduceNextUsingBunnyHopping, true, "Bunny hopping");
-  // TestIterativeCountDown(&ProduceNextUsingRxNativeTap,  true, "Tapping");
-  
+  // We expect that recursion (for every entry in the outer observable) will cause trouble such as stack overflows...
+  TestIterativeCountDown(&ProduceNextUsingBunnyHopping, true, "Bunny hopping");
+  TestIterativeCountDown(&ProduceNextUsingRxNativeTap,  true, "Tapping");
   // ...which prompted us to create the non-recursive RxSubsequently
   TestIterativeCountDown(&ProduceNextUsingRxSubsequently, false, "RxSubsequently");
 }
