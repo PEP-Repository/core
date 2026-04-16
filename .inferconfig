@@ -22,6 +22,12 @@
       "file": "cpp/pep/rsk/RskRecipient.hpp",
       "procedure_name": "~SkRecipient",
       "comment": "This is a fp because..."
+    },
+    {
+      "bug_type": "USE_AFTER_DELETE",
+      "file": "/usr/include/c++/13/tuple",
+      "procedure_name": "_Tuple_impl",
+      "comment": "Why does infer even look at cpp internals?"
     }
   ]
 }
