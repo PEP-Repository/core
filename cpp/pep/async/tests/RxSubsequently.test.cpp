@@ -86,7 +86,7 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
   std::reverse(expected.begin(), expected.end());
   EXPECT_EQ(produced, expected);
 
-  // Verify that we don't leak callback instances as reported/suspected by linter: see #2862
+  // Verify that this approach doesn't leak callback instances as reported/suspected by linter: see #2862
   EXPECT_EQ(callbackInstancesBefore, InstanceCountedCallback::InstanceCount()) << "Callback leaked by " << boost::algorithm::to_lower_copy(std::string(description));
 }
 
