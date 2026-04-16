@@ -129,4 +129,7 @@ TEST(RxSubsequently, PreventsRecursion) {
   TestIterativeCountDown(&ProduceNextUsingRxNativeTap,  true, "Tapping");
   // ...which prompted us to create the non-recursive RxSubsequently
   TestIterativeCountDown(&ProduceNextUsingRxSubsequently, false, "RxSubsequently");
+
+  // Verify that our unit test doesn't leak callback instances as reported/suspected by linter: see #2862
+  EXPECT_EQ(0U, InstanceCountedCallback::InstanceCount()) << "Callback was leaked by at least one test case";
 }
