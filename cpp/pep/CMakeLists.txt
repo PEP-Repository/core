@@ -179,11 +179,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   endif()
 endif()
 
-# For MSVC, bump up the warning level from level 1 (default) to 2
-# TODO: See if we can bump this to level 3 or 4?
+# For MSVC, bump up the warning level from level 1 (default) to 3
+# TODO: See if we can bump this to /W4 or /Wall ?
 if (MSVC)
   # Ref: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=msvc-170
-  add_compile_options("/W2")
+  add_compile_options("/W3")
 endif()
 
 # Treat warnings as errors
