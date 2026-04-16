@@ -17,6 +17,7 @@ private:
   /// @return An empty observable that invokes our callback upon subscription.
   template <typename TItem>
   rxcpp::observable<TItem> makeTail() const {
+    // See #2862: Clang analyzer produces a false positive here
     //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
     return CreateObservable<TItem>([callback = callback_](rxcpp::subscriber<TItem> subscriber) {
       callback();

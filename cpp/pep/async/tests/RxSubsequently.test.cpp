@@ -41,6 +41,8 @@ size_t InstanceCountedCallback::instances = 0U;
 Inner MakeInner(std::shared_ptr<unsigned> counter, InstanceCountedCallback andInvoke = InstanceCountedCallback([]() {})) {
   assert(*counter != 0U);
 
+  // See #2862: as demonstrated by means of our InstanceCountedCallback, this is a false positive
+  //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
   return pep::CreateObservable<Result>([counter, andInvoke](rxcpp::subscriber<Result> subscriber) {
     thread_local unsigned recursion = 0U;
 
