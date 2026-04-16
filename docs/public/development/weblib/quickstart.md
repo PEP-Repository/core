@@ -24,7 +24,7 @@ Just follow the steps in the [Emscripten docs](https://emscripten.org/docs/getti
 
 Clone https://github.com/conan-io/conan-toolchains and set it up as a local recipe index repository as described in the Conan [README](https://github.com/conan-io/conan-toolchains?tab=readme-ov-file#-getting-started).
 
-Create a Conan host profile that you will be using to compile WebAssembly. E.g. place a file `wasm32` in `~/.conan2/profiles/` and give it the following contents. Replace the `include` path by the actual path to the `conan_profile_wasm32` file in your `core/docker_build` subdirectory. Substitute `4.0.22` by the specific version you want to use.
+Create a Conan host profile that you will be using to compile WebAssembly. E.g. place a file `wasm32` in `~/.conan2/profiles/` and give it the following contents. **Replace the `include` path by the actual path to the `conan_profile_wasm32` file in your `core/docker_build` subdirectory.** Substitute `4.0.22` by the specific version you want to use.
 
 ```ini
 {% set compiler_version = '4.0.22' %}
