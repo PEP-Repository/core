@@ -765,7 +765,6 @@ clean_dtap() {
 case $command in
   clean-foss-binaries-for-branches)
     clean_foss_binaries_for_branches ;;
-  # Also needs: yq
   clean-docker-build-containers)
     clean_docker_build_containers ;;
   clean-foss-packages)

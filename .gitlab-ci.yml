@@ -321,7 +321,7 @@ cleanup:
   image: alpine
   #language=sh
   script:
-    - apk add --no-cache curl git jq yq
+    - apk add --no-cache curl git jq
     - *checkout-docker-build-script-sh-steps
     - |
       if [ "$RUN_CLEANUP" != dry ]; then
