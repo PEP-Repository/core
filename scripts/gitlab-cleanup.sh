@@ -411,11 +411,16 @@ list_foss_binaries_for_branches() {
   )
 }
 
+delete_foss_branch() {
+  local branch_name="$1"
+  delete_branch "$foss_dir" "$branch_name"
+}
+
 clean_foss_binaries_for_branches() {
   generic_cleanup 'PEP FOSS binaries_for_* branch cleanup' 'binaries_for_* branches' \
     list_running_foss_pipelines \
     list_foss_binaries_for_branches \
-    '. | match("\\d+$").string' . delete_branch false
+    '. | match("\\d+$").string' . delete_foss_branch false
 }
 
 
