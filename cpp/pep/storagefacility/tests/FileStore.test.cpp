@@ -39,21 +39,15 @@ struct Context {
     std::filesystem::create_directories(this->bucketpath());
     std::filesystem::create_directories(this->metapath());
 
-    // create configuration
-    std::stringstream ss;
+    boost::property_tree::ptree localConf;
+    localConf.put("DataDir", this->datapath().string());
+    localConf.put("Bucket", this->bucket);
 
-    ss
-      << "{\n"
-      << "  \"Type\" : \"local\",\n"
-      << "  \"DataDir\" : " << std::quoted(this->datapath().string()) << ",\n"
-      << "  \"Bucket\" : " << std::quoted(this->bucket) << "\n"
-      << "}\n";
-
-      auto config = std::make_shared<pep::Configuration>(
-          pep::Configuration::FromStream(ss));
+    boost::property_tree::ptree pageStoreConf;
+    pageStoreConf.put_child("Local", localConf);
 
     this->store = FileStore::Create(
-        this->metapath().string(), config, this->io_context,
+        this->metapath().string(), pep::Configuration::FromPtree(pageStoreConf), this->io_context,
         std::shared_ptr<prometheus::Registry>() // intentionally null
     );
   }

@@ -294,10 +294,12 @@ analyse-source:
     GIT_SUBMODULE_STRATEGY: none
     GIT_DEPTH: 1
   before_script:
-    - apk update -qq && apk add --no-cache bash git shellcheck
+    - apk add --no-cache bash git shellcheck check-jsonschema
   script:
     - ./scripts/analyse-scripts.sh
     - ./scripts/analyse-source.sh
+    - ./scripts/validate-config.sh ./config/local/
+    - ./scripts/validate-config.sh ./config/integration/config/
 
 #######################################
 # Configuration for the cleanup stage #

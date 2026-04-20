@@ -4,7 +4,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
@@ -60,8 +60,9 @@ CoreClient::CoreClient(const Builder& builder) :
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
   caCertFilepath(builder.getCaCertFilepath()),
   rootCAs(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
-  privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
-  publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
+  privateKeyData(builder.getPrivateKeyData()),
+  privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
+  systemPublicKeys(builder.getSystemPublicKeys()),
   accessManagerEndPoint(builder.getAccessManagerEndPoint()),
   storageFacilityEndPoint(builder.getStorageFacilityEndPoint()),
   transcryptorEndPoint(builder.getTranscryptorEndPoint()) {
@@ -72,10 +73,12 @@ CoreClient::CoreClient(const Builder& builder) :
 
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
-      [keysFilePath = *keysFilePath](const EnrollmentResult& result){
-      LOG(LOG_TAG, debug) << "Writing new keys to " << keysFilePath;
-      std::ofstream sf(keysFilePath.string());
-      result.writeJsonTo(sf);
+      [keysFilePath = *keysFilePath](const EnrolledPartyKeys& result){
+        LOG(LOG_TAG, debug) << "Writing new keys to " << keysFilePath;
+        std::ofstream sf(keysFilePath.string());
+        boost::property_tree::ptree keysConfig;
+        SerializeProperties(keysConfig, result);
+        boost::property_tree::write_json(sf, keysConfig);
     });
   }
 }
@@ -172,7 +175,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
 }
 
 PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const std::string& participantSID) {
-  return PolymorphicPseudonym::FromIdentifier(publicKeyPseudonyms, participantSID);
+  return PolymorphicPseudonym::FromIdentifier(systemPublicKeys.globalPseudonymEncryptionKey, participantSID);
 }
 
 LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
@@ -200,21 +203,22 @@ void CoreClient::Builder::initialize(
     try {
       // See #1797: the keys file must be (read from and) written to the cwd
       // because the config's directory may be read-only (e.g. on Windows installations).
-      keysFile = std::filesystem::current_path() / config.get<std::string>("KeysFile");
+      keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
 
-      this->setCaCertFilepath(config.get<std::filesystem::path>("CACertificateFile"));
-      this->setPublicKeyData(config.get<ElgamalPublicKey>("PublicKeyData"));
-      this->setPublicKeyPseudonyms(config.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
+      this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
+      this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
 
-      if (auto amConfig = config.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
+      auto serverEndPoints = config.get_child("ServerEndPoints");
+
+      if (auto amConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
         this->setAccessManagerEndPoint(*amConfig);
       }
 
-      if (auto tcConfig = config.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
+      if (auto tcConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
         this->setTranscryptorEndPoint(*tcConfig);
       }
 
-      if (auto sfConfig = config.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
+      if (auto sfConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
         this->setStorageFacilityEndPoint(*sfConfig);
       }
     } catch (std::exception& e) {
@@ -229,20 +233,13 @@ void CoreClient::Builder::initialize(
       // ...and try to load previously persisted keys from it
       if (std::filesystem::exists(keysFile)) {
         Configuration keysConfig = Configuration::FromFile(keysFile);
-        auto strEnrollmentScheme = keysConfig.get<std::optional<std::string>>("EnrollmentScheme");
-        std::optional<EnrollmentScheme> enrollmentScheme;
-        if (strEnrollmentScheme) {
-          enrollmentScheme = Serialization::ParseEnum<EnrollmentScheme>(*strEnrollmentScheme);
-        }
-        if (enrollmentScheme && *enrollmentScheme == EnrollmentScheme::ENROLLMENT_SCHEME_CURRENT) {
-          this->setPrivateKeyPseudonyms(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("PseudonymKey")));
-          this->setPrivateKeyData(ElgamalPrivateKey::FromText(keysConfig.get<std::string>("DataKey")));
-          this->setSigningIdentity(std::make_shared<X509Identity>(
-            AsymmetricKey(keysConfig.get<std::string>("PrivateKey")),
-            X509CertificateChain(X509CertificatesFromPem(keysConfig.get<std::string>("CertificateChain")))));
-        }
-        else {
-          LOG(LOG_TAG, info) << "Skipped loading keys file because it is from an older version";
+        auto enrolledPartykeys = keysConfig.get<EnrolledPartyKeys>("");
+        if (enrolledPartykeys.dataKey && enrolledPartykeys.pseudonymKey && enrolledPartykeys.signingIdentity) {
+          this->setPrivateKeyPseudonyms(*enrolledPartykeys.pseudonymKey);
+          this->setPrivateKeyData(*enrolledPartykeys.dataKey);
+          this->setSigningIdentity(MakeSharedCopy(*enrolledPartykeys.signingIdentity));
+        } else {
+          LOG(LOG_TAG, info) << "Skipped loading keys file because it is invalid or from a different version";
         }
       }
       else {

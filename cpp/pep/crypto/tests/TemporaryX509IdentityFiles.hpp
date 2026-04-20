@@ -15,7 +15,7 @@ private:
 
 private:
   TemporaryX509IdentityFiles(pep::filesystem::Temporary privateKeyFile, pep::filesystem::Temporary certificateChainFile, pep::filesystem::Temporary rootCaFile)
-    : X509IdentityFiles(privateKeyFile.path(), certificateChainFile.path(), rootCaFile.path())
+    : X509IdentityFiles(privateKeyFile.path(), certificateChainFile.path(), pep::X509RootCertificates::FromFile(rootCaFile.path()))
     , mPrivateKeyFile(std::move(privateKeyFile)), mCertificateChainFile(std::move(certificateChainFile)), mRootCaFile(std::move(rootCaFile)) {
   }
 
@@ -54,6 +54,6 @@ public:
   /// @return An X509IdentityFiles instance corresponding to this (TemporaryX509IdentityFiles) instance.
   /// @remark Helps get rid of linting error "cppcoreguidelines-slicing". See https://stackoverflow.com/a/59867897.
   X509IdentityFiles slicedToX509IdentityFiles() const {
-    return X509IdentityFiles(mPrivateKeyFile.path(), mCertificateChainFile.path(), mRootCaFile.path());
+    return *this; //NOLINT(cppcoreguidelines-slicing)
   }
 };

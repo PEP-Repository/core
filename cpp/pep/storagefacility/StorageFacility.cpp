@@ -14,6 +14,7 @@
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -157,6 +158,8 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   auto pageStoreConfig = std::make_shared<Configuration>();
 
   try {
+    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+
     auto pw = config.get<std::optional<uint8_t>>("ParallelisationWidth");
     if (pw.has_value()) {
       if (*pw == 0) {
@@ -168,7 +171,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     }
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
-    keysFile = std::filesystem::canonical(config.get<std::filesystem::path>("KeysFile"));
     this->storagePath = config.get<std::filesystem::path>("StoragePath");
     this->pageStoreConfig = std::make_shared<Configuration>(config.get_child("PageStore"));
   }
@@ -177,10 +179,9 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     throw;
   }
 
-  std::string strPseudonymKey;
   try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
+    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
+    setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
@@ -210,7 +211,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     encIdKey = boost::algorithm::unhex(encIdKeyConfig.get<std::string>("Key"));
   }
 
-  setPseudonymKey(CurveScalar(strPseudonymKey));
   setEncIdKey(encIdKey);
 }
 
@@ -1085,7 +1085,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   mWorkerPool(WorkerPool::getShared()),
   mFileStore(FileStore::Create(
     parameters->getStoragePath().string(),
-    parameters->getPageStoreConfig(),
+    *parameters->getPageStoreConfig(),
     parameters->getIoContext(),
     mRegistry)),
   mMetrics(std::make_shared<Metrics>(mRegistry)),

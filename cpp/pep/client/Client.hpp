@@ -93,9 +93,9 @@ public:
    * certificateChain, encryptionKey, publicKeyData, publicKeyPseudonyms
    *
    * \param oauthToken An OAuth token that can be used to authenticate against the key server
-   * \return rxcpp::observable< EnrollmentResult >
+   * \return rxcpp::observable< EnrolledPartyKeys >
    */
-  rxcpp::observable<EnrollmentResult> enrollUser(const std::string& oauthToken);
+  rxcpp::observable<EnrolledPartyKeys> enrollUser(const std::string& oauthToken);
 
   std::shared_ptr<const KeyServerProxy> getKeyServerProxy(bool require = true) const;
   std::shared_ptr<const AuthServerProxy> getAuthServerProxy(bool require = true) const;

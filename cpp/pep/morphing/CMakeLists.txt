@@ -2,11 +2,14 @@
 
 
 add_library(${PROJECT_NAME}Morphinglib STATIC
+  EnrolledPartyKeys.hpp
+  MorphingPropertySerializers.hpp MorphingPropertySerializers.cpp
   Metadata.hpp Metadata.cpp # TODO: move to different lib?
   MorphingSerializers.cpp MorphingSerializers.hpp
   RepoKeys.cpp RepoKeys.hpp
   RepoRecipient.cpp RepoRecipient.hpp
   ServerVerifiers.hpp
+  SystemPublicKeys.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}Morphinglib

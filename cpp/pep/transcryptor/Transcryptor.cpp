@@ -1,7 +1,7 @@
 #include <pep/transcryptor/Transcryptor.hpp>
 
 #include <pep/auth/EnrolledParty.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -58,12 +58,12 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
   std::filesystem::path verifiersFile; // used to check RSK proofs made by access manager
 
   try {
-    keysFile = config.get<std::filesystem::path>("KeysFile");
+    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
     storageFile = config.get<std::filesystem::path>("StorageFile");
     verifiersFile = config.get<std::filesystem::path>("VerifiersFile");
-    publicKeyPseudonyms = config.get<ElgamalPublicKey>("PublicKeyPseudonyms");
 
-    accessManagerEndPoint = config.get<EndPoint>(ServerTraits::AccessManager().configNode());
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -71,9 +71,8 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
   }
 
   try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    setPseudonymKey(ElgamalPrivateKey(boost::algorithm::unhex(
-      keysConfig.get<std::string>("PseudonymKey"))));
+    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
+    setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   } catch (std::exception& e) {
     LOG(LOG_TAG, warning)
       << "Couldn't read pseudonymKey: " << e.what() << '\n'
@@ -87,10 +86,10 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
   try {
     setVerifiers(
       Serialization::FromJsonString<ServerVerifiers>(ReadFile(verifiersFile)));
-    } catch (...) {
-      LOG(LOG_TAG, error) << "Failed to load verifiers from " << verifiersFile;
-      throw;
-    }
+  } catch (...) {
+    LOG(LOG_TAG, error) << "Failed to load verifiers from " << verifiersFile;
+    throw;
+  }
 }
 
 void Transcryptor::Parameters::setStorage(std::shared_ptr<TranscryptorStorage> storage) {
@@ -119,8 +118,6 @@ void Transcryptor::Parameters::check() const {
     throw std::runtime_error("storage must be set");
   if(!verifiers)
     throw std::runtime_error("verifiers must be set");
-  if (!publicKeyPseudonyms)
-    throw std::runtime_error("publicKeyPseudonyms must be set");
   KeyComponentServer::Parameters::check();
 }
 
@@ -152,7 +149,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       userVerifiersObs = mAccessManagerProxy.requestUserVerifiers({userCertificate})
         .map([server, userCertificate](const UserVerifiersResponse& response) {
           // Check internal consistency of verifiers
-          auto verifiers = response.open(server->mPublicKeyPseudonyms);
+          auto verifiers = response.open(server->systemPublicKeys().globalPseudonymEncryptionKey);
           // Cross-reference with existing verifiers and store if consistent
           server->mStorage->checkAndStoreUserVerifiers(userCertificate, verifiers);
           return std::optional{verifiers};
@@ -408,7 +405,6 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   : KeyComponentServer(parameters),
   mWorkerPool(WorkerPool::getShared()),
   mPseudonymKey(parameters->getPseudonymKey()),
-  mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
   mAccessManagerProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
   mStorage(parameters->getStorage()),
   lpMetrics(std::make_shared<Metrics>(mRegistry)),

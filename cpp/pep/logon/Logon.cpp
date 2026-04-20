@@ -46,7 +46,7 @@ private:
     assert(mIoContext != nullptr);
     auto oauth = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
       .io_context = mIoContext,
-      .config = mConfig.get_child("AuthenticationServer"),
+      .config = mConfig.get_child("OAuthServer"),
       .authorizationMethod = limitedEnvironment ? pep::ConsoleAuthorization : pep::BrowserAuthorization,
       .longLived = mLongLived,
       .validityDuration = validity });
@@ -88,7 +88,7 @@ private:
     }
 
     return client->enrollUser(token) // Client enrollment will write keys to file
-      .map([keysFilePath = *keysFilePath](const pep::EnrollmentResult& result)
+      .map([keysFilePath = *keysFilePath](const pep::EnrolledPartyKeys& result)
         {
           std::cout << "Wrote enrollment result (keys) to " << keysFilePath << std::endl;
           return true;

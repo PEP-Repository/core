@@ -14,7 +14,7 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <boost/algorithm/hex.hpp>
@@ -131,15 +131,15 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
   CoreClient::Builder clientBuilder;
 
   try {
-    keysFile = config.get<std::filesystem::path>("KeysFile");
-    clientBuilder.setPublicKeyData(config.get<ElgamalPublicKey>("PublicKeyData"));
-    clientBuilder.setPublicKeyPseudonyms(config.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
+    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+    clientBuilder.setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
 
     setShadowStorageFile(config.get<std::filesystem::path>("ShadowStorageFile"));
     shadowPublicKeyFile = config.get<std::filesystem::path>("ShadowPublicKeyFile");
 
-    clientBuilder.setAccessManagerEndPoint(config.get<EndPoint>(ServerTraits::AccessManager().configNode()));
-    clientBuilder.setStorageFacilityEndPoint(config.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    clientBuilder.setAccessManagerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode()));
+    clientBuilder.setStorageFacilityEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -148,11 +148,11 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   setShadowPublicKey(AsymmetricKey(ReadFile(shadowPublicKeyFile)));
 
-  std::string strPseudonymKey, strDataKey;
+  ElgamalPrivateKey pseudonymKey, dataKey;
   try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
-    strDataKey = boost::algorithm::unhex(keysConfig.get<std::string>("DataKey"));
+    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
+    pseudonymKey = enrolledPartyKeys.pseudonymKey.value();
+    dataKey = enrolledPartyKeys.dataKey.value();
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
@@ -162,16 +162,16 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
   clientBuilder.setIoContext(getIoContext())
     .setCaCertFilepath(getRootCACertificatesFilePath())
     .setSigningIdentity(getSigningIdentity())
-    .setPrivateKeyData(ElgamalPrivateKey(strDataKey))
-    .setPrivateKeyPseudonyms(ElgamalPrivateKey(strPseudonymKey));
+    .setPrivateKeyData(dataKey)
+    .setPrivateKeyPseudonyms(pseudonymKey);
   std::shared_ptr<CoreClient> client = clientBuilder.build();
 
   setClient(client);
 
 #ifdef WITH_CASTOR
-  auto castorAPIKeyFile = config.get<std::optional<std::filesystem::path>>("Castor.APIKeyFile");
+  auto castorAPIKeyFile = config.get<std::optional<std::filesystem::path>>("Castor.ApiKeyFile");
   if (!castorAPIKeyFile) {
-    LOG(LOG_TAG, info) << "No Castor.APIKeyFile configured: attempts to access the Castor API will fail.";
+    LOG(LOG_TAG, info) << "No Castor.ApiKeyFile configured: attempts to access the Castor API will fail.";
   }
   else {
     if(std::filesystem::exists(castorAPIKeyFile.value()))

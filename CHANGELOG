@@ -34,11 +34,11 @@ Changes in upcoming release (1.7):
   of) subjects for whom the command retrieves no data. This a.o. allows subject groups to be listed without requiring
   data presence and accessibility, and without having to specify column(group)(s):
     pepcli list -P some-subject-group --show-dataless
-    
+
 - #1970: We can now request a CSR from servers for their PEP certificates, and replace the certificate after we signed a new one, all using pepcli.
   This does not apply to the TLS certificates, so is not that useful yet, until we replace those with "normal" TLS certificates from a public CA (#2768).
   For this to work, the certificates will need to be in a writable location (#2769), which they are currently not. That will need to be solved at some point,
-  before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.  
+  before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.
 
 - !2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
 
@@ -50,7 +50,6 @@ MANUAL CHANGES REQUIRED:
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
   Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
 - #2801:
-  - Copy `PublicKeyPseudonyms` and `AccessManager` entries from `AccessManager.json` config over to `Transcryptor.json`
   - Update `Verifiers.json`:
     - Rename `zOverKb` → `reshuffleOverRekeyCommitment`, `zb` → `reshuffleCommitment`, `ky` → `rekeyedPublicKey`:
       ```shell
@@ -59,6 +58,7 @@ MANUAL CHANGES REQUIRED:
     - Execute `pepcli verifiers` and save as e.g. `Verifiers2.json`
     - Diff `Verifiers.json` and `Verifiers2.json` and make sure that the only think that changed was the addition of `rekeyCommitment`
     - Replace the contents of `Verifiers.json` by those of `Verifiers2.json`
+- #2801/#2863: Run `./scripts/upgrade-config-1-7.sh <config folder>` on config folders of the project, optionally with `check-jsonschema`/`jsonschema`/`jv` installed to validate the result locally (otherwise our CI will), or define envvar `NO_VALIDATE=1`.
 
 ---------------
 

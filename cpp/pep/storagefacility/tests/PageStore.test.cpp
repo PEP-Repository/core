@@ -7,6 +7,8 @@
 #include <pep/async/tests/RxTestUtils.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Random.hpp>
+#include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/storagefacility/S3Credentials.PropertySerializer.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -28,39 +30,24 @@ TEST(PageStore, basic) {
 
   sftest::Envs envs; // filled by constructor
 
-  // create json config file
-  std::stringstream ss;
+  boost::property_tree::ptree s3Conf;
+  SerializeProperties(s3Conf, "EndPoint", EndPoint(envs.host, envs.port, envs.expect_common_name));
+  SerializeProperties(s3Conf, "Credentials", s3::Credentials{
+    .accessKey = envs.s3_access_key,
+    .secret = envs.s3_secret_key,
+    .service = envs.s3_service_name,
+  });
+  s3Conf.put("CaCertificateFile", envs.GetCaCertFilepath().string());
+  s3Conf.put("WriteToBucket", envs.s3_test_bucket);
+  SerializeProperties(s3Conf, "ReadFromBuckets", std::vector{envs.s3_test_bucket, envs.s3_test_bucket2});
 
-  ss
-    << "{\n"
-    << "  \"Type\" : \"s3\",\n"
-    << "  \"EndPoint\" : { \n"
-    << "    \"Address\" : " << std::quoted(envs.host) << ",\n"
-    << "    \"Port\" : " << std::quoted(std::to_string(envs.port)) << ",\n"
-    << "    \"Name\" : "
-    << std::quoted(envs.expect_common_name) << "\n"
-    << "  },\n"
-    << "  \"Credentials\" : { \n"
-    << "    \"AccessKey\" : " << std::quoted(envs.s3_access_key) << ",\n"
-    << "    \"Secret\" : " << std::quoted(envs.s3_secret_key) << ",\n"
-    << "    \"Service\" : " << std::quoted(envs.s3_service_name) << "\n"
-    << "  },\n"
-    << "  \"Ca-Cert-Path\" : "
-    << std::quoted(envs.GetCaCertFilepath().string()) << ",\n"
-    << "  \"Write-To-Bucket\" : " << std::quoted(envs.s3_test_bucket) << ",\n"
-    << "  \"Read-From-Buckets\" : [\n"
-    << "    " << std::quoted(envs.s3_test_bucket) << ",\n"
-    << "    " << std::quoted(envs.s3_test_bucket2) << "\n"
-    << "  ]\n"
-    << "}\n";
-
-  auto config = std::make_shared<Configuration>(
-    Configuration::FromStream(ss));
+  boost::property_tree::ptree pageStoreConf;
+  pageStoreConf.put_child("Local", s3Conf);
 
   std::shared_ptr<PageStore> store = PageStore::Create(
     io_context,
     std::shared_ptr<prometheus::Registry>(), // intentionally null
-    config
+    Configuration::FromPtree(s3Conf)
   );
   PEP_DEFER(store.reset());
 

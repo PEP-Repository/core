@@ -9,7 +9,7 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/auth/UserGroup.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
@@ -175,19 +175,16 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
   : KeyComponentServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path globalConfFile;
-  ElgamalPublicKey publicKeyPseudonyms;
-
-  std::string strPseudonymKey;
 
   std::filesystem::path storageFile;
 
   try {
-    keysFile = config.get<std::filesystem::path>("KeysFile");
+    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
     globalConfFile = config.get<std::filesystem::path>("GlobalConfigurationFile");
 
-    publicKeyPseudonyms = config.get<ElgamalPublicKey>("PublicKeyPseudonyms");
-    transcryptorEndPoint = config.get<EndPoint>(ServerTraits::Transcryptor().configNode());
-    keyServerEndPoint = config.get<EndPoint>(ServerTraits::KeyServer().configNode());
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    transcryptorEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::Transcryptor().configNode());
+    keyServerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::KeyServer().configNode());
 
     storageFile = config.get<std::filesystem::path>("StorageFile");
   }
@@ -197,17 +194,13 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
   }
 
   try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
+    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
+    setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
     throw;
   }
-
-
-  setPseudonymKey(ElgamalPrivateKey(strPseudonymKey));
-  setPublicKeyPseudonyms(publicKeyPseudonyms);
 
   auto globalConf = std::make_shared<GlobalConfiguration>(
     Serialization::FromJsonString<GlobalConfiguration>(
@@ -276,19 +269,11 @@ const ElgamalPrivateKey& AccessManager::Parameters::getPseudonymKey() const {
   return pseudonymKey.value();
 }
 
-const ElgamalPublicKey& AccessManager::Parameters::getPublicKeyPseudonyms() const {
-  return publicKeyPseudonyms.value();
-}
 /*!
   * \param pseudonymKey The pseudonym key
   */
 void AccessManager::Parameters::setPseudonymKey(const ElgamalPrivateKey& pseudonymKey) {
   Parameters::pseudonymKey = pseudonymKey;
-}
-
-void AccessManager::Parameters::setPublicKeyPseudonyms(
-  const ElgamalPublicKey& pk) {
-  Parameters::publicKeyPseudonyms = pk;
 }
 
 const EndPoint& AccessManager::Parameters::getTranscryptorEndPoint() const {
@@ -309,8 +294,6 @@ void AccessManager::Parameters::setBackend(std::shared_ptr<AccessManager::Backen
 void AccessManager::Parameters::check() const {
   if (!pseudonymKey)
     throw std::runtime_error("pseudonymKey must be set");
-  if (!publicKeyPseudonyms)
-    throw std::runtime_error("publicKeyPseudonyms must be set");
   if (!backend)
     throw std::runtime_error("backend must be set");
 
@@ -320,7 +303,6 @@ void AccessManager::Parameters::check() const {
 AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> parameters)
   : KeyComponentServer(parameters),
   mPseudonymKey(parameters->getPseudonymKey()),
-  mPublicKeyPseudonyms(parameters->getPublicKeyPseudonyms()),
   mTranscryptorProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getTranscryptorEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getTranscryptorEndPoint().expectedCommonName, getRootCAs()),
   mKeyServerProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getKeyServerEndPoint(), parameters->getRootCACertificatesFilePath()), *this),
   backend(parameters->getBackend()),
@@ -891,15 +873,15 @@ messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<
   return messaging::BatchSingleMessage(VerifiersResponse{
       pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::AccessManager),
-          mPublicKeyPseudonyms
+          systemPublicKeys().globalPseudonymEncryptionKey
       ),
       pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::StorageFacility),
-          mPublicKeyPseudonyms
+          systemPublicKeys().globalPseudonymEncryptionKey
       ),
       pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::Transcryptor),
-          mPublicKeyPseudonyms
+          systemPublicKeys().globalPseudonymEncryptionKey
       ),
   });
 }
@@ -908,7 +890,7 @@ messaging::MessageBatches AccessManager::handleUserVerifiersRequest(std::shared_
   return messaging::BatchSingleMessage(UserVerifiersResponse{
     this->pseudonymTranslator().computeCertifiedTranslationProofVerifiers(
       RecipientForCertificate(request->userCertificate),
-      mPublicKeyPseudonyms
+      systemPublicKeys().globalPseudonymEncryptionKey
     )
   });
 }

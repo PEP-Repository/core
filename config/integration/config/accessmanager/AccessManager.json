@@ -1,31 +1,32 @@
 {
-    "PublicKeyPseudonyms": "",
-
-    "KeysFile":            "AccessManagerKeys.json",
-    
-    "TLSPrivateKeyFile":   "../../pki/TLSAccessManager.key",
-    "TLSCertificateFile":  "../../pki/TLSAccessManager.chain",
-    
-    "PEPPrivateKeyFile":   "../../pki/PEPAccessManager.key",
-    "PEPCertificateFile":  "../../pki/PEPAccessManager.chain",
-    
-    "CACertificateFile":   "../../pki/rootCA.cert",
-    
-    "ListenPort":    16501,
-    
-    "KeyServer":{
-        "Name":    "KeyServer",
-        "Address": "localhost",
-        "Port":    16511
-    },    
-    "Transcryptor": {
-        "Name":    "Transcryptor",
-        "Address": "localhost",
-        "Port":    16516
+  "CaCertificateFile": "../../pki/rootCA.cert",
+  "ListenPort": 16501,
+  "TlsIdentity": {
+    "PrivateKeyFile": "../../pki/TLSAccessManager.key",
+    "CertificateFile": "../../pki/TLSAccessManager.chain"
+  },
+  "SigningIdentity": {
+    "PrivateKeyFile": "../../pki/PEPAccessManager.key",
+    "CertificateFile": "../../pki/PEPAccessManager.chain"
+  },
+  "ServerEndPoints": {
+    "KeyServer": {
+      "Name": "KeyServer",
+      "Address": "localhost",
+      "Port": 16511
     },
-    
-    "SystemKeysFile":  "SystemKeys.json",
-    
-    "StorageFile":             "accessManagerStorage.sqlite",
-    "GlobalConfigurationFile": "GlobalConfiguration.json"
+    "Transcryptor": {
+      "Name": "Transcryptor",
+      "Address": "localhost",
+      "Port": 16516
+    }
+  },
+  "SystemPublicKeys": {
+    "PublicKeyData": "",
+    "PublicKeyPseudonyms": ""
+  },
+  "EnrolledPartyKeysFile": "AccessManagerKeys.json",
+  "SystemKeysFile": "SystemKeys.json",
+  "StorageFile": "accessManagerStorage.sqlite",
+  "GlobalConfigurationFile": "GlobalConfiguration.json"
 }

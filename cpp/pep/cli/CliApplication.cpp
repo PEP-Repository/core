@@ -161,7 +161,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
 
     result = client->enrollUser(
       token->getSerializedForm()
-    ).map([](pep::EnrollmentResult result) {
+    ).map([](const EnrolledPartyKeys&) {
       LOG(LOG_TAG, pep::info) << " completed enrollment!" << std::endl;
       return pep::FakeVoid();
       });

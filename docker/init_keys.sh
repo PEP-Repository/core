@@ -10,19 +10,27 @@ PKPSEUDONYMS="$(sed -n -e "s/PublicKeyPseudonyms: \([0-9a-fA-F]*\)/\1/p" "$DATAD
 
 
 # Update client and registration server configuration with new public keys
-sed -i -e "s/\"PublicKeyData\".*/\"PublicKeyData\": \"${PKDATA}\",/" "$DATADIR"/client/ClientConfig.json
-sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/client/ClientConfig.json
-sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/accessmanager/AccessManager.json
-sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/transcryptor/Transcryptor.json
+add_system_public_keys() {
+  local config_file="$1"
+  jq \
+    --arg publicKeyData "$PKDATA" \
+    --arg publicKeyPseudonyms "$PKPSEUDONYMS" \
+    '.SystemPublicKeys = {
+      PublicKeyData: $publicKeyData,
+      PublicKeyPseudonyms: $publicKeyPseudonyms,
+    }' -- "$config_file" >"$config_file.tmp"
+  mv -f -- "$config_file.tmp" "$config_file"
+}
+add_system_public_keys "$DATADIR/client/ClientConfig.json"
+add_system_public_keys "$DATADIR/accessmanager/AccessManager.json"
+add_system_public_keys "$DATADIR/transcryptor/Transcryptor.json"
+add_system_public_keys "$DATADIR/registrationserver/RegistrationServer.json"
+
 sed -i -e "s/dataPk.*/dataPk: ${PKDATA}/" "$DATADIR"/watchdog/constellation.yaml
 sed -i -e "s/pseudonymPk.*/pseudonymPk: ${PKPSEUDONYMS}/" "$DATADIR"/watchdog/constellation.yaml
 
 cat "$DATADIR"/client/ClientConfig.json
 cat "$DATADIR"/watchdog/constellation.yaml
-
-sed -i -e "s/\"PublicKeyData\".*/\"PublicKeyData\": \"${PKDATA}\",/" "$DATADIR"/registrationserver/RegistrationServer.json
-sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/registrationserver/RegistrationServer.json
-
 cat "$DATADIR"/registrationserver/RegistrationServer.json
 
 if [ "$REUSE_SECRETS" = false ]; then

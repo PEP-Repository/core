@@ -11,6 +11,8 @@
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/SystemPublicKeys.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/server/MonitoringMessages.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
@@ -34,14 +36,6 @@
 
 
 namespace pep {
-
-struct EnrollmentResult {
-  ElgamalPrivateKey privateKeyData;
-  ElgamalPrivateKey privateKeyPseudonyms;
-  X509Identity signingIdentity;
-
-  void writeJsonTo(std::ostream& os, bool writeDataKey = true, bool writePrivateKey = true, bool writeCertificateChain = true) const;
-};
 
 struct DataStorageResult2 {
   std::vector<std::string> mIds;
@@ -263,9 +257,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   std::shared_ptr<X509RootCertificates> rootCAs;
 
   ElgamalPrivateKey privateKeyData;
-  const ElgamalPublicKey publicKeyData;
   ElgamalPrivateKey privateKeyPseudonyms;
-  const ElgamalPublicKey publicKeyPseudonyms;
+  const SystemPublicKeys systemPublicKeys;
   std::shared_ptr<GlobalConfiguration> mGlobalConf;
 
   const EndPoint accessManagerEndPoint;
@@ -277,7 +270,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   std::shared_ptr<TranscryptorProxy> transcryptorProxy;
 
   rxcpp::subjects::subject<int> registrationSubject;
-  rxcpp::subjects::subject<EnrollmentResult> enrollmentSubject;
+  rxcpp::subjects::subject<EnrolledPartyKeys> enrollmentSubject;
 
  public:
   class Builder {
@@ -330,19 +323,11 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       return *this;
     }
 
-    const ElgamalPublicKey& getPublicKeyData() const {
-      return publicKeyData;
+    const SystemPublicKeys& getSystemPublicKeys() const {
+      return systemPublicKeys;
     }
-    Builder& setPublicKeyData(const ElgamalPublicKey& publicKeyData) {
-      Builder::publicKeyData = publicKeyData;
-      return *this;
-    }
-
-    const ElgamalPublicKey& getPublicKeyPseudonyms() const {
-      return publicKeyPseudonyms;
-    }
-    Builder& setPublicKeyPseudonyms(const ElgamalPublicKey& publicKeyPseudonyms) {
-      Builder::publicKeyPseudonyms = publicKeyPseudonyms;
+    Builder& setSystemPublicKeys(const SystemPublicKeys& systemPublicKeys) {
+      Builder::systemPublicKeys = systemPublicKeys;
       return *this;
     }
 
@@ -388,8 +373,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     std::shared_ptr<const X509Identity> signingIdentity;
     ElgamalPrivateKey privateKeyData;
     ElgamalPrivateKey privateKeyPseudonyms;
-    ElgamalPublicKey publicKeyData;
-    ElgamalPublicKey publicKeyPseudonyms;
+    SystemPublicKeys systemPublicKeys;
     EndPoint accessManagerEndPoint;
     EndPoint storageFacilityEndPoint;
     EndPoint transcryptorEndPoint;
@@ -412,7 +396,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> parsePpsOrIdentities(const std::vector<std::string>& idsAndOrPps);
 
   auto openVerifiers(const auto& verifiersResponse) const {
-    return verifiersResponse.open(publicKeyPseudonyms);
+    return verifiersResponse.open(systemPublicKeys.globalPseudonymEncryptionKey);
   }
 
   /*!
@@ -437,9 +421,9 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   /*!
    * \brief Enroll a server. The type of server is inferred from this CoreClient's certificate chain.
    *
-   * \return rxcpp::observable< EnrollmentResult >
+   * \return rxcpp::observable< EnrolledPartyKeys >
    */
-  rxcpp::observable<EnrollmentResult> enrollServer();
+  rxcpp::observable<EnrolledPartyKeys> enrollServer();
 
   /*!
    * \brief Store data in PEP using the new API
@@ -573,7 +557,7 @@ protected:
     explicit EnrollmentContext(std::shared_ptr<const X509Identity> enroller);
   };
 
-  rxcpp::observable<EnrollmentResult> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
+  rxcpp::observable<EnrolledPartyKeys> completeEnrollment(std::shared_ptr<EnrollmentContext> context);
 
   template <typename T>
   static std::shared_ptr<const T> GetConstServerProxy(std::shared_ptr<T> proxy, const ServerTraits& traits, bool require) {

@@ -1,5 +1,6 @@
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -37,7 +38,8 @@ KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
   SigningServer(parameters),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
   mDataTranslator(parameters->getDataTranslator()),
-  mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())) {
+  mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())),
+  mSystemPublicKeys(parameters->getSystemPublicKeys()) {
 
   RegisterRequestHandlers(*this, &KeyComponentServer::handleKeyComponentRequest);
 }
@@ -69,12 +71,8 @@ KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
   std::filesystem::path systemKeysFile;
 
   try {
-    if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
-      systemKeysFile = optionalSystemKeysFile.value();
-    } else {
-      //Legacy version, from when we still had a (Soft)HSM. TODO: use new version in configuration for all environments, and remove legacy version.
-      systemKeysFile = config.get<std::filesystem::path>("HSM.ConfigFile");
-    }
+    systemKeysFile = config.get<std::filesystem::path>("SystemKeysFile");
+    systemPublicKeys = config.get<SystemPublicKeys>("SystemPublicKeys");
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -87,7 +85,6 @@ KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
     .get_value_or(systemKeys); //we now also allow them to be directly in the root, resulting in cleaner SystemKeys-files
   setPseudonymTranslator(std::make_shared<PseudonymTranslator>(ParsePseudonymTranslationKeys(systemKeys)));
   setDataTranslator(std::make_shared<DataTranslator>(ParseDataTranslationKeys(systemKeys)));
-
 }
 
 std::shared_ptr<PseudonymTranslator> KeyComponentServer::Parameters::getPseudonymTranslator() const {
