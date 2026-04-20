@@ -412,7 +412,9 @@ list_foss_binaries_for_branches() {
 }
 
 delete_foss_branch() {
-  local branch_name="$1"
+  local branch_name_json="$1" # JSON string from list_foss_binaries_for_branches
+  local branch_name
+  branch_name="$(raw_echo "$branch_name_json" | jq --raw-output)"
   delete_branch "$foss_dir" "$branch_name"
 }
 
