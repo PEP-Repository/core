@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 import json
+import copy
 from pydantic import BaseModel, model_validator, ConfigDict, DirectoryPath
 from typing import Any, Self
 from deepmerge import always_merger
@@ -137,7 +138,7 @@ class ConnectorConfig(BaseModel):
         if "defaults" in data and "survey_types" in data:
             defaults = data["defaults"]
             for survey_name, survey_config in data["survey_types"].items():
-                merged = defaults.copy()  # Start with copy of defaults, else the original defaults are modified in-place by deepmerge
+                merged = copy.deepcopy(defaults)  # Deep copy defaults to avoid sharing nested dict references across surveys
                 merged = always_merger.merge(merged, survey_config)  # Apply survey config on top
                 data["survey_types"][survey_name] = merged
             # Remove defaults section after merging
