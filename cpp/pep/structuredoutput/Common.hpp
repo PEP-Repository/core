@@ -28,7 +28,7 @@ constexpr std::string_view maxAuthValidityKey{"max auth valid time"};
 
 } // namespace stringConstants
 
-enum class Format { yaml, json };
+enum class Format { Yaml, Json };
 
 struct DisplayConfig final {
   // Avoiding boilerplate code that would be needed to support bitwise ops on an enum type.
@@ -44,7 +44,7 @@ struct DisplayConfig final {
 
   Flags::T flags = Flags::printHeaders | Flags::printGroups | Flags::printUserGroups | Flags::printUsers;
   int indent = 0; ///< How many levels the output should be indented by.
-  Format preferredFormat = Format::yaml;
+  Format preferredFormat = Format::Yaml;
 };
 
 inline std::string indentations(int i) {
