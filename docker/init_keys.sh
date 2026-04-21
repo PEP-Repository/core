@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -eu
+
 readonly REUSE_SECRETS="${1:-false}"
 readonly DATADIR="${2:-/data}"
 readonly APPSDIR="${3:-/app}"
@@ -9,17 +11,14 @@ PKDATA="$(sed -n -e "s/PublicKeyData: \([0-9a-fA-F]*\)/\1/p" "$DATADIR/SystemPub
 PKPSEUDONYMS="$(sed -n -e "s/PublicKeyPseudonyms: \([0-9a-fA-F]*\)/\1/p" "$DATADIR/SystemPublicKeys.txt")"
 
 
-# Update client and registration server configuration with new public keys
+# Update client and server configurations with new public keys
 add_system_public_keys() {
   local config_file="$1"
-  jq \
-    --arg publicKeyData "$PKDATA" \
-    --arg publicKeyPseudonyms "$PKPSEUDONYMS" \
-    '.SystemPublicKeys = {
-      PublicKeyData: $publicKeyData,
-      PublicKeyPseudonyms: $publicKeyPseudonyms,
-    }' -- "$config_file" >"$config_file.tmp"
-  mv -f -- "$config_file.tmp" "$config_file"
+  # jq is not available in pep-services image for integration.sh, so use sed instead
+  sed -i \
+    -e "s/\"PublicKeyData\":\s*\"\"/\"PublicKeyData\": \"${PKDATA}\"/" "$config_file" \
+    -e "s/\"PublicKeyPseudonyms\":\s*\"\"/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\"/" \
+    -- "$config_file"
 }
 add_system_public_keys "$DATADIR/client/ClientConfig.json"
 add_system_public_keys "$DATADIR/accessmanager/AccessManager.json"
