@@ -83,4 +83,10 @@ void RandomBytes(std::span<std::byte> out) {
 
 static_assert(std::uniform_random_bit_generator<CryptoUrbg>);
 
+std::streamsize RandomIStreamBuf::xsgetn(char* s, std::streamsize count) {
+  assert(count >= 0 && "Can't get negative count from streambuf");
+  RandomBytes(std::span<char>(s, static_cast<size_t>(count))); // Uses thread_local buffer
+  return count;
+}
+
 }
