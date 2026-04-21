@@ -519,11 +519,8 @@ ubuntu-lts-debug-with-sast:
     WITH_TESTS: "False"
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "False"
-    MEM_ANALYSIS_TOOL: "none"
     VERIFY_HEADERS_STANDALONE: "off"
     ENABLE_LINTER: "no"
-    concurrency_option_conan: ""
-    INFER_VERSION: "v1.2.0"
   cache:
     - key: "ccache"
       paths:
@@ -532,8 +529,6 @@ ubuntu-lts-debug-with-sast:
       paths:
         - infer_state/
   #language=bash
-  before_script:
-    apt-get update && apt-get install -y bear xz-utils
   script:
     - set -euo pipefail
     - mkdir -p infer_state
@@ -556,22 +551,9 @@ ubuntu-lts-debug-with-sast:
     # We have global GIT_DEPTH=20 in the gitlab gui, obtain the SHA in case it's older
     - git fetch origin "$LAST_PROCESSED_SHA"
     - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" --no-relative cpp/pep > index.txt
-    # mkdir the man/man1 directory due to Debian bug #863199
-    - mkdir -p /usr/share/man/man1
-    - INFER_VERSION="v1.2.0"
-    - INSTALL_DIR="/opt"
-    - ARCHIVE="infer-linux-x86_64-${INFER_VERSION}.tar.xz"
-    - URL="https://github.com/facebook/infer/releases/download/${INFER_VERSION}/${ARCHIVE}"
-    - |
-      (
-        cd "${INSTALL_DIR}"
-        curl -fL "${URL}" | tar -xJ
-      )
-    - ln -sfn "${INSTALL_DIR}/infer-linux-x86_64-${INFER_VERSION}" /infer
-    - export PATH="/infer/bin:${PATH}"
     - *checkout-docker-build-script-sh-steps
     - *configure-conan-and-cmake
-    - bear -- cmake --build --preset conan-$build_type_lower -j30
+    - bear -- cmake --build --preset conan-$build_type_lower
     - infer capture --reactive
                     --compilation-database-escaped ./compile_commands.json
                     --keep-going
@@ -630,7 +612,6 @@ ubuntu-lts-debug-with-sast:
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "False"
-    MEM_ANALYSIS_TOOL: "none"
     VERIFY_HEADERS_STANDALONE: "off"
 
 ubuntu-lts-debug:
@@ -648,7 +629,6 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     WITH_CASTOR: "False"
-    MEM_ANALYSIS_TOOL: "none"
     ARTIFACTS: "$UNIT_TESTS_BASE"
   artifacts:
     expire_in: 8h
@@ -661,7 +641,6 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
   extends: .ubuntu-lts-settings
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    MEM_ANALYSIS_TOOL: "valgrind"
     WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
 
@@ -735,7 +714,6 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
     WITH_TESTS: "False"
-    MEM_ANALYSIS_TOOL: "none"
     WITH_BENCHMARK: "False"
     HTTPSERVER_WITH_TLS: "ON"
     ARTIFACTS: >-
@@ -755,7 +733,6 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
   variables:
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "True"
-    MEM_ANALYSIS_TOOL: "none"
     WITH_TESTS: "True"
     WITH_BENCHMARK: "False"
 
@@ -998,7 +975,6 @@ macos-client-arm:
       allow_failure: true
   variables:
     WITH_CASTOR: "False" # Currently castor does not compile on macOS
-    MEM_ANALYSIS_TOOL: "none"
     ARTIFACTS: >-
       $EXECUTABLES_APPS
       $EXECUTABLES_PEP_SERVICES
@@ -1140,6 +1116,7 @@ build-sandbox-docker-image:
   tags:
     - docker
   variables:
+    MEM_ANALYSIS_TOOL: "valgrind"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_CASTOR
