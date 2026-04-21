@@ -25,12 +25,12 @@ public:
   ~Transport() noexcept override;
 
   enum class ConnectivityStatus {
-    unconnected   = ToUnderlying(LifeCycler::Status::uninitialized),
-    reconnecting  = ToUnderlying(LifeCycler::Status::reinitializing),
-    connecting    = ToUnderlying(LifeCycler::Status::initializing),
-    connected     = ToUnderlying(LifeCycler::Status::initialized),
-    disconnecting = ToUnderlying(LifeCycler::Status::finalizing),
-    disconnected  = ToUnderlying(LifeCycler::Status::finalized)
+    unconnected   = ToUnderlying(LifeCycler::Status::Uninitialized),
+    reconnecting  = ToUnderlying(LifeCycler::Status::Reinitializing),
+    connecting    = ToUnderlying(LifeCycler::Status::Initializing),
+    connected     = ToUnderlying(LifeCycler::Status::Initialized),
+    disconnecting = ToUnderlying(LifeCycler::Status::Finalizing),
+    disconnected  = ToUnderlying(LifeCycler::Status::Finalized)
   };
 
   ConnectivityStatus status() const noexcept;

@@ -36,7 +36,7 @@ public:
 
     // Let the ConnectionKeeper keep itself alive until the connection gets closed
     result->mStatusChange = result->mConnection->onStatusChange.subscribe([result /* keep the ConnectionKeeper instance alive */](const LifeCycler::StatusChange& change) {
-      if (change.updated >= LifeCycler::Status::finalizing) {
+      if (change.updated >= LifeCycler::Status::Finalizing) {
         // Discard this lambda, getting rid of the shared_ptr to the ConnectionKeeper, allowing the instance and its mConnection to be destroyed.
         result->mStatusChange.cancel();
       }

@@ -8,8 +8,8 @@ Node::Node(std::shared_ptr<Protocol::NodeComponent> component) noexcept
 }
 
 void Node::shutdown() {
-  if (this->status() != Status::uninitialized && this->status() < Status::finalizing) {
-    this->setStatus(Status::finalizing);
+  if (this->status() != Status::Uninitialized && this->status() < Status::Finalizing) {
+    this->setStatus(Status::Finalizing);
   }
 
   // Don't iterate directly over mSockets because closing each socket will remove it from mSockets, invalidating our iterator
@@ -26,7 +26,7 @@ void Node::shutdown() {
     mComponent.reset();
   }
 
-  this->setStatus(Status::finalized); // TODO: don't notify until sockets and component have been Status::finalized
+  this->setStatus(Status::Finalized); // TODO: don't notify until sockets and component have been Status::finalized
 }
 
 void Node::openSocket(const SocketConnectionAttempt::Handler& onSocketConnection) {
@@ -73,15 +73,15 @@ void Node::handleConnectionAttempt(const Connection::Attempt::Result& status) co
 
 void Node::start() {
   auto status = this->status();
-  if (status > Status::initialized) {
+  if (status > Status::Initialized) {
     throw std::runtime_error("Can't start a node that has been shut down");
   }
-  if (status != Status::uninitialized) {
+  if (status != Status::Uninitialized) {
     throw std::runtime_error("Can't start a node more than once");
   }
 
-  this->setStatus(Status::initializing);
-  this->setStatus(Status::initialized);
+  this->setStatus(Status::Initializing);
+  this->setStatus(Status::Initialized);
   this->establishConnection();
 }
 

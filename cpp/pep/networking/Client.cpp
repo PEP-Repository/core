@@ -140,8 +140,8 @@ std::optional<ExponentialBackoff::Timeout> Client::Connection::reconnect() {
 }
 
 void Client::shutdown() {
-  if (this->status() != Status::uninitialized && this->status() < Status::finalizing) {
-    this->setStatus(Status::finalizing);
+  if (this->status() != Status::Uninitialized && this->status() < Status::Finalizing) {
+    this->setStatus(Status::Finalizing);
   }
   if (mConnection != nullptr) {
     mConnection->mReconnect = false;

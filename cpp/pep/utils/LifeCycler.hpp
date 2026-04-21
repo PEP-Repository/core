@@ -12,17 +12,17 @@ public:
   /// \brief Supported status(valu)es
   enum class Status {
     /// \brief The instance (has been created but) requires further initialization
-    uninitialized,
+    Uninitialized,
     /// \brief Initialization is being _re_started
-    reinitializing,
+    Reinitializing,
     /// \brief The instance is being initialized
-    initializing,
+    Initializing,
     /// \brief The instance (has been initialized and) is fully usable
-    initialized,
+    Initialized,
     /// \brief The instance is shutting down without a chance of reinitialization
-    finalizing,
+    Finalizing,
     /// \brief Shutdown is complete: the instance won't become usable again
-    finalized
+    Finalized
   };
 
   /// \brief Parameter for the onStatusChange event
@@ -32,7 +32,7 @@ public:
   };
 
 private:
-  Status mStatus = Status::uninitialized;
+  Status mStatus = Status::Uninitialized;
 
 protected:
   LifeCycler() noexcept = default;

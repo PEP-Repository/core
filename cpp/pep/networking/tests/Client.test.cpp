@@ -40,10 +40,10 @@ private:
   }
 
   void handleClientStatusChange(const pep::networking::Client::StatusChange& change) {
-    if (change.updated >= pep::LifeCycler::Status::finalizing) {
+    if (change.updated >= pep::LifeCycler::Status::Finalizing) {
       ASSERT_TRUE(mShutdownIssued) << "Client sends close notification without having been shut down";
     }
-    if (change.updated == pep::LifeCycler::Status::finalized) {
+    if (change.updated == pep::LifeCycler::Status::Finalized) {
       ASSERT_FALSE(mShutdownNotified) << "Client sends multiple close notifications";
       mShutdownNotified = true;
     }

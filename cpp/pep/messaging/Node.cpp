@@ -50,9 +50,9 @@ public:
   static std::shared_ptr<BinaryFinalizationNotifier> Create(const networking::Node& node) {
     std::shared_ptr<BinaryFinalizationNotifier> result(new BinaryFinalizationNotifier());
 
-    if (node.status() != LifeCycler::Status::finalized) { // Don't subscribe (because event won't be notified) if the node is already finalized
+    if (node.status() != LifeCycler::Status::Finalized) { // Don't subscribe (because event won't be notified) if the node is already finalized
       result->mSubscription = node.onStatusChange.subscribe([result](const LifeCycler::StatusChange& change) {
-        if (change.updated == LifeCycler::Status::finalized) {
+        if (change.updated == LifeCycler::Status::Finalized) {
           result->notify();
         }
         });
@@ -75,12 +75,12 @@ public:
 
 Node::Node(const networking::Protocol::ServerParameters& parameters, RequestHandler& requestHandler)
   : mIoContext(parameters.ioContext()), mBinary(networking::Server::Create(parameters)), mRequestHandler(&requestHandler), mIncompatibleRemotes(std::set<IncompatibleRemote>()) {
-  assert(mBinary->status() == LifeCycler::Status::uninitialized);
+  assert(mBinary->status() == LifeCycler::Status::Uninitialized);
 }
 
 Node::Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters)
   : mIoContext(parameters.ioContext()), mReconnectParameters(reconnectParameters), mBinary(networking::Client::Create(parameters, mReconnectParameters)) {
-  assert(mBinary->status() == LifeCycler::Status::uninitialized);
+  assert(mBinary->status() == LifeCycler::Status::Uninitialized);
 }
 
 void Node::vetConnectionWith(const std::string& description, const std::string& address, const BinaryVersion& binary, const std::optional<ConfigVersion>& config) {
@@ -127,13 +127,13 @@ void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, 
   assert(existing != mExistingConnections.end());
 
   switch (change.updated) {
-  case LifeCycler::Status::reinitializing: // Notify subscriber of our (failed) attempt and retry
+  case LifeCycler::Status::Reinitializing: // Notify subscriber of our (failed) attempt and retry
     LOG(LOG_TAG, debug) << "Messaging connection reinitializing";
     if (mSubscriber.has_value()) {
       mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Failed to establish messaging connection: will be retried"))));
     }
     break;
-  case LifeCycler::Status::initialized: // Established: hand off to subscriber
+  case LifeCycler::Status::Initialized: // Established: hand off to subscriber
     LOG(LOG_TAG, debug) << "Messaging connection established";
     existing->establishing.cancel();
     existing->own.reset();
@@ -212,7 +212,7 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
 
     auto binaryFinalization = std::make_shared<EventSubscription>();
     *binaryFinalization = self->mBinary->onStatusChange.subscribe([weak, subscriber, binaryFinalization](const LifeCycler::StatusChange& change) {
-      if (change.updated == LifeCycler::Status::finalizing) {
+      if (change.updated == LifeCycler::Status::Finalizing) {
         binaryFinalization->cancel();
         if (subscriber.is_subscribed()) {
           subscriber.on_completed();
