@@ -1,9 +1,5 @@
 syntax = "proto3";
 
-// Increment for breaking API changes that are not reflected in the syntax,
-// to update hash anyway:
-// Breaking change: 1
-
 package pep.proto;
 
 option cc_enable_arenas = true;
