@@ -127,7 +127,7 @@ analyse-source:
       "$PEP_PROJECT_TESTING_BRANCH"
       "$PEP_PROJECT_ACCEPTANCE_BRANCH"
       "$PEP_PROJECT_PRODUCTION_BRANCH"
-    - do
+      ; do
     -   if [ -n "$branch" ] && [ "$branch" != . ] && [ -d "./config/$branch" ]; then
     -     echo "Validating $branch config"
     -     ./"$PEP_FOSS_REPO_DIR"/scripts/validate-config.sh "./config/$branch"
