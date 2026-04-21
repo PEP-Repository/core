@@ -28,8 +28,7 @@
       "type": "object",
       "properties": {
         "ListenPort": { "type": "integer" },
-        "TlsIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
-        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" }
+        "TlsIdentity": { "$ref": "#/$defs/X509IdentityFiles" }
       },
       "required": [
         "ListenPort",
@@ -90,9 +89,16 @@
       "type": "object",
       "$ref": "#/$defs/Server",
       "properties": {
-        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "Transcryptor",
+            "KeyServer"
+          ]
+        },
         "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
         "EnrolledPartyKeysFile": { "type": "string" },
+        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
         "SystemKeysFile": { "type": "string" },
 
         "StorageFile": { "type": "string" },
@@ -102,6 +108,7 @@
         "ServerEndPoints",
         "SystemPublicKeys",
         "EnrolledPartyKeysFile",
+        "SigningIdentity",
         "SystemKeysFile",
         "StorageFile",
         "GlobalConfigurationFile"
@@ -112,7 +119,13 @@
       "type": "object",
       "$ref": "#/$defs/Server",
       "properties": {
-        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager"
+          ]
+        },
+        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
 
         "StorageFile": { "type": "string" },
         "OAuthTokenSecretFile": { "type": "string" },
@@ -124,6 +137,7 @@
       },
       "required": [
         "ServerEndPoints",
+        "SigningIdentity",
         "OAuthTokenSecretFile",
         "HttpListenPort",
         "ActiveGrantExpirationSeconds",
@@ -135,6 +149,8 @@
       "type": "object",
       "$ref": "#/$defs/Server",
       "properties": {
+        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+
         "ClientCa": { "$ref": "#/$defs/X509IdentityFiles" },
         "OAuthTokenSecretFile": { "type": "string" },
         "BlocklistStoragePath": { "type": "string" }
@@ -149,9 +165,16 @@
       "type": "object",
       "$ref": "#/$defs/Server",
       "properties": {
-        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager",
+            "StorageFacility"
+          ]
+        },
         "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
         "EnrolledPartyKeysFile": { "type": "string" },
+        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
 
         "ShadowPublicKeyFile": { "type": "string" },
         "ShadowStorageFile": { "type": "string" },
@@ -169,6 +192,7 @@
         "ServerEndPoints",
         "SystemPublicKeys",
         "EnrolledPartyKeysFile",
+        "SigningIdentity",
         "ShadowPublicKeyFile",
         "ShadowStorageFile"
       ]
@@ -180,6 +204,7 @@
       "properties": {
         "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
         "EnrolledPartyKeysFile": { "type": "string" },
+        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
 
         "StoragePath": { "type": "string" },
         "EncIdKeyFile": { "type": "string" },
@@ -187,8 +212,8 @@
         "ParallelisationWidth": { "type": "integer" }
       },
       "required": [
-        "ServerEndPoints",
         "EnrolledPartyKeysFile",
+        "SigningIdentity",
         "StoragePath",
         "EncIdKeyFile",
         "PageStore"
@@ -255,9 +280,15 @@
       "type": "object",
       "$ref": "#/$defs/Server",
       "properties": {
-        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager"
+          ]
+        },
         "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
         "EnrolledPartyKeysFile": { "type": "string" },
+        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
         "SystemKeysFile": { "type": "string" },
 
         "StorageFile": { "type": "string" },
@@ -267,6 +298,7 @@
         "ServerEndPoints",
         "SystemPublicKeys",
         "EnrolledPartyKeysFile",
+        "SigningIdentity",
         "SystemKeysFile",
         "StorageFile",
         "VerifiersFile"
@@ -279,7 +311,17 @@
       "properties": {
         "CaCertificateFile": { "type": "string" },
         "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
-        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager",
+            "Authserver",
+            "KeyServer",
+            "RegistrationServer",
+            "StorageFacility",
+            "Transcryptor"
+          ]
+        },
         "EnrolledPartyKeysFile": { "type": "string" },
 
         "ShadowPublicKeyFile": { "type": "string" },
