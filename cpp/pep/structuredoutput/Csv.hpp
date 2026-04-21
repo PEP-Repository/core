@@ -6,11 +6,11 @@
 namespace pep::structuredOutput::csv {
 
 /// Supported CSV delimiter characters
-enum class Delimiter : char { comma = ',', semicolon = ';', tab = '\t' };
+enum class Delimiter : char { Comma = ',', Semicolon = ';', Tab = '\t' };
 
 struct Config final {
   // With European regional settings on Windows, MS Excel expects semicolon delimiters by default, when importing CSV
-  Delimiter delimiter = Delimiter::semicolon;  ///< The character used to delimit individual fields
+  Delimiter delimiter = Delimiter::Semicolon;  ///< The character used to delimit individual fields
   bool force_header = false; ///< Produce a header even if there's no data
 };
 
