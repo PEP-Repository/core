@@ -303,7 +303,7 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
   LexedValues result;
 
   auto positionalIt = mPositional.cbegin();
-  enum class positionalType { None, Named, Unnamed } positionalSeen = positionalType::None;
+  enum class PositionalType { None, Named, Unnamed } positionalSeen = PositionalType::None;
 
   while (!arguments.empty()) {
     const auto& token = arguments.front();
@@ -319,10 +319,10 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
       arguments.pop(); // Discard the announcement from remaining arguments
       s = &mEntries[named->second];
       if (s->isPositional()) {
-        if (positionalSeen == positionalType::Unnamed) {
+        if (positionalSeen == PositionalType::Unnamed) {
           throw std::runtime_error("Cannot mix named and unnamed positional parameters");
         }
-        positionalSeen = positionalType::Named;
+        positionalSeen = PositionalType::Named;
       }
     }
     else { // Not an announcement: process as an unnamed positional parameter
@@ -331,14 +331,14 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
         break;
       }
 
-      if (positionalSeen == positionalType::Named) {
+      if (positionalSeen == PositionalType::Named) {
         if (!this->firstPositional(result)) {
           // All positionals were already specified using names. Assume the next token is not for us.
           break;
         }
         throw std::runtime_error("Cannot mix named and unnamed positional parameters");
       }
-      positionalSeen = positionalType::Unnamed;
+      positionalSeen = PositionalType::Unnamed;
 
       s = &mEntries[*positionalIt];
       assert(s->isPositional());
