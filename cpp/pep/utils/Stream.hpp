@@ -37,7 +37,7 @@ public:
 };
 
 
-class CroppingStreamBuf : public std::streambuf {
+class CroppingIStreamBuf : public std::streambuf {
 private:
   std::streambuf& source_;
   std::streamsize remaining_;
@@ -46,10 +46,10 @@ protected:
   std::streamsize xsgetn(char* s, std::streamsize count) override;
 
 public:
-  CroppingStreamBuf(std::streambuf& source, std::streamsize count);
+  CroppingIStreamBuf(std::streambuf& source, std::streamsize count);
 
-  CroppingStreamBuf(const CroppingStreamBuf&) = delete;
-  CroppingStreamBuf& operator=(const CroppingStreamBuf&) = delete;
+  CroppingIStreamBuf(const CroppingIStreamBuf&) = delete;
+  CroppingIStreamBuf& operator=(const CroppingIStreamBuf&) = delete;
 };
 
 } // namespace pep
