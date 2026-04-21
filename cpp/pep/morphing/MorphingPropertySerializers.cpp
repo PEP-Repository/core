@@ -25,9 +25,7 @@ EnrolledPartyKeys PropertySerializer<EnrolledPartyKeys>::read(const boost::prope
   if (scheme && *scheme != EnrollmentScheme::Current) { return {}; }
 
   auto privateKey = DeserializeProperties<std::optional<std::string>>(source, "PrivateKey", context);
-  auto certificateChain = scheme >= EnrollmentScheme::V2
-    ? DeserializeProperties<std::optional<std::string>>(source, "CertificateChain", context)
-    : std::nullopt;
+  auto certificateChain = DeserializeProperties<std::optional<std::string>>(source, "CertificateChain", context);
   // Do not try to load a user keys file with no enrollment scheme or a wrong scheme
   if ((privateKey || certificateChain) && scheme != EnrollmentScheme::Current) { return {}; }
   return {
