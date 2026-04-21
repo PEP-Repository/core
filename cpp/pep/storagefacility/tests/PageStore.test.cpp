@@ -42,12 +42,12 @@ TEST(PageStore, basic) {
   SerializeProperties(s3Conf, "ReadFromBuckets", std::vector{envs.s3_test_bucket, envs.s3_test_bucket2});
 
   boost::property_tree::ptree pageStoreConf;
-  pageStoreConf.put_child("Local", s3Conf);
+  pageStoreConf.put_child("S3", s3Conf);
 
   std::shared_ptr<PageStore> store = PageStore::Create(
     io_context,
     std::shared_ptr<prometheus::Registry>(), // intentionally null
-    Configuration::FromPtree(s3Conf)
+    Configuration::FromPtree(pageStoreConf)
   );
   PEP_DEFER(store.reset());
 
