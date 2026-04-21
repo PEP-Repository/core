@@ -140,6 +140,7 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   CoreClient::Builder clientBuilder;
   clientBuilder.initialize(config, getIoContext(), true);
+  clientBuilder.setSigningIdentity(getSigningIdentity());
   setClient(clientBuilder.build());
 
 #ifdef WITH_CASTOR
