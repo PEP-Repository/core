@@ -46,8 +46,8 @@ TEST(Stream, Hashing) {
   auto count = source.gcount();
   EXPECT_EQ(static_cast<size_t>(count), length) << "Should have produced input data's characters";
 
-  extracted.resize(length); // Discard excess capacity/characters
+  extracted.resize(length); // Discard excess capacity/characters from our output buffer
   EXPECT_EQ(value, extracted) << "Input data was mangled by streaming";
 
-  EXPECT_EQ(unstreamed, hasher.digest()) << "Streamed hashing produces incorrect result";
+  EXPECT_EQ(unstreamed, hasher.digest()) << "Streamed hashing produced incorrect result";
 }
