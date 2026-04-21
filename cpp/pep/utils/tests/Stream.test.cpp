@@ -1,3 +1,4 @@
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Stream.hpp>
 #include <gtest/gtest.h>
@@ -24,4 +25,29 @@ TEST(Stream, Cropped) {
   permissive_stream.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
   EXPECT_TRUE(permissive_stream.eof()) << "Permissive stream should be at eof after second read";
   EXPECT_EQ(static_cast<std::streamsize>(buffer.size()) - max, permissive_stream.gcount()) << "Permissive stream should have extracted remaining characters";
+}
+
+TEST(Stream, Hashing) {
+  // Hash a regular (random) string
+  constexpr size_t length = 512U;
+  const std::string value = pep::RandomString(length);
+  auto unstreamed = pep::Sha256().digest(value);
+
+  // Set up a hashing istream that'll produce the same (random) string
+  std::stringbuf raw(value);
+  pep::Sha256 hasher;
+  pep::HashingIStreamBuf hashing(raw, hasher);
+  std::istream source(&hashing);
+
+  // Extract (all) data from the istream
+  std::string extracted(length + 1U, '\0');
+  source.read(extracted.data(), static_cast<std::streamsize>(extracted.size()));
+  EXPECT_TRUE(source.eof()) << "Should have exhausted input data";
+  auto count = source.gcount();
+  EXPECT_EQ(static_cast<size_t>(count), length) << "Should have produced input data's characters";
+
+  extracted.resize(length); // Discard excess capacity/characters
+  EXPECT_EQ(value, extracted) << "Input data was mangled by streaming";
+
+  EXPECT_EQ(unstreamed, hasher.digest()) << "Streamed hashing produces incorrect result";
 }
