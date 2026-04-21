@@ -32,7 +32,7 @@ using namespace std::chrono_literals;
 namespace so = pep::structuredOutput;
 
 namespace {
-constexpr auto SUPPORTED_EXPORT_FORMATS = so::FormatFlags::csv | so::FormatFlags::json | so::FormatFlags::yaml;
+constexpr auto SUPPORTED_EXPORT_FORMATS = so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml;
 
 struct Context {
   bool update{ false };
@@ -47,7 +47,7 @@ struct Context {
   DownloadDirectory::ContentSpecification content;
   std::shared_ptr<pep::Progress> progress = pep::Progress::Create(3U);
   pep::EventSubscription progressSubscription;
-  so::FormatFlags exportFormats = so::FormatFlags::none;
+  so::FormatFlags exportFormats = so::FormatFlags::None;
 };
 
 /*!
@@ -184,14 +184,14 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
 
 so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) {
   static_assert(
-      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::csv | so::FormatFlags::json | so::FormatFlags::yaml),
+      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
-  auto flags = so::FormatFlags::none;
+  auto flags = so::FormatFlags::None;
   for (const auto& name : formatNames) {
-    if (name == "csv") { flags |= so::FormatFlags::csv; }
-    else if (name == "json") { flags |= so::FormatFlags::json; }
-    else if (name == "yaml") { flags |= so::FormatFlags::yaml; }
+    if (name == "csv") { flags |= so::FormatFlags::Csv; }
+    else if (name == "json") { flags |= so::FormatFlags::Json; }
+    else if (name == "yaml") { flags |= so::FormatFlags::Yaml; }
     else {
       const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
       throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
@@ -382,7 +382,7 @@ struct ExportContext final {
 };
 
 void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
-  if (formats == so::FormatFlags::none) { return; }
+  if (formats == so::FormatFlags::None) { return; }
 
   const auto downloadDir = DownloadDirectory::Create(ctx.input_directory, ctx.globalConfig, [](std::shared_ptr<const pep::Progress>) {}); // TODO: report (instead of ignore) progress
   const auto table = so::TableFrom(*downloadDir);
@@ -399,16 +399,16 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
   };
 
   static_assert(
-      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::csv | so::FormatFlags::json | so::FormatFlags::yaml),
+      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
-  if (Contains(formats, so::FormatFlags::csv)) {
+  if (Contains(formats, so::FormatFlags::Csv)) {
     exportAs("csv", [&table](std::ofstream& stream) { so::csv::append(stream, table); });
   }
-  if (Contains(formats, so::FormatFlags::json)) {
+  if (Contains(formats, so::FormatFlags::Json)) {
     exportAs("json", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
-  if (Contains(formats, so::FormatFlags::json)) {
+  if (Contains(formats, so::FormatFlags::Json)) {
     exportAs("yaml", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
 }
