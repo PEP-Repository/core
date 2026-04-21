@@ -1,5 +1,7 @@
 #pragma once
 
+#include <streambuf>
+
 #ifdef _WIN32
 # include <cstdio>
 # include <iostream>
