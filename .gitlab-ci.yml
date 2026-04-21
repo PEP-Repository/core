@@ -1117,7 +1117,6 @@ build-sandbox-docker-image:
   tags:
     - docker
   variables:
-    MEM_ANALYSIS_TOOL: "valgrind"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_CASTOR
@@ -1131,6 +1130,8 @@ ubuntu-lts-debug-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-lts-debug-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "valgrind"
   needs: [ubuntu-lts-debug]
 
 ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
@@ -1152,18 +1153,24 @@ ubuntu-lts-release-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-lts-release-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "valgrind"
   needs: [ubuntu-lts-release]
 
 ubuntu-rolling-debug-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-rolling-debug-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-rolling-debug]
 
 ubuntu-rolling-release-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-rolling-release-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-rolling-release]
 
 #################### Windows ##################
