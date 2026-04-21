@@ -69,4 +69,16 @@ SetBinaryFileMode SetBinaryFileMode::ForStdout() { return SetBinaryFileMode(); }
 
 #endif
 
+CroppingStreamBuf::CroppingStreamBuf(std::streambuf& source, std::streamsize count)
+  : source_(source), remaining_(count) {
+  assert(remaining_ >= 0 && "Can't have negative count now, can we?");
+}
+
+std::streamsize CroppingStreamBuf::xsgetn(char* s, std::streamsize count) {
+  auto cropped = std::min(count, remaining_);
+  auto result = source_.sgetn(s, cropped);
+  remaining_ -= result;
+  return result;
+}
+
 }

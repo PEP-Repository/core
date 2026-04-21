@@ -36,4 +36,20 @@ public:
   static SetBinaryFileMode ForStdout();
 };
 
+
+class CroppingStreamBuf : public std::streambuf {
+private:
+  std::streambuf& source_;
+  std::streamsize remaining_;
+
+protected:
+  std::streamsize xsgetn(char* s, std::streamsize count) override;
+
+public:
+  CroppingStreamBuf(std::streambuf& source, std::streamsize count);
+
+  CroppingStreamBuf(const CroppingStreamBuf&) = delete;
+  CroppingStreamBuf& operator=(const CroppingStreamBuf&) = delete;
+};
+
 } // namespace pep
