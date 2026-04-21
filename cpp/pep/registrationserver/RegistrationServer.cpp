@@ -124,22 +124,12 @@ public:
 
 RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config) {
-  std::filesystem::path keysFile;
 
   std::filesystem::path shadowPublicKeyFile;
 
-  CoreClient::Builder clientBuilder;
-
   try {
-    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
-    clientBuilder.setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
-
     setShadowStorageFile(config.get<std::filesystem::path>("ShadowStorageFile"));
     shadowPublicKeyFile = config.get<std::filesystem::path>("ShadowPublicKeyFile");
-
-    auto serverEndPoints = config.get_child("ServerEndPoints");
-    clientBuilder.setAccessManagerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode()));
-    clientBuilder.setStorageFacilityEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -148,25 +138,9 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   setShadowPublicKey(AsymmetricKey(ReadFile(shadowPublicKeyFile)));
 
-  ElgamalPrivateKey pseudonymKey, dataKey;
-  try {
-    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
-    pseudonymKey = enrolledPartyKeys.pseudonymKey.value();
-    dataKey = enrolledPartyKeys.dataKey.value();
-  }
-  catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
-    throw;
-  }
-
-  clientBuilder.setIoContext(getIoContext())
-    .setCaCertFilepath(getRootCACertificatesFilePath())
-    .setSigningIdentity(getSigningIdentity())
-    .setPrivateKeyData(dataKey)
-    .setPrivateKeyPseudonyms(pseudonymKey);
-  std::shared_ptr<CoreClient> client = clientBuilder.build();
-
-  setClient(client);
+  CoreClient::Builder clientBuilder;
+  clientBuilder.initialize(config, getIoContext(), true);
+  setClient(clientBuilder.build());
 
 #ifdef WITH_CASTOR
   auto castorAPIKeyFile = config.get<std::optional<std::filesystem::path>>("Castor.ApiKeyFile");
