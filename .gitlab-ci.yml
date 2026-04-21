@@ -437,6 +437,10 @@ retrieve-lockfile:
 
 .configure-conan-and-cmake: &configure-conan-and-cmake
   # Do not build dependencies, should already be built in docker-build
+  - |
+    if [ -n "$concurrency_limit" ]; then
+      concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
+    fi
   - >
     conan install ./
     --lockfile=./docker-build/builder/conan/conan-ci.lock
@@ -481,10 +485,6 @@ retrieve-lockfile:
     -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
     -   fi
     - fi
-    - |
-      if [ -n "$concurrency_limit" ]; then
-        concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
-      fi
     - *configure-conan-and-cmake
     - cmake --build --preset conan-$build_type_lower
 
@@ -552,6 +552,7 @@ ubuntu-lts-debug-with-sast:
     - git fetch origin "$LAST_PROCESSED_SHA"
     - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" --no-relative cpp/pep > index.txt
     - *checkout-docker-build-script-sh-steps
+    - *set_concurrency_limit
     - *configure-conan-and-cmake
     - bear -- cmake --build --preset conan-$build_type_lower
     - infer capture --reactive

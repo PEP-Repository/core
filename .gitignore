@@ -62,4 +62,4 @@ pulled-data-pending/
 pulled-data/
 
 # infer cache
-.infer_state/
+infer_state/
