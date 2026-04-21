@@ -24,15 +24,15 @@ void EnsureMapContains(std::unordered_map<std::string, TValue>& map, std::span<c
 }
 
 enum class AccessMode {
-  read,
-  write
+  Read,
+  Write
 };
 void EnsureStructureMetadataAccess(AccessMode mode, StructureMetadataType subjectType, std::string_view userGroup) {
   if (subjectType == StructureMetadataType::User || subjectType == StructureMetadataType::UserGroup) {
     UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, userGroup);
   }
   else {
-    if (mode == AccessMode::write) {
+    if (mode == AccessMode::Write) {
       UserGroup::EnsureAccess({UserGroup::DataAdministrator}, userGroup);
     }
   }
@@ -802,7 +802,7 @@ ColumnNameMappingResponse AccessManager::Backend::handleColumnNameMappingRequest
 std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetadataRequest(
     const StructureMetadataRequest& request,
     const std::string& userGroup) {
-  EnsureStructureMetadataAccess(AccessMode::read, request.subjectType, userGroup);
+  EnsureStructureMetadataAccess(AccessMode::Read, request.subjectType, userGroup);
 
   const Timestamp now = TimeNow();
   return {mStorage->getStructureMetadata(
@@ -817,7 +817,7 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::handleStructureMetad
 void AccessManager::Backend::handleSetStructureMetadataRequestHead(
     const SetStructureMetadataRequest& request,
     const std::string& userGroup) {
-  EnsureStructureMetadataAccess(AccessMode::write, request.subjectType, userGroup);
+  EnsureStructureMetadataAccess(AccessMode::Write, request.subjectType, userGroup);
 
   for (const auto& [subject, key] : request.remove) {
     mStorage->removeStructureMetadata(request.subjectType, subject, key);
@@ -828,7 +828,7 @@ void AccessManager::Backend::handleSetStructureMetadataRequestEntry(
     StructureMetadataType subjectType,
     const StructureMetadataEntry& entry,
     const std::string& userGroup) {
-  EnsureStructureMetadataAccess(AccessMode::write, subjectType, userGroup);
+  EnsureStructureMetadataAccess(AccessMode::Write, subjectType, userGroup);
 
   mStorage->setStructureMetadata(subjectType, entry.subjectKey.subject, entry.subjectKey.key, entry.value);
 }
