@@ -7,4 +7,32 @@ namespace pep {
 //XXX Replace by std::to_underlying in C++23
 [[nodiscard]] constexpr auto ToUnderlying(Enum auto v) { return static_cast<std::underlying_type_t<decltype(v)>>(v); }
 
+template <FlagEnum T>
+constexpr inline T operator~(const T flags) noexcept {
+  //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
+  return static_cast<T>(~ToUnderlying(flags) & ToUnderlying(T::All));
+}
+
+template <FlagEnum T>
+constexpr inline T operator| (const T lhs, const T rhs) noexcept {
+  //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
+  return static_cast<T>(ToUnderlying(lhs) | ToUnderlying(rhs));
+}
+
+template <FlagEnum T>
+constexpr inline T operator& (const T lhs, const T rhs) noexcept {
+  //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
+  return static_cast<T>(ToUnderlying(lhs) & ToUnderlying(rhs));
+}
+
+template <FlagEnum T>
+constexpr inline T& operator|= (T& lhs, const T rhs) noexcept { return lhs = (lhs | rhs); }
+
+template <FlagEnum T>
+constexpr inline T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lhs & rhs); }
+
+/// Test if \p lhs contains at least all the flags of \p rhs
+template <FlagEnum T>
+constexpr inline bool Contains(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
+
 }

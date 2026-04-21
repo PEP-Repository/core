@@ -1,7 +1,6 @@
 #pragma once
 
 #include <type_traits>
-#include <utility>
 
 namespace pep {
 
@@ -10,6 +9,13 @@ concept ByteLike = sizeof(T) == 1;
 
 template <typename T>
 concept Enum = std::is_enum_v<T>;
+
+template <typename T>
+concept FlagEnum = requires {
+  Enum<T>;
+  { T::None };
+  { T::All };
+};
 
 template<typename T, typename Ref>
 using CopyConstness = std::conditional_t<std::is_const_v<Ref>, const T, T>;
