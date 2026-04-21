@@ -86,10 +86,10 @@ x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
           stages:
             - regex:
                 expression: '^\[s3proxy\] (?P<level>[FTEIDW]) (?P<timestamp>\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) (?P<thread>\S+) (?P<logger>[^\s:]+)(?::\d+)? \|::\] (?P<message>.+)'
+            # Java doesn't pick up localtime and doesn't display timezone information, so we pick up as UTC
             - timestamp:
                 source: timestamp
                 format: '01-02 15:04:05.000'
-                location: 'Europe/Amsterdam'
             - template:
                 source: level
                 template: '{{ if eq .Value "F" }}fatal{{ else if eq .Value "T" }}trace{{ else if eq .Value "E" }}error{{ else if eq .Value "I" }}info{{ else if eq .Value "D" }}debug{{ else if eq .Value "W" }}warn{{ else }}{{ .Value }}{{ end }}'
@@ -486,7 +486,7 @@ services:
     volumes:
       - "${DATA_DIR_BASE}/prometheus-node-exporter:/data"
       - /etc/localtime:/etc/localtime:ro
-    command: [ "--collector.textfile.directory", "/data/textfiles/", "--no-collector.diskstats" ]
+    command: [ "--collector.textfile.directory", "/data/textfiles/", "--no-collector.diskstats", "--no-collector.kernel_hung"]
     logging:
       <<: *logging-pipeline-prometheus-node-exporter
     profiles: ["prometheus-node-exporter"]

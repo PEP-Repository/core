@@ -34,7 +34,7 @@ public:
   /// \param recipient Recipient
   /// \returns (Partially) translated pseudonym and proof
   /// \throws std::invalid_argument for invalid pseudonym
-  [[nodiscard]] std::pair<EncryptedLocalPseudonym, ReshuffleRekeyProof> certifiedTranslateStep(
+  [[nodiscard]] std::pair<EncryptedLocalPseudonym, RskProof> certifiedTranslateStep(
       const EncryptedPseudonym& pseudonym,
       const Recipient& recipient) const;
 
@@ -58,7 +58,7 @@ public:
   void checkTranslationProof(
       const EncryptedPseudonym& preTranslate,
       const EncryptedLocalPseudonym& postTranslate,
-      const ReshuffleRekeyProof& proof, const ReshuffleRekeyVerifiers& verifiers) const;
+      const RskProof& proof, const ReshuffleRekeyVerifiers& verifiers) const;
 
   /// Generate a pseudonym encryption key component for \p recipient
   /// \returns Pseudonym encryption key component

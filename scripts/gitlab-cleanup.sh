@@ -58,34 +58,6 @@ if [ "$#" -gt 1 ]; then
   exit 2
 fi
 
-foss_package_names=\
-'wixlibrary
-macos-x86-bins
-macos-arm-bins
-flatpak
-'
-foss_container_image_names=\
-'pep-monitoring
-authserver_apache
-pep-services
-pep-sandbox
-client
-pep-scheduler
-pep-connector
-docker-compose
-'
-dtap_container_image_names="$foss_container_image_names
-nginx
-prometheus
-logger
-nginx-review
-watchdog-watchdog
-loki
-gitlab-ci-pipelines-exporter
-proxmox-exporter
-blackbox-exporter
-"
-
 # Also keep docker-build images for n commits in FOSS before the latest commit.
 # This is a bit of a hack to make sure that projects not on the very last commit can still build
 keep_extra_docker_build=20
@@ -215,6 +187,7 @@ generic_cleanup() {
   local json_select_version="$5"   # `jq` selector to get version name from existing versions, e.g. '.version'
   local json_display_version="$6"  # `jq` expression to display existing version
   local delete_version_fun="$7"    # Function to delete version, taking version JSON object as parameter
+  local expect_used="${8:-true}"   # Refuse to delete all versions (safety check)
 
   printf '\n\n==== Initiating %s ====\n' "$cleanup_description"
 
@@ -222,7 +195,7 @@ generic_cleanup() {
   >&2 printf '\nListing used %s...\n\n' "$what_description"
   local used_versions
   used_versions="$(set_opts && $list_used_fun)"
-  [ -z "$used_versions" ] && fail "Didn't find any $what_description to keep, something is wrong"
+  $expect_used && [ -z "$used_versions" ] && fail "Didn't find any $what_description to keep, something is wrong"
   # Split from assignment because we don't have pipefail
   used_versions="$(raw_echo "$used_versions" | sort | uniq)"
   >&2 echo "Found $(raw_echo "$used_versions" | wc -w) $what_description that may be in use"
@@ -251,7 +224,13 @@ generic_cleanup() {
   raw_echo "$obsolete_versions" | jq --raw-output "$json_display_version"
 
   >&2 echo "$obsolete_len/$existing_len $what_description will be deleted"
-  [ "$obsolete_len" = "$existing_len" ] && fail "Refusing to delete all $what_description"
+
+  if [ "$obsolete_len" -eq 0 ]; then
+    printf '\nNothing to delete. %s complete.\n\n' "$cleanup_description"
+    return
+  fi
+
+  $expect_used && [ "$obsolete_len" = "$existing_len" ] && fail "Refusing to delete all $what_description"
 
   # ==== Confirm ====
   [ -z "$no_dry_run" ] && return
@@ -320,20 +299,19 @@ list_protected_commits() {
 # Returns: lines with tag objects (https://docs.gitlab.com/ee/api/container_registry.html#within-a-project-1) + repository_id
 list_project_image_tags() {
   local dir="$1"
-  local list_image_names="$2"      # Whitespace-separated list of image names to include
-  local json_tag_filter="${3:-.}"  # `jq` filter for tags to include, e.g. 'select(.name | startswith("sha-"))'
+  local json_tag_filter="${2:-.}"  # `jq` filter for tags to include, e.g. 'select(.name | startswith("sha-"))'
 
   # List all project container images
   local all_image_repos
   all_image_repos="$(list_project_container_repositories "$dir")"
+  # Split into separate lines
+  all_image_repos="$(raw_echo "$all_image_repos" | jq --compact-output '.[]')"
 
-  local img_name
-  for img_name in $list_image_names; do
-    >&2 echo "Listing tags for container repository $img_name"
-
-    local repo_id
-    repo_id="$(raw_echo "$all_image_repos" | jq '.[] | select(.name == $img_name).id' --arg img_name "$img_name")"
-    [ -z "$repo_id" ] && fail "Container repo for $img_name not found"
+  raw_echo "$all_image_repos" | while read -r image_repo; do
+    local repo_id repo_name
+    repo_id="$(raw_echo "$image_repo" | jq --raw-output .id)"
+    repo_name="$(raw_echo "$image_repo" | jq --raw-output .name)"
+    >&2 echo "Listing tags for container repository $repo_name"
 
     local tags
     tags="$(list_project_container_repository_tags "$dir" "$repo_id")"
@@ -342,6 +320,15 @@ list_project_image_tags() {
     # Filter tags
     raw_echo "$tags" | jq --compact-output '.[] + {"repository_id": $repo_id} | '"$json_tag_filter"'' --arg repo_id "$repo_id"
   done
+}
+
+delete_branch() {
+  local dir="$1"
+  local branch_name="$2"
+
+  # Don't use `git push --delete` because the existing repo may not have a user with these rights
+  # https://docs.gitlab.com/ee/api/branches.html#delete-repository-branch
+  gitlab_dir_api "$dir" delete "repository/branches/$("$scriptdir/url.sh" encode "$branch_name")" >&2
 }
 
 
@@ -385,8 +372,7 @@ delete_container_repository() {
 # https://docs.gitlab.com/ee/api/packages.html#for-a-project
 list_project_package_versions() {
   local dir="$1"
-  local name="$2"
-  gitlab_dir_api "$dir" get-multipage 'packages?package_type=generic' --data-urlencode "package_name=$name"
+  gitlab_dir_api "$dir" get-multipage 'packages?package_type=generic'
 }
 
 delete_package_version() {
@@ -397,6 +383,46 @@ delete_package_version() {
   id="$(raw_echo "$ver_obj" | jq --raw-output .id)"
   # https://docs.gitlab.com/ee/api/container_registry.html#delete-a-registry-repository-tag
   gitlab_dir_api "$dir" delete "packages/$id" >&2
+}
+
+
+# ================================================
+# ==== PEP FOSS binaries_for_* branch cleanup ====
+# ================================================
+# See https://gitlab.pep.cs.ru.nl/pep/core/-/branches?state=all&sort=updated_desc&search=binaries_for_.
+# binaries_for_* branches are created by run_foss_pipeline in config-dockerfiles.sh and not cleaned up on timeout etc.
+
+# See https://docs.gitlab.com/api/pipelines/#list-project-pipelines
+list_running_foss_pipelines() {
+  # Running pipelines in the last two hours
+  local pipelines
+  pipelines="$(gitlab_dir_api "$foss_dir" get-multipage 'pipelines?scope=running' --data-urlencode "updated_after=$(date -Iseconds -d@"$((`date +%s` - 7200))")")"
+  raw_echo "$pipelines" | jq --raw-output '.[].id'
+}
+
+list_foss_binaries_for_branches() {
+  (
+    cd "$foss_dir"
+    prepare_git_repo
+    local branches
+    branches="$(git for-each-ref --format='%(refname:lstrip=-1)' 'refs/remotes/origin/binaries_for_*')"
+    # Convert to JSON strings for generic_cleanup
+    raw_echo "$branches" | jq --raw-input
+  )
+}
+
+delete_foss_branch() {
+  local branch_name_json="$1" # JSON string from list_foss_binaries_for_branches
+  local branch_name
+  branch_name="$(raw_echo "$branch_name_json" | jq --raw-output)"
+  delete_branch "$foss_dir" "$branch_name"
+}
+
+clean_foss_binaries_for_branches() {
+  generic_cleanup 'PEP FOSS binaries_for_* branch cleanup' 'binaries_for_* branches' \
+    list_running_foss_pipelines \
+    list_foss_binaries_for_branches \
+    '. | match("\\d+$").string' . delete_foss_branch false
 }
 
 
@@ -457,13 +483,8 @@ list_used_docker_build_image_tags() {
 
 # List all relevant image tag objects in docker-build
 list_docker_build_image_tags() {
-  # Which images do we want to clean up?
-  local docker_build_container_image_names
-  docker_build_container_image_names="$(yq .variables.DEPLOY_IMAGES "$docker_build_dir/.gitlab-ci.yml")"
-
   # Select sha-* tags
   list_project_image_tags "$docker_build_dir" \
-    "$docker_build_container_image_names" \
     'select(.name | startswith("sha-"))'
 }
 
@@ -498,19 +519,16 @@ list_used_foss_package_versions() {
 # List all relevant package version objects in PEP FOSS.
 # Returns: lines with version objects (https://docs.gitlab.com/ee/api/packages.html#for-a-project)
 list_foss_package_versions() {
-  local pkg_name
-  for pkg_name in $foss_package_names; do
-    >&2 echo "Listing versions for package $pkg_name"
-    local versions
-    versions="$(set_opts && list_project_package_versions "$foss_dir" "$pkg_name")"
-    # Split from assignment because we don't have pipefail
-    raw_echo "$versions" | jq --compact-output '.[]'
-  done
+  >&2 echo "Listing package versions..."
+  local versions
+  versions="$(set_opts && list_project_package_versions "$foss_dir")"
+  # Split from assignment because we don't have pipefail
+  raw_echo "$versions" | jq --compact-output '.[]'
 }
 
 delete_foss_package_version() {
   local ver_obj="$1"
-  delete_package_version "$foss_dir" "$1"
+  delete_package_version "$foss_dir" "$ver_obj"
 }
 
 # Command to clean PEP FOSS unused package versions
@@ -530,7 +548,8 @@ clean_foss_packages() {
 # See https://gitlab.pep.cs.ru.nl/pep/core/container_registry.
 # tags are just named `<commit SHA>`.
 # We keep tags for protected references,
-# but in theory all missing images can be rebuilt automatically
+# but in theory all missing images can be rebuilt automatically.
+# There are also tages named `test-<pipeline ID>-<commit SHA>` that should be cleaned up by the GitLab cleanup policy.
 
 # List PEP FOSS image tags that we may want to keep:
 # image tags for protected branches and git tags in PEP FOSS
@@ -542,7 +561,6 @@ list_used_foss_image_tags() {
 list_foss_image_tags() {
   # Select tags with names in SHA-1 commit format
   list_project_image_tags "$foss_dir" \
-    "$foss_container_image_names" \
     'select(.name | test("^[0-9a-f]{40}$"))'
 }
 
@@ -563,33 +581,31 @@ clean_foss_containers() {
 # ===========================================
 # ==== DTAP container repository cleanup ====
 # ===========================================
-# See https://gitlab.pep.cs.ru.nl/pep/ops/container_registry.
+# See https://gitlab.pep.cs.ru.nl/pep/dtap/container_registry.
 # There are separate image repositories per branch / git tag, prefixed with `branch/`.
 # We can throw away a whole repository if the corresponding branch / git tag does not exist anymore.
+# Note: pep/ops> and project repos use the same layout, but have fewer branches,
+# so these are handled by a GitLab cleanup policy (best-effort: may retain repos for old branches).
 
 # List branches & git tags in DTAP git repo, plus their slugs
 list_used_dtap_refs() {
   (
     # List DTAP branches/tags
-    cd "${dtap_dir:?Pass --dtap-dir}"
+    cd "${dtap_dir:?Pass --dtap-dir path to pep/dtap}"
     prepare_git_repo
     git for-each-ref --format='%(objecttype) %(refname) %(refname:lstrip=-1)' 'refs/remotes/origin/*' |
     while read -r objecttype refname refname_short; do
       case "$objecttype" in
         commit|tag)
           >&2 echo "$refname_short/* in used by $objecttype $refname"
-          for img_name in $dtap_container_image_names; do
-            raw_echo "$refname_short/$img_name "
-          done
+          raw_echo "$refname_short "
 
           # Currently we do not slugify repository names, but we might in the future.
           # (Note: slug of release-x.y is release-x-y)
           ref_slug="$(slugify "$refname_short")"
           if [ "$ref_slug" != "$refname_short" ]; then
             >&2 echo "$ref_slug/* in used by $objecttype $refname"
-            for img_name in $dtap_container_image_names; do
-              raw_echo "$ref_slug/$img_name "
-            done
+            raw_echo "$ref_slug "
           fi
           echo
           ;;
@@ -598,23 +614,16 @@ list_used_dtap_refs() {
   )
 }
 
-# List DTAP container repositories that have the format `*/<dtap_image>`.
+# List DTAP container repositories that have the format `*/*`.
 # Returns: lines with repository objects (https://docs.gitlab.com/ee/api/container_registry.html#within-a-project)
 list_dtap_container_repositories() {
   # List all project container images
   local all_image_repos
   all_image_repos="$(list_project_container_repositories "$dtap_dir")"
-  local img_name
-  for img_name in $dtap_container_image_names; do
-    # Select repos with names ending in /img_name
-    local repos
-    repos="$(raw_echo "$all_image_repos" | jq --compact-output '.[] | select(.name | endswith("/\($img_name)"))' --arg img_name "$img_name")"
-    if [ -n "$repos" ]; then
-      raw_echo_trailing_newline "$repos"
-    else
-      >&2 echo "No container repos found for $img_name"
-    fi
-  done
+
+  local repos
+  repos="$(raw_echo "$all_image_repos" | jq --compact-output '.[] | select(.name | contains("/"))')"
+  raw_echo_trailing_newline "$repos"
 }
 
 delete_dtap_container_repository() {
@@ -624,17 +633,18 @@ delete_dtap_container_repository() {
 
 # Command to clean DTAP unused container repositories
 clean_dtap_container_repositories() {
+  # Use branch name as version
   generic_cleanup 'DTAP container repository cleanup' 'container repositories' \
     list_used_dtap_refs \
     list_dtap_container_repositories \
-    .name .location delete_dtap_container_repository
+    '.name | split("/")[0]' .location delete_dtap_container_repository
 }
 
 
 # =================================
 # ==== DTAP git branch cleanup ====
 # =================================
-# See https://gitlab.pep.cs.ru.nl/pep/ops/-/branches/all.
+# See https://gitlab.pep.cs.ru.nl/pep/dtap/-/branches/all.
 # The update-foss-submodule-in-dtap job in the PEP FOSS CI creates a branch in DTAP for each FOSS branch,
 # where it sets the FOSS submodule to the pipeline commit.
 # This command deletes branches in DTAP that:
@@ -649,7 +659,7 @@ clean_dtap_branches() {
   printf '\n\n==== Initiating %s ====\n' "$cleanup_description"
 
   (
-    cd "${dtap_dir:?Pass --dtap-dir}"
+    cd "${dtap_dir:?Pass --dtap-dir path to pep/dtap}"
     prepare_git_repo
   )
 
@@ -738,9 +748,7 @@ clean_dtap_branches() {
   >&2 printf '\nDeleting branches...\n\n'
   raw_echo_trailing_newline "$obsolete_branches" | while read -r branch_name; do
     >&2 echo "Deleting $branch_name"
-    # Don't use `git push --delete` because the existing repo may not have a user with these rights
-    # https://docs.gitlab.com/ee/api/branches.html#delete-repository-branch
-    gitlab_dir_api "$dtap_dir" delete "repository/branches/$("$scriptdir/url.sh" encode "$branch_name")" >&2
+    delete_branch "$dtap_dir" "$branch_name"
     if [ -n "$should_delete_single" ]; then break; fi
   done
 
@@ -750,6 +758,7 @@ clean_dtap_branches() {
 
 
 clean_foss() {
+  clean_foss_binaries_for_branches
   clean_docker_build_containers
   clean_foss_packages
   clean_foss_containers
@@ -759,19 +768,18 @@ clean_dtap() {
   clean_dtap_container_repositories  # Execute this after clean_dtap_branches so we can clean more
 }
 
+# All need: curl, git, jq
 case $command in
-  # Needs: curl, git, jq, yq
+  clean-foss-binaries-for-branches)
+    clean_foss_binaries_for_branches ;;
   clean-docker-build-containers)
     clean_docker_build_containers ;;
-  # Needs: curl, git, jq
   clean-foss-packages)
     clean_foss_packages ;;
-  # Needs: curl, git, jq
   clean-foss-containers)
     clean_foss_containers ;;
   clean-dtap-branches)
     clean_dtap_branches ;;
-  # Needs: curl, git, jq
   clean-dtap-container-repos)
     clean_dtap_container_repositories ;;
   clean-foss)

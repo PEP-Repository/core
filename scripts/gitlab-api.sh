@@ -92,7 +92,8 @@ get_multipage() {
   joined=""
   ipage=1
   while [ "$ipage" -ne 0 ]; do
-    page=$(request get "${rel_path}${delim}page=$ipage" "$@")
+    # per_page=100 is the maximum allowed, so like this we minimize the number of requests
+    page=$(request get "${rel_path}${delim}per_page=100&page=$ipage" "$@")
     if [ "$(printf '%s' "$page" | jq length)" -eq 0 ]; then
       ipage=0
     else
