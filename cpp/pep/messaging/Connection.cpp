@@ -237,7 +237,7 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
 Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler)
   : mMessageInBody(MAX_SIZE_OF_MESSAGE, '\0'), mKeepAliveTimer(ioContext), mScheduler(Scheduler::Create(ioContext)), mRequestor(Requestor::Create(ioContext, *mScheduler)),
   mNode(node), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
-  assert(mBinary->status() == networking::Transport::ConnectivityStatus::connected);
+  assert(mBinary->status() == networking::Transport::ConnectivityStatus::Connected);
   assert(node != nullptr);
 
   mDescription = node->describe() + " connected to " + mBinary->remoteAddress();
@@ -647,22 +647,22 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
 
 void Connection::handleBinaryConnectivityChange(const networking::Connection::ConnectivityChange& change) {
   switch (change.updated) {
-  case networking::Transport::ConnectivityStatus::unconnected: // Prevent compiler warnings due to switch statement not handling all enum values
+  case networking::Transport::ConnectivityStatus::Unconnected: // Prevent compiler warnings due to switch statement not handling all enum values
     assert(false);
     return;
-  case networking::Transport::ConnectivityStatus::reconnecting:
+  case networking::Transport::ConnectivityStatus::Reconnecting:
     this->clearState(true);
     this->setStatus(Status::Reinitializing);
     return;
-  case networking::Transport::ConnectivityStatus::connecting:
+  case networking::Transport::ConnectivityStatus::Connecting:
     assert(!mVersionValidated);
     this->setStatus(Status::Initializing);
     return;
-  case networking::Transport::ConnectivityStatus::connected:
+  case networking::Transport::ConnectivityStatus::Connected:
     this->handleBinaryConnectionEstablished();
     return;
-  case networking::Transport::ConnectivityStatus::disconnecting:
-  case networking::Transport::ConnectivityStatus::disconnected:
+  case networking::Transport::ConnectivityStatus::Disconnecting:
+  case networking::Transport::ConnectivityStatus::Disconnected:
     this->close();
     return;
   }

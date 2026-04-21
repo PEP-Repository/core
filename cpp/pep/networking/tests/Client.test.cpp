@@ -61,8 +61,8 @@ private:
   }
 
   void handleConnectionConnectivityChange(const pep::networking::Connection::ConnectivityChange& change) {
-    if (change.previous == pep::networking::Connection::ConnectivityStatus::connecting) {
-      this->handleConnectionAttempt(change.updated == pep::networking::Connection::ConnectivityStatus::connected);
+    if (change.previous == pep::networking::Connection::ConnectivityStatus::Connecting) {
+      this->handleConnectionAttempt(change.updated == pep::networking::Connection::ConnectivityStatus::Connected);
     }
   }
 
@@ -258,7 +258,7 @@ TEST(Client, ReadAll) {
     *connectivityChangeSub = connection->onConnectivityChange.subscribe([connectivityChangeSub, client](const pep::networking::Connection::ConnectivityChange& change) {
       PEP_DEFER(client->shutdown()); // Stop trying to reconnect
       connectivityChangeSub->cancel(); // Break circular reference
-      ASSERT_NE(change.updated, pep::networking::Connection::ConnectivityStatus::connected);
+      ASSERT_NE(change.updated, pep::networking::Connection::ConnectivityStatus::Connected);
       });
 
     connection->asyncReadAll([client, connection](const pep::networking::DelimitedTransfer::Result& result) {

@@ -57,7 +57,7 @@ void Node::openSocket(const SocketConnectionAttempt::Handler& onSocketConnection
   // Discard our (shared_)ptr to the socket when it gets closed
   auto subscription = socket->onConnectivityChange.subscribe([weak, socket](const Protocol::Socket::ConnectivityChange& change) {
     auto self = weak.lock();
-    if (change.updated >= Transport::ConnectivityStatus::disconnecting && self != nullptr) {
+    if (change.updated >= Transport::ConnectivityStatus::Disconnecting && self != nullptr) {
       self->mSockets.erase(socket);
     }
     });

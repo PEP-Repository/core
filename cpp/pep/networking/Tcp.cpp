@@ -15,11 +15,11 @@ protected:
   StreamSocket& streamSocket() override { return mStreamSocket; }
 
   void close() override {
-    if (this->status() != ConnectivityStatus::unconnected && this->status() < ConnectivityStatus::disconnecting) {
-      this->setConnectivityStatus(ConnectivityStatus::disconnecting);
+    if (this->status() != ConnectivityStatus::Unconnected && this->status() < ConnectivityStatus::Disconnecting) {
+      this->setConnectivityStatus(ConnectivityStatus::Disconnecting);
       mImplementor.close();
     }
-    this->setConnectivityStatus(ConnectivityStatus::disconnected);
+    this->setConnectivityStatus(ConnectivityStatus::Disconnected);
   }
 
 public:

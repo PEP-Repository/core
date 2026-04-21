@@ -52,7 +52,7 @@ void Client::establishConnection() {
 
 void Client::Connection::establish() {
   mReconnect = true;
-  this->setConnectivityStatus(ConnectivityStatus::connecting);
+  this->setConnectivityStatus(ConnectivityStatus::Connecting);
 
   auto client = mClient.lock();
   if (client == nullptr || !client->isRunning()) {
@@ -98,7 +98,7 @@ void Client::Connection::establish() {
     }
     self->setSocket(*socketResult, [weak](const ConnectivityChange& socketConnectivityChange) {
       auto self = weak.lock();
-      if (self != nullptr && socketConnectivityChange.updated == ConnectivityStatus::disconnecting) {
+      if (self != nullptr && socketConnectivityChange.updated == ConnectivityStatus::Disconnecting) {
         self->reconnect();
       }
       });
@@ -122,10 +122,10 @@ std::optional<ExponentialBackoff::Timeout> Client::Connection::reconnect() {
     return std::nullopt;
   }
 
-  assert(this->status() < ConnectivityStatus::disconnecting);
-  this->setConnectivityStatus(ConnectivityStatus::reconnecting);
+  assert(this->status() < ConnectivityStatus::Disconnecting);
+  this->setConnectivityStatus(ConnectivityStatus::Reconnecting);
   if (!this->shouldReconnect()) { // Client may have shut down as a result of our status update
-    this->setConnectivityStatus(ConnectivityStatus::disconnecting);
+    this->setConnectivityStatus(ConnectivityStatus::Disconnecting);
     return std::nullopt;
   }
 
