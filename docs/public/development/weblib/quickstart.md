@@ -46,7 +46,7 @@ emsdk/{{compiler_version}}
 
 ### Install requirements via Conan
 
-As host profile, you can use or include `docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
+As host profile, you can use or include `./docker-build/builder/conan/conan_profile_wasm32`, which automatically detects the EMSDK in your environment.
 
 !!! warning "Emscripten version detection"
     Please make sure you have Conan 2.27 or later for `detect_emcc_compiler` to work correctly.
@@ -71,6 +71,7 @@ conan install \
   -o"&:subbuild_name=wasm32"
 ```
 
+- If you did not install EMSDK via Conan, you can use `--profile=./docker-build/builder/conan/conan_profile_wasm32` as you didn't need to create a custom `wasm32` profile
 - `--profile` == `--profile:host`: the target platform
 - Also add `--profile:build=./docker-build/builder/conan/conan_profile` if you have no default build profile installed (see pep/core> README)
 - `-s"&:build_type=Debug"`: Same as normal, this builds pep as Debug, but dependencies as Release according to the profile
@@ -78,11 +79,7 @@ conan install \
 
 ### Configure PEP
 
-First configure PEP as you would normally do to develop PEP on your platform. E.g. on Windows:
-
-```shell
-cd build & ..\scripts\cmake-vs.bat .. ..\..\ops\keys & cd ..
-```
+To be able to build the PEP services for the WASM client to communicate with, first install dependencies and configure PEP as you would normally do to develop PEP on your platform, see `README.md`.
 
 Then (from the repo root directory) configure the WASM build as shown below. The value for `PKI_DIR` should point to the PKI directory of the regular build that you just configured. This will allow you to test with local servers, without which you will likely see `boost::system::system_error: certificate verify failed (SSL routines)` when connecting.
 
@@ -101,7 +98,7 @@ cmake --preset=wasm32-debug -DPKI_DIR=./build/pki/
 
 If you installed EMSDK via Conan, you need to put Node.js in PATH by sourcing the `generators/conanbuild` script from your `wasm32` build folder.
 
-Build Debug & start local servers:
+The following script first builds the PEP services for your platform, then builds the weblib and starts the PEP services and a web server. If you are not using a Debug configuration (for the weblib or the PEP services), you need to pass extra arguments to the script (try `--help`).
 
 ```shell
 ./weblib/pep-sample-client/start_dev.sh
