@@ -35,12 +35,12 @@ TEST(CallbackCoroutine, successVoid) {
   EXPECT_TRUE(callbackRan);
 }
 
-CallbackCoroutine<int> multiParams(std::function<void(int)>, std::function<void()>, int i) {
+CallbackCoroutine<int> params(std::function<void(int)>, std::function<void()>, int i) {
   co_return i;
 }
-TEST(CallbackCoroutine, multiParams) {
+TEST(CallbackCoroutine, params) {
   bool callbackRan = false;
-  multiParams([&](int i) {
+  params([&](int i) {
     EXPECT_EQ(i, 42);
     callbackRan = true;
   }, [] {
