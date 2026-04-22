@@ -437,6 +437,7 @@ retrieve-lockfile:
 
 .configure-conan-and-cmake: &configure-conan-and-cmake
   # Do not build dependencies, should already be built in docker-build
+  - concurrency_option_conan=""
   - |
     if [ -n "$concurrency_limit" ]; then
       concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
