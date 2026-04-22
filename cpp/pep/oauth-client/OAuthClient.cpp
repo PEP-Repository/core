@@ -5,7 +5,7 @@
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Win32Api.hpp>
-#include <pep/networking/SimpleHttpClient.hpp>
+#include <pep/networking/SendHttpRequest.hpp>
 
 #include <cassert>
 #include <sstream>

@@ -20,7 +20,7 @@ add_library(${PROJECT_NAME}Networkinglib STATIC
     Node.cpp Node.hpp
     Protocol.hpp
     Server.cpp Server.hpp
-    SimpleHttpClient.cpp SimpleHttpClient.hpp
+    SendHttpRequest.cpp SendHttpRequest.hpp
     SocketReadBuffer.cpp SocketReadBuffer.hpp
     SslError.cpp SslError.hpp
     StreamSocket.hpp

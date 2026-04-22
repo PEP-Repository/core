@@ -1,4 +1,4 @@
-#include <pep/networking/SimpleHttpClient.hpp>
+#include <pep/networking/SendHttpRequest.hpp>
 
 using namespace pep;
 
