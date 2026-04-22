@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <pep/utils/Attributes.hpp>
+#include <pep/utils/TypeTraits.hpp>
 
 namespace pep {
 
@@ -11,5 +12,7 @@ enum class PEP_ATTRIBUTE_FLAG_ENUM UserIdFlags : uint8_t {
   IsDisplayId = 1 << 1,
   All = (1 << 2) - 1,
 };
+
+static_assert(FlagEnum<UserIdFlags>, "UserIdFlags is a FlagEnum type");
 
 }
