@@ -578,6 +578,7 @@ ubuntu-lts-debug-with-sast:
         echo "No issues found, saved SHA to cache."
       else
         echo "Issues found in reportFiltered.sarif, not saving SHA to cache."
+        echo "Please fix these issues or suppress them in the .inferconfig file in the repo root."
         exit 1
       fi
   artifacts:
