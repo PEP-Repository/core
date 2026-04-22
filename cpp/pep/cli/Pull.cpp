@@ -27,6 +27,7 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
+using namespace pep;
 using namespace pep::cli;
 using namespace std::chrono_literals;
 namespace so = pep::structuredOutput;
