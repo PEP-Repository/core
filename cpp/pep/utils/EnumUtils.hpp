@@ -32,10 +32,11 @@ constexpr inline T& operator|= (T& lhs, const T rhs) noexcept { return lhs = (lh
 template <FlagEnum T>
 constexpr inline T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lhs & rhs); }
 
-/// Test if \p lhs contains at least all the flags of \p rhs
+/// Test if \p haystacks contains at least all the flags of \p needle
 template <FlagEnum T>
 constexpr inline bool Contains(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
 
+/// Returns \p flags if \p condition is true and `T::None` otherwise
 template <FlagEnum T>
 constexpr inline T Select(T flags, bool condition) noexcept { return condition ? flags : T::None; }
 
