@@ -1,9 +1,6 @@
 {
-  "debug-level": 1,
   "skip-analysis-in-path": [
-    ".*rxcpp.*",
-    ".*/usr/include/c\\+\\+/.*",
-    ".*\\\\Tools\\\\MSVC.*"
+    ".*rxcpp.*"
   ],
   "report-suppress-errors": [
     "PULSE_CONST_REFABLE",
@@ -12,7 +9,6 @@
     "PULSE_UNNECESSARY_COPY",
     "PULSE_READONLY_SHARED_PTR_PARAM",
     "PULSE_UNNECESSARY_COPY_OPTIONAL",
-    "OPTIONAL_EMPTY_ACCESS",
     "DEAD_STORE",
     "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
   ],
