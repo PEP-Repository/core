@@ -7,12 +7,9 @@ namespace pep {
 
 enum class PEP_ATTRIBUTE_FLAG_ENUM UserIdFlags : uint8_t {
   None = 0,
-  IsPrimaryId = 1<<0,
-  IsDisplayId = 1<<1,
+  IsPrimaryId = 1 << 0,
+  IsDisplayId = 1 << 1,
+  All = (1 << 2) - 1,
 };
-
-UserIdFlags operator|(UserIdFlags lhs, UserIdFlags rhs);
-UserIdFlags operator&(UserIdFlags lhs, UserIdFlags rhs);
-UserIdFlags operator|=(UserIdFlags& lhs, UserIdFlags rhs);
 
 }
