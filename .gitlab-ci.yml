@@ -4,6 +4,10 @@ spec:
       options: ['linted', 'unlinted']
       default: unlinted
       description: Enable linter during compilation
+    use_sast:
+      description: Enable SAST build (yes/no)
+      type: boolean
+      default: false
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -431,6 +435,37 @@ retrieve-lockfile:
     paths:
       - ./docker-build/builder/conan/conan-ci.lock
 
+.configure-conan-and-cmake: &configure-conan-and-cmake
+  # Do not build dependencies, should already be built in docker-build
+  - concurrency_option_conan=""
+  - |
+    if [ -n "$concurrency_limit" ]; then
+      concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
+    fi
+  - >
+    conan install ./
+    --lockfile=./docker-build/builder/conan/conan-ci.lock
+    -s build_type=$CMAKE_BUILD_TYPE
+    $concurrency_option_conan
+    -o "&:with_assessor=False"
+    -o "&:with_castor=$WITH_CASTOR"
+    -o "&:with_tests=$WITH_TESTS"
+    -o "&:with_benchmark=$WITH_BENCHMARK"
+    -o "&:custom_build_folder=True"
+    --output-folder=./$BUILD_DIRECTORY/
+  - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
+  - *set-enable-deprecation-errors
+  - >
+    cmake --preset conan-$build_type_lower
+    -DCMAKE_C_COMPILER_LAUNCHER=ccache
+    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+    -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+    -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
+    -DENABLE_OAUTH_TEST_USERS=OFF
+    -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
+    -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
+    -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+
 .ubuntu-build-base:
   <<: *ccache-configuration
   stage: build
@@ -451,34 +486,7 @@ retrieve-lockfile:
     -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
     -   fi
     - fi
-    - |
-      if [ -n "$concurrency_limit" ]; then
-        concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
-      fi
-    # Do not build dependencies, should already be built in docker-build
-    - >
-      conan install ./
-      --lockfile=./docker-build/builder/conan/conan-ci.lock
-      -s build_type=$CMAKE_BUILD_TYPE
-      $concurrency_option_conan
-      -o "&:with_assessor=False"
-      -o "&:with_castor=$WITH_CASTOR"
-      -o "&:with_tests=$WITH_TESTS"
-      -o "&:with_benchmark=$WITH_BENCHMARK"
-      -o "&:custom_build_folder=True"
-      --output-folder=./$BUILD_DIRECTORY/
-    - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
-    - *set-enable-deprecation-errors
-    - >
-      cmake --preset conan-$build_type_lower
-      -DCMAKE_C_COMPILER_LAUNCHER=ccache
-      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
-      -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
-      -DENABLE_OAUTH_TEST_USERS=OFF
-      -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
-      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
-      -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    - *configure-conan-and-cmake
     - cmake --build --preset conan-$build_type_lower
 
     # Check for lines only in second file (tests on disk)
@@ -493,6 +501,90 @@ retrieve-lockfile:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *stage-artifacts
     - *ccache-print
+
+ubuntu-lts-debug-with-sast:
+  stage: build
+  rules:
+    - if: $[[ inputs.use_sast ]] == true
+  tags:
+    - docker
+    - sast
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  needs:
+    - job: retrieve-lockfile
+      optional: true
+  variables:
+    HTTPSERVER_WITH_TLS: "OFF"
+    BUILD_GO_SERVERS: "off"
+    WITH_CASTOR: "True"
+    WITH_TESTS: "False"
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    WITH_BENCHMARK: "False"
+    VERIFY_HEADERS_STANDALONE: "off"
+    ENABLE_LINTER: "no"
+  cache:
+    - key: "ccache"
+      paths:
+        - ccache/
+    - key: "infer-state"
+      paths:
+        - infer_state/
+  #language=bash
+  script:
+    - set -euo pipefail
+    - mkdir -p infer_state
+    - CURRENT_SHA="$CI_COMMIT_SHA"
+    - echo "Using current SHA $CURRENT_SHA"
+    - |
+      if [ -f infer_state/last_sha ]; then
+        LAST_PROCESSED_SHA=$(cat infer_state/last_sha)
+        echo "Using cached SHA $LAST_PROCESSED_SHA"
+      else
+        echo "No cached SHA found, using fallback (HEAD~1)"
+        if git rev-parse HEAD~1 >/dev/null 2>&1; then
+          LAST_PROCESSED_SHA=$(git rev-parse HEAD~1)
+        else
+          echo "No fallback SHA found using git rev-parse HEAD~1, cannot run incremental analysis"
+          exit 1
+        fi
+      fi
+    # We have global GIT_DEPTH=20 in the gitlab gui, obtain the SHA in case it's older
+    - git fetch origin "$LAST_PROCESSED_SHA"
+    - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" --no-relative cpp/pep > index.txt
+    - *checkout-docker-build-script-sh-steps
+    - *set_concurrency_limit
+    - *configure-conan-and-cmake
+    - bear -- cmake --build --preset conan-$build_type_lower
+    - infer capture --reactive
+                    --compilation-database-escaped ./compile_commands.json
+                    --keep-going
+    - infer analyze --incremental-analysis
+                    --changed-files-index index.txt
+    - infer report --sarif
+    - |
+      cat infer-out/report.sarif | jq '
+        .runs[0].results |= map(
+          select(
+            all(
+              .codeFlows[]?.threadFlows[]?.locations[]?.location.physicalLocation.artifactLocation.uri;
+              test("rxcpp") | not
+            )
+          )
+        )
+      ' > reportFiltered.sarif
+    - |
+      if [ "$(jq '.runs[0].results | length' reportFiltered.sarif)" -eq 0 ]; then
+        echo -n "${CURRENT_SHA}" > infer_state/last_sha
+        echo "No issues found, saved SHA to cache."
+      else
+        echo "Issues found in reportFiltered.sarif, not saving SHA to cache."
+        echo "Please fix these issues or suppress them in the .inferconfig file in the repo root."
+        exit 1
+      fi
+  artifacts:
+    when: always
+    paths:
+      - reportFiltered.sarif
 
 .ubuntu-build-with-tests-base:
   extends:
@@ -522,7 +614,6 @@ retrieve-lockfile:
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "False"
-    MEM_ANALYSIS_TOOL: "none"
     VERIFY_HEADERS_STANDALONE: "off"
 
 ubuntu-lts-debug:
@@ -540,7 +631,6 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     WITH_CASTOR: "False"
-    MEM_ANALYSIS_TOOL: "none"
     ARTIFACTS: "$UNIT_TESTS_BASE"
   artifacts:
     expire_in: 8h
@@ -553,7 +643,6 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
   extends: .ubuntu-lts-settings
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    MEM_ANALYSIS_TOOL: "valgrind"
     WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
 
@@ -627,7 +716,6 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
     WITH_TESTS: "False"
-    MEM_ANALYSIS_TOOL: "none"
     WITH_BENCHMARK: "False"
     HTTPSERVER_WITH_TLS: "ON"
     ARTIFACTS: >-
@@ -647,7 +735,6 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
   variables:
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "True"
-    MEM_ANALYSIS_TOOL: "none"
     WITH_TESTS: "True"
     WITH_BENCHMARK: "False"
 
@@ -890,7 +977,6 @@ macos-client-arm:
       allow_failure: true
   variables:
     WITH_CASTOR: "False" # Currently castor does not compile on macOS
-    MEM_ANALYSIS_TOOL: "none"
     ARTIFACTS: >-
       $EXECUTABLES_APPS
       $EXECUTABLES_PEP_SERVICES
@@ -1045,6 +1131,8 @@ ubuntu-lts-debug-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-lts-debug-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "valgrind"
   needs: [ubuntu-lts-debug]
 
 ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
@@ -1066,18 +1154,24 @@ ubuntu-lts-release-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-lts-release-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "valgrind"
   needs: [ubuntu-lts-release]
 
 ubuntu-rolling-debug-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-rolling-debug-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-rolling-debug]
 
 ubuntu-rolling-release-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-rolling-release-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-rolling-release]
 
 #################### Windows ##################
