@@ -3,6 +3,7 @@
 #include <pep/utils/TypeTraits.hpp>
 
 namespace pep {
+inline namespace enumUtils { // to allow selective import of just these definitions
 
 //XXX Replace by std::to_underlying in C++23
 [[nodiscard]] constexpr auto ToUnderlying(Enum auto v) { return static_cast<std::underlying_type_t<decltype(v)>>(v); }
@@ -35,4 +36,5 @@ constexpr inline T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lh
 template <FlagEnum T>
 constexpr inline bool Contains(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
 
-}
+} // namespace enumUtils
+} // namespace pep
