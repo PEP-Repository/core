@@ -403,13 +403,13 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
       SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
-  if (Contains(formats, so::FormatFlags::Csv)) {
+  if (TestFlags(formats, so::FormatFlags::Csv)) {
     exportAs("csv", [&table](std::ofstream& stream) { so::csv::append(stream, table); });
   }
-  if (Contains(formats, so::FormatFlags::Json)) {
+  if (TestFlags(formats, so::FormatFlags::Json)) {
     exportAs("json", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
-  if (Contains(formats, so::FormatFlags::Json)) {
+  if (TestFlags(formats, so::FormatFlags::Json)) {
     exportAs("yaml", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
 }

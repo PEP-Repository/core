@@ -34,11 +34,11 @@ constexpr inline T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lh
 
 /// Test if \p haystacks contains at least all the flags of \p needle
 template <FlagEnum T>
-constexpr inline bool Contains(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
+constexpr inline bool TestFlags(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
 
 /// Returns \p flags if \p condition is true and `T::None` otherwise
 template <FlagEnum T>
-constexpr inline T Select(T flags, bool condition) noexcept { return condition ? flags : T::None; }
+constexpr inline T SetFlags(T flags, bool condition) noexcept { return condition ? flags : T::None; }
 
 } // namespace enumUtils
 } // namespace pep
