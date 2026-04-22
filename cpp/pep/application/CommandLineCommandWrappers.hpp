@@ -46,11 +46,9 @@ public:
       mArgumentTransformer(std::move(transformer)),
       mValuesTransformer(std::move(valuesTransformer)) {}
 
-  bool isUndocumented() const override { return true; }
-
   Parameters getSupportedParameters() const override {
     return ChildCommandOf<TParent>::getSupportedParameters()
-      + Parameter("forwarded", "Forwards all arguments to the target command.").value(Value<std::string>().positional().multiple());
+      + Parameter("forwarded", std::nullopt).value(Value<std::string>().positional().multiple());
   }
 
   int execute() override {

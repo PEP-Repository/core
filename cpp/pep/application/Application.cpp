@@ -475,40 +475,43 @@ int Application::printVersionInfo(const commandline::LexedValues& lexed) {
   return EXIT_SUCCESS;
 }
 
-void Application::finalizeParameters() {
-  Command::finalizeParameters();
+void Application::finalizeParameters(bool isForwardingDispatch) {
+  Command::finalizeParameters(isForwardingDispatch);
 
   const auto& values = this->getParameterValues();
-  mShowVersionInfo = !values.has("suppress-version-info");
+  
+  // Only initialize logging and version info once, and skip entirely during forwarding dispatch
+  if (!isForwardingDispatch) {
+    mShowVersionInfo = !values.has("suppress-version-info");
+    std::vector<std::shared_ptr<Logging>> logging;
 
-  std::vector<std::shared_ptr<Logging>> logging;
+    std::optional<severity_level> console_level;
+    if (values.has("loglevel")) {
+      console_level = Logging::ParseSeverityLevel(values.get<std::string>("loglevel"));
+    }
+    if (!console_level) {
+      console_level = consoleLogMinimumSeverityLevel();
+    }
+    if (console_level) {
+      logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
+      usingConsoleLog_ = true;
+    }
 
-  std::optional<severity_level> console_level;
-  if (values.has("loglevel")) {
-    console_level = Logging::ParseSeverityLevel(values.get<std::string>("loglevel"));
-  }
-  if (!console_level) {
-    console_level = consoleLogMinimumSeverityLevel();
-  }
-  if (console_level) {
-    logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
-    usingConsoleLog_ = true;
-  }
+    auto file_level = fileLogMinimumSeverityLevel();
+    if (file_level) {
+      logging.push_back(std::make_shared<FileLogging>(*file_level));
+    }
 
-  auto file_level = fileLogMinimumSeverityLevel();
-  if (file_level) {
-    logging.push_back(std::make_shared<FileLogging>(*file_level));
-  }
+    auto syslog_level = syslogLogMinimumSeverityLevel();
+    if (syslog_level) {
+      logging.push_back(std::make_shared<SysLogging>(*syslog_level));
+    }
 
-  auto syslog_level = syslogLogMinimumSeverityLevel();
-  if (syslog_level) {
-    logging.push_back(std::make_shared<SysLogging>(*syslog_level));
-  }
+    Logging::Initialize(logging);
 
-  Logging::Initialize(logging);
-
-  if (mShowVersionInfo) {
-    LogVersionInfo("binary", BinaryVersion::current.getSummary());
+    if (mShowVersionInfo) {
+      LogVersionInfo("binary", BinaryVersion::current.getSummary());
+    }
   }
 }
 

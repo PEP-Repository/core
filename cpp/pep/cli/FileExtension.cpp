@@ -587,8 +587,8 @@ protected:
       + MultiCellQuery::Parameters();
   }
 
-  void finalizeParameters() override {
-    FileExtensionRequiringChildCommand::finalizeParameters();
+  void finalizeParameters(bool isForwardingDispatch) override {
+    FileExtensionRequiringChildCommand::finalizeParameters(isForwardingDispatch);
     if (!pep::IsValidFileExtension(this->getParameterValues().get<std::string>("extension"))) {
       throw std::runtime_error("Please specify a valid file extension, including the leading period/dot character");
     }
@@ -709,7 +709,7 @@ protected:
       + MultiCellQuery::Parameters();
   }
 
-  void finalizeParameters() override {
+  void finalizeParameters(bool isForwardingDispatch) override {
     const auto& parameterValues = this->getParameterValues();
 
     if (!MultiCellQuery::SpecifiesColumns(parameterValues)) {
@@ -719,7 +719,7 @@ protected:
       throw std::runtime_error("Query specifies no participants");
     }
 
-    ChildCommandOf<CommandFileExtension>::finalizeParameters();
+    ChildCommandOf<CommandFileExtension>::finalizeParameters(isForwardingDispatch);
   }
 
   int execute() override {

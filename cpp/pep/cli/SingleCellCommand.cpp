@@ -29,8 +29,8 @@ pep::commandline::Parameters SingleCellCommand::getSupportedParameters() const {
     + pep::cli::TicketFile::GetParameters(true);
 }
 
-void SingleCellCommand::finalizeParameters() {
-  ChildCommandOf<CliApplication>::finalizeParameters();
+void SingleCellCommand::finalizeParameters(bool isForwardingDispatch) {
+  ChildCommandOf<CliApplication>::finalizeParameters(isForwardingDispatch);
 
   const auto& parameterValues = this->getParameterValues();
   if (parameterValues.has("participant") == parameterValues.has("short-pseudonym")) {

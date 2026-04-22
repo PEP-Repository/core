@@ -331,7 +331,7 @@ protected:
       + pep::commandline::Parameter("resolve-symlinks", "Symlinks in the data should be resolved and followed. If this flag is not set and symlinks are found, execution is halted.");
   }
 
-  void finalizeParameters() override {
+  void finalizeParameters(bool isForwardingDispatch) override {
     std::optional<std::filesystem::path> path;
 
     // Store explicitly specified input path before default is applied
@@ -341,7 +341,7 @@ protected:
     }
 
     // Apply defaults
-    SingleCellModificationCommand::finalizeParameters();
+    SingleCellModificationCommand::finalizeParameters(isForwardingDispatch);
 
     // Check parameter sanity
     unsigned sources = 0U;

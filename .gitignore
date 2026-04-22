@@ -60,3 +60,4 @@ ClientKeys.json
 OAuthToken.json
 pulled-data-pending/
 pulled-data/
+rotated_logs/*

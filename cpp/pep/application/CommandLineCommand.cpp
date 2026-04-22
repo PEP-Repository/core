@@ -145,7 +145,7 @@ std::optional<int> Command::processLexedParameters(const LexedValues& lexed) {
   return std::nullopt;
 }
 
-void Command::finalizeParameters() {
+void Command::finalizeParameters(bool isForwardingDispatch) {
   assert(!mParametersFinalized); // Prevent this method from being invoked multiple times
   this->getSupportedParameters().finalize(*mParameterValues);
   mParametersFinalized = true;
@@ -297,7 +297,7 @@ int Command::dispatchTo(CommandPath childPath, NamedValues leafValues, std::queu
     mParametersLexed = true;
     mParametersFinalized = false;
     try {
-      this->finalizeParameters();
+      this->finalizeParameters(true);
       assert(mParametersFinalized);
     }
     catch (const std::exception& error) {
@@ -390,7 +390,7 @@ int Command::dispatchTo(CommandPath childPath, NamedValues leafValues, std::queu
     }
   }
   try {
-    this->finalizeParameters();
+    this->finalizeParameters(false);
     assert(mParametersFinalized);
   }
   catch (const std::exception& error) {

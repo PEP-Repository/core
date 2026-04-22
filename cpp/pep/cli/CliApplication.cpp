@@ -41,7 +41,7 @@ pep::commandline::Parameters CliApplication::getSupportedParameters() const {
     + pep::commandline::Parameter("oauth-token-group", "Group for generated token").value(pep::commandline::Value<std::string>().defaultsTo(pep::UserGroup::ResearchAssessor));
 }
 
-void CliApplication::finalizeParameters() {
+void CliApplication::finalizeParameters(bool isForwardingDispatch) {
   // Get explicitly specified parameter values (before defaults are applied by base class's finalizeParameters)
   const auto& values = this->getParameterValues();
   if (values.has("oauth-token-subject")) {
@@ -51,7 +51,7 @@ void CliApplication::finalizeParameters() {
     mRequiredGroup = values.get<std::string>("oauth-token-group");
   }
 
-  pep::commandline::Utility::finalizeParameters();
+  pep::commandline::Utility::finalizeParameters(isForwardingDispatch);
 }
 
 rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnrolled) {

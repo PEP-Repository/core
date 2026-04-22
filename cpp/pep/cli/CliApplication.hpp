@@ -23,7 +23,7 @@ protected:
   std::string getDescription() const override;
   pep::commandline::Parameters getSupportedParameters() const override;
   inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli"; }
-  void finalizeParameters() override;
+  void finalizeParameters(bool isForwardingDispatch) override;
   std::vector<std::shared_ptr<pep::commandline::Command>> createChildCommands() override;
 
 private:

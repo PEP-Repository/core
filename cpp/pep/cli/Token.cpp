@@ -27,8 +27,8 @@ protected:
     return GetRequiredExpirationSpecificationMessage();
   }
 
-  void finalizeParameters() override {
-    ChildCommandOf<CommandToken>::finalizeParameters();
+  void finalizeParameters(bool isForwardingDispatch) override {
+    ChildCommandOf<CommandToken>::finalizeParameters(isForwardingDispatch);
 
     const auto& values = this->getParameterValues();
     if (values.has("expiration-unixtime") == values.has("expiration-yyyymmdd")) {

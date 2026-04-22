@@ -14,7 +14,7 @@ protected:
 
   std::optional<std::string> getAdditionalDescription() const override;
   pep::commandline::Parameters getSupportedParameters() const override;
-  void finalizeParameters() override;
+  void finalizeParameters(bool isForwardingDispatch) override;
   int execute() override;
 
   virtual std::vector<std::string> ticketAccessModes() const = 0;

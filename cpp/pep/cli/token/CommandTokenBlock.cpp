@@ -76,8 +76,8 @@ protected:
               .value(pep::commandline::Value<std::string>().required());
   }
 
-  void finalizeParameters() override {
-    ChildCommandOf<CommandTokenBlock>::finalizeParameters();
+  void finalizeParameters(bool isForwardingDispatch) override {
+    ChildCommandOf<CommandTokenBlock>::finalizeParameters(isForwardingDispatch);
 
     const auto& values = this->getParameterValues();
     namespace param = cliParameterNames;
