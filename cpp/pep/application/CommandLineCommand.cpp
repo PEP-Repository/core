@@ -182,60 +182,118 @@ std::optional<int> Command::checkNoLongerSupportedParameters(const Parameters& p
   return std::nullopt;
 }
 
-std::optional<int> Command::applyParameterDeprecations(const Parameters& parameters) {
+void Command::showParameterDeprecationWarnings(const Parameters& parameters) {
+  for (const auto& param : parameters) {
+    if (param.getDeprecationMessage().has_value() && mParameterValues->has(param.getName())) {
+      std::cerr << "Warning: '--" << param.getName() << "' is deprecated. " << *param.getDeprecationMessage() << std::endl;
+    }
+  }
+}
+
+std::optional<int> Command::applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs) {
   Command* dispatchAncestor = nullptr;
-  bool anyDeprecated = false;
+  bool anyTransformed = false;
   NamedValues mergedToAdd;
-  std::string mergedChildPath;
+  CommandPath mergedChildPath;
 
   for (const auto& param : parameters) {
-    if (!param.getDeprecationMessage().has_value() || !mParameterValues->has(param.getName())) {
+    if (!param.hasTransformer() || !mParameterValues->has(param.getName())) {
       continue;
     }
-    std::cerr << "Warning: '--" << param.getName() << "' is deprecated. " << *param.getDeprecationMessage() << std::endl;
-    if (!param.hasDeprecationTransformer()) {
-      continue;
-    }
-    auto depResult = param.transformDeprecated(*this, *mParameterValues);
+    auto transformResult = param.transform(*this, *mParameterValues);
 
-    if (depResult.ancestor != nullptr) {
-      assert((dispatchAncestor == nullptr || dispatchAncestor == depResult.ancestor)
-        && "Multiple deprecated parameters specified conflicting dispatch ancestors \u2014 programmer error");
-      dispatchAncestor = depResult.ancestor;
+    if (transformResult.ancestor != nullptr) {
+      assert((dispatchAncestor == nullptr || dispatchAncestor == transformResult.ancestor)
+        && "Programmer error: Multiple transformed parameters specified conflicting dispatch ancestors.");
+      dispatchAncestor = transformResult.ancestor;
     }
 
-    if (!depResult.childPath.empty()) {
-      assert((mergedChildPath.empty() || mergedChildPath == depResult.childPath)
-        && "Multiple deprecated parameters specified conflicting child paths \u2014 programmer error");
-      mergedChildPath = depResult.childPath;
+    if (!transformResult.childPath.empty()) {
+      assert((mergedChildPath.empty() || mergedChildPath == transformResult.childPath)
+        && "Programmer error: Multiple transformed parameters specified conflicting child paths.");
+      mergedChildPath = transformResult.childPath;
     }
 
-    for (const auto& [key, vals] : depResult.toAdd) {
+    for (const auto& [key, vals] : transformResult.toAdd) {
       mergedToAdd[key] = vals;
     }
 
     mParameterValues->erase(param.getName());
-    anyDeprecated = true;
+    anyTransformed = true;
   }
 
-  if (!anyDeprecated) {
+  if (!anyTransformed) {
     return std::nullopt;
   }
 
   Command* ancestor = (dispatchAncestor != nullptr) ? dispatchAncestor : this;
+
+#ifndef NDEBUG
+  auto hasValidChildPath = [](Command* root, const CommandPath& path) {
+    Command* current = root;
+    std::shared_ptr<Command> currentOwner;
+    for (const auto& segment : path.segments) {
+      auto children = current->createChildCommands();
+      auto it = std::find_if(children.cbegin(), children.cend(), [&segment](const std::shared_ptr<Command>& child) {
+        return child->getName() == segment;
+      });
+      if (it == children.cend()) {
+        return false;
+      }
+      currentOwner = *it;
+      current = currentOwner.get();
+    }
+    return true;
+  };
+  assert(hasValidChildPath(ancestor, mergedChildPath)
+    && "Programmer error: parameter transformation specified an invalid child path.");
+#endif
+
   NamedValues leafValues = *mParameterValues;
   for (const auto& [key, vals] : mergedToAdd) {
     leafValues[key] = vals;
   }
-  return ancestor->dispatchTo(mergedChildPath, std::move(leafValues));
+  return ancestor->dispatchTo(mergedChildPath, std::move(leafValues), std::move(remainingArgs));
 }
 
-int Command::dispatchTo(const std::string& childPath, NamedValues leafValues, std::queue<std::string> leafArgs) {
+int Command::dispatchTo(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs) {
   if (!childPath.empty()) {
     // Routing: finalize this level with existing values, then recurse into the named child.
     if (!mParameterValues.has_value()) {
       mParameterValues.emplace();
     }
+    
+#ifndef NDEBUG
+    // Check if leafArgs contain parameters that would forward to a different command
+    // This catches the case where an alias command forwards, but parameters try to forward elsewhere
+    if (!leafArgs.empty()) {
+      try {
+        auto myParams = this->getSupportedParameters();
+        auto lexed = myParams.lex(leafArgs);
+        // Check if any lexed parameters have transformations that forward to different commands
+        for (const auto& [paramName, values] : lexed) {
+          auto paramIt = std::find_if(myParams.begin(), myParams.end(), 
+                                       [&paramName](const Parameter& p) { return p.getName() == paramName; });
+          if (paramIt != myParams.end() && paramIt->hasTransformer()) {
+            // Simulate the transformation to see if it tries to forward to a different command
+            NamedValues tempValues;
+            for (const auto& val : values) {
+              tempValues[paramName].add(val);
+            }
+            auto transformResult = paramIt->transform(*this, tempValues);
+            assert((transformResult.childPath.empty() || transformResult.childPath == childPath) && 
+                   "Programmer error: When using an alias/forwarding command, parameters cannot forward to a different command. "
+                   "The alias command specifies one target, but the parameter tries to forward to another. "
+                   "Either remove the parameter's command forwarding or use the target command directly.");
+          }
+        }
+      }
+      catch (...) {
+        // If lexing fails, let it fail at the child level with proper error handling
+      }
+    }
+#endif
+    
     mParametersLexed = true;
     mParametersFinalized = false;
     try {
@@ -248,15 +306,33 @@ int Command::dispatchTo(const std::string& childPath, NamedValues leafValues, st
 
     auto children = this->createChildCommands();
     assert(std::all_of(children.cbegin(), children.cend(), [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
-    const auto pos = childPath.find(' ');
-    const std::string childName = (pos == std::string::npos) ? childPath : childPath.substr(0, pos);
-    const std::string remaining = (pos == std::string::npos) ? std::string{} : childPath.substr(pos + 1);
+    const std::string childName = childPath.segments.front();
+    CommandPath remaining;
+    if (childPath.segments.size() > 1U) {
+      remaining.segments.assign(childPath.segments.begin() + 1, childPath.segments.end());
+    }
     auto it = std::find_if(children.cbegin(), children.cend(), [&childName](const std::shared_ptr<Command>& c) {
       return c->getName() == childName;
     });
     if (it == children.cend()) {
       return this->issueCommandLineHelp("Unsupported subcommand '" + childName + "' for " + this->getName());
     }
+    
+    // Validate final target when forwarding: must not be an alias/forwarding-deprecated/removed command
+    // Note: In-place deprecated commands (that don't forward) are allowed as targets
+    if (remaining.empty()) {
+      const auto& target = *it;
+      assert(target->getDescription().find("Alias for:") != 0 && 
+             "Command/parameter forwarding cannot target an alias or forwarding-deprecated command. This creates a forwarding chain. Refactor to point directly to the ultimate target.");
+      assert(target->getDescription().find("No longer supported.") != 0 && 
+             "Command/parameter forwarding cannot target a no-longer-supported command. This makes no sense.");
+      
+      // Show deprecation warning for the target command if it's in-place deprecated
+      if (auto warning = target->getDeprecationWarning()) {
+        std::cerr << "Warning: The command '" << target->getName() << "' is deprecated. " << *warning << std::endl;
+      }
+    }
+    
     return (*it)->dispatchTo(remaining, std::move(leafValues), std::move(leafArgs));
   }
 
@@ -267,6 +343,29 @@ int Command::dispatchTo(const std::string& childPath, NamedValues leafValues, st
   for (const auto& [key, vals] : leafValues) {
     (*mParameterValues)[key] = vals;
   }
+  
+  // Check target parameters that were added via transformation
+  auto leafParams = this->getSupportedParameters();
+  for (const auto& param : leafParams) {
+    if (leafValues.has(param.getName())) {
+      // Target parameter exists in leafValues (was added via transformation)
+      
+      // Assert if target has a transformer (is an alias or forwarding parameter)
+      assert(!param.hasTransformer() && 
+             "Programmer error: Parameter forwarding cannot target a parameter that itself has a transformer (alias/forwarding). "
+             "This creates a parameter forwarding chain. Refactor to point directly to the ultimate target.");
+      
+      // Assert if target is no-longer-supported
+      assert(!param.isNoLongerSupported() && 
+             "Programmer error: Parameter forwarding cannot target a no-longer-supported parameter. This makes no sense.");
+      
+      // Show deprecation warning if target parameter is deprecated (in-place)
+      if (param.getDeprecationMessage().has_value()) {
+        std::cerr << "Warning: '--" << param.getName() << "' is deprecated. " << *param.getDeprecationMessage() << std::endl;
+      }
+    }
+  }
+  
   mParametersLexed = true;
   mParametersFinalized = false;
 
@@ -277,6 +376,13 @@ int Command::dispatchTo(const std::string& childPath, NamedValues leafValues, st
       auto parsed = leafParams.parse(lexed);
       for (const auto& [key, vals] : parsed) {
         (*mParameterValues)[key] = vals;
+      }
+      if (auto exitCode = this->checkNoLongerSupportedParameters(leafParams)) {
+        return *exitCode;
+      }
+      this->showParameterDeprecationWarnings(leafParams);
+      if (auto exitCode = this->applyParameterTransformations(leafParams, leafArgs)) {
+        return *exitCode;
       }
     }
     catch (const std::exception& error) {
@@ -308,10 +414,6 @@ int Command::process(std::queue<std::string>& arguments) {
     }
     assert(mParametersLexed);
 
-    if (auto warning = this->getDeprecationWarning()) {
-      std::cerr << "Warning: The command '" << this->getName() << "' is deprecated. " << *warning << std::endl;
-    }
-
     // Report "unsupported parameter" if we received arguments that we can't pass to a child. See #2041
     if (children.empty() && !arguments.empty()) {
       return this->issueCommandLineHelp("Unrecognized command line parameter(s) issued to '" + this->getName() + "', starting with '" + arguments.front() + "'" + GetGlobWarning(arguments.front()));
@@ -322,10 +424,22 @@ int Command::process(std::queue<std::string>& arguments) {
     this->finalizeParameters();
     assert(mParametersFinalized);
 
+    // Check no-longer-supported parameters FIRST, before showing any warnings or forwarding
     if (auto exitCode = this->checkNoLongerSupportedParameters(parameters)) {
+      // Fail fast: don't show deprecation warnings if we have a no-longer-supported error
       return *exitCode;
     }
-    if (auto exitCode = this->applyParameterDeprecations(parameters)) {
+
+    // Now show deprecation warning for the command (after no-longer-supported check)
+    if (auto warning = this->getDeprecationWarning()) {
+      std::cerr << "Warning: The command '" << this->getName() << "' is deprecated. " << *warning << std::endl;
+    }
+
+    // Show parameter deprecation warnings
+    this->showParameterDeprecationWarnings(parameters);
+
+    // Apply parameter transformations (which may forward to other commands)
+    if (auto exitCode = this->applyParameterTransformations(parameters, arguments)) {
       return *exitCode;
     }
   }

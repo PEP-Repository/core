@@ -5,10 +5,12 @@
 #include <pep/application/CommandLineValueSpecification.hpp>
 #include <pep/utils/Shared.hpp>
 #include <functional>
+#include <initializer_list>
 #include <queue>
 #include <set>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace pep {
 namespace commandline {
@@ -16,20 +18,33 @@ namespace commandline {
 class Parameters;
 class Command;
 
+struct CommandPath {
+  std::vector<std::string> segments;
+
+  CommandPath() = default;
+  CommandPath(std::initializer_list<std::string> parts) : segments(parts) {}
+  explicit CommandPath(std::vector<std::string> parts) : segments(std::move(parts)) {}
+
+  bool empty() const noexcept { return segments.empty(); }
+  std::string toString() const;
+
+  bool operator==(const CommandPath&) const = default;
+};
+
 /*!
- * \brief Result of a parameter deprecation transformer.
+ * \brief Result of a parameter transformation/forwarding operation.
  * \details Describes what to add at the target and where to dispatch to.
- * `toAdd` contains values to inject at the target (the deprecated param itself is erased by the framework).
+ * `toAdd` contains values to inject at the target (the original param itself is erased by the framework).
  * `ancestor` is the command from which `childPath` is navigated; nullptr means dispatch from self.
- * `childPath` is a space-separated sequence of subcommand names to navigate from `ancestor` to the target.
+ * `childPath` is a typed sequence of subcommand names to navigate from `ancestor` to the target.
  * An empty `childPath` means the ancestor itself is the target.
  */
-struct ParameterDeprecationResult {
+struct ParameterTransformationResult {
   NamedValues toAdd;
   Command* ancestor = nullptr; // nullptr = dispatch from self
-  std::string childPath;       // space-separated child names, empty = target is ancestor/self
+  CommandPath childPath;       // empty = target is ancestor/self
 
-  explicit ParameterDeprecationResult(NamedValues toAdd, Command* ancestor = nullptr, std::string childPath = {})
+  explicit ParameterTransformationResult(NamedValues toAdd, Command* ancestor = nullptr, CommandPath childPath = {})
     : toAdd(std::move(toAdd)), ancestor(ancestor), childPath(std::move(childPath)) {}
 };
 
@@ -51,7 +66,7 @@ private:
   // Deprecation state: at most one of these is set
   std::optional<std::string> mDeprecationMessage;
   std::optional<std::string> mNoLongerSupportedMessage;
-  std::function<ParameterDeprecationResult(Command&, const NamedValues&)> mDeprecationTransformer;
+  std::function<ParameterTransformationResult(Command&, const NamedValues&)> mTransformer;
 
   Parameter alias(const SwitchAnnouncement& alias) const;
   std::optional<std::string> getInvocationSummary(const std::string& prefix, const std::string& identifier, bool indicateOptionality) const;
@@ -71,11 +86,12 @@ public:
   inline Parameter alias(const std::string& name) const { return this->alias(SwitchAnnouncement(name)); }
   inline Parameter shorthand(char shorthand) const { return this->alias(SwitchAnnouncement(shorthand)); }
 
-  // Deprecation: transformer receives fully-parsed+finalized values, may redirect to a different command
-  Parameter deprecated(const std::string& message, std::function<ParameterDeprecationResult(Command&, const NamedValues&)> transformer) const;
-  // Simple parameter rename: automatically moves the value to newParamName
-  Parameter deprecated(const std::string& newParamName, const std::string& message) const;
-  // In-place deprecation: warns but keeps the parameter at this command (no redirect)
+  // Forwarding aliases: transform/redirect parameters
+  // Custom transformer receives fully-parsed+finalized values, may redirect to a different command
+  Parameter forwardingAlias(std::function<ParameterTransformationResult(Command&, const NamedValues&)> transformer) const;
+  // Rename: automatically moves the value to newParamName and shows deprecation warning
+  Parameter rename(const std::string& newParamName) const;
+  // Only show deprecation warning, combine with forwardingAlias() to also transform/redirect parameters
   Parameter deprecated(const std::string& message) const;
   // Marks a parameter as completely removed, print error and exit
   Parameter noLongerSupported(const std::string& message) const;
@@ -89,16 +105,17 @@ public:
   SwitchAnnouncement getCanonicalAnnouncement() const;
   std::set<SwitchAnnouncement> getAnnouncements() const;
   std::shared_ptr<const ValueSpecificationBase> getValueSpecification() const noexcept { return mValueSpecification; }
-  bool hasDeprecationTransformer() const noexcept { return static_cast<bool>(mDeprecationTransformer); }
+  bool hasTransformer() const noexcept { return static_cast<bool>(mTransformer); }
   const std::optional<std::string>& getDeprecationMessage() const noexcept { return mDeprecationMessage; }
   bool isNoLongerSupported() const noexcept { return mNoLongerSupportedMessage.has_value(); }
+  bool isDeprecated() const noexcept { return mDeprecationMessage.has_value(); }
   const std::optional<std::string>& getNoLongerSupportedMessage() const noexcept { return mNoLongerSupportedMessage; }
-  ParameterDeprecationResult transformDeprecated(Command& self, const NamedValues& values) const;
+  ParameterTransformationResult transform(Command& self, const NamedValues& values) const;
 
   bool isRequired() const noexcept;
   bool isPositional() const noexcept;
   bool allowsMultiple() const noexcept;
-  bool isDocumented() const noexcept { return mDescription.has_value() && !mDeprecationMessage.has_value() && !this->isNoLongerSupported(); }
+  bool isDocumented() const noexcept { return mDescription.has_value() && !this->isDeprecated() && !this->isNoLongerSupported(); }
 
   Values parse(const ProvidedValues& lexed) const;
 };

@@ -9,6 +9,17 @@
 namespace pep {
 namespace commandline {
 
+std::string CommandPath::toString() const {
+  std::string result;
+  for (size_t i = 0; i < segments.size(); ++i) {
+    if (i != 0U) {
+      result.push_back(' ');
+    }
+    result += segments[i];
+  }
+  return result;
+}
+
 Parameter::Parameter(const std::string& name, const std::optional<std::string>& description)
   : mName(name), mDescription(description) {
   assert(description == std::nullopt || !description->empty());
@@ -26,39 +37,41 @@ Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   return result;
 }
 
-Parameter Parameter::deprecated(const std::string& message, std::function<ParameterDeprecationResult(Command&, const NamedValues&)> transformer) const {
+Parameter Parameter::forwardingAlias(std::function<ParameterTransformationResult(Command&, const NamedValues&)> transformer) const {
   assert(transformer);
   if (!transformer) {
-    throw std::runtime_error("Deprecation transformer for parameter '" + mName + "' must be provided");
+    throw std::runtime_error("Forwarding transformer for parameter '" + mName + "' must be provided");
   }
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
+  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
 
   auto result = *this;
-  result.mDeprecationMessage = message;
-  result.mDeprecationTransformer = std::move(transformer);
+  result.mTransformer = std::move(transformer);
   return result;
 }
 
-Parameter Parameter::deprecated(const std::string& newParamName, const std::string& message) const {
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+Parameter Parameter::rename(const std::string& newParamName) const {
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine rename() and noLongerSupported() on the same parameter");
+  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
+  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() before rename() on the same parameter");
   const std::string oldName = mName;
-  return this->deprecated(message, [oldName, newParamName](Command&, const NamedValues& values) {
+  return this->forwardingAlias([oldName, newParamName](Command&, const NamedValues& values) {
     NamedValues toAdd;
     toAdd[newParamName] = values[oldName];
-    return ParameterDeprecationResult{std::move(toAdd)};
-  });
+    return ParameterTransformationResult{std::move(toAdd)};
+  }).deprecated("Use --" + newParamName + " instead.");
 }
 
 Parameter Parameter::deprecated(const std::string& message) const {
   assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
-  assert(!mDeprecationTransformer && "Cannot combine deprecated(message) and deprecated(message, transformer) on the same parameter");
+  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() multiple times to the same parameter");
   auto result = *this;
   result.mDeprecationMessage = message;
   return result;
 }
 
 Parameter Parameter::noLongerSupported(const std::string& message) const {
-  assert(!mDeprecationTransformer && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+  assert(!mTransformer && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
 
   auto result = *this;
   result.mNoLongerSupportedMessage = message;
@@ -76,11 +89,11 @@ std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
   return result;
 }
 
-ParameterDeprecationResult Parameter::transformDeprecated(Command& self, const NamedValues& values) const {
-  if (!mDeprecationTransformer) {
-    throw std::runtime_error("No deprecation transformer configured for parameter '" + mName + "'");
+ParameterTransformationResult Parameter::transform(Command& self, const NamedValues& values) const {
+  if (!mTransformer) {
+    throw std::runtime_error("No transformer configured for parameter '" + mName + "'");
   }
-  return mDeprecationTransformer(self, values);
+  return mTransformer(self, values);
 }
 
 void Parameter::lex(ProvidedValues& destination, std::queue<std::string>& source) const {

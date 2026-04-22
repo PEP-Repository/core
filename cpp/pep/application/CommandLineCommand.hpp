@@ -25,7 +25,8 @@ private:
 
   int dispatch(std::vector<std::shared_ptr<Command>> children, std::queue<std::string>& remaining);
   std::optional<int> checkNoLongerSupportedParameters(const Parameters& parameters);
-  std::optional<int> applyParameterDeprecations(const Parameters& parameters);
+  void showParameterDeprecationWarnings(const Parameters& parameters);
+  std::optional<int> applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs);
 
 protected:
   virtual std::optional<int> processLexedParameters(const LexedValues& lexed); // Overrides must call base implementation
@@ -55,11 +56,11 @@ public:
    * \details Routing steps finalize this level and navigate into the named child. At the leaf,
    * `leafValues` are merged in, `leafArgs` are lexed, then the command is finalized and executed.
    * Use this for alias forwarding and parameter deprecation.
-   * \param childPath Space-separated subcommand names to navigate to the target. Empty means this command is the target.
+   * \param childPath Subcommand names to navigate to the target. Empty means this command is the target.
    * \param leafValues Values to merge into the target (leaf) command before finalizing.
    * \param leafArgs   Raw arguments to lex into the target command before finalizing.
    */
-  int dispatchTo(const std::string& childPath, NamedValues leafValues, std::queue<std::string> leafArgs = {});
+  int dispatchTo(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs = {});
 };
 
 /*!
