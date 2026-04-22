@@ -148,13 +148,14 @@ HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const 
 } // End anonymous namespace
 
 OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config) : io_context(io_context) {
-  std::optional<std::filesystem::path> spoofKeyFile;
+  [[maybe_unused]] std::optional<std::filesystem::path> spoofKeyFile;
   try {
     httpPort = config.get<uint16_t>("HTTPListenPort");
     activeGrantExpiration = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
     spoofKeyFile = config.get<std::optional<std::filesystem::path>>("SpoofKeyFile");
     httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HTTPSCertificateFile");
-    extraRedirectUris = config.get<decltype(extraRedirectUris)>("ExtraRedirectUris");
+    extraRedirectUris = RangeToVector(config.get<std::vector<std::string>>("ExtraRedirectUris")
+      | std::views::transform([](std::string_view str) { return url{str}; }));
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -223,9 +224,7 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
 
   allowedRedirectUris.reserve(DefaultRedirectUris.size() + params.getExtraRedirectUris().size());
   std::ranges::copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris));
-  std::ranges::transform(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris), [](std::string_view urlStr) {
-    return url(urlStr);
-  });
+  std::ranges::copy(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris));
 
   for (auto uri : allowedRedirectUris) {
     if (auto origin = uri.normalize().encoded_origin(); !origin.empty()) {

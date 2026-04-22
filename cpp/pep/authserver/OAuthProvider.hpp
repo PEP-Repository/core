@@ -47,7 +47,7 @@ public:
       const std::string& getSpoofKey() const;
       const std::optional<std::filesystem::path>& getHttpsCertificateFile() const;
       std::shared_ptr<boost::asio::io_context> getIoContext() const;
-      const std::vector<std::string>& getExtraRedirectUris() const { return extraRedirectUris; }
+      const std::vector<boost::urls::url>& getExtraRedirectUris() const { return extraRedirectUris; }
 
       void check() const;
 
@@ -60,7 +60,7 @@ public:
       //TODO: determine if we indeed want/need HTTPS for local testing, or whether we can use plain HTTP instead (HttpClient supports it)
       std::optional<std::filesystem::path> httpsCertificateFile;
       std::shared_ptr<boost::asio::io_context> io_context;
-      std::vector<std::string> extraRedirectUris;
+      std::vector<boost::urls::url> extraRedirectUris;
   };
 
   ~OAuthProvider();
