@@ -1,5 +1,6 @@
 #include <pep/weblib/ObservableStream.hpp>
 
+#include <pep/utils/TestError.hpp>
 #include <pep/weblib/tests/PromiseHelpers.hpp>
 
 #include <emscripten/em_js.h>
@@ -75,11 +76,6 @@ TEST(ObservableStream, basic) {
   });
   EXPECT_EQ(result, "0,1,2,3");
 }
-
-class TestError final : public std::runtime_error {
-public:
-  TestError() : std::runtime_error("Oopsie woopsie!") {}
-};
 
 TEST(ObservableStream, errorInObservable) {
   EXPECT_THROW(PromiseTest([] {

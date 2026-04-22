@@ -1,6 +1,7 @@
 #include <pep/async/CallbackCoroutine.hpp>
 
 #include <pep/utils/Defer.hpp>
+#include <pep/utils/TestError.hpp>
 
 #include <gtest/gtest.h>
 
@@ -49,9 +50,6 @@ TEST(CallbackCoroutine, params) {
   EXPECT_TRUE(callbackRan);
 }
 
-struct TestError : std::exception {
-  [[nodiscard]] const char* what() const noexcept override { return "TestError"; }
-};
 CallbackCoroutine<int> fail(std::function<void(int)>, std::function<void()>) {
   throw TestError{};
   co_return 42;

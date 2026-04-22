@@ -1,6 +1,7 @@
 #include <pep/async/ObservableAwaiter.hpp>
 
 #include <pep/async/CallbackCoroutine.hpp>
+#include <pep/utils/TestError.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 
@@ -52,9 +53,6 @@ TEST(ObservableAwaiter, none) {
   EXPECT_TRUE(callbackRan);
 }
 
-struct TestError : std::exception {
-  [[nodiscard]] const char* what() const noexcept override { return "TestError"; }
-};
 CallbackCoroutine<int> awaitError(std::function<void(int)>, std::function<void()>) {
   // Prepend element to check that only the error gets propagated
   co_return co_await rxcpp::observable<>::just(42).concat(rxcpp::observable<>::error<int>(TestError{}));
