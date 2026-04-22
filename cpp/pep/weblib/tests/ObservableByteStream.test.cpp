@@ -49,28 +49,18 @@ EM_JS(EM_VAL /*Promise<string>*/, ByteStreamOutputAsString, (EM_VAL /*ReadableSt
 
 const auto Words = rxcpp::observable<>::iterate(std::vector<std::string>{"abc", "def", "ghi"});
 
-TEST(ObservableByteStream, basic) {
-  auto result = PromiseTest([] {
-    val stream = CreateReadableByteStream(Words, 3);
+void TestObservableByteStream(size_t chunkSize) {
+  auto result = PromiseTest([chunkSize] {
+    val stream = CreateReadableByteStream(Words, chunkSize);
     return val::take_ownership(ByteStreamOutputAsString(stream.as_handle()));
   });
-  EXPECT_EQ(result, "abcdefghi");
+  EXPECT_EQ(result, "abcdefghi") << "with chunk size" << chunkSize;
 }
 
-TEST(ObservableByteStream, autoSmallBuffer) {
-  auto result = PromiseTest([] {
-    val stream = CreateReadableByteStream(Words, 1);
-    return val::take_ownership(ByteStreamOutputAsString(stream.as_handle()));
-  });
-  EXPECT_EQ(result, "abcdefghi");
-}
-
-TEST(ObservableByteStream, autoLargeBuffer) {
-  auto result = PromiseTest([] {
-    val stream = CreateReadableByteStream(Words, 4);
-    return val::take_ownership(ByteStreamOutputAsString(stream.as_handle()));
-  });
-  EXPECT_EQ(result, "abcdefghi");
+TEST(ObservableByteStream, SupportsMultipleBufferSizes) {
+  TestObservableByteStream(3U); // basic
+  TestObservableByteStream(1U); // autoSmallBuffer
+  TestObservableByteStream(4U); // autoLargeBuffer
 }
 
 }
