@@ -532,7 +532,6 @@ ubuntu-lts-debug-with-sast:
   script:
     - set -euo pipefail
     - mkdir -p infer_state
-    - echo -n "5c8fb1346d8b883f79af19abded71a7741221441" > infer_state/last_sha
     - CURRENT_SHA="$CI_COMMIT_SHA"
     - echo "Using current SHA $CURRENT_SHA"
     - |
