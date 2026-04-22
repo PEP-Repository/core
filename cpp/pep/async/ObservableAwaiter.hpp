@@ -6,6 +6,7 @@
 #include <utility>
 #include <variant>
 
+#include <boost/noncopyable.hpp>
 #include <rxcpp/rx-lite.hpp>
 
 namespace pep {
@@ -16,7 +17,7 @@ namespace pep {
 template<typename TValue, typename TSourceOperator>
 [[nodiscard]] auto operator co_await(rxcpp::observable<TValue, TSourceOperator> obs) {
 
-  class ValueObservableAwaiter {
+  class ValueObservableAwaiter : boost::noncopyable {
     // Wrapper in case TValue == std::exception_ptr
     struct Error {
       std::exception_ptr ex;
@@ -44,9 +45,6 @@ template<typename TValue, typename TSourceOperator>
   public:
     explicit ValueObservableAwaiter(rxcpp::observable<TValue, TSourceOperator> obs)
       : state_(New{std::move(obs)}) {}
-
-    // Disallow copy/move
-    ValueObservableAwaiter(ValueObservableAwaiter&&) = delete;
 
     // Well-known name
     [[nodiscard]] constexpr bool await_ready() const noexcept { return std::holds_alternative<Completed>(state_); }
