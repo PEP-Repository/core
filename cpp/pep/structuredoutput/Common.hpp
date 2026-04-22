@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/EnumUtils.hpp>
 #include <string>
 #include <string_view>
 
@@ -31,18 +32,18 @@ constexpr std::string_view maxAuthValidityKey{"max auth valid time"};
 enum class Format { Yaml, Json };
 
 struct DisplayConfig final {
-  // Avoiding boilerplate code that would be needed to support bitwise ops on an enum type.
-  struct Flags final {
-    using T = unsigned;
-    constexpr static T printHeaders = 1 << 1;
-    constexpr static T printGroups = 1 << 2;
-    constexpr static T printUserGroups = 1 << 3;
-    constexpr static T printUsers = 1 << 4;
-
-    Flags() = delete;
+  enum class Flags {
+    None = 0,
+    PrintHeaders = 1 << 1,
+    PrintGroups = 1 << 2,
+    PrintUserGroups = 1 << 3,
+    PrintUsers = 1 << 4,
+    All = (1 << 5) - 1,
   };
 
-  Flags::T flags = Flags::printHeaders | Flags::printGroups | Flags::printUserGroups | Flags::printUsers;
+  static_assert(FlagEnum<Flags>);
+
+  Flags flags = Flags::PrintHeaders | Flags::PrintGroups | Flags::PrintUserGroups | Flags::PrintUsers;
   int indent = 0; ///< How many levels the output should be indented by.
   Format preferredFormat = Format::Yaml;
 };

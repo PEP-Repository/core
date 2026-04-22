@@ -36,5 +36,8 @@ constexpr inline T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lh
 template <FlagEnum T>
 constexpr inline bool Contains(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
 
+template <FlagEnum T>
+constexpr inline T Select(T flags, bool condition) noexcept { return condition ? flags : T::None; }
+
 } // namespace enumUtils
 } // namespace pep
