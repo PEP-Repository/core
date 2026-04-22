@@ -3,6 +3,7 @@
 
 add_library(${PROJECT_NAME}Asynclib STATIC
     ActivityMonitor.cpp ActivityMonitor.hpp
+    CallbackCoroutine.hpp
     CreateObservable.hpp
     FakeVoid.hpp
     IoContext_fwd.hpp
