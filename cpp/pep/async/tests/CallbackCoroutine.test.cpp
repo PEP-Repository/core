@@ -50,8 +50,8 @@ TEST(CallbackCoroutine, params) {
   EXPECT_TRUE(callbackRan);
 }
 
-CallbackCoroutine<int> fail(std::function<void(int)>, std::function<void()>) {
-  throw TestError{};
+CallbackCoroutine<int> fail(std::function<void(int)>, std::function<void()>, bool doThrow = true) {
+  if (doThrow) { throw TestError{}; }
   co_return 42;
 }
 TEST(CallbackCoroutine, fail) {
