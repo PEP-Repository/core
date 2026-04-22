@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 #include <pep/utils/Attributes.hpp>
 
 namespace pep {
