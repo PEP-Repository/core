@@ -242,18 +242,30 @@ std::filesystem::path GetUniqueTemporaryPath() {
   auto directory = GetTempDirectory().string();
   char path[MAX_PATH];
 
-  do {
+  for (unsigned attempt = 0; attempt < 50; ++attempt) {
+    // Generate a random numeric value that'll be used to make a unique path
     UINT uUnique;
-    do {
-      pep::RandomBytes(std::span<char>(reinterpret_cast<char*>(&uUnique), sizeof(uUnique)));
-    } while (uUnique == 0); // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettempfilenamea#remarks : "If uUnique is zero, GetTempFileName creates an empty file"
-
-    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, uUnique, path) == 0U) {
-      win32api::ApiCallFailure::RaiseLastError();
+    pep::RandomBytes(std::span<char>(reinterpret_cast<char*>(&uUnique), sizeof(uUnique)));
+    // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettempfilenamea#remarks :
+    // "If uUnique is zero, GetTempFileName creates an empty file", which we don't want: see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2870
+    if (uUnique == 0) {
+      continue; // Try again in the next iteration
     }
-  } while (std::filesystem::exists(path));
 
-  return std::filesystem::path(path);
+    // Let Windows check if the file exists
+    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, uUnique, path) == 0U) {
+      auto error = ::GetLastError();
+      if (error == ERROR_FILE_EXISTS) {
+        continue; // Try again in the next iteration
+      }
+    }
+
+    auto result = std::filesystem::path(path);
+    assert(!exists(result) && "Non-unique temporary path was not detected by Windows API");
+    return result;
+  }
+
+  throw std::runtime_error("Could not generate a random temporary file in " + directory);
 }
 
 std::filesystem::path GetUniqueTemporaryFileName() {
