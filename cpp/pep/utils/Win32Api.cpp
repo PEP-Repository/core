@@ -253,20 +253,21 @@ std::filesystem::path GetUniqueTemporaryPath() {
     }
 
     // Let Windows check if the file exists
-    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, uUnique, path) == 0U) {
-      auto error = ::GetLastError();
-      if (error == ERROR_FILE_EXISTS) {
-        continue; // Try again in the next iteration
-      }
-      ApiCallFailure::Raise(error);
+    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, uUnique, path) != 0U) { // Success: Windows considers this to be a nonexisting file path
+      auto result = std::filesystem::path(path);
+      assert(!exists(result) && "GetTempFileNameA produced an existing path");
+      return result;
     }
 
-    auto result = std::filesystem::path(path);
-    assert(!exists(result) && "Non-unique temporary path was not detected by Windows API");
-    return result;
+    // Deal with failed invocation of GetTempFileNameA
+    auto error = ::GetLastError();
+    if (error != ERROR_FILE_EXISTS) { // "If uUnique is not zero, [...] GetTempFileName is not able to guarantee that the file name is unique."
+      ApiCallFailure::Raise(error);
+    }
+    // else try again in the next iteration
   }
 
-  throw std::runtime_error("Could not generate a random temporary file in " + directory);
+  throw std::runtime_error("Could not generate a random temporary path in " + directory);
 }
 
 std::filesystem::path GetUniqueTemporaryFileName() {
