@@ -183,21 +183,23 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   }
 }
 
-so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) {
+so::FormatFlags ParseSingleExportFormat(const std::string& name) {
   static_assert(
       SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
+  const auto parsed = SetFlags(so::FormatFlags::Csv, name == "csv")
+                    | SetFlags(so::FormatFlags::Json, name == "json")
+                    | SetFlags(so::FormatFlags::Yaml, name == "yaml");
+  if (parsed != so::FormatFlags::None) { return parsed; }
+
+  const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
+  throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
+}
+
+so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) {
   auto flags = so::FormatFlags::None;
-  for (const auto& name : formatNames) {
-    if (name == "csv") { flags |= so::FormatFlags::Csv; }
-    else if (name == "json") { flags |= so::FormatFlags::Json; }
-    else if (name == "yaml") { flags |= so::FormatFlags::Yaml; }
-    else {
-      const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
-      throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
-    }
-  }
+  for (const auto& name : formatNames) { flags |= ParseSingleExportFormat(name); }
   return flags;
 }
 
