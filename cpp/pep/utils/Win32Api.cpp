@@ -1,6 +1,7 @@
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Win32Api.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/Random.hpp>
 
 #ifdef _WIN32
 #include <iostream>
@@ -242,7 +243,12 @@ std::filesystem::path GetUniqueTemporaryPath() {
   char path[MAX_PATH];
 
   do {
-    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, 0, path) == 0U) {
+    UINT uUnique;
+    do {
+      pep::RandomBytes(std::span<char>(reinterpret_cast<char*>(&uUnique), sizeof(uUnique)));
+    } while (uUnique == 0); // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettempfilenamea#remarks : "If uUnique is zero, GetTempFileName creates an empty file"
+
+    if (::GetTempFileNameA(directory.c_str(), "PTF" /* PEP temporary file */, uUnique, path) == 0U) {
       win32api::ApiCallFailure::RaiseLastError();
     }
   } while (std::filesystem::exists(path));
