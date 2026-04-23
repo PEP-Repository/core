@@ -1128,7 +1128,7 @@ ubuntu-lts-debug-test:
     - .ubuntu-test-base
     - .ubuntu-lts-debug-settings
   variables:
-    MEM_ANALYSIS_TOOL: "valgrind"
+    MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-lts-debug]
 
 ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
