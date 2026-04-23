@@ -20,7 +20,7 @@ concept FlagEnumCanditate = requires {
   Enum<T>;
   { T::None };
   { T::All };
-};
+} && (T::None == static_cast<T>(0));
 
 template <typename T>
 concept FlagEnum = FlagEnumCanditate<T> && detail::MARKED_AS_FLAG_ENUM_TYPE<T>;
