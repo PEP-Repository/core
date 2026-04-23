@@ -41,9 +41,7 @@ struct DisplayConfig final {
     All = (1 << 5) - 1,
   };
 
-  static_assert(FlagEnum<Flags>);
-
-  Flags flags = Flags::PrintHeaders | Flags::PrintGroups | Flags::PrintUserGroups | Flags::PrintUsers;
+  Flags flags = Flags::All;
   int indent = 0; ///< How many levels the output should be indented by.
   Format preferredFormat = Format::Yaml;
 };
@@ -55,4 +53,6 @@ inline std::string indentations(int i) {
 }
 
 } // namespace pep::structuredOutput
+
+PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::DisplayConfig::Flags)
 

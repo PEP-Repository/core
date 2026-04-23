@@ -9,6 +9,8 @@
 
 namespace pep::structuredOutput {
 
+enum class FormatFlags;
+
 /// Enum flags for all formats in pep::structuredOutput
 enum class PEP_ATTRIBUTE_FLAG_ENUM FormatFlags {
   None = 0b000,
@@ -18,9 +20,9 @@ enum class PEP_ATTRIBUTE_FLAG_ENUM FormatFlags {
   All = 0b111,
 };
 
-static_assert(FlagEnum<FormatFlags>);
-
 std::vector<std::string> ToIndividualStrings(FormatFlags);
 std::string ToSingleString(FormatFlags, std::string_view separator = "|");
 
 } // namespace pep::structuredOutput
+
+PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::structuredOutput::FormatFlags)

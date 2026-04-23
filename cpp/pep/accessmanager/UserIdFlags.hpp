@@ -13,6 +13,6 @@ enum class PEP_ATTRIBUTE_FLAG_ENUM UserIdFlags : uint8_t {
   All = (1 << 2) - 1,
 };
 
-static_assert(FlagEnum<UserIdFlags>, "UserIdFlags is a FlagEnum type");
+PEP_MARK_AS_FLAG_ENUM_TYPE(UserIdFlags)
 
 }
