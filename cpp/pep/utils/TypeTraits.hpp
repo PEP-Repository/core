@@ -5,6 +5,7 @@
 namespace pep {
 namespace detail {
 
+/// Mechanism to tracks if PEP_MARK_AS_FLAG_ENUM_TYPE was called on T
 template <typename T> inline constexpr bool MARKED_AS_FLAG_ENUM_TYPE = false;
 
 }
@@ -15,6 +16,10 @@ concept ByteLike = sizeof(T) == 1;
 template <typename T>
 concept Enum = std::is_enum_v<T>;
 
+/// Concept that checks if a type matches all requirements of a FlagEnum
+///
+/// It requires that T is a scoped enum for which `None` and `All` are defined and
+/// that the underlying value of `None` is zero.
 template <typename T>
 concept FlagEnumCanditate = requires {
   Enum<T>;
@@ -22,6 +27,9 @@ concept FlagEnumCanditate = requires {
   { T::All };
 } && (T::None == static_cast<T>(0));
 
+/// Scoped enum that was explicitly marked with `PEP_MARK_AS_FLAG_ENUM_TYPE`
+///
+/// Implies `FlagEnumCanditate<T>`
 template <typename T>
 concept FlagEnum = FlagEnumCanditate<T> && detail::MARKED_AS_FLAG_ENUM_TYPE<T>;
 
@@ -48,6 +56,12 @@ concept DerivedFromSpecialization = requires(const T& t) {
 
 } // namespace pep
 
+/// Marks T as a `FlagEnum`, enabling `FlagEnum`-constrained functions and bitwise operators for T.
+///
+/// Requires `FlagEnumCanditate<T>`
+///
+/// @warning This macro must be invoked from the `::pep` namespace or global namespace;
+///          it does not work from nested namespaces within `::pep`.
 #define PEP_MARK_AS_FLAG_ENUM_TYPE(T) \
   static_assert(::pep::FlagEnumCanditate<T>); \
   template <> constexpr inline bool ::pep::detail::MARKED_AS_FLAG_ENUM_TYPE<T> = true;
