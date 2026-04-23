@@ -7,6 +7,8 @@ Changes in upcoming release (1.7):
 
 ---------------
 
+- #2867: Fixed incorrect handling of network connections that fail while they're still being established.
+
 - Added --format option to "pepcli list" command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
 
 - Also print brief local pseudonyms (participant aliases) when using --local-pseudonym flag.
