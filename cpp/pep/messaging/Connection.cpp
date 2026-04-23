@@ -131,7 +131,7 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
       description = e.what();
     } catch (...) {
       severity = severity_level::error;
-      caption = "Stripping error details from reply";
+      caption = "Unexpected exception, treating as uncaught and stripping error details from reply";
       description = GetExceptionMessage(error);
       onUncaughtReadException.notify(error);
     }

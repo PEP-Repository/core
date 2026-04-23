@@ -1,11 +1,5 @@
 set(PEPCLI_SRCS
     Ama.cpp
-    user/CommandUserGroup.cpp user/CommandUserGroup.hpp
-    user/UserSubCommands.cpp user/UserSubCommands.hpp
-    user/CommandUserQuery.cpp user/CommandUserQuery.hpp
-    Token.cpp Token.hpp
-    token/CommandTokenBlock.cpp token/CommandTokenBlock.hpp
-    User.cpp User.hpp
     Castor.cpp
     CliApplication.cpp CliApplication.hpp
     Command.cpp Command.hpp
@@ -15,10 +9,10 @@ set(PEPCLI_SRCS
     DownloadMetadata.cpp DownloadMetadata.hpp
     DownloadMetadata.PropertySerializers.cpp DownloadMetadata.PropertySerializers.hpp
     DownloadProcessor.cpp DownloadProcessor.hpp
-    Export.cpp Export.hpp
     export/CommandExportCsv.cpp export/CommandExportCsv.hpp
     export/CommandExportJson.cpp export/CommandExportJson.hpp
     export/CommandExportYaml.cpp export/CommandExportYaml.hpp
+    Export.cpp Export.hpp
     FileExtension.cpp
     Get.cpp
     History.cpp
@@ -30,13 +24,19 @@ set(PEPCLI_SRCS
     Pull.cpp
     Query.cpp
     Register.cpp
-    Server.cpp Server.hpp
     server/CommandCertificate.cpp server/CommandCertificate.hpp
+    Server.cpp Server.hpp
     SingleCellCommand.cpp SingleCellCommand.hpp
     Store.cpp
     structuredoutput/TableFromDownloadDirectory.cpp structuredoutput/TableFromDownloadDirectory.hpp
     StructureMetadata.cpp
     TicketFile.cpp TicketFile.hpp
+    token/CommandTokenBlock.cpp token/CommandTokenBlock.hpp
+    Token.cpp Token.hpp
+    user/CommandUserGroup.cpp user/CommandUserGroup.hpp
+    user/CommandUserQuery.cpp user/CommandUserQuery.hpp
+    User.cpp User.hpp
+    user/UserSubCommands.cpp user/UserSubCommands.hpp
     Validate.cpp
     Verifiers.cpp
     XEntry.cpp

@@ -28,6 +28,7 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     RxParallelConcat.hpp
     RxRequireCount.hpp RxRequireCount.cpp
     RxSharedPtrCast.hpp
+    RxSubsequently.hpp
     RxTimeout.cpp RxTimeout.hpp
     RxToEmpty.hpp
     RxToSet.hpp

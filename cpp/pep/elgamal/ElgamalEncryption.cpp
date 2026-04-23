@@ -59,6 +59,7 @@ CurvePoint ElgamalEncryption::decrypt(const ElgamalPrivateKey& sk) const {
  * POST: (b',c',y') = EG(k+z,M,y) for random z
  * The original point is not changed.
  * \return The rerandomized triple.
+ * \warning It is important to check that the publicKey is nonzero, otherwise rerandomization is a no-op, which enables other attacks in a full RSK.
  */
 ElgamalEncryption ElgamalEncryption::rerandomize() const {
   auto rerandomize = CurveScalar::Random();
@@ -76,6 +77,7 @@ ElgamalEncryption ElgamalEncryption::rerandomize() const {
  * The original point is not changed.
  * \param rekey The translation key.
  * \return The rekeyed triple.
+ * \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
  */
 ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& rekey) const {
   return {
@@ -92,6 +94,7 @@ ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& rekey) c
  * The original point is not changed.
  * \param reshuffle The value to reshuffle with.
  * \return The reshuffled triple.
+ * \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
  */
 ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& reshuffle) const {
   return {
@@ -103,11 +106,9 @@ ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& reshuffle) con
 
 /*! \brief reshuffle and rekey an ElgamalEncryption triple.
  *
- *  \param reshuffle the CurveScalar to reshuffle with
- *  \param rekey the ElgamalTranslationKey to rekey along
- *
- *  Note: it is important to check that y is non-zero --- otherwise information
- *        about z and k might leak.
+ * \param reshuffle the CurveScalar to reshuffle with
+ * \param rekey the ElgamalTranslationKey to rekey along
+ * \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
  */
 ElgamalEncryption ElgamalEncryption::reshuffleRekey(const CurveScalar& reshuffle, const ElgamalTranslationKey& rekey) const {
   return {
