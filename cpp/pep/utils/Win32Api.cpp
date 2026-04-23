@@ -258,6 +258,7 @@ std::filesystem::path GetUniqueTemporaryPath() {
       if (error == ERROR_FILE_EXISTS) {
         continue; // Try again in the next iteration
       }
+      ApiCallFailure::Raise(error);
     }
 
     auto result = std::filesystem::path(path);
