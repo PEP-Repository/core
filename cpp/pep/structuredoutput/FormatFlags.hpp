@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/utils/Attributes.hpp>
-#include <pep/utils/TypeTraits.hpp>
+#include <pep/utils/EnumUtils.hpp>
 
 #include <vector>
 #include <string>

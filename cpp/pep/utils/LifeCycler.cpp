@@ -1,5 +1,5 @@
 #include <pep/utils/LifeCycler.hpp>
-#include <pep/utils/TypeTraits.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <map>
 #include <set>
 #include <stdexcept>
