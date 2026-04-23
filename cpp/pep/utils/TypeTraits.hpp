@@ -22,7 +22,7 @@ concept Enum = std::is_enum_v<T>;
 /// that the underlying value of `None` is zero.
 template <typename T>
 concept FlagEnumCanditate = requires {
-  Enum<T>;
+  requires Enum<T>;
   { T::None };
   { T::All };
 } && (T::None == static_cast<T>(0));
