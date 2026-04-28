@@ -28,7 +28,7 @@ TEST(Random, ZeroesFraction) {
   pep::RandomIStreamBuf buf;
   std::istream stream(&buf);
   TestZeroesFraction("RandomIStreamBuf", [&stream](Buffer& buf) {
-    assert(buf.size() <= static_cast<std::make_unsigned_t<std::streamsize>>(std::numeric_limits<std::streamsize>::max()) && "Can't represent buffer size as streamsize");
+    assert(std::cmp_less_equal(buf.size(), std::numeric_limits<std::streamsize>::max()) && "Can't represent buffer size as streamsize");
     stream.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(buf.size()));
     });
 }
