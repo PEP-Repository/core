@@ -32,7 +32,7 @@ target_link_libraries(${PROJECT_NAME}Weblib
     ${PROJECT_NAME}Clientlib
     ${PROJECT_NAME}OAuthClientlib
 
-    -lidbfs.js
+    -lidbfs.js # For IDBFS (IndexedDB persistent File System) used in pep.mts
 )
 set(weblib_additional_files
     ${PROJECT_NAME}Weblib.d.mts
@@ -64,20 +64,23 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
 
     -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
+    # Preallocate threads we need
     "-sPTHREAD_POOL_SIZE=Math.min(navigator.hardwareConcurrency, 8 /*WorkerPool*/ + 1 /*io_context*/ + 1 /*Boost async_resolve*/)"
-    -sPTHREAD_POOL_DELAY_LOAD
-    -sNO_PTHREAD_POOL_SIZE_STRICT # Disable this to allow spawning more threads, but we cannot immediately join them.
+    -sPTHREAD_POOL_DELAY_LOAD # Allow spinning up thread pool in the background, improving startup time
+    -sNO_PTHREAD_POOL_SIZE_STRICT # We disable this such that we can spawn more threads, but we cannot synchronously join them
 
-    -sINITIAL_MEMORY=209715200 # 200 MiB
-    -sNO_ABORTING_MALLOC
+    -sINITIAL_MEMORY=209715200 # 200 MiB should be good to prevent going OOM
+    -sNO_ABORTING_MALLOC # Standard-compliant behavior
     -sNO_SUPPORT_LONGJMP # We're not using this
-    -sTEXTDECODER=2 # Require TextDecoder from browser
-    -sFETCH
+    -sTEXTDECODER=2 # Do not generate polyfill for old browsers not supporting TextDecoder
+    -sFETCH # For emscripten_fetch
     -sNO_INVOKE_RUN # We call callMain ourselves
     # noExitRuntime required for -sNO_EXIT_RUNTIME
     -sINCOMING_MODULE_JS_API=thisProgram,noExitRuntime
+    # Used in pep.mts
     -sEXPORTED_RUNTIME_METHODS=FS,FS_createPreloadedFile,IDBFS,callMain,ExitStatus,getExceptionMessage,incrementExceptionRefcount,decrementExceptionRefcount
-    "--emit-tsd=$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts"
+    "--emit-tsd=$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts" # Emit TypeScript declarations
+    # Do not error on limited optimizations when debugging
     "$<$<CONFIG:Debug,RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
     # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
     "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
@@ -85,6 +88,7 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
 
+# See https://emscripten.org/docs/tools_reference/settings_reference.html#dynamic-execution
 option(PEP_WEBLIB_NO_DYNAMIC_EXECUTION "Don't use eval & Function")
 if(PEP_WEBLIB_NO_DYNAMIC_EXECUTION)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE
@@ -92,7 +96,7 @@ if(PEP_WEBLIB_NO_DYNAMIC_EXECUTION)
   )
 endif()
 
-# Avoid calling very slow wasm-emscripten-finalize during build
+# Avoid calling very slow (>30s) wasm-emscripten-finalize during build
 option(PEP_WEBLIB_NO_STACK_OVERFLOW_CHECK "Disable stack overflow check" ON)
 if(PEP_WEBLIB_NO_STACK_OVERFLOW_CHECK)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE

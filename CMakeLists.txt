@@ -236,6 +236,7 @@ if(DEFINED EMSCRIPTEN)
       LINKER:--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
       -gsource-map
       -sEXIT_RUNTIME  # Run global destructors after main()
+      # Do not error on limited optimizations when debugging
       "$<$<CONFIG:Debug,RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
       # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
       "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
