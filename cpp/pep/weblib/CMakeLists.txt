@@ -1,5 +1,6 @@
 # Common files
 add_library(${PROJECT_NAME}Webliblib
+    Emscripten_fwd.hpp
     EmscriptenMapBinding.hpp
     EmscriptenValPtr.cpp EmscriptenValPtr.hpp
     EmscriptenVectorBinding.hpp

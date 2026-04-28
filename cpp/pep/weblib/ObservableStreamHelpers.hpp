@@ -1,5 +1,4 @@
-// Forward declaration
-namespace emscripten { class val; }
+#include <pep/weblib/Emscripten_fwd.hpp>
 
 namespace pep::weblib {
 

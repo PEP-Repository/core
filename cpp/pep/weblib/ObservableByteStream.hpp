@@ -1,12 +1,11 @@
 #pragma once
 
+#include <pep/weblib/Emscripten_fwd.hpp>
+
 #include <rxcpp/rx-observable-fwd.hpp>
 
 #include <cstddef>
 #include <string>
-
-// Forward declaration
-namespace emscripten { class val; }
 
 namespace pep::weblib {
 

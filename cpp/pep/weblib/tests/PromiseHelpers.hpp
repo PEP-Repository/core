@@ -1,10 +1,9 @@
 #pragma once
 
+#include <pep/weblib/Emscripten_fwd.hpp>
+
 #include <functional>
 #include <string>
-
-// Forward declaration
-namespace emscripten { class val; }
 
 namespace pep::weblib::tests {
 

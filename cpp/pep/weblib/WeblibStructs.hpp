@@ -2,6 +2,7 @@
 
 #include <pep/core-client/CoreClient_fwd.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/weblib/Emscripten_fwd.hpp>
 #include <pep/weblib/EmscriptenValPtr.hpp>
 
 #include <rxcpp/rx-lite.hpp>
@@ -11,9 +12,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-// Forward declaration
-namespace emscripten { class val; }
 
 // Structures used in weblib API
 
