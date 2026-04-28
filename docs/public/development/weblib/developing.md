@@ -124,7 +124,6 @@ cmake --build --preset=wasm32-debug
 ```
 
 Building on pep-build9-devbox recommended.
-Linking `pepWeblib` will take long.
 
 # CMake targets
 
@@ -280,7 +279,7 @@ try {
 }
 ```
 
-Or when supported:
+Or when [supported](https://caniuse.com/mdn-javascript_statements_using) by the browser:
 ```js
 {
   using widget = new Module.Widget();
