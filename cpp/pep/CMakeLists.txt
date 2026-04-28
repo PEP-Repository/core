@@ -263,8 +263,10 @@ endfunction()
 
 # Add executable that will be installed by `cmake --install --component ${name}`
 # When installing, you need to specify the component to avoid errors about missing files when you did not build all targets
+# For Emscripten, also adds a shebang
 function(add_install_executable name)
   add_executable(${ARGV})
+  make_js_file_executable(${name})
   add_windows_manifest(${name})
   include(GNUInstallDirs)
   if(CMAKE_CROSSCOMPILING)
@@ -298,7 +300,6 @@ endfunction()
 function(add_cli_install_executable name)
   set_property(GLOBAL APPEND PROPERTY cli_executables ${name})
   add_install_executable(${ARGV})
-  make_js_file_executable(${name})
 endfunction()
 
 #
