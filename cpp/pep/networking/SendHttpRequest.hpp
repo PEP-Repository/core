@@ -1,12 +1,12 @@
 #pragma once
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/networking/HTTPMessage.hpp>
 
 #include <filesystem>
 #include <memory>
 #include <optional>
 
-#include <boost/asio/io_context.hpp>
-#include <rxcpp/rx-lite.hpp>
+#include <rxcpp/rx-observable-fwd.hpp>
 
 namespace pep {
 /*!

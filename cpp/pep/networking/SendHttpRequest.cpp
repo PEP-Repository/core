@@ -150,6 +150,8 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
 
 #include <pep/networking/HttpClient.hpp>
 
+#include <rxcpp/operators/rx-lite.hpp>
+
 #include <rxcpp/operators/rx-finally.hpp>
 
 rxcpp::observable<HTTPResponse> pep::SendHttpRequest(HTTPRequest request, std::shared_ptr<boost::asio::io_context> io_context, const std::optional<std::filesystem::path>& caCertFilepath) {
