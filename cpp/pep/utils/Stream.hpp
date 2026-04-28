@@ -1,5 +1,8 @@
 #pragma once
 
+#include <pep/utils/Hasher.hpp>
+#include <streambuf>
+
 #ifdef _WIN32
 # include <cstdio>
 # include <iostream>
@@ -34,6 +37,38 @@ public:
 
   static SetBinaryFileMode ForStdin();
   static SetBinaryFileMode ForStdout();
+};
+
+
+class CroppingIStreamBuf : public std::streambuf {
+private:
+  std::streambuf& source_;
+  std::streamsize remaining_;
+
+protected:
+  std::streamsize xsgetn(char* s, std::streamsize count) override;
+
+public:
+  CroppingIStreamBuf(std::streambuf& source, std::streamsize count);
+
+  CroppingIStreamBuf(const CroppingIStreamBuf&) = delete;
+  CroppingIStreamBuf& operator=(const CroppingIStreamBuf&) = delete;
+};
+
+
+class HashingIStreamBuf : public std::streambuf {
+private:
+  std::streambuf& source_;
+  HasherBase& hasher_;
+
+protected:
+  std::streamsize xsgetn(char* s, std::streamsize count) override;
+
+public:
+  explicit HashingIStreamBuf(std::streambuf& source, HasherBase& hasher) noexcept : source_(source), hasher_(hasher) {}
+
+  HashingIStreamBuf(const HashingIStreamBuf&) = delete;
+  HashingIStreamBuf& operator=(const HashingIStreamBuf&) = delete;
 };
 
 } // namespace pep

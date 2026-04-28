@@ -6,12 +6,10 @@
 
 namespace pep {
 
-namespace detail {
 class HasherBase : private boost::noncopyable {
   bool mFinished = false;
 
 protected:
-  void update(const void* block, size_t size);
   void update(std::istream& source);
   /// Mark as finished. \c update or this function should not be called after this.
   void setFinished();
@@ -20,11 +18,11 @@ protected:
 
 public:
   virtual ~HasherBase() noexcept = default;
+  void update(const void* block, size_t size);
 };
-}
 
 template <typename THash>
-class Hasher : public detail::HasherBase {
+class Hasher : public HasherBase {
 public:
   using Hash = THash;
 
