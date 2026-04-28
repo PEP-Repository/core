@@ -196,7 +196,9 @@ constexpr auto CheckedCopy(
   bool exact = false)
 requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<decltype(dst)>) {
   using namespace std::ranges;
-  if (exact ? std::cmp_not_equal(size(dst), size(src)) : std::cmp_less(size(dst), size(src))) {
+  if (exact
+      ? std::cmp_not_equal(size(dst), size(src))
+      : std::cmp_less(size(dst), size(src))) {
     throw std::out_of_range("src range does not fit in dst");
   }
   return copy(std::forward<decltype(src)>(src), begin(dst));
