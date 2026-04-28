@@ -13,7 +13,6 @@ add_library(${PROJECT_NAME}Webliblib
 )
 target_link_libraries(${PROJECT_NAME}Webliblib
     ${PROJECT_NAME}Asynclib
-    nlohmann_json::nlohmann_json
     -lembind # Explicit -l for CMAKE_LINK_LIBRARIES_ONLY_TARGETS
 )
 verify_headers_standalone(${PROJECT_NAME}Webliblib)
@@ -24,7 +23,6 @@ add_executable(${PROJECT_NAME}Weblib
 
     Weblib.cpp
 )
-find_package(nlohmann_json REQUIRED)
 target_link_libraries(${PROJECT_NAME}Weblib
     # Make sure Embind types are registered by running all static constructors.
     # See https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html#binding-libraries
