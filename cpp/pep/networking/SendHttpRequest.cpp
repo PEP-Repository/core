@@ -2,7 +2,7 @@
 
 using namespace pep;
 
-// Emscripten proxies TCP over WebSockets, so we'd get WebSocket->TLS->HTTP with the HTTPSClient implementation.
+// Emscripten proxies TCP over WebSockets, so we'd get WebSocket->TLS->HTTP with the HttpClient implementation.
 // Instead, we use Web APIs to do an HTTP request here.
 #ifdef __EMSCRIPTEN__
 
@@ -23,7 +23,7 @@ using namespace pep;
 using namespace std::literals;
 
 namespace {
-const std::string LOG_TAG = "HTTPSClient.Emscripten";
+const std::string LOG_TAG = "SendHttpRequest.Emscripten";
 }
 
 rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
