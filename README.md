@@ -17,14 +17,11 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
    - For Go watchdog:
      - Install the `golang` package (version 1.21 or newer. See <https://launchpad.net/%7Elongsleep/+archive/ubuntu/golang-backports>, if you use a linux distro based on Ubuntu 22.04)
      - set environment variables (e.g. in `.bashrc` or `.zshrc`):
-
        ```shell
        export GOPATH="$HOME/go"
        export PATH="$GOPATH/bin:$PATH"
        ```
-
-      - install the Go protobuf compiler:
-
+     - install the Go protobuf compiler:
        ```shell
        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
        ```
