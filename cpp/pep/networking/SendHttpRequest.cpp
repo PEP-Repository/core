@@ -53,7 +53,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
       // so unset them if they exist
       (void) headers.erase("Content-Length");
       (void) headers.erase("Host");
-      // Keys & values terminated bt nullptr entry
+      // Keys & values terminated by nullptr entry
       std::vector<const char *> headerPtrs;
       headerPtrs.reserve(headers.size() * 2 + 1);
       for (const auto &[key, value]: headers) {
@@ -108,13 +108,15 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
               throw std::runtime_error("Failed to get HTTP response headers");
             }
 
+            /// Headers split into array of strings, terminated by nullptr entry,
+            /// see emscripten_fetch_unpack_response_headers docs
             const auto headersPtr = emscripten_fetch_unpack_response_headers(headersStr.c_str());
             PEP_DEFER(emscripten_fetch_free_unpacked_response_headers(headersPtr));
             if (!headersPtr) {
               throw std::runtime_error("Failed to split HTTP response headers");
             }
 
-            for (auto headerIt = headersPtr; *headerIt; headerIt += 2) {
+            for (auto headerIt = headersPtr; *headerIt != nullptr; headerIt += 2) {
               const char *key = headerIt[0], *value = headerIt[1];
               headerMap[key] = value;
             }
