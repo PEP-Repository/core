@@ -42,6 +42,7 @@ EM_JS(EM_VAL /*Promise*/, StreamErrorInConsumer, (EM_VAL /*ReadableStream<number
   })());
 });
 
+// This demonstrates how to loop through a stream, making sure all objects are properly deallocated
 //TODO Is there a better way to do this?
 EM_JS(EM_VAL /*Promise*/, StreamDeallocErrorInConsumer, (EM_VAL /*ReadableStream<number>*/ streamHandle), { //language=js
   return Emval.toHandle((async () => {
@@ -117,7 +118,7 @@ TEST(ObservableStream, dealloc) {
       .map([numAllocated](int) { return val(new TestClass(numAllocated), allow_raw_pointers{}); }));
     return val::take_ownership(StreamDeallocErrorInConsumer(stream.as_handle()));
   }), std::runtime_error);
-  EXPECT_EQ(numAllocated, 0);
+  EXPECT_EQ(numAllocated, 0) << "Expected all objects in ReadableStream to be properly deallocated";
 }
 
 
