@@ -23,8 +23,6 @@ using namespace std::literals;
 
 namespace {
 
-const std::string LOG_TAG = "ObservableByteStream.test";
-
 #ifdef __GNUC__
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wmissing-variable-declarations" // For EM_JS parameters
