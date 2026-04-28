@@ -6,7 +6,9 @@ namespace pep {
 inline namespace enumUtils { // to allow selective import of just these definitions
 
 //XXX Replace by std::to_underlying in C++23
-[[nodiscard]] constexpr auto ToUnderlying(Enum auto v) { return static_cast<std::underlying_type_t<decltype(v)>>(v); }
+[[nodiscard]] constexpr auto ToUnderlying(Enum auto v) noexcept {
+  return static_cast<std::underlying_type_t<decltype(v)>>(v);
+}
 
 template <FlagEnum T>
 constexpr inline T operator~(const T flags) noexcept {
