@@ -25,6 +25,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Compare.hpp
     Configuration.cpp Configuration.hpp Configuration_fwd.hpp
     Defer.hpp
+    EnumUtils.hpp
     Event.cpp Event.hpp
     Exceptions.cpp Exceptions.hpp
     File.cpp File.hpp
