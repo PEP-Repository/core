@@ -38,7 +38,7 @@ concept DerivedFromSpecialization = requires(const T& t) {
 };
 
 template <typename Class, typename FieldType>
-static constexpr const FieldType Class::* FieldAsConst(FieldType Class::* field) {
+constexpr const FieldType Class::* FieldAsConst(FieldType Class::* field) {
   return field;
 }
 
