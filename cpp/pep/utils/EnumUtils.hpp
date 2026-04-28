@@ -49,7 +49,7 @@ constexpr bool TestFlags(const T haystack, const T needle) noexcept { return (ha
 
 /// Returns \p flags if \p condition is true and `T::None` otherwise
 template <FlagEnum T>
-constexpr T SetFlags(T flags, bool condition) noexcept { return condition ? flags : T::None; }
+constexpr T ConditionalFlags(T flags, bool condition) noexcept { return condition ? flags : T::None; }
 
 } // namespace enumUtils
 } // namespace pep

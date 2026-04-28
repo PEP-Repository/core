@@ -188,9 +188,9 @@ so::FormatFlags ParseSingleExportFormat(const std::string& name) {
       SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
-  const auto parsed = SetFlags(so::FormatFlags::Csv, name == "csv")
-                    | SetFlags(so::FormatFlags::Json, name == "json")
-                    | SetFlags(so::FormatFlags::Yaml, name == "yaml");
+  const auto parsed = ConditionalFlags(so::FormatFlags::Csv, name == "csv")
+                    | ConditionalFlags(so::FormatFlags::Json, name == "json")
+                    | ConditionalFlags(so::FormatFlags::Yaml, name == "yaml");
   if (parsed != so::FormatFlags::None) { return parsed; }
 
   const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
