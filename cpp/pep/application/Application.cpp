@@ -181,8 +181,8 @@ Application::~Application() {
 
 std::string Application::getName() const {
 #ifdef __EMSCRIPTEN__
-  assert(getArgc() > 0);
-  return std::filesystem::path(getArgv()[0]).filename().string();
+  assert(this->getArgc() > 0);
+  return std::filesystem::path(this->getArgv()[0]).filename().string();
 #else
   return GetExecutablePath().filename().string();
 #endif
