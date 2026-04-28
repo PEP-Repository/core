@@ -69,7 +69,7 @@ const std::string OAuthProvider::ERROR_INVALID_GRANT = "invalid_grant";
 
 namespace {
 
-const std::string ClientId = "123";
+const std::string PepClientId = "123";
 
 const std::string SERVER_ERROR_DESCRIPTION = "Internal server error";
 
@@ -580,14 +580,14 @@ HTTPResponse OAuthProvider::handleCodeRequest(HTTPRequest request, std::string r
 
 const std::vector<url>& OAuthProvider::getRegisteredRedirectURIs(const std::string& clientId) {
   //We currently only support one client_id. There are no plans to change this, so no need to make this more complicated for now.
-  if (clientId == ClientId) {
+  if (clientId == PepClientId) {
     return allowedRedirectUris;
   }
   return Default<std::vector<url>>;
 }
 
 const std::set<std::string>& OAuthProvider::getAllowedTokenRequestOrigins(const std::string& clientId) {
-  if (clientId == ClientId) {
+  if (clientId == PepClientId) {
     return allowedTokenRequestOrigins;
   }
   return Default<std::set<std::string>>;
