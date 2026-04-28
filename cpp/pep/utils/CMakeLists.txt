@@ -120,7 +120,7 @@ function(add_unit_tests libname)
     file(GLOB UNITTEST_SOURCES tests/*.cpp tests/*.hpp)
     add_executable(${PROJECT_NAME}${libname}UnitTests ${UNITTEST_SOURCES})
     set_target_properties(${PROJECT_NAME}${libname}UnitTests PROPERTIES
-        FOLDER unit-tests
+        FOLDER pep-UnitTests
     )
     target_link_libraries(${PROJECT_NAME}${libname}UnitTests ${PROJECT_NAME}${libname}lib ${PROJECT_NAME}Testinglib)
     if (DEFINED AUT_LINK_LIBS)
