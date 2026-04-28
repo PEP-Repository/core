@@ -147,7 +147,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
 
 #include <pep/networking/HttpClient.hpp>
 
-#include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/operators/rx-finally.hpp>
 
 rxcpp::observable<HTTPResponse> pep::SendHttpRequest(HTTPRequest request, std::shared_ptr<boost::asio::io_context> io_context, const std::optional<std::filesystem::path>& caCertFilepath) {
   networking::HttpClient::Parameters parameters(*io_context, request.uri());
@@ -155,7 +155,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(HTTPRequest request, std::s
   auto client = networking::HttpClient::Create(std::move(parameters));
   client->start();
   return client->sendRequest(std::move(request))
-    .tap([client](const HTTPResponse&) {
+    .finally([client] {
       client->shutdown();
     });
 }
