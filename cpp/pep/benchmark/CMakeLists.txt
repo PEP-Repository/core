@@ -11,7 +11,8 @@ target_link_libraries(${PROJECT_NAME}benchmark
   benchmark::benchmark
 )
 if(DEFINED EMSCRIPTEN)
+  make_js_file_executable(${PROJECT_NAME}benchmark)
   target_link_options(${PROJECT_NAME}benchmark PRIVATE
-      -sINITIAL_MEMORY=629145600 # 600 MiB
+      -sINITIAL_MEMORY=629145600 # 600 MiB to avoid going OOM (on BM_PageSerialize)
   )
 endif()
