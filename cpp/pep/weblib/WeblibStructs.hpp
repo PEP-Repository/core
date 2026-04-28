@@ -54,7 +54,7 @@ struct CellEntry {
   [[nodiscard]] std::string subjectLocalPseudonym() const;
   [[nodiscard]] std::string subjectEncryptedOriginId() const;
   [[nodiscard]] const std::string& column() const;
-  // double to prevent it being mapped to bigint
+  // double to prevent it being mapped to bigint, which is harder to work with
   [[nodiscard]] double fileSize() const;
   [[nodiscard]] std::unordered_map<std::string, std::optional<emscripten::val>> partialMetadataView() const;
 };
