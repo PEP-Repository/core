@@ -14,7 +14,7 @@ std::vector<std::string> ToIndividualStrings(FormatFlags flags) {
 
 std::string ToSingleString(FormatFlags flags, std::string_view separator) {
   if (flags == FormatFlags::None) { return "none"; }
-  if (TestFlags(flags, FormatFlags::All)) { return "all"; }
+  if (flags == FormatFlags::All) { return "all"; }
   return boost::join(ToIndividualStrings(flags), separator);
 }
 
