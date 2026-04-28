@@ -151,7 +151,7 @@ saveBtn.addEventListener('click', () => void (async () => {
     id: entry.id,
     subjectLocalPseudonym: entry.subjectLocalPseudonym,
     column: entry.column,
-    fileSize: entry.fileSize.toString(),
+    fileSize: entry.fileSize,
   }, null, '  ');
 
   const fileExtensionBin = entry.partialMetadataView().get('fileExtension');
