@@ -103,8 +103,8 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
               throw std::runtime_error("HTTP response headers not available");
             }
             std::string headersStr(headerBytes - 1, '\0');
-            auto headerBytes2 = emscripten_fetch_get_response_headers(fetch, headersStr.data(), headersStr.size() + 1);
-            if (headerBytes2 != headerBytes) {
+            if (emscripten_fetch_get_response_headers(fetch, headersStr.data(), headersStr.size() + 1)
+                != headerBytes) {
               throw std::runtime_error("Failed to get HTTP response headers");
             }
 
