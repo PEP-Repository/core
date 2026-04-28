@@ -29,7 +29,7 @@ project(pep)
 
 if(DEFINED EMSCRIPTEN)
   message(STATUS "Emscripten version: ${EMSCRIPTEN_VERSION}")
-  # Use empty suffix instead of .js for -sEXECUTABLE behavior
+  # Using empty suffix instead of .js automatically adds a Node.js shebang (like -sEXECUTABLE) since Emscripten 5.0.0
   set(CMAKE_EXECUTABLE_SUFFIX "")
 endif()
 
