@@ -168,8 +168,9 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Removed user " << Logging::Escape(x.mUid);
   }
   for (auto& x : request.mAddUserIdentifier) {
-    const auto flags = ConditionalFlags(UserIdFlags::IsDisplayId, x.mIsDisplayId)
-                     | ConditionalFlags(UserIdFlags::IsPrimaryId, x.mIsPrimaryId);
+    const auto flags =
+        ConditionalFlags(UserIdFlags::IsDisplayId, x.mIsDisplayId) |
+        ConditionalFlags(UserIdFlags::IsPrimaryId, x.mIsPrimaryId);
     mStorage->addIdentifierForUser(x.mExistingUid, x.mNewUid, flags);
     LOG(LOG_TAG, info) << "Added user identifier " << Logging::Escape(x.mNewUid) << " for user " << Logging::Escape(x.mExistingUid);
   }
