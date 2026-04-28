@@ -9,8 +9,6 @@
 
 namespace pep::structuredOutput {
 
-enum class FormatFlags;
-
 /// Enum flags for all formats in pep::structuredOutput
 enum class PEP_ATTRIBUTE_FLAG_ENUM FormatFlags {
   None = 0b000,
