@@ -103,5 +103,8 @@ function(configure_executable_config_version target infra)
     ${target}_ConfigVersion ALL
     DEPENDS ${destination_files}
   )
+  set_target_properties(${target}_ConfigVersion PROPERTIES
+      FOLDER pep-ConfigVersions
+  )
   add_dependencies(${target} ${target}_ConfigVersion)
 endfunction()
