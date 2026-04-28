@@ -1,6 +1,7 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Stream.hpp>
+#include <boost/algorithm/hex.hpp>
 #include <gtest/gtest.h>
 
 TEST(Stream, Cropped) {
@@ -28,26 +29,26 @@ TEST(Stream, Cropped) {
 }
 
 TEST(Stream, Hashing) {
-  // Hash a regular (random) string
-  constexpr size_t length = 512U;
-  const std::string value = pep::RandomString(length);
-  auto unstreamed = pep::Sha256().digest(value);
+  const std::string value = "What a day! What a lovely day!";
+  const std::string hash_hexed = "ECBFDEC9ED78CCB85D39F207DB8E31ADF7E417EA39D4BC13894AF7C2F510BCB1";
+  const std::string hash = boost::algorithm::unhex(hash_hexed);
+  EXPECT_EQ(hash, pep::Sha256().digest(value)) << "Mismatched sample values";
 
-  // Set up a hashing istream that'll produce the same (random) string
+  // Set up a hashing istream that'll produce the sample string
   std::stringbuf raw(value);
   pep::Sha256 hasher;
   pep::HashingIStreamBuf hashing(raw, hasher);
   std::istream source(&hashing);
 
   // Extract (all) data from the istream
-  std::string extracted(length + 1U, '\0');
+  std::string extracted(value.size() + 1U, '\0');
   source.read(extracted.data(), static_cast<std::streamsize>(extracted.size()));
   EXPECT_TRUE(source.eof()) << "Should have exhausted input data";
   auto count = source.gcount();
-  EXPECT_EQ(static_cast<size_t>(count), length) << "Should have produced input data's characters";
+  EXPECT_EQ(static_cast<size_t>(count), value.size()) << "Should have produced only input data's characters";
 
-  extracted.resize(length); // Discard excess capacity/characters from our output buffer
+  extracted.resize(value.size()); // Discard excess capacity/characters from our output buffer
   EXPECT_EQ(value, extracted) << "Input data was mangled by streaming";
 
-  EXPECT_EQ(unstreamed, hasher.digest()) << "Streamed hashing produced incorrect result";
+  EXPECT_EQ(hash, hasher.digest()) << "Streamed hashing produced incorrect result";
 }
