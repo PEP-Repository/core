@@ -29,10 +29,19 @@ constexpr T operator& (const T lhs, const T rhs) noexcept {
 }
 
 template <FlagEnum T>
+constexpr T operator^ (const T lhs, const T rhs) noexcept {
+  //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
+  return static_cast<T>(ToUnderlying(lhs) ^ ToUnderlying(rhs));
+}
+
+template <FlagEnum T>
 constexpr T& operator|= (T& lhs, const T rhs) noexcept { return lhs = (lhs | rhs); }
 
 template <FlagEnum T>
 constexpr T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lhs & rhs); }
+
+template <FlagEnum T>
+constexpr T& operator^= (T& lhs, const T rhs) noexcept { return lhs = (lhs ^ rhs); }
 
 /// Test if \p haystacks contains at least all the flags of \p needle
 template <FlagEnum T>
