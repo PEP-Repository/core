@@ -14,7 +14,7 @@ add_library(${PROJECT_NAME}Webliblib
 target_link_libraries(${PROJECT_NAME}Webliblib
     ${PROJECT_NAME}Asynclib
     nlohmann_json::nlohmann_json
-    -lembind
+    -lembind # Explicit -l for CMAKE_LINK_LIBRARIES_ONLY_TARGETS
 )
 verify_headers_standalone(${PROJECT_NAME}Webliblib)
 
