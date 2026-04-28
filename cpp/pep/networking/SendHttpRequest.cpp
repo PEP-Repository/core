@@ -139,7 +139,6 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
       // Make sure that code isn't changed to prematurely discard these variables, which must remain valid until the above function call
       (void) headers;
       (void) headerPtrs;
-      (void) ctx;
       if (!fetch) {
         throw std::runtime_error("Failed to initiate HTTP fetch");
       }
