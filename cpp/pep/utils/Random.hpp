@@ -9,6 +9,7 @@
 #include <random>
 #include <ranges>
 #include <span>
+#include <streambuf>
 #include <string>
 #include <utility>
 
