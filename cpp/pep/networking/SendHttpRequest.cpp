@@ -94,7 +94,9 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
         const auto ctx = static_cast<fetchContext *>(fetch->userData);
 
         try {
-          HTTPMessage::HeaderMap headerMap; {
+          HTTPMessage::HeaderMap headerMap;
+          // Parse headers
+          {
             /// Header bytes including NULL terminator
             auto headerBytes = emscripten_fetch_get_response_headers_length(fetch);
             if (!headerBytes) {
