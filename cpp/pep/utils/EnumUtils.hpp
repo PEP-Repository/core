@@ -11,36 +11,36 @@ inline namespace enumUtils { // to allow selective import of just these definiti
 }
 
 template <FlagEnum T>
-constexpr inline T operator~(const T flags) noexcept {
+constexpr T operator~(const T flags) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
   return static_cast<T>(~ToUnderlying(flags) & ToUnderlying(T::All));
 }
 
 template <FlagEnum T>
-constexpr inline T operator| (const T lhs, const T rhs) noexcept {
+constexpr T operator| (const T lhs, const T rhs) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
   return static_cast<T>(ToUnderlying(lhs) | ToUnderlying(rhs));
 }
 
 template <FlagEnum T>
-constexpr inline T operator& (const T lhs, const T rhs) noexcept {
+constexpr T operator& (const T lhs, const T rhs) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
   return static_cast<T>(ToUnderlying(lhs) & ToUnderlying(rhs));
 }
 
 template <FlagEnum T>
-constexpr inline T& operator|= (T& lhs, const T rhs) noexcept { return lhs = (lhs | rhs); }
+constexpr T& operator|= (T& lhs, const T rhs) noexcept { return lhs = (lhs | rhs); }
 
 template <FlagEnum T>
-constexpr inline T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lhs & rhs); }
+constexpr T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lhs & rhs); }
 
 /// Test if \p haystacks contains at least all the flags of \p needle
 template <FlagEnum T>
-constexpr inline bool TestFlags(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
+constexpr bool TestFlags(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
 
 /// Returns \p flags if \p condition is true and `T::None` otherwise
 template <FlagEnum T>
-constexpr inline T SetFlags(T flags, bool condition) noexcept { return condition ? flags : T::None; }
+constexpr T SetFlags(T flags, bool condition) noexcept { return condition ? flags : T::None; }
 
 } // namespace enumUtils
 } // namespace pep
