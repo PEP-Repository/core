@@ -645,6 +645,15 @@ if should_run_test structured-output; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} semicolons but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
 
+  # Repeat the last export command, but this time output directly to stdout. The output should be exactly the same
+  CSV_STDOUT=$(pepcli --oauth-token-group soUsers export\
+    --from "$DEST_DIR/pulled-data" --output-file - --force csv --delimiter semicolon)
+  if [ "$CSV_CONTENT" != "$CSV_STDOUT" ]; then
+    CSV_STDOUT_PATH="$DEST_DIR/pulled-data/export-direct.csv"
+    echo "$CSV_STDOUT" > "$CSV_STDOUT_PATH"
+    fail "Output to stdout ($CSV_STDOUT_PATH) is different from output to file ($CSV_PATH)."
+  fi
+
   # Clean up
   execute . rm -rf "$DEST_DIR/pulled-data"
 
