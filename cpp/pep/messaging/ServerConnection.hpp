@@ -4,7 +4,6 @@
 #include <pep/messaging/Node.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/async/FakeVoid.hpp>
-#include <pep/async/WaitGroup.hpp>
 #include <utility>
 
 namespace pep::messaging {
@@ -14,11 +13,16 @@ namespace pep::messaging {
  */
 class ServerConnection : public std::enable_shared_from_this<ServerConnection> {
 private:
+  struct PendingRequest {
+    std::shared_ptr<std::string> message;
+    std::optional<messaging::MessageBatches> tail;
+    rxcpp::subscriber<std::string> subscriber;
+  };
+
   std::shared_ptr<Node> mNode;
+  std::vector<PendingRequest> mPendingRequests;
   std::shared_ptr<Connection> mConnection;
   EventSubscription mConnectionStatusSubscription;
-  std::shared_ptr<WaitGroup> mWaitGroup;
-  std::optional<WaitGroup::Action> mConnecting;
   rxcpp::subjects::behavior<ConnectionStatus> mStatus{ {false, boost::system::errc::make_error_code(boost::system::errc::no_message)} };
   rxcpp::subscriber<ConnectionStatus> mStatusSubscriber = mStatus.get_subscriber();
 
@@ -30,7 +34,6 @@ private:
   void handleConnectivityEnd();
 
   void onConnected(std::shared_ptr<Connection> connection);
-  void onDisconnected();
 
   void finalize();
 

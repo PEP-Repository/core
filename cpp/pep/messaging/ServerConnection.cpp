@@ -1,12 +1,12 @@
+#include <pep/async/CreateObservable.hpp>
 #include <pep/messaging/BinaryProtocol.hpp>
 #include <pep/messaging/ServerConnection.hpp>
 
 namespace pep::messaging {
 
 ServerConnection::ServerConnection(std::shared_ptr<Node> node) noexcept
-  : mNode(node), mWaitGroup(WaitGroup::Create()) {
+  : mNode(node) {
   assert(mNode != nullptr);
-  this->onDisconnected();
 }
 
 void ServerConnection::handleConnectivityChange(const LifeCycler::StatusChange& change) {
@@ -34,7 +34,6 @@ void ServerConnection::handleConnectivityChange(const Connection::Attempt::Resul
     catch (...) {
       status.error = boost::system::errc::make_error_code(boost::system::errc::errc_t::not_connected);
     }
-    this->onDisconnected();
   }
 
   mStatusSubscriber.on_next(status);
@@ -51,26 +50,16 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
         self->handleConnectivityChange(change);
       }
       });
-  }
 
-  assert(mConnecting.has_value());
-  mConnecting->done();
-  mConnecting.reset();
-  mWaitGroup = WaitGroup::Create();
-}
-
-void ServerConnection::onDisconnected() {
-  if (!mConnecting.has_value()) {
-    mWaitGroup = WaitGroup::Create();
-    mConnecting.emplace(mWaitGroup->add("Connecting"));
+    for (const auto& request: std::move(mPendingRequests)) {
+      mConnection->sendRequest(request.message, request.tail).subscribe(request.subscriber);
+    }
   }
 }
 
 void ServerConnection::finalize() {
-  if (mNode != nullptr) {
-    mNode->shutdown();
-    mNode.reset();
-  }
+  this->shutdown();
+  mNode.reset();
   mConnection.reset();
 }
 
@@ -114,16 +103,21 @@ rxcpp::observable<ConnectionStatus> ServerConnection::connectionStatus() {
 }
 
 rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std::string> message, std::optional<messaging::MessageBatches> tail) {
-  //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) Function leak seems like a false positive as long as WaitGroup finishes (TODO we should probably support cancellation)
-  return mWaitGroup->delayObservable<std::string>([weak = WeakFrom(*this), message, tail]() -> rxcpp::observable<std::string> {
-    auto self = weak.lock();
-    if (self == nullptr || self->mNode == nullptr) {
-      return rxcpp::observable<>::error<std::string>(std::runtime_error("Server connection was lost or closed"));
-    }
+  if (mConnection != nullptr) {
+    return mConnection->sendRequest(message, tail);
+  }
 
-    auto connection = self->mConnection;
-    assert(connection != nullptr);
-    return connection->sendRequest(message, tail);
+  return CreateObservable<std::string>([self = SharedFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
+      if (self->mConnection != nullptr) { // Connection has been established before caller subscribed
+        self->mConnection->sendRequest(message, tail).subscribe(subscriber);
+      }
+      else { // Connection has not been established yet
+        self->mPendingRequests.emplace_back(PendingRequest{ // Store the request so it can be sent when the connection is established later
+          .message = message,
+          .tail = tail,
+          .subscriber = subscriber,
+          });
+      }
     });
 }
 
@@ -131,7 +125,12 @@ rxcpp::observable<FakeVoid> ServerConnection::shutdown() {
   if (mNode == nullptr) {
     return rxcpp::observable<>::just(FakeVoid());
   }
-  return mNode->shutdown();
+
+  auto result = mNode->shutdown();
+  for (const auto& pending : std::move(mPendingRequests)) {
+    pending.subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection is shutting down")));
+  }
+  return result;
 }
 
 }

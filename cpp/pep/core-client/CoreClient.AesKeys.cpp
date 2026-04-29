@@ -3,6 +3,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
+#include <pep/async/WaitGroup.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
