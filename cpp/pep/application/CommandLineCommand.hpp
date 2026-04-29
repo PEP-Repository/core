@@ -25,10 +25,6 @@ private:
 
   std::optional<int> applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs);
 
-#ifndef NDEBUG
-  void validateNoConflictingParameterForwards(const std::queue<std::string>& leafArgs, const CommandPath& childPath);
-#endif
-
   int routeToDescendant(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs);
 
 protected:

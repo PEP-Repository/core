@@ -15,18 +15,19 @@
 //           Par │Normal│Depr   │Alias │Forwarding│NoLongSupp│
 //               │Par   │ Par   │Par   │Depr      │Par       │
 // Cmd           │      │       │      │Par       │          │
-// ──────────────┼──────┼───────┼──────┼──────────┼──────────┤
-// Normal Cmd    │ [1]  │ [2]   │ [3]  │   [4]    │   [5]    │
-// ──────────────┼──────┼───────┼──────┼──────────┼──────────┤
-// Depr Cmd      │ [6]  │ [7]   │ [8]  │   [9]    │   [10]   │
-// ──────────────┼──────┼───────┼──────┼──────────┼──────────┤
-// Alias Cmd     │ [11] │ [12]  │ [13] │   [14]   │   [15]   │
-// ──────────────┼──────┼───────┼──────┼──────────┼──────────┤
-// Forwarding    │ [16] │ [17]  │ [18] │   [19]   │   [20]   │
-// Depr Cmd      │      │       │      │          │          │
-// ──────────────┼──────┼───────┼──────┼──────────┼──────────┤
-// NoLongSupp    │ [21] │ [22]  │ [23] │   [24]   │   [25]   │
-// Cmd           │      │       │      │          │          │
+// ──────────────┼──────┼───────┼───────┼──────────┼──────────┤
+// Normal Cmd    │ [1]  │ [2]   │ [3]   │   [4]    │   [5]    │
+// ──────────────┼──────┼───────┼───────┼──────────┼──────────┤
+// Depr Cmd      │ [6]  │ [7]   │ [8]   │   [9]    │   [10]   │
+// ──────────────┼──────┼───────┼───────┼──────────┼──────────┤
+// Alias Cmd     │ [11] │ [12]  │ [13a] │   [14]   │   [15]   │
+//               |      │       │ X[13b]│          │          │
+// ──────────────┼──────┼───────┼───────┼──────────┼──────────┤
+// Forwarding    │ [16] │ [17]  │ [18]  │   [19]   │   [20]   │
+// Depr Cmd      │      │       │       │          │          │
+// ──────────────┼──────┼───────┼───────┼──────────┼──────────┤
+// NoLongSupp    │ [21] │ [22]  │ [23]  │   [24]   │   [25]   │
+// Cmd           │      │       │       │          │          │
 //
 // For all where applicable: extra parameters are forwarded as well
 // Cant combine no longer supported with deprecation, or with forwarding/aliasing
@@ -110,6 +111,7 @@
 //  │     --forward-username      [DEPRECATED_ALIAS]    -> to "app user --username"        [X3-9][X3-24]
 //  │     --removed-role          [ALIAS]               -> to "app user --role"            [X3-10][X3-25]
 //  |     --old-mail              [ALIAS]               -> to "app user --old-email"       [3-22]
+//  |     --forward-to-deploy     [ALIAS]               -> to "app deploy --name"          [X1-13b]
 //  |
 //  ├── deploy                    [DEPRECATED]                                             [1-6][1-7][1-8][1-9][1-10][3-2][X2-6b]
 //  │     --name                  [NORMAL]              Deploy name                        [1-6][3-2][3-12][3-27][X2-6b]
@@ -118,7 +120,7 @@
 //  │     --deployment-name       [DEPRECATED_ALIAS]    -> to "app deploy --name"          [1-9]
 //  │     --role                  [NO_LONGER_SUPPORTED]                                    [1-10]
 //  |
-//  ├── create-user               [ALIAS]               -> to "app user"                   [1-11][1-12][1-13][1-14][1-15][3-1]
+//  ├── create-user               [ALIAS]               -> to "app user"                   [1-11][1-12][1-13][X1-13b][1-14][1-15][3-1]
 //  ├── init-user                 [DEPRECATED_ALIAS]    -> to "app user"                   [1-16][1-17][1-18][1-19][1-20][3-11]
 //  ├── old-user                  [NO_LONGER_SUPPORTED]                                    [1-21][1-22][1-23][1-24][1-25]
 //  |
@@ -379,6 +381,12 @@ pep::commandline::Parameters UserCmd::getSupportedParameters() const {
           pep::commandline::NamedValues toAdd;
           toAdd["mail"] = vals["chain-mail"];
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
+        })
+    + pep::commandline::Parameter("forward-to-deploy", std::nullopt).value(pep::commandline::Value<std::string>())
+        .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
+          pep::commandline::NamedValues toAdd;
+          toAdd["name"] = vals["forward-to-deploy"];
+          return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"deploy"}};
         });
 }
 
@@ -723,6 +731,16 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameter) {
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "test@example.com");
   EXPECT_TRUE(err.empty());
+}
+
+// X[1-13b]: Alias Cmd + Alias Par (parameter forwards to different command)
+// Programmer error: alias command forwards to 'user', but parameter forwards to 'deploy'
+TEST(CommandParameterCombinations, AliasCommandWithAliasParameterForwardingToDifferentCommand) {
+  EXPECT_DEBUG_DEATH({
+    AppCmd cmd;
+    auto args = ToQueue({"create-user", "--forward-to-deploy", "myapp"});
+    cmd.process(args);
+  }, ".*parameters cannot forward to other commands.*") << "Framework should assert when alias command forwards to one command but parameter forwards to another.";
 }
 
 // [1-14]: Alias Cmd + Forwarding Depr Par

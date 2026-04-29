@@ -151,43 +151,6 @@ void Command::finalizeParameters(bool isForwardingDispatch) {
   mParametersFinalized = true;
 }
 
-
-#ifndef NDEBUG
-void Command::validateNoConflictingParameterForwards(const std::queue<std::string>& leafArgs, const CommandPath& childPath) {
-  if (leafArgs.empty()) {
-    return;
-  }
-  
-  try {
-    auto myParams = this->getSupportedParameters();
-    // Need to make a copy since lex() modifies the queue
-    auto argsCopy = leafArgs;
-    auto lexed = myParams.lex(argsCopy);
-    
-    // Check if any lexed parameters have transformations that forward to different commands
-    for (const auto& [paramName, values] : lexed) {
-      auto paramIt = std::find_if(myParams.begin(), myParams.end(), 
-                                   [&paramName](const Parameter& p) { return p.getName() == paramName; });
-      if (paramIt != myParams.end() && paramIt->hasTransformer()) {
-        // Simulate the transformation to see if it tries to forward to a different command
-        NamedValues tempValues;
-        for (const auto& val : values) {
-          tempValues[paramName].add(val);
-        }
-        auto transformResult = paramIt->transform(*this, tempValues);
-        assert((transformResult.childPath.empty() || transformResult.childPath == childPath) && 
-               "Programmer error: When using an alias/forwarding command, parameters cannot forward to a different command. "
-               "The alias command specifies one target, but the parameter tries to forward to another. "
-               "Either remove the parameter's command forwarding or use the target command directly.");
-      }
-    }
-  }
-  catch (...) {
-    // If lexing fails, let it fail at the child level with proper error handling
-  }
-}
-#endif
-
 std::optional<int> Command::applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs) {
 
   // Step 1: Initialize accumulators for merging transformation results
@@ -251,12 +214,6 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
 }
 
 int Command::dispatchTo(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs) {
-
-#ifndef NDEBUG
-  // Check if leafArgs contain parameters that would forward to a different command
-  // This catches the case where an alias command forwards, but parameters try to forward elsewhere
-  this->validateNoConflictingParameterForwards(leafArgs, childPath);
-#endif
 
   // Ensure mParameterValues is initialized for intermedaite command.
   if (!mParameterValues.has_value()) {
@@ -383,6 +340,21 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
     }
 
     // Step 10: Apply parameter transformations (may forward to other commands)
+#ifndef NDEBUG
+    if (isLeafDispatch) {
+      // In leaf dispatch mode, parameters cannot forward to different commands
+      // Check this before attempting transformations
+      for (const auto& param : parameters) {
+        if (param.hasTransformer() && mParameterValues->has(param.getName())) {
+          auto transformResult = param.transform(*this, *mParameterValues);
+          assert(transformResult.childPath.empty() && 
+                "Programmer error: When dispatched via alias/forwarding command, parameters cannot forward to other commands. "
+                "The alias specifies the target command; parameters can only transform values, not change the destination.");
+        }
+      }
+    }
+#endif
+
     if (auto exitCode = this->applyParameterTransformations(parameters, arguments)) {
       return *exitCode;
     }
