@@ -64,7 +64,7 @@ private:
     explicit Side(std::string role) noexcept : mRole(std::move(role)) {}
 
     std::shared_ptr<boost::asio::io_context> ioContext() const noexcept { return mIoContext; }
-    const std::string role() const noexcept { return mRole; }
+    const std::string& role() const noexcept { return mRole; }
 
     void start();
     void stop(bool force = true);

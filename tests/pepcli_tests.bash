@@ -588,27 +588,27 @@ fi
 ####################
 
 if should_run_test structured-output; then
-  # All SOTD.shortText strings are <= 7 bytes long (max inline length)
+  # All soData.shortText strings are <= 7 bytes long (max inline length)
   # language=json
   SO_CONFIG='{
-    "userGroups": [{ "name": "SOAG" }],
+    "userGroups": [{ "name": "soUsers" }],
     "columnGroups": [{
-      "name": "SOTD",
-      "columns": [ "SOTD.shortText", "SOTD.longText" ],
+      "name": "soData",
+      "columns": [ "soData.shortText", "soData.longText" ],
       "cgars": {
-        "SOAG": [ "read", "write" ],
+        "soUsers": [ "read", "write" ],
         "Data Administrator": [ "read", "write" ]
       }
     }],
     "subjectGroups": [{
-      "name": "SOTPGroup",
+      "name": "soSubjects",
       "subjects": [
-        { "SOTD.shortText": "yellow", "SOTD.longText": "Canary Yellow" },
-        { "SOTD.shortText": "blue", "SOTD.longText": "Celestial Blue" },
-        { "SOTD.shortText": "green" },
-        { "SOTD.longText": "Cadmium Red" }
+        { "soData.shortText": "yellow", "soData.longText": "Canary Yellow" },
+        { "soData.shortText": "blue", "soData.longText": "Celestial Blue" },
+        { "soData.shortText": "green" },
+        { "soData.longText": "Cadmium Red" }
       ],
-      "pgars": { "SOAG": [ "enumerate", "access" ] }
+      "pgars": { "soUsers": [ "enumerate", "access" ] }
     }]
   }'
 
@@ -616,18 +616,18 @@ if should_run_test structured-output; then
 
   # Pull and export to csv
   CSV_PATH="$DEST_DIR/pulled-data/export.csv"
-  pepcli --oauth-token-group SOAG pull\
-    -P SOTPGroup -C SOTD --output-directory "$DEST_DIR/pulled-data" --force
-  pepcli --oauth-token-group SOAG export\
+  pepcli --oauth-token-group soUsers pull\
+    -P soSubjects -C soData --output-directory "$DEST_DIR/pulled-data" --force
+  pepcli --oauth-token-group soUsers export\
     --from "$DEST_DIR/pulled-data" --max-inline-size 7 --output-file "$CSV_PATH" --force csv
 
   # Checking csv contents. The order of the rows and fields is not checked: we assume it to be consistent
   CSV_CONTENT=$(execute . cat "${CSV_PATH}")
-  echo "$CSV_CONTENT" | grep -E '^"id"'               | grep '"SOTD.shortText"' | grep '"SOTD.longText (file ref)"'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"yellow"'         | grep 'SOTD.longText"'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"blue"'           | grep 'SOTD.longText"'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"green"'          | grep '""'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '""'               | grep 'SOTD.longText"'
+  echo "$CSV_CONTENT" | grep -E '^"id"'               | grep '"soData.shortText"' | grep '"soData.longText (file ref)"'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"yellow"'           | grep 'soData.longText"'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"blue"'             | grep 'soData.longText"'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"green"'            | grep '""'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '""'                 | grep 'soData.longText"'
 
   # Check if the correct delimiter was used via a count
   EXPECTED_CSV_DELIMITER_COUNT=10
@@ -637,7 +637,7 @@ if should_run_test structured-output; then
   fi
 
   # Run another export command with a different delimiter and do another count
-  pepcli --oauth-token-group SOAG export\
+  pepcli --oauth-token-group soUsers export\
     --from "$DEST_DIR/pulled-data" --output-file "$CSV_PATH" --force csv --delimiter semicolon
   CSV_CONTENT=$(execute . cat "${CSV_PATH}")
   ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | tr -d '[:space:]')

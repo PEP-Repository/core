@@ -44,6 +44,7 @@ Changes in upcoming release (1.7):
 
 - #2794: CSV export no longer lists cell header(s) if no rows are exported.
 
+- #2847: Reduced memory use when using `pepcli store` with (large) files.
 
 MANUAL CHANGES REQUIRED:
 

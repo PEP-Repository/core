@@ -5,12 +5,12 @@
 
 namespace pep {
 
-void detail::HasherBase::update(const void* block, size_t size) {
+void HasherBase::update(const void* block, size_t size) {
   assert(!mFinished);
   this->process(block, size);
 }
 
-void detail::HasherBase::update(std::istream& source) {
+void HasherBase::update(std::istream& source) {
   constexpr std::streamsize HASH_CHUNK_LENGTH{4096};
 
   std::array<char, HASH_CHUNK_LENGTH> chunk{};
@@ -33,7 +33,7 @@ void detail::HasherBase::update(std::istream& source) {
   } while (actual == HASH_CHUNK_LENGTH);
 }
 
-void detail::HasherBase::setFinished() {
+void HasherBase::setFinished() {
   assert(!mFinished);
   mFinished = true;
 }

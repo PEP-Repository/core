@@ -35,11 +35,10 @@ deferred<F> defer_func(F&& f) {
   return deferred<F>(std::forward<F>(f));
 }
 
-#ifdef __clang__
-// For Clang >22: Silence warning about __COUNTER__, which now apparently is a C2y extension
+#if defined(__clang__) && __clang_major__ >= 22
+// For Clang >=22: Silence warning about __COUNTER__, which now apparently is a C2y extension
 # define PEP_SilenceCounterExtensionWarningBegin \
   _Pragma("clang diagnostic push") \
-  _Pragma("clang diagnostic ignored \"-Wunknown-warning-option\"") /*for Clang <22*/  \
   _Pragma("clang diagnostic ignored \"-Wc2y-extensions\"")
 # define PEP_SilenceCounterExtensionWarningEnd \
   _Pragma("clang diagnostic pop")

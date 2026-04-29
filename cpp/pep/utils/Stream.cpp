@@ -69,4 +69,23 @@ SetBinaryFileMode SetBinaryFileMode::ForStdout() { return SetBinaryFileMode(); }
 
 #endif
 
+CroppingIStreamBuf::CroppingIStreamBuf(std::streambuf& source, std::streamsize count)
+  : source_(source), remaining_(count) {
+  assert(remaining_ >= 0 && "Can't have negative count now, can we?");
+}
+
+std::streamsize CroppingIStreamBuf::xsgetn(char* s, std::streamsize count) {
+  auto cropped = std::min(count, remaining_);
+  auto result = source_.sgetn(s, cropped);
+  remaining_ -= result;
+  return result;
+}
+
+std::streamsize HashingIStreamBuf::xsgetn(char* s, std::streamsize count) {
+  auto result = source_.sgetn(s, count);
+  assert(result >= 0 && "Source streambuf reported negative number of extracted characters");
+  hasher_.update(s, static_cast<size_t>(result));
+  return result;
+}
+
 }
