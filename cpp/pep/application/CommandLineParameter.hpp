@@ -105,11 +105,11 @@ public:
   SwitchAnnouncement getCanonicalAnnouncement() const;
   std::set<SwitchAnnouncement> getAnnouncements() const;
   std::shared_ptr<const ValueSpecificationBase> getValueSpecification() const noexcept { return mValueSpecification; }
-  bool hasTransformer() const noexcept { return static_cast<bool>(mTransformer); }
-  const std::optional<std::string>& getDeprecationMessage() const noexcept { return mDeprecationMessage; }
-  bool isNoLongerSupported() const noexcept { return mNoLongerSupportedMessage.has_value(); }
-  bool isDeprecated() const noexcept { return mDeprecationMessage.has_value(); }
-  const std::optional<std::string>& getNoLongerSupportedMessage() const noexcept { return mNoLongerSupportedMessage; }
+  [[nodiscard]] bool hasTransformer() const noexcept { return mTransformer != nullptr; }
+  [[nodiscard]] bool isNoLongerSupported() const noexcept { return mNoLongerSupportedMessage.has_value(); }
+  [[nodiscard]] bool isDeprecated() const noexcept { return mDeprecationMessage.has_value(); }
+  [[nodiscard]] const std::optional<std::string>& getNoLongerSupportedMessage() const noexcept { return mNoLongerSupportedMessage; }
+  [[nodiscard]] const std::optional<std::string>& getDeprecationMessage() const noexcept { return mDeprecationMessage; }
   ParameterTransformationResult transform(Command& self, const NamedValues& values) const;
 
   bool isRequired() const noexcept;
@@ -171,7 +171,6 @@ private:
   std::vector<std::string> getInvocationSummary() const;
   void writeHelpText(std::ostream& destination) const;
 
-  // Range-based iteration over parameters (read-only)
   inline auto begin() const { return mEntries.cbegin(); }
   inline auto end() const { return mEntries.cend(); }
 

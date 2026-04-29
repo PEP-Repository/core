@@ -38,10 +38,7 @@ Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
 }
 
 Parameter Parameter::forwardingAlias(std::function<ParameterTransformationResult(Command&, const NamedValues&)> transformer) const {
-  assert(transformer);
-  if (!transformer) {
-    throw std::runtime_error("Forwarding transformer for parameter '" + mName + "' must be provided");
-  }
+  assert(transformer && "Forwarding transformer for parameter must be provided");
   assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
   assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
 
@@ -54,6 +51,7 @@ Parameter Parameter::rename(const std::string& newParamName) const {
   assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine rename() and noLongerSupported() on the same parameter");
   assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
   assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() before rename() on the same parameter");
+
   const std::string oldName = mName;
   return this->forwardingAlias([oldName, newParamName](Command&, const NamedValues& values) {
     NamedValues toAdd;
@@ -65,6 +63,7 @@ Parameter Parameter::rename(const std::string& newParamName) const {
 Parameter Parameter::deprecated(const std::string& message) const {
   assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
   assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() multiple times to the same parameter");
+
   auto result = *this;
   result.mDeprecationMessage = message;
   return result;
@@ -90,9 +89,7 @@ std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
 }
 
 ParameterTransformationResult Parameter::transform(Command& self, const NamedValues& values) const {
-  if (!mTransformer) {
-    throw std::runtime_error("No transformer configured for parameter '" + mName + "'");
-  }
+  assert(mTransformer && "No transformer configured for parameter");
   return mTransformer(self, values);
 }
 

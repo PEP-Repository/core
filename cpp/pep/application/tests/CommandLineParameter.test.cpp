@@ -70,9 +70,11 @@
 // Forwarding    │ [26]  │ [27]  │   X0     │X0   │   X0     │   0  │  0    │ X0   │  X0       │   X0     │
 // Depr Par      │       │       │          │     │          │      │       │      │           │          │
 //
-// Extra test cases (E):
-// 1. Complex forwarding: Transform parameter into two new parameters
-// 2. Complex forwarding: 
+// Extra test cases:
+// 1. Split parameter into two new parameters
+// 2a, 2b. Forward to different commands based on parameter value
+// 3. Root parameters stay available after forwarding to a different subcommand
+// 4. Transformer path must point to an existing subcommand chain
 
 // ---- Shared command tree used by all tests ----
 //
@@ -126,8 +128,10 @@
 //  │         --verbose           [NORMAL]              Enable verbose logging             [2-6a]
 //  │
 //  ├── db                        [ALIAS]               -> to "app database"               [X3-14]
-//  ├── database                  [NORMAL]              Database operations                [X3-14]
-//  │     --source                [NORMAL]              Database source path               [X3-14]
+//  ├── database                  [NORMAL]              Database operations                [X3-14][4-5]
+//  │     --source                [NORMAL]              Database source path               [X3-14][4-5]
+//  │     --legacy-db-source      [DEPRECATED_ALIAS]    -> to "app database --source"      [4-5]
+//  │     --old-db-path           [DEPRECATED_ALIAS]    -> to "app database --source"      [4-5]
 //  │
 //  ├── create-deploy             [ALIAS]               -> to "app deploy"                 [3-2]
 //  ├── new-user                  [ALIAS]               -> to "app init-user"              [X3-3]
@@ -257,7 +261,7 @@ pep::commandline::Parameters AppCmd::getSupportedParameters() const {
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
             toAdd["name"] = vals["bad-transform-path"];
-            return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"missing-subcommand"}};
+            return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"server", "start", "missing-subcommand"}};
           })
       + pep::commandline::Parameter("mode", std::nullopt).value(pep::commandline::Value<std::string>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
@@ -393,9 +397,21 @@ RecordingCommandMixin* DatabaseCmd::getParentMixin() { return &getParent(); }
 
 pep::commandline::Parameters DatabaseCmd::getSupportedParameters() const {
   return pep::commandline::ChildCommandOf<AppCmd>::getSupportedParameters()
-    + pep::commandline::Parameter("source", "Database source path").value(pep::commandline::Value<std::string>().required())
-    + pep::commandline::Parameter("timeout", "Database timeout in seconds").value(pep::commandline::Value<int>())
-    + pep::commandline::Parameter("tables", "Database tables to process").value(pep::commandline::Value<std::string>().multiple());
+    + pep::commandline::Parameter("source", "Database source path").value(pep::commandline::Value<std::string>())
+    + pep::commandline::Parameter("legacy-db-source", std::nullopt).value(pep::commandline::Value<std::string>())
+        .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
+          pep::commandline::NamedValues toAdd;
+          toAdd["source"] = vals["legacy-db-source"];
+          return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
+        })
+        .deprecated("Use --source instead.")
+    + pep::commandline::Parameter("old-db-path", std::nullopt).value(pep::commandline::Value<std::string>())
+        .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
+          pep::commandline::NamedValues toAdd;
+          toAdd["source"] = vals["old-db-path"];
+          return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
+        })
+        .deprecated("Use --source instead.");
 }
 
 int DatabaseCmd::execute() {
@@ -459,7 +475,6 @@ pep::commandline::Parameters StartCmd::getSupportedParameters() const {
     + pep::commandline::Parameter("port", "Server port number").value(pep::commandline::Value<int>())
     + pep::commandline::Parameter("verbose", "Enable verbose logging")
     + pep::commandline::Parameter("workers", "Number of worker threads").value(pep::commandline::Value<int>())
-    + pep::commandline::Parameter("modules", "Modules to load").value(pep::commandline::Value<std::string>().multiple())
     + pep::commandline::Parameter("host-port", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
@@ -491,7 +506,7 @@ int StartCmd::execute() {
 // Make test infrastructure accessible to TEST() macros
 using namespace pep::application::test;
 
-// Multi-value parameter test
+// [0-1]: Multi-value parameter test
 TEST(ParameterTypes, MultipleValuesParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Alice", "--groups", "admin", "--groups", "dev", "--groups", "qa"});
@@ -507,7 +522,7 @@ TEST(ParameterTypes, MultipleValuesParameter) {
   ASSERT_TRUE(err.empty());
 }
 
-// Test empty multi-value parameter
+// [0-2]: Test empty multi-value parameter
 TEST(ParameterTypes, EmptyMultipleValuesParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob"});
@@ -520,7 +535,7 @@ TEST(ParameterTypes, EmptyMultipleValuesParameter) {
   ASSERT_TRUE(err.empty());
 }
 
-// Integer parameter
+// [0-3]: Integer parameter
 TEST(ParameterTypes, IntegerParameterTypes) {
   // Test with UserCmd
   AppCmd cmd;
@@ -541,7 +556,7 @@ TEST(ParameterTypes, IntegerParameterTypes) {
   ASSERT_TRUE(err2.empty());
 }
 
-// Mixed parameter types
+// [0-4]: Mixed parameter types
 TEST(ParameterTypes, MixedParameterTypes) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Charlie", "--age", "25", "--groups", "admin", "--groups", "users"});
@@ -588,7 +603,7 @@ TEST(CommandParameterCombinations, NormalCommandWithDeprecatedParameter) {
 }
 
 // [1-3]: Normal Cmd + Alias Par
-// Forward to new command/parameter
+// Forward to different command/parameter
 TEST(CommandParameterCombinations, NormalCommandWithAliasParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--mail", "test@example.com"});
@@ -599,7 +614,7 @@ TEST(CommandParameterCombinations, NormalCommandWithAliasParameter) {
 }
 
 // [1-4]: Normal Cmd + Forwarding Depr Par
-// Show deprecation warning, forward to new command/parameter
+// Show deprecation warning, forward to different command/parameter
 TEST(CommandParameterCombinations, RenamesParameterAndWarns) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--username", "john@example.com"});
@@ -794,7 +809,7 @@ TEST(CommandParameterCombinations, ForwardingDeprecatedCommandWithNoLongerSuppor
 // Fail with error about no longer supported command
 TEST(CommandParameterCombinations, NoLongerSupportedCommandWithNormalParameter) {
   AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"old-user", "ignored-argument"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"old-user", "--name", "Bob"} );
 
   ASSERT_EQ(exitCode, EXIT_FAILURE);
   ASSERT_NE(err.find("Error: The command 'old-user' is no longer supported. Use 'user' instead."), std::string::npos);
@@ -1343,7 +1358,7 @@ TEST(ComplexForwarding, ValueSplittingViaDispatchTo) {
   ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "host"), 1);
 }
 
-// [4-3a]: Conditional parameter forwarding based on parameter value
+// [4-2a]: Conditional parameter forwarding based on parameter value
 // deprecation warning + parameter value should be forwarded to the correct target command
 TEST(ComplexForwarding, ConditionalRedirectToStartWithParameters) {
   AppCmd cmd;
@@ -1354,7 +1369,7 @@ TEST(ComplexForwarding, ConditionalRedirectToStartWithParameters) {
   ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 9000);
 }
 
-// [4-3b]: Conditional parameter forwarding based on parameter value
+// [4-2b]: Conditional parameter forwarding based on parameter value
 // deprecation warning + parameter value should be forwarded to the correct target command
 TEST(ComplexForwarding, ConditionalRedirectToDeployWithParameters) {
   AppCmd cmd;
@@ -1387,4 +1402,14 @@ TEST(ComplexForwarding, InvalidTransformationChildPathAsserts) {
     auto args = ToQueue({"--bad-transform-path", "value"});
     cmd.process(args);
   }, ".*") << "Framework should assert when a parameter transformation provides an invalid child path.";
+}
+
+// [4-5]: Conflicting parameter additions
+// Programmer error: multiple transformations cannot add the same parameter
+TEST(ComplexForwarding, ConflictingParameterAdditionsAssert) {
+  EXPECT_DEBUG_DEATH({
+    AppCmd cmd;
+    auto args = ToQueue({"database", "--legacy-db-source", "/data/old.db", "--old-db-path", "/data/new.db"});
+    cmd.process(args);
+  }, ".*conflicting parameter additions.*") << "Framework should assert when multiple transformations try to add the same parameter.";
 }

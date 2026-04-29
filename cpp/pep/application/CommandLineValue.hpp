@@ -46,6 +46,7 @@ public:
 
   inline auto begin() const { return mEntries.cbegin(); }
   inline auto end() const { return mEntries.cend(); }
+  inline auto find(const std::string& key) const { return mEntries.find(key); }
 
   template <typename T>
   void add(const std::string& key, const T& value) { (*this)[key].add(value); }

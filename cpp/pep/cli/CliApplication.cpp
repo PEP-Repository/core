@@ -38,7 +38,14 @@ pep::commandline::Parameters CliApplication::getSupportedParameters() const {
     + pep::commandline::Parameter("oauth-token-secret", "OAuth token secret to generate oauth token").value(pep::commandline::Value<std::string>())
     + pep::commandline::Parameter("oauth-token-duration", "Validity of generated token in seconds").value(pep::commandline::Value<seconds::rep>().defaultsTo(daySecs, "a day"))
     + pep::commandline::Parameter("oauth-token-subject", "Subject for generated token").value(pep::commandline::Value<std::string>().defaultsTo("pepcli"))
-    + pep::commandline::Parameter("oauth-token-group", "Group for generated token").value(pep::commandline::Value<std::string>().defaultsTo(pep::UserGroup::ResearchAssessor));
+    + pep::commandline::Parameter("oauth-token-group", "Group for generated token").value(pep::commandline::Value<std::string>().defaultsTo(pep::UserGroup::ResearchAssessor))
+    // Test forwarding alias parameter: forwards to "ping --server <value>"
+    + pep::commandline::Parameter("quick-ping", "Quick ping a server (test forwarding alias)").value(pep::commandline::Value<std::string>())
+        .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
+          pep::commandline::NamedValues toAdd;
+          toAdd["server"] = vals["quick-ping"];
+          return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"ping"}};
+        });
 }
 
 void CliApplication::finalizeParameters(bool isForwardingDispatch) {
@@ -175,6 +182,18 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
 }
 
 std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createChildCommands() {
+  // Helper function to create values transformer that populates a specific parameter
+  auto forwardToParam = [](const std::string& paramName) {
+    return [paramName](std::queue<std::string> args) {
+      pep::commandline::NamedValues transformed;
+      if (!args.empty()) {
+        transformed.add(paramName, args.front());
+        args.pop();
+      }
+      return transformed;
+    };
+  };
+
   const auto commands = std::vector<std::shared_ptr<pep::commandline::Command>>{
       CreateCommandList(*this),
       CreateCommandGet(*this),
@@ -198,6 +217,8 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       pep::commandline::CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
       CreateCommandStructureMetadata(*this),
       CreateCommandServer(*this),
+      // Test forwarding alias command: forwards to "user query --user <value>"
+      pep::commandline::CreateAliasCommand(*this, "quick-user-query", *this, {"user", "query"}, nullptr, forwardToParam("user")),
   };
   assert(std::ranges::none_of(commands, [](auto& ptr) { return ptr == nullptr; }));
   return commands;

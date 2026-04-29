@@ -23,10 +23,13 @@ private:
   int autocompleteChildCommand(std::queue<std::string>& arguments);
   bool hasRequiredArgument();
 
-  int dispatch(std::vector<std::shared_ptr<Command>> children, std::queue<std::string>& remaining);
-  std::optional<int> checkNoLongerSupportedParameters(const Parameters& parameters);
-  void showParameterDeprecationWarnings(const Parameters& parameters);
   std::optional<int> applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs);
+
+#ifndef NDEBUG
+  void validateNoConflictingParameterForwards(const std::queue<std::string>& leafArgs, const CommandPath& childPath);
+#endif
+
+  int routeToDescendant(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs);
 
 protected:
   virtual std::optional<int> processLexedParameters(const LexedValues& lexed); // Overrides must call base implementation
@@ -38,15 +41,19 @@ protected:
 
 public:
   virtual ~Command() noexcept = default;
-  int process(std::queue<std::string>& arguments);
+  int process(std::queue<std::string>& arguments, bool isLeafDispatch = false, std::optional<NamedValues> preMergedValues = std::nullopt);
 
   virtual std::string getName() const = 0;
   virtual std::string getDescription() const = 0;
   virtual bool isUndocumented() const { return false; }
   virtual std::optional<std::string> getAdditionalDescription() const { return std::nullopt; }
   virtual std::optional<std::string> getRelativeDocumentationUrl() const { return std::nullopt; }
-  /// Override to emit a deprecation warning when the command is invoked (suppressed on --help).
+  /// Override to emit a deprecation warning when the command is invoked
   virtual std::optional<std::string> getDeprecationWarning() const { return std::nullopt; }
+  /// Returns true if this command forwards to another command (alias/forwarding)
+  virtual bool isForwardingCommand() const { return false; }
+  /// Returns true if this command is no longer supported
+  virtual bool isNoLongerSupported() const { return false; }
   virtual const Command* getParentCommand() const noexcept { return nullptr; }
   virtual Parameters getSupportedParameters() const; // Derived classes should add to this set
   const NamedValues& getParameterValues() const; // Available after finalizeParameters() has been called

@@ -36,15 +36,17 @@ public:
   ///                  Typically \p parent, but may be any ancestor in the tree.
   /// \param childPath Subcommand tokens to navigate from \p ancestor to the target.
   ///                  May be empty if \p ancestor itself is the target.
-  explicit AliasCommand(TParent& parent, const std::string& aliasName,
-      Command& ancestor, CommandPath childPath,
-      std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
-      std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr)
-    : ChildCommandOf<TParent>(aliasName, "Alias for: " + childPath.toString(), parent),
-      mAncestor(ancestor),
-      mChildPath(std::move(childPath)),
-      mArgumentTransformer(std::move(transformer)),
-      mValuesTransformer(std::move(valuesTransformer)) {}
+  AliasCommand(TParent& parent, const std::string& aliasName,
+    Command& ancestor, CommandPath childPath,
+    std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
+    std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr)
+  : ChildCommandOf<TParent>(aliasName, "Alias for: " + childPath.toString(), parent),
+    mAncestor(ancestor),
+    mChildPath(std::move(childPath)),
+    mArgumentTransformer(std::move(transformer)),
+    mValuesTransformer(std::move(valuesTransformer)) {}
+
+  bool isForwardingCommand() const override { return true; }
 
   Parameters getSupportedParameters() const override {
     return ChildCommandOf<TParent>::getSupportedParameters()
@@ -78,13 +80,13 @@ private:
 template <typename TParent>
 class DeprecatedCommand : public AliasCommand<TParent> {
 public:
-  explicit DeprecatedCommand(TParent& parent, const std::string& aliasName,
-      Command& ancestor, CommandPath childPath,
-      const std::string& deprecationMessage,
-      std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
-      std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr)
-    : AliasCommand<TParent>(parent, aliasName, ancestor, std::move(childPath), std::move(transformer), std::move(valuesTransformer)),
-      mDeprecationMessage(deprecationMessage) {}
+  DeprecatedCommand(TParent& parent, const std::string& aliasName,
+    Command& ancestor, CommandPath childPath,
+    const std::string& deprecationMessage,
+    std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
+    std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr)
+  : AliasCommand<TParent>(parent, aliasName, ancestor, std::move(childPath), std::move(transformer), std::move(valuesTransformer)),
+    mDeprecationMessage(deprecationMessage) {}
 
   std::optional<std::string> getDeprecationWarning() const override { return mDeprecationMessage; }
 
@@ -95,10 +97,11 @@ private:
 template <typename TParent>
 class NoLongerSupportedCommand : public ChildCommandOf<TParent> {
 public:
-  explicit NoLongerSupportedCommand(TParent& parent, const std::string& name, const std::string& message)
-    : ChildCommandOf<TParent>(name, "No longer supported. " + message, parent), mMessage(message) {}
+  NoLongerSupportedCommand(TParent& parent, const std::string& name, const std::string& message)
+  : ChildCommandOf<TParent>(name, "No longer supported. " + message, parent), mMessage(message) {}
 
   bool isUndocumented() const override { return true; }
+  bool isNoLongerSupported() const override { return true; }
 
   Parameters getSupportedParameters() const override {
     return ChildCommandOf<TParent>::getSupportedParameters()
