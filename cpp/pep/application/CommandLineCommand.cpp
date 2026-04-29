@@ -151,7 +151,7 @@ void Command::finalizeParameters(bool isForwardingDispatch) {
   mParametersFinalized = true;
 }
 
-std::optional<int> Command::applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs) {
+std::optional<int> Command::applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs, bool isLeafDispatch) {
 
   // Step 1: Initialize accumulators for merging transformation results
   Command* dispatchAncestor = nullptr;
@@ -168,6 +168,11 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
     
     // Apply the transformation (e.g., forwarding alias)
     auto transformResult = param.transform(*this, *mParameterValues);
+
+    // In leaf dispatch mode, parameters cannot forward to different commands
+    assert((transformResult.childPath.empty() || !isLeafDispatch) && 
+           "Programmer error: When dispatched via alias/forwarding command, parameters cannot forward to other commands. "
+           "The alias specifies the target command; parameters can only transform values, not change the destination.");
 
     // Step 3: Merge transformation results, ensuring no conflicting ancestors
     if (transformResult.ancestor != nullptr) {
@@ -340,22 +345,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
     }
 
     // Step 10: Apply parameter transformations (may forward to other commands)
-#ifndef NDEBUG
-    if (isLeafDispatch) {
-      // In leaf dispatch mode, parameters cannot forward to different commands
-      // Check this before attempting transformations
-      for (const auto& param : parameters) {
-        if (param.hasTransformer() && mParameterValues->has(param.getName())) {
-          auto transformResult = param.transform(*this, *mParameterValues);
-          assert(transformResult.childPath.empty() && 
-                "Programmer error: When dispatched via alias/forwarding command, parameters cannot forward to other commands. "
-                "The alias specifies the target command; parameters can only transform values, not change the destination.");
-        }
-      }
-    }
-#endif
-
-    if (auto exitCode = this->applyParameterTransformations(parameters, arguments)) {
+    if (auto exitCode = this->applyParameterTransformations(parameters, arguments, isLeafDispatch)) {
       return *exitCode;
     }
 

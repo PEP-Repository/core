@@ -23,7 +23,7 @@ private:
   int autocompleteChildCommand(std::queue<std::string>& arguments);
   bool hasRequiredArgument();
 
-  std::optional<int> applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs);
+  std::optional<int> applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs, bool isLeafDispatch = false);
 
   int routeToDescendant(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs);
 
