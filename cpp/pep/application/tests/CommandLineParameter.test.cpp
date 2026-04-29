@@ -733,6 +733,8 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameter) {
   EXPECT_TRUE(err.empty());
 }
 
+// Tests invalid access which would otherwise cause crashes, should assert in debug builds
+#ifndef NDEBUG
 // X[1-13b]: Alias Cmd + Alias Par (parameter forwards to different command)
 // Programmer error: alias command forwards to 'user', but parameter forwards to 'deploy'
 TEST(CommandParameterCombinations, AliasCommandWithAliasParameterForwardingToDifferentCommand) {
@@ -742,6 +744,7 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameterForwardingToDif
     cmd.process(args);
   }, ".*parameters cannot forward to other commands.*") << "Framework should assert when alias command forwards to one command but parameter forwards to another.";
 }
+#endif
 
 // [1-14]: Alias Cmd + Forwarding Depr Par
 // Show deprecation warning, only allow parameter transformations that dont forward to a different command
@@ -1412,6 +1415,8 @@ TEST(ComplexForwarding, RootParametersAvailableAfterSubcommandForward) {
   ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
 }
 
+// Tests invalid access which would otherwise cause crashes, should assert in debug builds
+#ifndef NDEBUG
 // [4-4]: Bad forwarding
 // Programmer error: transformed dispatch path must point to an existing subcommand chain
 TEST(ComplexForwarding, InvalidTransformationChildPathAsserts) {
@@ -1421,6 +1426,7 @@ TEST(ComplexForwarding, InvalidTransformationChildPathAsserts) {
     cmd.process(args);
   }, ".*") << "Framework should assert when a parameter transformation provides an invalid child path.";
 }
+#endif
 
 // [4-5]: Conflicting parameter additions
 // Programmer error: multiple transformations cannot add the same parameter
