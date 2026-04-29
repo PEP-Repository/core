@@ -114,10 +114,17 @@ rxcpp::observable<ConnectionStatus> ServerConnection::connectionStatus() {
 }
 
 rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std::string> message, std::optional<messaging::MessageBatches> tail) {
-  return this->whenConnected<std::string>([message, tail](std::shared_ptr<Connection> connection) {
+  //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) Function leak seems like a false positive as long as WaitGroup finishes (TODO we should probably support cancellation)
+  return mWaitGroup->delayObservable<std::string>([weak = WeakFrom(*this), message, tail]() -> rxcpp::observable<std::string> {
+    auto self = weak.lock();
+    if (self == nullptr || self->mNode == nullptr) {
+      return rxcpp::observable<>::error<std::string>(std::runtime_error("Server connection was lost or closed"));
+    }
+
+    auto connection = self->mConnection;
+    assert(connection != nullptr);
     return connection->sendRequest(message, tail);
     });
-
 }
 
 rxcpp::observable<FakeVoid> ServerConnection::shutdown() {

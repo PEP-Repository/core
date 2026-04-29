@@ -34,22 +34,6 @@ private:
 
   void finalize();
 
-  template <typename TResponse>
-  using RequestFunction = std::function<rxcpp::observable<TResponse>(std::shared_ptr<Connection>)>;
-
-  template <typename TResponse>
-  rxcpp::observable<TResponse> whenConnected(RequestFunction<TResponse> request) {
-    //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) Function leak seems like a false positive as long as WaitGroup finishes (TODO we should probably support cancellation)
-    return mWaitGroup->delayObservable<TResponse>([weak = WeakFrom(*this), request]() -> rxcpp::observable<TResponse> {
-      auto self = weak.lock();
-      if (self == nullptr || self->mNode == nullptr) {
-        return rxcpp::observable<>::error<TResponse>(std::runtime_error("Server connection was lost or closed"));
-      }
-      assert(self->mConnection != nullptr);
-      return request(self->mConnection);
-      });
-  }
-
 public:
   /**
    * @brief Creates a new instance.
