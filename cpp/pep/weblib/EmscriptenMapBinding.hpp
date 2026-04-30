@@ -6,6 +6,7 @@
 
 namespace emscripten::internal {
 
+// See notes on internal API in EmscriptenVectorBinding.hpp
 template <pep::AnyMap Map>
 struct BindingType<Map> {
 private:
