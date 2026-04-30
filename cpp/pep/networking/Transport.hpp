@@ -2,7 +2,7 @@
 
 #include <pep/utils/OperationResult.hpp>
 #include <pep/utils/LifeCycler.hpp>
-#include <pep/utils/TypeTraits.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <boost/core/noncopyable.hpp>
 
 namespace pep::networking {

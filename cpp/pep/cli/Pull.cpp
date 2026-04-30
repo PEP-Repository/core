@@ -27,6 +27,7 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
+using namespace pep::enumUtils;
 using namespace pep::cli;
 using namespace std::chrono_literals;
 namespace so = pep::structuredOutput;
@@ -182,21 +183,24 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   }
 }
 
-so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) {
+so::FormatFlags ParseSingleExportFormat(const std::string& name) {
   static_assert(
       SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
+  const auto parsed =
+      FlagsIf(so::FormatFlags::Csv, name == "csv") |
+      FlagsIf(so::FormatFlags::Json, name == "json") |
+      FlagsIf(so::FormatFlags::Yaml, name == "yaml");
+  if (parsed != so::FormatFlags::None) { return parsed; }
+
+  const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
+  throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
+}
+
+so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) {
   auto flags = so::FormatFlags::None;
-  for (const auto& name : formatNames) {
-    if (name == "csv") { flags |= so::FormatFlags::Csv; }
-    else if (name == "json") { flags |= so::FormatFlags::Json; }
-    else if (name == "yaml") { flags |= so::FormatFlags::Yaml; }
-    else {
-      const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
-      throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
-    }
-  }
+  for (const auto& name : formatNames) { flags |= ParseSingleExportFormat(name); }
   return flags;
 }
 
@@ -402,13 +406,13 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
       SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
       "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
 
-  if (Contains(formats, so::FormatFlags::Csv)) {
+  if (HasFlags(formats, so::FormatFlags::Csv)) {
     exportAs("csv", [&table](std::ofstream& stream) { so::csv::append(stream, table); });
   }
-  if (Contains(formats, so::FormatFlags::Json)) {
+  if (HasFlags(formats, so::FormatFlags::Json)) {
     exportAs("json", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
-  if (Contains(formats, so::FormatFlags::Json)) {
+  if (HasFlags(formats, so::FormatFlags::Json)) {
     exportAs("yaml", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
 }
