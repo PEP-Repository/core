@@ -45,7 +45,7 @@ public:
 template <typename T, typename Allocator>
 struct TypeID<std::vector<T, Allocator>> : TypeID<val> {};
 
-// Check that are specialization gets selected
+// Check that our specialization gets selected
 static_assert(std::same_as<BindingType<std::vector<int>>::WireType, BindingType<val>::WireType>);
 
 }
