@@ -1,5 +1,4 @@
-#!/usr/bin/env sh
-# shellcheck disable=SC3043  # `local` may not be defined in POSIX sh
+#!/usr/bin/env bash
 
 # Example: ./scripts/validate-config.sh ./config/local/
 
