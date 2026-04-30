@@ -7,7 +7,7 @@
 namespace emscripten::internal {
 
 // Embind: (de)serialize vectors as JS arrays, based on https://github.com/emscripten-core/emscripten/issues/11070#issuecomment-717675128.
-// The API for this is not officially stable, but not using it means massively complicating 9de)serialization.
+// The API for this is not officially stable, but not using it means massively complicating (de)serialization.
 // Note that emscripten::register_vector would instead return a JS wrapper object.
 //
 // References:
