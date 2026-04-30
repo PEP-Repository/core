@@ -19,6 +19,8 @@ namespace {
 const std::string LOG_TAG("ObservableByteStream");
 
 class ByteStreamSource : public boost::noncopyable {
+  static bool warnedNoByobSupport;
+
   rxcpp::observable<std::string> data_;
   std::size_t chunkSize_;
   rxcpp::composite_subscription subscription_ = rxcpp::composite_subscription::empty();
@@ -46,7 +48,8 @@ public:
     assert(!subscription_.is_subscribed() && "Do not call start twice");
     controller_ = std::move(controller);
     val byteStreamControllerClass = val::global("ReadableByteStreamController");
-    if (!byteStreamControllerClass || !controller_.instanceof(byteStreamControllerClass)) {
+    if ((!byteStreamControllerClass || !controller_.instanceof(byteStreamControllerClass))
+        && !std::exchange(warnedNoByobSupport, true)) {
       LOG(LOG_TAG, debug) << "ReadableStream BYOB mode not supported by browser, using less-efficient buffer-copying method";
     }
     auto deleted = std::make_shared<bool>(false);
@@ -139,6 +142,8 @@ public:
   std::string type() const { return "bytes"; }
   std::size_t autoAllocateChunkSize() const { return chunkSize_; }
 };
+
+bool ByteStreamSource::warnedNoByobSupport = false;
 }
 
 EMSCRIPTEN_BINDINGS(ObservableByteStream) {
