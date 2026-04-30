@@ -123,6 +123,7 @@ analyse-source:
   script:
     - ./"$PEP_FOSS_REPO_DIR"/scripts/analyse-scripts.sh
     - for branch in
+      "$CI_COMMIT_REF_NAME"
       "$PEP_PROJECT_DEVELOPMENT_BRANCH"
       "$PEP_PROJECT_TESTING_BRANCH"
       "$PEP_PROJECT_ACCEPTANCE_BRANCH"
