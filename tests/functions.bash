@@ -107,6 +107,15 @@ fail() {
   exit 1
 }
 
+assert_equal() {
+  local -r lhs=$1
+  local -r rhs=$2
+  local -r message=$3
+  if [ "$lhs" -ne "$rhs" ]; then
+    fail "$message"
+  fi
+}
+
 readonly IMAGE_REPOSITORY="gitlabregistry.pep.cs.ru.nl/pep/core/pep-services"
 default_image() {
   commit_sha=$("$1/scripts/gitdir.sh" commit-sha "$1")
