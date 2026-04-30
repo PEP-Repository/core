@@ -697,6 +697,10 @@ if should_run_test pseudonym-conversion; then
       -P pcSubjects -C pcData --show-dataless --local-pseudonyms\
       > "$PSEUDONYM_LIST_JSON"
 
+  BLP=$(jq -r '.[] | select(.data."pcData.id" == "ID_1") | .blp' "$PSEUDONYM_LIST_JSON")
+  LP=$(jq -r '.[] | select(.data."pcData.id" == "ID_1") | .lp' "$PSEUDONYM_LIST_JSON")
+  PP=$(jq -r '.[] | select(.data."pcData.id" == "ID_1") | .pp' "$PSEUDONYM_LIST_JSON")
+
   test_cleanup "$PC_CONFIG"
 fi
 
