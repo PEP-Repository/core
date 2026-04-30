@@ -353,7 +353,7 @@ Emscripten maps PThreads to Workers.
 
 - Should not block main browser thread
 - `io_context` runs on background thread
-- `main` exits, but PEP remains alive
+- `main` exits, but all state remains and other threads remains alive until JS calls an exit function
 
 # Asynchronous code
 

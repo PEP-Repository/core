@@ -462,6 +462,10 @@ int main() {
     Logging::Initialize({std::make_shared<ConsoleLogging>(verbose)});
   }
 
-  // Keep running until JS calls exit
+  // We exit `main`, but keep the runtime alive. That is, global destructors are not run,
+  // and all other threads will keep running (in their WebWorkers),
+  // and we can still call from JS into the main WebWorker.
+  // See https://emscripten.org/docs/api_reference/emscripten.h.html#c.emscripten_exit_with_live_runtime
+  // JS will call into our `exit` binding that will actually shut down the application.
   ::emscripten_exit_with_live_runtime();
 }
