@@ -34,11 +34,11 @@ enum class Format { Yaml, Json };
 struct DisplayConfig final {
   enum class Flags {
     None = 0,
-    PrintHeaders = 1 << 1,
-    PrintGroups = 1 << 2,
-    PrintUserGroups = 1 << 3,
-    PrintUsers = 1 << 4,
-    All = (1 << 5) - 1,
+    PrintHeaders = 0b0001,
+    PrintGroups = 0b0010,
+    PrintUserGroups = 0b0100,
+    PrintUsers = 0b1000,
+    All = 0b1111,
   };
 
   Flags flags = Flags::All;
