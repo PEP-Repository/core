@@ -10,12 +10,12 @@ namespace pep {
 namespace {
 
 const std::map<LifeCycler::Status, std::set<LifeCycler::Status>> LIFECYCLE_STATUS_CHANGES {
-  { LifeCycler::Status::uninitialized, { LifeCycler::Status::initializing, LifeCycler::Status::finalized }},
-  { LifeCycler::Status::reinitializing, { LifeCycler::Status::initializing, LifeCycler::Status::finalizing }},
-  { LifeCycler::Status::initializing, { LifeCycler::Status::reinitializing, LifeCycler::Status::initialized, LifeCycler::Status::finalizing }},
-  { LifeCycler::Status::initialized, { LifeCycler::Status::reinitializing, LifeCycler::Status::finalizing }},
-  { LifeCycler::Status::finalizing, { LifeCycler::Status::finalized }},
-  { LifeCycler::Status::finalized, {}}
+  { LifeCycler::Status::Uninitialized, { LifeCycler::Status::Initializing, LifeCycler::Status::Finalized }},
+  { LifeCycler::Status::Reinitializing, { LifeCycler::Status::Initializing, LifeCycler::Status::Finalizing }},
+  { LifeCycler::Status::Initializing, { LifeCycler::Status::Reinitializing, LifeCycler::Status::Initialized, LifeCycler::Status::Finalizing }},
+  { LifeCycler::Status::Initialized, { LifeCycler::Status::Reinitializing, LifeCycler::Status::Finalizing }},
+  { LifeCycler::Status::Finalizing, { LifeCycler::Status::Finalized }},
+  { LifeCycler::Status::Finalized, {}}
 };
 
 const std::set<LifeCycler::Status>& GetAllowedLifeCycleTransitions(LifeCycler::Status from) {
@@ -29,17 +29,17 @@ const std::set<LifeCycler::Status>& GetAllowedLifeCycleTransitions(LifeCycler::S
 }
 
 LifeCycler::~LifeCycler() noexcept {
-  assert(mStatus == Status::uninitialized || mStatus >= Status::finalizing); // Derived class should have started finalization already
+  assert(mStatus == Status::Uninitialized || mStatus >= Status::Finalizing); // Derived class should have started finalization already
 
   // In case derived class forgot to set the status, ensure that subscribers receive the (possibly expected/required) notification that we're finalizing
-  if (mStatus != Status::uninitialized && mStatus < Status::finalizing && GetAllowedLifeCycleTransitions(mStatus).contains(Status::finalizing)) {
-    this->setStatus(Status::finalizing);
+  if (mStatus != Status::Uninitialized && mStatus < Status::Finalizing && GetAllowedLifeCycleTransitions(mStatus).contains(Status::Finalizing)) {
+    this->setStatus(Status::Finalizing);
   }
 
   // Ensure that the instance has sent the "finalized" notification before being (fully) destroyed
-  if (mStatus != Status::finalized) {
-    assert(GetAllowedLifeCycleTransitions(mStatus).contains(Status::finalized));
-    this->setStatus(Status::finalized);
+  if (mStatus != Status::Finalized) {
+    assert(GetAllowedLifeCycleTransitions(mStatus).contains(Status::Finalized));
+    this->setStatus(Status::Finalized);
   }
 }
 
@@ -47,8 +47,8 @@ LifeCycler::Status LifeCycler::setStatus(Status status) {
   auto result = mStatus;
 
   if (status != result) {
-    if (result == Status::initialized && status == Status::initializing) { // When initialized instances call this->setStatus(Status::initializing) ...
-      this->setStatus(Status::reinitializing); // ... we ensure that listeners also receive a "reinitializing" notification (which they may expect)
+    if (result == Status::Initialized && status == Status::Initializing) { // When initialized instances call this->setStatus(Status::initializing) ...
+      this->setStatus(Status::Reinitializing); // ... we ensure that listeners also receive a "reinitializing" notification (which they may expect)
       assert(GetAllowedLifeCycleTransitions(mStatus).contains(status));
     }
     else if (!GetAllowedLifeCycleTransitions(result).contains(status)) {

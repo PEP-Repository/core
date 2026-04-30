@@ -11,19 +11,19 @@ namespace pep::structuredOutput {
 
 /// Enum flags for all formats in pep::structuredOutput
 enum class PEP_ATTRIBUTE_FLAG_ENUM FormatFlags {
-  none = 0b000,
-  csv = 0b001,
-  json = 0b010,
-  yaml = 0b100,
-  all = 0b111,
+  None = 0b000,
+  Csv = 0b001,
+  Json = 0b010,
+  Yaml = 0b100,
+  All = 0b111,
 };
 
 constexpr inline FormatFlags operator~(const FormatFlags flags) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
-  return static_cast<FormatFlags>(~ToUnderlying(flags) & ToUnderlying(FormatFlags::all));
+  return static_cast<FormatFlags>(~ToUnderlying(flags) & ToUnderlying(FormatFlags::All));
 }
-static_assert(ToUnderlying(~FormatFlags::none) == ToUnderlying(FormatFlags::all), "none is the bitwise inversion of all");
-static_assert(ToUnderlying(~FormatFlags::all) == ToUnderlying(FormatFlags::none), "all is the bitwise inversion of none");
+static_assert(ToUnderlying(~FormatFlags::None) == ToUnderlying(FormatFlags::All), "none is the bitwise inversion of all");
+static_assert(ToUnderlying(~FormatFlags::All) == ToUnderlying(FormatFlags::None), "all is the bitwise inversion of none");
 
 constexpr inline FormatFlags operator| (const FormatFlags lhs, const FormatFlags rhs) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
@@ -45,7 +45,7 @@ constexpr inline FormatFlags& operator&= (FormatFlags& lhs, const FormatFlags rh
 
 /// Test if \p lhs contains at least all the flags of \p rhs
 constexpr inline bool Contains(const FormatFlags haystack, const FormatFlags needle) noexcept { return (haystack & needle) == needle; }
-static_assert(Contains(FormatFlags::none, FormatFlags::none), "Test(x, FormatFlags::none) is always true");
+static_assert(Contains(FormatFlags::None, FormatFlags::None), "Test(x, FormatFlags::none) is always true");
 
 std::vector<std::string> ToIndividualStrings(FormatFlags);
 std::string ToSingleString(FormatFlags, std::string_view separator = "|");

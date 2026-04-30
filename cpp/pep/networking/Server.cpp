@@ -70,8 +70,8 @@ std::shared_ptr<Protocol::ClientParameters> Server::createClientParameters() con
 }
 
 void Server::shutdown() {
-  if (this->status() != Status::uninitialized && this->status() < Status::finalizing) {
-    this->setStatus(Status::finalizing);
+  if (this->status() != Status::Uninitialized && this->status() < Status::Finalizing) {
+    this->setStatus(Status::Finalizing);
   }
   mComponent.reset(); // Base (Node) class will invoke its close method
   Node::shutdown();

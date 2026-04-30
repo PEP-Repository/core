@@ -25,12 +25,12 @@ public:
   ~Transport() noexcept override;
 
   enum class ConnectivityStatus {
-    unconnected   = ToUnderlying(LifeCycler::Status::uninitialized),
-    reconnecting  = ToUnderlying(LifeCycler::Status::reinitializing),
-    connecting    = ToUnderlying(LifeCycler::Status::initializing),
-    connected     = ToUnderlying(LifeCycler::Status::initialized),
-    disconnecting = ToUnderlying(LifeCycler::Status::finalizing),
-    disconnected  = ToUnderlying(LifeCycler::Status::finalized)
+    Unconnected   = ToUnderlying(LifeCycler::Status::Uninitialized),
+    Reconnecting  = ToUnderlying(LifeCycler::Status::Reinitializing),
+    Connecting    = ToUnderlying(LifeCycler::Status::Initializing),
+    Connected     = ToUnderlying(LifeCycler::Status::Initialized),
+    Disconnecting = ToUnderlying(LifeCycler::Status::Finalizing),
+    Disconnected  = ToUnderlying(LifeCycler::Status::Finalized)
   };
 
   ConnectivityStatus status() const noexcept;
@@ -49,12 +49,12 @@ public:
    *         isClosed() will return false while connectivity is still being established, or after an underlying layer
    *         has closed itself due to an unrecoverable error.
    */
-  bool isConnected() const noexcept { return this->status() == ConnectivityStatus::connected; }
+  bool isConnected() const noexcept { return this->status() == ConnectivityStatus::Connected; }
 
   /*
    * \brief Indicates whether the transport has been closed, i.e. fully shut down without a chance of being reconnected.
    */
-  bool isClosed() const noexcept { return this->status() == ConnectivityStatus::disconnected; }
+  bool isClosed() const noexcept { return this->status() == ConnectivityStatus::Disconnected; }
 
   /*
    * \brief Returns (a string representation of) the address of the connected party.

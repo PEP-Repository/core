@@ -41,7 +41,7 @@ PathStyle::Variant DeterminePathStyle(
 void CommandExport::ChildCommand::abortIfNotWritable(
     const std::filesystem::path& where,
     AllowOverwrite allowOverwrite) const {
-  const auto isOverwritable = (allowOverwrite == AllowOverwrite::yes) && is_regular_file(where);
+  const auto isOverwritable = (allowOverwrite == AllowOverwrite::Yes) && is_regular_file(where);
   if (exists(where) && !isOverwritable) {
     throw std::runtime_error{
         "Cannot write over \"" + where.string()
@@ -116,7 +116,7 @@ CommandExport::ChildCommand::CommonConfiguration CommandExport::ChildCommand::co
   config.outputFile = absolute(values.get<std::filesystem::path>("output-file"));
   config.outputFile =
       DefaultToExtension(config.outputFile, values.has("no-auto-extension") ? "" : preferredExtension());
-  config.allowOverwrite = values.has("force") ? AllowOverwrite::yes : AllowOverwrite::no;
+  config.allowOverwrite = values.has("force") ? AllowOverwrite::Yes : AllowOverwrite::No;
   config.conversion.maxInlineSizeInBytes = values.get<std::size_t>("max-inline-size");
   config.conversion.pathStyle =
       DeterminePathStyle(values.get<std::string>("file-reference-style"), config.inputDirectory, config.outputFile);

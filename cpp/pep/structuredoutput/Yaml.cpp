@@ -79,7 +79,7 @@ std::ostream& appendYaml(std::ostream& stream,
   return stream;
 }
 
-enum class ForceQuotes { no, yes };
+enum class ForceQuotes { No, Yes };
 
 std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view str, ForceQuotes forceQuotes) {
   constexpr auto needsQuotes = [](std::string_view str) {
@@ -90,7 +90,7 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
   };
   constexpr auto needsEscape = [](char c) { return c == '\\' || c == '"'; };
 
-  const auto quoteOrNothing = (forceQuotes == ForceQuotes::yes || needsQuotes(str)) ? "\"" : "";
+  const auto quoteOrNothing = (forceQuotes == ForceQuotes::Yes || needsQuotes(str)) ? "\"" : "";
 
   stream << quoteOrNothing;
   for (char c : str) { stream << (needsEscape(c) ? "\\" : "") << c; }
@@ -119,11 +119,11 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
   else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
   else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
   else if (node.empty()) { stream << (node.is_array() ? "[]" : "{}") << "\n"; }
-  else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>(), ForceQuotes::yes) << "\n"; }
+  else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>(), ForceQuotes::Yes) << "\n"; }
   else if (node.is_object()) {
     for (auto it = node.begin(); it != node.end(); it++) {
       indentIfNotFirst(stream);
-      AppendStringLiteral(stream, it.key(), ForceQuotes::no) << ":";
+      AppendStringLiteral(stream, it.key(), ForceQuotes::No) << ":";
 
       if (isAtomic(*it)) { stream << " "; }
       else {
