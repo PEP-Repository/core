@@ -705,19 +705,19 @@ if should_run_test pseudonym-conversion; then
 
   PP=$(pcLookup ID_1 pp)
   LP=$(pcLookup ID_1 lp)
-  BLP=$(pcLookup ID_1 blp)
+  UP=$(pcLookup ID_1 blp)
 
   assert_equal "$(pepcli pseudonym convert "$PP" polymorphic)" "$PP" "incorrect"
   assert_equal "$(pepcli pseudonym convert "$PP" local)"       "$LP" "incorrect"
-  assert_equal "$(pepcli pseudonym convert "$PP" user)"        "$BLP" "incorrect"
+  assert_equal "$(pepcli pseudonym convert "$PP" user)"        "$UP" "incorrect"
 
   assert_equal "$(pepcli pseudonym convert "$LP" polymorphic)" "$PP" "incorrect"
   assert_equal "$(pepcli pseudonym convert "$LP" local)"       "$LP" "incorrect"
-  assert_equal "$(pepcli pseudonym convert "$LP" user)"        "$BLP" "incorrect"
+  assert_equal "$(pepcli pseudonym convert "$LP" user)"        "$UP" "incorrect"
 
-  assert_equal "$(pepcli pseudonym convert "$BLP" polymorphic)" "$PP" "incorrect"
-  assert_equal "$(pepcli pseudonym convert "$BLP" local)"       "$LP" "incorrect"
-  assert_equal "$(pepcli pseudonym convert "$BLP" user)"       "$BLP" "incorrect"
+  assert_equal "$(pepcli pseudonym convert "$UP" polymorphic)" "$PP" "incorrect"
+  assert_equal "$(pepcli pseudonym convert "$UP" local)"       "$LP" "incorrect"
+  assert_equal "$(pepcli pseudonym convert "$UP" user)"        "$UP" "incorrect"
 
   test_cleanup "$PC_CONFIG"
 fi
