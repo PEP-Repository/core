@@ -31,7 +31,7 @@
     "PublicKeyPseudonyms": ""
   },
   "EnrolledPartyKeysFile": "TranscryptorKeys.json",
-  "SystemKeysFile": "SystemKeys.json",
+  "SystemPrivateKeysFile": "SystemKeys.json",
   "StorageFile": "transcryptorStorage.sqlite",
   "VerifiersFile": "Verifiers.json"
 }

@@ -26,7 +26,7 @@
     "PublicKeyPseudonyms": "CAB97D7E594B0DCA79BDFBDB090B08C153E761CF964CDA32D829BB746934B34B"
   },
   "EnrolledPartyKeysFile": "AccessManagerKeys.json",
-  "SystemKeysFile": "SystemKeys.json",
+  "SystemPrivateKeysFile": "SystemKeys.json",
   "StorageFile": "accessManagerStorage.sqlite",
   "GlobalConfigurationFile": "GlobalConfiguration.json"
 }

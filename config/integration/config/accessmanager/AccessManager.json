@@ -26,7 +26,7 @@
     "PublicKeyPseudonyms": ""
   },
   "EnrolledPartyKeysFile": "AccessManagerKeys.json",
-  "SystemKeysFile": "SystemKeys.json",
+  "SystemPrivateKeysFile": "SystemKeys.json",
   "StorageFile": "accessManagerStorage.sqlite",
   "GlobalConfigurationFile": "GlobalConfiguration.json"
 }

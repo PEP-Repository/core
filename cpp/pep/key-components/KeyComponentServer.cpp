@@ -68,10 +68,10 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
 
 KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config) {
-  std::filesystem::path systemKeysFile;
+  std::filesystem::path systemPrivateKeysFile;
 
   try {
-    systemKeysFile = config.get<std::filesystem::path>("SystemKeysFile");
+    systemPrivateKeysFile = config.get<std::filesystem::path>("SystemPrivateKeysFile");
     systemPublicKeys = config.get<SystemPublicKeys>("SystemPublicKeys");
   }
   catch (std::exception& e) {
@@ -80,7 +80,7 @@ KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
   }
 
   boost::property_tree::ptree systemKeys;
-  boost::property_tree::read_json(std::filesystem::canonical(systemKeysFile).string(), systemKeys);
+  boost::property_tree::read_json(std::filesystem::canonical(systemPrivateKeysFile).string(), systemKeys);
   systemKeys = systemKeys.get_child_optional("Keys") //Old HSMKeys.json files have the keys in a Keys-object
     .get_value_or(systemKeys); //we now also allow them to be directly in the root, resulting in cleaner SystemKeys-files
   setPseudonymTranslator(std::make_shared<PseudonymTranslator>(ParsePseudonymTranslationKeys(systemKeys)));

@@ -31,7 +31,7 @@
     "PublicKeyPseudonyms": "CAB97D7E594B0DCA79BDFBDB090B08C153E761CF964CDA32D829BB746934B34B"
   },
   "EnrolledPartyKeysFile": "TranscryptorKeys.json",
-  "SystemKeysFile": "SystemKeys.json",
+  "SystemPrivateKeysFile": "SystemKeys.json",
   "StorageFile": "transcryptorStorage.sqlite",
   "VerifiersFile": "Verifiers.json"
 }

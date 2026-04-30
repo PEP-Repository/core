@@ -99,7 +99,7 @@
         "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
         "EnrolledPartyKeysFile": { "type": "string" },
         "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
-        "SystemKeysFile": { "type": "string" },
+        "SystemPrivateKeysFile": { "type": "string" },
 
         "StorageFile": { "type": "string" },
         "GlobalConfigurationFile": { "type": "string" }
@@ -109,7 +109,7 @@
         "SystemPublicKeys",
         "EnrolledPartyKeysFile",
         "SigningIdentity",
-        "SystemKeysFile",
+        "SystemPrivateKeysFile",
         "StorageFile",
         "GlobalConfigurationFile"
       ]
@@ -289,7 +289,7 @@
         "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
         "EnrolledPartyKeysFile": { "type": "string" },
         "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
-        "SystemKeysFile": { "type": "string" },
+        "SystemPrivateKeysFile": { "type": "string" },
 
         "StorageFile": { "type": "string" },
         "VerifiersFile": { "type": "string" }
@@ -299,7 +299,7 @@
         "SystemPublicKeys",
         "EnrolledPartyKeysFile",
         "SigningIdentity",
-        "SystemKeysFile",
+        "SystemPrivateKeysFile",
         "StorageFile",
         "VerifiersFile"
       ]
