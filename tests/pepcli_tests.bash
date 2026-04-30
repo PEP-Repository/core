@@ -668,6 +668,35 @@ fi
 
 ####################
 
+if should_run_test pseudonym-conversion; then
+  PC_CONFIG='{
+    "userGroups": [{ "name": "pcUsers" }],
+    "columnGroups": [{
+      "name": "pcData",
+      "columns": [ "pcData.id" ],
+      "cgars": {
+        "pcUsers": [ "read" ],
+        "Data Administrator": [ "read", "write" ]
+      }
+    }],
+    "subjectGroups": [{
+      "name": "pcSubjects",
+      "subjects": [
+        { "pcData.id": "ID_0" },
+        { "pcData.id": "ID_1" }
+      ],
+      "pgars": { "pcUsers": [ "enumerate", "access" ] }
+    }]
+  }'
+
+  test_setup "$PC_CONFIG"
+
+
+  test_cleanup "$PC_CONFIG"
+fi
+
+####################
+
 if should_run_test user-id-collision; then
   pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl"
 
