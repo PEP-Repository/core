@@ -31,9 +31,9 @@ static_assert(TestFlags(TestedFlags::None, TestedFlags::None),
 static_assert(TestFlags(TestedFlags::All, TestedFlags::None),
     "Edge Case: TestFlags(t, T::None) is always true");
 
-static_assert(ConditionalFlags(TestedFlags::Second, true) == TestedFlags::Second,
-    "ConditionalFlags(x, true) returns x");
-static_assert(ConditionalFlags(TestedFlags::Second, false) == TestedFlags::None,
-    "ConditionalFlags(x, false) returns None");
+static_assert(FlagsIf(TestedFlags::Second, true) == TestedFlags::Second,
+    "FlagsIf(x, true) returns x");
+static_assert(FlagsIf(TestedFlags::Second, false) == TestedFlags::None,
+    "FlagsIf(x, false) returns None");
 
 }

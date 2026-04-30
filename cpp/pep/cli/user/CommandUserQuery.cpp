@@ -70,11 +70,11 @@ so::DisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::comman
 
   so::DisplayConfig config;
   config.flags =
-      ConditionalFlags(Flags::PrintHeaders, !scriptPrintFilter) |
-      ConditionalFlags(Flags::PrintGroups, !scriptPrintFilter || scriptPrintFilter == userGroupsOpt) |
+      FlagsIf(Flags::PrintHeaders, !scriptPrintFilter) |
+      FlagsIf(Flags::PrintGroups, !scriptPrintFilter || scriptPrintFilter == userGroupsOpt) |
 // groupsPerUser is a part of the users list. So when groupsPerUsers is requested, we must also print users
-      ConditionalFlags(Flags::PrintUsers, !scriptPrintFilter || scriptPrintFilter == usersOpt || scriptPrintFilter == groupsPerUserOpt) |
-      ConditionalFlags(Flags::PrintUserGroups, !scriptPrintFilter || scriptPrintFilter == groupsPerUserOpt);
+      FlagsIf(Flags::PrintUsers, !scriptPrintFilter || scriptPrintFilter == usersOpt || scriptPrintFilter == groupsPerUserOpt) |
+      FlagsIf(Flags::PrintUserGroups, !scriptPrintFilter || scriptPrintFilter == groupsPerUserOpt);
   config.preferredFormat = (preferredFormat == "json") ? Format::Json : Format::Yaml;
   return config;
 }
