@@ -50,7 +50,7 @@ public:
 template <pep::AnyMap Map>
 struct TypeID<Map> : TypeID<val> {};
 
-// Check that are specialization gets selected
+// Check that our specialization gets selected
 static_assert(std::same_as<BindingType<std::unordered_map<int, int>>::WireType, BindingType<val>::WireType>);
 
 }
