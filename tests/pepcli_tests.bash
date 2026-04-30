@@ -703,9 +703,9 @@ if should_run_test pseudonym-conversion; then
     jq -r ".[] | select(.data.\"pcData.id\"== \"$fromId\") | .$toType" "$PSEUDONYM_LIST_JSON"
   }
 
-  BLP=$(pcLookup ID_1 blp)
-  LP=$(pcLookup ID_1 lp)
   PP=$(pcLookup ID_1 pp)
+  LP=$(pcLookup ID_1 lp)
+  BLP=$(pcLookup ID_1 blp)
 
   test_cleanup "$PC_CONFIG"
 fi
