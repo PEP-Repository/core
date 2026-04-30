@@ -36,6 +36,39 @@
       ]
     },
 
+    "SigningServer": {
+      "type": "object",
+      "$ref": "#/$defs/Server",
+      "properties": {
+        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" }
+      },
+      "required": ["SigningIdentity"]
+    },
+
+    "EnrollableServer": {
+      "type": "object",
+      "$ref": "#/$defs/SigningServer",
+      "properties": {
+        "EnrolledPartyKeysFile": { "type": "string" }
+      },
+      "required": [
+        "EnrolledPartyKeysFile"
+      ]
+    },
+
+    "KeyComponentServer": {
+      "type": "object",
+      "$ref": "#/$defs/EnrollableServer",
+      "properties": {
+        "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
+        "SystemPrivateKeysFile": { "type": "string" }
+      },
+      "required": [
+        "SystemPublicKeys",
+        "SystemPrivateKeysFile"
+      ]
+    },
+
     "X509IdentityFiles": {
       "type": "object",
       "properties": {
@@ -87,7 +120,7 @@
 
     "AccessManagerConfig": {
       "type": "object",
-      "$ref": "#/$defs/Server",
+      "$ref": "#/$defs/KeyComponentServer",
       "properties": {
         "ServerEndPoints": {
           "$ref": "#/$defs/ServerEndPoints",
@@ -96,20 +129,12 @@
             "KeyServer"
           ]
         },
-        "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
-        "EnrolledPartyKeysFile": { "type": "string" },
-        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
-        "SystemPrivateKeysFile": { "type": "string" },
 
         "StorageFile": { "type": "string" },
         "GlobalConfigurationFile": { "type": "string" }
       },
       "required": [
         "ServerEndPoints",
-        "SystemPublicKeys",
-        "EnrolledPartyKeysFile",
-        "SigningIdentity",
-        "SystemPrivateKeysFile",
         "StorageFile",
         "GlobalConfigurationFile"
       ]
@@ -117,7 +142,7 @@
 
     "AuthserverConfig": {
       "type": "object",
-      "$ref": "#/$defs/Server",
+      "$ref": "#/$defs/SigningServer",
       "properties": {
         "ServerEndPoints": {
           "$ref": "#/$defs/ServerEndPoints",
@@ -125,7 +150,6 @@
             "AccessManager"
           ]
         },
-        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
 
         "StorageFile": { "type": "string" },
         "OAuthTokenSecretFile": { "type": "string" },
@@ -137,7 +161,6 @@
       },
       "required": [
         "ServerEndPoints",
-        "SigningIdentity",
         "OAuthTokenSecretFile",
         "HttpListenPort",
         "ActiveGrantExpirationSeconds",
@@ -163,7 +186,7 @@
 
     "RegistrationServerConfig": {
       "type": "object",
-      "$ref": "#/$defs/Server",
+      "$ref": "#/$defs/EnrollableServer",
       "properties": {
         "ServerEndPoints": {
           "$ref": "#/$defs/ServerEndPoints",
@@ -173,8 +196,6 @@
           ]
         },
         "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
-        "EnrolledPartyKeysFile": { "type": "string" },
-        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
 
         "ShadowPublicKeyFile": { "type": "string" },
         "ShadowStorageFile": { "type": "string" },
@@ -191,8 +212,6 @@
       "required": [
         "ServerEndPoints",
         "SystemPublicKeys",
-        "EnrolledPartyKeysFile",
-        "SigningIdentity",
         "ShadowPublicKeyFile",
         "ShadowStorageFile"
       ]
@@ -200,11 +219,9 @@
 
     "StorageFacilityConfig": {
       "type": "object",
-      "$ref": "#/$defs/Server",
+      "$ref": "#/$defs/EnrollableServer",
       "properties": {
         "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
-        "EnrolledPartyKeysFile": { "type": "string" },
-        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
 
         "StoragePath": { "type": "string" },
         "EncIdKeyFile": { "type": "string" },
@@ -212,8 +229,6 @@
         "ParallelisationWidth": { "type": "integer" }
       },
       "required": [
-        "EnrolledPartyKeysFile",
-        "SigningIdentity",
         "StoragePath",
         "EncIdKeyFile",
         "PageStore"
@@ -278,7 +293,7 @@
 
     "TranscryptorConfig": {
       "type": "object",
-      "$ref": "#/$defs/Server",
+      "$ref": "#/$defs/KeyComponentServer",
       "properties": {
         "ServerEndPoints": {
           "$ref": "#/$defs/ServerEndPoints",
@@ -286,20 +301,12 @@
             "AccessManager"
           ]
         },
-        "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
-        "EnrolledPartyKeysFile": { "type": "string" },
-        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" },
-        "SystemPrivateKeysFile": { "type": "string" },
 
         "StorageFile": { "type": "string" },
         "VerifiersFile": { "type": "string" }
       },
       "required": [
         "ServerEndPoints",
-        "SystemPublicKeys",
-        "EnrolledPartyKeysFile",
-        "SigningIdentity",
-        "SystemPrivateKeysFile",
         "StorageFile",
         "VerifiersFile"
       ]
