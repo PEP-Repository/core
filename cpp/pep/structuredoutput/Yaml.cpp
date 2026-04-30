@@ -15,7 +15,7 @@ std::ostream& appendYamlListHeader(std::ostream& stream, std::string_view text, 
 std::ostream& appendYaml(std::ostream& stream,
                          const std::vector<pep::UserGroup>& group,
                          const DisplayFlags& flags) {
-  const auto withHeader = TestFlags(flags, DisplayFlags::PrintHeaders);
+  const auto withHeader = HasFlags(flags, DisplayFlags::PrintHeaders);
   const auto groupOffset = indentations(withHeader ? 1 : 0);
 
   if (withHeader) {
@@ -38,8 +38,8 @@ std::ostream& appendYaml(std::ostream& stream,
 std::ostream& appendYaml(std::ostream& stream,
                          const std::vector<pep::QRUser>& users,
                          const DisplayFlags& flags) {
-  const auto printUserGroups = TestFlags(flags, DisplayConfig::Flags::PrintUserGroups);
-  const auto withHeader = TestFlags(flags, DisplayFlags::PrintHeaders);
+  const auto printUserGroups = HasFlags(flags, DisplayConfig::Flags::PrintUserGroups);
+  const auto withHeader = HasFlags(flags, DisplayFlags::PrintHeaders);
   const auto userOffset = indentations(withHeader ? 1 : 0);
   const auto userInnerOffset = userOffset + "  "; //We don't use indentations(), but hardcode the extra indent to two spaces, so it matches the "- " of the first line of the user output.
   const auto uidAndGroupOffset = indentations(withHeader ? 3 : 2);
@@ -156,8 +156,8 @@ std::ostream& append(std::ostream& stream, const Tree& tree, const Config config
 }
 
 std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& res, DisplayConfig config) {
-  const auto printGroups = TestFlags(config.flags, DisplayConfig::Flags::PrintGroups);
-  const auto printUsers = TestFlags(config.flags, DisplayConfig::Flags::PrintUsers);
+  const auto printGroups = HasFlags(config.flags, DisplayConfig::Flags::PrintGroups);
+  const auto printUsers = HasFlags(config.flags, DisplayConfig::Flags::PrintUsers);
 
   if (printGroups) {
     appendYaml(stream, res.mUserGroups, config.flags);

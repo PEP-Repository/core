@@ -19,8 +19,8 @@ UserIdRecord::UserIdRecord(
   this->timestamp = TicksSinceEpoch<milliseconds>(timestamp);
   this->internalUserId = internalUserId;
   this->identifier = std::move(identifier);
-  this->isPrimaryId = TestFlags(flags, UserIdFlags::IsPrimaryId);
-  this->isDisplayId = TestFlags(flags, UserIdFlags::IsDisplayId);
+  this->isPrimaryId = HasFlags(flags, UserIdFlags::IsPrimaryId);
+  this->isDisplayId = HasFlags(flags, UserIdFlags::IsDisplayId);
   this->tombstone = tombstone;
 }
 

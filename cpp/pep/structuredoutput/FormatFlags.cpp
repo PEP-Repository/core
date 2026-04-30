@@ -6,9 +6,9 @@ namespace pep::structuredOutput {
 
 std::vector<std::string> ToIndividualStrings(FormatFlags flags) {
   std::vector<std::string> strs{};
-  if (TestFlags(flags, FormatFlags::Csv)) { strs.emplace_back("csv"); }
-  if (TestFlags(flags, FormatFlags::Json)) { strs.emplace_back("json"); }
-  if (TestFlags(flags, FormatFlags::Yaml)) { strs.emplace_back("yaml"); }
+  if (HasFlags(flags, FormatFlags::Csv)) { strs.emplace_back("csv"); }
+  if (HasFlags(flags, FormatFlags::Json)) { strs.emplace_back("json"); }
+  if (HasFlags(flags, FormatFlags::Yaml)) { strs.emplace_back("yaml"); }
   return strs;
 }
 
