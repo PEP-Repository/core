@@ -107,8 +107,12 @@ rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std
     return mConnection->sendRequest(message, tail);
   }
 
-  return CreateObservable<std::string>([self = SharedFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
-      if (self->mConnection != nullptr) { // Connection has been established before caller subscribed
+  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
+      auto self = weak.lock();
+      if (self == nullptr) {
+        subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection was destroyed")));
+      }
+      else if (self->mConnection != nullptr) { // Connection has been established before caller subscribed
         self->mConnection->sendRequest(message, tail).subscribe(subscriber);
       }
       else { // Connection has not been established yet
