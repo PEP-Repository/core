@@ -150,7 +150,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
 
 #include <pep/networking/HttpClient.hpp>
 
-#include <rxcpp/operators/rx-lite.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <rxcpp/operators/rx-finally.hpp>
 
