@@ -156,6 +156,9 @@ if [ -d "$config_file_or_folder" ]; then
   public_key_data="$(jq .SystemPublicKeys.PublicKeyData ./client/ClientConfig.json)"
   public_key_pseudonyms="$(jq .SystemPublicKeys.PublicKeyPseudonyms ./client/ClientConfig.json)"
   access_manager_end_point="$(jq .ServerEndPoints.AccessManager ./client/ClientConfig.json)"
+  
+  # Find config files regardless of directory structure (e.g. pep-services subfolder).
+  # Also include StorageFacility.local.json etc. for integration test config.
   find \
       -name AccessManager.json \
       -or -name Authserver.json \

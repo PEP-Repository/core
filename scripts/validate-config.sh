@@ -26,6 +26,8 @@ validate_config_file() {
 if [ -d "$config_file_or_folder" ]; then
   cd "$config_file_or_folder"
 
+  # Find config files regardless of directory structure (e.g. pep-services subfolder).
+  # Also include StorageFacility.local.json etc. for integration test config.
   find -name ClientConfig.json \
       -or -name AccessManager.json \
       -or -name Authserver.json \
