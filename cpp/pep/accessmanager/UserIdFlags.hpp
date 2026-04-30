@@ -1,12 +1,11 @@
 #pragma once
 
-#include <cstdint>
 #include <pep/utils/Attributes.hpp>
 #include <pep/utils/TypeTraits.hpp>
 
 namespace pep {
 
-enum class PEP_ATTRIBUTE_FLAG_ENUM UserIdFlags : uint8_t {
+enum class PEP_ATTRIBUTE_FLAG_ENUM UserIdFlags {
   None = 0,
   IsPrimaryId = 0b01,
   IsDisplayId = 0b10,
