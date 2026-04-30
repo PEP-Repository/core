@@ -1,13 +1,22 @@
 #include <pep/weblib/EmscriptenValPtr.hpp>
 
+#include <pep/utils/Log.hpp>
+
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 
 #include <utility>
 
+using namespace pep;
+
 namespace {
-void DeleteOnMainThread(emscripten::val* valPtr) {
-  emscripten::ProxyingQueue{}.proxyAsync(emscripten_main_runtime_thread_id(), [valPtr] { delete valPtr; });
+const std::string LOG_TAG("EmscriptenValPtr");
+
+void DeleteOnMainThread(emscripten::val* valPtr) noexcept {
+  auto success = emscripten::ProxyingQueue{}.proxyAsync(emscripten_main_runtime_thread_id(), [valPtr] { delete valPtr; });
+  if (!success) {
+    LOG(LOG_TAG, warning) << "Failed to proxy val deletion to main thread, object will leak";
+  }
 }
 }
 
