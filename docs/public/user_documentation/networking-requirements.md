@@ -11,11 +11,13 @@ Most required network connections will depend on the environment (project/reposi
 - In Docker you'll find the `ClientConfig.json` file in the `/config` directory within the container.
 - When using Flatpak, the contents of `ClientConfig.json` can be found using the command `flatpak run nl.ru.cs.pep.[ENVIRONMENT] cat /app/bin/ClientConfig.json` (where `[ENVIRONMENT]` is replaced with the specific repo identifier. E.g. creating something like `nl.ru.cs.pep.proj-acc`).
 
+Configuration JSON files for client and servers adhere to a JSON schema in the PEP FOSS Git repository: `/config/config.schema.json`.
+
 If a requirement is documented in terms of a host(name) but your environment requires IP addresses to be specified, use a utility such as `ping` to find out the IP address associated with a host.
 
 ## Connections to PEP services
 
-Client software must be able to communicate with the PEP servers of the environment that they will connect to. The locations of these servers are specified in the `Address` and `Port` settings in specific nodes of `ClientConfig.json` file:
+Client software must be able to communicate with the PEP servers of the environment that they will connect to. The locations of these servers are specified in the `Address` and `Port` settings in specific nodes of `ClientConfig.json` file under `ServerEndPoints`:
 
 | Service/node name    | Usual port |
 | -------------------- | ---------- |
@@ -34,7 +36,7 @@ Client software needs to establish HTTPS connections to some Web servers. You'll
 
 | Address        | Description |
 | -------------- | ----------- |
-| *varies*       | Server(s) specified in URLs under `ClientConfig.json`'s `AuthenticationServer` node. Required for interactive logon to work. |
+| *varies*       | Server(s) specified in URLs under `ClientConfig.json`'s `OAuthServer` node. Required for interactive logon to work. |
 | `pep.cs.ru.nl` | Required to download (updated versions of) the PEP software. The `pepAssessor` GUI client will not run if it cannot check for updates during startup, and all client software will fail to run if it is (too) outdated. The Website also hosts documentation for the PEP software, which may be convenient to keep accessible during use. |
 | `data.castoredc.com` | Only required if the PEP environment interfaces with [the Castor EDC](https://www.castoredc.com/) and if the `pepAssessor` GUI application is used. Without access to this Website, the browser will show an error message when using a GUI button to open a participant's Castor record. |
 
@@ -66,7 +68,7 @@ In the [myDRE Web interface](https://mydre.org/workspaces), log on with administ
 - under `Domain-Allowlisting`, add rules to allow outgoing connections to the (HTTPS) Web servers documented elsewhere on this page. This mechanism will keep connectivity working even if the destination service switches to a different IP address.
 - under `IP-Allowlisting`, add rules to allow outgoing connections to
   - the IP addresses and ports of the PEP services listed elsewhere on this page.
-  - port `443` on the IP address of the server specified in the URL under `ClientConfig.json`'s `AuthenticationServer` -> `TokenURL` node. While this server's name is (likely) already allowlisted through a domain-based rule, you'll also need this IP-based rule for interactive logon to work.
+  - port `443` on the IP address of the server specified in the URL under `ClientConfig.json`'s `OAuthServer` -> `TokenUrl` node. While this server's name is (likely) already allowlisted through a domain-based rule, you'll also need this IP-based rule for interactive logon to work.
 
 Ensure that each IP-based rule is enabled, i.e. that the slider for the rule is set to the appropriate position.
 
