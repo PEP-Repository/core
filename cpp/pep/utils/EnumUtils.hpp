@@ -43,9 +43,9 @@ constexpr T& operator&= (T& lhs, const T rhs) noexcept { return lhs = (lhs & rhs
 template <FlagEnum T>
 constexpr T& operator^= (T& lhs, const T rhs) noexcept { return lhs = (lhs ^ rhs); }
 
-/// Test if \p haystack contains at least all the flags of \p needle
+/// Test if \p tested contains at least all the flags of \p required
 template <FlagEnum T>
-constexpr bool TestFlags(const T haystack, const T needle) noexcept { return (haystack & needle) == needle; }
+constexpr bool TestFlags(const T tested, const T required) noexcept { return (tested & required) == required; }
 
 /// Returns \p flags if \p condition is true and `T::None` otherwise
 template <FlagEnum T>
