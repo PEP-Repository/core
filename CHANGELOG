@@ -3,13 +3,15 @@ Changelog
 Note your text below, in the following format (with 42 the issue number of the change):
 - #42: description
 
-Changes in upcoming release (1.6):
+Changes in upcoming release (1.7):
 
 ---------------
 
 Past changes, do not edit (except by person doing release):
 
 Release 1.6 (started 2026-01-28):
+
+- #2867: Fixed incorrect handling of network connections that fail while they're still being established.
 
 - #2771: Manually managed user IDs are now case-insensitive
   - User IDs retain their original casing when stored.
