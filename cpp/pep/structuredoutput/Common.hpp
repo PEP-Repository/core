@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/Attributes.hpp>
 #include <pep/utils/EnumUtils.hpp>
 #include <string>
 #include <string_view>
@@ -32,7 +33,7 @@ constexpr std::string_view maxAuthValidityKey{"max auth valid time"};
 enum class Format { Yaml, Json };
 
 struct DisplayConfig final {
-  enum class Flags {
+  enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
     None = 0,
     PrintHeaders = 0b0001,
     PrintGroups = 0b0010,
