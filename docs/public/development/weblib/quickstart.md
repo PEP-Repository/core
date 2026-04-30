@@ -52,7 +52,7 @@ As host profile, you can use or include `./docker-build/builder/conan/conan_prof
     Please make sure you have Conan 2.27 or later for `detect_emcc_compiler` to work correctly.
 
 !!! warning "Windows quirks"
-    - When installing EMSDK via Conan, you may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. In this case, patch this line in their emsdk recipe (located at `<your-conan2-dir>/p/emsdkXXXXXXXXXXXX/e/conanfile.py`):
+    - When installing EMSDK via Conan, you may get "Command line too long", e.g. when it calls `emar` while building OpenSSL. In this case, patch this line in their emsdk recipe (in your local recipe index repository):
       ```diff
       104c104
       <         self.buildenv_info.define_path("AR", self._define_tool_var("emar"))
