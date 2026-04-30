@@ -6,12 +6,10 @@
 #include <emscripten/val.h>
 
 std::ostream& pep::weblib::operator<<(std::ostream& os, const CurrentThreadPrintable&) {
-  const auto flags = os.flags();
-  PEP_DEFER(os.flags(flags));
-  os << std::hex << "0x" << ::pthread_self();
-  if (::emscripten_is_main_runtime_thread()) {
-    os << " main";
-  } else {
+  os << ThreadPrintable{::pthread_self()};
+  if (!::emscripten_is_main_runtime_thread()) {
+    // Retrieve https://developer.mozilla.org/en-US/docs/Web/API/DedicatedWorkerGlobalScope/name,
+    // if set by Emscripten, e.g. "em-pthread-1" with assertions (or just "em-pthread" without assertions).
     emscripten::val name = emscripten::val::global("name");
     if (name.isString()) {
       os << ' ' << name.as<std::string>();
