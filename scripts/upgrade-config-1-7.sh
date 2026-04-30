@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Upgrade config from PEP 1.6 to 1.7
-# Define NO_VALIDATE=1 to skip validation after upgrade
+# Define envvar NO_VALIDATE=1 to skip validation after upgrade
 
 set -eu
 
@@ -141,7 +141,7 @@ upgrade_config_file() {
   mv -f -- "$config_file.tmp2" "$config_file.tmp"
 
   if [ -z "${NO_VALIDATE-}" ] && ! "$script_dir/validate-config.sh" "$config_file.tmp"; then
-    read -r -p "Failed to validate upgraded config $config_file.tmp. Proceed anyway [y/n]? " yn
+    read -r -p "Failed to validate upgraded config $config_file.tmp (did you mean to set envvar NO_VALIDATE=1?). Proceed anyway [y/n]? " yn
     case $yn in
       [Yy]* ) ;;
       * ) exit 1 ;;
