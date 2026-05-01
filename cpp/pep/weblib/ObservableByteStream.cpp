@@ -12,6 +12,8 @@
 #include <emscripten/val.h>
 #include <rxcpp/rx-lite.hpp>
 
+#include <atomic>
+
 using namespace emscripten;
 using namespace pep;
 
@@ -19,7 +21,7 @@ namespace {
 const std::string LOG_TAG("ObservableByteStream");
 
 class ByteStreamSource : public boost::noncopyable {
-  static bool warnedNoByobSupport;
+  static std::atomic_flag warnedNoByobSupport;
 
   rxcpp::observable<std::string> data_;
   std::size_t chunkSize_;
@@ -49,7 +51,7 @@ public:
     controller_ = std::move(controller);
     val byteStreamControllerClass = val::global("ReadableByteStreamController");
     if ((!byteStreamControllerClass || !controller_.instanceof(byteStreamControllerClass))
-        && !std::exchange(warnedNoByobSupport, true)) {
+        && !warnedNoByobSupport.test_and_set()) {
       LOG(LOG_TAG, debug) << "ReadableStream BYOB mode not supported by browser, using less-efficient buffer-copying method";
     }
     auto deleted = std::make_shared<bool>(false);
@@ -143,7 +145,7 @@ public:
   std::size_t autoAllocateChunkSize() const { return chunkSize_; }
 };
 
-bool ByteStreamSource::warnedNoByobSupport = false;
+std::atomic_flag ByteStreamSource::warnedNoByobSupport;
 }
 
 EMSCRIPTEN_BINDINGS(ObservableByteStream) {
