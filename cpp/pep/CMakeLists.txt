@@ -1,6 +1,3 @@
-# Provide system libraries (perhaps including targets that build external code)...
-include("system-libs.cmake")
-
 option(WARNINGS_AS_ERROR "Treat compiler & linter warnings as errors" ON)
 option(DEPRECATED_WARNINGS_AS_ERROR "With WARNINGS_AS_ERROR, also issue errors for deprecated symbols" ON)
 
@@ -260,6 +257,14 @@ function(add_windows_manifest target)
     target_sources(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/windows-app.${target}.manifest)
   endif()
 endfunction()
+
+## Set options for library headers ##
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_LOG_USE_NATIVE_SYSLOG")
+endif()
+# Tell Boost::Process to use std::filesystem
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_PROCESS_USE_STD_FS")
+##
 
 # Add executable that will be installed by `cmake --install --component ${name}`
 # When installing, you need to specify the component to avoid errors about missing files when you did not build all targets
