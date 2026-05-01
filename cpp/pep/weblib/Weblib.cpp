@@ -292,10 +292,10 @@ public:
         .flat_map([query = MakeSharedCopy(std::move(query))](const std::shared_ptr<Weblib>& self) {
           auto pps = query->subjects
                      ? self->client_->parsePpsOrIdentities(*query->subjects)
-                     .op(RxGetOne("PolymorphicPseudonym vector"))
-                     .as_dynamic()
+                       .op(RxGetOne("PolymorphicPseudonym vector"))
+                       .as_dynamic()
                      : rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>())
-                     .as_dynamic();
+                       .as_dynamic();
 
           return pps.flat_map([self, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
             return self->client_->requestTicket2(requestTicket2Opts{
