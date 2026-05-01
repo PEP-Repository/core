@@ -41,17 +41,18 @@ int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
     return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
       auto tree = so::Tree::FromUserQueryResponse(res);
+      auto filtered = so::Tree::FromJson(tree.FilterForUserQuery(config));
       const bool isPrettyPrint = HasFlags(config.flags, so::UserQueryDisplayConfig::Flags::PrintHeaders);
       
-      if (config.preferredFormat == so::UserQueryDisplayConfig::Format::Json) {
+      if (config.preferredFormat == so::Format::Json) {
         so::json::Config jsonConfig{.indent = isPrettyPrint ? 2 : 0};
-        so::json::appendUserQuery(std::cout, tree, config, jsonConfig) << std::endl;
+        so::json::append(std::cout, filtered, jsonConfig) << std::endl;
       } else {
         so::yaml::Config yamlConfig{
           .indent = 0,
           .includeArraySizeComments = isPrettyPrint
         };
-        so::yaml::appendUserQuery(std::cout, tree, config, yamlConfig) << std::endl;
+        so::yaml::append(std::cout, filtered, yamlConfig) << std::endl;
       }
       auto usersWithoutDisplayId = res.mUsers | std::ranges::views::filter([](QRUser user){ return !user.mDisplayId; });
       for (auto& user : usersWithoutDisplayId) {
@@ -68,7 +69,7 @@ int CommandUser::CommandUserQuery::execute() {
 
 so::UserQueryDisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
   using Flags = so::UserQueryDisplayConfig::Flags;
-  using Format = so::UserQueryDisplayConfig::Format;
+  using Format = so::Format;
 
   constexpr auto userGroupsOpt = so::stringConstants::userGroups.option;
   constexpr auto usersOpt = so::stringConstants::users.option;

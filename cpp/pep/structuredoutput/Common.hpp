@@ -59,4 +59,3 @@ inline std::string indentations(int i) {
 } // namespace pep::structuredOutput
 
 PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::UserQueryDisplayConfig::Flags)
-

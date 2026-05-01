@@ -21,7 +21,4 @@ inline std::ostream& append(std::ostream& stream, const Table& table, const Conf
   return append(stream, TreeFromTable(table), config); 
 }
 
-/// Appends a JSON representation of a UserQuery tree to a stream, applying display config filtering
-std::ostream& appendUserQuery(std::ostream&, const Tree&, const UserQueryDisplayConfig& dataFilter, const Config& formatting = {});
-
 } // namespace pep::structuredOutput::json

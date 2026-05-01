@@ -25,6 +25,10 @@ public:
   const nlohmann::json& toJson() const& noexcept { return mJson; }
   nlohmann::json toJson() && noexcept { return std::move(mJson); }
 
+  /// Filters this UserQuery tree based on display configuration flags
+  /// @returns A filtered JSON object ready for format-specific rendering
+  nlohmann::json FilterForUserQuery(const UserQueryDisplayConfig& config) const;
+
 private:
   explicit Tree(nlohmann::json json) noexcept : mJson(std::move(json)) {}
   nlohmann::json mJson;

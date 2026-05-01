@@ -14,9 +14,6 @@ struct Config final {
 /// Appends a YAML representation of a tree to a stream
 std::ostream& append(std::ostream& stream, const Tree& tree, const Config& = {});
 
-/// Appends a YAML representation of a UserQuery tree to a stream, applying display config filtering
-std::ostream& appendUserQuery(std::ostream& stream, const Tree& tree, const UserQueryDisplayConfig& dataFilter, const Config& formatting = {});
-
 /// Appends a YAML representation of a table to a stream
 inline std::ostream& append(std::ostream& stream, const Table& table, const Config& config = {}) {
   return append(stream, TreeFromTable(table), config);
