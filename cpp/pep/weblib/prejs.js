@@ -66,12 +66,11 @@
       });
     }
 
-    if ('addEventListener' in globalThis) { // Do not call for Node.js
-      addEventListener('error', ev => {
-        if (mayBeWasmException(ev.error)) {
-          throw handleBackgroundWasmException(ev.error);
-        }
-      });
-    }
+    // Will not call for Node.js, since the method is not there
+    addEventListener?.('error', ev => {
+      if (mayBeWasmException(ev.error)) {
+        throw handleBackgroundWasmException(ev.error);
+      }
+    });
   }
 }
