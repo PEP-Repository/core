@@ -69,7 +69,10 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sPTHREAD_POOL_DELAY_LOAD # Allow spinning up thread pool in the background, improving startup time
     -sNO_PTHREAD_POOL_SIZE_STRICT # We disable this such that we can spawn more threads, but we cannot synchronously join them
 
-    -sINITIAL_MEMORY=209715200 # 200 MiB should be good to prevent going OOM
+    # 30 MiB should usually be good to prevent going OOM, but let's leave some room.
+    # We're not using ALLOW_MEMORY_GROWTH, because it's apparently very slow with threading enabled,
+    #  see https://emscripten.org/docs/porting/pthreads.html#special-considerations
+    -sINITIAL_MEMORY=209715200 # 200 MiB
     -sNO_ABORTING_MALLOC # Standard-compliant behavior
     -sNO_SUPPORT_LONGJMP # We're not using this
     -sTEXTDECODER=2 # Do not generate polyfill for old browsers not supporting TextDecoder
