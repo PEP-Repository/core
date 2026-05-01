@@ -60,10 +60,6 @@ TEST(Connection, Basics) {
 }
 
 TEST(Connection, ClientReconnects) {
-#ifdef __EMSCRIPTEN__
-  GTEST_SKIP() << "Test hangs on Emscripten with Node.js";
-#else
-
   constexpr uint16_t PORT = 2022; // TODO: support port randomization?
 
   constexpr auto MAX_ATTEMPTS = 4U;
@@ -93,7 +89,6 @@ TEST(Connection, ClientReconnects) {
   ASSERT_EQ(*attempts, MAX_ATTEMPTS) << "Client didn't make " << MAX_ATTEMPTS << " connection attempt(s)";
 
   ASSERT_EQ(client.use_count(), 1U) << "Messaging client not discardable (due to circular dependency?)";
-#endif
 }
 
 } // End anonymous namespace

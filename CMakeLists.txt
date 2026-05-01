@@ -234,6 +234,14 @@ if(DEFINED EMSCRIPTEN)
   set(default_emscripten_exe_config
       -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
       LINKER:--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
+
+      # Put our main thread in a separate worker such that asynchronous events can still be received,
+      # preventing a hang when connecting (e.g. in pepcli or Connection.ClientReconnects test),
+      # and to prevent blocking the UI thread in case of PEP_EMSCRIPTEN_BROWSER
+      -sPROXY_TO_PTHREAD
+
+      -sINITIAL_MEMORY=52428800 # 50 MiB to prevent OOM in some cases
+
       -gsource-map
       -sEXIT_RUNTIME  # Run global destructors after main()
       # Do not error on limited optimizations when debugging
@@ -246,7 +254,6 @@ if(DEFINED EMSCRIPTEN)
     set(CMAKE_EXECUTABLE_SUFFIX .html)  # Create HTML shell
     list(APPEND default_emscripten_exe_config
         -sENVIRONMENT=web
-        -sPROXY_TO_PTHREAD  # Put main thread in separate worker to prevent blocking UI thread
     )
 
     option(PEP_EMSCRIPTEN_EMRUN "Enable emrun support" OFF)
