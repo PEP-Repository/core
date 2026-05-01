@@ -53,9 +53,9 @@ void ProvideBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<Messag
 }
 
 #if BUILD_HAS_DEBUG_FLAVOR()
-extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024 / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
+extern const std::size_t DEFAULT_PAGE_SIZE = 1024 * 1024 / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
 #else
-extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
+extern const std::size_t DEFAULT_PAGE_SIZE = 1024 * 1024;
 #endif
 
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {

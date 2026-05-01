@@ -50,7 +50,7 @@ MessageBatches BatchSingleMessage(T content) {
   return BatchSingleMessage(Serialization::ToString(std::move(content)));
 }
 
-extern const uint64_t DEFAULT_PAGE_SIZE;
+extern const std::size_t DEFAULT_PAGE_SIZE;
 
 /**
  * @brief Creates MessageBatches containing (chunks of) data from the specified stream.
