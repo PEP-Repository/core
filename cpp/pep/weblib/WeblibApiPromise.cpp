@@ -7,6 +7,8 @@
 
 namespace {
 void PromiseConstructorAssertions(const emscripten::val& jsPromise) {
+  // Our await_transform calls uses observe_on_emscripten_main_thread to return to the original thread,
+  // which means that that original thread must be the main thread
   assert(::emscripten_is_main_runtime_thread() && "WeblibApiPromise must be used on main thread");
   assert(jsPromise.instanceof(emscripten::val::global("Promise")) && "jsPromise must be a Promise");
 }

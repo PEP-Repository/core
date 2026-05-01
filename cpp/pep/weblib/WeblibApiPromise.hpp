@@ -24,12 +24,12 @@ struct WeblibApiPromiseAwaitTransform {
 /// Automatically switches back to main thread before awaiting an observable.
 /// Must be used on the main thread.
 struct WeblibApiPromise : emscripten::val {
-  WeblibApiPromise(val jsPromise);
+  explicit WeblibApiPromise(val jsPromise);
 
   // Well-known name
   struct promise_type : val::promise_type, detail::WeblibApiPromiseAwaitTransform {
     // Well-known name
-    WeblibApiPromise get_return_object() { return val::promise_type::get_return_object(); }
+    WeblibApiPromise get_return_object() { return WeblibApiPromise(val::promise_type::get_return_object()); }
   };
 };
 
@@ -37,21 +37,23 @@ struct WeblibApiPromise : emscripten::val {
 /// Automatically switches back to main thread before awaiting an observable.
 /// Must be used on the main thread.
 struct WeblibApiVoidPromise : emscripten::val {
-  WeblibApiVoidPromise(val jsPromise);
+  explicit WeblibApiVoidPromise(val jsPromise);
 
   // Well-known name
   class promise_type : public detail::WeblibApiPromiseAwaitTransform {
+    // We cannot inherit from val::promise_type here,
+    // because we want to expose return_void instead of return_value.
+    // Deleting return_value does not work, it must not be declared at all.
     val::promise_type inner_;
   public:
     // Well-known name
-    WeblibApiVoidPromise get_return_object() { return inner_.get_return_object(); }
+    WeblibApiVoidPromise get_return_object() { return WeblibApiVoidPromise(inner_.get_return_object()); }
     // Well-known name
     auto initial_suspend() noexcept { return inner_.initial_suspend(); }
     // Well-known name
     auto final_suspend() noexcept { return inner_.final_suspend(); }
     // Well-known name
     void unhandled_exception() { inner_.unhandled_exception(); }
-    void reject_with(val error) { inner_.reject_with(std::move(error)); }
 
     // Well-known name
     void return_void() { inner_.return_value(undefined()); }
