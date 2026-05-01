@@ -1,5 +1,4 @@
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
@@ -192,6 +191,8 @@ void CoreClient::Builder::initialize(
     const Configuration& config,
     std::shared_ptr<boost::asio::io_context> io_context,
     bool persistKeysFile) {
+  assert(io_context != nullptr && "Caller must provide an I/O context");
+
   try {
     std::filesystem::path keysFile;
     std::optional<std::filesystem::path> shadowPublicKeyFile;
@@ -249,14 +250,7 @@ void CoreClient::Builder::initialize(
       }
     }
 
-    if (io_context == nullptr) {
-      this->setIoContext(std::make_shared<boost::asio::io_context>());
-
-      IoContextThread t(this->getIoContext());
-      t.detach();
-    } else {
-      this->setIoContext(io_context);
-    }
+    this->setIoContext(io_context);
   } catch (std::exception& e) {
     LOG(LOG_TAG, error) << "Error with configuration file: " << e.what() << std::endl;
     std::cerr << "Error with configuration file: " << e.what() << std::endl;

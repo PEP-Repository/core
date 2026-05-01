@@ -12,17 +12,17 @@ class EGCache {
 public:
   static EGCache& get();
 
-  // Caching version of eg.reshuffleRekey(z, k) --- faster if called many times with
+  // Caching version of eg.rerandomize().reshuffleRekey(z, k) --- faster if called ~20 times with
   // same (eg.publicKey, k).
-  [[nodiscard]] virtual ElgamalEncryption reshuffleRekey(
+  [[nodiscard]] virtual ElgamalEncryption rsk(
     const ElgamalEncryption& eg,
     const CurveScalar& reshuffle,
     const ElgamalTranslationKey& rekey
   ) = 0;
 
-  // Caching version of eg.rekey(k) --- faster if called many times with
+  // Caching version of eg.rerandomize().rekey(k) --- faster if called many times with
   // same (eg.publicKey, k).
-  [[nodiscard]] virtual ElgamalEncryption rekey(
+  [[nodiscard]] virtual ElgamalEncryption rk(
     const ElgamalEncryption& eg,
     const ElgamalTranslationKey& rekey
   ) = 0;

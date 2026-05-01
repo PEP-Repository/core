@@ -29,15 +29,15 @@ TEST(structuredOutputCsv, UsesTheDelimiterFromTheConfig) {
   const auto table = Table::FromSeparateHeaderAndData({"H1", "H2"}, {"R1", "R2"});
 
   EXPECT_EQ(
-      csv::to_string(table, {.delimiter = csv::Delimiter::comma}),
+      csv::to_string(table, {.delimiter = csv::Delimiter::Comma}),
       "\"H1\",\"H2\"\n"
       "\"R1\",\"R2\"\n");
   EXPECT_EQ(
-      csv::to_string(table, {.delimiter = csv::Delimiter::semicolon}),
+      csv::to_string(table, {.delimiter = csv::Delimiter::Semicolon}),
       "\"H1\";\"H2\"\n"
       "\"R1\";\"R2\"\n");
   EXPECT_EQ(
-      csv::to_string(table, {.delimiter = csv::Delimiter::tab}),
+      csv::to_string(table, {.delimiter = csv::Delimiter::Tab}),
       "\"H1\"\t\"H2\"\n"
       "\"R1\"\t\"R2\"\n");
 }

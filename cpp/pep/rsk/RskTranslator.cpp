@@ -46,36 +46,36 @@ RskTranslator::generateKeyFactors(const SkRecipient& recipient) const {
   };
 }
 
-ElgamalEncryption RskTranslator::reshuffleRekey(
+ElgamalEncryption RskTranslator::rsk(
     const ElgamalEncryption& encryption,
     const KeyFactors& recipientKeyFactors) const {
-  return cache_->reshuffleRekey(
+  return cache_->rsk(
       CheckValidEncryption(encryption),
       recipientKeyFactors.reshuffle,
       recipientKeyFactors.rekey);
 }
 
-ElgamalEncryption RskTranslator::rekey(
+ElgamalEncryption RskTranslator::rk(
     const ElgamalEncryption& encryption,
     const ElgamalTranslationKey& recipientRekeyKeyFactor) const {
-  return cache_->rekey(
+  return cache_->rk(
       CheckValidEncryption(encryption),
       recipientRekeyKeyFactor);
 }
 
-ElgamalEncryption RskTranslator::reshuffle(
+ElgamalEncryption RskTranslator::rs(
     const ElgamalEncryption& encryption,
     const CurveScalar& recipientReshuffleKeyFactor) const {
   //TODO This could potentially be cached?
-  return CheckValidEncryption(encryption).reshuffle(recipientReshuffleKeyFactor);
+  return CheckValidEncryption(encryption).rerandomize().reshuffle(recipientReshuffleKeyFactor);
 }
 
-std::pair<ElgamalEncryption, ReshuffleRekeyProof> RskTranslator::certifiedReshuffleRekey(
+std::pair<ElgamalEncryption, RskProof> RskTranslator::certifiedRsk(
     const ElgamalEncryption& encryption,
     const KeyFactors& recipientKeyFactors) const {
   ElgamalEncryption encryptionOut;
   //TODO Why is this not cached?
-  ReshuffleRekeyProof proofOut = ReshuffleRekeyProof::CertifiedReshuffleRekey(
+  RskProof proofOut = RskProof::CertifiedRsk(
       CheckValidEncryption(encryption), encryptionOut,
       recipientKeyFactors.reshuffle,
       recipientKeyFactors.rekey);

@@ -36,14 +36,20 @@ void Serializer<ReshuffleRekeyVerifiers>::moveIntoProtocolBuffer(proto::Reshuffl
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ky(), value.mRekeyedPublicKey);
 }
 
-ReshuffleRekeyProof Serializer<ReshuffleRekeyProof>::fromProtocolBuffer(proto::ReshuffleRekeyProof&& source) const {
-  return ReshuffleRekeyProof(
+RskProof Serializer<RskProof>::fromProtocolBuffer(proto::RskProof&& source) const {
+  return RskProof(
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_ry())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rb())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rp())),
     Serialization::FromProtocolBuffer(std::move(*source.mutable_bp())),
     Serialization::FromProtocolBuffer(std::move(*source.mutable_cp()))
   );
 }
 
-void Serializer<ReshuffleRekeyProof>::moveIntoProtocolBuffer(proto::ReshuffleRekeyProof& dest, ReshuffleRekeyProof value) const {
+void Serializer<RskProof>::moveIntoProtocolBuffer(proto::RskProof& dest, RskProof value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ry(), value.mRerandomizePubKey);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rb(), value.mRerandomizePoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rp(), value.mRerandomizeTimesPubKeyProof);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_bp(), value.mReshuffleOverRekeyTimesBProof);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_cp(), value.mReshuffleTimesCProof);
 }

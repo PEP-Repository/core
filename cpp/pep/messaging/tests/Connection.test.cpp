@@ -23,7 +23,7 @@ namespace {
       EXPECT_TRUE(result) << description << " connection attempt failed";
       if (result) {
         auto connection = *result;
-        EXPECT_EQ(connection->status(), pep::messaging::Connection::Status::initialized) << description << " produced non-initialized connection";
+        EXPECT_EQ(connection->status(), pep::messaging::Connection::Status::Initialized) << description << " produced non-initialized connection";
       }
       return node->shutdown();
         })

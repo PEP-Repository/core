@@ -52,7 +52,7 @@ class ScalarMultProof {
     const CurvePoint& post) const;
 };
 
-// Public data required to verify a ReshuffleRekeyProof.
+// Public data required to verify an RskProof.
 class ReshuffleRekeyVerifiers {
  public:
   ReshuffleRekeyVerifiers() = default;
@@ -80,41 +80,57 @@ class ReshuffleRekeyVerifiers {
 
 
 // A compositional non-interactive zero-knowledge proof that
-// an ElgamalEncryption (b, c, publicKey) has been reshuffled & rekeyed to (b', c', publicKey')
-class ReshuffleRekeyProof {
+// an ElgamalEncryption (b, c, publicKey) has been RSKed to (b', c', publicKey')
+class RskProof {
  public:
+  CurvePoint mRerandomizePubKey;
+  CurvePoint mRerandomizePoint;
+  ScalarMultProof mRerandomizeTimesPubKeyProof; // ScalarMultProof for rerandomize * publicKey
   ScalarMultProof mReshuffleOverRekeyTimesBProof; // ScalarMultProof for (reshuffle/rekey) * b
   ScalarMultProof mReshuffleTimesCProof; // ScalarMultProof for reshuffle * c
 
-  ReshuffleRekeyProof() = default;
-  ReshuffleRekeyProof(
+  RskProof() = default;
+  RskProof(
+    const CurvePoint& rerandomizePubKey,
+    const CurvePoint& rerandomizePoint,
+    const ScalarMultProof& rerandomizeTimesPubKeyProof,
     const ScalarMultProof& reshuffleOverRekeyTimesBProof,
     const ScalarMultProof& reshuffleTimesCProof)
-  : mReshuffleOverRekeyTimesBProof(reshuffleOverRekeyTimesBProof),
+  : mRerandomizePubKey(rerandomizePubKey),
+    mRerandomizePoint(rerandomizePoint),
+    mRerandomizeTimesPubKeyProof(rerandomizeTimesPubKeyProof),
+    mReshuffleOverRekeyTimesBProof(reshuffleOverRekeyTimesBProof),
     mReshuffleTimesCProof(reshuffleTimesCProof) {}
 
   void ensurePacked() const {
+    mRerandomizePubKey.ensurePacked();
+    mRerandomizePoint.ensurePacked();
+    mRerandomizeTimesPubKeyProof.ensurePacked();
     mReshuffleOverRekeyTimesBProof.ensurePacked();
     mReshuffleTimesCProof.ensurePacked();
   }
 
-  // Constructs a proof that pre is reshuffled & rekeyed to post.
+  // Constructs a proof that pre is RSKed to post.
   //
-  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B
-  // and (of course) that post is the reshuffled & rekeyed version of pre.
-  static ReshuffleRekeyProof Create(
+  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B,
+  // rerandomizePubKey = rerandomize*publicKey, rerandomizePoint = rerandomize*B,
+  // and (of course) that post is the RSKed version of pre.
+  static RskProof Create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const CurveScalar& reshuffle,
     const CurvePoint& reshufflePoint,
     const CurveScalar& reshuffleOverRekey,
-    const CurvePoint& reshuffleOverRekeyPoint);
+    const CurvePoint& reshuffleOverRekeyPoint,
+    const CurveScalar& rerandomize,
+    const CurvePoint& rerandomizePubKey,
+    const CurvePoint& rerandomizePoint);
 
-  // Stores the reshuffled & rekeyed version of ElgamalEncryption in to out and
+  // Stores the RSKed version of ElgamalEncryption in to out and
   // returns a zero-knowledge proof of correctness.
   //
   // XXX Add optimised version to EGCache
-  static ReshuffleRekeyProof CertifiedReshuffleRekey(
+  static RskProof CertifiedRsk(
     const ElgamalEncryption& in,
     ElgamalEncryption& out,
     const CurveScalar& reshuffle,
@@ -125,46 +141,6 @@ class ReshuffleRekeyProof {
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const ReshuffleRekeyVerifiers& verifiers) const;
-};
-
-/// Proof that one encryption is the rerandomized version of another
-class RerandomizeProof {
- public:
-  CurvePoint mRerandomizePubKey;
-  CurvePoint mRerandomizePoint;
-  ScalarMultProof mRerandomizeTimesPubKeyProof; // ScalarMultProof for rerandomize * publicKey
-
-  RerandomizeProof() = default;
-  RerandomizeProof(
-    const CurvePoint& rerandomizePubKey,
-    const CurvePoint& rerandomizePoint,
-    const ScalarMultProof& rerandomizeTimesPubKeyProof)
-  : mRerandomizePubKey(rerandomizePubKey),
-    mRerandomizePoint(rerandomizePoint),
-    mRerandomizeTimesPubKeyProof(rerandomizeTimesPubKeyProof) {}
-
-  void ensurePacked() const {
-    mRerandomizePubKey.ensurePacked();
-    mRerandomizePoint.ensurePacked();
-    mRerandomizeTimesPubKeyProof.ensurePacked();
-  }
-
-  // Assumes rerandomizePubKey = rerandomize*publicKey, rerandomizePoint = rerandomize*B
-  static RerandomizeProof Create(
-    const ElgamalPublicKey& publicKey,
-    const CurveScalar& rerandomize,
-    const CurvePoint& rerandomizePubKey,
-    const CurvePoint& rerandomizePoint);
-
-  // XXX Add optimised version to EGCache
-  static RerandomizeProof CertifiedRerandomize(
-    const ElgamalEncryption& in,
-    ElgamalEncryption& out);
-
-  // Checks the proof. Throws InvalidProof if the proof is invalid.
-  void verify(
-    const ElgamalEncryption& pre,
-    const ElgamalEncryption& post) const;
 };
 
 }

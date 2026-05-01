@@ -14,8 +14,8 @@ std::ostream& appendYamlListHeader(std::ostream& stream, std::string_view text, 
 
 std::ostream& appendYaml(std::ostream& stream,
                          const std::vector<pep::UserGroup>& group,
-                         const DisplayFlags::T& flags) {
-  const auto withHeader = flags & DisplayFlags::printHeaders;
+                         const DisplayFlags& flags) {
+  const auto withHeader = HasFlags(flags, DisplayFlags::PrintHeaders);
   const auto groupOffset = indentations(withHeader ? 1 : 0);
 
   if (withHeader) {
@@ -37,9 +37,9 @@ std::ostream& appendYaml(std::ostream& stream,
 
 std::ostream& appendYaml(std::ostream& stream,
                          const std::vector<pep::QRUser>& users,
-                         const DisplayFlags::T& flags) {
-  const auto printUserGroups = flags & DisplayConfig::Flags::printUserGroups;
-  const auto withHeader = flags & DisplayFlags::printHeaders;
+                         const DisplayFlags& flags) {
+  const auto printUserGroups = HasFlags(flags, DisplayConfig::Flags::PrintUserGroups);
+  const auto withHeader = HasFlags(flags, DisplayFlags::PrintHeaders);
   const auto userOffset = indentations(withHeader ? 1 : 0);
   const auto userInnerOffset = userOffset + "  "; //We don't use indentations(), but hardcode the extra indent to two spaces, so it matches the "- " of the first line of the user output.
   const auto uidAndGroupOffset = indentations(withHeader ? 3 : 2);
@@ -79,7 +79,7 @@ std::ostream& appendYaml(std::ostream& stream,
   return stream;
 }
 
-enum class ForceQuotes { no, yes };
+enum class ForceQuotes { No, Yes };
 
 std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view str, ForceQuotes forceQuotes) {
   constexpr auto needsQuotes = [](std::string_view str) {
@@ -90,7 +90,7 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
   };
   constexpr auto needsEscape = [](char c) { return c == '\\' || c == '"'; };
 
-  const auto quoteOrNothing = (forceQuotes == ForceQuotes::yes || needsQuotes(str)) ? "\"" : "";
+  const auto quoteOrNothing = (forceQuotes == ForceQuotes::Yes || needsQuotes(str)) ? "\"" : "";
 
   stream << quoteOrNothing;
   for (char c : str) { stream << (needsEscape(c) ? "\\" : "") << c; }
@@ -119,11 +119,11 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
   else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
   else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
   else if (node.empty()) { stream << (node.is_array() ? "[]" : "{}") << "\n"; }
-  else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>(), ForceQuotes::yes) << "\n"; }
+  else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>(), ForceQuotes::Yes) << "\n"; }
   else if (node.is_object()) {
     for (auto it = node.begin(); it != node.end(); it++) {
       indentIfNotFirst(stream);
-      AppendStringLiteral(stream, it.key(), ForceQuotes::no) << ":";
+      AppendStringLiteral(stream, it.key(), ForceQuotes::No) << ":";
 
       if (isAtomic(*it)) { stream << " "; }
       else {
@@ -156,8 +156,8 @@ std::ostream& append(std::ostream& stream, const Tree& tree, const Config config
 }
 
 std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& res, DisplayConfig config) {
-  const auto printGroups = config.flags & DisplayConfig::Flags::printGroups;
-  const auto printUsers = config.flags & DisplayConfig::Flags::printUsers;
+  const auto printGroups = HasFlags(config.flags, DisplayConfig::Flags::PrintGroups);
+  const auto printUsers = HasFlags(config.flags, DisplayConfig::Flags::PrintUsers);
 
   if (printGroups) {
     appendYaml(stream, res.mUserGroups, config.flags);

@@ -25,8 +25,8 @@ void TcpBasedProtocol::Socket::startTransfer(size_t& pending, size_t pend) {
 }
 
 void TcpBasedProtocol::Socket::finishConnecting(const ConnectionAttempt::Handler& notify) {
-  assert(this->status() == ConnectivityStatus::connecting);
-  this->setConnectivityStatus(ConnectivityStatus::connected);
+  assert(this->status() == ConnectivityStatus::Connecting);
+  this->setConnectivityStatus(ConnectivityStatus::Connected);
   notify(ConnectionAttempt::Result::Success(SharedFrom(*this)));
 }
 
@@ -152,7 +152,7 @@ void TcpBasedProtocol::ClientComponent::onResolved(const ConnectionAttempt::Hand
 
 std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ClientComponent::openSocket(const ConnectionAttempt::Handler& notify) {
   auto result = this->tcp().createSocket(*this);
-  result->setConnectivityStatus(Socket::ConnectivityStatus::connecting);
+  result->setConnectivityStatus(Socket::ConnectivityStatus::Connecting);
 
   auto portString = MakeSharedCopy(std::to_string(mEndPoint.port));
   // Likely spawns a background thread, see https://www.boost.org/doc/libs/latest/doc/html/boost_asio/overview/implementation.html
@@ -196,7 +196,7 @@ uint16_t TcpBasedProtocol::ServerComponent::port() const {
 
 std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ServerComponent::openSocket(const ConnectionAttempt::Handler& notify) {
   auto result = this->tcp().createSocket(*this);
-  result->setConnectivityStatus(Socket::ConnectivityStatus::connecting);
+  result->setConnectivityStatus(Socket::ConnectivityStatus::Connecting);
 
   mAcceptor.async_accept(result->basicSocket(), [notify, result, weak = WeakFrom(*this)](const boost::system::error_code& ec) {
     auto self = weak.lock();

@@ -1,66 +1,49 @@
 #include <pep/async/IoContextThread.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/ThreadUtil.hpp>
 
 #include <boost/asio/io_context.hpp>
-
-using namespace std::chrono_literals;
+#include <stop_token>
 
 namespace pep {
 
 namespace {
-void RunIoContext(std::shared_ptr<boost::asio::io_context> io_context, std::function<bool()> keepRunning) noexcept {
-  try {
-    LOG("RunIoContext", debug) << "running io_context: " << io_context.get() << std::endl;
 
-    while (keepRunning()) {
-      io_context->run();
-      std::this_thread::sleep_for(100ms);
-      io_context->restart();
-    }
-    LOG("RunIoContext", debug) << "stopping io_context" << std::endl;
+const std::string LOG_TAG = "I/O context thread";
+
+void RunIoContext(const std::string& name, std::shared_ptr<boost::asio::io_context> io_context, std::stop_token stop) noexcept {
+  try {
+    ThreadName::Set(name);
+    LOG(LOG_TAG, debug) << "starting io_context " << io_context << " on thread " << std::this_thread::get_id();
+    std::stop_callback onStop(std::move(stop), [io_context] {
+      LOG(LOG_TAG, debug) << "stopping io_context...";
+      io_context->stop();
+      });
+    io_context->run();
+    LOG(LOG_TAG, debug) << "io_context stopped";
     return;
   } catch (...) {
-    LOG("RunIoContext", severity_level::critical) << "Terminating application due to uncaught exception on I/O context thread: "
+    LOG(LOG_TAG, severity_level::critical) << "Terminating application due to uncaught exception on I/O context thread: "
       << GetExceptionMessage(std::current_exception());
   }
   //NOLINTNEXTLINE(concurrency-mt-unsafe) There's currently not a better way to handle this
   std::exit(EXIT_FAILURE);
 }
 
-std::function<bool()> GetKeepRunningCallback(bool* keepRunning) {
-  if (keepRunning == nullptr) {
-    throw std::runtime_error("Thread termination flag must be a non-NULL pointer");
+}
+
+IoContextThread::IoContextThread(const std::string& name, std::shared_ptr<boost::asio::io_context> io_context)
+  : guard_(std::make_unique<WorkGuard>(*io_context)) {
+  // Make work guard (in initializer list above) before starting the thread (below) to prevent the I/O context from running out of work immediately
+  thread_ = std::jthread([name, io_context](std::stop_token stop) { RunIoContext(name, io_context, std::move(stop)); });
+}
+
+void IoContextThread::stop(bool force) noexcept {
+  guard_.reset(); // Allow io_context::run to terminate
+  if (force) {
+    thread_ = std::jthread(); // Make our thread_ instance clean up and join
   }
-  return [keepRunning]() {
-    return *keepRunning;
-  };
-}
-}
-
-IoContextThread::IoContextThread() : thread_() {}
-
-IoContextThread::IoContextThread(IoContextThread&& other) noexcept : thread_() {
-  std::swap(thread_, other.thread_);
-}
-
-IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context) : IoContextThread(io_context, []() {
-  return true;
-}) {}
-IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context, bool* keepRunning) : IoContextThread(io_context, GetKeepRunningCallback(keepRunning)) {}
-
-IoContextThread::IoContextThread(std::shared_ptr<boost::asio::io_context> io_context, std::function<bool()> keepRunning) : thread_(std::thread(&RunIoContext, io_context, keepRunning)) {}
-
-IoContextThread& IoContextThread::operator =(IoContextThread other) {
-  std::swap(thread_, other.thread_);
-  return *this;
-}
-
-void IoContextThread::detach() {
-  thread_.detach();
-}
-void IoContextThread::join() {
-  thread_.join();
 }
 
 }

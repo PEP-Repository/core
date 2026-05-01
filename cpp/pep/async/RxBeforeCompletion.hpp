@@ -5,6 +5,7 @@
 namespace pep {
 
 /// \brief Invokes a callback when an observable has successfully finished emitting items.
+/// \remark The callback is invoked _before_ the observable is fully exhausted and its resources released. Also see \c RxSubsequently .
 struct RxBeforeCompletion {
 public:
   using Handler = std::function<void()>;
