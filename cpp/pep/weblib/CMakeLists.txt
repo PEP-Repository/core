@@ -100,8 +100,8 @@ if(PEP_WEBLIB_NO_STACK_OVERFLOW_CHECK)
   )
 endif()
 
-option(PEP_WEBLIB_NO_SEPARATE_DWARF "Put DWARF debug info into primary .wasm file instead of a separate .wasm.debug.wasm")
-if(NOT PEP_WEBLIB_NO_SEPARATE_DWARF)
+option(PEP_WEBLIB_DEBUG_SEPARATE_DWARF "When debug info is enabled, put DWARF debug info into a separate .wasm.debug.wasm instead of the primary .wasm file" ON)
+if(PEP_WEBLIB_DEBUG_SEPARATE_DWARF)
   target_link_options(${PROJECT_NAME}Weblib PRIVATE
       # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
       "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"

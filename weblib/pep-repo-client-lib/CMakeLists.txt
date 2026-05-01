@@ -95,7 +95,7 @@ if(WITH_TESTS)
     add_dependencies(${PROJECT_NAME}WeblibJsWebTests pep-repo-client-lib-source-map)
   endif()
 
-  if(NOT PEP_WEBLIB_NO_SEPARATE_DWARF)
+  if(PEP_WEBLIB_DEBUG_SEPARATE_DWARF)
     set(separate_dwarf_copy_args_debug
         create_symlink
         $<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm
