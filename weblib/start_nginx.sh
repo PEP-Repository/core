@@ -29,8 +29,9 @@ set \$build_folder "$wasm_build_folder";
 EOF
 
 # `-e stderr` is there to keep Windows Nginx from complaining about missing logs folder
+# First check config, instead of having the daemon do that and silently crash
 nginx -p "$PWD" -c nginx.conf -t -e stderr
-# Try to reload daemon, otherwise spawn new one
+# Try to reload daemon if already running, otherwise spawn new one
 nginx -p "$PWD" -s reload -c nginx.conf -e stderr 2>/dev/null || nginx -p "$PWD" -c nginx.conf -e stderr
 
 echo 'Open http://localhost:2280/weblib/pep-sample-client/ in browser'
