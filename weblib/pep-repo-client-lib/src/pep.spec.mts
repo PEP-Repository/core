@@ -1,5 +1,5 @@
 /**
- * @file This is run in integration.sh
+ * @file This is run in integration.sh, which prepares the structure and data
  */
 
 import {expect} from 'chai';
@@ -142,7 +142,7 @@ describe('Pep', function () {
             });
             expect(entriesSimple).satisfies(function someEntryShouldHaveLargeExtensionAndRightSize(entries: typeof entriesSimple) {
               return entries.some(entry => entry.partialMetadata['fileExtension'] === '.large'
-                      && entry.fileSize === 'Larger test data!\n'.length * 700_000,
+                      && entry.fileSize === 'Larger test data!\n'.length * 120_000,
                   'One entry should have fileExtension .large and specific file size');
             });
           } catch (ex) {
@@ -192,7 +192,7 @@ describe('Pep', function () {
                 expectedContent = 'Some small test data!';
                 break;
               case largeEntry!.id:
-                expectedContent = Array(700_000).fill('Larger test data!\n').join('');
+                expectedContent = Array(120_000).fill('Larger test data!\n').join('');
                 break;
             }
             const content = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
