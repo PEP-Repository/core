@@ -113,8 +113,9 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
                 LOG(LOG_TAG, debug) << "Reconnected to " << server;
                 disconnectedServers->erase(server);
               } else {
-                LOG(LOG_TAG, debug) << "Lost connection to " << server;
-                disconnectedServers->insert(server);
+                if (disconnectedServers->insert(server).second) {
+                  LOG(LOG_TAG, debug) << "Lost connection to " << server;
+                }
               }
               return disconnectedServers->empty();
             }).distinct_until_changed();
