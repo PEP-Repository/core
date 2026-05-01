@@ -225,7 +225,6 @@ public:
   }
 
   /// For development use: generate OAuth token from secret
-  /// \returns \c Promise<string>
   auto internalGenerateToken(std::string tokenSecretHex, std::string userGroup) {
     using namespace std::chrono;
     auto now = TimeNow<sys_seconds>();
