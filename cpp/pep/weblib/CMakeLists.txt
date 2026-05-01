@@ -145,7 +145,9 @@ add_custom_command(
     VERBATIM
 )
 
-file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT package.in.json)
+set(PEP_FULL_BINARY_VERSION "${PEP_VERSION_MAJOR}.${PEP_VERSION_MINOR}.${PEP_VERSION_BUILD}")
+configure_file(package.in.json package.json.tmp @ONLY)
+file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT "${CMAKE_CURRENT_BINARY_DIR}/package.json.tmp")
 
 # Unit tests
 add_unit_tests(Weblib)
