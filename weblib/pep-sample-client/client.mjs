@@ -144,7 +144,7 @@ saveBtn.addEventListener('click', () => void (async () => {
       entry = aEntry;
     }
   }
-  if (entry.fileSize < 10e6) {
+  if (!entry || entry.fileSize < 10e6) {
     throw new Error('No cells over 10MB, upload one via pepcli');
   }
   output.value = JSON.stringify({
