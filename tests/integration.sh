@@ -526,6 +526,8 @@ if should_run_test weblib; then
   # If this fails, you may need to source the EMSDK activation script and forward the Node.js PATH when using sudo via 'sudo \"PATH=\$PATH\" ...'
   trace npm install
 
+  # Run "test" script from package.json
+  # This will run the *.spec.mts tests listed in .mocharc.yaml
   trace npm test
 
   trace kill % || true
