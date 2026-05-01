@@ -50,7 +50,7 @@ set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
 
 set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
     SUFFIX .mjs
-    PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG ON
+    PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG ON
     LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )
 
@@ -59,8 +59,6 @@ set(PEP_WEBLIB_ENVIRONMENT "web,node" CACHE STRING "Environment(s) to build ${PR
 # See https://emscripten.org/docs/tools_reference/settings_reference.html
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
-    -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
-    LINKER:--no-demangle # Avoid huge .name section, see https://github.com/llvm/llvm-project/issues/126919
     -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
 
     -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
@@ -73,7 +71,6 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     # We're not using ALLOW_MEMORY_GROWTH, because it's apparently very slow with threading enabled,
     #  see https://emscripten.org/docs/porting/pthreads.html#special-considerations
     -sINITIAL_MEMORY=209715200 # 200 MiB
-    -sNO_ABORTING_MALLOC # Standard-compliant behavior
     -sNO_SUPPORT_LONGJMP # We're not using this
     -sTEXTDECODER=2 # Do not generate polyfill for old browsers not supporting TextDecoder
     -sFETCH # For emscripten_fetch
@@ -83,10 +80,6 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     # Used in pep.mts
     -sEXPORTED_RUNTIME_METHODS=FS,FS_createPreloadedFile,IDBFS,callMain,ExitStatus,getExceptionMessage,incrementExceptionRefcount,decrementExceptionRefcount
     "--emit-tsd=$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts" # Emit TypeScript declarations
-    # Do not error on limited optimizations when debugging
-    "$<$<CONFIG:Debug,RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
-    # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-    "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
 
     "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
 )

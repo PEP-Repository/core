@@ -225,61 +225,65 @@ if(DEFINED EMSCRIPTEN)
   # Excludes weblib
   option(PEP_EMSCRIPTEN_BROWSER "Build Emscripten executables for browser instead of Node.js")
 
-  define_property(TARGET PROPERTY PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG
-      BRIEF_DOCS "Do not add default config for Emscripten executables"
+  add_link_options(
+      -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
+      LINKER:--no-demangle # Avoid huge .name section, see https://github.com/llvm/llvm-project/issues/126919
+      -sNO_ABORTING_MALLOC # Standard-compliant behavior
+
+      # Do not error on limited optimizations when debugging
+      "$<$<CONFIG:Debug>:-Wno-limited-postlink-optimizations>"
+      "$<$<CONFIG:RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
+      # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
+      "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
   )
 
-  # Default Emscripten config for CLI executables
-  # See https://emscripten.org/docs/tools_reference/settings_reference.html
-  set(default_emscripten_exe_config
-      -sSTRICT -sALLOW_UNIMPLEMENTED_SYSCALLS # Strict, but still allow stub syscalls
-      LINKER:--no-demangle  # https://github.com/llvm/llvm-project/issues/126919
+  define_property(TARGET PROPERTY PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG
+      BRIEF_DOCS "Do not add default config for Emscripten CLI executables"
+  )
 
+  # Default Emscripten link flags for CLI executables
+  # See https://emscripten.org/docs/tools_reference/settings_reference.html
+  set(emscripten_cli_link_flags
       # Put our main thread in a separate worker such that asynchronous events can still be received,
       # preventing a hang when connecting (e.g. in pepcli or Connection.ClientReconnects test),
       # and to prevent blocking the UI thread in case of PEP_EMSCRIPTEN_BROWSER
       -sPROXY_TO_PTHREAD
 
-      -sINITIAL_MEMORY=52428800 # 50 MiB to prevent OOM in some cases
+      -sINITIAL_MEMORY=31457280 # 30 MiB to prevent OOM in some cases
 
       -gsource-map
       -sEXIT_RUNTIME  # Run global destructors after main()
-      # Do not error on limited optimizations when debugging
-      "$<$<CONFIG:Debug,RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
-      # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-      "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
   )
 
   if(PEP_EMSCRIPTEN_BROWSER)
     set(CMAKE_EXECUTABLE_SUFFIX .html)  # Create HTML shell
-    list(APPEND default_emscripten_exe_config
+    list(APPEND emscripten_cli_link_flags
         -sENVIRONMENT=web
     )
 
     option(PEP_EMSCRIPTEN_EMRUN "Enable emrun support" OFF)
     if(PEP_EMSCRIPTEN_EMRUN)
-      list(APPEND default_emscripten_exe_config
+      list(APPEND emscripten_cli_link_flags
           --emrun
           -sINCOMING_MODULE_JS_API=print,canvas,setStatus,monitorRunDependencies,arguments
       )
     endif()
   else()
-    list(APPEND default_emscripten_exe_config
+    list(APPEND emscripten_cli_link_flags
         -sENVIRONMENT=node
         -sNODERAWFS # Use host file system
     )
   endif()
 
-  add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG>>>:${default_emscripten_exe_config}>")
+  add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG>>>:${emscripten_cli_link_flags}>")
 endif()
 
 # Add shebang to JS file, if target is such a file
 #XXX Remove for version 5.0.0+ (which has -sEXECUTABLE; implicit for targets without extension)
 function(make_js_file_executable target)
   if (DEFINED EMSCRIPTEN AND NOT PEP_EMSCRIPTEN_BROWSER AND EMSCRIPTEN_VERSION VERSION_LESS "5.0.0")
-    get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_EXE_CONFIG)
-    get_target_property(suffix ${target} SUFFIX)
-    if(NOT skip AND (NOT suffix OR suffix MATCHES "^\.?js$"))
+    get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG)
+    if(NOT skip)
       find_program(SED_PROGRAM sed)
       if(SED_PROGRAM AND NOT APPLE) # We filter out macOS because it doesn't support this syntax
         add_custom_command(
