@@ -28,7 +28,12 @@ std::filesystem::path GetAbsoluteWorkingDirOrCurrentPath(std::filesystem::path a
 }
 
 std::filesystem::path GetExecutablePath() {
+#ifdef __EMSCRIPTEN__
+  // This either fails (in the browser) or returns the Node.js executable: not useful
+  throw std::runtime_error("Can't get executable path for Emscripten application");
+#else
   return boost::dll::program_location();
+#endif
 }
 
 std::filesystem::path GetResourceWorkingDirForOS() {
