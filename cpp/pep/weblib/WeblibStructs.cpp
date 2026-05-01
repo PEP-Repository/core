@@ -22,18 +22,14 @@ using namespace pep::weblib;
 
 // Add Embind serialization for weblib structures
 
-#undef BINDINGS_IMPL
 #define BINDINGS_IMPL(cur_struct) \
   EMSCRIPTEN_BINDINGS(cur_struct) { \
     value_object<cur_struct>(BOOST_PP_STRINGIZE(cur_struct))
 
-#undef BINDINGS
 #define BINDINGS BINDINGS_IMPL(CUR_STRUCT)
 
-#undef BINDINGS_END
 #define BINDINGS_END ; }
 
-#undef FIELD
 #define FIELD(name) .field(#name, &CUR_STRUCT::name)
 
 
