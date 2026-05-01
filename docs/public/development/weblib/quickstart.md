@@ -105,3 +105,14 @@ The following script first builds the PEP services for your platform, then build
 ```
 
 Now you can finally open http://localhost:2280/weblib/pep-sample-client/ in your browser. Try to log in as Research Assessor and list columns, for example.
+
+## IDE
+
+To develop the weblib, you may want to try one of these IDEs:
+
+- JetBrains CLion (has both C++ and web support via default plugins)
+  - In the CMake panel, activate presets for both the native and the wasm32 build
+  - Select the active preset and target in the top right
+- Microsoft VSCode with [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack) and optionally [WebAssembly DWARF Debugging](https://marketplace.visualstudio.com/items?itemName=ms-vscode.wasm-dwarf-debugging) extensions
+
+Both also have support for developing remotely with SSH.
