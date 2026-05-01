@@ -26,11 +26,11 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
 
     void schedule(const rxcpp::schedulers::schedulable& scbl) const override {
       LOG(LOG_TAG, verbose) << "schedule on emscripten thread " << weblib::ThreadPrintable{thread_}
-        << " from thread " << weblib::CurrentThreadPrintable{}
+        << " from thread " << weblib::ThreadPrintable{}
         << (thread_ == ::pthread_self() ? " (queuing for current thread)" : "");
 
       bool success = queue_.proxyAsync(thread_, [scbl] {
-        LOG(LOG_TAG, verbose) << "running on emscripten thread " << weblib::CurrentThreadPrintable{};
+        LOG(LOG_TAG, verbose) << "running on emscripten thread " << weblib::ThreadPrintable{};
         if (scbl.is_subscribed()) {
           // allow recursion
           rxcpp::schedulers::recursion r(true);

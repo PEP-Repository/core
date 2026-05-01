@@ -71,7 +71,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Run event loop in background thread. Calls from JS will still come from the main thread.
     thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
       ThreadName::Set("Client");
-      LOG(LOG_TAG, debug) << "starting io_context " << io_context << " on thread " << CurrentThreadPrintable{};
+      LOG(LOG_TAG, debug) << "starting io_context " << io_context << " on thread " << ThreadPrintable{};
       std::stop_callback onStop(std::move(stop), [io_context] {
         LOG(LOG_TAG, debug) << "stopping io_context...";
         io_context->stop();
