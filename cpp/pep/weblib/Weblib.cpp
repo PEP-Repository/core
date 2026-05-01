@@ -83,20 +83,12 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
 
   rxcpp::observable<bool> connectionStatusChange() {
     auto disconnectedServers = std::make_shared<std::unordered_set<std::string>>();
-    std::map<std::string, std::shared_ptr<const ServerProxy>> servers{
-      {"KeyServer", client_->getKeyServerProxy()},
-      {"StorageFacility", client_->getStorageFacilityProxy()},
-      {"AccessManager", client_->getAccessManagerProxy()},
-      {"Transcryptor", client_->getTranscryptorProxy()},
-      {"RegistrationServer", client_->getRegistrationServerProxy()},
-      {"AuthServer", client_->getAuthServerProxy()},
-    };
 
-    auto serverConnectionStatuses = std::move(servers)
+    auto serverConnectionStatuses = client_->getServerProxies(true)
         | views::transform([](const auto& entry) {
-          auto& [name, proxy] = entry;
+          auto& [traits, proxy] = entry;
           return proxy->connectionStatus()
-              .map([name](ConnectionStatus status) {
+              .map([name = traits.description()](ConnectionStatus status) {
                 return std::pair{name, status};
               });
         });
