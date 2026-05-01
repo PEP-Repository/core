@@ -4,6 +4,7 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
+#include <pep/structuredoutput/Tree.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
@@ -39,11 +40,18 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
     return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
-      if (config.preferredFormat == so::Format::Json) {
-        so::json::append(std::cout, res, config) << std::endl;
-      }
-      else {
-        so::yaml::append(std::cout, res, config) << std::endl;
+      auto tree = so::Tree::FromUserQueryResponse(res);
+      const bool isPrettyPrint = HasFlags(config.flags, so::UserQueryDisplayConfig::Flags::PrintHeaders);
+      
+      if (config.preferredFormat == so::UserQueryDisplayConfig::Format::Json) {
+        so::json::Config jsonConfig{.indent = isPrettyPrint ? 2 : 0};
+        so::json::appendUserQuery(std::cout, tree, config, jsonConfig) << std::endl;
+      } else {
+        so::yaml::Config yamlConfig{
+          .indent = 0,
+          .includeArraySizeComments = isPrettyPrint
+        };
+        so::yaml::appendUserQuery(std::cout, tree, config, yamlConfig) << std::endl;
       }
       auto usersWithoutDisplayId = res.mUsers | std::ranges::views::filter([](QRUser user){ return !user.mDisplayId; });
       for (auto& user : usersWithoutDisplayId) {
@@ -58,24 +66,25 @@ int CommandUser::CommandUserQuery::execute() {
   });
 }
 
-so::DisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
-  using Flags = so::DisplayConfig::Flags;
-  using Format = so::Format;
+so::UserQueryDisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
+  using Flags = so::UserQueryDisplayConfig::Flags;
+  using Format = so::UserQueryDisplayConfig::Format;
 
   constexpr auto userGroupsOpt = so::stringConstants::userGroups.option;
   constexpr auto usersOpt = so::stringConstants::users.option;
   constexpr auto groupsPerUserOpt = so::stringConstants::groupsPerUser.option;
   const auto scriptPrintFilter = values.getOptional<std::string>("script-print");
-  const auto preferredFormat = values.get<std::string>("format");
+  const auto format = values.get<std::string>("format");
 
-  so::DisplayConfig config;
+  so::UserQueryDisplayConfig config;
   config.flags =
       FlagsIf(Flags::PrintHeaders, !scriptPrintFilter) |
       FlagsIf(Flags::PrintGroups, !scriptPrintFilter || scriptPrintFilter == userGroupsOpt) |
 // groupsPerUser is a part of the users list. So when groupsPerUsers is requested, we must also print users
       FlagsIf(Flags::PrintUsers, !scriptPrintFilter || scriptPrintFilter == usersOpt || scriptPrintFilter == groupsPerUserOpt) |
       FlagsIf(Flags::PrintUserGroups, !scriptPrintFilter || scriptPrintFilter == groupsPerUserOpt);
-  config.preferredFormat = (preferredFormat == "json") ? Format::Json : Format::Yaml;
+  config.preferredFormat = (format == "json") ? Format::Json : Format::Yaml;
+  config.useDescriptiveHeaders = !scriptPrintFilter; // Use descriptive headers in pretty-print mode
   return config;
 }
 

@@ -30,9 +30,12 @@ constexpr std::string_view maxAuthValidityKey{"max auth valid time"};
 
 } // namespace stringConstants
 
-enum class Format { Yaml, Json };
+  enum class Format {
+    Yaml,
+    Json
+  };
 
-struct DisplayConfig final {
+struct UserQueryDisplayConfig final {
   enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
     None = 0,
     PrintHeaders = 0b0001,
@@ -43,8 +46,8 @@ struct DisplayConfig final {
   };
 
   Flags flags = Flags::All;
-  int indent = 0; ///< How many levels the output should be indented by.
   Format preferredFormat = Format::Yaml;
+  bool useDescriptiveHeaders = true; ///< When printHeaders is true, controls whether to use descriptive keys ("All User Groups") vs simple keys ("userGroups")
 };
 
 inline std::string indentations(int i) {
@@ -55,5 +58,5 @@ inline std::string indentations(int i) {
 
 } // namespace pep::structuredOutput
 
-PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::DisplayConfig::Flags)
+PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::UserQueryDisplayConfig::Flags)
 

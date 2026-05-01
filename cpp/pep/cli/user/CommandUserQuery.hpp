@@ -15,7 +15,7 @@ protected:
   int execute() override;
 
 private:
-  static pep::structuredOutput::DisplayConfig extractConfig(const pep::commandline::NamedValues& values);
+  static pep::structuredOutput::UserQueryDisplayConfig extractConfig(const pep::commandline::NamedValues& values);
 
   static pep::UserQuery extractQuery(const pep::commandline::NamedValues& values);
 };

@@ -7,16 +7,21 @@
 
 namespace pep::structuredOutput::json {
 
+struct Config final {
+  int indent = 2; ///< Indentation size for JSON output
+};
+
 /// Appends a JSON representation of a tree to a stream
-inline std::ostream& append(std::ostream& stream, const Tree& tree) {
-  constexpr auto indentationSize = 2;
-  return stream << tree.toJson().dump(indentationSize);
+inline std::ostream& append(std::ostream& stream, const Tree& tree, const Config& config = {}) {
+  return stream << tree.toJson().dump(config.indent);
 }
 
 /// Appends a JSON representation of a table to a stream
-inline std::ostream& append(std::ostream& stream, const Table& table) { return append(stream, TreeFromTable(table)); }
+inline std::ostream& append(std::ostream& stream, const Table& table, const Config& config = {}) { 
+  return append(stream, TreeFromTable(table), config); 
+}
 
-/// Appends a JSON representation of a response object to a stream.
-std::ostream& append(std::ostream&, const pep::UserQueryResponse&, DisplayConfig = {});
+/// Appends a JSON representation of a UserQuery tree to a stream, applying display config filtering
+std::ostream& appendUserQuery(std::ostream&, const Tree&, const UserQueryDisplayConfig& dataFilter, const Config& formatting = {});
 
 } // namespace pep::structuredOutput::json

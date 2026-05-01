@@ -1,6 +1,11 @@
 #include <pep/structuredoutput/Tree.hpp>
 
 #include <boost/property_tree/ptree.hpp>
+#include <pep/accessmanager/UserMessages.hpp>
+#include <pep/utils/ChronoUtil.hpp>
+
+#include <algorithm>
+#include <tuple>
 
 namespace pep::structuredOutput {
 namespace {
@@ -75,6 +80,75 @@ json PtreeToJson(const boost::property_tree::ptree& pt) {
 
 Tree Tree::FromPropertyTree(const boost::property_tree::ptree& pt) {
   return Tree::FromJson(PtreeToJson(pt));
+}
+
+Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res) {
+  json root = json::object();
+
+  // userGroups
+  {
+    json groups = json::array();
+
+    for (const auto& group : res.mUserGroups) {
+      json item = json::object({
+        {"name", group.mName}
+      });
+
+      if (group.mMaxAuthValidity) {
+        item["maxAuthValidity"] =
+          pep::chrono::ToString(*group.mMaxAuthValidity);
+      }
+
+      groups.push_back(std::move(item));
+    }
+
+    root["userGroups"] = std::move(groups);
+  }
+  
+  // users
+  {
+    json users = json::array();
+
+    for (const auto& user : res.mUsers) {
+      json item = json::object();
+
+      if (user.mDisplayId) {
+        item["displayId"] = *user.mDisplayId;
+      }
+
+      if (user.mPrimaryId) {
+        item["primaryId"] = *user.mPrimaryId;
+      }
+      
+      // otherIdentifiers
+      {
+        json ids = json::array();
+
+        for (const auto& uid : user.mOtherUids) {
+          ids.push_back(uid);
+        }
+
+        item["otherIdentifiers"] = std::move(ids);
+      }
+
+      // userGroups for users
+      {
+        json groups = json::array();
+
+        for (const auto& group : user.mGroups) {
+          groups.push_back(group);
+        }
+
+        item["groups"] = std::move(groups);
+      }
+      
+      users.push_back(std::move(item));
+    }
+    
+    root["users"] = std::move(users);
+  }
+
+  return Tree::FromJson(std::move(root));
 }
 
 } // namespace pep::structuredOutput

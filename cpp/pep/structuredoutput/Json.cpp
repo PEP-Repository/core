@@ -1,212 +1,92 @@
 #include <pep/structuredoutput/Json.hpp>
 
-#include <pep/utils/ChronoUtil.hpp>
-#include <string>
-#include <string_view>
-
 namespace pep::structuredOutput::json {
-namespace {
 
-/// Calls \p perItem on each element of \p items in order and alternates it with calls to \p betweenItems.
-/// @example `interweave({1, 2, 3}, p, b)` is equivalent to `p(1); b(); p(2); b(); p(3);`
-template <typename T, typename UnaryFunction, typename Procedure>
-void interweave(const std::vector<T>& items, const UnaryFunction& perItem, const Procedure& betweenItems) {
-  if (items.empty()) {
-    return;
-  }
+std::ostream& appendUserQuery(std::ostream& stream, const Tree& tree, const UserQueryDisplayConfig& dataFilter, const Config& formatting) {
+  const auto printGroups = HasFlags(dataFilter.flags, UserQueryDisplayConfig::Flags::PrintGroups);
+  const auto printUsers = HasFlags(dataFilter.flags, UserQueryDisplayConfig::Flags::PrintUsers);
+  const auto printUserGroups = HasFlags(dataFilter.flags, UserQueryDisplayConfig::Flags::PrintUserGroups);
+  const auto printHeaders = HasFlags(dataFilter.flags, UserQueryDisplayConfig::Flags::PrintHeaders);
+  const auto useDescriptive = dataFilter.useDescriptiveHeaders;
 
-  perItem(items.front());
-  for (auto i = items.begin() + 1; i != items.end(); ++i) {
-    betweenItems();
-    perItem(*i);
-  }
-}
-
-std::ostream& appendUnicodeEscaped(std::ostream& stream, const char c) {
-  return stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
-}
-
-std::ostream& appendEscaped(std::ostream& stream, const char c) {
-  // Adapted from https://stackoverflow.com/a/33799784
-  switch (c) {
-  case '"':
-    return stream << "\\\"";
-  case '\\':
-    return stream << "\\\\";
-  case '\b':
-    return stream << "\\b";
-  case '\f':
-    return stream << "\\f";
-  case '\n':
-    return stream << "\\n";
-  case '\r':
-    return stream << "\\r";
-  case '\t':
-    return stream << "\\t";
-  default:
-    if ('\x00' <= c && c <= '\x1f') {
-      return appendUnicodeEscaped(stream, c);
+  const auto& json = tree.toJson();
+  
+  // Create a filtered JSON based on config flags
+  nlohmann::json filtered;
+  
+  // When printHeaders is false, output bare array/object without wrapping
+  if (!printHeaders) {
+    // Determine if we're outputting a single array or need an object with both
+    const bool outputBoth = printGroups && printUsers;
+    
+    if (outputBoth) {
+      filtered = nlohmann::json::object();
+      if (printGroups && json.contains("userGroups")) {
+        filtered["userGroups"] = json["userGroups"];
+      }
+      if (printUsers && json.contains("users")) {
+        nlohmann::json usersData = json["users"];
+        if (!printUserGroups) {
+          nlohmann::json filteredUsers = nlohmann::json::array();
+          for (const auto& user : usersData) {
+            nlohmann::json filteredUser = user;
+            filteredUser.erase("groups");
+            filteredUsers.push_back(std::move(filteredUser));
+          }
+          usersData = std::move(filteredUsers);
+        }
+        filtered["users"] = std::move(usersData);
+      }
+    } else if (printGroups && json.contains("userGroups")) {
+      filtered = json["userGroups"];
+    } else if (printUsers && json.contains("users")) {
+      nlohmann::json usersData = json["users"];
+      if (!printUserGroups) {
+        nlohmann::json filteredUsers = nlohmann::json::array();
+        for (const auto& user : usersData) {
+          nlohmann::json filteredUser = user;
+          filteredUser.erase("groups");
+          filteredUsers.push_back(std::move(filteredUser));
+        }
+        filtered = std::move(filteredUsers);
+      } else {
+        filtered = std::move(usersData);
+      }
+    } else {
+      filtered = nlohmann::json::object();
     }
-    else {
-      return stream << c;
+  } else {
+    // When printHeaders is true, wrap with keys (descriptive or simple based on useDescriptive)
+    filtered = nlohmann::json::object();
+    
+    if (printGroups && json.contains("userGroups")) {
+      const auto key = useDescriptive 
+        ? std::string(stringConstants::userGroups.descriptive)
+        : "userGroups";
+      filtered[key] = json["userGroups"];
+    }
+    
+    if (printUsers && json.contains("users")) {
+      nlohmann::json usersData = json["users"];
+      
+      if (!printUserGroups) {
+        nlohmann::json filteredUsers = nlohmann::json::array();
+        for (const auto& user : usersData) {
+          nlohmann::json filteredUser = user;
+          filteredUser.erase("groups");
+          filteredUsers.push_back(std::move(filteredUser));
+        }
+        usersData = std::move(filteredUsers);
+      }
+      
+      const auto key = useDescriptive
+        ? std::string(stringConstants::users.descriptive)
+        : "users";
+      filtered[key] = std::move(usersData);
     }
   }
-}
-
-std::ostream& appendEscaped(std::ostream& stream, std::string_view str) {
-  for (const auto c : str) {
-    appendEscaped(stream, c);
-  }
-  return stream;
-}
-
-std::ostream& appendLiteral(std::ostream& stream, std::string_view str) {
-  stream << '"';
-  appendEscaped(stream, str);
-  stream << '"';
-  return stream;
-}
-
-/// Wrapper to allow overloading operator<< to inline calls to appendLiteral.
-struct Literal final {
-  std::string_view str;
-};
-
-std::ostream& operator<<(std::ostream& lhs, const Literal& rhs) {
-  return appendLiteral(lhs, rhs.str);
-}
-
-std::ostream& append(std::ostream& stream, const pep::UserGroup& group, int indentLevel) {
-  const auto ind = [&indentLevel]() { return indentations(indentLevel); };
-  const auto maxAuth = group.mMaxAuthValidity;
-
-  stream << Literal{group.mName} << ": ";
-  if (maxAuth) {
-    stream << "{\n";
-    ++indentLevel;
-    stream << ind() << Literal{stringConstants::maxAuthValidityKey} << ": " << Literal{pep::chrono::ToString(*maxAuth)}
-           << "\n";
-    --indentLevel;
-    stream << ind() << "}";
-  }
-  else {
-    stream << "{}";
-  }
-
-  return stream;
-}
-
-std::ostream& append(std::ostream& stream, const pep::QRUser& user, DisplayConfig config) {
-  const auto ind = [&config]() { return indentations(config.indent); };
-  const auto printUserGroups = HasFlags(config.flags, DisplayConfig::Flags::PrintUserGroups);
-
-  stream << "{\n";
-  ++config.indent;
-  if (user.mDisplayId) {
-    stream << ind() << Literal{stringConstants::displayIdKey} << ": " << Literal{*user.mDisplayId} << ",\n";
-  }
-  if (user.mPrimaryId) {
-    stream << ind() << Literal{stringConstants::primaryIdKey} << ": " << Literal{*user.mPrimaryId} << ",\n";
-  }
-  stream << ind() << Literal{stringConstants::otherIdentifiersKey} << ": [";
-  if (!user.mOtherUids.empty()) {
-    stream << "\n";
-    ++config.indent;
-    interweave(user.mOtherUids, [&](const std::string& i) { stream << ind() << Literal{i}; }, [&] { stream << ",\n"; });
-    --config.indent;
-    stream << "\n" << ind();
-  }
-  stream << "],\n";
-  if(printUserGroups) {
-    stream << ind() << Literal{stringConstants::groupsKey} << ": [";
-    if (!user.mGroups.empty()) {
-      stream << "\n";
-      ++config.indent;
-      interweave(user.mGroups, [&](const std::string& g) { stream << ind() << Literal{g}; }, [&] { stream << ",\n"; });
-      --config.indent;
-      stream << "\n" << ind();
-    }
-    stream << "]\n";
-  }
-  --config.indent;
-  stream << ind() << "}";
-
-  return stream;
-}
-
-std::ostream& append(std::ostream& stream, const std::vector<pep::UserGroup>& groups, DisplayConfig config) {
-  const auto ind = [&config]() { return indentations(config.indent); };
-  const auto includeHeader = HasFlags(config.flags, DisplayConfig::Flags::PrintHeaders);
-
-  if (includeHeader) {
-    stream << Literal{stringConstants::userGroups.descriptive} << ": ";
-  }
-  stream << "{\n";
-  ++config.indent;
-  interweave(
-      groups,
-      [&](const pep::UserGroup& g) {
-        stream << ind();
-        append(stream, g, config.indent);
-      },
-      [&] { stream << ",\n"; });
-  --config.indent;
-  stream << "\n" << ind() << "}";
-
-  return stream;
-}
-
-std::ostream& append(std::ostream& stream, const std::vector<pep::QRUser>& users, DisplayConfig config) {
-  const auto ind = [&config]() { return indentations(config.indent); };
-  const auto includeHeader = HasFlags(config.flags, DisplayConfig::Flags::PrintHeaders);
-
-  if (includeHeader) {
-    stream << Literal{stringConstants::users.descriptive} << ": ";
-  }
-  stream << "[\n";
-  ++config.indent;
-  interweave(
-      users,
-      [&](const pep::QRUser& u) {
-        stream << ind();
-        append(stream, u, config);
-      },
-      [&] { stream << ",\n"; });
-  --config.indent;
-  stream << "\n" << ind() << "]";
-
-  return stream;
-}
-
-} // namespace
-
-std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& response, DisplayConfig config) {
-  const auto ind = [&config]() { return indentations(config.indent); };
-  const auto printHeaders = HasFlags(config.flags, DisplayConfig::Flags::PrintHeaders);
-  const auto printGroups = HasFlags(config.flags, DisplayConfig::Flags::PrintGroups);
-  const auto printUsers = HasFlags(config.flags, DisplayConfig::Flags::PrintUsers);
-
-  if (printHeaders) {
-    stream << ind() << "{\n";
-    ++config.indent;
-  }
-  if (printGroups) {
-    stream << ind();
-    append(stream, response.mUserGroups, config);
-  }
-  if (printGroups && printUsers) {
-    stream << ",\n";
-  }
-  if (printUsers) {
-    stream << ind();
-    append(stream, response.mUsers, config);
-  }
-  if (printHeaders) {
-    --config.indent;
-    stream << "\n" << ind() << "}";
-  }
-
-  return stream;
+  
+  return stream << filtered.dump(formatting.indent);
 }
 
 } // namespace pep::structuredOutput::json

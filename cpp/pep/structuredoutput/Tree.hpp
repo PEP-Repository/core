@@ -2,6 +2,8 @@
 
 #include <nlohmann/json.hpp>
 #include <pep/structuredoutput/Table.hpp>
+#include <pep/structuredoutput/Common.hpp>
+#include <pep/accessmanager/UserMessages.hpp>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -18,6 +20,7 @@ class Tree final {
 public:
   static Tree FromJson(nlohmann::json json) noexcept { return Tree(std::move(json)); }
   static Tree FromPropertyTree(const boost::property_tree::ptree&);
+  static Tree FromUserQueryResponse(const pep::UserQueryResponse&);
 
   const nlohmann::json& toJson() const& noexcept { return mJson; }
   nlohmann::json toJson() && noexcept { return std::move(mJson); }
