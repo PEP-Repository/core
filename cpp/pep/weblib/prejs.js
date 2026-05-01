@@ -67,7 +67,7 @@
     }
 
     // Will not call for Node.js, since the method is not there
-    addEventListener?.('error', ev => {
+    globalThis.addEventListener?.('error', ev => {
       if (mayBeWasmException(ev.error)) {
         throw handleBackgroundWasmException(ev.error);
       }
