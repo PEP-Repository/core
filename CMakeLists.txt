@@ -278,7 +278,7 @@ function(make_js_file_executable target)
         add_custom_command(
             TARGET ${target} POST_BUILD
             # Add node shebang
-            COMMAND ${SED_PROGRAM} "-i''" "1 i #!/usr/bin/env node" "$<TARGET_FILE:${target}>"
+            COMMAND ${SED_PROGRAM} -i -e "1 i #!/usr/bin/env node" "$<TARGET_FILE:${target}>"
             # Make file executable
             COMMAND chmod +x "$<TARGET_FILE:${target}>"
             VERBATIM
