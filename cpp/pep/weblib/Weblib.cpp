@@ -306,7 +306,6 @@ public:
               return rxcpp::observable<>::iterate(std::move(chunk));
             })
             .map([signedTicket = indexedTicket.getTicket()](std::shared_ptr<EnumerateResult> result) {
-              //TODO rx-notification equals should return typename std::enable_if<std::is_same<decltype(lhs == rhs), bool>::value, bool>::value
               return CellEntry{std::move(result), signedTicket};
             });
         })
