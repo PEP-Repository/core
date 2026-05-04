@@ -1,6 +1,7 @@
 #include <pep/weblib/OnEmscriptenThread.hpp>
 
 #include <pep/utils/Log.hpp>
+#include <pep/weblib/SetTimeout.hpp>
 #include <pep/weblib/ThreadPrintable.hpp>
 
 #include <emscripten/proxying.h>
@@ -15,7 +16,7 @@ namespace {
 class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
   class worker_interface : public rxcpp::schedulers::worker_interface {
     ::pthread_t thread_;
-    mutable emscripten::ProxyingQueue queue_;
+    std::shared_ptr<emscripten::ProxyingQueue> queue_ = std::make_shared<emscripten::ProxyingQueue>();
 
   public:
     explicit worker_interface(::pthread_t thread) : thread_{thread} {}
@@ -28,14 +29,13 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
       LOG(LOG_TAG, verbose) << "schedule on emscripten thread " << weblib::ThreadPrintable{thread_}
         << " from thread " << weblib::ThreadPrintable{}
         << (thread_ == ::pthread_self() ? " (queuing for current thread)" : "");
-
-      bool success = queue_.proxyAsync(thread_, [scbl] {
+      const bool success = queue_->proxyAsync(thread_, [scbl] {
         LOG(LOG_TAG, verbose) << "running on emscripten thread " << weblib::ThreadPrintable{};
-        if (scbl.is_subscribed()) {
-          // allow recursion
-          rxcpp::schedulers::recursion r(true);
-          scbl(r.get_recurse());
-        }
+        if (!scbl.is_subscribed()) { return; }
+
+        // allow recursion
+        rxcpp::schedulers::recursion r(true);
+        scbl(r.get_recurse());
       });
       if (!success) {
         throw std::runtime_error("Failed to proxy to Emscripten thread");
@@ -43,7 +43,45 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
     }
 
     void schedule(clock_type::time_point when, const rxcpp::schedulers::schedulable& scbl) const override {
-      throw std::logic_error("Cannot schedule delayed work to Emscripten thread");
+      LOG(LOG_TAG, verbose) << "schedule after " << duration_cast<std::chrono::milliseconds>(when - clock_type::now())
+        << " on emscripten thread " << weblib::ThreadPrintable{thread_}
+        << " from thread " << weblib::ThreadPrintable{}
+        << (thread_ == ::pthread_self() ? " (queuing for current thread)" : "");
+      const bool success = queue_->proxyAsync(thread_, [queue = queue_, when, scbl] {
+        if (!scbl.is_subscribed()) { return; }
+
+        // Compute delay after proxying.
+        // If non-positive, setTimeout will schedule for the next JS event cycle.
+        const auto delay = duration_cast<std::chrono::duration<double, std::milli>>(when - clock_type::now());
+
+        auto onUnsubscribe = std::make_shared<rxcpp::subscription::weak_state_type>();
+
+        auto timeout = weblib::SetTimeout(delay, [scbl, onUnsubscribe] {
+          scbl.remove(*onUnsubscribe);
+          LOG(LOG_TAG, verbose) << "running after delay on emscripten thread " << weblib::ThreadPrintable{};
+          if (!scbl.is_subscribed()) { return; }
+
+          // allow recursion
+          rxcpp::schedulers::recursion r(true);
+          scbl(r.get_recurse());
+        });
+        LOG(LOG_TAG, verbose) << "running on emscripten thread " << weblib::ThreadPrintable{}
+          << ", delaying " << delay;
+
+        // Cancel timer when unsubscribed, also to prevent code from executing after runtime shutdown
+        *onUnsubscribe = scbl.add([queue, thread = ::pthread_self(), timeout] {
+          const bool success = queue->proxyAsync(thread, [timeout] {
+            timeout.cancel();
+            LOG(LOG_TAG, verbose) << "canceled timer on emscripten thread " << weblib::ThreadPrintable{};
+          });
+          if (!success) {
+            LOG(LOG_TAG, debug) << "Failed to proxy timer cancelation on Emscripten thread " << weblib::ThreadPrintable{thread};
+          }
+        });
+      });
+      if (!success) {
+        throw std::runtime_error("Failed to proxy to Emscripten thread");
+      }
     }
   };
 
