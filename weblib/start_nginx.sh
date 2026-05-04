@@ -10,6 +10,8 @@ wasm_build_folder="$(realpath -- "${1:-"$scriptdir/../build/wasm32/Debug/"}")"
 
 cd "$scriptdir"
 
+mkdir -p ../temp/nginx/
+
 if [ -z "${DEFAULT_MIME_TYPES-}" ]; then
   if [ -f /etc/nginx/mime.types ]; then
     DEFAULT_MIME_TYPES=/etc/nginx/mime.types
@@ -20,9 +22,9 @@ if [ -z "${DEFAULT_MIME_TYPES-}" ]; then
     exit 1
   fi
 fi
-cp "$DEFAULT_MIME_TYPES" ../temp/mime.types
+cp "$DEFAULT_MIME_TYPES" ../temp/nginx/mime.types
 
-cat >../temp/nginx-variables.conf <<EOF
+cat >../temp/nginx/variables.conf <<EOF
 set \$home "$HOME";
 set \$emsdk "${EMSDK:?EMSDK envvar not set, please source emsdk_env in your shell}";
 set \$build_folder "$wasm_build_folder";
