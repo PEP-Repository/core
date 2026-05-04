@@ -3,19 +3,29 @@
 # Note: We're using add_custom_target instead of add_custom_command because we always want this to run,
 # especially when some other configuration might've messed with the folders
 
+set(hide_files)
+# Hide files so they do not show up in a 'grep'
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+  set(hide_files COMMAND attrib +h ../pep-repo-client-wasm)
+endif()
 add_custom_target(pep-repo-client-wasm-symlink
     COMMENT "Link pep-repo-client-wasm in source tree to our weblib build folder"
     COMMAND ${CMAKE_COMMAND} -E create_symlink
       "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>"
       "${CMAKE_CURRENT_SOURCE_DIR}/../pep-repo-client-wasm"
+    ${hide_files}
     VERBATIM
     DEPENDS ${PROJECT_NAME}Weblib
     BYPRODUCTS "${CMAKE_CURRENT_SOURCE_DIR}/../pep-repo-client-wasm"
 )
 
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+  set(hide_files COMMAND attrib +h ./node_modules)
+endif()
 add_custom_target(pep-repo-client-lib-npm
     COMMENT "Install dependencies for pep-repo-client-lib"
     COMMAND ${NPM_PROGRAM} install
+    ${hide_files}
     VERBATIM
     DEPENDS pep-repo-client-wasm-symlink
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -24,9 +34,13 @@ set_target_properties(pep-repo-client-lib-npm PROPERTIES
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/node_modules/"
 )
 
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+  set(hide_files COMMAND attrib +h ./pack/dist)
+endif()
 add_custom_target(pep-repo-client-lib-build
     COMMENT "Type-check & compile to JS for pep-repo-client-lib"
     COMMAND ${NPM_PROGRAM} run build
+    ${hide_files}
     VERBATIM
     DEPENDS pep-repo-client-lib-npm
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -64,9 +78,13 @@ add_custom_target(${PROJECT_NAME}WeblibJs ALL
 )
 
 if(WITH_TESTS)
+  if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set(hide_files COMMAND attrib +h ./dist-test)
+  endif()
   add_custom_target(pep-repo-client-lib-web-tests-build
       COMMENT "Type-check & compile to JS for pep-repo-client-lib web tests"
       COMMAND ${NPM_PROGRAM} run build-web-tests
+      ${hide_files}
       VERBATIM
       DEPENDS ${PROJECT_NAME}WeblibJs
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
