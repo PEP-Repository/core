@@ -68,7 +68,7 @@ rxcpp::observable<std::string> Study::getDefaultSiteId() {
 
   return this->getSites()
     // - Not using RxToUnorderedList because we want to report duplicates (instead of raising an exception).
-    // - Not using RxGroupToVectors because it failed to compile: see e.g. https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/840447#L2582 ,
+    // - Not using RxGroupToVectors because it produced a link failure: see e.g. https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/840447#L2582 ,
     //    which may have been caused by this clang bug (or one very similar to it): https://github.com/llvm/llvm-project/issues/57561 .
     .op(RxToVector())
     .flat_map([self = SharedFrom(*this)](std::shared_ptr<std::vector<std::shared_ptr<Site>>> sites) -> rxcpp::observable<std::string> {
