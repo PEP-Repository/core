@@ -7,7 +7,7 @@
 
 namespace {
 using boost::property_tree::ptree;
-using nlohmann::json;
+using json = nlohmann::ordered_json;
 using pep::structuredOutput::Tree;
 } // namespace
 

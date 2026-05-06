@@ -7,7 +7,7 @@
 namespace {
 namespace yaml = pep::structuredOutput::yaml;
 using pep::structuredOutput::Tree;
-using njs = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 TEST(structuredOutputYaml, NakedValues) {
   // naked values
@@ -15,15 +15,15 @@ TEST(structuredOutputYaml, NakedValues) {
   EXPECT_EQ(yaml::to_string(Tree::FromJson(false)), "false\n");
   EXPECT_EQ(yaml::to_string(Tree::FromJson(52)), "52\n");
   EXPECT_EQ(yaml::to_string(Tree::FromJson(nullptr)), "null\n");
-  EXPECT_EQ(yaml::to_string(Tree::FromJson(njs::object())), "{}\n");
-  EXPECT_EQ(yaml::to_string(Tree::FromJson(njs::array())), "[]\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(json::object())), "{}\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(json::array())), "[]\n");
 }
 
 TEST(structuredOutputYaml, StringLiteralEscaping) {
   EXPECT_EQ(
       yaml::to_string(Tree::FromJson({{"unquoted0", "always quote rhs"}, {"unquoted _key_", "escape \\ and \"!"}})),
-      "unquoted _key_: \"escape \\\\ and \\\"!\"\n"
-      "unquoted0: \"always quote rhs\"\n");
+      "unquoted0: \"always quote rhs\"\n"
+      "unquoted _key_: \"escape \\\\ and \\\"!\"\n");
   EXPECT_EQ(
       yaml::to_string(Tree::FromJson({{"0key", "quote keys that do not start with alpha"}, {"k|:", "special chars"}})),
       "\"0key\": \"quote keys that do not start with alpha\"\n"
@@ -33,7 +33,7 @@ TEST(structuredOutputYaml, StringLiteralEscaping) {
 TEST(structuredOutputYaml, FlatArray) {
   EXPECT_EQ(
       yaml::to_string(
-          Tree::FromJson({"simple string", true, 17, nullptr, njs::object(), njs::array()}),
+          Tree::FromJson({"simple string", true, 17, nullptr, json::object(), json::array()}),
           {.includeArraySizeComments = true}), // we expect no comments here, since a naked list has no header element
       "- \"simple string\"\n"
       "- true\n"
@@ -46,11 +46,11 @@ TEST(structuredOutputYaml, FlatArray) {
 TEST(structuredOutputYaml, FlatMap) {
   EXPECT_EQ(
       yaml::to_string(Tree::FromJson({{"C", nullptr}, {"D", nullptr}, {"B", nullptr}, {"A", nullptr}})),
-      "A: null\n"
-      "B: null\n"
       "C: null\n"
-      "D: null\n")
-      << "keys should appear in alphabetical order";
+      "D: null\n"
+      "B: null\n"
+      "A: null\n")
+      << "keys should appear as constructed";
 
   EXPECT_EQ(
       yaml::to_string(
@@ -59,8 +59,8 @@ TEST(structuredOutputYaml, FlatMap) {
                {"key 2", true},
                {"key 3", 312},
                {"key 4", nullptr},
-               {"key 5", njs::object()},
-               {"key 6", njs::array()}}),
+               {"key 5", json::object()},
+               {"key 6", json::array()}}),
           {.includeArraySizeComments = true}), // we expect no comments here
       "key 1: \"string\"\n"
       "key 2: true\n"
@@ -77,12 +77,12 @@ TEST(structuredOutputYaml, ArrayOfObjects) {
               {{{"name", "Alice"}, {"age", 25}, {"is_student", true}},
                {{"name", "Bob"}, {"age", 30}, {"is_student", false}}}),
           {.includeArraySizeComments = true}), // we expect no comments here
-      "- age: 25\n"
+      "- name: \"Alice\"\n"
+      "  age: 25\n"
       "  is_student: true\n"
-      "  name: \"Alice\"\n"
-      "- age: 30\n"
-      "  is_student: false\n"
-      "  name: \"Bob\"\n");
+      "- name: \"Bob\"\n"
+      "  age: 30\n"
+      "  is_student: false\n");
 }
 
 TEST(structuredOutputYaml, ObjectOfArrays) {
@@ -91,10 +91,6 @@ TEST(structuredOutputYaml, ObjectOfArrays) {
 
   EXPECT_EQ(
       yaml::to_string(tree, {.includeArraySizeComments = true}),
-      "flags: # item count: 3\n"
-      "  - true\n"
-      "  - false\n"
-      "  - true\n"
       "fruits: # item count: 3\n"
       "  - \"apple\"\n"
       "  - \"banana\"\n"
@@ -102,14 +98,14 @@ TEST(structuredOutputYaml, ObjectOfArrays) {
       "numbers: # item count: 3\n"
       "  - 33\n"
       "  - 22\n"
-      "  - 11\n");
+      "  - 11\n"
+      "flags: # item count: 3\n"
+      "  - true\n"
+      "  - false\n"
+      "  - true\n");
 
   EXPECT_EQ(
       yaml::to_string(tree, {.includeArraySizeComments = false}),
-      "flags:\n"
-      "  - true\n"
-      "  - false\n"
-      "  - true\n"
       "fruits:\n"
       "  - \"apple\"\n"
       "  - \"banana\"\n"
@@ -117,7 +113,11 @@ TEST(structuredOutputYaml, ObjectOfArrays) {
       "numbers:\n"
       "  - 33\n"
       "  - 22\n"
-      "  - 11\n");
+      "  - 11\n"
+      "flags:\n"
+      "  - true\n"
+      "  - false\n"
+      "  - true\n");
 }
 
 TEST(structuredOutputYaml, NestedArrays) {
@@ -150,7 +150,7 @@ TEST(structuredOutputYaml, MixedTree) {
           Tree::FromJson(
               {{"list", {1, {2, 3, 2}, 2, 5}},
                {"number", 141},
-               {"object", {{"left", {false, true}}, {"right", {{"first", njs::array()}, {"second", njs::object()}}}}}}),
+               {"object", {{"left", {false, true}}, {"right", {{"first", json::array()}, {"second", json::object()}}}}}}),
           {.includeArraySizeComments = true}),
       "list: # item count: 4\n"
       "  - 1\n"

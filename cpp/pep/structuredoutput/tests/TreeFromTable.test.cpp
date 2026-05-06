@@ -4,7 +4,7 @@
 #include <pep/structuredoutput/Tree.hpp>
 
 namespace {
-using nlohmann::json;
+using json = nlohmann::ordered_json;
 using pep::structuredOutput::Table;
 using pep::structuredOutput::Tree;
 
