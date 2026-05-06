@@ -131,7 +131,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wsuper-class-method-mismatch
       -Wtautological-value-range-compare
       -Wthread-safety
-      -Wthread-safety-negative
       -Wtrampolines
       -Wunaligned-access
       -Wundef
@@ -145,7 +144,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wvla
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
-
       -Wno-unused-parameter
   )
 
