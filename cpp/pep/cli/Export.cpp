@@ -1,7 +1,6 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
-#include <optional>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/Export.hpp>
