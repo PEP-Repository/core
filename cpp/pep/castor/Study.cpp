@@ -2,8 +2,8 @@
 
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxIterate.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/castor/ImportColumnNamer.hpp>
 #include <pep/castor/Site.hpp>
 #include <pep/castor/Participant.hpp>
@@ -67,40 +67,50 @@ rxcpp::observable<std::string> Study::getDefaultSiteId() {
   }
 
   return this->getSites()
-    .op(RxGroupToVectors([](std::shared_ptr<Site> site) {return site->getAbbreviation(); })) // Not using RxToUnorderedMap or similar to prevent exceptions in case of duplicate site->getAbbreviation() values
-    .flat_map([self = SharedFrom(*this)](auto byAbbrev) -> rxcpp::observable<std::string> {
-        const auto& abbreviation = *self->mDefaultSiteAbbrev;
-        auto found = byAbbrev->find(abbreviation);
-        if (found == byAbbrev->cend()) {
-          std::string available = "<none>";
-          if (!byAbbrev->empty()) {
-            std::vector<std::string> abbrevs;
-            abbrevs.reserve(byAbbrev->size());
-            std::transform(byAbbrev->cbegin(), byAbbrev->cend(), std::back_inserter(abbrevs), [](const auto& pair) {return '"' + pair.first + '"'; });
-            available = boost::algorithm::join(abbrevs, ", ");
-          }
-          std::string description = abbreviation.empty()
-            ? "an empty abbreviation"
-            : ("abbreviation \"" + abbreviation + '"');
-          LOG("Study", error) << "Not assigning a default site to study " << self->getName()
-            << " (slug " << self->getSlug() << ")"
-            << " because no site could be found with " << description << '.'
-            << " Available abbreviations are " << available << '.';
-          return rxcpp::observable<>::empty<std::string>();
-        }
-
-        const std::vector<std::shared_ptr<Site>>& sites = *found->second;
-        assert(!sites.empty());
-        self->mDefaultSiteId = sites.front()->getId();
-
-        for (auto i = 1U; i < sites.size(); ++i) {
-          LOG("Study", warning) << "Multiple sites found for abbreviation " << abbreviation
+    // - Not using RxToUnorderedList because we want to report duplicates (instead of raising an exception).
+    // - Not using RxGroupToVectors because it failed to compile: see e.g. https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/840447#L2582 ,
+    //    which may have been caused by this clang bug (or one very similar to it): https://github.com/llvm/llvm-project/issues/57561 .
+    .op(RxToVector())
+    .flat_map([self = SharedFrom(*this)](std::shared_ptr<std::vector<std::shared_ptr<Site>>> sites) -> rxcpp::observable<std::string> {
+    // Iterate over all sites:
+    // 1. collecting each (unique) abbreviation (so we can use them in a diagnostic that we may emit later), and
+    // 2. assigning self->mDefaultSiteId if we find a Site matching self->mDefaultSiteAbbrev, and
+    // 3. logging warnings (for followup hits) if multiple Sites match self->mDefaultSiteAbbrev.
+    std::set<std::string> abbrevs;
+    std::transform(sites->begin(), sites->end(), std::inserter(abbrevs, abbrevs.begin()), [self](std::shared_ptr<Site> site) {
+      auto found = site->getAbbreviation();
+      if (found == self->mDefaultSiteAbbrev) {
+        if (!self->mDefaultSiteId.has_value()) {
+          self->mDefaultSiteId = found;
+        } else {
+          LOG("Study", warning) << "Multiple sites found for abbreviation " << found
             << " during default site retrieval for study " << self->getName()
-            << " (slug " << self->getSlug() << "). Skipping site with ID " << sites[i]->getId()
+            << " (slug " << self->getSlug() << "). Skipping site with ID " << site->getId()
             << " in favor of previously found " << (*self->mDefaultSiteId);
         }
+      }
+      return found;
+      });
 
-        return rxcpp::observable<>::just(*self->mDefaultSiteId);
+    // If no Site matches self->mDefaultSiteAbbrev, don't return a value (but do output diagnostic information)
+    if (!self->mDefaultSiteId.has_value()) {
+      std::string available = "<none>";
+      if (!abbrevs.empty()) {
+        available = boost::algorithm::join(abbrevs, ", ");
+      }
+      std::string description = self->mDefaultSiteAbbrev->empty()
+        ? "an empty abbreviation"
+        : ("abbreviation \"" + *self->mDefaultSiteAbbrev + '"');
+      LOG("Study", error) << "Not assigning a default site to study " << self->getName()
+        << " (slug " << self->getSlug() << ")"
+        << " because no site could be found with " << description << '.'
+        << " Available abbreviations are " << available << '.'; // Makes it (much) easier to find the configuration error
+
+      return rxcpp::observable<>::empty<std::string>();
+    }
+
+    // Return the ID of the (first) Site that matches self->mDefaultSiteAbbrev
+    return rxcpp::observable<>::just(*self->mDefaultSiteId);
       });
 }
 
