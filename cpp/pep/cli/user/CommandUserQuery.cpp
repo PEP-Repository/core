@@ -18,9 +18,9 @@ namespace so = pep::structuredOutput;
 }
 
 pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParameters() const {
-  const auto userGroupsOpt = std::string{so::stringConstants::userGroups.option};
-  const auto usersOpt = std::string{so::stringConstants::users.option};
-  const auto groupsPerUserOpt = std::string{so::stringConstants::groupsPerUser.option};
+  const auto userGroupsOpt = std::string{so::queryKeys::userGroups.simple};
+  const auto usersOpt = std::string{so::queryKeys::users.simple};
+  const auto groupsPerUserOpt = std::string{so::queryKeys::groupsPerUser.simple};
 
   return ChildCommandOf<CommandUser>::getSupportedParameters()
        + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing")
@@ -40,19 +40,18 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
     return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
-      auto tree = so::Tree::FromUserQueryResponse(res);
-      auto filtered = so::Tree::FromJson(tree.FilterForUserQuery(config));
+      auto tree = so::Tree::FromUserQueryResponse(res, config);
       const bool isPrettyPrint = HasFlags(config.flags, so::UserQueryDisplayConfig::Flags::PrintHeaders);
       
       if (config.preferredFormat == so::Format::Json) {
         so::json::Config jsonConfig{.indent = isPrettyPrint ? 2 : 0};
-        so::json::append(std::cout, filtered, jsonConfig) << std::endl;
+        so::json::append(std::cout, tree, jsonConfig) << std::endl;
       } else {
         so::yaml::Config yamlConfig{
           .indent = 0,
           .includeArraySizeComments = isPrettyPrint
         };
-        so::yaml::append(std::cout, filtered, yamlConfig) << std::endl;
+        so::yaml::append(std::cout, tree, yamlConfig) << std::endl;
       }
       auto usersWithoutDisplayId = res.mUsers | std::ranges::views::filter([](QRUser user){ return !user.mDisplayId; });
       for (auto& user : usersWithoutDisplayId) {
@@ -71,19 +70,19 @@ so::UserQueryDisplayConfig CommandUser::CommandUserQuery::extractConfig(const pe
   using Flags = so::UserQueryDisplayConfig::Flags;
   using Format = so::Format;
 
-  constexpr auto userGroupsOpt = so::stringConstants::userGroups.option;
-  constexpr auto usersOpt = so::stringConstants::users.option;
-  constexpr auto groupsPerUserOpt = so::stringConstants::groupsPerUser.option;
+  constexpr auto userGroupsOpt = so::queryKeys::userGroups.simple;
+  constexpr auto usersOpt = so::queryKeys::users.simple;
+  constexpr auto groupsPerUserOpt = so::queryKeys::groupsPerUser.simple;
   const auto scriptPrintFilter = values.getOptional<std::string>("script-print");
   const auto format = values.get<std::string>("format");
 
   so::UserQueryDisplayConfig config;
   config.flags =
       FlagsIf(Flags::PrintHeaders, !scriptPrintFilter) |
-      FlagsIf(Flags::PrintGroups, !scriptPrintFilter || scriptPrintFilter == userGroupsOpt) |
+      FlagsIf(Flags::PrintUserGroups, !scriptPrintFilter || scriptPrintFilter == userGroupsOpt) |
 // groupsPerUser is a part of the users list. So when groupsPerUsers is requested, we must also print users
       FlagsIf(Flags::PrintUsers, !scriptPrintFilter || scriptPrintFilter == usersOpt || scriptPrintFilter == groupsPerUserOpt) |
-      FlagsIf(Flags::PrintUserGroups, !scriptPrintFilter || scriptPrintFilter == groupsPerUserOpt);
+      FlagsIf(Flags::PrintUserGroupsForUsers, !scriptPrintFilter || scriptPrintFilter == groupsPerUserOpt);
   config.preferredFormat = (format == "json") ? Format::Json : Format::Yaml;
   config.useDescriptiveHeaders = !scriptPrintFilter; // Use descriptive headers in pretty-print mode
   return config;

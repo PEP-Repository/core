@@ -10,7 +10,7 @@
 namespace pep::structuredOutput {
 namespace {
 
-using nlohmann::json;
+using json = nlohmann::ordered_json;
 using ConstRecordRef = Table::ConstRecordRef;
 using OptConstRecordRef = std::optional<ConstRecordRef>;
 
@@ -82,45 +82,69 @@ Tree Tree::FromPropertyTree(const boost::property_tree::ptree& pt) {
   return Tree::FromJson(PtreeToJson(pt));
 }
 
-Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res) {
-  json root = json::object();
+Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQueryDisplayConfig& config) {
+  const auto printUserGroups = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroups);
+  const auto printUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUsers);
+  const auto printUserGroupsForUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroupsForUsers);
+  const auto printHeaders = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintHeaders);
+  const auto useDescriptive = config.useDescriptiveHeaders;
 
-  // userGroups
-  {
+  // Helper to get appropriate key name
+  auto getKey = [useDescriptive](const queryKeys::QueryKey& key) -> std::string {
+    return std::string(useDescriptive ? key.descriptive : key.simple);
+  };
+
+  json root;
+  const bool outputBoth = printUserGroups && printUsers;
+
+  // When printHeaders is false and we're outputting a single array, don't wrap in object
+  if (!printHeaders && !outputBoth) {
+    root = json::array();
+  } else {
+    root = json::object();
+  }
+
+  // Build userGroups array
+  if (printUserGroups) {
     json groups = json::array();
 
     for (const auto& group : res.mUserGroups) {
       json item = json::object({
-        {"name", group.mName}
+        {getKey(queryKeys::name), group.mName}
       });
 
       if (group.mMaxAuthValidity) {
-        item["maxAuthValidity"] =
+        item[getKey(queryKeys::maxAuthValidity)] =
           pep::chrono::ToString(*group.mMaxAuthValidity);
       }
 
       groups.push_back(std::move(item));
     }
 
-    root["userGroups"] = std::move(groups);
+    if (!printHeaders && !outputBoth) {
+      root = std::move(groups);
+    } else if (printHeaders) {
+      root[getKey(queryKeys::userGroups)] = std::move(groups);
+    } else {
+      root[std::string(queryKeys::userGroups.simple)] = std::move(groups);
+    }
   }
   
-  // users
-  {
+  // Build users array
+  if (printUsers) {
     json users = json::array();
 
     for (const auto& user : res.mUsers) {
       json item = json::object();
 
       if (user.mDisplayId) {
-        item["displayId"] = *user.mDisplayId;
+        item[getKey(queryKeys::displayId)] = *user.mDisplayId;
       }
 
       if (user.mPrimaryId) {
-        item["primaryId"] = *user.mPrimaryId;
+        item[getKey(queryKeys::primaryId)] = *user.mPrimaryId;
       }
-      
-      // otherIdentifiers
+
       {
         json ids = json::array();
 
@@ -128,114 +152,36 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res) {
           ids.push_back(uid);
         }
 
-        item["otherIdentifiers"] = std::move(ids);
+        item[getKey(queryKeys::otherIdentifiers)] = std::move(ids);
       }
 
       // userGroups for users
-      {
+      if (printUserGroupsForUsers) {
         json groups = json::array();
 
         for (const auto& group : user.mGroups) {
           groups.push_back(group);
         }
 
-        item["groups"] = std::move(groups);
+        item[getKey(queryKeys::groups)] = std::move(groups);
       }
       
       users.push_back(std::move(item));
     }
-    
-    root["users"] = std::move(users);
+
+    // add users array to root
+    if (!printHeaders && !outputBoth) {
+      root = std::move(users);
+    } else if (printHeaders) {
+      root[getKey(queryKeys::users)] = std::move(users);
+    } else {
+      root[std::string(queryKeys::users.simple)] = std::move(users);
+    }
   }
 
   return Tree::FromJson(std::move(root));
 }
 
-nlohmann::json Tree::FilterForUserQuery(const UserQueryDisplayConfig& config) const {
-  const auto printGroups = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintGroups);
-  const auto printUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUsers);
-  const auto printUserGroups = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroups);
-  const auto printHeaders = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintHeaders);
-  const auto useDescriptive = config.useDescriptiveHeaders;
 
-  const auto& json = mJson;
-  
-  // Create a filtered JSON based on config flags
-  nlohmann::json filtered;
-  
-  // When printHeaders is false, output bare array/object without wrapping
-  if (!printHeaders) {
-    // Determine if we're outputting a single array or need an object with both
-    const bool outputBoth = printGroups && printUsers;
-    
-    if (outputBoth) {
-      filtered = nlohmann::json::object();
-      if (printGroups && json.contains("userGroups")) {
-        filtered["userGroups"] = json["userGroups"];
-      }
-      if (printUsers && json.contains("users")) {
-        nlohmann::json usersData = json["users"];
-        if (!printUserGroups) {
-          nlohmann::json filteredUsers = nlohmann::json::array();
-          for (const auto& user : usersData) {
-            nlohmann::json filteredUser = user;
-            filteredUser.erase("groups");
-            filteredUsers.push_back(std::move(filteredUser));
-          }
-          usersData = std::move(filteredUsers);
-        }
-        filtered["users"] = std::move(usersData);
-      }
-    } else if (printGroups && json.contains("userGroups")) {
-      filtered = json["userGroups"];
-    } else if (printUsers && json.contains("users")) {
-      nlohmann::json usersData = json["users"];
-      if (!printUserGroups) {
-        nlohmann::json filteredUsers = nlohmann::json::array();
-        for (const auto& user : usersData) {
-          nlohmann::json filteredUser = user;
-          filteredUser.erase("groups");
-          filteredUsers.push_back(std::move(filteredUser));
-        }
-        filtered = std::move(filteredUsers);
-      } else {
-        filtered = std::move(usersData);
-      }
-    } else {
-      filtered = nlohmann::json::object();
-    }
-  } else {
-    // When printHeaders is true, wrap with keys (descriptive or simple based on useDescriptive)
-    filtered = nlohmann::json::object();
-    
-    if (printGroups && json.contains("userGroups")) {
-      const auto key = useDescriptive 
-        ? std::string(stringConstants::userGroups.descriptive)
-        : "userGroups";
-      filtered[key] = json["userGroups"];
-    }
-    
-    if (printUsers && json.contains("users")) {
-      nlohmann::json usersData = json["users"];
-      
-      if (!printUserGroups) {
-        nlohmann::json filteredUsers = nlohmann::json::array();
-        for (const auto& user : usersData) {
-          nlohmann::json filteredUser = user;
-          filteredUser.erase("groups");
-          filteredUsers.push_back(std::move(filteredUser));
-        }
-        usersData = std::move(filteredUsers);
-      }
-      
-      const auto key = useDescriptive
-        ? std::string(stringConstants::users.descriptive)
-        : "users";
-      filtered[key] = std::move(usersData);
-    }
-  }
-  
-  return filtered;
-}
 
 } // namespace pep::structuredOutput

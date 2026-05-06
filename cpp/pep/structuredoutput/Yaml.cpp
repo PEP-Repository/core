@@ -27,7 +27,7 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 /// @note does NOT prefix the output with indentation,
 ///       the caller should make sure that the output stream is at the correct initial indentation level
 /// @note DOES append a newline character to the output
-void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::json node, std::size_t indentLevel = {}) {
+void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
   const auto indent = std::string(2 * indentLevel, ' ');
 
   /// does nothing on the first call and appends indentation on subsequent calls
@@ -36,7 +36,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::j
     first = false;
   };
 
-  const auto isAtomic = [](const nlohmann::json& node) {
+  const auto isAtomic = [](const nlohmann::ordered_json& node) {
     return !(node.is_object() || node.is_array()) || node.empty();
   };
 

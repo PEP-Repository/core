@@ -18,20 +18,16 @@ namespace pep::structuredOutput {
 /// Other conversions should be provided as external functions.
 class Tree final {
 public:
-  static Tree FromJson(nlohmann::json json) noexcept { return Tree(std::move(json)); }
+  static Tree FromJson(nlohmann::ordered_json json) noexcept { return Tree(std::move(json)); }
   static Tree FromPropertyTree(const boost::property_tree::ptree&);
-  static Tree FromUserQueryResponse(const pep::UserQueryResponse&);
+  static Tree FromUserQueryResponse(const pep::UserQueryResponse&, const UserQueryDisplayConfig& config);
 
-  const nlohmann::json& toJson() const& noexcept { return mJson; }
-  nlohmann::json toJson() && noexcept { return std::move(mJson); }
-
-  /// Filters this UserQuery tree based on display configuration flags
-  /// @returns A filtered JSON object ready for format-specific rendering
-  nlohmann::json FilterForUserQuery(const UserQueryDisplayConfig& config) const;
+  const nlohmann::ordered_json& toJson() const& noexcept { return mJson; }
+  nlohmann::ordered_json toJson() && noexcept { return std::move(mJson); }
 
 private:
-  explicit Tree(nlohmann::json json) noexcept : mJson(std::move(json)) {}
-  nlohmann::json mJson;
+  explicit Tree(nlohmann::ordered_json json) noexcept : mJson(std::move(json)) {}
+  nlohmann::ordered_json mJson;
 };
 
 /// Converts a Table to a Tree

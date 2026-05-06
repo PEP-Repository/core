@@ -6,29 +6,23 @@
 #include <string_view>
 
 namespace pep::structuredOutput {
-namespace stringConstants {
-struct Strings final {
-  std::string_view option;
+namespace queryKeys {
+struct QueryKey final {
+  std::string_view simple;
   std::string_view descriptive;
 };
 
-constexpr Strings userGroups{"all-user-group", "All User Groups"};
+constexpr QueryKey userGroups{"all-user-group", "All User Groups"};
+constexpr QueryKey groupsPerUser{"groups-per-user", "User Groups per Interactive User"};
+constexpr QueryKey users{"all-user", "All Interactive Users"};
+constexpr QueryKey displayId{"displayId", "Display ID"};
+constexpr QueryKey primaryId{"primaryId", "Primary ID"};
+constexpr QueryKey otherIdentifiers{"otherIdentifiers", "Other User Identifiers"};
+constexpr QueryKey groups{"groups", "User Groups"};
+constexpr QueryKey maxAuthValidity{"maxAuthValidity", "Maximum Token Validity"};
+constexpr QueryKey name{"name", "Name"};
 
-constexpr Strings groupsPerUser{"groups-per-user", "User Groups per Interactive User"};
-
-constexpr Strings users{"all-user", "All Interactive Users"};
-
-constexpr std::string_view displayIdKey{"display id"};
-
-constexpr std::string_view primaryIdKey{"primary id"};
-
-constexpr std::string_view otherIdentifiersKey{"other user identifiers"};
-
-constexpr std::string_view groupsKey{"user groups"};
-
-constexpr std::string_view maxAuthValidityKey{"max auth valid time"};
-
-} // namespace stringConstants
+} // namespace queryKeys
 
   enum class Format {
     Yaml,
@@ -39,15 +33,15 @@ struct UserQueryDisplayConfig final {
   enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
     None = 0,
     PrintHeaders = 0b0001,
-    PrintGroups = 0b0010,
-    PrintUserGroups = 0b0100,
+    PrintUserGroups = 0b0010,
+    PrintUserGroupsForUsers = 0b0100,
     PrintUsers = 0b1000,
     All = 0b1111,
   };
 
   Flags flags = Flags::All;
   Format preferredFormat = Format::Yaml;
-  bool useDescriptiveHeaders = true; ///< When printHeaders is true, controls whether to use descriptive keys ("All User Groups") vs simple keys ("userGroups")
+  bool useDescriptiveHeaders = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("displayId") for all fields
 };
 
 inline std::string indentations(int i) {
