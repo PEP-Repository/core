@@ -201,7 +201,7 @@ char** Application::getArgv() const {
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
-  // Ensure that uncaught exceptions (in this or any other noexcept function and thread) are reported before the process dies
+  // Ensure that uncaught exceptions (in any noexcept function and thread) are reported before the process dies
   std::set_terminate([]() {
     if (ReportTermination(std::current_exception())) { // If we showed a message to the user...
 #ifdef _WIN32
@@ -212,9 +212,7 @@ int Application::RunWithoutError(std::function<int()> implementor) noexcept {
     std::abort();
     });
 
-  // Explicit try-catch to make sure the stack is unwound,
-  // and because Emscripten does not support termination handlers well:
-  // https://github.com/emscripten-core/emscripten/issues/23720
+  // Explicit try-catch to make sure the stack is unwound
   try {
     return implementor();
   } catch (...) {
