@@ -26,11 +26,11 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
     }
 
     void schedule(const rxcpp::schedulers::schedulable& scbl) const override {
-      LOG(LOG_TAG, verbose) << "schedule on emscripten thread " << weblib::ThreadPrintable{thread_}
+      LOG(LOG_TAG, verbose) << "schedule on thread " << weblib::ThreadPrintable{thread_}
         << " from thread " << weblib::ThreadPrintable{}
         << (thread_ == ::pthread_self() ? " (queuing for current thread)" : "");
       const bool success = queue_->proxyAsync(thread_, [scbl] {
-        LOG(LOG_TAG, verbose) << "running on emscripten thread " << weblib::ThreadPrintable{};
+        LOG(LOG_TAG, verbose) << "running on thread " << weblib::ThreadPrintable{};
         if (!scbl.is_subscribed()) { return; }
 
         // allow recursion
@@ -38,13 +38,13 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
         scbl(r.get_recurse());
       });
       if (!success) {
-        throw std::runtime_error("Failed to proxy to Emscripten thread");
+        throw std::runtime_error("Failed to proxy to an Emscripten thread");
       }
     }
 
     void schedule(clock_type::time_point when, const rxcpp::schedulers::schedulable& scbl) const override {
       LOG(LOG_TAG, verbose) << "schedule after " << duration_cast<std::chrono::milliseconds>(when - clock_type::now())
-        << " on emscripten thread " << weblib::ThreadPrintable{thread_}
+        << " on thread " << weblib::ThreadPrintable{thread_}
         << " from thread " << weblib::ThreadPrintable{}
         << (thread_ == ::pthread_self() ? " (queuing for current thread)" : "");
       const bool success = queue_->proxyAsync(thread_, [queue = queue_, when, scbl] {
@@ -58,29 +58,29 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
 
         auto timeout = weblib::SetTimeout(delay, [scbl, onUnsubscribe] {
           scbl.remove(*onUnsubscribe);
-          LOG(LOG_TAG, verbose) << "running after delay on emscripten thread " << weblib::ThreadPrintable{};
+          LOG(LOG_TAG, verbose) << "running after delay on thread " << weblib::ThreadPrintable{};
           if (!scbl.is_subscribed()) { return; }
 
           // allow recursion
           rxcpp::schedulers::recursion r(true);
           scbl(r.get_recurse());
         });
-        LOG(LOG_TAG, verbose) << "running on emscripten thread " << weblib::ThreadPrintable{}
+        LOG(LOG_TAG, verbose) << "running on thread " << weblib::ThreadPrintable{}
           << ", delaying " << delay;
 
         // Cancel timer when unsubscribed, also to prevent code from executing after runtime shutdown
         *onUnsubscribe = scbl.add([queue, thread = ::pthread_self(), timeout] {
           const bool success = queue->proxyAsync(thread, [timeout] {
             timeout.cancel();
-            LOG(LOG_TAG, verbose) << "canceled timer on emscripten thread " << weblib::ThreadPrintable{};
+            LOG(LOG_TAG, verbose) << "canceled timer on thread " << weblib::ThreadPrintable{};
           });
           if (!success) {
-            LOG(LOG_TAG, debug) << "Failed to proxy timer cancelation on Emscripten thread " << weblib::ThreadPrintable{thread};
+            LOG(LOG_TAG, debug) << "Failed to proxy timer cancelation on thread " << weblib::ThreadPrintable{thread};
           }
         });
       });
       if (!success) {
-        throw std::runtime_error("Failed to proxy to Emscripten thread");
+        throw std::runtime_error("Failed to proxy to an Emscripten thread");
       }
     }
   };
