@@ -44,13 +44,10 @@ int CommandUser::CommandUserQuery::execute() {
       const bool isPrettyPrint = HasFlags(config.flags, so::UserQueryDisplayConfig::Flags::PrintHeaders);
       
       if (config.preferredFormat == so::Format::Json) {
-        so::json::Config jsonConfig{.indent = isPrettyPrint ? 2 : 0};
+        so::json::Config jsonConfig{.wsformat = isPrettyPrint ? so::WhitespaceFormat::TwoSpaces : so::WhitespaceFormat::Compact};
         so::json::append(std::cout, tree, jsonConfig) << std::endl;
       } else {
-        so::yaml::Config yamlConfig{
-          .indent = 0,
-          .includeArraySizeComments = isPrettyPrint
-        };
+        so::yaml::Config yamlConfig{.includeArraySizeComments = isPrettyPrint};
         so::yaml::append(std::cout, tree, yamlConfig) << std::endl;
       }
       auto usersWithoutDisplayId = res.mUsers | std::ranges::views::filter([](QRUser user){ return !user.mDisplayId; });

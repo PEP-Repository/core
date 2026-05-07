@@ -4,6 +4,7 @@
 #include <pep/structuredoutput/Table.hpp>
 #include <pep/structuredoutput/Common.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/accessmanager/AmaMessages.hpp>
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -21,9 +22,10 @@ public:
   static Tree FromJson(nlohmann::ordered_json json) noexcept { return Tree(std::move(json)); }
   static Tree FromPropertyTree(const boost::property_tree::ptree&);
   static Tree FromUserQueryResponse(const pep::UserQueryResponse&, const UserQueryDisplayConfig& config);
+  static Tree FromAmaQueryResponse(const pep::AmaQueryResponse&, const AmaQueryDisplayConfig& config);
 
-  const nlohmann::ordered_json& toJson() const& noexcept { return mJson; }
-  nlohmann::ordered_json toJson() && noexcept { return std::move(mJson); }
+  const nlohmann::ordered_json& raw_json() const& noexcept { return mJson; }
+  nlohmann::ordered_json raw_json() && noexcept { return std::move(mJson); }
 
 private:
   explicit Tree(nlohmann::ordered_json json) noexcept : mJson(std::move(json)) {}

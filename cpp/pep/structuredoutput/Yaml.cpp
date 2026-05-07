@@ -28,7 +28,8 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 ///       the caller should make sure that the output stream is at the correct initial indentation level
 /// @note DOES append a newline character to the output
 void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
-  const auto indent = std::string(2 * indentLevel, ' ');
+  const std::size_t spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
+  const auto indent = std::string(spacesPerLevel * indentLevel, ' ');
 
   /// does nothing on the first call and appends indentation on subsequent calls
   auto indentIfNotFirst = [first = true, &indent](std::ostream& stream) mutable {
@@ -54,7 +55,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::o
       if (isAtomic(*it)) { stream << " "; }
       else {
         if (it->is_array() && config.includeArraySizeComments) { stream << " # item count: " << it->size(); }
-        stream << '\n' << indent << "  ";
+        stream << '\n' << indent << std::string(spacesPerLevel, ' ');
       }
       SerializeJsonAsYaml(stream, config, it.value(), indentLevel + 1);
     }
@@ -66,7 +67,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::o
 
       if (element.is_array() && !element.empty()) {
         if (config.includeArraySizeComments) stream << "# item count: " << element.size();
-        stream << '\n' << indent << "  ";
+        stream << '\n' << indent << std::string(spacesPerLevel, ' ');
       }
       SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
     }
@@ -77,7 +78,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::o
 
 /// Appends a YAML representation of a tree to a stream
 std::ostream& append(std::ostream& stream, const Tree& tree, const Config& config) {
-  SerializeJsonAsYaml(stream, config, tree.toJson());
+  SerializeJsonAsYaml(stream, config, tree.raw_json());
   return stream;
 }
 

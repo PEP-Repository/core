@@ -7,6 +7,10 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Yaml.hpp>
+#include <pep/structuredoutput/Text.hpp>
+#include <pep/structuredoutput/Tree.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
@@ -394,6 +398,10 @@ private:
       return ChildCommandOf<CommandAma>::getSupportedParameters()
         + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
           .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
+        + pep::commandline::Parameter("format", "The format of the output.")
+            .value(pep::commandline::Value<std::string>()
+                .allow(std::vector<std::string>({"yaml", "json", "text"}))
+                .defaultsTo("text"))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
         + pep::commandline::Parameter("column", "Match results related to this column. You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
@@ -404,106 +412,74 @@ private:
         + pep::commandline::Parameter("participant-group-mode", "Match results related to this participant-group-mode").value(pep::commandline::Value<std::string>());
     }
 
+    static pep::structuredOutput::AmaQueryDisplayConfig extractConfig(const pep::commandline::NamedValues& values) {
+      namespace so = pep::structuredOutput;
+
+      constexpr auto columnsOpt = so::queryKeys::columns.simple;
+      constexpr auto columnGroupsOpt = so::queryKeys::columnGroups.simple;
+      constexpr auto columnGroupAccessRulesOpt = so::queryKeys::columnGroupAccessRules.simple;
+      constexpr auto participantGroupsOpt = so::queryKeys::participantGroups.simple;
+      constexpr auto participantGroupAccessRulesOpt = so::queryKeys::participantGroupAccessRules.simple;
+
+      const auto scriptPrintFilter = values.getOptional<std::string>("script-print");
+      const auto format = values.get<std::string>("format");
+
+      using Flags = so::AmaQueryDisplayConfig::Flags;
+      using pep::enumUtils::operator|;
+
+      so::AmaQueryDisplayConfig config;
+      config.flags =
+          pep::FlagsIf(Flags::PrintHeaders, !scriptPrintFilter) |
+          pep::FlagsIf(Flags::PrintColumns, !scriptPrintFilter || scriptPrintFilter == columnsOpt) |
+          pep::FlagsIf(Flags::PrintColumnGroups, !scriptPrintFilter || scriptPrintFilter == columnGroupsOpt) |
+          pep::FlagsIf(Flags::PrintColumnGroupAccessRules, !scriptPrintFilter || scriptPrintFilter == columnGroupAccessRulesOpt) |
+          pep::FlagsIf(Flags::PrintParticipantGroups, !scriptPrintFilter || scriptPrintFilter == participantGroupsOpt) |
+          pep::FlagsIf(Flags::PrintParticipantGroupAccessRules, !scriptPrintFilter || scriptPrintFilter == participantGroupAccessRulesOpt);
+      config.preferredFormat = (format == "json") ? so::Format::Json : 
+                              (format == "text") ? so::Format::Text : 
+                              so::Format::Yaml;
+      config.useDescriptiveHeaders = !scriptPrintFilter; // Use descriptive headers in pretty-print mode
+      return config;
+    }
+
+    static pep::AmaQuery extractQuery(const pep::commandline::NamedValues& values) {
+      return {
+        .mAt = pep::GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
+          return pep::Timestamp(milliseconds{ms});
+        }),
+        .mColumnFilter = values.getOptional<std::string>("column").value_or(""),
+        .mColumnGroupFilter = values.getOptional<std::string>("column-group").value_or(""),
+        .mParticipantGroupFilter = values.getOptional<std::string>("participant-group").value_or(""),
+        .mUserGroupFilter = values.getOptional<std::string>("user-group").value_or(""),
+        .mColumnGroupModeFilter = values.getOptional<std::string>("column-mode").value_or(""),
+        .mParticipantGroupModeFilter = values.getOptional<std::string>("participant-group-mode").value_or(""),
+      };
+    }
+
     int execute() override {
-      const auto& vm = this->getParameterValues();
-      std::optional<std::string> scriptPrintFilter;
-      if(vm.has("script-print")) {
-        scriptPrintFilter = vm.get<std::string>("script-print");
-      }
-
-      return executeEventLoopFor([&vm, scriptPrintFilter](std::shared_ptr<pep::CoreClient> client) {
-        pep::AmaQuery query{
-          .mAt = pep::GetOptionalValue(vm.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
-            return pep::Timestamp(milliseconds{ms});
-          }),
-          .mColumnFilter = vm.getOptional<std::string>("column").value_or(""),
-          .mColumnGroupFilter = vm.getOptional<std::string>("column-group").value_or(""),
-          .mParticipantGroupFilter = vm.getOptional<std::string>("participant-group").value_or(""),
-          .mUserGroupFilter = vm.getOptional<std::string>("user-group").value_or(""),
-          .mColumnGroupModeFilter = vm.getOptional<std::string>("column-mode").value_or(""),
-          .mParticipantGroupModeFilter = vm.getOptional<std::string>("participant-group-mode").value_or(""),
-        };
-        return client->getAccessManagerProxy()->amaQuery(std::move(query))
-        .map([scriptPrintFilter](pep::AmaQueryResponse res) {
-
-          bool prettyPrint = !scriptPrintFilter.has_value();
-          std::string offset = prettyPrint ? "  " : "";
-
-          if(prettyPrint || scriptPrintFilter == "columns") {
-            std::sort(res.mColumns.begin(), res.mColumns.end(), [](auto& a, auto& b) {return a.mName < b.mName; });
-            if(prettyPrint)
-              std::cout << "Columns (" << res.mColumns.size() << "):" << std::endl;
-            for (auto &col : res.mColumns)
-              std::cout << offset << col.mName << std::endl;
-            std::cout << std::endl;
+      return executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
+        return client->getAccessManagerProxy()->amaQuery(extractQuery(values)).map([config = extractConfig(values)](pep::AmaQueryResponse res) {
+          namespace so = pep::structuredOutput;
+          auto tree = so::Tree::FromAmaQueryResponse(res, config);
+          const bool isPrettyPrint = pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::PrintHeaders);
+          
+          if (config.preferredFormat == so::Format::Json) {
+            so::json::Config jsonConfig{.wsformat = isPrettyPrint ? so::WhitespaceFormat::TwoSpaces : so::WhitespaceFormat::Compact};
+            so::json::append(std::cout, tree, jsonConfig) << std::endl;
+          } else if (config.preferredFormat == so::Format::Text) {
+            so::text::Config textConfig{.includeElementCounts = isPrettyPrint};
+            so::text::append(std::cout, tree, textConfig) << std::endl;
+          } else {
+            so::yaml::Config yamlConfig{.includeArraySizeComments = isPrettyPrint};
+            so::yaml::append(std::cout, tree, yamlConfig) << std::endl;
           }
 
-          if(prettyPrint || scriptPrintFilter == "column-groups") {
-            if (prettyPrint)
-              std::cout << "ColumnGroups (" << res.mColumnGroups.size() << "):" << std::endl;
-            std::sort(res.mColumnGroups.begin(), res.mColumnGroups.end(),
-                      [](auto &a, auto &b) { return a.mName < b.mName; });
-            for (auto &cg : res.mColumnGroups) {
-              std::cout << offset << cg.mName << " (" << cg.mColumns.size() << ")" << std::endl;
-              std::sort(cg.mColumns.begin(), cg.mColumns.end());
-              for (auto &col : cg.mColumns)
-                std::cout << offset << "  " << col << std::endl;
-              std::cout << std::endl;
-            }
-            std::cout << std::endl;
-          }
-
-          if(prettyPrint || scriptPrintFilter == "column-group-access-rules") {
-            std::sort(
-              res.mColumnGroupAccessRules.begin(),
-              res.mColumnGroupAccessRules.end(),
-              [](auto &a, auto &b) {
-                return std::make_tuple(a.mAccessGroup, a.mColumnGroup, a.mMode)
-                       < std::make_tuple(b.mAccessGroup, b.mColumnGroup, b.mMode);
-              });
-            if (prettyPrint)
-              std::cout << "ColumnGroupAccessRules (" << res.mColumnGroupAccessRules.size() << "):" << std::endl;
-            for (auto &cgar : res.mColumnGroupAccessRules)
-              std::cout << offset
-                        << std::left << std::setw(30) << cgar.mColumnGroup << " "
-                        << std::setw(30) << cgar.mAccessGroup << " "
-                        << std::setw(10) << cgar.mMode << std::endl;
-            std::cout << std::endl;
-          }
-
-          if (prettyPrint || scriptPrintFilter == "participant-groups") {
-            std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
-            if (prettyPrint)
-              std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
-            for (auto &group : res.mParticipantGroups)
-              std::cout << offset << group.mName << std::endl;
-            std::cout << std::endl;
-          }
-
-          if (prettyPrint || scriptPrintFilter == "participant-group-access-rules") {
-            std::sort(
-              res.mParticipantGroupAccessRules.begin(),
-              res.mParticipantGroupAccessRules.end(),
-              [](auto &a, auto &b) {
-                return std::make_tuple(a.mUserGroup, a.mParticipantGroup, a.mMode)
-                       < std::make_tuple(b.mUserGroup, b.mParticipantGroup, b.mMode);
-              });
-            if(prettyPrint)
-              std::cout << "ParticipantGroupAccessRules (" << res.mParticipantGroupAccessRules.size() << "):" << std::endl;
-            for (auto &cgar : res.mParticipantGroupAccessRules)
-              std::cout << offset
-                        << std::left << std::setw(30) << cgar.mParticipantGroup << " "
-                        << std::setw(30) << cgar.mUserGroup << " "
-                        << std::setw(10) << cgar.mMode << std::endl;
-
-            std::cout << std::endl;
-            if (prettyPrint) {
-              std::cerr
-                << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
-                << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
-                << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
-                << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
-            }
+          if (isPrettyPrint) {
+            std::cerr
+              << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
+              << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
+              << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
+              << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
           }
 
           return pep::FakeVoid();

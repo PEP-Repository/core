@@ -2,6 +2,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 
 #include <algorithm>
@@ -33,6 +34,11 @@ json JsonArray(const Table& table) {
   auto array = json::array();
   for (auto record : table.records()) { array += ObjectFromHeaderAndRecord(table.header(), record); }
   return array;
+}
+
+/// Helper to get appropriate key name
+std::string GetKeyName(const queryKeys::QueryKey& key, bool useDescriptive) {
+  return std::string(useDescriptive ? key.descriptive : key.simple);
 }
 
 } // namespace
@@ -89,16 +95,10 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
   const auto printHeaders = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintHeaders);
   const auto useDescriptive = config.useDescriptiveHeaders;
 
-  // Helper to get appropriate key name
-  auto getKey = [useDescriptive](const queryKeys::QueryKey& key) -> std::string {
-    return std::string(useDescriptive ? key.descriptive : key.simple);
-  };
-
   json root;
-  const bool outputBoth = printUserGroups && printUsers;
 
-  // When printHeaders is false and we're outputting a single array, don't wrap in object
-  if (!printHeaders && !outputBoth) {
+  // When printHeaders is false, output bare array/value; otherwise wrap in object
+  if (!printHeaders) {
     root = json::array();
   } else {
     root = json::object();
@@ -110,23 +110,21 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
 
     for (const auto& group : res.mUserGroups) {
       json item = json::object({
-        {getKey(queryKeys::name), group.mName}
+        {GetKeyName(queryKeys::name, useDescriptive), group.mName}
       });
 
       if (group.mMaxAuthValidity) {
-        item[getKey(queryKeys::maxAuthValidity)] =
+        item[GetKeyName(queryKeys::maxAuthValidity, useDescriptive)] =
           pep::chrono::ToString(*group.mMaxAuthValidity);
       }
 
       groups.push_back(std::move(item));
     }
 
-    if (!printHeaders && !outputBoth) {
+    if (!printHeaders) {
       root = std::move(groups);
-    } else if (printHeaders) {
-      root[getKey(queryKeys::userGroups)] = std::move(groups);
     } else {
-      root[std::string(queryKeys::userGroups.simple)] = std::move(groups);
+      root[GetKeyName(queryKeys::userGroups, useDescriptive)] = std::move(groups);
     }
   }
   
@@ -138,11 +136,11 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
       json item = json::object();
 
       if (user.mDisplayId) {
-        item[getKey(queryKeys::displayId)] = *user.mDisplayId;
+        item[GetKeyName(queryKeys::displayId, useDescriptive)] = *user.mDisplayId;
       }
 
       if (user.mPrimaryId) {
-        item[getKey(queryKeys::primaryId)] = *user.mPrimaryId;
+        item[GetKeyName(queryKeys::primaryId, useDescriptive)] = *user.mPrimaryId;
       }
 
       {
@@ -152,7 +150,7 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
           ids.push_back(uid);
         }
 
-        item[getKey(queryKeys::otherIdentifiers)] = std::move(ids);
+        item[GetKeyName(queryKeys::otherIdentifiers, useDescriptive)] = std::move(ids);
       }
 
       // userGroups for users
@@ -163,19 +161,141 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
           groups.push_back(group);
         }
 
-        item[getKey(queryKeys::groups)] = std::move(groups);
+        item[GetKeyName(queryKeys::groups, useDescriptive)] = std::move(groups);
       }
       
       users.push_back(std::move(item));
     }
 
     // add users array to root
-    if (!printHeaders && !outputBoth) {
+    if (!printHeaders) {
       root = std::move(users);
-    } else if (printHeaders) {
-      root[getKey(queryKeys::users)] = std::move(users);
     } else {
-      root[std::string(queryKeys::users.simple)] = std::move(users);
+      root[GetKeyName(queryKeys::users, useDescriptive)] = std::move(users);
+    }
+  }
+
+  return Tree::FromJson(std::move(root));
+}
+
+Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const AmaQueryDisplayConfig& config) {
+  const auto printColumns = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintColumns);
+  const auto printColumnGroups = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintColumnGroups);
+  const auto printColumnGroupAccessRules = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintColumnGroupAccessRules);
+  const auto printParticipantGroups = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintParticipantGroups);
+  const auto printParticipantGroupAccessRules = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintParticipantGroupAccessRules);
+  const auto printHeaders = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintHeaders);
+  const auto useDescriptive = config.useDescriptiveHeaders;
+
+  // Helper to convert grouped access rules into nested JSON structure
+  auto buildNestedRulesJson = [](const std::map<std::string, std::map<std::string, std::vector<std::string>>>& grouped) {
+    json rulesObject = json::object();
+    for (const auto& [outerKey, innerMap] : grouped) {
+      json innerObject = json::object();
+      for (const auto& [innerKey, modes] : innerMap) {
+        json modesArray = json::array();
+        for (const auto& mode : modes) {
+          modesArray.push_back(mode);
+        }
+        innerObject[innerKey] = std::move(modesArray);
+      }
+      rulesObject[outerKey] = std::move(innerObject);
+    }
+    return rulesObject;
+  };
+
+  json root;
+
+  // When printHeaders is false, output bare array/value, otherwise wrap in object
+  if (!printHeaders) {
+    root = json::array();
+  } else {
+    root = json::object();
+  }
+
+  // Build columns array
+  if (printColumns) {
+    json columnsArray = json::array();
+
+    for (const auto& col : res.mColumns) {
+      columnsArray.push_back(col.mName);
+    }
+
+    if (!printHeaders) {
+      root = std::move(columnsArray);
+    } else {
+      root[GetKeyName(queryKeys::columns, useDescriptive)] = std::move(columnsArray);
+    }
+  }
+
+  // Build column groups array
+  if (printColumnGroups) {
+    json columnGroupsArray = json::array();
+
+    for (const auto& cg : res.mColumnGroups) {
+      json item = json::object();
+      item[GetKeyName(queryKeys::name, useDescriptive)] = cg.mName;
+      
+      json columnsInGroup = json::array();
+      for (const auto& col : cg.mColumns) {
+        columnsInGroup.push_back(col);
+      }
+      item[GetKeyName(queryKeys::columns, useDescriptive)] = std::move(columnsInGroup);
+
+      columnGroupsArray.push_back(std::move(item));
+    }
+
+    if (!printHeaders) {
+      root = std::move(columnGroupsArray);
+    } else {
+      root[GetKeyName(queryKeys::columnGroups, useDescriptive)] = std::move(columnGroupsArray);
+    }
+  }
+
+  // Build column group access rules
+  if (printColumnGroupAccessRules) {
+    std::map<std::string, std::map<std::string, std::vector<std::string>>> grouped;
+    for (const auto& rule : res.mColumnGroupAccessRules) {
+      grouped[rule.mColumnGroup][rule.mAccessGroup].push_back(rule.mMode);
+    }
+
+    json rulesObject = buildNestedRulesJson(grouped);
+
+    if (!printHeaders) {
+      root = std::move(rulesObject);
+    } else {
+      root[GetKeyName(queryKeys::columnGroupAccessRules, useDescriptive)] = std::move(rulesObject);
+    }
+  }
+
+  // Build participant groups array
+  if (printParticipantGroups) {
+    json groupsArray = json::array();
+
+    for (const auto& group : res.mParticipantGroups) {
+      groupsArray.push_back(group.mName);
+    }
+
+    if (!printHeaders) {
+      root = std::move(groupsArray);
+    } else {
+      root[GetKeyName(queryKeys::participantGroups, useDescriptive)] = std::move(groupsArray);
+    }
+  }
+
+  // Build participant group access rules
+  if (printParticipantGroupAccessRules) {
+    std::map<std::string, std::map<std::string, std::vector<std::string>>> grouped;
+    for (const auto& rule : res.mParticipantGroupAccessRules) {
+      grouped[rule.mParticipantGroup][rule.mUserGroup].push_back(rule.mMode);
+    }
+
+    json rulesObject = buildNestedRulesJson(grouped);
+
+    if (!printHeaders) {
+      root = std::move(rulesObject);
+    } else {
+      root[GetKeyName(queryKeys::participantGroupAccessRules, useDescriptive)] = std::move(rulesObject);
     }
   }
 

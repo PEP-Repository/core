@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME}StructuredOutputlib STATIC
   IndexedStringPool.hpp
   Json.hpp
   Table.cpp Table.hpp
+  Text.cpp Text.hpp
   Tree.hpp Tree.cpp
   Yaml.cpp Yaml.hpp
 )
