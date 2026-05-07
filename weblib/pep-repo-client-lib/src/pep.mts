@@ -1,6 +1,25 @@
 import initModule, {MainModule, Weblib} from 'pep-repo-client-wasm';
 import type * as rawTypes from 'pep-repo-client-wasm';
 
+type WasmException =
+    | WebAssembly.Exception // WASM EH (what we normally use)
+    | number /*pointer*/ // Emscripten EH
+    | Error /*CppException*/ // Emscripten EH + assertions
+
+type PepModule = MainModule & {
+  // Defined in prejs.js
+  pepMayBeWasmException(ex: WasmException | unknown): ex is WasmException,
+  /** Inspects the exception via `callback` and then frees it. */
+  pepConsumeWasmException<TReturn, TException extends WasmException>(
+      wasmEx: TException,
+      callback: (wasmEx: TException) => TReturn): TReturn,
+  /**
+   * Transforms a WASM exception into an Error with the correct message, and stack when available.
+   * After obtaining message, frees the WASM exception object.
+   */
+  pepHandleWasmException(wasmEx: WasmException): Error,
+};
+
 type ConfigServerName =
     | 'AccessManager'
     | 'StorageFacility'
@@ -109,61 +128,14 @@ function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDay().toString().padStart(2, '0')}`;
 }
 
-type WasmException =
-    | WebAssembly.Exception // WASM EH (what we normally use)
-    | number /*pointer*/ // Emscripten EH
-    | Error /*CppException*/ // Emscripten EH + assertions
-
-function mayBeWasmException(ex: WasmException | unknown): ex is WasmException {
-  return ex instanceof WebAssembly.Exception
-      || (typeof ex === 'number' && ex > 0)
-      || (ex instanceof Error && Object.getPrototypeOf(ex).constructor.name === 'CppException');
-}
-
-/**
- * Inspects the exception via `callback` and then frees it.
- */
-function consumeWasmException<TReturn, TException extends WasmException>(
-    mod: MainModule, wasmEx: TException,
-    callback: (wasmEx: TException) => TReturn): TReturn {
-  try {
-    return callback(wasmEx);
-  } finally {
-    mod.decrementExceptionRefcount(wasmEx);
-  }
-}
-
-/**
- * Transforms a WASM exception into an Error with the correct message, and stack when available.
- * After obtaining message, frees the WASM exception object.
- */
-function handleWasmExceptionForModule(mod: MainModule, wasmEx: WasmException): Error {
-  return consumeWasmException(mod, wasmEx, () => {
-    let [type, message] = mod.getExceptionMessage(wasmEx) as [string, string];
-    if (!message || type === message) {
-      if (type === 'std::bad_alloc') {
-        message = 'Out of memory';
-      }
-    }
-    const error = new Error(message || type, {cause: wasmEx});
-    const stack = typeof wasmEx === 'object' && 'stack' in wasmEx
-        ? wasmEx.stack as string : undefined;
-    if (stack) {
-      error.stack = stack;
-    }
-    console.warn(`WebAssembly Exception: ${type}: ${message}${stack ? `\n${stack}` : ''}`);
-    return error;
-  });
-}
-
-function throwPotentialWasmException(mod: MainModule, ex: WasmException | Error | unknown): never {
-  if (mayBeWasmException(ex)) {
-    throw handleWasmExceptionForModule(mod, ex);
+function throwPotentialWasmException(mod: PepModule, ex: WasmException | Error | unknown): never {
+  if (mod.pepMayBeWasmException(ex)) {
+    throw mod.pepHandleWasmException(ex);
   }
   throw ex;
 }
 
-function runHandleWasmExceptionForModule<Ret>(mod: MainModule, fun: () => Ret): Ret {
+function runHandleWasmExceptionForModule<Ret>(mod: PepModule, fun: () => Ret): Ret {
   try {
     const ret = fun();
     if (ret instanceof Promise) {
@@ -178,19 +150,19 @@ function runHandleWasmExceptionForModule<Ret>(mod: MainModule, fun: () => Ret): 
 
 export default class Pep {
   readonly #config: InitConfig;
-  #mod: MainModule;
+  #mod: PepModule;
   #client: Weblib;
   #busy: number = 0;
   #onBusyChange: ((busy: boolean) => void) | null = null;
 
-  private constructor(config: InitConfig, wasm: MainModule) {
+  private constructor(config: InitConfig, wasm: PepModule) {
     this.#config = config;
     this.#mod = wasm;
     this.#client = this.runHandleWasmException(() => new wasm.Weblib());
   }
 
   static async #addConfigFile(
-      Module: MainModule,
+      Module: PepModule,
       baseUrl: URL | null,
       contentOverrides: InitConfig['configFileContentOverrides'],
       configFiles: ConfigFiles,
@@ -224,11 +196,14 @@ export default class Pep {
     clientConfig.KeysFile = '/persist/ClientKeys.json';
 
     // These members must be listed in -sINCOMING_MODULE_JS_API
-    let Module: MainModule | { thisProgram: string } = {
+    let Module: PepModule | {
+      thisProgram: string,
+    } = {
+      /// This ends up in `argv[0]`
       thisProgram: 'pepWeblib',
     };
 
-    Module = await initModule(Module) as MainModule;
+    Module = await initModule(Module) as PepModule;
 
     const {FS, IDBFS} = Module;
 
@@ -407,17 +382,16 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.retrieve(entries));
   }
 
-  /** @see {@link handleWasmExceptionForModule} */
+  /** @see {@link PepModule.pepHandleWasmException} */
   handleWasmException(ex: WasmException) {
-    return handleWasmExceptionForModule(this.#mod, ex);
+    return this.#mod.pepHandleWasmException(ex);
   }
 
-  /** @see {@link runHandleWasmExceptionForModule} */
   runHandleWasmException<Ret>(fun: () => Ret): Ret {
     return runHandleWasmExceptionForModule(this.#mod, fun);
   }
 
-  static mayBeWasmException(ex: WasmException | unknown) {
-    return mayBeWasmException(ex);
+  mayBeWasmException(ex: WasmException | unknown) {
+    return this.#mod.pepMayBeWasmException(ex);
   }
 }

@@ -14,7 +14,7 @@ let pep;
  */
 function handleMaybeWasmException(ex, ev) {
   // Note: Could normally check `instanceof WebAssembly.Exception` instead
-  if (pep && Pep.mayBeWasmException(ex)) {
+  if (pep?.mayBeWasmException(ex)) {
     const error = pep.handleWasmException(ex);
     alert(error);
     console.error('Uncaught', error);
