@@ -139,7 +139,12 @@ function consumeWasmException<TReturn, TException extends WasmException>(
  */
 function handleWasmExceptionForModule(mod: MainModule, wasmEx: WasmException): Error {
   return consumeWasmException(mod, wasmEx, () => {
-    const [type, message] = mod.getExceptionMessage(wasmEx) as [string, string];
+    let [type, message] = mod.getExceptionMessage(wasmEx) as [string, string];
+    if (!message || type === message) {
+      if (type === 'std::bad_alloc') {
+        message = 'Out of memory';
+      }
+    }
     const error = new Error(message || type, {cause: wasmEx});
     const stack = typeof wasmEx === 'object' && 'stack' in wasmEx
         ? wasmEx.stack as string : undefined;

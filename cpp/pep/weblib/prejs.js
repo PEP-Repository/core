@@ -56,7 +56,12 @@
      */
     function handleBackgroundWasmException(wasmEx) {
       return consumeWasmException(wasmEx, () => {
-        const [type, message] = Module.getExceptionMessage(wasmEx);
+        let [type, message] = Module.getExceptionMessage(wasmEx);
+        if (!message || type === message) {
+          if (type === 'std::bad_alloc') {
+            message = 'Out of memory';
+          }
+        }
         const error = new Error(message || type, {cause: wasmEx});
         if (wasmEx.stack) {
           error.stack = wasmEx.stack;

@@ -68,7 +68,10 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sPTHREAD_POOL_DELAY_LOAD # Allow spinning up thread pool in the background, improving startup time
     -sNO_PTHREAD_POOL_SIZE_STRICT # We disable this such that we can spawn more threads, but we cannot synchronously join them
 
-    # 30 MiB should usually be good to prevent going OOM, but let's leave some room.
+    # 30 MiB should usually be good to prevent going OOM, but let's leave some room,
+    #  since the memory use depends on e.g. the number of CellEntry objects alive and cell metadata size.
+    # This limit only applied to C++ land, not to data handed off to JS.
+    # We'll get std::bad_alloc when going OOM.
     # We're not using ALLOW_MEMORY_GROWTH, because it's apparently very slow with threading enabled,
     #  see https://emscripten.org/docs/porting/pthreads.html#special-considerations
     -sINITIAL_MEMORY=209715200 # 200 MiB

@@ -114,7 +114,8 @@ val CellData::content() const {
 }
 
 
-EMSCRIPTEN_BINDINGS(CellEntry) {
+// These classes will remain alive in C++ land, unlike the value_object structs above, which get mapped to plain JS objects
+EMSCRIPTEN_BINDINGS(weblibStructs) {
   class_<CellEntry>("CellEntry")
     .property("id", &CellEntry::id)
     .property("subjectLocalPseudonym", &CellEntry::subjectLocalPseudonym)
