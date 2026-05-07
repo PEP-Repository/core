@@ -50,7 +50,10 @@ MessageBatches BatchSingleMessage(T content) {
   return BatchSingleMessage(Serialization::ToString(std::move(content)));
 }
 
+/// Size for batching messages. Not larger than \c MAX_SIZE_OF_MESSAGE.
 extern const std::size_t DEFAULT_PAGE_SIZE;
+/// Size for batching messages in Release mode, which may be larger than \c DEFAULT_PAGE_SIZE in Debug mode.
+extern const std::size_t DEFAULT_PAGE_SIZE_RELEASE;
 
 /**
  * @brief Creates MessageBatches containing (chunks of) data from the specified stream.

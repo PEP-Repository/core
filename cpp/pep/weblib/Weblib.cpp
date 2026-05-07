@@ -5,6 +5,7 @@
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -345,7 +346,7 @@ public:
                     for (std::size_t cellNum{}; cellNum < entries->size(); ++cellNum) {
                       cellDatas.emplace_back((*entries)[cellNum],
                           CreateReadableByteStream((*cellStreams)[cellNum].get_observable(),
-                            1 << 20 /*1 MiB: default page size in Release*/));
+                            messaging::DEFAULT_PAGE_SIZE_RELEASE));
                     }
 
                     pageBatches
