@@ -72,45 +72,45 @@ rxcpp::observable<std::string> Study::getDefaultSiteId() {
     //    which may have been caused by this clang bug (or one very similar to it): https://github.com/llvm/llvm-project/issues/57561 .
     .op(RxToVector())
     .flat_map([self = SharedFrom(*this)](std::shared_ptr<std::vector<std::shared_ptr<Site>>> sites) -> rxcpp::observable<std::string> {
-    assert(self->mDefaultSiteAbbrev.has_value());
-    // Find (the ID of) the site matching self->mDefaultSiteAbbrev
-    std::set<std::string> abbrevs;
-    for (auto site : *sites) {
-      auto found = site->getAbbreviation();
-      if (found == self->mDefaultSiteAbbrev) {
+        assert(self->mDefaultSiteAbbrev.has_value());
+        // Find (the ID of) the site matching self->mDefaultSiteAbbrev
+        std::set<std::string> abbrevs;
+        for (auto site : *sites) {
+          auto found = site->getAbbreviation();
+          abbrevs.emplace(found); // Collect each (unique) abbreviation so we can use them in a diagnostic that we may emit later
+
+          if (found == self->mDefaultSiteAbbrev) {
+            if (!self->mDefaultSiteId.has_value()) {
+              self->mDefaultSiteId = site->getId();
+            }
+            else {
+              LOG("Study", warning) << "Multiple sites found for abbreviation " << found
+                << " during default site retrieval for study " << self->getName()
+                << " (slug " << self->getSlug() << "). Skipping site with ID " << site->getId()
+                << " in favor of previously found " << (*self->mDefaultSiteId);
+            }
+          }
+        }
+
+        // If no Site matches self->mDefaultSiteAbbrev, don't return a value (but do output diagnostic information)
         if (!self->mDefaultSiteId.has_value()) {
-          self->mDefaultSiteId = site->getId();
+          std::string available = "<none>";
+          if (!abbrevs.empty()) {
+            available = boost::algorithm::join(abbrevs, ", ");
+          }
+          std::string description = self->mDefaultSiteAbbrev->empty()
+            ? "an empty abbreviation"
+            : ("abbreviation \"" + *self->mDefaultSiteAbbrev + '"');
+          LOG("Study", error) << "Not assigning a default site to study " << self->getName()
+            << " (slug " << self->getSlug() << ")"
+            << " because no site could be found with " << description << '.'
+            << " Available abbreviations are " << available << '.'; // Makes it (much) easier to find the configuration error
+
+          return rxcpp::observable<>::empty<std::string>();
         }
-        else {
-          LOG("Study", warning) << "Multiple sites found for abbreviation " << found
-            << " during default site retrieval for study " << self->getName()
-            << " (slug " << self->getSlug() << "). Skipping site with ID " << site->getId()
-            << " in favor of previously found " << (*self->mDefaultSiteId);
-        }
-      }
 
-      abbrevs.emplace(found); // Collect each (unique) abbreviation so we can use them in a diagnostic that we may emit later
-    }
-
-    // If no Site matches self->mDefaultSiteAbbrev, don't return a value (but do output diagnostic information)
-    if (!self->mDefaultSiteId.has_value()) {
-      std::string available = "<none>";
-      if (!abbrevs.empty()) {
-        available = boost::algorithm::join(abbrevs, ", ");
-      }
-      std::string description = self->mDefaultSiteAbbrev->empty()
-        ? "an empty abbreviation"
-        : ("abbreviation \"" + *self->mDefaultSiteAbbrev + '"');
-      LOG("Study", error) << "Not assigning a default site to study " << self->getName()
-        << " (slug " << self->getSlug() << ")"
-        << " because no site could be found with " << description << '.'
-        << " Available abbreviations are " << available << '.'; // Makes it (much) easier to find the configuration error
-
-      return rxcpp::observable<>::empty<std::string>();
-    }
-
-    // Return the ID of the (first) Site that matches self->mDefaultSiteAbbrev
-    return rxcpp::observable<>::just(*self->mDefaultSiteId);
+        // Return the ID of the (first) Site that matches self->mDefaultSiteAbbrev
+        return rxcpp::observable<>::just(*self->mDefaultSiteId);
       });
 }
 
