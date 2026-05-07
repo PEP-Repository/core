@@ -180,12 +180,10 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-#ifdef __EMSCRIPTEN__
-  assert(this->getArgc() > 0);
-  return std::filesystem::path(this->getArgv()[0]).filename().string();
-#else
-  return GetExecutablePath().filename().string();
-#endif
+  if (mArgc > 0) {
+    return std::filesystem::path(this->getArgv()[0]).filename().string();
+  }
+  return "[this program]";
 }
 
 int Application::getArgc() const {
