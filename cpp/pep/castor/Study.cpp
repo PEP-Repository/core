@@ -72,25 +72,25 @@ rxcpp::observable<std::string> Study::getDefaultSiteId() {
     //    which may have been caused by this clang bug (or one very similar to it): https://github.com/llvm/llvm-project/issues/57561 .
     .op(RxToVector())
     .flat_map([self = SharedFrom(*this)](std::shared_ptr<std::vector<std::shared_ptr<Site>>> sites) -> rxcpp::observable<std::string> {
-    // Iterate over all sites:
-    // 1. collecting each (unique) abbreviation (so we can use them in a diagnostic that we may emit later), and
-    // 2. assigning self->mDefaultSiteId if we find a Site matching self->mDefaultSiteAbbrev, and
-    // 3. logging warnings (for followup hits) if multiple Sites match self->mDefaultSiteAbbrev.
+    assert(self->mDefaultSiteAbbrev.has_value());
+    // Find (the ID of) the site matching self->mDefaultSiteAbbrev
     std::set<std::string> abbrevs;
-    std::transform(sites->begin(), sites->end(), std::inserter(abbrevs, abbrevs.begin()), [self](std::shared_ptr<Site> site) {
+    for (auto site : *sites) {
       auto found = site->getAbbreviation();
       if (found == self->mDefaultSiteAbbrev) {
         if (!self->mDefaultSiteId.has_value()) {
-          self->mDefaultSiteId = found;
-        } else {
+          self->mDefaultSiteId = site->getId();
+        }
+        else {
           LOG("Study", warning) << "Multiple sites found for abbreviation " << found
             << " during default site retrieval for study " << self->getName()
             << " (slug " << self->getSlug() << "). Skipping site with ID " << site->getId()
             << " in favor of previously found " << (*self->mDefaultSiteId);
         }
       }
-      return found;
-      });
+
+      abbrevs.emplace(found); // Collect each (unique) abbreviation so we can use them in a diagnostic that we may emit later
+    }
 
     // If no Site matches self->mDefaultSiteAbbrev, don't return a value (but do output diagnostic information)
     if (!self->mDefaultSiteId.has_value()) {
