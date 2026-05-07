@@ -28,7 +28,8 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 ///       the caller should make sure that the output stream is at the correct initial indentation level
 /// @note DOES append a newline character to the output
 void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
-  const auto indent = std::string(2 * indentLevel, ' ');
+  const auto spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
+  const auto indent = std::string(spacesPerLevel * indentLevel, ' ');
 
   /// does nothing on the first call and appends indentation on subsequent calls
   auto indentIfNotFirst = [first = true, &indent](std::ostream& stream) mutable {

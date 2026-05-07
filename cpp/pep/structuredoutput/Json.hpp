@@ -8,12 +8,18 @@
 namespace pep::structuredOutput::json {
 
 struct Config final {
-  int indent = 2; ///< Indentation size for JSON output
+  WhitespaceFormat wsformat = WhitespaceFormat::TwoSpaces;
 };
 
 /// Appends a JSON representation of a tree to a stream
 inline std::ostream& append(std::ostream& stream, const Tree& tree, const Config& config = {}) {
-  return stream << tree.toJson().dump(config.indent);
+  int spaces = 0;
+  switch (config.wsformat) {
+    case WhitespaceFormat::Compact: spaces = -1; break;
+    case WhitespaceFormat::TwoSpaces: spaces = 2; break;
+    case WhitespaceFormat::FourSpaces: spaces = 4; break;
+  }
+  return stream << tree.raw_json().dump(spaces);
 }
 
 /// Appends a JSON representation of a table to a stream

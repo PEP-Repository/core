@@ -7,7 +7,7 @@
 namespace pep::structuredOutput::yaml {
 
 struct Config final {
-  int indent = 0; ///< How many levels the output should be indented by
+  WhitespaceFormat indentation = WhitespaceFormat::TwoSpaces;
   bool includeArraySizeComments = false; ///< Adds a comment to the header of each non-empty list, displaying the number of elements
 };
 

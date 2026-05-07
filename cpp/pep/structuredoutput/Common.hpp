@@ -6,6 +6,13 @@
 #include <string_view>
 
 namespace pep::structuredOutput {
+
+enum class WhitespaceFormat {
+  Compact,   // No indentation (single line)
+  TwoSpaces, // 2 spaces per indentation level
+  FourSpaces // 4 spaces per indentation level
+};
+
 namespace queryKeys {
 struct QueryKey final {
   std::string_view simple;
