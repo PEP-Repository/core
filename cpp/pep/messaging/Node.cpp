@@ -124,7 +124,17 @@ void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, 
   auto existing = std::find_if(mExistingConnections.begin(), mExistingConnections.end(), [connection](const ExistingConnection& candidate) {
     return candidate.own == connection;
     });
-  assert(existing != mExistingConnections.end());
+  if (existing == mExistingConnections.end()) {
+    // This messaging::Connection is sending a notification but we've already discarded it from our mExistingConnections, i.e. the associated
+    // (binary) networking::Connection has already been destroyed, and we've already run the cleanup code in (the lambda in) Node::start.
+    // See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2867#note_58687
+    // Since this Node (created and therefore) still owns the messaging::Connection, we need to notify our subscriber of the failure.
+    assert(change.updated >= LifeCycler::Status::finalizing && "Messaging connection doing stuff after its binary connection has died");
+    if (mSubscriber.has_value()) {
+      mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Binary connection was destroyed"))));
+    }
+    return;
+  }
 
   switch (change.updated) {
   case LifeCycler::Status::reinitializing: // Notify subscriber of our (failed) attempt and retry
