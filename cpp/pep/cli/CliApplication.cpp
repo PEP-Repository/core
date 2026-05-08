@@ -182,18 +182,6 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
 }
 
 std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createChildCommands() {
-  // Helper function to create values transformer that populates a specific parameter
-  auto forwardToParam = [](const std::string& paramName) {
-    return [paramName](std::queue<std::string> args) {
-      pep::commandline::NamedValues transformed;
-      if (!args.empty()) {
-        transformed.add(paramName, args.front());
-        args.pop();
-      }
-      return transformed;
-    };
-  };
-
   const auto commands = std::vector<std::shared_ptr<pep::commandline::Command>>{
       CreateCommandList(*this),
       CreateCommandGet(*this),
@@ -217,8 +205,6 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       pep::commandline::CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
       CreateCommandStructureMetadata(*this),
       CreateCommandServer(*this),
-      // Test forwarding alias command: forwards to "user query --user <value>"
-      pep::commandline::CreateAliasCommand(*this, "quick-user-query", *this, {"user", "query"}, nullptr, forwardToParam("user")),
   };
   assert(std::ranges::none_of(commands, [](auto& ptr) { return ptr == nullptr; }));
   return commands;
