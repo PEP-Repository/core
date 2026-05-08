@@ -283,7 +283,7 @@ pep::commandline::Parameters AppCmd::getSupportedParameters() const {
 
 std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildCommands() {
   auto forwardToUserParam = [](const std::string& paramName) {
-    return [paramName](std::queue<std::string> args) {
+    return [paramName](std::queue<std::string>& args) {
       pep::commandline::NamedValues transformed;
       if (!args.empty()) {
         transformed.add(paramName, args.front());
