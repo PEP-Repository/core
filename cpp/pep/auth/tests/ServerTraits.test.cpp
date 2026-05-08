@@ -1,4 +1,5 @@
 #include <pep/auth/ServerTraits.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <gtest/gtest.h>

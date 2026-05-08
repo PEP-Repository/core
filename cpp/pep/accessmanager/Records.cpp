@@ -4,6 +4,7 @@
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/utils/Bitpacking.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 

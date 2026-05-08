@@ -11,9 +11,9 @@ namespace {
 namespace csv = pep::structuredOutput::csv;
 
 csv::Delimiter CsvDelimiter(std::string_view str) {
-  if (str == "comma") { return csv::Delimiter::comma; }
-  if (str == "semicolon") { return csv::Delimiter::semicolon; }
-  if (str == "tab") { return csv::Delimiter::tab; }
+  if (str == "comma") { return csv::Delimiter::Comma; }
+  if (str == "semicolon") { return csv::Delimiter::Semicolon; }
+  if (str == "tab") { return csv::Delimiter::Tab; }
   throw std::logic_error{"No logic to handle csv delimiter choice \"" + std::string{str} + "\""};
 }
 

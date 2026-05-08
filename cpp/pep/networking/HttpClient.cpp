@@ -119,34 +119,34 @@ HttpClient::HttpClient(Parameters parameters)
 }
 
 void HttpClient::shutdown() {
-  if (this->status() != Status::uninitialized && this->status() < Status::finalizing) {
-    this->setStatus(Status::finalizing);
+  if (this->status() != Status::Uninitialized && this->status() < Status::Finalizing) {
+    this->setStatus(Status::Finalizing);
     this->stop();
   }
-  this->setStatus(Status::finalized);
+  this->setStatus(Status::Finalized);
 }
 
 bool HttpClient::isRunning() const noexcept {
   auto status = this->status();
-  return status > Status::uninitialized && status < Status::finalizing;
+  return status > Status::Uninitialized && status < Status::Finalizing;
 }
 
 void HttpClient::start() {
   auto status = this->status();
-  if (status > Status::initialized) {
+  if (status > Status::Initialized) {
     throw std::runtime_error("Can't (re)start an HttpClient after it has been shut down");
   }
   if (mBinaryClient != nullptr) {
     throw std::runtime_error("Can't start an HttpClient more than once");
   }
-  this->setStatus(Status::initializing);
+  this->setStatus(Status::Initializing);
 
   mBinaryClient = mParameters.createBinaryClient();
   mBinaryClientConnectionAttempt = mBinaryClient->onConnectionAttempt.subscribe([weak = WeakFrom(*this)](const networking::Connection::Attempt::Result& result) {
     auto self = weak.lock();
     if (result && self != nullptr) {
       self->mConnection = *result; // TODO: clear when connection loses connectivity (and always check whether mConnection != nullptr before using it)
-      self->setStatus(Status::initialized);
+      self->setStatus(Status::Initialized);
       self->ensureSend();
     }
     });
@@ -193,14 +193,14 @@ void HttpClient::stop() {
   if (mBinaryClient != nullptr) {
     mBinaryClientConnectionAttempt.cancel();
     auto subscription = std::make_shared<EventSubscription>();
-    if (this->status() == Status::finalizing) {
+    if (this->status() == Status::Finalizing) {
       // Notify that we've been finalized when the binary client becomes finalized
       *subscription = mBinaryClient->onStatusChange.subscribe([subscription, weak = WeakFrom(*this)](StatusChange change) {
-        assert(change.updated >= Status::finalizing);
+        assert(change.updated >= Status::Finalizing);
         auto self = weak.lock();
-        if (self != nullptr && change.updated == Status::finalized) {
-          assert(self->status() == Status::finalizing);
-          self->setStatus(Status::finalized);
+        if (self != nullptr && change.updated == Status::Finalized) {
+          assert(self->status() == Status::Finalizing);
+          self->setStatus(Status::Finalized);
         }
         });
     }
@@ -210,7 +210,7 @@ void HttpClient::stop() {
 }
 
 void HttpClient::restart() {
-  this->setStatus(Status::initializing);
+  this->setStatus(Status::Initializing);
   this->stop();
   this->start();
 }
@@ -236,8 +236,8 @@ bool HttpClient::continueSending(std::exception_ptr error) {
 
 void HttpClient::ensureSend() {
   auto status = this->status();
-  assert(status == Status::finalized || mBinaryClient != nullptr);
-  if (mSending != nullptr || status >= Status::finalizing || mConnection == nullptr || !mConnection->isConnected()) {
+  assert(status == Status::Finalized || mBinaryClient != nullptr);
+  if (mSending != nullptr || status >= Status::Finalizing || mConnection == nullptr || !mConnection->isConnected()) {
     return;
   }
 

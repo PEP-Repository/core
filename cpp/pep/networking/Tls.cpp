@@ -44,7 +44,7 @@ void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
   mShutdownRequired = true; // We may need to close before we've received the handshake callback, at which point we don't know (yet) if OpenSSL has started or even completed its handshaking
 
   mImplementor.async_handshake(mType, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
-    auto connecting = self->status() == ConnectivityStatus::connecting; // Another ASIO job (e.g. a timer) may have already invoked close() on us
+    auto connecting = self->status() == ConnectivityStatus::Connecting; // Another ASIO job (e.g. a timer) may have already invoked close() on us
 
     if (error) {
       self->mShutdownRequired = false; // Handshake didn't succeed: no need to unestablish TLS
@@ -86,16 +86,16 @@ TlsSocket::~TlsSocket() noexcept {
 void TlsSocket::finishClosing() {
   mShutdownRequired = false;
   mImplementor.lowest_layer().close();
-  this->setConnectivityStatus(ConnectivityStatus::disconnected);
+  this->setConnectivityStatus(ConnectivityStatus::Disconnected);
 }
 
 void TlsSocket::close() {
-  if (this->status() >= ConnectivityStatus::disconnecting) {
+  if (this->status() >= ConnectivityStatus::Disconnecting) {
     return;
   }
 
-  if (this->status() != ConnectivityStatus::unconnected) {
-    this->setConnectivityStatus(ConnectivityStatus::disconnecting);
+  if (this->status() != ConnectivityStatus::Unconnected) {
+    this->setConnectivityStatus(ConnectivityStatus::Disconnecting);
   }
 
   // Cancel pending I/O on the socket

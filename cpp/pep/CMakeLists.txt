@@ -131,7 +131,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wsuper-class-method-mismatch
       -Wtautological-value-range-compare
       -Wthread-safety
-      -Wthread-safety-negative
       -Wtrampolines
       -Wunaligned-access
       -Wundef
@@ -145,7 +144,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wvla
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
-
       -Wno-unused-parameter
   )
 
@@ -340,6 +338,10 @@ function(verify_headers_standalone target)
         file(WRITE "${src}" "#include <${header}>")
         target_sources("${target}_StandaloneHeaders" PRIVATE "${src}")
       endforeach()
+
+      set_target_properties(${target}_StandaloneHeaders PROPERTIES
+        FOLDER pep-StandaloneHeaders
+      )
     endif()
   endif()
 endfunction()
