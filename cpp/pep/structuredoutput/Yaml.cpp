@@ -28,7 +28,7 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 ///       the caller should make sure that the output stream is at the correct initial indentation level
 /// @note DOES append a newline character to the output
 void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
-  const auto spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
+  const std::size_t spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
   const auto indent = std::string(spacesPerLevel * indentLevel, ' ');
 
   /// does nothing on the first call and appends indentation on subsequent calls
@@ -78,7 +78,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::o
 
 /// Appends a YAML representation of a tree to a stream
 std::ostream& append(std::ostream& stream, const Tree& tree, const Config& config) {
-  SerializeJsonAsYaml(stream, config, tree.toJson());
+  SerializeJsonAsYaml(stream, config, tree.raw_json());
   return stream;
 }
 
