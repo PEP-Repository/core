@@ -38,13 +38,11 @@ public:
   ///                  May be empty if \p ancestor itself is the target.
   AliasCommand(TParent& parent, const std::string& aliasName,
     Command& ancestor, CommandPath childPath,
-    std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
-    std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr)
+    std::function<NamedValues(std::queue<std::string>)> transformer = nullptr)
   : ChildCommandOf<TParent>(aliasName, "Alias for: " + childPath.toString(), parent),
     mAncestor(ancestor),
     mChildPath(std::move(childPath)),
-    mArgumentTransformer(std::move(transformer)),
-    mValuesTransformer(std::move(valuesTransformer)) {}
+    mTransformer(std::move(transformer)) {}
 
   bool isForwardingCommand() const override { return true; }
 
@@ -60,21 +58,18 @@ public:
     }
 
     NamedValues leafValues;
-    if (mValuesTransformer) {
-      leafValues = mValuesTransformer(std::move(forwarded));
+    if (mTransformer) {
+      leafValues = mTransformer(std::move(forwarded));
     }
-    if (mArgumentTransformer) {
-      forwarded = mArgumentTransformer(std::move(forwarded));
-    }
-    // Dispatch from the ancestor using its already-parsed values; forwarded args are lexed by the leaf.
+    // Dispatch from the ancestor using its already-parsed values.
+    // leafValues contains pre-built parameter values, forwarded contains remaining args to be lexed by the leaf.
     return mAncestor.dispatchTo(mChildPath, std::move(leafValues), std::move(forwarded));
   }
 
 private:
   Command& mAncestor;
   CommandPath mChildPath;
-  std::function<std::queue<std::string>(std::queue<std::string>)> mArgumentTransformer;
-  std::function<NamedValues(std::queue<std::string>)> mValuesTransformer;
+  std::function<NamedValues(std::queue<std::string>)> mTransformer;
 };
 
 template <typename TParent>
@@ -83,9 +78,8 @@ public:
   DeprecatedCommand(TParent& parent, const std::string& aliasName,
     Command& ancestor, CommandPath childPath,
     const std::string& deprecationMessage,
-    std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
-    std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr)
-  : AliasCommand<TParent>(parent, aliasName, ancestor, std::move(childPath), std::move(transformer), std::move(valuesTransformer)),
+    std::function<NamedValues(std::queue<std::string>)> transformer = nullptr)
+  : AliasCommand<TParent>(parent, aliasName, ancestor, std::move(childPath), std::move(transformer)),
     mDeprecationMessage(deprecationMessage) {}
 
   std::optional<std::string> getDeprecationWarning() const override { return mDeprecationMessage; }
@@ -127,9 +121,8 @@ std::shared_ptr<ChildCommandOf<TParent>> CreateAliasCommand(
     const std::string& aliasName,
     Command& ancestor,
     CommandPath childPath,
-    std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
-    std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr) {
-  return std::make_shared<AliasCommand<TParent>>(parent, aliasName, ancestor, std::move(childPath), std::move(transformer), std::move(valuesTransformer));
+    std::function<NamedValues(std::queue<std::string>)> transformer = nullptr) {
+  return std::make_shared<AliasCommand<TParent>>(parent, aliasName, ancestor, std::move(childPath), std::move(transformer));
 }
 
 template <typename TParent>
@@ -139,9 +132,8 @@ std::shared_ptr<ChildCommandOf<TParent>> CreateDeprecatedCommand(
     Command& ancestor,
     CommandPath childPath,
     const std::string& deprecationMessage,
-    std::function<std::queue<std::string>(std::queue<std::string>)> transformer = nullptr,
-    std::function<NamedValues(std::queue<std::string>)> valuesTransformer = nullptr) {
-  return std::make_shared<DeprecatedCommand<TParent>>(parent, aliasName, ancestor, std::move(childPath), deprecationMessage, std::move(transformer), std::move(valuesTransformer));
+    std::function<NamedValues(std::queue<std::string>)> transformer = nullptr) {
+  return std::make_shared<DeprecatedCommand<TParent>>(parent, aliasName, ancestor, std::move(childPath), deprecationMessage, std::move(transformer));
 }
 
 template <typename TParent>
