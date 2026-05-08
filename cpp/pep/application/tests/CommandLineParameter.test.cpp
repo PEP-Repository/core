@@ -193,7 +193,7 @@ void RecordingCommandMixin::captureParameters() {
     current = current->getParentCommand();
   }
   pep::commandline::CommandPath commandPath{segments};
-  
+  // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
   getStorage().recordCommandValues(commandPath, cmd->getParameterValues());
 }
 

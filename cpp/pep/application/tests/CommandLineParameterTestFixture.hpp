@@ -26,7 +26,7 @@ std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initiali
 class RecordingCommandMixin {
 protected:
   void captureParameters();
-  virtual ~RecordingCommandMixin() = default;
+  ~RecordingCommandMixin() = default;
 
 protected:
   virtual pep::commandline::Command* getCommand() = 0;
