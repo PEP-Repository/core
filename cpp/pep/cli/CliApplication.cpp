@@ -195,16 +195,6 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       CreateCommandHistory(*this),
       CreateCommandFileExtension(*this),
       CreateCommandToken(*this),
-      // Test forwarding alias command: forwards to "user query --user <value>"
-      pep::commandline::CreateAliasCommand(*this, "quick-user-query", *this, {"user", "query"},
-        [](std::queue<std::string>& args) {
-          pep::commandline::NamedValues transformed;
-          if (!args.empty()) {
-            transformed.add("user", args.front());
-            args.pop();
-          }
-          return transformed;
-        }),
       pep::commandline::CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
       CreateCommandStructureMetadata(*this),
       CreateCommandServer(*this),
