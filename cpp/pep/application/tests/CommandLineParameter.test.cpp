@@ -88,12 +88,15 @@
 //   [Table-Test]          - format shows which tests use each entity
 //
 // app                            [NORMAL]           Application management tool
+//  │ --global-param              [NORMAL]              Global application parameter       [4-3]
 //  │ --quick-start               [ALIAS]               -> to "app server start --port"    [2-6a][3-16][X2-6b][X3-8]
 //  │ --verbose-mode              [ALIAS]               -> to "app ... --verbose"          [2-6a]
 //  │ --quick-deploy              [ALIAS]               -> to "app deploy --name"          [3-17][X2-6b]
+//  │ --mode                      [DEPRECATED_ALIAS]    -> conditional to start/deploy     [4-2a][4-2b]
 //  │ --bad-forward-depr-cmd      [DEPRECATED_ALIAS]    -> to "app init-user"              [X3-18]
 //  │ --bad-alias-cmd             [ALIAS]               -> to "app create-user"            [X3-19]
 //  │ --bad-removed-cmd           [ALIAS]               -> to "app old-user"               [X3-20]
+//  │ --bad-transform-path        [ALIAS]               -> invalid path (asserts)          [4-4]
 //  │ --legacy-port               [DEPRECATED_ALIAS]    -> to "app server start --port"    [3-26]
 //  │ --deploy-name               [DEPRECATED_ALIAS]    -> to "app deploy --name"          [3-27]
 //  │
@@ -113,8 +116,8 @@
 //  |     --old-mail              [ALIAS]               -> to "app user --old-email"       [3-22]
 //  |     --forward-to-deploy     [ALIAS]               -> to "app deploy --name"          [X1-13b]
 //  |
-//  ├── deploy                    [DEPRECATED]                                             [1-6][1-7][1-8][1-9][1-10][3-2][X2-6b]
-//  │     --name                  [NORMAL]              Deploy name                        [1-6][3-2][3-12][3-27][X2-6b]
+//  ├── deploy                    [DEPRECATED]                                             [1-6][1-7][1-8][1-9][1-10][3-2][X2-6b][4-2b]
+//  │     --name                  [NORMAL]              Deploy name                        [1-6][3-2][3-12][3-27][X2-6b][4-2b]
 //  │     --old-name              [DEPRECATED]                                             [1-7]
 //  │     --deploy-alias          [ALIAS]               -> to "app deploy --name"          [1-8]
 //  │     --deployment-name       [DEPRECATED_ALIAS]    -> to "app deploy --name"          [1-9]
@@ -126,8 +129,10 @@
 //  |
 //  ├── server                    [NORMAL]              Server management                  [3-16][X2-6b][X3-8]
 //  │   └── start                 [NORMAL]              Start the server                   [3-16][X2-6b][X3-8]
-//  │         --port              [NORMAL]              Server port number                 [3-16][X2-6b][X3-8]
-//  │         --verbose           [NORMAL]              Enable verbose logging             [2-6a]
+//  │         --host              [NORMAL]              Server host address                [4-1]
+//  │         --port              [NORMAL]              Server port number                 [3-16][X2-6b][X3-8][4-1][4-2a][5-1]
+//  │         --verbose           [NORMAL]              Verbosity level (integer)          [2-6a][5-1]
+//  │         --host-port         [DEPRECATED_ALIAS]    -> splits to --host and --port     [4-1]
 //  │
 //  ├── db                        [ALIAS]               -> to "app database"               [X3-14]
 //  ├── database                  [NORMAL]              Database operations                [X3-14][4-5]
@@ -147,7 +152,8 @@
 //  ├── init-deploy               [DEPRECATED_ALIAS]    -> to "app deploy"                 [3-12]
 //  ├── old-init                  [DEPRECATED_ALIAS]    -> to "app init-user"              [X3-13]
 //  ├── old-db                    [DEPRECATED_ALIAS]    -> to "app database"               [X3-14]
-//  └── removed-init              [DEPRECATED_ALIAS]    -> to "app old-user"               [X3-15]
+//  ├── removed-init              [DEPRECATED_ALIAS]    -> to "app old-user"               [X3-15]
+//  └── quick-verbose-start       [ALIAS]               -> to "app server start" + injects --verbose 2   [5-1]
 
 namespace pep::application::test {
 
@@ -235,8 +241,12 @@ pep::commandline::Parameters AppCmd::getSupportedParameters() const {
             }
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"server", "start"}};
           })
-      + pep::commandline::Parameter("verbose-mode", std::nullopt)
-          .alias("verbose")
+      + pep::commandline::Parameter("verbose-mode", std::nullopt).value(pep::commandline::Value<int>())
+          .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
+            pep::commandline::NamedValues toAdd;
+            toAdd["verbose"] = vals["verbose-mode"];
+            return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
+          })
       + pep::commandline::Parameter("quick-deploy", std::nullopt).value(pep::commandline::Value<std::string>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
@@ -292,6 +302,14 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
       return transformed;
     };
   };
+
+  auto injectVerboseLevel = [](std::queue<std::string>& args) {
+    pep::commandline::NamedValues transformed;
+    pep::commandline::Values verboseValues;
+    verboseValues.add(2); // Inject verbosity level 2
+    transformed["verbose"] = verboseValues;
+    return transformed;
+  };
   
   return {
     std::make_shared<UserCmd>(*this),
@@ -315,6 +333,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
     pep::commandline::CreateDeprecatedCommand(*this, "removed-init", *this, {"old-user"}, "This forwards to removed command."),
     pep::commandline::CreateAliasCommand(*this, "removed-alias", *this, {"old-user"}),
     pep::commandline::CreateNoLongerSupportedCommand(*this, "old-user", "Use 'user' instead."),
+    pep::commandline::CreateAliasCommand(*this, "quick-verbose-start", *this, {"server", "start"}, injectVerboseLevel),
   };
 }
 
@@ -481,7 +500,7 @@ pep::commandline::Parameters StartCmd::getSupportedParameters() const {
   return pep::commandline::ChildCommandOf<ServerCmd>::getSupportedParameters()
     + pep::commandline::Parameter("host", "Server host address").value(pep::commandline::Value<std::string>())
     + pep::commandline::Parameter("port", "Server port number").value(pep::commandline::Value<int>())
-    + pep::commandline::Parameter("verbose", "Enable verbose logging")
+    + pep::commandline::Parameter("verbose", "Verbosity level").value(pep::commandline::Value<int>())
     + pep::commandline::Parameter("workers", "Number of worker threads").value(pep::commandline::Value<int>())
     + pep::commandline::Parameter("host-port", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
@@ -955,10 +974,11 @@ TEST(ParameterParameterCombinations, AliasParameterWithDeprecatedParameter) {
 // Multiple alias parameters: just one forwarding to a different command is fine
 TEST(ParameterParameterCombinations, AliasParameterWithAliasParameter) {
   AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"--quick-start", "8080", "--verbose-mode"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"--quick-start", "8080", "--verbose-mode", "1"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
+  EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "verbose").value_or(0), 1);
   EXPECT_TRUE(err.empty());
 }
 
@@ -1436,4 +1456,18 @@ TEST(ComplexForwarding, ConflictingParameterAdditionsAssert) {
     auto args = ToQueue({"database", "--legacy-db-source", "/data/old.db", "--old-db-path", "/data/new.db"});
     cmd.process(args);
   }, ".*conflicting parameter additions.*") << "Framework should assert when multiple transformations try to add the same parameter.";
+}
+
+// [5-1]: Transformer can inject additional parameters
+TEST(ComplexForwarding, AliasCommandCanInjectAdditionalParameters) {
+  AppCmd cmd;
+  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"quick-verbose-start", "--port", "8080"});
+
+  ASSERT_EQ(exitCode, EXIT_SUCCESS);
+  ASSERT_TRUE(err.empty());
+  ASSERT_TRUE(cmd.hasCapturedParam(serverStartCommandPath, "verbose"));
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "verbose").value_or(0), 2);
+  ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "verbose"), 1);
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
+  ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
 }
