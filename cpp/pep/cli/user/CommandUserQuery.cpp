@@ -44,8 +44,7 @@ int CommandUser::CommandUserQuery::execute() {
       const bool isPrettyPrint = HasFlags(config.flags, so::UserQueryDisplayConfig::Flags::PrintHeaders);
       
       if (config.preferredFormat == so::Format::Json) {
-        so::json::Config jsonConfig{.wsformat = isPrettyPrint ? so::WhitespaceFormat::TwoSpaces : so::WhitespaceFormat::Compact};
-        so::json::append(std::cout, tree, jsonConfig) << std::endl;
+        so::json::append(std::cout, tree) << std::endl;
       } else {
         so::yaml::Config yamlConfig{.includeArraySizeComments = isPrettyPrint};
         so::yaml::append(std::cout, tree, yamlConfig) << std::endl;

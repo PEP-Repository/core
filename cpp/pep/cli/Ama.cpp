@@ -462,10 +462,9 @@ private:
           namespace so = pep::structuredOutput;
           auto tree = so::Tree::FromAmaQueryResponse(res, config);
           const bool isPrettyPrint = pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::PrintHeaders);
-          
+
           if (config.preferredFormat == so::Format::Json) {
-            so::json::Config jsonConfig{.wsformat = isPrettyPrint ? so::WhitespaceFormat::TwoSpaces : so::WhitespaceFormat::Compact};
-            so::json::append(std::cout, tree, jsonConfig) << std::endl;
+            so::json::append(std::cout, tree) << std::endl;
           } else if (config.preferredFormat == so::Format::Text) {
             so::text::Config textConfig{.includeElementCounts = isPrettyPrint};
             so::text::append(std::cout, tree, textConfig) << std::endl;
