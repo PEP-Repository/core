@@ -55,7 +55,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::o
       if (isAtomic(*it)) { stream << " "; }
       else {
         if (it->is_array() && config.includeArraySizeComments) { stream << " # item count: " << it->size(); }
-        stream << '\n' << indent << "  ";
+        stream << '\n' << indent << std::string(spacesPerLevel, ' ');
       }
       SerializeJsonAsYaml(stream, config, it.value(), indentLevel + 1);
     }
@@ -67,7 +67,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::o
 
       if (element.is_array() && !element.empty()) {
         if (config.includeArraySizeComments) stream << "# item count: " << element.size();
-        stream << '\n' << indent << "  ";
+        stream << '\n' << indent << std::string(spacesPerLevel, ' ');
       }
       SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
     }
