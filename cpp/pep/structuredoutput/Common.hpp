@@ -51,12 +51,6 @@ struct UserQueryDisplayConfig final {
   bool useDescriptiveHeaders = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("displayId") for all fields
 };
 
-inline std::string indentations(int i) {
-  i = std::max(i, 0); // Treat negative as 0
-  // Brace initialization would result in different/unwanted result here.
-  return std::string(static_cast<std::size_t>(2 * i), ' ');
-}
-
 } // namespace pep::structuredOutput
 
 PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::UserQueryDisplayConfig::Flags)
