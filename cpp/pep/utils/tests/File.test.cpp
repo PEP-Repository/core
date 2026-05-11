@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <gtest/gtest.h>
+#include <pep/utils/Defer.hpp>
 #include <pep/utils/Filesystem.hpp>
 #include <stdexcept>
 
@@ -67,6 +68,8 @@ TEST(File, AppendDirectoryNameSuffix) {
 
   const auto testDir = CreateTestDir();
   const auto testPath = testDir.path();
+  const auto oldWorkingDir = std::filesystem::current_path();
+  PEP_DEFER(std::filesystem::current_path(oldWorkingDir));
   std::filesystem::current_path(testPath);
   const auto testPathSuffixed = testPath.parent_path() / (testPath.filename() += "-pending");
   EXPECT_EQ(pep::AppendDirectoryNameSuffix(".", "-pending"), testPathSuffixed);
