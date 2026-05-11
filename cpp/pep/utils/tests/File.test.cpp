@@ -55,4 +55,18 @@ TEST(File, ReadUnexistingFile) {
   ASSERT_THROW(pep::ReadFile(std::filesystem::path(pathUnexistingFile)), std::runtime_error);
 }
 
+TEST(File, AppendDirectoryNameSuffix) {
+  // We assume AppendDirectoryNameSuffix removes a trailing slash and dot
+  ASSERT_EQ(pep::AppendDirectoryNameSuffix("/abc/def", "-pending"), "/abc/def-pending");
+  ASSERT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/", "-pending"), "/abc/def-pending");
+  ASSERT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/.", "-pending"), "/abc/def-pending");
+  ASSERT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/./", "-pending"), "/abc/def-pending");
+  ASSERT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/..", "-pending"), "/abc-pending");
+  ASSERT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/../", "-pending"), "/abc-pending");
+  ASSERT_THROW(pep::AppendDirectoryNameSuffix("/", "-pending"), std::runtime_error);
+  ASSERT_THROW(pep::AppendDirectoryNameSuffix("/.", "-pending"), std::runtime_error);
+  ASSERT_THROW(pep::AppendDirectoryNameSuffix("/./", "-pending"), std::runtime_error);
+  ASSERT_THROW(pep::AppendDirectoryNameSuffix("", "-pending"), std::runtime_error);
+}
+
 }

@@ -21,6 +21,7 @@
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxToVector.hpp>
+#include <pep/utils/File.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -203,24 +204,6 @@ so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) 
   auto flags = so::FormatFlags::None;
   for (const auto& name : formatNames) { flags |= ParseSingleExportFormat(name); }
   return flags;
-}
-
-fs::path AppendDirectoryNameSuffix(const fs::path& path, std::string_view suffix) {
-  if (path.empty()) {
-    throw std::runtime_error("Directory path is empty");
-  }
-  // Collapse "." and ".."
-  auto normalPath = path.lexically_normal();
-  if (!normalPath.has_filename()) {
-    // Remove trailing separator
-    // "/path/to/dir/" -> "/path/to/dir"
-    normalPath = normalPath.parent_path();
-  }
-  if (!normalPath.has_filename()) { // E.g. "/"
-    throw std::runtime_error("Directory path is filesystem root: " + path.string());
-  }
-  normalPath.replace_filename(normalPath.filename() += suffix);
-  return normalPath;
 }
 
 /*!
