@@ -72,6 +72,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
       })
       .concat_map([params, extension, action](std::shared_ptr<const pep::SigningServerProxy> proxy) {
         std::filesystem::path targetFilePath;
+        //NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) False positive with old Clang-Tidy 21 in boost::is_any_of below. Suppressing on that line does not work.
         if (params.targetFile) {
           targetFilePath = *params.targetFile;
         }
