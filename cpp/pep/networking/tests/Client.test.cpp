@@ -11,6 +11,8 @@
 
 using namespace std::literals;
 
+namespace {
+
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
   friend class pep::SharedConstructor<ClientConnectivityHandler>;
 
@@ -169,7 +171,6 @@ TEST(Client, Reconnects) { // TODO: simplify
   ASSERT_NO_FATAL_FAILURE(clientHandler->postRunValidate());
 }
 
-namespace {
 
 const std::vector<std::string> LINES_TO_DELIMIT = {
   "The clock struck one, the mouse ran down.",
@@ -200,7 +201,6 @@ void ReadClientLine(std::shared_ptr<pep::networking::Client> client, std::shared
     });
 }
 
-} // End anonymous namespace
 
 TEST(Client, ReadUntil) {
   boost::asio::io_context ioContext;
@@ -270,4 +270,6 @@ TEST(Client, ReadAll) {
   client->start();
 
   ASSERT_NO_FATAL_FAILURE(ioContext.run());
+}
+
 }

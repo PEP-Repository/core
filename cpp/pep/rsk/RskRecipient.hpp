@@ -40,7 +40,7 @@ public:
 
   SkRecipient(Type type, Payload payload);
 
-  [[nodiscard]] Type type() const noexcept /*override*/;
+  [[nodiscard]] Type type() const noexcept /*override*/; //NOLINT(bugprone-derived-method-shadowing-base-method) Returns the same thing
 };
 
 } // namespace pep
