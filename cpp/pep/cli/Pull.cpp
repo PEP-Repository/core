@@ -224,7 +224,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
   // Normalize, because deleting "path/." throws
   auto outputDirectory = values.get<fs::path>("output-directory").lexically_normal();
   ctx->outputDirectory = outputDirectory.string();
-  ctx->tempDirectory = AppendDirectoryNameSuffix(outputDirectory, "-pending").string();
+  ctx->tempDirectory = pep::AppendDirectoryNameSuffix(outputDirectory, "-pending").string();
   ctx->options.assumePristine = values.has("assume-pristine");
   ctx->allAccessible = values.has("all-accessible");
   ctx->exportFormats = ParseExportFormats(values.getOptionalMultiple<std::string>("export"));
