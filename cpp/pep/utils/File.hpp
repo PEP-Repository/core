@@ -18,6 +18,12 @@ bool IsValidFileExtension(const std::string& extension);
  * define what should be done with it.
  */
 void IstreamToDestination(std::istream& in, std::function<void(const char* c, const std::streamsize len)> writeToDestination);
+
+/// Returns if \p path is a relative path not outside the reference folder.
+/// E.g. when normalized it does not contain "..".
+/// Does not resolve symlinks.
+[[nodiscard]] bool IsLexicallyRelativeChildPath(const std::filesystem::path& path, bool allowDirectories = true);
+
 }
 
 

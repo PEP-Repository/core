@@ -1,5 +1,6 @@
 #include <pep/archiving/Tar.hpp>
 
+#include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
 
 #include <archive.h>
@@ -201,7 +202,17 @@ void Tar::Extract(std::istream& stream, const std::filesystem::path& outputDirec
   }
   archive_entry* archive_entry{};
   while( (archive_entry = readNextHeader(archive)) ) {
-    std::filesystem::path outpath = outputDirectory / archive_entry_pathname(archive_entry);
+    std::filesystem::path entryPath(archive_entry_pathname(archive_entry));
+    if (archive_entry_filetype(archive_entry) != AE_IFREG) {
+      LOG(LOG_TAG, debug) << "Skipping non-regular file in tar archive: " << entryPath;
+      continue;
+    }
+    // Block path traversal
+    if (!pep::IsLexicallyRelativeChildPath(entryPath, false)) {
+      LOG(LOG_TAG, warning) << "Skipping entry with non-relative or potentially unsafe path in tar archive: " << entryPath;
+      continue;
+    }
+    std::filesystem::path outpath = outputDirectory / entryPath;
     std::filesystem::create_directories(outpath.parent_path());
     std::ofstream out(
       outpath.string(),

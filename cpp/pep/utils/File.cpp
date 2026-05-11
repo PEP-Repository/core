@@ -72,4 +72,20 @@ void IstreamToDestination(std::istream& in, std::function<void(const char * c, c
     }
   }
 }
+
+bool IsLexicallyRelativeChildPath(const std::filesystem::path& path, bool allowDirectories) {
+  // Note that, at least on Windows, a path like "C:foo" is considered relative, but may be on a different drive.
+  if (path.empty() || !path.is_relative() || path.has_root_path()) {
+    return false;
+  }
+  const auto normalPath = path.lexically_normal();
+  if (*normalPath.begin() == "..") {
+    return false;
+  }
+  if (!allowDirectories && (normalPath == "." || !path.has_filename())) {
+    return false;
+  }
+  return true;
+}
+
 }

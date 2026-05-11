@@ -55,4 +55,34 @@ TEST(File, ReadUnexistingFile) {
   ASSERT_THROW(pep::ReadFile(std::filesystem::path(pathUnexistingFile)), std::runtime_error);
 }
 
+TEST(File, IsLexicallyRelativeChildPath) {
+  EXPECT_TRUE(pep::IsLexicallyRelativeChildPath("abc"));
+  EXPECT_TRUE(pep::IsLexicallyRelativeChildPath("abc/def"));
+  EXPECT_TRUE(pep::IsLexicallyRelativeChildPath("abc/def/"));
+  EXPECT_TRUE(pep::IsLexicallyRelativeChildPath("./abc"));
+  EXPECT_TRUE(pep::IsLexicallyRelativeChildPath("abc/./def"));
+  EXPECT_TRUE(pep::IsLexicallyRelativeChildPath("abc/../def"));
+  EXPECT_TRUE(pep::IsLexicallyRelativeChildPath("abc/.."));
+
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath(".."));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("abc/../.."));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("../abc"));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("./../abc"));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("../../abc"));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("abc/../../def"));
+
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("abc/", false));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath(".", false));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("abc/..", false));
+
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath(""));
+
+#ifdef _WIN32
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("C:"));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("C:/"));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("C:abc"));
+  EXPECT_FALSE(pep::IsLexicallyRelativeChildPath("//myserver/abc"));
+#endif
+}
+
 }
