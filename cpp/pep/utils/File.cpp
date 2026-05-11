@@ -87,7 +87,12 @@ std::filesystem::path AppendDirectoryNameSuffix(const std::filesystem::path& pat
   if (!normalPath.has_filename()) { // E.g. "/"
     throw std::runtime_error("Directory path is filesystem root: " + path.string());
   }
-  normalPath.replace_filename(normalPath.filename() += suffix);
+  auto filename = normalPath.filename();
+  if (filename == "." || filename == "..") {
+    assert(normalPath.is_relative() && "Expected no dots after lexically_normal unless path is relative");
+    return AppendDirectoryNameSuffix(std::filesystem::absolute(normalPath), suffix);
+  }
+  normalPath.replace_filename(filename += suffix);
   return normalPath;
 }
 
