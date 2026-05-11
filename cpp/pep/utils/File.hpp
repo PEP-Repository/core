@@ -20,7 +20,7 @@ bool IsValidFileExtension(const std::string& extension);
 void IstreamToDestination(std::istream& in, std::function<void(const char* c, const std::streamsize len)> writeToDestination);
 
 /// Append a suffix (e.g. "-pending") to the filename of a directory path
-std::filesystem::path AppendDirectoryNameSuffix(const std::filesystem::path& path, std::string_view suffix);
+[[nodiscard]] std::filesystem::path AppendDirectoryNameSuffix(const std::filesystem::path& path, std::string_view suffix);
 
 }
 
