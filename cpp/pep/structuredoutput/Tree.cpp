@@ -117,19 +117,22 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const QueryD
     json users = json::array();
 
     for (const auto& user : res.mUsers) {
+      json item = json::object();
+
+      if (user.mDisplayId) {
+        item[GetKeyName(queryKeys::displayId, useDescriptive)] = *user.mDisplayId;
+      }
+
+      if (user.mPrimaryId) {
+        item[GetKeyName(queryKeys::primaryId, useDescriptive)] = *user.mPrimaryId;
+      }
+
       json otherIdsValue = json::array();
       for (const auto& uid : user.mOtherUids) {
         otherIdsValue.push_back(uid);
       }
-
-      json item = json::object();
-      if (user.mDisplayId) {
-        item[GetKeyName(queryKeys::displayId, useDescriptive)] = *user.mDisplayId;
-      }
-      if (user.mPrimaryId) {
-        item[GetKeyName(queryKeys::primaryId, useDescriptive)] = *user.mPrimaryId;
-      }
       item[GetKeyName(queryKeys::otherIdentifiers, useDescriptive)] = otherIdsValue;
+
       if (printUserGroupsForUsers) {
         json userGroupsValue = json::array();
         for (const auto& group : user.mGroups) {
