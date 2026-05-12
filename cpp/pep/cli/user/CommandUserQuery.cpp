@@ -46,9 +46,10 @@ int CommandUser::CommandUserQuery::execute() {
       if (config.format == so::Format::Json) {
         so::json::append(std::cout, tree) << std::endl;
       } else {
-        so::yaml::Config yamlConfig{.includeArraySizeComments = true};
-        so::yaml::append(std::cout, tree, yamlConfig) << std::endl;
+        so::yaml::append(std::cout, tree) << std::endl;
       }
+
+      // Warn for users without displayId
       auto usersWithoutDisplayId = res.mUsers | std::ranges::views::filter([](QRUser user){ return !user.mDisplayId; });
       for (auto& user : usersWithoutDisplayId) {
         auto uids = std::move(user.mOtherUids);

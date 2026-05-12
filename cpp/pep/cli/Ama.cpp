@@ -474,21 +474,20 @@ private:
         return client->getAccessManagerProxy()->amaQuery(extractQuery(values)).map([config = extractConfig(values)](pep::AmaQueryResponse res) {
           namespace so = pep::structuredOutput;
           auto tree = so::Tree::FromAmaQueryResponse(res, config);
-          const bool printAll = pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::All);
 
           if (config.format == so::Format::Json) {
             so::json::append(std::cout, tree) << std::endl;
           } else {
-            so::yaml::Config yamlConfig{.includeArraySizeComments = printAll};
-            so::yaml::append(std::cout, tree, yamlConfig) << std::endl;
+            so::yaml::append(std::cout, tree) << std::endl;
           }
 
-          if (printAll) {
-            std::cerr
-              << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
-              << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
+          if (pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::PrintColumnGroupAccessRules)) {
+            std::cerr << "The \"read\" access privilege grants access to \"read-meta\" data as well." << std::endl;
+            std::cerr << "The \"write-meta\" access privilege grants access to \"write\" data as well." << std::endl;
+            std::cerr << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
+          }
+          if (pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::PrintParticipantGroupAccessRules)) {
+            std::cerr << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << std::endl;
           }
 
           return pep::FakeVoid();
