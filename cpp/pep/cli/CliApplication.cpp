@@ -226,8 +226,11 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
     return callback(mClient);
       }).subscribe(
         [](pep::FakeVoid) { /* ignore */ },
-        [stopEventLoop](std::exception_ptr ep) {
-          LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
+        [stopEventLoop, logged = MakeSharedCopy(false)](std::exception_ptr ep) {
+          if (!*logged) {
+            LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
+            *logged = true;
+          }
           stopEventLoop(4);
         },
         [stopEventLoop]() {stopEventLoop(0); }
