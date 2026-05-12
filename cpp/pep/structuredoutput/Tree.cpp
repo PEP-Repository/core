@@ -35,6 +35,11 @@ json JsonArray(const Table& table) {
   return array;
 }
 
+/// Helper to get appropriate key name
+std::string GetKeyName(const queryKeys::QueryKey& key, bool useDescriptive) {
+  return std::string(useDescriptive ? key.descriptive : key.simple);
+}
+
 } // namespace
 
 Tree TreeFromTable(const Table& table) {
@@ -82,106 +87,62 @@ Tree Tree::FromPropertyTree(const boost::property_tree::ptree& pt) {
   return Tree::FromJson(PtreeToJson(pt));
 }
 
-Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQueryDisplayConfig& config) {
-  const auto printUserGroups = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroups);
-  const auto printUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUsers);
-  const auto printUserGroupsForUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroupsForUsers);
-  const auto printHeaders = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintHeaders);
-  const auto useDescriptive = config.useDescriptiveHeaders;
+Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQueryFlags>& config) {
+  const auto printUserGroups = HasFlags(config.flags, UserQueryFlags::PrintUserGroups);
+  const auto printUsers = HasFlags(config.flags, UserQueryFlags::PrintUsers);
+  const auto printUserGroupsForUsers = HasFlags(config.flags, UserQueryFlags::PrintUserGroupsForUsers);
+  const auto useDescriptive = config.useDescriptiveKeys;
 
-  // Helper to get appropriate key name
-  auto getKey = [useDescriptive](const queryKeys::QueryKey& key) -> std::string {
-    return std::string(useDescriptive ? key.descriptive : key.simple);
-  };
-
-  json root;
-  const bool outputBoth = printUserGroups && printUsers;
-
-  // When printHeaders is false and we're outputting a single array, don't wrap in object
-  if (!printHeaders && !outputBoth) {
-    root = json::array();
-  } else {
-    root = json::object();
-  }
+  json root = json::object();
 
   // Build userGroups array
   if (printUserGroups) {
     json groups = json::array();
 
     for (const auto& group : res.mUserGroups) {
-      json item = json::object({
-        {getKey(queryKeys::name), group.mName}
-      });
-
+      json item = json::object();
+      item[GetKeyName(queryKeys::name, useDescriptive)] = group.mName;
       if (group.mMaxAuthValidity) {
-        item[getKey(queryKeys::maxAuthValidity)] =
-          pep::chrono::ToString(*group.mMaxAuthValidity);
+        item[GetKeyName(queryKeys::maxAuthValidity, useDescriptive)] = pep::chrono::ToString(*group.mMaxAuthValidity);
       }
-
       groups.push_back(std::move(item));
     }
 
-    if (!printHeaders && !outputBoth) {
-      root = std::move(groups);
-    } else if (printHeaders) {
-      root[getKey(queryKeys::userGroups)] = std::move(groups);
-    } else {
-      root[std::string(queryKeys::userGroups.simple)] = std::move(groups);
-    }
+    root[GetKeyName(queryKeys::userGroups, useDescriptive)] = std::move(groups);
   }
-  
+
   // Build users array
   if (printUsers) {
     json users = json::array();
 
     for (const auto& user : res.mUsers) {
+      json otherIdsValue = json::array();
+      for (const auto& uid : user.mOtherUids) {
+        otherIdsValue.push_back(uid);
+      }
+
       json item = json::object();
-
       if (user.mDisplayId) {
-        item[getKey(queryKeys::displayId)] = *user.mDisplayId;
+        item[GetKeyName(queryKeys::displayId, useDescriptive)] = *user.mDisplayId;
       }
-
       if (user.mPrimaryId) {
-        item[getKey(queryKeys::primaryId)] = *user.mPrimaryId;
+        item[GetKeyName(queryKeys::primaryId, useDescriptive)] = *user.mPrimaryId;
       }
-
-      {
-        json ids = json::array();
-
-        for (const auto& uid : user.mOtherUids) {
-          ids.push_back(uid);
-        }
-
-        item[getKey(queryKeys::otherIdentifiers)] = std::move(ids);
-      }
-
-      // userGroups for users
+      item[GetKeyName(queryKeys::otherIdentifiers, useDescriptive)] = otherIdsValue;
       if (printUserGroupsForUsers) {
-        json groups = json::array();
-
+        json userGroupsValue = json::array();
         for (const auto& group : user.mGroups) {
-          groups.push_back(group);
+          userGroupsValue.push_back(group);
         }
-
-        item[getKey(queryKeys::groups)] = std::move(groups);
+        item[GetKeyName(queryKeys::userGroups, useDescriptive)] = userGroupsValue;
       }
-      
       users.push_back(std::move(item));
     }
 
-    // add users array to root
-    if (!printHeaders && !outputBoth) {
-      root = std::move(users);
-    } else if (printHeaders) {
-      root[getKey(queryKeys::users)] = std::move(users);
-    } else {
-      root[std::string(queryKeys::users.simple)] = std::move(users);
-    }
+    root[GetKeyName(queryKeys::users, useDescriptive)] = std::move(users);
   }
 
   return Tree::FromJson(std::move(root));
 }
-
-
 
 } // namespace pep::structuredOutput
