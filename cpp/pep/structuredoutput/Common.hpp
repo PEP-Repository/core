@@ -45,40 +45,36 @@ constexpr QueryKey userGroup{"userGroup", "User Group"};
 
   enum class Format {
     Yaml,
-    Json,
-    Text
+    Json
   };
 
 struct UserQueryDisplayConfig final {
   enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
     None = 0,
-    PrintHeaders = 0b0001,
-    PrintUserGroups = 0b0010,
-    PrintUserGroupsForUsers = 0b0100,
-    PrintUsers = 0b1000,
-    All = 0b1111,
+    PrintUserGroups = 0b001,
+    PrintUserGroupsForUsers = 0b010,
+    PrintUsers = 0b100,
+    All = 0b111,
   };
 
   Flags flags = Flags::All;
-  Format preferredFormat = Format::Yaml;
+  Format format = Format::Yaml;
   bool useDescriptiveHeaders = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("displayId") for all fields
 };
 
 struct AmaQueryDisplayConfig final {
   enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
     None = 0,
-    PrintHeaders = 0b00001,
-    PrintColumns = 0b00010,
-    PrintColumnGroups = 0b00100,
-    PrintColumnGroupAccessRules = 0b01000,
-    PrintParticipantGroups = 0b10000,
-    PrintParticipantGroupAccessRules = 0b100000,
-
-    All = 0b111111,
+    PrintColumns = 0b00001,
+    PrintColumnGroups = 0b00010,
+    PrintColumnGroupAccessRules = 0b00100,
+    PrintParticipantGroups = 0b01000,
+    PrintParticipantGroupAccessRules = 0b10000,
+    All = 0b11111,
   };
 
   Flags flags = Flags::All;
-  Format preferredFormat = Format::Yaml;
+  Format format = Format::Yaml;
   bool useDescriptiveHeaders = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("displayId") for all fields
 };
 

@@ -9,7 +9,6 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
-#include <pep/structuredoutput/Text.hpp>
 #include <pep/structuredoutput/Tree.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -395,13 +394,21 @@ private:
     inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli#ama-query"; }
 
     pep::commandline::Parameters getSupportedParameters() const override {
+      namespace so = pep::structuredOutput;
+
+      const auto columnsOpt = std::string{so::queryKeys::columns.simple};
+      const auto columnGroupsOpt = std::string{so::queryKeys::columnGroups.simple};
+      const auto columnGroupAccessRulesOpt = std::string{so::queryKeys::columnGroupAccessRules.simple};
+      const auto participantGroupsOpt = std::string{so::queryKeys::participantGroups.simple};
+      const auto participantGroupAccessRulesOpt = std::string{so::queryKeys::participantGroupAccessRules.simple};
+
       return ChildCommandOf<CommandAma>::getSupportedParameters()
-        + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
-          .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
+        + pep::commandline::Parameter("include", "Prints only specified type of data (can be repeated).")
+             .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({columnsOpt, columnGroupsOpt, columnGroupAccessRulesOpt, participantGroupsOpt, participantGroupAccessRulesOpt})).multiple())
         + pep::commandline::Parameter("format", "The format of the output.")
             .value(pep::commandline::Value<std::string>()
-                .allow(std::vector<std::string>({"yaml", "json", "text"}))
-                .defaultsTo("text"))
+                .allow(std::vector<std::string>({"yaml", "json", "json-compact"}))
+                .defaultsTo("yaml"))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
         + pep::commandline::Parameter("column", "Match results related to this column. You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
@@ -409,36 +416,42 @@ private:
         + pep::commandline::Parameter("user-group", "Match results related to this user group").value(pep::commandline::Value<std::string>())
         + pep::commandline::Parameter("participant-group", "Match results related to this participant group").value(pep::commandline::Value<std::string>())
         + pep::commandline::Parameter("column-mode", "Match results related to this column-mode").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("participant-group-mode", "Match results related to this participant-group-mode").value(pep::commandline::Value<std::string>());
+        + pep::commandline::Parameter("participant-group-mode", "Match results related to this participant-group-mode").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("use-simple-keys", "Use simple keys (e.g. 'displayId' instead of 'Display ID') in the output.");
     }
 
     static pep::structuredOutput::AmaQueryDisplayConfig extractConfig(const pep::commandline::NamedValues& values) {
       namespace so = pep::structuredOutput;
 
-      constexpr auto columnsOpt = so::queryKeys::columns.simple;
-      constexpr auto columnGroupsOpt = so::queryKeys::columnGroups.simple;
-      constexpr auto columnGroupAccessRulesOpt = so::queryKeys::columnGroupAccessRules.simple;
-      constexpr auto participantGroupsOpt = so::queryKeys::participantGroups.simple;
-      constexpr auto participantGroupAccessRulesOpt = so::queryKeys::participantGroupAccessRules.simple;
-
-      const auto scriptPrintFilter = values.getOptional<std::string>("script-print");
+      const auto includedTypes = values.getOptionalMultiple<std::string>("include");
       const auto format = values.get<std::string>("format");
 
       using Flags = so::AmaQueryDisplayConfig::Flags;
       using pep::enumUtils::operator|;
 
       so::AmaQueryDisplayConfig config;
-      config.flags =
-          pep::FlagsIf(Flags::PrintHeaders, !scriptPrintFilter) |
-          pep::FlagsIf(Flags::PrintColumns, !scriptPrintFilter || scriptPrintFilter == columnsOpt) |
-          pep::FlagsIf(Flags::PrintColumnGroups, !scriptPrintFilter || scriptPrintFilter == columnGroupsOpt) |
-          pep::FlagsIf(Flags::PrintColumnGroupAccessRules, !scriptPrintFilter || scriptPrintFilter == columnGroupAccessRulesOpt) |
-          pep::FlagsIf(Flags::PrintParticipantGroups, !scriptPrintFilter || scriptPrintFilter == participantGroupsOpt) |
-          pep::FlagsIf(Flags::PrintParticipantGroupAccessRules, !scriptPrintFilter || scriptPrintFilter == participantGroupAccessRulesOpt);
-      config.preferredFormat = (format == "json") ? so::Format::Json : 
-                              (format == "text") ? so::Format::Text : 
-                              so::Format::Yaml;
-      config.useDescriptiveHeaders = !scriptPrintFilter; // Use descriptive headers in pretty-print mode
+      if (includedTypes.empty()) {
+        // No filter: print everything
+        config.flags = Flags::All;
+      } else {
+        // Filter: print only included types
+        config.flags = Flags::None;
+        for (const auto& type : includedTypes) {
+          if (type == so::queryKeys::columns.simple) {
+            config.flags = config.flags | Flags::PrintColumns;
+          } else if (type == so::queryKeys::columnGroups.simple) {
+            config.flags = config.flags | Flags::PrintColumnGroups;
+          } else if (type == so::queryKeys::columnGroupAccessRules.simple) {
+            config.flags = config.flags | Flags::PrintColumnGroupAccessRules;
+          } else if (type == so::queryKeys::participantGroups.simple) {
+            config.flags = config.flags | Flags::PrintParticipantGroups;
+          } else if (type == so::queryKeys::participantGroupAccessRules.simple) {
+            config.flags = config.flags | Flags::PrintParticipantGroupAccessRules;
+          }
+        }
+      }
+      config.format = (format == "json") ? so::Format::Json : so::Format::Yaml;
+      config.useDescriptiveHeaders = !values.has("use-simple-keys");
       return config;
     }
 
@@ -461,19 +474,16 @@ private:
         return client->getAccessManagerProxy()->amaQuery(extractQuery(values)).map([config = extractConfig(values)](pep::AmaQueryResponse res) {
           namespace so = pep::structuredOutput;
           auto tree = so::Tree::FromAmaQueryResponse(res, config);
-          const bool isPrettyPrint = pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::PrintHeaders);
+          const bool printAll = pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::All);
 
-          if (config.preferredFormat == so::Format::Json) {
+          if (config.format == so::Format::Json) {
             so::json::append(std::cout, tree) << std::endl;
-          } else if (config.preferredFormat == so::Format::Text) {
-            so::text::Config textConfig{.includeElementCounts = isPrettyPrint};
-            so::text::append(std::cout, tree, textConfig) << std::endl;
           } else {
-            so::yaml::Config yamlConfig{.includeArraySizeComments = isPrettyPrint};
+            so::yaml::Config yamlConfig{.includeArraySizeComments = printAll};
             so::yaml::append(std::cout, tree, yamlConfig) << std::endl;
           }
 
-          if (isPrettyPrint) {
+          if (printAll) {
             std::cerr
               << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
               << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'

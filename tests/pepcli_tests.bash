@@ -299,40 +299,40 @@ if should_run_test ama; then
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 
-  # Test --script-print parameter
+  # Test --include parameter
   AMA_QUERYABLE_CONFIG='{
     "columnGroups": [{
-      "name": "scriptPrintTestColumnGroup",
-      "columns": [ "scriptPrintTestColumn" ],
+      "name": "includeFlagTestColumnGroup",
+      "columns": [ "includeFlagTestColumn" ],
       "cgars": { "Research Assessor": [ "read" ] }
     }],
     "subjectGroups": [{
-      "name": "scriptPrintTestParticipantGroup",
+      "name": "includeFlagTestParticipantGroup",
       "pgars": {  "Research Assessor":  [ "access" ] }
     }]
   }'
 
   test_setup "$AMA_QUERYABLE_CONFIG"
 
-  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
-  [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
-  echo "$script_print_columns" | grep -q "scriptPrintTestColumn" || fail "--script-print columns did not include test column"
+  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --include columns)
+  [ -n "$script_print_columns" ] || fail "--include columns produced no output"
+  echo "$script_print_columns" | grep -q "includeFlagTestColumn" || fail "--include columns did not include test column"
 
-  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-groups)
-  [ -n "$script_print_column_groups" ] || fail "--script-print column-groups produced no output"
-  echo "$script_print_column_groups" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-groups did not include test columngroup"
+  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --include column-groups)
+  [ -n "$script_print_column_groups" ] || fail "--include column-groups produced no output"
+  echo "$script_print_column_groups" | grep -q "includeFlagTestColumnGroup" || fail "--include column-groups did not include test columngroup"
 
-  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-group-access-rules)
-  [ -n "$script_print_cgars" ] || fail "--script-print column-group-access-rules produced no output"
-  echo "$script_print_cgars" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-group-access-rules did not include test CGAR"
+  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --include column-group-access-rules)
+  [ -n "$script_print_cgars" ] || fail "--include column-group-access-rules produced no output"
+  echo "$script_print_cgars" | grep -q "includeFlagTestColumnGroup" || fail "--include column-group-access-rules did not include test CGAR"
 
-  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-groups)
-  [ -n "$script_print_participant_groups" ] || fail "--script-print participant-groups produced no output"
-  echo "$script_print_participant_groups" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-groups did not include test group"
+  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --include participant-groups)
+  [ -n "$script_print_participant_groups" ] || fail "--include participant-groups produced no output"
+  echo "$script_print_participant_groups" | grep -q "includeFlagTestParticipantGroup" || fail "--include participant-groups did not include test group"
 
-  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-group-access-rules)
-  [ -n "$script_print_pgars" ] || fail "--script-print participant-group-access-rules produced no output"
-  echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
+  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --include participant-group-access-rules)
+  [ -n "$script_print_pgars" ] || fail "--include participant-group-access-rules produced no output"
+  echo "$script_print_pgars" | grep -q "includeFlagTestParticipantGroup" || fail "--include participant-group-access-rules did not include test PGAR"
 
   # Clean up
   test_cleanup "$AMA_QUERYABLE_CONFIG"
