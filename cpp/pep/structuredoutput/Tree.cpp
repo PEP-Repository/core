@@ -92,7 +92,7 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
   const auto printUserGroups = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroups);
   const auto printUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUsers);
   const auto printUserGroupsForUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroupsForUsers);
-  const auto useDescriptive = config.useDescriptiveHeaders;
+  const auto useDescriptive = config.useDescriptiveKeys;
 
   json root = json::object();
 
@@ -135,7 +135,7 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
         for (const auto& group : user.mGroups) {
           userGroupsValue.push_back(group);
         }
-        item[GetKeyName(queryKeys::groups, useDescriptive)] = userGroupsValue;
+        item[GetKeyName(queryKeys::userGroups, useDescriptive)] = userGroupsValue;
       }
       users.push_back(std::move(item));
     }
@@ -152,7 +152,7 @@ Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const AmaQuery
   const auto printColumnGroupAccessRules = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintColumnGroupAccessRules);
   const auto printParticipantGroups = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintParticipantGroups);
   const auto printParticipantGroupAccessRules = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintParticipantGroupAccessRules);
-  const auto useDescriptive = config.useDescriptiveHeaders;
+  const auto useDescriptive = config.useDescriptiveKeys;
 
   json root = json::object();
 

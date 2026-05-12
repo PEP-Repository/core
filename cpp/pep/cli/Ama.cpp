@@ -431,10 +431,9 @@ private:
 
       so::AmaQueryDisplayConfig config;
       if (includedTypes.empty()) {
-        // No filter: print everything
+        // No include filter: print everything
         config.flags = Flags::All;
       } else {
-        // Filter: print only included types
         config.flags = Flags::None;
         for (const auto& type : includedTypes) {
           if (type == so::queryKeys::columns.simple) {
@@ -450,8 +449,13 @@ private:
           }
         }
       }
-      config.format = (format == "json") ? so::Format::Json : so::Format::Yaml;
-      config.useDescriptiveHeaders = !values.has("use-simple-keys");
+      if (format == "json") {
+        config.format = so::Format::Json;
+        config.useDescriptiveKeys = false;
+      } else {
+        config.format = so::Format::Yaml;
+        config.useDescriptiveKeys = true;
+      }
       return config;
     }
 

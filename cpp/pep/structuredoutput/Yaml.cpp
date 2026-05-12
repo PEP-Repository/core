@@ -67,9 +67,11 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config& config, nlohmann::o
     for (const auto& element : node) {
       indentIfNotFirst(stream);
       stream << "- ";
-      if (element.is_array() && config.includeArraySizeComments && 
-          ((element.size() == 0 && config.includeEmptyArrayComments) || element.size() >= config.arrayCountCommentThreshold)) {
-        stream << "# item count: " << element.size();
+      if (element.is_array() && !element.empty()) {
+        if (config.includeArraySizeComments && ((element.size() == 0 && config.includeEmptyArrayComments) || element.size() >= config.arrayCountCommentThreshold)) {
+          stream << "# item count: " << element.size();
+        }
+        stream << "\n" << indent << std::string(spacesPerLevel, ' ');
       }
       SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
     }

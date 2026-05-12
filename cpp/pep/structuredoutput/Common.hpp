@@ -19,27 +19,27 @@ struct QueryKey final {
   std::string_view descriptive;
 };
 
+constexpr QueryKey userGroup{"user-group", "User Group"};
+constexpr QueryKey userGroups{"user-groups", "User Groups"}; // input for --include flag
+
 // user query keys
-constexpr QueryKey userGroups{"all-user-group", "All User Groups"};
-constexpr QueryKey groupsPerUser{"groups-per-user", "User Groups per Interactive User"};
-constexpr QueryKey users{"all-user", "All Interactive Users"};
-constexpr QueryKey displayId{"displayId", "Display ID"};
-constexpr QueryKey primaryId{"primaryId", "Primary ID"};
-constexpr QueryKey otherIdentifiers{"otherIdentifiers", "Other User Identifiers"};
-constexpr QueryKey groups{"groups", "User Groups"};
-constexpr QueryKey maxAuthValidity{"maxAuthValidity", "Maximum Token Validity"};
+constexpr QueryKey groupsPerUser{"user-groups-per-user", "User Groups Per User"}; // input for --include flag
+constexpr QueryKey users{"users", "Users"}; // input for --include flag
+constexpr QueryKey displayId{"display-id", "Display ID"};
+constexpr QueryKey primaryId{"primary-id", "Primary ID"};
+constexpr QueryKey otherIdentifiers{"other-identifiers", "Other User Identifiers"};
+constexpr QueryKey maxAuthValidity{"max-token-validity", "Maximum Token Validity"};
 constexpr QueryKey name{"name", "Name"};
 
 // ama query keys
-constexpr QueryKey columns{"columns", "Columns"};
-constexpr QueryKey columnGroups{"column-groups", "Column Groups"};
-constexpr QueryKey columnGroupAccessRules{"column-group-access-rules", "Column Group Access Rules"};
-constexpr QueryKey participantGroups{"participant-groups", "Participant Groups"};
-constexpr QueryKey participantGroupAccessRules{"participant-group-access-rules", "Participant Group Access Rules"};
-constexpr QueryKey columnGroup{"columnGroup", "Column Group"};
+constexpr QueryKey columns{"columns", "Columns"}; // input for --include flag
+constexpr QueryKey columnGroup{"column-group", "Column Group"};
+constexpr QueryKey columnGroups{"column-groups", "Column Groups"}; // input for --include flag
+constexpr QueryKey columnGroupAccessRules{"column-group-access-rules", "Column Group Access Rules"}; // input for --include flag
+constexpr QueryKey participantGroup{"participant-group", "Participant Group"};
+constexpr QueryKey participantGroups{"participant-groups", "Participant Groups"}; // input for --include flag
+constexpr QueryKey participantGroupAccessRules{"participant-group-access-rules", "Participant Group Access Rules"}; // input for --include flag
 constexpr QueryKey mode{"mode", "Mode"};
-constexpr QueryKey participantGroup{"participantGroup", "Participant Group"};
-constexpr QueryKey userGroup{"userGroup", "User Group"};
 
 } // namespace queryKeys
 
@@ -59,7 +59,7 @@ struct UserQueryDisplayConfig final {
 
   Flags flags = Flags::All;
   Format format = Format::Yaml;
-  bool useDescriptiveHeaders = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("displayId") for all fields
+  bool useDescriptiveKeys = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("display-id") for all fields
 };
 
 struct AmaQueryDisplayConfig final {
@@ -75,7 +75,7 @@ struct AmaQueryDisplayConfig final {
 
   Flags flags = Flags::All;
   Format format = Format::Yaml;
-  bool useDescriptiveHeaders = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("displayId") for all fields
+  bool useDescriptiveKeys = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("display-id") for all fields
 };
 
 } // namespace pep::structuredOutput

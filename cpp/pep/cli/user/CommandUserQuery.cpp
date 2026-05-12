@@ -34,8 +34,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
              .value(pep::commandline::Value<milliseconds::rep>())
        + pep::commandline::Parameter("group", "Match user groups containing this text").value(pep::commandline::Value<std::string>())
-       + pep::commandline::Parameter("user", "Match user identifiers containing this text").value(pep::commandline::Value<std::string>())
-       + pep::commandline::Parameter("use-simple-keys", "Use simple keys (e.g. 'displayId' instead of 'Display ID') in the output.");
+       + pep::commandline::Parameter("user", "Match user identifiers containing this text").value(pep::commandline::Value<std::string>());
 }
 
 int CommandUser::CommandUserQuery::execute() {
@@ -56,7 +55,7 @@ int CommandUser::CommandUserQuery::execute() {
         if (user.mPrimaryId) {
           uids.push_back(*user.mPrimaryId);
         }
-        LOG(LOG_TAG, warning) << "No displayId for user with identifiers: " << boost::algorithm::join(uids, ", ");
+        LOG(LOG_TAG, warning) << "No display-id for user with identifiers: " << boost::algorithm::join(uids, ", ");
       }
       return pep::FakeVoid();
     });
@@ -71,6 +70,7 @@ so::UserQueryDisplayConfig CommandUser::CommandUserQuery::extractConfig(const pe
 
   so::UserQueryDisplayConfig config;
   if (includedTypes.empty()) {
+    // No include filter: print everything
     config.flags = Flags::All;
   } else {
     config.flags = Flags::None;
@@ -86,8 +86,13 @@ so::UserQueryDisplayConfig CommandUser::CommandUserQuery::extractConfig(const pe
     }
   }
 
-  config.format = (format == "json") ? so::Format::Json : so::Format::Yaml;
-  config.useDescriptiveHeaders = !values.has("use-simple-keys");
+  if (format == "json") {
+    config.format = so::Format::Json;
+    config.useDescriptiveKeys = false;
+  } else {
+    config.format = so::Format::Yaml;
+    config.useDescriptiveKeys = true;
+  }
   return config;
 }
 
