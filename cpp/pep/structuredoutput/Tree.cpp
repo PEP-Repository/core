@@ -88,10 +88,10 @@ Tree Tree::FromPropertyTree(const boost::property_tree::ptree& pt) {
   return Tree::FromJson(PtreeToJson(pt));
 }
 
-Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQueryDisplayConfig& config) {
-  const auto printUserGroups = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroups);
-  const auto printUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUsers);
-  const auto printUserGroupsForUsers = HasFlags(config.flags, UserQueryDisplayConfig::Flags::PrintUserGroupsForUsers);
+Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQueryFlags>& config) {
+  const auto printUserGroups = HasFlags(config.flags, UserQueryFlags::PrintUserGroups);
+  const auto printUsers = HasFlags(config.flags, UserQueryFlags::PrintUsers);
+  const auto printUserGroupsForUsers = HasFlags(config.flags, UserQueryFlags::PrintUserGroupsForUsers);
   const auto useDescriptive = config.useDescriptiveKeys;
 
   json root = json::object();
@@ -146,12 +146,12 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const UserQu
   return Tree::FromJson(std::move(root));
 }
 
-Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const AmaQueryDisplayConfig& config) {
-  const auto printColumns = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintColumns);
-  const auto printColumnGroups = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintColumnGroups);
-  const auto printColumnGroupAccessRules = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintColumnGroupAccessRules);
-  const auto printParticipantGroups = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintParticipantGroups);
-  const auto printParticipantGroupAccessRules = HasFlags(config.flags, AmaQueryDisplayConfig::Flags::PrintParticipantGroupAccessRules);
+Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQueryFlags>& config) {
+  const auto printColumns = HasFlags(config.flags, AmaQueryFlags::PrintColumns);
+  const auto printColumnGroups = HasFlags(config.flags, AmaQueryFlags::PrintColumnGroups);
+  const auto printColumnGroupAccessRules = HasFlags(config.flags, AmaQueryFlags::PrintColumnGroupAccessRules);
+  const auto printParticipantGroups = HasFlags(config.flags, AmaQueryFlags::PrintParticipantGroups);
+  const auto printParticipantGroupAccessRules = HasFlags(config.flags, AmaQueryFlags::PrintParticipantGroupAccessRules);
   const auto useDescriptive = config.useDescriptiveKeys;
 
   json root = json::object();

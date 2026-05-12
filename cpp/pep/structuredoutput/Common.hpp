@@ -4,6 +4,8 @@
 #include <pep/utils/EnumUtils.hpp>
 #include <string>
 #include <string_view>
+#include <variant>
+#include <cstddef>
 
 namespace pep::structuredOutput {
 
@@ -48,37 +50,50 @@ constexpr QueryKey mode{"mode", "Mode"};
     Json
   };
 
-struct UserQueryDisplayConfig final {
-  enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
-    None = 0,
-    PrintUserGroups = 0b001,
-    PrintUserGroupsForUsers = 0b010,
-    PrintUsers = 0b100,
-    All = 0b111,
-  };
-
-  Flags flags = Flags::All;
-  Format format = Format::Yaml;
-  bool useDescriptiveKeys = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("display-id") for all fields
+struct YamlConfig final {
+  WhitespaceFormat indentation = WhitespaceFormat::TwoSpaces;
+  bool includeArraySizeComments = true; ///< Adds a comment to the header of each non-empty list, displaying the number of elements
+  std::size_t arrayCountCommentThreshold = 5; ///< Minimum array size to show item count comment (unless empty)
+  bool includeEmptyArrayComments = false; ///< Show item count comment for empty arrays (size 0) for clarity
 };
 
-struct AmaQueryDisplayConfig final {
-  enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
-    None = 0,
-    PrintColumns = 0b00001,
-    PrintColumnGroups = 0b00010,
-    PrintColumnGroupAccessRules = 0b00100,
-    PrintParticipantGroups = 0b01000,
-    PrintParticipantGroupAccessRules = 0b10000,
-    All = 0b11111,
-  };
+struct JsonConfig final {
+  WhitespaceFormat wsformat = WhitespaceFormat::TwoSpaces;
+};
 
+enum class PEP_ATTRIBUTE_FLAG_ENUM UserQueryFlags {
+  None = 0,
+  PrintUserGroups = 0b001,
+  PrintUserGroupsForUsers = 0b010,
+  PrintUsers = 0b100,
+  All = 0b111,
+};
+
+enum class PEP_ATTRIBUTE_FLAG_ENUM AmaQueryFlags {
+  None = 0,
+  PrintColumns = 0b00001,
+  PrintColumnGroups = 0b00010,
+  PrintColumnGroupAccessRules = 0b00100,
+  PrintParticipantGroups = 0b01000,
+  PrintParticipantGroupAccessRules = 0b10000,
+  All = 0b11111,
+};
+
+template<typename FlagsEnum>
+struct QueryDisplayConfig final {
+  using Flags = FlagsEnum;
+  
   Flags flags = Flags::All;
-  Format format = Format::Yaml;
   bool useDescriptiveKeys = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("display-id") for all fields
+  
+  std::variant<YamlConfig, JsonConfig> formatConfig = YamlConfig{};
+  
+  Format format() const {
+    return std::holds_alternative<YamlConfig>(formatConfig) ? Format::Yaml : Format::Json;
+  }
 };
 
 } // namespace pep::structuredOutput
 
-PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::UserQueryDisplayConfig::Flags)
-PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::AmaQueryDisplayConfig::Flags)
+PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::UserQueryFlags)
+PEP_MARK_AS_FLAG_ENUM_TYPE(pep::structuredOutput::AmaQueryFlags)

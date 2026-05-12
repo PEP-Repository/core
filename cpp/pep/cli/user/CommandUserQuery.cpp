@@ -39,13 +39,13 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
-    return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
-      auto tree = so::Tree::FromUserQueryResponse(res, config);
+    return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::UserQueryResponse res) {
+      auto tree = so::Tree::FromUserQueryResponse(res, displayConfig);
       
-      if (config.format == so::Format::Json) {
-        so::json::append(std::cout, tree) << std::endl;
+      if (displayConfig.format() == so::Format::Json) {
+        so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;
       } else {
-        so::yaml::append(std::cout, tree) << std::endl;
+        so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::endl;
       }
 
       // Warn for users without displayId
@@ -62,38 +62,42 @@ int CommandUser::CommandUserQuery::execute() {
   });
 }
 
-so::UserQueryDisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
-  using Flags = so::UserQueryDisplayConfig::Flags;
+so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
+  using Flags = so::UserQueryFlags;
 
   const auto includedTypes = values.getOptionalMultiple<std::string>("include");
   const auto format = values.get<std::string>("format");
 
-  so::UserQueryDisplayConfig config;
+  so::QueryDisplayConfig<so::UserQueryFlags> displayConfig;
   if (includedTypes.empty()) {
     // No include filter: print everything
-    config.flags = Flags::All;
+    displayConfig.flags = Flags::All;
   } else {
-    config.flags = Flags::None;
+    displayConfig.flags = Flags::None;
     for (const auto& type : includedTypes) {
       if (type == so::queryKeys::userGroups.simple) {
-        config.flags = config.flags | Flags::PrintUserGroups;
+        displayConfig.flags = displayConfig.flags | Flags::PrintUserGroups;
       } else if (type == so::queryKeys::users.simple) {
-        config.flags = config.flags | Flags::PrintUsers;
+        displayConfig.flags = displayConfig.flags | Flags::PrintUsers;
       } else if (type == so::queryKeys::groupsPerUser.simple) {
         // groupsPerUser is a part of the users list. So when it's requested, we must also print users
-        config.flags = config.flags | Flags::PrintUserGroupsForUsers | Flags::PrintUsers;
+        displayConfig.flags = displayConfig.flags | Flags::PrintUserGroupsForUsers | Flags::PrintUsers;
       }
     }
   }
 
-  if (format == "json") {
-    config.format = so::Format::Json;
-    config.useDescriptiveKeys = false;
+  if (format == "json" || format == "json-compact") {
+    displayConfig.useDescriptiveKeys = false;
+    if (format == "json-compact") {
+      displayConfig.formatConfig = so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
+    } else {
+      displayConfig.formatConfig = so::JsonConfig{};
+    }
   } else {
-    config.format = so::Format::Yaml;
-    config.useDescriptiveKeys = true;
+    displayConfig.useDescriptiveKeys = true;
+    displayConfig.formatConfig = so::YamlConfig{};
   }
-  return config;
+  return displayConfig;
 }
 
 pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandline::NamedValues& values) {

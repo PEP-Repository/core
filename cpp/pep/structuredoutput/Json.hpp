@@ -7,12 +7,8 @@
 
 namespace pep::structuredOutput::json {
 
-struct Config final {
-  WhitespaceFormat wsformat = WhitespaceFormat::TwoSpaces;
-};
-
 /// Appends a JSON representation of a tree to a stream
-inline std::ostream& append(std::ostream& stream, const Tree& tree, const Config& config = {}) {
+inline std::ostream& append(std::ostream& stream, const Tree& tree, const JsonConfig& config = {}) {
   int spaces = 0;
   switch (config.wsformat) {
     case WhitespaceFormat::Compact: spaces = -1; break;
@@ -23,7 +19,7 @@ inline std::ostream& append(std::ostream& stream, const Tree& tree, const Config
 }
 
 /// Appends a JSON representation of a table to a stream
-inline std::ostream& append(std::ostream& stream, const Table& table, const Config& config = {}) { 
+inline std::ostream& append(std::ostream& stream, const Table& table, const JsonConfig& config = {}) { 
   return append(stream, TreeFromTable(table), config); 
 }
 

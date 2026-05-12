@@ -420,16 +420,16 @@ private:
         + pep::commandline::Parameter("use-simple-keys", "Use simple keys (e.g. 'displayId' instead of 'Display ID') in the output.");
     }
 
-    static pep::structuredOutput::AmaQueryDisplayConfig extractConfig(const pep::commandline::NamedValues& values) {
+    static pep::structuredOutput::QueryDisplayConfig<pep::structuredOutput::AmaQueryFlags> extractConfig(const pep::commandline::NamedValues& values) {
       namespace so = pep::structuredOutput;
 
       const auto includedTypes = values.getOptionalMultiple<std::string>("include");
       const auto format = values.get<std::string>("format");
 
-      using Flags = so::AmaQueryDisplayConfig::Flags;
+      using Flags = so::AmaQueryFlags;
       using pep::enumUtils::operator|;
 
-      so::AmaQueryDisplayConfig config;
+      so::QueryDisplayConfig<so::AmaQueryFlags> config;
       if (includedTypes.empty()) {
         // No include filter: print everything
         config.flags = Flags::All;
@@ -449,12 +449,16 @@ private:
           }
         }
       }
-      if (format == "json") {
-        config.format = so::Format::Json;
+      if (format == "json" || format == "json-compact") {
         config.useDescriptiveKeys = false;
+        if (format == "json-compact") {
+          config.formatConfig = so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
+        } else {
+          config.formatConfig = so::JsonConfig{};
+        }
       } else {
-        config.format = so::Format::Yaml;
         config.useDescriptiveKeys = true;
+        config.formatConfig = so::YamlConfig{};
       }
       return config;
     }
@@ -479,18 +483,18 @@ private:
           namespace so = pep::structuredOutput;
           auto tree = so::Tree::FromAmaQueryResponse(res, config);
 
-          if (config.format == so::Format::Json) {
-            so::json::append(std::cout, tree) << std::endl;
+          if (config.format() == so::Format::Json) {
+            so::json::append(std::cout, tree, std::get<so::JsonConfig>(config.formatConfig)) << std::endl;
           } else {
-            so::yaml::append(std::cout, tree) << std::endl;
+            so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(config.formatConfig)) << std::endl;
           }
 
-          if (pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::PrintColumnGroupAccessRules)) {
+          if (pep::HasFlags(config.flags, so::AmaQueryFlags::PrintColumnGroupAccessRules)) {
             std::cerr << "The \"read\" access privilege grants access to \"read-meta\" data as well." << std::endl;
             std::cerr << "The \"write-meta\" access privilege grants access to \"write\" data as well." << std::endl;
             std::cerr << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
           }
-          if (pep::HasFlags(config.flags, so::AmaQueryDisplayConfig::Flags::PrintParticipantGroupAccessRules)) {
+          if (pep::HasFlags(config.flags, so::AmaQueryFlags::PrintParticipantGroupAccessRules)) {
             std::cerr << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << std::endl;
           }
 
