@@ -131,8 +131,10 @@ rxcpp::observable<FakeVoid> ServerConnection::shutdown() {
   }
 
   auto result = mNode->shutdown();
-  for (const auto& pending : std::move(mPendingRequests)) {
-    pending.subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection is shutting down")));
+  auto pending = std::move(mPendingRequests);
+  mPendingRequests.clear(); // Our call to std::move doesn't (necessarily) clear the vector
+  for (const auto& request : pending) {
+    request.subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection is shutting down")));
   }
   return result;
 }
