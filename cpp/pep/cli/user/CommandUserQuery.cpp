@@ -95,7 +95,7 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
     }
   } else {
     displayConfig.useDescriptiveKeys = true;
-    displayConfig.formatConfig = so::YamlConfig{};
+    displayConfig.formatConfig = so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
   }
   return displayConfig;
 }
