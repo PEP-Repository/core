@@ -16,6 +16,7 @@ class AppCmd;
 class ServerCmd;
 
 int Process(AppCmd& cmd, std::initializer_list<std::string> args);
+int Process(AppCmd&& cmd, std::initializer_list<std::string> args);
 std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initializer_list<std::string> args);
 
 // Mixin for automatic parameter recording in test commands
