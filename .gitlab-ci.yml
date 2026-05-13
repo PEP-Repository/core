@@ -8,10 +8,10 @@ spec:
       description: Enable SAST build (yes/no)
       type: boolean
       default: false
-    enable_coverage:
+    test_coverage:
+      options: ['no-coverage', 'coverage']
+      default: no-coverage
       description: Enable code coverage reporting
-      type: boolean
-      default: false
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -461,8 +461,8 @@ retrieve-lockfile:
   - *set-enable-deprecation-errors
   - coverage_flags=""
   - |
-    if [ "$[[ inputs.enable_coverage ]]" = "true" ]; then
-      coverage_flags="-DCMAKE_CXX_FLAGS=--coverage -DCMAKE_C_FLAGS=--coverage -DCMAKE_EXE_LINKER_FLAGS=--coverage"
+    if [ "$[[ inputs.test_coverage ]]" = "coverage" ]; then
+      coverage_flags="-DCMAKE_CXX_FLAGS=--coverage -DCMAKE_C_FLAGS=--coverage"
     fi
   - >
     cmake --preset conan-$build_type_lower
@@ -1133,7 +1133,7 @@ build-sandbox-docker-image:
     reports:
       junit: temp/*.xml
 
-ubuntu-lts-debug-test:
+ubuntu-lts-debug-test-$[[ inputs.test_coverage ]]:
   extends:
     - .ubuntu-test-base
     - .ubuntu-lts-debug-settings
@@ -1142,7 +1142,7 @@ ubuntu-lts-debug-test:
   needs: [ubuntu-lts-debug]
   after_script:
     - |
-      if [ "$[[ inputs.enable_coverage ]]" = "true" ]; then
+      if [ "$[[ inputs.test_coverage ]]" = "coverage" ]; then
         # Install gcovr for coverage report generation
         pip3 install gcovr
         # Generate coverage report in Cobertura XML format
