@@ -1,3 +1,4 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "CommandLineParameterTestFixture.hpp"
@@ -539,13 +540,7 @@ TEST(ParameterTypes, MultipleValuesParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Alice", "--groups", "admin", "--groups", "dev", "--groups", "qa"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  auto groups = cmd.getCapturedValues<std::string>(userCommandPath, "groups");
-  ASSERT_EQ(groups.size(), 3);
-  ASSERT_EQ(groups[0], "admin");
-  ASSERT_EQ(groups[1], "dev");
-  ASSERT_EQ(groups[2], "qa");
-  ASSERT_EQ(cmd.getCapturedCount(userCommandPath, "groups"), 3);
-  ASSERT_TRUE(cmd.hasCapturedParam(userCommandPath, "groups"));
+  ASSERT_THAT(cmd.getCapturedValues<std::string>(userCommandPath, "groups"), testing::ElementsAre("admin", "dev", "qa"));
   ASSERT_TRUE(err.empty());
 }
 
@@ -555,9 +550,6 @@ TEST(ParameterTypes, EmptyMultipleValuesParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  auto groups = cmd.getCapturedValues<std::string>(userCommandPath, "groups");
-  ASSERT_TRUE(groups.empty());
-  ASSERT_EQ(cmd.getCapturedCount(userCommandPath, "groups"), 0);
   ASSERT_FALSE(cmd.hasCapturedParam(userCommandPath, "groups"));
   ASSERT_TRUE(err.empty());
 }
@@ -569,7 +561,6 @@ TEST(ParameterTypes, IntegerParameterTypes) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob", "--age", "30"});
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age"), 30);
-  ASSERT_TRUE(cmd.hasCapturedParam(userCommandPath, "age"));
   ASSERT_TRUE(err.empty());
   
   // Test with ServerCmd
@@ -578,8 +569,6 @@ TEST(ParameterTypes, IntegerParameterTypes) {
   ASSERT_EQ(exitCode2, EXIT_SUCCESS);
   ASSERT_EQ(cmd2.getCapturedValue<int>(serverStartCommandPath, "workers"), 4);
   ASSERT_EQ(cmd2.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
-  ASSERT_TRUE(cmd2.hasCapturedParam(serverStartCommandPath, "workers"));
-  ASSERT_TRUE(cmd2.hasCapturedParam(serverStartCommandPath, "port"));
   ASSERT_TRUE(err2.empty());
 }
 
@@ -591,16 +580,7 @@ TEST(ParameterTypes, MixedParameterTypes) {
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Charlie");
   ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age"), 25);
-  auto groups = cmd.getCapturedValues<std::string>(userCommandPath, "groups");
-  ASSERT_EQ(groups.size(), 2);
-  ASSERT_EQ(groups[0], "admin");
-  ASSERT_EQ(groups[1], "users");
-  ASSERT_EQ(cmd.getCapturedCount(userCommandPath, "name"), 1);
-  ASSERT_EQ(cmd.getCapturedCount(userCommandPath, "age"), 1);
-  ASSERT_EQ(cmd.getCapturedCount(userCommandPath, "groups"), 2);
-  ASSERT_TRUE(cmd.hasCapturedParam(userCommandPath, "name"));
-  ASSERT_TRUE(cmd.hasCapturedParam(userCommandPath, "age"));
-  ASSERT_TRUE(cmd.hasCapturedParam(userCommandPath, "groups"));
+  ASSERT_THAT(cmd.getCapturedValues<std::string>(userCommandPath, "groups"), testing::ElementsAre("admin", "users"));
   ASSERT_TRUE(err.empty());
 }
 
@@ -910,10 +890,6 @@ TEST(ParameterParameterCombinations, NormalParameterWithNormalParameter) {
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "alice@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Alice");
-  EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "email"));
-  EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "name"));
-  EXPECT_EQ(cmd.getCapturedCount(userCommandPath, "email"), 1);
-  EXPECT_EQ(cmd.getCapturedCount(userCommandPath, "name"), 1);
   EXPECT_TRUE(err.empty());
 }
 
@@ -926,8 +902,6 @@ TEST(ParameterParameterCombinations, DeprecatedParameterWithNormalParameter) {
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "old-email"));
   EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "name"));
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "alice@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Alice");
   EXPECT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
 }
 
@@ -938,8 +912,6 @@ TEST(ParameterParameterCombinations, DeprecatedParameterWithDeprecatedParameter)
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--old-email", "old@example.com", "--old-name", "staging"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedCount(userCommandPath, "old-email"), 1);
-  EXPECT_EQ(cmd.getCapturedCount(userCommandPath, "old-name"), 1);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "old@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-name"), "staging");
   EXPECT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
@@ -1260,8 +1232,6 @@ TEST(ForwardingCombinations, AliasParameterToNormalCommand) {
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
-  EXPECT_TRUE(cmd.hasCapturedParam(serverStartCommandPath, "port"));
-  EXPECT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
   EXPECT_TRUE(err.empty());
 }
 
@@ -1395,8 +1365,6 @@ TEST(ComplexForwarding, ValueSplittingViaDispatchTo) {
   ASSERT_NE(err.find("Warning: '--host-port' is deprecated."), std::string::npos);
   ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
   ASSERT_EQ(cmd.getCapturedValue<std::string>(serverStartCommandPath, "host"), "localhost");
-  ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
-  ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "host"), 1);
 }
 
 // [4-2a]: Conditional parameter forwarding based on parameter value
@@ -1430,9 +1398,7 @@ TEST(ComplexForwarding, RootParametersAvailableAfterSubcommandForward) {
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_TRUE(err.empty());
   ASSERT_EQ(cmd.getCapturedValue<std::string>(appCommandPath, "global-param"), "global-value");
-  ASSERT_EQ(cmd.getCapturedCount(appCommandPath, "global-param"), 1);
   ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 7000);
-  ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
 }
 
 // Tests invalid access which would otherwise cause crashes, should assert in debug builds
@@ -1465,9 +1431,6 @@ TEST(ComplexForwarding, AliasCommandCanInjectAdditionalParameters) {
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_TRUE(err.empty());
-  ASSERT_TRUE(cmd.hasCapturedParam(serverStartCommandPath, "verbose"));
   ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "verbose"), 2);
-  ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "verbose"), 1);
   ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
-  ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
 }

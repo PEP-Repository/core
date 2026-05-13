@@ -127,14 +127,6 @@ public:
     return commandIt->second.has(paramName);
   }
 
-  size_t getCapturedCount(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    auto commandIt = mCapturedParams.find(commandPath.toString());
-    if (commandIt == mCapturedParams.end()) {
-      return 0;
-    }
-    return commandIt->second.count(paramName);
-  }
-
 private:
   std::map<std::string, pep::commandline::NamedValues> mCapturedParams;
 };
