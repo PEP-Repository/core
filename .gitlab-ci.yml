@@ -461,11 +461,6 @@ retrieve-lockfile:
     --output-folder=./$BUILD_DIRECTORY/
   - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
   - *set-enable-deprecation-errors
-  - coverage_flags=""
-  - |
-    if [ "${ENABLE_COVERAGE:-no}" = "yes" ]; then
-      coverage_flags="-DCMAKE_CXX_FLAGS=-fprofile-instr-generate;-fcoverage-mapping -DCMAKE_C_FLAGS=-fprofile-instr-generate;-fcoverage-mapping"
-    fi
   - >
     cmake --preset conan-$build_type_lower
     -DCMAKE_C_COMPILER_LAUNCHER=ccache
@@ -476,7 +471,7 @@ retrieve-lockfile:
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
-    $coverage_flags
+    -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
 
 .ubuntu-build-base:
   <<: *ccache-configuration
@@ -631,7 +626,7 @@ ubuntu-lts-debug:
   rules:
     - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
       variables:
-        ENABLE_COVERAGE: "yes"
+        ENABLE_COVERAGE: "ON"
     - when: on_success
 
 #################### Ubuntu LTS Debug w/o Castor ####################
@@ -1149,7 +1144,7 @@ ubuntu-lts-debug-test:
   needs: [ubuntu-lts-debug]
   after_script:
     - |
-      if [ "${ENABLE_COVERAGE:-no}" = "yes" ]; then
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
         # Merge all raw profile files into indexed profile
         llvm-profdata-18 merge -sparse coverage-*.profraw -o coverage.profdata
         
