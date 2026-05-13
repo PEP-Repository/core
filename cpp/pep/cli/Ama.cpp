@@ -411,13 +411,12 @@ private:
                 .defaultsTo("yaml"))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
-        + pep::commandline::Parameter("column", "Match results related to this column. You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("column-group", "Match results related to this column group").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("user-group", "Match results related to this user group").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("participant-group", "Match results related to this participant group").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("column-mode", "Match results related to this column-mode").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("participant-group-mode", "Match results related to this participant-group-mode").value(pep::commandline::Value<std::string>())
-        + pep::commandline::Parameter("use-simple-keys", "Use simple keys (e.g. 'displayId' instead of 'Display ID') in the output.");
+        + pep::commandline::Parameter("column", "Show results related to this column (exact match required). You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-group", "Show results related to this column group (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("user-group", "Show results related to this user group (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group", "Show results related to this participant group (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-mode", "Show results related to this column mode (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group-mode", "Show results related to this participant group mode (exact match required)").value(pep::commandline::Value<std::string>());
     }
 
     static pep::structuredOutput::QueryDisplayConfig<pep::structuredOutput::AmaQueryFlags> extractConfig(const pep::commandline::NamedValues& values) {
