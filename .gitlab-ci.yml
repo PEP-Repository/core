@@ -1133,7 +1133,7 @@ build-sandbox-docker-image:
     reports:
       junit: temp/*.xml
 
-ubuntu-lts-debug-test-$[[ inputs.test_coverage ]]:
+ubuntu-lts-debug-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-lts-debug-settings
