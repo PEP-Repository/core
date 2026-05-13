@@ -45,14 +45,22 @@ void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohman
   else if (node.is_number_integer()) { stream << std::to_string(node.get<int>()) + "\n"; }
   else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
   else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
-  else if (node.empty()) { stream << (node.is_array() ? "[]" : "{}") << "\n"; }
+  else if (node.empty()) {
+    stream << (node.is_array() ? "[]" : "{}");
+    if (node.is_array() && config.includeArraySizeComments && config.includeEmptyArrayComments) {
+      stream << " # item count: 0";
+    }
+    stream << "\n";
+  }
   else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>(), ForceQuotes::Yes) << "\n"; }
   else if (node.is_object()) {
     for (auto it = node.begin(); it != node.end(); it++) {
       indentIfNotFirst(stream);
       AppendStringLiteral(stream, it.key(), ForceQuotes::No) << ":";
 
-      if (isAtomic(*it)) { stream << " "; }
+      if (isAtomic(*it)) { 
+        stream << " "; 
+      }
       else {
         if (it->is_array() && config.includeArraySizeComments && 
             ((it->size() == 0 && config.includeEmptyArrayComments) || it->size() >= config.arrayCountCommentThreshold)) {
@@ -68,7 +76,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohman
       indentIfNotFirst(stream);
       stream << "- ";
       if (element.is_array() && !element.empty()) {
-        if (config.includeArraySizeComments && ((element.size() == 0 && config.includeEmptyArrayComments) || element.size() >= config.arrayCountCommentThreshold)) {
+        if (config.includeArraySizeComments && element.size() >= config.arrayCountCommentThreshold) {
           stream << "# item count: " << element.size();
         }
         stream << "\n" << indent << std::string(spacesPerLevel, ' ');

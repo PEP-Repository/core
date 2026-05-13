@@ -52,9 +52,9 @@ constexpr QueryKey mode{"mode", "Mode"};
 
 struct YamlConfig final {
   WhitespaceFormat indentation = WhitespaceFormat::TwoSpaces;
-  bool includeArraySizeComments = true; ///< Adds a comment to the header of each non-empty list, displaying the number of elements
+  bool includeArraySizeComments = false; ///< Adds a comment to the header of each non-empty list, displaying the number of elements
   std::size_t arrayCountCommentThreshold = 5; ///< Minimum array size to show item count comment (unless empty)
-  bool includeEmptyArrayComments = true; ///< Show item count comment for empty arrays (size 0) for clarity
+  bool includeEmptyArrayComments = false; ///< Show item count comment for empty arrays (size 0) when enabled
 };
 
 struct JsonConfig final {
