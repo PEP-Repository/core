@@ -205,16 +205,19 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
   int result{-1};
 
-  auto stopEventLoop = [this, &result, invoked = MakeSharedCopy(false)](std::exception_ptr ep) {
-    if (!*invoked) {
+  auto stopEventLoop = [this, &result, invoked = MakeSharedCopy(false)](std::exception_ptr exception) {
+    severity_level severity;
+    if (!*invoked) { // First invocation: determine the application's (output and) exit code
       *invoked = true;
-      if (ep != nullptr) {
-        LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
-        result = 4;
-      }
-      else {
-        result = 0;
-      }
+      severity = pep::error;
+      result = (exception ? 4 : 0);
+    }
+    else { // Recursive invocation due to errors during mClient->shutdown, which commonly are "Server connection is shutting down"
+      severity = pep::debug;
+    }
+
+    if (exception != nullptr) {
+      LOG(LOG_TAG, severity) << "error: " << pep::GetExceptionMessage(exception) << std::endl;
     }
 
     mWorkGuard.reset();
