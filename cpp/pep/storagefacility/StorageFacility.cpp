@@ -106,7 +106,7 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
   RegisteredMetrics(registry),
   data_stored_bytes(prometheus::BuildCounter()
     .Name("pep_sf_stored_bytes")
-    .Help("Total amount of bytes in datapages received by clients to be stored")
+    .Help("Total amount of bytes in datapages received by clients to be stored") // by this process (PID), i.e. during this session
     .Register(*registry)
     .Add({})),
   data_retrieved_bytes(prometheus::BuildCounter()
@@ -138,14 +138,24 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
-  entriesIncludingHistory(prometheus::BuildGauge()
+  entriesIncludingHistory(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
     .Name("pep_sf_entries")
     .Help("Number of entries managed by FileStore, includes history of every file")
     .Register(*registry)
     .Add({})),
   entriesInMetaDir(prometheus::BuildGauge()
     .Name("pep_sf_meta_on_disk")
-    .Help("Number of entries in the meta/ dir")
+    .Help("Number of entries in the meta/ dir") // normally the number of subdirectories, i.e. the number of rows ("participants")
+    .Register(*registry)
+    .Add({})),
+  totalPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
+    .Name("pep_total_payload_bytes")
+    .Help("Total bytes in payload(page)s of all entries including history")
+    .Register(*registry)
+    .Add({})),
+  rollingPayloadBytes(prometheus::BuildGauge()
+    .Name("pep_rolling_payload_bytes")
+    .Help("Total bytes in payload(page)s of current/latest/rolling data")
     .Register(*registry)
     .Add({}))
 { }
@@ -774,8 +784,9 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
                   LOG(LOG_TAG, warning) << ss.str();
                   ctx->errors.push_back(ss.str());
                 }
-                server->mMetrics->entriesIncludingHistory.Set(static_cast<double>(server->mFileStore->entryCount()));
               }
+
+              server->updateFileStoreMetrics();
 
               if (!ctx->errors.empty()) {
                 auto description = boost::algorithm::join(ctx->errors, "; ");
@@ -1100,8 +1111,18 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleDataEnumerationRequest2,
                           &StorageFacility::handleDataHistoryRequest2);
 
-  mMetrics->entriesIncludingHistory.Set(static_cast<double>(mFileStore->entryCount()));
+  this->updateFileStoreMetrics();
   statsTimer({});
+}
+
+void StorageFacility::updateFileStoreMetrics() {
+  size_t entryCount;
+  uint64_t totalPayloadBytes, rollingPayloadBytes;
+  mFileStore->getMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+
+  mMetrics->entriesIncludingHistory.Set(static_cast<double>(entryCount));
+  mMetrics->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
+  mMetrics->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
 }
 
 }

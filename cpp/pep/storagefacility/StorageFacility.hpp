@@ -28,7 +28,12 @@ private:
 
     prometheus::Gauge& entriesIncludingHistory;
     prometheus::Gauge& entriesInMetaDir;
+
+    prometheus::Gauge& totalPayloadBytes; // including history
+    prometheus::Gauge& rollingPayloadBytes; // "latest" snapshot
   };
+
+  void updateFileStoreMetrics();
 
 public:
   class Parameters : public SigningServer::Parameters {
