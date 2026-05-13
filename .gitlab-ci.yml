@@ -397,6 +397,8 @@ cleanup:
 .run-tests: &run-tests
   - |
     DID_JOB_FAIL=0
+    # Set profile file location for LLVM coverage
+    export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/coverage-%p.profraw"
     for TEST in $TESTS; do
       if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
         DID_JOB_FAIL=1
@@ -462,7 +464,7 @@ retrieve-lockfile:
   - coverage_flags=""
   - |
     if [ "${ENABLE_COVERAGE:-no}" = "yes" ]; then
-      coverage_flags="-DCMAKE_CXX_FLAGS=--coverage -DCMAKE_C_FLAGS=--coverage"
+      coverage_flags="-DCMAKE_CXX_FLAGS='-fprofile-instr-generate -fcoverage-mapping' -DCMAKE_C_FLAGS='-fprofile-instr-generate -fcoverage-mapping'"
     fi
   - >
     cmake --preset conan-$build_type_lower
@@ -1148,12 +1150,27 @@ ubuntu-lts-debug-test:
   after_script:
     - |
       if [ "${ENABLE_COVERAGE:-no}" = "yes" ]; then
-        # Generate coverage report in Cobertura XML format
-        gcovr --root . --xml --output coverage.xml \
+        # Merge all raw profile files into indexed profile
+        llvm-profdata-18 merge -sparse coverage-*.profraw -o coverage.profdata
+        
+        # Get list of test binaries for coverage export
+        TEST_BINARIES=""
+        for TEST in $TESTS; do
+          TEST_BINARIES="$TEST_BINARIES --object $STAGING_DIRECTORY/$TEST"
+        done
+        
+        # Export to gcov-compatible format that gcovr can read
+        llvm-cov-18 export $TEST_BINARIES \
+          -instr-profile=coverage.profdata \
+          -format=lcov \
+          > coverage.lcov
+        
+        # Use gcovr to generate Cobertura XML from lcov
+        gcovr --lcov coverage.lcov \
+          --cobertura coverage.xml \
           --filter 'cpp/pep/.*' \
           --exclude '.*/tests/.*' \
           --exclude '.*UnitTests.*' \
-          "$BUILD_DIRECTORY/" \
           --print-summary
       fi
   artifacts:
