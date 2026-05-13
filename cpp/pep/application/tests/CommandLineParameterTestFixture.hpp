@@ -5,9 +5,7 @@
 #include <pep/application/CommandLineValue.hpp>
 #include <pep/application/CommandLineParameter.hpp>
 
-#include <functional>
 #include <map>
-#include <queue>
 #include <string>
 #include <vector>
 #include <optional>
@@ -17,7 +15,7 @@ namespace pep::application::test {
 class AppCmd;
 class ServerCmd;
 
-std::queue<std::string> ToQueue(std::initializer_list<std::string> values);
+int Process(AppCmd& cmd, std::initializer_list<std::string> args);
 std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initializer_list<std::string> args);
 
 // Mixin for automatic parameter recording in test commands
