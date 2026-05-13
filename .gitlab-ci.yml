@@ -1146,7 +1146,7 @@ ubuntu-lts-debug-test:
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
         # Merge all raw profile files into indexed profile
-        llvm-profdata-18 merge -sparse coverage-*.profraw -o coverage.profdata
+        llvm-profdata merge -sparse coverage-*.profraw -o coverage.profdata
         
         # Get list of test binaries for coverage export
         TEST_BINARIES=""
@@ -1155,7 +1155,7 @@ ubuntu-lts-debug-test:
         done
         
         # Export to gcov-compatible format that gcovr can read
-        llvm-cov-18 export $TEST_BINARIES \
+        llvm-cov export $TEST_BINARIES \
           -instr-profile=coverage.profdata \
           -format=lcov \
           > coverage.lcov
