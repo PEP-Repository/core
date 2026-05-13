@@ -205,16 +205,16 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
   int result{-1};
 
-  auto stopEventLoop = [this, &result, logged = MakeSharedCopy(false)](std::exception_ptr ep) {
-    if (ep != nullptr) {
-      if (!*logged) {
+  auto stopEventLoop = [this, &result, invoked = MakeSharedCopy(false)](std::exception_ptr ep) {
+    if (!*invoked) {
+      *invoked = true;
+      if (ep != nullptr) {
         LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
-        *logged = true;
+        result = 4;
       }
-      result = 4;
-    }
-    else {
-      result = 0;
+      else {
+        result = 0;
+      }
     }
 
     mWorkGuard.reset();
