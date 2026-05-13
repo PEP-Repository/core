@@ -185,6 +185,10 @@ std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initiali
   return {exitCode, std::move(err)};
 }
 
+std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd&& cmd, std::initializer_list<std::string> args) {
+  return ProcessWithCapturedStderr(cmd, args);  // passing rvalue arg as lvalue
+}
+
 // RecordingCommandMixin implementation
 void RecordingCommandMixin::captureParameters() {
   if (auto* parent = getParentMixin()) {
@@ -1041,8 +1045,7 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithForwarding
 // [2-11]: NoLongSupp Par + Normal Par
 // Fail with error about no longer supported parameter
 TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithNormalParameter) {
-  AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob", "--role", "admin"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(AppCmd{}, {"user", "--name", "Bob", "--role", "admin"});
 
   EXPECT_EQ(exitCode, EXIT_FAILURE) << "Should error on no-longer-supported parameter even when combined with normal parameter";
   EXPECT_NE(err.find("Error: The parameter '--role' is no longer supported."), std::string::npos);
@@ -1051,8 +1054,7 @@ TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithNormalParamet
 // [2-12]: NoLongSupp Par + Depr Par
 // Fail with error about no longer supported parameter
 TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithDeprecatedParameter) {
-  AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--old-email", "old@example.com", "--role", "admin"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(AppCmd{}, {"user", "--old-email", "old@example.com", "--role", "admin"});
 
   EXPECT_EQ(exitCode, EXIT_FAILURE) << "Should error on no-longer-supported parameter even when combined with in-place deprecated parameter";
   EXPECT_NE(err.find("Error: The parameter '--role' is no longer supported."), std::string::npos);
@@ -1061,8 +1063,7 @@ TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithDeprecatedPar
 // [2-13]: NoLongSupp Par + Alias Par
 // Fail with error about no longer supported parameter
 TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithAliasParameter) {
-  AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--role", "admin", "--mail", "test@example.com"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(AppCmd{}, {"user", "--role", "admin", "--mail", "test@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_FAILURE);
   EXPECT_NE(err.find("Error: The parameter '--role' is no longer supported."), std::string::npos);
@@ -1071,8 +1072,7 @@ TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithAliasParamete
 // [2-14]: NoLongSupp Par + Forwarding Depr Par
 // Fail with error about no longer supported parameter
 TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithForwardingDeprecatedParameter) {
-  AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--username", "alice@example.com", "--role", "admin"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(AppCmd{}, {"user", "--username", "alice@example.com", "--role", "admin"});
 
   EXPECT_EQ(exitCode, EXIT_FAILURE) << "Should error on no-longer-supported parameter even when combined with forwarding deprecated parameter";
   EXPECT_NE(err.find("Error: The parameter '--role' is no longer supported."), std::string::npos);
@@ -1081,8 +1081,7 @@ TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithForwardingDep
 // [2-15]: NoLongSupp Par + NoLongSupp Par
 // Should see error for at least one of the no-longer-supported parameters
 TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithNoLongerSupportedParameter) {
-  AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--role", "admin", "--permission", "write"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(AppCmd{}, {"user", "--role", "admin", "--permission", "write"});
 
   EXPECT_EQ(exitCode, EXIT_FAILURE) << "Should fail when using no-longer-supported parameters together";
   EXPECT_TRUE(
