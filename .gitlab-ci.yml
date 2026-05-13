@@ -461,7 +461,7 @@ retrieve-lockfile:
   - *set-enable-deprecation-errors
   - coverage_flags=""
   - |
-    if [ "$[[ inputs.test_coverage ]]" = "coverage" ]; then
+    if [ "${ENABLE_COVERAGE:-no}" = "yes" ]; then
       coverage_flags="-DCMAKE_CXX_FLAGS=--coverage -DCMAKE_C_FLAGS=--coverage"
     fi
   - >
@@ -626,6 +626,11 @@ ubuntu-lts-debug:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-lts-debug-settings
+  rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
+      variables:
+        ENABLE_COVERAGE: "yes"
+    - when: on_success
 
 #################### Ubuntu LTS Debug w/o Castor ####################
 
@@ -1142,9 +1147,7 @@ ubuntu-lts-debug-test:
   needs: [ubuntu-lts-debug]
   after_script:
     - |
-      if [ "$[[ inputs.test_coverage ]]" = "coverage" ]; then
-        # Install gcovr for coverage report generation
-        pip3 install gcovr
+      if [ "${ENABLE_COVERAGE:-no}" = "yes" ]; then
         # Generate coverage report in Cobertura XML format
         gcovr --root . --xml --output coverage.xml \
           --filter 'cpp/pep/.*' \
