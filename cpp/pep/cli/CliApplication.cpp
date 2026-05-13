@@ -203,7 +203,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
 }
 
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
-  int result{-1};
+  int result{ -1 };
 
   auto stopEventLoop = [this, &result, invoked = MakeSharedCopy(false)](std::exception_ptr exception) {
     severity_level severity;
@@ -235,20 +235,21 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
 
   connectClient(ensureEnrolled)
     .flat_map([this, callback](pep::FakeVoid unused) {
-    return callback(mClient);
-      }).subscribe(
-        [](pep::FakeVoid) { /* ignore */ },
-        [stopEventLoop](std::exception_ptr ep) { stopEventLoop(ep); },
-        [stopEventLoop]() {stopEventLoop(nullptr); }
-      );
+        return callback(mClient);
+      })
+    .subscribe(
+      [](pep::FakeVoid) { /* ignore */ },
+      [stopEventLoop](std::exception_ptr ep) { stopEventLoop(ep); },
+      [stopEventLoop]() {stopEventLoop(nullptr); }
+    );
 
-      assert(mClient != nullptr);
+  assert(mClient != nullptr);
 
-      // io_context.run() usually returns when there is no work to do.
-      // Our this->mWorkGuard prevents this though.
-      mClient->getIoContext()->run();
-      mClient = nullptr;
-      return result;
+  // io_context.run() usually returns when there is no work to do.
+  // Our this->mWorkGuard prevents this though.
+  mClient->getIoContext()->run();
+  mClient = nullptr;
+  return result;
 }
 
 std::optional<std::string> CliApplication::getTokenSecret() const {
