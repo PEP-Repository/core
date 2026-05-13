@@ -464,7 +464,7 @@ retrieve-lockfile:
   - coverage_flags=""
   - |
     if [ "${ENABLE_COVERAGE:-no}" = "yes" ]; then
-      coverage_flags="-DCMAKE_CXX_FLAGS='-fprofile-instr-generate -fcoverage-mapping' -DCMAKE_C_FLAGS='-fprofile-instr-generate -fcoverage-mapping'"
+      coverage_flags="-DCMAKE_CXX_FLAGS=-fprofile-instr-generate;-fcoverage-mapping -DCMAKE_C_FLAGS=-fprofile-instr-generate;-fcoverage-mapping"
     fi
   - >
     cmake --preset conan-$build_type_lower
