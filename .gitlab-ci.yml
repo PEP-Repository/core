@@ -8,6 +8,10 @@ spec:
       description: Enable SAST build (yes/no)
       type: boolean
       default: false
+    enable_coverage:
+      description: Enable code coverage reporting
+      type: boolean
+      default: false
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -455,6 +459,11 @@ retrieve-lockfile:
     --output-folder=./$BUILD_DIRECTORY/
   - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
   - *set-enable-deprecation-errors
+  - coverage_flags=""
+  - |
+    if [ "$ENABLE_COVERAGE" = "yes" ]; then
+      coverage_flags="-DCMAKE_CXX_FLAGS=--coverage -DCMAKE_C_FLAGS=--coverage -DCMAKE_EXE_LINKER_FLAGS=--coverage"
+    fi
   - >
     cmake --preset conan-$build_type_lower
     -DCMAKE_C_COMPILER_LAUNCHER=ccache
@@ -465,6 +474,7 @@ retrieve-lockfile:
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    $coverage_flags
 
 .ubuntu-build-base:
   <<: *ccache-configuration
@@ -616,6 +626,8 @@ ubuntu-lts-debug:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-lts-debug-settings
+  variables:
+    ENABLE_COVERAGE: "$[[ inputs.enable_coverage && 'yes' || 'no' ]]"
 
 #################### Ubuntu LTS Debug w/o Castor ####################
 
@@ -1129,7 +1141,27 @@ ubuntu-lts-debug-test:
     - .ubuntu-lts-debug-settings
   variables:
     MEM_ANALYSIS_TOOL: "none"
+    ENABLE_COVERAGE: "$[[ inputs.enable_coverage && 'yes' || 'no' ]]"
   needs: [ubuntu-lts-debug]
+  after_script:
+    - |
+      if [ "$ENABLE_COVERAGE" = "yes" ]; then
+        # Install gcovr for coverage report generation
+        pip3 install gcovr
+        # Generate coverage report in Cobertura XML format
+        gcovr --root . --xml --output coverage.xml \
+          --filter 'cpp/pep/.*' \
+          --exclude '.*/tests/.*' \
+          --exclude '.*UnitTests.*' \
+          "$BUILD_DIRECTORY/" \
+          --print-summary
+      fi
+  artifacts:
+    reports:
+      junit: temp/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
   extends: .ubuntu-lts-debug-settings
