@@ -524,17 +524,33 @@ class MailSender(Connector):
                 # If we get here, email was sent successfully
                 break
 
-            except smtplib.SMTPSenderRefused as e:
+            except smtplib.SMTPResponseException as e:
                 last_exception = e
-                if e.smtp_code == 451 and attempt < email_config.max_retries:
-                    wait_time = email_config.retry_delay * (2 ** attempt)  # Exponential backoff
-                    self.log(f"Temporary SMTP error (451): {e.smtp_error}. Retrying in {wait_time} seconds (attempt {attempt + 1}/{email_config.max_retries})...", 
+                retryable_codes = [421, 450, 451, 452]
+                permanent_codes = [530, 535, 550, 554]
+
+                # Temporary error, retry with exponential backoff
+                if e.smtp_code in retryable_codes and attempt < email_config.max_retries:
+                    wait_time = email_config.retry_delay * (2 ** attempt)
+                    error_msg = e.smtp_error if hasattr(e, 'smtp_error') else str(e.args[1]) if len(e.args) > 1 else str(e)
+                    self.log(f"Temporary SMTP error ({e.smtp_code}): {error_msg}. Retrying in {wait_time} seconds (attempt {attempt + 1}/{email_config.max_retries})...", 
                             level=logging.WARNING, tag=self.LOG_TAG)
                     time.sleep(wait_time)
                     continue
+                elif e.smtp_code in permanent_codes:
+                    # Permanent error, don't retry
+                    error_msg = e.smtp_error if hasattr(e, 'smtp_error') else str(e.args[1]) if len(e.args) > 1 else str(e)
+                    self.log(f"Permanent SMTP error ({e.smtp_code}): {error_msg}. Not retrying.", level=logging.ERROR, tag=self.LOG_TAG)
+                    raise
+                elif e.smtp_code in retryable_codes:
+                    # Temporary error, max retries reached
+                    error_msg = e.smtp_error if hasattr(e, 'smtp_error') else str(e.args[1]) if len(e.args) > 1 else str(e)
+                    self.log(f"Temporary SMTP error ({e.smtp_code}): {error_msg}. Max retries ({email_config.max_retries}) exhausted.", level=logging.ERROR, tag=self.LOG_TAG)
+                    raise
                 else:
-                    # Permanent error or max retries reached
-                    self.log(f"Email sending failed after {attempt + 1} attempts: {str(e)}", level=logging.ERROR, tag=self.LOG_TAG)
+                    # Unknown error code
+                    error_msg = e.smtp_error if hasattr(e, 'smtp_error') else str(e.args[1]) if len(e.args) > 1 else str(e)
+                    self.log(f"Unknown SMTP error ({e.smtp_code}): {error_msg}. Not retrying.", level=logging.ERROR, tag=self.LOG_TAG)
                     raise
             except Exception as e:
                 self.log(f"Email sending failed: {str(e)}", level=logging.ERROR, tag=self.LOG_TAG)
