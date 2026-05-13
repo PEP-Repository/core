@@ -216,14 +216,13 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
       severity = pep::debug;
     }
 
+    mWorkGuard.reset();
+    if (mClient == nullptr)
+      return;
+
     if (exception != nullptr) {
       LOG(LOG_TAG, severity) << "error: " << pep::GetExceptionMessage(exception) << std::endl;
     }
-
-    mWorkGuard.reset();
-
-    if (mClient == nullptr)
-      return;
 
     mClient->shutdown().subscribe(
       [](pep::FakeVoid) {},
