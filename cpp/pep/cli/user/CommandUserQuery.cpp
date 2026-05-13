@@ -66,7 +66,6 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
   using Flags = so::UserQueryFlags;
 
   const auto includedTypes = values.getOptionalMultiple<std::string>("include");
-  const auto format = values.get<std::string>("format");
 
   so::QueryDisplayConfig<so::UserQueryFlags> displayConfig;
   if (includedTypes.empty()) {
@@ -86,13 +85,14 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
     }
   }
 
-  if (format == "json" || format == "json-compact") {
+  const auto format = values.get<std::string>("format");
+
+  if (format == "json-compact") {
     displayConfig.useDescriptiveKeys = false;
-    if (format == "json-compact") {
-      displayConfig.formatConfig = so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
-    } else {
-      displayConfig.formatConfig = so::JsonConfig{};
-    }
+    displayConfig.formatConfig = so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
+  } else if (format == "json") {
+    displayConfig.useDescriptiveKeys = false;
+    displayConfig.formatConfig = so::JsonConfig{};
   } else {
     displayConfig.useDescriptiveKeys = true;
     displayConfig.formatConfig = so::YamlConfig{};
