@@ -205,8 +205,18 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
   int result{-1};
 
-  auto stopEventLoop = [this, &result](int exitCode) {
-    result = exitCode;
+  auto stopEventLoop = [this, &result, logged = MakeSharedCopy(false)](std::exception_ptr ep) {
+    if (ep != nullptr) {
+      if (!*logged) {
+        LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
+        *logged = true;
+      }
+      result = 4;
+    }
+    else {
+      result = 0;
+    }
+
     mWorkGuard.reset();
 
     if (mClient == nullptr)
@@ -226,14 +236,8 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
     return callback(mClient);
       }).subscribe(
         [](pep::FakeVoid) { /* ignore */ },
-        [stopEventLoop, logged = MakeSharedCopy(false)](std::exception_ptr ep) {
-          if (!*logged) {
-            LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
-            *logged = true;
-          }
-          stopEventLoop(4);
-        },
-        [stopEventLoop]() {stopEventLoop(0); }
+        [stopEventLoop](std::exception_ptr ep) { stopEventLoop(ep); },
+        [stopEventLoop]() {stopEventLoop(nullptr); }
       );
 
       assert(mClient != nullptr);
