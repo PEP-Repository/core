@@ -1153,22 +1153,32 @@ ubuntu-lts-debug-test:
   after_script:
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        LLVM_COV_BINARIES=""
+        # Install lcov to Cobertura converter
+        pipx install lcov_cobertura
+        
+        # Merge raw profile files
+        llvm-profdata merge -sparse coverage-*.profraw -o coverage.profdata
+        
+        # Build list of test binaries
+        TEST_BINARIES=""
         for TEST in $TESTS; do
-          LLVM_COV_BINARIES="$LLVM_COV_BINARIES --llvm-cov-binary $STAGING_DIRECTORY/$TEST"
+          TEST_BINARIES="$TEST_BINARIES --object $STAGING_DIRECTORY/$TEST"
         done
         
-        # Processes .profraw files directly via llvm-profdata and llvm-cov
-        gcovr --llvm-profdata-executable llvm-profdata \
-          $LLVM_COV_BINARIES \
-          --cobertura coverage.xml \
-          --filter '.*/cpp/pep/.*' \
-          --exclude '.*/build/.*' \
-          --exclude '.*/tests/.*' \
-          --exclude '.*UnitTests.*' \
-          --exclude '.*/proto/generated/.*' \
-          --print-summary \
-          --verbose
+        # Export to lcov format using llvm-cov
+        llvm-cov export $TEST_BINARIES \
+          -instr-profile=coverage.profdata \
+          -format=lcov \
+          > coverage.lcov
+        
+        # Convert lcov to Cobertura XML using lcov_cobertura
+        lcov_cobertura coverage.lcov --output coverage.xml \
+          --base-dir "$CI_PROJECT_DIR" \
+          --demangle
+        
+        # Show summary
+        echo "=== Coverage Summary ==="
+        grep -E 'line-rate|branch-rate' coverage.xml | head -5 || true
       fi
   artifacts:
     reports:
