@@ -1153,38 +1153,15 @@ ubuntu-lts-debug-test:
   after_script:
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        # Merge all raw profile files into indexed profile
-        llvm-profdata merge -sparse coverage-*.profraw -o coverage.profdata
-        
-        # Get list of test binaries for coverage export
-        TEST_BINARIES=""
+        # Build list of test binaries for gcovr's --llvm-cov-binary option
+        LLVM_COV_BINARIES=""
         for TEST in $TESTS; do
-          TEST_BINARIES="$TEST_BINARIES --object $STAGING_DIRECTORY/$TEST"
+          LLVM_COV_BINARIES="$LLVM_COV_BINARIES --llvm-cov-binary $STAGING_DIRECTORY/$TEST"
         done
         
-        # Debug: show what we have
-        echo "=== Coverage files ==="
-        ls -lh coverage.profdata coverage-*.profraw 2>&1 | head -20
-        echo "=== Test binaries ==="
-        echo "$TEST_BINARIES"
-        
-        # Export to gcov-compatible format that gcovr can read
-        llvm-cov export $TEST_BINARIES \
-          -instr-profile=coverage.profdata \
-          -format=lcov \
-          > coverage.lcov
-        
-        # Debug: show lcov content
-        echo "=== LCOV file stats ==="
-        wc -l coverage.lcov
-        echo "=== Unique source files in LCOV ==="
-        grep '^SF:' coverage.lcov | sort -u | head -30
-        echo "=== Sample from LCOV ==="
-        head -50 coverage.lcov
-        
-        # Convert lcov to Cobertura XML
-        # Use the lcov file directly, filter for cpp/pep source files
-        gcovr --lcov coverage.lcov \
+        # Use gcovr's native LLVM support to process .profraw files directly
+        gcovr --llvm-profdata-executable llvm-profdata \
+          $LLVM_COV_BINARIES \
           --cobertura coverage.xml \
           --filter '.*/cpp/pep/.*' \
           --exclude '.*/build/.*' \
