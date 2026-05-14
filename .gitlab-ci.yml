@@ -1175,16 +1175,22 @@ ubuntu-lts-debug-test:
           > coverage.lcov
         
         # Debug: show lcov content
-        echo "=== LCOV file (first 50 lines) ==="
+        echo "=== LCOV file stats ==="
+        wc -l coverage.lcov
+        echo "=== Unique source files in LCOV ==="
+        grep '^SF:' coverage.lcov | sort -u | head -30
+        echo "=== Sample from LCOV ==="
         head -50 coverage.lcov
         
-        # Use gcovr to generate Cobertura XML from lcov
-        # Search in build directory for source files
+        # Convert lcov to Cobertura XML
+        # Use the lcov file directly, filter for cpp/pep source files
         gcovr --lcov coverage.lcov \
           --cobertura coverage.xml \
-          --filter '\./cpp/pep/.*' \
+          --filter '.*/cpp/pep/.*' \
+          --exclude '.*/build/.*' \
           --exclude '.*/tests/.*' \
           --exclude '.*UnitTests.*' \
+          --exclude '.*/proto/generated/.*' \
           --print-summary \
           --verbose
       fi
