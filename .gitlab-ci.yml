@@ -1150,6 +1150,7 @@ ubuntu-lts-debug-test:
       variables:
         ENABLE_COVERAGE: "ON"
     - when: on_success
+  coverage: '/Line Coverage: (\d+\.?\d*)%/'
   after_script:
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
@@ -1176,9 +1177,16 @@ ubuntu-lts-debug-test:
           --base-dir "$CI_PROJECT_DIR" \
           --demangle
         
-        # Show summary
+        # Show summary with coverage percentage
         echo "=== Coverage Summary ==="
-        grep -E 'line-rate|branch-rate' coverage.xml | head -5 || true
+        line_rate=$(grep -oP 'line-rate="\K[^"]+' coverage.xml | head -1)
+        branch_rate=$(grep -oP 'branch-rate="\K[^"]+' coverage.xml | head -1)
+        line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
+        branch_pct=$(awk "BEGIN {printf \"%.2f\", $branch_rate * 100}")
+        echo "Line Coverage: ${line_pct}%"
+        echo "Branch Coverage: ${branch_pct}%"
+        echo ""
+        echo "Coverage report uploaded as artifact - check Pipeline > Tests > Code Coverage"
       fi
   artifacts:
     reports:
