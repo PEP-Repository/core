@@ -1162,19 +1162,31 @@ ubuntu-lts-debug-test:
           TEST_BINARIES="$TEST_BINARIES --object $STAGING_DIRECTORY/$TEST"
         done
         
+        # Debug: show what we have
+        echo "=== Coverage files ==="
+        ls -lh coverage.profdata coverage-*.profraw 2>&1 | head -20
+        echo "=== Test binaries ==="
+        echo "$TEST_BINARIES"
+        
         # Export to gcov-compatible format that gcovr can read
         llvm-cov export $TEST_BINARIES \
           -instr-profile=coverage.profdata \
           -format=lcov \
           > coverage.lcov
         
+        # Debug: show lcov content
+        echo "=== LCOV file (first 50 lines) ==="
+        head -50 coverage.lcov
+        
         # Use gcovr to generate Cobertura XML from lcov
+        # Search in build directory for source files
         gcovr --lcov coverage.lcov \
           --cobertura coverage.xml \
-          --filter 'cpp/pep/.*' \
+          --filter '\./cpp/pep/.*' \
           --exclude '.*/tests/.*' \
           --exclude '.*UnitTests.*' \
-          --print-summary
+          --print-summary \
+          --verbose
       fi
   artifacts:
     reports:
