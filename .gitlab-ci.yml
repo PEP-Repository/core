@@ -616,7 +616,7 @@ ubuntu-lts-debug-with-sast:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_BENCHMARK: "False"
+    WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "off"
 
 ubuntu-lts-debug:
