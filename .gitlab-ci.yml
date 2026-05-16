@@ -1446,7 +1446,7 @@ macos-arm-coverage:
       # Convert lcov to Cobertura XML
     - ~/.local/bin/lcov_cobertura coverage.lcov --output coverage.xml
         --base-dir "$CI_PROJECT_DIR"
-        --excludes '*/proto/generated/*'
+        --excludes '.*/proto/generated/.*'
         --demangle
       
     - set +x
