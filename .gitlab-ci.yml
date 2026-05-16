@@ -1458,20 +1458,34 @@ macos-arm-coverage:
           > coverage.lcov
         
         # Convert lcov to Cobertura XML
-        lcov_cobertura coverage.lcov --output coverage.xml \
+        ~/.local/bin/lcov_cobertura coverage.lcov --output coverage.xml \
           --base-dir "$CI_PROJECT_DIR" \
+          --excludes '*/proto/generated/*' \
           --demangle
         
+        set +x
         # Show summary with coverage percentage
         echo "=== Combined Coverage Summary (Unit + Integration Tests) ==="
-        line_rate=$(grep -oE 'line-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
-        branch_rate=$(grep -oE 'branch-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
-        line_pct=$(python3 -c "print(f'{float('$line_rate') * 100:.2f}')")
-        branch_pct=$(python3 -c "print(f'{float('$branch_rate') * 100:.2f}')")
-        echo "Line Coverage: ${line_pct}%"
-        echo "Branch Coverage: ${branch_pct}%"
-        echo ""
+        if [ -f coverage.xml ]; then
+          line_rate=$(grep -oE 'line-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
+          branch_rate=$(grep -oE 'branch-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
+          if [ -n "$line_rate" ] && [ -n "$branch_rate" ]; then
+            line_pct=$(python3 -c "print('{:.2f}'.format(float('$line_rate') * 100))")
+            branch_pct=$(python3 -c "print('{:.2f}'.format(float('$branch_rate') * 100))")
+            echo "Line Coverage: ${line_pct}%"
+            echo "Branch Coverage: ${branch_pct}%"
+          else
+            echo "Could not parse coverage rates from coverage.xml"
+            exit 1
+          fi
+        else
+          echo "coverage.xml not found, cannot show coverage summary"
+          exit 1
+        fi
         echo "Combined coverage report uploaded as artifact"
+      else
+        echo "No coverage data generated"
+        exit 1
       fi
   artifacts:
     when: always
