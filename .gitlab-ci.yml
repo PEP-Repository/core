@@ -1449,7 +1449,7 @@ macos-arm-coverage:
         --excludes '.*/proto/generated/.*'
         --demangle
       
-    - set +x
+    - set -x
       # Show summary with coverage percentage
     - echo "=== Combined Coverage Summary (Unit + Integration Tests) ==="
     - |
