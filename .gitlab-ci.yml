@@ -1359,7 +1359,7 @@ macos-arm-coverage:
     - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
   tags:
     - macos-arm64
-  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+  coverage: '/Line Coverage (\d+\.?\d*)%/'
   variables:
     WITH_CASTOR: "False"
     MEM_ANALYSIS_TOOL: "none"
@@ -1458,8 +1458,8 @@ macos-arm-coverage:
     -   if [ -n "$line_rate" ] && [ -n "$branch_rate" ]; then
     -     line_pct=$(python3 -c "print('{:.2f}'.format(float('$line_rate') * 100))")
     -     branch_pct=$(python3 -c "print('{:.2f}'.format(float('$branch_rate') * 100))")
-    -     'echo "Line Coverage: ${line_pct}%"'
-    -     'echo "Branch Coverage: ${branch_pct}%"'
+    -     echo "Line Coverage ${line_pct}%"
+    -     echo "Branch Coverage ${branch_pct}%"
     -   else
     -     echo "Could not parse coverage rates from coverage.xml"
     -   fi
