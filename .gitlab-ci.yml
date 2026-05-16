@@ -1414,7 +1414,7 @@ macos-arm-coverage:
     - |
       DID_JOB_FAIL=0
       for TEST in $TESTS; do
-        if ! ./ci_cd/run-test-executable.sh "build/Debug" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
+        if ! ./ci_cd/run-test-executable.sh "$BUILD_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
           DID_JOB_FAIL=1
         fi
       done
@@ -1422,7 +1422,7 @@ macos-arm-coverage:
         echo "Unit tests failed, but continuing to integration tests"
       fi
     # Run integration tests
-    - ./tests/integration.sh --local --no-docker --build-dir "build/Debug"
+    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
 
     - cd $CI_PROJECT_DIR
       
@@ -1432,10 +1432,10 @@ macos-arm-coverage:
       # Build list of all binaries (unit tests, services, client, apps)
       ALL_BINARIES=""
       for TEST in $TESTS; do
-        ALL_BINARIES="$ALL_BINARIES --object build/Debug/$TEST"
+        ALL_BINARIES="$ALL_BINARIES --object $BUILD_DIRECTORY/$TEST"
       done
       for EXEC in $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT $EXECUTABLES_APPS; do
-        ALL_BINARIES="$ALL_BINARIES --object build/Debug/$EXEC"
+        ALL_BINARIES="$ALL_BINARIES --object $BUILD_DIRECTORY/$EXEC"
       done
       
       # Export to lcov format using llvm-cov
