@@ -1458,7 +1458,7 @@ macos-arm-coverage:
           > coverage.lcov
         
         # Convert lcov to Cobertura XML
-        python3 -m lcov_cobertura coverage.lcov --output coverage.xml \
+        lcov_cobertura coverage.lcov --output coverage.xml \
           --base-dir "$CI_PROJECT_DIR" \
           --demangle
         
