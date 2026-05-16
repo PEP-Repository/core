@@ -1365,15 +1365,6 @@ macos-arm-coverage:
     MEM_ANALYSIS_TOOL: "none"
     TESTS: "$UNIT_TESTS_BASE"
     ENABLE_COVERAGE: "ON"
-    ARTIFACTS: >-
-      $EXECUTABLES_APPS
-      $EXECUTABLES_PEP_SERVICES
-      $EXECUTABLES_CLIENT
-      $EXECUTABLES_BENCHMARK
-      $PEPSERVERS_MONOLITH
-      $EXECUTABLES_GO
-      $UNIT_TESTS_INTEGRATION
-      $UNIT_TESTS_BASE
   #language=bash
   script:
     # Build with coverage enabled
@@ -1415,7 +1406,6 @@ macos-arm-coverage:
       -DVERIFY_HEADERS_STANDALONE=ON
       -DENABLE_COVERAGE=ON
     - cmake --build --preset conan-debug
-    - *stage-artifacts
     # Set profile file location for LLVM coverage (%p=process ID, %m=binary signature)
     - mkdir -p "$CI_PROJECT_DIR/profiles"
     - rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
@@ -1424,7 +1414,7 @@ macos-arm-coverage:
     - |
       DID_JOB_FAIL=0
       for TEST in $TESTS; do
-        if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
+        if ! ./ci_cd/run-test-executable.sh "build/Debug" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
           DID_JOB_FAIL=1
         fi
       done
@@ -1432,59 +1422,51 @@ macos-arm-coverage:
         echo "Unit tests failed, but continuing to integration tests"
       fi
     # Run integration tests
-    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
-  after_script:
-    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    - ./tests/integration.sh --local --no-docker --build-dir "build/Debug"
+
+    - cd $CI_PROJECT_DIR
+      
+      # Merge all raw profile files (from both unit tests and integration tests)
+    - xcrun llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+    - | 
+      # Build list of all binaries (unit tests, services, client, apps)
+      ALL_BINARIES=""
+      for TEST in $TESTS; do
+        ALL_BINARIES="$ALL_BINARIES --object build/Debug/$TEST"
+      done
+      for EXEC in $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT $EXECUTABLES_APPS; do
+        ALL_BINARIES="$ALL_BINARIES --object build/Debug/$EXEC"
+      done
+      
+      # Export to lcov format using llvm-cov
+    - xcrun llvm-cov export $ALL_BINARIES
+        -instr-profile=combined-coverage.profdata
+        -format=lcov > coverage.lcov
+      
+      # Convert lcov to Cobertura XML
+    - ~/.local/bin/lcov_cobertura coverage.lcov --output coverage.xml
+        --base-dir "$CI_PROJECT_DIR"
+        --excludes '*/proto/generated/*'
+        --demangle
+      
+    - set +x
+      # Show summary with coverage percentage
+    - echo "=== Combined Coverage Summary (Unit + Integration Tests) ==="
     - |
-      if ls $CI_PROJECT_DIR/profiles/*.profraw 1> /dev/null 2>&1; then
-        cd $CI_PROJECT_DIR
-        
-        # Merge all raw profile files (from both unit tests and integration tests)
-        xcrun llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
-        
-        # Build list of all binaries (unit tests, services, client, apps)
-        ALL_BINARIES=""
-        for TEST in $TESTS; do
-          ALL_BINARIES="$ALL_BINARIES --object $STAGING_DIRECTORY/$TEST"
-        done
-        for EXEC in $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT $EXECUTABLES_APPS; do
-          ALL_BINARIES="$ALL_BINARIES --object $STAGING_DIRECTORY/$EXEC"
-        done
-        
-        # Export to lcov format using llvm-cov
-        xcrun llvm-cov export $ALL_BINARIES \
-          -instr-profile=combined-coverage.profdata \
-          -format=lcov \
-          > coverage.lcov
-        
-        # Convert lcov to Cobertura XML
-        ~/.local/bin/lcov_cobertura coverage.lcov --output coverage.xml \
-          --base-dir "$CI_PROJECT_DIR" \
-          --excludes '*/proto/generated/*' \
-          --demangle
-        
-        set +x
-        # Show summary with coverage percentage
-        echo "=== Combined Coverage Summary (Unit + Integration Tests) ==="
-        if [ -f coverage.xml ]; then
-          line_rate=$(grep -oE 'line-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
-          branch_rate=$(grep -oE 'branch-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
-          if [ -n "$line_rate" ] && [ -n "$branch_rate" ]; then
-            line_pct=$(python3 -c "print('{:.2f}'.format(float('$line_rate') * 100))")
-            branch_pct=$(python3 -c "print('{:.2f}'.format(float('$branch_rate') * 100))")
-            echo "Line Coverage: ${line_pct}%"
-            echo "Branch Coverage: ${branch_pct}%"
-          else
-            echo "Could not parse coverage rates from coverage.xml"
-            exit 1
-          fi
+      if [ -f coverage.xml ]; then
+        line_rate=$(grep -oE 'line-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
+        branch_rate=$(grep -oE 'branch-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
+        if [ -n "$line_rate" ] && [ -n "$branch_rate" ]; then
+          line_pct=$(python3 -c "print('{:.2f}'.format(float('$line_rate') * 100))")
+          branch_pct=$(python3 -c "print('{:.2f}'.format(float('$branch_rate') * 100))")
+          echo "Line Coverage: ${line_pct}%"
+          echo "Branch Coverage: ${branch_pct}%"
         else
-          echo "coverage.xml not found, cannot show coverage summary"
+          echo "Could not parse coverage rates from coverage.xml"
           exit 1
         fi
-        echo "Combined coverage report uploaded as artifact"
       else
-        echo "No coverage data generated"
+        echo "coverage.xml not found, cannot show coverage summary"
         exit 1
       fi
   artifacts:
