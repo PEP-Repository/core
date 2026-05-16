@@ -1437,9 +1437,6 @@ macos-arm-coverage:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - |
       if ls $CI_PROJECT_DIR/profiles/*.profraw 1> /dev/null 2>&1; then
-        # Install lcov_cobertura (requires Python 3.9+)
-        python3 -m pip install --user lcov_cobertura
-        
         cd $CI_PROJECT_DIR
         
         # Merge all raw profile files (from both unit tests and integration tests)
