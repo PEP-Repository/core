@@ -4,6 +4,7 @@
 
 namespace pep {
 
+namespace {
 class ServersApplication : public Application {
 protected:
   std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override {
@@ -29,6 +30,7 @@ protected:
     return -1;
   }
 };
+}
 
 }
 
