@@ -63,7 +63,7 @@ TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffe
     EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor()))),
     source.has_user_group() ?
     std::optional<EncryptedLocalPseudonym>(
-      //NOLINTNEXTLINE(performance-move-const-arg) False positive?
+      //NOLINTNEXTLINE(performance-move-const-arg) False positive
       Serialization::FromProtocolBuffer(std::move(*source.mutable_user_group()))
     ) : std::nullopt,
     Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager_proof())),
@@ -71,7 +71,7 @@ TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffe
     Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor_proof())),
     source.has_user_group_proof() ?
     std::optional<RskProof>(
-      //NOLINTNEXTLINE(performance-move-const-arg) False positive?
+      //NOLINTNEXTLINE(performance-move-const-arg) False positive
       Serialization::FromProtocolBuffer(std::move(*source.mutable_user_group_proof()))
     ) : std::nullopt
   );
