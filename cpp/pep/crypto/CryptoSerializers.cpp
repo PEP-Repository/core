@@ -1,5 +1,4 @@
 #include <pep/crypto/CryptoSerializers.hpp>
-#include <pep/utils/OpensslUtils.hpp>
 
 namespace pep {
 
@@ -9,27 +8,6 @@ void Serializer<Timestamp>::moveIntoProtocolBuffer(proto::Timestamp& dest, Times
 
 Timestamp Serializer<Timestamp>::fromProtocolBuffer(proto::Timestamp&& source) const {
   return Timestamp(std::chrono::milliseconds{source.epoch_millis()});
-}
-
-Signature Serializer<Signature>::fromProtocolBuffer(proto::Signature&& source) const {
-  return Signature(
-    std::move(*source.mutable_signature()),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain())),
-    Serialization::FromProtocolBuffer(source.scheme()),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
-    source.is_log_copy()
-  );
-}
-
-void Serializer<Signature>::moveIntoProtocolBuffer(proto::Signature& dest, Signature value) const {
-  *dest.mutable_signature() = std::move(value.mSignature);
-  Serialization::MoveIntoProtocolBuffer(
-    *dest.mutable_certificate_chain(),
-    value.mCertificateChain
-  );
-  dest.set_scheme(Serialization::ToProtocolBuffer(value.mScheme));
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.mTimestamp);
-  dest.set_is_log_copy(value.mIsLogCopy);
 }
 
 X509Certificate Serializer<X509Certificate>::fromProtocolBuffer(proto::X509Certificate&& source) const {

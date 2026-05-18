@@ -1,4 +1,5 @@
 #include <pep/authserver/AuthserverSerializers.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
 
 namespace pep {
 

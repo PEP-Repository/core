@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/crypto/CPRNG.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/rsk-pep/DataTranslationKeys.hpp>
 #include <pep/rsk/EGCache.hpp>

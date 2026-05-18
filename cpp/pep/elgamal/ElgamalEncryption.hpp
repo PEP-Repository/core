@@ -18,22 +18,22 @@ class ElgamalEncryption {
   static constexpr size_t PACKEDBYTES = CurvePoint::PACKEDBYTES * 3;
 
   ElgamalEncryption(
-    const ElgamalPublicKey& pk,
+    const ElgamalPublicKey& publicKey,
     const CurvePoint& data
   );
   ElgamalEncryption(
     const CurvePoint& b,
     const CurvePoint& c,
-    const CurvePoint& y
+    const ElgamalPublicKey& publicKey
   );
   ElgamalEncryption() = default;
 
   CurvePoint decrypt(const ElgamalPrivateKey&) const;
 
-  ElgamalEncryption rerandomize() const;
-  ElgamalEncryption rekey(const ElgamalTranslationKey& z) const;
-  ElgamalEncryption reshuffle(const CurveScalar& z) const;
-  ElgamalEncryption RSK(const CurveScalar& z, const ElgamalTranslationKey& k) const;
+  [[nodiscard]] ElgamalEncryption rerandomize() const;
+  [[nodiscard]] ElgamalEncryption rekey(const ElgamalTranslationKey& rekey) const;
+  [[nodiscard]] ElgamalEncryption reshuffle(const CurveScalar& reshuffle) const;
+  [[nodiscard]] ElgamalEncryption reshuffleRekey(const CurveScalar& reshuffle, const ElgamalTranslationKey& rekey) const;
 
   const ElgamalPublicKey& getPublicKey() const;
 
@@ -57,7 +57,7 @@ class ElgamalEncryption {
 
   CurvePoint b;
   CurvePoint c;
-  CurvePoint y;
+  ElgamalPublicKey publicKey;
 
 };
 

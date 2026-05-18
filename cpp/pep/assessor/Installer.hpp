@@ -22,8 +22,8 @@ protected:
 public:
   virtual unsigned getMajorVersion() const = 0;
   virtual unsigned getMinorVersion() const = 0;
-  virtual unsigned getPipelineId() const = 0;
-  virtual unsigned getJobId() const = 0;
+  virtual unsigned getBuild() const = 0;
+  virtual unsigned getRevision() const = 0;
 
   virtual bool supersedesRunningVersion() const = 0;
   void start(const Context& context) const;

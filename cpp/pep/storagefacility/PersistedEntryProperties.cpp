@@ -1,5 +1,6 @@
 #include <pep/storagefacility/PersistedEntryProperties.hpp>
 #include <pep/utils/Bitpacking.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
 namespace pep {

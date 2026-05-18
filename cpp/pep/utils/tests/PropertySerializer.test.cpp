@@ -1,9 +1,11 @@
 #include <pep/utils/PropertySerializer.hpp>
 #include <gtest/gtest.h>
 
+namespace {
 struct PathEncapsulator {
   std::filesystem::path mPath;
 };
+}
 
 template <> struct pep::PropertySerializer<PathEncapsulator> : public PropertySerializerByValue<PathEncapsulator> {
   void write(boost::property_tree::ptree& destination, const PathEncapsulator& value) const override {
@@ -18,9 +20,11 @@ template <> struct pep::PropertySerializer<PathEncapsulator> : public PropertySe
 };
 
 
+namespace {
 struct PathEncapsulator2 {
   std::filesystem::path mPath;
 };
+}
 
 template <> struct pep::PropertySerializer<PathEncapsulator2> : public PropertySerializerByReference<PathEncapsulator2> {
   void write(boost::property_tree::ptree& destination, const PathEncapsulator2& value) const override {
@@ -60,9 +64,10 @@ void TestContextApplication() {
   EXPECT_TRUE(deserialized.mPath.is_absolute());
 }
 
-}
 
 TEST(PropertySerializer, AppliesDeserializationContext) {
   TestContextApplication<PathEncapsulator>();
   TestContextApplication<PathEncapsulator2>();
+}
+
 }

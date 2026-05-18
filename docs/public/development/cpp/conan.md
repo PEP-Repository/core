@@ -23,7 +23,7 @@ To update Conan (and other stuff managed by `pipx`):
 - Execute CMake configure
 - Execute build
 
-See [`README`](https://gitlab.pep.cs.ru.nl/pep/core/-/blob/master/README.md#building) for more details.
+See [`README`](https://gitlab.pep.cs.ru.nl/pep/core/-/blob/main/README.md#building) for more details.
 
 If your `conan install` command fails (e.g. saying `Toolset directory for version '14.3' was not found.` when using MSVC on Windows), try the full command line used by the CI logic. At the time of writing, this works out to the following on Windows (to be ran from the root directory of a `pep/core` repository clone):
 `conan install .\docker-build\builder\conan\conanfile.py --lockfile=.\docker-build\builder\conan\conan-ci.lock --profile:all=.\docker-build\builder\conan\conan_profile --build=missing -s:a build_type="Debug" -o "&:with_assessor=True" -o "&:with_servers=True" -o "&:with_castor=True" -o "&:with_tests=True" -o "&:with_benchmark=True" -o "&:custom_build_folder=True" --output-folder=.\build\`
@@ -254,9 +254,9 @@ The actual binaries and library include files of dependencies stay in `~/.conan2
 
 ## `docker-build`
 
-Our [`conanfile.py`](https://gitlab.pep.cs.ru.nl/pep/docker-build/-/blob/master/builder/conan/conanfile.py) is in the `docker-build` submodule, which builds Docker images containing the profile and built dependencies in the home folder. These images are linked to from core via `RUNNER_IMAGE_TAG` in `/ci_cd/docker-common.yml`, which should correspond with the submodule commit.
+Our [`conanfile.py`](https://gitlab.pep.cs.ru.nl/pep/docker-build/-/blob/main/builder/conan/conanfile.py) is in the `docker-build` submodule, which builds Docker images containing the profile and built dependencies in the home folder. These images are linked to from core via `RUNNER_IMAGE_TAG` in `/ci_cd/docker-common.yml`, which should correspond with the submodule commit.
 
-Scheduled pipelines for updates run on the `master`, `stable`, and `latest-release` branches of docker-build, and on the various `release-X.Y` branches. `master`/`stable`/`latest-release`/`release-X.Y` branches of core should thus always refer to the corresponding docker-build branches, to pick up the updated images. Keep in mind that merging in docker-build may create an extra merge commit, and core should then refer to that commit.
+Scheduled pipelines for updates run on the `main`, `stable`, and `latest-release` branches of docker-build, and on the various `release-X.Y` branches. `main`/`stable`/`latest-release`/`release-X.Y` branches of core should thus always refer to the corresponding docker-build branches, to pick up the updated images. Keep in mind that merging in docker-build may create an extra merge commit, and core should then refer to that commit.
 If new revisions are available, the docker-build CI commits the updated `conan-ci.lock` and updates core as well.
 
 ## Dynamic linking & CMake install

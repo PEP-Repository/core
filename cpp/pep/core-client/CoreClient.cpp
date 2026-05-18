@@ -1,15 +1,14 @@
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/IoContextThread.hpp>
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/transcryptor/KeyComponentSerializers.hpp>
 #include <pep/utils/Compare.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -60,7 +59,7 @@ CoreClient::CoreClient(const Builder& builder) :
   MessageSigner(builder.getSigningIdentity()),
   io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
   caCertFilepath(builder.getCaCertFilepath()),
-  rootCAs(X509RootCertificates{X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath()))}),
+  rootCAs(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
   privateKeyData(builder.getPrivateKeyData()), publicKeyData(builder.getPublicKeyData()), privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
   publicKeyPseudonyms(builder.getPublicKeyPseudonyms()),
   accessManagerEndPoint(builder.getAccessManagerEndPoint()),
@@ -176,6 +175,9 @@ PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const s
   return PolymorphicPseudonym::FromIdentifier(publicKeyPseudonyms, participantSID);
 }
 
+LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
+  return encrypted.decrypt(privateKeyPseudonyms);
+}
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
                                            std::shared_ptr<boost::asio::io_context> io_context,
@@ -189,6 +191,8 @@ void CoreClient::Builder::initialize(
     const Configuration& config,
     std::shared_ptr<boost::asio::io_context> io_context,
     bool persistKeysFile) {
+  assert(io_context != nullptr && "Caller must provide an I/O context");
+
   try {
     std::filesystem::path keysFile;
     std::optional<std::filesystem::path> shadowPublicKeyFile;
@@ -246,14 +250,7 @@ void CoreClient::Builder::initialize(
       }
     }
 
-    if (io_context == nullptr) {
-      this->setIoContext(std::make_shared<boost::asio::io_context>());
-
-      IoContextThread t(this->getIoContext());
-      t.detach();
-    } else {
-      this->setIoContext(io_context);
-    }
+    this->setIoContext(io_context);
   } catch (std::exception& e) {
     LOG(LOG_TAG, error) << "Error with configuration file: " << e.what() << std::endl;
     std::cerr << "Error with configuration file: " << e.what() << std::endl;
@@ -414,7 +411,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(rootCAs, getEnrolledGroup()).mPseudonyms);
+    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mAccessSubjects);
   });
 
 }
@@ -425,7 +422,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
       && IsSubset(opts.columnGroups, opts.ticket->getColumnGroups())
-      && IsSubset(opts.pps, opts.ticket->getPolymorphicPseudonyms())
+      && IsSubset(opts.pps, opts.ticket->getAccessSubjects())
       && IsSubset(opts.columns, opts.ticket->getColumns())) {
     return rxcpp::observable<>::just(*opts.ticket);
   }
@@ -436,7 +433,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
   return accessManagerProxy->requestIndexedTicket(ClientSideTicketRequest2{
       .mModes = opts.modes,
       .mParticipantGroups = opts.participantGroups,
-      .mPolymorphicPseudonyms = opts.pps,
+      .mAccessSubjects = opts.pps,
       .mColumnGroups = opts.columnGroups,
       .mColumns = opts.columns,
       .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});

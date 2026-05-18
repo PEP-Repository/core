@@ -5,8 +5,9 @@
 #include <pep/rsk/Proofs.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Math.hpp>
+#include <pep/utils/Random.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
@@ -64,9 +65,8 @@ struct MigrationRecord {
   constexpr static uint64_t TargetVersion = 2;
 
   MigrationRecord() = default;
-  MigrationRecord(uint64_t toVersion) {
-
-    RandomBytes(this->checksumNonce, 16);
+  MigrationRecord(uint64_t toVersion)
+    : checksumNonce(RandomVector<char>(16)) {
     this->toVersion = toVersion;
     this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   }
@@ -95,15 +95,15 @@ struct TicketRequestRecord {
       int64_t modeSet,
       std::string pseudonymHash,
       std::string accessGroup,
-      std::optional<int64_t> certificateChain) : accessGroup(std::move(accessGroup)), pseudonymSet(pseudonymSet), modeSet(modeSet) {
-
-    RandomBytes(this->checksumNonce, 16);
+      std::optional<int64_t> certificateChain)
+    : checksumNonce(RandomVector<char>(16)),
+      accessGroup(std::move(accessGroup)),
+      pseudonymSet(pseudonymSet),
+      modeSet(modeSet) {
 
     // Work around https://github.com/fnc12/sqlite_orm/issues/245 (again).
     // See #826
-    std::string idBytes;
-    RandomBytes(idBytes, 16);
-    this->id = boost::algorithm::hex(idBytes);
+    this->id = boost::algorithm::hex(RandomString(16));
 
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
@@ -180,11 +180,10 @@ struct CertificateChainRecord {
       std::vector<char>&& leaf,
       std::optional<int64_t> parent,
       std::vector<char>&& fingerprint)
-   : parent(parent),
-     leaf(std::move(leaf)),
-     fingerprint(std::move(fingerprint))
-  {
-    RandomBytes(this->checksumNonce, 16);
+    : checksumNonce(RandomVector<char>(16)),
+      parent(parent),
+      leaf(std::move(leaf)),
+      fingerprint(std::move(fingerprint)) {
   }
 
   uint64_t checksum() const {
@@ -210,8 +209,10 @@ struct CertificateChainRecord {
 struct TicketIssueRecord {
   TicketIssueRecord() = default;
   TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts)
-  : timestamp(TicksSinceEpoch<milliseconds>(ts)), request(request), columnSet(columnSet) {
-    RandomBytes(this->checksumNonce, 16);
+    : checksumNonce(RandomVector<char>(16)),
+      timestamp(TicksSinceEpoch<milliseconds>(ts)),
+      request(request),
+      columnSet(columnSet) {
   }
 
   uint64_t checksum() const {
@@ -232,8 +233,9 @@ struct TicketIssueRecord {
 // Records an immutable set of local logger pseudonyms.
 struct PseudonymSetRecord {
   PseudonymSetRecord() = default;
-  PseudonymSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+  PseudonymSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -256,9 +258,10 @@ struct PseudonymSetRecord {
 // Records which pseudonym to which pseudonym record
 struct PseudonymSetPseudonymRecord {
   PseudonymSetPseudonymRecord() = default;
-  PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set) : set(set) {
+  PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set) {
     this->pseudonym = RangeToVector(Serialization::ToString(pseudonym.getValidCurvePoint()));
-    RandomBytes(this->checksumNonce, 16);
   }
 
   uint64_t checksum() const {
@@ -278,8 +281,9 @@ struct PseudonymSetPseudonymRecord {
 // Records an immutable set of local logger pseudonyms.
 struct ColumnSetRecord {
   ColumnSetRecord() = default;
-  ColumnSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+  ColumnSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -301,8 +305,10 @@ struct ColumnSetRecord {
 // Records which column belongs to which column set
 struct ColumnSetColumnRecord {
   ColumnSetColumnRecord() = default;
-  ColumnSetColumnRecord(const std::string& column, int64_t set) : set(set), column(column) {
-    RandomBytes(this->checksumNonce, 16);
+  ColumnSetColumnRecord(const std::string& column, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set),
+      column(column) {
   }
 
   uint64_t checksum() const {
@@ -321,8 +327,9 @@ struct ColumnSetColumnRecord {
 // Records an immutable set of modes.
 struct ModeSetRecord {
   ModeSetRecord() = default;
-  ModeSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+  ModeSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -344,8 +351,10 @@ struct ModeSetRecord {
 // Records which mode belongs to which mode set
 struct ModeSetModeRecord {
   ModeSetModeRecord() = default;
-  ModeSetModeRecord(const std::string& mode, int64_t set) : set(set), mode(mode) {
-    RandomBytes(this->checksumNonce, 16);
+  ModeSetModeRecord(const std::string& mode, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set),
+      mode(mode) {
   }
 
   uint64_t checksum() const {
@@ -650,7 +659,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
 
     auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
 
-    if (!request.mLogSignature) {
+    if (!request.logSignature()) {
       LOG(LOG_TAG, warning) << "Ticket request record number "
         << record.seqno << " has no log signature!";
       // although troublesome, it does not affect migration, so we ...
@@ -853,8 +862,9 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
 std::pair<std::string, std::optional<int64_t>> TranscryptorStorage::extractCertificateChain(SignedTicketRequest2 request) {
   // If the request('s log signature) has a certificate chain, store it separately
   std::optional<int64_t> chainId;
-  if (request.mLogSignature.has_value()) {
-    chainId = this->getOrCreateCertificateChain(request.mLogSignature->mCertificateChain);
+  const auto& logSignature = request.logSignature();
+  if (logSignature.has_value()) {
+    chainId = this->getOrCreateCertificateChain(logSignature->certificateChain());
     if (!chainId.has_value()) {
       throw std::runtime_error("No certificate chain stored for log signature");
     }
@@ -926,12 +936,13 @@ std::string TranscryptorStorage::logTicketRequest(
     SignedTicketRequest2 ticketRequest,
     std::string pseudonymHash) {
 
-  if (!ticketRequest.mLogSignature)
+  const auto& logSignature = ticketRequest.logSignature();
+  if (!logSignature)
     throw Error("log signature on ticket request is not set");
   // Already compute the access group now,
   // because we move the certificate chain from ticketRequest to its own table.
   std::string accessGroup
-      = ticketRequest.mLogSignature->getLeafCertificateOrganizationalUnit();
+      = logSignature->certificateChain().leaf().getOrganizationalUnit().value_or("");
 
   auto [serialized, chainId] = this->extractCertificateChain(std::move(ticketRequest));
 

@@ -1,4 +1,4 @@
-ARG ENVIRONMENT=master
+ARG ENVIRONMENT=main
 ARG BASE_IMAGE
 
 # Conditional execution based on two base images: see https://stackoverflow.com/a/54245466

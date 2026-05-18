@@ -79,14 +79,14 @@ TEST(CurveScalarTest, TestSum) {
   pep::CurveScalar scalarA(pep::SpanToString(packedA));
   pep::CurveScalar scalarB(pep::SpanToString(packedB));
   pep::CurveScalar scalarC(pep::SpanToString(packedC));
-  EXPECT_EQ(scalarA.add(scalarB),scalarC) << "sum of scalars is incorrect";
+  EXPECT_EQ(scalarA + scalarB,scalarC) << "sum of scalars is incorrect";
 }
 
 TEST(CurveScalarTest, TestAddSub) {
   pep::CurveScalar scalarA = pep::CurveScalar::Random();
   pep::CurveScalar scalarB = pep::CurveScalar::Random();
-  pep::CurveScalar scalarC = scalarA.add(scalarB);
-  pep::CurveScalar scalarD = scalarC.sub(scalarB);
+  pep::CurveScalar scalarC = scalarA + scalarB;
+  pep::CurveScalar scalarD = scalarC - scalarB;
   EXPECT_EQ(scalarA, scalarD) << "A + B - B != A";
 }
 
@@ -112,7 +112,7 @@ TEST(CurveScalarTest, TestMult) {
   pep::CurveScalar scalarA(pep::SpanToString(packedA));
   pep::CurveScalar scalarB(pep::SpanToString(packedB));
   pep::CurveScalar scalarC(pep::SpanToString(packedC));
-  EXPECT_EQ(scalarA.mult(scalarB),scalarC) << "product of scalars is incorrect";
+  EXPECT_EQ(scalarA * scalarB,scalarC) << "product of scalars is incorrect";
 }
 
 TEST(CurveScalarTest, TestSub) {
@@ -137,15 +137,15 @@ TEST(CurveScalarTest, TestSub) {
   pep::CurveScalar scalarA(pep::SpanToString(packedA));
   pep::CurveScalar scalarB(pep::SpanToString(packedB));
   pep::CurveScalar scalarC(pep::SpanToString(packedC));
-  EXPECT_EQ(scalarA.sub(scalarB),scalarC) << "substraction of scalars is incorrect";
+  EXPECT_EQ(scalarA - scalarB,scalarC) << "substraction of scalars is incorrect";
 }
 
 TEST(CurveScalarTest, TestMultInvert) {
   for (int i = 0; i < 100; i++) {
     pep::CurveScalar scalarA = pep::CurveScalar::Random();
     pep::CurveScalar scalarB = pep::CurveScalar::Random();
-    pep::CurveScalar scalarC = scalarA.mult(scalarB);
-    pep::CurveScalar scalarD = scalarC.mult(scalarB.invert());
+    pep::CurveScalar scalarC = scalarA * scalarB;
+    pep::CurveScalar scalarD = scalarC * scalarB.invert();
     EXPECT_EQ(scalarA, scalarD) << "A * B * B^-1 != A";
   }
 }
@@ -171,7 +171,7 @@ TEST(CurveScalarTest, TestMultInvert2) {
 TEST(CurveScalarTest, TestSquare) {
   pep::CurveScalar scalarA = pep::CurveScalar::Random();
   pep::CurveScalar scalarB = scalarA.square();
-  pep::CurveScalar scalarC = scalarA.mult(scalarA);
+  pep::CurveScalar scalarC = scalarA * scalarA;
   EXPECT_EQ(scalarB, scalarC) << "A^2 != A*A";
 }
 

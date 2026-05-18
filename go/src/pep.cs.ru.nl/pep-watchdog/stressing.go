@@ -130,8 +130,8 @@ func (stressor *stressorImp) doOne() error {
 	
 	hash := hasher.Sum(nil)
 	o := pep.EnumerateAndOpenFilesOptions{
-		PolymorphicPseudonyms: []*pep.Triple{pp},
-		Columns:               []string{shared.Conf.Stressor.Column},
+		AccessSubjects: []*pep.Triple{pp},
+		Columns:        []string{shared.Conf.Stressor.Column},
 	}
 
 	// Read file conf.Stressor.ReadCount times

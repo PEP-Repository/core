@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 
 namespace pep {
 
@@ -17,20 +17,29 @@ public:
   void ensurePacked() const;
 };
 
+/// Utility function to convert a vector of LocalPseudonyms to a vector of PolymorphicPseudonyms
+std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>&);
+
 class Ticket2 {
 public:
   Timestamp mTimestamp{/*zero*/};
   std::vector<std::string> mModes;
-  std::vector<LocalPseudonyms> mPseudonyms;
+  std::vector<LocalPseudonyms> mAccessSubjects;  ///< identifiers for subjects that will be accessed
   std::vector<std::string> mColumns;
   std::string mUserGroup;
 
   bool hasMode(const std::string& mode) const;
-  std::vector<PolymorphicPseudonym> getPolymorphicPseudonyms() const;
 };
 
 template <>
 class Signed<Ticket2> {
+  friend class Serializer<Signed<Ticket2>>;
+
+private:
+  std::optional<Signature> mSignature;
+  std::optional<Signature> mTranscryptorSignature;
+  std::string mData;
+
 public:
   Signed() = default;
   Signed(
@@ -44,9 +53,7 @@ public:
     mTranscryptorSignature(std::move(mTranscryptorSignature)),
     mData(std::move(mData)) { }
 
-  std::optional<Signature> mSignature;
-  std::optional<Signature> mTranscryptorSignature;
-  std::string mData;
+  void addTranscryptorSignature(Signature signature);
 
   Ticket2 openWithoutCheckingSignature() const;
 
@@ -54,7 +61,7 @@ public:
     const std::string& accessGroup,
     const std::optional<std::string>& accessMode = std::nullopt) const;
 
-  Ticket2 openForLogging(const X509RootCertificates& rootCAs) const;
+  Ticket2 openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const;
 };
 
 class SignedTicket2ValidityPeriodError : public DeserializableDerivedError<SignedTicket2ValidityPeriodError> {
@@ -67,7 +74,7 @@ class ClientSideTicketRequest2 {
 public:
   std::vector<std::string> mModes;
   std::vector<std::string> mParticipantGroups;
-  std::vector<PolymorphicPseudonym> mPolymorphicPseudonyms;
+  std::vector<PolymorphicPseudonym> mAccessSubjects;
   std::vector<std::string> mColumnGroups;
   std::vector<std::string> mColumns;
   bool mIncludeUserGroupPseudonyms = false;
@@ -80,8 +87,14 @@ public:
 
 template <>
 class Signed<TicketRequest2> {
+  friend class Serializer<Signed<TicketRequest2>>;
+
+private:
+  std::optional<Signature> mSignature;
+  std::optional<Signature> mLogSignature;
+  std::string mData;
+
 public:
-  Signed() = default;
   Signed(TicketRequest2 ticketRequest,
     const X509Identity& identity);
   Signed(
@@ -92,12 +105,11 @@ public:
     mLogSignature(std::move(mLogSignature)),
     mData(std::move(mData)) { }
 
-  TicketRequest2 openAsAccessManager(const X509RootCertificates& rootCAs);
-  TicketRequest2 openAsTranscryptor(const X509RootCertificates& rootCAs);
+  const std::optional<Signature>& logSignature() const noexcept { return mLogSignature; }
+  Signature extractSignature();
 
-  std::optional<Signature> mSignature;
-  std::optional<Signature> mLogSignature;
-  std::string mData;
+  Certified<TicketRequest2> openAsAccessManager(const X509RootCertificates& rootCAs);
+  Certified<TicketRequest2> openAsTranscryptor(const X509RootCertificates& rootCAs);
 };
 
 using SignedTicket2 = Signed<Ticket2>;

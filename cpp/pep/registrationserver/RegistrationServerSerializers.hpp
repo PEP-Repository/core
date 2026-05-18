@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/registrationserver/RegistrationServerMessages.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 
 namespace pep {
 

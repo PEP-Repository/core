@@ -66,11 +66,11 @@ modules:
         - --share=network
 
   # The script below will simply run the arguments that are passed to the flatpak directly as a shell command.
-  # So now you can run e.g. (assuming you are on the master environment):
-  # - flatpak run nl.ru.cs.pep.dtap-master pepcli ama query
-  # - flatpak run nl.ru.cs.pep.dtap-master pepAssessor
-  # - flatpak run nl.ru.cs.pep.dtap-master pepLogon
-  # - flatpak run nl.ru.cs.pep.dtap-master bash
+  # So now you can run e.g. (assuming you are on the main environment):
+  # - flatpak run nl.ru.cs.pep.dtap-main pepcli ama query
+  # - flatpak run nl.ru.cs.pep.dtap-main pepAssessor
+  # - flatpak run nl.ru.cs.pep.dtap-main pepLogon
+  # - flatpak run nl.ru.cs.pep.dtap-main bash
   - name: HelperScript
     buildsystem: simple
     build-commands:

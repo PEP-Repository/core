@@ -1,12 +1,14 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <pep/utils/File.hpp>
-#include <pep/structure/StructureSerializers.hpp>
-#include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
+#include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
+#include <pep/structure/StructureSerializers.hpp>
+#include <pep/utils/File.hpp>
 
 #include <chrono>
 #include <filesystem>
+#include <optional>
 #include <thread>
 
 using namespace pep;
@@ -16,7 +18,17 @@ using namespace std::ranges;
 using namespace std::chrono_literals;
 using namespace std::string_literals;
 
+using ::testing::HasSubstr;
+
+using CaseSensitivity = AccessManager::Backend::Storage::CaseSensitivity;
+constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
+constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
+
+#define PEP_EXPECT_THROWS_MESSAGE(statement, exception_type, ...) \
+  EXPECT_THAT([&] { statement; }, ::testing::ThrowsMessage<exception_type>(::testing::AllOf(__VA_ARGS__)))
+
 namespace {
+
 void PrepareSortedMine(UserQueryResponse& response) {
   erase_if(response.mUserGroups, [](const UserGroup& group) {
     return !group.mName.starts_with("My");
@@ -40,7 +52,7 @@ At this moment, I see no way around this.*/
 class AccessManagerStorageTest : public ::testing::Test {
 public:
   static std::shared_ptr<AccessManager::Backend::Storage> storage;
-  const std::filesystem::path databasePath{"./testDB.sql"};
+  const std::filesystem::path databasePath{":memory:"};
   static std::shared_ptr<GlobalConfiguration> globalConf;
 
   const PolymorphicPseudonym dummyPP{PolymorphicPseudonym::FromIdentifier(ElgamalPublicKey::Random(), "dummy")};
@@ -207,19 +219,19 @@ TEST_F(AccessManagerStorageTest, store_lp_and_localPseudonymIsStored) {
   // localPseudonymIsStored(LocalPseudonym)
   // storeLocalPseudonymAndPP(LocalPseudonym, PolymorphicPseudonym)
   // getPPs()
-  // getPPs(std::vector<std::string>)
+  // getPpGroups(std::vector<std::string>)
   // Arrange
   const LocalPseudonym localPseudonym{LocalPseudonym::Random()};
   ASSERT_FALSE(storage->hasLocalPseudonym(localPseudonym));
   auto cachedPPsBefore = storage->getPPs();
-  auto cachedStarPPsBefore = storage->getPPs({"*"});
+  auto cachedStarPPsBefore = storage->getPpGroups(std::vector<std::string>{"*"});
   // Act
   storage->storeLocalPseudonymAndPP(localPseudonym, dummyPP);
 
   // Assert
   ASSERT_TRUE(storage->hasLocalPseudonym(localPseudonym));
   auto cachedPPsAfter = storage->getPPs();
-  auto cachedStarPPsAfter = storage->getPPs({"*"});
+  auto cachedStarPPsAfter = storage->getPpGroups(std::vector<std::string>{"*"});
 
   // PolymorphicPseudonyms (ElgamalEncryptions) can not be tested on equality. Therefore, test vector length.
   ASSERT_TRUE(cachedPPsAfter.size() - cachedPPsBefore.size() == 1U);
@@ -344,23 +356,125 @@ TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
   }
 }
 
-TEST_F(AccessManagerStorageTest, createUserUidMustBeUnique) {
-  storage->createUser("user");
-  EXPECT_ANY_THROW(storage->createUser("user"));
+TEST_F(AccessManagerStorageTest, createUserGuardsAgainstDuplicates) {
+  storage->createUser("Aart.Appel@fake.ru.nl");
+
+  const auto msgMatcher = [](std::optional<CaseSensitivity> cs = std::nullopt) {
+    return testing::AllOf(
+        HasSubstr("identifier already exists"), // the reason for throwing
+        HasSubstr(cs == CaseSensitive ? "case-sensitive" : "case-insensitive")); // case-insensitive by default
+  };
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl"),
+      pep::Error,
+      msgMatcher());
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl", CaseSensitive),
+      pep::Error,
+      msgMatcher(CaseSensitive));
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("Aart.Appel@fake.ru.nl", CaseInsensitive),
+      pep::Error,
+      msgMatcher(CaseInsensitive));
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("aart.appel@fake.ru.nl"),
+      pep::Error,
+      msgMatcher());
+
+  PEP_EXPECT_THROWS_MESSAGE(
+      storage->createUser("AART.APPEL@fake.ru.nl", CaseInsensitive),
+      pep::Error,
+      msgMatcher(CaseInsensitive));
+
+  EXPECT_NO_THROW(storage->createUser("aart.appel@fake.ru.nl", CaseSensitive));
 }
 
 TEST_F(AccessManagerStorageTest, findInternalUserId) {
-  int64_t originalId = storage->createUser("user");
-  storage->createUser("anotherUser");
-  EXPECT_EQ(storage->findInternalUserId("user"), originalId);
-  EXPECT_EQ(storage->findInternalUserId("NotExisting"), std::nullopt);
+  const auto idEmailA = storage->createUser("Aart.Appel@fake.ru.nl"); // typical email
+  const auto idEmailB = storage->createUser("Bert.Bes@fake.ru.nl"); // typical email
+  const auto idBase64A = storage->createUser("QmVydEJyYWFt", CaseSensitive); // arbitrary base 64 string
+  const auto idBase64B = storage->createUser("qMvYDejYywfT", CaseSensitive); // only differs by casing from previous
+
+  {
+    const auto section = "case: case-sensitive matching on a single id";
+    EXPECT_EQ(storage->findInternalUserId("QmVydEJyYWFt", CaseSensitive), idBase64A) << section;
+    EXPECT_EQ(storage->findInternalUserId("RGlya0RydWlm", CaseSensitive), std::nullopt) << section;
+    EXPECT_EQ(storage->findInternalUserId("qmvydejyywft", CaseSensitive), std::nullopt) << section;
+  }
+
+  {
+    const auto section = "case: case-sensitive matching on multiple ids";
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QmVydEJyYWFt", "qmvydejyywft"}, CaseSensitive),
+        idBase64A)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QMVYDEJYYWFT", "qMvYDejYywfT"}, CaseSensitive),
+        idBase64B)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(std::vector<std::string>{"QMVYDEJYYWFT", "qmvydejyywft"}, CaseSensitive),
+        std::nullopt)
+        << section;
+  }
+
+  {
+    const auto section = "case: case-insensitive matching on a single id";
+    EXPECT_EQ(storage->findInternalUserId("Aart.Appel@fake.ru.nl", CaseInsensitive), idEmailA) << section;
+    EXPECT_EQ(storage->findInternalUserId("bert.bes@fake.ru.nl", CaseInsensitive), idEmailB) << section;
+    EXPECT_EQ(storage->findInternalUserId("Clara.Citroen@fake.ru.nl", CaseInsensitive), std::nullopt) << section;
+  }
+
+  {
+    const auto section = "case: case-insensitive matching on multiple ids";
+    EXPECT_EQ(
+        storage->findInternalUserId(
+            std::vector<std::string>{"Clara.Citroen@fake.ru.nl", "AART.APPEL@FAKE.RU.NL"},
+            CaseInsensitive),
+        idEmailA)
+        << section;
+    EXPECT_EQ(
+        storage->findInternalUserId(
+            std::vector<std::string>{"bert.bes@fake.ru.nl", "Clara.Citroen@fake.ru.nl"},
+            CaseInsensitive),
+        idEmailB)
+        << section;
+  }
+
+  {
+    const auto section = "edge cases";
+    const auto msgMatcher = HasSubstr("multiple matching users");
+    EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseInsensitive), std::nullopt) << section;
+    EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseSensitive), std::nullopt) << section;
+
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId("QmVydEJyYWFt", CaseInsensitive),
+        pep::Error,
+        msgMatcher);
+
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId(std::vector<std::string>{"QmVydEJyYWFt", "qMvYDejYywfT"}, CaseSensitive),
+        pep::Error,
+        msgMatcher);
+
+    PEP_EXPECT_THROWS_MESSAGE(
+        storage->findInternalUserId(
+            std::vector<std::string>{"AART.APPEL@FAKE.RU.NL", "BERT.BES@FAKE.RU.NL"},
+            CaseInsensitive),
+        pep::Error,
+        msgMatcher);
+  }
 }
 
 TEST_F(AccessManagerStorageTest, multipleUserIdentifiers) {
   int64_t originalId = storage->createUser("user");
   storage->createUser("anotherUser");
-  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
-  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::None);
+  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::None);
   EXPECT_EQ(storage->findInternalUserId("firstAlternativeName"), originalId);
   EXPECT_EQ(storage->findInternalUserId("secondAlternativeName"), originalId);
   storage->removeIdentifierForUser(originalId, "secondAlternativeName");
@@ -374,8 +488,8 @@ TEST_F(AccessManagerStorageTest, multipleUserIdentifiers) {
 
 TEST_F(AccessManagerStorageTest, cannotRemoveLastUserIdentifier) {
   int64_t originalId = storage->createUser("user");
-  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
-  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::None);
+  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::None);
   storage->removeIdentifierForUser(originalId, "firstAlternativeName");
   storage->removeIdentifierForUser(originalId, "secondAlternativeName");
   EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
@@ -383,7 +497,7 @@ TEST_F(AccessManagerStorageTest, cannotRemoveLastUserIdentifier) {
 
 TEST_F(AccessManagerStorageTest, cannotRemoveDisplayIdentifier) {
   int64_t originalId = storage->createUser("user"); //this will be the display identifier
-  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::None);
   EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
   storage->setDisplayIdentifierForUser(originalId, "firstAlternativeName");
   EXPECT_NO_THROW(storage->removeIdentifierForUser(originalId, "user"));
@@ -423,6 +537,15 @@ TEST_F(AccessManagerStorageTest, userGroupIsEmpty) {
 
 TEST_F(AccessManagerStorageTest, newUserGroupGetsNewUserGroupId) {
   std::unordered_set<int64_t> createdIds;
+  //First create (and immediately remove) some user groups. They should all get different IDs
+  for(size_t i = 0; i < 10; i++) {
+    auto name = "group" + std::to_string(i);
+    auto newId = storage->createUserGroup(UserGroup(name, {}));
+    auto [iterator, inserted] = createdIds.emplace(newId);
+    EXPECT_TRUE(inserted);
+    storage->removeUserGroup(name);
+  }
+  //Now create new groups with the same names as before. They should still get new IDs
   for(size_t i = 0; i < 10; i++) {
     auto newId = storage->createUserGroup(UserGroup("group" + std::to_string(i), {}));
     auto [iterator, inserted] = createdIds.emplace(newId);
@@ -467,6 +590,28 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
   EXPECT_EQ(storage->findUserGroupId(group2.mName), group2_id);
 }
 
+TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
+  std::string originalName = "MyGroup";
+  std::string alternativeName = "MyGroupAlternative";
+  int64_t id = storage->createUserGroup(UserGroup(originalName, {}));
+  storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
+  EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt);
+  EXPECT_EQ(storage->findUserGroupId(alternativeName), id);
+  storage->removeUserGroup(alternativeName);
+  EXPECT_EQ(storage->findUserGroupId(alternativeName), std::nullopt);
+  EXPECT_EQ(storage->findUserGroupId(originalName), std::nullopt) << "Removing a userGroup should not only tombstone it's current name";
+}
+
+TEST_F(AccessManagerStorageTest, changing_usergroup_name_allows_adding_new_group_with_the_old_name) {
+  std::string originalName = "MyGroup";
+  std::string alternativeName = "MyGroupAlternative";
+  int64_t originalId = storage->createUserGroup(UserGroup(originalName, {}));
+  storage->modifyUserGroup(originalName, UserGroup(alternativeName, {}));
+  int64_t newId{};
+  EXPECT_NO_THROW(newId = storage->createUserGroup(UserGroup(originalName, {})));
+  EXPECT_NE(originalId, newId);
+}
+
 // ==== executeQuery ====
 
 TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_groups) {
@@ -507,7 +652,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users_alt_ids) {
       user1 = "MyUser1",
       user1Alt = "MyUser1-alt";
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
@@ -529,7 +674,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
 
   storage->addUserToGroup(user1, group1);
@@ -557,7 +702,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
   storage->createUser(user3);
 
@@ -592,7 +737,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
   storage->createUser(user3);
 
@@ -625,7 +770,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
 
   storage->addUserToGroup(user1, group1);
@@ -987,7 +1132,7 @@ TEST_F(AccessManagerStorageTest, setGetMetadataUser) {
   const std::string subject = "UserWithMetadata";
   const std::string alternativeUid = "AlternativeUid";
   storage->createUser(subject);
-  storage->addIdentifierForUser(subject, alternativeUid, UserIdFlags::none);
+  storage->addIdentifierForUser(subject, alternativeUid, UserIdFlags::None);
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {

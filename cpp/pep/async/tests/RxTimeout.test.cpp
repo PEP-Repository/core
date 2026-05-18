@@ -162,6 +162,7 @@ TEST(RxTimeout, PlainTimer) {
  * The I/O context sometimes finishes running before the "emit_after" duration has passed, so the "timer doesn't wait
  * long enough" in those cases. This may be caused by our ASIO scheduler using a deadline_timer, while this unit test
  * measures duration using a steady_clock.
+ * TODO Is this still the case? It seems we're using a steady_timer now.
 TEST(RxTimeout, TimerBoundToAsio) {
   TestTimer(
     [](Duration emit_after, boost::asio::io_context& io_context) {

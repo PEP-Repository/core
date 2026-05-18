@@ -1,6 +1,13 @@
 #include <pep/async/WaitGroup.hpp>
 
+#include <pep/utils/Log.hpp>
+
+#include <boost/algorithm/string/join.hpp>
+#include <boost/range/adaptor/map.hpp>
+
 #include <iostream>
+
+static const std::string LOG_TAG = "WaitGroup";
 
 namespace pep {
 
@@ -20,6 +27,7 @@ void WaitGroup::wait(std::function<void(void)> callback) {
     std::lock_guard<std::mutex> lock(mLock);
     mWaited = true;
     if (!mUnfinishedActions.empty()) {
+      LOG(LOG_TAG, verbose) << this << " waiter is waiting for unfinished actions: " << boost::algorithm::join(mUnfinishedActions | boost::adaptors::map_values, ", ");
       mWaiters.push_back(callback);
       return;
     }
@@ -42,6 +50,9 @@ void WaitGroup::finish(size_t id) {
     if (position == mUnfinishedActions.end())
       throw ActionAlreadyFinishedException("Action was already finished");
 
+    if (!mWaiters.empty()) {
+      LOG(LOG_TAG, verbose) << this << " finished action: " << position->second;
+    }
     mUnfinishedActions.erase(position);
 
     if (!mUnfinishedActions.empty())
@@ -50,8 +61,11 @@ void WaitGroup::finish(size_t id) {
     std::swap(cbs, mWaiters);
   }
 
-  for (const auto& cb : cbs)
-    cb();
+  if (!cbs.empty()) {
+    LOG(LOG_TAG, verbose) << this << " invoking " << cbs.size() << " waiter(s)";
+    for (const auto& cb : cbs)
+      cb();
+  }
 }
 
 

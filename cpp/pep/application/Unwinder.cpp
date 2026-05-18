@@ -45,6 +45,11 @@ static const std::string LOG_TAG ("Unwinder");
 
 #ifndef _WIN32
 
+#ifdef __clang__
+// Suppress warning about statement expression from libunwind header in unw_tdep_getcontext macro on aarch64
+# pragma GCC diagnostic ignored "-Wgnu-statement-expression-from-macro-expansion"
+#endif
+
 static const char* SignalNumberToString (int dwSignalNumber) {
   switch (dwSignalNumber) {
   case SIGHUP:
@@ -470,13 +475,13 @@ static const char* lpMonthsOfTheYear[] = { "Jan", "Feb", "Mar", "Apr", "May", "J
            "PATH : %s\n"
            "BUILD_TARGET: %s\n"
            "BUILD_REF: %s\n"
-           "BUILD_REV: %s\n",
+           "BUILD_COMMIT: %s\n",
            getenv("USER"),
            getenv("PWD"),
            getenv("PATH"),
            BUILD_TARGET,
            BUILD_REF,
-           BUILD_REV
+           BUILD_COMMIT
           );
   // printf("User: {%s}, Working directory: {%s}, PATH {%s}\n",getenv("USER"), getenv("PWD"), getenv("PATH"));
   //----------------------

@@ -343,30 +343,30 @@ This is an example of the invocation and output of `user query`:
 - All Interactive Users: # size=5
   - user identifiers: # size=3
       - YXNzZXNzb3JAbWFzdGVyLnBlcC5jcy5ydS5ubA
-      - assessor@master.pep.cs.ru.nl
+      - assessor@main.pep.cs.ru.nl
       - U1234567@university-of-peppers.com
     user groups: # size=1
       - Research Assessor
 
   - user identifiers: # size=1
-      - monitor@master.pep.cs.ru.nl
+      - monitor@main.pep.cs.ru.nl
     user groups: # size=1
       - Monitor
 
   - user identifiers: # size=1
-      - dataadmin@master.pep.cs.ru.nl
+      - dataadmin@main.pep.cs.ru.nl
     user groups: # size=1
       - Data Administrator
 
   - user identifiers: # size=2
       - YWNjZXNzYWRtaW5AbWFzdGVyLnBlcC5jcy5ydS5ubA
-      - accessadmin@master.pep.cs.ru.nl
+      - accessadmin@main.pep.cs.ru.nl
     user groups: # size=1
       - Access Administrator
 
   - user identifiers: # size=2
       - bXVsdGloYXRAbWFzdGVyLnBlcC5jcy5ydS5ubA
-      - multihat@master.pep.cs.ru.nl
+      - multihat@main.pep.cs.ru.nl
     user groups: # size=4
       - Access Administrator
       - Research Assessor
@@ -374,7 +374,7 @@ This is an example of the invocation and output of `user query`:
       - Monitor
 
   - user identifiers: # size=1
-      - no_group@master.pep.cs.ru.nl
+      - no_group@main.pep.cs.ru.nl
     user groups: # size=0
 ```
 
@@ -583,10 +583,10 @@ Adding the `--json` switch will output the token in JSON format that can be used
 > pepcli token request "U1234567@university-of-peppers.com" "Research Assessor" --expiration-yyyymmdd 20270322
 iMTc1NjQ2[...]62buW1Sf
 
-# Generate a token that authenticates user "dataadmin@master.pep.cs.ru.nl" as a "Access Administrator",
+# Generate a token that authenticates user "dataadmin@main.pep.cs.ru.nl" as a "Access Administrator",
 # that is valid until 10:00:00 AM at August 29, 2025 (GMT).
 # Print the output as JSON this time.
-> pepcli token request --json "dataadmin@master.pep.cs.ru.nl" "Access Administrator" 1756461600
+> pepcli token request --json "dataadmin@main.pep.cs.ru.nl" "Access Administrator" 1756461600
 {
   "OAuthToken": "iMTc1NjQ2[...]CdI-IxNz"
 }

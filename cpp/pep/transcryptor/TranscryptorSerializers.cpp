@@ -1,4 +1,5 @@
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/rsk/RskSerializers.hpp>
@@ -49,10 +50,9 @@ void Serializer<TranscryptorRequest>::moveIntoProtocolBuffer(proto::Transcryptor
 }
 
 TranscryptorRequest Serializer<TranscryptorRequest>::fromProtocolBuffer(proto::TranscryptorRequest&& source) const {
-  TranscryptorRequest result;
-  result.mRequest = Serialization::FromProtocolBuffer(
-    std::move(*source.mutable_request()));
-  return result;
+  return TranscryptorRequest{
+    .mRequest = Serialization::FromProtocolBuffer(std::move(*source.mutable_request())),
+  };
 }
 
 TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffer(proto::TranscryptorRequestEntry&& source) const {
@@ -63,13 +63,15 @@ TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffe
     EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor()))),
     source.has_user_group() ?
     std::optional<EncryptedLocalPseudonym>(
+      //NOLINTNEXTLINE(performance-move-const-arg) False positive
       Serialization::FromProtocolBuffer(std::move(*source.mutable_user_group()))
     ) : std::nullopt,
     Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager_proof())),
     Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility_proof())),
     Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor_proof())),
     source.has_user_group_proof() ?
-    std::optional<RSKProof>(
+    std::optional<RskProof>(
+      //NOLINTNEXTLINE(performance-move-const-arg) False positive
       Serialization::FromProtocolBuffer(std::move(*source.mutable_user_group_proof()))
     ) : std::nullopt
   );

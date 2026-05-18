@@ -15,7 +15,7 @@ TEST(MessageFlags, constructor_rejects_invalid_flags_with_details) {
     (void) Flags(false, true, true);
     FAIL();
   } catch (const std::invalid_argument& ex) {
-    EXPECT_PRED1([](std::string_view str) {return str.ends_with(": error, payload");}, ex.what());
+    EXPECT_PRED1([](std::string_view str) {return str.ends_with(": {error, payload}");}, ex.what());
   }
 }
 

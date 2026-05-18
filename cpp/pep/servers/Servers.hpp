@@ -26,14 +26,21 @@ private:
 
   template <typename TServer>
   void startServer(std::filesystem::path rootConfig, const char* configurationFile) {
-    auto path = std::filesystem::absolute(rootConfig / configurationFile);
-    auto config = Configuration::FromFile(path);
-    auto server = mInstances.emplace_back(MakeSharedCopy(NetworkedServer::Make<TServer>(config)));
-    auto thread = std::make_shared<std::thread>(&RunServer, server);
-    mThreads.push_back(thread);
+    try {
+      auto path = std::filesystem::absolute(rootConfig / configurationFile);
+      auto config = Configuration::FromFile(path);
+      auto server = mInstances.emplace_back(MakeSharedCopy(NetworkedServer::Make<TServer>(config)));
+      auto thread = std::make_shared<std::thread>(&RunServer, server);
+      mThreads.push_back(thread);
+    }
+    catch (const std::exception& e) {
+      LOG("Servers", critical) << "Failed to start server from " << configurationFile << ": " << e.what();
+      throw;
+    }
   }
 
 public:
+  
   void runAsync(const std::filesystem::path& configPath);
   void wait();
   void stop();

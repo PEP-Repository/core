@@ -11,6 +11,7 @@ static const std::string LOG_TAG("asio_scheduler");
 
 namespace pep {
 
+namespace {
 struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
   boost::asio::io_context& io_context;
  private:
@@ -78,6 +79,7 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
     return { std::move(cs), wi };
   }
 };
+}
 
 rxcpp::observe_on_one_worker observe_on_asio(boost::asio::io_context& io_context) {
   rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<asio_scheduler>(io_context);

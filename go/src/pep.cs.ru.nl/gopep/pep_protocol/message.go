@@ -262,12 +262,12 @@ func GetCurrentBuildVersionResponse() (*pep_proto.VersionResponse, error) {
 	result := &pep_proto.VersionResponse{
 		ProjectPath:      build.BuildProjectPath,
 		Target:           build.BuildTarget,
-		MajorVersion:     build.BuildMajorVersion,
-		MinorVersion:     build.BuildMinorVersion,
+		VersionMajor:     build.BuildVersionMajor,
+		VersionMinor:     build.BuildVersionMinor,
+		VersionBuild:     build.BuildVersionBuild,
+		VersionRevision:  build.BuildVersionRevision,
 		Reference:        build.BuildReference,
-		PipelineId:       build.BuildPipelineId,
-		JobId:            build.BuildJobId,
-		Revision:         build.BuildRevision,
+		Commit:           build.BuildCommit,
 		ProtocolChecksum: (fmt.Sprintf("%02x", build.MANUAL_PROTOCOL_CHECKSUM_COMPONENT) + pep_proto.MESSAGES_PROTO_CHECKSUM)[0:20],
 	}
 
@@ -282,28 +282,28 @@ func GetCurrentBuildVersionResponse() (*pep_proto.VersionResponse, error) {
 		}
 
 		type ConfigVersionJson struct {
-			Reference      string `json:"reference"`
-			PipelineId     int    `json:"pipelineId"`
-			MajorVersion   int    `json:"majorVersion"`
-			MinorVersion   int    `json:"minorVersion"`
-			JobId          int    `json:"jobId"`
-			Revision       string `json:"revision"`
-			ProjectPath    string `json:"projectPath"`
-			ProjectCaption string `json:"projectCaption"`
+			Reference       string `json:"reference"`
+			VersionMajor    int    `json:"versionMajor"`
+			VersionMinor    int    `json:"versionMinor"`
+			VersionBuild    int    `json:"versionBuild"`
+			VersionRevision int    `json:"versionRevision"`
+			Commit          string `json:"commit"`
+			ProjectPath     string `json:"projectPath"`
+			ProjectCaption  string `json:"projectCaption"`
 		}
 
 		var configVersionJson ConfigVersionJson
 		json.Unmarshal(bytes, &configVersionJson)
 
 		result.ConfigVersion = &pep_proto.ConfigVersion{
-			Reference:      configVersionJson.Reference,
-			MajorVersion:   strconv.Itoa(configVersionJson.MajorVersion),
-			MinorVersion:   strconv.Itoa(configVersionJson.MinorVersion),
-			PipelineId:     strconv.Itoa(configVersionJson.PipelineId),
-			JobId:          strconv.Itoa(configVersionJson.JobId),
-			Revision:       configVersionJson.Revision,
-			ProjectPath:    configVersionJson.ProjectPath,
-			ProjectCaption: configVersionJson.ProjectCaption,
+			Reference:       configVersionJson.Reference,
+			VersionMajor:    strconv.Itoa(configVersionJson.VersionMajor),
+			VersionMinor:    strconv.Itoa(configVersionJson.VersionMinor),
+			VersionBuild:    strconv.Itoa(configVersionJson.VersionBuild),
+			VersionRevision: strconv.Itoa(configVersionJson.VersionRevision),
+			Commit:          configVersionJson.Commit,
+			ProjectPath:     configVersionJson.ProjectPath,
+			ProjectCaption:  configVersionJson.ProjectCaption,
 		}
 	}
 

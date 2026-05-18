@@ -130,8 +130,8 @@ class PrometheusMetrics:
             with tempfile.NamedTemporaryFile(mode='wb', delete=False, dir=metrics_dir) as tmp_file:
                 tmp_file.write(generate_latest(registry))
 
-            # Set file permissions to 746 (rwxr--rw-)
-            os.chmod(tmp_file.name, 0o746)
+            # Set file permissions to 644 (rw-r--r--)
+            os.chmod(tmp_file.name, 0o644)
 
             # Atomically rename the file
             os.replace(tmp_file.name, metrics_file)

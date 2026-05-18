@@ -15,7 +15,7 @@ void AddCheckBox(boost::property_tree::ptree& destination, const std::string& na
   }
 
   std::set<std::string> selectedValues;
-  boost::split(selectedValues, value, [](char c) { return c == ';'; });
+  boost::split(selectedValues, value, std::bind_front(std::equal_to{}, ';'));
   auto unfound = selectedValues.cend();
 
   using ptree_path = boost::property_tree::ptree::path_type;

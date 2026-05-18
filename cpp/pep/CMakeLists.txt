@@ -131,7 +131,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wsuper-class-method-mismatch
       -Wtautological-value-range-compare
       -Wthread-safety
-      -Wthread-safety-negative
       -Wtrampolines
       -Wunaligned-access
       -Wundef
@@ -145,9 +144,30 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wvla
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
-
       -Wno-unused-parameter
   )
+
+  if(distcc IN_LIST CMAKE_CXX_COMPILER_LAUNCHER)
+    set(distcc_default ON)
+  else()
+    set(distcc_default OFF)
+  endif()
+  option(PEP_DISTCC_COMPATIBLE "Use options compatible with distcc" ${distcc_default})
+  if(PEP_DISTCC_COMPATIBLE)
+    message(STATUS "Disabling warnings introduced when using distcc")
+    set(distcc_options
+        -Wno-unknown-warning-option
+
+        # Warnings are generated because preprocessing is run locally,
+        # so macros are expanded, etc.
+        -Wno-extra-semi-stmt
+        -Wno-gnu-line-marker
+        -Wno-old-style-cast
+        -Wno-unreachable-code
+        -Wno-zero-as-null-pointer-constant
+    )
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:${distcc_options}>")
+  endif()
 
   if(NOT DEPRECATED_WARNINGS_AS_ERROR)
     warn_no_error(CXX
@@ -157,11 +177,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   endif()
 endif()
 
-# For MSVC, bump up the warning level from level 1 (default) to 2
-# TODO: See if we can bump this to level 3 or 4?
+# For MSVC, bump up the warning level from level 1 (default) to 3
+# TODO: See if we can bump this to /W4 or /Wall ?
 if (MSVC)
   # Ref: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=msvc-170
-  add_compile_options("/W2")
+  add_compile_options("/W3")
 endif()
 
 # Treat warnings as errors
@@ -205,22 +225,29 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-reorder-blocks -fno-reorder-blocks-and-partition")
 endif()
 
-if(NOT DEFINED MAJOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MAJOR)
   message(FATAL_ERROR "Major version is not set.")
 endif()
-if(NOT DEFINED MINOR_VERSION)
+if(NOT DEFINED PEP_VERSION_MINOR)
   message(FATAL_ERROR "Minor version is not set.")
 endif()
+if(NOT DEFINED PEP_VERSION_BUILD)
+  message(FATAL_ERROR "Build number is not set.")
+endif()
+if(NOT DEFINED PEP_VERSION_REVISION)
+  message(FATAL_ERROR "Revision number is not set.")
+endif()
 
-# If updating these, don't forget to update them for Go too.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_PROJECT_PATH=\\\"$ENV{CI_PROJECT_PATH}\\\"")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_REF=\\\"$ENV{CI_COMMIT_REF_NAME}\\\"")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_REV=\\\"$ENV{CI_COMMIT_SHA}\\\"")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_MAJOR_VERSION=${MAJOR_VERSION}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_MINOR_VERSION=${MINOR_VERSION}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_PIPELINE_ID=${CI_PIPELINE_ID}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_JOB_ID=${CI_JOB_ID}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_TARGET=\\\"${CMAKE_SYSTEM_NAME}\\\"")
+add_compile_definitions(
+  "BUILD_PROJECT_PATH=\"$ENV{CI_PROJECT_PATH}\""
+  "BUILD_REF=\"$ENV{CI_COMMIT_REF_NAME}\""
+  "BUILD_COMMIT=\"$ENV{CI_COMMIT_SHA}\""
+  "PEP_VERSION_MAJOR=${PEP_VERSION_MAJOR}"
+  "PEP_VERSION_MINOR=${PEP_VERSION_MINOR}"
+  "PEP_VERSION_BUILD=${PEP_VERSION_BUILD}"
+  "PEP_VERSION_REVISION=${PEP_VERSION_REVISION}"
+  "BUILD_TARGET=\"${CMAKE_SYSTEM_NAME}\""
+)
 
 function(add_windows_manifest target)
   if(WIN32)
@@ -311,6 +338,10 @@ function(verify_headers_standalone target)
         file(WRITE "${src}" "#include <${header}>")
         target_sources("${target}_StandaloneHeaders" PRIVATE "${src}")
       endforeach()
+
+      set_target_properties(${target}_StandaloneHeaders PROPERTIES
+        FOLDER pep-StandaloneHeaders
+      )
     endif()
   endif()
 endfunction()
@@ -397,6 +428,7 @@ add_subdirectory(core-client)
 add_subdirectory(crypto)
 add_subdirectory(database)
 add_subdirectory(elgamal)
+add_subdirectory(key-components)
 add_subdirectory(keyserver)
 add_subdirectory(messaging)
 add_subdirectory(morphing)

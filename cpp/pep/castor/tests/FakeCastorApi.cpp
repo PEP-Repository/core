@@ -95,7 +95,7 @@ void FakeCastorApi::Connection::handleReadHeaders(const networking::DelimitedTra
     if(index != std::string::npos) {
       std::string headerName = header.substr(0, index);
       std::string headerValue = header.substr(index + 1);
-      boost::trim_if(headerValue, boost::is_any_of(" \r\n\t"));
+      boost::trim_if(headerValue, boost::is_space());
       mHeaders[headerName] = headerValue;
     } else {
       LOG(LOG_TAG, warning) << "Ignoring malformed header: " << header << '\n';
@@ -202,21 +202,18 @@ void FakeCastorTest::Side::start() {
   if (mThread != nullptr) {
     throw std::runtime_error("Can't start FakeCastorTest::Side multiple times");
   }
-  mThread = std::make_shared<IoContextThread>(mIoContext, &mRun);
+  mThread = std::make_shared<IoContextThread>("Fake Castor test " + this->role(), mIoContext);
 }
 
 void FakeCastorTest::Side::stop(bool force) {
-  if (!mRun) {
+  if (mIoContext == nullptr) {
     throw std::runtime_error("Can't stop FakeCastorTest::Side multiple times");
   }
   if (mThread == nullptr) {
     throw std::runtime_error("Can't stop an unstarted FakeCastorTest::Side");
   }
-  mRun = false; // Don't restart the I/O service if/when it runs out of work
-  if (force) {
-    mIoContext->stop();
-  }
-  mThread->join();
+  mIoContext.reset(); // Allow detection that this instance has already been stop()ped
+  mThread->stop(force);
 }
 
 FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& parameters, uint16_t port, std::shared_ptr<Options> options)

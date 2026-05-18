@@ -1,0 +1,29 @@
+{
+  "skip-analysis-in-path": [
+    ".*rxcpp.*"
+  ],
+  "report-suppress-errors": [
+    "PULSE_CONST_REFABLE",
+    "PULSE_UNNECESSARY_COPY_INTERMEDIATE",
+    "PULSE_UNNECESSARY_COPY_ASSIGNMENT",
+    "PULSE_UNNECESSARY_COPY",
+    "PULSE_READONLY_SHARED_PTR_PARAM",
+    "PULSE_UNNECESSARY_COPY_OPTIONAL",
+    "DEAD_STORE",
+    "PULSE_UNNECESSARY_COPY_ASSIGNMENT_CONST"
+  ],
+  "report-block-list-spec": [
+    {
+      "bug_type": "USE_AFTER_DELETE",
+      "file": "cpp/pep/rsk/RskRecipient.hpp",
+      "procedure_name": "~SkRecipient",
+      "comment": "This is a fp because..."
+    },
+    {
+      "bug_type": "USE_AFTER_DELETE",
+      "file": "/usr/include/c++/13/tuple",
+      "procedure_name": "_Tuple_impl",
+      "comment": "Why does infer even look at cpp internals?"
+    }
+  ]
+}

@@ -26,7 +26,9 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
   }
 
   backendParams.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
+  backendParams.setAccessManagerEndPoint(std::move(accessManagerEndPoint));
   backendParams.setSigningIdentity(getSigningIdentity());
+  backendParams.setRootCertificates(getRootCAs());
 }
 
 const AuthserverBackend::Parameters& Authserver::Parameters::getBackendParams() const {
@@ -57,15 +59,19 @@ void Authserver::computeChecksumChainChecksum(
 }
 
 messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedTokenRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
-  auto accessGroup = signedRequest->getLeafCertificateOrganizationalUnit();
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
   
   return messaging::BatchSingleMessage(mBackend->executeTokenRequest(accessGroup, request));
 }
 
 messaging::MessageBatches Authserver::handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting checksum chains");
-  auto request = signedRequest->open(getRootCAs());
+  auto certified = signedRequest->open(*this->getRootCAs());
+  const auto& request = certified.message;
+  auto accessGroup = certified.signatory.organizationalUnit();
+
+  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), accessGroup, "Requesting checksum chains");
 
   return mBackend->handleChecksumChainRequest(request).map([](ChecksumChainResponse response) -> messaging::MessageSequence {
     return rxcpp::rxs::just(std::make_shared<std::string>(Serialization::ToString(response)));

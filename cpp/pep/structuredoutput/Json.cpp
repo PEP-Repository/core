@@ -1,7 +1,6 @@
 #include <pep/structuredoutput/Json.hpp>
 
 #include <pep/utils/ChronoUtil.hpp>
-#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -99,7 +98,7 @@ std::ostream& append(std::ostream& stream, const pep::UserGroup& group, int inde
 
 std::ostream& append(std::ostream& stream, const pep::QRUser& user, DisplayConfig config) {
   const auto ind = [&config]() { return indentations(config.indent); };
-  const auto printUserGroups = config.flags & DisplayConfig::Flags::printUserGroups;
+  const auto printUserGroups = HasFlags(config.flags, DisplayConfig::Flags::PrintUserGroups);
 
   stream << "{\n";
   ++config.indent;
@@ -137,7 +136,7 @@ std::ostream& append(std::ostream& stream, const pep::QRUser& user, DisplayConfi
 
 std::ostream& append(std::ostream& stream, const std::vector<pep::UserGroup>& groups, DisplayConfig config) {
   const auto ind = [&config]() { return indentations(config.indent); };
-  const auto includeHeader = config.flags & DisplayConfig::Flags::printHeaders;
+  const auto includeHeader = HasFlags(config.flags, DisplayConfig::Flags::PrintHeaders);
 
   if (includeHeader) {
     stream << Literal{stringConstants::userGroups.descriptive} << ": ";
@@ -159,7 +158,7 @@ std::ostream& append(std::ostream& stream, const std::vector<pep::UserGroup>& gr
 
 std::ostream& append(std::ostream& stream, const std::vector<pep::QRUser>& users, DisplayConfig config) {
   const auto ind = [&config]() { return indentations(config.indent); };
-  const auto includeHeader = config.flags & DisplayConfig::Flags::printHeaders;
+  const auto includeHeader = HasFlags(config.flags, DisplayConfig::Flags::PrintHeaders);
 
   if (includeHeader) {
     stream << Literal{stringConstants::users.descriptive} << ": ";
@@ -183,9 +182,9 @@ std::ostream& append(std::ostream& stream, const std::vector<pep::QRUser>& users
 
 std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& response, DisplayConfig config) {
   const auto ind = [&config]() { return indentations(config.indent); };
-  const auto printHeaders = config.flags & DisplayConfig::Flags::printHeaders;
-  const auto printGroups = config.flags & DisplayConfig::Flags::printGroups;
-  const auto printUsers = config.flags & DisplayConfig::Flags::printUsers;
+  const auto printHeaders = HasFlags(config.flags, DisplayConfig::Flags::PrintHeaders);
+  const auto printGroups = HasFlags(config.flags, DisplayConfig::Flags::PrintGroups);
+  const auto printUsers = HasFlags(config.flags, DisplayConfig::Flags::PrintUsers);
 
   if (printHeaders) {
     stream << ind() << "{\n";

@@ -44,6 +44,13 @@ AuthserverBackend::Parameters::Parameters(const Configuration& config) {
   }
 }
 
+const EndPoint& AuthserverBackend::Parameters::getAccessManagerEndPoint() const {
+  return accessManagerEndpoint;
+}
+void AuthserverBackend::Parameters::setAccessManagerEndPoint(EndPoint endPoint) {
+  this->accessManagerEndpoint = std::move(endPoint);
+}
+
 std::shared_ptr<messaging::ServerConnection>
 AuthserverBackend::Parameters::getAccessManager() const {
   return this->accessManager;
@@ -69,9 +76,16 @@ const std::string& AuthserverBackend::Parameters::getOAuthTokenSecret() const { 
 
 const std::optional<std::filesystem::path>& AuthserverBackend::Parameters::getStorageFile() const {return storageFile; }
 
+std::shared_ptr<X509RootCertificates> AuthserverBackend::Parameters::getRootCertificates() const { return rootCertificates; }
+
+void AuthserverBackend::Parameters::setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates) { this->rootCertificates = std::move(rootCertificates); }
+
 void AuthserverBackend::Parameters::check() const {
   if (!accessManager) {
     throw std::runtime_error("AccessManager must be set");
+  }
+  if (accessManagerEndpoint.expectedCommonName.empty() || accessManagerEndpoint.hostname.empty() || accessManagerEndpoint.port == 0) {
+    throw std::runtime_error("accessManagerEndpoint must be set");
   }
   if(storageFile && storageFile->empty()) {
     throw std::runtime_error("If a storageFile is set, it may not be empty");
@@ -85,13 +99,19 @@ void AuthserverBackend::Parameters::check() const {
   if (signingIdentity == nullptr) {
     throw std::runtime_error("signingIdentity must be set");
   }
+  if (!rootCertificates) {
+    throw std::runtime_error("rootCertificates must be set");
+  }
+  if (rootCertificates->items().empty()) {
+    throw std::runtime_error("rootCertificates must not be empty");
+  }
 }
 const std::unordered_map<std::string, std::string> checksumNameMappings{
     {"groups", "user-groups"}, {"user-groups-v2", "user-group-users-legacy"}};
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
-      mAccessManager(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this)),
+      mAccessManager(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this, params.getAccessManagerEndPoint().expectedCommonName, params.getRootCertificates())),
       mTokenExpiration(params.getTokenExpiration()),
       mOauthTokenSecret(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {

@@ -14,6 +14,22 @@
 
 namespace pep {
 
+class X509Extension {
+public:
+  X509Extension(const X509Extension& other);
+  X509Extension(X509Extension&& other) noexcept;
+  ~X509Extension() noexcept;
+  X509Extension& operator=(X509Extension other) noexcept;
+
+  explicit X509Extension(X509_EXTENSION* extension) noexcept : mRaw(extension) {}
+
+  bool isCritical() const noexcept;
+  std::string getName() const;
+  std::string getValue() const;
+private:
+  X509_EXTENSION* mRaw;
+};
+
 class X509Certificate {
 public:
   static constexpr const char* defaultSelfSignedCountryCode = "NL";
@@ -48,12 +64,18 @@ public:
   std::string toPem() const;
   std::string toDer() const;
 
+  bool hasSameSubject(const X509Certificate& other) const;
+
   static X509Certificate FromPem(const std::string& pem);
   static X509Certificate FromDer(const std::string& der);
   static X509Certificate MakeSelfSigned(const AsymmetricKeyPair& keys, std::string_view organization, std::string_view commonName, std::string_view countryCode = defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = defaultSelfSignedValidity);
 
-  bool operator==(const X509Certificate& rhs) const;
-  bool operator!=(const X509Certificate& rhs) const { return !(*this == rhs); }
+  std::strong_ordering operator<=>(const X509Certificate& other) const;
+  // We have a non-defaulted operator<=>. Unfortunately, only a defaulted operator<=> comes with a synthesized operator==.
+  // So we have to add it explicitly.
+  // Furthermore, a defaulted operator== would bypass our operator<=>, so that would just compare the mRaw pointers.
+  // We therefore implement it ourselves so we can explicitly call our custom operator<=>.
+  bool operator==(const X509Certificate& other) const { return operator<=>(other) == std::strong_ordering::equal; };
 
  private:
   X509* mRaw = nullptr;
@@ -105,6 +127,8 @@ public:
   // You should have no business accessing these methods unless you're serializing
   const X509Certificates& certificates() const& { return mCertificates; }
   X509Certificates certificates()&& { return mCertificates; }
+
+  auto operator<=>(const X509CertificateChain&) const = default;
 };
 
 inline X509CertificateChain operator/(X509CertificateChain chain, X509Certificate leaf) { return chain /= std::move(leaf); }
@@ -112,8 +136,6 @@ inline X509CertificateChain operator/(X509CertificateChain chain, X509Certificat
 
 class X509CertificateSigningRequest {
  public:
-  static X509CertificateSigningRequest Make(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit);
-
   /*!
    * \brief Construct a CSR for the provided key pair, common name and organizational unit.
    * \warning No check is performed on the provided data.
@@ -127,12 +149,15 @@ class X509CertificateSigningRequest {
   AsymmetricKey getPublicKey() const;
   std::optional<std::string> getCommonName() const;
   std::optional<std::string> getOrganizationalUnit() const;
+  [[nodiscard]] std::vector<X509Extension> getExtensions() const;
   [[nodiscard]] bool verifySignature() const;
   std::string toPem() const;
   std::string toDer() const;
 
   static X509CertificateSigningRequest FromPem(const std::string& pem);
   static X509CertificateSigningRequest FromDer(const std::string& der);
+
+  static X509CertificateSigningRequest CreateWithSubjectFromExistingCertificate(AsymmetricKeyPair& keyPair, const X509Certificate& certificate);
 
   /*!
    * \brief Generate a X509 certificate based on the CSR. As subject it will contain the common name returned by getCommonName() and the organizational unit returned by getOrganizationUnit(). Other fields will be ignored.
@@ -144,6 +169,12 @@ class X509CertificateSigningRequest {
   X509Certificate signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const;
 
  private:
+  // This will create a certificate signing request that does not have a subject yet, and therefore can't yet be signed.
+  // Make sure to set a subject and sign the certificate, before using it or returning it from a public method/constructor.
+  static X509CertificateSigningRequest MakeStub(AsymmetricKeyPair& keyPair);
+
+  void sign(const AsymmetricKeyPair& keyPair);
+
   X509_REQ* mCSR = nullptr;
 
   explicit X509CertificateSigningRequest(X509_REQ& csr) noexcept : mCSR(&csr) {} // Takes ownership
@@ -170,7 +201,7 @@ class X509IdentityFiles {
 private:
   std::filesystem::path mPrivateKeyFilePath;
   std::filesystem::path mCertificateChainFilePath;
-  X509Identity mIdentity;
+  std::shared_ptr<X509Identity> mIdentity;
 
 public:
   X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath);
@@ -179,8 +210,8 @@ public:
 
   const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
   const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }
-
-  const X509Identity& identity() const noexcept { return mIdentity; }
+  std::shared_ptr<const X509Identity> identity() const noexcept { return mIdentity; }
+  std::shared_ptr<X509Identity> identity() noexcept { return mIdentity; }
 };
 
 }

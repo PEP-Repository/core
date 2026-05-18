@@ -2,7 +2,7 @@
 
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 
 namespace pep {
 

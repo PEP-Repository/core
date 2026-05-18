@@ -59,7 +59,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
   return accessManagerProxy
       ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
                                                .mParticipantGroups = participantGroups,
-                                               .mPolymorphicPseudonyms = pps,
+                                               .mAccessSubjects = pps,
                                                .mColumnGroups = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})
@@ -249,22 +249,25 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   const std::optional<std::vector<std::string>>& columns) {
   LOG(LOG_TAG, debug) << "getHistory";
 
-  auto request = std::make_shared<DataHistoryRequest2>();
-  request->mTicket = std::move(ticket);
+  auto openedTicket = ticket.openWithoutCheckingSignature();
 
+  DataHistoryRequest2 request{
+    .mTicket = std::move(ticket),
+    .mColumns{},
+    .mPseudonyms{},
+  };
   std::optional<Ticket2> unsignedTicket;
   FillHistoryRequestIndices<LocalPseudonyms, PolymorphicPseudonym>(
-    request->mTicket, unsignedTicket, &Ticket2::mPseudonyms, pps, request->mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
+    request.mTicket, unsignedTicket, &Ticket2::mAccessSubjects, pps, request.mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
   FillHistoryRequestIndices<std::string, std::string>(
-    request->mTicket, unsignedTicket, &Ticket2::mColumns, columns, request->mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
+    request.mTicket, unsignedTicket, &Ticket2::mColumns, columns, request.mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
-  return storageFacilityProxy->requestDataHistory(std::move(*request))
+  return storageFacilityProxy->requestDataHistory(std::move(request))
     .map([](const DataHistoryResponse2& response) {
       return response.mEntries;
     })
     .op(RxConcatenateVectors())
-    .flat_map([this, request](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {
-      const auto& ticket = request->mTicket.openWithoutCheckingSignature();
+    .flat_map([this, ticket = std::move(openedTicket)](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {
       std::vector<HistoryResult> results;
       results.reserve(entries->size());
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
@@ -272,7 +275,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
       std::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
         auto ilp = localPseuds.find(entry.mPseudonymIndex);
         if (ilp == localPseuds.cend()) {
-          auto emplaced = localPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ticket.mPseudonyms[entry.mPseudonymIndex])));
+          auto emplaced = localPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ticket.mAccessSubjects[entry.mPseudonymIndex])));
           assert(emplaced.second);
           ilp = emplaced.first;
         }
@@ -308,15 +311,15 @@ CoreClient::getHistory2(SignedTicket2 ticket,
 CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms) {
   auto opened = ticket.openWithoutCheckingSignature();
 
-  mPseudonyms.reserve(opened.mPseudonyms.size());
-  if (!opened.mPseudonyms.empty()) {
-    if (opened.mPseudonyms.front().mAccessGroup.has_value()) {
+  mPseudonyms.reserve(opened.mAccessSubjects.size());
+  if (!opened.mAccessSubjects.empty()) {
+    if (opened.mAccessSubjects.front().mAccessGroup.has_value()) {
       mAgPseuds.emplace(std::vector<std::shared_ptr<LocalPseudonym>>());
-      mAgPseuds->reserve(opened.mPseudonyms.size());
+      mAgPseuds->reserve(opened.mAccessSubjects.size());
     }
   }
 
-  for (const auto& p : opened.mPseudonyms) {
+  for (const auto& p : opened.mAccessSubjects) {
     mPseudonyms.push_back(std::make_shared<LocalPseudonyms>(p));
 
     if (p.mAccessGroup.has_value() != mAgPseuds.has_value()) {

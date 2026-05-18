@@ -128,7 +128,7 @@ public:
   }
 
   /// \copydoc EncryptedPseudonym::rerandomize
-  [[nodiscard]] Derived rerandomize() const /*override*/ {
+  [[nodiscard]] Derived rerandomize() const { //NOLINT(bugprone-derived-method-shadowing-base-method) Does the same thing
     return Derived(EncryptedPseudonym::rerandomize());
   }
 };

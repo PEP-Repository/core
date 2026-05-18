@@ -3,7 +3,8 @@
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <filesystem>
 
@@ -28,12 +29,12 @@ const std::string OAuthToken::DEFAULT_JSON_FILE_NAME = "OAuthToken.json";
 
 bool OAuthToken::verify(const std::string& secret, const std::string& requiredSubject, const std::string& requiredGroup) const {
   LOG("OAuthToken::verify", debug) << "Verifying OAuth token " << mSerialized;
-  LOG("OAuthToken::verify", debug) << "encodeBase64URL(remoteJSON): " << encodeBase64URL(mData);
+  LOG("OAuthToken::verify", debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(mData);
 
   auto result = true;
 
   // Compute the HMAC on the json using the shared secret
-  std::string localHMAC = Sha256::HMac(secret, mData);
+  std::string localHMAC = Hmac<Sha256>(secret, mData);
 
   // Check whether the received HMAC is equal to the computed one
   if(localHMAC != mHmac) {
@@ -131,14 +132,13 @@ OAuthToken OAuthToken::Generate(
 
     // or actually, in base64 encoded form..
     stream.str("");
-    stream << encodeBase64URL(payload);
+    stream << EncodeBase64Url(payload);
 
     // then a dot (".")..
     stream << ".";
 
     // and finally the (base64 encoded) hmac of the payload
-    stream << encodeBase64URL(
-             Sha256::HMac(secret, payload));
+    stream << EncodeBase64Url(Hmac<Sha256>(secret, payload));
 
     return OAuthToken(std::move(stream).str());
 }
@@ -146,7 +146,7 @@ OAuthToken OAuthToken::Generate(
 OAuthToken::OAuthToken(const std::string& serialized)
   : mSerialized(serialized) {
   std::vector<std::string> splitToken;
-  boost::split(splitToken, serialized, boost::is_any_of("."));
+  boost::split(splitToken, serialized, std::bind_front(std::equal_to{}, '.'));
 
   // Token should consist of two parts: (encoded) JSON data and HMAC
   if (splitToken.size() != 2) {
@@ -161,8 +161,8 @@ OAuthToken::OAuthToken(const std::string& serialized)
   }
 
   try {
-    mData = decodeBase64URL(splitToken[0]);
-    mHmac = decodeBase64URL(splitToken[1]);
+    mData = DecodeBase64Url(splitToken[0]);
+    mHmac = DecodeBase64Url(splitToken[1]);
 
     boost::property_tree::ptree root;
     std::istringstream jsonStream(mData);

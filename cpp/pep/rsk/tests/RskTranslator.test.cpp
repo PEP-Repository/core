@@ -125,7 +125,7 @@ TEST_F(RskTranslatorTest, rsk) {
 
   const auto skRecipient = rsk.generateKeyComponent(factors.rekey, sk);
   const auto decrypted = transformed.decrypt(skRecipient);
-  const auto dataReshuffle = data.mult(factors.reshuffle);
+  const auto dataReshuffle = factors.reshuffle * data;
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
@@ -167,7 +167,7 @@ TEST_F(RskTranslatorTest, rs) {
   const auto transformed = rsk.rs(encryption, factor);
 
   const auto decrypted = transformed.decrypt(sk);
-  const auto dataReshuffle = data.mult(factor);
+  const auto dataReshuffle = factor * data;
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
@@ -178,17 +178,17 @@ TEST_F(RskTranslatorTest, certifiedRsk) {
 
   const SkRecipient recipient(1, {.reshuffle = "Group1", .rekey = "User1"});
   const auto factors = rsk.generateKeyFactors(recipient);
-  const auto verifiers = rsk.computeRskProofVerifiers(factors, pk);
+  const auto verifiers = rsk.computeReshuffleRekeyVerifiers(factors, pk);
   const auto [transformed, proof] = rsk.certifiedRsk(encryption, factors);
   EXPECT_NO_THROW(proof.verify(encryption, transformed, verifiers));
 
   const auto skRecipient = rsk.generateKeyComponent(factors.rekey, sk);
   const auto decrypted = transformed.decrypt(skRecipient);
-  const auto dataReshuffle = data.mult(factors.reshuffle);
+  const auto dataReshuffle = factors.reshuffle * data;
   EXPECT_EQ(decrypted, dataReshuffle);
 }
 
-TEST_F(RskTranslatorTest, rskProofVerifiers) {
+TEST_F(RskTranslatorTest, ReshuffleRekeyProofVerifiers) {
   const ElgamalPublicKey pk = point(
       {0x04, 0x5C, 0xB4, 0xE3, 0x40, 0x49, 0x5A, 0x2B,
        0x5A, 0x30, 0xDD, 0x44, 0xA7, 0xB8, 0x25, 0x02,
@@ -197,8 +197,8 @@ TEST_F(RskTranslatorTest, rskProofVerifiers) {
 
   const SkRecipient recipient(1, {.reshuffle = "Group1", .rekey = "User1"});
   const auto factors = rsk.generateKeyFactors(recipient);
-  const auto verifiers = rsk.computeRskProofVerifiers(factors, pk);
-  const RSKVerifiers expectedVerifiers(
+  const auto verifiers = rsk.computeReshuffleRekeyVerifiers(factors, pk);
+  const ReshuffleRekeyVerifiers expectedVerifiers(
       point({0xEC, 0x6E, 0x89, 0x57, 0xF8, 0xBB, 0x91, 0x1D,
              0x11, 0x18, 0x60, 0x84, 0x43, 0x6F, 0x3E, 0x15,
              0xE6, 0xDF, 0x32, 0x7B, 0x56, 0x8B, 0xA9, 0x42,

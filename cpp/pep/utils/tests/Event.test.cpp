@@ -86,4 +86,14 @@ TEST(Event, NotificationReentrancy) {
   notifier.doIt();           // ... causing (memcheck to detect) an "Invalid read" during this notification if Event<>::notify iterates directly over its mContracts
 }
 
+
+// Segfaults if Event<>::notify updates encapsulated state (after it has been destroyed).
+TEST(Event, DestructionDuringNotification) {
+  auto notifier = std::make_shared<Notifier>();
+  auto subscription = notifier->onDoing.subscribe([&notifier]() {
+    notifier.reset();
+    });
+  notifier->doIt();
+}
+
 }

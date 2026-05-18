@@ -9,7 +9,7 @@
 #include <pep/database/Storage.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
 #include <cctype>
@@ -21,6 +21,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
+#include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <filesystem>
 #include <unordered_set>
@@ -324,22 +325,26 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   createUserGroup(UserGroup(UserGroup::Monitor, std::nullopt));
   createUserGroup(UserGroup(UserGroup::DataAdministrator, std::chrono::days{1}));
   createUserGroup(UserGroup(UserGroup::AccessAdministrator, std::nullopt));
+  createUserGroup(UserGroup(UserGroup::SystemAdministrator, std::nullopt));
 
-  auto assessorId = createUser("assessor@master.pep.cs.ru.nl");
-  auto monitorId = createUser("monitor@master.pep.cs.ru.nl");
-  auto dataadminId = createUser("dataadmin@master.pep.cs.ru.nl");
-  auto accessadminId = createUser("accessadmin@master.pep.cs.ru.nl");
-  auto multihatId = createUser("multihat@master.pep.cs.ru.nl");
+  auto assessorId = createUser("assessor@main.pep.cs.ru.nl");
+  auto monitorId = createUser("monitor@main.pep.cs.ru.nl");
+  auto dataadminId = createUser("dataadmin@main.pep.cs.ru.nl");
+  auto accessadminId = createUser("accessadmin@main.pep.cs.ru.nl");
+  auto systemadminId = createUser("systemadmin@main.pep.cs.ru.nl");
+  auto multihatId = createUser("multihat@main.pep.cs.ru.nl");
 
   addUserToGroup(assessorId, UserGroup::ResearchAssessor);
   addUserToGroup(monitorId, UserGroup::Monitor);
   addUserToGroup(dataadminId, UserGroup::DataAdministrator);
   addUserToGroup(accessadminId, UserGroup::AccessAdministrator);
+  addUserToGroup(systemadminId, UserGroup::SystemAdministrator);
 
   addUserToGroup(multihatId, UserGroup::ResearchAssessor);
   addUserToGroup(multihatId, UserGroup::Monitor);
   addUserToGroup(multihatId, UserGroup::DataAdministrator);
   addUserToGroup(multihatId, UserGroup::AccessAdministrator);
+  addUserToGroup(multihatId, UserGroup::SystemAdministrator);
 
 #endif //ENABLE_OAUTH_TEST_USERS
 
@@ -486,7 +491,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
         limit(1)));
       if (firstIdentifier) {
         if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
-          mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::isDisplayId));
+          mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::IsDisplayId));
           countAssigned++;
         }
         else if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
@@ -685,7 +690,7 @@ std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {
   return RangeToVector(std::views::values(mLpToPpMap));
 }
 
-std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPPs(const std::vector<std::string>& participantGroups) {
+std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPpGroups(std::span<const std::string> participantGroups) {
   using namespace std::ranges;
 
   std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> ppsAndGroups;
@@ -701,7 +706,7 @@ std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*parti
   {
     // Retrieve participant LPs with groups
     auto lpsAndGroups = mImplementor->getCurrentRecords(
-      in(&ParticipantGroupParticipantRecord::participantGroup, participantGroups),
+      in(&ParticipantGroupParticipantRecord::participantGroup, RangeToVector(participantGroups)),
       &ParticipantGroupParticipantRecord::localPseudonym,
       &ParticipantGroupParticipantRecord::participantGroup);
     // Map LPs to PPs
@@ -1375,9 +1380,9 @@ int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
   return 1;
 }
 
-int64_t AccessManager::Backend::Storage::createUser(std::string identifier) {
+int64_t AccessManager::Backend::Storage::createUser(std::string identifier, CaseSensitivity caseSensitivity) {
   int64_t internalUserId = getNextInternalUserId();
-  addIdentifierForUser(internalUserId, std::move(identifier), UserIdFlags::isDisplayId);
+  addIdentifierForUser(internalUserId, std::move(identifier), UserIdFlags::IsDisplayId, caseSensitivity);
   return internalUserId;
 }
 
@@ -1410,23 +1415,24 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
   }
 
   for(auto& uid : getAllIdentifiersForUser(internalUserId))
-    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, UserIdFlags::none, true));
+    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, UserIdFlags::None, true));
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags) {
-  int64_t internalUserId = getInternalUserId(uid);
-  addIdentifierForUser(internalUserId, std::move(identifier), flags);
+void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags, CaseSensitivity caseSensitivity) {
+  const auto internalUserId = getInternalUserId(uid);
+  addIdentifierForUser(internalUserId, identifier, flags, caseSensitivity);
 }
 
-void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags) {
-  if (findInternalUserId(identifier)) {
-    throw Error("The user identifier already exists");
+void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserId, std::string identifier, UserIdFlags flags, CaseSensitivity caseSensitivity) {
+  if (findInternalUserId(identifier, caseSensitivity)) {
+    const auto caseSensitiveStr = std::string{(caseSensitivity == CaseSensitive) ? "case-sensitive" : "case-insensitive"};
+    throw Error("The (" + caseSensitiveStr + ") user identifier already exists");
   }
   mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), flags));
 }
 
 void AccessManager::Backend::Storage::removeIdentifierForUser(std::string identifier) {
-  int64_t internalUserId = getInternalUserId(identifier);
+  const auto internalUserId = getInternalUserId(identifier);
   removeIdentifierForUser(internalUserId, std::move(identifier));
 }
 
@@ -1446,36 +1452,47 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
     throw Error("Cannot remove the display identifier for a user. First set a different display identifier, then you can remove this one.");
   }
 
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), UserIdFlags::none, true));
+  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), UserIdFlags::None, true));
 }
 
-std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, Timestamp at) const {
-  return RangeToOptional(
-    mImplementor->getCurrentRecords(
-      c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-      && c(&UserIdRecord::identifier) == identifier,
-      &UserIdRecord::internalUserId)
-  );
+std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
+  return findInternalUserId(std::vector{std::string{identifier}}, caseSensitivity, at);
 }
 
-int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, Timestamp at) const {
-  std::optional<int64_t> internalUserId = findInternalUserId(identifier, at);
+int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
+  const auto internalUserId = findInternalUserId(identifier, caseSensitivity, at);
   if(!internalUserId) {
     throw Error("Could not find user id");
   }
   return internalUserId.value();
 }
 
-std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, Timestamp at) const {
+std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity caseSensitivity, Timestamp at) const {
   using namespace std::ranges;
-  return RangeToOptional(
-    RangeToCollection<std::unordered_set>( // Merge duplicates
-      mImplementor->getCurrentRecords(
-        c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
-        && in(&UserIdRecord::identifier, identifiers),
-        &UserIdRecord::internalUserId)
-    )
-  );
+
+  const auto toOptional = [](auto&& range) -> std::optional<int64_t> {
+    const auto vector = RangeToVector(std::forward<decltype(range)>(range));
+    if (vector.empty()) { return std::nullopt; }
+
+    const auto allEqual = std::equal(++vector.begin(), vector.end(), vector.begin()); // compares adjacent elements
+    if (!allEqual) { throw Error{"Failed to resolve to a unique internal user id: found multiple matching users"}; }
+
+    return vector.front();
+  };
+  const auto toLower = [](std::vector<std::string> identifiers){
+    for (auto& id: identifiers) { boost::to_lower(id); }
+    return identifiers;
+  };
+  const auto timeCondition = c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at);
+
+  // There is some code duplication that is hard to remove, because the types passed to toOptional are different
+  return (caseSensitivity == CaseSensitive)
+      ? toOptional(mImplementor->getCurrentRecords(
+            timeCondition && in(&UserIdRecord::identifier, identifiers),
+            &UserIdRecord::internalUserId))
+      : toOptional(mImplementor->getCurrentRecords(
+            timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
+            &UserIdRecord::internalUserId));
 }
 
 std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifiersForUser(int64_t internalUserId, Timestamp at) const {
@@ -1514,14 +1531,16 @@ void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(int64_t intern
   auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
   auto transactionGuard = mImplementor->raw.transaction_guard();
   if (currentPrimaryIdentifier) {
-    mImplementor->raw.insert(UserIdRecord(internalUserId, *currentPrimaryIdentifier, currentDisplayIdentifier==*currentPrimaryIdentifier ? UserIdFlags::isDisplayId : UserIdFlags::none));
+    mImplementor->raw.insert(UserIdRecord(
+        internalUserId,
+        *currentPrimaryIdentifier,
+        FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == *currentPrimaryIdentifier)));
   }
-  UserIdFlags flags = UserIdFlags::isPrimaryId;
-  if (currentDisplayIdentifier == uid) {
-    flags |= UserIdFlags::isDisplayId;
-
-  }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), flags));
+  UserIdFlags flags = UserIdFlags::IsPrimaryId | FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid);
+  mImplementor->raw.insert(UserIdRecord(
+      internalUserId,
+      std::move(uid),
+      flags));
   transactionGuard.commit();
 }
 
@@ -1539,7 +1558,10 @@ void AccessManager::Backend::Storage::unsetPrimaryIdentifierForUser(int64_t inte
 
   auto transactionGuard = mImplementor->raw.transaction_guard();
   auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(*currentPrimaryIdentifier), currentDisplayIdentifier==uid ? UserIdFlags::isDisplayId : UserIdFlags::none));
+  mImplementor->raw.insert(UserIdRecord(
+      internalUserId,
+      std::move(*currentPrimaryIdentifier),
+      FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid)));
   transactionGuard.commit();
 }
 
@@ -1558,31 +1580,25 @@ void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t intern
   auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
   auto transactionGuard = mImplementor->raw.transaction_guard();
   if (currentDisplayIdentifier) {
-    mImplementor->raw.insert(UserIdRecord(internalUserId, *currentDisplayIdentifier, currentPrimaryIdentifier==*currentDisplayIdentifier ? UserIdFlags::isPrimaryId : UserIdFlags::none));
+    mImplementor->raw.insert(UserIdRecord(
+        internalUserId,
+        *currentDisplayIdentifier,
+        FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == *currentDisplayIdentifier)));
   }
-  UserIdFlags flags = UserIdFlags::isDisplayId;
-  if (currentPrimaryIdentifier==uid) {
-    flags |= UserIdFlags::isPrimaryId;
-  }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(uid), flags));
+  UserIdFlags flags = UserIdFlags::IsDisplayId | FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == uid);
+  mImplementor->raw.insert(UserIdRecord(
+      internalUserId,
+      std::move(uid),
+      flags));
   transactionGuard.commit();
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
-  auto records = mImplementor->getCurrentRecords(
-      c(&UserGroupRecord::name) == name
-      && c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
-      &UserGroupRecord::seqno, &UserGroupRecord::userGroupId);
-
-  if (records.begin() == records.end()) {
-    return std::nullopt;
-  }
-
-  auto [seqno, userGroupId] = std::ranges::max(records, {}, [](const std::tuple<int64_t, int64_t>& tuple) {
-    auto [seqno, userGroupId] = tuple;
-    return seqno;
-  });
-  return userGroupId;
+  using pep::database::having;
+  return RangeToOptional(mImplementor->getCurrentRecords(
+    c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
+      having(c(&UserGroupRecord::name) == name),
+      &UserGroupRecord::userGroupId));
 }
 
 int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, Timestamp at) const {
@@ -1624,14 +1640,16 @@ std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int
 }
 
 bool AccessManager::Backend::Storage::hasUserGroup(std::string_view name) const {
-  return mImplementor->currentRecordExists<UserGroupRecord>(c(&UserGroupRecord::name) == name);
+  using pep::database::having;
+  return mImplementor->currentRecordExists<UserGroupRecord>(true, having(c(&UserGroupRecord::name) == name));
 }
 
 std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthValidity(const std::string& group, Timestamp at) const {
   using namespace std::ranges;
+  using pep::database::having;
   auto result = RangeToOptional(
-    mImplementor->getCurrentRecords(
-      c(&UserGroupRecord::name) == group,
+    mImplementor->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
+      having(c(&UserGroupRecord::name) == group),
       &UserGroupRecord::maxAuthValiditySeconds)
     | views::transform(to_optional_seconds)
   );
@@ -1676,13 +1694,17 @@ int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(UserGroup userGroup) {
-  if (!hasUserGroup(userGroup.mName)) {
+  modifyUserGroup(userGroup.mName, userGroup);
+}
+
+void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, UserGroup userGroup) {
+  if (!hasUserGroup(name)) {
     std::ostringstream msg;
-    msg << "User group " << Logging::Escape(userGroup.mName) << " doesn't exist";
+    msg << "User group " << Logging::Escape(std::string(name)) << " doesn't exist";
     throw Error(msg.str());
   }
 
-  auto userGroupId = getUserGroupId(userGroup.mName); // Prevent use-after-move
+  auto userGroupId = getUserGroupId(name);
   mImplementor->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.mName), to_optional_uint64(userGroup.mMaxAuthValidity)));
 }
 
@@ -1768,7 +1790,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // List users matching user filter
   for (auto internalId: mImplementor->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && instr(&UserIdRecord::identifier, query.mUserFilter) /*true if filter is empty*/,
+         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.mUserFilter)) /*true if filter is empty*/,
          &UserIdRecord::internalUserId)) {
     // Add internalId, we add all identifiers below
     usersInfo.try_emplace(internalId);
@@ -1839,7 +1861,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalSubjectId(St
   assert(HasInternalId(subjectType));
   switch (subjectType) {
   case StructureMetadataType::User:
-    return findInternalUserId(subject, at);
+    return findInternalUserId(subject, CaseSensitive, at);
   case StructureMetadataType::UserGroup:
     return findUserGroupId(subject, at);
     break;
@@ -1852,7 +1874,7 @@ int64_t AccessManager::Backend::Storage::getInternalSubjectId(StructureMetadataT
   assert(HasInternalId(subjectType));
   switch (subjectType) {
   case StructureMetadataType::User:
-    return getInternalUserId(subject, at);
+    return getInternalUserId(subject, CaseSensitive, at);
   case StructureMetadataType::UserGroup:
     return getUserGroupId(subject, at);
     break;

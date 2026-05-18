@@ -30,7 +30,6 @@ public:
 template<typename T>
 class Encrypted : public EncryptedBase {
 public:
-  Encrypted() = default; // TODO get rid of default constructor
   Encrypted(
     std::string ciphertext,
     std::string iv,

@@ -6,9 +6,9 @@ namespace {
 std::string GenerateSchemaErrorMessage(std::string_view table, pep::database::SchemaError::Reason reason) {
   using namespace pep::database;
   switch (reason) {
-  case SchemaError::Reason::dropped_and_recreated:
+  case SchemaError::Reason::DroppedAndRecreated:
     return std::format("Schema synchronization for table {} will drop and recreate the table, resulting in data loss", table);
-  case SchemaError::Reason::old_columns_removed:
+  case SchemaError::Reason::OldColumnsRemoved:
     return std::format("Schema synchronization for table {} will remove old columns", table);
   }
   throw std::invalid_argument("Unknown SchemaError::Reason");

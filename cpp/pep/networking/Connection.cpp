@@ -9,7 +9,7 @@ void Connection::setSocket(std::shared_ptr<Protocol::Socket> socket, SocketConne
   mSocketConnectivityForwarding.cancel();
   this->discardSocket();
 
-  this->setConnectivityStatus(ConnectivityStatus::connecting);
+  this->setConnectivityStatus(ConnectivityStatus::Connecting);
   mSocket = std::move(socket);
 
   this->setConnectivityStatus(mSocket->status());
@@ -27,8 +27,8 @@ void Connection::discardSocket() {
 void Connection::close() {
   mSocketConnectivityForwarding.cancel();
   this->discardSocket();
-  if (this->status() < ConnectivityStatus::disconnecting) {
-    this->setConnectivityStatus(ConnectivityStatus::disconnecting);
+  if (this->status() < ConnectivityStatus::Disconnecting) {
+    this->setConnectivityStatus(ConnectivityStatus::Disconnecting);
   }
 }
 

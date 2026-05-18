@@ -604,9 +604,9 @@ func (t *SignedTicket2) Columns() []string {
 
 func (t *SignedTicket2) Pseudonyms() []LocalPseudonyms {
 	tp := t.ticket()
-	ret := make([]LocalPseudonyms, len(tp.Pseudonyms))
-	for i := 0; i < len(tp.Pseudonyms); i++ {
-		ret[i].setProto(tp.Pseudonyms[i])
+	ret := make([]LocalPseudonyms, len(tp.AccessSubjects))
+	for i := 0; i < len(tp.AccessSubjects); i++ {
+		ret[i].setProto(tp.AccessSubjects[i])
 	}
 	return ret
 }

@@ -10,8 +10,6 @@ std::string Quote(const std::string& value) {
   return '"' + value + '"';
 }
 
-}
-
 class MakeS3request : public pep::Application {
 private:
 
@@ -68,5 +66,7 @@ public:
     return EXIT_SUCCESS;
   }
 };
+
+}
 
 PEP_DEFINE_MAIN_FUNCTION(MakeS3request)

@@ -7,7 +7,7 @@
 namespace pep {
 
 class KeyFactorSecret {
-  std::array<std::byte, 64> hmacKey_;
+  std::array<std::byte, 64> hmacKey_{};
 public:
   KeyFactorSecret(std::span<const std::byte, 64> key);
 
@@ -15,7 +15,7 @@ public:
 };
 
 class MasterPrivateKeyShare {
-  std::array<std::byte, 32> curveScalar_;
+  std::array<std::byte, 32> curveScalar_{};
 public:
   MasterPrivateKeyShare(std::span<const std::byte, 32> key);
 

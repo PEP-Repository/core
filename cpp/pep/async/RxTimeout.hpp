@@ -25,7 +25,7 @@ using RxAsioDuration = std::chrono::milliseconds;
  *             .timeout(std::chrono::seconds(5))
  *         When the timeout expires after 5 seconds, the timer source should be cancelled.
  *         But cancellation is not supported by our Boost ASIO coordination, so the implementing
- *         Boost deadline_timer will keep running for an hour. During that time, the associated
+ *         Boost steady_timer will keep running for an hour. During that time, the associated
  *         work won't be removed from the io_context, a.o. needlessly eating resources and
  *         preventing the io_context::run() method from terminating.
  *         This function produces a timer observable that _does_ cancel pending ASIO work when
@@ -62,7 +62,7 @@ public:
     * \tparam SourceOperator The source operator type included in the observable type.
     * \param items The observable emitting the items.
     * \return An observable producing an rxcpp::timeout_error if the source observable doesn't produce an item in time.
-    * 
+    *
     * \remark The source observable is subscribed to, allowing it to emit items until it terminates or the timeout occurs.
     *         If the timeout occurs before the source observable (fails or) completes, the source observable is unsubscribed
     *         from, allowing it to clean up any resources (e.g. cancelling scheduled events).

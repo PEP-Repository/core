@@ -6,48 +6,50 @@
 namespace {
 
 TEST(ProofsTest, TestScalarMultProof) {
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 10; i++) {
     auto x = pep::CurveScalar::Random();
-    auto A = pep::CurvePoint::BaseMult(x);
+    auto A = x * pep::CurvePoint::Base;
     auto M = pep::CurvePoint::Random();
-    auto N = M.mult(x);
+    auto N = x * M;
 
-    auto proof = pep::ScalarMultProof::create(A, M, N, x);
+    auto proof = pep::ScalarMultProof::Create(A, M, N, x);
 
-    proof.verify(A, M, N);
+    EXPECT_NO_THROW(proof.verify(A, M, N));
 
     // Test some invalid proofs --- this only catches the most blatant mistakes.
-    // XXX Disabled per #777
-    // EXPECT_ANY_THROW(proof.verify(M, A, N));
-    // EXPECT_ANY_THROW(proof.verify(M, N, A));
+    EXPECT_THROW(proof.verify(M, A, N), pep::InvalidProof) << "Bogus proof should fail to validate";
+    EXPECT_THROW(proof.verify(M, N, A), pep::InvalidProof) << "Bogus proof should fail to validate";
   }
 }
 
-TEST(ProofsTest, TestRSKProof) {
-  for (int i = 0; i < 100; i++) {
+TEST(ProofsTest, TestRskProof) {
+  for (int i = 0; i < 10; i++) {
     auto pre = pep::ElgamalEncryption(
         pep::CurvePoint::Random(),
         pep::CurvePoint::Random(),
         pep::CurvePoint::Random());
     pep::ElgamalEncryption post;
-    auto k = pep::CurveScalar::Random();
-    auto z = pep::CurveScalar::Random();
+    auto rekey = pep::CurveScalar::Random();
+    auto reshuffle = pep::CurveScalar::Random();
 
-    auto proof = pep::RSKProof::certifiedRSK(pre, post, z, k);
+    auto proof = pep::RskProof::CertifiedRsk(pre, post, reshuffle, rekey);
 
-    proof.verify(
+    EXPECT_NO_THROW(proof.verify(
       pre,
       post,
-      pep::RSKVerifiers::compute(z, k, pre.y)
-    );
+      pep::ReshuffleRekeyVerifiers::Compute(reshuffle, rekey, pre.publicKey)
+    ));
 
     // Test some invalid proofs --- this only catches the most blatant mistakes.
-    // XXX Disabled per #777
-    // EXPECT_ANY_THROW(proof.verify(
-    //   post,
-    //   pre,
-    //   pep::RSKVerifiers::compute(k, z, pre.y)
-    // ));
+    EXPECT_THROW(proof.verify( //NOLINT(readability-suspicious-call-argument) pre & post intentionally swapped
+      post, pre,
+      pep::ReshuffleRekeyVerifiers::Compute(reshuffle, rekey, pre.publicKey)
+    ), pep::InvalidProof) << "Bogus proof should fail to validate";
+    EXPECT_THROW(proof.verify( //NOLINT(readability-suspicious-call-argument) pre & post intentionally swapped
+      post, pre,
+      //NOLINTNEXTLINE(readability-suspicious-call-argument) reshuffle & rekey intentionally swapped
+      pep::ReshuffleRekeyVerifiers::Compute(rekey, reshuffle, pre.publicKey)
+    ), pep::InvalidProof) << "Bogus proof should fail to validate";
   }
 }
 

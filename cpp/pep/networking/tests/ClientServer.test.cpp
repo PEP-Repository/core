@@ -1,8 +1,9 @@
 #include <pep/networking/tests/TestServerFactory.test.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/Random.hpp>
 
 #include <gtest/gtest.h>
+
+#include <numeric>
 
 namespace {
 
@@ -11,13 +12,14 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
   boost::asio::io_context context;
 
-  auto sent = std::make_shared<std::string>(), received = std::make_shared<std::string>();
-  pep::RandomBytes(*sent, MESSAGE_SIZE);
-  received->resize(MESSAGE_SIZE);
+  auto sent = std::make_shared<std::string>(MESSAGE_SIZE, '\0'),
+    received = std::make_shared<std::string>(MESSAGE_SIZE, '\0');
+  std::iota(sent->begin(), sent->end(), '\0');
 
-  auto protocol = factory.protocolName();
+  auto protocol = factory.protocol().name();
 
-  auto server = factory.createServer(context, pep::networking::TcpBasedProtocol::ServerParameters::RANDOM_PORT);
+  auto serverParameters = factory.createServerParameters(context, pep::networking::TcpBasedProtocol::ServerParameters::RANDOM_PORT);
+  auto server = pep::networking::Server::Create(*serverParameters);
   auto started = pep::MakeSharedCopy(false), stopped = pep::MakeSharedCopy(false);
   auto serverConnectionAttempt = std::make_shared<pep::EventSubscription>();
   *serverConnectionAttempt = server->onConnectionAttempt.subscribe([MESSAGE_SIZE, sent, server, serverConnectionAttempt, started, stopped, protocol](const pep::networking::Connection::Attempt::Result& result) {
@@ -51,7 +53,8 @@ void TestClientServerBasics(TestServerFactory& factory) {
     });
   server->start();
 
-  auto client = factory.createClient();
+  auto clientParameters = factory.createClientParameters(*server);
+  auto client = pep::networking::Client::Create(*clientParameters);
   auto connected = pep::MakeSharedCopy(false);
   auto clientConnectionAttempt = std::make_shared<pep::EventSubscription>();
   *clientConnectionAttempt = client->onConnectionAttempt.subscribe([MESSAGE_SIZE, &client, clientConnectionAttempt, received, connected, protocol](const pep::networking::Connection::Attempt::Result& result) {
@@ -61,7 +64,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
     *connected = connection->isConnected();
     ASSERT_TRUE(*connected) << protocol << " client produced non-connected connection";
 
-    connection->asyncRead(received->data(), MESSAGE_SIZE, [MESSAGE_SIZE, &client, clientConnectionAttempt, protocol](const pep::networking::SizedTransfer::Result& result) {
+    connection->asyncRead(received->data(), received->size(), [MESSAGE_SIZE, &client, clientConnectionAttempt, protocol](const pep::networking::SizedTransfer::Result& result) {
       // Ensure that the client is discarded (and hence the process exits) even if a test assertion (below) fails
       clientConnectionAttempt->cancel();
       client.reset();

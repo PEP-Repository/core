@@ -116,7 +116,7 @@ public:
    *         in turn allowing owners to encapsulate a "const Event<> onSomething" without further code.
    *         See https://clang.llvm.org/compatibility.html#default_init_const
    */
-  Event() noexcept(noexcept(std::vector<std::shared_ptr<Contract>>()) && noexcept(std::vector<EventSubscription>())) = default;
+  Event() = default;
 
   /* !
    * \brief Destructor.
@@ -143,9 +143,11 @@ private:
   void notify(TArgs... args) const;
 
   class Contract;
+  using Contracts = std::vector<std::shared_ptr<Contract>>;
 
-  // See class documentation for rationale to have a "mutable" member variable
-  mutable std::vector<std::shared_ptr<Contract>> mContracts;
+  // Keep state externally (i.e. not in a direct member) so it can be updated from const methods.
+  // Keep state in a shared_ptr so it can outlive the Event<> instance: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
+  std::shared_ptr<Contracts> mContracts = std::make_shared<Contracts>();
 };
 
 
@@ -166,7 +168,7 @@ private:
 template <class TOwner, typename... TArgs>
 EventSubscription Event<TOwner, TArgs...>::subscribe(Handler handler) const {
   auto contract = std::make_shared<Contract>(std::move(handler));
-  mContracts.emplace_back(contract);
+  mContracts->emplace_back(contract);
   EventSubscription result;
   result.mContract = std::move(contract);
   return result;
@@ -187,28 +189,31 @@ bool Event<TOwner, TArgs...>::Contract::notify(TArgs... args) {
 
 template <class TOwner, typename... TArgs>
 Event<TOwner, TArgs...>::~Event() noexcept {
-  for (auto& contract : mContracts) {
+  for (auto& contract : *mContracts) {
     contract->cancel();
   }
 }
 
 template <class TOwner, typename... TArgs>
 void Event<TOwner, TArgs...>::notify(TArgs... args) const {
+  // Keep state alive during notification so it can be processed even if the Event<> instance is destroyed: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
+  auto contracts = mContracts;
+  // Work on a copy of the list-of-contracts to prevent state corruption if (the contract is cancelled and) the event is re-signalled during notification
+  auto notifiable = *contracts;
+
   // Apart from sending notifications, this method also performs housekeeping by discarding
   // contracts that have been cancelled (by the subscriber).
-  auto clean = false;
-
-  auto notifiable = mContracts; // Use a copy of mContracts to prevent state corruption if (the contract is cancelled and) the event is re-signalled during notification
+  auto dirty = false;
   // We first (attempt to) notify all contracts that we're aware of...
   for (const auto& contract : notifiable) {
     if (!contract->notify(args...)) { // ... and if the contract has been cancelled...
-      clean = true; // ... we'll want to discard it.
+      dirty = true; // ... we'll want to discard it.
     }
   }
 
   // Then we discard cancelled contracts if we found any.
-  if (clean) {
-    std::erase_if(mContracts, [](const auto& contract) { return !contract->active(); });
+  if (dirty) {
+    std::erase_if(*contracts, [](const auto& contract) { return !contract->active(); });
   }
 }
 

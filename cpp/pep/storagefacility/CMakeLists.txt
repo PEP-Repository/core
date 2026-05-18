@@ -37,6 +37,13 @@ if (WITH_SERVERS)
   )
   verify_headers_standalone(${PROJECT_NAME}StorageFacilitylib)
 
+  option(SIMULATE_S3_BACKEND_FAILURE "Simulate S3 backend failure on request")
+  if(SIMULATE_S3_BACKEND_FAILURE)
+    set_source_files_properties(S3Client.cpp PROPERTIES
+      COMPILE_DEFINITIONS SIMULATE_S3_BACKEND_FAILURE
+    )
+  endif()
+
   # Stage s3proxy so we can use it as a backend for Storage Facility's "s3" page store.
   include(${PROJECT_SOURCE_DIR}/s3proxy/s3proxy.cmake)
   # TODO: stage to a subdir so that we can switch between "s3" and "local" page store configuration.

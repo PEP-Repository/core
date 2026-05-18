@@ -10,6 +10,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <sstream>
 
 using namespace std::chrono;
@@ -22,9 +23,7 @@ namespace {
 const std::string CHECKSUM_SUBSTITUTE_KEY = "checksum-substitute";
 
 uint64_t GenerateChecksumSubstitute() {
-  uint64_t checksumSubstitute{};
-  RandomBytes(reinterpret_cast<uint8_t*>(&checksumSubstitute), sizeof(checksumSubstitute));
-  return checksumSubstitute;
+  return RandomInteger<uint64_t>();
 }
 
 const std::string ENTRY_FILE_TYPE("pepentry");

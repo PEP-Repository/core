@@ -25,18 +25,21 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Compare.hpp
     Configuration.cpp Configuration.hpp Configuration_fwd.hpp
     Defer.hpp
+    EnumUtils.cpp EnumUtils.hpp
     Event.cpp Event.hpp
     Exceptions.cpp Exceptions.hpp
     File.cpp File.hpp
     Filesystem.cpp Filesystem.hpp
-    Hasher.hpp
+    Hmac.hpp
+    Hasher.cpp Hasher.hpp
     InstanceTracker.hpp
     LifeCycler.cpp LifeCycler.hpp
     LocalSettings.cpp LocalSettings.hpp
     Log.cpp Log.hpp
-    Md5.cpp Md5.hpp
+    Math.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
+    OpenSSLHasher.hpp OpenSSLHasher.cpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
     Paths.cpp Paths.hpp
@@ -48,7 +51,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
     SelfRegistering.hpp
-    Sha.hpp
     Shared.hpp
     Singleton.hpp
     Stream.cpp Stream.hpp
@@ -118,6 +120,9 @@ function(add_unit_tests libname)
 
     file(GLOB UNITTEST_SOURCES tests/*.cpp tests/*.hpp)
     add_executable(${PROJECT_NAME}${libname}UnitTests ${UNITTEST_SOURCES})
+    set_target_properties(${PROJECT_NAME}${libname}UnitTests PROPERTIES
+        FOLDER pep-UnitTests
+    )
     target_link_libraries(${PROJECT_NAME}${libname}UnitTests ${PROJECT_NAME}${libname}lib ${PROJECT_NAME}Testinglib)
     if (DEFINED AUT_LINK_LIBS)
       foreach(lib ${AUT_LINK_LIBS}) # Unquoted to prevent the semicolon-delimited list from being considered a single value

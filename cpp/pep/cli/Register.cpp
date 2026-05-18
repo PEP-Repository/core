@@ -91,7 +91,7 @@ private:
     pep::commandline::Parameters getSupportedParameters() const override {
       return ChildCommandOf<CommandRegister>::getSupportedParameters()
         + pep::commandline::Parameter("first-name", "Participant's given name").shorthand('f').value(pep::commandline::Value<std::string>().required())
-        + pep::commandline::Parameter("middle-name", "Participant's middle name").shorthand('m').value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
+        + pep::commandline::Parameter("middle-name", "Participant's middle name").shorthand('m').value(pep::commandline::Value<std::string>())
         + pep::commandline::Parameter("last-name", "Participant's family name").shorthand('l').value(pep::commandline::Value<std::string>().required())
         + pep::commandline::Parameter("date-of-birth", "Participant's date of birth").shorthand('d').value(pep::commandline::Value<std::string>().required())
         + pep::commandline::Parameter("test-participant", "Register as a test participant").shorthand('t')
@@ -103,7 +103,7 @@ private:
 
       auto personalia = pep::ParticipantPersonalia(
         values.get<std::string>("first-name"),
-        values.get<std::string>("middle-name"),
+        values.getOptional<std::string>("middle-name").value_or(""),
         values.get<std::string>("last-name"),
         values.get<std::string>("date-of-birth"));
 
@@ -242,7 +242,7 @@ private:
                                    sp.getColumn().getFullName(),
                                    std::make_shared<std::string>(pep::GenerateShortPseudonym(
                                      sp.getPrefix(),
-                                     static_cast<int>(sp.getLength()))),
+                                     sp.getLength())),
                                    std::vector<pep::NamedMetadataXEntry>({ pep::MetadataXEntry::MakeFileExtension(".txt") }));
 
             return client->storeData2(entries);

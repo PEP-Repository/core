@@ -8,7 +8,7 @@ namespace {
   std::vector<std::string> ContextStringToIds(const std::string& value) {
     std::vector<std::string> result;
     if (!value.empty()) {
-      boost::split(result, value, [](char c) {return c == ','; });
+      boost::split(result, value, std::bind_front(std::equal_to{}, ','));
     }
     return result;
   }

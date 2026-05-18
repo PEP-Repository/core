@@ -1,5 +1,5 @@
 #include <pep/application/Application.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/utils/File.hpp>
 
@@ -109,7 +109,7 @@ class DumpShadowAdministrationApplication : public pep::Application {
     std::string line;
     std::vector<std::string> splitLine;
     while(std::getline(input, line)) {
-      boost::split(splitLine, line, [](char ch){return ch == ';';});
+      boost::split(splitLine, line, std::bind_front(std::equal_to{}, ';'));
       StoreShortPseudonymShadow(pDB, shadowPublicKey, splitLine[0], splitLine[1]);
     }
 

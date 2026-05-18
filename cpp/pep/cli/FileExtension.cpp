@@ -175,7 +175,7 @@ protected:
         std::make_shared<ColumnExtensions>(),
         [](std::shared_ptr<ColumnExtensions> result, const std::string& column) {
           std::vector<std::string> parts;
-          boost::split(parts, column, [](char c) {return c == '.'; });
+          boost::split(parts, column, std::bind_front(std::equal_to{}, '.'));
           size_t nofParts = parts.size();
           if (nofParts >= 2
             && parts[nofParts - 2U].starts_with("AnswerSet")

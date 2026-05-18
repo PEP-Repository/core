@@ -1,14 +1,11 @@
 add_library(${PROJECT_NAME}TranscryptorApilib
-  KeyComponentMessages.cpp KeyComponentMessages.hpp
-  KeyComponentSerializers.cpp KeyComponentSerializers.hpp
   TranscryptorMessages.cpp TranscryptorMessages.hpp
   TranscryptorProxy.cpp TranscryptorProxy.hpp
   TranscryptorSerializers.cpp TranscryptorSerializers.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}TranscryptorApilib
-  ${PROJECT_NAME}Morphinglib
-  ${PROJECT_NAME}ServerApilib
+  ${PROJECT_NAME}KeyComponentApilib
   ${PROJECT_NAME}Ticketinglib
 )
 verify_headers_standalone(${PROJECT_NAME}TranscryptorApilib)
@@ -23,7 +20,7 @@ if (WITH_SERVERS)
 
   target_link_libraries(${PROJECT_NAME}Transcryptorlib
     ${PROJECT_NAME}TranscryptorApilib
-    ${PROJECT_NAME}Serverlib
+    ${PROJECT_NAME}KeyComponentServerlib
     ${PROJECT_NAME}Databaselib
   )
 

@@ -445,7 +445,7 @@ download_foss_package() {
 }
 
 docker_login() {
-  echo "$api_key" | docker login "${CI_REGISTRY}" -u "-" --password-stdin
+  echo "$api_key" | docker login "${CI_REGISTRY}" --username "-" --password-stdin
 }
 
 provide_base_images() {
@@ -583,8 +583,8 @@ build_config_images() {
 }
 
 update_latest_tags() {
-  # CI_REGISTRY_PASSWORD only allows pushes to this projects registry
-  docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  # CI_REGISTRY_PASSWORD only allows pushes to this project's registry
+  echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
 
   names="$(config_dockerfiles_to_build | while read -r file; do basename "$file" .Dockerfile; done)"
   # >&2 echo "Names is $names"

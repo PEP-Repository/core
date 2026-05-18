@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 
-<?ifndef var.MajorVersion ?>
-    <?error Define MajorVersion before compiling pep.wxs?>
+<?ifndef var.VersionMajor ?>
+    <?error Define VersionMajor before compiling pep.wxs?>
 <?endif ?>
-<?ifndef var.MinorVersion ?>
-    <?error Define MinorVersion before compiling pep.wxs?>
+<?ifndef var.VersionMinor ?>
+    <?error Define VersionMinor before compiling pep.wxs?>
 <?endif ?>
 
-<?ifndef var.PipelineNumber ?>
-	<?define PipelineNumber = "0" ?>
+<?ifndef var.VersionBuild ?>
+	<?define VersionBuild = "0" ?>
 <?endif ?>
-<?ifndef var.JobNumber ?>
+<?ifndef var.VersionRevision ?>
 	<!--
 		Since CI sets this to CI_JOB_ID, this will usually be a local build.
 		Only the first three parts (major, minor, pipeline) are used in the 
@@ -20,12 +20,11 @@
 		This number is purely used as a way to track back the specific
 		build job in order to trace back errors and bugs. 
 	-->
-	<?define JobNumber = "0" ?>
+	<?define VersionRevision = "0" ?>
 <?endif ?>
 
 
-<!-- Keep this version number equal to the one in PEP's Windows.Exe.VersionInfo.rc file. -->
-<?define Version = "$(var.MajorVersion).$(var.MinorVersion).$(var.PipelineNumber).$(var.JobNumber)" ?>
+<?define Version = "$(var.VersionMajor).$(var.VersionMinor).$(var.VersionBuild).$(var.VersionRevision)" ?>
 <?define Flavor = "$(var.ProjectCaption) $(var.EnvironmentName)" ?>
 <?define VersionText = "($(var.Flavor)) $(var.Version)" ?>
 
@@ -216,6 +215,20 @@
 					</Shortcut>
 				<?endif ?>
 			</Component>
+			<Component Id="UploadFileShortcut" Guid="*">
+				<?define PepUploadFilePowershellArguments = "-NoLogo -ExecutionPolicy Bypass -WindowStyle Minimized -File "[#UploadFile.ps1]"" ?>
+				<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\$(var.ProductRegKey)" Name="UploadFileShortcut" Type="string" Value="" KeyPath="yes"/>
+				<Shortcut Id="UploadFileShortcut" Name="!(loc.PepUploadFile)" Directory="ProgramMenuDir"
+					Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepUploadFilePowershellArguments)">
+					<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).UploadFile" />
+				</Shortcut>
+				<?ifdef AdditionalShortcutLocation ?>
+					<Shortcut Id="UploadFileShortcut_Additional" Name="!(loc.PepUploadFile) ($(var.Flavor))" Directory="AdditionalShortcuts"
+						Target="[System64Folder]windowspowershell\v1.0\powershell.exe" Arguments="$(var.PepUploadFilePowershellArguments)">
+						<ShortcutProperty Key="System.AppUserModel.ID" Value="Pep.Pep-$(var.ProjectCaption)-$(var.EnvironmentName).UploadFile" />
+					</Shortcut>
+				<?endif ?>
+			</Component>
 		</DirectoryRef>
 
 		<ComponentGroup Id="LogFolderAndShortcut">
@@ -250,11 +263,21 @@
 			<ComponentGroupRef Id="configFiles" />
 		</ComponentGroup>
 
+		<ComponentGroup Id="PowerShellScriptPrereqs">
+			<ComponentGroupRef Id="pepLogon" />
+			<ComponentGroupRef Id="pepcli" />
+		</ComponentGroup>
+
 		<ComponentGroup Id="DownloadAll">
 			<ComponentRef Id="DownloadAll.ps1" />
 			<ComponentRef Id="DownloadAllShortcut" />
-			<ComponentGroupRef Id="pepLogon" />
-			<ComponentGroupRef Id="pepcli" />
+			<ComponentGroupRef Id="PowerShellScriptPrereqs" />
+		</ComponentGroup>
+		
+		<ComponentGroup Id="UploadFile">
+			<ComponentRef Id="UploadFile.ps1" />
+			<ComponentRef Id="UploadFileShortcut" />
+			<ComponentGroupRef Id="PowerShellScriptPrereqs" />
 		</ComponentGroup>
 		
 		<!-- Entries that the user can (de-)select for installation -->
@@ -268,6 +291,9 @@
 		</Feature>
 		<Feature Id="DownloadAll" Description="Download-All utility" Level="1">
 			<ComponentGroupRef Id="DownloadAll" />
+		</Feature>
+		<Feature Id="UploadFile" Description="Upload-File utility" Level="1">
+			<ComponentGroupRef Id="UploadFile" />
 		</Feature>
 	</Product>
 </Wix>
