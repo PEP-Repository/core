@@ -51,7 +51,7 @@ public:
                     std::shared_ptr<boost::asio::io_context> io_context,
                     bool persistKeysFile) override;
 
-    std::shared_ptr<Client> build() const /*override*/ { //NOLINT(bugprone-derived-method-shadowing-base-method)
+    std::shared_ptr<Client> build() const { //NOLINT(bugprone-derived-method-shadowing-base-method)
       return std::shared_ptr<Client>(new Client(*this));
     }
 
