@@ -14,7 +14,7 @@ const std::streamsize DISK_IO_BUFFERSIZE{ 4096 };
 
 }
 
-std::string ReadFile(const char* path) {
+std::string ReadFile(const std::filesystem::path& path) {
   if (!std::filesystem::exists(path)) {
     throw std::runtime_error("File " + std::filesystem::absolute(path).string() + " does not exist");
   }
@@ -30,14 +30,6 @@ std::string ReadFile(const char* path) {
   return content;
 }
 
-std::string ReadFile(const std::string& path) {
-  return ReadFile(path.c_str());
-}
-
-std::string ReadFile(const std::filesystem::path& path) {
-  return ReadFile(path.string());
-}
-
 std::optional<std::string> ReadFileIfExists(const std::filesystem::path& path) {
   if (std::filesystem::exists(path)) {
     return ReadFile(path.string());
@@ -46,7 +38,7 @@ std::optional<std::string> ReadFileIfExists(const std::filesystem::path& path) {
 }
 
 void WriteFile(const std::filesystem::path& path, const std::string& content) {
-  std::ofstream output(path.string(), std::ios::out | std::ios::binary);
+  std::ofstream output(path, std::ios::out | std::ios::binary);
   output.exceptions(output.exceptions() | std::ios::failbit);
   output << content;
   output.close();

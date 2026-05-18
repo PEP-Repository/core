@@ -74,7 +74,7 @@ CoreClient::CoreClient(const Builder& builder) :
     enrollmentSubject.get_observable().subscribe(
       [keysFilePath = *keysFilePath](const EnrollmentResult& result){
       LOG(LOG_TAG, debug) << "Writing new keys to " << keysFilePath;
-      std::ofstream sf(keysFilePath.string());
+      std::ofstream sf(keysFilePath);
       result.writeJsonTo(sf);
     });
   }

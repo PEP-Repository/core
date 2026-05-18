@@ -7,8 +7,6 @@
 
 namespace pep {
 
-std::string ReadFile(const char* path);
-std::string ReadFile(const std::string& path);
 std::string ReadFile(const std::filesystem::path& path);
 std::optional<std::string> ReadFileIfExists(const std::filesystem::path& path);
 void WriteFile(const std::filesystem::path& path, const std::string& content);

@@ -84,7 +84,7 @@ int Enroller::execute() {
       auto extendedProperties = this->producesExtendedProperties();
       auto values = this->getParameterValues();
       if (values.has("output-path")) {
-        std::ofstream output(values.get<std::filesystem::path>("output-path").string());
+        std::ofstream output(values.get<std::filesystem::path>("output-path"));
         result.writeJsonTo(output, this->producesDataKey(), extendedProperties, extendedProperties);
       }
       else {

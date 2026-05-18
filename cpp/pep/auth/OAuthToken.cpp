@@ -212,7 +212,7 @@ void OAuthToken::writeJson(std::ostream& destination, bool pretty) const {
 }
 
 void OAuthToken::writeJson(const std::filesystem::path& file, bool pretty) const {
-  std::ofstream fs(file.string(), std::ios::out | std::ios::binary | std::ios::trunc);
+  std::ofstream fs(file, std::ios::out | std::ios::binary | std::ios::trunc);
   this->writeJson(fs, pretty);
 }
 

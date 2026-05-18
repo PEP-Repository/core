@@ -17,7 +17,7 @@ void WriteToArchive(const std::filesystem::path& baseDir, std::shared_ptr<Archiv
     if (std::filesystem::is_directory(currentPath)) {
       continue;
     }
-    auto in = std::ifstream(currentPath.string(), std::ios::binary);
+    auto in = std::ifstream(currentPath, std::ios::binary);
     std::string processedFilename{};
 
     auto rawFilename = std::istringstream(currentPath.lexically_relative(baseDir).string());

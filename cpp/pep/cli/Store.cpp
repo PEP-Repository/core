@@ -174,7 +174,7 @@ void CheckSymlinkAllowed(const std::filesystem::path& inpath, bool shouldResolve
   }
   if (std::filesystem::is_directory(inpath)) {
     for (auto iterator = std::filesystem::recursive_directory_iterator(inpath, std::filesystem::directory_options::follow_directory_symlink); iterator != std::filesystem::recursive_directory_iterator{}; iterator++) {
-      if (std::filesystem::is_symlink(iterator->path())) {
+      if (iterator->is_symlink()) {
         foundSymlinks.push_back(iterator->path());
       }
     }
@@ -211,7 +211,7 @@ std::filesystem::path CreatePseudonymizedFileToUpload(std::shared_ptr<StoreConte
 
   const auto& inputPath = context->inputPath;
   auto outputPath = FindUnusedPath(inputPath);
-  auto out = std::make_shared<std::ofstream>(outputPath.string(), std::ios::binary);
+  auto out = std::make_shared<std::ofstream>(outputPath, std::ios::binary);
 
   std::optional<pep::Pseudonymiser> pseudonymiser{std::nullopt};
   if (context->requiresDirectory) {
@@ -224,7 +224,7 @@ std::filesystem::path CreatePseudonymizedFileToUpload(std::shared_ptr<StoreConte
   else {
     // Single File that needs pseudonymisation
     assert(context->pseudonym.has_value());
-    std::ifstream in{inputPath.string(), std::ios::binary};
+    std::ifstream in{inputPath, std::ios::binary};
     auto writeToStream = [&out](const char* c, const std::streamsize l) {out->write(c, l); out->flush(); };
     pseudonymiser = pep::Pseudonymiser(*context->pseudonym);
     pseudonymiser->pseudonymise(in, writeToStream);
@@ -261,7 +261,7 @@ private:
             auto path = CreatePseudonymizedFileToUpload(context);
             // The stream object will be held alive and therefore open by rxcpp for too long, hindering deleting the file.
             // This extra pointer fileStream (pointer to iFstream, not istream) is given to the cleanupFiles to manually close the stream if necessary.
-            auto fileStream = std::make_shared<std::ifstream>(path.string(), std::ios_base::in | std::ios_base::binary);
+            auto fileStream = std::make_shared<std::ifstream>(path, std::ios_base::in | std::ios_base::binary);
             cleanupFiles->push_back(PathStreamPair{path, fileStream});
             stream = fileStream;
           }
@@ -272,7 +272,7 @@ private:
               stream = std::shared_ptr<std::istream>(&std::cin, [](void*) {});
             }
             else {
-              stream = std::make_shared<std::ifstream>(path.string(), std::ios_base::in | std::ios_base::binary);
+              stream = std::make_shared<std::ifstream>(path, std::ios_base::in | std::ios_base::binary);
             }
           }
           batches = pep::messaging::IStreamToMessageBatches(stream);

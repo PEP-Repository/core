@@ -139,7 +139,7 @@ FileStore::Participant::Participant(FileStore& store, std::string name, bool loa
   : mStore(store), mName(std::move(name)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      if (std::filesystem::is_directory(p.path())) {
+      if (p.is_directory()) {
         mCells.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
       }
     }
@@ -381,9 +381,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const st
     return nullptr;
   }
 
-  auto name = path.filename().string();
-  name = name.substr(0, name.size() - FILE_EXTENSION.size());
-  Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(name)});
+  Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(path.stem().string())});
 
   std::ifstream infile;
   infile.open(path.string(), std::ios::binary | std::ios::in);

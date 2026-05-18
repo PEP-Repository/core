@@ -49,7 +49,7 @@ const std::string LEGACY_PARTICIPANT_META_FILENAME = DownloadMetadata::GetFilena
 std::vector<std::filesystem::path> GetLegacyParticipantMetaFilePaths(const std::filesystem::path& downloadDirectory) {
   std::vector<std::filesystem::path> result;
   for (std::filesystem::directory_iterator i(downloadDirectory); i != std::filesystem::directory_iterator(); ++i) {
-    if (std::filesystem::is_directory(i->path())) {
+    if (i->is_directory()) {
       auto filename = i->path() / LEGACY_PARTICIPANT_META_FILENAME;
       if (std::filesystem::exists(filename)) {
         result.push_back(filename);
@@ -203,7 +203,7 @@ DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirector
   if (std::filesystem::exists(directory)) {
     std::vector<std::filesystem::path> participantPaths;
     for (std::filesystem::directory_iterator i(directory); i != std::filesystem::directory_iterator(); ++i) {
-      if (std::filesystem::is_directory(i->path()) && !std::filesystem::equivalent(i->path(), getDirectory())) {
+      if (i->is_directory() && !std::filesystem::equivalent(i->path(), getDirectory())) {
         participantPaths.emplace_back(i->path());
       }
     }
@@ -217,7 +217,7 @@ DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirector
         assert(path.string().ends_with(GetFilenameExtension()));
         auto filename = path.filename().string();
         assert(filename.starts_with(GetFilenamePrefix()));
-        filename = filename.substr(0, filename.size() - GetFilenameExtension().size()); // Don't use path::stem, since it'll drop everything after the first period (.) instead of the last
+        filename = filename.substr(0, filename.size() - GetFilenameExtension().size());
         assert(std::filesystem::equivalent(path, directory / participantDirectory / (filename + GetFilenameExtension())));
         filename = filename.substr(GetFilenamePrefix().size());
 
