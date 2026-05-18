@@ -47,11 +47,13 @@ public:
       return *this;
     }
 
+    //NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method) Not used polymorphically
     void initialize(const Configuration& config,
                     std::shared_ptr<boost::asio::io_context> io_context,
-                    bool persistKeysFile) override;
+                    bool persistKeysFile);
 
-    std::shared_ptr<Client> build() const { //NOLINT(bugprone-derived-method-shadowing-base-method)
+    //NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method) Return type differs
+    std::shared_ptr<Client> build() const {
       return std::shared_ptr<Client>(new Client(*this));
     }
 

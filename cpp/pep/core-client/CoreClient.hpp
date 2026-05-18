@@ -283,8 +283,6 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
  public:
   class Builder {
    public:
-    virtual ~Builder() = default;
-
     Builder& setIoContext(std::shared_ptr<boost::asio::io_context> io_context) {
       this->io_context = io_context;
       return *this;
@@ -373,7 +371,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       return *this;
     }
 
-    virtual void initialize(const Configuration& config,
+    void initialize(const Configuration& config,
                     std::shared_ptr<boost::asio::io_context> io_context,
                     bool persistKeysFile);
 
