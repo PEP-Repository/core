@@ -90,7 +90,7 @@ private:
     return client->enrollUser(token) // Client enrollment will write keys to file
       .map([keysFilePath = *keysFilePath](const pep::EnrollmentResult& result)
         {
-          std::cout << "Wrote enrollment result (keys) to " << keysFilePath << std::endl;
+          std::cout << "Wrote enrollment result (keys) to " << keysFilePath.string() << std::endl;
           return true;
         })
       .on_error_resume_next([](std::exception_ptr error) // Don't let the application report an **unexpected** problem
