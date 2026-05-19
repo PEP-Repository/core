@@ -615,7 +615,7 @@ ubuntu-lts-debug-with-sast:
 .ubuntu-lts-debug-settings:
   extends: .ubuntu-lts-settings
   rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' || $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
       variables:
         ENABLE_COVERAGE: "ON"
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
@@ -1128,7 +1128,7 @@ ubuntu-lts-debug-test:
     MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-lts-debug]
   rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' || $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
       variables:
         ENABLE_COVERAGE: "ON"
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
