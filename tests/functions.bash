@@ -125,9 +125,14 @@ contains() {
   [ "${string#*"$substring"}" != "$string" ] && true
 }
 
+list_of_tests=()
+tests_ran=()
+
 should_run_test() {
-  test="$1"
+  local test="$1"
+  list_of_tests+=("$test")
   if ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test "; then
+    tests_ran+=("$test")
     echo
     printGreen "==== Running tests: $test ===="
   else
@@ -135,6 +140,22 @@ should_run_test() {
     printGreen "(Skipping tests: $test)"
     return 1
   fi
+}
+
+# Only works for tests for which should_run_test has been called
+test_exists() {
+  local test="$1"
+  local test2
+  for test2 in "${list_of_tests[@]}"; do
+    if [ "$test2" = "$test" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+ran_any_test() {
+  [ "${#tests_ran[@]}" != 0 ] && true
 }
 
 url_encode() {

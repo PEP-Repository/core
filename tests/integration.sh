@@ -460,3 +460,9 @@ if should_run_test watchdog; then
 fi
 
 ####################
+
+for test in $TESTS_TO_RUN $TESTS_TO_SKIP; do
+  test_exists "$test" || fail "Test $test does not exist"
+done
+
+ran_any_test || fail "Did not run any tests"
