@@ -611,27 +611,19 @@ ubuntu-lts-debug-with-sast:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "False"
     VERIFY_HEADERS_STANDALONE: "off"
+    ARTIFACTS: >-
+      $EXECUTABLES_APPS
+      $EXECUTABLES_PEP_SERVICES
+      $EXECUTABLES_CLIENT
+      $EXECUTABLES_BENCHMARK
+      $PEPSERVERS_MONOLITH
+      $EXECUTABLES_GO
+      $UNIT_TESTS_ALL
 
 ubuntu-lts-debug:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-lts-debug-settings
-
-#################### Ubuntu LTS Debug w/o Castor ####################
-
-ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
-  extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-debug-settings
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  variables:
-    WITH_CASTOR: "False"
-    ARTIFACTS: "$UNIT_TESTS_BASE"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 #################### Ubuntu LTS Release ####################
 
@@ -663,9 +655,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $EXECUTABLES_BENCHMARK
       $EXECUTABLE_PULLCASTOR
       $EXECUTABLES_GO
-      $UNIT_TESTS_INTEGRATION
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
+      $UNIT_TESTS_ALL
   artifacts:
     expire_in: 8h
     paths:
@@ -903,9 +893,7 @@ windows-all-targets:
                       $EXECUTABLES_CLIENT
                       $EXECUTABLES_BENCHMARK
                       $PEPSERVERS_MONOLITH
-                      $UNIT_TESTS_INTEGRATION
-                      $UNIT_TESTS_BASE
-                      $UNIT_TESTS_CASTOR"
+                      $UNIT_TESTS_ALL"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
                                                                           --build-mode "$CMAKE_BUILD_TYPE"
@@ -972,7 +960,7 @@ macos-client-arm:
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
   variables:
-    WITH_CASTOR: "False" # Currently castor does not compile on macOS
+    WITH_CASTOR: "True"
     ARTIFACTS: >-
       $EXECUTABLES_APPS
       $EXECUTABLES_PEP_SERVICES
@@ -980,8 +968,7 @@ macos-client-arm:
       $EXECUTABLES_BENCHMARK
       $PEPSERVERS_MONOLITH
       $EXECUTABLES_GO
-      $UNIT_TESTS_INTEGRATION
-      $UNIT_TESTS_BASE
+      $UNIT_TESTS_ALL
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
@@ -1131,21 +1118,6 @@ ubuntu-lts-debug-test:
     MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-lts-debug]
 
-ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
-  extends: .ubuntu-lts-debug-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-    TESTS: "$UNIT_TESTS_BASE"
-  needs: [ubuntu-lts-debug-without-castor]
-  stage: runtime-analysis
-  tags:
-    - docker
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
 ubuntu-lts-release-test:
   extends:
     - .ubuntu-test-base
@@ -1196,7 +1168,9 @@ windows-test:
   stage: runtime-analysis
   variables:
     MEM_ANALYSIS_TOOL: "leaks"
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
   script:
     - *run-tests
   artifacts:
@@ -1283,6 +1257,17 @@ macos-local-integration-arm:
     - macos-arm64
   needs:
     - macos-all-targets-arm
+
+#################### Ubuntu ####################
+
+ubuntu-local-integration:
+  stage: integration
+  tags:
+    - docker
+  needs:
+    - ubuntu-lts-debug
+  script:
+    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
 
 #################### Docker ####################
 
