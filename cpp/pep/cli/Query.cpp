@@ -1,9 +1,12 @@
+#include <pep/async/RxInstead.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
+#include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 using namespace pep::cli;
 
@@ -233,6 +236,75 @@ private:
     }
   };
 
+  class CommandQueryDataSize : public ChildCommandOf<CommandQuery> {
+  public:
+    explicit CommandQueryDataSize(CommandQuery& parent)
+      : ChildCommandOf<CommandQuery>("data-size", "Reports size of stored data", parent) {}
+
+  protected:
+    int execute() override {
+      return this->executeEventLoopFor(true, [this](std::shared_ptr<pep::CoreClient> client) {
+          auto request = std::make_shared<pep::DataSizeRequest>();
+          auto addColumns = [request](const std::vector<std::string>& columns) {
+            std::copy(columns.begin(), columns.end(), std::inserter(request->mColumns, request->mColumns.begin()));
+            };
+          addColumns(this->getParameterValues().getOptionalMultiple<std::string>("column"));
+
+          rxcpp::observable<std::shared_ptr<pep::DataSizeRequest>> obs;
+          auto columnGroups = this->getParameterValues().getOptionalMultiple<std::string>("column-group");
+          if (columnGroups.empty()) {
+            obs = rxcpp::observable<>::just(request);
+          }
+          else {
+            obs = client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
+              .tap([addColumns, columnGroups](const pep::AmaQueryResponse& response) {
+                  for (const auto& name : columnGroups) {
+                    auto existing = std::find_if(response.mColumnGroups.begin(), response.mColumnGroups.end(), [&name](const pep::AmaQRColumnGroup& group) { return group.mName == name; });
+                    if (existing != response.mColumnGroups.end()) {
+                      addColumns(existing->mColumns);
+                    }
+                    else {
+                      std::cerr << "Not including columns from group '" << name << "' because the column group does not exist." << std::endl;
+                    }
+                  }
+                })
+              .op(RxInstead(request))
+              .tap([](std::shared_ptr<pep::DataSizeRequest> request) {
+                  // Don't confuse user by reporting unfiltered byte counts in case all specified column groups didn't exist
+                  if (request->mColumns.empty()) {
+                    throw std::runtime_error("No columns found for specified column group(s)");
+                  }
+                });
+          }
+
+          return obs
+            .flat_map([client](std::shared_ptr<pep::DataSizeRequest> request) {return client->getStorageFacilityProxy()->requestDataSize(std::move(*request)); })
+            .map([](pep::DataSizeResponse response) {
+              // Left pad (with spaces) so that we can...
+              auto total = std::to_string(response.mTotalBytes);
+              auto rolling = std::to_string(response.mRollingBytes);
+              auto width = std::max(total.size(), rolling.size());
+              total = std::string(width - total.size(), ' ') + total;
+              rolling = std::string(width - rolling.size(), ' ') + rolling;
+
+              // ...produce aligned output
+              std::cout
+                << "Bytes in all versions  : " << total << '\n'
+                << "Bytes in latest version: " << rolling;
+
+                return pep::FakeVoid();
+              });
+        });
+    }
+
+    pep::commandline::Parameters getSupportedParameters() const override {
+      return ChildCommandOf<CommandQuery>::getSupportedParameters()
+        // TODO: consolidate duplicate code with MultiCellQuery.cpp
+        + pep::commandline::Parameter("column", "Columns to include").alias("columns").shorthand('c').value(pep::commandline::Value<std::string>().multiple())
+        + pep::commandline::Parameter("column-group", "Column groups to include").alias("column-groups").shorthand('C').value(pep::commandline::Value<std::string>().multiple());
+    }
+  };
+
 protected:
   inline std::optional<std::string> getRelativeDocumentationUrl() const override {
     return "using-pepcli#query";
@@ -244,6 +316,7 @@ protected:
     result.push_back(std::make_shared<CommandQueryParticipantGroupAccess>(*this));
     result.push_back(std::make_shared<CommandQueryEnrollment>(*this));
     result.push_back(std::make_shared<CommandQueryToken>(*this));
+    result.push_back(std::make_shared<CommandQueryDataSize>(*this));
     return result;
   }
 };
