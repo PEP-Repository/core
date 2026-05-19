@@ -572,7 +572,7 @@ TEST(ParameterTypes, IntegerParameterTypes) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob", "--age", "30"});
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age").value_or(0), 30);
+  ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age"), 30);
   ASSERT_TRUE(cmd.hasCapturedParam(userCommandPath, "age"));
   ASSERT_TRUE(err.empty());
   
@@ -580,8 +580,8 @@ TEST(ParameterTypes, IntegerParameterTypes) {
   AppCmd cmd2;
   const auto [exitCode2, err2] = ProcessWithCapturedStderr(cmd2, {"server", "start", "--workers", "4", "--port", "8080"});
   ASSERT_EQ(exitCode2, EXIT_SUCCESS);
-  ASSERT_EQ(cmd2.getCapturedValue<int>(serverStartCommandPath, "workers").value_or(0), 4);
-  ASSERT_EQ(cmd2.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
+  ASSERT_EQ(cmd2.getCapturedValue<int>(serverStartCommandPath, "workers"), 4);
+  ASSERT_EQ(cmd2.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
   ASSERT_TRUE(cmd2.hasCapturedParam(serverStartCommandPath, "workers"));
   ASSERT_TRUE(cmd2.hasCapturedParam(serverStartCommandPath, "port"));
   ASSERT_TRUE(err2.empty());
@@ -593,8 +593,8 @@ TEST(ParameterTypes, MixedParameterTypes) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Charlie", "--age", "25", "--groups", "admin", "--groups", "users"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Charlie");
-  ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age").value_or(0), 25);
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Charlie");
+  ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age"), 25);
   auto groups = cmd.getCapturedValues<std::string>(userCommandPath, "groups");
   ASSERT_EQ(groups.size(), 2);
   ASSERT_EQ(groups[0], "admin");
@@ -617,7 +617,7 @@ TEST(CommandParameterCombinations, NormalCommandWithNormalParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Alice"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Alice");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Alice");
   ASSERT_TRUE(err.empty());
 }
 
@@ -629,7 +629,7 @@ TEST(CommandParameterCombinations, NormalCommandWithDeprecatedParameter) {
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   // Verify the old-email parameter was captured
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "user@domain.com");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "user@domain.com");
   ASSERT_NE(err.find("Warning: '--old-email' is deprecated. Use --email instead."), std::string::npos);
 }
 
@@ -640,7 +640,7 @@ TEST(CommandParameterCombinations, NormalCommandWithAliasParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--mail", "test@example.com"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "test@example.com");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "test@example.com");
   EXPECT_TRUE(err.empty());
 }
 
@@ -651,7 +651,7 @@ TEST(CommandParameterCombinations, RenamesParameterAndWarns) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--username", "john@example.com"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "john@example.com");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "john@example.com");
   ASSERT_NE(err.find("Warning: '--username' is deprecated. Use --email instead."), std::string::npos);
 }
 
@@ -672,7 +672,7 @@ TEST(CommandParameterCombinations, DeprecatedCommandWithNormalParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"deploy", "--name", "production"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name").value_or(""), "production");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name"), "production");
   ASSERT_NE(err.find("Warning: The command 'deploy' is deprecated. Use 'user' instead."), std::string::npos);
 }
 
@@ -683,7 +683,7 @@ TEST(CommandParameterCombinations, SelfDeprecatedCommandWithParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"deploy", "--old-name", "staging"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "old-name").value_or(""), "staging");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "old-name"), "staging");
   ASSERT_NE(err.find("Warning: The command 'deploy' is deprecated."), std::string::npos);
   ASSERT_NE(err.find("Warning: '--old-name' is deprecated."), std::string::npos);
 }
@@ -695,7 +695,7 @@ TEST(CommandParameterCombinations, DeprecatedCommandWithAliasParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"deploy", "--deploy-alias", "test-deployment"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name").value_or(""), "test-deployment");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name"), "test-deployment");
   ASSERT_NE(err.find("Warning: The command 'deploy' is deprecated."), std::string::npos);
   ASSERT_EQ(err.find("'--deploy-alias'"), std::string::npos);
 }
@@ -707,7 +707,7 @@ TEST(CommandParameterCombinations, DeprecatedCommandWithForwardingParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"deploy", "--deployment-name", "staging"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name").value_or(""), "staging");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name"), "staging");
   ASSERT_NE(err.find("Warning: The command 'deploy' is deprecated."), std::string::npos);
   ASSERT_NE(err.find("Warning: '--deployment-name' is deprecated. Use --name instead."), std::string::npos);
 }
@@ -729,7 +729,7 @@ TEST(CommandParameterCombinations, AliasCommandWithNormalParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user", "--name", "Alice"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Alice");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Alice");
   ASSERT_TRUE(err.empty());
 }
 
@@ -740,7 +740,7 @@ TEST(CommandParameterCombinations, AliasCommandWithDeprecatedParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user", "--old-email", "test@example.com"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "test@example.com");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "test@example.com");
   ASSERT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
   ASSERT_EQ(err.find("create-user"), std::string::npos);
 }
@@ -752,7 +752,7 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user", "--mail", "test@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "test@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "test@example.com");
   EXPECT_TRUE(err.empty());
 }
 
@@ -774,7 +774,7 @@ TEST(CommandParameterCombinations, AliasCommandWithForwardingDeprecatedParameter
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user", "--username", "user@example.com"});
     
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "user@example.com");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "user@example.com");
   EXPECT_NE(err.find("Warning: '--username' is deprecated. Use --email instead."), std::string::npos);
   EXPECT_EQ(err.find("create-user"), std::string::npos);
 }
@@ -797,7 +797,7 @@ TEST(CommandParameterCombinations, ForwardingDeprecatedCommandWithNormalParamete
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"init-user", "--name", "Bob"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Bob");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");
   ASSERT_NE(err.find("Warning: The command 'init-user' is deprecated. Use 'user' instead."), std::string::npos);
 }
 
@@ -808,7 +808,7 @@ TEST(CommandParameterCombinations, ForwardingDeprecatedCommandWithDeprecatedPara
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"init-user", "--old-email", "user@example.com"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "user@example.com");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "user@example.com");
   ASSERT_NE(err.find("Warning: The command 'init-user' is deprecated."), std::string::npos);
   ASSERT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
 }
@@ -821,7 +821,7 @@ TEST(CommandParameterCombinations, ForwardingDeprecatedCommandWithAliasParameter
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"init-user", "--mail", "test@example.com"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "test@example.com");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "test@example.com");
   EXPECT_NE(err.find("Warning: The command 'init-user' is deprecated."), std::string::npos);
   EXPECT_EQ(err.find("mail"), std::string::npos);
 }
@@ -910,8 +910,8 @@ TEST(ParameterParameterCombinations, NormalParameterWithNormalParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Alice", "--email", "alice@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "alice@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Alice");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "alice@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Alice");
   EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "email"));
   EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "name"));
   EXPECT_EQ(cmd.getCapturedCount(userCommandPath, "email"), 1);
@@ -928,8 +928,8 @@ TEST(ParameterParameterCombinations, DeprecatedParameterWithNormalParameter) {
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "old-email"));
   EXPECT_TRUE(cmd.hasCapturedParam(userCommandPath, "name"));
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "alice@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Alice");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "alice@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Alice");
   EXPECT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
 }
 
@@ -942,8 +942,8 @@ TEST(ParameterParameterCombinations, DeprecatedParameterWithDeprecatedParameter)
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedCount(userCommandPath, "old-email"), 1);
   EXPECT_EQ(cmd.getCapturedCount(userCommandPath, "old-name"), 1);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "old@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-name").value_or(""), "staging");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "old@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-name"), "staging");
   EXPECT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
   EXPECT_NE(err.find("Warning: '--old-name' is deprecated."), std::string::npos);
 }
@@ -955,8 +955,8 @@ TEST(ParameterParameterCombinations, AliasParameterWithNormalParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--mail", "test@example.com", "--name", "Test User"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "test@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Test User");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "test@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Test User");
   EXPECT_TRUE(err.empty());
 }
 
@@ -967,8 +967,8 @@ TEST(ParameterParameterCombinations, AliasParameterWithDeprecatedParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--mail", "bob@example.com", "--old-name", "Bob"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "bob@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-name").value_or(""), "Bob");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "bob@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-name"), "Bob");
   EXPECT_NE(err.find("Warning: '--old-name' is deprecated. Use --name instead."), std::string::npos);
 }
 
@@ -979,8 +979,8 @@ TEST(ParameterParameterCombinations, AliasParameterWithAliasParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"--quick-start", "8080", "--verbose-mode", "1"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
-  EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "verbose").value_or(0), 1);
+  EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
+  EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "verbose"), 1);
   EXPECT_TRUE(err.empty());
 }
 
@@ -999,8 +999,8 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithNormalPara
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob", "--username", "alice@example.com"});
   
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "alice@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Bob");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "alice@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");
   EXPECT_NE(err.find("Warning: '--username' is deprecated."), std::string::npos);
 }
 
@@ -1011,8 +1011,8 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithDeprecated
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--old-email", "old@example.com", "--username", "new@example.com"});
   
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "new@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "old@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "new@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "old@example.com");
   EXPECT_NE(err.find("Warning: '--username' is deprecated."), std::string::npos);
   EXPECT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
 }
@@ -1024,8 +1024,8 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithAliasParam
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--legacy-name", "Bob", "--mail", "bob@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Bob");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "bob@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "bob@example.com");
   EXPECT_NE(err.find("Warning: '--legacy-name' is deprecated. Use --name instead."), std::string::npos);
 }
 
@@ -1036,8 +1036,8 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithForwarding
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--username", "bob@example.com", "--legacy-name", "Bob"});
   
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "bob@example.com");
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name").value_or(""), "Bob");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "bob@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");
   EXPECT_NE(err.find("Warning: '--username' is deprecated."), std::string::npos);
   EXPECT_NE(err.find("Warning: '--legacy-name' is deprecated."), std::string::npos);
 }
@@ -1143,7 +1143,7 @@ TEST(ForwardingCombinations, AliasCommandToNormalParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user-email", "test@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "test@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "test@example.com");
   EXPECT_TRUE(err.empty());
 }
 
@@ -1154,7 +1154,7 @@ TEST(ForwardingCombinations, AliasCommandToDeprecatedParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user-old-email", "bob@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "bob@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "bob@example.com");
   EXPECT_EQ(err.find("create-user-old-email"), std::string::npos);
   EXPECT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
 }
@@ -1200,7 +1200,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedCommandToDeprecatedCommand) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"init-deploy", "--name", "staging"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name").value_or(""), "staging");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name"), "staging");
   ASSERT_NE(err.find("Warning: The command 'init-deploy' is deprecated."), std::string::npos);
   ASSERT_NE(err.find("Warning: The command 'deploy' is deprecated."), std::string::npos);
 }
@@ -1236,7 +1236,7 @@ TEST(ForwardingCombinations, AliasParameterToNormalCommand) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"--quick-start", "8080"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
+  EXPECT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
   EXPECT_TRUE(cmd.hasCapturedParam(serverStartCommandPath, "port"));
   EXPECT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
   EXPECT_TRUE(err.empty());
@@ -1249,7 +1249,7 @@ TEST(ForwardingCombinations, AliasParameterToDeprecatedCommand) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"--quick-deploy", "production"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name").value_or(""), "production");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name"), "production");
   EXPECT_EQ(err.find("quick-deploy"), std::string::npos); // Parameter doesn't warn (alias is silent)
   EXPECT_NE(err.find("Warning: The command 'deploy' is deprecated."), std::string::npos); // Command warns
 }
@@ -1285,7 +1285,7 @@ TEST(ForwardingCombinations, AliasParameterToNormalParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--mail", "test@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email").value_or(""), "test@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "test@example.com");
   EXPECT_TRUE(err.empty());
 }
 
@@ -1296,7 +1296,7 @@ TEST(ForwardingCombinations, AliasParameterToDeprecatedParameter) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--old-mail", "old@example.com"});
 
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
-  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email").value_or(""), "old@example.com");
+  EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "old@example.com");
   EXPECT_EQ(err.find("old-mail"), std::string::npos);
   EXPECT_NE(err.find("Warning: '--old-email' is deprecated."), std::string::npos);
 }
@@ -1332,7 +1332,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedParameterToNormalCommand) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"--legacy-port", "8080"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
   ASSERT_NE(err.find("Warning: '--legacy-port' is deprecated. Use 'server start --port' instead."), std::string::npos);
 }
 
@@ -1343,7 +1343,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedParameterToDeprecatedCommand) {
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"--deploy-name", "production"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name").value_or(""), "production");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name"), "production");
   ASSERT_NE(err.find("Warning: '--deploy-name' is deprecated. Use 'deploy --name' instead."), std::string::npos);
   ASSERT_NE(err.find("Warning: The command 'deploy' is deprecated."), std::string::npos);
 }
@@ -1358,8 +1358,8 @@ TEST(ComplexForwarding, ValueSplittingViaDispatchTo) {
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_NE(err.find("Warning: '--host-port' is deprecated."), std::string::npos);
-  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(serverStartCommandPath, "host").value_or(""), "localhost");
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(serverStartCommandPath, "host"), "localhost");
   ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
   ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "host"), 1);
 }
@@ -1372,7 +1372,7 @@ TEST(ComplexForwarding, ConditionalRedirectToStartWithParameters) {
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_NE(err.find("Warning: '--mode' is deprecated."), std::string::npos);
-  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 9000);
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 9000);
 }
 
 // [4-2b]: Conditional parameter forwarding based on parameter value
@@ -1383,7 +1383,7 @@ TEST(ComplexForwarding, ConditionalRedirectToDeployWithParameters) {
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_NE(err.find("Warning: '--mode' is deprecated."), std::string::npos);
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name").value_or(""), "production");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(deployCommandPath, "name"), "production");
 }
 
 // [4-3]: Parameter availability
@@ -1394,9 +1394,9 @@ TEST(ComplexForwarding, RootParametersAvailableAfterSubcommandForward) {
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_TRUE(err.empty());
-  ASSERT_EQ(cmd.getCapturedValue<std::string>(appCommandPath, "global-param").value_or(""), "global-value");
+  ASSERT_EQ(cmd.getCapturedValue<std::string>(appCommandPath, "global-param"), "global-value");
   ASSERT_EQ(cmd.getCapturedCount(appCommandPath, "global-param"), 1);
-  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 7000);
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 7000);
   ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
 }
 
@@ -1427,8 +1427,8 @@ TEST(ComplexForwarding, AliasCommandCanInjectAdditionalParameters) {
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_TRUE(err.empty());
   ASSERT_TRUE(cmd.hasCapturedParam(serverStartCommandPath, "verbose"));
-  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "verbose").value_or(0), 2);
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "verbose"), 2);
   ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "verbose"), 1);
-  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port").value_or(0), 8080);
+  ASSERT_EQ(cmd.getCapturedValue<int>(serverStartCommandPath, "port"), 8080);
   ASSERT_EQ(cmd.getCapturedCount(serverStartCommandPath, "port"), 1);
 }
