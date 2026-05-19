@@ -100,6 +100,7 @@ private:
   messaging::MessageBatches handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> lpRequest);
   messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> lpRequest);
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest);
+  messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest);
 
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);

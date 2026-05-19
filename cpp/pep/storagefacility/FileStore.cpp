@@ -170,7 +170,7 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   }
 }
 
-void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
+void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
   entryCount = 0U;
   totalPayloadBytes = 0U;
   rollingPayloadBytes = 0U;
@@ -179,7 +179,7 @@ void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint
     size_t subEntryCount;
     uint64_t subTotalPayloadBytes, subRollingPayloadBytes;
 
-    participant->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
+    participant->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes, columns);
 
     entryCount += subEntryCount;
     totalPayloadBytes += subTotalPayloadBytes;
@@ -556,18 +556,20 @@ std::filesystem::path FileStore::Participant::path() const {
   return this->getFileStore().metaDir() / mName;
 }
 
-void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
+void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
   entryCount = 0U;
   totalPayloadBytes = 0U;
   rollingPayloadBytes = 0U;
 
   for (const auto& cell : mCells) {
-    size_t subEntryCount;
-    uint64_t subTotalPayloadBytes, subRollingPayloadBytes;
-    cell->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
-    entryCount += subEntryCount;
-    totalPayloadBytes += subTotalPayloadBytes;
-    rollingPayloadBytes += subRollingPayloadBytes;
+    if (columns.empty() || columns.contains(cell->columnName())) {
+      size_t subEntryCount;
+      uint64_t subTotalPayloadBytes, subRollingPayloadBytes;
+      cell->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
+      entryCount += subEntryCount;
+      totalPayloadBytes += subTotalPayloadBytes;
+      rollingPayloadBytes += subRollingPayloadBytes;
+    }
   }
 }
 

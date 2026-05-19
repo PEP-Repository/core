@@ -1037,6 +1037,22 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
+messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = lpRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+
+  const auto& request = certified.message;
+
+  size_t entryCount;
+  DataSizeResponse response;
+  mFileStore->getMetrics(entryCount, response.mTotalBytes, response.mRollingBytes, request.mColumns);
+
+  return messaging::BatchSingleMessage(std::move(response));
+}
+
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
@@ -1109,7 +1125,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleDataDeleteRequest2,
                           &StorageFacility::handleMetadataStoreRequest2,
                           &StorageFacility::handleDataEnumerationRequest2,
-                          &StorageFacility::handleDataHistoryRequest2);
+                          &StorageFacility::handleDataHistoryRequest2,
+                          &StorageFacility::handleDataSizeRequest);
 
   this->updateFileStoreMetrics();
   statsTimer({});
