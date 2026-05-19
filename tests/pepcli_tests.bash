@@ -158,6 +158,25 @@ fi
 
 ####################
 
+if should_run_test path-traversal; then
+  CONFIG='{
+    "columnGroups": [{
+      "name": "PathTraversalTestGroup",
+      "columns": [ ".." ],
+      "cgars": { "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+
+  test_setup "$CONFIG"
+
+  pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c ".." -d "mydata" &&
+    fail 'Storing into column named ".." should fail'
+
+  test_cleanup "$CONFIG"
+fi
+
+####################
+
 if should_run_test file-extension; then
 
   FE_CONFIG='{
