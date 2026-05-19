@@ -322,7 +322,7 @@ ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::Core
   : mClient(client), mApply(apply) {
   for (const auto& mapping : mappings) {
     std::vector<std::string> parts;
-    boost::split(parts, mapping, boost::is_any_of("="));
+    boost::split(parts, mapping, std::bind_front(std::equal_to{}, '='));
     if (parts.size() != 2) {
       throw std::runtime_error("Name mapping must have form \"original=replacement\"");
     }

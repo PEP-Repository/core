@@ -1,6 +1,8 @@
 #include <pep/utils/LifeCycler.hpp>
 #include <gtest/gtest.h>
 
+namespace {
+
 class LifeCycleExposer : public pep::LifeCycler {
 public:
   ~LifeCycleExposer() noexcept override { this->setStatus(Status::Finalizing); }
@@ -49,4 +51,6 @@ TEST(LifeCycler, SendsRequiredNotifications) {
   EXPECT_EQ(1U, received[pep::LifeCycler::Status::Finalized]) << "Expected a single finalized notification";
 
   EXPECT_EQ(received.size(), 5U) << "Life cycler sent unexpected notification(s)";
+}
+
 }

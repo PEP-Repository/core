@@ -80,6 +80,7 @@ bool LocalSettings::flushChanges() {
 }
 
 
+namespace {
 #ifdef _WIN32
 /* LocalSettingsRegistry is the storage backend used on windows.
  * In order to avoid deleting and rebuilding the entire tree in the windows registry
@@ -456,6 +457,7 @@ bool LocalSettingsIni::flushChanges() {
 }
 
 #endif
+} // namespace
 
 std::unique_ptr<LocalSettings>& LocalSettings::getInstance() {
 #ifdef _WIN32

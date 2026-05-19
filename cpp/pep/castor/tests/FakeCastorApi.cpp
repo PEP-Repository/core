@@ -95,7 +95,7 @@ void FakeCastorApi::Connection::handleReadHeaders(const networking::DelimitedTra
     if(index != std::string::npos) {
       std::string headerName = header.substr(0, index);
       std::string headerValue = header.substr(index + 1);
-      boost::trim_if(headerValue, boost::is_any_of(" \r\n\t"));
+      boost::trim_if(headerValue, boost::is_space());
       mHeaders[headerName] = headerValue;
     } else {
       LOG(LOG_TAG, warning) << "Ignoring malformed header: " << header << '\n';
