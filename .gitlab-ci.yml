@@ -615,6 +615,9 @@ ubuntu-lts-debug-with-sast:
 .ubuntu-lts-debug-settings:
   extends: .ubuntu-lts-settings
   rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+      variables:
+        ENABLE_COVERAGE: "ON"
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
@@ -631,14 +634,6 @@ ubuntu-lts-debug:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-lts-debug-settings
-  rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
-      variables:
-        ENABLE_COVERAGE: "ON"
-    - when: on_success
-  variables:
-    ARTIFACTS: >-
-      $UNIT_TESTS_ALL
 
 #################### Ubuntu LTS Release ####################
 
