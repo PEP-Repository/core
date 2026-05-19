@@ -107,7 +107,7 @@ SafePath DownloadMetadata::provideDirectory() const {
   auto result = getDirectory();
   if (std::filesystem::create_directories(result)) {
 #ifdef _WIN32
-    ::SetFileAttributesA(result.string().c_str(), FILE_ATTRIBUTE_HIDDEN);
+    ::SetFileAttributesA(result.path().string().c_str(), FILE_ATTRIBUTE_HIDDEN);
 #endif
   }
   return result;
