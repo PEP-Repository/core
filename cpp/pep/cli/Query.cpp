@@ -1,5 +1,6 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/cli/ColumnQuery.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
@@ -248,10 +249,10 @@ private:
           auto addColumns = [request](const std::vector<std::string>& columns) {
             std::copy(columns.begin(), columns.end(), std::inserter(request->mColumns, request->mColumns.begin()));
             };
-          addColumns(this->getParameterValues().getOptionalMultiple<std::string>("column"));
+          addColumns(ColumnQuery::GetColumns(this->getParameterValues()));
 
           rxcpp::observable<std::shared_ptr<pep::DataSizeRequest>> obs;
-          auto columnGroups = this->getParameterValues().getOptionalMultiple<std::string>("column-group");
+          auto columnGroups = ColumnQuery::GetColumnGroups(this->getParameterValues());
           if (columnGroups.empty()) {
             obs = rxcpp::observable<>::just(request);
           }
@@ -299,9 +300,7 @@ private:
 
     pep::commandline::Parameters getSupportedParameters() const override {
       return ChildCommandOf<CommandQuery>::getSupportedParameters()
-        // TODO: consolidate duplicate code with MultiCellQuery.cpp
-        + pep::commandline::Parameter("column", "Columns to include").alias("columns").shorthand('c').value(pep::commandline::Value<std::string>().multiple())
-        + pep::commandline::Parameter("column-group", "Column groups to include").alias("column-groups").shorthand('C').value(pep::commandline::Value<std::string>().multiple());
+        + ColumnQuery::Parameters();
     }
   };
 

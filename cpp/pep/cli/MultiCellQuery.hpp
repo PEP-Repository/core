@@ -1,14 +1,14 @@
 #pragma once
 
+#include <pep/cli/ColumnQuery.hpp>
 #include <pep/core-client/CoreClient_fwd.hpp>
-#include <pep/application/CommandLineParameter.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 
 #include <rxcpp/rx-lite.hpp>
 
 namespace pep::cli {
 
-struct MultiCellQuery {
+struct MultiCellQuery : ColumnQuery {
   static pep::commandline::Parameters Parameters();
 
   static bool SpecifiesColumns(const pep::commandline::NamedValues& values);
@@ -16,8 +16,6 @@ struct MultiCellQuery {
 
   static bool IsNonEmpty(const pep::commandline::NamedValues& values);
 
-  static std::vector<std::string> GetColumnGroups(const pep::commandline::NamedValues& values);
-  static std::vector<std::string> GetColumns(const pep::commandline::NamedValues& values);
   static std::vector<std::string> GetParticipantGroups(const pep::commandline::NamedValues& values);
 
   struct ParticipantSpecAndPp {
