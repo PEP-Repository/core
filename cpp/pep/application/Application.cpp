@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <filesystem>
+#include <utility>
 
 #ifdef _WIN32
 #include <sstream>
@@ -217,6 +218,43 @@ int Application::RunWithoutError(std::function<int()> implementor) noexcept {
   } catch (...) {
     ReportTermination(std::current_exception());
     return EXIT_FAILURE;
+  }
+}
+
+void Application::initializeLoggingOnce() {
+  if (std::exchange(mInitializeLoggingOnceFlag, true)) return;  // exits early if this is not the first call
+
+  const auto& values = this->getParameterValues();
+
+  mShowVersionInfo = !values.has("suppress-version-info");
+  std::vector<std::shared_ptr<Logging>> logging;
+
+  std::optional<severity_level> console_level;
+  if (values.has("loglevel")) {
+    console_level = Logging::ParseSeverityLevel(values.get<std::string>("loglevel"));
+  }
+  if (!console_level) {
+    console_level = consoleLogMinimumSeverityLevel();
+  }
+  if (console_level) {
+    logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
+    usingConsoleLog_ = true;
+  }
+
+  auto file_level = fileLogMinimumSeverityLevel();
+  if (file_level) {
+    logging.push_back(std::make_shared<FileLogging>(*file_level));
+  }
+
+  auto syslog_level = syslogLogMinimumSeverityLevel();
+  if (syslog_level) {
+    logging.push_back(std::make_shared<SysLogging>(*syslog_level));
+  }
+
+  Logging::Initialize(logging);
+
+  if (mShowVersionInfo) {
+    LogVersionInfo("binary", BinaryVersion::current.getSummary());
   }
 }
 
@@ -477,42 +515,7 @@ int Application::printVersionInfo(const commandline::LexedValues& lexed) {
 
 void Application::finalizeParameters(bool isForwardingDispatch) {
   Command::finalizeParameters(isForwardingDispatch);
-
-  const auto& values = this->getParameterValues();
-  
-  // Only initialize logging and version info once, and skip entirely during forwarding dispatch
-  if (!isForwardingDispatch) {
-    mShowVersionInfo = !values.has("suppress-version-info");
-    std::vector<std::shared_ptr<Logging>> logging;
-
-    std::optional<severity_level> console_level;
-    if (values.has("loglevel")) {
-      console_level = Logging::ParseSeverityLevel(values.get<std::string>("loglevel"));
-    }
-    if (!console_level) {
-      console_level = consoleLogMinimumSeverityLevel();
-    }
-    if (console_level) {
-      logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
-      usingConsoleLog_ = true;
-    }
-
-    auto file_level = fileLogMinimumSeverityLevel();
-    if (file_level) {
-      logging.push_back(std::make_shared<FileLogging>(*file_level));
-    }
-
-    auto syslog_level = syslogLogMinimumSeverityLevel();
-    if (syslog_level) {
-      logging.push_back(std::make_shared<SysLogging>(*syslog_level));
-    }
-
-    Logging::Initialize(logging);
-
-    if (mShowVersionInfo) {
-      LogVersionInfo("binary", BinaryVersion::current.getSummary());
-    }
-  }
+  initializeLoggingOnce();
 }
 
 commandline::Parameter Application::MakeConfigDirectoryParameter(const std::filesystem::path& defaultValue, bool positional, const std::optional<std::string>& alias) {
