@@ -118,11 +118,6 @@ public:
     return command ? command->has(paramName) : false;
   }
 
-  size_t getCapturedCount(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    const auto command = FindOptional(mCapturedParams, commandPath);
-    return command ? command->count(paramName) : 0;
-  }
-
 private:
   std::map<std::string, pep::commandline::NamedValues> mCapturedParams;
 
