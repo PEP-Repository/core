@@ -1342,8 +1342,9 @@ macos-local-integration-arm:
 
 ubuntu-lts-debug-integration:
   stage: integration
-  extends: .dind
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  extends: .ubuntu-lts-debug-settings
+  tags:
+    - docker
   needs:
     - ubuntu-lts-debug
     - ubuntu-lts-debug-test
