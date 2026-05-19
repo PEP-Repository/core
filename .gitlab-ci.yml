@@ -1262,6 +1262,7 @@ macos-local-integration-arm:
 
 ubuntu-local-integration:
   stage: integration
+  extends: .ubuntu-lts-debug-settings
   tags:
     - docker
   needs:
