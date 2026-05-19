@@ -7,7 +7,7 @@ namespace pep {
 
 const auto LOG_TAG = "Activity monitor";
 
-const std::chrono::minutes ActivityMonitor::DEFAULT_MAX_INACTIVE = 1min;
+const std::chrono::seconds ActivityMonitor::DEFAULT_MAX_INACTIVE = 1min;
 
 ActivityMonitor::ActivityMonitor(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(mTimer)::duration maxInactive)
   : mDescription(jobDescription), mTimer(io_context), mMaxInactive(maxInactive) {

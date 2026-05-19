@@ -3,6 +3,7 @@
 
 using namespace pep::cli;
 
+namespace {
 class NoLongerSupportedCommand : public ChildCommandOf<CliApplication> {
 public:
   explicit NoLongerSupportedCommand(CliApplication& parent, const std::string& name, const std::string& message)
@@ -23,6 +24,7 @@ public:
 private:
   std::string mMessage;
 };
+}
 
 std::shared_ptr<ChildCommandOf<CliApplication>> pep::cli::CreateNoLongerSupportedCommand(CliApplication& parent, const std::string& name, const std::string& description) {
   return std::make_shared<NoLongerSupportedCommand>(parent, name, description);
