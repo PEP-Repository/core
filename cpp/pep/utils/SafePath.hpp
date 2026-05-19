@@ -27,25 +27,24 @@ public:
   /// \see GetParentDirectory
   class SafePath parentDirectory() const;
 
-  /// \throws std::runtime_error if empty.
+  /// \throws std::invalid_argument if empty.
   const std::filesystem::path& path() const & { finalPathCheck(); return inner_; }
 
-  /// \throws std::runtime_error if empty.
+  /// \throws std::invalid_argument if empty.
   std::filesystem::path path() && { finalPathCheck(); return std::move(inner_); }
 
-  /// \throws std::runtime_error if empty.
+  /// \throws std::invalid_argument if empty.
   operator const std::filesystem::path&() const & { return path(); }
 
-  /// \throws std::runtime_error if empty.
+  /// \throws std::invalid_argument if empty.
   operator std::filesystem::path() && { return std::move(*this).path(); }
 
   /// Get string representation, even for empty paths.
   [[nodiscard]] std::string text() { return inner_.string(); }
 
-  /// \throws std::runtime_error if either side is empty.
-  [[nodiscard]] SafePath operator/(const SafePath& rhs) const { return SafePath::FromTrusted(path() / rhs.path()); }
+  [[nodiscard]] SafePath operator/(const SafePath& rhs) const { return FromTrusted(inner_ / rhs.inner_); }
 
-  /// \throws std::runtime_error if \p suffix contains multiple segments or the result is not a valid filename for this platform.
+  /// \throws std::invalid_argument if \p suffix contains multiple segments or the result is not a valid filename for this platform.
   [[nodiscard]] SafePath operator+(const std::filesystem::path& suffix) const;
 
   [[nodiscard]] auto operator<=>(const SafePath& rhs) const noexcept = default;
@@ -62,11 +61,12 @@ class SafeRelativePath : public SafePath {
 public:
   SafeRelativePath() noexcept = default;
 
-  /// \throws std::runtime_error if it traverses to the parent directory or contains invalid filenames for this platform.
+  /// \throws std::invalid_argument if it traverses to the parent directory or contains invalid filenames for this platform.
   explicit SafeRelativePath(std::filesystem::path path);
 
-  /// \throws std::runtime_error if either side is empty.
-  [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const { return SafeRelativePath(fromTrusted, path() / rhs.path()); }
+  [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const { return SafeRelativePath(fromTrusted, inner_ / rhs.inner_); }
+  /// \throws std::invalid_argument if \p rhs is empty.
+  [[nodiscard]] inline class SafeRelativeFilePath operator/(const SafeRelativeFilePath& rhs);
 };
 
 /// Relative non-directory child path.
@@ -76,10 +76,8 @@ class SafeRelativeFilePath : public SafeRelativePath {
 public:
   SafeRelativeFilePath() noexcept = default;
 
-  /// \throws std::runtime_error if it has a trailing slash, traverses to the parent directory, or contains invalid filenames for this platform.
+  /// \throws std::invalid_argument if it has a trailing slash, traverses to the parent directory, or contains invalid filenames for this platform.
   explicit SafeRelativeFilePath(std::filesystem::path path);
-
-  [[nodiscard]] friend SafeRelativeFilePath operator/(const SafeRelativePath& lhs, const SafeRelativeFilePath& rhs) { return SafeRelativeFilePath(fromTrusted, lhs.path() / rhs.path()); }
 };
 
 class SafeFileName : public SafeRelativeFilePath {
@@ -88,14 +86,18 @@ class SafeFileName : public SafeRelativeFilePath {
 public:
   SafeFileName() noexcept = default;
 
-  /// \throws std::runtime_error if it contains multiple segments or is not a valid filename for this platform.
+  /// \throws std::invalid_argument if it contains multiple segments or is not a valid filename for this platform.
   explicit SafeFileName(std::filesystem::path fileName);
 
-  /// \throws std::runtime_error if \p suffix contains multiple segments or the result is not a valid filename for this platform.
+  /// \throws std::invalid_argument if \p suffix contains multiple segments or the result is not a valid filename for this platform.
   [[nodiscard]] SafeFileName operator+(const std::filesystem::path& suffix) const;
 };
 
 SafeFileName SafePath::fileName() const { return SafeFileName(inner_.filename()); }
+  
+SafeRelativeFilePath SafeRelativePath::operator/(const SafeRelativeFilePath& rhs) {
+  return SafeRelativeFilePath(fromTrusted, inner_ / rhs.path());
+}
 
 }
 

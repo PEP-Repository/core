@@ -3,9 +3,13 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <numeric>
+#include <ranges>
 #include <cassert>
 
 #include <pep/utils/File.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -18,17 +22,22 @@ void WriteToArchive(const std::filesystem::path& baseDir, std::shared_ptr<Archiv
       continue;
     }
     auto in = std::ifstream(currentPath, std::ios::binary);
-    std::string processedFilename{};
 
-    auto rawFilename = std::istringstream(currentPath.lexically_relative(baseDir).string());
+    SafeRelativeFilePath processedRelativePath;
+    auto rawRelativePath = currentPath.lexically_relative(baseDir);
     if (pseudonymiser.has_value()) {
-      auto writeToFilename = [&processedFilename](const char* c, const std::streamsize l) {processedFilename.append(c, static_cast<size_t>(l)); };
-      pseudonymiser->pseudonymise(rawFilename, writeToFilename);
+      for (const std::filesystem::path& pathSegment : rawRelativePath) {
+        std::istringstream pathSegmentStreamIn(pathSegment.string());
+        std::ostringstream pathSegmentStreamOut;
+        const auto writeToFilename = [&](const char* c, const std::streamsize l) { pathSegmentStreamOut.write(c, l); };
+        pseudonymiser->pseudonymise(pathSegmentStreamIn, writeToFilename);
+        processedRelativePath = processedRelativePath / SafeFileName(std::move(pathSegmentStreamOut).str());
+      }
+    } else {
+      processedRelativePath = SafeRelativeFilePath(std::move(rawRelativePath));
     }
-    else {
-      processedFilename = currentPath.lexically_relative(baseDir).string();
-    }
-    archive->nextEntry(SafeFileName(processedFilename), static_cast<int64_t>(std::filesystem::file_size(currentPath)));
+
+    archive->nextEntry(processedRelativePath, static_cast<int64_t>(std::filesystem::file_size(currentPath)));
     auto writeToArchive = [&archive](const char* c, const std::streamsize l) { archive->writeData(c, l); };
     try {
       if (pseudonymiser.has_value()) {

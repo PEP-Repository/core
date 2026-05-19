@@ -12,8 +12,6 @@ SafePath operator""_safePath(const char* path, std::size_t len) {
 
 TEST(SafePath, safetyChecks) {
   EXPECT_THROW(SafePath{}.path(), std::invalid_argument) << "Accessing empty path should throw";
-  EXPECT_THROW((void) (SafePath{} / "abc"_safePath), std::invalid_argument);
-  EXPECT_THROW((void) ("abc"_safePath / SafePath{}), std::invalid_argument);
 }
 
 // Most things are already covered by File.test.cpp
@@ -30,6 +28,7 @@ TEST(SafeRelativeFilePath, safetyChecks) {
   EXPECT_THROW(SafeRelativeFilePath("abc/"), std::invalid_argument);
   EXPECT_THROW(SafeRelativeFilePath("."), std::invalid_argument);
   EXPECT_THROW(SafeRelativeFilePath(".."), std::invalid_argument);
+  EXPECT_THROW((void) (SafeRelativeFilePath("abc") / SafeRelativeFilePath{}), std::invalid_argument);
 }
 
 TEST(SafeFileName, safetyChecks) {
