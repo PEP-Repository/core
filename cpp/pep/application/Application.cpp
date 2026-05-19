@@ -229,25 +229,17 @@ void Application::initializeLoggingOnce() {
   mShowVersionInfo = !values.has("suppress-version-info");
   std::vector<std::shared_ptr<Logging>> logging;
 
-  std::optional<severity_level> console_level;
-  if (values.has("loglevel")) {
-    console_level = Logging::ParseSeverityLevel(values.get<std::string>("loglevel"));
-  }
-  if (!console_level) {
-    console_level = consoleLogMinimumSeverityLevel();
-  }
-  if (console_level) {
+  if (auto console_level =
+          values.has("logLevel") ? values.getOptional<severity_level>("logLevel") : consoleLogMinimumSeverityLevel()) {
     logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
     usingConsoleLog_ = true;
   }
 
-  auto file_level = fileLogMinimumSeverityLevel();
-  if (file_level) {
+  if (auto file_level = fileLogMinimumSeverityLevel()) {
     logging.push_back(std::make_shared<FileLogging>(*file_level));
   }
 
-  auto syslog_level = syslogLogMinimumSeverityLevel();
-  if (syslog_level) {
+  if (auto syslog_level = syslogLogMinimumSeverityLevel()) {
     logging.push_back(std::make_shared<SysLogging>(*syslog_level));
   }
 
