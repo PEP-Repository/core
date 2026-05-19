@@ -166,18 +166,14 @@ const pep::commandline::CommandPath serverStartCommandPath{"app", "server", "sta
 const pep::commandline::CommandPath deployCommandPath{"app", "deploy"};
 
 // Helper functions
-std::queue<std::string> ToQueue(std::initializer_list<std::string> values) {
-  std::queue<std::string> result;
-  for (const auto& value : values) {
-    result.push(value);
-  }
-  return result;
+int Process(AppCmd& cmd, std::initializer_list<std::string> args) {
+  auto queue = std::queue<std::string>{args};  // we need a temporary lvalue
+  return cmd.process(queue);
 }
 
 std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initializer_list<std::string> args) {
-  auto queuedArgs = ToQueue(args);
   testing::internal::CaptureStderr();
-  const int exitCode = cmd.process(queuedArgs);
+  const int exitCode = Process(cmd, args);
   std::string err = testing::internal::GetCapturedStderr();
   #if DEBUG_OUTPUT
   std::cout << "=== Captured stderr ===\n" << err << "======================\n";
@@ -759,8 +755,7 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameter) {
 TEST(CommandParameterCombinations, AliasCommandWithAliasParameterForwardingToDifferentCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"create-user", "--forward-to-deploy", "myapp"});
-    cmd.process(args);
+    Process(cmd, {"create-user", "--forward-to-deploy", "myapp"});
   }, ".*parameters cannot forward to other commands.*") << "Framework should assert when alias command forwards to one command but parameter forwards to another.";
 }
 #endif
@@ -987,8 +982,7 @@ TEST(ParameterParameterCombinations, AliasParameterWithAliasParameter) {
 TEST(ParameterParameterCombinations, AliasParameterWithAliasParameterToDifferentCommands) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"--quick-start", "8080", "--quick-deploy", "production"});
-    cmd.process(args);
+    Process(cmd,{"--quick-start", "8080", "--quick-deploy", "production"});
   }, ".*") << "Framework should assert when multiple alias parameters forward to commands";
 }
 
@@ -1122,8 +1116,7 @@ TEST(ForwardingCombinations, AliasCommandToDeprecatedCommand) {
 TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"new-user"});
-    cmd.process(args);
+    Process(cmd,{"new-user"});
   }, ".*") << "Framework should assert when alias forwards to a deprecated command";
 }
 
@@ -1132,8 +1125,7 @@ TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedCommand) {
 TEST(ForwardingCombinations, AliasCommandToAliasCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"user-alias"});
-    cmd.process(args);
+    Process(cmd,{"user-alias"});
   }, ".*") << "Framework should assert when alias forwards to another alias command";
 }
 
@@ -1142,8 +1134,7 @@ TEST(ForwardingCombinations, AliasCommandToAliasCommand) {
 TEST(ForwardingCombinations, AliasCommandToNoLongerSupportedCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"removed-alias"});
-    cmd.process(args);
+    Process(cmd,{"removed-alias"});
   }, ".*") << "Framework should assert when alias forwards to a no-longer-supported command";
 }
 
@@ -1175,8 +1166,7 @@ TEST(ForwardingCombinations, AliasCommandToDeprecatedParameter) {
 TEST(ForwardingCombinations, AliasCommandToAliasParameter) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"create-user-mail", "8080"});
-    cmd.process(args);
+    Process(cmd,{"create-user-mail", "8080"});
   }, ".*") << "Framework should assert when alias command is combined with alias parameter that forwards to different command";
 }
 
@@ -1185,8 +1175,7 @@ TEST(ForwardingCombinations, AliasCommandToAliasParameter) {
 TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedParameter) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"create-user-fwd-username", "test@example.com"});
-    cmd.process(args);
+    Process(cmd,{"create-user-fwd-username", "test@example.com"});
   }, ".*") << "Framework should assert when alias command is used with alias parameter that forwards to forwarding deprecated parameter";
 }
 
@@ -1195,8 +1184,7 @@ TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedParameter) {
 TEST(ForwardingCombinations, AliasCommandToNoLongerSupportedParameter) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"create-user-removed-role", "admin"});
-    cmd.process(args);
+    Process(cmd,{"create-user-removed-role", "admin"});
   }, ".*") << "Framework should assert when alias command is used with alias parameter that forwards to no-longer-supported parameter";
 }
 
@@ -1227,8 +1215,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedCommandToDeprecatedCommand) {
 TEST(ForwardingCombinations, ForwardingDeprecatedCommandToForwardingDeprecatedCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"old-init", "--name", "ChainTest"});
-    cmd.process(args);
+    Process(cmd,{"old-init", "--name", "ChainTest"});
   }, ".*") << "Framework should assert when deprecated command forwards to another deprecated command";
 }
 
@@ -1237,8 +1224,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedCommandToForwardingDeprecatedCo
 TEST(ForwardingCombinations, ForwardingDeprecatedCommandToAliasCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"old-db", "--source", "/data/test.db"});
-    cmd.process(args);
+    Process(cmd,{"old-db", "--source", "/data/test.db"});
   }, ".*") << "Framework should assert when deprecated command forwards to an alias command";
 }
 
@@ -1247,8 +1233,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedCommandToAliasCommand) {
 TEST(ForwardingCombinations, ForwardingDeprecatedCommandToNoLongerSupportedCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"removed-init"});
-    cmd.process(args);
+    Process(cmd,{"removed-init"});
   }, ".*") << "Framework should assert when deprecated command forwards to a no-longer-supported command";
 }
 
@@ -1282,8 +1267,7 @@ TEST(ForwardingCombinations, AliasParameterToDeprecatedCommand) {
 TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"--bad-forward-depr-cmd", "test"});
-    cmd.process(args);
+    Process(cmd,{"--bad-forward-depr-cmd", "test"});
   }, ".*") << "Framework should assert when alias parameter forwards to a forwarding deprecated command";
 }
 
@@ -1292,8 +1276,7 @@ TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedCommand) {
 TEST(ForwardingCombinations, AliasParameterToAliasCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"--bad-alias-cmd", "test"});
-    cmd.process(args);
+    Process(cmd,{"--bad-alias-cmd", "test"});
   }, ".*") << "Framework should assert when alias parameter forwards to an alias command";
 }
 
@@ -1302,8 +1285,7 @@ TEST(ForwardingCombinations, AliasParameterToAliasCommand) {
 TEST(ForwardingCombinations, AliasParameterToNoLongerSupportedCommand) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"--bad-removed-cmd", "value"});
-    cmd.process(args);
+    Process(cmd,{"--bad-removed-cmd", "value"});
   }, ".*") << "Framework should assert when alias parameter forwards to a no-longer-supported command";
 }
 
@@ -1335,8 +1317,7 @@ TEST(ForwardingCombinations, AliasParameterToDeprecatedParameter) {
 TEST(ForwardingCombinations, AliasParameterToAliasParameter) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"user", "--chain-mail", "test@example.com"});
-    cmd.process(args);
+    Process(cmd,{"user", "--chain-mail", "test@example.com"});
   }, ".*") << "Framework should assert when alias parameter forwards to another alias parameter (creating chain)";
 }
 
@@ -1345,8 +1326,7 @@ TEST(ForwardingCombinations, AliasParameterToAliasParameter) {
 TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedParameter) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"user", "--forward-username", "test@example.com"});
-    cmd.process(args);
+    Process(cmd,{"user", "--forward-username", "test@example.com"});
   }, ".*") << "Framework should assert when alias parameter forwards to a forwarding deprecated parameter";
 }
 
@@ -1355,8 +1335,7 @@ TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedParameter) {
 TEST(ForwardingCombinations, AliasParameterToNoLongerSupportedParameter) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"user", "--removed-role", "admin"});
-    cmd.process(args);
+    Process(cmd,{"user", "--removed-role", "admin"});
   }, ".*") << "Framework should assert when alias parameter forwards to a no-longer-supported parameter";
 }
 
@@ -1442,8 +1421,7 @@ TEST(ComplexForwarding, RootParametersAvailableAfterSubcommandForward) {
 TEST(ComplexForwarding, InvalidTransformationChildPathAsserts) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"--bad-transform-path", "value"});
-    cmd.process(args);
+    Process(cmd,{"--bad-transform-path", "value"});
   }, ".*") << "Framework should assert when a parameter transformation provides an invalid child path.";
 }
 #endif
@@ -1453,8 +1431,7 @@ TEST(ComplexForwarding, InvalidTransformationChildPathAsserts) {
 TEST(ComplexForwarding, ConflictingParameterAdditionsAssert) {
   EXPECT_DEBUG_DEATH({
     AppCmd cmd;
-    auto args = ToQueue({"database", "--legacy-db-source", "/data/old.db", "--old-db-path", "/data/new.db"});
-    cmd.process(args);
+    Process(cmd,{"database", "--legacy-db-source", "/data/old.db", "--old-db-path", "/data/new.db"});
   }, ".*conflicting parameter additions.*") << "Framework should assert when multiple transformations try to add the same parameter.";
 }
 

@@ -5,9 +5,7 @@
 #include <pep/application/CommandLineValue.hpp>
 #include <pep/application/CommandLineParameter.hpp>
 
-#include <functional>
 #include <map>
-#include <queue>
 #include <string>
 #include <vector>
 #include <optional>
@@ -17,7 +15,7 @@ namespace pep::application::test {
 class AppCmd;
 class ServerCmd;
 
-std::queue<std::string> ToQueue(std::initializer_list<std::string> values);
+int Process(AppCmd& cmd, std::initializer_list<std::string> args);
 std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initializer_list<std::string> args);
 
 // Mixin for automatic parameter recording in test commands
@@ -103,40 +101,33 @@ public:
   // Convenience methods for test assertions (inline implementations)
   template <typename T>
   std::optional<T> getCapturedValue(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    auto commandIt = mCapturedParams.find(commandPath.toString());
-    if (commandIt == mCapturedParams.end()) {
-      return std::nullopt;
-    }
-    return commandIt->second.getOptional<T>(paramName);
+    const auto command = FindOptional(mCapturedParams, commandPath);
+    return command ? command->getOptional<T>(paramName) : std::optional<T>{std::nullopt};
   }
 
   template <typename T>
   std::vector<T> getCapturedValues(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    auto commandIt = mCapturedParams.find(commandPath.toString());
-    if (commandIt == mCapturedParams.end()) {
-      return {};
-    }
-    return commandIt->second.getOptionalMultiple<T>(paramName);
+    const auto command = FindOptional(mCapturedParams, commandPath);
+    return command ? command->getOptionalMultiple<T>(paramName) : std::vector<T>{};
   }
 
   bool hasCapturedParam(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    auto commandIt = mCapturedParams.find(commandPath.toString());
-    if (commandIt == mCapturedParams.end()) {
-      return false;
-    }
-    return commandIt->second.has(paramName);
+    const auto command = FindOptional(mCapturedParams, commandPath);
+    return command ? command->has(paramName) : false;
   }
 
   size_t getCapturedCount(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    auto commandIt = mCapturedParams.find(commandPath.toString());
-    if (commandIt == mCapturedParams.end()) {
-      return 0;
-    }
-    return commandIt->second.count(paramName);
+    const auto command = FindOptional(mCapturedParams, commandPath);
+    return command ? command->count(paramName) : 0;
   }
 
 private:
   std::map<std::string, pep::commandline::NamedValues> mCapturedParams;
+
+  static std::optional<pep::commandline::NamedValues> FindOptional(const decltype(mCapturedParams)& params, const pep::commandline::CommandPath& path){
+    const auto commandIt = params.find(path.toString());
+    return (commandIt != params.end()) ? commandIt->second : std::optional<pep::commandline::NamedValues>{std::nullopt};
+  }
 };
 
 } // namespace pep::application::test
