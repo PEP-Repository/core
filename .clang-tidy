@@ -13,7 +13,10 @@ Checks:
   #XXX Enable when IgnoreConstantIntExpr becomes generally available
   - -bugprone-implicit-widening-of-multiplication-result
   - -bugprone-reserved-identifier # Disable as it's slow and we have -Wreserved-identifier
+  - -bugprone-signed-bitwise # Signed bitwise behavior is well-defined in C++20
   - -bugprone-switch-missing-default-case
+  # Suppress warnings about things like a static std::string
+  - -bugprone-throwing-static-initialization
   - -bugprone-unchecked-optional-access
 
   - cert-dcl50-cpp

@@ -146,7 +146,7 @@ OAuthToken OAuthToken::Generate(
 OAuthToken::OAuthToken(const std::string& serialized)
   : mSerialized(serialized) {
   std::vector<std::string> splitToken;
-  boost::split(splitToken, serialized, boost::is_any_of("."));
+  boost::split(splitToken, serialized, std::bind_front(std::equal_to{}, '.'));
 
   // Token should consist of two parts: (encoded) JSON data and HMAC
   if (splitToken.size() != 2) {

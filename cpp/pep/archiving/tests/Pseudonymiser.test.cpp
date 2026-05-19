@@ -18,7 +18,7 @@ std::vector<size_t> GeneratePositions(size_t size, size_t pseudonymLength) {
   std::vector<size_t> positions{};
   size_t cursor{0};
 
-  std::default_random_engine rng; //NOLINT(cert-msc51-cpp) Use static default seed
+  std::default_random_engine rng; //NOLINT(bugprone-random-generator-seed,cert-msc51-cpp) Use static default seed
   std::uniform_int_distribution<size_t> dist(0, size - 1);
   for (;;) {
     // Make a jump and add that position to the output. Add at least the pseudonymLength to make sure there will be no overlapping issues.
