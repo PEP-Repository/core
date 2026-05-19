@@ -513,8 +513,8 @@ int Application::printVersionInfo(const commandline::LexedValues& lexed) {
   return EXIT_SUCCESS;
 }
 
-void Application::finalizeParameters(bool isForwardingDispatch) {
-  Command::finalizeParameters(isForwardingDispatch);
+void Application::finalizeParameters() {
+  Command::finalizeParameters();
   initializeLoggingOnce();
 }
 

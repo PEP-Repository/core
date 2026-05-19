@@ -206,8 +206,8 @@ private:
         + pep::commandline::Parameter("number", "Number of test participants to create").shorthand('n').value(pep::commandline::Value<int>().defaultsTo(600));
     }
 
-    void finalizeParameters(bool isForwardingDispatch) override {
-      ChildCommandOf<CommandRegister>::finalizeParameters(isForwardingDispatch);
+    void finalizeParameters() override {
+      ChildCommandOf<CommandRegister>::finalizeParameters();
       int number = this->getParameterValues().get<int>("number");
       if (number < 1) {
         throw std::runtime_error("Number of participants to create must be positive");

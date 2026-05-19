@@ -145,7 +145,7 @@ std::optional<int> Command::processLexedParameters(const LexedValues& lexed) {
   return std::nullopt;
 }
 
-void Command::finalizeParameters(bool isForwardingDispatch) {
+void Command::finalizeParameters() {
   assert(!mParametersFinalized); // Prevent this method from being invoked multiple times
   this->getSupportedParameters().finalize(*mParameterValues);
   mParametersFinalized = true;
@@ -350,7 +350,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
     }
 
     // Step 11: Finalize parameters (no more transformations allowed after this)
-    this->finalizeParameters(isLeafDispatch);
+    this->finalizeParameters();
     assert(mParametersFinalized);
 
   }
