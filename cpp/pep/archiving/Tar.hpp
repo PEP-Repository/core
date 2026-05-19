@@ -14,7 +14,7 @@ class Tar : public SharedConstructor<Tar>, public Archive {
 public:
   Tar(const Tar&) = delete; //prevent copies of the archive* pointer
   ~Tar() override;
-  void nextEntry(const std::filesystem::path& path, int64_t size) override;
+  void nextEntry(const SafePath& path, int64_t size) override;
   void writeData(const char* c, const std::streamsize l) override;
   void writeData(std::string_view data) override;
   void closeEntry() override {}

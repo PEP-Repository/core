@@ -27,9 +27,9 @@ using namespace pep::cli;
 namespace {
 
 const std::string LOG_TAG = "Download Data";
-const std::string SPECIFICATION_FILENAME = DownloadMetadata::GetFilenamePrefix() + "specification" + DownloadMetadata::GetFilenameExtension();
+const std::filesystem::path SPECIFICATION_FILENAME(DownloadMetadata::GetFilenamePrefix() + "specification" + DownloadMetadata::GetFilenameExtension());
 
-std::filesystem::path ValidateDirectory(const std::filesystem::path& raw) {
+SafePath ValidateDirectory(const std::filesystem::path& raw) {
   auto result = std::filesystem::absolute(raw);
   if (std::filesystem::exists(result)) {
     if (!std::filesystem::is_directory(result)) {
@@ -39,7 +39,7 @@ std::filesystem::path ValidateDirectory(const std::filesystem::path& raw) {
   else {
     std::filesystem::create_directories(result);
   }
-  return result;
+  return SafePath::FromTrusted(result);
 }
 
 }
@@ -49,7 +49,7 @@ DownloadDirectory::DownloadDirectory(const std::filesystem::path& root, std::sha
   : mRoot(ValidateDirectory(root)), mMetadata(mRoot, globalConfig, onCreateProgress), mGlobalConfig(globalConfig) {
   auto spec = tryReadSpecification();
   if (!spec) {
-    throw std::runtime_error("Directory " + mRoot.string() + " is not a PEP download directory");
+    throw std::runtime_error("Directory " + mRoot.text() + " is not a PEP download directory");
   }
   mApplyFileExtensions = spec->applyFileExtensions;
 }
@@ -58,7 +58,7 @@ DownloadDirectory::DownloadDirectory(const std::filesystem::path& root, std::sha
     std::shared_ptr<GlobalConfiguration> globalConfig, bool applyFileExtensions)
   : mRoot(ValidateDirectory(root)), mApplyFileExtensions(applyFileExtensions), mMetadata(root, globalConfig), mGlobalConfig(globalConfig) {
   if (std::filesystem::directory_iterator(mRoot) != std::filesystem::directory_iterator()) {
-    throw std::runtime_error("Cannot initialize a new download in nonempty directory " + mRoot.string());
+    throw std::runtime_error("Cannot initialize a new download in nonempty directory " + mRoot.text());
   }
   Specification spec;
   spec.content = content;
@@ -79,15 +79,17 @@ std::optional<DownloadDirectory::Specification> DownloadDirectory::tryReadSpecif
   return std::nullopt;
 }
 
-std::filesystem::path DownloadDirectory::getParticipantDirectory(const ParticipantIdentifier& id) const {
-  auto result = mRoot / id.getLocalPseudonym().text();
+SafePath DownloadDirectory::getParticipantDirectory(const ParticipantIdentifier& id) const {
+  auto result = mRoot / SafeFileName(id.getLocalPseudonym().text());
   if (std::filesystem::is_directory(result)) {
     return result;
   }
-  return mRoot / mGlobalConfig->getUserPseudonymFormat().makeUserPseudonym(id.getLocalPseudonym());
+
+  auto pseudonym = mGlobalConfig->getUserPseudonymFormat().makeUserPseudonym(id.getLocalPseudonym());
+  return mRoot / SafeFileName(pseudonym);
 }
 
-std::optional<std::filesystem::path> DownloadDirectory::getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const {
+std::optional<SafePath> DownloadDirectory::getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const {
   auto result = getParticipantDirectory(id);
   if (std::filesystem::is_directory(result)) {
     return result;
@@ -95,7 +97,7 @@ std::optional<std::filesystem::path> DownloadDirectory::getParticipantDirectoryI
   return std::nullopt;
 }
 
-std::filesystem::path DownloadDirectory::provideParticipantDirectory(const ParticipantIdentifier& id) {
+SafePath DownloadDirectory::provideParticipantDirectory(const ParticipantIdentifier& id) {
   auto result = getParticipantDirectory(id);
   std::filesystem::create_directories(result);
   return result;
@@ -109,7 +111,7 @@ DownloadDirectory::Specification DownloadDirectory::getSpecification() const {
   return *result;
 }
 
-std::optional<std::filesystem::path> DownloadDirectory::getRecordFileName(const RecordDescriptor& descriptor, bool absolute) const {
+std::optional<SafePath> DownloadDirectory::getRecordFileName(const RecordDescriptor& descriptor, bool absolute) const {
   auto relativePath = mMetadata.getRelativePath(descriptor);
   if (!relativePath.has_value() || !absolute) {
     return relativePath;
@@ -139,7 +141,7 @@ bool DownloadDirectory::deleteRecord(const RecordDescriptor& descriptor) {
   return result;
 }
 
-bool DownloadDirectory::renameRecord(const RecordDescriptor& descriptor, const std::filesystem::path& newPath) {
+bool DownloadDirectory::renameRecord(const RecordDescriptor& descriptor, const SafePath& newPath) {
   auto result = false;
   auto dataPath = getRecordFileName(descriptor);
 
@@ -248,7 +250,7 @@ filesystem::SetOfExistingPaths DownloadDirectory::getUnknownContents(const files
   // Iterate over actual contents, collecting entries that shouldn't be there
   filesystem::SetOfExistingPaths result;
   for (std::filesystem::directory_iterator i(mRoot); i != std::filesystem::directory_iterator(); ++i) {
-    if (is_directory(i->path())) {
+    if (i->is_directory()) {
       if (!equivalent(i->path(), mMetadata.getDirectory())) {
         if (!knownDirs.contains(i->path())) {
           result.insert(i->path());
@@ -291,13 +293,13 @@ std::vector<RecordDescriptor> DownloadDirectory::list(const ParticipantIdentifie
   return getRecords([&id, &column](const RecordDescriptor& candidate) {return candidate.getParticipant() == id && candidate.getColumn() == column; });
 }
 
-std::optional<XxHasher::Hash> DownloadDirectory::getCurrentDataHash(const std::filesystem::path& path) const {
+std::optional<XxHasher::Hash> DownloadDirectory::getCurrentDataHash(const SafePath& path) const {
   if (std::filesystem::exists(path)) {
     if(std::filesystem::is_directory(path)) {
       return HashedArchive::HashDirectory(path);
     }
     else {
-      std::ifstream stream(path.string().c_str(), std::ios::in | std::ios::binary);
+      std::ifstream stream(path.path(), std::ios::in | std::ios::binary);
       return XxHasher(HashedArchive::DOWNLOAD_HASH_SEED)
         .update(stream)
         .digest();
@@ -314,7 +316,7 @@ std::optional<XxHasher::Hash> DownloadDirectory::getCurrentDataHash(const Record
   return std::nullopt;
 }
 
-void DownloadDirectory::setStoredDataHash(const RecordDescriptor& record, const std::filesystem::path& path, const std::string& fileName, XxHasher::Hash hash) {
+void DownloadDirectory::setStoredDataHash(const RecordDescriptor& record, const SafePath& path, const SafeFileName& fileName, XxHasher::Hash hash) {
   auto actual = getCurrentDataHash(path);
   if (!actual) {
     throw std::runtime_error("Data not stored");
@@ -333,12 +335,12 @@ bool DownloadDirectory::hasPristineData(const RecordDescriptor& descriptor) cons
   return current == mMetadata.getHash(descriptor);
 }
 
-std::filesystem::path DownloadDirectory::getDataStoragePath(const RecordDescriptor& descriptor) {
-  auto path = provideParticipantDirectory(descriptor.getParticipant());
-  path.append(descriptor.getFileName(mApplyFileExtensions));
+SafePath DownloadDirectory::getDataStoragePath(const RecordDescriptor& descriptor) {
+  auto path = provideParticipantDirectory(descriptor.getParticipant())
+      / descriptor.getFileName(mApplyFileExtensions);
 
   if (std::filesystem::exists(path)) {
-    throw std::runtime_error("Data storage path already exists at " + path.string());
+    throw std::runtime_error("Data storage path already exists at " + path.text());
   }
 
   return path;
@@ -367,7 +369,7 @@ bool DownloadDirectory::update(const RecordDescriptor& descriptor, const RecordD
   auto newPath = this->getDataStoragePath(updated);
   auto result = renameRecord(descriptor, newPath);
   mMetadata.remove(descriptor);
-  mMetadata.add(updated, newPath.filename().string(), *hash);
+  mMetadata.add(updated, newPath.fileName(), *hash);
   return result;
 }
 
@@ -400,28 +402,28 @@ std::string DownloadDirectory::Specification::toString() const {
 }
 
 
-DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize)
-  : mDestination(std::move(destination)), mDescriptor(std::move(descriptor)), mPath(std::move(path)), mFileName(mPath.filename().string()), mFileSize(fileSize), mHasher(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
+DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, SafePath path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize)
+  : mDestination(std::move(destination)), mDescriptor(std::move(descriptor)), mPath(std::move(path)), mFileName(mPath.fileName()), mFileSize(fileSize), mHasher(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
 
-  mRaw = std::make_shared<std::ofstream>(mPath.string(), std::ios::out | std::ios::binary);
+  mRaw = std::make_shared<std::ofstream>(mPath.path(), std::ios::out | std::ios::binary);
   if (!mRaw->is_open()) {
-    throw std::system_error(errno, std::generic_category(), "Failed to open " + mPath.string());
+    throw std::system_error(errno, std::generic_category(), "Failed to open " + mPath.text());
   }
 }
 
 DownloadDirectory::RecordStorageStream::~RecordStorageStream() noexcept {
   if (mRaw) {
-    LOG(LOG_TAG, error) << "Error destructing RecordStorageStream: uncommitted record at " + mPath.string(); // TODO: improve
+    LOG(LOG_TAG, error) << "Error destructing RecordStorageStream: uncommitted record at " + mPath.text(); // TODO: improve
   }
 }
 
-std::filesystem::path DownloadDirectory::RecordStorageStream::getRelativePath() const {
-  return std::filesystem::relative(mPath, mDestination->getPath());
+SafePath DownloadDirectory::RecordStorageStream::getRelativePath() const {
+  return SafePath::FromTrusted(std::filesystem::relative(mPath, mDestination->getPath()));
 }
 
 void DownloadDirectory::RecordStorageStream::write(const std::string& part, std::shared_ptr<GlobalConfiguration> globalConfig) {
   if (!mRaw) {
-    throw std::runtime_error("Cannot write to record stored at " + mPath.string() + " after it has been committed");
+    throw std::runtime_error("Cannot write to record stored at " + mPath.text() + " after it has been committed");
   }
   if(!mPseudonymisationRequired) { //Postpone hashing until after/during the depseudonymisation, since we want to hash the depseudonymised data
     mHasher.update(part.data(), part.size());
@@ -440,31 +442,31 @@ void DownloadDirectory::RecordStorageStream::write(const std::string& part, std:
 
 void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfiguration> globalConfig) {
   if (!mRaw) {
-    throw std::runtime_error("Record has already been committed and stored at " + mPath.string());
+    throw std::runtime_error("Record has already been committed and stored at " + mPath.text());
   }
   mRaw = nullptr;
   XxHasher::Hash hash{};
-  std::filesystem::path path;
+  SafePath path;
   std::optional<Pseudonymiser> pseudonymiser{std::nullopt};
 
   if (mArchiveExtractingRequired) {
     // mPath and the outpath defined below might collide. Add the .raw extension to ensure uniqueness.
-    auto raw = std::filesystem::path(mPath.string() + ".raw");
+    auto raw = mPath + ".raw";
     std::filesystem::rename(mPath, raw);
     mPath = raw;
 
-    auto outpath = mPath.parent_path() / mDescriptor.getColumn();
+    auto outpath = mPath.parentDirectory() / SafeFileName(mDescriptor.getColumn());
     auto directoryArchive = DirectoryArchive::Create(outpath);
     auto hashedArchive = HashedArchive::Create(directoryArchive);
 
-    auto in = std::ifstream(mPath.string(), std::ios::binary);
+    auto in = std::ifstream(mPath.path(), std::ios::binary);
 
     PEP_DEFER( // code is executed when this scope ends, with or without exceptions.
       in.close();
       std::filesystem::remove(mPath); // The raw .raw file
     );
 
-    auto temppath = std::filesystem::path(outpath.string() + ".tmp");
+    auto temppath = outpath + ".tmp";
     PEP_DEFER(
       std::filesystem::remove_all(temppath); // the extracted directory without the new pseudonyms.
     );
@@ -487,9 +489,9 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
       auto localPseudonym = globalConfig->getUserPseudonymFormat().makeUserPseudonym(mDescriptor.getParticipant().getLocalPseudonym());
       pseudonymiser = Pseudonymiser(mDescriptor.getExtra().at("pseudonymPlaceholder").plaintext(), localPseudonym);
 
-      auto in = std::ifstream(mPath.string(), std::ios::binary);
-      auto temppath = std::filesystem::path(mPath.string() + ".tmp");
-      auto tempOut = std::ofstream(temppath.string(), std::ios::binary);
+      auto in = std::ifstream(mPath.path(), std::ios::binary);
+      auto temppath = mPath + ".tmp";
+      auto tempOut = std::ofstream(temppath.path(), std::ios::binary);
 
       // Hashing has been postponed, so do it now.
       auto writeAndHash = [&tempOut, &hasher = mHasher](const char* c, const std::streamsize l) {tempOut.write(c, l); hasher.update(c, static_cast<size_t>(l)); tempOut.flush();};
@@ -509,7 +511,7 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
     mDestination->setStoredDataHash(mDescriptor, path, mFileName, hash);
   }
   catch (...) {
-    LOG(LOG_TAG, error) << "Could not write stored data hash for record at " << mPath.string() << ": " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, error) << "Could not write stored data hash for record at " << mPath.text() << ": " << GetExceptionMessage(std::current_exception());
     throw;
   }
 }

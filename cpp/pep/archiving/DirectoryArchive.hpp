@@ -10,7 +10,7 @@ namespace pep {
 class DirectoryArchive : public Archive, public SharedConstructor<DirectoryArchive> {
   friend class SharedConstructor<DirectoryArchive>;
 public:
-  void nextEntry(const std::filesystem::path& path, int64_t size) override;
+  void nextEntry(const SafePath& path, int64_t size) override;
   void writeData(std::string_view data) override;
   void writeData(const char* c, const std::streamsize l) override;
   void closeEntry() override;

@@ -145,8 +145,8 @@ Tar::~Tar() {
 }
 
 
-void Tar::nextEntry(const std::filesystem::path& path, int64_t size) {
-  const std::string& pathString = path.generic_string();
+void Tar::nextEntry(const SafePath& path, int64_t size) {
+  const auto pathString = path.path().generic_string();
 
   archive_entry* entry = archive_entry_new();
   archive_entry_set_pathname(entry, pathString.c_str());
@@ -202,20 +202,17 @@ void Tar::Extract(std::istream& stream, const std::filesystem::path& outputDirec
   }
   archive_entry* archive_entry{};
   while( (archive_entry = readNextHeader(archive)) ) {
-    std::filesystem::path entryPath(archive_entry_pathname(archive_entry));
+    std::filesystem::path rawEntryPath(archive_entry_pathname(archive_entry));
     if (archive_entry_filetype(archive_entry) != AE_IFREG) {
-      LOG(LOG_TAG, debug) << "Skipping non-regular file in tar archive: " << entryPath;
+      LOG(LOG_TAG, debug) << "Skipping non-regular file in tar archive: " << rawEntryPath;
       continue;
     }
-    // Block path traversal
-    if (!pep::IsLexicallyRelativeChildPath(entryPath, false)) {
-      LOG(LOG_TAG, warning) << "Skipping entry with non-relative or potentially unsafe path in tar archive: " << entryPath;
-      continue;
-    }
+
+    SafeRelativeFilePath entryPath(std::move(rawEntryPath));
     std::filesystem::path outpath = outputDirectory / entryPath;
-    std::filesystem::create_directories(outpath.parent_path());
+    std::filesystem::create_directories(GetParentDirectory(outpath));
     std::ofstream out(
-      outpath.string(),
+      outpath,
       std::ios::binary);
     if(!out) {
       std::ostringstream oss;

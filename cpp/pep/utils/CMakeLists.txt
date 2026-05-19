@@ -50,6 +50,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     PropertySerializer.hpp
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
+    SafePath.cpp SafePath.hpp
     SelfRegistering.hpp
     Shared.hpp
     Singleton.hpp

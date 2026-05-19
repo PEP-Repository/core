@@ -6,6 +6,7 @@
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/utils/Progress.hpp>
+#include <pep/utils/SafePath.hpp>
 
 #include <filesystem>
 #include <optional>
@@ -45,7 +46,7 @@ public:
   const Timestamp& getBlindingTimestamp() const noexcept { return mBlindingTimestamp; }
   const Timestamp& getPayloadBlindingTimestamp() const noexcept;
 
-  std::string getFileName(bool includingExtension = true) const noexcept;
+  SafeFileName getFileName(bool includingExtension = true) const noexcept;
   const std::map<std::string, MetadataXEntry>& getExtra() const noexcept { return mExtra; }
 
   bool operator ==(const RecordDescriptor& other) const;
@@ -70,22 +71,22 @@ private:
   };
 
   std::shared_ptr<GlobalConfiguration> mGlobalConfig;
-  std::filesystem::path mDownloadDirectory;
-  std::shared_ptr<std::unordered_map<std::string, Snapshot>> mSnapshotsByRelativePath = std::make_shared<std::unordered_map<std::string, Snapshot>>(); // Heap-allocated so it can be updated from const methods
-  std::shared_ptr<std::unordered_map<RecordDescriptor, std::string>> mRelativePathsByDescriptor = std::make_shared<std::unordered_map<RecordDescriptor, std::string>>(); // Heap-allocated so it can be updated from const methods
+  SafePath mDownloadDirectory;
+  std::shared_ptr<std::unordered_map<SafeRelativeFilePath, Snapshot>> mSnapshotsByRelativePath = std::make_shared<decltype(mSnapshotsByRelativePath)::element_type>(); // Heap-allocated so it can be updated from const methods
+  std::shared_ptr<std::unordered_map<RecordDescriptor, SafeRelativeFilePath>> mRelativePathsByDescriptor = std::make_shared<decltype(mRelativePathsByDescriptor)::element_type>(); // Heap-allocated so it can be updated from const methods
 
-  std::filesystem::path provideDirectory() const;
-  std::filesystem::path provideParticipantDirectory(const LocalPseudonym& localPseudonym) const;
+  SafePath provideDirectory() const;
+  SafePath provideParticipantDirectory(const LocalPseudonym& localPseudonym) const;
   void ensureFormatUpToDate();
 
 public:
   explicit DownloadMetadata(const std::filesystem::path& downloadDirectory, std::shared_ptr<GlobalConfiguration> globalConfig, const Progress::OnCreation& onCreateProgress = [](std::shared_ptr<const Progress>) {});
 
-  std::filesystem::path getDirectory() const;
+  SafePath getDirectory() const;
   std::vector<RecordState> getRecords() const;
   std::optional<XxHasher::Hash> getHash(const RecordDescriptor& record) const;
-  std::optional<std::filesystem::path> getRelativePath(const RecordDescriptor& record) const;
-  void add(const RecordDescriptor& record, const std::string& dataFileName, XxHasher::Hash hash);
+  std::optional<SafeRelativeFilePath> getRelativePath(const RecordDescriptor& record) const;
+  void add(const RecordDescriptor& record, const SafeFileName& dataFileName, XxHasher::Hash hash);
   bool remove(const RecordDescriptor& record);
 };
 

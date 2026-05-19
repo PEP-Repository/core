@@ -5,6 +5,7 @@
 #include <pep/cli/DownloadMetadata.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/utils/Filesystem.hpp>
+#include <pep/utils/SafePath.hpp>
 
 #include <rxcpp/rx-lite.hpp>
 
@@ -44,8 +45,8 @@ public:
   private:
     std::shared_ptr<DownloadDirectory> mDestination;
     RecordDescriptor mDescriptor;
-    std::filesystem::path mPath;
-    std::string mFileName;
+    SafePath mPath;
+    SafeFileName mFileName;
     size_t mFileSize;
     size_t mWritten = 0;
     std::shared_ptr<std::ofstream> mRaw;
@@ -54,7 +55,7 @@ public:
     bool mArchiveExtractingRequired{false};
 
   private:
-    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
+    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, SafePath path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
 
   public:
     // This class has reference semantics: prevent compiler from generating copy operations
@@ -68,7 +69,7 @@ public:
 
     const RecordDescriptor& getRecordDescriptor() const noexcept { return mDescriptor; }
 
-    std::filesystem::path getRelativePath() const;
+    SafePath getRelativePath() const;
 
     // Writes the given chunk to the stream. Automatically commits this stream once signaled filesize is reached.
     void write(const std::string& part, std::shared_ptr<GlobalConfiguration> globalConfig);
@@ -93,13 +94,13 @@ public:
   };
 
 private:
-  std::filesystem::path mRoot;
+  SafePath mRoot;
   bool mApplyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
   DownloadMetadata mMetadata;
   std::shared_ptr<GlobalConfiguration> mGlobalConfig;
 
-  void setStoredDataHash(const RecordDescriptor& field, const std::filesystem::path& path, const std::string& fileName, XxHasher::Hash hash);
-  std::optional<XxHasher::Hash> getCurrentDataHash(const std::filesystem::path& path) const;
+  void setStoredDataHash(const RecordDescriptor& field, const SafePath& path, const SafeFileName& fileName, XxHasher::Hash hash);
+  std::optional<XxHasher::Hash> getCurrentDataHash(const SafePath& path) const;
   std::optional<XxHasher::Hash> getCurrentDataHash(const RecordDescriptor& descriptor) const;
 
   std::vector<RecordDescriptor> getRecords(const std::function<bool(const RecordDescriptor&)>& match) const;
@@ -109,12 +110,12 @@ private:
   DownloadDirectory(const std::filesystem::path& root, std::shared_ptr<CoreClient> client, const ContentSpecification& content, std::shared_ptr<GlobalConfiguration> globalConfig, bool applyFileExtensions); // Initializes new directory
 
   std::optional<Specification> tryReadSpecification() const;
-  std::filesystem::path provideParticipantDirectory(const ParticipantIdentifier& id);
+  SafePath provideParticipantDirectory(const ParticipantIdentifier& id);
 
-  std::filesystem::path getDataStoragePath(const RecordDescriptor& descriptor);
+  SafePath getDataStoragePath(const RecordDescriptor& descriptor);
 
   bool deleteRecord(const RecordDescriptor& descriptor);
-  bool renameRecord(const RecordDescriptor& descriptor, const std::filesystem::path& newPath);
+  bool renameRecord(const RecordDescriptor& descriptor, const SafePath& newPath);
 
   void trackExistingPaths(filesystem::SetOfExistingPaths& dirs, filesystem::SetOfExistingPaths& files, const RecordDescriptor& descriptor) const;
   filesystem::SetOfExistingPaths getUnknownContents(const filesystem::SetOfExistingPaths& knownDirs, const filesystem::SetOfExistingPaths& knownFiles) const;
@@ -134,11 +135,11 @@ public:
 
   rxcpp::observable<FakeVoid> pull(std::shared_ptr<CoreClient> source, const PullOptions& options, const Progress::OnCreation& onCreateProgress);
 
-  const std::filesystem::path& getPath() const noexcept { return mRoot; }
+  const SafePath& getPath() const noexcept { return mRoot; }
   std::filesystem::path getSpecificationFilePath() const;
-  std::filesystem::path getParticipantDirectory(const ParticipantIdentifier& id) const;
-  std::optional<std::filesystem::path> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;
-  std::optional<std::filesystem::path> getRecordFileName(const RecordDescriptor& descriptor, bool absolute = true) const;
+  SafePath getParticipantDirectory(const ParticipantIdentifier& id) const;
+  std::optional<SafePath> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;
+  std::optional<SafePath> getRecordFileName(const RecordDescriptor& descriptor, bool absolute = true) const;
 
   std::vector<NonPristineEntry> getNonPristineEntries(const Progress::OnCreation& onCreateProgress) const;
   filesystem::SetOfExistingPaths getUnknownContents() const;

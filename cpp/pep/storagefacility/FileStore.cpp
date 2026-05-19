@@ -2,6 +2,7 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/utils/Log.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -110,7 +111,7 @@ FileStore::FileStore(
   std::shared_ptr<Configuration> pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : mPath(metadatapath),
+  : mPath(SafePath::FromTrusted(metadatapath)),
   mPagestore(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
@@ -154,7 +155,7 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   : mParticipant(participant), mColumnName(participant.getFileStore().getColumnString(columnName)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      auto entry = Entry::TryLoad(*this, p.path());
+      auto entry = Entry::TryLoad(*this, SafePath::FromTrusted(p.path()));
       if (entry != nullptr) {
         this->addEntry(entry);
       }
@@ -245,9 +246,9 @@ FileStore::EntryChange::EntryChange(const Entry& overwrites)
   : EntryBase(overwrites.getCell(), GenerateChecksumSubstitute(), overwrites.cloneContent()), mLastEntryValidFrom(overwrites.getValidFrom()) {
 }
 
-std::filesystem::path FileStore::Entry::getFilePath(const std::string& extension) const {
+SafePath FileStore::Entry::getFilePath(const std::string& extension) const {
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(this->getValidFrom())) + extension;
-  return this->getCell().path() / filename;
+  return this->getCell().path() / SafeFileName(filename);
 }
 
 FileStore::EntryBase::EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
@@ -304,9 +305,9 @@ void FileStore::Entry::save() const {
   std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
-  auto tempfile = this->getFilePath(".tmp");
+  std::filesystem::path tempfile = this->getFilePath(".tmp");
   std::ofstream outfile;
-  outfile.open(tempfile.string(), std::ios::binary | std::ios::out | std::ios::trunc);
+  outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
   if (!outfile.is_open())
     throw std::invalid_argument("could not write file: " + tempfile.string());
 
@@ -368,7 +369,7 @@ void FileStore::EntryChange::cancel() && {
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp timestamp) {
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FILE_EXTENSION;
-  auto result = TryLoad(cell, cell.path() / filename);
+  auto result = TryLoad(cell, cell.path() / SafeFileName(filename));
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
         + " at timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(timestamp)));
@@ -376,7 +377,8 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   return result;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const std::filesystem::path& path) {
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const SafePath& safePath) {
+  const std::filesystem::path& path = safePath;
   if (!std::filesystem::is_regular_file(path) || path.extension().string() != FILE_EXTENSION) {
     return nullptr;
   }
@@ -384,7 +386,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const st
   Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(path.stem().string())});
 
   std::ifstream infile;
-  infile.open(path.string(), std::ios::binary | std::ios::in);
+  infile.open(path, std::ios::binary | std::ios::in);
   if (!infile.is_open())
     throw std::invalid_argument("could not open file for reading");
 
@@ -470,8 +472,8 @@ EntryName FileStore::Cell::entryName() const {
   return EntryName(this->getParticipant().name(), mColumnName);
 }
 
-std::filesystem::path FileStore::Cell::path() const {
-  return this->getParticipant().path() / mColumnName;
+SafePath FileStore::Cell::path() const {
+  return this->getParticipant().path() / SafeFileName(mColumnName);
 }
 
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
@@ -503,8 +505,8 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   return **mCells.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
-std::filesystem::path FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / mName;
+SafePath FileStore::Participant::path() const {
+  return this->getFileStore().metaDir() / SafeFileName(mName);
 }
 
 size_t FileStore::Participant::entryCount() const {

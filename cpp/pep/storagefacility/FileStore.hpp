@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/SafePath.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
 #include <pep/messaging/MessageSequence.hpp>
@@ -113,7 +114,7 @@ public:
     Entry(EntryChange&& source, Timestamp validFrom);
     Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
-    std::filesystem::path getFilePath(const std::string& extension) const;
+    SafePath getFilePath(const std::string& extension) const;
 
   public:
     std::unique_ptr<EntryContent> cloneContent() const;
@@ -123,7 +124,7 @@ public:
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
-    static std::shared_ptr<Entry> TryLoad(Cell& cell, const std::filesystem::path& path);
+    static std::shared_ptr<Entry> TryLoad(Cell& cell, const SafePath& path);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
   };
 
@@ -143,7 +144,7 @@ public:
     const std::string& columnName() const noexcept { return mColumnName; }
 
     EntryName entryName() const;
-    std::filesystem::path path() const;
+    SafePath path() const;
 
     const EntryHeaders& entryHeaders() const noexcept { return mEntryHeaders; }
     void addEntry(std::shared_ptr<Entry> entry);
@@ -165,7 +166,7 @@ public:
     FileStore& getFileStore() const noexcept { return mStore; }
     const std::string& name() const noexcept { return mName; }
 
-    std::filesystem::path path() const;
+    SafePath path() const;
 
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
@@ -186,7 +187,7 @@ public:
   size_t entryCount() const;
   void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
 
-  const std::filesystem::path& metaDir() const {
+  const SafePath& metaDir() const {
     return mPath;
   }
 
@@ -210,7 +211,7 @@ private:
   Participant& provideParticipant(const std::string& name);
 
   PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set mParticipants;
-  std::filesystem::path mPath;
+  SafePath mPath;
   std::shared_ptr<PageStore> mPagestore;
 };
 

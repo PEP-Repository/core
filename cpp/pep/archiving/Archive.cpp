@@ -28,7 +28,7 @@ void WriteToArchive(const std::filesystem::path& baseDir, std::shared_ptr<Archiv
     else {
       processedFilename = currentPath.lexically_relative(baseDir).string();
     }
-    archive->nextEntry(processedFilename, static_cast<int64_t>(std::filesystem::file_size(currentPath)));
+    archive->nextEntry(SafeFileName(processedFilename), static_cast<int64_t>(std::filesystem::file_size(currentPath)));
     auto writeToArchive = [&archive](const char* c, const std::streamsize l) { archive->writeData(c, l); };
     try {
       if (pseudonymiser.has_value()) {
