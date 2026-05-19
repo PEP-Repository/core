@@ -114,6 +114,15 @@ public:
   std::vector<DataHistoryEntry2> mEntries;
 };
 
+struct DataSizeRequest {
+  std::set<std::string> mColumns;
+};
+
+struct DataSizeResponse {
+  uint64_t mTotalBytes;
+  uint64_t mRollingBytes;
+};
+
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;
 using SignedMetadataReadRequest2 = Signed<MetadataReadRequest2>;
 using SignedDataReadRequest2 = Signed<DataReadRequest2>;
@@ -121,5 +130,6 @@ using SignedMetadataUpdateRequest2 = Signed<MetadataUpdateRequest2>;
 using SignedDataStoreRequest2 = Signed<DataStoreRequest2>;
 using SignedDataDeleteRequest2 = Signed<DataDeleteRequest2>;
 using SignedDataHistoryRequest2 = Signed<DataHistoryRequest2>;
+using SignedDataSizeRequest = Signed<DataSizeRequest>;
 
 }

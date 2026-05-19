@@ -787,6 +787,21 @@ message DataHistoryResponse2 {
   repeated DataHistoryEntry2 entries = 1;
 }
 
+message DataSizeRequest {
+  repeated string columns = 1;
+}
+
+message SignedDataSizeRequest {
+  reserved 1, 2;
+  Signature signature = 3;
+  bytes data = 4;
+}
+
+message DataSizeResponse {
+  uint64 total_bytes = 1;
+  uint64 rolling_bytes = 2;
+}
+
 // Protocol buffer definition behind the opaque identifiers used by the
 // storage facility.
 message EncryptedSFId {

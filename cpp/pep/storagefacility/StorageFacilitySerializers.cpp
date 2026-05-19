@@ -266,4 +266,34 @@ void Serializer<DataPayloadPage>::moveIntoProtocolBuffer(proto::DataPayloadPage&
   dest.set_index(value.mIndex);
 }
 
+DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeRequest&& source) const {
+  DataSizeRequest result;
+  for (const auto& column : source.columns()) {
+    if (!result.mColumns.emplace(column).second) {
+      throw std::runtime_error("Can't insert duplicate column '" + column + "' into data size request");
+    }
+  }
+  return result;
+}
+
+void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest& dest, DataSizeRequest value) const {
+  dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
+  for (auto& column : value.mColumns) {
+    dest.add_columns(std::move(column));
+  }
+}
+
+DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSizeResponse&& source) const {
+  return DataSizeResponse{
+    .mTotalBytes = source.total_bytes(),
+    .mRollingBytes = source.rolling_bytes(),
+  };
+}
+
+void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
+  dest.set_total_bytes(value.mTotalBytes);
+  dest.set_rolling_bytes(value.mRollingBytes);
+}
+
+
 }
