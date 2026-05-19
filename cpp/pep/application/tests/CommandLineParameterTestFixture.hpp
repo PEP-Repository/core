@@ -34,55 +34,55 @@ protected:
   virtual RecordingCommandMixin* getParentMixin() { return nullptr; }
 };
 
+// app -> user, no child commands
 class UserCmd : public pep::commandline::ChildCommandOf<AppCmd>, public RecordingCommandMixin {
 public:
   explicit UserCmd(AppCmd& parent);
   pep::commandline::Parameters getSupportedParameters() const override;
   int execute() override;
-
   pep::commandline::Command* getCommand() override { return this; }
   AppCmd& getStorage() override;
   RecordingCommandMixin* getParentMixin() override;
 };
 
+// app -> database, no child commands
 class DatabaseCmd : public pep::commandline::ChildCommandOf<AppCmd>, public RecordingCommandMixin {
 public:
   explicit DatabaseCmd(AppCmd& parent);
   pep::commandline::Parameters getSupportedParameters() const override;
   int execute() override;
-
   pep::commandline::Command* getCommand() override { return this; }
   AppCmd& getStorage() override;
   RecordingCommandMixin* getParentMixin() override;
 };
 
+// app -> deploy, no child commands
 class DeployCmd : public pep::commandline::DeprecatedChildCommandOf<AppCmd>, public RecordingCommandMixin {
 public:
   explicit DeployCmd(AppCmd& parent);
   pep::commandline::Parameters getSupportedParameters() const override;
   int execute() override;
-
   pep::commandline::Command* getCommand() override { return this; }
   AppCmd& getStorage() override;
   RecordingCommandMixin* getParentMixin() override;
 };
 
+// app -> start, no child commands
 class StartCmd : public pep::commandline::ChildCommandOf<ServerCmd>, public RecordingCommandMixin {
 public:
   explicit StartCmd(ServerCmd& parent);
   pep::commandline::Parameters getSupportedParameters() const override;
   int execute() override;
-
   pep::commandline::Command* getCommand() override { return this; }
   AppCmd& getStorage() override;
   RecordingCommandMixin* getParentMixin() override;
 };
 
+// app -> server, child commands: "start"
 class ServerCmd : public pep::commandline::ChildCommandOf<AppCmd>, public RecordingCommandMixin {
 public:
   explicit ServerCmd(AppCmd& parent);
   std::vector<std::shared_ptr<pep::commandline::Command>> createChildCommands() override;
-
   pep::commandline::Command* getCommand() override { return this; }
   AppCmd& getStorage() override;
   RecordingCommandMixin* getParentMixin() override;
