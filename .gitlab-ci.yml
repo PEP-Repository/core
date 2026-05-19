@@ -1156,41 +1156,29 @@ ubuntu-lts-debug-test:
   after_script:
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        # Install lcov to Cobertura converter
-        pipx install lcov_cobertura
-        
+
         # Merge raw profile files from profiles directory
-        llvm-profdata merge -sparse profiles/*.profraw -o coverage.profdata
-        
+        llvm-profdata merge -sparse profiles/*.profraw -o unit-test-coverage.profdata
+
         # Build list of test binaries
         TEST_BINARIES=""
         for TEST in $TESTS; do
           TEST_BINARIES="$TEST_BINARIES --object $STAGING_DIRECTORY/$TEST"
         done
-        
-        # Export to lcov format using llvm-cov
-        llvm-cov export $TEST_BINARIES \
-          -instr-profile=coverage.profdata \
-          -format=lcov \
-          > coverage.lcov
-        
-        # Convert lcov to Cobertura XML using lcov_cobertura
-        lcov_cobertura coverage.lcov --output coverage.xml \
-          --base-dir "$CI_PROJECT_DIR" \
-          --demangle
-        
-        # Show summary with coverage percentage
-        echo "=== Coverage Summary ==="
-        line_rate=$(grep -oP 'line-rate="\K[^"]+' coverage.xml | head -1)
-        branch_rate=$(grep -oP 'branch-rate="\K[^"]+' coverage.xml | head -1)
-        line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
-        branch_pct=$(awk "BEGIN {printf \"%.2f\", $branch_rate * 100}")
-        echo "Line Coverage: ${line_pct}%"
-        echo "Branch Coverage: ${branch_pct}%"
-        echo ""
-        echo "Coverage report uploaded as artifact - check Pipeline > Tests > Code Coverage"
+
+        llvm-cov show \
+          $TEST_BINARIES \
+          -instr-profile=combined-coverage.profdata \
+          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
+          --project-title="Unit Test Coverage" \
+          --show-directory-coverage \
+          -format=html \
+          -output-dir=htmlcov
       fi
   artifacts:
+    paths:
+      - unit-test-coverage.profdata
+      - htmlcov/
     reports:
       junit: temp/*.xml
       coverage_report:
@@ -1350,136 +1338,68 @@ macos-local-integration-arm:
   needs:
     - macos-all-targets-arm
 
-macos-arm-coverage:
-  stage: build
-  needs:
-    - job: retrieve-lockfile
-      optional: true
-  rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
-  tags:
-    - macos-arm64
-  coverage: '/Line Coverage (\d+\.?\d*)%/'
-  variables:
-    WITH_CASTOR: "False"
-    MEM_ANALYSIS_TOOL: "none"
-    TESTS: "$UNIT_TESTS_BASE"
-    ENABLE_COVERAGE: "ON"
-  #language=bash
-  script:
-    # Build with coverage enabled
-    - *checkout-docker-build-script-sh-steps
-    - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
-    - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
-    - >
-      conan install .
-      --lockfile="docker-build/builder/conan/conan-ci.lock"
-      --profile:all="docker-build/builder/conan/conan_profile"
-      --build=missing
-      -s:a os.version=13.3
-      -s:a build_type="Debug"
-      -o "&:with_assessor=True"
-      -o "&:with_servers=True"
-      -o "&:with_castor=$WITH_CASTOR"
-      -o "&:with_tests=True"
-      -o "&:with_benchmark=True"
-      -o "&:custom_build_folder=True"
-      --output-folder=./$BUILD_DIRECTORY/
-    - |
-      if [[ -n "$CLEAN_CONAN" ]]; then
-      echo 'Cleaning Conan cache.'
-      # Remove old recipes
-      conan remove '*' --lru 4w --confirm
-      # Remove old packages
-      conan remove '*:*' --lru 4w --confirm
-      # Remove some temporary build files (excludes binaries)
-      conan cache clean --build --temp
-      fi
-    - *set-enable-deprecation-errors
-    - >
-      cmake --preset conan-debug
-      -DCMAKE_C_COMPILER_LAUNCHER=ccache
-      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DBUILD_GO_SERVERS=ON
-      -DENABLE_OAUTH_TEST_USERS=OFF
-      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
-      -DVERIFY_HEADERS_STANDALONE=ON
-      -DENABLE_COVERAGE=ON
-    - cmake --build --preset conan-debug
-    # Set profile file location for LLVM coverage (%p=process ID, %m=binary signature)
-    - mkdir -p "$CI_PROJECT_DIR/profiles"
-    - rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
-    - export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
-    # Run unit tests
-    - |
-      DID_JOB_FAIL=0
-      for TEST in $TESTS; do
-        if ! ./ci_cd/run-test-executable.sh "$BUILD_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
-          DID_JOB_FAIL=1
-        fi
-      done
-      if [ $DID_JOB_FAIL -ne 0 ]; then
-        echo "Unit tests failed, but continuing to integration tests"
-      fi
-    # Run integration tests
-    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+#################### Docker ####################
 
-    - cd $CI_PROJECT_DIR
-      
-      # Merge all raw profile files (from both unit tests and integration tests)
-    - xcrun llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
-    - | 
-      # Build list of all binaries (unit tests, services, client, apps)
-      ALL_BINARIES=""
-      for TEST in $TESTS; do
-        ALL_BINARIES="$ALL_BINARIES --object $BUILD_DIRECTORY/$TEST"
-      done
-      for EXEC in $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT $EXECUTABLES_APPS; do
-        ALL_BINARIES="$ALL_BINARIES --object $BUILD_DIRECTORY/$EXEC"
-      done
-      
-      # Export to lcov format using llvm-cov
-    - xcrun llvm-cov export $ALL_BINARIES
-        -instr-profile=combined-coverage.profdata
-        -format=lcov > coverage.lcov
-      
-      # Convert lcov to Cobertura XML
-    - ~/.local/bin/lcov_cobertura coverage.lcov --output coverage.xml
-        --base-dir "$CI_PROJECT_DIR"
-        --excludes '.*/proto/generated/.*'
-        --demangle
-      
-    - set -x
-      # Show summary with coverage percentage
-    - echo "=== Combined Coverage Summary (Unit + Integration Tests) ==="
-    - if [ -f coverage.xml ]; then
-    -   line_rate=$(grep -oE 'line-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
-    -   branch_rate=$(grep -oE 'branch-rate="[^"]+"' coverage.xml | head -1 | cut -d'"' -f2)
-    -   if [ -n "$line_rate" ] && [ -n "$branch_rate" ]; then
-    -     line_pct=$(python3 -c "print('{:.2f}'.format(float('$line_rate') * 100))")
-    -     branch_pct=$(python3 -c "print('{:.2f}'.format(float('$branch_rate') * 100))")
-    -     echo "Line Coverage ${line_pct}%"
-    -     echo "Branch Coverage ${branch_pct}%"
-    -   else
-    -     echo "Could not parse coverage rates from coverage.xml"
-    -   fi
-    - else
-    -   echo "coverage.xml not found, cannot show coverage summary"
-    - fi
-    - echo "Combined coverage report uploaded as artifact"
+ubuntu-lts-debug-integration:
+  stage: integration
+  extends: .dind
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  needs:
+    - ubuntu-lts-debug
+    - ubuntu-lts-debug-test
+  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+  script:
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        mkdir -p "$CI_PROJECT_DIR/profiles"
+        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
+      fi
+    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        pipx install lcov_cobertura
+        
+        # Merge raw profile files from profiles directory
+        llvm-profdata merge -sparse profiles/*.profraw unit-test-coverage.profdata -o combined-coverage.profdata
+        
+        INTEGRATION_BINARIES="--object $STAGING_DIRECTORY/$EXECUTABLES_PEP_SERVICES --object $STAGING_DIRECTORY/$EXECUTABLES_CLIENT"
+
+        llvm-cov show \
+          $INTEGRATION_BINARIES \
+          -instr-profile=combined-coverage.profdata \
+          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
+          --project-title="Combined Coverage (Unit + Integration)" \
+          --show-directory-coverage \
+          -format=html \
+          -output-dir=htmlcov
+
+        # Export to lcov format using llvm-cov
+        llvm-cov export $INTEGRATION_BINARIES \
+          -instr-profile=combined-coverage.profdata \
+          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
+          -format=lcov \
+          > coverage.lcov
+        
+        # Convert lcov to Cobertura XML using lcov_cobertura
+        lcov_cobertura coverage.lcov --output coverage.xml \
+          --base-dir "$CI_PROJECT_DIR" \
+          --demangle
+        
+        # Show summary with coverage percentage
+        echo "=== Coverage Summary ==="
+        line_rate=$(grep -oP 'line-rate="\K[^"]+' coverage.xml | head -1)
+        line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
+        echo "Line Coverage: ${line_pct}%"
+      fi
   artifacts:
-    when: always
-    expire_in: 8h
     paths:
-      - coverage.lcov
-      - coverage.xml
+      - htmlcov/
     reports:
       junit: temp/*.xml
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-
-#################### Docker ####################
 
 docker-integration:
   stage: integration
