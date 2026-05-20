@@ -391,8 +391,13 @@ cleanup:
 .ccache-print: &ccache-print |
   CCACHE_DIR="$PWD/ccache" ccache --show-stats --verbose 2> /dev/null || true
 
-.stage-artifacts: &stage-artifacts |
-  ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+.stage-artifacts: &stage-artifacts
+  - |
+    if [ "$ARTIFACTS" != "" ]; then
+      ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+    else
+      echo "No artifacts to stage"
+    fi
 
 .run-tests: &run-tests
   - |
@@ -402,7 +407,7 @@ cleanup:
     rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
     export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
     for TEST in $TESTS; do
-      if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
+      if ! ./ci_cd/run-test-executable.sh "$BUILD_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
         DID_JOB_FAIL=1
       fi
     done
@@ -506,10 +511,119 @@ retrieve-lockfile:
     -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_BASE?'
     -   exit 1
     - fi
+    - *run-tests
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *stage-artifacts
     - *ccache-print
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+.ubuntu-lts-settings:
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  variables:
+    BUILD_GO_SERVERS: "on"
+    WITH_TESTS: "True"
+
+#################### Ubuntu LTS Debug ####################
+
+.ubuntu-lts-debug-settings:
+  extends: .ubuntu-lts-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    WITH_BENCHMARK: "True"
+    VERIFY_HEADERS_STANDALONE: "off"
+
+ubuntu-lts-debug:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  variables:
+    WITH_CASTOR: "True"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+    MEM_ANALYSIS_TOOL: "none"
+  rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
+      variables:
+        ENABLE_COVERAGE: "ON"
+  before_script:
+    - !reference [.ubuntu-build-base, before_script]
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        mkdir -p "$CI_PROJECT_DIR/profiles"
+        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
+      fi
+  script:
+    - !reference [.ubuntu-build-base, script]
+    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        pipx install lcov_cobertura
+        
+        # Merge raw profile files from profiles directory
+        llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+
+        TEST_BINARIES=""
+        for TEST in $TESTS; do
+          TEST_BINARIES="$TEST_BINARIES --object $BUILD_DIRECTORY/$TEST"
+        done
+
+        INTEGRATION_BINARIES="--object $BUILD_DIRECTORY/$EXECUTABLES_PEP_SERVICES --object $BUILD_DIRECTORY/$EXECUTABLES_CLIENT"
+
+        llvm-cov show \
+          $TEST_BINARIES \
+          $INTEGRATION_BINARIES \
+          -instr-profile=combined-coverage.profdata \
+          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
+          --project-title="Combined Coverage (Unit + Integration)" \
+          --show-directory-coverage \
+          -format=html \
+          -output-dir=htmlcov
+
+        # Export to lcov format using llvm-cov
+        llvm-cov export $TEST_BINARIES $INTEGRATION_BINARIES \
+          -instr-profile=combined-coverage.profdata \
+          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
+          -format=lcov \
+          > coverage.lcov
+        
+        # Convert lcov to Cobertura XML using lcov_cobertura
+        lcov_cobertura coverage.lcov --output coverage.xml \
+          --base-dir "$CI_PROJECT_DIR" \
+          --demangle
+        
+        # Show summary with coverage percentage
+        echo "=== Coverage Summary ==="
+        line_rate=$(grep -oP 'line-rate="\K[^"]+' coverage.xml | head -1)
+        line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
+        echo "Line Coverage: ${line_pct}%"
+      fi
+  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+  artifacts:
+    paths:
+      - unit-test-coverage.profdata
+      - htmlcov/
+    reports:
+      junit: temp/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+# Not used currently, but needed to be able to test the effect of removing Castor integration
+ubuntu-lts-debug-without-castor:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  variables:
+    WITH_CASTOR: "False"
+    TESTS: "$UNIT_TESTS_BASE"
+    MEM_ANALYSIS_TOOL: "none"
 
 ubuntu-lts-debug-with-sast:
   stage: build
@@ -591,58 +705,17 @@ ubuntu-lts-debug-with-sast:
     paths:
       - reportFiltered.sarif
 
-.ubuntu-build-with-tests-base:
-  extends:
-    - .ubuntu-build-base
-  variables:
-    ARTIFACTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
-#################### Ubuntu LTS Debug ####################
-
-.ubuntu-lts-settings:
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
-  variables:
-    BUILD_GO_SERVERS: "on"
-    WITH_CASTOR: "True"
-    WITH_TESTS: "True"
-
-.ubuntu-lts-debug-settings:
-  extends: .ubuntu-lts-settings
-  rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' || $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
-      variables:
-        ENABLE_COVERAGE: "ON"
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_BENCHMARK: "False"
-    VERIFY_HEADERS_STANDALONE: "off"
-    ARTIFACTS: >-
-      $EXECUTABLES_APPS
-      $EXECUTABLES_PEP_SERVICES
-      $EXECUTABLES_CLIENT
-      $EXECUTABLES_GO
-      $UNIT_TESTS_ALL
-
-ubuntu-lts-debug:
-  extends:
-    - .ubuntu-build-with-tests-base
-    - .ubuntu-lts-debug-settings
-
 #################### Ubuntu LTS Release ####################
 
 .ubuntu-lts-release-settings:
   extends: .ubuntu-lts-settings
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
 
 # Builds (and optionally lints) binaries for ubuntu-lts-release
 ubuntu-lts-release-$[[ inputs.autolinting ]]:
@@ -657,6 +730,8 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       variables:
         ENABLE_LINTER: no
   variables:
+    WITH_BENCHMARK: "True"
+    WITH_CASTOR: "True"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
       $EXECUTABLES_APPS
@@ -666,52 +741,20 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $EXECUTABLE_PULLCASTOR
       $EXECUTABLES_GO
       $UNIT_TESTS_ALL
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+    MEM_ANALYSIS_TOOL: "valgrind"
 
-# Collects/provides (linted or unlinted) binaries
-ubuntu-lts-release:
-  stage: build
-  tags: [docker-small]
-  needs:
-    - ubuntu-lts-release-$[[ inputs.autolinting ]]
-  script:
-    echo "Collecting artifacts from the ubuntu-lts-release-$[[ inputs.autolinting ]] job"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
-ubuntu-lts-release-manual-lint:
+ubuntu-lts-release-without-castor:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
   rules:
-    # Redundant if CI already auto-lints
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      when: never
-    - <<: *not-stable-release
-      when: manual
-      # Make pipeline still continue without manual action (default for when:manual outside of rules)
-      allow_failure: true
-  variables:
-    ENABLE_LINTER: yes
-
-#################### Ubuntu LTS Release w/o Castor ####################
-
-ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
-  extends:
-    - .ubuntu-build-base
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
-  rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
-    WITH_TESTS: "False"
     WITH_BENCHMARK: "False"
     HTTPSERVER_WITH_TLS: "ON"
     ARTIFACTS: >-
@@ -719,12 +762,10 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
       $EXECUTABLES_CLIENT
       $LOCAL_CONFIG_CLIENT
       $PEPSERVERS_MONOLITH
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
+    TESTS: "$UNIT_TESTS_BASE"
+    MEM_ANALYSIS_TOOL: "none"
 
-#################### Ubuntu Rolling Debug ####################
+#################### Ubuntu Rolling ####################
 
 .ubuntu-rolling-settings:
   image: ${BUILDER_IMAGE_UBUNTU_ROLLING}
@@ -733,72 +774,37 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
     WITH_CASTOR: "True"
     WITH_TESTS: "True"
     WITH_BENCHMARK: "False"
-
-.ubuntu-rolling-debug-settings:
-  extends: .ubuntu-rolling-settings
-  variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    VERIFY_HEADERS_STANDALONE: "off"
-  rules:
-    - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - when: on_success
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+    MEM_ANALYSIS_TOOL: "none"
 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
-    - .ubuntu-build-with-tests-base
-    - .ubuntu-rolling-debug-settings
+    - .ubuntu-build-base
+    - .ubuntu-rolling-settings
   rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
         ENABLE_LINTER: yes
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       variables:
         ENABLE_LINTER: no
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "off"
 
-# Collects/provides (linted or unlinted) binaries
-ubuntu-rolling-debug:
-  stage: build
-  tags: [docker-small]
-  needs:
-    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
-  script:
-    echo "Collecting artifacts from the ubuntu-rolling-debug-$[[ inputs.autolinting ]] job"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
-ubuntu-rolling-debug-manual-lint:
+ubuntu-rolling-release:
   extends:
     - .ubuntu-build-base
-    - .ubuntu-rolling-debug-settings
-  rules:
-    # Redundant if CI already auto-lints
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      when: never
-    - <<: *not-stable-release
-      when: manual
-      # Make pipeline still continue without manual action (default for when:manual outside of rules)
-      allow_failure: true
-  variables:
-    ENABLE_LINTER: yes
-
-#################### Ubuntu Rolling Release ####################
-
-.ubuntu-rolling-release-settings:
-  extends: .ubuntu-rolling-settings
+    - .ubuntu-rolling-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     VERIFY_HEADERS_STANDALONE: "on"
-
-ubuntu-rolling-release:
-  extends:
-    - .ubuntu-build-with-tests-base
-    - .ubuntu-rolling-release-settings
-
 
 #################### Python Packages ####################
 
@@ -958,7 +964,7 @@ macos-client-arm:
     paths:
       - $BUILD_DIRECTORY/macOS_arm64_bins.zip
 
-.macos-all-targets-base:
+macos-all-targets:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -969,16 +975,17 @@ macos-client-arm:
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
+  parallel:
+    matrix:
+      - ARCH: [intel, arm64]
+  tags:
+    - macos-${ARCH}
   variables:
     WITH_CASTOR: "True"
-    ARTIFACTS: >-
-      $EXECUTABLES_APPS
-      $EXECUTABLES_PEP_SERVICES
-      $EXECUTABLES_CLIENT
-      $EXECUTABLES_BENCHMARK
-      $PEPSERVERS_MONOLITH
-      $EXECUTABLES_GO
-      $UNIT_TESTS_ALL
+    MEM_ANALYSIS_TOOL: "leaks"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
@@ -1018,23 +1025,14 @@ macos-client-arm:
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=ON
     - cmake --build --preset conan-debug
-  after_script:
-    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
-    - *stage-artifacts
+    - *run-tests
+    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
   artifacts:
+    reports:
+      junit: temp/*.xml
     expire_in: 8h
     paths:
       - $STAGING_DIRECTORY
-
-macos-all-targets-x86:
-  extends: .macos-all-targets-base
-  tags:
-    - macos-intel
-
-macos-all-targets-arm:
-  extends: .macos-all-targets-base
-  tags:
-    - macos-arm64
 
 #################### Docker ####################
 
@@ -1043,7 +1041,7 @@ build-docker-images:
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - ubuntu-lts-release
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
     - build-pep-connector
   #language=sh
   script:
@@ -1104,91 +1102,6 @@ build-sandbox-docker-image:
 # Configuration for the runtime-analysis stage#
 ###############################################
 
-#################### Ubuntu ###################
-
-.ubuntu-test-base:
-  stage: runtime-analysis
-  tags:
-    - docker
-  variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-ubuntu-lts-debug-test:
-  extends:
-    - .ubuntu-test-base
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-lts-debug]
-  rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' || $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
-      variables:
-        ENABLE_COVERAGE: "ON"
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  coverage: '/Line Coverage: (\d+\.?\d*)%/'
-  after_script:
-    - |
-      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-
-        # Merge raw profile files from profiles directory
-        llvm-profdata merge -sparse profiles/*.profraw -o unit-test-coverage.profdata
-
-        # Build list of test binaries
-        TEST_BINARIES=""
-        for TEST in $TESTS; do
-          TEST_BINARIES="$TEST_BINARIES --object $STAGING_DIRECTORY/$TEST"
-        done
-
-        llvm-cov show \
-          $TEST_BINARIES \
-          -instr-profile=combined-coverage.profdata \
-          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
-          --project-title="Unit Test Coverage" \
-          --show-directory-coverage \
-          -format=html \
-          -output-dir=htmlcov
-      fi
-  artifacts:
-    paths:
-      - unit-test-coverage.profdata
-      - htmlcov/
-    reports:
-      junit: temp/*.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-
-ubuntu-lts-release-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-lts-release-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "valgrind"
-  needs: [ubuntu-lts-release]
-
-ubuntu-rolling-debug-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-rolling-debug-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-rolling-debug]
-
-ubuntu-rolling-release-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-rolling-release-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-rolling-release]
-
 #################### Windows ##################
 
 windows-test:
@@ -1205,38 +1118,10 @@ windows-test:
   needs: [windows-all-targets]
   script:
     - *run-tests-windows
+    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
   artifacts:
     reports:
       junit: temp/*.xml
-
-#################### MacOS ####################
-
-.macos-test-base:
-  stage: runtime-analysis
-  variables:
-    MEM_ANALYSIS_TOOL: "leaks"
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-macos-x86-test:
-  extends:
-    - .macos-test-base
-  tags:
-    - macos-intel
-  needs: [macos-all-targets-x86]
-
-macos-arm-test:
-  extends:
-    - .macos-test-base
-  tags:
-    - macos-arm64
-  needs: [macos-all-targets-arm]
 
 #################### Docker ####################
 
@@ -1254,7 +1139,7 @@ pep-services-image-test:
     - job: build-docker-images
       artifacts: false
     # Use tests in $STAGING_DIRECTORY from artifacts
-    - ubuntu-lts-release
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
   #language=sh
   script:
     # First make sure included apps like pepcli work
@@ -1272,102 +1157,6 @@ pep-services-image-test:
 ##########################################
 # Configuration for the integration stage#
 ##########################################
-
-#################### Windows ####################
-
-windows-local-integration:
-  stage: integration
-  tags:
-    - windows-sequential
-  needs:
-    - windows-all-targets
-  script:
-    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
-
-#################### MacOS ####################
-
-.macos-local-integration-base:
-  stage: integration
-  script:
-    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
-
-macos-local-integration-x86:
-  extends: .macos-local-integration-base
-  tags:
-    - macos-intel
-  needs:
-    - macos-all-targets-x86
-
-macos-local-integration-arm:
-  extends: .macos-local-integration-base
-  tags:
-    - macos-arm64
-  needs:
-    - macos-all-targets-arm
-
-#################### Ubuntu ####################
-
-ubuntu-lts-debug-local-integration:
-  stage: integration
-  extends: .ubuntu-lts-debug-settings
-  tags:
-    - docker
-  needs:
-    - ubuntu-lts-debug
-    - ubuntu-lts-debug-test
-  coverage: '/Line Coverage: (\d+\.?\d*)%/'
-  script:
-    - |
-      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        mkdir -p "$CI_PROJECT_DIR/profiles"
-        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
-        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
-      fi
-    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
-    - |
-      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        pipx install lcov_cobertura
-        
-        # Merge raw profile files from profiles directory
-        llvm-profdata merge -sparse profiles/*.profraw unit-test-coverage.profdata -o combined-coverage.profdata
-        
-        INTEGRATION_BINARIES="--object $STAGING_DIRECTORY/$EXECUTABLES_PEP_SERVICES --object $STAGING_DIRECTORY/$EXECUTABLES_CLIENT"
-
-        llvm-cov show \
-          $INTEGRATION_BINARIES \
-          -instr-profile=combined-coverage.profdata \
-          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
-          --project-title="Combined Coverage (Unit + Integration)" \
-          --show-directory-coverage \
-          -format=html \
-          -output-dir=htmlcov
-
-        # Export to lcov format using llvm-cov
-        llvm-cov export $INTEGRATION_BINARIES \
-          -instr-profile=combined-coverage.profdata \
-          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
-          -format=lcov \
-          > coverage.lcov
-        
-        # Convert lcov to Cobertura XML using lcov_cobertura
-        lcov_cobertura coverage.lcov --output coverage.xml \
-          --base-dir "$CI_PROJECT_DIR" \
-          --demangle
-        
-        # Show summary with coverage percentage
-        echo "=== Coverage Summary ==="
-        line_rate=$(grep -oP 'line-rate="\K[^"]+' coverage.xml | head -1)
-        line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
-        echo "Line Coverage: ${line_pct}%"
-      fi
-  artifacts:
-    paths:
-      - htmlcov/
-    reports:
-      junit: temp/*.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
 
 docker-integration:
   stage: integration
