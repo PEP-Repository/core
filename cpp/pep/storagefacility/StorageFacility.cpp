@@ -1047,10 +1047,14 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
   const auto& request = certified.message;
 
   size_t entryCount;
-  DataSizeResponse response;
-  mFileStore->getMetrics(entryCount, response.mTotalBytes, response.mRollingBytes, request.mColumns);
+  uint64_t totalBytes, rollingBytes;
+  mFileStore->getMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
 
-  return messaging::BatchSingleMessage(std::move(response));
+  return messaging::BatchSingleMessage(DataSizeResponse{ // TODO: round to configured block size
+    .mBlockSize = 1U,
+    .mTotalBlocks = totalBytes,
+    .mRollingBlocks = rollingBytes,
+    });
 }
 
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {

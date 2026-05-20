@@ -798,8 +798,9 @@ message SignedDataSizeRequest {
 }
 
 message DataSizeResponse {
-  uint64 total_bytes = 1;
-  uint64 rolling_bytes = 2;
+  uint64 block_size = 1;
+  uint64 total_blocks = 2;
+  uint64 rolling_blocks = 3;
 }
 
 // Protocol buffer definition behind the opaque identifiers used by the

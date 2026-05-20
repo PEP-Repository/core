@@ -119,8 +119,9 @@ struct DataSizeRequest {
 };
 
 struct DataSizeResponse {
-  uint64_t mTotalBytes{};
-  uint64_t mRollingBytes{};
+  uint64_t mBlockSize;
+  uint64_t mTotalBlocks;
+  uint64_t mRollingBlocks;
 };
 
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;

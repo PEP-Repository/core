@@ -285,14 +285,16 @@ void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest&
 
 DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSizeResponse&& source) const {
   return DataSizeResponse{
-    .mTotalBytes = source.total_bytes(),
-    .mRollingBytes = source.rolling_bytes(),
+    .mBlockSize = source.block_size(),
+    .mTotalBlocks = source.total_blocks(),
+    .mRollingBlocks = source.rolling_blocks(),
   };
 }
 
 void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
-  dest.set_total_bytes(value.mTotalBytes);
-  dest.set_rolling_bytes(value.mRollingBytes);
+  dest.set_block_size(value.mBlockSize);
+  dest.set_total_blocks(value.mTotalBlocks);
+  dest.set_rolling_blocks(value.mRollingBlocks);
 }
 
 
