@@ -387,14 +387,19 @@ cleanup:
 .ccache-print: &ccache-print |
   CCACHE_DIR="$PWD/ccache" ccache --show-stats --verbose 2> /dev/null || true
 
-.stage-artifacts: &stage-artifacts |
-  ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+.stage-artifacts: &stage-artifacts
+  - |
+    if [ "$ARTIFACTS" != "" ]; then
+      ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+    else
+      echo "No artifacts to stage"
+    fi
 
 .run-tests: &run-tests
   - |
     DID_JOB_FAIL=0
     for TEST in $TESTS; do
-      if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
+      if ! ./ci_cd/run-test-executable.sh "$BUILD_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
         DID_JOB_FAIL=1
       fi
     done
@@ -505,9 +510,6 @@ retrieve-lockfile:
   artifacts:
     reports:
       junit: temp/*.xml
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 .ubuntu-lts-settings:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
@@ -637,6 +639,10 @@ ubuntu-lts-debug-with-sast:
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     VERIFY_HEADERS_STANDALONE: "on"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
 
 # Builds (and optionally lints) binaries for ubuntu-lts-release
 ubuntu-lts-release-$[[ inputs.autolinting ]]:
@@ -886,7 +892,7 @@ macos-client-arm:
     paths:
       - $BUILD_DIRECTORY/macOS_arm64_bins.zip
 
-.macos-all-targets-base:
+macos-all-targets:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -897,16 +903,17 @@ macos-client-arm:
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
+  parallel:
+    matrix:
+      - ARCH: [intel, arm64]
+  tags:
+    - macos-${ARCH}
   variables:
     WITH_CASTOR: "True"
-    ARTIFACTS: >-
-      $EXECUTABLES_APPS
-      $EXECUTABLES_PEP_SERVICES
-      $EXECUTABLES_CLIENT
-      $EXECUTABLES_BENCHMARK
-      $PEPSERVERS_MONOLITH
-      $EXECUTABLES_GO
-      $UNIT_TESTS_ALL
+    MEM_ANALYSIS_TOOL: "leaks"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
@@ -946,23 +953,14 @@ macos-client-arm:
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=ON
     - cmake --build --preset conan-debug
-  after_script:
-    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
-    - *stage-artifacts
+    - *run-tests
+    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
   artifacts:
+    reports:
+      junit: temp/*.xml
     expire_in: 8h
     paths:
       - $STAGING_DIRECTORY
-
-macos-all-targets-x86:
-  extends: .macos-all-targets-base
-  tags:
-    - macos-intel
-
-macos-all-targets-arm:
-  extends: .macos-all-targets-base
-  tags:
-    - macos-arm64
 
 #################### Docker ####################
 
@@ -1052,35 +1050,6 @@ windows-test:
     reports:
       junit: temp/*.xml
 
-#################### MacOS ####################
-
-.macos-test-base:
-  stage: runtime-analysis
-  variables:
-    MEM_ANALYSIS_TOOL: "leaks"
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-macos-x86-test:
-  extends:
-    - .macos-test-base
-  tags:
-    - macos-intel
-  needs: [macos-all-targets-x86]
-
-macos-arm-test:
-  extends:
-    - .macos-test-base
-  tags:
-    - macos-arm64
-  needs: [macos-all-targets-arm]
-
 #################### Docker ####################
 
 # We also test directly in services image to try to make sure
@@ -1126,27 +1095,6 @@ windows-local-integration:
     - windows-all-targets
   script:
     - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
-
-#################### MacOS ####################
-
-.macos-local-integration-base:
-  stage: integration
-  script:
-    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
-
-macos-local-integration-x86:
-  extends: .macos-local-integration-base
-  tags:
-    - macos-intel
-  needs:
-    - macos-all-targets-x86
-
-macos-local-integration-arm:
-  extends: .macos-local-integration-base
-  tags:
-    - macos-arm64
-  needs:
-    - macos-all-targets-arm
 
 #################### Docker ####################
 
