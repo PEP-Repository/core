@@ -497,11 +497,14 @@ retrieve-lockfile:
     -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_BASE?'
     -   exit 1
     - fi
+    - *run-tests
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *stage-artifacts
     - *ccache-print
   artifacts:
+    reports:
+      junit: temp/*.xml
     expire_in: 8h
     paths:
       - $STAGING_DIRECTORY
@@ -529,14 +532,13 @@ ubuntu-lts-debug:
     - .ubuntu-lts-debug-settings
   variables:
     WITH_CASTOR: "True"
-    ARTIFACTS: >-
-      $EXECUTABLES_APPS
-      $EXECUTABLES_PEP_SERVICES
-      $EXECUTABLES_CLIENT
-      $EXECUTABLES_BENCHMARK
-      $PEPSERVERS_MONOLITH
-      $EXECUTABLES_GO
-      $UNIT_TESTS_ALL
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+    MEM_ANALYSIS_TOOL: "none"
+  script:
+    - !reference [.ubuntu-build-base, script]
+    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
 
 # Not used currently, but needed to be able to test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
@@ -545,7 +547,8 @@ ubuntu-lts-debug-without-castor:
     - .ubuntu-lts-debug-settings
   variables:
     WITH_CASTOR: "False"
-    ARTIFACTS: "$UNIT_TESTS_BASE"
+    TESTS: "$UNIT_TESTS_BASE"
+    MEM_ANALYSIS_TOOL: "none"
 
 ubuntu-lts-debug-with-sast:
   stage: build
@@ -633,7 +636,6 @@ ubuntu-lts-debug-with-sast:
   extends: .ubuntu-lts-settings
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
 
 # Builds (and optionally lints) binaries for ubuntu-lts-release
@@ -649,6 +651,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       variables:
         ENABLE_LINTER: no
   variables:
+    WITH_BENCHMARK: "True"
     WITH_CASTOR: "True"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -659,33 +662,18 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $EXECUTABLE_PULLCASTOR
       $EXECUTABLES_GO
       $UNIT_TESTS_ALL
-
-ubuntu-lts-release-manual-lint:
-  extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-release-settings
-  rules:
-    # Redundant if CI already auto-lints
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      when: never
-    - <<: *not-stable-release
-      when: manual
-      # Make pipeline still continue without manual action (default for when:manual outside of rules)
-      allow_failure: true
-  variables:
-    WITH_CASTOR: "True"
-    ENABLE_LINTER: yes
-
-#################### Ubuntu LTS Release w/o Castor ####################
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+    MEM_ANALYSIS_TOOL: "valgrind"
 
 ubuntu-lts-release-without-castor:
   extends:
     - .ubuntu-build-base
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+    - .ubuntu-lts-release-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
     WITH_TESTS: "False"
@@ -696,8 +684,10 @@ ubuntu-lts-release-without-castor:
       $EXECUTABLES_CLIENT
       $LOCAL_CONFIG_CLIENT
       $PEPSERVERS_MONOLITH
+    TESTS: "$UNIT_TESTS_BASE"
+    MEM_ANALYSIS_TOOL: "none"
 
-#################### Ubuntu Rolling Debug ####################
+#################### Ubuntu Rolling ####################
 
 .ubuntu-rolling-settings:
   image: ${BUILDER_IMAGE_UBUNTU_ROLLING}
@@ -706,22 +696,18 @@ ubuntu-lts-release-without-castor:
     WITH_CASTOR: "True"
     WITH_TESTS: "True"
     WITH_BENCHMARK: "False"
-
-.ubuntu-rolling-debug-settings:
-  extends: .ubuntu-rolling-settings
-  variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    VERIFY_HEADERS_STANDALONE: "off"
-  rules:
-    - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - when: on_success
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+    MEM_ANALYSIS_TOOL: "none"
 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-base
-    - .ubuntu-rolling-debug-settings
+    - .ubuntu-rolling-settings
   rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
         ENABLE_LINTER: yes
@@ -729,43 +715,18 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
       variables:
         ENABLE_LINTER: no
   variables:
-    ARTIFACTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "off"
 
-ubuntu-rolling-debug-manual-lint:
+ubuntu-rolling-release:
   extends:
     - .ubuntu-build-base
-    - .ubuntu-rolling-debug-settings
-  rules:
-    # Redundant if CI already auto-lints
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      when: never
-    - <<: *not-stable-release
-      when: manual
-      # Make pipeline still continue without manual action (default for when:manual outside of rules)
-      allow_failure: true
-  variables:
-    ENABLE_LINTER: yes
-
-#################### Ubuntu Rolling Release ####################
-
-.ubuntu-rolling-release-settings:
-  extends: .ubuntu-rolling-settings
+    - .ubuntu-rolling-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     VERIFY_HEADERS_STANDALONE: "on"
-
-ubuntu-rolling-release:
-  extends:
-    - .ubuntu-build-base
-    - .ubuntu-rolling-release-settings
-  variables:
-    ARTIFACTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
 
 #################### Python Packages ####################
 
@@ -1071,83 +1032,6 @@ build-sandbox-docker-image:
 # Configuration for the runtime-analysis stage#
 ###############################################
 
-#################### Ubuntu ###################
-
-.ubuntu-test-base:
-  stage: runtime-analysis
-  tags:
-    - docker
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-ubuntu-lts-debug-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-lts-debug-settings
-  variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-lts-debug]
-
-# Not used currently, but needed to be able to test the effect of removing Castor integration
-ubuntu-lts-debug-without-castor-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-lts-debug-settings
-  variables:
-    TESTS: "$UNIT_TESTS_BASE"
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-lts-debug-without-castor]
-
-ubuntu-lts-release-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-lts-release-settings
-  variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-    MEM_ANALYSIS_TOOL: "valgrind"
-  needs:
-    - ubuntu-lts-release-$[[ inputs.autolinting ]]
-
-ubuntu-lts-release-without-castor-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-lts-release-settings
-  variables:
-    TESTS: "$UNIT_TESTS_BASE"
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-lts-release-without-castor]
-
-ubuntu-rolling-debug-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-rolling-debug-settings
-  variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-    MEM_ANALYSIS_TOOL: "none"
-  needs:
-    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
-
-ubuntu-rolling-release-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-rolling-release-settings
-  variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-rolling-release]
-
 #################### Windows ##################
 
 windows-test:
@@ -1263,18 +1147,6 @@ macos-local-integration-arm:
     - macos-arm64
   needs:
     - macos-all-targets-arm
-
-#################### Ubuntu ####################
-
-ubuntu-local-integration:
-  stage: integration
-  extends: .ubuntu-lts-debug-settings
-  tags:
-    - docker
-  needs:
-    - ubuntu-lts-debug
-  script:
-    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
 
 #################### Docker ####################
 
