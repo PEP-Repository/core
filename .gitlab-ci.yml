@@ -725,7 +725,7 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
         ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'unlinted'"
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       variables:
         ENABLE_LINTER: no
   variables:
