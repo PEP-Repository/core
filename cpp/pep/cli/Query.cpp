@@ -286,8 +286,8 @@ private:
                 // Determine SI prefix and base for output: e.g. "Mi" for base-2 megabyte or "G" for base-10 gigabyte
                 std::optional<std::string> units;
                 if (auto base2 = pep::IntegralLog(response.mBlockSize, uint64_t(2U))) {
-                  if (units = pep::SiPrefix(*base2, uint64_t(10U))) {
-                    *units += 'i';
+                  if (auto prefix = pep::SiPrefix(*base2, uint64_t(10U))) {
+                    *units = *prefix + 'i';
                   }
                 }
                 else if (auto base10 = pep::IntegralLog(response.mBlockSize, uint64_t(10U))) {
