@@ -67,6 +67,8 @@ public:
       return this->pageStoreConfig;
     }
 
+    uint64_t getQueryableDataBlockSize() const { return queryableDataBlockSize; }
+
   protected:
     void check() const override;
 
@@ -74,6 +76,7 @@ public:
     std::optional<ElgamalPrivateKey> pseudonymKey;
     std::optional<std::string> encIdKey;
     uint8_t parallelisation_width = 10; // passed to RxParalellConcat
+    uint64_t queryableDataBlockSize = 1024U * 1024U;
 
     // passed to FileStore::Create
     std::filesystem::path storagePath;
@@ -128,6 +131,7 @@ private:
   std::shared_ptr<Metrics> mMetrics;
   boost::asio::steady_timer mTimer;
   const uint8_t mParallelisationWidth = 0; // passed to RxParallelConcat
+  const uint64_t mQueryableDataBlockSize;
 };
 
 }
