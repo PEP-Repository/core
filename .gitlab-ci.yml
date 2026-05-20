@@ -682,7 +682,6 @@ ubuntu-lts-release-without-castor:
   variables:
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
-    WITH_TESTS: "False"
     WITH_BENCHMARK: "False"
     HTTPSERVER_WITH_TLS: "ON"
     ARTIFACTS: >-
