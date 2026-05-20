@@ -543,8 +543,6 @@ ubuntu-lts-debug-without-castor:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-debug-settings
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     WITH_CASTOR: "False"
     ARTIFACTS: "$UNIT_TESTS_BASE"
@@ -662,19 +660,6 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $EXECUTABLES_GO
       $UNIT_TESTS_ALL
 
-# Collects/provides (linted or unlinted) binaries
-ubuntu-lts-release:
-  stage: build
-  tags: [docker-small]
-  needs:
-    - ubuntu-lts-release-$[[ inputs.autolinting ]]
-  script:
-    echo "Collecting artifacts from the ubuntu-lts-release-$[[ inputs.autolinting ]] job"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
 ubuntu-lts-release-manual-lint:
   extends:
     - .ubuntu-build-base
@@ -740,26 +725,13 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
         ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' != 'unlinted'"
       variables:
         ENABLE_LINTER: no
   variables:
     ARTIFACTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_CASTOR
-
-# Collects/provides (linted or unlinted) binaries
-ubuntu-rolling-debug:
-  stage: build
-  tags: [docker-small]
-  needs:
-    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
-  script:
-    echo "Collecting artifacts from the ubuntu-rolling-debug-$[[ inputs.autolinting ]] job"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 ubuntu-rolling-debug-manual-lint:
   extends:
@@ -1038,7 +1010,7 @@ build-docker-images:
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - ubuntu-lts-release
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
     - build-pep-connector
   #language=sh
   script:
@@ -1105,10 +1077,6 @@ build-sandbox-docker-image:
   stage: runtime-analysis
   tags:
     - docker
-  variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
   script:
     - *run-tests
   artifacts:
@@ -1120,46 +1088,63 @@ ubuntu-lts-debug-test:
     - .ubuntu-test-base
     - .ubuntu-lts-debug-settings
   variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-lts-debug]
 
 # Not used currently, but needed to be able to test the effect of removing Castor integration
-ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
-  extends: .ubuntu-lts-debug-settings
+ubuntu-lts-debug-without-castor-test:
+  extends:
+    - .ubuntu-test-base
+    - .ubuntu-lts-debug-settings
   variables:
-    MEM_ANALYSIS_TOOL: "none"
     TESTS: "$UNIT_TESTS_BASE"
+    MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-lts-debug-without-castor]
-  stage: runtime-analysis
-  tags:
-    - docker
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
 
 ubuntu-lts-release-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-lts-release-settings
   variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "valgrind"
-  needs: [ubuntu-lts-release]
+  needs:
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
+
+ubuntu-lts-release-without-castor-test:
+  extends:
+    - .ubuntu-test-base
+    - .ubuntu-lts-release-settings
+  variables:
+    TESTS: "$UNIT_TESTS_BASE"
+    MEM_ANALYSIS_TOOL: "none"
+  needs: [ubuntu-lts-release-without-castor]
 
 ubuntu-rolling-debug-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-rolling-debug-settings
   variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-rolling-debug]
+  needs:
+    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
 
 ubuntu-rolling-release-test:
   extends:
     - .ubuntu-test-base
     - .ubuntu-rolling-release-settings
   variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-rolling-release]
 
@@ -1228,7 +1213,7 @@ pep-services-image-test:
     - job: build-docker-images
       artifacts: false
     # Use tests in $STAGING_DIRECTORY from artifacts
-    - ubuntu-lts-release
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
   #language=sh
   script:
     # First make sure included apps like pepcli work
