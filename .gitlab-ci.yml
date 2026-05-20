@@ -1045,6 +1045,7 @@ windows-test:
   needs: [windows-all-targets]
   script:
     - *run-tests-windows
+    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
   artifacts:
     reports:
       junit: temp/*.xml
@@ -1083,17 +1084,6 @@ pep-services-image-test:
 ##########################################
 # Configuration for the integration stage#
 ##########################################
-
-#################### Windows ####################
-
-windows-local-integration:
-  stage: integration
-  tags:
-    - windows-sequential
-  needs:
-    - windows-all-targets
-  script:
-    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
 
 #################### Docker ####################
 
