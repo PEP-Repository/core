@@ -282,17 +282,17 @@ private:
             .flat_map([client](std::shared_ptr<pep::DataSizeRequest> request) {return client->getStorageFacilityProxy()->requestDataSize(std::move(*request)); })
             .map([](pep::DataSizeResponse response) {
               // Left pad (with spaces) so that we can...
-              auto total = std::to_string(response.mTotalBlocks);
-              auto rolling = std::to_string(response.mRollingBlocks);
+              auto total = std::to_string(response.mTotalBlocks * response.mBlockSize);
+              auto rolling = std::to_string(response.mRollingBlocks * response.mBlockSize);
               auto width = std::max(total.size(), rolling.size());
               total = std::string(width - total.size(), ' ') + total;
               rolling = std::string(width - rolling.size(), ' ') + rolling;
 
               // ...produce aligned output
-              auto units = std::to_string(response.mBlockSize) + "-byte blocks"; // TODO: use prettier description for some sizes such as 1, 1000^n, 1024^n
               std::cout
-                << "Entire history contains " << total    << ' ' << units << '\n'
-                << "Latest version contains " << rolling  << ' ' << units;
+                << "Entire history contains " << total    << " bytes" << '\n'
+                << "Latest version contains " << rolling  << " bytes" << '\n'
+                << "(rounded up to the nearest multiple of " << response.mBlockSize << " bytes)";
 
                 return pep::FakeVoid();
               });
