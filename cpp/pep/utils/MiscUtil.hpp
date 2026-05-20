@@ -99,15 +99,17 @@ boost::property_tree::path RawPtreePath(const std::string& path);
     return (fun)(std::forward<decltype(args)>(args)...); \
   })
 
-/// @brief Returns the SI prefix for the specified power
+namespace detail {
+
+/// @brief Returns the unit prefix for the specified power
 /// @tparam T The (unsigned integral) type of the values that are passed as this function's parameters
-/// @param power The power to express as an SI prefix
-/// @param period The divisor that determines which powers the SI prefixes apply to (also see remark)
-/// @return The SI prefix for the specified power, or nullopt if no SI prefix applies to it
+/// @param power The power to express as a unit prefix
+/// @param period The divisor that determines which powers the unit prefixes apply to (also see remark)
+/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
 /// @remark Decimal (normal) prefixing should use a period of 3, indicating that prefixes apply to 10^3, 10^6, 10^9, and so on.
 ///         Binary (base-2) prefixing should use a period of 10, indicating that prefixes apply to 2^10, 2^20, 2^30, and so on.
 template <std::unsigned_integral T>
-std::optional<std::string> SiPrefix(T power, T period = 3U) {
+std::optional<std::string> UnitPrefix(T power, T period) {
   assert(period != 0U);
 
   if (power == 0U) {
@@ -122,6 +124,32 @@ std::optional<std::string> SiPrefix(T power, T period = 3U) {
     return std::nullopt;
   }
   return std::string({ characters[position] });
+}
+
+}
+
+/// @brief Returns the SI prefix for the specified power
+/// @tparam T The (unsigned integral) type of the values that are passed as this function's parameters
+/// @param power The power to express as a unit prefix
+/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
+/// @remark Only preferred prefixes are returned, i.e. powers that are a multiple of 3 (no "h" or "da").
+template <std::unsigned_integral T>
+std::optional<std::string> SiPrefix(T power) {
+  return detail::UnitPrefix(power, T(3U));
+}
+
+/// @brief Returns the binary prefix for the specified power
+/// @tparam T The (unsigned integral) type of the values that are passed as this function's parameters
+/// @param power The power to express as a unit prefix
+/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
+/// @remark Return values (that are not nullopt) include the 'i' indicator that it's a binary (as opposed to SI) prefix.
+template <std::unsigned_integral T>
+std::optional<std::string> BinaryPrefix(T power) {
+  auto raw = detail::UnitPrefix(power, T(10U));
+  if (raw.has_value()) {
+    return *raw + 'i';
+  }
+  return std::nullopt;
 }
 
 }

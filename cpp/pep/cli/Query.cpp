@@ -283,15 +283,13 @@ private:
           return obs
             .flat_map([client](std::shared_ptr<pep::DataSizeRequest> request) {return client->getStorageFacilityProxy()->requestDataSize(std::move(*request)); })
             .map([](pep::DataSizeResponse response) {
-                // Determine SI prefix and base for output: e.g. "Mi" for base-2 megabyte or "G" for base-10 gigabyte
+                // Determine prefix and base for output: e.g. "Mi" for base-2 megabyte or "G" for base-10 gigabyte
                 std::optional<std::string> units;
                 if (auto base2 = pep::IntegralLog(response.mBlockSize, uint64_t(2U))) {
-                  if (auto prefix = pep::SiPrefix(*base2, uint64_t(10U))) {
-                    *units = *prefix + 'i';
-                  }
+                  units = pep::BinaryPrefix(*base2);
                 }
                 else if (auto base10 = pep::IntegralLog(response.mBlockSize, uint64_t(10U))) {
-                  units = pep::SiPrefix(*base10); // may be nullopt
+                  units = pep::SiPrefix(*base10);
                 }
 
                 // Finalize units string and description of such a "chunk"

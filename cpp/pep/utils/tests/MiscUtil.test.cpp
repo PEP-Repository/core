@@ -15,7 +15,7 @@ TEST(MiscUtil, StringToBool) {
   ASSERT_EQ(pep::StringToBool("false"), false);
 }
 
-TEST(MiscUtil, SiPrefix) {
+TEST(MiscUtil, UnitPrefix) {
   EXPECT_EQ(pep::SiPrefix(3U), "k");
   EXPECT_EQ(pep::SiPrefix(6U), "M");
   EXPECT_EQ(pep::SiPrefix(9U), "G");
@@ -33,17 +33,17 @@ TEST(MiscUtil, SiPrefix) {
   EXPECT_EQ(pep::SiPrefix(14U), std::nullopt);
   EXPECT_EQ(pep::SiPrefix(33U), std::nullopt);
 
-  // Base-2 (binary) prefixes: 1kiB = 2^10 bytes, 1MiB = 2^20 bytes, and so on
-  EXPECT_EQ(pep::SiPrefix(10U, 10U), "k");
-  EXPECT_EQ(pep::SiPrefix(20U, 10U), "M");
-  EXPECT_EQ(pep::SiPrefix(30U, 10U), "G");
-  EXPECT_EQ(pep::SiPrefix(40U, 10U), "T");
-  EXPECT_EQ(pep::SiPrefix(50U, 10U), "P");
-  EXPECT_EQ(pep::SiPrefix(60U, 10U), "E");
-  EXPECT_EQ(pep::SiPrefix(70U, 10U), "Z");
-  EXPECT_EQ(pep::SiPrefix(80U, 10U), "Y");
-  EXPECT_EQ(pep::SiPrefix(90U, 10U), "R");
-  EXPECT_EQ(pep::SiPrefix(100U, 10U), "Q");
+  // Binary (base-2) prefixes: 1kiB = 2^10 bytes, 1MiB = 2^20 bytes, and so on
+  EXPECT_EQ(pep::BinaryPrefix(10U), "ki");
+  EXPECT_EQ(pep::BinaryPrefix(20U), "Mi");
+  EXPECT_EQ(pep::BinaryPrefix(30U), "Gi");
+  EXPECT_EQ(pep::BinaryPrefix(40U), "Ti");
+  EXPECT_EQ(pep::BinaryPrefix(50U), "Pi");
+  EXPECT_EQ(pep::BinaryPrefix(60U), "Ei");
+  EXPECT_EQ(pep::BinaryPrefix(70U), "Zi");
+  EXPECT_EQ(pep::BinaryPrefix(80U), "Yi");
+  EXPECT_EQ(pep::BinaryPrefix(90U), "Ri");
+  EXPECT_EQ(pep::BinaryPrefix(100U), "Qi");
 }
 
 }
