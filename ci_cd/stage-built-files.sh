@@ -36,12 +36,20 @@ fi
 # Ensure destination path exists
 mkdir -p "$DEST_PATH"
 
+# Track total size
+TOTAL_SIZE_KB=0
+
 for filepath in $FILES; do
-  echo "Staging $filepath"
   if [ -d "$SOURCE_PATH/$filepath" ]; then # If path is a directory, copy it recursively
     # Don't process $BUILD_MODE and/or $EXTENSION in this case: we'll find (executable) files
     # regardless of output (sub)directory and file extension.
     cp -R "$SOURCE_PATH/$filepath" "$DEST_PATH/$filepath"
+    
+    # Get size of the copied directory
+    SIZE_KB=$(du -sk "$DEST_PATH/$filepath" | cut -f1)
+    SIZE_MB=$(echo "scale=2; $SIZE_KB / 1024" | bc)
+    echo "Staged $filepath (${SIZE_MB} MB)"
+    TOTAL_SIZE_KB=$((TOTAL_SIZE_KB + SIZE_KB))
   else # If path is a file, copy it normally
     FULL_SOURCE_PATH="$SOURCE_PATH/$(dirname "$filepath")/$BUILD_MODE/$(basename "$filepath")"
     # Append extension (e.g. ".exe") if the specified file (name) doesn't exist
@@ -53,7 +61,17 @@ for filepath in $FILES; do
     DEST_DIR="$DEST_PATH/$(dirname "$filepath")"
     mkdir -p "$DEST_DIR"
     cp "${FULL_SOURCE_PATH}" "$DEST_DIR"
+    
+    # Get size of the copied file
+    SIZE_KB=$(du -sk "$DEST_DIR/$(basename "$filepath")${EXTENSION}" | cut -f1)
+    SIZE_MB=$(echo "scale=2; $SIZE_KB / 1024" | bc)
+    echo "Staged $filepath (${SIZE_MB} MB)"
+    TOTAL_SIZE_KB=$((TOTAL_SIZE_KB + SIZE_KB))
   fi
 done
 
+# Print total size
+TOTAL_SIZE_MB=$(echo "scale=2; $TOTAL_SIZE_KB / 1024" | bc)
+echo ""
 echo "Files staged successfully"
+echo "Total size: ${TOTAL_SIZE_MB} MB"
