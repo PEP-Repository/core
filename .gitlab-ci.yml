@@ -501,6 +501,53 @@ retrieve-lockfile:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *stage-artifacts
     - *ccache-print
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+.ubuntu-lts-settings:
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  variables:
+    BUILD_GO_SERVERS: "on"
+    WITH_TESTS: "True"
+
+#################### Ubuntu LTS Debug ####################
+
+.ubuntu-lts-debug-settings:
+  extends: .ubuntu-lts-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    WITH_BENCHMARK: "True"
+    VERIFY_HEADERS_STANDALONE: "off"
+
+ubuntu-lts-debug:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  variables:
+    WITH_CASTOR: "True"
+    ARTIFACTS: >-
+      $EXECUTABLES_APPS
+      $EXECUTABLES_PEP_SERVICES
+      $EXECUTABLES_CLIENT
+      $EXECUTABLES_BENCHMARK
+      $PEPSERVERS_MONOLITH
+      $EXECUTABLES_GO
+      $UNIT_TESTS_ALL
+
+# Not used currently, but needed to be able to test the effect of removing Castor integration
+ubuntu-lts-debug-without-castor:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    WITH_CASTOR: "False"
+    ARTIFACTS: "$UNIT_TESTS_BASE"
 
 ubuntu-lts-debug-with-sast:
   stage: build
@@ -582,68 +629,6 @@ ubuntu-lts-debug-with-sast:
     paths:
       - reportFiltered.sarif
 
-.ubuntu-build-with-tests-base:
-  extends:
-    - .ubuntu-build-base
-  variables:
-    ARTIFACTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
-#################### Ubuntu LTS Debug ####################
-
-.ubuntu-lts-settings:
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
-  variables:
-    BUILD_GO_SERVERS: "on"
-    WITH_CASTOR: "True"
-    WITH_TESTS: "True"
-
-.ubuntu-lts-debug-settings:
-  extends: .ubuntu-lts-settings
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_BENCHMARK: "True"
-    VERIFY_HEADERS_STANDALONE: "off"
-    ARTIFACTS: >-
-      $EXECUTABLES_APPS
-      $EXECUTABLES_PEP_SERVICES
-      $EXECUTABLES_CLIENT
-      $EXECUTABLES_BENCHMARK
-      $PEPSERVERS_MONOLITH
-      $EXECUTABLES_GO
-      $UNIT_TESTS_ALL
-
-ubuntu-lts-debug:
-  extends:
-    - .ubuntu-build-with-tests-base
-    - .ubuntu-lts-debug-settings
-
-
-#################### Ubuntu LTS Debug w/o Castor ####################
-
-# Not used currently, but needed to be able to test the effect of removing Castor integration
-ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
-  extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-debug-settings
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  variables:
-    WITH_CASTOR: "False"
-    ARTIFACTS: "$UNIT_TESTS_BASE"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
-
 #################### Ubuntu LTS Release ####################
 
 .ubuntu-lts-release-settings:
@@ -666,6 +651,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       variables:
         ENABLE_LINTER: no
   variables:
+    WITH_CASTOR: "True"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
       $EXECUTABLES_APPS
@@ -675,10 +661,6 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $EXECUTABLE_PULLCASTOR
       $EXECUTABLES_GO
       $UNIT_TESTS_ALL
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 # Collects/provides (linted or unlinted) binaries
 ubuntu-lts-release:
@@ -706,11 +688,12 @@ ubuntu-lts-release-manual-lint:
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
   variables:
+    WITH_CASTOR: "True"
     ENABLE_LINTER: yes
 
 #################### Ubuntu LTS Release w/o Castor ####################
 
-ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
+ubuntu-lts-release-without-castor:
   extends:
     - .ubuntu-build-base
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
@@ -728,10 +711,6 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
       $EXECUTABLES_CLIENT
       $LOCAL_CONFIG_CLIENT
       $PEPSERVERS_MONOLITH
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 #################### Ubuntu Rolling Debug ####################
 
@@ -755,7 +734,7 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
-    - .ubuntu-build-with-tests-base
+    - .ubuntu-build-base
     - .ubuntu-rolling-debug-settings
   rules:
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
@@ -764,6 +743,10 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       variables:
         ENABLE_LINTER: no
+  variables:
+    ARTIFACTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
 
 # Collects/provides (linted or unlinted) binaries
 ubuntu-rolling-debug:
@@ -805,9 +788,12 @@ ubuntu-rolling-debug-manual-lint:
 
 ubuntu-rolling-release:
   extends:
-    - .ubuntu-build-with-tests-base
+    - .ubuntu-build-base
     - .ubuntu-rolling-release-settings
-
+  variables:
+    ARTIFACTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
 
 #################### Python Packages ####################
 
