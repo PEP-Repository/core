@@ -4,6 +4,8 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/utils/Math.hpp>
+#include <pep/utils/MiscUtil.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -281,18 +283,44 @@ private:
           return obs
             .flat_map([client](std::shared_ptr<pep::DataSizeRequest> request) {return client->getStorageFacilityProxy()->requestDataSize(std::move(*request)); })
             .map([](pep::DataSizeResponse response) {
-              // Left pad (with spaces) so that we can...
-              auto total = std::to_string(response.mTotalBlocks * response.mBlockSize);
-              auto rolling = std::to_string(response.mRollingBlocks * response.mBlockSize);
-              auto width = std::max(total.size(), rolling.size());
-              total = std::string(width - total.size(), ' ') + total;
-              rolling = std::string(width - rolling.size(), ' ') + rolling;
+                // Determine SI prefix and base for output: e.g. "Mi" for base-2 megabyte or "G" for base-10 gigabyte
+                std::optional<std::string> units;
+                if (auto base2 = pep::IntegralLog(response.mBlockSize, uint64_t(2U))) {
+                  if (units = pep::SiPrefix(*base2, uint64_t(10U))) {
+                    *units += 'i';
+                  }
+                }
+                else if (auto base10 = pep::IntegralLog(response.mBlockSize, uint64_t(10U))) {
+                  units = pep::SiPrefix(*base10);
+                }
 
-              // ...produce aligned output
-              std::cout
-                << "Entire history contains " << total    << " bytes" << '\n'
-                << "Latest version contains " << rolling  << " bytes" << '\n'
-                << "(rounded up to the nearest multiple of " << response.mBlockSize << " bytes)";
+                // Finalize units string and description of such a "chunk"
+                std::string chunk;
+                if (units.has_value()) {
+                  chunk = *units += 'B';
+                }
+                else {
+                  units = "bytes";
+                  chunk = "multiple of " + std::to_string(response.mBlockSize) + " bytes";
+                  response.mTotalBlocks *= response.mBlockSize;
+                  response.mRollingBlocks *= response.mBlockSize;
+                }
+
+                // Left pad numbers (with spaces) so that we can...
+                auto entire = std::to_string(response.mTotalBlocks);
+                auto latest = std::to_string(response.mRollingBlocks);
+                auto width = std::max(entire.size(), latest.size());
+                entire = std::string(width - entire.size(), ' ') + entire;
+                latest = std::string(width - latest.size(), ' ') + latest;
+
+                // ...produce aligned output
+                std::cout
+                  << "Entire history contains " << entire << ' ' << *units << '\n'
+                  << "Latest version contains " << latest << ' ' << *units;
+                if (response.mBlockSize != 1U) {
+                  std::cout << '\n'
+                    << "(rounded up to the nearest " << chunk << ')';
+                }
 
                 return pep::FakeVoid();
               });

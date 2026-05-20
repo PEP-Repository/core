@@ -99,4 +99,29 @@ boost::property_tree::path RawPtreePath(const std::string& path);
     return (fun)(std::forward<decltype(args)>(args)...); \
   })
 
+/// @brief Returns the SI prefix for the specified power
+/// @tparam T The (unsigned integral) type of the values that are passed as this function's parameters
+/// @param power The power to express as an SI prefix
+/// @param period The divisor that determines which powers the SI prefixes apply to (also see remark)
+/// @return The SI prefix for the specified power, or nullopt if no SI prefix applies to it
+/// @remark Decimal (normal) prefixing should use a period of 3, indicating that prefixes apply to 10^3, 10^6, 10^9, and so on.
+///         Binary (base-2) prefixing should use a period of 10, indicating that prefixes apply to 2^10, 2^20, 2^30, and so on.
+template <std::unsigned_integral T>
+std::optional<std::string> SiPrefix(T power, T period = 3U) {
+  assert(period != 0U);
+
+  if (power == 0U) {
+    return std::nullopt;
+  }
+  if (power % period != 0U) {
+    return std::nullopt;
+  }
+  constexpr char characters[] = "kMGTPEZYRQ"; // https://en.wikipedia.org/wiki/Metric_prefix#List_of_SI_prefixes
+  size_t position = power / period - 1U;
+  if (position >= sizeof(characters) - 1U) {
+    return std::nullopt;
+  }
+  return std::string({ characters[position] });
+}
+
 }
