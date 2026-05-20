@@ -625,6 +625,25 @@ ubuntu-lts-debug:
     - .ubuntu-build-with-tests-base
     - .ubuntu-lts-debug-settings
 
+
+#################### Ubuntu LTS Debug w/o Castor ####################
+
+# Not used currently, but needed to be able to test the effect of removing Castor integration
+ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    WITH_CASTOR: "False"
+    ARTIFACTS: "$UNIT_TESTS_BASE"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+
 #################### Ubuntu LTS Release ####################
 
 .ubuntu-lts-release-settings:
@@ -1117,6 +1136,22 @@ ubuntu-lts-debug-test:
   variables:
     MEM_ANALYSIS_TOOL: "none"
   needs: [ubuntu-lts-debug]
+
+# Not used currently, but needed to be able to test the effect of removing Castor integration
+ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
+  extends: .ubuntu-lts-debug-settings
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
+    TESTS: "$UNIT_TESTS_BASE"
+  needs: [ubuntu-lts-debug-without-castor]
+  stage: runtime-analysis
+  tags:
+    - docker
+  script:
+    - *run-tests
+  artifacts:
+    reports:
+      junit: temp/*.xml
 
 ubuntu-lts-release-test:
   extends:
