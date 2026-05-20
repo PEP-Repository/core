@@ -15,6 +15,16 @@ usage() {
   exit $1
 }
 
+# Function to get size of a path in KB
+get_size_kb() {
+  du -sk "$1" | cut -f1
+}
+
+# Function to convert KB to MB with 2 decimal places
+kb_to_mb() {
+  echo "$1" | awk '{printf "%.2f", $1 / 1024}'
+}
+
 # Parse command-line options
 while [ "$#" -gt 0 ]; do
   case $1 in
@@ -36,7 +46,6 @@ fi
 # Ensure destination path exists
 mkdir -p "$DEST_PATH"
 
-# Track total size
 TOTAL_SIZE_KB=0
 
 for filepath in $FILES; do
@@ -46,8 +55,8 @@ for filepath in $FILES; do
     cp -R "$SOURCE_PATH/$filepath" "$DEST_PATH/$filepath"
     
     # Get size of the copied directory
-    SIZE_KB=$(du -sk "$DEST_PATH/$filepath" | cut -f1)
-    SIZE_MB=$(echo "scale=2; $SIZE_KB / 1024" | bc)
+    SIZE_KB=$(get_size_kb "$DEST_PATH/$filepath")
+    SIZE_MB=$(kb_to_mb "$SIZE_KB")
     echo "Staged $filepath (${SIZE_MB} MB)"
     TOTAL_SIZE_KB=$((TOTAL_SIZE_KB + SIZE_KB))
   else # If path is a file, copy it normally
@@ -63,15 +72,14 @@ for filepath in $FILES; do
     cp "${FULL_SOURCE_PATH}" "$DEST_DIR"
     
     # Get size of the copied file
-    SIZE_KB=$(du -sk "$DEST_DIR/$(basename "$filepath")${EXTENSION}" | cut -f1)
-    SIZE_MB=$(echo "scale=2; $SIZE_KB / 1024" | bc)
+    SIZE_KB=$(get_size_kb "$DEST_DIR/$(basename "$filepath")${EXTENSION}")
+    SIZE_MB=$(kb_to_mb "$SIZE_KB")
     echo "Staged $filepath (${SIZE_MB} MB)"
     TOTAL_SIZE_KB=$((TOTAL_SIZE_KB + SIZE_KB))
   fi
 done
 
-# Print total size
-TOTAL_SIZE_MB=$(echo "scale=2; $TOTAL_SIZE_KB / 1024" | bc)
+TOTAL_SIZE_MB=$(kb_to_mb "$TOTAL_SIZE_KB")
 echo ""
 echo "Files staged successfully"
 echo "Total size: ${TOTAL_SIZE_MB} MB"
