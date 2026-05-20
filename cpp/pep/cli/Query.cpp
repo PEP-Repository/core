@@ -291,7 +291,7 @@ private:
                   }
                 }
                 else if (auto base10 = pep::IntegralLog(response.mBlockSize, uint64_t(10U))) {
-                  units = pep::SiPrefix(*base10);
+                  units = pep::SiPrefix(*base10); // may be nullopt
                 }
 
                 // Finalize units string and description of such a "chunk"
