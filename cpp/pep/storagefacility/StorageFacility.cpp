@@ -1058,7 +1058,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   size_t entryCount;
   uint64_t totalBytes, rollingBytes;
-  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes);
+  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
 
   auto countBlocks = [blockSize = mDataSizeResolution](uint64_t bytes) {
       assert(bytes % blockSize == 0U);
