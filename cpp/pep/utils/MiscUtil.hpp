@@ -161,9 +161,9 @@ std::optional<std::string> BinaryPrefix(T power) {
   }
 
   // Prefixes for binary (base-2) powers of 10 correspond with those for decimal (base-10) powers of 3:
-  // - kilo: 2^10 =       1024 corresponds with 10^3 =       1000
-  // - mega: 2^20 =    1048576 corresponds with 10^6 =    1000000
-  // - giga: 2^30 = 1073741824 corresponds with 10^9 = 1000000000
+  // - kilo: 2^10 =         1'024 corresponds with 10^3 =         1'000
+  // - mega: 2^20 =     1'048'576 corresponds with 10^6 =     1'000'000
+  // - giga: 2^30 = 1'073'741'824 corresponds with 10^9 = 1'000'000'000
   // - ... and so on
   auto si = SiPrefix(power / period * 3U);
 
