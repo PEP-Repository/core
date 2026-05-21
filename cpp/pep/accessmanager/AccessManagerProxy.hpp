@@ -56,7 +56,7 @@ public:
   rxcpp::observable<FakeVoid> createUserGroup(UserGroup userGroup) const;
   rxcpp::observable<FakeVoid> modifyUserGroup(UserGroup userGroup) const;
   rxcpp::observable<FakeVoid> removeUserGroup(std::string name) const;
-  rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group) const;
+  rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group, std::optional<Timestamp> expiration) const;
   rxcpp::observable<FakeVoid> removeUserFromGroup(std::string uid, std::string group, bool blockTokens) const;
   rxcpp::observable<UserQueryResponse> userQuery(UserQuery query) const;
 

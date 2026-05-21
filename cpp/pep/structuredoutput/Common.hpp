@@ -26,7 +26,11 @@ constexpr std::string_view otherIdentifiersKey{"other user identifiers"};
 
 constexpr std::string_view groupsKey{"user groups"};
 
+constexpr std::string_view userGroupKey{"user-group"};
+
 constexpr std::string_view maxAuthValidityKey{"max auth valid time"};
+
+constexpr std::string_view expirationKey{"expiration"};
 
 } // namespace stringConstants
 

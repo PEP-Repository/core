@@ -62,10 +62,11 @@ public:
 class AddUserToGroup {
 public:
   AddUserToGroup() = default;
-  AddUserToGroup(std::string uid, std::string group)
-    : mUid(std::move(uid)), mGroup(std::move(group)) { }
+  AddUserToGroup(std::string uid, std::string group, std::optional<Timestamp> expiration)
+    : mUid(std::move(uid)), mGroup(std::move(group)), mExpiration(expiration) { }
   std::string mUid;
   std::string mGroup;
+  std::optional<Timestamp> mExpiration;
 };
 
 class RemoveUserFromGroup {
@@ -107,16 +108,23 @@ public:
   std::string mUserFilter;
 };
 
+struct QRUserGroupMembership {
+  std::string userGroup;
+  std::optional<Timestamp> expiration;
+
+  [[nodiscard]] auto operator<=>(const QRUserGroupMembership&) const = default;
+};
+
 class QRUser {
 public:
   QRUser() = default;
-  QRUser(std::optional<std::string> displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<std::string> groups)
+  QRUser(std::optional<std::string> displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<QRUserGroupMembership> groups)
     : mDisplayId(std::move(displayId)), mPrimaryId(std::move(primaryId)), mOtherUids(std::move(otherUids)), mGroups(std::move(groups)) { }
 
   std::optional<std::string> mDisplayId;
   std::optional<std::string> mPrimaryId;
   std::vector<std::string> mOtherUids;
-  std::vector<std::string> mGroups;
+  std::vector<QRUserGroupMembership> mGroups;
 
   [[nodiscard]] auto operator<=>(const QRUser&) const = default;
 
@@ -135,7 +143,10 @@ public:
     out << " groups:{";
     for (bool first = true; const auto& group : user.mGroups) {
       if (!std::exchange(first, false)) { out << ", "; }
-      out << group;
+      out << group.userGroup;
+      if (group.expiration) {
+        out << "(until " << TimestampToXmlDateTime(*group.expiration) << ")";
+      }
     }
     out << '}';
     out << '}';

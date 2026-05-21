@@ -47,13 +47,19 @@ pep::commandline::Parameters CommandUser::UserGroupUserSubCommand::getSupportedP
          + pep::commandline::Parameter("uid", "User identifier")
                  .value(pep::commandline::Value<std::string>().positional().required())
          + pep::commandline::Parameter("group", "Name of user group")
-                 .value(pep::commandline::Value<std::string>().positional().required());
+                 .value(pep::commandline::Value<std::string>().positional().required())
+         + pep::commandline::Parameter("end-date", "Date at which membership of the user group for the user should end. Format: YYYYMMDD")
+                 .value(pep::commandline::Value<std::string>());
 }
 
 int CommandUser::UserAddToSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
+    std::optional<Timestamp> expiration;
+    if (this->getParameterValues().has("end-date")) {
+      expiration = TimeZone::Local().timestampFromYyyyMmDd(this->getParameterValues().get<std::string>("end-date"));
+    }
     return client->getAccessManagerProxy()->addUserToGroup(this->getParameterValues().get<std::string>("uid"),
-                                this->getParameterValues().get<std::string>("group"));
+                                                           this->getParameterValues().get<std::string>("group"), expiration);
   });
 }
 

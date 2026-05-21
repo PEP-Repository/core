@@ -203,7 +203,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     LOG(LOG_TAG, info) << "Modified user group " << Logging::Escape(x.mUserGroup.mName);
   }
   for (auto& x : request.mAddUserToGroup) {
-    mStorage->addUserToGroup(x.mUid, x.mGroup);
+    mStorage->addUserToGroup(x.mUid, x.mGroup, x.mExpiration);
     LOG(LOG_TAG, info) << "Added user to user group " << Logging::Escape(x.mGroup);
   }
   return rxcpp::rxs::iterate(request.mRemoveUserFromGroup).concat_map([storage=mStorage, accessManager=this->mAccessManager](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {

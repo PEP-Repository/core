@@ -122,7 +122,14 @@ std::ostream& append(std::ostream& stream, const pep::QRUser& user, DisplayConfi
     if (!user.mGroups.empty()) {
       stream << "\n";
       ++config.indent;
-      interweave(user.mGroups, [&](const std::string& g) { stream << ind() << Literal{g}; }, [&] { stream << ",\n"; });
+      interweave(user.mGroups, [&](const QRUserGroupMembership& g) {
+        stream << ind() << "{"
+          << Literal{stringConstants::userGroupKey} << ": " << Literal{g.userGroup};
+        if (g.expiration) {
+          stream << ", " << Literal{stringConstants::expirationKey} << ": " << Literal{TimestampToXmlDateTime(*g.expiration)};
+        }
+        stream << "}";
+      }, [&] { stream << ",\n"; });
       --config.indent;
       stream << "\n" << ind();
     }

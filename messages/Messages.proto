@@ -1162,6 +1162,7 @@ message RemoveUserGroup {
 message AddUserToGroup {
   string uid = 1;
   string group = 2;
+  optional Timestamp expiration = 3;
 }
 
 message RemoveUserFromGroup {
@@ -1206,13 +1207,16 @@ message SignedUserQuery {
   Signature signature = 3;
   bytes data = 4;
 }
+message QRUserGroupMembership {
+  string user_group = 1;
+  optional Timestamp expiration = 2;
+}
 message QRUser {
-  reserved 1;
+  reserved 1, 2;
   optional string display_id = 3;
   optional string primary_id = 4;
   repeated string other_uids = 5;
-  repeated string groups = 2;
-
+  repeated QRUserGroupMembership groups = 6;
 }
 message UserQueryResponse {
   reserved 1, 2;

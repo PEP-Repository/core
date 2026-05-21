@@ -262,8 +262,8 @@ public:
   void modifyUserGroup(UserGroup userGroup);
   void modifyUserGroup(std::string_view name, UserGroup userGroup);
   void removeUserGroup(std::string name);
-  void addUserToGroup(std::string_view uid, std::string group);
-  void addUserToGroup(int64_t internalUserId, std::string group);
+  void addUserToGroup(std::string_view uid, std::string group, std::optional<Timestamp> expiration);
+  void addUserToGroup(int64_t internalUserId, std::string group, std::optional<Timestamp> expiration);
   void removeUserFromGroup(std::string_view uid, std::string group);
   void removeUserFromGroup(int64_t internalUserId, std::string group);
 

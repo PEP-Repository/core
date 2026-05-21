@@ -70,7 +70,11 @@ std::ostream& appendYaml(std::ostream& stream,
       stream << userInnerOffset;
       appendYamlListHeader(stream, stringConstants::groupsKey, user.mGroups.size());
       for (auto& group : user.mGroups) {
-        stream << uidAndGroupOffset << "- " << group << "\n";
+        stream << uidAndGroupOffset << "- " << group.userGroup;
+        if (group.expiration) {
+          stream << ": {" << stringConstants::expirationKey << ": " << TimestampToXmlDateTime(*group.expiration) << "}";
+        }
+        stream << "\n";
       }
     }
     stream << "\n";

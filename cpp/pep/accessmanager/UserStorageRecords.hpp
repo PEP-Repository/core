@@ -70,6 +70,7 @@ struct UserGroupUserRecord {
   UserGroupUserRecord(
     int64_t internalUserId,
     int64_t userGroupId,
+    std::optional<Timestamp> expirationTimestamp,
     bool tombstone = false);
   explicit UserGroupUserRecord(const LegacyUserGroupUserRecord& legacyUserGroupUserRecord);
   uint64_t checksum() const;
@@ -83,6 +84,7 @@ struct UserGroupUserRecord {
   int64_t userGroupId{};
   /// The internalUserId of the user.
   int64_t internalUserId{};
+  std::optional<database::UnixMillis> expirationTimestamp{};
 
   static inline const std::tuple RecordIdentifier{
     &UserGroupUserRecord::userGroupId,
