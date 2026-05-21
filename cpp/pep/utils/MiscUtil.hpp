@@ -99,43 +99,49 @@ boost::property_tree::path RawPtreePath(const std::string& path);
     return (fun)(std::forward<decltype(args)>(args)...); \
   })
 
-namespace detail {
-
-/// @brief Returns the unit prefix for the specified power
-/// @tparam T The (unsigned integral) type of the values that are passed as this function's parameters
-/// @param power The power to express as a unit prefix
-/// @param period The divisor that determines which powers the unit prefixes apply to (also see remark)
-/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
-/// @remark Decimal (normal) prefixing should use a period of 3, indicating that prefixes apply to 10^3, 10^6, 10^9, and so on.
-///         Binary (base-2) prefixing should use a period of 10, indicating that prefixes apply to 2^10, 2^20, 2^30, and so on.
-template <std::unsigned_integral T>
-std::optional<std::string> UnitPrefix(T power, T period) {
-  assert(period != 0U);
-
-  if (power == 0U) {
-    return std::nullopt;
-  }
-  if (power % period != 0U) {
-    return std::nullopt;
-  }
-  constexpr char characters[] = "kMGTPEZYRQ"; // https://en.wikipedia.org/wiki/Metric_prefix#List_of_SI_prefixes
-  size_t position = power / period - 1U;
-  if (position >= sizeof(characters) - 1U) {
-    return std::nullopt;
-  }
-  return std::string({ characters[position] });
-}
-
-}
+// U+00B5 (micro symbol) encoded in UTF-8, plus NULterminator
+constexpr char micro_symbol[] = { char(0xC2), char(0xB5), char(0x0) };
 
 /// @brief Returns the SI prefix for the specified power
 /// @tparam T The (unsigned integral) type of the values that are passed as this function's parameters
 /// @param power The power to express as a unit prefix
 /// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
 /// @remark Only preferred prefixes are returned, i.e. powers that are a multiple of 3 (no "h" or "da").
-template <std::unsigned_integral T>
+template <std::integral T>
 std::optional<std::string> SiPrefix(T power) {
-  return detail::UnitPrefix(power, T(3U));
+  if constexpr (std::is_signed_v<T>) {
+    switch (power) {
+    case T(-1): return "d";
+    case T(-2): return "c";
+    case T(-3): return "m";
+    case T(-6): return micro_symbol;
+    case T(-9): return "n";
+    case T(-12): return "p";
+    case T(-15): return "f";
+    case T(-18): return "a";
+    case T(-21): return "z";
+    case T(-24): return "y";
+    case T(-27): return "r";
+    case T(-30): return "q";
+    default: break; // Try to match positive value (below)
+    }
+  }
+
+  switch (power) {
+  case T(1): return "da";
+  case T(2): return "h";
+  case T(3): return "k";
+  case T(6): return "M";
+  case T(9): return "G";
+  case T(12): return "T";
+  case T(15): return "P";
+  case T(18): return "E";
+  case T(21): return "Z";
+  case T(24): return "Y";
+  case T(27): return "R";
+  case T(30): return "Q";
+  default: return std::nullopt;
+  }
 }
 
 /// @brief Returns the binary prefix for the specified power
@@ -145,9 +151,17 @@ std::optional<std::string> SiPrefix(T power) {
 /// @remark Return values (that are not nullopt) include the 'i' indicator that it's a binary (as opposed to SI) prefix.
 template <std::unsigned_integral T>
 std::optional<std::string> BinaryPrefix(T power) {
-  auto raw = detail::UnitPrefix(power, T(10U));
-  if (raw.has_value()) {
-    return *raw + 'i';
+  // Binary prefixes apply to powers of 10, matching corresponding SI prefixes for powers of 3:
+  // - 2^10 =       1024 matches 10^3 =       1000
+  // - 2^20 =    1048576 matches 10^6 =    1000000
+  // - 2^30 = 1073741824 matches 10^9 = 1000000000
+  // - ... and so on
+  if (power % 10U != 0) {
+    return std::nullopt; // don't return "dai" (e.g. decabytes) or "hi" (e.g. hectobytes)
+  }
+  auto si = SiPrefix(power / 10U * 3U);
+  if (si.has_value()) {
+    return *si + 'i';
   }
   return std::nullopt;
 }

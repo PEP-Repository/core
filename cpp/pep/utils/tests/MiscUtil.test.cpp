@@ -16,22 +16,37 @@ TEST(MiscUtil, StringToBool) {
 }
 
 TEST(MiscUtil, UnitPrefix) {
-  EXPECT_EQ(pep::SiPrefix(3U), "k");
-  EXPECT_EQ(pep::SiPrefix(6U), "M");
-  EXPECT_EQ(pep::SiPrefix(9U), "G");
-  EXPECT_EQ(pep::SiPrefix(12U), "T");
-  EXPECT_EQ(pep::SiPrefix(15U), "P");
-  EXPECT_EQ(pep::SiPrefix(18U), "E");
-  EXPECT_EQ(pep::SiPrefix(21U), "Z");
-  EXPECT_EQ(pep::SiPrefix(24U), "Y");
-  EXPECT_EQ(pep::SiPrefix(27U), "R");
-  EXPECT_EQ(pep::SiPrefix(30U), "Q");
+  EXPECT_EQ(pep::SiPrefix(1), "da");
+  EXPECT_EQ(pep::SiPrefix(2), "h");
+  EXPECT_EQ(pep::SiPrefix(3), "k");
+  EXPECT_EQ(pep::SiPrefix(6), "M");
+  EXPECT_EQ(pep::SiPrefix(9), "G");
+  EXPECT_EQ(pep::SiPrefix(12), "T");
+  EXPECT_EQ(pep::SiPrefix(15), "P");
+  EXPECT_EQ(pep::SiPrefix(18), "E");
+  EXPECT_EQ(pep::SiPrefix(21), "Z");
+  EXPECT_EQ(pep::SiPrefix(24), "Y");
+  EXPECT_EQ(pep::SiPrefix(27), "R");
+  EXPECT_EQ(pep::SiPrefix(30), "Q");
 
-  EXPECT_EQ(pep::SiPrefix(0U), std::nullopt);
-  EXPECT_EQ(pep::SiPrefix(1U), std::nullopt);
-  EXPECT_EQ(pep::SiPrefix(2U), std::nullopt);
-  EXPECT_EQ(pep::SiPrefix(14U), std::nullopt);
-  EXPECT_EQ(pep::SiPrefix(33U), std::nullopt);
+  EXPECT_EQ(pep::SiPrefix(-1), "d");
+  EXPECT_EQ(pep::SiPrefix(-2), "c");
+  EXPECT_EQ(pep::SiPrefix(-3), "m");
+  EXPECT_EQ(pep::SiPrefix(-6), pep::micro_symbol);
+  EXPECT_EQ(pep::SiPrefix(-9), "n");
+  EXPECT_EQ(pep::SiPrefix(-12), "p");
+  EXPECT_EQ(pep::SiPrefix(-15), "f");
+  EXPECT_EQ(pep::SiPrefix(-18), "a");
+  EXPECT_EQ(pep::SiPrefix(-21), "z");
+  EXPECT_EQ(pep::SiPrefix(-24), "y");
+  EXPECT_EQ(pep::SiPrefix(-27), "r");
+  EXPECT_EQ(pep::SiPrefix(-30), "q");
+
+  EXPECT_EQ(pep::SiPrefix(-33), std::nullopt);
+  EXPECT_EQ(pep::SiPrefix(-4), std::nullopt);
+  EXPECT_EQ(pep::SiPrefix(0), std::nullopt);
+  EXPECT_EQ(pep::SiPrefix(16), std::nullopt);
+  EXPECT_EQ(pep::SiPrefix(33), std::nullopt);
 
   // Binary (base-2) prefixes: 1kiB = 2^10 bytes, 1MiB = 2^20 bytes, and so on
   EXPECT_EQ(pep::BinaryPrefix(10U), "ki");
