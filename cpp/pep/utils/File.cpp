@@ -77,8 +77,8 @@ std::filesystem::path AppendDirectoryNameSuffix(const std::filesystem::path& pat
   if (path.empty()) {
     throw std::runtime_error("Directory path is empty");
   }
-  // Collapse "." and ".."
-  auto normalPath = path.lexically_normal();
+  // Make absolute and collapse "." and ".."
+  auto normalPath = absolute(path).lexically_normal();
   if (!normalPath.has_filename()) {
     // Remove trailing separator
     // "/path/to/dir/" -> "/path/to/dir"
@@ -87,12 +87,7 @@ std::filesystem::path AppendDirectoryNameSuffix(const std::filesystem::path& pat
   if (!normalPath.has_filename()) { // E.g. "/"
     throw std::runtime_error("Directory path is filesystem root: " + path.string());
   }
-  auto filename = normalPath.filename();
-  if (filename == "." || filename == "..") {
-    assert(normalPath.is_relative() && "Expected no dots after lexically_normal unless path is relative");
-    return AppendDirectoryNameSuffix(std::filesystem::absolute(normalPath), suffix);
-  }
-  normalPath.replace_filename(filename += suffix);
+  normalPath.replace_filename(normalPath.filename() += suffix);
   return normalPath;
 }
 

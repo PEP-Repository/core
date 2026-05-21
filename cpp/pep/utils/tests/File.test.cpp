@@ -64,7 +64,6 @@ TEST(File, AppendDirectoryNameSuffix) {
   EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/./", "-pending"), "/abc/def-pending");
   EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/..", "-pending"), "/abc-pending");
   EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/../", "-pending"), "/abc-pending");
-  EXPECT_EQ(pep::AppendDirectoryNameSuffix("abc/def", "-pending"), "abc/def-pending");
 
   const auto testDir = CreateTestDir();
   const auto testPath = testDir.path();
