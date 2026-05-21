@@ -596,11 +596,11 @@ ubuntu-lts-debug:
           --base-dir "$CI_PROJECT_DIR" \
           --demangle
         
-        # Show summary with coverage percentage
-        echo "=== Coverage Summary ==="
-        line_rate=$(sed -n 's/.*line-rate="\([^"]*\)".*/\1/p' coverage.xml | head -1)
-        line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
-        echo "Line Coverage: ${line_pct}%"
+        # # Show summary with coverage percentage
+        # echo "=== Coverage Summary ==="
+        # line_rate=$(sed -n 's/.*line-rate="\([^"]*\)".*/\1/p' coverage.xml | head -1)
+        # line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
+        # echo "Line Coverage: ${line_pct}%"
       else
         echo "Skipping code coverage processing steps"
       fi
