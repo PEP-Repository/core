@@ -560,8 +560,11 @@ ubuntu-lts-debug:
         export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
       fi
   script:
+    - set -x
     - !reference [.ubuntu-build-base, script]
+    - echo "Running integration tests"
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+    - echo "Starting coverage processing steps"
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
         echo "Collecting and processing code coverage data"
