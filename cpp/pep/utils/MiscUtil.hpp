@@ -151,15 +151,19 @@ std::optional<std::string> SiPrefix(T power) {
 /// @remark Return values (that are not nullopt) include the 'i' indicator that it's a binary (as opposed to SI) prefix.
 template <std::unsigned_integral T>
 std::optional<std::string> BinaryPrefix(T power) {
-  // Binary prefixes apply to powers of 10, matching corresponding SI prefixes for powers of 3:
-  // - 2^10 =       1024 matches 10^3 =       1000
-  // - 2^20 =    1048576 matches 10^6 =    1000000
-  // - 2^30 = 1073741824 matches 10^9 = 1000000000
-  // - ... and so on
+  // Binary prefixes are only defined for powers that are multiples of 1024 (i.e. 2^10): see https://en.wikipedia.org/wiki/Binary_prefix .
+  // Concretely, we don't want to return "dai" (e.g. decabytes) or "hi" (e.g. hectobytes).
   if (power % 10U != 0) {
-    return std::nullopt; // don't return "dai" (e.g. decabytes) or "hi" (e.g. hectobytes)
+    return std::nullopt;
   }
+
+  // Binary (base-2) powers of 10 correspond with decimal (base-10) powers of 3:
+  // - 2^10 =       1024 corresponds with 10^3 =       1000
+  // - 2^20 =    1048576 corresponds with 10^6 =    1000000
+  // - 2^30 = 1073741824 corresponds with 10^9 = 1000000000
+  // - ... and so on
   auto si = SiPrefix(power / 10U * 3U);
+
   if (si.has_value()) {
     return *si + 'i';
   }
