@@ -542,7 +542,7 @@ ubuntu-lts-debug:
     - !reference [.ubuntu-build-base, script]
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
 
-# Not used currently, but needed to be able to test the effect of removing Castor integration
+# To test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
   extends:
     - .ubuntu-build-base
@@ -957,9 +957,6 @@ macos-all-targets:
   artifacts:
     reports:
       junit: temp/*.xml
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 #################### Docker ####################
 
