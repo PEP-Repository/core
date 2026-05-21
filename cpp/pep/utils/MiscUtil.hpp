@@ -103,10 +103,9 @@ boost::property_tree::path RawPtreePath(const std::string& path);
 constexpr char micro_symbol[] = { char(0xC2), char(0xB5), char(0x0) };
 
 /// @brief Returns the SI prefix for the specified power
-/// @tparam T The (unsigned integral) type of the values that are passed as this function's parameters
+/// @tparam T The (integral) type of the values that are passed as this function's parameters
 /// @param power The power to express as a unit prefix
 /// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
-/// @remark Only preferred prefixes are returned, i.e. powers that are a multiple of 3 (no "h" or "da").
 template <std::integral T>
 std::optional<std::string> SiPrefix(T power) {
   if constexpr (std::is_signed_v<T>) {
