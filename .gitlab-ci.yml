@@ -564,19 +564,14 @@ ubuntu-lts-debug:
         # Merge raw profile files from profiles directory
         llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
 
-        TEST_BINARIES=""
-        for TEST in $TESTS; do
-          TEST_BINARIES="$TEST_BINARIES --object $BUILD_DIRECTORY/$TEST"
+        BINARIES=""
+        for BINARY in $TESTS $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+          BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
         done
 
-        INTEGRATION_BINARIES=""
-        for BINARY in $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
-          INTEGRATION_BINARIES="$INTEGRATION_BINARIES --object $BUILD_DIRECTORY/$BINARY"
-        done
-
+        # Generate HTML report
         llvm-cov show \
-          $TEST_BINARIES \
-          $INTEGRATION_BINARIES \
+          $BINARIES \
           -instr-profile=combined-coverage.profdata \
           --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
           --project-title="Combined Coverage (Unit + Integration)" \
@@ -585,15 +580,11 @@ ubuntu-lts-debug:
           -output-dir=htmlcov
 
         # Export to lcov format using llvm-cov
-        llvm-cov export $TEST_BINARIES $INTEGRATION_BINARIES \
+        llvm-cov export $BINARIES \
           -instr-profile=combined-coverage.profdata \
           --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
           -format=lcov \
           > coverage.lcov
-        
-        set -x
-        echo "DEBUG: Checking lcov line counts"
-        grep -c '^DA:' coverage.lcov || echo "No DA: lines found"
         
         # Convert lcov to Cobertura XML using lcov_cobertura
         lcov_cobertura coverage.lcov --output coverage.xml \
