@@ -233,18 +233,16 @@ void CoreClient::Builder::initialize(
       // ...and try to load previously persisted keys from it
       if (std::filesystem::exists(keysFile)) {
         Configuration keysConfig = Configuration::FromFile(keysFile);
-        auto enrolledPartyKeys = keysConfig.get<EnrolledPartyKeys>("");
-        if (enrolledPartyKeys.dataKey) {
+        try {
+          EnrolledPartyKeys enrolledPartyKeys = keysConfig.get<EnrolledPartyKeys>("");
+          if (!enrolledPartyKeys.dataKey || !enrolledPartyKeys.pseudonymKey || !enrolledPartyKeys.signingIdentity) {
+            throw std::runtime_error("Missing keys or signing identity");
+          }
           this->setPrivateKeyData(*enrolledPartyKeys.dataKey);
-        }
-        if (enrolledPartyKeys.pseudonymKey) {
           this->setPrivateKeyPseudonyms(*enrolledPartyKeys.pseudonymKey);
-        }
-        if (enrolledPartyKeys.signingIdentity) {
           this->setSigningIdentity(MakeSharedCopy(*enrolledPartyKeys.signingIdentity));
-        }
-        if (!(enrolledPartyKeys.dataKey || enrolledPartyKeys.pseudonymKey || enrolledPartyKeys.signingIdentity)) {
-          LOG(LOG_TAG, info) << "Skipped loading keys file because it is invalid or from a different version";
+        } catch (const UnsupportedEnrollmentSchemeError& ex) {
+          LOG(LOG_TAG, info) << "Skipped loading keys file from a different version (" << ex.what() << ")";
         }
       }
       else {

@@ -7,6 +7,10 @@
 
 namespace pep {
 
+UnsupportedEnrollmentSchemeError::UnsupportedEnrollmentSchemeError(EnrollmentScheme scheme)
+  : std::runtime_error("Unsupported EnrollmentScheme: " + std::string(Serialization::ToEnumString(scheme))),
+    scheme_{scheme} {}
+
 void PropertySerializer<EnrolledPartyKeys>::write(boost::property_tree::ptree& destination, const EnrolledPartyKeys& value) const {
   SerializeProperties(destination, "PseudonymKey", value.pseudonymKey);
   SerializeProperties(destination, "DataKey", value.dataKey);
@@ -22,12 +26,16 @@ EnrolledPartyKeys PropertySerializer<EnrolledPartyKeys>::read(const boost::prope
     DeserializeProperties<std::optional<std::string>>(source, "EnrollmentScheme", context),
     Serialization::ParseEnum<EnrollmentScheme>);
   // Do not try to load a file with a wrong enrollment scheme
-  if (scheme && *scheme != EnrollmentScheme::Current) { return {}; }
+  if (scheme && *scheme != EnrollmentScheme::Current) {
+    throw UnsupportedEnrollmentSchemeError{*scheme};
+  }
 
   auto privateKey = DeserializeProperties<std::optional<std::string>>(source, "PrivateKey", context);
   auto certificateChain = DeserializeProperties<std::optional<std::string>>(source, "CertificateChain", context);
-  // Do not try to load a user keys file with no enrollment scheme or a wrong scheme
-  if ((privateKey || certificateChain) && scheme != EnrollmentScheme::Current) { return {}; }
+  // Do not try to load old keys from before we introduced the enrollment scheme
+  if ((privateKey || certificateChain) && !scheme) {
+    throw UnsupportedEnrollmentSchemeError{EnrollmentScheme::V1};
+  }
   return {
     .pseudonymKey = DeserializeProperties<std::optional<ElgamalPrivateKey>>(source, "PseudonymKey", context),
     .dataKey = DeserializeProperties<std::optional<ElgamalPrivateKey>>(source, "DataKey", context),
