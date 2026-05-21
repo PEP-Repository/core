@@ -163,12 +163,12 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Add({})),
   totalPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
     .Name("pep_total_payload_bytes")
-    .Help("Total bytes in payload(page)s of all entries including history")
+    .Help("Total bytes in payload(page)s of all entries including history, rounded to configured resolution")
     .Register(*registry)
     .Add({})),
   rollingPayloadBytes(prometheus::BuildGauge()
     .Name("pep_rolling_payload_bytes")
-    .Help("Total bytes in payload(page)s of current/latest/rolling data")
+    .Help("Total bytes in payload(page)s of current/latest/rolling data, rounded to configured resolution")
     .Register(*registry)
     .Add({}))
 { }
