@@ -402,16 +402,14 @@ cleanup:
 .run-tests: &run-tests
   - |
     DID_JOB_FAIL=0
-    # Set profile file location for LLVM coverage (%p=process ID, %m=binary signature)
-    mkdir -p "$CI_PROJECT_DIR/profiles"
-    rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
-    export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
     for TEST in $TESTS; do
       if ! ./ci_cd/run-test-executable.sh "$BUILD_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
         DID_JOB_FAIL=1
       fi
     done
-    exit $DID_JOB_FAIL
+    if [ $DID_JOB_FAIL -ne 0 ]; then
+      exit 1
+    fi
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
 .run-tests-windows: &run-tests-windows
@@ -554,21 +552,15 @@ ubuntu-lts-debug:
     - !reference [.ubuntu-build-base, before_script]
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        echo "Enabling code coverage collection"
         mkdir -p "$CI_PROJECT_DIR/profiles"
         rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
         export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
       fi
   script:
-    - set -x
     - !reference [.ubuntu-build-base, script]
-    - echo "Running integration tests"
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
-    - echo "Starting coverage processing steps"
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        echo "Collecting and processing code coverage data"
-
         pipx install lcov_cobertura
 
         # Merge raw profile files from profiles directory
