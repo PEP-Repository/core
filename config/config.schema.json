@@ -180,7 +180,8 @@
       },
       "required": [
         "ClientCa",
-        "OAuthTokenSecretFile"
+        "OAuthTokenSecretFile",
+        "BlocklistStoragePath"
       ]
     },
 
