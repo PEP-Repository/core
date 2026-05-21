@@ -68,7 +68,7 @@ public:
   size_t count(const std::string& key) const noexcept;
   inline bool has(const std::string& key) const noexcept { return mEntries.count(key) != 0U; }
   bool hasAnyOf(std::initializer_list<std::string> key) const noexcept;
-  inline void erase(const std::string& key) { mEntries.erase(key); }
+  inline size_t erase(const std::string& key) { return mEntries.erase(key); }
 };
 
 template <typename T>
