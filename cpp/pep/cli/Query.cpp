@@ -300,6 +300,8 @@ private:
                 else {
                   units = "bytes";
                   chunk = "multiple of " + std::to_string(response.mBlockSize) + " bytes";
+                  // (Ab)use response fields to store byte counts. While this makes the "response" object's state inconsistent,
+                  // it allows us to check for the original block size when outputting rounding information (below).
                   response.mTotalBlocks *= response.mBlockSize;
                   response.mRollingBlocks *= response.mBlockSize;
                 }
