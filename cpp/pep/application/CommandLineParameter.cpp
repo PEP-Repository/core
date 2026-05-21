@@ -10,14 +10,7 @@ namespace pep {
 namespace commandline {
 
 std::string CommandPath::toString() const {
-  std::string result;
-  for (size_t i = 0; i < segments.size(); ++i) {
-    if (i != 0U) {
-      result.push_back(' ');
-    }
-    result += segments[i];
-  }
-  return result;
+  return boost::algorithm::join(segments, " ");
 }
 
 Parameter::Parameter(const std::string& name, const std::optional<std::string>& description)

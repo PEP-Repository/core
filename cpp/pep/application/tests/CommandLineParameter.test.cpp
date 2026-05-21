@@ -1,7 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "CommandLineParameterTestFixture.hpp"
+#include <pep/application/tests/CommandLineParameterTestFixture.hpp>
 
 // Truth Tables for possible command/parameter combinations and forwarding patterns
 //
