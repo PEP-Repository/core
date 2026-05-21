@@ -20,9 +20,10 @@ int Process(AppCmd&& cmd, std::initializer_list<std::string> args);
 std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initializer_list<std::string> args);
 std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd&& cmd, std::initializer_list<std::string> args);
 
-// Mixin for automatic parameter recording in test commands
-// This is needed because child commands go out of scope after process() returns.
-// The mixin captures their parameter values during execute() and stores them in the root AppCmd.
+/// Mixin for automatic parameter recording in test commands
+///
+/// This is needed because child commands go out of scope after process() returns.
+/// The mixin captures their parameter values during execute() and stores them in the root AppCmd.
 class RecordingCommandMixin {
 protected:
   void captureParameters();
