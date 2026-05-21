@@ -37,8 +37,8 @@ protected:
       + pep::commandline::Parameter("payload-hex", "Entry value specified as hex-encoded string").shorthand('x').value(pep::commandline::Value<std::string>());
   }
 
-  void finalizeParameters(bool isForwardingDispatch) override {
-    ChildCommandOf<CliApplication>::finalizeParameters(isForwardingDispatch);
+  void finalizeParameters() override {
+    ChildCommandOf<CliApplication>::finalizeParameters();
 
     const auto& parameterValues = this->getParameterValues();
     if (parameterValues.has("payload") == parameterValues.has("payload-hex")) {

@@ -69,6 +69,9 @@ class Application : public commandline::Command {
 
   int run(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 
+  bool mInitializeLoggingOnceFlag = false;  ///< Tracks if initializeLoggingOnce was called
+  void initializeLoggingOnce();
+
   std::filesystem::path rawConfigDirectory() const;
   std::optional<std::filesystem::path> rawConfigFile() const;
   std::filesystem::path getMainConfigPath();
@@ -88,7 +91,7 @@ class Application : public commandline::Command {
   virtual std::optional<severity_level> fileLogMinimumSeverityLevel() const;
   commandline::Parameters getSupportedParameters() const override;
   std::optional<int> processLexedParameters(const commandline::LexedValues& lexed) override;
-  void finalizeParameters(bool isForwardingDispatch) override;
+  void finalizeParameters() override;
 
   static commandline::Parameter MakeConfigDirectoryParameter(const std::filesystem::path& defaultValue, bool positional = false, const std::optional<std::string>& alias = std::nullopt);
   static commandline::Parameters MakeConfigFileParameters(const std::filesystem::path& defaultDir, const std::optional<std::filesystem::path>& defaultFile = std::nullopt, bool positional = false, const std::optional<std::string>& alias = std::nullopt, const std::optional<std::string>& dirAlias = std::nullopt);

@@ -29,7 +29,7 @@ private:
 
 protected:
   virtual std::optional<int> processLexedParameters(const LexedValues& lexed); // Overrides must call base implementation
-  virtual void finalizeParameters(bool isForwardingDispatch = false); // Overrides must call base implementation, which applies defaults
+  virtual void finalizeParameters(); // Overrides must call base implementation, which applies defaults
 
   // TODO: don't require override-of-one-of-two-methods
   virtual std::vector<std::shared_ptr<Command>> createChildCommands() { return {}; } // Derived classes should override either "createChildCommands" or "execute" but not both
