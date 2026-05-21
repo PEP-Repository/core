@@ -1031,9 +1031,6 @@ macos-all-targets:
   artifacts:
     reports:
       junit: temp/*.xml
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 #################### Docker ####################
 
