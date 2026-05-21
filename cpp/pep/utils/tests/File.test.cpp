@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <gtest/gtest.h>
+#include <pep/utils/Defer.hpp>
 #include <pep/utils/Filesystem.hpp>
 #include <stdexcept>
 
@@ -53,6 +54,34 @@ TEST(File, ReadUnexistingFile) {
   ASSERT_THROW(pep::ReadFile(pathUnexistingFile), std::runtime_error);
   ASSERT_THROW(pep::ReadFile(pathUnexistingFile.c_str()), std::runtime_error);
   ASSERT_THROW(pep::ReadFile(std::filesystem::path(pathUnexistingFile)), std::runtime_error);
+}
+
+TEST(File, AppendDirectoryNameSuffix) {
+  // We assume AppendDirectoryNameSuffix removes a trailing slash and dot
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def", "-pending"), "/abc/def-pending");
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/", "-pending"), "/abc/def-pending");
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/.", "-pending"), "/abc/def-pending");
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/./", "-pending"), "/abc/def-pending");
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/..", "-pending"), "/abc-pending");
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("/abc/def/../", "-pending"), "/abc-pending");
+
+  const auto testDir = CreateTestDir();
+  const auto testPath = testDir.path();
+  const auto oldWorkingDir = std::filesystem::current_path();
+  PEP_DEFER(std::filesystem::current_path(oldWorkingDir));
+  std::filesystem::current_path(testPath);
+  const auto testPathSuffixed = testPath.parent_path() / (testPath.filename() += "-pending");
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix(".", "-pending"), testPathSuffixed);
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("./", "-pending"), testPathSuffixed);
+  const auto testPathSubdir = testPath / "subdir";
+  std::filesystem::create_directory(testPathSubdir);
+  std::filesystem::current_path(testPathSubdir);
+  EXPECT_EQ(pep::AppendDirectoryNameSuffix("..", "-pending"), testPathSuffixed);
+
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/", "-pending"), std::runtime_error);
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/.", "-pending"), std::runtime_error);
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/./", "-pending"), std::runtime_error);
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("", "-pending"), std::runtime_error);
 }
 
 }
