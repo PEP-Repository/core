@@ -1058,14 +1058,11 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   size_t entryCount;
   uint64_t totalBytes, rollingBytes;
-  mFileStore->getMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
+  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes);
 
   auto countBlocks = [blockSize = mDataSizeResolution](uint64_t bytes) {
-    auto result = bytes / blockSize;
-    if (bytes % blockSize != 0U) {
-      ++result;
-    }
-    return result;
+      assert(bytes % blockSize == 0U);
+      return bytes / blockSize;
     };
 
   return messaging::BatchSingleMessage(DataSizeResponse{
@@ -1155,10 +1152,26 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   statsTimer({});
 }
 
+void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
+  uint64_t total, rolling;
+  mFileStore->getMetrics(entryCount, total, rolling, columns);
+
+  auto round = [blockSize = mDataSizeResolution](uint64_t bytes) {
+      auto blocks = bytes / blockSize;
+      if (bytes % blockSize != 0U) {
+        ++blocks;
+      }
+      return blocks * blockSize;
+    };
+
+  roundedTotalBytes = round(total);
+  roundedRollingBytes = round(rolling);
+}
+
 void StorageFacility::updateFileStoreMetrics() {
   size_t entryCount;
   uint64_t totalPayloadBytes, rollingPayloadBytes;
-  mFileStore->getMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+  this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
 
   mMetrics->entriesIncludingHistory.Set(static_cast<double>(entryCount));
   mMetrics->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
