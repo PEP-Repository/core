@@ -530,8 +530,6 @@ retrieve-lockfile:
 
 .ubuntu-lts-debug-settings:
   extends: .ubuntu-lts-settings
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "True"
@@ -551,10 +549,12 @@ ubuntu-lts-debug:
     - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
       variables:
         ENABLE_COVERAGE: "ON"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   before_script:
     - !reference [.ubuntu-build-base, before_script]
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        echo "Enabling code coverage collection"
         mkdir -p "$CI_PROJECT_DIR/profiles"
         rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
         export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
@@ -564,8 +564,10 @@ ubuntu-lts-debug:
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        echo "Collecting and processing code coverage data"
+
         pipx install lcov_cobertura
-        
+
         # Merge raw profile files from profiles directory
         llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
 
@@ -603,6 +605,8 @@ ubuntu-lts-debug:
         line_rate=$(grep -oP 'line-rate="\K[^"]+' coverage.xml | head -1)
         line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
         echo "Line Coverage: ${line_pct}%"
+      else
+        echo "Skipping code coverage processing steps"
       fi
   coverage: '/Line Coverage: (\d+\.?\d*)%/'
   artifacts:
@@ -615,11 +619,13 @@ ubuntu-lts-debug:
         coverage_format: cobertura
         path: coverage.xml
 
-# Not used currently, but needed to be able to test the effect of removing Castor integration
+# To test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-debug-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     WITH_CASTOR: "False"
     TESTS: "$UNIT_TESTS_BASE"
