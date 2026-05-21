@@ -598,7 +598,7 @@ ubuntu-lts-debug:
         
         # Show summary with coverage percentage
         echo "=== Coverage Summary ==="
-        line_rate=$(grep -oP 'line-rate="\K[^"]+' coverage.xml | head -1)
+        line_rate=$(sed -n 's/.*line-rate="\([^"]*\)".*/\1/p' coverage.xml | head -1)
         line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
         echo "Line Coverage: ${line_pct}%"
       else
@@ -607,7 +607,6 @@ ubuntu-lts-debug:
   coverage: '/Line Coverage: (\d+\.?\d*)%/'
   artifacts:
     paths:
-      - unit-test-coverage.profdata
       - htmlcov/
     reports:
       junit: temp/*.xml
