@@ -157,10 +157,10 @@ std::optional<std::string> BinaryPrefix(T power) {
     return std::nullopt;
   }
 
-  // Binary (base-2) powers of 10 correspond with decimal (base-10) powers of 3:
-  // - 2^10 =       1024 corresponds with 10^3 =       1000
-  // - 2^20 =    1048576 corresponds with 10^6 =    1000000
-  // - 2^30 = 1073741824 corresponds with 10^9 = 1000000000
+  // Prefixes for binary (base-2) powers of 10 correspond with those for decimal (base-10) powers of 3:
+  // - kilo: 2^10 =       1024 corresponds with 10^3 =       1000
+  // - mega: 2^20 =    1048576 corresponds with 10^6 =    1000000
+  // - giga: 2^30 = 1073741824 corresponds with 10^9 = 1000000000
   // - ... and so on
   auto si = SiPrefix(power / 10U * 3U);
 
