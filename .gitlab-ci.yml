@@ -561,8 +561,6 @@ ubuntu-lts-debug:
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        pipx install lcov_cobertura
-
         # Merge raw profile files from profiles directory
         llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
 
