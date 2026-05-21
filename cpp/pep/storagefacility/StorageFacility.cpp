@@ -182,7 +182,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   try {
     // See the declaration/definition of the fields for default values
     ReadOptionalNonZeroConfigValue(this->parallelisation_width, config, "ParallelisationWidth");
-    ReadOptionalNonZeroConfigValue(this->queryableDataBlockSize, config, "QueryableDataBlockSize");
+    ReadOptionalNonZeroConfigValue(this->dataSizeResolution, config, "DataSizeResolution");
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
     keysFile = std::filesystem::canonical(config.get<std::filesystem::path>("KeysFile"));
@@ -255,8 +255,8 @@ void StorageFacility::Parameters::check() const {
   SigningServer::Parameters::check();
   if (!this->pageStoreConfig)
     throw std::runtime_error("pageStoreConfig must be set");
-  if (queryableDataBlockSize == 0U) {
-    throw std::runtime_error("queryableDataBlockSize cannot be zero");
+  if (dataSizeResolution == 0U) {
+    throw std::runtime_error("dataSizeResolution cannot be zero");
   }
   // FIXME: check if errors happend during startup of file store
 }
@@ -1060,7 +1060,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
   uint64_t totalBytes, rollingBytes;
   mFileStore->getMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
 
-  auto countBlocks = [blockSize = mQueryableDataBlockSize](uint64_t bytes) {
+  auto countBlocks = [blockSize = mDataSizeResolution](uint64_t bytes) {
     auto result = bytes / blockSize;
     if (bytes % blockSize != 0U) {
       ++result;
@@ -1069,7 +1069,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
     };
 
   return messaging::BatchSingleMessage(DataSizeResponse{
-    .mBlockSize = mQueryableDataBlockSize,
+    .mBlockSize = mDataSizeResolution,
     .mTotalBlocks = countBlocks(totalBytes),
     .mRollingBlocks = countBlocks(rollingBytes),
     });
@@ -1140,7 +1140,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   mMetrics(std::make_shared<Metrics>(mRegistry)),
   mTimer(*parameters->getIoContext()),
   mParallelisationWidth(parameters->getParallelisationWidth()),
-  mQueryableDataBlockSize(parameters->getQueryableDataBlockSize()) {
+  mDataSizeResolution(parameters->getDataSizeResolution()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,
