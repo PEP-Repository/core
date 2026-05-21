@@ -601,11 +601,7 @@ ubuntu-lts-debug:
           --demangle
         
         # Show summary with coverage percentage
-        echo "=== Coverage Summary ==="
-        echo "DEBUG: Extracting line-rate value"
-        line_pct=$(cvg=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml))
-        echo "DEBUG: line_pct='$line_pct'"
-        
+        line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
         echo "Line Coverage: ${line_pct}%"
       else
         echo "Skipping code coverage processing steps"
