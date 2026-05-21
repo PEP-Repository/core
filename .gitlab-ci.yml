@@ -591,16 +591,25 @@ ubuntu-lts-debug:
           -format=lcov \
           > coverage.lcov
         
+        set -x
+        echo "DEBUG: Checking lcov line counts"
+        grep -c '^DA:' coverage.lcov || echo "No DA: lines found"
+        
         # Convert lcov to Cobertura XML using lcov_cobertura
         lcov_cobertura coverage.lcov --output coverage.xml \
           --base-dir "$CI_PROJECT_DIR" \
           --demangle
         
-        # # Show summary with coverage percentage
-        # echo "=== Coverage Summary ==="
-        # line_rate=$(sed -n 's/.*line-rate="\([^"]*\)".*/\1/p' coverage.xml | head -1)
-        # line_pct=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
-        # echo "Line Coverage: ${line_pct}%"
+        # Show summary with coverage percentage
+        echo "=== Coverage Summary ==="
+        echo "DEBUG: Looking for line-rate in coverage.xml"
+        grep 'line-rate=' coverage.xml | head -3
+        
+        echo "DEBUG: Extracting line-rate value"
+        line_pct=$(cvg=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml))
+        echo "DEBUG: line_pct='$line_pct'"
+        
+        echo "Line Coverage: ${line_pct}%"
       else
         echo "Skipping code coverage processing steps"
       fi
