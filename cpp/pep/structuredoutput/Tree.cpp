@@ -102,14 +102,14 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const QueryD
 
     for (const auto& group : res.mUserGroups) {
       json item = json::object();
-      item[GetKeyName(queryKeys::name, useDescriptive)] = group.mName;
+      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.mName);
       if (group.mMaxAuthValidity) {
-        item[GetKeyName(queryKeys::maxAuthValidity, useDescriptive)] = pep::chrono::ToString(*group.mMaxAuthValidity);
+        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.mMaxAuthValidity));
       }
       groups.push_back(std::move(item));
     }
 
-    root[GetKeyName(queryKeys::userGroups, useDescriptive)] = std::move(groups);
+    root.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), std::move(groups));
   }
 
   // Build users array
@@ -120,30 +120,22 @@ Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const QueryD
       json item = json::object();
 
       if (user.mDisplayId) {
-        item[GetKeyName(queryKeys::displayId, useDescriptive)] = *user.mDisplayId;
+        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.mDisplayId);
       }
 
       if (user.mPrimaryId) {
-        item[GetKeyName(queryKeys::primaryId, useDescriptive)] = *user.mPrimaryId;
+        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.mPrimaryId);
       }
 
-      json otherIdsValue = json::array();
-      for (const auto& uid : user.mOtherUids) {
-        otherIdsValue.push_back(uid);
-      }
-      item[GetKeyName(queryKeys::otherIdentifiers, useDescriptive)] = otherIdsValue;
+      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.mOtherUids);
 
       if (printUserGroupsForUsers) {
-        json userGroupsValue = json::array();
-        for (const auto& group : user.mGroups) {
-          userGroupsValue.push_back(group);
-        }
-        item[GetKeyName(queryKeys::userGroups, useDescriptive)] = userGroupsValue;
+        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), user.mGroups);
       }
       users.push_back(std::move(item));
     }
 
-    root[GetKeyName(queryKeys::users, useDescriptive)] = std::move(users);
+    root.emplace(GetKeyName(queryKeys::users, useDescriptive), std::move(users));
   }
 
   return Tree::FromJson(std::move(root));
@@ -167,7 +159,7 @@ Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const QueryDis
       columnsArray.push_back(col.mName);
     }
 
-    root[GetKeyName(queryKeys::columns, useDescriptive)] = std::move(columnsArray);
+    root.emplace(GetKeyName(queryKeys::columns, useDescriptive), std::move(columnsArray));
   }
 
   // Build column groups array
@@ -175,18 +167,13 @@ Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const QueryDis
     json columnGroupsArray = json::array();
 
     for (const auto& cg : res.mColumnGroups) {
-      json columnsInGroup = json::array();
-      for (const auto& col : cg.mColumns) {
-        columnsInGroup.push_back(col);
-      }
-      
       json item = json::object();
-      item[GetKeyName(queryKeys::name, useDescriptive)] = cg.mName;
-      item[GetKeyName(queryKeys::columns, useDescriptive)] = columnsInGroup;
+      item.emplace(GetKeyName(queryKeys::name, useDescriptive), cg.mName);
+      item.emplace(GetKeyName(queryKeys::columns, useDescriptive), cg.mColumns);
       columnGroupsArray.push_back(std::move(item));
     }
 
-    root[GetKeyName(queryKeys::columnGroups, useDescriptive)] = std::move(columnGroupsArray);
+    root.emplace(GetKeyName(queryKeys::columnGroups, useDescriptive), std::move(columnGroupsArray));
   }
 
   // Build column group access rules
@@ -200,19 +187,14 @@ Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const QueryDis
     for (const auto& [key, modes] : grouped) {
       const auto& [columnGroup, accessGroup] = key;
       
-      json modesArray = json::array();
-      for (const auto& mode : modes) {
-        modesArray.push_back(mode);
-      }
-      
       json item = json::object();
-      item[GetKeyName(queryKeys::columnGroup, useDescriptive)] = columnGroup;
-      item[GetKeyName(queryKeys::userGroup, useDescriptive)] = accessGroup;
-      item[GetKeyName(queryKeys::mode, useDescriptive)] = modesArray;
+      item.emplace(GetKeyName(queryKeys::columnGroup, useDescriptive), columnGroup);
+      item.emplace(GetKeyName(queryKeys::userGroup, useDescriptive), accessGroup);
+      item.emplace(GetKeyName(queryKeys::mode, useDescriptive), modes);
       rulesArray.push_back(std::move(item));
     }
 
-    root[GetKeyName(queryKeys::columnGroupAccessRules, useDescriptive)] = std::move(rulesArray);
+    root.emplace(GetKeyName(queryKeys::columnGroupAccessRules, useDescriptive), std::move(rulesArray));
   }
 
   // Build participant groups array
@@ -223,7 +205,7 @@ Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const QueryDis
       groupsArray.push_back(group.mName);
     }
 
-    root[GetKeyName(queryKeys::participantGroups, useDescriptive)] = std::move(groupsArray);
+    root.emplace(GetKeyName(queryKeys::participantGroups, useDescriptive), std::move(groupsArray));
   }
 
   // Build participant group access rules
@@ -237,19 +219,14 @@ Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const QueryDis
     for (const auto& [key, modes] : grouped) {
       const auto& [participantGroup, userGroup] = key;
       
-      json modesArray = json::array();
-      for (const auto& mode : modes) {
-        modesArray.push_back(mode);
-      }
-      
       json item = json::object();
-      item[GetKeyName(queryKeys::participantGroup, useDescriptive)] = participantGroup;
-      item[GetKeyName(queryKeys::userGroup, useDescriptive)] = userGroup;
-      item[GetKeyName(queryKeys::mode, useDescriptive)] = modesArray;
+      item.emplace(GetKeyName(queryKeys::participantGroup, useDescriptive), participantGroup);
+      item.emplace(GetKeyName(queryKeys::userGroup, useDescriptive), userGroup);
+      item.emplace(GetKeyName(queryKeys::mode, useDescriptive), modes);
       rulesArray.push_back(std::move(item));
     }
 
-    root[GetKeyName(queryKeys::participantGroupAccessRules, useDescriptive)] = std::move(rulesArray);
+    root.emplace(GetKeyName(queryKeys::participantGroupAccessRules, useDescriptive), std::move(rulesArray));
   }
 
   return Tree::FromJson(std::move(root));
