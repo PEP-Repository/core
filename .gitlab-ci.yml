@@ -106,6 +106,7 @@ variables:
     cpp/pep/storagefacility/pepStorageFacilityUnitTests
 
   UNIT_TESTS_BASE: >-
+    cpp/pep/application/pepApplicationUnitTests
     cpp/pep/archiving/pepArchivingUnitTests
     cpp/pep/async/pepAsyncUnitTests
     cpp/pep/auth/pepAuthUnitTests

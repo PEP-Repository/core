@@ -29,7 +29,6 @@ set(PEPCLI_SRCS
     List.cpp
     Metrics.cpp
     MultiCellQuery.cpp MultiCellQuery.hpp
-    NoLongerSupportedCommand.cpp
     Ping.cpp
     Pull.cpp
     Query.cpp
