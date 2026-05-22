@@ -44,6 +44,9 @@ Changes in upcoming release (1.7):
 
 - #2794: CSV export no longer lists cell header(s) if no rows are exported.
 
+- #2847: Reduced memory use when using `pepcli store` with (large) files.
+
+- #2877: Key Server now requires a configured BlocklistStoragePath value (was optional).
 
 MANUAL CHANGES REQUIRED:
 
@@ -65,6 +68,8 @@ MANUAL CHANGES REQUIRED:
 Past changes, do not edit (except by person doing release):
 
 Release 1.6 (started 2026-01-28):
+
+- #2867: Fixed incorrect handling of network connections that fail while they're still being established.
 
 - #2771: Manually managed user IDs are now case-insensitive
   - User IDs retain their original casing when stored.

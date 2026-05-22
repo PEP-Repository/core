@@ -125,6 +125,12 @@ void GeneratePseudonymTestcases(std::ostream& out, const unsigned count) {
         const auto [afterStep, proof] = translator.certifiedTranslateStep(*encLocal, recipient);
         out << "  Encrypted pseudonym: " << afterStep.text() << '\n';
         out << "  Proof:\n"
+            << "    RY: " << proof.mRerandomizePubKey.text() << '\n'
+            << "    RB: " << proof.mRerandomizePoint.text() << '\n'
+            << "    RP:\n"
+            << "      CB: " << proof.mRerandomizeTimesPubKeyProof.mCB.text() << '\n'
+            << "      CM: " << proof.mRerandomizeTimesPubKeyProof.mCM.text() << '\n'
+            << "      S (CurveScalar): " << proof.mRerandomizeTimesPubKeyProof.mS.text() << '\n'
             << "    BP:\n"
             << "      CB: " << proof.mReshuffleOverRekeyTimesBProof.mCB.text() << '\n'
             << "      CM: " << proof.mReshuffleOverRekeyTimesBProof.mCM.text() << '\n'

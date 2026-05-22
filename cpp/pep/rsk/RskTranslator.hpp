@@ -47,27 +47,27 @@ public:
   /// \returns Key factors
   [[nodiscard]] KeyFactors generateKeyFactors(const SkRecipient& recipient) const;
 
-  /// Reshuffle and rekey encryption without proof
+  /// Rerandomize, reshuffle, and rekey encryption without proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] ElgamalEncryption reshuffleRekey(
+  [[nodiscard]] ElgamalEncryption rsk(
       const ElgamalEncryption& encryption,
       const KeyFactors& recipientKeyFactors) const;
 
-  /// Rekey encryption without proof
+  /// Rerandomize and rekey encryption without proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] ElgamalEncryption rekey(
+  [[nodiscard]] ElgamalEncryption rk(
       const ElgamalEncryption& encryption,
       const ElgamalTranslationKey& recipientRekeyKeyFactor) const;
 
-  /// Reshuffle encryption without proof
+  /// Rerandomize and reshuffle encryption without proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] ElgamalEncryption reshuffle(
+  [[nodiscard]] ElgamalEncryption rs(
       const ElgamalEncryption& encryption,
       const CurveScalar& recipientReshuffleKeyFactor) const;
 
-  /// Reshuffle and rekey encryption with proof
+  /// Rerandomize, reshuffle, and rekey encryption with proof
   /// \throws std::invalid_argument for invalid encryption
-  [[nodiscard]] std::pair<ElgamalEncryption, ReshuffleRekeyProof> certifiedReshuffleRekey(
+  [[nodiscard]] std::pair<ElgamalEncryption, RskProof> certifiedRsk(
       const ElgamalEncryption& encryption,
       const KeyFactors& recipientKeyFactors) const;
 

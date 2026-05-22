@@ -10,6 +10,6 @@ namespace pep {
 PEP_DEFINE_CODED_SERIALIZER(ScalarMultProof);
 PEP_DEFINE_CODED_SERIALIZER(ReshuffleRekeyVerifiers);
 PEP_DEFINE_CODED_SERIALIZER(ReshuffleRekeyVerifiersProof);
-PEP_DEFINE_CODED_SERIALIZER(ReshuffleRekeyProof);
+PEP_DEFINE_CODED_SERIALIZER(RskProof);
 
 }

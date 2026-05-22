@@ -29,6 +29,8 @@ protected:
     : method(method), uri(uri), exactMatchOnly(exactMatchOnly), io_context(io_context) {}
 };
 
+namespace {
+
 struct httpRequestHandlerParamsBasic : httpRequestHandlerParams {
   HTTPServer::BasicHandler func;
 
@@ -51,7 +53,7 @@ struct httpRequestHandlerParamsObservable : httpRequestHandlerParams {
   };
 };
 
-static int writeResponse(mg_connection *conn, const pep::HTTPResponse& response) {
+int writeResponse(mg_connection *conn, const pep::HTTPResponse& response) {
   std::string responseString = response.toString();
   if (mg_write(conn, responseString.data(), responseString.length()) < 0) {
     throw std::runtime_error("Failed to write HTTP response");
@@ -59,7 +61,7 @@ static int writeResponse(mg_connection *conn, const pep::HTTPResponse& response)
   return static_cast<int>(response.getStatusCode());
 }
 
-static int requestHandler(struct mg_connection *conn, void *cbdata)
+int requestHandler(struct mg_connection *conn, void *cbdata)
 {
   httpRequestHandlerParams* params = static_cast<httpRequestHandlerParams*>(cbdata);
   const mg_request_info* requestInfo = mg_get_request_info(conn);
@@ -125,6 +127,8 @@ static int requestHandler(struct mg_connection *conn, void *cbdata)
     return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Internal Server error"));
   }
 }
+
+} // namespace
 
 HTTPServer::HTTPServer(uint16_t port, std::shared_ptr<boost::asio::io_context> io_context, std::optional<std::filesystem::path> tlsCertificate)
   : mRegisteredHandlers(std::make_unique<decltype(mRegisteredHandlers)::element_type>()), mIoContext(io_context) {

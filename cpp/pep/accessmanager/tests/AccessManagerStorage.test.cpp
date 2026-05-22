@@ -470,8 +470,8 @@ TEST_F(AccessManagerStorageTest, findInternalUserId) {
 TEST_F(AccessManagerStorageTest, multipleUserIdentifiers) {
   int64_t originalId = storage->createUser("user");
   storage->createUser("anotherUser");
-  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
-  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::None);
+  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::None);
   EXPECT_EQ(storage->findInternalUserId("firstAlternativeName"), originalId);
   EXPECT_EQ(storage->findInternalUserId("secondAlternativeName"), originalId);
   storage->removeIdentifierForUser(originalId, "secondAlternativeName");
@@ -485,8 +485,8 @@ TEST_F(AccessManagerStorageTest, multipleUserIdentifiers) {
 
 TEST_F(AccessManagerStorageTest, cannotRemoveLastUserIdentifier) {
   int64_t originalId = storage->createUser("user");
-  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
-  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::None);
+  storage->addIdentifierForUser(originalId, "secondAlternativeName", UserIdFlags::None);
   storage->removeIdentifierForUser(originalId, "firstAlternativeName");
   storage->removeIdentifierForUser(originalId, "secondAlternativeName");
   EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
@@ -494,7 +494,7 @@ TEST_F(AccessManagerStorageTest, cannotRemoveLastUserIdentifier) {
 
 TEST_F(AccessManagerStorageTest, cannotRemoveDisplayIdentifier) {
   int64_t originalId = storage->createUser("user"); //this will be the display identifier
-  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::none);
+  storage->addIdentifierForUser(originalId, "firstAlternativeName", UserIdFlags::None);
   EXPECT_ANY_THROW(storage->removeIdentifierForUser(originalId, "user"));
   storage->setDisplayIdentifierForUser(originalId, "firstAlternativeName");
   EXPECT_NO_THROW(storage->removeIdentifierForUser(originalId, "user"));
@@ -649,7 +649,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users_alt_ids) {
       user1 = "MyUser1",
       user1Alt = "MyUser1-alt";
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
@@ -671,7 +671,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
 
   storage->addUserToGroup(user1, group1);
@@ -699,7 +699,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
   storage->createUser(user3);
 
@@ -734,7 +734,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
   storage->createUser(user3);
 
@@ -767,7 +767,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
   storage->createUserGroup(UserGroup(group2, {}));
 
   storage->createUser(user1);
-  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::none);
+  storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
 
   storage->addUserToGroup(user1, group1);
@@ -1129,7 +1129,7 @@ TEST_F(AccessManagerStorageTest, setGetMetadataUser) {
   const std::string subject = "UserWithMetadata";
   const std::string alternativeUid = "AlternativeUid";
   storage->createUser(subject);
-  storage->addIdentifierForUser(subject, alternativeUid, UserIdFlags::none);
+  storage->addIdentifierForUser(subject, alternativeUid, UserIdFlags::None);
 
   ASSERT_NO_THROW(storage->setStructureMetadata(subjectType, subject, key, value));
   {

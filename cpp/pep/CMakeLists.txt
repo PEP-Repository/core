@@ -131,7 +131,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wsuper-class-method-mismatch
       -Wtautological-value-range-compare
       -Wthread-safety
-      -Wthread-safety-negative
       -Wtrampolines
       -Wunaligned-access
       -Wundef
@@ -145,7 +144,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wvla
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
-
       -Wno-unused-parameter
   )
 
@@ -179,11 +177,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   endif()
 endif()
 
-# For MSVC, bump up the warning level from level 1 (default) to 2
-# TODO: See if we can bump this to level 3 or 4?
+# For MSVC, bump up the warning level from level 1 (default) to 3
+# TODO: See if we can bump this to /W4 or /Wall ?
 if (MSVC)
   # Ref: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=msvc-170
-  add_compile_options("/W2")
+  add_compile_options("/W3")
 endif()
 
 # Treat warnings as errors
@@ -340,6 +338,10 @@ function(verify_headers_standalone target)
         file(WRITE "${src}" "#include <${header}>")
         target_sources("${target}_StandaloneHeaders" PRIVATE "${src}")
       endforeach()
+
+      set_target_properties(${target}_StandaloneHeaders PROPERTIES
+        FOLDER pep-StandaloneHeaders
+      )
     endif()
   endif()
 endfunction()

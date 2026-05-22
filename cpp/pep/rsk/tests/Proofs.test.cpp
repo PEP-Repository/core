@@ -1,4 +1,3 @@
-#include <Messages.pb.h>
 #include <boost/algorithm/hex.hpp>
 #include <gtest/gtest.h>
 
@@ -81,7 +80,7 @@ TEST(Proofs, ReshuffleRekeyVerifiersProof) {
   }
 }
 
-TEST(Proofs, ReshuffleRekeyProof) {
+TEST(Proofs, RskProof) {
   for (int i = 0; i < 10; i++) {
     auto pre = pep::ElgamalEncryption(
         pep::CurvePoint::Random(),
@@ -91,7 +90,7 @@ TEST(Proofs, ReshuffleRekeyProof) {
     auto rekey = pep::CurveScalar::Random();
     auto reshuffle = pep::CurveScalar::Random();
 
-    auto proof = pep::ReshuffleRekeyProof::CertifiedReshuffleRekey(pre, post, reshuffle, rekey);
+    auto proof = pep::RskProof::CertifiedRsk(pre, post, reshuffle, rekey);
 
     EXPECT_NO_THROW(proof.verify(
       pre,

@@ -1,7 +1,7 @@
 add_library(${PROJECT_NAME}AccessManagerApilib
   AmaMessages.cpp AmaMessages.hpp
   AmaSerializers.cpp AmaSerializers.hpp
-  UserIdFlags.cpp UserIdFlags.hpp
+  UserIdFlags.hpp
   UserMessages.hpp
   UserSerializers.cpp UserSerializers.cpp
   AccessManagerMessages.cpp AccessManagerMessages.hpp

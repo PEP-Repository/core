@@ -43,6 +43,8 @@ public:
   bool operator==(const Temporary&) const = default;
   bool operator!=(const Temporary&) const = default;
 
+  static Temporary MakeFile(const std::string& content, const std::filesystem::path& directory = std::filesystem::current_path());
+
 private:
   std::filesystem::path mPath;
 };

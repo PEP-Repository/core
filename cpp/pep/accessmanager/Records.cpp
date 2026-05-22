@@ -4,6 +4,7 @@
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/utils/Bitpacking.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 
@@ -234,7 +235,9 @@ StructureMetadataRecord::StructureMetadataRecord(
 uint64_t StructureMetadataRecord::checksum() const {
   std::ostringstream os;
   os << SpanToString(checksumNonce)
-    << timestamp << '\0' << subjectType << '\0' << subject << '\0' << metadataGroup << '\0' << subkey << '\0'
+    << timestamp << '\0'
+    << subjectType << '\0' //NOLINT(bugprone-unintended-char-ostream-output) Must remain for backward compatibility
+    << subject << '\0' << metadataGroup << '\0' << subkey << '\0'
     << SpanToString(value) << '\0'
     << tombstone;
   return UnpackUint64BE(Sha256().digest(std::move(os).str()));

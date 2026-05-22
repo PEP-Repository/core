@@ -39,7 +39,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
     return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
-      if (config.preferredFormat == so::Format::json) {
+      if (config.preferredFormat == so::Format::Json) {
         so::json::append(std::cout, res, config) << std::endl;
       }
       else {
@@ -69,12 +69,13 @@ so::DisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::comman
   const auto preferredFormat = values.get<std::string>("format");
 
   so::DisplayConfig config;
-  config.flags = Flags::printHeaders * !scriptPrintFilter
-               | Flags::printGroups * (!scriptPrintFilter || *scriptPrintFilter == userGroupsOpt)
-  //groupsPerUser is a part of the users list. So when groupsPerUsers is requested, we must also print users
-               | Flags::printUsers * (!scriptPrintFilter || *scriptPrintFilter == usersOpt || *scriptPrintFilter == groupsPerUserOpt)
-               | Flags::printUserGroups * (!scriptPrintFilter || *scriptPrintFilter == groupsPerUserOpt);
-  config.preferredFormat = (preferredFormat == "json") ? Format::json : Format::yaml;
+  config.flags =
+      FlagsIf(Flags::PrintHeaders, !scriptPrintFilter) |
+      FlagsIf(Flags::PrintGroups, !scriptPrintFilter || scriptPrintFilter == userGroupsOpt) |
+// groupsPerUser is a part of the users list. So when groupsPerUsers is requested, we must also print users
+      FlagsIf(Flags::PrintUsers, !scriptPrintFilter || scriptPrintFilter == usersOpt || scriptPrintFilter == groupsPerUserOpt) |
+      FlagsIf(Flags::PrintUserGroups, !scriptPrintFilter || scriptPrintFilter == groupsPerUserOpt);
+  config.preferredFormat = (preferredFormat == "json") ? Format::Json : Format::Yaml;
   return config;
 }
 

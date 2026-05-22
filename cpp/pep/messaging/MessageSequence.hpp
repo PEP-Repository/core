@@ -50,6 +50,27 @@ MessageBatches BatchSingleMessage(T content) {
   return BatchSingleMessage(Serialization::ToString(std::move(content)));
 }
 
+extern const uint64_t DEFAULT_PAGE_SIZE;
+
+/**
+ * @brief Creates MessageBatches containing (chunks of) data from the specified stream.
+ * @param stream The stream to read data from.
+ * @return MessageBatches containing (MessageSequences containing) page-sized blobs extracted from the stream.
+ * @remark Data isn't read from the stream (i.e. returned observables don't produce items) until those data are needed/wanted/requested by the caller:
+ *         1. Caller invokes this function and receives a (single, outer) MessageBatches instance.
+ *         2. Caller .subscribe()s to the (single, outer) MessageBatches instance, which immediately produces its 1st (inner) MessageSequence (if the stream was nonempty).
+ *         3. Caller .subscribe()s to the 1st (inner) MessageSequence, which reads the 1st page of data from the stream and emits it as (a shared_ptr to) a string.
+ *            This exhausts the 1st (inner) MessageSequence, after which the (outer) MessageBatches instance produces a followup (inner) MessageSequence.
+ *         4. ...Repeat step 3 for (the 2nd and) all followup (inner) MessageSequence instances...
+ *         5. When the original stream has been fully exhausted, completion/exhaustion is signalled on the (single, outer) MessageBatches instance.
+ *         Thus, the (outer) MessageBatches instance makes no progress until callers subscribe() to each (inner) MessageSequence instance. The consequence is that
+ *         (inner) MessageSequence instances must be processed as they are produced (and cannot e.g. be stored for later and/or out-of-order processing).
+ *         If you're unsure what to do, let .concat() take care of things for you:
+ *              IStreamToMessageBatches(myStream)
+ *                .concat()
+ *                .map([](std::shared_ptr<std::string> page) { return ProcessPage(page); })
+ *                .subscribe(...);
+ */
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream);
 
 }
