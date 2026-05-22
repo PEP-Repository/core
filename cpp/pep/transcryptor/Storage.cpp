@@ -707,6 +707,7 @@ void TranscryptorStorage::migrate() {
   if (!version || version == 1) {
     try {
       migrate_from_v1_to_v2();
+      version = 2;
     } catch (...) {
       LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
         " to version 2 failed.";
