@@ -4,8 +4,8 @@
 
 /**
  * - `WebAssembly.Exception`: WASM EH (what we normally use)
- * - `number` (pointer): Emscripten EH
- * - `Error` (`CppException`): Emscripten EH + assertions
+ * - `number` (pointer): EMSDK <5.0.5: Emscripten EH without assertions
+ * - `Error` (`CppException`): Emscripten EH (EMSDK <5.0.5: only with assertions)
  * @typedef {WebAssembly.Exception | number | Error} WasmException
  */
 
@@ -27,7 +27,7 @@
      */
     pepMayBeWasmException(ex) {
       return ex instanceof WebAssembly.Exception
-          || (typeof ex === 'number' && ex > 0)
+          || (typeof ex === 'number' && ex > 0) //XXX Remove with EMSDK 5.0.5+, also in WasmException typedefs
           || (ex instanceof Error && Object.getPrototypeOf(ex).constructor.name === 'CppException');
     },
 

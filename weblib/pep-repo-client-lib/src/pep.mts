@@ -3,8 +3,8 @@ import type * as rawTypes from 'pep-repo-client-wasm';
 
 type WasmException =
     | WebAssembly.Exception // WASM EH (what we normally use)
-    | number /*pointer*/ // Emscripten EH
-    | Error /*CppException*/ // Emscripten EH + assertions
+    | number /*pointer*/ // EMSDK <5.0.5: Emscripten EH without assertions
+    | Error /*CppException*/ // Emscripten EH (EMSDK <5.0.5: only with assertions)
 
 type PepModule = MainModule & {
   // Defined in prejs.js
