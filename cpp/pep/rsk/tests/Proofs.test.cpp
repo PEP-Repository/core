@@ -111,76 +111,50 @@ TEST(Proofs, RskProof) {
   }
 }
 
-TEST(Proofs, RerandomizeProof) {
-  for (int i = 0; i < 10; i++) {
-    const pep::ElgamalEncryption pre(
-        pep::CurvePoint::Random(),
-        pep::CurvePoint::Random(),
-        pep::CurvePoint::Random());
-    {
-      pep::ElgamalEncryption post;
-      auto proof = pep::RerandomizeProof::CertifiedRerandomize(pre, post);
+// Test rerandomize part of RskProof.
+// Adapted from RerandomizeProof tests from reverted https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/2394.
+//TODO Expand to make sure reshuffle/rekey commitments are also used.
+TEST(Proofs, RskProof_rerandomize) {
+  const pep::ElgamalEncryption pre(
+      pep::CurvePoint::Random(),
+      pep::CurvePoint::Random(),
+      pep::CurvePoint::Random());
+  auto rerandomize = pep::CurveScalar::Random();
+  auto rerandomizePoint = rerandomize * pep::CurvePoint::Base;
+  auto rerandomizePubKey = rerandomize * pre.publicKey;
+  pep::ElgamalEncryption rerandomized{
+    pre.b + rerandomizePoint,
+    pre.c + rerandomizePubKey,
+    pre.publicKey,
+  };
 
-      EXPECT_NO_THROW(proof.verify(pre, post));
+  const auto verifiers = pep::ReshuffleRekeyVerifiers::Compute(
+    pep::CurveScalar::One(), pep::CurveScalar::One(),
+    pre.publicKey);
 
-      // Test some invalid proofs --- this only catches the most blatant mistakes.
-      //NOLINTNEXTLINE(readability-suspicious-call-argument) pre & post intentionally swapped
-      EXPECT_THROW(proof.verify(post, pre), pep::InvalidProof) << "Bogus proof should fail to validate";
-    }
+  auto base = pep::CurveScalar::One() * pep::CurvePoint::Base;
 
-    {
-      auto rerandomize = pep::CurveScalar::Random();
-      auto rerandomizePoint = rerandomize * pep::CurvePoint::Base;
-      auto rerandomizePubKey = rerandomize * pre.publicKey;
-      pep::ElgamalEncryption rerandomized{
-        pre.b + rerandomizePoint,
-        pre.c + rerandomizePubKey,
-        pre.publicKey,
-      };
+  auto incorrectlyRerandomizedB = rerandomized;
+  incorrectlyRerandomizedB.b = pre.b; // Intentionally wrong
+  auto incorrectlyRerandomizedC = rerandomized;
+  incorrectlyRerandomizedC.c = pre.c + rerandomizePoint; // Intentionally wrong
+  auto incorrectlyRerandomizedPublicKey = rerandomized;
+  incorrectlyRerandomizedPublicKey.publicKey = base; // Intentionally wrong
 
-      auto base = pep::CurveScalar::One() * pep::CurvePoint::Base;
-
-      auto incorrectlyRerandomizedB = rerandomized;
-      incorrectlyRerandomizedB.b = pre.b; // Intentionally wrong
-      auto incorrectlyRerandomizedC = rerandomized;
-      incorrectlyRerandomizedC.c = pre.c + rerandomizePoint; // Intentionally wrong
-      auto incorrectlyRerandomizedPublicKey = rerandomized;
-      incorrectlyRerandomizedPublicKey.publicKey = base; // Intentionally wrong
-
-      auto proof = pep::RerandomizeProof::Create(pre.publicKey, rerandomize, rerandomizePubKey, rerandomizePoint);
-      EXPECT_NO_THROW(proof.verify(pre, rerandomized));
-      // Make sure we check post.b
-      EXPECT_THROW(proof.verify(pre, incorrectlyRerandomizedB), pep::InvalidProof)
-        << "Proof with inconsistent post ciphertext B should fail to validate";
-      // Make sure we check post.c
-      EXPECT_THROW(proof.verify(pre, incorrectlyRerandomizedC), pep::InvalidProof)
-        << "Proof with inconsistent post ciphertext C should fail to validate";
-      // Make sure that proof checks that public key did not change
-      EXPECT_THROW(proof.verify(pre, incorrectlyRerandomizedPublicKey), pep::InvalidProof)
-        << "Proof with inconsistent post ciphertext public key should fail to validate";
-
-      {
-        // Construct RerandomizeProof which is correct except we use Base instead of publicKey
-        auto incorrectProof = pep::RerandomizeProof::Create(base, rerandomize, rerandomizePoint, rerandomizePoint);
-        EXPECT_NO_THROW(incorrectProof.mRerandomizeTimesPubKeyProof.verify(rerandomizePoint, base, rerandomizePoint))
-          << "Useless scalar mult proof should still be correct";
-        // Either ScalarMultProof should fail to validate, or it fails on pre.publicKey != post.publicKey
-        EXPECT_THROW(incorrectProof.verify(pre, incorrectlyRerandomizedC), pep::InvalidProof)
-          << "Proof using rerandomizePoint for C should fail to validate";
-
-        // Make sure that proof checks that public key did not change also if scalar mult proof verification uses pre.publicKey
-        auto preIncorrectPublicKey = pre;
-        preIncorrectPublicKey.publicKey = base;
-        EXPECT_THROW(incorrectProof.verify(preIncorrectPublicKey, incorrectlyRerandomizedC), pep::InvalidProof)
-          << "Proof using rerandomizePoint for C and only pre publicKey consistent with scalar mult proof should fail to validate";
-
-        // Make sure that proof checks that public key did not change also if scalar mult proof verification uses post.publicKey
-        incorrectlyRerandomizedC.publicKey = base;
-        EXPECT_THROW(incorrectProof.verify(pre, incorrectlyRerandomizedC), pep::InvalidProof)
-          << "Proof using rerandomizePoint for C and only post publicKey consistent with scalar mult proof should fail to validate";
-      }
-    }
-  }
+  auto proof = pep::RskProof::Create(pre, rerandomized,
+    pep::CurveScalar::One(), base,
+    pep::CurveScalar::One(), base,
+    rerandomize, rerandomizePubKey, rerandomizePoint);
+  EXPECT_NO_THROW(proof.verify(pre, rerandomized, verifiers));
+  // Make sure we check post.b
+  EXPECT_THROW(proof.verify(pre, incorrectlyRerandomizedB, verifiers), pep::InvalidProof)
+    << "Proof with inconsistent post ciphertext B should fail to validate";
+  // Make sure we check post.c
+  EXPECT_THROW(proof.verify(pre, incorrectlyRerandomizedC, verifiers), pep::InvalidProof)
+    << "Proof with inconsistent post ciphertext C should fail to validate";
+  // Make sure that proof checks that public key is correct
+  EXPECT_THROW(proof.verify(pre, incorrectlyRerandomizedPublicKey, verifiers), pep::InvalidProof)
+    << "Proof with inconsistent post ciphertext public key should fail to validate";
 }
 
 }
