@@ -17,12 +17,11 @@ public:
 
   // Create a new TranscryptorStorage with a clean database
   void SetUp() override {
-    std::filesystem::remove(databasePath);
-    storage.emplace(databasePath);
+    storage.emplace(":memory:");
   }
 
   void TearDown() override {
-    std::filesystem::remove(databasePath);
+    storage.reset();
   }
 };
 
