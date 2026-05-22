@@ -46,11 +46,11 @@ public:
     /*!
      * \return The path where the blocklist of the keyserver is stored on disk
      */
-    const std::optional<std::filesystem::path>& getBlocklistStoragePath() const;
+    const std::filesystem::path& getBlocklistStoragePath() const;
     /*!
      * \param path The path where the blocklist of the keyserver is stored on disk
      */
-    void setBlocklistStoragePath(const std::optional<std::filesystem::path>& path);
+    void setBlocklistStoragePath(const std::filesystem::path& path);
 
   protected:
     void check() const override;
@@ -59,7 +59,7 @@ public:
     AsymmetricKey mClientCAPrivateKey;
     std::optional<X509CertificateChain> mClientCACertificateChain;
     std::string mOauthTokenSecret;
-    std::optional<std::filesystem::path> mBlocklistStoragePath;
+    std::filesystem::path mBlocklistStoragePath;
   };
 
 public:
