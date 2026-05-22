@@ -41,17 +41,13 @@ private:
   std::unordered_map<std::string, Values> mEntries;
 
 public:
-  inline Values& operator[](const std::string& key) { return mEntries[key]; }
-  inline const Values& operator[](const std::string& key) const { return mEntries.at(key); }
+  inline Values& at(const std::string& key) { return mEntries.at(key); }
+  inline const Values& at(const std::string& key) const { return mEntries.at(key); }
 
   inline auto begin() const { return mEntries.cbegin(); }
   inline auto end() const { return mEntries.cend(); }
   inline auto find(const std::string& key) const { return mEntries.find(key); }
-
-  template <typename T>
-  void add(const std::string& key, const T& value) { (*this)[key].add(value); }
-
-  void add(const std::string& key, const Values& values);
+  inline void set(const std::string& key, const Values& values) { mEntries.insert_or_assign(key, values); }
 
   template <typename T>
   T get(const std::string& key) const;

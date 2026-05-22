@@ -223,7 +223,7 @@ pep::commandline::Parameters AppCmd::getSupportedParameters() const {
             if (portStr.has_value()) {
               pep::commandline::Values portValues;
               portValues.add(std::stoi(*portStr));
-              toAdd["port"] = portValues;
+              toAdd.set("port", portValues);
             }
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"server", "start"}};
           })
@@ -231,7 +231,7 @@ pep::commandline::Parameters AppCmd::getSupportedParameters() const {
       + pep::commandline::Parameter("deploy-name", std::nullopt).value(pep::commandline::Value<std::string>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
-            toAdd["name"] = vals["deploy-name"];
+            toAdd.set("name", vals.at("deploy-name"));
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"deploy"}};
           })
           .deprecated("Use 'deploy --name' instead.")
@@ -242,32 +242,32 @@ pep::commandline::Parameters AppCmd::getSupportedParameters() const {
             if (portStr.has_value()) {
               pep::commandline::Values portValues;
               portValues.add(std::stoi(*portStr));
-              toAdd["port"] = portValues;
+              toAdd.set("port", portValues);
             }
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"server", "start"}};
           })
       + pep::commandline::Parameter("verbose-mode", std::nullopt).value(pep::commandline::Value<int>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
-            toAdd["verbose"] = vals["verbose-mode"];
+            toAdd.set("verbose", vals.at("verbose-mode"));
             return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
           })
       + pep::commandline::Parameter("quick-deploy", std::nullopt).value(pep::commandline::Value<std::string>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
-            toAdd["name"] = vals["quick-deploy"];
+            toAdd.set("name", vals.at("quick-deploy"));
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"deploy"}};
           })
       + pep::commandline::Parameter("bad-forward-depr-cmd", std::nullopt).value(pep::commandline::Value<std::string>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
-            toAdd["name"] = vals["bad-forward-depr-cmd"];
+            toAdd.set("name", vals.at("bad-forward-depr-cmd"));
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"init-user"}};
           })
       + pep::commandline::Parameter("bad-alias-cmd", std::nullopt).value(pep::commandline::Value<std::string>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
-            toAdd["name"] = vals["bad-alias-cmd"];
+            toAdd.set("name", vals.at("bad-alias-cmd"));
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"create-user"}};
           })
       + pep::commandline::Parameter("bad-removed-cmd", std::nullopt).value(pep::commandline::Value<std::string>())
@@ -277,7 +277,7 @@ pep::commandline::Parameters AppCmd::getSupportedParameters() const {
       + pep::commandline::Parameter("bad-transform-path", std::nullopt).value(pep::commandline::Value<std::string>())
           .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
             pep::commandline::NamedValues toAdd;
-            toAdd["name"] = vals["bad-transform-path"];
+            toAdd.set("name", vals.at("bad-transform-path"));
             return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"server", "start", "missing-subcommand"}};
           })
       + pep::commandline::Parameter("mode", std::nullopt).value(pep::commandline::Value<std::string>())
@@ -301,18 +301,21 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
     return [paramName](std::queue<std::string>& args) {
       pep::commandline::NamedValues transformed;
       if (!args.empty()) {
-        transformed.add(paramName, args.front());
+        pep::commandline::Values vals;
+        vals.add(args.front());
+        transformed.set(paramName, vals);
         args.pop();
       }
       return transformed;
     };
   };
 
+  // Inject verbosity level 2
   auto injectVerboseLevel = [](std::queue<std::string>& args) {
     pep::commandline::NamedValues transformed;
     pep::commandline::Values verboseValues;
-    verboseValues.add(2); // Inject verbosity level 2
-    transformed["verbose"] = verboseValues;
+    verboseValues.add(2);
+    transformed.set("verbose", verboseValues);
     return transformed;
   };
   
@@ -373,43 +376,43 @@ pep::commandline::Parameters UserCmd::getSupportedParameters() const {
     + pep::commandline::Parameter("mail", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["email"] = vals["mail"];
+          toAdd.set("email", vals.at("mail"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
     + pep::commandline::Parameter("legacy-name", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["name"] = vals["legacy-name"];
+          toAdd.set("name", vals.at("legacy-name"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         }).deprecated("Use --name instead.")
     + pep::commandline::Parameter("forward-username", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["username"] = vals["forward-username"];
+          toAdd.set("username", vals.at("forward-username"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
     + pep::commandline::Parameter("removed-role", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["role"] = vals["removed-role"];
+          toAdd.set("role", vals.at("removed-role"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
     + pep::commandline::Parameter("old-mail", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["old-email"] = vals["old-mail"];
+          toAdd.set("old-email", vals.at("old-mail"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
     + pep::commandline::Parameter("chain-mail", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["mail"] = vals["chain-mail"];
+          toAdd.set("mail", vals.at("chain-mail"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
     + pep::commandline::Parameter("forward-to-deploy", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["name"] = vals["forward-to-deploy"];
+          toAdd.set("name", vals.at("forward-to-deploy"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd), nullptr, {"deploy"}};
         });
 }
@@ -433,14 +436,14 @@ pep::commandline::Parameters DatabaseCmd::getSupportedParameters() const {
     + pep::commandline::Parameter("legacy-db-source", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["source"] = vals["legacy-db-source"];
+          toAdd.set("source", vals.at("legacy-db-source"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
         .deprecated("Use --source instead.")
     + pep::commandline::Parameter("old-db-path", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["source"] = vals["old-db-path"];
+          toAdd.set("source", vals.at("old-db-path"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
         .deprecated("Use --source instead.");
@@ -469,7 +472,7 @@ pep::commandline::Parameters DeployCmd::getSupportedParameters() const {
     + pep::commandline::Parameter("deploy-alias", std::nullopt).value(pep::commandline::Value<std::string>())
         .forwardingAlias([](pep::commandline::Command&, const pep::commandline::NamedValues& vals) {
           pep::commandline::NamedValues toAdd;
-          toAdd["name"] = vals["deploy-alias"];
+          toAdd.set("name", vals.at("deploy-alias"));
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};
         })
     + pep::commandline::Parameter("role", std::nullopt).value(pep::commandline::Value<std::string>())
@@ -517,10 +520,10 @@ pep::commandline::Parameters StartCmd::getSupportedParameters() const {
             if (colonPos != std::string::npos) {
               pep::commandline::Values hostValues;
               hostValues.add(combined.substr(0, colonPos));
-              toAdd["host"] = hostValues;
+              toAdd.set("host", hostValues);
               pep::commandline::Values portValues;
               portValues.add(std::stoi(combined.substr(colonPos + 1)));
-              toAdd["port"] = portValues;
+              toAdd.set("port", portValues);
             }
           }
           return pep::commandline::ParameterTransformationResult{std::move(toAdd)};

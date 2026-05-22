@@ -192,7 +192,7 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
     for (const auto& [key, vals] : transformResult.toAdd) {
       assert((mergedToAdd.find(key) == mergedToAdd.end())
              && "Programmer error: Multiple transformed parameters specified conflicting parameter additions.");
-      mergedToAdd[key] = vals;
+      mergedToAdd.set(key, vals);
     }
 
     // Remove the transformed parameter from current values
@@ -211,7 +211,7 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
   // Step 7: Merge current parameter values with transformed values
   NamedValues leafValues = *mParameterValues;
   for (const auto& [key, vals] : mergedToAdd) {
-    leafValues[key] = vals;
+    leafValues.set(key, vals);
   }
   
   // Step 8: Dispatch to the target command with merged values
@@ -271,7 +271,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
     if (isLeafDispatch) {
       assert(preMergedValues.has_value() && "Leaf dispatch requires pre-merged values");
       for (const auto& [key, vals] : *preMergedValues) {
-        (*mParameterValues)[key] = vals;
+        mParameterValues->set(key, vals);
       }
       // Validate parameters that came from transformations
       for (const auto& param : parameters) {
@@ -312,7 +312,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       if (isLeafDispatch) {
         // Leaf dispatch: merge parsed values into existing mParameterValues
         for (const auto& [key, vals] : parsed) {
-          (*mParameterValues)[key] = vals;
+          mParameterValues->set(key, vals);
         }
         mParametersLexed = true;
       } else {

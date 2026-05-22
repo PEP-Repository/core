@@ -48,7 +48,7 @@ Parameter Parameter::rename(const std::string& newParamName) const {
   const std::string oldName = mName;
   return this->forwardingAlias([oldName, newParamName](Command&, const NamedValues& values) {
     NamedValues toAdd;
-    toAdd[newParamName] = values[oldName];
+    toAdd.set(newParamName, values.at(oldName));
     return ParameterTransformationResult{std::move(toAdd)};
   }).deprecated("Use --" + newParamName + " instead.");
 }
@@ -412,7 +412,7 @@ NamedValues Parameters::parse(const LexedValues& lexed) const {
     const auto& name = s.getName();
     auto position = lexed.find(name);
     if (position != lexed.cend()) {
-      result[name] = s.parse(position->second);
+      result.set(name, s.parse(position->second));
     }
   }
 
@@ -426,7 +426,7 @@ void Parameters::finalize(NamedValues& parsed) const {
       Values tmp;
       s.finalize(tmp);
       if (!tmp.empty()) {
-        parsed[name] = tmp;
+        parsed.set(name, tmp);
       }
     }
   }
