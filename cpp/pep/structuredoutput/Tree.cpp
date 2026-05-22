@@ -1,9 +1,6 @@
 #include <pep/structuredoutput/Tree.hpp>
 
 #include <boost/property_tree/ptree.hpp>
-#include <pep/accessmanager/UserMessages.hpp>
-#include <pep/accessmanager/AmaMessages.hpp>
-#include <pep/utils/ChronoUtil.hpp>
 
 #include <algorithm>
 #include <tuple>
@@ -34,11 +31,6 @@ json JsonArray(const Table& table) {
   auto array = json::array();
   for (auto record : table.records()) { array += ObjectFromHeaderAndRecord(table.header(), record); }
   return array;
-}
-
-/// Helper to get appropriate key name
-std::string GetKeyName(const queryKeys::QueryKey& key, bool useDescriptive) {
-  return std::string(useDescriptive ? key.descriptive : key.simple);
 }
 
 } // namespace
@@ -87,151 +79,5 @@ json PtreeToJson(const boost::property_tree::ptree& pt) {
 Tree Tree::FromPropertyTree(const boost::property_tree::ptree& pt) {
   return Tree::FromJson(PtreeToJson(pt));
 }
-
-Tree Tree::FromUserQueryResponse(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQueryFlags>& config) {
-  const auto printUserGroups = HasFlags(config.flags, UserQueryFlags::PrintUserGroups);
-  const auto printUsers = HasFlags(config.flags, UserQueryFlags::PrintUsers);
-  const auto printUserGroupsForUsers = HasFlags(config.flags, UserQueryFlags::PrintUserGroupsForUsers);
-  const auto useDescriptive = config.useDescriptiveKeys;
-
-  json root = json::object();
-
-  // Build userGroups array
-  if (printUserGroups) {
-    json groups = json::array();
-
-    for (const auto& group : res.mUserGroups) {
-      json item = json::object();
-      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.mName);
-      if (group.mMaxAuthValidity) {
-        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.mMaxAuthValidity));
-      }
-      groups.push_back(std::move(item));
-    }
-
-    root.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), std::move(groups));
-  }
-
-  // Build users array
-  if (printUsers) {
-    json users = json::array();
-
-    for (const auto& user : res.mUsers) {
-      json item = json::object();
-
-      if (user.mDisplayId) {
-        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.mDisplayId);
-      }
-
-      if (user.mPrimaryId) {
-        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.mPrimaryId);
-      }
-
-      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.mOtherUids);
-
-      if (printUserGroupsForUsers) {
-        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), user.mGroups);
-      }
-      users.push_back(std::move(item));
-    }
-
-    root.emplace(GetKeyName(queryKeys::users, useDescriptive), std::move(users));
-  }
-
-  return Tree::FromJson(std::move(root));
-}
-
-Tree Tree::FromAmaQueryResponse(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQueryFlags>& config) {
-  const auto printColumns = HasFlags(config.flags, AmaQueryFlags::PrintColumns);
-  const auto printColumnGroups = HasFlags(config.flags, AmaQueryFlags::PrintColumnGroups);
-  const auto printColumnGroupAccessRules = HasFlags(config.flags, AmaQueryFlags::PrintColumnGroupAccessRules);
-  const auto printParticipantGroups = HasFlags(config.flags, AmaQueryFlags::PrintParticipantGroups);
-  const auto printParticipantGroupAccessRules = HasFlags(config.flags, AmaQueryFlags::PrintParticipantGroupAccessRules);
-  const auto useDescriptive = config.useDescriptiveKeys;
-
-  json root = json::object();
-
-  // Build columns array
-  if (printColumns) {
-    json columnsArray = json::array();
-
-    for (const auto& col : res.mColumns) {
-      columnsArray.push_back(col.mName);
-    }
-
-    root.emplace(GetKeyName(queryKeys::columns, useDescriptive), std::move(columnsArray));
-  }
-
-  // Build column groups array
-  if (printColumnGroups) {
-    json columnGroupsArray = json::array();
-
-    for (const auto& cg : res.mColumnGroups) {
-      json item = json::object();
-      item.emplace(GetKeyName(queryKeys::name, useDescriptive), cg.mName);
-      item.emplace(GetKeyName(queryKeys::columns, useDescriptive), cg.mColumns);
-      columnGroupsArray.push_back(std::move(item));
-    }
-
-    root.emplace(GetKeyName(queryKeys::columnGroups, useDescriptive), std::move(columnGroupsArray));
-  }
-
-  // Build column group access rules
-  if (printColumnGroupAccessRules) {
-    std::map<std::tuple<std::string, std::string>, std::vector<std::string>> grouped;
-    for (const auto& rule : res.mColumnGroupAccessRules) {
-      grouped[{rule.mColumnGroup, rule.mAccessGroup}].push_back(rule.mMode);
-    }
-
-    json rulesArray = json::array();
-    for (const auto& [key, modes] : grouped) {
-      const auto& [columnGroup, accessGroup] = key;
-      
-      json item = json::object();
-      item.emplace(GetKeyName(queryKeys::columnGroup, useDescriptive), columnGroup);
-      item.emplace(GetKeyName(queryKeys::userGroup, useDescriptive), accessGroup);
-      item.emplace(GetKeyName(queryKeys::mode, useDescriptive), modes);
-      rulesArray.push_back(std::move(item));
-    }
-
-    root.emplace(GetKeyName(queryKeys::columnGroupAccessRules, useDescriptive), std::move(rulesArray));
-  }
-
-  // Build participant groups array
-  if (printParticipantGroups) {
-    json groupsArray = json::array();
-
-    for (const auto& group : res.mParticipantGroups) {
-      groupsArray.push_back(group.mName);
-    }
-
-    root.emplace(GetKeyName(queryKeys::participantGroups, useDescriptive), std::move(groupsArray));
-  }
-
-  // Build participant group access rules
-  if (printParticipantGroupAccessRules) {
-    std::map<std::tuple<std::string, std::string>, std::vector<std::string>> grouped;
-    for (const auto& rule : res.mParticipantGroupAccessRules) {
-      grouped[{rule.mParticipantGroup, rule.mUserGroup}].push_back(rule.mMode);
-    }
-
-    json rulesArray = json::array();
-    for (const auto& [key, modes] : grouped) {
-      const auto& [participantGroup, userGroup] = key;
-      
-      json item = json::object();
-      item.emplace(GetKeyName(queryKeys::participantGroup, useDescriptive), participantGroup);
-      item.emplace(GetKeyName(queryKeys::userGroup, useDescriptive), userGroup);
-      item.emplace(GetKeyName(queryKeys::mode, useDescriptive), modes);
-      rulesArray.push_back(std::move(item));
-    }
-
-    root.emplace(GetKeyName(queryKeys::participantGroupAccessRules, useDescriptive), std::move(rulesArray));
-  }
-
-  return Tree::FromJson(std::move(root));
-}
-
-
 
 } // namespace pep::structuredOutput

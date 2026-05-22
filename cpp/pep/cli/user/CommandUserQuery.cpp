@@ -1,5 +1,6 @@
 #include <boost/algorithm/string/join.hpp>
 #include <pep/cli/user/CommandUserQuery.hpp>
+#include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
 
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Json.hpp>
@@ -40,7 +41,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
     return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::UserQueryResponse res) {
-      auto tree = so::Tree::FromUserQueryResponse(res, displayConfig);
+      auto tree = so::TreeFrom(res, displayConfig);
       
       if (displayConfig.format() == so::Format::Json) {
         so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;

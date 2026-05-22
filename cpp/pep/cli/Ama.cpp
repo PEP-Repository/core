@@ -10,6 +10,7 @@
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
 #include <pep/structuredoutput/Tree.hpp>
+#include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
@@ -481,7 +482,7 @@ private:
       return executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
         return client->getAccessManagerProxy()->amaQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::AmaQueryResponse res) {
           namespace so = pep::structuredOutput;
-          auto tree = so::Tree::FromAmaQueryResponse(res, displayConfig);
+          auto tree = so::TreeFrom(res, displayConfig);
 
           if (displayConfig.format() == so::Format::Json) {
             so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;

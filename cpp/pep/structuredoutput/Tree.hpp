@@ -21,8 +21,6 @@ class Tree final {
 public:
   static Tree FromJson(nlohmann::ordered_json json) noexcept { return Tree(std::move(json)); }
   static Tree FromPropertyTree(const boost::property_tree::ptree&);
-  static Tree FromUserQueryResponse(const pep::UserQueryResponse&, const QueryDisplayConfig<UserQueryFlags>& config);
-  static Tree FromAmaQueryResponse(const pep::AmaQueryResponse&, const QueryDisplayConfig<AmaQueryFlags>& config);
 
   const nlohmann::ordered_json& raw_json() const& noexcept { return mJson; }
   nlohmann::ordered_json raw_json() && noexcept { return std::move(mJson); }
