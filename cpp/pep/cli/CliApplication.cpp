@@ -121,8 +121,8 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
     if (!token) {
       if (std::filesystem::exists(tokenPath)) {
         LOG(LOG_TAG, pep::info)
-          << "Cached token found in "
-          << std::filesystem::canonical(tokenPath).string() << std::endl;
+          << "Cached token found in \""
+          << std::filesystem::canonical(tokenPath).string() << '"' << std::endl;
         token = pep::OAuthToken::ReadJson(tokenPath);
         if (!token->verify(mRequiredSubject, mRequiredGroup)) {
           LOG(LOG_TAG, pep::info) << "Not using cached token because it did not pass verification";

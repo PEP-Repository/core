@@ -73,7 +73,7 @@ CoreClient::CoreClient(const Builder& builder) :
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
       [keysFilePath = *keysFilePath](const EnrollmentResult& result){
-      LOG(LOG_TAG, debug) << "Writing new keys to " << keysFilePath;
+      LOG(LOG_TAG, debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
       std::ofstream sf(keysFilePath.string());
       result.writeJsonTo(sf);
     });
