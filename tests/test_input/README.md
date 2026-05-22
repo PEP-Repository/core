@@ -2,7 +2,7 @@
 
 `base_integration_data` contains data used to test if the current version of the software still works with an older database etc.
 
-See the `docker-integration-on-base-data` GitLab CI job for now to do this (including the `pki.sh` command).
+See the `docker-integration-on-base-data` GitLab CI job for how to do this (including the `pki.sh` command).
 
 When manual changes are required for a release, this data may need to be updated.
 
@@ -10,7 +10,7 @@ When manual changes are required for a release, this data may need to be updated
 
 1. Disable the watchdog stressor to prevent it from generating large binary files
    1. In `/config/integration/config/watchdog/config.yaml`, set `stressor.enabled` to `false`.
-   2. In `integration.sh`, remove `-instant-stressor` options.
+   2. In `integration.sh`, remove `-instant-stressor` options in two locations.
 2. Run:
    ```shell
    sudo ./tests/integration.sh --local --build-dir ./build/Debug/ \

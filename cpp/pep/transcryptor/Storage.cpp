@@ -393,13 +393,13 @@ struct SessionVerifiersRecord {
   SessionVerifiersRecord() = default;
   SessionVerifiersRecord(
     std::vector<char> certificateHash,
-    Timestamp expiryTimestamp,
+    Timestamp expirationTimestamp,
     std::string pseudonymizationDomain,
     const CurvePoint& rekeyCommitment,
     const CurvePoint& reshuffleOverRekeyCommitment,
     const ElgamalPublicKey& rekeyedPublicKey)
     : certificateHash(std::move(certificateHash)),
-      expiryTimestamp{TicksSinceEpoch<milliseconds>(expiryTimestamp)},
+      expirationTimestamp{TicksSinceEpoch<milliseconds>(expirationTimestamp)},
       pseudonymizationDomain(std::move(pseudonymizationDomain)),
       rekeyCommitment(RangeToVector(rekeyCommitment.pack())),
       reshuffleOverRekeyCommitment(RangeToVector(reshuffleOverRekeyCommitment.pack())),
@@ -407,7 +407,7 @@ struct SessionVerifiersRecord {
 
   std::vector<char> certificateHash; // Primary key
 
-  database::UnixMillis expiryTimestamp{};
+  database::UnixMillis expirationTimestamp{};
   std::string pseudonymizationDomain; // Refers to PseudonymizationDomainVerifiersRecord
   DbCurvePoint
     rekeyCommitment,
@@ -553,7 +553,7 @@ auto ts_create_db(const std::string& path) {
     make_table("SessionVerifiers",
       make_column("certificateHash", &SessionVerifiersRecord::certificateHash,
         primary_key()),
-      make_column("expiryTimestamp", &SessionVerifiersRecord::expiryTimestamp),
+      make_column("expirationTimestamp", &SessionVerifiersRecord::expirationTimestamp),
       make_column("pseudonymizationDomain", &SessionVerifiersRecord::pseudonymizationDomain),
       make_column("rekeyCommitment", &SessionVerifiersRecord::rekeyCommitment),
       make_column("reshuffleOverRekeyCommitment", &SessionVerifiersRecord::reshuffleOverRekeyCommitment),
@@ -764,7 +764,7 @@ void TranscryptorStorage::removeOutdatedRecords() {
   auto now = TimeNow();
   database::UnixMillis nowMillis = TicksSinceEpoch<milliseconds>(now);
   // Remove outdated session verifiers
-  mStorage->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expiryTimestamp) <= nowMillis));
+  mStorage->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expirationTimestamp) <= nowMillis));
 }
 
 void TranscryptorStorage::computeChecksum(const std::string& chain,
