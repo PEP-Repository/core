@@ -45,10 +45,10 @@ constexpr QueryKey mode{"mode", "Mode"};
 
 } // namespace queryKeys
 
-  enum class Format {
-    Yaml,
-    Json
-  };
+enum class Format {
+  Yaml,
+  Json
+};
 
 struct YamlConfig final {
   WhitespaceFormat indentation = WhitespaceFormat::TwoSpaces;
