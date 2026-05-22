@@ -181,6 +181,7 @@ TEST_F(Client, Reconnects) { // TODO: simplify
   ASSERT_NO_FATAL_FAILURE(clientHandler->postRunValidate());
 }
 
+
 const std::vector<std::string> LINES_TO_DELIMIT = {
   "The clock struck one, the mouse ran down.",
   "The clock struck two, the mouse went WOO.",
@@ -209,6 +210,7 @@ void ReadClientLine(std::shared_ptr<pep::networking::Client> client, std::shared
     }
     });
 }
+
 
 TEST_F(Client, ReadUntil) {
   boost::asio::io_context ioContext;

@@ -426,9 +426,11 @@ BENCHMARK(BM_RNG_URBG<std::random_device>);
 BENCHMARK_MAIN();
 
 #ifndef NDEBUG
-static struct WarnDebugImpl : boost::noncopyable {
+namespace {
+const struct WarnDebugImpl : boost::noncopyable {
   WarnDebugImpl() {
     std::cerr << "WARNING: NDEBUG is not defined, are you benchmarking a Debug build?" << std::endl;
   }
 } WarnDebug;
+}
 #endif

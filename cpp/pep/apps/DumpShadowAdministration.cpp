@@ -109,7 +109,7 @@ class DumpShadowAdministrationApplication : public pep::Application {
     std::string line;
     std::vector<std::string> splitLine;
     while(std::getline(input, line)) {
-      boost::split(splitLine, line, [](char ch){return ch == ';';});
+      boost::split(splitLine, line, std::bind_front(std::equal_to{}, ';'));
       StoreShortPseudonymShadow(pDB, shadowPublicKey, splitLine[0], splitLine[1]);
     }
 

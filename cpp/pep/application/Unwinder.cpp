@@ -45,6 +45,11 @@ static const std::string LOG_TAG ("Unwinder");
 
 #ifndef _WIN32
 
+#ifdef __clang__
+// Suppress warning about statement expression from libunwind header in unw_tdep_getcontext macro on aarch64
+# pragma GCC diagnostic ignored "-Wgnu-statement-expression-from-macro-expansion"
+#endif
+
 static const char* SignalNumberToString (int dwSignalNumber) {
   switch (dwSignalNumber) {
   case SIGHUP:

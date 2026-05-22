@@ -7,8 +7,6 @@ Changes in upcoming release (1.7):
 
 ---------------
 
-- #2867: Fixed incorrect handling of network connections that fail while they're still being established.
-
 - Added --format option to "pepcli list" command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
 
 - Also print brief local pseudonyms (participant aliases) when using --local-pseudonym flag.
@@ -48,6 +46,8 @@ Changes in upcoming release (1.7):
 
 - #2847: Reduced memory use when using `pepcli store` with (large) files.
 
+- #2877: Key Server now requires a configured BlocklistStoragePath value (was optional).
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
@@ -58,6 +58,8 @@ MANUAL CHANGES REQUIRED:
 Past changes, do not edit (except by person doing release):
 
 Release 1.6 (started 2026-01-28):
+
+- #2867: Fixed incorrect handling of network connections that fail while they're still being established.
 
 - #2771: Manually managed user IDs are now case-insensitive
   - User IDs retain their original casing when stored.
