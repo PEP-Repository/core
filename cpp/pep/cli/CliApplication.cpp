@@ -1,3 +1,4 @@
+#include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/auth/UserGroup.hpp>
@@ -194,7 +195,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       CreateCommandHistory(*this),
       CreateCommandFileExtension(*this),
       CreateCommandToken(*this),
-      CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
+      pep::commandline::CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
       CreateCommandStructureMetadata(*this),
       CreateCommandServer(*this),
   };

@@ -10,7 +10,7 @@ ServerConnection::ServerConnection(std::shared_ptr<Node> node) noexcept
 }
 
 void ServerConnection::handleConnectivityChange(const LifeCycler::StatusChange& change) {
-  if (change.updated == LifeCycler::Status::initialized) {
+  if (change.updated == LifeCycler::Status::Initialized) {
     this->handleConnectivityChange(Connection::Attempt::Result::Success(mConnection));
   } else {
     this->handleConnectivityChange(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Connectivity lost")))); // TODO: get reason from mConnection or "change" parameter
@@ -117,7 +117,7 @@ rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std
   return this->whenConnected<std::string>([message, tail](std::shared_ptr<Connection> connection) {
     return connection->sendRequest(message, tail);
     });
-  
+
 }
 
 rxcpp::observable<FakeVoid> ServerConnection::shutdown() {

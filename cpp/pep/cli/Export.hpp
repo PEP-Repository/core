@@ -24,7 +24,7 @@ protected:
   protected:
     using ChildCommandOf<CommandExport>::ChildCommandOf; // 'inherit' parent constructors
 
-    enum class AllowOverwrite { no, yes };
+    enum class AllowOverwrite { No, Yes };
 
     /// Configuration options that are shared by all formats (child commands)
     struct CommonConfiguration final {

@@ -393,13 +393,13 @@ struct SessionVerifiersRecord {
   SessionVerifiersRecord() = default;
   SessionVerifiersRecord(
     std::vector<char> certificateHash,
-    Timestamp expiryTimestamp,
+    Timestamp expirationTimestamp,
     std::string pseudonymizationDomain,
     const CurvePoint& rekeyCommitment,
     const CurvePoint& reshuffleOverRekeyCommitment,
     const ElgamalPublicKey& rekeyedPublicKey)
     : certificateHash(std::move(certificateHash)),
-      expiryTimestamp{TicksSinceEpoch<milliseconds>(expiryTimestamp)},
+      expirationTimestamp{TicksSinceEpoch<milliseconds>(expirationTimestamp)},
       pseudonymizationDomain(std::move(pseudonymizationDomain)),
       rekeyCommitment(RangeToVector(rekeyCommitment.pack())),
       reshuffleOverRekeyCommitment(RangeToVector(reshuffleOverRekeyCommitment.pack())),
@@ -407,7 +407,7 @@ struct SessionVerifiersRecord {
 
   std::vector<char> certificateHash; // Primary key
 
-  database::UnixMillis expiryTimestamp{};
+  database::UnixMillis expirationTimestamp{};
   std::string pseudonymizationDomain; // Refers to PseudonymizationDomainVerifiersRecord
   DbCurvePoint
     rekeyCommitment,
@@ -553,7 +553,7 @@ auto ts_create_db(const std::string& path) {
     make_table("SessionVerifiers",
       make_column("certificateHash", &SessionVerifiersRecord::certificateHash,
         primary_key()),
-      make_column("expiryTimestamp", &SessionVerifiersRecord::expiryTimestamp),
+      make_column("expirationTimestamp", &SessionVerifiersRecord::expirationTimestamp),
       make_column("pseudonymizationDomain", &SessionVerifiersRecord::pseudonymizationDomain),
       make_column("rekeyCommitment", &SessionVerifiersRecord::rekeyCommitment),
       make_column("reshuffleOverRekeyCommitment", &SessionVerifiersRecord::reshuffleOverRekeyCommitment),
@@ -703,10 +703,12 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
 
 void TranscryptorStorage::migrate() {
   std::optional<int64_t> version = getCurrentVersion();
+  const auto prevVersion = version;
 
   if (!version || version == 1) {
     try {
       migrate_from_v1_to_v2();
+      version = 2;
     } catch (...) {
       LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
         " to version 2 failed.";
@@ -715,9 +717,12 @@ void TranscryptorStorage::migrate() {
     LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
   }
 
-  assert(version == 2 && "Unexpected version returned from getCurrentVersion");
-  LOG(LOG_TAG, warning) << "The database structure changed, but a migration from version " << *version
-    << " is not necessary";
+  // [Add future migrations here]
+
+  assert(version == MigrationRecord::TargetVersion && "Unexpected version returned from getCurrentVersion");
+  if (version == prevVersion) {
+    LOG(LOG_TAG, warning) << "The database structure changed, but a migration is not necessary";
+  }
 }
 
 
@@ -763,7 +768,7 @@ void TranscryptorStorage::removeOutdatedRecords() {
   auto now = TimeNow();
   database::UnixMillis nowMillis = TicksSinceEpoch<milliseconds>(now);
   // Remove outdated session verifiers
-  mStorage->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expiryTimestamp) <= nowMillis));
+  mStorage->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expirationTimestamp) <= nowMillis));
 }
 
 void TranscryptorStorage::computeChecksum(const std::string& chain,

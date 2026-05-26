@@ -69,7 +69,7 @@ void CastorClient::shutdown() {
 }
 
 void CastorClient::start() {
-  if (this->status() > Status::initialized || mHttp == nullptr) {
+  if (this->status() > Status::Initialized || mHttp == nullptr) {
     throw std::runtime_error("Can't (re)start a finalized Castor client");
   }
   mHttp->start();

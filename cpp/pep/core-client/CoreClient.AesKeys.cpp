@@ -75,7 +75,7 @@ CoreClient::unblindAndDecryptKeys(
       auto action = ctx->wg->add(
           "unblindKeys offset " + std::to_string(offset));
       auto req_index = i;
-      accessManagerProxy->requestEncryptionKey(std::move(ctx->reqs[i]))
+      getAccessManagerProxy(true)->requestEncryptionKey(std::move(ctx->reqs[i]))
       .last().subscribe([action, offset, ctx, req_index](
           EncryptionKeyResponse resp) {
         if (!ctx->ok)
@@ -144,7 +144,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
     auto [offset, keyRequest] = std::move(pair);
     const size_t count = keyRequest.mEntries.size();
-    return accessManagerProxy->requestEncryptionKey(std::move(keyRequest))
+    return getAccessManagerProxy(true)->requestEncryptionKey(std::move(keyRequest))
       .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {

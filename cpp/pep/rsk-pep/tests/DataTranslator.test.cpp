@@ -84,6 +84,7 @@ protected:
     ASSERT_NE(translated1, blinded);
     const auto translated2 = ts->translateStep(translated1, user1);
     ASSERT_NE(translated2, translated1);
+    EXPECT_NE(translated2, encrypted) << "Encryption should be rerandomized";
 
     const auto sk1 = am->generateKeyComponent(user1) * ts->generateKeyComponent(user1);
     ASSERT_NE(sk1, CurveScalar{});

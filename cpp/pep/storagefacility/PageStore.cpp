@@ -29,7 +29,7 @@ static const std::string LOG_TAG ("PageStore");
 namespace pep
 {
 
-
+namespace {
   class S3PageStore
     : public PageStore,
       public std::enable_shared_from_this<S3PageStore>
@@ -598,26 +598,29 @@ namespace pep
       }).as_dynamic();
   }
 
+}
 
-  std::shared_ptr<PageStore> PageStore::Create(
-      std::shared_ptr<boost::asio::io_context> io_context,
-      std::shared_ptr<prometheus::Registry> metrics_registry,
-      const Configuration& config)
-  {
-    auto s3Config = config.get_child_optional("S3");
-    auto localConfig = config.get_child_optional("Local");
 
-    if (s3Config && localConfig) {
-      return DualPageStore::Create(io_context, metrics_registry, *s3Config, *localConfig);
-    }
-    if (s3Config) {
-      return S3PageStore::Create(io_context, metrics_registry, *s3Config);
-    }
-    if (localConfig) {
-      return LocalPageStore::Create(io_context, *localConfig);
-    }
+std::shared_ptr<PageStore> PageStore::Create(
+    std::shared_ptr<boost::asio::io_context> io_context,
+    std::shared_ptr<prometheus::Registry> metrics_registry,
+    const Configuration& config)
+{
+  auto s3Config = config.get_child_optional("S3");
+  auto localConfig = config.get_child_optional("Local");
 
-    throw std::runtime_error("Configuration error: no page store implementation specified");
+  if (s3Config && localConfig) {
+    return DualPageStore::Create(io_context, metrics_registry, *s3Config, *localConfig);
   }
+  if (s3Config) {
+    return S3PageStore::Create(io_context, metrics_registry, *s3Config);
+  }
+  if (localConfig) {
+    return LocalPageStore::Create(io_context, *localConfig);
+  }
+
+  throw std::runtime_error("Configuration error: no page store implementation specified");
+}
+
 }
 

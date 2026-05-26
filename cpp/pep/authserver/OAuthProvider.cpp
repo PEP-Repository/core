@@ -293,7 +293,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 #endif //ENABLE_OAUTH_TEST_USERS
 
   std::vector<std::string> alternativeUids;
-  boost::split(alternativeUids, alternativeUidsString, boost::is_any_of(","));
+  boost::split(alternativeUids, alternativeUidsString, std::bind_front(std::equal_to{}, ','));
   // Decode (double-)encoded list values
   for (auto& val : alternativeUids) { val = boost::urls::pct_string_view(val).decode(); }
   alternativeUids.push_back(humanReadableUid);

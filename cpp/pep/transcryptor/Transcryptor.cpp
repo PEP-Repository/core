@@ -167,7 +167,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   };
   auto ctx = MakeSharedCopy(Context{
     .requestNumber = requestNumber,
-    .modes = std::move(userRequest.mModes),
+    .modes = userRequest.mModes,
     .includeUserGroupPseudonyms = userRequest.mIncludeUserGroupPseudonyms,
     .ticketRequest = std::move(request->mRequest),
     .userRecipient = userRequest.mIncludeUserGroupPseudonyms
@@ -215,7 +215,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
           throw Error("AccessGroup pseudonym missing "
             "even though includeAccessGroupPseudonyms is set");
         if (!entry.mUserGroupProof)
-          throw Error("AccessGroup ReshuffleRekeyProof missing "
+          throw Error("AccessGroup RskProof missing "
             "even though includeAccessGroupPseudonyms is set");
       }
       else {
@@ -223,7 +223,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
           throw Error("AccessGroup pseudonym set even though "
             "includeAccessGroupPseudonyms is not set");
         if (entry.mUserGroupProof)
-          throw Error("AccessGroup ReshuffleRekeyProof set even though "
+          throw Error("AccessGroup RskProof set even though "
             "includeAccessGroupPseudonyms is not set");
       }
 
