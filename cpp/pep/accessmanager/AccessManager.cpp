@@ -939,7 +939,7 @@ messaging::MessageBatches AccessManager::
   assert(getStoragePath().has_value());
   backend->ensureNoUserData();
   auto tmpUserDbMigrationPath = getStoragePath().value() / pep::filesystem::RandomizedName("AuthserverStorage-%%%%%%.sqlite");
-  LOG(LOG_TAG, info) << "Received MigrateUserDbToAccessManagerRequest. Storing authserver storage as " << tmpUserDbMigrationPath;
+  LOG(LOG_TAG, info) << "Received MigrateUserDbToAccessManagerRequest. Storing authserver storage as \"" << tmpUserDbMigrationPath.string() << '"';
 
   return chunksObservable.reduce(
     MakeStreamWithDeferredCleanup(tmpUserDbMigrationPath),
