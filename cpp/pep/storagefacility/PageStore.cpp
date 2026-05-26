@@ -441,7 +441,7 @@ namespace {
           try {
             *result = ReadFile(fullpath);
           } catch(...) {
-            LOG(LOG_TAG, error) << "could not read from \"" << fullpath.string()) << '"';
+            LOG(LOG_TAG, error) << "could not read from \"" << fullpath.string() << '"';
             throw;
           }
           s.on_next(result);
@@ -468,7 +468,7 @@ namespace {
           std::filesystem::create_directories(fullpath.parent_path());
           WriteFile(fullpath, *page);
         } catch (...) {
-          LOG(LOG_TAG, error) << "could not write to \"" << fullpath.string()) << '"';
+          LOG(LOG_TAG, error) << "could not write to \"" << fullpath.string() << '"';
           throw;
         }
         s.on_next(s3::ETag(*page));
