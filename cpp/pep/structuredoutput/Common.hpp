@@ -47,6 +47,8 @@ struct JsonConfig final {
   WhitespaceFormat wsformat = WhitespaceFormat::TwoSpaces;
 };
 
+using FormatConfig = std::variant<YamlConfig, JsonConfig>;
+
 template<typename FlagsEnum>
 struct QueryDisplayConfig final {
   using Flags = FlagsEnum;
@@ -54,10 +56,14 @@ struct QueryDisplayConfig final {
   Flags flags = Flags::All;
   bool useDescriptiveKeys = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("display-id") for all fields
   
-  std::variant<YamlConfig, JsonConfig> formatConfig = YamlConfig{};
+  FormatConfig formatConfig = YamlConfig{};
   
   Format format() const {
-    return std::holds_alternative<YamlConfig>(formatConfig) ? Format::Yaml : Format::Json;
+    return std::visit(
+      pep::variant_utils::Overloaded{
+          [](YamlConfig) { return Format::Yaml; },
+          [](JsonConfig) { return Format::Json; }},
+      formatConfig);
   }
 };
 

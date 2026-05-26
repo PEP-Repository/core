@@ -425,46 +425,33 @@ private:
 
     static pep::structuredOutput::QueryDisplayConfig<pep::structuredOutput::AmaQueryFlags> extractConfig(const pep::commandline::NamedValues& values) {
       namespace so = pep::structuredOutput;
-
-      const auto includedTypes = values.getOptionalMultiple<std::string>("include");
-
+      using namespace pep::enumUtils;
       using Flags = so::AmaQueryFlags;
-      using pep::enumUtils::operator|;
+      using FormatConfig = decltype(so::QueryDisplayConfig<so::UserQueryFlags>::formatConfig);
 
-      so::QueryDisplayConfig<so::AmaQueryFlags> displayConfig;
-      if (includedTypes.empty()) {
-        // No include filter: print everything
-        displayConfig.flags = Flags::All;
-      } else {
-        displayConfig.flags = Flags::None;
-        for (const auto& type : includedTypes) {
-          if (type == so::queryKeys::columns.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintColumns;
-          } else if (type == so::queryKeys::columnGroups.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintColumnGroups;
-          } else if (type == so::queryKeys::columnGroupAccessRules.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintColumnGroupAccessRules;
-          } else if (type == so::queryKeys::participantGroups.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintParticipantGroups;
-          } else if (type == so::queryKeys::participantGroupAccessRules.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintParticipantGroupAccessRules;
-          }
-        }
-      }
+      const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
+        return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
+      };
+      const auto format = values.get<std::string>("format");
 
-    const auto format = values.get<std::string>("format");
-
-    if (format == "json-compact") {
-      displayConfig.useDescriptiveKeys = false;
-      displayConfig.formatConfig = so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
-    } else if (format == "json") {
-      displayConfig.useDescriptiveKeys = false;
-      displayConfig.formatConfig = so::JsonConfig{};
-    } else {
-      displayConfig.useDescriptiveKeys = true;
-      displayConfig.formatConfig = so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
-    }
-    return displayConfig;
+      return {
+        .flags =
+            FlagsIf(Flags::PrintColumns, isIncluded(so::queryKeys::columns)) |
+            FlagsIf(Flags::PrintColumnGroups, isIncluded(so::queryKeys::columnGroups)) |
+            FlagsIf(Flags::PrintColumnGroupAccessRules, isIncluded(so::queryKeys::columnGroupAccessRules)) |
+            FlagsIf(Flags::PrintParticipantGroups, isIncluded(so::queryKeys::participantGroups)) |
+            FlagsIf(Flags::PrintParticipantGroupAccessRules, isIncluded(so::queryKeys::participantGroupAccessRules)),
+        .useDescriptiveKeys = (format == "yaml"),
+        .formatConfig = [&format] () -> FormatConfig {
+            if (format == "json") {
+              return so::JsonConfig{};
+            } else if (format == "json-compact") {
+              return so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
+            } else {
+              return so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
+            }
+        }(),
+      };
     }
 
     static pep::AmaQuery extractQuery(const pep::commandline::NamedValues& values) {
