@@ -170,7 +170,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   };
   auto ctx = MakeSharedCopy(Context{
     .requestNumber = requestNumber,
-    .modes = std::move(userRequest.mModes),
+    .modes = userRequest.mModes,
     .includeUserGroupPseudonyms = userRequest.mIncludeUserGroupPseudonyms,
     .ticketRequest = std::move(request->mRequest),
     .userRecipient = userRequest.mIncludeUserGroupPseudonyms
