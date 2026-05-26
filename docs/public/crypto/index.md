@@ -216,4 +216,4 @@ Note that $rB$ and $rxB$ to verify proof 3 are attached with the proof.
 
 ### In PEP
 
-In PEP, the Access Manager proves to the Transcryptor that it performed the SKs correctly: with consistent factors, starting at the same polymorphic pseudonym. The Transcryptor can then [log](https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/) the consistent set of pseudonyms for auditing.
+In PEP, the Access Manager proves to the Transcryptor that it performed the RSKs correctly: with consistent factors, starting at the same polymorphic pseudonym. The Transcryptor can then [log](https://docs.pages.pep.cs.ru.nl/private/ops/main/technical_design/design-logger/) the consistent set of pseudonyms for auditing.

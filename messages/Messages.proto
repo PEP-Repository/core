@@ -464,8 +464,7 @@ message SignedChecksumChainRequest {
 }
 message ChecksumChainRequest {
   string name = 1;
-  /* optional */
-  bytes checkpoint = 2;
+  bytes checkpoint = 2; // optional
 }
 message ChecksumChainResponse {
   bytes checkpoint = 1; // The last checkpoint included in the XOR
