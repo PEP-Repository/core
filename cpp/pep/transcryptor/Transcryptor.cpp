@@ -87,10 +87,10 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
   try {
     setVerifiers(
       Serialization::FromJsonString<ServerVerifiers>(ReadFile(verifiersFile)));
-    } catch (...) {
-      LOG(LOG_TAG, error) << "Failed to load verifiers from " << verifiersFile;
-      throw;
-    }
+  } catch (...) {
+    LOG(LOG_TAG, error) << "Failed to load verifiers from " << verifiersFile;
+    throw;
+  }
 }
 
 void Transcryptor::Parameters::setStorage(std::shared_ptr<TranscryptorStorage> storage) {
