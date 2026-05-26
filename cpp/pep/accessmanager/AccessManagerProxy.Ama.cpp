@@ -1,7 +1,8 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxRequireCount.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
+
+#include <rxcpp/operators/rx-flat_map.hpp>
 #include <utility>
 
 namespace pep {
@@ -151,11 +152,12 @@ AccessManagerProxy::amaRemoveGroupAccessRule(std::string group,
 
 rxcpp::observable<AmaQueryResponse>
 AccessManagerProxy::amaQuery(AmaQuery query) const {
+  auto received = MakeSharedCopy(false);
   return this->sendRequest<AmaQueryResponse>(this->sign(std::move(query)))
-    .op(pep::RxRequireNonEmpty()) // Ensure we don't return an AmaQueryResponse if we didn't receive one from AM
     .reduce( // Concatenate all parts into a single AmaQueryResponse instance
       std::make_shared<AmaQueryResponse>(),
-      [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
+      [received](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
+        *received = true;
         AppendVector(all->mColumns, part.mColumns);
         AppendAndSquashVector(all->mColumnGroups, part.mColumnGroups);
         AppendVector(all->mColumnGroupAccessRules, part.mColumnGroupAccessRules);
@@ -164,7 +166,14 @@ AccessManagerProxy::amaQuery(AmaQuery query) const {
         return all;
       }
     )
-    .map([](std::shared_ptr<AmaQueryResponse> response) {return *response; }); // Return a plain AmaQueryResponse instead of a shared_ptr
+    .flat_map([received](std::shared_ptr<AmaQueryResponse> recomposed) -> rxcpp::observable<AmaQueryResponse> {
+        if (received) {
+          return rxcpp::observable<>::just(*recomposed); // Return a plain AmaQueryResponse instead of a shared_ptr
+        }
+        else {
+          return rxcpp::observable<>::empty<AmaQueryResponse>(); // Don't emit an AmaQueryResponse instance if we didn't receive one from AM
+        }
+      });
 }
 
 
