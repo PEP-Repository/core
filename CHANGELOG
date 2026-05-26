@@ -54,14 +54,8 @@ MANUAL CHANGES REQUIRED:
   Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
 - #2801:
   - Copy `PublicKeyPseudonyms` and `AccessManager` entries from `AccessManager.json` config over to `Transcryptor.json`
-  - Update `Verifiers.json`:
-    - Rename `zOverKb` → `reshuffleOverRekeyCommitment`, `zb` → `reshuffleCommitment`, `ky` → `rekeyedPublicKey`:
-      ```shell
-      sed -e s/zOverKb/reshuffleOverRekeyCommitment/g -e s/zb/reshuffleCommitment/g -e s/ky/rekeyedPublicKey/g -i'' ./Verifiers.json
-      ```
-    - Execute `pepcli verifiers` and save as e.g. `Verifiers2.json`
-    - Diff `Verifiers.json` and `Verifiers2.json` and make sure that the only think that changed was the addition of `rekeyCommitment`
-    - Replace the contents of `Verifiers.json` by those of `Verifiers2.json`
+  - Update `Verifiers.json` for the Transcryptor: Run `./scripts/update-verifiers-1-7.sh /path/to/Verifiers.json`
+    - Make sure that you have `pepcli` in your PATH for the current environment, or pass the binary to use as extra argument to the script
 
 ---------------
 
