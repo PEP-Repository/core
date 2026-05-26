@@ -5,6 +5,8 @@
 #include <variant>
 #include <cstddef>
 
+#include <pep/utils/VariantUtils.hpp>
+
 namespace pep::structuredOutput {
 
 enum class WhitespaceFormat {
