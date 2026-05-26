@@ -1,6 +1,7 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/messaging/BinaryProtocol.hpp>
 #include <pep/messaging/ServerConnection.hpp>
+#include <pep/utils/MiscUtil.hpp>
 
 namespace pep::messaging {
 
@@ -51,8 +52,20 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
       }
       });
 
-    for (const auto& request: std::move(mPendingRequests)) {
-      mConnection->sendRequest(request.message, request.tail).subscribe(request.subscriber);
+    // Send pending requests now
+    auto send = std::exchange(mPendingRequests, Default<decltype(mPendingRequests)>);
+    for (const auto& request: send) {
+      rxcpp::observable<std::string> obs;
+      try {
+        obs = mConnection->sendRequest(request.message, request.tail);
+      }
+      catch (...) { // Notify subscriber that request can't be sent
+        request.subscriber.on_error(std::current_exception());
+        continue; // ... then continue with the next pending request
+      }
+
+      // Request has been scheduled onto the mConnection: hook up the subscriber
+      obs.subscribe(request.subscriber);
     }
   }
 }
