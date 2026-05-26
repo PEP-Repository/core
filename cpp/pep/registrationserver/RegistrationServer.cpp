@@ -70,7 +70,7 @@ rxcpp::observable<std::shared_ptr<castor::Study>> LoadCastorStudies(rxcpp::obser
       }
 
       // At this point, we know that this is the first (and perhaps only) SP definition referencing this study (slug). Set default site now and include the study in the result.
-      study->setDefaultSiteByAbbreviation(abbrev);
+      study->setDefaultSiteAbbreviation(abbrev);
       abbrevsBySlug->emplace(std::make_pair(slug, abbrev));
       return study;
     })
