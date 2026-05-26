@@ -13,7 +13,6 @@ namespace {
 class TranscryptorStorageTest : public ::testing::Test {
 public:
   static std::optional<TranscryptorStorage> storage;
-  const std::filesystem::path databasePath{":memory:"};
 
   // Create a new TranscryptorStorage with a clean database
   void SetUp() override {
