@@ -1536,10 +1536,11 @@ void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(int64_t intern
         *currentPrimaryIdentifier,
         FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == *currentPrimaryIdentifier)));
   }
+  UserIdFlags flags = UserIdFlags::IsPrimaryId | FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid);
   mImplementor->raw.insert(UserIdRecord(
       internalUserId,
       std::move(uid),
-      UserIdFlags::IsPrimaryId | FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid)));
+      flags));
   transactionGuard.commit();
 }
 
@@ -1584,10 +1585,11 @@ void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t intern
         *currentDisplayIdentifier,
         FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == *currentDisplayIdentifier)));
   }
+  UserIdFlags flags = UserIdFlags::IsDisplayId | FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == uid);
   mImplementor->raw.insert(UserIdRecord(
       internalUserId,
       std::move(uid),
-      UserIdFlags::IsDisplayId | FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == uid)));
+      flags));
   transactionGuard.commit();
 }
 

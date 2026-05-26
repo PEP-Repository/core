@@ -56,8 +56,9 @@ using namespace std::literals;
 
 namespace pep {
 
-static const std::string LOG_TAG("EGCache");
+namespace {
 
+const std::string LOG_TAG("EGCache");
 
 class EGCacheImp
   : public StaticSingleton<EGCacheImp>, public EGCache,
@@ -375,6 +376,8 @@ private:
 
   using StaticSingleton<EGCacheImp>::Instance;
 };
+
+}
 
 EGCache& EGCache::get() {
   return EGCacheImp::Instance();

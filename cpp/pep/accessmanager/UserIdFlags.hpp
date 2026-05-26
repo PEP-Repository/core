@@ -12,6 +12,6 @@ enum class PEP_ATTRIBUTE_FLAG_ENUM UserIdFlags {
   All = 0b11,
 };
 
-PEP_MARK_AS_FLAG_ENUM_TYPE(UserIdFlags)
-
 }
+
+PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::UserIdFlags)

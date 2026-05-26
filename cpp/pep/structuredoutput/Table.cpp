@@ -16,6 +16,7 @@ Table::RecordRef Table::emplace_back(std::vector<std::string> record) {
   mData.insert(mData.end(), std::make_move_iterator(record.begin()), std::make_move_iterator(record.end()));
 
   const auto lastRecordBegin = mData.end() - static_cast<std::ptrdiff_t>(mRecordSize);
+  //NOLINTNEXTLINE(bugprone-dangling-handle) Caller should be careful to not access after Table destruction or modification
   return {lastRecordBegin, mData.end()};
 }
 

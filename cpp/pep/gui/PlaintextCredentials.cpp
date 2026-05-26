@@ -101,7 +101,7 @@ void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
 
   // But if our mUserName contains a "domain\username" specification, split them for the call to CreateProcessWithLogonW (below)
   std::vector<std::wstring> parts;
-  boost::split(parts, std::wstring(mUserName.getAddress()), boost::is_any_of(L"\\"));
+  boost::split(parts, std::wstring(mUserName.getAddress()), std::bind_front(std::equal_to{}, L'\\'));
 
   switch (parts.size()) {
   case 0: // Empty user name: pass as specified. Presumably the call to CreateProcessWithLogonW will return an error.

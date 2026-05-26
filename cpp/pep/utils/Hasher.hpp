@@ -35,7 +35,7 @@ public:
     return this->finish();
   }
 
-  Hasher& update(const void* block, size_t size) {
+  Hasher& update(const void* block, size_t size) { //NOLINT(bugprone-derived-method-shadowing-base-method) Does the same thing
     HasherBase::update(block, size);
     return *this;
   }
@@ -44,7 +44,7 @@ public:
     return this->update(data.data(), data.size());
   }
 
-  Hasher& update(std::istream& source) {
+  Hasher& update(std::istream& source) { //NOLINT(bugprone-derived-method-shadowing-base-method) Does the same thing
     HasherBase::update(source);
     return *this;
   }
