@@ -1,5 +1,6 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/async/CreateObservable.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
