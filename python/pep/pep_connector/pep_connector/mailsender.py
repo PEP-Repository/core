@@ -490,9 +490,6 @@ class MailSender(Connector):
         Args:
             message: The email message to send
             email_config: EmailConfig instance with SMTP settings and authentication
-
-        Raises:
-            Exception: If email sending fails after all retries
         """
         last_exception = None
         for attempt in range(email_config.max_retries + 1):
@@ -523,6 +520,19 @@ class MailSender(Connector):
 
                 # If we get here, email was sent successfully
                 break
+
+            except (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected) as e:
+                # Connection errors - retry with exponential backoff
+                last_exception = e
+                if attempt < email_config.max_retries:
+                    wait_time = email_config.retry_delay * (2 ** attempt)
+                    self.log(f"Connection error: {str(e)}. Retrying in {wait_time} seconds (attempt {attempt + 1}/{email_config.max_retries})...", 
+                            level=logging.WARNING, tag=self.LOG_TAG)
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    self.log(f"Connection error: {str(e)}. Max retries exhausted.", level=logging.ERROR, tag=self.LOG_TAG)
+                    raise
 
             except smtplib.SMTPResponseException as e:
                 last_exception = e
@@ -1540,15 +1550,21 @@ class MailSender(Connector):
                          level=logging.INFO, tag=self.LOG_TAG)
 
                 # Send the survey email
-                self.send_email(recipient_email=recipient_email,
-                                subject=config.email_subject,
-                                email_config=config.email,
-                                template=config.email_template,
-                                template_vars=template_vars,
-                                attachments=subject_attachments,
-                                footer_image=config.footer_image,
-                                use_html=True,
-                                is_reminder=is_reminder)
+                try:
+                    self.send_email(recipient_email=recipient_email,
+                                    subject=config.email_subject,
+                                    email_config=config.email,
+                                    template=config.email_template,
+                                    template_vars=template_vars,
+                                    attachments=subject_attachments,
+                                    footer_image=config.footer_image,
+                                    use_html=True,
+                                    is_reminder=is_reminder)
+                except (smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused, smtplib.SMTPDataError) as e:
+                    # Skip entire participant if email is invalid/refused
+                    stats.increment('skipped_count')
+                    self.log(f"{log_prefix}Skipping participant due to email error: {str(e)}",level=logging.ERROR, tag=self.LOG_TAG)
+                    break
 
                 # Record the email send for this specific survey
                 self.record_email_send(short_pseudonym=short_pseudonym,
