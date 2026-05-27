@@ -2,8 +2,7 @@
   stage: publish
   allow_failure: true
   rules:
-    # Only on development branch
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    - if: '$CI_COMMIT_REF_NAME =~ $PEP_FOSS_PUBLISHED_BRANCH_PATTERN'
       when: always
     - when: never
   tags:
@@ -24,12 +23,12 @@ push-published-branch-to-github:
     - set -eu
 
     # Fetch the target branch at the start so that the final `git push --force-with-lease` fails if it changed
-    - git fetch github "${PEP_FOSS_PUBLISHED_BRANCH}"
+    - git fetch github "${CI_COMMIT_REF_NAME}"
     # Make sure the local version of the published branch is up to date
     - |
-      git branch -D "${PEP_FOSS_PUBLISHED_BRANCH}" 2>/dev/null || true
-      git fetch --unshallow gitlab "${PEP_FOSS_PUBLISHED_BRANCH}"
-      git checkout -b "${PEP_FOSS_PUBLISHED_BRANCH}" "gitlab/${PEP_FOSS_PUBLISHED_BRANCH}"
+      git branch -D "${CI_COMMIT_REF_NAME}" 2>/dev/null || true
+      git fetch --unshallow gitlab "${CI_COMMIT_REF_NAME}"
+      git checkout -b "${CI_COMMIT_REF_NAME}" "gitlab/${CI_COMMIT_REF_NAME}"
 
     - |
       echo 'Root commits:'
