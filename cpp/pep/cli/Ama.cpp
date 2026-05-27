@@ -427,7 +427,7 @@ private:
       namespace so = pep::structuredOutput;
       using namespace pep::enumUtils;
       using Flags = so::AmaQueryFlags;
-      using FormatConfig = decltype(so::QueryDisplayConfig<so::UserQueryFlags>::formatConfig);
+      using FormatConfig = decltype(so::QueryDisplayConfig<so::AmaQueryFlags>::formatConfig);
 
       const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
         return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
