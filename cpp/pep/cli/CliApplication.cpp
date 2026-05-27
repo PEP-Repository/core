@@ -207,7 +207,7 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
   int result{ -1 };
 
   auto stopEventLoop = [this, &result, invoked = MakeSharedCopy(false)](std::exception_ptr exception) {
-    severity_level severity;
+    severity_level severity{};
     if (!*invoked) { // First invocation: determine the application's (output and) exit code
       *invoked = true;
       severity = pep::error;
