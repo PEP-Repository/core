@@ -406,7 +406,7 @@ private:
       return ChildCommandOf<CommandAma>::getSupportedParameters()
         + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
           .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
-          .noLongerSupported("The --script-print option is no longer supported. Use --include and --format options instead.")
+          .noLongerSupported("Use --include and --format options instead.")
         + pep::commandline::Parameter("include", "Prints only specified type of data (can be repeated).")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({columnsOpt, columnGroupsOpt, columnGroupAccessRulesOpt, participantGroupsOpt, participantGroupAccessRulesOpt})).multiple())
         + pep::commandline::Parameter("format", "The format of the output.")

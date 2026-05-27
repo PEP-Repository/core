@@ -26,7 +26,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
   return ChildCommandOf<CommandUser>::getSupportedParameters()
        + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"all-user-group", "all-user", "groups-per-user"})))
-              .noLongerSupported("The --script-print option is no longer supported. Use --include and --format options instead.")
+              .noLongerSupported("Use --include and --format options instead.")
        + pep::commandline::Parameter("include", "Prints only specified type of data.")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({userGroupsOpt,
                                                                                            usersOpt,
