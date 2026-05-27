@@ -457,7 +457,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
         + backupPath.string() + " already exists. An upgrade was apparently already attempted, but failed. Manual correction is required.");
     }
     std::filesystem::copy_file(this->mStoragePath, backupPath);
-    LOG(LOG_TAG, info) << "Backed up storage to " << backupPath << ". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
+    LOG(LOG_TAG, info) << "Backed up storage to \"" << backupPath.string() << "\". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
     auto transactionGuard = mImplementor->raw.transaction_guard();
     for (auto record : mImplementor->raw.iterate<SelectStarPseudonymRecord>()) {
       CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(SpanToString(record.localPseudonym));
@@ -1536,10 +1536,11 @@ void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(int64_t intern
         *currentPrimaryIdentifier,
         FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == *currentPrimaryIdentifier)));
   }
+  UserIdFlags flags = UserIdFlags::IsPrimaryId | FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid);
   mImplementor->raw.insert(UserIdRecord(
       internalUserId,
       std::move(uid),
-      UserIdFlags::IsPrimaryId | FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid)));
+      flags));
   transactionGuard.commit();
 }
 
@@ -1584,10 +1585,11 @@ void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t intern
         *currentDisplayIdentifier,
         FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == *currentDisplayIdentifier)));
   }
+  UserIdFlags flags = UserIdFlags::IsDisplayId | FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == uid);
   mImplementor->raw.insert(UserIdRecord(
       internalUserId,
       std::move(uid),
-      UserIdFlags::IsDisplayId | FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == uid)));
+      flags));
   transactionGuard.commit();
 }
 

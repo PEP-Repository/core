@@ -75,6 +75,8 @@ else
   MACOS_CMAKE_BUILD_PRESET=$MACOS_CMAKE_CONFIGURE_PRESET
 fi
 
+BUILD_TYPE_DIR="${LOCAL_BUILD_TYPE:-.}"
+
 # Apparently conan scripts use unset variables, so temporarily disable check for this
 set +u
 # Add macdeployqt, cmake etc. to PATH
@@ -84,6 +86,7 @@ set +u
 set -u
 
 ENABLE_DEPRECATION_ERRORS="${ENABLE_DEPRECATION_ERRORS:-true}"
+BUILD_GO_SERVERS="${BUILD_GO_SERVERS:-OFF}"
 
 cmake -S "$PEP_MACOS_ROOT_DIR" --preset "$MACOS_CMAKE_CONFIGURE_PRESET" \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -91,8 +94,6 @@ cmake -S "$PEP_MACOS_ROOT_DIR" --preset "$MACOS_CMAKE_CONFIGURE_PRESET" \
   -DBUILD_GO_SERVERS="$BUILD_GO_SERVERS" \
   -DENABLE_OAUTH_TEST_USERS=OFF \
   -DDEPRECATED_WARNINGS_AS_ERROR="$ENABLE_DEPRECATION_ERRORS"
-
-BUILD_TYPE_DIR="${LOCAL_BUILD_TYPE:-.}"
 
 echo "Removing old macOS_artifacts folder."
 rm -rf "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts"

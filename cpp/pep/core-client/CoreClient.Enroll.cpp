@@ -30,14 +30,14 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
   LOG(LOG_TAG, debug) << "Completing enrollment...";
   // Construct key component request for Access Manager and Transcryptor
   // Send request to access manager
-  return accessManagerProxy->requestKeyComponent(ctx->keyComponentRequest)
+  return getAccessManagerProxy(true)->requestKeyComponent(ctx->keyComponentRequest)
     .flat_map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context
       ctx->pseudonymEncryptionKeyComponentAM = lpResponse.mPseudonymEncryptionKeyComponent;
       ctx->dataEncryptionKeyComponentAM = lpResponse.mDataEncryptionKeyComponent;
 
       // Send request to Transcryptor
-        return transcryptorProxy->requestKeyComponent(ctx->keyComponentRequest);
+        return getTranscryptorProxy(true)->requestKeyComponent(ctx->keyComponentRequest);
     })
     .map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context

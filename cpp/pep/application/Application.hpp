@@ -69,6 +69,9 @@ class Application : public commandline::Command {
 
   int run(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 
+  bool mInitializeLoggingOnceFlag = false;  ///< Tracks if initializeLoggingOnce was called
+  void initializeLoggingOnce();
+
   std::filesystem::path rawConfigDirectory() const;
   std::optional<std::filesystem::path> rawConfigFile() const;
   std::filesystem::path getMainConfigPath();
