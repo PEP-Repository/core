@@ -33,8 +33,7 @@ TEST(structuredOutputYaml, StringLiteralEscaping) {
 TEST(structuredOutputYaml, FlatArray) {
   EXPECT_EQ(
       yaml::to_string(
-          Tree::FromJson({"simple string", true, 17, nullptr, json::object(), json::array()}),
-          {.includeArraySizeComments = true}), // we expect no comments here, since a naked list has no header element
+          Tree::FromJson({"simple string", true, 17, nullptr, json::object(), json::array()})),
       "- \"simple string\"\n"
       "- true\n"
       "- 17\n"
@@ -60,8 +59,7 @@ TEST(structuredOutputYaml, FlatMap) {
                {"key 3", 312},
                {"key 4", nullptr},
                {"key 5", json::object()},
-               {"key 6", json::array()}}),
-          {.includeArraySizeComments = true}), // we expect no comments here
+               {"key 6", json::array()}})),
       "key 1: \"string\"\n"
       "key 2: true\n"
       "key 3: 312\n"
@@ -75,8 +73,7 @@ TEST(structuredOutputYaml, ArrayOfObjects) {
       yaml::to_string(
           Tree::FromJson(
               {{{"name", "Alice"}, {"age", 25}, {"is_student", true}},
-               {{"name", "Bob"}, {"age", 30}, {"is_student", false}}}),
-          {.includeArraySizeComments = true}), // we expect no comments here
+               {{"name", "Bob"}, {"age", 30}, {"is_student", false}}})),
       "- name: \"Alice\"\n"
       "  age: 25\n"
       "  is_student: true\n"
@@ -90,7 +87,7 @@ TEST(structuredOutputYaml, ObjectOfArrays) {
       {{"fruits", {"apple", "banana", "cherry"}}, {"numbers", {33, 22, 11}}, {"flags", {true, false, true}}});
 
   EXPECT_EQ(
-      yaml::to_string(tree, {.includeArraySizeComments = true}),
+      yaml::to_string(tree, {.includeArraySizeComments = true, .arrayCountCommentThreshold = 3}),
       "fruits: # item count: 3\n"
       "  - \"apple\"\n"
       "  - \"banana\"\n"
@@ -105,7 +102,7 @@ TEST(structuredOutputYaml, ObjectOfArrays) {
       "  - true\n");
 
   EXPECT_EQ(
-      yaml::to_string(tree, {.includeArraySizeComments = false}),
+      yaml::to_string(tree),
       "fruits:\n"
       "  - \"apple\"\n"
       "  - \"banana\"\n"
@@ -123,8 +120,31 @@ TEST(structuredOutputYaml, ObjectOfArrays) {
 TEST(structuredOutputYaml, NestedArrays) {
   EXPECT_EQ(
       yaml::to_string(
+          Tree::FromJson({{"matrix4x3", {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {4, 4, 4}}}})),
+      "matrix4x3:\n"
+      "  - \n"
+      "    - 1\n"
+      "    - 0\n"
+      "    - 0\n"
+      "  - \n"
+      "    - 0\n"
+      "    - 1\n"
+      "    - 0\n"
+      "  - \n"
+      "    - 0\n"
+      "    - 0\n"
+      "    - 1\n"
+      "  - \n"
+      "    - 4\n"
+      "    - 4\n"
+      "    - 4\n");
+}
+
+TEST(structuredOutputYaml, NestedArraysSizeComments) {
+  EXPECT_EQ(
+      yaml::to_string(
           Tree::FromJson({{"matrix4x3", {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {4, 4, 4}}}}),
-          {.includeArraySizeComments = true}),
+          {.includeArraySizeComments = true, .arrayCountCommentThreshold = 3}),
       "matrix4x3: # item count: 4\n"
       "  - # item count: 3\n"
       "    - 1\n"
@@ -151,7 +171,7 @@ TEST(structuredOutputYaml, MixedTree) {
               {{"list", {1, {2, 3, 2}, 2, 5}},
                {"number", 141},
                {"object", {{"left", {false, true}}, {"right", {{"first", json::array()}, {"second", json::object()}}}}}}),
-          {.includeArraySizeComments = true}),
+          {.includeArraySizeComments = true, .arrayCountCommentThreshold = 2}),
       "list: # item count: 4\n"
       "  - 1\n"
       "  - # item count: 3\n"
@@ -168,6 +188,81 @@ TEST(structuredOutputYaml, MixedTree) {
       "  right:\n"
       "    first: []\n"
       "    second: {}\n");
+}
+
+TEST(structuredOutputYaml, Indentation) {
+  const auto tree = Tree::FromJson(
+      {{"outer", {{"inner", {{"deep", "value"}, {"list", {1, 2, 3}}}}}}});
+
+  // Two spaces (default)
+  EXPECT_EQ(
+      yaml::to_string(tree, {.indentation = pep::structuredOutput::WhitespaceFormat::TwoSpaces}),
+      "outer:\n"
+      "  inner:\n"
+      "    deep: \"value\"\n"
+      "    list:\n"
+      "      - 1\n"
+      "      - 2\n"
+      "      - 3\n");
+
+  // Four spaces
+  EXPECT_EQ(
+      yaml::to_string(tree, {.indentation = pep::structuredOutput::WhitespaceFormat::FourSpaces}),
+      "outer:\n"
+      "    inner:\n"
+      "        deep: \"value\"\n"
+      "        list:\n"
+      "            - 1\n"
+      "            - 2\n"
+      "            - 3\n");
+}
+
+TEST(structuredOutputYaml, EmptyArrayComments) {
+  const auto tree = Tree::FromJson(
+      {{"empty_array", json::array()},
+       {"non_empty", {1, 2}},
+       {"nested", {{"also_empty", json::array()}, {"has_data", {3}}}},
+       {"matrix", {{1, 2}, json::array(), {3, 4}}}});
+
+  // With empty array comments enabled
+  EXPECT_EQ(
+      yaml::to_string(tree, {.includeArraySizeComments = true, .arrayCountCommentThreshold = 2, .includeEmptyArrayComments = true}),
+      "empty_array: [] # item count: 0\n"
+      "non_empty: # item count: 2\n"
+      "  - 1\n"
+      "  - 2\n"
+      "nested:\n"
+      "  also_empty: [] # item count: 0\n"
+      "  has_data:\n"
+      "    - 3\n"
+      "matrix: # item count: 3\n"
+      "  - # item count: 2\n"
+      "    - 1\n"
+      "    - 2\n"
+      "  - [] # item count: 0\n"
+      "  - # item count: 2\n"
+      "    - 3\n"
+      "    - 4\n");
+
+  // With empty array comments disabled
+  EXPECT_EQ(
+      yaml::to_string(tree, {.includeArraySizeComments = true, .arrayCountCommentThreshold = 2}),
+      "empty_array: []\n"
+      "non_empty: # item count: 2\n"
+      "  - 1\n"
+      "  - 2\n"
+      "nested:\n"
+      "  also_empty: []\n"
+      "  has_data:\n"
+      "    - 3\n"
+      "matrix: # item count: 3\n"
+      "  - # item count: 2\n"
+      "    - 1\n"
+      "    - 2\n"
+      "  - []\n"
+      "  - # item count: 2\n"
+      "    - 3\n"
+      "    - 4\n");
 }
 
 } // namespace

@@ -7,17 +7,23 @@
 
 namespace pep::structuredOutput::json {
 
-struct Config final {
-  int indent = 2; ///< Indentation size for JSON output
-};
+constexpr int toIndent(WhitespaceFormat f) {
+    switch (f) {
+        case WhitespaceFormat::Compact: return -1;
+        case WhitespaceFormat::TwoSpaces: return 2;
+        case WhitespaceFormat::FourSpaces: return 4;
+    }
+    assert(false && "Unhandled WhitespaceFormat");
+    return -1;
+}
 
 /// Appends a JSON representation of a tree to a stream
-inline std::ostream& append(std::ostream& stream, const Tree& tree, const Config& config = {}) {
-  return stream << tree.toJson().dump(config.indent);
+inline std::ostream& append(std::ostream& stream, const Tree& tree, const JsonConfig& config = {}) {
+  return stream << tree.rawJson().dump(toIndent(config.wsFormat));
 }
 
 /// Appends a JSON representation of a table to a stream
-inline std::ostream& append(std::ostream& stream, const Table& table, const Config& config = {}) { 
+inline std::ostream& append(std::ostream& stream, const Table& table, const JsonConfig& config = {}) { 
   return append(stream, TreeFromTable(table), config); 
 }
 
