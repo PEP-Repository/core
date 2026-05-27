@@ -148,7 +148,7 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 
 rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
   LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
-  return registrationServerProxy->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
+  return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
 }
 
 rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthToken) {
@@ -170,7 +170,7 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
 
   EnrollmentRequest request(csr, oauthToken);
   LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
-  return keyServerProxy->requestUserEnrollment(std::move(request))
+  return getKeyServerProxy(true)->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
     auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain));
 
@@ -200,8 +200,8 @@ Client::ServerProxies Client::getServerProxies(bool requireAll) const {
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
   return CoreClient::shutdown()
-    .merge(keyServerProxy->shutdown())
-    .merge(registrationServerProxy->shutdown())
+    .merge(keyServerProxy ? keyServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(registrationServerProxy ? registrationServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .merge(authServerProxy ? authServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }

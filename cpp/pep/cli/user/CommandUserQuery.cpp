@@ -1,5 +1,6 @@
 #include <boost/algorithm/string/join.hpp>
 #include <pep/cli/user/CommandUserQuery.hpp>
+#include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
 
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Json.hpp>
@@ -23,6 +24,9 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
   const auto groupsPerUserOpt = std::string{so::queryKeys::groupsPerUser.simple};
 
   return ChildCommandOf<CommandUser>::getSupportedParameters()
+       + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing")
+             .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"all-user-group", "all-user", "groups-per-user"})))
+              .noLongerSupported("Use --include and --format options instead.")
        + pep::commandline::Parameter("include", "Prints only specified type of data.")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({userGroupsOpt,
                                                                                            usersOpt,
@@ -40,7 +44,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
     return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::UserQueryResponse res) {
-      auto tree = so::Tree::FromUserQueryResponse(res, displayConfig);
+      auto tree = so::TreeFrom(res, displayConfig);
       
       if (displayConfig.format() == so::Format::Json) {
         so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;
@@ -63,41 +67,30 @@ int CommandUser::CommandUserQuery::execute() {
 }
 
 so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
+  using FormatConfig = decltype(so::QueryDisplayConfig<so::UserQueryFlags>::formatConfig);
   using Flags = so::UserQueryFlags;
 
-  const auto includedTypes = values.getOptionalMultiple<std::string>("include");
-
-  so::QueryDisplayConfig<so::UserQueryFlags> displayConfig;
-  if (includedTypes.empty()) {
-    // No include filter: print everything
-    displayConfig.flags = Flags::All;
-  } else {
-    displayConfig.flags = Flags::None;
-    for (const auto& type : includedTypes) {
-      if (type == so::queryKeys::userGroups.simple) {
-        displayConfig.flags = displayConfig.flags | Flags::PrintUserGroups;
-      } else if (type == so::queryKeys::users.simple) {
-        displayConfig.flags = displayConfig.flags | Flags::PrintUsers;
-      } else if (type == so::queryKeys::groupsPerUser.simple) {
-        // groupsPerUser is a part of the users list. So when it's requested, we must also print users
-        displayConfig.flags = displayConfig.flags | Flags::PrintUserGroupsForUsers | Flags::PrintUsers;
-      }
-    }
-  }
-
+  const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
+    return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
+  };
   const auto format = values.get<std::string>("format");
 
-  if (format == "json-compact") {
-    displayConfig.useDescriptiveKeys = false;
-    displayConfig.formatConfig = so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
-  } else if (format == "json") {
-    displayConfig.useDescriptiveKeys = false;
-    displayConfig.formatConfig = so::JsonConfig{};
-  } else {
-    displayConfig.useDescriptiveKeys = true;
-    displayConfig.formatConfig = so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
-  }
-  return displayConfig;
+  return {
+    .flags =
+        FlagsIf(Flags::PrintUserGroups, isIncluded(so::queryKeys::userGroups)) |
+        FlagsIf(Flags::PrintUsers, isIncluded(so::queryKeys::users)) |
+        FlagsIf(Flags::PrintUserGroupsForUsers, isIncluded(so::queryKeys::groupsPerUser)),
+    .useDescriptiveKeys = (format == "yaml"),
+    .formatConfig = [&format] () -> FormatConfig {
+        if (format == "json") {
+          return so::JsonConfig{};
+        } else if (format == "json-compact") {
+          return so::JsonConfig{.wsFormat = so::WhitespaceFormat::Compact};
+        } else {
+          return so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
+        }
+    }(),
+  };
 }
 
 pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandline::NamedValues& values) {

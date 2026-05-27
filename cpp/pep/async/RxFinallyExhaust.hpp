@@ -23,7 +23,7 @@ private:
   rxcpp::observe_on_one_worker mSubscribeOn;
 
 public:
-  RxFinallyExhaustOperator(const CreateFinisher& create, rxcpp::observe_on_one_worker subscribeOn) : mCreate(create), mSubscribeOn(subscribeOn) {}
+  RxFinallyExhaustOperator(CreateFinisher create, rxcpp::observe_on_one_worker subscribeOn) : mCreate(std::move(create)), mSubscribeOn(subscribeOn) {}
 
   template <typename TMainItem, typename MainSourceOperator>
   rxcpp::observable<TMainItem> operator()(rxcpp::observable<TMainItem, MainSourceOperator> items) const {

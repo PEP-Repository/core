@@ -10,6 +10,7 @@
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
 #include <pep/structuredoutput/Tree.hpp>
+#include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
@@ -325,7 +326,7 @@ ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::Core
   : mClient(client), mApply(apply) {
   for (const auto& mapping : mappings) {
     std::vector<std::string> parts;
-    boost::split(parts, mapping, boost::is_any_of("="));
+    boost::split(parts, mapping, std::bind_front(std::equal_to{}, '='));
     if (parts.size() != 2) {
       throw std::runtime_error("Name mapping must have form \"original=replacement\"");
     }
@@ -403,6 +404,9 @@ private:
       const auto participantGroupAccessRulesOpt = std::string{so::queryKeys::participantGroupAccessRules.simple};
 
       return ChildCommandOf<CommandAma>::getSupportedParameters()
+        + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
+          .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
+          .noLongerSupported("Use --include and --format options instead.")
         + pep::commandline::Parameter("include", "Prints only specified type of data (can be repeated).")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({columnsOpt, columnGroupsOpt, columnGroupAccessRulesOpt, participantGroupsOpt, participantGroupAccessRulesOpt})).multiple())
         + pep::commandline::Parameter("format", "The format of the output.")
@@ -421,46 +425,33 @@ private:
 
     static pep::structuredOutput::QueryDisplayConfig<pep::structuredOutput::AmaQueryFlags> extractConfig(const pep::commandline::NamedValues& values) {
       namespace so = pep::structuredOutput;
-
-      const auto includedTypes = values.getOptionalMultiple<std::string>("include");
-
+      using namespace pep::enumUtils;
       using Flags = so::AmaQueryFlags;
-      using pep::enumUtils::operator|;
+      using FormatConfig = decltype(so::QueryDisplayConfig<so::AmaQueryFlags>::formatConfig);
 
-      so::QueryDisplayConfig<so::AmaQueryFlags> displayConfig;
-      if (includedTypes.empty()) {
-        // No include filter: print everything
-        displayConfig.flags = Flags::All;
-      } else {
-        displayConfig.flags = Flags::None;
-        for (const auto& type : includedTypes) {
-          if (type == so::queryKeys::columns.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintColumns;
-          } else if (type == so::queryKeys::columnGroups.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintColumnGroups;
-          } else if (type == so::queryKeys::columnGroupAccessRules.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintColumnGroupAccessRules;
-          } else if (type == so::queryKeys::participantGroups.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintParticipantGroups;
-          } else if (type == so::queryKeys::participantGroupAccessRules.simple) {
-            displayConfig.flags = displayConfig.flags | Flags::PrintParticipantGroupAccessRules;
-          }
-        }
-      }
+      const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
+        return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
+      };
+      const auto format = values.get<std::string>("format");
 
-    const auto format = values.get<std::string>("format");
-
-    if (format == "json-compact") {
-      displayConfig.useDescriptiveKeys = false;
-      displayConfig.formatConfig = so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
-    } else if (format == "json") {
-      displayConfig.useDescriptiveKeys = false;
-      displayConfig.formatConfig = so::JsonConfig{};
-    } else {
-      displayConfig.useDescriptiveKeys = true;
-      displayConfig.formatConfig = so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
-    }
-    return displayConfig;
+      return {
+        .flags =
+            FlagsIf(Flags::PrintColumns, isIncluded(so::queryKeys::columns)) |
+            FlagsIf(Flags::PrintColumnGroups, isIncluded(so::queryKeys::columnGroups)) |
+            FlagsIf(Flags::PrintColumnGroupAccessRules, isIncluded(so::queryKeys::columnGroupAccessRules)) |
+            FlagsIf(Flags::PrintParticipantGroups, isIncluded(so::queryKeys::participantGroups)) |
+            FlagsIf(Flags::PrintParticipantGroupAccessRules, isIncluded(so::queryKeys::participantGroupAccessRules)),
+        .useDescriptiveKeys = (format == "yaml"),
+        .formatConfig = [&format] () -> FormatConfig {
+            if (format == "json") {
+              return so::JsonConfig{};
+            } else if (format == "json-compact") {
+              return so::JsonConfig{.wsFormat = so::WhitespaceFormat::Compact};
+            } else {
+              return so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
+            }
+        }(),
+      };
     }
 
     static pep::AmaQuery extractQuery(const pep::commandline::NamedValues& values) {
@@ -481,7 +472,7 @@ private:
       return executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
         return client->getAccessManagerProxy()->amaQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::AmaQueryResponse res) {
           namespace so = pep::structuredOutput;
-          auto tree = so::Tree::FromAmaQueryResponse(res, displayConfig);
+          auto tree = so::TreeFrom(res, displayConfig);
 
           if (displayConfig.format() == so::Format::Json) {
             so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;

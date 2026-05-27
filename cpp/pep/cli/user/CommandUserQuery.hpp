@@ -3,6 +3,7 @@
 #include <pep/cli/User.hpp>
 #include <pep/structuredoutput/Common.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
 
 class pep::cli::CommandUser::CommandUserQuery : public ChildCommandOf<CommandUser> {
 public:
