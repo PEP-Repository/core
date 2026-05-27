@@ -338,6 +338,10 @@ function(verify_headers_standalone target)
         file(WRITE "${src}" "#include <${header}>")
         target_sources("${target}_StandaloneHeaders" PRIVATE "${src}")
       endforeach()
+
+      set_target_properties(${target}_StandaloneHeaders PROPERTIES
+        FOLDER pep-StandaloneHeaders
+      )
     endif()
   endif()
 endfunction()

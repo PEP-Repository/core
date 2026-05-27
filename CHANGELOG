@@ -7,8 +7,14 @@ Changes in upcoming release (1.7):
 
 ---------------
 
-- core#2817: "pepcli user query"'s  "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
+- core#2817: "pepcli ama query"'s "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
+             e.g. `pepcli ama query --include columns --include column-groups` will print both columns and column groups.
+             The old output format is no longer supported in favor of yaml (or json) output.
+
+             "pepcli user query"'s  "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
              Its parameter "all-user-group" was renamed to "user-groups", "groups-per-user" was renamed to "user-groups-per-user", and "all-user" was renamed to "users".
+
+- core#2373: Support is dropped for the old (pseudo-yaml) pepcli ama query output format. It now outputs in correct yaml by default and supports the --format flag to optionally produce json and json-compact (without whitespace) output.
 
 - core#2878, core#2868: "pepcli user query" key "All User Groups" is no longer a list item. Empty list format is now properly a []. Keys are now either all fully descriptive (default), or all simple.
 
@@ -51,6 +57,8 @@ Changes in upcoming release (1.7):
 
 - #2847: Reduced memory use when using `pepcli store` with (large) files.
 
+- #2877: Key Server now requires a configured BlocklistStoragePath value (was optional).
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
@@ -61,6 +69,8 @@ MANUAL CHANGES REQUIRED:
 Past changes, do not edit (except by person doing release):
 
 Release 1.6 (started 2026-01-28):
+
+- #2867: Fixed incorrect handling of network connections that fail while they're still being established.
 
 - #2771: Manually managed user IDs are now case-insensitive
   - User IDs retain their original casing when stored.
