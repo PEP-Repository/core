@@ -7,15 +7,19 @@
 
 namespace pep::structuredOutput::json {
 
+constexpr int toIndent(WhitespaceFormat f) {
+    switch (f) {
+        case WhitespaceFormat::Compact: return -1;
+        case WhitespaceFormat::TwoSpaces: return 2;
+        case WhitespaceFormat::FourSpaces: return 4;
+    }
+    assert(false && "Unhandled WhitespaceFormat");
+    return -1;
+}
+
 /// Appends a JSON representation of a tree to a stream
 inline std::ostream& append(std::ostream& stream, const Tree& tree, const JsonConfig& config = {}) {
-  int spaces = 0;
-  switch (config.wsformat) {
-    case WhitespaceFormat::Compact: spaces = -1; break;
-    case WhitespaceFormat::TwoSpaces: spaces = 2; break;
-    case WhitespaceFormat::FourSpaces: spaces = 4; break;
-  }
-  return stream << tree.raw_json().dump(spaces);
+  return stream << tree.rawJson().dump(toIndent(config.wsFormat));
 }
 
 /// Appends a JSON representation of a table to a stream

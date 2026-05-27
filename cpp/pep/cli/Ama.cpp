@@ -446,7 +446,7 @@ private:
             if (format == "json") {
               return so::JsonConfig{};
             } else if (format == "json-compact") {
-              return so::JsonConfig{.wsformat = so::WhitespaceFormat::Compact};
+              return so::JsonConfig{.wsFormat = so::WhitespaceFormat::Compact};
             } else {
               return so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
             }

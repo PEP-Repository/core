@@ -90,7 +90,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohman
 
 /// Appends a YAML representation of a tree to a stream
 std::ostream& append(std::ostream& stream, const Tree& tree, const YamlConfig& config) {
-  SerializeJsonAsYaml(stream, config, tree.raw_json());
+  SerializeJsonAsYaml(stream, config, tree.rawJson());
   return stream;
 }
 

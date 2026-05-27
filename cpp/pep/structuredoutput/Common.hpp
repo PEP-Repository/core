@@ -9,10 +9,11 @@
 
 namespace pep::structuredOutput {
 
+/// Defines the whitespace formatting styles for structured output
 enum class WhitespaceFormat {
-  Compact,   // No indentation (single line)
-  TwoSpaces, // 2 spaces per indentation level
-  FourSpaces // 4 spaces per indentation level
+  TwoSpaces, ///< 2 spaces per indentation level
+  FourSpaces, ///< 4 spaces per indentation level
+  Compact   ///< No indentation (single line)
 };
 
 namespace queryKeys {
@@ -46,7 +47,7 @@ struct YamlConfig final {
 };
 
 struct JsonConfig final {
-  WhitespaceFormat wsformat = WhitespaceFormat::TwoSpaces;
+  WhitespaceFormat wsFormat = WhitespaceFormat::TwoSpaces;
 };
 
 using FormatConfig = std::variant<YamlConfig, JsonConfig>;
