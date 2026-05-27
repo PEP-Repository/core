@@ -30,7 +30,7 @@ const std::vector<ProtocolProperties> SUPPORTED_PROTOCOLS = {
 };
 
 void TrimOutsideWhitespace(std::string& str) {
-  boost::trim_if(str, boost::is_any_of(" \r\n\t"));
+  boost::trim_if(str, boost::is_space());
 }
 
 std::string FormatHttpUrl(bool tls, const EndPoint& endPoint) {
@@ -300,7 +300,6 @@ void HttpClient::handleRequestPartWritten(const SizedTransfer::Result& result, s
 
   // Done sending body parts: start receiving the HTTPResponse
   mConnection->asyncReadUntil(CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
-    //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) False positive in (type returned by) boost::is_any_of
     self->handleReadStatusLine(result);
     });
 }

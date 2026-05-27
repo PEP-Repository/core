@@ -49,7 +49,6 @@ auto MakeStorageWithExtraTable(const std::string& path) {
       make_column("id", &ExtraTableRecord::id, primary_key()),
       make_column("value", &ExtraTableRecord::value)));
 }
-}
 
 class StorageTest : public ::testing::Test {
 public:
@@ -146,3 +145,4 @@ TEST_F(StorageTest, syncSchema_with_new_table_succeeds) {
   }
 }
 
+}
