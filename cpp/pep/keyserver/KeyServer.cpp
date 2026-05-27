@@ -142,7 +142,8 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
       .metadata{
           .note = request.note,
           .issuer = certified.signatory.commonName(),
-          .creationDateTime = TimeNow()}};
+          .creationDateTime = TimeNow(),
+          .commencementDateTime = request.commencementDateTime.value_or(Timestamp(std::chrono::milliseconds(0)))}};
   entry.id = mBlocklist->add(entry.target, entry.metadata);
   return messaging::BatchSingleMessage(TokenBlockingCreateResponse{std::move(entry)});
 }

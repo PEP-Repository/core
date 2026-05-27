@@ -1376,16 +1376,17 @@ message ParticipantGroupAccessResponse {
 
 message TokenBlockingTokenIdentifier {
   string subject = 1;
-  string userGroup = 2;
-  Timestamp issueDateTime = 3;
+  string user_group = 2;
+  Timestamp issue_datetime = 3;
 }
 
 message TokenBlockingBlocklistEntry {
   int64 id = 1;
   TokenBlockingTokenIdentifier target = 2;
-  string metadataNote = 3;
-  string metadataIssuer = 4;
-  Timestamp metadataCreationDateTime = 5;
+  string metadata_note = 3;
+  string metadata_issuer = 4;
+  Timestamp metadata_creation_datetime = 5;
+  Timestamp metadata_commencement_datetime = 6;
 }
 
 message TokenBlockingListRequest {
@@ -1403,6 +1404,7 @@ message TokenBlockingListResponse {
 message TokenBlockingCreateRequest {
   TokenBlockingTokenIdentifier target = 1;
   string note = 2;
+  optional Timestamp commencement_datetime = 3;
 }
 
 message SignedTokenBlockingCreateRequest {

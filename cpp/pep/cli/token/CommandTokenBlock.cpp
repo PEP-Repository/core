@@ -11,7 +11,7 @@ namespace {
 
 std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBlocking::BlocklistEntry>& entries) {
   auto table = pep::structuredOutput::Table::EmptyWithHeader(
-      {"id", "targetSubject", "targetUserGroup", "targetIssueDateTime", "note", "issuer", "creationDateTime"});
+      {"id", "targetSubject", "targetUserGroup", "targetIssueDateTime", "note", "issuer", "creationDateTime", "commencementDateTime"});
   table.reserve(entries.size());
 
   for (const auto& e : entries) {
@@ -22,7 +22,8 @@ std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBloc
          pep::TimestampToXmlDateTime(e.target.issueDateTime),
          e.metadata.note,
          e.metadata.issuer,
-         pep::TimestampToXmlDateTime(e.metadata.creationDateTime)});
+         pep::TimestampToXmlDateTime(e.metadata.creationDateTime),
+         pep::TimestampToXmlDateTime(e.metadata.commencementDateTime)});
   }
 
   return pep::structuredOutput::csv::append(stream, table) << std::endl;
@@ -34,6 +35,7 @@ constexpr auto subject = "subject";
 constexpr auto userGroup = "user-group";
 constexpr auto issuedBeforeUnixtime = "issuedBefore-unixtime";
 constexpr auto issuedBeforeYyyymmdd = "issuedBefore-yyyymmdd";
+constexpr auto commencementYyyymmdd = "commencement-yyyymmdd";
 constexpr auto message = "message";
 
 } // namespace cliParameterNames
@@ -70,10 +72,15 @@ protected:
               .shorthand('b')
               .value(pep::commandline::Value<std::string>())
         + pep::commandline::Parameter(
+              param::commencementYyyymmdd,
+              "date at which the blocklist entry should go into effect. Before that date, tokens will not yet be blocked.")
+              .value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter(
               param::message,
               "explanatory text stored together with the created blocklist entry")
               .shorthand('m')
-              .value(pep::commandline::Value<std::string>().required());
+              .value(pep::commandline::Value<std::string>().required())
+        ;
   }
 
   void finalizeParameters() override {
@@ -91,6 +98,7 @@ protected:
   struct Configuration final {
     pep::tokenBlocking::TokenIdentifier target;
     std::string message;
+    std::optional<Timestamp> commencementDateTime;
 
     static Configuration From(const pep::commandline::NamedValues& values) {
       namespace param = cliParameterNames;
@@ -108,7 +116,15 @@ protected:
                     }
                     return TimeNow(); // default to current time
                   }()},
-          .message = values.get<std::string>(param::message)};
+          .message = values.get<std::string>(param::message),
+          .commencementDateTime =
+            [&]()->std::optional<Timestamp> {
+              if (const auto date = values.getOptional<std::string>(param::commencementYyyymmdd)) {
+                return TimeZone::Local().timestampFromYyyyMmDd(*date);
+              }
+              return {};
+            }()
+      };
     }
   };
 
@@ -121,7 +137,7 @@ protected:
 
     return executeEventLoopFor(
         [&, config = Configuration::From(this->getParameterValues())](std::shared_ptr<pep::Client> client) {
-        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message }).map(printResponse);
+        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message, config.commencementDateTime }).map(printResponse);
         });
   }
 };

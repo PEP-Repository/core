@@ -43,8 +43,10 @@ public:
 };
 
 /// Convenience function that returns true iff the @p token is matched by one or more entries on the @p list.
-inline bool IsBlocking(const Blocklist& list, const TokenIdentifier& token) {
-  return !list.allEntriesMatching(token).empty();
+inline bool IsBlocking(const Blocklist& list, const TokenIdentifier& token, Timestamp at=TimeNow()) {
+  auto matches = list.allEntriesMatching(token);
+  auto found = std::ranges::find_if(matches, [at](const Blocklist::Entry& entry){ return entry.metadata.commencementDateTime <= at; });
+  return found != matches.end();
 }
 
 } // namespace pep::tokenBlocking

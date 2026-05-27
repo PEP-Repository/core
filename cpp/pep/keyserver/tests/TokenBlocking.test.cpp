@@ -96,6 +96,7 @@ const Blocklist::Entry::Metadata emptyMetadata{
   .note{},
   .issuer{},
   .creationDateTime{/*zero*/},
+  .commencementDateTime{/*zero*/}
 };
 
 
@@ -159,7 +160,7 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking) {
   const auto entry = BlocklistEntry{
       .id = 24,
       .target{.subject = "subject", .userGroup = "group", .issueDateTime = blockDateTime},
-      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}}};
+      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}, .commencementDateTime{}}};
   const auto exactMatch = entry.target;
   const auto issuedBeforeBlockDateTime = TokenIdentifier{
       .subject = entry.target.subject,
@@ -176,7 +177,7 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking_False) {
   const auto entry = BlocklistEntry{
       .id = 29,
       .target{.subject = "subject", .userGroup = "group", .issueDateTime = blockDateTime},
-      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}}};
+      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}, .commencementDateTime{}}};
   const auto differentSubject =
       TokenIdentifier{.subject = "different", .userGroup = entry.target.userGroup, .issueDateTime = blockDateTime};
   const auto differentUserGroup =
@@ -189,6 +190,24 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking_False) {
   EXPECT_FALSE(IsBlocking(entry, differentSubject));
   EXPECT_FALSE(IsBlocking(entry, differentUserGroup));
   EXPECT_FALSE(IsBlocking(entry, issuedAfterBlockDateTime));
+}
+
+TEST(TokenBlocking_BlocklistEntry, IsBlocking_With_CommencementDateTime) {
+  const TokenIdentifier issuedBeforeBlockDateTime {
+    .subject = "subject",
+    .userGroup = "group",
+    .issueDateTime = REFERENCE_TIMESTAMP - days{7}};
+  const BlocklistEntry futureEntry{
+    .id = 29,
+    .target{.subject = issuedBeforeBlockDateTime.subject, .userGroup = issuedBeforeBlockDateTime.userGroup, .issueDateTime = REFERENCE_TIMESTAMP + days{5}},
+    .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = REFERENCE_TIMESTAMP - days{10}, .commencementDateTime = REFERENCE_TIMESTAMP + days{5}}};
+  const BlocklistEntry pastEntry{
+    .id = 29,
+    .target{.subject = issuedBeforeBlockDateTime.subject, .userGroup = issuedBeforeBlockDateTime.userGroup, .issueDateTime = REFERENCE_TIMESTAMP - days{5}},
+    .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = REFERENCE_TIMESTAMP - days{10}, .commencementDateTime = REFERENCE_TIMESTAMP - days{5}}};
+
+  EXPECT_FALSE(IsBlocking(futureEntry, issuedBeforeBlockDateTime, REFERENCE_TIMESTAMP));
+  EXPECT_TRUE(IsBlocking(pastEntry, issuedBeforeBlockDateTime, REFERENCE_TIMESTAMP));
 }
 
 // A SqliteBlocklist is empty by default.
@@ -220,13 +239,13 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, AddingTokens) {
   using EntryTuple = std::pair<TokenIdentifier, BlocklistEntry::Metadata>;
   const auto identifiersWithMetadata = std::array<EntryTuple, 4>{
       {{{"user1@project.net", "researcher", REFERENCE_TIMESTAMP + days{1}},
-        {"admin1@pep.cs.ru.nl", "obsolete", REFERENCE_TIMESTAMP + days{8}}},
+        {"obsolete", "admin1@pep.cs.ru.nl", REFERENCE_TIMESTAMP + days{8}, {}}},
        {{"user2@project.net", "researcher", REFERENCE_TIMESTAMP + days{2}},
-        {"admin2@pep.cs.ru.nl", "compromised", REFERENCE_TIMESTAMP + days{9}}},
+        {"compromised", "admin2@pep.cs.ru.nl", REFERENCE_TIMESTAMP + days{9}, {}}},
        {{"user3@project.net", "uploader", REFERENCE_TIMESTAMP + days{3}},
-        {"admin1@pep.cs.ru.nl", "assigned to wrong user", REFERENCE_TIMESTAMP + days{4}}},
+        {"assigned to wrong user", "admin1@pep.cs.ru.nl", REFERENCE_TIMESTAMP + days{4}, {}}},
        {{"user4@project.net", "uploader", REFERENCE_TIMESTAMP + days{4}},
-        {"admin2@pep.cs.ru.nl", "obsolete", REFERENCE_TIMESTAMP + days{12}}}}};
+        {"obsolete", "admin2@pep.cs.ru.nl", REFERENCE_TIMESTAMP + days{12}, {}}}}};
   auto blocklist = TestSuite::createEmptyBlocklist();
 
   for (auto& e : identifiersWithMetadata) { blocklist->add(e.first, e.second); }
@@ -282,7 +301,8 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RetrieveById) {
       {.subject = "example_user@somewhere.org", .userGroup = "Research Assessor", .issueDateTime = tokenIssueDateTime},
       {.note = "Token was sent to the wrong person.",
        .issuer = "some_admin@somewhere.org",
-       .creationDateTime = tokenBlockDateTime});
+       .creationDateTime = tokenBlockDateTime,
+       .commencementDateTime{}});
   blocklist->add(arbitraryNoise.back(), emptyMetadata); // rules out just returning the last entry
 
   const auto expectedResult = BlocklistEntry{
@@ -290,7 +310,8 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RetrieveById) {
       {.subject = "example_user@somewhere.org", .userGroup = "Research Assessor", .issueDateTime = tokenIssueDateTime},
       {.note = "Token was sent to the wrong person.",
        .issuer = "some_admin@somewhere.org",
-       .creationDateTime = tokenBlockDateTime}};
+       .creationDateTime = tokenBlockDateTime,
+       .commencementDateTime{}}};
   EXPECT_EQ(blocklist->entryById(id), expectedResult);
 }
 
@@ -309,7 +330,7 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RemovingTokens) {
   const auto initiallyBlockedTokens = ArbitraryTokens<3>();
   const std::unique_ptr<Blocklist> blocklist = TestSuite::createEmptyBlocklist();
   for (const auto& t : initiallyBlockedTokens) {
-    blocklist->add(t, {"data_administrator", "for testing", pep::Timestamp(days{200})});
+    blocklist->add(t, {"data_administrator", "for testing", pep::Timestamp(days{200}), {}});
   }
 
   for (const auto& removedToken : initiallyBlockedTokens) {
@@ -327,7 +348,7 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RemovingTokens) {
 TYPED_TEST(TokenBlocking_Blocklist_Implementations, RemoveSuccess) {
   using TestSuite = TokenBlocking_Blocklist_Implementations<TypeParam>;
   const auto addedToken = ArbitraryTokens<1>().front();
-  const auto metadata = Blocklist::Entry::Metadata{"issuer", "reason", REFERENCE_TIMESTAMP};
+  const auto metadata = Blocklist::Entry::Metadata{"issuer", "reason", REFERENCE_TIMESTAMP, {}};
   auto blocklist = TestSuite::createEmptyBlocklist();
   const auto id = blocklist->add(addedToken, metadata);
 
@@ -354,7 +375,8 @@ TEST(TokenBlocking_SqliteBlocklist, CreateWithStorageLocation) {
   const auto addedMetadata = Blocklist::Entry::Metadata{
       .note = "note_note",
       .issuer = "issuer_issuer",
-      .creationDateTime = REFERENCE_TIMESTAMP + days{52}};
+      .creationDateTime = REFERENCE_TIMESTAMP + days{52},
+      .commencementDateTime{}};
 
   { // original instance scope
     const auto instanceA = SqliteBlocklist::CreateWithStorageLocation(sqliteFile);
@@ -402,13 +424,14 @@ TEST(TokenBlocking_Blocklist_Interface, IsBlocking) {
   class : public FakeBlockList {
   public:
     std::size_t numberOfMatches = 1;
+    pep::Timestamp commencementDateTime{};
 
     std::vector<Entry> allEntriesMatching(const pep::tokenBlocking::TokenIdentifier& identifier) const override {
       return std::vector<Entry>(
           numberOfMatches,
           {.id = 1,
            .target = identifier,
-           .metadata = {.note = "none", .issuer = "admin", .creationDateTime = identifier.issueDateTime + days{2}}});
+           .metadata = {.note = "none", .issuer = "admin", .creationDateTime = identifier.issueDateTime + days{2}, .commencementDateTime = commencementDateTime}});
     }
   } blocklist;
   const auto tokenA = ArbitraryTokens<2>().front();
@@ -423,6 +446,12 @@ TEST(TokenBlocking_Blocklist_Interface, IsBlocking) {
 
   blocklist.numberOfMatches = 4;
   EXPECT_TRUE(IsBlocking(blocklist, tokenB));
+
+  blocklist.numberOfMatches = 1;
+  blocklist.commencementDateTime = REFERENCE_TIMESTAMP + days{5};
+  EXPECT_FALSE(IsBlocking(blocklist, tokenA, REFERENCE_TIMESTAMP));
+  blocklist.commencementDateTime = REFERENCE_TIMESTAMP - days{5};
+  EXPECT_TRUE(IsBlocking(blocklist, tokenA, REFERENCE_TIMESTAMP));
 }
 
 }
