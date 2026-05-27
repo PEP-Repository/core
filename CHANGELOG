@@ -7,7 +7,16 @@ Changes in upcoming release (1.7):
 
 ---------------
 
-- core#2878, core#2868: pepcli user query key "All User Groups" is no longer a list item. Empty list format is now properly a []. Keys are now either all fully descriptive (default), or all simple.
+- core#2817: "pepcli ama query"'s "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
+             e.g. `pepcli ama query --include columns --include column-groups` will print both columns and column groups.
+             The old output format is no longer supported in favor of yaml (or json) output.
+
+             "pepcli user query"'s  "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
+             Its parameter "all-user-group" was renamed to "user-groups", "groups-per-user" was renamed to "user-groups-per-user", and "all-user" was renamed to "users".
+
+- core#2373: Support is dropped for the old (pseudo-yaml) pepcli ama query output format. It now outputs in correct yaml by default and supports the --format flag to optionally produce json and json-compact (without whitespace) output.
+
+- core#2878, core#2868: "pepcli user query" key "All User Groups" is no longer a list item. Empty list format is now properly a []. Keys are now either all fully descriptive (default), or all simple.
 
 - Added --format option to "pepcli list" command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
 

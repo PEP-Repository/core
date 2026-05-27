@@ -3,6 +3,7 @@
 #include <pep/cli/User.hpp>
 #include <pep/structuredoutput/Common.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
 
 class pep::cli::CommandUser::CommandUserQuery : public ChildCommandOf<CommandUser> {
 public:
@@ -15,7 +16,7 @@ protected:
   int execute() override;
 
 private:
-  static pep::structuredOutput::UserQueryDisplayConfig extractConfig(const pep::commandline::NamedValues& values);
+  static pep::structuredOutput::QueryDisplayConfig<pep::structuredOutput::UserQueryFlags> extractConfig(const pep::commandline::NamedValues& values);
 
   static pep::UserQuery extractQuery(const pep::commandline::NamedValues& values);
 };

@@ -1,5 +1,6 @@
 #include <boost/algorithm/string/join.hpp>
 #include <pep/cli/user/CommandUserQuery.hpp>
+#include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
 
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Json.hpp>
@@ -24,12 +25,15 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 
   return ChildCommandOf<CommandUser>::getSupportedParameters()
        + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing")
+             .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"all-user-group", "all-user", "groups-per-user"})))
+              .noLongerSupported("Use --include and --format options instead.")
+       + pep::commandline::Parameter("include", "Prints only specified type of data.")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({userGroupsOpt,
                                                                                            usersOpt,
-                                                                                           groupsPerUserOpt})))
+                                                                                           groupsPerUserOpt})).multiple())
        + pep::commandline::Parameter("format", "The format of the output.")
              .value(pep::commandline::Value<std::string>()
-                        .allow(std::vector<std::string>({"yaml", "json"}))
+                        .allow(std::vector<std::string>({"yaml", "json", "json-compact"}))
                         .defaultsTo("yaml"))
        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
              .value(pep::commandline::Value<milliseconds::rep>())
@@ -39,49 +43,54 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
 
 int CommandUser::CommandUserQuery::execute() {
   return this->executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
-    return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([config = extractConfig(values)](pep::UserQueryResponse res) {
-      auto tree = so::Tree::FromUserQueryResponse(res, config);
-      const bool isPrettyPrint = HasFlags(config.flags, so::UserQueryDisplayConfig::Flags::PrintHeaders);
+    return client->getAccessManagerProxy()->userQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::UserQueryResponse res) {
+      auto tree = so::TreeFrom(res, displayConfig);
       
-      if (config.preferredFormat == so::Format::Json) {
-        so::json::append(std::cout, tree) << std::endl;
+      if (displayConfig.format() == so::Format::Json) {
+        so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;
       } else {
-        so::yaml::Config yamlConfig{.includeArraySizeComments = isPrettyPrint};
-        so::yaml::append(std::cout, tree, yamlConfig) << std::endl;
+        so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::endl;
       }
+
+      // Warn for users without displayId
       auto usersWithoutDisplayId = res.mUsers | std::ranges::views::filter([](QRUser user){ return !user.mDisplayId; });
       for (auto& user : usersWithoutDisplayId) {
         auto uids = std::move(user.mOtherUids);
         if (user.mPrimaryId) {
           uids.push_back(*user.mPrimaryId);
         }
-        LOG(LOG_TAG, warning) << "No displayId for user with identifiers: " << boost::algorithm::join(uids, ", ");
+        LOG(LOG_TAG, warning) << "No display-id for user with identifiers: " << boost::algorithm::join(uids, ", ");
       }
       return pep::FakeVoid();
     });
   });
 }
 
-so::UserQueryDisplayConfig CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
-  using Flags = so::UserQueryDisplayConfig::Flags;
-  using Format = so::Format;
+so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extractConfig(const pep::commandline::NamedValues& values) {
+  using FormatConfig = decltype(so::QueryDisplayConfig<so::UserQueryFlags>::formatConfig);
+  using Flags = so::UserQueryFlags;
 
-  constexpr auto userGroupsOpt = so::queryKeys::userGroups.simple;
-  constexpr auto usersOpt = so::queryKeys::users.simple;
-  constexpr auto groupsPerUserOpt = so::queryKeys::groupsPerUser.simple;
-  const auto scriptPrintFilter = values.getOptional<std::string>("script-print");
+  const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
+    return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
+  };
   const auto format = values.get<std::string>("format");
 
-  so::UserQueryDisplayConfig config;
-  config.flags =
-      FlagsIf(Flags::PrintHeaders, !scriptPrintFilter) |
-      FlagsIf(Flags::PrintUserGroups, !scriptPrintFilter || scriptPrintFilter == userGroupsOpt) |
-// groupsPerUser is a part of the users list. So when groupsPerUsers is requested, we must also print users
-      FlagsIf(Flags::PrintUsers, !scriptPrintFilter || scriptPrintFilter == usersOpt || scriptPrintFilter == groupsPerUserOpt) |
-      FlagsIf(Flags::PrintUserGroupsForUsers, !scriptPrintFilter || scriptPrintFilter == groupsPerUserOpt);
-  config.preferredFormat = (format == "json") ? Format::Json : Format::Yaml;
-  config.useDescriptiveHeaders = !scriptPrintFilter; // Use descriptive headers in pretty-print mode
-  return config;
+  return {
+    .flags =
+        FlagsIf(Flags::PrintUserGroups, isIncluded(so::queryKeys::userGroups)) |
+        FlagsIf(Flags::PrintUsers, isIncluded(so::queryKeys::users)) |
+        FlagsIf(Flags::PrintUserGroupsForUsers, isIncluded(so::queryKeys::groupsPerUser)),
+    .useDescriptiveKeys = (format == "yaml"),
+    .formatConfig = [&format] () -> FormatConfig {
+        if (format == "json") {
+          return so::JsonConfig{};
+        } else if (format == "json-compact") {
+          return so::JsonConfig{.wsFormat = so::WhitespaceFormat::Compact};
+        } else {
+          return so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
+        }
+    }(),
+  };
 }
 
 pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandline::NamedValues& values) {
