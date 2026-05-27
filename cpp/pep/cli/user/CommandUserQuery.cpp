@@ -92,7 +92,6 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
     }(),
   };
 }
-}
 
 pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandline::NamedValues& values) {
   return {
