@@ -165,6 +165,7 @@ public:
 
   /* Core operations on Columns */
   bool hasColumn(const std::string& name);
+  std::optional<std::string> getColumnCaseInsensitive(const std::string& name);
   std::set<Column> getColumns(const Timestamp& timestamp, const ColumnFilter& filter = {}) const;
   void createColumn(const std::string& name);
   void removeColumn(const std::string& name);

@@ -285,6 +285,18 @@ TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
   }
 }
 
+TEST_F(AccessManagerStorageTest, hasColumn) {
+  EXPECT_TRUE(storage->hasColumn("IsTestParticipant"));
+  EXPECT_FALSE(storage->hasColumn("IsTestparticipant")) << "match should be case sensitive";
+  EXPECT_FALSE(storage->hasColumn("NonExisting"));
+}
+
+TEST_F(AccessManagerStorageTest, getColumnCaseInsensitive) {
+  EXPECT_EQ(storage->getColumnCaseInsensitive("IsTestParticipant"), "IsTestParticipant");
+  EXPECT_EQ(storage->getColumnCaseInsensitive("IsTestparticipant"), "IsTestParticipant") << "match should be case insensitive";
+  EXPECT_EQ(storage->getColumnCaseInsensitive("NonExisting"), std::nullopt);
+}
+
 TEST_F(AccessManagerStorageTest, getColumns_happy) {
   Timestamp timestamp = TimeNow();
   auto actual = storage->getColumns(timestamp);
@@ -345,6 +357,27 @@ TEST_F(AccessManagerStorageTest, getColumnGroupColumns_deleted_column) {
   auto actualAfter = storage->getColumnGroupColumns(timestampAfter);
 
   ASSERT_EQ(actualBefore.size() - actualAfter.size(), 2);
+}
+
+TEST_F(AccessManagerStorageTest, createColumn) {
+  ASSERT_NO_THROW(storage->createColumn("MyColumn"));
+  PEP_EXPECT_THROWS_MESSAGE(
+    storage->createColumn("MyColumn"),
+    pep::Error,
+    HasSubstr("MyColumn"))
+    << "Should reject case re-creation of existing column";
+  PEP_EXPECT_THROWS_MESSAGE(
+    storage->createColumn("Mycolumn"),
+    pep::Error,
+    HasSubstr("MyColumn"))
+    << "Should reject case re-creation of existing column, ignoring case";
+
+  for (const auto& invalidName : { "1*1", "abc/def", "abc\\def" }) {
+    PEP_EXPECT_THROWS_MESSAGE(
+      storage->createColumn(invalidName),
+      pep::Error,
+      HasSubstr("Invalid column name"));
+  }
 }
 
 TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {

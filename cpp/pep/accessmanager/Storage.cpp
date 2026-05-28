@@ -965,6 +965,14 @@ bool AccessManager::Backend::Storage::hasColumn(const std::string& name) {
   return mImplementor->currentRecordExists<ColumnRecord>(c(&ColumnRecord::name) == name);
 }
 
+std::optional<std::string> AccessManager::Backend::Storage::getColumnCaseInsensitive(const std::string& name) {
+  auto results = mImplementor->getCurrentRecords<ColumnRecord>(
+    (c(&ColumnRecord::name) == name).collate_nocase(),
+    &ColumnRecord::name);
+  if (results.begin() == results.end()) { return {}; }
+  return *results.begin();
+}
+
 std::set<Column> AccessManager::Backend::Storage::getColumns(const Timestamp& timestamp, const ColumnFilter& filter) const {
   using namespace std::ranges;
   return RangeToCollection<std::set>(
@@ -980,10 +988,17 @@ std::set<Column> AccessManager::Backend::Storage::getColumns(const Timestamp& ti
 }
 
 void AccessManager::Backend::Storage::createColumn(const std::string& name) {
-  if (hasColumn(name)) {
+  if (auto existingName = getColumnCaseInsensitive(name)) {
     std::ostringstream msg;
-    msg << "Column " << Logging::Escape(name) << " already exists";
+    msg << "Column " << Logging::Escape(*existingName) << " already exists";
     throw Error(msg.str());
+  }
+  if (!IsValidPortableFileName(name)) {
+    std::ostringstream msg;
+    msg << "Invalid column name: " << Logging::Escape(name) << ". "
+        "Columns must be valid file names for all supported platforms, "
+        "see restrictions at https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions";
+    throw Error(std::move(msg).str());
   }
   mImplementor->raw.insert(ColumnRecord(name));
   mImplementor->raw.insert(ColumnGroupColumnRecord(name, "*"));

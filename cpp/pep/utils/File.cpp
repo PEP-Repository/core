@@ -117,6 +117,11 @@ bool IsValidPlatformFileName(std::string_view name) {
 #endif
 }
 
+bool IsValidPortableFileName(std::string_view name) {
+  // IsValidWindowsFileName includes a IsValidUnixFileName check
+  return IsValidWindowsFileName(name);
+}
+
 void IstreamToDestination(std::istream& in, std::function<void(const char * c, const std::streamsize len)> writeToDestination) {
   while (!in.eof()) {
     if (in.fail()) {
