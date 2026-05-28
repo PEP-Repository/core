@@ -10,11 +10,10 @@ namespace pep::weblib {
 class SetTimeoutHandle {
   friend SetTimeoutHandle SetTimeout(std::chrono::duration<double, std::milli> delay, std::function<void()> callback);
 
-  unsigned long timerId_;
   std::weak_ptr<struct SetTimeoutContext> ctx_;
 
-  SetTimeoutHandle(unsigned long timerId, std::shared_ptr<SetTimeoutContext> ctx)
-    : timerId_(timerId), ctx_(std::move(ctx)) {}
+  explicit SetTimeoutHandle(std::weak_ptr<SetTimeoutContext> ctx)
+    : ctx_(std::move(ctx)) {}
 
 public:
   /// Returns true if the timer can still be canceled, i.e. it has not yet executed or been canceled.

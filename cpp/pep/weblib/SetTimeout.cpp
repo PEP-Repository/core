@@ -1,7 +1,5 @@
 #include <pep/weblib/SetTimeout.hpp>
 
-#include <pep/utils/Defer.hpp>
-
 #include <emscripten/bind.h>
 #include <emscripten/em_js.h>
 #include <emscripten/val.h>
@@ -16,13 +14,15 @@ struct SetTimeoutContext {
   std::function<void()> callback;
   /// Pointer to self. Keeps instance alive until callback is invoked or timer is canceled.
   std::shared_ptr<SetTimeoutContext> keepMeAlive{};
+
+  unsigned long timerId{};
 };
 }
 
 namespace {
   
 void SetTimeoutInvokeCallback(std::uintptr_t ctxInt) {
-  std::move(reinterpret_cast<pep::weblib::SetTimeoutContext*>(ctxInt)->keepMeAlive)->callback();
+  std::move(reinterpret_cast<SetTimeoutContext*>(ctxInt)->keepMeAlive)->callback();
 }
 
 EMSCRIPTEN_BINDINGS(setTimeout) {
@@ -51,17 +51,18 @@ SetTimeoutHandle pep::weblib::SetTimeout(std::chrono::duration<double, std::mill
   // We cannot use emscripten_set_timeout, because due to a bug it currently keeps the runtime alive even after emscripten_clear_timeout,
   //  see https://github.com/emscripten-core/emscripten/issues/23763.
   // UnaryPlus is necessary because Node.js returns a `Timeout` object instead of a number, but it can be converted like this.
-  auto timerId = val::take_ownership(UnaryPlus(val::global("setTimeout")(
+  ctx->timerId = val::take_ownership(UnaryPlus(val::global("setTimeout")(
     val::module_property("pepSetTimeoutInvokeCallback"),
     delay.count(),
     val(reinterpret_cast<std::uintptr_t>(ctx.get()))
   ).as_handle())).as<unsigned long>();
-  return {timerId, std::move(ctx)};
+
+  return SetTimeoutHandle(ctx);
 }
 
 void SetTimeoutHandle::cancel() const {
   if (auto ctx = ctx_.lock()) {
     ctx->keepMeAlive.reset();
-    val::global("clearTimeout")(timerId_);
+    val::global("clearTimeout")(ctx->timerId);
   }
 }
