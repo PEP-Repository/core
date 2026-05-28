@@ -202,11 +202,27 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     mStorage->modifyUserGroup(x.mUserGroup);
     LOG(LOG_TAG, info) << "Modified user group " << Logging::Escape(x.mUserGroup.mName);
   }
-  for (auto& x : request.mAddUserToGroup) {
-    mStorage->addUserToGroup(x.mUid, x.mGroup, x.mExpiration);
+  return rxcpp::rxs::iterate(request.mAddUserToGroup).concat_map([storage=mStorage, accessManager=this->mAccessManager](const AddUserToGroup& x) -> rxcpp::observable<FakeVoid> {
+    int64_t internalUserId = storage->getInternalUserId(x.mUid);
+    storage->addUserToGroup(internalUserId, x.mGroup, x.mExpiration);
     LOG(LOG_TAG, info) << "Added user to user group " << Logging::Escape(x.mGroup);
-  }
-  return rxcpp::rxs::iterate(request.mRemoveUserFromGroup).concat_map([storage=mStorage, accessManager=this->mAccessManager](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
+    if (x.mExpiration) {
+      return rxcpp::rxs::iterate(storage->getAllIdentifiersForUser(internalUserId)).concat_map([group=x.mGroup, expiration=*x.mExpiration, accessManager](const std::string& uid) {
+        TokenBlockingCreateRequest tokenBlockRequest{
+          .target = {
+            .subject = uid,
+            .userGroup = group,
+            .issueDateTime = expiration,
+          },
+          .note = "User added to group with expiration",
+          .commencementDateTime = expiration
+        };
+        return accessManager->mKeyServerProxy.requestTokenBlockingCreate(std::move(tokenBlockRequest));
+      }).op(RxInstead(FakeVoid()));
+    }
+    return rxcpp::rxs::just(FakeVoid());
+  })
+  .concat(rxcpp::rxs::iterate(request.mRemoveUserFromGroup).concat_map([storage=mStorage, accessManager=this->mAccessManager](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage->getInternalUserId(x.mUid);
     storage->removeUserFromGroup(internalUserId, x.mGroup);
     LOG(LOG_TAG, info) << "Removed user from user group " << Logging::Escape(x.mGroup);
@@ -224,7 +240,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
       }).op(RxInstead(FakeVoid()));
     }
     return rxcpp::rxs::just(FakeVoid());
-  }).op(RxInstead(UserMutationResponse()));
+  })).op(RxInstead(UserMutationResponse()));
 }
 
 MigrateUserDbToAccessManagerResponse AccessManager::Backend::migrateUserDb(const std::filesystem::path& dbPath) {

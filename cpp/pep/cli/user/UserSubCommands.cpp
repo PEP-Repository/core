@@ -49,17 +49,33 @@ pep::commandline::Parameters CommandUser::UserGroupUserSubCommand::getSupportedP
          + pep::commandline::Parameter("group", "Name of user group")
                  .value(pep::commandline::Value<std::string>().positional().required())
          + pep::commandline::Parameter("end-date", "Date at which membership of the user group for the user should end. Format: YYYYMMDD")
-                 .value(pep::commandline::Value<std::string>());
+                 .value(pep::commandline::Value<std::string>()).alias("expiration-yyyymmdd")
+         + pep::commandline::Parameter("expiration-unixtime", "Date and time at which membership of the user group for the user should end, as a unix timestamp")
+                 .value(pep::commandline::Value<std::chrono::seconds::rep>());
+}
+
+void CommandUser::UserGroupUserSubCommand::finalizeParameters() {
+  ChildCommandOf::finalizeParameters();
+
+  const auto& values = this->getParameterValues();
+  if (values.has("end-date") && values.has("expiration-unixtime")) {
+    throw std::runtime_error(
+        "Please specify the expiration either via the --end-date or the --expiration-unixtime switch, but not both.");
+  }
 }
 
 int CommandUser::UserAddToSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
     std::optional<Timestamp> expiration;
-    if (this->getParameterValues().has("end-date")) {
-      expiration = TimeZone::Local().timestampFromYyyyMmDd(this->getParameterValues().get<std::string>("end-date"));
+    const auto values = this->getParameterValues();
+    if (const auto date = values.getOptional<std::string>("end-date")) {
+      expiration = TimeZone::Local().timestampFromYyyyMmDd(*date);
     }
-    return client->getAccessManagerProxy()->addUserToGroup(this->getParameterValues().get<std::string>("uid"),
-                                                           this->getParameterValues().get<std::string>("group"), expiration);
+    else if (const auto time = values.getOptional<std::chrono::seconds::rep>("expiration-unixtime")) {
+      expiration = Timestamp(std::chrono::seconds{*time});
+    }
+    return client->getAccessManagerProxy()->addUserToGroup(values.get<std::string>("uid"),
+                                                           values.get<std::string>("group"), expiration);
   });
 }
 

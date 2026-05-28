@@ -497,6 +497,32 @@ fi
 
 ####################
 
+if should_run_test user-removal-and-expiration; then
+  USER_REMOVAL_AND_EXPIRATION_CONFIG='{
+    "userGroups": [{
+      "name": "test-group",
+      "users": ["test-user"]
+    }]
+  }'
+
+  test_setup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
+
+  token="$(pepcli token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
+
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration-unixtime "$(date -d "now+2 seconds" +%s)" test-user test-group
+  token="$(pepcli token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  sleep 2s
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
+
+  test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
+fi
+
+####################
+
 if should_run_test structure-metadata; then
 
   # Add some entries

@@ -43,6 +43,7 @@ public:
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override;
+  void finalizeParameters() override;
 
   int execute() override = 0;
 };

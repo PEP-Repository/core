@@ -1685,8 +1685,10 @@ bool AccessManager::Backend::Storage::userInGroup(int64_t internalUserId,
 }
 
 bool AccessManager::Backend::Storage::userGroupIsEmpty(int64_t userGroupId) const {
+  using namespace pep::database;
   return !mImplementor->currentRecordExists<UserGroupUserRecord>(
-    c(&UserGroupUserRecord::userGroupId) == userGroupId);
+    c(&UserGroupUserRecord::userGroupId) == userGroupId,
+    having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(TimeNow())));
 }
 
 int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
