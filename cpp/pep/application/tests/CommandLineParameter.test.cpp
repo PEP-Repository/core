@@ -540,8 +540,8 @@ int StartCmd::execute() {
 
 #ifndef EXPECT_DEBUG_DEATH_IF_SUPPORTED
 # ifdef NDEBUG
-// Because of NDEBUG, expands to just executing the statement
-#  define EXPECT_DEBUG_DEATH_IF_SUPPORTED EXPECT_DEBUG_DEATH
+// GTEST_EXECUTE_STATEMENT_ may be internal, but I don't see a better way to implement this currently
+#  define EXPECT_DEBUG_DEATH_IF_SUPPORTED GTEST_EXECUTE_STATEMENT_
 # else
 #  define EXPECT_DEBUG_DEATH_IF_SUPPORTED EXPECT_DEATH_IF_SUPPORTED
 # endif
