@@ -122,6 +122,7 @@ analyse-source:
   #language=sh
   script:
     - ./"$PEP_FOSS_REPO_DIR"/scripts/analyse-scripts.sh
+    # For pep/dtap>, this also checks review config on feature branches because of the set-up-config-review job
     - for branch in
       "$CI_COMMIT_REF_NAME"
       "$PEP_PROJECT_DEVELOPMENT_BRANCH"
