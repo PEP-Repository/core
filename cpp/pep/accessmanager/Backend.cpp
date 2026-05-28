@@ -215,7 +215,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
             .issueDateTime = expiration,
           },
           .note = "User added to group with expiration",
-          .commencementDateTime = expiration
+          .blockStartDateTime = expiration
         };
         return accessManager->mKeyServerProxy.requestTokenBlockingCreate(std::move(tokenBlockRequest));
       }).op(RxInstead(FakeVoid()));

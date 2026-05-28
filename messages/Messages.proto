@@ -1386,7 +1386,7 @@ message TokenBlockingBlocklistEntry {
   string metadata_note = 3;
   string metadata_issuer = 4;
   Timestamp metadata_creation_datetime = 5;
-  Timestamp metadata_commencement_datetime = 6;
+  Timestamp metadata_block_start_datetime = 6;
 }
 
 message TokenBlockingListRequest {
@@ -1404,7 +1404,7 @@ message TokenBlockingListResponse {
 message TokenBlockingCreateRequest {
   TokenBlockingTokenIdentifier target = 1;
   string note = 2;
-  optional Timestamp commencement_datetime = 3;
+  optional Timestamp block_start_datetime = 3;
 }
 
 message SignedTokenBlockingCreateRequest {

@@ -51,8 +51,8 @@ void Serializer<TokenBlockingBlocklistEntry>::moveIntoProtocolBuffer(
       *dest.mutable_metadata_creation_datetime(),
       value.metadata.creationDateTime);
   Serialization::MoveIntoProtocolBuffer(
-      *dest.mutable_metadata_commencement_datetime(),
-      value.metadata.commencementDateTime);
+      *dest.mutable_metadata_block_start_datetime(),
+      value.metadata.blockStartDateTime);
 }
 
 TokenBlockingBlocklistEntry Serializer<TokenBlockingBlocklistEntry>::fromProtocolBuffer(
@@ -65,8 +65,8 @@ TokenBlockingBlocklistEntry Serializer<TokenBlockingBlocklistEntry>::fromProtoco
           .issuer = std::move(*source.mutable_metadata_issuer()),
           .creationDateTime =
               Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata_creation_datetime())),
-          .commencementDateTime =
-              Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata_commencement_datetime()))}};
+          .blockStartDateTime =
+              Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata_block_start_datetime()))}};
 }
 
 void Serializer<TokenBlockingListResponse>::moveIntoProtocolBuffer(
@@ -89,8 +89,8 @@ void Serializer<TokenBlockingCreateRequest>::moveIntoProtocolBuffer(
     pep::TokenBlockingCreateRequest value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_target(), std::move(value.target));
   dest.set_note(std::move(value.note));
-  if (value.commencementDateTime) {
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_commencement_datetime(), std::move(*value.commencementDateTime));
+  if (value.blockStartDateTime) {
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_block_start_datetime(), std::move(*value.blockStartDateTime));
   }
 }
 
@@ -99,7 +99,7 @@ TokenBlockingCreateRequest Serializer<TokenBlockingCreateRequest>::fromProtocolB
   return {
       .target = Serialization::FromProtocolBuffer(std::move(*source.mutable_target())),
       .note = std::move(*source.mutable_note()),
-      .commencementDateTime = source.has_commencement_datetime() ? std::optional(Serialization::FromProtocolBuffer(std::move(*source.mutable_commencement_datetime()))) : std::nullopt};
+      .blockStartDateTime = source.has_block_start_datetime() ? std::optional(Serialization::FromProtocolBuffer(std::move(*source.mutable_block_start_datetime()))) : std::nullopt};
 }
 
 void Serializer<TokenBlockingCreateResponse>::moveIntoProtocolBuffer(

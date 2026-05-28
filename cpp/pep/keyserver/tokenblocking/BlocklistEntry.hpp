@@ -10,7 +10,7 @@ struct BlocklistEntry final {
     std::string note;
     std::string issuer;
     Timestamp creationDateTime;
-    Timestamp commencementDateTime;
+    Timestamp blockStartDateTime;
 
     bool operator== (const Metadata&) const = default;
     bool operator!= (const Metadata&) const = default;
@@ -26,7 +26,7 @@ struct BlocklistEntry final {
 
 /// Returns true iff the target of the @p entry supersedes the @p token.
 inline bool IsBlocking(const BlocklistEntry& entry, const TokenIdentifier& token, Timestamp at=TimeNow()) {
-  return entry.metadata.commencementDateTime <= at && Supersedes(entry.target, token);
+  return entry.metadata.blockStartDateTime <= at && Supersedes(entry.target, token);
 }
 
 } // namespace pep::tokenBlocking

@@ -96,7 +96,7 @@ const Blocklist::Entry::Metadata emptyMetadata{
   .note{},
   .issuer{},
   .creationDateTime{/*zero*/},
-  .commencementDateTime{/*zero*/}
+  .blockStartDateTime{/*zero*/}
 };
 
 
@@ -160,7 +160,7 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking) {
   const auto entry = BlocklistEntry{
       .id = 24,
       .target{.subject = "subject", .userGroup = "group", .issueDateTime = blockDateTime},
-      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}, .commencementDateTime{}}};
+      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}, .blockStartDateTime{}}};
   const auto exactMatch = entry.target;
   const auto issuedBeforeBlockDateTime = TokenIdentifier{
       .subject = entry.target.subject,
@@ -177,7 +177,7 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking_False) {
   const auto entry = BlocklistEntry{
       .id = 29,
       .target{.subject = "subject", .userGroup = "group", .issueDateTime = blockDateTime},
-      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}, .commencementDateTime{}}};
+      .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = blockDateTime + days{2}, .blockStartDateTime{}}};
   const auto differentSubject =
       TokenIdentifier{.subject = "different", .userGroup = entry.target.userGroup, .issueDateTime = blockDateTime};
   const auto differentUserGroup =
@@ -192,7 +192,7 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking_False) {
   EXPECT_FALSE(IsBlocking(entry, issuedAfterBlockDateTime));
 }
 
-TEST(TokenBlocking_BlocklistEntry, IsBlocking_With_CommencementDateTime) {
+TEST(TokenBlocking_BlocklistEntry, IsBlocking_With_BlockStartDateTime) {
   const TokenIdentifier issuedBeforeBlockDateTime {
     .subject = "subject",
     .userGroup = "group",
@@ -200,11 +200,11 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking_With_CommencementDateTime) {
   const BlocklistEntry futureEntry{
     .id = 29,
     .target{.subject = issuedBeforeBlockDateTime.subject, .userGroup = issuedBeforeBlockDateTime.userGroup, .issueDateTime = REFERENCE_TIMESTAMP + days{5}},
-    .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = REFERENCE_TIMESTAMP - days{10}, .commencementDateTime = REFERENCE_TIMESTAMP + days{5}}};
+    .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = REFERENCE_TIMESTAMP - days{10}, .blockStartDateTime = REFERENCE_TIMESTAMP + days{5}}};
   const BlocklistEntry pastEntry{
     .id = 29,
     .target{.subject = issuedBeforeBlockDateTime.subject, .userGroup = issuedBeforeBlockDateTime.userGroup, .issueDateTime = REFERENCE_TIMESTAMP - days{5}},
-    .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = REFERENCE_TIMESTAMP - days{10}, .commencementDateTime = REFERENCE_TIMESTAMP - days{5}}};
+    .metadata{.note = "blocked for tests", .issuer = "tester", .creationDateTime = REFERENCE_TIMESTAMP - days{10}, .blockStartDateTime = REFERENCE_TIMESTAMP - days{5}}};
 
   EXPECT_FALSE(IsBlocking(futureEntry, issuedBeforeBlockDateTime, REFERENCE_TIMESTAMP));
   EXPECT_TRUE(IsBlocking(pastEntry, issuedBeforeBlockDateTime, REFERENCE_TIMESTAMP));
@@ -302,7 +302,7 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RetrieveById) {
       {.note = "Token was sent to the wrong person.",
        .issuer = "some_admin@somewhere.org",
        .creationDateTime = tokenBlockDateTime,
-       .commencementDateTime{}});
+       .blockStartDateTime{}});
   blocklist->add(arbitraryNoise.back(), emptyMetadata); // rules out just returning the last entry
 
   const auto expectedResult = BlocklistEntry{
@@ -311,7 +311,7 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RetrieveById) {
       {.note = "Token was sent to the wrong person.",
        .issuer = "some_admin@somewhere.org",
        .creationDateTime = tokenBlockDateTime,
-       .commencementDateTime{}}};
+       .blockStartDateTime{}}};
   EXPECT_EQ(blocklist->entryById(id), expectedResult);
 }
 
@@ -376,7 +376,7 @@ TEST(TokenBlocking_SqliteBlocklist, CreateWithStorageLocation) {
       .note = "note_note",
       .issuer = "issuer_issuer",
       .creationDateTime = REFERENCE_TIMESTAMP + days{52},
-      .commencementDateTime{}};
+      .blockStartDateTime{}};
 
   { // original instance scope
     const auto instanceA = SqliteBlocklist::CreateWithStorageLocation(sqliteFile);
@@ -424,14 +424,14 @@ TEST(TokenBlocking_Blocklist_Interface, IsBlocking) {
   class : public FakeBlockList {
   public:
     std::size_t numberOfMatches = 1;
-    pep::Timestamp commencementDateTime{};
+    pep::Timestamp blockStartDateTime{};
 
     std::vector<Entry> allEntriesMatching(const pep::tokenBlocking::TokenIdentifier& identifier) const override {
       return std::vector<Entry>(
           numberOfMatches,
           {.id = 1,
            .target = identifier,
-           .metadata = {.note = "none", .issuer = "admin", .creationDateTime = identifier.issueDateTime + days{2}, .commencementDateTime = commencementDateTime}});
+           .metadata = {.note = "none", .issuer = "admin", .creationDateTime = identifier.issueDateTime + days{2}, .blockStartDateTime = blockStartDateTime}});
     }
   } blocklist;
   const auto tokenA = ArbitraryTokens<2>().front();
@@ -448,9 +448,9 @@ TEST(TokenBlocking_Blocklist_Interface, IsBlocking) {
   EXPECT_TRUE(IsBlocking(blocklist, tokenB));
 
   blocklist.numberOfMatches = 1;
-  blocklist.commencementDateTime = REFERENCE_TIMESTAMP + days{5};
+  blocklist.blockStartDateTime = REFERENCE_TIMESTAMP + days{5};
   EXPECT_FALSE(IsBlocking(blocklist, tokenA, REFERENCE_TIMESTAMP));
-  blocklist.commencementDateTime = REFERENCE_TIMESTAMP - days{5};
+  blocklist.blockStartDateTime = REFERENCE_TIMESTAMP - days{5};
   EXPECT_TRUE(IsBlocking(blocklist, tokenA, REFERENCE_TIMESTAMP));
 }
 
