@@ -15,7 +15,11 @@ mkdir -p ../temp/nginx/
 if [ -z "${DEFAULT_MIME_TYPES-}" ]; then
   if [ -f /etc/nginx/mime.types ]; then
     DEFAULT_MIME_TYPES=/etc/nginx/mime.types
-  elif stat -t "${LOCALAPPDATA-/NOPE}/Microsoft/WinGet/Packages"/*nginx*/*nginx*/conf/mime.types >/dev/null 2>&1; then
+  elif [ -f /opt/homebrew/etc/nginx/mime.types ]; then
+    DEFAULT_MIME_TYPES=/opt/homebrew/etc/nginx/mime.types
+  elif [ -f /usr/local/etc/nginx/mime.types ]; then
+    DEFAULT_MIME_TYPES=/usr/local/etc/nginx/mime.types
+  elif [ -n "${LOCALAPPDATA:-}" ] && stat -t "${LOCALAPPDATA}/Microsoft/WinGet/Packages"/*nginx*/*nginx*/conf/mime.types >/dev/null 2>&1; then
     DEFAULT_MIME_TYPES="$(echo "${LOCALAPPDATA}/Microsoft/WinGet/Packages"/*nginx*/*nginx*/conf/mime.types)"
   else
     >&2 echo "Could not deduce default Nginx conf directory with 'mime.types'. Please set envvar DEFAULT_MIME_TYPES to this file."
