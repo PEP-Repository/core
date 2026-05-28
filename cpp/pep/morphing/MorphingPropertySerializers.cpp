@@ -25,17 +25,19 @@ EnrolledPartyKeys PropertySerializer<EnrolledPartyKeys>::read(const boost::prope
   const auto scheme = GetOptionalValue(
     DeserializeProperties<std::optional<std::string>>(source, "EnrollmentScheme", context),
     Serialization::ParseEnum<EnrollmentScheme>);
-  // Do not try to load a file with a wrong enrollment scheme
-  if (scheme && *scheme != EnrollmentScheme::Current) {
-    throw UnsupportedEnrollmentSchemeError{*scheme};
-  }
-
   auto privateKey = DeserializeProperties<std::optional<std::string>>(source, "PrivateKey", context);
   auto certificateChain = DeserializeProperties<std::optional<std::string>>(source, "CertificateChain", context);
-  // Do not try to load old keys from before we introduced the enrollment scheme
-  if ((privateKey || certificateChain) && !scheme) {
-    throw UnsupportedEnrollmentSchemeError{EnrollmentScheme::V1};
+
+  const bool isUserCertificate = privateKey || certificateChain;
+  // Do not try to load old keys from before we introduced the enrollment scheme,
+  //  or keys generated with a wrong enrollment scheme.
+  // This only applies to user keys, see note in serializer above.
+  // Note that we cannot reject server keys with a wrong EnrollmentScheme,
+  //  because pepEnrollment used to add EnrollmentScheme for servers as well.
+  if (isUserCertificate && scheme != EnrollmentScheme::Current) {
+    throw UnsupportedEnrollmentSchemeError{scheme.value_or(EnrollmentScheme::V1)};
   }
+
   return {
     .pseudonymKey = DeserializeProperties<std::optional<ElgamalPrivateKey>>(source, "PseudonymKey", context),
     .dataKey = DeserializeProperties<std::optional<ElgamalPrivateKey>>(source, "DataKey", context),
