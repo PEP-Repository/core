@@ -48,7 +48,8 @@ SetTimeoutHandle pep::weblib::SetTimeout(std::chrono::duration<double, std::mill
   auto ctx = std::make_shared<SetTimeoutContext>(SetTimeoutContext{std::move(callback)});
   ctx->keepMeAlive = ctx;
 
-  // We cannot use emscripten_set_timeout, because due to a bug it currently keeps the runtime alive even after emscripten_clear_timeout.
+  // We cannot use emscripten_set_timeout, because due to a bug it currently keeps the runtime alive even after emscripten_clear_timeout,
+  //  see https://github.com/emscripten-core/emscripten/issues/23763.
   // UnaryPlus is necessary because Node.js returns a `Timeout` object instead of a number, but it can be converted like this.
   auto timerId = val::take_ownership(UnaryPlus(val::global("setTimeout")(
     val::module_property("pepSetTimeoutInvokeCallback"),
