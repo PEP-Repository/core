@@ -318,7 +318,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
     transformed.set("verbose", verboseValues);
     return transformed;
   };
-  
+
   return {
     std::make_shared<UserCmd>(*this),
     std::make_shared<DatabaseCmd>(*this),
@@ -540,8 +540,12 @@ int StartCmd::execute() {
 
 #ifndef EXPECT_DEBUG_DEATH_IF_SUPPORTED
 # ifdef NDEBUG
-// GTEST_EXECUTE_STATEMENT_ may be internal, but I don't see a better way to implement this currently
-#  define EXPECT_DEBUG_DEATH_IF_SUPPORTED GTEST_EXECUTE_STATEMENT_
+// Replacement for the internal GTEST_EXECUTE_STATEMENT_ that GTEST would call for EXPECT_DEBUG_DEATH in with NDEBUG
+#define PEP_GTEST_EXECUTE_STATEMENT(statement, regex_or_matcher) \
+  if (true) { \
+    statement; \
+  } else ::testing::Message()
+#  define EXPECT_DEBUG_DEATH_IF_SUPPORTED PEP_GTEST_EXECUTE_STATEMENT
 # else
 #  define EXPECT_DEBUG_DEATH_IF_SUPPORTED EXPECT_DEATH_IF_SUPPORTED
 # endif
@@ -578,7 +582,7 @@ TEST(ParameterTypes, IntegerParameterTypes) {
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age"), 30);
   ASSERT_TRUE(err.empty());
-  
+
   // Test with ServerCmd
   AppCmd cmd2;
   const auto [exitCode2, err2] = ProcessWithCapturedStderr(cmd2, {"server", "start", "--workers", "4", "--port", "8080"});
@@ -764,7 +768,7 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameterForwardingToDif
 TEST(CommandParameterCombinations, AliasCommandWithForwardingDeprecatedParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user", "--username", "user@example.com"});
-    
+
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "user@example.com");
   EXPECT_NE(err.find("Warning: '--username' is deprecated. Use --email instead."), std::string::npos);
@@ -981,7 +985,7 @@ TEST(ParameterParameterCombinations, AliasParameterWithAliasParameterToDifferent
 TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithNormalParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob", "--username", "alice@example.com"});
-  
+
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "alice@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");
@@ -993,7 +997,7 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithNormalPara
 TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithDeprecatedParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--old-email", "old@example.com", "--username", "new@example.com"});
-  
+
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "new@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "old@example.com");
@@ -1018,7 +1022,7 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithAliasParam
 TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithForwardingDeprecatedParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--username", "bob@example.com", "--legacy-name", "Bob"});
-  
+
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "bob@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");
