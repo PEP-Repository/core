@@ -156,31 +156,31 @@ public:
 
   /// Helper object for OAuth authentication flow
   class OAuthClient {
+    std::string redirectUri_;
+    val openAuthPage_;
+
     rxcpp::subjects::replay<AuthorizationResult, decltype(asioWorker_)::value_type> authorizationCodeChan_;
     rxcpp::observable<FakeVoid> run_;
 
-  public:
-    OAuthClient(const std::shared_ptr<Weblib>& weblib, std::string redirectUri, val openAuthPage)
-      : authorizationCodeChan_(*weblib->asioWorker_) {
-      auto oauthClient = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
+    // Still called on main thread
+    rxcpp::observable<AuthorizationResult> authorizationMethod(
+        const std::shared_ptr<boost::asio::io_context>&,
+        const std::function<std::string(std::string redirectUri)>& getAuthorizeUri) {
+      openAuthPage_(getAuthorizeUri(redirectUri_));
+      // Would be nice to let openAuthPage return a promise,
+      // but then we have to add full observable coroutine support,
+      // plus val::awaiter currently only works inside val::promise_type, so callback it is
+      return authorizationCodeChan_.get_observable();
+    }
+
+    void startRun(const std::shared_ptr<Weblib>& weblib) {
+      auto oAuthClient = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
         .io_context = weblib->client_->getIoContext(),
         .config = weblib->clientConfig_.get_child("AuthenticationServer"),
-        .authorizationMethod = [this,
-          redirectUri = std::move(redirectUri),
-          openAuthPage = EmscriptenValPtr(std::move(openAuthPage))](
-        const std::shared_ptr<boost::asio::io_context>&,
-        const std::function<std::string(std::string redirectUri)>& getAuthorizeUri
-        ) {
-          // Still called on same thread
-          (*openAuthPage)(getAuthorizeUri(redirectUri));
-          // Would be nice to let openAuthPage return a promise,
-          // but then we have to add full observable coroutine support,
-          // plus val::awaiter currently only works inside val::promise_type, so callback it is
-          return authorizationCodeChan_.get_observable();
-        },
+        .authorizationMethod = std::bind_front(&OAuthClient::authorizationMethod, this),
       });
 
-      run_ = oauthClient->run()
+      run_ = oAuthClient->run()
           .flat_map([weblib](AuthorizationResult res) {
             if (res) {
               return weblib->client_->enrollUser(*res);
@@ -192,6 +192,14 @@ public:
             LOG(LOG_TAG, pep::info) << "Completed enrollment!";
             return FakeVoid{};
           });
+    }
+
+  public:
+    OAuthClient(const std::shared_ptr<Weblib>& weblib, std::string redirectUri, val openAuthPage)
+      : redirectUri_(std::move(redirectUri)),
+        openAuthPage_(std::move(openAuthPage)),
+        authorizationCodeChan_(*weblib->asioWorker_) {
+      startRun(weblib);
     }
 
     /// Call on successful authentication
