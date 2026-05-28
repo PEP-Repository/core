@@ -27,9 +27,9 @@ TEST(ConstTime, IsZero) {
   EXPECT_FALSE(pep::const_time::IsZero(std::array{0, 0b11, 0}));
 
   // Make sure IsZero does not use short-circuit logic
-  EXPECT_THROW(pep::const_time::IsZero(LazyThrowingIota), TestError);
+  EXPECT_THROW((void) pep::const_time::IsZero(LazyThrowingIota), TestError);
   // STL for comparison
-  EXPECT_NO_THROW(all_of(LazyThrowingIota, std::bind_front(std::equal_to{}, 0)));
+  EXPECT_NO_THROW((void) all_of(LazyThrowingIota, std::bind_front(std::equal_to{}, 0)));
 }
 
 TEST(ConstTime, IsEqual) {
@@ -42,9 +42,9 @@ TEST(ConstTime, IsEqual) {
   EXPECT_FALSE(pep::const_time::IsEqual(std::array{0, 1}, std::array{0, 1, 2}));
 
   // Make sure IsEqual does not use short-circuit logic
-  EXPECT_THROW(pep::const_time::IsEqual(LazyThrowingIota, views::iota(10, 20)), TestError);
+  EXPECT_THROW((void) pep::const_time::IsEqual(LazyThrowingIota, views::iota(10, 20)), TestError);
   // STL for comparison
-  EXPECT_NO_THROW(equal(LazyThrowingIota, views::iota(10, 20)));
+  EXPECT_NO_THROW((void) equal(LazyThrowingIota, views::iota(10, 20)));
 }
 
 }
