@@ -6,7 +6,7 @@
 set(hide_files)
 # Hide files so they do not show up in a 'grep'
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-  set(hide_files COMMAND attrib +h ../pep-repo-client-wasm)
+  set(hide_files COMMAND attrib /L +h "${CMAKE_CURRENT_SOURCE_DIR}/../pep-repo-client-wasm")
 endif()
 add_custom_target(pep-repo-client-wasm-symlink
     COMMENT "Link pep-repo-client-wasm in source tree to our weblib build folder"
@@ -49,6 +49,9 @@ set_target_properties(pep-repo-client-lib-build PROPERTIES
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/pack/dist/"
 )
 
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+  set(hide_files COMMAND attrib +h "${CMAKE_CURRENT_SOURCE_DIR}/dist-test")
+endif()
 add_custom_target(pep-repo-client-lib-config
     COMMENT "Copy config to dist-test folder"
     COMMAND ${CMAKE_COMMAND} -E copy
@@ -57,6 +60,7 @@ add_custom_target(pep-repo-client-lib-config
       ShadowAdministration.pub
       OAuthTokenSecret.json
       "${CMAKE_CURRENT_SOURCE_DIR}/dist-test/"
+    ${hide_files}
     VERBATIM
     DEPENDS
       ClientConfig.json
