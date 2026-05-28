@@ -1,7 +1,12 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/messaging/BinaryProtocol.hpp>
 #include <pep/messaging/ServerConnection.hpp>
+#include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
+
+namespace {
+const std::string LOG_TAG = "ServerConnection";
+}
 
 namespace pep::messaging {
 
@@ -54,6 +59,9 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
 
     // Send pending requests now
     auto send = std::exchange(mPendingRequests, Default<decltype(mPendingRequests)>);
+    if (!send.empty()) {
+      LOG(LOG_TAG, debug) << (mNode ? mNode->describe() + ": " : "") << "Sending " << send.size() << " previously pending requests";
+    }
     for (const auto& request: send) {
       rxcpp::observable<std::string> obs;
       try {
@@ -120,6 +128,7 @@ rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std
     return mConnection->sendRequest(message, tail);
   }
 
+  LOG(LOG_TAG, debug) << (mNode ? mNode->describe() + ": " : "") << "Adding request to pending requests list while waiting for connection";
   return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
       auto self = weak.lock();
       if (self == nullptr) {
