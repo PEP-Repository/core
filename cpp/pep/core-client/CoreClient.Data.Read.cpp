@@ -63,7 +63,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
                                                .mColumnGroups = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})
-      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(ticket)); });
+      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(std::move(ticket))); });
 }
 
 rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(std::shared_ptr<SignedTicket2> ticket) {

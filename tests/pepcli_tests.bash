@@ -124,6 +124,7 @@ if should_run_test basic; then
   # whether it has found the DeviceHistory directory, and the diff succeeded.
   execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin -exec diff "$RANDOM_DATA_FILE" {} -q \; -print | grep DeviceHistory
   execute . rm -rf "$DEST_DIR/pulled"
+  execute . rm "$RANDOM_DATA_FILE"
 
   # Deleting a nonexistent (empty) cell should fail: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2367
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c StudyContexts &&
@@ -421,6 +422,7 @@ if should_run_test authserver-apache; then
     else
       trace grep "Location: http://localhost:16515.*[\?&]error=$expectError" "$DATA_DIR/authserverResponse.txt"
     fi
+    rm "$DATA_DIR/authserverResponse.txt"
   }
 
   toUpperCase() {
@@ -904,6 +906,8 @@ if should_run_test certificate-renewal; then
 
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.csr" -delete
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.chain" -delete
+
+  execute . rm -rf "$certificate_renewal_data_dir"
 fi
 
 ####################

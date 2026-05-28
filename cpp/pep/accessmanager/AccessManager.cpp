@@ -337,6 +337,7 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
                           &AccessManager::handleUserQuery,
                           &AccessManager::handleUserMutationRequest,
                           &AccessManager::handleVerifiersRequest,
+                          &AccessManager::handleUserVerifiersRequest,
                           &AccessManager::handleColumnAccessRequest,
                           &AccessManager::handleParticipantGroupAccessRequest,
                           &AccessManager::handleColumnNameMappingRequest,
@@ -621,7 +622,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
     .tsReq {.mRequest = std::move(*signedRequest) },
-    .userRecipient = userRecipient,
+    .userRecipient = std::move(userRecipient),
     });
 
   // Prepare transcryptor request
@@ -887,20 +888,29 @@ messaging::MessageBatches AccessManager::handleUserMutationRequest(std::shared_p
 messaging::MessageBatches AccessManager::handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request) {
   const auto& pseudonymTranslator = this->pseudonymTranslator();
 
-  return messaging::BatchSingleMessage(VerifiersResponse(
-      pseudonymTranslator.computeTranslationProofVerifiers(
+  return messaging::BatchSingleMessage(VerifiersResponse{
+      pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::AccessManager),
           mPublicKeyPseudonyms
       ),
-      pseudonymTranslator.computeTranslationProofVerifiers(
+      pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::StorageFacility),
           mPublicKeyPseudonyms
       ),
-      pseudonymTranslator.computeTranslationProofVerifiers(
+      pseudonymTranslator.computeCertifiedTranslationProofVerifiers(
           RecipientForServer(EnrolledParty::Transcryptor),
           mPublicKeyPseudonyms
-      )
-  ));
+      ),
+  });
+}
+
+messaging::MessageBatches AccessManager::handleUserVerifiersRequest(std::shared_ptr<UserVerifiersRequest> request) {
+  return messaging::BatchSingleMessage(UserVerifiersResponse{
+    this->pseudonymTranslator().computeCertifiedTranslationProofVerifiers(
+      RecipientForCertificate(request->userCertificate),
+      mPublicKeyPseudonyms
+    )
+  });
 }
 
 messaging::MessageBatches

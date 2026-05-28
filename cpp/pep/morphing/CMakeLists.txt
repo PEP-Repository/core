@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME}Morphinglib STATIC
   MorphingSerializers.cpp MorphingSerializers.hpp
   RepoKeys.cpp RepoKeys.hpp
   RepoRecipient.cpp RepoRecipient.hpp
+  ServerVerifiers.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}Morphinglib

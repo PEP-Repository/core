@@ -67,6 +67,10 @@ MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
   Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
+- #2801:
+  - Copy `PublicKeyPseudonyms` and `AccessManager` entries from `AccessManager.json` config over to `Transcryptor.json`
+  - Update `Verifiers.json` for the Transcryptor: Run `./scripts/update-verifiers-1-7.sh /path/to/Verifiers.json`
+    - Make sure that you have `pepcli` in your PATH for the current environment, or pass the binary to use as extra argument to the script
 
 ---------------
 

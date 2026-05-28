@@ -12,7 +12,6 @@
 #include <pep/messaging/ConnectionStatus.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/networking/EndPoint.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/server/MonitoringMessages.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/structure/ColumnName.hpp>
@@ -411,6 +410,10 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    * \return ((An observable emitting) a shared_ptr to) a vector of PolymorphicPseudonym corresponding with the vector of input strings.
    */
   rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> parsePpsOrIdentities(const std::vector<std::string>& idsAndOrPps);
+
+  auto openVerifiers(const auto& verifiersResponse) const {
+    return verifiersResponse.open(publicKeyPseudonyms);
+  }
 
   /*!
    * \brief Interpret a string as a textually represented polymorphic pseudonym, or a participant identifier,
