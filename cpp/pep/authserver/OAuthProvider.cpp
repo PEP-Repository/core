@@ -15,6 +15,7 @@
 
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -267,7 +268,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     alternativeUidsString = (*it).value;
   }
 #else
-  if(!request.hasHeader(SPOOF_CHECK_HEADER) || request.header(SPOOF_CHECK_HEADER) != spoofKey) {
+  if(!request.hasHeader(SPOOF_CHECK_HEADER) || !const_time::IsEqual(request.header(SPOOF_CHECK_HEADER), spoofKey)) {
     LOG(LOG_TAG, critical) << "Spoofkey was not correctly set on the request. Looks like someone has direct access to the authserver, without being authenticated first. Remote IP: " << remoteIp;
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
