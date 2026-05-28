@@ -33,7 +33,6 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
    CC=clang CXX=clang++ ./docker-build/builder/conan/init_conan_profile.sh
    ```
 
-   Note: Conan <2.3 [may not](https://github.com/conan-io/conan/issues/8866) pick up your default compiler (`cc`/`c++`) without `CC`/`CXX`.
 4. Build dependencies and [generate CMake presets](https://docs.conan.io/2/examples/tools/cmake/cmake_toolchain/build_project_cmake_presets.html):
 
    ```shell
