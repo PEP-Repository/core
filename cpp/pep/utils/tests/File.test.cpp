@@ -174,10 +174,10 @@ TEST(File, AppendDirectoryNameSuffix) {
   fs::current_path(testPathSubdir);
   EXPECT_EQ(pep::AppendDirectoryNameSuffix("..", "-pending"), testPathSuffixed);
 
-  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/", "-pending"), std::runtime_error);
-  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/.", "-pending"), std::runtime_error);
-  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/./", "-pending"), std::runtime_error);
-  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("", "-pending"), std::runtime_error);
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/", "-pending"), std::invalid_argument);
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/.", "-pending"), std::invalid_argument);
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("/./", "-pending"), std::invalid_argument);
+  EXPECT_THROW((void) pep::AppendDirectoryNameSuffix("", "-pending"), std::invalid_argument);
 }
 
 }
