@@ -227,6 +227,7 @@
         "StoragePath": { "type": "string" },
         "EncIdKeyFile": { "type": "string" },
         "PageStore": { "$ref": "#/$defs/PageStore" },
+        "DataSizeResolution": { "type": "integer" },
         "ParallelisationWidth": { "type": "integer" }
       },
       "required": [

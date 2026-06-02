@@ -94,7 +94,9 @@ upgrade_config_file() {
       .ShadowPublicKeyFile,
       .ProjectConfigFile,
       .StoragePath,
-      .EncIdKeyFile
+      .EncIdKeyFile,
+      .DataSizeResolution,
+      .ParallelisationWidth
     ) | with_entries(select(.value != null)))
   + (if .PageStore then {
       PageStore: (
