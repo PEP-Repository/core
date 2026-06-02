@@ -28,6 +28,7 @@
   },
   "EnrolledPartyKeysFile": "StorageFacilityKeys.json",
   "StoragePath": "meta",
+  "DataSizeResolution": 1024,
   "EncIdKeyFile": "StorageFacilityEncIdKey.json",
   "PageStore": {
     "Local": {

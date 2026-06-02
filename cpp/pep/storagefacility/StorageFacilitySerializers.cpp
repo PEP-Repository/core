@@ -266,4 +266,36 @@ void Serializer<DataPayloadPage>::moveIntoProtocolBuffer(proto::DataPayloadPage&
   dest.set_index(value.mIndex);
 }
 
+DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeRequest&& source) const {
+  DataSizeRequest result;
+  for (const auto& column : source.columns()) {
+    if (!result.mColumns.emplace(column).second) {
+      throw std::runtime_error("Can't insert duplicate column '" + column + "' into data size request");
+    }
+  }
+  return result;
+}
+
+void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest& dest, DataSizeRequest value) const {
+  dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
+  for (auto& column : value.mColumns) {
+    dest.add_columns(std::move(column));
+  }
+}
+
+DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSizeResponse&& source) const {
+  return DataSizeResponse{
+    .mBlockSize = source.block_size(),
+    .mTotalBlocks = source.total_blocks(),
+    .mRollingBlocks = source.rolling_blocks(),
+  };
+}
+
+void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
+  dest.set_block_size(value.mBlockSize);
+  dest.set_total_blocks(value.mTotalBlocks);
+  dest.set_rolling_blocks(value.mRollingBlocks);
+}
+
+
 }
