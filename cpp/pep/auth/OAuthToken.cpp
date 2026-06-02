@@ -1,5 +1,6 @@
 #include <pep/auth/OAuthToken.hpp>
 
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
@@ -37,7 +38,7 @@ bool OAuthToken::verify(const std::string& secret, const std::string& requiredSu
   std::string localHMAC = Hmac<Sha256>(secret, mData);
 
   // Check whether the received HMAC is equal to the computed one
-  if(localHMAC != mHmac) {
+  if (!const_time::IsEqual(localHMAC, mHmac)) {
     LOG("OAuthToken::verify", info) << "MAC in token invalid";
     result = false;
   }

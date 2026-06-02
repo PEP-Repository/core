@@ -457,7 +457,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
         + backupPath.string() + " already exists. An upgrade was apparently already attempted, but failed. Manual correction is required.");
     }
     std::filesystem::copy_file(this->mStoragePath, backupPath);
-    LOG(LOG_TAG, info) << "Backed up storage to " << backupPath << ". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
+    LOG(LOG_TAG, info) << "Backed up storage to \"" << backupPath.string() << "\". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
     auto transactionGuard = mImplementor->raw.transaction_guard();
     for (auto record : mImplementor->raw.iterate<SelectStarPseudonymRecord>()) {
       CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(SpanToString(record.localPseudonym));

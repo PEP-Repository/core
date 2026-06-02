@@ -184,7 +184,7 @@ void CheckSymlinkAllowed(const std::filesystem::path& inpath, bool shouldResolve
     std::ostringstream message;
     message << "Symbolic link(s) found. By default this is not supported for pseudonymization.\n If symlinks should be resolved, please add the resolve-symlinks flag to the store command.\n Symlinks found at:\n";
     for (auto &path : foundSymlinks){
-      message << path.string() << "\n";
+      message << "\"" << path.string() << "\"\n";
     }
     throw std::runtime_error(std::move(message).str());
   }
@@ -296,7 +296,7 @@ private:
               std::filesystem::remove(entry.path);
             }
             catch (std::exception& e) {
-              LOG(LOG_TAG, pep::warning) << "Could not remove temporary file " << entry.path << ": " << e.what();
+              LOG(LOG_TAG, pep::warning) << "Could not remove temporary file \"" << entry.path.string() << "\": " << e.what();
             }
           }
         }));

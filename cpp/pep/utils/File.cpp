@@ -185,4 +185,23 @@ std::filesystem::path GetParentDirectory(const std::filesystem::path& path) {
   return normalPath;
 }
 
+
+std::filesystem::path AppendDirectoryNameSuffix(const std::filesystem::path& path, std::string_view suffix) {
+  if (path.empty()) {
+    throw std::runtime_error("Directory path is empty");
+  }
+  // Make absolute and collapse "." and ".."
+  auto normalPath = absolute(path).lexically_normal();
+  if (!normalPath.has_filename()) {
+    // Remove trailing separator
+    // "/path/to/dir/" -> "/path/to/dir"
+    normalPath = normalPath.parent_path();
+  }
+  if (!normalPath.has_filename()) { // E.g. "/"
+    throw std::runtime_error("Directory path is filesystem root: " + path.string());
+  }
+  normalPath.replace_filename(normalPath.filename() += suffix);
+  return normalPath;
+}
+
 }

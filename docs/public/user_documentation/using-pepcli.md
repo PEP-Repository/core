@@ -2,7 +2,12 @@
 
 The `pepcli` application is the primary command line interface (CLI) application to interact with the PEP system. It is available for multiple platforms, and is included in PEP's `client` Docker images and in the Windows client software installer. Among `pepcli`'s functionalities are the ability to [upload and download data](uploading-and-downloading-data.md), and to administer the PEP system.
 
-The use of command line utilities such as `pepcli` is subject to details of the platform on which it is used. For example, a literal `*` (asterisk) parameter value must be escaped to `\*` on Linux to prevent [shell expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Expansions.html) ("globbing"). Such details are not (extensively) covered in this documentation. Users are expected to be knowledgeable enough about their platforms to perform basic tasks and avoid common pitfalls.
+The use of command line utilities such as `pepcli` is subject to details of the platform on which it is used. For example
+
+- a literal `*` (asterisk) parameter value must be escaped to `\*` on Linux to prevent [shell expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Expansions.html) ("globbing").
+- passing an empty parameter value [requires some hoop jumping in PowerShell](https://stackoverflow.com/questions/10297002/passing-empty-arguments-to-executables-using-powershell), e.g. enclosing a set of double quotes `""` by single quotes: `'""'` . Note that the [behavior may even vary across PowerShell versions](https://stackoverflow.com/a/77908046).
+
+Such details are not (extensively) covered in this documentation. Users are expected to be knowledgeable enough about their platforms to perform basic tasks and avoid common pitfalls.
 
 ## General usage
 

@@ -216,7 +216,7 @@ void Tar::Extract(std::istream& stream, const std::filesystem::path& outputDirec
       std::ios::binary);
     if(!out) {
       std::ostringstream oss;
-      oss << "Error opening output file " << outpath << " for extracting";
+      oss << "Error opening output file \"" << outpath.string() << "\" for extracting";
       throw std::runtime_error(oss.str());
     }
     while(readBlockToStream(archive, out)) {}

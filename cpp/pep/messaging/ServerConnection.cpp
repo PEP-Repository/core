@@ -1,12 +1,18 @@
+#include <pep/async/CreateObservable.hpp>
 #include <pep/messaging/BinaryProtocol.hpp>
 #include <pep/messaging/ServerConnection.hpp>
+#include <pep/utils/Log.hpp>
+#include <pep/utils/MiscUtil.hpp>
+
+namespace {
+const std::string LOG_TAG = "ServerConnection";
+}
 
 namespace pep::messaging {
 
 ServerConnection::ServerConnection(std::shared_ptr<Node> node) noexcept
-  : mNode(node), mWaitGroup(WaitGroup::Create()) {
+  : mNode(node) {
   assert(mNode != nullptr);
-  this->onDisconnected();
 }
 
 void ServerConnection::handleConnectivityChange(const LifeCycler::StatusChange& change) {
@@ -34,7 +40,6 @@ void ServerConnection::handleConnectivityChange(const Connection::Attempt::Resul
     catch (...) {
       status.error = boost::system::errc::make_error_code(boost::system::errc::errc_t::not_connected);
     }
-    this->onDisconnected();
   }
 
   mStatusSubscriber.on_next(status);
@@ -51,26 +56,31 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
         self->handleConnectivityChange(change);
       }
       });
-  }
 
-  assert(mConnecting.has_value());
-  mConnecting->done();
-  mConnecting.reset();
-  mWaitGroup = WaitGroup::Create();
-}
+    // Send pending requests now
+    auto send = std::exchange(mPendingRequests, Default<decltype(mPendingRequests)>);
+    if (!send.empty()) {
+      LOG(LOG_TAG, debug) << (mNode ? mNode->describe() + ": " : "") << "Sending " << send.size() << " previously pending requests";
+    }
+    for (const auto& request: send) {
+      rxcpp::observable<std::string> obs;
+      try {
+        obs = mConnection->sendRequest(request.message, request.tail);
+      }
+      catch (...) { // Notify subscriber that request can't be sent
+        request.subscriber.on_error(std::current_exception());
+        continue; // ... then continue with the next pending request
+      }
 
-void ServerConnection::onDisconnected() {
-  if (!mConnecting.has_value()) {
-    mWaitGroup = WaitGroup::Create();
-    mConnecting.emplace(mWaitGroup->add("Connecting"));
+      // Request has been scheduled onto the mConnection: hook up the subscriber
+      obs.subscribe(request.subscriber);
+    }
   }
 }
 
 void ServerConnection::finalize() {
-  if (mNode != nullptr) {
-    mNode->shutdown();
-    mNode.reset();
-  }
+  this->shutdown();
+  mNode.reset();
   mConnection.reset();
 }
 
@@ -114,17 +124,41 @@ rxcpp::observable<ConnectionStatus> ServerConnection::connectionStatus() {
 }
 
 rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std::string> message, std::optional<messaging::MessageBatches> tail) {
-  return this->whenConnected<std::string>([message, tail](std::shared_ptr<Connection> connection) {
-    return connection->sendRequest(message, tail);
-    });
+  if (mConnection != nullptr) {
+    return mConnection->sendRequest(message, tail);
+  }
 
+  LOG(LOG_TAG, debug) << (mNode ? mNode->describe() + ": " : "") << "Adding request to pending requests list while waiting for connection";
+  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
+      auto self = weak.lock();
+      if (self == nullptr) {
+        subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection was destroyed")));
+      }
+      else if (self->mConnection != nullptr) { // Connection has been established before caller subscribed
+        self->mConnection->sendRequest(message, tail).subscribe(subscriber);
+      }
+      else { // Connection has not been established yet
+        self->mPendingRequests.emplace_back(PendingRequest{ // Store the request so it can be sent when the connection is established later
+          .message = message,
+          .tail = tail,
+          .subscriber = subscriber,
+          });
+      }
+    });
 }
 
 rxcpp::observable<FakeVoid> ServerConnection::shutdown() {
   if (mNode == nullptr) {
     return rxcpp::observable<>::just(FakeVoid());
   }
-  return mNode->shutdown();
+
+  auto result = mNode->shutdown();
+  auto pending = std::move(mPendingRequests);
+  mPendingRequests.clear(); // Our call to std::move doesn't (necessarily) clear the vector
+  for (const auto& request : pending) {
+    request.subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection is shutting down")));
+  }
+  return result;
 }
 
 }

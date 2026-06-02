@@ -6,7 +6,6 @@
 #include <pep/async/WorkerPool.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 
@@ -98,6 +97,7 @@ private:
   messaging::MessageBatches handleUserMutationRequest(std::shared_ptr<SignedUserMutationRequest> signedRequest);
   messaging::MessageBatches handleGlobalConfigurationRequest(std::shared_ptr<GlobalConfigurationRequest> request);
   messaging::MessageBatches handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request);
+  messaging::MessageBatches handleUserVerifiersRequest(std::shared_ptr<UserVerifiersRequest> request);
   messaging::MessageBatches handleColumnAccessRequest(std::shared_ptr<SignedColumnAccessRequest> request);
   messaging::MessageBatches handleParticipantGroupAccessRequest(std::shared_ptr<SignedParticipantGroupAccessRequest> request);
   messaging::MessageBatches handleColumnNameMappingRequest(std::shared_ptr<SignedColumnNameMappingRequest> signedRequest);

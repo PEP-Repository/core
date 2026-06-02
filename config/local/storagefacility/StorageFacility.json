@@ -8,6 +8,7 @@
   "CACertificateFile": "rootCA.cert",
   "ListenPort": 16519,
   "StoragePath": "meta",
+  "DataSizeResolution": 1024,
   "AccessManager": {
     "Name": "AccessManager",
     "Address": "localhost",

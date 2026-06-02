@@ -10,9 +10,6 @@
 
 #include <boost/core/noncopyable.hpp>
 
-#include <rxcpp/rx-lite.hpp>
-
-#include <pep/async/CreateObservable.hpp>
 #include <pep/utils/Shared.hpp>
 
 namespace pep {
@@ -54,20 +51,6 @@ class WaitGroup : public std::enable_shared_from_this<WaitGroup>, public SharedC
 
   // Wait for all actions to complete.
   void wait(std::function<void(void)> callback);
-
-  // Adapt the given observable, such that it only emits when the
-  // actions for the waitgroup are done.
-  template<typename T>
-  rxcpp::observable<T> delayObservable(
-          std::function<rxcpp::observable<T>(void)> cb) {
-    auto that = shared_from_this();
-    return CreateObservable<T>(
-      [that, cb = std::move(cb)](rxcpp::subscriber<T> subscriber) {
-      that->wait([cb = std::move(cb), subscriber = std::move(subscriber)] {
-        cb().subscribe(std::move(subscriber));
-      });
-    });
-  }
 
  protected:
   friend void WaitGroup::Action::done() const;

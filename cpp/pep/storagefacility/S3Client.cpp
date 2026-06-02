@@ -69,8 +69,8 @@ namespace
     bool use_https = params.use_https.value_or(true);
 
     if (use_https && params.ca_cert_path.has_value()) {
-      LOG(LOG_TAG, info) << "Using " << params.ca_cert_path->string()
-        << " to verify TLS certificate of " << params.endpoint.hostname
+      LOG(LOG_TAG, info) << "Using \"" << params.ca_cert_path->string()
+        << "\" to verify TLS certificate of " << params.endpoint.hostname
         << ":" << params.endpoint.port;
     }
 

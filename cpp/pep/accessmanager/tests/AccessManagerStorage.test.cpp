@@ -1,4 +1,4 @@
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/accessmanager/Storage.hpp>
@@ -45,14 +45,13 @@ void PrepareSortedMine(UserQueryResponse& response) {
 }
 
 /*
-The following tests attempt to test the basic interactions with the database behind AccessManager::Backend::Storage. At times, there exists a depecdency on other functionality. For example, to
+The following tests attempt to test the basic interactions with the database behind AccessManager::Backend::Storage. At times, there exists a dependency on other functionality. For example, to
 test whether or not a participant has been correctly added to a participantGroup, we depend on createParticipantGroup(), and hasParticipantInGroup().
 At this moment, I see no way around this.*/
 
 class AccessManagerStorageTest : public ::testing::Test {
 public:
   static std::shared_ptr<AccessManager::Backend::Storage> storage;
-  const std::filesystem::path databasePath{":memory:"};
   static std::shared_ptr<GlobalConfiguration> globalConf;
 
   const PolymorphicPseudonym dummyPP{PolymorphicPseudonym::FromIdentifier(ElgamalPublicKey::Random(), "dummy")};
@@ -64,13 +63,11 @@ public:
 
   // Create a new AccessManager::Backend::Storage with a clean database
   void SetUp() override {
-    std::filesystem::remove(databasePath);
-    storage = std::make_shared<AccessManager::Backend::Storage>(databasePath, globalConf);
-
+    storage = std::make_shared<AccessManager::Backend::Storage>(":memory:", globalConf);
   }
 
   void TearDown() override {
-    std::filesystem::remove(databasePath);
+    storage.reset();
   }
 
   void createParticipantGroupParticipant(const std::string& participantGroup, const LocalPseudonym& localPseudonym) {
@@ -240,7 +237,7 @@ TEST_F(AccessManagerStorageTest, store_lp_and_localPseudonymIsStored) {
 
 TEST_F(AccessManagerStorageTest, getStoragePath_happy) {
   auto actual = storage->getPath();
-  auto expected = std::filesystem::path(databasePath);
+  auto expected = std::filesystem::path(":memory:");
   ASSERT_EQ(actual, expected);
 }
 

@@ -73,7 +73,7 @@ CoreClient::CoreClient(const Builder& builder) :
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
       [keysFilePath = *keysFilePath](const EnrollmentResult& result){
-      LOG(LOG_TAG, debug) << "Writing new keys to " << keysFilePath;
+      LOG(LOG_TAG, debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
       std::ofstream sf(keysFilePath);
       result.writeJsonTo(sf);
     });
@@ -309,13 +309,11 @@ const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const
 }
 
 rxcpp::observable<FakeVoid> CoreClient::shutdown() {
-  return RxIterate(
-    std::vector<rxcpp::observable<FakeVoid>> {
-      accessManagerProxy->shutdown(),
-      storageFacilityProxy->shutdown(),
-      transcryptorProxy->shutdown()
-    }
-  ).merge().last();
+  return rxcpp::rxs::empty<FakeVoid>()
+    .merge(accessManagerProxy ? accessManagerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(storageFacilityProxy ? storageFacilityProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(transcryptorProxy ? transcryptorProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .last();
 }
 
 rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalConfiguration() {
@@ -323,7 +321,7 @@ rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalCon
     return rxcpp::observable<>::just(mGlobalConf);
   }
 
-  return accessManagerProxy->requestGlobalConfiguration()
+  return getAccessManagerProxy(true)->requestGlobalConfiguration()
     .map([this](const GlobalConfiguration& gc) {return mGlobalConf = MakeSharedCopy(gc); });
 }
 
@@ -430,7 +428,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
     return rxcpp::observable<>::error<IndexedTicket2>(std::runtime_error("Query out of scope of provided Ticket"));
   }
   assert(ContainsUniqueValues(opts.pps));
-  return accessManagerProxy->requestIndexedTicket(ClientSideTicketRequest2{
+  return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
       .mModes = opts.modes,
       .mParticipantGroups = opts.participantGroups,
       .mAccessSubjects = opts.pps,
