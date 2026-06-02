@@ -24,7 +24,7 @@ stop_jobs() {
 }
 trap stop_jobs EXIT
 
-readarray -t servers < <(jq --compact-output '.[] | select(type == "object" and .Port != null)' "$scriptdir/dist-test/ClientConfig.json")
+readarray -t servers < <(jq --compact-output '.ServerEndPoints[]' "$scriptdir/dist-test/ClientConfig.json")
 if [ "${#servers[@]}" -eq 0 ]; then
   >&2 echo "Failed to get addresses to proxy"
   exit 1

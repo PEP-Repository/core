@@ -176,7 +176,7 @@ public:
     void startRun(const std::shared_ptr<Weblib>& weblib) {
       auto oAuthClient = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
         .io_context = weblib->client_->getIoContext(),
-        .config = weblib->clientConfig_.get_child("AuthenticationServer"),
+        .config = weblib->clientConfig_.get_child("OAuthServer"),
         .authorizationMethod = std::bind_front(&OAuthClient::authorizationMethod, this),
       });
 

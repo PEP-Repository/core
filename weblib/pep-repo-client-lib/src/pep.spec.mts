@@ -38,7 +38,7 @@ describe('Pep', function () {
       ]);
       const [
         clientConfig,
-        CACertificateFile,
+        CaCertificateFile,
         ShadowPublicKeyFile,
         tokenSecretObj0
       ] = await Promise.all([
@@ -53,7 +53,7 @@ describe('Pep', function () {
       pepCreateArgs = {
         clientConfig,
         configFileContentOverrides: {
-          CACertificateFile,
+          CaCertificateFile,
           ShadowPublicKeyFile,
         },
       };

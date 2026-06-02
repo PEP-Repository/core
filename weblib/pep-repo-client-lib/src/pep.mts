@@ -29,33 +29,37 @@ type ConfigServerName =
     | 'Authserver'
     ;
 
-interface ConfigServer {
-  Name: string;
+export interface EndPoint {
+  Name?: string;
   Address: string;
   Port: number;
 }
 
 interface ConfigFiles {
-  CACertificateFile: string;
-  ShadowPublicKeyFile: string;
-  ProjectConfigFile: string;
+  CaCertificateFile: string;
+  ShadowPublicKeyFile?: string;
+  ProjectConfigFile?: string;
 }
 
-export type ClientConfig = {
-  [server in ConfigServerName]: ConfigServer;
-} & ConfigFiles & {
-  KeysFile: string;
+export interface ClientConfig extends ConfigFiles {
+  SystemPublicKeys: SystemPublicKeys;
+  ServerEndPoints: {
+    [server in ConfigServerName]: EndPoint;
+  };
+  EnrolledPartyKeysFile?: string;
+  OAuthServer: {
+    RequestUrl: string;
+    TokenUrl: string;
+    CaCertificateFile?: string;
+  };
+  Castor?: {
+    BaseUrl: string;
+  };
+}
+export interface SystemPublicKeys {
   PublicKeyData: string;
   PublicKeyPseudonyms: string;
-  AuthenticationServer: {
-    RequestURL: string;
-    TokenURL: string;
-    CaCertFilePath: string;
-  };
-  Castor: {
-    BaseURL: string;
-  };
-};
+}
 
 /** Configuration to initialize Pep */
 export interface InitConfig {
@@ -172,15 +176,16 @@ export default class Pep {
     const contentOverride = contentOverrides?.[key];
     if (contentOverride) {
       Module.FS.createDataFile('/', fileName, contentOverride, true, false, false);
+      configFiles[key] = fileName;
     } else {
       const url = configFiles[key];
       if (url) {
         await new Promise<void>((resolve, reject) => {
           Module.FS_createPreloadedFile('/', fileName, new URL(url, baseUrl ?? undefined).href, true, false, resolve, reject, false, false, undefined);
         });
+        configFiles[key] = fileName;
       }
     }
-    configFiles[key] = fileName;
   }
 
   static async create(config: InitConfig) {
@@ -189,11 +194,11 @@ export default class Pep {
         : config.clientConfig;
     // TODO should this be here?
     // We let Websockify listen on 15xxx ports instead of 16xxx, so now we need to connect to those
-    for (const server of ['AccessManager', 'StorageFacility', 'KeyServer', 'Transcryptor', 'RegistrationServer', 'Authserver'] as const) {
-      clientConfig[server].Port -= 1_000;
+    for (const server in clientConfig.ServerEndPoints) {
+      clientConfig.ServerEndPoints[server as ConfigServerName].Port -= 1_000;
     }
     // Persist ClientKeys.json to keep user logged in
-    clientConfig.KeysFile = '/persist/ClientKeys.json';
+    clientConfig.EnrolledPartyKeysFile = '/persist/ClientKeys.json';
 
     // These members must be listed in -sINCOMING_MODULE_JS_API
     let Module: PepModule | {
@@ -209,7 +214,7 @@ export default class Pep {
 
     const baseUrl = config.clientConfig instanceof URL ? config.clientConfig : null;
     await Promise.all([
-      this.#addConfigFile(Module, baseUrl, config.configFileContentOverrides, clientConfig, 'CACertificateFile', 'rootCA.cert'),
+      this.#addConfigFile(Module, baseUrl, config.configFileContentOverrides, clientConfig, 'CaCertificateFile', 'rootCA.cert'),
       this.#addConfigFile(Module, baseUrl, config.configFileContentOverrides, clientConfig, 'ShadowPublicKeyFile', 'ShadowAdministration.pub'),
       // Skip ProjectConfig.json for now as it's not used
     ]);

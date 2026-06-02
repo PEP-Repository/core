@@ -90,8 +90,7 @@
         "StorageFacility": { "$ref": "#/$defs/EndPoint" },
         "Transcryptor": { "$ref": "#/$defs/EndPoint" }
       },
-      "additionalProperties": false,
-      "patternProperties": { "^//": {} }
+      "additionalProperties": false
     },
 
     "EndPoint": {
