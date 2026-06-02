@@ -100,7 +100,7 @@ boost::property_tree::path RawPtreePath(const std::string& path);
   })
 
 // U+00B5 (micro symbol) encoded in UTF-8, plus NULterminator
-constexpr char micro_symbol[] = { char(0xC2), char(0xB5), char(0x0) };
+constexpr char micro_symbol[] = { static_cast<char>(0xC2), static_cast<char>(0xB5), static_cast<char>(0x0) };
 
 /// @brief Returns the SI prefix for the specified power
 /// @tparam T The (integral) type used to express the power
