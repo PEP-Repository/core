@@ -194,7 +194,7 @@ saveBtn.addEventListener('click', () => void (async () => {
       await (await getContent()).pipeTo(await tmpFile.createWritable());
       const blob = await tmpFile.getFile();
       const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a')
+      const a = document.createElement('a');
       a.href = blobUrl;
       a.download = fileName;
       a.click();

@@ -88,7 +88,7 @@ export interface ParticipantPersonalia {
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
-  /** Loose subjects to request (any format taht would be recognized by pepcli) */
+  /** Loose subjects to request (any format that would be recognized by pepcli) */
   subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
