@@ -42,6 +42,11 @@ rxcpp::observable<VerifiersResponse> AccessManagerProxy::requestVerifiers() cons
     .op(RxGetOne());
 }
 
+rxcpp::observable<UserVerifiersResponse> AccessManagerProxy::requestUserVerifiers(UserVerifiersRequest request) const {
+  return this->sendRequest<UserVerifiersResponse>(std::move(request))
+    .op(RxGetOne());
+}
+
 rxcpp::observable<ColumnAccess> AccessManagerProxy::getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes) const {
   ColumnAccessRequest request{ includeImplicitlyGranted, requireModes };
   return this->sendRequest<ColumnAccessResponse>(this->sign(std::move(request)))

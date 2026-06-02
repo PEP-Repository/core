@@ -411,7 +411,7 @@ DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<Down
 
 DownloadDirectory::RecordStorageStream::~RecordStorageStream() noexcept {
   if (mRaw) {
-    LOG(LOG_TAG, error) << "Error destructing RecordStorageStream: uncommitted record at " + mPath.string(); // TODO: improve
+    LOG(LOG_TAG, error) << "Error destructing RecordStorageStream: uncommitted record at \"" + mPath.string() << '"'; // TODO: improve
   }
 }
 
@@ -509,7 +509,7 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
     mDestination->setStoredDataHash(mDescriptor, path, mFileName, hash);
   }
   catch (...) {
-    LOG(LOG_TAG, error) << "Could not write stored data hash for record at " << mPath.string() << ": " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, error) << "Could not write stored data hash for record at \"" << mPath.string() << "\": " << GetExceptionMessage(std::current_exception());
     throw;
   }
 }

@@ -566,7 +566,7 @@ void InitializeUnwinder() {
   const std::string szReportDirectoryPath = std::string(dirname(std::string(szReportDirectoryTmp).data())) + "/";
 
   if (DIR* lpReportDirectory = opendir (szReportDirectoryPath.c_str()); lpReportDirectory == nullptr) {
-    LOG(LOG_TAG, warning) << "Unable to look through directory " << szReportDirectoryPath << " for previous crash reports: " << strerror(errno);
+    LOG(LOG_TAG, warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
   } else {
     std::unique_ptr<LocalSettings>& lpLocalSettings = LocalSettings::getInstance();
     struct dirent* lpDirEntry;

@@ -7,7 +7,7 @@
 
 namespace {
 using boost::property_tree::ptree;
-using nlohmann::json;
+using json = nlohmann::ordered_json;
 using pep::structuredOutput::Tree;
 } // namespace
 
@@ -17,7 +17,7 @@ TEST(structuredOutputTreeFromPropertyTree, converts_leaf_to_string) {
 
   const auto tree = Tree::FromPropertyTree(pt);
 
-  EXPECT_EQ(tree.toJson(), json("hello"));
+  EXPECT_EQ(tree.rawJson(), json("hello"));
 }
 
 TEST(structuredOutputTreeFromPropertyTree, converts_object) {
@@ -27,7 +27,7 @@ TEST(structuredOutputTreeFromPropertyTree, converts_object) {
 
   const auto tree = Tree::FromPropertyTree(pt);
 
-  EXPECT_EQ(tree.toJson(), json({{"name", "alice"}, {"age", "30"}}));
+  EXPECT_EQ(tree.rawJson(), json({{"name", "alice"}, {"age", "30"}}));
 }
 
 TEST(structuredOutputTreeFromPropertyTree, converts_array) {
@@ -40,7 +40,7 @@ TEST(structuredOutputTreeFromPropertyTree, converts_array) {
 
   const auto tree = Tree::FromPropertyTree(pt);
 
-  EXPECT_EQ(tree.toJson(), json::array({"one", "two"}));
+  EXPECT_EQ(tree.rawJson(), json::array({"one", "two"}));
 }
 
 TEST(structuredOutputTreeFromPropertyTree, converts_nested_object) {
@@ -52,7 +52,7 @@ TEST(structuredOutputTreeFromPropertyTree, converts_nested_object) {
 
   const auto tree = Tree::FromPropertyTree(pt);
 
-  EXPECT_EQ(tree.toJson(), json({{"point", {{"x", "1"}, {"y", "2"}}}}));
+  EXPECT_EQ(tree.rawJson(), json({{"point", {{"x", "1"}, {"y", "2"}}}}));
 }
 
 TEST(structuredOutputTreeFromPropertyTree, converts_array_of_objects) {
@@ -65,5 +65,5 @@ TEST(structuredOutputTreeFromPropertyTree, converts_array_of_objects) {
 
   const auto tree = Tree::FromPropertyTree(pt);
 
-  EXPECT_EQ(tree.toJson(), json::array({{{"key", "a"}}, {{"key", "b"}}}));
+  EXPECT_EQ(tree.rawJson(), json::array({{{"key", "a"}}, {{"key", "b"}}}));
 }

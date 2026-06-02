@@ -14,6 +14,7 @@
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -98,6 +99,19 @@ public:
   }
 };
 
+template <typename T>
+bool ReadOptionalNonZeroConfigValue(T& destination, const Configuration& config, const std::string& key) {
+  if (auto value = config.get<std::optional<T>>(key)) {
+    if (*value == T(0)) {
+      throw std::runtime_error(key + " cannot be 0");
+    }
+    destination = *value;
+    return true;
+  }
+
+  return false;
+}
+
 const std::string LOG_TAG("StorageFacility");
 
 } // End anonymous namespace
@@ -106,7 +120,7 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
   RegisteredMetrics(registry),
   data_stored_bytes(prometheus::BuildCounter()
     .Name("pep_sf_stored_bytes")
-    .Help("Total amount of bytes in datapages received by clients to be stored")
+    .Help("Total amount of bytes in datapages received by clients to be stored") // by this process (PID), i.e. during this session
     .Register(*registry)
     .Add({})),
   data_retrieved_bytes(prometheus::BuildCounter()
@@ -138,14 +152,24 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
-  entriesIncludingHistory(prometheus::BuildGauge()
+  entriesIncludingHistory(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
     .Name("pep_sf_entries")
     .Help("Number of entries managed by FileStore, includes history of every file")
     .Register(*registry)
     .Add({})),
   entriesInMetaDir(prometheus::BuildGauge()
     .Name("pep_sf_meta_on_disk")
-    .Help("Number of entries in the meta/ dir")
+    .Help("Number of entries in the meta/ dir") // normally the number of subdirectories, i.e. the number of rows ("participants")
+    .Register(*registry)
+    .Add({})),
+  totalPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
+    .Name("pep_total_payload_bytes")
+    .Help("Total bytes in payload(page)s of all entries including history, rounded to configured resolution")
+    .Register(*registry)
+    .Add({})),
+  rollingPayloadBytes(prometheus::BuildGauge()
+    .Name("pep_rolling_payload_bytes")
+    .Help("Total bytes in payload(page)s of current/latest/rolling data, rounded to configured resolution")
     .Register(*registry)
     .Add({}))
 { }
@@ -157,18 +181,13 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   auto pageStoreConfig = std::make_shared<Configuration>();
 
   try {
-    auto pw = config.get<std::optional<uint8_t>>("ParallelisationWidth");
-    if (pw.has_value()) {
-      if (*pw == 0) {
-        throw std::runtime_error("ParallelisationWidth cannot be 0.");
-      }
-      this->parallelisation_width = *pw;
-      // For the default value,
-      //   see the declaration of this->parallelisation_width.
-    }
+    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+
+    // See the declaration/definition of the fields for default values
+    ReadOptionalNonZeroConfigValue(this->parallelisation_width, config, "ParallelisationWidth");
+    ReadOptionalNonZeroConfigValue(this->dataSizeResolution, config, "DataSizeResolution");
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
-    keysFile = std::filesystem::canonical(config.get<std::filesystem::path>("KeysFile"));
     this->storagePath = config.get<std::filesystem::path>("StoragePath");
     this->pageStoreConfig = std::make_shared<Configuration>(config.get_child("PageStore"));
   }
@@ -177,10 +196,9 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     throw;
   }
 
-  std::string strPseudonymKey;
   try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
+    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
+    setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
@@ -210,7 +228,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     encIdKey = boost::algorithm::unhex(encIdKeyConfig.get<std::string>("Key"));
   }
 
-  setPseudonymKey(CurveScalar(strPseudonymKey));
   setEncIdKey(encIdKey);
 }
 
@@ -238,6 +255,9 @@ void StorageFacility::Parameters::check() const {
   SigningServer::Parameters::check();
   if (!this->pageStoreConfig)
     throw std::runtime_error("pageStoreConfig must be set");
+  if (dataSizeResolution == 0U) {
+    throw std::runtime_error("dataSizeResolution cannot be zero");
+  }
   // FIXME: check if errors happend during startup of file store
 }
 
@@ -774,8 +794,9 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
                   LOG(LOG_TAG, warning) << ss.str();
                   ctx->errors.push_back(ss.str());
                 }
-                server->mMetrics->entriesIncludingHistory.Set(static_cast<double>(server->mFileStore->entryCount()));
               }
+
+              server->updateFileStoreMetrics();
 
               if (!ctx->errors.empty()) {
                 auto description = boost::algorithm::join(ctx->errors, "; ");
@@ -1026,6 +1047,31 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
+messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = lpRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+
+  const auto& request = certified.message;
+
+  size_t entryCount;
+  uint64_t totalBytes, rollingBytes;
+  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
+
+  auto countBlocks = [blockSize = mDataSizeResolution](uint64_t bytes) {
+      assert(bytes % blockSize == 0U);
+      return bytes / blockSize;
+    };
+
+  return messaging::BatchSingleMessage(DataSizeResponse{
+    .mBlockSize = mDataSizeResolution,
+    .mTotalBlocks = countBlocks(totalBytes),
+    .mRollingBlocks = countBlocks(rollingBytes),
+    });
+}
+
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
@@ -1085,12 +1131,13 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   mWorkerPool(WorkerPool::getShared()),
   mFileStore(FileStore::Create(
     parameters->getStoragePath().string(),
-    parameters->getPageStoreConfig(),
+    *parameters->getPageStoreConfig(),
     parameters->getIoContext(),
     mRegistry)),
   mMetrics(std::make_shared<Metrics>(mRegistry)),
   mTimer(*parameters->getIoContext()),
-  mParallelisationWidth(parameters->getParallelisationWidth()) {
+  mParallelisationWidth(parameters->getParallelisationWidth()),
+  mDataSizeResolution(parameters->getDataSizeResolution()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,
@@ -1098,10 +1145,37 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleDataDeleteRequest2,
                           &StorageFacility::handleMetadataStoreRequest2,
                           &StorageFacility::handleDataEnumerationRequest2,
-                          &StorageFacility::handleDataHistoryRequest2);
+                          &StorageFacility::handleDataHistoryRequest2,
+                          &StorageFacility::handleDataSizeRequest);
 
-  mMetrics->entriesIncludingHistory.Set(static_cast<double>(mFileStore->entryCount()));
+  this->updateFileStoreMetrics();
   statsTimer({});
+}
+
+void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
+  uint64_t total, rolling;
+  mFileStore->getMetrics(entryCount, total, rolling, columns);
+
+  auto round = [blockSize = mDataSizeResolution](uint64_t bytes) {
+      auto blocks = bytes / blockSize;
+      if (bytes % blockSize != 0U) {
+        ++blocks;
+      }
+      return blocks * blockSize;
+    };
+
+  roundedTotalBytes = round(total);
+  roundedRollingBytes = round(rolling);
+}
+
+void StorageFacility::updateFileStoreMetrics() {
+  size_t entryCount;
+  uint64_t totalPayloadBytes, rollingPayloadBytes;
+  this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+
+  mMetrics->entriesIncludingHistory.Set(static_cast<double>(entryCount));
+  mMetrics->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
+  mMetrics->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
 }
 
 }

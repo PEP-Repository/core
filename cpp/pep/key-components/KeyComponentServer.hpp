@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/key-components/KeyComponentMessages.hpp>
+#include <pep/morphing/SystemPublicKeys.hpp>
 #include <pep/rsk-pep/DataTranslator.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/server/SigningServer.hpp>
@@ -17,6 +18,7 @@ private:
   std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
   std::shared_ptr<DataTranslator> mDataTranslator;
   std::shared_ptr<Metrics> mMetrics;
+  SystemPublicKeys mSystemPublicKeys;
 
   messaging::MessageBatches handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest);
 
@@ -25,6 +27,7 @@ protected:
 
   const PseudonymTranslator& pseudonymTranslator() const { return *mPseudonymTranslator; }
   const DataTranslator& dataTranslator() const { return *mDataTranslator; }
+  const SystemPublicKeys& systemPublicKeys() const { return mSystemPublicKeys; }
 };
 
 
@@ -32,6 +35,7 @@ class KeyComponentServer::Parameters : public SigningServer::Parameters {
 public:
   std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
   std::shared_ptr<DataTranslator> getDataTranslator() const;
+  const SystemPublicKeys& getSystemPublicKeys() const { return systemPublicKeys; }
   void setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator);
   void setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator);
 
@@ -42,6 +46,7 @@ protected:
 private:
   std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
   std::shared_ptr<DataTranslator> dataTranslator;
+  SystemPublicKeys systemPublicKeys;
 };
 
 }

@@ -52,31 +52,84 @@ class ScalarMultProof {
     const CurvePoint& post) const;
 };
 
+/// Proof that a point X^{-1} is in the form of x^{-1}B, given X = xB
+class InverseProof {
+public:
+  ScalarMultProof mSecretInverseTimesPointProof;
+
+  InverseProof() = default;
+  explicit InverseProof(const ScalarMultProof& secretInverseTimesPointProof)
+    : mSecretInverseTimesPointProof(secretInverseTimesPointProof) {}
+
+  static InverseProof Create(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint,
+    const CurveScalar& secretInverse);
+
+  void verify(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint) const;
+};
+
 // Public data required to verify an RskProof.
 class ReshuffleRekeyVerifiers {
  public:
   ReshuffleRekeyVerifiers() = default;
   ReshuffleRekeyVerifiers(
-      const CurvePoint& reshuffleOverRekeyPoint,
-      const CurvePoint& reshufflePoint,
-      const CurvePoint& rekeyedPublicKey)
-  : mReshuffleOverRekeyPoint(reshuffleOverRekeyPoint),
-    mReshufflePoint(reshufflePoint),
+      const CurvePoint& reshuffleCommitment,
+      const CurvePoint& rekeyCommitment,
+      const CurvePoint& reshuffleOverRekeyCommitment,
+      const ElgamalPublicKey& rekeyedPublicKey)
+  : mReshuffleCommitment(reshuffleCommitment),
+    mRekeyCommitment(rekeyCommitment),
+    mReshuffleOverRekeyCommitment(reshuffleOverRekeyCommitment),
     mRekeyedPublicKey(rekeyedPublicKey) { }
   static ReshuffleRekeyVerifiers Compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
-    const CurvePoint& publicKey);
+    const ElgamalPublicKey& globalKey);
 
-  CurvePoint mReshuffleOverRekeyPoint;
-  CurvePoint mReshufflePoint;
-  CurvePoint mRekeyedPublicKey;
+  CurvePoint mReshuffleCommitment;
+  CurvePoint mRekeyCommitment;
+  CurvePoint mReshuffleOverRekeyCommitment;
+  ElgamalPublicKey mRekeyedPublicKey;
 
   [[nodiscard]] auto operator<=>(const ReshuffleRekeyVerifiers& right) const = default;
 
   void ensureThreadSafe() const; // See CurvePoint::ensureThreadSafe()
 };
 
+using ReshuffleRekeyVerifiersWithProof = std::pair<ReshuffleRekeyVerifiers, class ReshuffleRekeyVerifiersProof>;
+
+/// Proof of internal consistency of ReshuffleRekeyVerifiers
+class ReshuffleRekeyVerifiersProof {
+public:
+  ReshuffleRekeyVerifiersProof() = default;
+  ReshuffleRekeyVerifiersProof(
+    const CurvePoint& rekeyInversePoint,
+    const InverseProof& rekeyInverseProof,
+    const ScalarMultProof& reshuffleTimesRekeyInverseProof,
+    const ScalarMultProof& rekeyTimesPublicKeyProof)
+  : mRekeyInversePoint(rekeyInversePoint),
+    mRekeyInverseProof(rekeyInverseProof),
+    mReshuffleTimesRekeyInverseProof(reshuffleTimesRekeyInverseProof),
+    mRekeyTimesPublicKeyProof(rekeyTimesPublicKeyProof) {}
+
+  CurvePoint mRekeyInversePoint;
+  InverseProof mRekeyInverseProof;
+  ScalarMultProof mReshuffleTimesRekeyInverseProof;
+  ScalarMultProof mRekeyTimesPublicKeyProof;
+
+  static ReshuffleRekeyVerifiersWithProof
+  ComputeCertified(
+    const CurveScalar& reshuffle,
+    const CurveScalar& rekey,
+    const ElgamalPublicKey& globalKey);
+
+  void verify(
+    const ReshuffleRekeyVerifiers& verifiers,
+    const ElgamalPublicKey& globalKey) const;
+};
 
 
 // A compositional non-interactive zero-knowledge proof that
@@ -112,16 +165,16 @@ class RskProof {
 
   // Constructs a proof that pre is RSKed to post.
   //
-  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B,
+  // Assumes reshuffleCommitment = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyCommitment = reshuffle/rekey*B,
   // rerandomizePubKey = rerandomize*publicKey, rerandomizePoint = rerandomize*B,
   // and (of course) that post is the RSKed version of pre.
   static RskProof Create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const CurveScalar& reshuffle,
-    const CurvePoint& reshufflePoint,
+    const CurvePoint& reshuffleCommitment,
     const CurveScalar& reshuffleOverRekey,
-    const CurvePoint& reshuffleOverRekeyPoint,
+    const CurvePoint& reshuffleOverRekeyCommitment,
     const CurveScalar& rerandomize,
     const CurvePoint& rerandomizePubKey,
     const CurvePoint& rerandomizePoint);

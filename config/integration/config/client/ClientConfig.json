@@ -1,44 +1,48 @@
 {
-    "KeysFile":            "ClientKeys.json",
-    "CACertificateFile":   "../../pki/rootCA.cert",
-    "PublicKeyData":       "",
-    "PublicKeyPseudonyms": "",
-    "ShadowPublicKeyFile": "ShadowAdministration.pub",
-    "AuthenticationServer": {
-        "RequestURL": "https://localhost:8080/auth",
-        "TokenURL":   "https://localhost:8080/token"
-    },
+  "CaCertificateFile": "../../pki/rootCA.cert",
+  "ServerEndPoints": {
     "AccessManager": {
-        "Name":    "AccessManager",
-        "Address": "localhost",
-        "Port":    16501
-    },
-    "StorageFacility": {
-        "Name":    "StorageFacility",
-        "Address": "localhost",
-        "Port":    16519
-    },
-    "KeyServer": {
-        "Name":    "KeyServer",
-        "Address": "localhost",
-        "Port":    16511
-    },
-    "Transcryptor": {
-        "Name":    "Transcryptor",
-        "Address": "localhost",
-        "Port":    16516
-    },
-    "RegistrationServer": {
-        "Name":    "RegistrationServer",
-        "Address": "localhost",
-        "Port":    16518
+      "Name": "AccessManager",
+      "Address": "localhost",
+      "Port": 16501
     },
     "Authserver": {
-        "Name":    "Authserver",
-        "Address": "localhost",
-        "Port":    16512
+      "Name": "Authserver",
+      "Address": "localhost",
+      "Port": 16512
     },
-    "Castor": {
-        "BaseURL": "https://data.castoredc.com/studies/%1/participants/%2/visits"
+    "KeyServer": {
+      "Name": "KeyServer",
+      "Address": "localhost",
+      "Port": 16511
+    },
+    "RegistrationServer": {
+      "Name": "RegistrationServer",
+      "Address": "localhost",
+      "Port": 16518
+    },
+    "StorageFacility": {
+      "Name": "StorageFacility",
+      "Address": "localhost",
+      "Port": 16519
+    },
+    "Transcryptor": {
+      "Name": "Transcryptor",
+      "Address": "localhost",
+      "Port": 16516
     }
+  },
+  "SystemPublicKeys": {
+    "PublicKeyData": "",
+    "PublicKeyPseudonyms": ""
+  },
+  "EnrolledPartyKeysFile": "ClientKeys.json",
+  "ShadowPublicKeyFile": "ShadowAdministration.pub",
+  "OAuthServer": {
+    "RequestUrl": "https://localhost:8080/auth",
+    "TokenUrl": "https://localhost:8080/token"
+  },
+  "Castor": {
+    "BaseUrl": "https://data.castoredc.com/studies/%1/participants/%2/visits"
+  }
 }

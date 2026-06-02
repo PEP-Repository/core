@@ -41,9 +41,9 @@ OAuthClient::OAuthClient(Parameters parameters)
     mLongLived(parameters.longLived),
     mValidityDuration(parameters.validityDuration) {
   assert(mAuthorizationMethod && "No authorization method provided");
-  mRequestUrl = parameters.config.get<std::string>("RequestURL");
-  mTokenUrl = parameters.config.get<std::string>("TokenURL");
-  mCaCertFilepath = parameters.config.get<std::optional<std::filesystem::path>>("CaCertFilePath");
+  mRequestUrl = parameters.config.get<std::string>("RequestUrl");
+  mTokenUrl = parameters.config.get<std::string>("TokenUrl");
+  mCaCertFilepath = parameters.config.get<std::optional<std::filesystem::path>>("CaCertificateFile");
 }
 
 boost::urls::url OAuthClient::getAuthorizationUri() const {

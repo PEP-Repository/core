@@ -20,7 +20,7 @@ CoreClient::EnrollmentContext::EnrollmentContext(std::shared_ptr<const X509Ident
   : identity(std::move(enroller)), keyComponentRequest(KeyComponentRequest{}, *identity) {
 }
 
-rxcpp::observable<EnrollmentResult> CoreClient::enrollServer() {
+rxcpp::observable<EnrolledPartyKeys> CoreClient::enrollServer() {
   LOG(LOG_TAG, debug) << "Enrolling server...";
   auto ctx = std::make_shared<EnrollmentContext>(this->getSigningIdentity());
   return completeEnrollment(ctx);
@@ -37,7 +37,7 @@ void CoreClient::unenroll() {
   }
 }
 
-rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_ptr<EnrollmentContext> ctx) {
+rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_ptr<EnrollmentContext> ctx) {
   LOG(LOG_TAG, debug) << "Completing enrollment...";
   // Construct key component request for Access Manager and Transcryptor
   // Send request to access manager
@@ -72,10 +72,10 @@ rxcpp::observable<EnrollmentResult> CoreClient::completeEnrollment(std::shared_p
         registrationSubject.get_subscriber().on_next(FakeVoid{});
       });
 
-      EnrollmentResult result{
-        .privateKeyData = privateKeyData,
-        .privateKeyPseudonyms = privateKeyPseudonyms,
-        .signingIdentity = *ctx->identity
+      EnrolledPartyKeys result{
+        .pseudonymKey = privateKeyPseudonyms,
+        .dataKey = privateKeyData != CurveScalar{} ? std::optional{privateKeyData} : std::nullopt,
+        .signingIdentity = *ctx->identity,
       };
 
       enrollmentSubject.get_subscriber().on_next(result);
@@ -103,28 +103,6 @@ bool CoreClient::getEnrolled() {
     return signingIdentity->getCertificateChain().leaf().isCurrentTimeInValidityPeriod();
   }
   return false;
-}
-
-void EnrollmentResult::writeJsonTo(std::ostream& os, bool writeDataKey, bool writePrivateKey, bool writeCertificateChain) const {
-  boost::property_tree::ptree config;
-
-  config.add<std::string>("PseudonymKey",
-      boost::algorithm::hex(privateKeyPseudonyms.pack()));
-
-  if (writeDataKey) {
-    config.add<std::string>("DataKey",
-      boost::algorithm::hex(privateKeyData.pack()));
-  }
-  if (writePrivateKey) {
-    config.add<std::string>("PrivateKey", signingIdentity.getPrivateKey().toPem());
-  }
-  if (writeCertificateChain) {
-    config.add<std::string>("CertificateChain", X509CertificatesToPem(signingIdentity.getCertificateChain().certificates()));
-  }
-
-  config.add<std::string>("EnrollmentScheme", std::string(Serialization::ToEnumString(ENROLLMENT_SCHEME_CURRENT)));
-
-  boost::property_tree::write_json(os, config);
 }
 
 }

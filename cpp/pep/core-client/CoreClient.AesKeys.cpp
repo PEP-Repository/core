@@ -3,6 +3,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
+#include <pep/async/WaitGroup.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -132,7 +133,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     assert(keyRequests[offset].mEntries.size() == indexInKeyRequest);
     keyRequests[offset].mEntries.emplace_back(
       entry.mMetadata,
-      EncryptedKey(publicKeyData, keys[i].point),
+      EncryptedKey(systemPublicKeys.globalDataEncryptionKey, keys[i].point),
       KeyBlindMode::BLIND_MODE_BLIND,
       entry.mPseudonymIndex
     );

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -eu
+
 readonly REUSE_SECRETS="${1:-false}"
 readonly DATADIR="${2:-/data}"
 readonly APPSDIR="${3:-/app}"
@@ -9,19 +11,25 @@ PKDATA="$(sed -n -e "s/PublicKeyData: \([0-9a-fA-F]*\)/\1/p" "$DATADIR/SystemPub
 PKPSEUDONYMS="$(sed -n -e "s/PublicKeyPseudonyms: \([0-9a-fA-F]*\)/\1/p" "$DATADIR/SystemPublicKeys.txt")"
 
 
-# Update client and registration server configuration with new public keys
-sed -i -e "s/\"PublicKeyData\".*/\"PublicKeyData\": \"${PKDATA}\",/" "$DATADIR"/client/ClientConfig.json
-sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/client/ClientConfig.json
-sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/accessmanager/AccessManager.json
+# Update client and server configurations with new public keys
+add_system_public_keys() {
+  local config_file="$1"
+  # jq is not available in pep-services image for integration.sh, so use sed instead
+  sed -i \
+    -e "s/\"PublicKeyData\":\s*\"\"/\"PublicKeyData\": \"${PKDATA}\"/" "$config_file" \
+    -e "s/\"PublicKeyPseudonyms\":\s*\"\"/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\"/" \
+    -- "$config_file"
+}
+add_system_public_keys "$DATADIR/client/ClientConfig.json"
+add_system_public_keys "$DATADIR/accessmanager/AccessManager.json"
+add_system_public_keys "$DATADIR/transcryptor/Transcryptor.json"
+add_system_public_keys "$DATADIR/registrationserver/RegistrationServer.json"
+
 sed -i -e "s/dataPk.*/dataPk: ${PKDATA}/" "$DATADIR"/watchdog/constellation.yaml
 sed -i -e "s/pseudonymPk.*/pseudonymPk: ${PKPSEUDONYMS}/" "$DATADIR"/watchdog/constellation.yaml
 
 cat "$DATADIR"/client/ClientConfig.json
 cat "$DATADIR"/watchdog/constellation.yaml
-
-sed -i -e "s/\"PublicKeyData\".*/\"PublicKeyData\": \"${PKDATA}\",/" "$DATADIR"/registrationserver/RegistrationServer.json
-sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/registrationserver/RegistrationServer.json
-
 cat "$DATADIR"/registrationserver/RegistrationServer.json
 
 if [ "$REUSE_SECRETS" = false ]; then

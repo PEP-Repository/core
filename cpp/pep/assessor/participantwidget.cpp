@@ -143,7 +143,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      const VisitCaptions* visitCaptions,
                                      pep::UserRole role)
   : QWidget(parent), pepClient(client), ui(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), mAllContexts(allContexts), mStudyContext(studyContext), currentPEPRole(role), mProjectName(branding.getProjectName()), mSpareStickerCount(spareStickerCount), mVisitCaptions(visitCaptions) {
-  baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseURL"));
+  baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
   stickerFilePath = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
   bartenderPath = ReadConfiguredBartenderPath(configuration);
   currentUserPP = pepClient->generateParticipantPolymorphicPseudonym(SID.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP

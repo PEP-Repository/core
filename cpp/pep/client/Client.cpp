@@ -151,7 +151,7 @@ rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym
   return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
 }
 
-rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthToken) {
+rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauthToken) {
 
   LOG(LOG_TAG, debug) << "Generating key pair";
   AsymmetricKeyPair keyPair = AsymmetricKeyPair::GenerateKeyPair();
@@ -227,15 +227,14 @@ void Client::Builder::initialize(const Configuration& config,
     this->setPublicKeyShadowAdministration(AsymmetricKey(ReadFile(*shadowPublicKeyFile)));
   }
 
-  if (auto ksConfig = config.get<std::optional<EndPoint>>(ServerTraits::KeyServer().configNode())) {
+  auto serverEndPoints = config.get_child("ServerEndPoints");
+  if (auto ksConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::KeyServer().configNode())) {
     this->setKeyServerEndPoint(*ksConfig);
   }
-
-  if (auto asConfig = config.get<std::optional<EndPoint>>(ServerTraits::AuthServer().configNode())) {
+  if (auto asConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::AuthServer().configNode())) {
     this->setAuthserverEndPoint(*asConfig);
   }
-
-  if (auto rsConfig = config.get<std::optional<EndPoint>>(ServerTraits::RegistrationServer().configNode())) {
+  if (auto rsConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::RegistrationServer().configNode())) {
     this->setRegistrationServerEndPoint(*rsConfig);
   }
 }

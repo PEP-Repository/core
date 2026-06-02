@@ -1,27 +1,26 @@
 {
-  "TLSPrivateKeyFile": "TLSAuthserver.key",
-  "TLSCertificateFile": "TLSAuthserver.chain",
-
-  "PEPPrivateKeyFile": "PEPAuthserver.key",
-  "PEPCertificateFile": "PEPAuthserver.chain",
-
-  "CACertificateFile": "rootCA.cert",
-
+  "CaCertificateFile": "rootCA.cert",
+  "ListenPort": 16512,
+  "TlsIdentity": {
+    "PrivateKeyFile": "TLSAuthserver.key",
+    "CertificateFile": "TLSAuthserver.chain"
+  },
+  "SigningIdentity": {
+    "PrivateKeyFile": "PEPAuthserver.key",
+    "CertificateFile": "PEPAuthserver.chain"
+  },
+  "ServerEndPoints": {
+    "AccessManager": {
+      "Name": "AccessManager",
+      "Address": "localhost",
+      "Port": 16501
+    }
+  },
+  "HttpListenPort": 8080,
+  "HttpsCertificateFile": "AuthserverHTTPSCertificate.pem",
   "OAuthTokenSecretFile": "OAuthTokenSecret.json",
-  "HTTPListenPort": 8080,
   "ActiveGrantExpirationSeconds": 300,
   "TokenExpirationSeconds": 60,
   "ExtraRedirectUris": ["http://localhost:2280/weblib/pep-sample-client/pepWasmTest-auth-landing"],
-
-  "SpoofKeyFile": "spoofKey",
-
-  "ListenPort": 16512,
-
-  "HTTPSCertificateFile": "AuthserverHTTPSCertificate.pem",
-
-  "AccessManager": {
-        "Name":    "AccessManager",
-        "Address": "localhost",
-        "Port":    16501
-  }
+  "SpoofKeyFile": "spoofKey"
 }

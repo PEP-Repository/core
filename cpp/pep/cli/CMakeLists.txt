@@ -12,6 +12,7 @@ set(PEPCLI_SRCS
     Ama.cpp
     Castor.cpp
     CliApplication.cpp CliApplication.hpp
+    ColumnQuery.cpp ColumnQuery.hpp
     Command.cpp Command.hpp
     Commands.hpp
     Delete.cpp
@@ -49,6 +50,8 @@ set(PEPCLI_SRCS
     Validate.cpp
     Verifiers.cpp
     XEntry.cpp
+    structuredoutput/TreeFromUserQueryResponse.hpp structuredoutput/TreeFromUserQueryResponse.cpp
+    structuredoutput/TreeFromAmaQueryResponse.hpp structuredoutput/TreeFromAmaQueryResponse.cpp
 )
 
 add_cli_install_executable(${PROJECT_NAME}cli ${PEPCLI_SRCS})

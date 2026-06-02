@@ -9,9 +9,9 @@ namespace {
 
 const std::string LOG_TAG = "Networked server";
 
-std::shared_ptr<messaging::Node> CreateNetworkingNode(boost::asio::io_context& ioContext, std::shared_ptr<Server> server, const Configuration& config) {
+std::shared_ptr<messaging::Node> CreateNetworkingNode(boost::asio::io_context& ioContext, std::shared_ptr<Server> server, const X509RootCertificates& rootCas, const Configuration& config) {
   auto port = config.get<uint16_t>("ListenPort");
-  auto identity = X509IdentityFiles::FromConfig(config, "TLS");
+  auto identity = X509IdentityFiles::FromConfig(config.get_child("TlsIdentity"), rootCas);
   auto binaryParameters = pep::messaging::BinaryProtocol::CreateServerParameters(ioContext, port, std::move(identity));
   return messaging::Node::Create(*binaryParameters, *server);
 }
@@ -48,8 +48,8 @@ public:
 
 }
 
-NetworkedServer::NetworkedServer(std::shared_ptr<boost::asio::io_context> ioContext, std::shared_ptr<Server> server, const Configuration& config)
-  : mIoContext(ioContext), mServer(std::move(server)), mNetwork(CreateNetworkingNode(*ioContext, mServer, config)) {
+NetworkedServer::NetworkedServer(std::shared_ptr<boost::asio::io_context> ioContext, std::shared_ptr<Server> server, const X509RootCertificates& rootCas, const Configuration& config)
+  : mIoContext(ioContext), mServer(std::move(server)), mNetwork(CreateNetworkingNode(*ioContext, mServer, rootCas, config)) {
 }
 
 void NetworkedServer::start() {

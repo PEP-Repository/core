@@ -188,7 +188,7 @@ public:
               std::rethrow_exception(res.exception());
             }
           })
-          .map([](const EnrollmentResult&) {
+          .map([](const EnrolledPartyKeys&) {
             LOG(LOG_TAG, pep::info) << "Completed enrollment!";
             return FakeVoid{};
           });
