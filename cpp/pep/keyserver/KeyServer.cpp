@@ -33,13 +33,10 @@ void EnsureTokenBlockingAdminAccess(const std::string& organizationalUnit) {
 
 KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : Server::Parameters(std::move(io_context), config) {
-  std::filesystem::path clientCAPrivateKeyFile;
-  std::filesystem::path clientCACertificateChainFile;
   std::filesystem::path oauthTokenSecretFile;
   std::filesystem::path blocklistStoragePath;
   try {
-    clientCAPrivateKeyFile = config.get<std::filesystem::path>("ClientCAPrivateKeyFile");
-    clientCACertificateChainFile = config.get<std::filesystem::path>("ClientCACertificateChainFile");
+    mClientCa = std::move(*X509IdentityFiles::FromConfig(config.get_child("ClientCa"), *getRootCAs()).identity());
 
     oauthTokenSecretFile = canonical(config.get<std::filesystem::path>("OAuthTokenSecretFile"));
 
@@ -62,22 +59,9 @@ KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_co
     throw;
   }
 
-  setClientCAPrivateKey(AsymmetricKey(ReadFile(clientCAPrivateKeyFile)));
-  setClientCACertificateChain(X509CertificateChain(X509CertificatesFromPem(ReadFile(clientCACertificateChainFile))));
   setBlocklistStoragePath(blocklistStoragePath);
 }
 
-const AsymmetricKey& KeyServer::Parameters::getClientCAPrivateKey() const { return mClientCAPrivateKey; }
-
-void KeyServer::Parameters::setClientCAPrivateKey(const AsymmetricKey& privateKey) {
-  Parameters::mClientCAPrivateKey = privateKey;
-}
-
-const std::optional<X509CertificateChain>& KeyServer::Parameters::getClientCACertificateChain() { return mClientCACertificateChain; }
-
-void KeyServer::Parameters::setClientCACertificateChain(const X509CertificateChain& certificateChain) {
-  Parameters::mClientCACertificateChain = certificateChain;
-}
 
 const std::string& KeyServer::Parameters::getOauthTokenSecret() const { return mOauthTokenSecret; }
 
@@ -94,8 +78,7 @@ void KeyServer::Parameters::setBlocklistStoragePath(const std::filesystem::path&
 }
 
 void KeyServer::Parameters::check() const {
-  if (!mClientCAPrivateKey.isSet()) throw std::runtime_error("clientCAPrivateKey must be set");
-  if (!mClientCACertificateChain.has_value()) throw std::runtime_error("clientCACertificateChain must be set");
+  if (!mClientCa.has_value()) throw std::runtime_error("clientCa must be set");
   if (mOauthTokenSecret.empty()) throw std::runtime_error("oauthTokenSecret must not be empty");
   if (mBlocklistStoragePath.empty()) throw std::runtime_error("blocklistStoragePath must not be empty");
   Server::Parameters::check();
@@ -111,7 +94,7 @@ messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
   const auto certificate = generateCertificate(enrollmentRequest->mCertificateSigningRequest);
 
   EnrollmentResponse response{
-    .mCertificateChain = mClientCACertificateChain / certificate
+    .mCertificateChain = mClientCa.getCertificateChain() / certificate
   };
   LOG(LOG_TAG, debug) << "Sending certificate chain len=" << response.mCertificateChain.certificates().size() << ":"
                       << X509CertificatesToPem(response.mCertificateChain.certificates());
@@ -162,8 +145,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
 
 KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
   : Server(parameters),
-    mClientCAPrivateKey(parameters->getClientCAPrivateKey()),
-    mClientCACertificateChain(*parameters->getClientCACertificateChain()),
+    mClientCa(*parameters->getClientCa()),
     mOauthTokenSecret(parameters->getOauthTokenSecret()),
     mBlocklist(tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(parameters->getBlocklistStoragePath())) {
   RegisterRequestHandlers(
@@ -219,8 +201,8 @@ bool KeyServer::isValid(
 
 X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigningRequest& csr) const {
   const auto certificate = csr.signCertificate(
-      mClientCACertificateChain.leaf(),
-      mClientCAPrivateKey,
+      mClientCa.getCertificateChain().leaf(),
+      mClientCa.getPrivateKey(),
       validityTimeOfGeneratedCertificates);
   assert(GetEnrolledParty(certificate) == EnrolledParty::User);
   LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")

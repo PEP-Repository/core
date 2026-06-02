@@ -12,4 +12,11 @@ public:
   CurvePoint read(const boost::property_tree::ptree& source, const DeserializationContext& context) const override;
 };
 
+template <>
+class PropertySerializer<CurveScalar> : public PropertySerializerByValue<CurveScalar> {
+public:
+  void write(boost::property_tree::ptree& destination, const CurveScalar& value) const override;
+  CurveScalar read(const boost::property_tree::ptree& source, const DeserializationContext& context) const override;
+};
+
 }

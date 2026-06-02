@@ -46,7 +46,7 @@ namespace {
     static std::shared_ptr<S3PageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
         std::shared_ptr<prometheus::Registry> metrics_registry,
-        std::shared_ptr<Configuration> config);
+        const Configuration& config);
 
     // pubic constructor for the sake of std::make_shared
     S3PageStore(
@@ -106,23 +106,23 @@ namespace {
   std::shared_ptr<S3PageStore> S3PageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
       std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
+      const Configuration& config)
   {
     s3::Client::Parameters s3params = {
-      config->get<EndPoint>("EndPoint"),
-      config->get<s3::Credentials>("Credentials"),
+      config.get<EndPoint>("EndPoint"),
+      config.get<s3::Credentials>("Credentials"),
       io_context,
-      config->get<std::optional<std::filesystem::path>>("Ca-Cert-Path"),
-      config->get<std::optional<bool>>("Use-Https")
+      config.get<std::optional<std::filesystem::path>>("CaCertificateFile"),
+      config.get<std::optional<bool>>("UseHttps")
     };
 
-    unsigned int conn_count = config->get<unsigned int>("Connections", 5);
-    std::string write_bucket = config->get<std::string>("Write-To-Bucket");
+    unsigned int conn_count = config.get<unsigned int>("Connections", 5);
+    std::string write_bucket = config.get<std::string>("WriteToBucket");
 
     std::vector<std::string> buckets;
 
     for (const std::string& bucket
-        : config->get<std::vector<std::string>>("Read-From-Buckets")) {
+        : config.get<std::vector<std::string>>("ReadFromBuckets")) {
       buckets.push_back(bucket);
     }
 
@@ -392,7 +392,7 @@ namespace {
 
     static std::shared_ptr<LocalPageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
-        std::shared_ptr<Configuration> config);
+        const Configuration& config);
 
     // pubic constructor for the sake of std::make_shared
     LocalPageStore(
@@ -417,11 +417,11 @@ namespace {
 
   std::shared_ptr<LocalPageStore> LocalPageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
-      std::shared_ptr<Configuration> config)
+      const Configuration& config)
   {
     std::filesystem::path datadir =
-        config->get<std::filesystem::path>("DataDir");
-    std::string bucket = config->get<std::string>("Bucket");
+        config.get<std::filesystem::path>("DataDir");
+    std::string bucket = config.get<std::string>("Bucket");
 
     return std::make_shared<LocalPageStore>(datadir, bucket);
   }
@@ -495,7 +495,8 @@ namespace {
     static std::shared_ptr<DualPageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
         std::shared_ptr<prometheus::Registry> metrics_registry,
-        std::shared_ptr<Configuration> config);
+        const Configuration& s3Config,
+        const Configuration& localConfig);
 
     // pubic constructor for the sake of std::make_shared
     DualPageStore(
@@ -518,11 +519,12 @@ namespace {
   std::shared_ptr<DualPageStore> DualPageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
       std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
+      const Configuration& s3Config,
+      const Configuration& localConfig)
   {
     return std::make_shared<DualPageStore>(
-        S3PageStore::Create(io_context, metrics_registry, config),
-        LocalPageStore::Create(io_context, config));
+        S3PageStore::Create(io_context, metrics_registry, s3Config),
+        LocalPageStore::Create(io_context, localConfig));
   }
 
   const std::string SYNC_ERROR_MSG
@@ -600,21 +602,22 @@ namespace {
 std::shared_ptr<PageStore> PageStore::Create(
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry,
-    std::shared_ptr<Configuration> config)
+    const Configuration& config)
 {
-  std::string type = config->get<std::string>("Type"); // throws
+  auto s3Config = config.get_child_optional("S3");
+  auto localConfig = config.get_child_optional("Local");
 
-  if (type == "s3") {
-    return S3PageStore::Create(io_context, metrics_registry, config);
-  } else if (type == "local") {
-    return LocalPageStore::Create(io_context, config);
-  } else if (type == "dual") {
-    return DualPageStore::Create(io_context, metrics_registry, config);
+  if (s3Config && localConfig) {
+    return DualPageStore::Create(io_context, metrics_registry, *s3Config, *localConfig);
+  }
+  if (s3Config) {
+    return S3PageStore::Create(io_context, metrics_registry, *s3Config);
+  }
+  if (localConfig) {
+    return LocalPageStore::Create(io_context, *localConfig);
   }
 
-  throw std::runtime_error("Configuration error: "
-      "unknown page storage type, " + type
-        + "; use 's3', 'local' or 'dual'.");
+  throw std::runtime_error("Configuration error: no page store implementation specified");
 }
 
 }

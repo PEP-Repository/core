@@ -152,7 +152,7 @@ public:
   std::string_view toEnumString(T value) const {
     auto valueDescriptor = mDescriptor->FindValueByNumber(static_cast<int>(value));
     if (valueDescriptor == nullptr) {
-      throw std::runtime_error("Unknown enumerator value " + std::to_string(value));
+      throw std::runtime_error("Unknown enumerator value " + std::to_string(static_cast<int>(value)));
     }
     return valueDescriptor->name();
   }

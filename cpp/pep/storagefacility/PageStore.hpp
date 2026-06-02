@@ -40,24 +40,24 @@ namespace pep
     // Creates a new page store from the given configuration, io_context,
     // and prometheus registry.  The registry may be empty.
     //
-    // For now the config->get<std::string>("type") must be one of:
+    // Must contain "S3" and/or "Local" subkeys.
     //
-    //     "s3":     use an S3 server to store the pages -
+    //     "S3":     use an S3 server to store the pages -
     //               used for production;
     //
-    //     "local":  use a legacy 'datadir' on the local disk - 
-    //               used for local development; 
+    //     "Local":  use a legacy 'datadir' on the local disk -
+    //               used for local development;
     //
-    //     "dual":   use both an S3 server and legacy local storage -
+    //     Both:     use both an S3 server and legacy local storage -
     //               used by integration, to keep the two methods in sync.
     //
-    // The exact format for the "config" can be found in the 
+    // The exact format for the "config" can be found in the
     // <Type>PageStore::Create static methods in PageStore.cpp.
     static std::shared_ptr<PageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
         std::shared_ptr<prometheus::Registry> metrics_registry,
-        std::shared_ptr<Configuration> config);
-    
+        const Configuration& config);
+
   protected:
     PageStore() = default;
   };

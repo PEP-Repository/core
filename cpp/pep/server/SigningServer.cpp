@@ -2,6 +2,7 @@
 #include <pep/auth/UserGroup.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/SigningServer.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/server/CertificateRenewalSerializers.hpp>
 
@@ -97,7 +98,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
 }
 
 SigningServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : Server::Parameters(io_context, config), mIdentityFiles(MakeSharedCopy(X509IdentityFiles::FromConfig(config, "PEP"))) {
+  : Server::Parameters(io_context, config), mIdentityFiles(MakeSharedCopy(X509IdentityFiles::FromConfig(config.get_child("SigningIdentity"), *getRootCAs()))) {
 }
 
 }

@@ -133,7 +133,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     assert(keyRequests[offset].mEntries.size() == indexInKeyRequest);
     keyRequests[offset].mEntries.emplace_back(
       entry.mMetadata,
-      EncryptedKey(publicKeyData, keys[i].point),
+      EncryptedKey(systemPublicKeys.globalDataEncryptionKey, keys[i].point),
       KeyBlindMode::BLIND_MODE_BLIND,
       entry.mPseudonymIndex
     );

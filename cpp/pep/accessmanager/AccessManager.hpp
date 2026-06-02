@@ -58,7 +58,6 @@ public:
   private:
     std::shared_ptr<GlobalConfiguration> globalConf;
     std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::optional<ElgamalPublicKey> publicKeyPseudonyms;
     EndPoint transcryptorEndPoint;
     EndPoint keyServerEndPoint;
     std::shared_ptr<Backend> backend;
@@ -130,7 +129,6 @@ public:
 
 private:
   ElgamalPrivateKey mPseudonymKey;
-  ElgamalPublicKey mPublicKeyPseudonyms;
   TranscryptorProxy mTranscryptorProxy;
   KeyServerProxy mKeyServerProxy;
   std::shared_ptr<Backend> backend;

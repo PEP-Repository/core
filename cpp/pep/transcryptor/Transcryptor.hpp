@@ -42,8 +42,6 @@ class Transcryptor : public KeyComponentServer {
     std::optional<ElgamalPrivateKey> getPseudonymKey() const;
     void setPseudonymKey(const ElgamalPrivateKey& key);
 
-    const ElgamalPublicKey& getPublicKeyPseudonyms() const { return publicKeyPseudonyms.value(); }
-
     const EndPoint& getAccessManagerEndPoint() const { return accessManagerEndPoint; }
 
    protected:
@@ -51,7 +49,6 @@ class Transcryptor : public KeyComponentServer {
 
    private:
     std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::optional<ElgamalPublicKey> publicKeyPseudonyms;
     std::shared_ptr<TranscryptorStorage> storage;
     std::optional<ServerVerifiers> verifiers;
 
@@ -80,7 +77,6 @@ private:
 private:
   std::shared_ptr<WorkerPool> mWorkerPool;
   std::optional<ElgamalPrivateKey> mPseudonymKey;
-  ElgamalPublicKey mPublicKeyPseudonyms;
   AccessManagerProxy mAccessManagerProxy;
   std::shared_ptr<TranscryptorStorage> mStorage;
   std::shared_ptr<Metrics> lpMetrics;

@@ -1,9 +1,12 @@
 #include <pep/apps/Enroller.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
 #include <cstdint>
 #include <fstream>
 
@@ -16,10 +19,10 @@ const std::string LOG_TAG("Enrollment");
 }
 
 EndPoint Enroller::getAccessManagerEndPoint(const Configuration& config) const {
-  return config.get<EndPoint>(ServerTraits::AccessManager().configNode());
+  return config.get_child("ServerEndPoints").get<EndPoint>(ServerTraits::AccessManager().configNode());
 }
 
-rxcpp::observable<EnrollmentResult> UserEnroller::enroll(std::shared_ptr<Client> client) const {
+rxcpp::observable<EnrolledPartyKeys> UserEnroller::enroll(std::shared_ptr<Client> client) const {
   return client->enrollUser(this->getParameterValues().get<std::string>("oauth-token"));
 }
 
@@ -50,14 +53,16 @@ EndPoint ServiceEnroller::getAccessManagerEndPoint(const Configuration& config) 
 
 void Enroller::setProperties(Client::Builder& builder, const Configuration& config) const {
   try {
-    builder.setCaCertFilepath(config.get<std::filesystem::path>("CACertificateFile"));
+    builder.setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
 
-    EndPoint keyServerEndPoint = config.get<EndPoint>(ServerTraits::KeyServer().configNode());
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+
+    EndPoint keyServerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::KeyServer().configNode());
     builder.setKeyServerEndPoint(keyServerEndPoint);
 
     builder.setAccessManagerEndPoint(this->getAccessManagerEndPoint(config));
 
-    EndPoint transcryptorEndPoint = config.get<EndPoint>(ServerTraits::Transcryptor().configNode());
+    EndPoint transcryptorEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::Transcryptor().configNode());
     builder.setTranscryptorEndPoint(transcryptorEndPoint);
   }
   catch (std::exception& e) {
@@ -77,22 +82,27 @@ int Enroller::execute() {
   try {
     std::shared_ptr<Client> client = builder.build();
 
-    this->enroll(client).subscribe([this](EnrollmentResult result) {
-      LOG(LOG_TAG, debug) << "Received EnrollmentResult";
+    this->enroll(client).subscribe([this](EnrolledPartyKeys result) {
+      LOG(LOG_TAG, debug) << "Received EnrolledPartyKeys";
 
       // If output filename is provided, write output there, otherwise print it
       auto extendedProperties = this->producesExtendedProperties();
       auto values = this->getParameterValues();
+      if (!extendedProperties) {
+        result.signingIdentity = std::nullopt;
+      }
+      boost::property_tree::ptree keyConfig;
+      SerializeProperties(keyConfig, result);
       if (values.has("output-path")) {
         std::ofstream output(values.get<std::filesystem::path>("output-path").string());
-        result.writeJsonTo(output, this->producesDataKey(), extendedProperties, extendedProperties);
+        boost::property_tree::write_json(output, keyConfig);
       }
       else {
-        result.writeJsonTo(std::cout, this->producesDataKey(), extendedProperties, extendedProperties);
+        boost::property_tree::write_json(std::cout, keyConfig);
         std::cout << std::endl;
       }
     }, [io_context](std::exception_ptr ep) {
-      LOG(LOG_TAG, error) << "Exception occured during enrollment: " << GetExceptionMessage(ep) << std::endl;
+      LOG(LOG_TAG, error) << "Exception occurred during enrollment: " << GetExceptionMessage(ep) << std::endl;
       io_context->stop();
     }, [io_context, result] {
       // Registration done
