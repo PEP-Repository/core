@@ -156,6 +156,10 @@
         "HttpListenPort": { "type": "integer" },
         "ActiveGrantExpirationSeconds": { "type": "integer" },
         "TokenExpirationSeconds": { "type": "integer" },
+        "ExtraRedirectUris": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "SpoofKeyFile": { "type": "string" },
         "HttpsCertificateFile": { "type": "string" }
       },
