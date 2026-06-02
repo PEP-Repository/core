@@ -221,7 +221,7 @@ include:
 # Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
 .skip-stable-release:
   rules:
-    - if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN)
+    - if: $FORCE_BUILD_STABLE_RELEASE == '' && ($CI_COMMIT_BRANCH == $PEP_FOSS_TESTING_BRANCH || $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN)
       when: never
 
 .skip-for-binaries-for-xyz:
