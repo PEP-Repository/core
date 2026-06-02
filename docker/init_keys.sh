@@ -13,6 +13,7 @@ PKPSEUDONYMS="$(sed -n -e "s/PublicKeyPseudonyms: \([0-9a-fA-F]*\)/\1/p" "$DATAD
 sed -i -e "s/\"PublicKeyData\".*/\"PublicKeyData\": \"${PKDATA}\",/" "$DATADIR"/client/ClientConfig.json
 sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/client/ClientConfig.json
 sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/accessmanager/AccessManager.json
+sed -i -e "s/\"PublicKeyPseudonyms\".*/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\",/" "$DATADIR"/transcryptor/Transcryptor.json
 sed -i -e "s/dataPk.*/dataPk: ${PKDATA}/" "$DATADIR"/watchdog/constellation.yaml
 sed -i -e "s/pseudonymPk.*/pseudonymPk: ${PKPSEUDONYMS}/" "$DATADIR"/watchdog/constellation.yaml
 

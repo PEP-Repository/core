@@ -29,7 +29,7 @@ static const std::string LOG_TAG ("PageStore");
 namespace pep
 {
 
-
+namespace {
   class S3PageStore
     : public PageStore,
       public std::enable_shared_from_this<S3PageStore>
@@ -441,8 +441,7 @@ namespace pep
           try {
             *result = ReadFile(fullpath);
           } catch(...) {
-            LOG(LOG_TAG, error) << "could not read from "
-              << std::quoted(fullpath.string());
+            LOG(LOG_TAG, error) << "could not read from \"" << fullpath.string() << '"';
             throw;
           }
           s.on_next(result);
@@ -469,8 +468,7 @@ namespace pep
           std::filesystem::create_directories(fullpath.parent_path());
           WriteFile(fullpath, *page);
         } catch (...) {
-          LOG(LOG_TAG, error) << "could not write to "
-            << std::quoted(fullpath.string());
+          LOG(LOG_TAG, error) << "could not write to \"" << fullpath.string() << '"';
           throw;
         }
         s.on_next(s3::ETag(*page));
@@ -596,25 +594,28 @@ namespace pep
       }).as_dynamic();
   }
 
+}
 
-  std::shared_ptr<PageStore> PageStore::Create(
-      std::shared_ptr<boost::asio::io_context> io_context,
-      std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
-  {
-    std::string type = config->get<std::string>("Type"); // throws
 
-    if (type == "s3") {
-      return S3PageStore::Create(io_context, metrics_registry, config);
-    } else if (type == "local") {
-      return LocalPageStore::Create(io_context, config);
-    } else if (type == "dual") {
-      return DualPageStore::Create(io_context, metrics_registry, config);
-    }
+std::shared_ptr<PageStore> PageStore::Create(
+    std::shared_ptr<boost::asio::io_context> io_context,
+    std::shared_ptr<prometheus::Registry> metrics_registry,
+    std::shared_ptr<Configuration> config)
+{
+  std::string type = config->get<std::string>("Type"); // throws
 
-    throw std::runtime_error("Configuration error: "
-        "unknown page storage type, " + type
-          + "; use 's3', 'local' or 'dual'.");
+  if (type == "s3") {
+    return S3PageStore::Create(io_context, metrics_registry, config);
+  } else if (type == "local") {
+    return LocalPageStore::Create(io_context, config);
+  } else if (type == "dual") {
+    return DualPageStore::Create(io_context, metrics_registry, config);
   }
+
+  throw std::runtime_error("Configuration error: "
+      "unknown page storage type, " + type
+        + "; use 's3', 'local' or 'dual'.");
+}
+
 }
 

@@ -20,7 +20,6 @@ set(PEPCLI_SRCS
     List.cpp
     Metrics.cpp
     MultiCellQuery.cpp MultiCellQuery.hpp
-    NoLongerSupportedCommand.cpp
     Ping.cpp
     Pull.cpp
     Query.cpp
@@ -41,6 +40,8 @@ set(PEPCLI_SRCS
     Validate.cpp
     Verifiers.cpp
     XEntry.cpp
+    structuredoutput/TreeFromUserQueryResponse.hpp structuredoutput/TreeFromUserQueryResponse.cpp
+    structuredoutput/TreeFromAmaQueryResponse.hpp structuredoutput/TreeFromAmaQueryResponse.cpp
 )
 
 add_cli_install_executable(${PROJECT_NAME}cli ${PEPCLI_SRCS})

@@ -30,14 +30,14 @@ namespace pep {
 
 const severity_level Logging::compiledMinimumSeverityLevel = PEP_COMPILED_MIN_LOG_SEVERITY;
 
+namespace {
+
 // Initialise a global logger called 'logger'
 BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(logger, Logging::pep_severity_channel_logger)
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", severity_level)
 BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
 BOOST_LOG_ATTRIBUTE_KEYWORD(threadName, "ThreadName", std::string)
-
-namespace {
 
 std::string getInstallationUuid() {
   std::string szUuid;

@@ -70,7 +70,7 @@ rxcpp::observable<std::shared_ptr<castor::Study>> LoadCastorStudies(rxcpp::obser
       }
 
       // At this point, we know that this is the first (and perhaps only) SP definition referencing this study (slug). Set default site now and include the study in the result.
-      study->setDefaultSiteByAbbreviation(abbrev);
+      study->setDefaultSiteAbbreviation(abbrev);
       abbrevsBySlug->emplace(std::make_pair(slug, abbrev));
       return study;
     })
@@ -464,11 +464,6 @@ RegistrationServer::~RegistrationServer() {
   closeDatabase();
 }
 
-struct RegistrationContext {
-  std::string encryptedIdentifier;
-  std::shared_ptr<PolymorphicPseudonym> pp;
-};
-
 /*!
   * \brief Store the tag and short pseudonym encrypted in the shadow SQLite database together with the encrypted identifier. It returns the SQLite return code for the query.
   *
@@ -678,6 +673,10 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
     throw std::runtime_error("Cannot store short pseudonyms because client uses a different encryption key for shadow storage. Please ensure that client and server configurations match.");
   }
 
+  struct RegistrationContext {
+    std::string encryptedIdentifier;
+    std::shared_ptr<PolymorphicPseudonym> pp;
+  };
   std::shared_ptr<RegistrationContext> ctx = std::make_shared<RegistrationContext>();
   ctx->pp = std::make_shared<PolymorphicPseudonym>(request.mPolymorphicPseudonym);
   ctx->encryptedIdentifier = request.mEncryptedIdentifier;

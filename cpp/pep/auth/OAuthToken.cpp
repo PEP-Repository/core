@@ -1,5 +1,6 @@
 #include <pep/auth/OAuthToken.hpp>
 
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
@@ -37,7 +38,7 @@ bool OAuthToken::verify(const std::string& secret, const std::string& requiredSu
   std::string localHMAC = Hmac<Sha256>(secret, mData);
 
   // Check whether the received HMAC is equal to the computed one
-  if(localHMAC != mHmac) {
+  if (!const_time::IsEqual(localHMAC, mHmac)) {
     LOG("OAuthToken::verify", info) << "MAC in token invalid";
     result = false;
   }
@@ -146,7 +147,7 @@ OAuthToken OAuthToken::Generate(
 OAuthToken::OAuthToken(const std::string& serialized)
   : mSerialized(serialized) {
   std::vector<std::string> splitToken;
-  boost::split(splitToken, serialized, boost::is_any_of("."));
+  boost::split(splitToken, serialized, std::bind_front(std::equal_to{}, '.'));
 
   // Token should consist of two parts: (encoded) JSON data and HMAC
   if (splitToken.size() != 2) {

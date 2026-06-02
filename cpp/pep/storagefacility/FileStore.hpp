@@ -91,7 +91,7 @@ public:
   public:
     Timestamp getLastEntryValidFrom() const { return mLastEntryValidFrom; }
 
-    void setContent(std::unique_ptr<EntryContent>&& content) { EntryBase::setContent(std::move(content)); }
+    using EntryBase::setContent;
     rxcpp::observable<std::string> appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr); // returns MD5( data xxhash(data) )
 
     // must be on same thread as FileStore

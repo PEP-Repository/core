@@ -19,6 +19,7 @@ if (WITH_SERVERS)
   )
 
   target_link_libraries(${PROJECT_NAME}Transcryptorlib
+    ${PROJECT_NAME}AccessManagerApilib
     ${PROJECT_NAME}TranscryptorApilib
     ${PROJECT_NAME}KeyComponentServerlib
     ${PROJECT_NAME}Databaselib
@@ -52,4 +53,6 @@ if (WITH_SERVERS)
           TLSTranscryptor.key TLSTranscryptor.chain
           PEPTranscryptor.key PEPTranscryptor.chain
   )
+
+  add_unit_tests(Transcryptor)
 endif()
