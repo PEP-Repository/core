@@ -3,9 +3,16 @@ Changelog
 Note your text below, in the following format (with 42 the issue number of the change):
 - repo#42: description
 
-Changes in upcoming release (1.7):
+Changes in upcoming release (1.8):
 
 ---------------
+
+
+---------------
+
+Past changes, do not edit (except by person doing release):
+
+Release 1.7
 
 - core#2817: "pepcli ama query"'s "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
              e.g. `pepcli ama query --include columns --include column-groups` will print both columns and column groups.
@@ -76,10 +83,6 @@ MANUAL CHANGES REQUIRED:
   - Copy `PublicKeyPseudonyms` and `AccessManager` entries from `AccessManager.json` config over to `Transcryptor.json`
   - Update `Verifiers.json` for the Transcryptor: Run `./scripts/update-verifiers-1-7.sh /path/to/Verifiers.json`
     - Make sure that you have `pepcli` in your PATH for the current environment, or pass the binary to use as extra argument to the script
-
----------------
-
-Past changes, do not edit (except by person doing release):
 
 Release 1.6 (started 2026-01-28):
 
