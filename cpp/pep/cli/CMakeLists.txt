@@ -2,6 +2,7 @@ set(PEPCLI_SRCS
     Ama.cpp
     Castor.cpp
     CliApplication.cpp CliApplication.hpp
+    ColumnQuery.cpp ColumnQuery.hpp
     Command.cpp Command.hpp
     Commands.hpp
     Delete.cpp

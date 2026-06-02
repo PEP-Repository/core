@@ -17,6 +17,7 @@ public:
   rxcpp::observable<MetadataUpdateResponse2> requestMetadataStore(MetadataUpdateRequest2 request) const;
   rxcpp::observable<DataEnumerationResponse2> requestDataEnumeration(DataEnumerationRequest2 request) const;
   rxcpp::observable<DataHistoryResponse2> requestDataHistory(DataHistoryRequest2 request) const;
+  rxcpp::observable<DataSizeResponse> requestDataSize(DataSizeRequest request) const;
 };
 
 }
