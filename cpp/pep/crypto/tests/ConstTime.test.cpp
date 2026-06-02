@@ -1,6 +1,7 @@
 #include <pep/crypto/ConstTime.hpp>
 
 #include <algorithm>
+#include <array>
 
 #include <gtest/gtest.h>
 
