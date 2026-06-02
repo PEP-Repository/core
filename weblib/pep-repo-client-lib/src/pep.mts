@@ -125,7 +125,7 @@ type AuthenticationChannelMessage =
     ;
 
 function toDdMmYyyy(date: Date) {
-  return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDay().toString().padStart(2, '0')}`;
+  return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
 }
 
 function throwPotentialWasmException(mod: PepModule, ex: WasmException | Error | unknown): never {
