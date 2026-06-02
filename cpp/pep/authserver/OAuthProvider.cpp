@@ -155,7 +155,9 @@ OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     activeGrantExpiration = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
     spoofKeyFile = config.get<std::optional<std::filesystem::path>>("SpoofKeyFile");
     httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HttpsCertificateFile");
-    extraRedirectUris = RangeToVector(config.get<std::vector<std::string>>("ExtraRedirectUris")
+    extraRedirectUris = RangeToVector(
+      config.get<std::optional<std::vector<std::string>>>("ExtraRedirectUris")
+        .value_or(std::vector<std::string>{})
       | std::views::transform([](std::string_view str) { return url{str}; }));
   }
   catch (std::exception& e) {
