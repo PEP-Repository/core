@@ -199,7 +199,7 @@ public:
 private:
   FileStore(
     const std::filesystem::path& metadatapath,
-    std::shared_ptr<Configuration> pageStoreConfig,
+    const Configuration& pageStoreConfig,
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry);
 

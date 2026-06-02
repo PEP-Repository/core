@@ -23,7 +23,7 @@ public:
   struct Parameters {
     /// The io_context to run on
     std::shared_ptr<boost::asio::io_context> io_context;
-    /// The "AuthenticationServer" part of the client config
+    /// The "OAuthServer" part of the client config
     const Configuration& config;
     /// Method to retrieve the authorization code, see e.g. BrowserAuthorization & ConsoleAuthorization
     AuthorizationMethod authorizationMethod;

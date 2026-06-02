@@ -13,14 +13,20 @@ private:
   void setBasePath(const std::filesystem::path& base);
 
 public:
-
   static Configuration FromFile(const std::filesystem::path& filepath);
 
   static Configuration FromStream(
           std::istream& stream,
           const std::optional<std::filesystem::path>& basePath = std::nullopt);
 
+  static Configuration FromPtree(
+          const boost::property_tree::ptree& properties,
+          const std::optional<std::filesystem::path>& basePath = std::nullopt);
+
   Configuration get_child(
+          const boost::property_tree::ptree::path_type& path) const;
+
+  std::optional<Configuration> get_child_optional(
           const boost::property_tree::ptree::path_type& path) const;
 
   template <typename T>
