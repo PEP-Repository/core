@@ -792,9 +792,8 @@ message DataSizeRequest {
 }
 
 message SignedDataSizeRequest {
-  reserved 1, 2;
-  Signature signature = 3;
-  bytes data = 4;
+  Signature signature = 1;
+  bytes data = 2;
 }
 
 message DataSizeResponse {
