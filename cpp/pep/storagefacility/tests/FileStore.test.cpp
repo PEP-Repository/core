@@ -133,4 +133,20 @@ TEST(FileStore, Basic) {
   }
 }
 
+TEST(FileStore, PathTraversal) {
+  Context context;
+  auto store = context.store;
+
+  auto dummyLp = pep::LocalPseudonym::Random();
+
+  ASSERT_NO_THROW(store->modifyEntry({dummyLp, "test"}, true));
+
+  EXPECT_THROW(store->modifyEntry({dummyLp, ".."}, true),
+    std::invalid_argument);
+  EXPECT_THROW(store->modifyEntry({dummyLp, "/test"}, true),
+    std::runtime_error);
+  EXPECT_THROW(store->modifyEntry({dummyLp, ""}, true),
+    std::runtime_error);
+}
+
 }
