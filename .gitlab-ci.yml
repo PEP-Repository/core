@@ -123,13 +123,13 @@ variables:
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
     cpp/pep/ticketing/pepTicketingUnitTests
-    cpp/pep/transcryptor/pepTranscryptorUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
 
   UNIT_TESTS_SERVER: >-
     cpp/pep/accessmanager/pepAccessManagerUnitTests
     cpp/pep/keyserver/pepKeyServerUnitTests
+    cpp/pep/transcryptor/pepTranscryptorUnitTests
 
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
