@@ -32,8 +32,8 @@ TEST(Math, IntegralLog) {
   EXPECT_EQ(pep::IntegralLog(0b101000000U, 2U), std::nullopt);
 
   for (uint64_t i = 0U; i < 64U; ++i) {
-    auto value = uint64_t(1U) << i;
-    EXPECT_EQ(pep::IntegralLog(value, uint64_t(2U)), i) << "Base-2 logarithm not found for bit " << i;
+    auto value = uint64_t{1} << i;
+    EXPECT_EQ(pep::IntegralLog(value, uint64_t{2}), i) << "Base-2 logarithm not found for bit " << i;
   }
 
   EXPECT_EQ(pep::IntegralLog(1U, 10U), 0U);
