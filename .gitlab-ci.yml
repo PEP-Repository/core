@@ -218,14 +218,26 @@ include:
 .docker_login: &docker_login
   echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" --username gitlab-ci-token --password-stdin
 
-.not-stable-release: &not-stable-release
-  # Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
-  if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN)
+# Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
+.skip-stable-release:
+  rules:
+    - if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN)
+      when: never
 
 .skip-for-binaries-for-xyz:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
       when: never
+
+# Must be last in rules, as it will not run more rules
+.set-enable-linter-and-terminate-rules:
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      variables:
+        ENABLE_LINTER: no
 
 # Sets credentials on the git repo in the current working directory to prevent "fatal: could not read Username"
 # See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2741
@@ -678,13 +690,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
-  rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      variables:
-        ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      variables:
-        ENABLE_LINTER: no
+    - .set-enable-linter-and-terminate-rules
   variables:
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -724,8 +730,8 @@ ubuntu-lts-release-manual-lint:
     # Redundant if CI already auto-lints
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
-    - <<: *not-stable-release
-      when: manual
+    - !reference [ .skip-stable-release, rules ]
+    - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
   variables:
@@ -780,13 +786,7 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-with-tests-base
     - .ubuntu-rolling-debug-settings
-  rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      variables:
-        ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      variables:
-        ENABLE_LINTER: no
+    - .set-enable-linter-and-terminate-rules
 
 # Collects/provides (linted or unlinted) binaries
 ubuntu-rolling-debug:
@@ -809,8 +809,8 @@ ubuntu-rolling-debug-manual-lint:
     # Redundant if CI already auto-lints
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       when: never
-    - <<: *not-stable-release
-      when: manual
+    - !reference [ .skip-stable-release, rules ]
+    - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
   variables:
@@ -864,11 +864,12 @@ ubuntu-rolling-release:
     - .weblib-settings
   rules:
     - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - *not-stable-release
+    - !reference [ .skip-stable-release, rules ]
+    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
 
-weblib-debug:
+weblib-debug-$[[ inputs.autolinting ]]:
   extends:
     - .weblib-build-with-tests-base
     - .weblib-settings-debug
@@ -879,11 +880,12 @@ weblib-debug:
   extends:
     - .weblib-settings
   rules:
-    - *not-stable-release
+    - !reference [ .skip-stable-release, rules ]
+    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
 
-weblib-release:
+weblib-release-$[[ inputs.autolinting ]]:
   extends:
     - .weblib-build-with-tests-base
     - .weblib-settings-release
@@ -1287,20 +1289,22 @@ weblib-debug-test:
   extends:
     - .weblib-test-base
     - .weblib-settings-debug
-  needs: [weblib-debug]
+  needs:
+    - weblib-debug-$[[ inputs.autolinting ]]
 
 weblib-release-test:
   extends:
     - .weblib-test-base
     - .weblib-settings-release
-  needs: [weblib-release]
+  needs:
+    - weblib-release-$[[ inputs.autolinting ]]
 
 weblib-integration:
   extends:
     - .dind
     - .weblib-settings-debug
   needs:
-    - weblib-debug
+    - weblib-debug-$[[ inputs.autolinting ]]
     - job: build-docker-images
       artifacts: false
   stage: integration
