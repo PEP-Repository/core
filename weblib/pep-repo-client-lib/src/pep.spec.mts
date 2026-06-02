@@ -23,9 +23,9 @@ interface OAuthTokenSecretFile {
   OAuthTokenSecret: string;
 }
 
-describe('Pep', function () {
+describe('Pep', () => {
   let pep!: Pep;
-  before(async function () {
+  before(async () => {
     console.debug('Loading config');
     let pepCreateArgs: InitConfig;
     let tokenSecretObj: OAuthTokenSecretFile;
@@ -77,13 +77,13 @@ describe('Pep', function () {
       console.debug('Authenticated');
     });
   });
-  after(function () {
+  after(() => {
     pep?.delete();
     mainExited = true;
   });
 
-  describe('#listColumns()', function () {
-    it('should list columns and column groups', async function () {
+  describe('#listColumns()', () => {
+    it('should list columns and column groups', async () => {
       expect(await pep.runHandleWasmException(() => pep.listColumns()))
           .to.containSubset([
         {
@@ -102,8 +102,8 @@ describe('Pep', function () {
     });
   });
 
-  describe('#listSubjectGroups()', function () {
-    it('should list subject groups', async function () {
+  describe('#listSubjectGroups()', () => {
+    it('should list subject groups', async () => {
       expect(await pep.runHandleWasmException(() => pep.listSubjectGroups()))
           .to.containSubset([
             {name: '*'},
@@ -112,8 +112,8 @@ describe('Pep', function () {
     });
   });
 
-  describe('#list()', function () {
-    it('should list cells given subject groups', function () {
+  describe('#list()', () => {
+    it('should list cells given subject groups', () => {
       return pep.runHandleWasmException(async () => {
         const entries = await Array.fromAsync(pep.list({
           subjectGroups: ['WasmTestSubjectGroup'],
@@ -154,7 +154,7 @@ describe('Pep', function () {
         }
       });
     });
-    it('should list cells given subject origin ID', function () {
+    it('should list cells given subject origin ID', () => {
       return pep.runHandleWasmException(async () => {
         const entries = await Array.fromAsync(pep.list({
           subjects: ['WasmTestSubjectSmall'], // Pass origin ID
@@ -172,8 +172,8 @@ describe('Pep', function () {
     });
   });
 
-  describe('#retrieve()', function () {
-    it('should retrieve cells', function () {
+  describe('#retrieve()', () => {
+    it('should retrieve cells', () => {
       return pep.runHandleWasmException(async () => {
         const entries = await Array.fromAsync(pep.list({
           subjectGroups: ['WasmTestSubjectGroup'],
