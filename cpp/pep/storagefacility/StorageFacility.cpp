@@ -1056,8 +1056,8 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   const auto& request = certified.message;
 
-  size_t entryCount;
-  uint64_t totalBytes, rollingBytes;
+  size_t entryCount{};
+  uint64_t totalBytes{}, rollingBytes{};
   this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
 
   auto countBlocks = [blockSize = mDataSizeResolution](uint64_t bytes) {
@@ -1153,7 +1153,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
 }
 
 void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
-  uint64_t total, rolling;
+  uint64_t total{}, rolling{};
   mFileStore->getMetrics(entryCount, total, rolling, columns);
 
   auto round = [blockSize = mDataSizeResolution](uint64_t bytes) {
@@ -1169,8 +1169,8 @@ void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedT
 }
 
 void StorageFacility::updateFileStoreMetrics() {
-  size_t entryCount;
-  uint64_t totalPayloadBytes, rollingPayloadBytes;
+  size_t entryCount{};
+  uint64_t totalPayloadBytes{}, rollingPayloadBytes{};
   this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
 
   mMetrics->entriesIncludingHistory.Set(static_cast<double>(entryCount));

@@ -124,8 +124,8 @@ FileStore::FileStore(
     }
   }
 
-  size_t entryCount;
-  uint64_t mTotalPayloadBytes, mRollingPayloadBytes;
+  size_t entryCount{};
+  uint64_t mTotalPayloadBytes{}, mRollingPayloadBytes{};
   this->getMetrics(entryCount, mTotalPayloadBytes, mRollingPayloadBytes);
 
   duration<double> seconds(steady_clock::now() - start_time);
@@ -176,8 +176,8 @@ void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint
   rollingPayloadBytes = 0U;
 
   for (const auto& participant : mParticipants) {
-    size_t subEntryCount;
-    uint64_t subTotalPayloadBytes, subRollingPayloadBytes;
+    size_t subEntryCount{};
+    uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
 
     participant->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes, columns);
 
@@ -563,8 +563,8 @@ void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPaylo
 
   for (const auto& cell : mCells) {
     if (columns.empty() || columns.contains(cell->columnName())) {
-      size_t subEntryCount;
-      uint64_t subTotalPayloadBytes, subRollingPayloadBytes;
+      size_t subEntryCount{};
+      uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
       cell->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
       entryCount += subEntryCount;
       totalPayloadBytes += subTotalPayloadBytes;

@@ -2,7 +2,7 @@
 
 #include <QApplication>
 #include <QTimer>
-
+namespace {
 void postToMainThread(std::function<void()>&& fun);
 
 void postDelayedToMainThread(std::chrono::milliseconds when, std::function<void()>&& fun);
@@ -27,7 +27,7 @@ void postDelayedToMainThread(std::chrono::milliseconds when, std::function<void(
 }
 
 struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
- private:
+private:
   struct gui_scheduler_worker : public rxcpp::schedulers::worker_interface {
     gui_scheduler_worker() = default;
     gui_scheduler_worker(const gui_scheduler_worker&) = delete;
@@ -61,7 +61,7 @@ struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
 
   std::shared_ptr<gui_scheduler_worker> wi;
 
- public:
+public:
   gui_scheduler()
     : wi(std::make_shared<gui_scheduler_worker>()) {
   }
@@ -79,6 +79,7 @@ struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
 rxcpp::schedulers::scheduler make_gui_scheduler() {
   rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<gui_scheduler>();
   return instance;
+}
 }
 
 rxcpp::observe_on_one_worker observe_on_gui() {
