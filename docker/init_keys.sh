@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eux
+set -eu
 
 readonly REUSE_SECRETS="${1:-false}"
 readonly DATADIR="${2:-/data}"
