@@ -16,7 +16,7 @@ add_system_public_keys() {
   local config_file="$1"
   # jq is not available in pep-services image for integration.sh, so use sed instead
   sed -i \
-    -e "s/\"PublicKeyData\":\s*\"\"/\"PublicKeyData\": \"${PKDATA}\"/" "$config_file" \
+    -e "s/\"PublicKeyData\":\s*\"\"/\"PublicKeyData\": \"${PKDATA}\"/" \
     -e "s/\"PublicKeyPseudonyms\":\s*\"\"/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\"/" \
     -- "$config_file"
 }
