@@ -15,9 +15,9 @@ PKPSEUDONYMS="$(sed -n -e "s/PublicKeyPseudonyms: \([0-9a-fA-F]*\)/\1/p" "$DATAD
 add_system_public_keys() {
   local config_file="$1"
   # jq is not available in pep-services image for integration.sh, so use sed instead
-  sed -i \
-    -e "s/\"PublicKeyData\":\s*\"\"/\"PublicKeyData\": \"${PKDATA}\"/" \
-    -e "s/\"PublicKeyPseudonyms\":\s*\"\"/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\"/" \
+  sed -i.bak \
+    -e "s/\"PublicKeyData\":[[:space:]]*\"\"/\"PublicKeyData\": \"${PKDATA}\"/" \
+    -e "s/\"PublicKeyPseudonyms\":[[:space:]]*\"\"/\"PublicKeyPseudonyms\": \"${PKPSEUDONYMS}\"/" \
     -- "$config_file"
 }
 add_system_public_keys "$DATADIR/client/ClientConfig.json"
@@ -25,8 +25,8 @@ add_system_public_keys "$DATADIR/accessmanager/AccessManager.json"
 add_system_public_keys "$DATADIR/transcryptor/Transcryptor.json"
 add_system_public_keys "$DATADIR/registrationserver/RegistrationServer.json"
 
-sed -i -e "s/dataPk.*/dataPk: ${PKDATA}/" "$DATADIR"/watchdog/constellation.yaml
-sed -i -e "s/pseudonymPk.*/pseudonymPk: ${PKPSEUDONYMS}/" "$DATADIR"/watchdog/constellation.yaml
+sed -i.bak -e "s/dataPk.*/dataPk: ${PKDATA}/" "$DATADIR"/watchdog/constellation.yaml
+sed -i.bak -e "s/pseudonymPk.*/pseudonymPk: ${PKPSEUDONYMS}/" "$DATADIR"/watchdog/constellation.yaml
 
 cat "$DATADIR"/client/ClientConfig.json
 cat "$DATADIR"/watchdog/constellation.yaml
