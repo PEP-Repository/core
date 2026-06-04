@@ -4,7 +4,7 @@
 
 import {expect} from 'chai';
 import Pep, {CellEntry, ClientConfig, InitConfig} from "./pep.mjs";
-import {binaryToString, concatStringsAsync} from "./utils.mjs";
+import {binaryToString, concatStringsAsync, deleteObjects} from "./utils.mjs";
 
 const isNode = !!globalThis.process;
 
@@ -113,13 +113,16 @@ describe('Pep', () => {
   });
 
   describe('#list()', () => {
-    it('should list cells given subject groups', () => {
-      return pep.runHandleWasmException(async () => {
-        const entries = await Array.fromAsync(pep.list({
-          subjectGroups: ['WasmTestSubjectGroup'],
-          columnGroups: ['WasmTestColumnGroup'],
-        }));
-        try {
+    context('given a subject group and column group', () => {
+      it('should list cells with metadata', async () => {
+        let entries: CellEntry[] | undefined;
+        after(() => entries && deleteObjects(entries));
+
+        return pep.runHandleWasmException(async () => {
+          entries = await Array.fromAsync(pep.list({
+            subjectGroups: ['WasmTestSubjectGroup'],
+            columnGroups: ['WasmTestColumnGroup'],
+          }));
           const entriesSimple = entries.map(entry => ({
             id: entry.id,
             subjectLocalPseudonym: entry.subjectLocalPseudonym,
@@ -132,54 +135,60 @@ describe('Pep', () => {
             ),
           }));
           try {
-            expect(entriesSimple).satisfies(function entriesShouldHaveRightColumn(entries: typeof entriesSimple) {
+            expect(entriesSimple).satisfies(
+                function entries_should_have_correct_column_name(entries: typeof entriesSimple) {
               return entries.every(entry => entry.column === 'WasmTestColumn');
             });
-            expect(entriesSimple).satisfies(function someEntryShouldHaveSmallExtensionAndRightSize(entries: typeof entriesSimple) {
+            expect(entriesSimple).satisfies(
+                function includes_entry_with_the_data_for_the_small_subject(entries: typeof entriesSimple) {
               return entries.some(entry =>
                   entry.partialMetadata['fileExtension'] === '.small'
                   && entry.fileSize === 'Some small test data!'.length);
             });
-            expect(entriesSimple).satisfies(function someEntryShouldHaveLargeExtensionAndRightSize(entries: typeof entriesSimple) {
-              return entries.some(entry => entry.partialMetadata['fileExtension'] === '.large'
-                      && entry.fileSize === 'Larger test data!\n'.length * 120_000,
-                  'One entry should have fileExtension .large and specific file size');
+            expect(entriesSimple).satisfies(
+                function includes_entry_with_the_data_for_the_large_subject(entries: typeof entriesSimple) {
+              return entries.some(entry =>
+                  entry.partialMetadata['fileExtension'] === '.large'
+                  && entry.fileSize === 'Larger test data!\n'.length * 120_000);
             });
           } catch (ex) {
-            console.log(entriesSimple);
+            console.log(entriesSimple); // For debugging
             throw ex;
           }
-        } finally {
-          entries.forEach(entry => entry.delete());
-        }
+        });
       });
     });
-    it('should list cells given subject origin ID', () => {
-      return pep.runHandleWasmException(async () => {
-        const entries = await Array.fromAsync(pep.list({
-          subjects: ['WasmTestSubjectSmall'], // Pass origin ID
-          columnGroups: ['WasmTestColumnGroup'],
-        }));
-        try {
+
+    context('given a subject Origin ID and column group', () => {
+      it('should list cells with metadata', async () => {
+        let entries: CellEntry[] | undefined;
+        after(() => entries && deleteObjects(entries));
+
+        return pep.runHandleWasmException(async () => {
+          entries = await Array.fromAsync(pep.list({
+            subjects: ['WasmTestSubjectSmall'], // Pass origin ID
+            columnGroups: ['WasmTestColumnGroup'],
+          }));
           expect(entries).has.length(1);
           const [entry] = entries as [CellEntry];
           expect(binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()))
               .equals('.small', 'Got back wrong fileExtension');
-        } finally {
-          entries.forEach(entry => entry.delete());
-        }
+        });
       });
     });
   });
 
   describe('#retrieve()', () => {
-    it('should retrieve cells', () => {
-      return pep.runHandleWasmException(async () => {
-        const entries = await Array.fromAsync(pep.list({
-          subjectGroups: ['WasmTestSubjectGroup'],
-          columnGroups: ['WasmTestColumnGroup'],
-        }));
-        try {
+    context('given a subject group and column group', () => {
+      it('should retrieve cells with data', () => {
+        let entries: CellEntry[] | undefined;
+        after(() => entries && deleteObjects(entries));
+
+        return pep.runHandleWasmException(async () => {
+          entries = await Array.fromAsync(pep.list({
+            subjectGroups: ['WasmTestSubjectGroup'],
+            columnGroups: ['WasmTestColumnGroup'],
+          }));
           const smallEntry = entries.find(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()) === '.small'),
               largeEntry = entries.find(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()) === '.large');
           expect(smallEntry).to.exist;
@@ -198,9 +207,7 @@ describe('Pep', () => {
             const content = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
             expect(content).equals(expectedContent!, 'Wrong cell data');
           }
-        } finally {
-          entries.forEach(entry => entry.delete());
-        }
+        });
       });
     });
   });
