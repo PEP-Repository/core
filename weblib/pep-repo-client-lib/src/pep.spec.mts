@@ -103,7 +103,7 @@ describe('Pep', () => {
   });
 
   describe('#listSubjectGroups()', () => {
-    it('should list subject groups', async () => {
+    it('should list the name of each subject group', async () => {
       expect(await pep.runHandleWasmException(() => pep.listSubjectGroups()))
           .to.containSubset([
             {name: '*'},
