@@ -28,7 +28,7 @@ public:
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
-    bool isOriginalPayloadOwner;
+    bool isOriginalPayloadOwner{};
   };
   using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
 

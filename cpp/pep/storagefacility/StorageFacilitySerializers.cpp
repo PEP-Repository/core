@@ -278,8 +278,9 @@ DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeR
 
 void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest& dest, DataSizeRequest value) const {
   dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
-  for (const auto& column : value.mColumns) {
-    dest.add_columns(column);
+  // We can't directly move values out of a std::set<>. But we can do it with std::set<>::extract
+  for (auto it = value.mColumns.begin(); it != value.mColumns.end(); ++it) {
+    dest.add_columns(std::move(value.mColumns.extract(it).value()));
   }
 }
 

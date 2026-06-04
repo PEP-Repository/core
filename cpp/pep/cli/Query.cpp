@@ -285,10 +285,10 @@ private:
             .map([](pep::DataSizeResponse response) {
                 // Determine prefix and base for output: e.g. "Mi" for base-2 megabyte or "G" for base-10 gigabyte
                 std::optional<std::string> units;
-                if (auto base2 = pep::IntegralLog(response.mBlockSize, uint64_t(2U))) {
+                if (auto base2 = pep::IntegralLog(response.mBlockSize, static_cast<uint64_t>(2U))) {
                   units = pep::BinaryPrefix(*base2);
                 }
-                else if (auto base10 = pep::IntegralLog(response.mBlockSize, uint64_t(10U))) {
+                else if (auto base10 = pep::IntegralLog(response.mBlockSize, static_cast<uint64_t>(10U))) {
                   units = pep::SiPrefix(*base10);
                 }
 
