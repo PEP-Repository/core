@@ -1144,7 +1144,8 @@ upload-macos-client:
     - job: macos-client
       parallel:
         matrix:
-          - ARCH: ['$[[ matrix.ARCH ]]']
+          - RUNNER_TAG: ['$[[ matrix.RUNNER_TAG ]]']
+            ARCH: ['$[[ matrix.ARCH ]]']
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
