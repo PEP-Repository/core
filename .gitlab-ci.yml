@@ -1132,14 +1132,24 @@ upload-wix-library:
             --upload-file "$BUILD_DIRECTORY/wix/pepBinaries.wixlib"
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/wixlibrary/${CI_COMMIT_SHA}/pepBinaries.wixlib"'
 
-upload-macos-client-x86:
+upload-macos-client:
   extends: .upload-curl-base
-  needs: [macos-client-x86]
+  parallel:
+    matrix:
+      - ARCH: x86_64
+        PACKAGE_NAME: macos-x86-bins
+      - ARCH: arm64
+        PACKAGE_NAME: macos-arm-bins
+  needs:
+    - job: macos-client
+      parallel:
+        matrix:
+          - ARCH: ['$ARCH']
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
-            --upload-file "$BUILD_DIRECTORY/macOS_x86_64_bins.zip"
-            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-x86-bins/${CI_COMMIT_SHA}/macOS_x86_64_bins.zip"'
+            --upload-file "$BUILD_DIRECTORY/macOS_${ARCH}_bins.zip"
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${CI_COMMIT_SHA}/macOS_${ARCH}_bins.zip"'
 
 upload-macos-client-arm:
   extends: .upload-curl-base
