@@ -83,7 +83,7 @@ describe('Pep', () => {
   });
 
   describe('#listColumns()', () => {
-    it('should list columns and column groups', async () => {
+    it('should return the name and columns for every column group', async () => {
       expect(await pep.runHandleWasmException(() => pep.listColumns()))
           .to.containSubset([
         {
