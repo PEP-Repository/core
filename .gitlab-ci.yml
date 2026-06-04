@@ -878,9 +878,14 @@ test-windows:
 
 #################### MacOS ####################
 
-.macos-client-base:
+macos-client:
   <<: *ccache-configuration
   stage: build
+  parallel:
+    matrix:
+      - ARCH: [x86_64, arm64]
+  tags:
+    - macos-${ARCH}
   needs:
     - job: retrieve-lockfile
       optional: true
@@ -895,18 +900,6 @@ test-windows:
     - *ccache-print
   artifacts:
     expire_in: 7d
-
-macos-client:
-  extends: .macos-client-base
-  parallel:
-    matrix:
-      - RUNNER_TAG: macos-intel
-        ARCH: x86_64
-      - RUNNER_TAG: macos-arm64
-        ARCH: arm64
-  tags:
-    - $RUNNER_TAG
-  artifacts:
     paths:
       - $BUILD_DIRECTORY/macOS_${ARCH}_bins.zip
 
@@ -923,7 +916,7 @@ macos:
       allow_failure: true
   parallel:
     matrix:
-      - ARCH: [intel, arm64]
+      - ARCH: [x86_64, arm64]
   tags:
     - macos-${ARCH}
   variables:
@@ -1136,16 +1129,12 @@ upload-macos-client:
   extends: .upload-curl-base
   parallel:
     matrix:
-      - RUNNER_TAG: macos-intel
-        ARCH: x86_64
-      - RUNNER_TAG: macos-arm64
-        ARCH: arm64
+      - ARCH: [x86_64, arm64]
   needs:
     - job: macos-client
       parallel:
         matrix:
-          - RUNNER_TAG: ['$[[ matrix.RUNNER_TAG ]]']
-            ARCH: ['$[[ matrix.ARCH ]]']
+          - ARCH: ['$[[ matrix.ARCH ]]']
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
