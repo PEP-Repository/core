@@ -1165,6 +1165,12 @@ message AddUserToGroup {
   optional Timestamp expiration = 3;
 }
 
+message UpdateExpiration {
+  string uid = 1;
+  string group = 2;
+  optional Timestamp expiration = 3;
+}
+
 message RemoveUserFromGroup {
   string uid = 1;
   string group = 2;
@@ -1186,6 +1192,7 @@ message UserMutationRequest {
 
   repeated AddUserToGroup add_user_to_group = 3;
   repeated RemoveUserFromGroup remove_user_from_group = 4;
+  repeated UpdateExpiration update_expiration = 13;
 }
 
 message SignedUserMutationRequest {

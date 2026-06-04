@@ -97,6 +97,26 @@ void Serializer<RemoveUserFromGroup>::moveIntoProtocolBuffer(proto::RemoveUserFr
   dest.set_block_tokens(value.mBlockTokens);
 }
 
+UpdateExpiration Serializer<UpdateExpiration>::fromProtocolBuffer(proto::UpdateExpiration&& source) const {
+  std::optional<Timestamp> expiration;
+  if (source.has_expiration()) {
+    expiration = Serialization::FromProtocolBuffer(std::move(*source.mutable_expiration()));
+  }
+  return UpdateExpiration(
+    std::move(*source.mutable_uid()),
+    std::move(*source.mutable_group()),
+    expiration
+  );
+}
+
+void Serializer<UpdateExpiration>::moveIntoProtocolBuffer(proto::UpdateExpiration& dest, UpdateExpiration value) const {
+  *dest.mutable_uid() = std::move(value.mUid);
+  *dest.mutable_group() = std::move(value.mGroup);
+  if (value.mExpiration) {
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_expiration(), *value.mExpiration);
+  }
+}
+
 UserMutationRequest Serializer<UserMutationRequest>::fromProtocolBuffer(proto::UserMutationRequest&& source) const {
   UserMutationRequest result;
   Serialization::AssignFromRepeatedProtocolBuffer(result.mCreateUser,
@@ -120,6 +140,8 @@ UserMutationRequest Serializer<UserMutationRequest>::fromProtocolBuffer(proto::U
     std::move(*source.mutable_add_user_to_group()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUserFromGroup,
     std::move(*source.mutable_remove_user_from_group()));
+  Serialization::AssignFromRepeatedProtocolBuffer(result.mUpdateExpiration,
+    std::move(*source.mutable_update_expiration()));
   return result;
 }
 
@@ -148,6 +170,8 @@ void Serializer<UserMutationRequest>::moveIntoProtocolBuffer(proto::UserMutation
     std::move(value.mAddUserToGroup));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user_from_group(),
     std::move(value.mRemoveUserFromGroup));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_update_expiration(),
+    std::move(value.mUpdateExpiration));
 }
 
 UserQueryResponse Serializer<UserQueryResponse>::fromProtocolBuffer(proto::UserQueryResponse&& source) const {

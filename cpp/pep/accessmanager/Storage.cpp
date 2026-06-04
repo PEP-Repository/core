@@ -2111,4 +2111,23 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
       true));
 }
 
+std::optional<Timestamp> AccessManager::Backend::Storage::getExpiration(int64_t internalUserId, const std::string& group) const {
+  int64_t userGroupId = getUserGroupId(group);
+  std::optional<std::optional<database::UnixMillis>> result = RangeToOptional(mImplementor->getCurrentRecords<UserGroupUserRecord>(c(&UserGroupUserRecord::internalUserId) == internalUserId
+    && c(&UserGroupUserRecord::userGroupId) == userGroupId, &UserGroupUserRecord::expirationTimestamp));
+  if (result && *result) {
+    return Timestamp(milliseconds(**result));
+  }
+  return {};
+}
+
+void AccessManager::Backend::Storage::setExpiration(int64_t internalUserId, const std::string& group, std::optional<Timestamp> expiration) {
+  int64_t userGroupId = getUserGroupId(group);
+  if (!userInGroup(internalUserId, userGroupId)) {
+    std::ostringstream msg;
+    msg << "This user is not part of group " << Logging::Escape(group);
+    throw Error(msg.str());
+  }
+  mImplementor->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, expiration));
+}
 }

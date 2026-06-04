@@ -78,6 +78,16 @@ public:
   bool mBlockTokens = false;
 };
 
+class UpdateExpiration {
+public:
+  UpdateExpiration() = default;
+  UpdateExpiration(std::string uid, std::string group, std::optional<Timestamp> expiration)
+    : mUid(std::move(uid)), mGroup(std::move(group)), mExpiration(expiration) { }
+  std::string mUid;
+  std::string mGroup;
+  std::optional<Timestamp> mExpiration;
+};
+
 class UserMutationRequest {
 public:
   std::vector<CreateUser> mCreateUser;
@@ -95,6 +105,7 @@ public:
 
   std::vector<AddUserToGroup> mAddUserToGroup;
   std::vector<RemoveUserFromGroup> mRemoveUserFromGroup;
+  std::vector<UpdateExpiration> mUpdateExpiration;
 };
 
 class UserMutationResponse {

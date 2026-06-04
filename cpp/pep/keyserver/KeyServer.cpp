@@ -26,7 +26,7 @@ tokenBlocking::TokenIdentifier Identifiers(const OAuthToken& token) {
 }
 
 void EnsureTokenBlockingAdminAccess(const std::string& organizationalUnit) {
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, organizationalUnit, "token blocklist management");
+  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, organizationalUnit, "token blocklist management");
 }
 
 } // namespace
@@ -131,7 +131,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
     std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest) {
 
   auto certified = signedRequest->open(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, certified.signatory.organizationalUnit(), "token blocklist management");
+  EnsureTokenBlockingAdminAccess(certified.signatory.organizationalUnit());
   const auto& request = certified.message;
 
   assert(mBlocklist != nullptr);

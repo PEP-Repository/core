@@ -58,6 +58,7 @@ public:
   rxcpp::observable<FakeVoid> removeUserGroup(std::string name) const;
   rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group, std::optional<Timestamp> expiration) const;
   rxcpp::observable<FakeVoid> removeUserFromGroup(std::string uid, std::string group, bool blockTokens) const;
+  rxcpp::observable<FakeVoid> updateExpiration(std::string uid, std::string group, std::optional<Timestamp> expiration) const;
   rxcpp::observable<UserQueryResponse> userQuery(UserQuery query) const;
 
   rxcpp::observable<ColumnNameMappings> getColumnNameMappings() const;

@@ -82,6 +82,12 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserFromGroup(std::string 
   return requestUserMutation(std::move(request));
 }
 
+rxcpp::observable<FakeVoid> AccessManagerProxy::updateExpiration(std::string uid, std::string group, std::optional<Timestamp> expiration) const {
+  UserMutationRequest request;
+  request.mUpdateExpiration.emplace_back(std::move(uid), std::move(group), expiration);
+  return requestUserMutation(std::move(request));
+}
+
 rxcpp::observable<UserQueryResponse> AccessManagerProxy::userQuery(UserQuery query) const {
   return this->sendRequest<UserQueryResponse>(this->sign(std::move(query)))
     .op(RxGetOne());
