@@ -493,16 +493,19 @@ fi
 if should_run_test weblib; then
   trace cd "$CORE_DIR/weblib/pep-repo-client-lib/"
 
-  pepcli --oauth-token-group "Data Administrator" ama column create WasmTestColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup create WasmTestColumnGroup
-  pepcli --oauth-token-group "Data Administrator" ama column addTo WasmTestColumn WasmTestColumnGroup
+  WASM_CONFIG='{
+    "columnGroups": [{
+      "name": "WasmTestColumnGroup",
+      "columns": [ "WasmTestColumn" ],
+      "cgars": { "Research Assessor": [ "read", "write" ] }
+    }],
+    "subjectGroups": [{
+      "name": "WasmTestSubjectGroup",
+      "pgars": { "Research Assessor": [ "enumerate", "access" ] }
+    }]
+  }'
 
-  pepcli --oauth-token-group "Data Administrator" ama group create WasmTestSubjectGroup
-
-  pepcli --oauth-token-group "Access Administrator" ama cgar create WasmTestColumnGroup "Research Assessor" read
-  pepcli --oauth-token-group "Access Administrator" ama cgar create WasmTestColumnGroup "Research Assessor" write
-  pepcli --oauth-token-group "Access Administrator" ama pgar create WasmTestSubjectGroup "Research Assessor" enumerate
-  pepcli --oauth-token-group "Access Administrator" ama pgar create WasmTestSubjectGroup "Research Assessor" access
+  test_setup "$WASM_CONFIG"
 
   pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c WasmTestColumn \
     -d 'Some small test data!' --metadataxentry "$(pepcli xentry --name fileExtension --payload .small)"
@@ -538,9 +541,7 @@ if should_run_test weblib; then
   trace kill % || true
   trace wait -f % || true
 
-  pepcli --oauth-token-group "Data Administrator" ama column remove WasmTestColumn
-  pepcli --oauth-token-group "Data Administrator" ama columnGroup remove WasmTestColumnGroup --force
-  pepcli --oauth-token-group "Data Administrator" ama group remove WasmTestSubjectGroup --force
+  test_cleanup "$WASM_CONFIG"
 fi
 
 ####################
