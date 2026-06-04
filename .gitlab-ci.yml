@@ -737,7 +737,7 @@ ubuntu-rolling-release:
 
 #################### Python Packages ####################
 
-build-pep-connector:
+pep-connector:
   stage: build
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   tags:
@@ -761,7 +761,7 @@ build-pep-connector:
 
 #################### Flatpak ####################
 
-build-flatpak:
+flatpak:
   <<: *ccache-configuration
   stage: build
   needs:
@@ -814,7 +814,7 @@ windows-client:
       - $BUILD_DIRECTORY/wix/artifacts
       - $BUILD_DIRECTORY/wix/pepBinaries.wixlib
 
-windows-build:
+windows:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -857,7 +857,7 @@ windows-build:
     paths:
       - $STAGING_DIRECTORY
 
-windows-test:
+test-windows:
   stage: build
   variables:
     MEM_ANALYSIS_TOOL: "none"
@@ -868,7 +868,7 @@ windows-test:
     # Do not run in parallel with other tests, as we may bind to static ports.
     # May still run in parallel with build jobs.
     - windows-sequential
-  needs: [windows-build]
+  needs: [windows]
   script:
     - *run-tests-windows
     - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
@@ -896,21 +896,19 @@ windows-test:
   artifacts:
     expire_in: 7d
 
-macos-client-x86:
+macos-client:
   extends: .macos-client-base
+  parallel:
+    matrix:
+      - RUNNER_TAG: macos-intel
+        ARCH: x86_64
+      - RUNNER_TAG: macos-arm64
+        ARCH: arm64
   tags:
-    - macos-intel
+    - $RUNNER_TAG
   artifacts:
     paths:
-      - $BUILD_DIRECTORY/macOS_x86_64_bins.zip
-
-macos-client-arm:
-  extends: .macos-client-base
-  tags:
-    - macos-arm64
-  artifacts:
-    paths:
-      - $BUILD_DIRECTORY/macOS_arm64_bins.zip
+      - $BUILD_DIRECTORY/macOS_${ARCH}_bins.zip
 
 macos:
   stage: build
@@ -981,13 +979,13 @@ macos:
 
 #################### Docker ####################
 
-build-docker-images:
+docker-images:
   stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
     - ubuntu-lts-release-$[[ inputs.autolinting ]]
-    - build-pep-connector
+    - pep-connector
   #language=sh
   script:
     - *docker_login
@@ -1045,7 +1043,7 @@ build-sandbox-docker-image:
 
 # We also test directly in services image to try to make sure
 # executables don't depend on something in the builder image
-pep-services-image-test:
+test-pep-services-image:
   stage: build
   extends: .dind
   variables:
@@ -1054,7 +1052,7 @@ pep-services-image-test:
       $UNIT_TESTS_CASTOR
   image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
     # Use tests in $STAGING_DIRECTORY from artifacts
     - ubuntu-lts-release-$[[ inputs.autolinting ]]
@@ -1072,12 +1070,12 @@ pep-services-image-test:
     reports:
       junit: test-results/*.xml
 
-docker-integration:
+test-docker-integration:
   stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
   script:
     - *docker_login
@@ -1091,12 +1089,12 @@ docker-integration:
     paths:
       - ./integration_data
 
-docker-integration-on-base-data:
+test-docker-integration-on-base-data:
   stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
   script:
     - *docker_login
@@ -1154,7 +1152,7 @@ upload-macos-client-arm:
 
 upload-flatpak:
   extends: .upload-curl-base
-  needs: [build-flatpak]
+  needs: [flatpak]
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1165,11 +1163,11 @@ retag-pep-docker-images:
   extends: .upload-base
   image: docker
   needs:
-    - job: pep-services-image-test
+    - job: test-pep-services-image
       artifacts: false
-    - job: docker-integration
+    - job: test-docker-integration
       artifacts: false
-    - job: docker-integration-on-base-data
+    - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
   script:
@@ -1195,11 +1193,11 @@ publish-sandbox-image:
   needs:
     - job: build-sandbox-docker-image
       artifacts: false
-    - job: pep-services-image-test
+    - job: test-pep-services-image
       artifacts: false
-    - job: docker-integration
+    - job: test-docker-integration
       artifacts: false
-    - job: docker-integration-on-base-data
+    - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
   script:
