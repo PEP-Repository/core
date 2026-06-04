@@ -46,7 +46,7 @@ private:
     assert(mIoContext != nullptr);
     auto oauth = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
       .io_context = mIoContext,
-      .config = mConfig.get_child("AuthenticationServer"),
+      .config = mConfig.get_child("OAuthServer"),
       .authorizationMethod = limitedEnvironment ? pep::ConsoleAuthorization : pep::BrowserAuthorization,
       .longLived = mLongLived,
       .validityDuration = validity });
@@ -88,9 +88,9 @@ private:
     }
 
     return client->enrollUser(token) // Client enrollment will write keys to file
-      .map([keysFilePath = *keysFilePath](const pep::EnrollmentResult& result)
+      .map([keysFilePath = *keysFilePath](const pep::EnrolledPartyKeys& result)
         {
-          std::cout << "Wrote enrollment result (keys) to " << keysFilePath << std::endl;
+          std::cout << "Wrote enrollment result (keys) to \"" << keysFilePath.string() << '"' << std::endl;
           return true;
         })
       .on_error_resume_next([](std::exception_ptr error) // Don't let the application report an **unexpected** problem
@@ -103,7 +103,7 @@ private:
   rxcpp::observable<bool> writeToken(const std::string& token) {
     auto tokenPath = std::filesystem::current_path() / pep::OAuthToken::DEFAULT_JSON_FILE_NAME;
     pep::OAuthToken::Parse(token).writeJson(tokenPath);
-    std::cout << "Wrote token to " << tokenPath << std::endl;
+    std::cout << "Wrote token to \"" << tokenPath.string() << '"' << std::endl;
     return rxcpp::observable<>::just(true);
   }
 

@@ -18,7 +18,8 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
   EndPoint accessManagerEndPoint;
 
   try {
-    accessManagerEndPoint = config.get<EndPoint>(ServerTraits::AccessManager().configNode());
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -62,7 +63,7 @@ messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedT
   auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
-  
+
   return messaging::BatchSingleMessage(mBackend->executeTokenRequest(accessGroup, request));
 }
 

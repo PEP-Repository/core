@@ -8,7 +8,6 @@ add_library(${PROJECT_NAME}Rsklib STATIC
   RskRecipient.cpp RskRecipient.hpp
   RskSerializers.cpp RskSerializers.hpp
   RskTranslator.cpp RskTranslator.hpp
-  Verifiers.cpp Verifiers.hpp  #TODO move to other lib?
 )
 
 target_link_libraries(${PROJECT_NAME}Rsklib

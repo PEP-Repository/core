@@ -26,6 +26,4 @@ std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandValidate(CliApplica
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandVerifiers(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandXEntry(CliApplication& parent);
 
-std::shared_ptr<ChildCommandOf<CliApplication>> CreateNoLongerSupportedCommand(CliApplication& parent, const std::string& name, const std::string& description);
-
 }

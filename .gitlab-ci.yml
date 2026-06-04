@@ -101,6 +101,7 @@ variables:
 
   UNIT_TESTS_BASE: >-
     cpp/pep/accessmanager/pepAccessManagerUnitTests
+    cpp/pep/application/pepApplicationUnitTests
     cpp/pep/archiving/pepArchivingUnitTests
     cpp/pep/async/pepAsyncUnitTests
     cpp/pep/auth/pepAuthUnitTests
@@ -118,6 +119,7 @@ variables:
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
     cpp/pep/ticketing/pepTicketingUnitTests
+    cpp/pep/transcryptor/pepTranscryptorUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
 
@@ -297,10 +299,12 @@ analyse-source:
     GIT_SUBMODULE_STRATEGY: none
     GIT_DEPTH: 1
   before_script:
-    - apk update -qq && apk add --no-cache bash git shellcheck
+    - apk add --no-cache bash git shellcheck check-jsonschema
   script:
     - ./scripts/analyse-scripts.sh
     - ./scripts/analyse-source.sh
+    - ./scripts/validate-config.sh ./config/local/
+    - ./scripts/validate-config.sh ./config/integration/config/
 
 #######################################
 # Configuration for the cleanup stage #
@@ -1112,10 +1116,11 @@ docker-integration-on-base-data:
       artifacts: false
   script:
     - *docker_login
-    - tar xzf tests/test_input/base_integration_data.tar.gz
-    # Replace outdated PKI materials that we extracted from the tarball: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2813#note_56966
-    - cd base_integration_data/pki && ../../pki/pki.sh no-root && cd -
-    - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir base_integration_data
+    - foss_dir="$PWD"
+    - base_integration_data_dir="$foss_dir/tests/test_input/base_integration_data/"
+    # Generate fresh (non-expired) (non-root) certificates: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2813#note_56966
+    - (cd "$base_integration_data_dir/pki/"; "$foss_dir/pki/pki.sh" no-root)
+    - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir "$base_integration_data_dir"
 
 ##########################################
 #   Configuration for the upload stage   #

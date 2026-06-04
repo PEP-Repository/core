@@ -1,8 +1,11 @@
 #include <pep/transcryptor/Transcryptor.hpp>
 
 #include <pep/auth/EnrolledParty.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
+#include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
@@ -17,6 +20,11 @@
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
 #include <prometheus/text_serializer.h>
+
+#include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <chrono>
 #include <numeric>
@@ -50,9 +58,12 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
   std::filesystem::path verifiersFile; // used to check RSK proofs made by access manager
 
   try {
-    keysFile = config.get<std::filesystem::path>("KeysFile");
+    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
     storageFile = config.get<std::filesystem::path>("StorageFile");
     verifiersFile = config.get<std::filesystem::path>("VerifiersFile");
+
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -60,9 +71,8 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
   }
 
   try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    setPseudonymKey(ElgamalPrivateKey(boost::algorithm::unhex(
-      keysConfig.get<std::string>("PseudonymKey"))));
+    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
+    setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   } catch (std::exception& e) {
     LOG(LOG_TAG, warning)
       << "Couldn't read pseudonymKey: " << e.what() << '\n'
@@ -73,9 +83,13 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
 
   setStorage(std::make_shared<TranscryptorStorage>(storageFile));
 
-  setVerifiers(
-    Serialization::FromJsonString<VerifiersResponse>(ReadFile(verifiersFile)));
-
+  try {
+    setVerifiers(
+      Serialization::FromJsonString<ServerVerifiers>(ReadFile(verifiersFile)));
+  } catch (...) {
+    LOG(LOG_TAG, error) << "Failed to load verifiers from " << verifiersFile;
+    throw;
+  }
 }
 
 void Transcryptor::Parameters::setStorage(std::shared_ptr<TranscryptorStorage> storage) {
@@ -92,10 +106,10 @@ std::optional<ElgamalPrivateKey> Transcryptor::Parameters::getPseudonymKey() con
   return pseudonymKey;
 }
 
-void Transcryptor::Parameters::setVerifiers(const VerifiersResponse& verifiers) {
+void Transcryptor::Parameters::setVerifiers(const ServerVerifiers& verifiers) {
   Parameters::verifiers = verifiers;
 }
-const VerifiersResponse& Transcryptor::Parameters::getVerifiers() const {
+const ServerVerifiers& Transcryptor::Parameters::getVerifiers() const {
   return verifiers.value();
 }
 
@@ -116,19 +130,49 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   if (!mPseudonymKey)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
 
-  auto unpackedRequest = request->mRequest.openAsTranscryptor(*this->getRootCAs()).message;
+  auto certified = request->mRequest.openAsTranscryptor(*this->getRootCAs());
+  const auto& userRequest = certified.message;
+  auto userCertificate = certified.signatory.certificateChain().leaf();
+  auto domain = userCertificate.getOrganizationalUnit().value();
+
+  auto server = SharedFrom(*this);
+
+  auto userVerifiersObs = rxcpp::observable<>::just<std::optional<ReshuffleRekeyVerifiers>>(std::nullopt)
+    .as_dynamic();
+  if (userRequest.mIncludeUserGroupPseudonyms) {
+    if (auto userVerifiers = mStorage->getUserVerifiers(userCertificate)) {
+      // Use stored verifiers
+      userVerifiersObs = rxcpp::observable<>::just(userVerifiers);
+    } else {
+      LOG(LOG_TAG, debug) << "Requesting verifiers from AccessManager for "
+        << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
+      userVerifiersObs = mAccessManagerProxy.requestUserVerifiers({userCertificate})
+        .map([server, userCertificate](const UserVerifiersResponse& response) {
+          // Check internal consistency of verifiers
+          auto verifiers = response.open(server->systemPublicKeys().globalPseudonymEncryptionKey);
+          // Cross-reference with existing verifiers and store if consistent
+          server->mStorage->checkAndStoreUserVerifiers(userCertificate, verifiers);
+          return std::optional{verifiers};
+        });
+    }
+  }
 
   struct Context {
     uintmax_t requestNumber{};
     std::vector<std::string> modes;
     bool includeUserGroupPseudonyms{};
     SignedTicketRequest2 ticketRequest;
+    std::optional<PseudonymTranslator::Recipient> userRecipient;
+    std::optional<ReshuffleRekeyVerifiers> userVerifiers{};
   };
   auto ctx = MakeSharedCopy(Context{
     .requestNumber = requestNumber,
-    .modes = std::move(unpackedRequest.mModes),
-    .includeUserGroupPseudonyms = unpackedRequest.mIncludeUserGroupPseudonyms,
+    .modes = userRequest.mModes,
+    .includeUserGroupPseudonyms = userRequest.mIncludeUserGroupPseudonyms,
     .ticketRequest = std::move(request->mRequest),
+    .userRecipient = userRequest.mIncludeUserGroupPseudonyms
+      ? std::optional{RecipientForCertificate(userCertificate)}
+      : std::nullopt,
     });
 
   struct Results {
@@ -140,10 +184,13 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     Results results;
   };
 
-  auto server = SharedFrom(*this);
   LOG(LOG_TAG, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << requestNumber << " constructing observable";
 
-  messaging::MessageBatches result = entriesObservable
+  messaging::MessageBatches result =
+    userVerifiersObs
+    .flat_map([server, ctx, entriesObservable, start_time](const std::optional<ReshuffleRekeyVerifiers>& userVerifiers) {
+    ctx->userVerifiers = userVerifiers;
+    return entriesObservable
     .map([](std::shared_ptr<std::string> serializedEntries) {
     auto deserialized = Serialization::FromString<TranscryptorRequestEntries>(*serializedEntries);
     auto batch = std::make_shared<Batch>();
@@ -185,15 +232,19 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       try {
         pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mAccessManager,
-            entry.mAccessManagerProof, server->mVerifiers.mAccessManager);
+            entry.mAccessManagerProof, server->mVerifiers.accessManager);
         pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mStorageFacility,
-            entry.mStorageFacilityProof, server->mVerifiers.mStorageFacility);
+            entry.mStorageFacilityProof, server->mVerifiers.storageFacility);
         pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mTranscryptor,
-            entry.mTranscryptorProof, server->mVerifiers.mTranscryptor);
+            entry.mTranscryptorProof, server->mVerifiers.transcryptor);
 
-        // TODO verify access group pseudonym
+        if (ctx->includeUserGroupPseudonyms) {
+          pseudonymTranslator.checkTranslationProof(
+              entry.mPolymorphic, *entry.mUserGroup,
+              *entry.mUserGroupProof, *ctx->userVerifiers);
+        }
       }
       catch (const InvalidProof&) {
         throw Error("RSK Proof invalid");
@@ -215,8 +266,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       if (ctx->includeUserGroupPseudonyms) {
         ret.mAccessGroup = pseudonymTranslator.translateStep(
             *entry.mUserGroup,
-            RecipientForCertificate(ctx->ticketRequest.logSignature()->certificateChain().leaf())
-        );
+            *ctx->userRecipient);
       }
 
       localPseudonym.ensurePacked();
@@ -252,6 +302,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       server->lpMetrics->transcryptor_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
       LOG(LOG_TAG, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " returning result to requestor";
       return result;
+    });
     });
 
   result = rxcpp::observable<>::empty<messaging::MessageSequence>()
@@ -354,6 +405,7 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   : KeyComponentServer(parameters),
   mWorkerPool(WorkerPool::getShared()),
   mPseudonymKey(parameters->getPseudonymKey()),
+  mAccessManagerProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
   mStorage(parameters->getStorage()),
   lpMetrics(std::make_shared<Metrics>(mRegistry)),
   mVerifiers(parameters->getVerifiers()) {

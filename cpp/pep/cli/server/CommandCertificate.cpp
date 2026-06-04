@@ -106,7 +106,7 @@ protected:
     return this->executeEventLoopFor(EventLoopCallBack(params, "csr", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       return proxy.requestCertificateSigningRequest().map([targetPath](const X509CertificateSigningRequest& csr) {
             WriteFile(targetPath, csr.toPem());
-            LOG(LOG_TAG, info) << "CSR is saved to " << targetPath;
+            LOG(LOG_TAG, info) << "CSR is saved to \"" << targetPath.string() << '"';
             return FakeVoid();
           });
     }));

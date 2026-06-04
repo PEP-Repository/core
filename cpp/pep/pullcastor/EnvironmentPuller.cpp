@@ -11,7 +11,7 @@
 #include <pep/client/Client.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 
 #include <boost/asio/io_context.hpp>
 
@@ -38,7 +38,7 @@ rxcpp::observable<std::shared_ptr<CoreClient>> EnsureEnrolled(std::shared_ptr<Cl
     return rxcpp::observable<>::just(Upcast(client));
   }
   return client->enrollUser(token)
-    .map([client](EnrollmentResult) {return Upcast(client); });
+    .map([client](const EnrolledPartyKeys&) {return Upcast(client); });
 }
 
 rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreClient> client) {
@@ -95,13 +95,14 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
     Client::Builder clientBuilder;
 
-    clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CACertificateFile"));
-    clientBuilder.setPublicKeyData(clientConfig.get<ElgamalPublicKey>("PublicKeyData"));
-    clientBuilder.setPublicKeyPseudonyms(clientConfig.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
-    clientBuilder.setAccessManagerEndPoint(clientConfig.get<EndPoint>(ServerTraits::AccessManager().configNode()));
-    clientBuilder.setStorageFacilityEndPoint(clientConfig.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
-    clientBuilder.setKeyServerEndPoint(clientConfig.get<EndPoint>(ServerTraits::KeyServer().configNode()));
-    clientBuilder.setTranscryptorEndPoint(clientConfig.get<EndPoint>(ServerTraits::Transcryptor().configNode()));
+    clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CaCertificateFile"));
+    clientBuilder.setSystemPublicKeys(clientConfig.get<SystemPublicKeys>("SystemPublicKeys"));
+
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    clientBuilder.setAccessManagerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode()));
+    clientBuilder.setStorageFacilityEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
+    clientBuilder.setKeyServerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::KeyServer().configNode()));
+    clientBuilder.setTranscryptorEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::Transcryptor().configNode()));
 
     clientBuilder.setIoContext(io_context);
 

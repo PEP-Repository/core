@@ -4,10 +4,13 @@
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
+#include <pep/morphing/ServerVerifiers.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/auth/Signed.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/serialization/Serializer.hpp>
 
 #include <compare>
 #include <cstdint>
@@ -221,6 +224,70 @@ struct SetStructureMetadataRequest {
 };
 
 struct SetStructureMetadataResponse {};
+
+class VerifiersRequest {
+};
+
+class VerifiersResponse {
+  friend Serializer<VerifiersResponse>;
+
+  ServerVerifiers verifiers_;
+  ReshuffleRekeyVerifiersProof
+    accessManagerProof_,
+    storageFacilityProof_,
+    transcryptorProof_;
+
+public:
+  VerifiersResponse(
+    const ServerVerifiers& verifiers,
+    const ReshuffleRekeyVerifiersProof& accessManagerProof,
+    const ReshuffleRekeyVerifiersProof& storageFacilityProof,
+    const ReshuffleRekeyVerifiersProof& transcryptorProof)
+    : verifiers_(verifiers),
+      accessManagerProof_(accessManagerProof),
+      storageFacilityProof_(storageFacilityProof),
+      transcryptorProof_(transcryptorProof) {}
+
+  VerifiersResponse(
+    const ReshuffleRekeyVerifiersWithProof& accessManager,
+    const ReshuffleRekeyVerifiersWithProof& storageFacility,
+    const ReshuffleRekeyVerifiersWithProof& transcryptor)
+    : verifiers_{
+        .accessManager = accessManager.first,
+        .storageFacility = storageFacility.first,
+        .transcryptor = transcryptor.first,
+      },
+      accessManagerProof_(accessManager.second),
+      storageFacilityProof_(storageFacility.second),
+      transcryptorProof_(transcryptor.second) {}
+
+  ServerVerifiers open(const ElgamalPublicKey& globalKey) const {
+    accessManagerProof_.verify(verifiers_.accessManager, globalKey);
+    storageFacilityProof_.verify(verifiers_.storageFacility, globalKey);
+    transcryptorProof_.verify(verifiers_.transcryptor, globalKey);
+    return verifiers_;
+  }
+};
+
+struct UserVerifiersRequest {
+  X509Certificate userCertificate;
+};
+
+class UserVerifiersResponse {
+  friend Serializer<UserVerifiersResponse>;
+
+  ReshuffleRekeyVerifiers verifiers_;
+  ReshuffleRekeyVerifiersProof proof_;
+
+public:
+  UserVerifiersResponse(const ReshuffleRekeyVerifiersWithProof& verifiers)
+    : verifiers_(verifiers.first), proof_(verifiers.second) {}
+
+  ReshuffleRekeyVerifiers open(const ElgamalPublicKey& globalKey) const {
+    proof_.verify(verifiers_, globalKey);
+    return verifiers_;
+  }
+};
 
 
 using SignedEncryptionKeyRequest = Signed<EncryptionKeyRequest>;
