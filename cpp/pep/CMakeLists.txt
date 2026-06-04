@@ -25,6 +25,8 @@ if(ENABLE_CLANG_TIDY)
   if(CMAKE_COLOR_DIAGNOSTICS)
     list(APPEND clang_tidy_opts --use-color)
   endif()
+
+  # Note: It seems that this does not work with older Clang (e.g. 18)
   if(DEFINED EMSCRIPTEN)
     # Add clang arguments that are normally added by the em++ wrapper,
     # or are implicit in the clang binary that ships with Emscripten.
