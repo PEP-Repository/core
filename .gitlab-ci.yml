@@ -865,11 +865,10 @@ ubuntu-rolling-release:
   rules:
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - !reference [ .skip-stable-release, rules ]
-    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
 
-weblib-debug-$[[ inputs.autolinting ]]:
+weblib-debug:
   extends:
     - .weblib-build-with-tests-base
     - .weblib-settings-debug
@@ -881,11 +880,10 @@ weblib-debug-$[[ inputs.autolinting ]]:
     - .weblib-settings
   rules:
     - !reference [ .skip-stable-release, rules ]
-    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
 
-weblib-release-$[[ inputs.autolinting ]]:
+weblib-release:
   extends:
     - .weblib-build-with-tests-base
     - .weblib-settings-release
@@ -1290,21 +1288,21 @@ weblib-debug-test:
     - .weblib-test-base
     - .weblib-settings-debug
   needs:
-    - weblib-debug-$[[ inputs.autolinting ]]
+    - weblib-debug
 
 weblib-release-test:
   extends:
     - .weblib-test-base
     - .weblib-settings-release
   needs:
-    - weblib-release-$[[ inputs.autolinting ]]
+    - weblib-release
 
 weblib-integration:
   extends:
     - .dind
     - .weblib-settings-debug
   needs:
-    - weblib-debug-$[[ inputs.autolinting ]]
+    - weblib-debug
     - job: build-docker-images
       artifacts: false
   stage: integration
