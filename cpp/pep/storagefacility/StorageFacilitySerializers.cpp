@@ -278,8 +278,8 @@ DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeR
 
 void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest& dest, DataSizeRequest value) const {
   dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
-  for (auto& column : value.mColumns) {
-    dest.add_columns(std::move(column));
+  for (const auto& column : value.mColumns) {
+    dest.add_columns(column);
   }
 }
 

@@ -56,7 +56,7 @@ std::string GetSingleExceptionMessage(std::exception_ptr source) {
   }
 
   try {
-    std::rethrow_exception(std::move(source));
+    std::rethrow_exception(std::move(source)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
   } catch (const boost::exception& e) {
     return boost::diagnostic_information(e);
   } catch (const boost::system::system_error& e) {
@@ -76,7 +76,7 @@ std::string GetExceptionMessage(std::exception_ptr source) {
   std::string message = GetSingleExceptionMessage(source);
   if (source) {
     try {
-      std::rethrow_exception(std::move(source));
+      std::rethrow_exception(std::move(source)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
     } catch (const std::nested_exception& e) {
       message += "\n> Caused by: " + GetExceptionMessage(e.nested_ptr());
     } catch (...) { /*ignore: not nested*/ }
