@@ -50,7 +50,7 @@ public:
         [this, deleted](std::exception_ptr ex) noexcept {
           LOG(LOG_TAG, debug) << this << " on_error: " << GetExceptionMessage(ex);
           try {
-            std::rethrow_exception(std::move(ex));
+            std::rethrow_exception(std::move(ex)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
           } catch (...) {
             // Listener should decrement exception reference count when handled
             //XXX Uses internal API, see https://github.com/emscripten-core/emscripten/issues/25963
@@ -74,8 +74,8 @@ public:
     }
   }
 
-  void cancel(val reason) {
-    LOG(LOG_TAG, debug) << this << " cancel() called, reason: " << val::global("String")(std::move(reason)).as<std::string>();
+  void cancel(const val& reason) {
+    LOG(LOG_TAG, debug) << this << " cancel() called, reason: " << val::global("String")(reason).as<std::string>();
     // This is not ideal, as it may leak ClassHandles that haven't been enqueud yet.
     // However, even if we'd re-subscribe, already-enqueued objects would be lost.
     subscription_.unsubscribe();

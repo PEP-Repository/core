@@ -446,7 +446,7 @@ int main() {
         std::cerr << "Originally thrown exception could not be retrieved in WASM EH, see https://github.com/emscripten-core/emscripten/issues/23779\n"
           << "Either add a 'caught exception' breakpoint in the debugger or switch to Emscripten EH" << std::endl;
       }
-      std::cerr << "Error: " << GetExceptionMessage(std::move(ex)) << std::endl;
+      std::cerr << "Error: " << GetExceptionMessage(std::move(ex)) << std::endl; //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
     } catch (...) {
       /*ignore: we did what we could*/
     }

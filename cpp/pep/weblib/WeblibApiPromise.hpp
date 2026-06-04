@@ -29,7 +29,9 @@ struct WeblibApiPromise : emscripten::val {
   // Well-known name
   struct promise_type : val::promise_type, detail::WeblibApiPromiseAwaitTransform {
     // Well-known name
-    WeblibApiPromise get_return_object() { return WeblibApiPromise(val::promise_type::get_return_object()); }
+    WeblibApiPromise get_return_object() { //NOLINT(bugprone-derived-method-shadowing-base-method)
+      return WeblibApiPromise(val::promise_type::get_return_object());
+    }
   };
 };
 

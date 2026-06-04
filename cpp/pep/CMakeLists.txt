@@ -4,8 +4,10 @@ option(DEPRECATED_WARNINGS_AS_ERROR "With WARNINGS_AS_ERROR, also issue errors f
 option(ENABLE_CLANG_TIDY "Enable clang-tidy")
 if(ENABLE_CLANG_TIDY)
   message(STATUS "Clang-Tidy enabled")
+
   set(clang_tidy_profile_dir "${CMAKE_BINARY_DIR}/clang-tidy-profile/")
   option(PROFILE_CLANG_TIDY "Individually profile (benchmark) clang-tidy checks and store results to ${clang_tidy_profile_dir}. Build target clang-tidy-stats for stats")
+
   set(clang_tidy_opts)
   if(PROFILE_CLANG_TIDY)
     list(APPEND clang_tidy_opts "--enable-check-profile" "--store-check-profile=${clang_tidy_profile_dir}")
@@ -18,16 +20,32 @@ if(ENABLE_CLANG_TIDY)
     set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES ${clang_tidy_profile_dir})
   endif()
   if(WARNINGS_AS_ERROR)
-    list(APPEND clang_tidy_opts "--warnings-as-errors=*")
+    list(APPEND clang_tidy_opts "--warnings-as-errors=*,-clang-diagnostic-#pragma-messages")
   endif()
   if(CMAKE_COLOR_DIAGNOSTICS)
     list(APPEND clang_tidy_opts --use-color)
   endif()
-  find_program(CLANG_TIDY_PROGRAM clang-tidy)
+  if(DEFINED EMSCRIPTEN)
+    # Add clang arguments that are normally added by the em++ wrapper,
+    # or are implicit in the clang binary that ships with Emscripten.
+    list(APPEND clang_tidy_opts
+      # CMAKE_LIBRARY_ARCHITECTURE & EMSCRIPTEN_SYSROOT are set by Emscripten's CMake toolchain file
+      "--extra-arg=--target=${CMAKE_LIBRARY_ARCHITECTURE}"
+      "--extra-arg=--sysroot=${EMSCRIPTEN_SYSROOT}"
+      # Prevent error including e.g. <xlocale.h>.
+      # Btw: Shouldn't this be in `CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES`?
+      #  See https://github.com/emscripten-core/emscripten/issues/23444.
+      "--extra-arg=-iwithsysroot/include/compat"
+    )
+  endif()
+
   # Recompile when .clang-tidy changes
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.clang-tidy")
   file(SHA256 "${CMAKE_SOURCE_DIR}/.clang-tidy" clang_tidy_hash)
-  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
+  list(APPEND clang_tidy_opts "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
+
+  find_program(CLANG_TIDY_PROGRAM clang-tidy)
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts})
 endif()
 
 # Always enable certain compiler warnings if using either GCC or Clang
