@@ -14,7 +14,7 @@ spec:
 
 stages:
   - static-analysis
-  - build-and-test
+  - build
   - upload
   - publish
   - cleanup
@@ -857,6 +857,25 @@ windows-build:
     paths:
       - $STAGING_DIRECTORY
 
+windows-test:
+  stage: build
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+  tags:
+    # Do not run in parallel with other tests, as we may bind to static ports.
+    # May still run in parallel with build jobs.
+    - windows-sequential
+  needs: [windows-build]
+  script:
+    - *run-tests-windows
+    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
 #################### MacOS ####################
 
 .macos-client-base:
@@ -1024,33 +1043,10 @@ build-sandbox-docker-image:
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
 
-#################### Windows ##################
-
-windows-test:
-  stage: build-and-test
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  tags:
-    # Do not run in parallel with other tests, as we may bind to static ports.
-    # May still run in parallel with build jobs.
-    - windows-sequential
-  needs: [windows-build]
-  script:
-    - *run-tests-windows
-    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-#################### Docker ####################
-
 # We also test directly in services image to try to make sure
 # executables don't depend on something in the builder image
 pep-services-image-test:
-  stage: build-and-test
+  stage: build
   extends: .dind
   variables:
     TESTS: >-
@@ -1075,10 +1071,9 @@ pep-services-image-test:
   artifacts:
     reports:
       junit: test-results/*.xml
-#################### Docker ####################
 
 docker-integration:
-  stage: build-and-test
+  stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
@@ -1097,7 +1092,7 @@ docker-integration:
       - ./integration_data
 
 docker-integration-on-base-data:
-  stage: build-and-test
+  stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
