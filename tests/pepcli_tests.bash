@@ -122,9 +122,12 @@ if should_run_test basic; then
   # We use "find" to locate the downloaded file because it's in a subdirectory named after the participant's local pseudonym, which we don't know.
   # find always exits with 0 exit code, but it only prints the found path(s) if the -exec part succeeds. Therefore we can use grep to check
   # whether it has found the DeviceHistory directory, and the diff succeeded.
+
+  # There were some path issues on windows previously, so we first print paths
   execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin \
-    -exec echo "----" \; \
-    -exec echo "comparing: $RANDOM_DATA_FILE" "vs" {} \; \
+    -exec echo "comparing: $RANDOM_DATA_FILE" "vs" {} \;
+  # and then diff
+  execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin \
     -exec diff "$RANDOM_DATA_FILE" {} -q \; \
     -print | grep DeviceHistory
   execute . rm -rf "$DEST_DIR/pulled"
