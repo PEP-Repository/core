@@ -814,7 +814,7 @@ windows-client:
       - $BUILD_DIRECTORY/wix/artifacts
       - $BUILD_DIRECTORY/wix/pepBinaries.wixlib
 
-windows:
+windows-debug:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -857,7 +857,7 @@ windows:
     paths:
       - $STAGING_DIRECTORY
 
-test-windows:
+test-windows-debug:
   stage: build
   variables:
     MEM_ANALYSIS_TOOL: "none"
@@ -868,7 +868,7 @@ test-windows:
     # Do not run in parallel with other tests, as we may bind to static ports.
     # May still run in parallel with build jobs.
     - windows-sequential
-  needs: [windows]
+  needs: [windows-debug]
   script:
     - *run-tests-windows
     - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
@@ -903,7 +903,7 @@ macos-client:
     paths:
       - $BUILD_DIRECTORY/macOS_${ARCH}_bins.zip
 
-macos:
+macos-debug:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -920,6 +920,7 @@ macos:
   tags:
     - macos-${ARCH}
   variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: >-
@@ -936,7 +937,7 @@ macos:
       --profile:all="docker-build/builder/conan/conan_profile"
       --build=missing
       -s:a os.version=13.3
-      -s:a build_type="Debug"
+      -s:a build_type="$CMAKE_BUILD_TYPE"
       -o "&:with_assessor=True"
       -o "&:with_servers=True"
       -o "&:with_castor=$WITH_CASTOR"
