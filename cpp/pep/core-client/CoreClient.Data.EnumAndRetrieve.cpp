@@ -169,7 +169,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
               colIdxs.begin(), colIdxs.end()));
           }
 
-          return storageFacilityProxy->requestDataEnumeration(std::move(enumRequest))
+          return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
               [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, DataEnumerationResponse2 response) {
@@ -231,7 +231,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                   DataReadRequest2 readRequest;
                   readRequest.mIds = ids;
                   readRequest.mTicket = *ticket;
-                  return storageFacilityProxy->requestDataRead(std::move(readRequest))
+                  return getStorageFacilityProxy(true)->requestDataRead(std::move(readRequest))
                     .map([](DataPayloadPage page) { return MakeSharedCopy(std::move(page)); });
                 })
                 .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->mIndex; }))

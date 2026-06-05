@@ -107,7 +107,7 @@ const std::string& FileStore::getColumnString(const std::string& value) {
 
 FileStore::FileStore(
   const std::filesystem::path& metadatapath,
-  std::shared_ptr<Configuration> pageStoreConfig,
+  const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
   : mPath(metadatapath),
@@ -124,13 +124,17 @@ FileStore::FileStore(
     }
   }
 
+  size_t entryCount{};
+  uint64_t mTotalPayloadBytes{}, mRollingPayloadBytes{};
+  this->getMetrics(entryCount, mTotalPayloadBytes, mRollingPayloadBytes);
+
   duration<double> seconds(steady_clock::now() - start_time);
   std::ostringstream message;
   message.setf(std::ios::fixed);
   message.precision(2);
-  message << "Loaded " << this->entryCount() << " file store entries in " << seconds;
+  message << "Loaded " << entryCount << " file store entries in " << seconds;
   if (seconds != decltype(seconds)::zero()) {
-    message << " (" << (static_cast<double>(this->entryCount()) / seconds.count()) << " entries per second)";
+    message << " (" << (static_cast<double>(entryCount) / seconds.count()) << " entries per second)";
   }
   LOG(LOG_TAG, info) << message.str();
 }
@@ -166,12 +170,21 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   }
 }
 
-size_t FileStore::entryCount() const {
-  size_t result = 0;
+void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
+  entryCount = 0U;
+  totalPayloadBytes = 0U;
+  rollingPayloadBytes = 0U;
+
   for (const auto& participant : mParticipants) {
-    result += participant->entryCount();
+    size_t subEntryCount{};
+    uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
+
+    participant->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes, columns);
+
+    entryCount += subEntryCount;
+    totalPayloadBytes += subTotalPayloadBytes;
+    rollingPayloadBytes += subRollingPayloadBytes;
   }
-  return result;
 }
 
 void FileStore::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
@@ -270,8 +283,29 @@ EntryName FileStore::EntryBase::getName() const {
   return this->getCell().entryName();
 }
 
+uint64_t FileStore::EntryBase::payloadSize() const {
+  if (mContent == nullptr) {
+    return 0U;
+  }
+  auto payload = mContent->payload();
+  assert(payload != nullptr);
+  return payload->size();
+}
+
+bool FileStore::EntryBase::isOriginalPayloadOwner() const {
+  if (mContent == nullptr) {
+    return false;
+  }
+  return !mContent->getOriginalPayloadEntryTimestamp().has_value();
+}
+
 FileStore::EntryHeader FileStore::Entry::header() const {
-  return EntryHeader{ this->getValidFrom(), this->getChecksumSubstitute() };
+  return EntryHeader{
+    .validFrom = this->getValidFrom(),
+    .checksumSubstitute = this->getChecksumSubstitute(),
+    .payloadSize = this->payloadSize(),
+    .isOriginalPayloadOwner = this->isOriginalPayloadOwner(),
+  };
 }
 
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
@@ -476,6 +510,19 @@ std::filesystem::path FileStore::Cell::path() const {
   return this->getParticipant().path() / mColumnName;
 }
 
+void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
+  entryCount = mEntryHeaders.size();
+
+  totalPayloadBytes = 0U;
+  for (const auto& header : mEntryHeaders) {
+    if (header.isOriginalPayloadOwner) {
+      totalPayloadBytes += header.payloadSize;
+    }
+  }
+
+  rollingPayloadBytes = mLatest ? mLatest->payloadSize() : 0U;
+}
+
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
   auto emplaced = mEntryHeaders.emplace(entry->header()).second;
   if (!emplaced) {
@@ -509,12 +556,21 @@ std::filesystem::path FileStore::Participant::path() const {
   return this->getFileStore().metaDir() / mName;
 }
 
-size_t FileStore::Participant::entryCount() const {
-  size_t result = 0U;
+void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
+  entryCount = 0U;
+  totalPayloadBytes = 0U;
+  rollingPayloadBytes = 0U;
+
   for (const auto& cell : mCells) {
-    result += cell->entryHeaders().size();
+    if (columns.empty() || columns.contains(cell->columnName())) {
+      size_t subEntryCount{};
+      uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
+      cell->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
+      entryCount += subEntryCount;
+      totalPayloadBytes += subTotalPayloadBytes;
+      rollingPayloadBytes += subRollingPayloadBytes;
+    }
   }
-  return result;
 }
 
 void FileStore::Participant::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {

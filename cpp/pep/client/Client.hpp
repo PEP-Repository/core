@@ -47,10 +47,12 @@ public:
       return *this;
     }
 
+    //NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method) Not used polymorphically
     void initialize(const Configuration& config,
                     std::shared_ptr<boost::asio::io_context> io_context,
                     bool persistKeysFile);
 
+    //NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method) Return type differs
     std::shared_ptr<Client> build() const {
       return std::shared_ptr<Client>(new Client(*this));
     }
@@ -93,9 +95,9 @@ public:
    * certificateChain, encryptionKey, publicKeyData, publicKeyPseudonyms
    *
    * \param oauthToken An OAuth token that can be used to authenticate against the key server
-   * \return rxcpp::observable< EnrollmentResult >
+   * \return rxcpp::observable< EnrolledPartyKeys >
    */
-  rxcpp::observable<EnrollmentResult> enrollUser(const std::string& oauthToken);
+  rxcpp::observable<EnrolledPartyKeys> enrollUser(const std::string& oauthToken);
 
   std::shared_ptr<const KeyServerProxy> getKeyServerProxy(bool require = true) const;
   std::shared_ptr<const AuthServerProxy> getAuthServerProxy(bool require = true) const;

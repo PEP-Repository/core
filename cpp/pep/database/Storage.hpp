@@ -9,8 +9,8 @@
 namespace pep::database {
 struct SchemaError : std::logic_error {
   enum class Reason {
-    dropped_and_recreated,
-    old_columns_removed,
+    DroppedAndRecreated,
+    OldColumnsRemoved,
   };
   SchemaError(std::string table, Reason reason);
 
@@ -93,12 +93,12 @@ struct Storage : public BasicStorage {
         // because we are no longer handling all enum cases. The new dropped_and_recreated_with_data_loss case should
         // then produce an error, and the dropped_and_recreated case should no longer produce one.
         case sqlite_orm::sync_schema_result::dropped_and_recreated:
-          throw SchemaError(tableName, SchemaError::Reason::dropped_and_recreated);
+          throw SchemaError(tableName, SchemaError::Reason::DroppedAndRecreated);
         case sqlite_orm::sync_schema_result::old_columns_removed:
         case sqlite_orm::sync_schema_result::new_columns_added_and_old_columns_removed:
           if (allow_old_column_removal)
             break;
-          throw SchemaError(tableName, SchemaError::Reason::old_columns_removed);
+          throw SchemaError(tableName, SchemaError::Reason::OldColumnsRemoved);
         }
       }
       auto syncResults  = raw.sync_schema(true);

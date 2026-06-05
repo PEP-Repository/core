@@ -204,9 +204,9 @@ private:
   std::shared_ptr<X509Identity> mIdentity;
 
 public:
-  X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath);
+  X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, const X509RootCertificates& rootCas);
 
-  static X509IdentityFiles FromConfig(const Configuration& config, const std::string& keyPrefix);
+  static X509IdentityFiles FromConfig(const Configuration& identityConfig, const X509RootCertificates& rootCas);
 
   const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
   const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }

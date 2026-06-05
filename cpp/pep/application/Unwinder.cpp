@@ -45,6 +45,11 @@ static const std::string LOG_TAG ("Unwinder");
 
 #ifndef _WIN32
 
+#ifdef __clang__
+// Suppress warning about statement expression from libunwind header in unw_tdep_getcontext macro on aarch64
+# pragma GCC diagnostic ignored "-Wgnu-statement-expression-from-macro-expansion"
+#endif
+
 static const char* SignalNumberToString (int dwSignalNumber) {
   switch (dwSignalNumber) {
   case SIGHUP:
@@ -561,7 +566,7 @@ void InitializeUnwinder() {
   const std::string szReportDirectoryPath = std::string(dirname(std::string(szReportDirectoryTmp).data())) + "/";
 
   if (DIR* lpReportDirectory = opendir (szReportDirectoryPath.c_str()); lpReportDirectory == nullptr) {
-    LOG(LOG_TAG, warning) << "Unable to look through directory " << szReportDirectoryPath << " for previous crash reports: " << strerror(errno);
+    LOG(LOG_TAG, warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
   } else {
     std::unique_ptr<LocalSettings>& lpLocalSettings = LocalSettings::getInstance();
     struct dirent* lpDirEntry;

@@ -15,6 +15,7 @@
 
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -116,10 +117,10 @@ HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const 
 OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config) : io_context(io_context) {
   std::optional<std::filesystem::path> spoofKeyFile;
   try {
-    httpPort = config.get<uint16_t>("HTTPListenPort");
+    httpPort = config.get<uint16_t>("HttpListenPort");
     activeGrantExpiration = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
     spoofKeyFile = config.get<std::optional<std::filesystem::path>>("SpoofKeyFile");
-    httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HTTPSCertificateFile");
+    httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HttpsCertificateFile");
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -267,7 +268,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     alternativeUidsString = (*it).value;
   }
 #else
-  if(!request.hasHeader(SPOOF_CHECK_HEADER) || request.header(SPOOF_CHECK_HEADER) != spoofKey) {
+  if(!request.hasHeader(SPOOF_CHECK_HEADER) || !const_time::IsEqual(request.header(SPOOF_CHECK_HEADER), spoofKey)) {
     LOG(LOG_TAG, critical) << "Spoofkey was not correctly set on the request. Looks like someone has direct access to the authserver, without being authenticated first. Remote IP: " << remoteIp;
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
@@ -293,7 +294,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 #endif //ENABLE_OAUTH_TEST_USERS
 
   std::vector<std::string> alternativeUids;
-  boost::split(alternativeUids, alternativeUidsString, boost::is_any_of(","));
+  boost::split(alternativeUids, alternativeUidsString, std::bind_front(std::equal_to{}, ','));
   // Decode (double-)encoded list values
   for (auto& val : alternativeUids) { val = boost::urls::pct_string_view(val).decode(); }
   alternativeUids.push_back(humanReadableUid);

@@ -1,10 +1,14 @@
 {
-  "TLSPrivateKeyFile": "../../pki/TLSKeyServer.key",
-  "TLSCertificateFile": "../../pki/TLSKeyServer.chain",
-  "ClientCAPrivateKeyFile": "../../pki/pepClientCA.key",
-  "ClientCACertificateChainFile": "../../pki/pepClientCA.chain",
-  "CACertificateFile": "../../pki/rootCA.cert",
-  "OAuthTokenSecretFile": "OAuthTokenSecret.json",
+  "CaCertificateFile": "../../pki/rootCA.cert",
   "ListenPort": 16511,
+  "TlsIdentity": {
+    "PrivateKeyFile": "../../pki/TLSKeyServer.key",
+    "CertificateFile": "../../pki/TLSKeyServer.chain"
+  },
+  "ClientCa": {
+    "PrivateKeyFile": "../../pki/pepClientCA.key",
+    "CertificateFile": "../../pki/pepClientCA.chain"
+  },
+  "OAuthTokenSecretFile": "OAuthTokenSecret.json",
   "BlocklistStoragePath": "blocklist.sqlite"
 }

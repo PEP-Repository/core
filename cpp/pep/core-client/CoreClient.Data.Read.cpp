@@ -56,14 +56,14 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
                                                                        const std::vector<PolymorphicPseudonym>& pps,
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
-  return accessManagerProxy
+  return getAccessManagerProxy(true)
       ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
                                                .mParticipantGroups = participantGroups,
                                                .mAccessSubjects = pps,
                                                .mColumnGroups = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})
-      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(ticket)); });
+      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(std::move(ticket))); });
 }
 
 rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(std::shared_ptr<SignedTicket2> ticket) {
@@ -72,7 +72,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
   auto enumRequest = std::make_shared<DataEnumerationRequest2>();
   enumRequest->mTicket = *ticket;
-  return storageFacilityProxy->requestDataEnumeration(std::move(*enumRequest))
+  return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(*enumRequest))
     .map([pseudonyms](DataEnumerationResponse2 response) {
       return ConvertDataEnumerationEntries(std::move(response.mEntries), *pseudonyms);
     });
@@ -90,7 +90,7 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
       .map([this, ticket, pseudonyms](std::vector<std::string> batch)
         -> rxcpp::observable<std::shared_ptr<EnumerateResult>> {
             auto entryCount = batch.size();
-            return this->storageFacilityProxy->requestMetadataRead(
+            return this->getStorageFacilityProxy(true)->requestMetadataRead(
                 MetadataReadRequest2{
                   .mTicket = *ticket,
                   .mIds = std::move(batch),
@@ -172,7 +172,7 @@ CoreClient::retrieveData(
 
               // Request the file contents from the storage facility
               auto pagesFromServer =
-                  storageFacilityProxy->requestDataRead(DataReadRequest2{
+                  getStorageFacilityProxy(true)->requestDataRead(DataReadRequest2{
                     .mTicket = *ticket,
                     .mIds = RangeToVector(ctx->files
                         | views::transform([](const fileContext& file) { return file.fileKey.entry->mId; })),
@@ -262,7 +262,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   FillHistoryRequestIndices<std::string, std::string>(
     request.mTicket, unsignedTicket, &Ticket2::mColumns, columns, request.mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
-  return storageFacilityProxy->requestDataHistory(std::move(request))
+  return getStorageFacilityProxy(true)->requestDataHistory(std::move(request))
     .map([](const DataHistoryResponse2& response) {
       return response.mEntries;
     })

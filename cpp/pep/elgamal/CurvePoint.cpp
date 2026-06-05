@@ -12,6 +12,9 @@
 using namespace std::string_literals;
 
 namespace pep {
+namespace {
+const CurvePoint BasePoint(PublicCurveScalar(CurveScalar::One()) * CurvePoint::Base);
+}
 
 void CurvePoint::ensureThreadSafe() const {
   // This ensures mPacked and mUnpacked are set (ie. mState == gotBoth).
@@ -63,6 +66,7 @@ CurvePoint::CurvePoint(std::string_view packed, bool unpack) {
 
 CurvePoint::CurvePoint() : mState{gotBoth} {}
 
+CurvePoint::CurvePoint(BaseT) : CurvePoint(BasePoint) {}
 
 
 /*! \brief Add a CurvePoint to this CurvePoint.

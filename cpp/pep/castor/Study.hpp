@@ -1,7 +1,6 @@
 #pragma once
 
 #include <pep/castor/CastorObject.hpp>
-#include <pep/async/WaitGroup.hpp>
 
 namespace pep {
 namespace castor {
@@ -63,7 +62,7 @@ class Study : public CastorObject, public SharedConstructor<Study> {
    *
    * \param abbreviation The abbreviation of the site
    */
-  void setDefaultSiteByAbbreviation(const std::string& abbreviation);
+  void setDefaultSiteAbbreviation(const std::string& abbreviation);
 
   //! \return A url that can be used to retrieve this study from the Castor API
   std::string makeUrl() const override;
@@ -91,11 +90,11 @@ class Study : public CastorObject, public SharedConstructor<Study> {
 
  private:
   std::shared_ptr<CastorConnection> mConnection;
-  std::shared_ptr<std::string> mdefaultSiteId;
-  std::shared_ptr<WaitGroup> mdefaultSiteWg = WaitGroup::Create();
+  std::optional<std::string> mDefaultSiteAbbrev;
+  std::optional<std::string> mDefaultSiteId;
 
   //! \return Observable that, if no error occurs, emits the ID of the default site of the study. This will not emit any updates to the default site
-  rxcpp::observable<std::string> getDefaultSiteId() const;
+  rxcpp::observable<std::string> getDefaultSiteId();
 
   friend class SharedConstructor<Study>;
 };

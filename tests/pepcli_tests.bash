@@ -122,8 +122,16 @@ if should_run_test basic; then
   # We use "find" to locate the downloaded file because it's in a subdirectory named after the participant's local pseudonym, which we don't know.
   # find always exits with 0 exit code, but it only prints the found path(s) if the -exec part succeeds. Therefore we can use grep to check
   # whether it has found the DeviceHistory directory, and the diff succeeded.
-  execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin -exec diff "$RANDOM_DATA_FILE" {} -q \; -print | grep DeviceHistory
+
+  # There were some path issues on windows previously, so we first print paths
+  execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin \
+    -exec echo "comparing: $RANDOM_DATA_FILE" "vs" {} \;
+  # and then diff
+  execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin \
+    -exec diff "$RANDOM_DATA_FILE" {} -q \; \
+    -print | grep DeviceHistory
   execute . rm -rf "$DEST_DIR/pulled"
+  execute . rm "$RANDOM_DATA_FILE"
 
   # Deleting a nonexistent (empty) cell should fail: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2367
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c StudyContexts &&
@@ -299,40 +307,40 @@ if should_run_test ama; then
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 
-  # Test --script-print parameter
+  # Test --include parameter
   AMA_QUERYABLE_CONFIG='{
     "columnGroups": [{
-      "name": "scriptPrintTestColumnGroup",
-      "columns": [ "scriptPrintTestColumn" ],
+      "name": "includeFlagTestColumnGroup",
+      "columns": [ "includeFlagTestColumn" ],
       "cgars": { "Research Assessor": [ "read" ] }
     }],
     "subjectGroups": [{
-      "name": "scriptPrintTestParticipantGroup",
+      "name": "includeFlagTestParticipantGroup",
       "pgars": {  "Research Assessor":  [ "access" ] }
     }]
   }'
 
   test_setup "$AMA_QUERYABLE_CONFIG"
 
-  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
-  [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
-  echo "$script_print_columns" | grep -q "scriptPrintTestColumn" || fail "--script-print columns did not include test column"
+  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --include columns)
+  [ -n "$script_print_columns" ] || fail "--include columns produced no output"
+  echo "$script_print_columns" | grep -q "includeFlagTestColumn" || fail "--include columns did not include test column"
 
-  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-groups)
-  [ -n "$script_print_column_groups" ] || fail "--script-print column-groups produced no output"
-  echo "$script_print_column_groups" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-groups did not include test columngroup"
+  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --include column-groups)
+  [ -n "$script_print_column_groups" ] || fail "--include column-groups produced no output"
+  echo "$script_print_column_groups" | grep -q "includeFlagTestColumnGroup" || fail "--include column-groups did not include test columngroup"
 
-  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-group-access-rules)
-  [ -n "$script_print_cgars" ] || fail "--script-print column-group-access-rules produced no output"
-  echo "$script_print_cgars" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-group-access-rules did not include test CGAR"
+  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --include column-group-access-rules)
+  [ -n "$script_print_cgars" ] || fail "--include column-group-access-rules produced no output"
+  echo "$script_print_cgars" | grep -q "includeFlagTestColumnGroup" || fail "--include column-group-access-rules did not include test CGAR"
 
-  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-groups)
-  [ -n "$script_print_participant_groups" ] || fail "--script-print participant-groups produced no output"
-  echo "$script_print_participant_groups" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-groups did not include test group"
+  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --include participant-groups)
+  [ -n "$script_print_participant_groups" ] || fail "--include participant-groups produced no output"
+  echo "$script_print_participant_groups" | grep -q "includeFlagTestParticipantGroup" || fail "--include participant-groups did not include test group"
 
-  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-group-access-rules)
-  [ -n "$script_print_pgars" ] || fail "--script-print participant-group-access-rules produced no output"
-  echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
+  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --include participant-group-access-rules)
+  [ -n "$script_print_pgars" ] || fail "--include participant-group-access-rules produced no output"
+  echo "$script_print_pgars" | grep -q "includeFlagTestParticipantGroup" || fail "--include participant-group-access-rules did not include test PGAR"
 
   # Clean up
   test_cleanup "$AMA_QUERYABLE_CONFIG"
@@ -421,6 +429,7 @@ if should_run_test authserver-apache; then
     else
       trace grep "Location: http://localhost:16515.*[\?&]error=$expectError" "$DATA_DIR/authserverResponse.txt"
     fi
+    rm "$DATA_DIR/authserverResponse.txt"
   }
 
   toUpperCase() {
@@ -474,19 +483,19 @@ if should_run_test user-query; then
   userDisplayId="user-query-test-user"
   userPrimaryId="user-query-test-primary-id"
   userAlternativeIds=("user-query-test-alternative1" "user-query-test-alternative2")
-  [ "$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users" | any(."display id" == "'$userDisplayId'")')" == "false" ]
+  [ "$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '.users | any(."display-id" == "'$userDisplayId'")')" == "false" ]
   pepcli --oauth-token-group "Access Administrator" user create "$userDisplayId"
   pepcli --oauth-token-group "Access Administrator" user addIdentifier --primary-id "$userDisplayId" "$userPrimaryId"
   for id in "${userAlternativeIds[@]}"; do
     pepcli --oauth-token-group "Access Administrator" user addIdentifier "$userPrimaryId" "$id"
   done
-  queryResult="$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users"[] | select(."primary id" == "'$userPrimaryId'")')"
+  queryResult="$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '.users[] | select(."primary-id" == "'$userPrimaryId'")')"
   [ -n "$queryResult" ]
-  returnedDisplayId=$(echo "$queryResult" | jq --raw-output '."display id"')
+  returnedDisplayId=$(echo "$queryResult" | jq --raw-output '."display-id"')
   [ "$returnedDisplayId" == "$userDisplayId" ]
-  returnedPrimaryId=$(echo "$queryResult" | jq --raw-output '."primary id"')
+  returnedPrimaryId=$(echo "$queryResult" | jq --raw-output '."primary-id"')
   [ "$returnedPrimaryId" == "$userPrimaryId" ]
-  returnedAlternativeIds=$(echo "$queryResult" | jq --raw-output '."other user identifiers"[]')
+  returnedAlternativeIds=$(echo "$queryResult" | jq --raw-output '."other-identifiers"[]')
   echo "'$returnedAlternativeIds'"
   for id in "${userAlternativeIds[@]}"; do
     echo "$returnedAlternativeIds" | grep "$id"
@@ -588,27 +597,27 @@ fi
 ####################
 
 if should_run_test structured-output; then
-  # All SOTD.shortText strings are <= 7 bytes long (max inline length)
+  # All soData.shortText strings are <= 7 bytes long (max inline length)
   # language=json
   SO_CONFIG='{
-    "userGroups": [{ "name": "SOAG" }],
+    "userGroups": [{ "name": "soUsers" }],
     "columnGroups": [{
-      "name": "SOTD",
-      "columns": [ "SOTD.shortText", "SOTD.longText" ],
+      "name": "soData",
+      "columns": [ "soData.shortText", "soData.longText" ],
       "cgars": {
-        "SOAG": [ "read", "write" ],
+        "soUsers": [ "read", "write" ],
         "Data Administrator": [ "read", "write" ]
       }
     }],
     "subjectGroups": [{
-      "name": "SOTPGroup",
+      "name": "soSubjects",
       "subjects": [
-        { "SOTD.shortText": "yellow", "SOTD.longText": "Canary Yellow" },
-        { "SOTD.shortText": "blue", "SOTD.longText": "Celestial Blue" },
-        { "SOTD.shortText": "green" },
-        { "SOTD.longText": "Cadmium Red" }
+        { "soData.shortText": "yellow", "soData.longText": "Canary Yellow" },
+        { "soData.shortText": "blue", "soData.longText": "Celestial Blue" },
+        { "soData.shortText": "green" },
+        { "soData.longText": "Cadmium Red" }
       ],
-      "pgars": { "SOAG": [ "enumerate", "access" ] }
+      "pgars": { "soUsers": [ "enumerate", "access" ] }
     }]
   }'
 
@@ -616,18 +625,18 @@ if should_run_test structured-output; then
 
   # Pull and export to csv
   CSV_PATH="$DEST_DIR/pulled-data/export.csv"
-  pepcli --oauth-token-group SOAG pull\
-    -P SOTPGroup -C SOTD --output-directory "$DEST_DIR/pulled-data" --force
-  pepcli --oauth-token-group SOAG export\
+  pepcli --oauth-token-group soUsers pull\
+    -P soSubjects -C soData --output-directory "$DEST_DIR/pulled-data" --force
+  pepcli --oauth-token-group soUsers export\
     --from "$DEST_DIR/pulled-data" --max-inline-size 7 --output-file "$CSV_PATH" --force csv
 
   # Checking csv contents. The order of the rows and fields is not checked: we assume it to be consistent
   CSV_CONTENT=$(execute . cat "${CSV_PATH}")
-  echo "$CSV_CONTENT" | grep -E '^"id"'               | grep '"SOTD.shortText"' | grep '"SOTD.longText (file ref)"'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"yellow"'         | grep 'SOTD.longText"'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"blue"'           | grep 'SOTD.longText"'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"green"'          | grep '""'
-  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '""'               | grep 'SOTD.longText"'
+  echo "$CSV_CONTENT" | grep -E '^"id"'               | grep '"soData.shortText"' | grep '"soData.longText (file ref)"'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"yellow"'           | grep 'soData.longText"'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"blue"'             | grep 'soData.longText"'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '"green"'            | grep '""'
+  echo "$CSV_CONTENT" | grep -E '^"GUMU[[:alnum:]]+"' | grep '""'                 | grep 'soData.longText"'
 
   # Check if the correct delimiter was used via a count
   EXPECTED_CSV_DELIMITER_COUNT=10
@@ -637,12 +646,21 @@ if should_run_test structured-output; then
   fi
 
   # Run another export command with a different delimiter and do another count
-  pepcli --oauth-token-group SOAG export\
+  pepcli --oauth-token-group soUsers export\
     --from "$DEST_DIR/pulled-data" --output-file "$CSV_PATH" --force csv --delimiter semicolon
   CSV_CONTENT=$(execute . cat "${CSV_PATH}")
   ACTUAL_CSV_DELIMITER_COUNT=$(echo "$CSV_CONTENT" | grep -o ';' | wc -l | tr -d '[:space:]')
   if [ "$ACTUAL_CSV_DELIMITER_COUNT" -ne "$EXPECTED_CSV_DELIMITER_COUNT" ]; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} semicolons but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
+  fi
+
+  # Repeat the last export command, but this time output directly to stdout. The output should be exactly the same
+  CSV_STDOUT=$(pepcli --oauth-token-group soUsers export\
+    --from "$DEST_DIR/pulled-data" --output-file - --force csv --delimiter semicolon)
+  if [ "$CSV_CONTENT" != "$CSV_STDOUT" ]; then
+    CSV_STDOUT_PATH="$DEST_DIR/pulled-data/export-direct.csv"
+    echo "$CSV_STDOUT" > "$CSV_STDOUT_PATH"
+    fail "Output to stdout ($CSV_STDOUT_PATH) is different from output to file ($CSV_PATH)."
   fi
 
   # Clean up
@@ -895,6 +913,8 @@ if should_run_test certificate-renewal; then
 
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.csr" -delete
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.chain" -delete
+
+  execute . rm -rf "$certificate_renewal_data_dir"
 fi
 
 ####################

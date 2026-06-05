@@ -1,5 +1,6 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/async/CreateObservable.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
@@ -69,7 +70,7 @@ void CastorClient::shutdown() {
 }
 
 void CastorClient::start() {
-  if (this->status() > Status::initialized || mHttp == nullptr) {
+  if (this->status() > Status::Initialized || mHttp == nullptr) {
     throw std::runtime_error("Can't (re)start a finalized Castor client");
   }
   mHttp->start();

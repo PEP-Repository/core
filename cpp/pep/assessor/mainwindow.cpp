@@ -278,16 +278,16 @@ void MainWindow::showForToken(QString token) {
   showMaximized();
 
   pepClient->enrollUser(token.toStdString())
-    .flat_map([this](pep::EnrollmentResult result) {
+    .flat_map([this](pep::EnrolledPartyKeys result) {
     return this->pepClient->getGlobalConfiguration()
-    .map([enrollment = std::make_shared<pep::EnrollmentResult>(result)](std::shared_ptr<pep::GlobalConfiguration> config) {
+    .map([enrollment = std::make_shared<pep::EnrolledPartyKeys>(result)](std::shared_ptr<pep::GlobalConfiguration> config) {
         return std::make_pair(enrollment, config);
       });
       })
     .observe_on(observe_on_gui())
-        .subscribe([this](const std::pair<std::shared_ptr<pep::EnrollmentResult>, std::shared_ptr<pep::GlobalConfiguration>> pair) {
-        std::cout << "Received EnrollmentResult" << std::endl;
-      auto& cert = pair.first->signingIdentity.getCertificateChain().leaf();
+        .subscribe([this](const std::pair<std::shared_ptr<pep::EnrolledPartyKeys>, std::shared_ptr<pep::GlobalConfiguration>> pair) {
+        std::cout << "Received EnrolledPartyKeys" << std::endl;
+      auto& cert = pair.first->signingIdentity.value().getCertificateChain().leaf();
 
       if(!cert.getCommonName().has_value()) {
         throw std::runtime_error("User certificate does not contain a username.");

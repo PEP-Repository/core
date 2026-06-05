@@ -14,7 +14,7 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <boost/algorithm/hex.hpp>
@@ -70,7 +70,7 @@ rxcpp::observable<std::shared_ptr<castor::Study>> LoadCastorStudies(rxcpp::obser
       }
 
       // At this point, we know that this is the first (and perhaps only) SP definition referencing this study (slug). Set default site now and include the study in the result.
-      study->setDefaultSiteByAbbreviation(abbrev);
+      study->setDefaultSiteAbbreviation(abbrev);
       abbrevsBySlug->emplace(std::make_pair(slug, abbrev));
       return study;
     })
@@ -124,22 +124,12 @@ public:
 
 RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config) {
-  std::filesystem::path keysFile;
 
   std::filesystem::path shadowPublicKeyFile;
 
-  CoreClient::Builder clientBuilder;
-
   try {
-    keysFile = config.get<std::filesystem::path>("KeysFile");
-    clientBuilder.setPublicKeyData(config.get<ElgamalPublicKey>("PublicKeyData"));
-    clientBuilder.setPublicKeyPseudonyms(config.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
-
     setShadowStorageFile(config.get<std::filesystem::path>("ShadowStorageFile"));
     shadowPublicKeyFile = config.get<std::filesystem::path>("ShadowPublicKeyFile");
-
-    clientBuilder.setAccessManagerEndPoint(config.get<EndPoint>(ServerTraits::AccessManager().configNode()));
-    clientBuilder.setStorageFacilityEndPoint(config.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -148,30 +138,15 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   setShadowPublicKey(AsymmetricKey(ReadFile(shadowPublicKeyFile)));
 
-  std::string strPseudonymKey, strDataKey;
-  try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
-    strDataKey = boost::algorithm::unhex(keysConfig.get<std::string>("DataKey"));
-  }
-  catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
-    throw;
-  }
-
-  clientBuilder.setIoContext(getIoContext())
-    .setCaCertFilepath(getRootCACertificatesFilePath())
-    .setSigningIdentity(getSigningIdentity())
-    .setPrivateKeyData(ElgamalPrivateKey(strDataKey))
-    .setPrivateKeyPseudonyms(ElgamalPrivateKey(strPseudonymKey));
-  std::shared_ptr<CoreClient> client = clientBuilder.build();
-
-  setClient(client);
+  CoreClient::Builder clientBuilder;
+  clientBuilder.initialize(config, getIoContext(), true);
+  clientBuilder.setSigningIdentity(getSigningIdentity());
+  setClient(clientBuilder.build());
 
 #ifdef WITH_CASTOR
-  auto castorAPIKeyFile = config.get<std::optional<std::filesystem::path>>("Castor.APIKeyFile");
+  auto castorAPIKeyFile = config.get<std::optional<std::filesystem::path>>("Castor.ApiKeyFile");
   if (!castorAPIKeyFile) {
-    LOG(LOG_TAG, info) << "No Castor.APIKeyFile configured: attempts to access the Castor API will fail.";
+    LOG(LOG_TAG, info) << "No Castor.ApiKeyFile configured: attempts to access the Castor API will fail.";
   }
   else {
     if(std::filesystem::exists(castorAPIKeyFile.value()))
@@ -464,11 +439,6 @@ RegistrationServer::~RegistrationServer() {
   closeDatabase();
 }
 
-struct RegistrationContext {
-  std::string encryptedIdentifier;
-  std::shared_ptr<PolymorphicPseudonym> pp;
-};
-
 /*!
   * \brief Store the tag and short pseudonym encrypted in the shadow SQLite database together with the encrypted identifier. It returns the SQLite return code for the query.
   *
@@ -678,6 +648,10 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
     throw std::runtime_error("Cannot store short pseudonyms because client uses a different encryption key for shadow storage. Please ensure that client and server configurations match.");
   }
 
+  struct RegistrationContext {
+    std::string encryptedIdentifier;
+    std::shared_ptr<PolymorphicPseudonym> pp;
+  };
   std::shared_ptr<RegistrationContext> ctx = std::make_shared<RegistrationContext>();
   ctx->pp = std::make_shared<PolymorphicPseudonym>(request.mPolymorphicPseudonym);
   ctx->encryptedIdentifier = request.mEncryptedIdentifier;

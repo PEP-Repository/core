@@ -3,9 +3,29 @@ Changelog
 Note your text below, in the following format (with 42 the issue number of the change):
 - repo#42: description
 
-Changes in upcoming release (1.7):
+Changes in upcoming release (1.8):
 
 ---------------
+
+
+---------------
+
+Past changes, do not edit (except by person doing release):
+
+Release 1.7
+
+- core#2817: "pepcli ama query"'s "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
+             e.g. `pepcli ama query --include columns --include column-groups` will print both columns and column groups.
+             The old output format is no longer supported in favor of yaml (or json) output.
+
+             "pepcli user query"'s  "--script-print" parameter is renamed to "--include" and now support repeated use, allowing multiple groups of data to be printed in a single command.
+             Its parameter "all-user-group" was renamed to "user-groups", "groups-per-user" was renamed to "user-groups-per-user", and "all-user" was renamed to "users".
+
+- core#2373: Support is dropped for the old (pseudo-yaml) pepcli ama query output format. It now outputs in correct yaml by default and supports the --format flag to optionally produce json and json-compact (without whitespace) output.
+
+- core#2878, core#2868: "pepcli user query" key "All User Groups" is no longer a list item. Empty list format is now properly a []. Keys are now either all fully descriptive (default), or all simple.
+
+- core#2637: "pepcli export" can now output to stdout instead of a file, by passing a hyphen `-` as output location
 
 - Added --format option to "pepcli list" command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
 
@@ -34,11 +54,11 @@ Changes in upcoming release (1.7):
   of) subjects for whom the command retrieves no data. This a.o. allows subject groups to be listed without requiring
   data presence and accessibility, and without having to specify column(group)(s):
     pepcli list -P some-subject-group --show-dataless
-    
+
 - #1970: We can now request a CSR from servers for their PEP certificates, and replace the certificate after we signed a new one, all using pepcli.
   This does not apply to the TLS certificates, so is not that useful yet, until we replace those with "normal" TLS certificates from a public CA (#2768).
   For this to work, the certificates will need to be in a writable location (#2769), which they are currently not. That will need to be solved at some point,
-  before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.  
+  before we want to use the new functionality. But it is not necessary to fix this right away as part of the release.
 
 - !2356: Positional CLI parameters can now also be specified using flags, e.g. `pepcli ama cgar create --mode read --access-group group --column-group columns`
 
@@ -46,16 +66,26 @@ Changes in upcoming release (1.7):
 
 - #2847: Reduced memory use when using `pepcli store` with (large) files.
 
+- #2877: Key Server now requires a configured BlocklistStoragePath value (was optional).
+
+- #2738: Data Administrators can now retrieve sizes of stored data, either for the full repository, or aggregated over
+         column(s) and/or column group(s). Sizes are reported both for the current (rolling) data set and for the entire
+         history. Values are rounded to a (configurable) resolution to prevent the data from being reconstructible ("guessable")
+         from its size. The sizes for the full repository are also exposed as Storage Facility metrics.
+
+- #2875: Some paths are no longer escaped in (e.g. pepcli) application output/logging, making them usable for copy+pasting on Windows.
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
   Use `pepcli user setDisplayID <SomeExistingUserId>` to set the display ID for these users.
-
----------------
-
-Past changes, do not edit (except by person doing release):
+- #2801: Update `Verifiers.json` for the Transcryptor: Run `./scripts/update-verifiers-1-7.sh /path/to/Verifiers.json`
+  - Make sure that you have `pepcli` in your PATH for the current environment, or pass the binary to use as extra argument to the script
+- #2801/#2863: Run `./scripts/upgrade-config-1-7.sh <config folder>` on config folders of the project, optionally with `check-jsonschema`/`jsonschema`/`jv` installed to validate the result locally (otherwise our CI will), or define envvar `NO_VALIDATE=1`.
 
 Release 1.6 (started 2026-01-28):
+
+- #2867: Fixed incorrect handling of network connections that fail while they're still being established.
 
 - #2771: Manually managed user IDs are now case-insensitive
   - User IDs retain their original casing when stored.

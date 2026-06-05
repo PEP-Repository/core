@@ -25,15 +25,6 @@ tokenBlocking::TokenIdentifier Identifiers(const OAuthToken& token) {
   };
 }
 
-std::unique_ptr<tokenBlocking::Blocklist> CreateBlocklist(const KeyServer::Parameters& parameters) {
-  const auto& path = parameters.getBlocklistStoragePath();
-  return path.has_value() ? tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(*path) : nullptr;
-}
-
-std::vector<tokenBlocking::Blocklist::Entry> allEntries(tokenBlocking::Blocklist* list) {
-  return list ? list->allEntries() : std::vector<tokenBlocking::Blocklist::Entry>{};
-}
-
 void EnsureTokenBlockingAdminAccess(const std::string& organizationalUnit) {
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, organizationalUnit, "token blocklist management");
 }
@@ -42,18 +33,14 @@ void EnsureTokenBlockingAdminAccess(const std::string& organizationalUnit) {
 
 KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : Server::Parameters(std::move(io_context), config) {
-  std::filesystem::path clientCAPrivateKeyFile;
-  std::filesystem::path clientCACertificateChainFile;
   std::filesystem::path oauthTokenSecretFile;
-  std::optional<std::filesystem::path> blocklistStoragePath;
+  std::filesystem::path blocklistStoragePath;
   try {
-    clientCAPrivateKeyFile = config.get<std::filesystem::path>("ClientCAPrivateKeyFile");
-    clientCACertificateChainFile = config.get<std::filesystem::path>("ClientCACertificateChainFile");
+    mClientCa = std::move(*X509IdentityFiles::FromConfig(config.get_child("ClientCa"), *getRootCAs()).identity());
 
     oauthTokenSecretFile = canonical(config.get<std::filesystem::path>("OAuthTokenSecretFile"));
 
-    blocklistStoragePath = config.get<std::optional<std::filesystem::path>>("BlocklistStoragePath");
-    if (blocklistStoragePath) { blocklistStoragePath = weakly_canonical(*blocklistStoragePath); }
+    blocklistStoragePath = weakly_canonical(config.get<std::filesystem::path>("BlocklistStoragePath"));
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -72,22 +59,9 @@ KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_co
     throw;
   }
 
-  setClientCAPrivateKey(AsymmetricKey(ReadFile(clientCAPrivateKeyFile)));
-  setClientCACertificateChain(X509CertificateChain(X509CertificatesFromPem(ReadFile(clientCACertificateChainFile))));
   setBlocklistStoragePath(blocklistStoragePath);
 }
 
-const AsymmetricKey& KeyServer::Parameters::getClientCAPrivateKey() const { return mClientCAPrivateKey; }
-
-void KeyServer::Parameters::setClientCAPrivateKey(const AsymmetricKey& privateKey) {
-  Parameters::mClientCAPrivateKey = privateKey;
-}
-
-const std::optional<X509CertificateChain>& KeyServer::Parameters::getClientCACertificateChain() { return mClientCACertificateChain; }
-
-void KeyServer::Parameters::setClientCACertificateChain(const X509CertificateChain& certificateChain) {
-  Parameters::mClientCACertificateChain = certificateChain;
-}
 
 const std::string& KeyServer::Parameters::getOauthTokenSecret() const { return mOauthTokenSecret; }
 
@@ -95,18 +69,18 @@ void KeyServer::Parameters::setOauthTokenSecret(const std::string& oauthTokenSec
   Parameters::mOauthTokenSecret = oauthTokenSecret;
 }
 
-const std::optional<std::filesystem::path>& KeyServer::Parameters::getBlocklistStoragePath() const {
+const std::filesystem::path& KeyServer::Parameters::getBlocklistStoragePath() const {
   return mBlocklistStoragePath;
 }
 
-void KeyServer::Parameters::setBlocklistStoragePath(const std::optional<std::filesystem::path>& blocklistStoragePath) {
+void KeyServer::Parameters::setBlocklistStoragePath(const std::filesystem::path& blocklistStoragePath) {
   Parameters::mBlocklistStoragePath = blocklistStoragePath;
 }
 
 void KeyServer::Parameters::check() const {
-  if (!mClientCAPrivateKey.isSet()) throw std::runtime_error("clientCAPrivateKey must be set");
-  if (!mClientCACertificateChain.has_value()) throw std::runtime_error("clientCACertificateChain must be set");
+  if (!mClientCa.has_value()) throw std::runtime_error("clientCa must be set");
   if (mOauthTokenSecret.empty()) throw std::runtime_error("oauthTokenSecret must not be empty");
+  if (mBlocklistStoragePath.empty()) throw std::runtime_error("blocklistStoragePath must not be empty");
   Server::Parameters::check();
 }
 
@@ -120,7 +94,7 @@ messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
   const auto certificate = generateCertificate(enrollmentRequest->mCertificateSigningRequest);
 
   EnrollmentResponse response{
-    .mCertificateChain = mClientCACertificateChain / certificate
+    .mCertificateChain = mClientCa.getCertificateChain() / certificate
   };
   LOG(LOG_TAG, debug) << "Sending certificate chain len=" << response.mCertificateChain.certificates().size() << ":"
                       << X509CertificatesToPem(response.mCertificateChain.certificates());
@@ -132,7 +106,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingListRequest(
   EnsureTokenBlockingAdminAccess(signedRequest->validate(*this->getRootCAs()).organizationalUnit());
 
   TokenBlockingListResponse response;
-  response.entries = allEntries(mBlocklist.get());
+  response.entries = mBlocklist->allEntries();
   return messaging::BatchSingleMessage(std::move(response));
 }
 
@@ -143,7 +117,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, certified.signatory.organizationalUnit(), "token blocklist management");
   const auto& request = certified.message;
 
-  if (mBlocklist == nullptr) { throw Error{ "KeyServer does not have a blocklist" }; }
+  assert(mBlocklist != nullptr);
 
   auto entry = tokenBlocking::BlocklistEntry{
       .id = 0,
@@ -162,7 +136,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
   EnsureTokenBlockingAdminAccess(certified.signatory.organizationalUnit());
   const auto& request = certified.message;
 
-  if (mBlocklist == nullptr) { throw Error{"KeyServer does not have a blocklist"}; }
+  assert(mBlocklist != nullptr);
 
   auto entry = mBlocklist->removeById(request.id);
   if (!entry.has_value()) { throw Error{"Entry with id=" + std::to_string(request.id) + " does not exist."}; }
@@ -171,10 +145,9 @@ messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
 
 KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
   : Server(parameters),
-    mClientCAPrivateKey(parameters->getClientCAPrivateKey()),
-    mClientCACertificateChain(*parameters->getClientCACertificateChain()),
+    mClientCa(*parameters->getClientCa()),
     mOauthTokenSecret(parameters->getOauthTokenSecret()),
-    mBlocklist(CreateBlocklist(*parameters)) {
+    mBlocklist(tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(parameters->getBlocklistStoragePath())) {
   RegisterRequestHandlers(
       *this,
       &KeyServer::handlePingRequest,
@@ -214,10 +187,7 @@ bool KeyServer::isValid(
     const std::string& commonName,
     const std::string& organizationalUnit) const {
   const auto isBlocked = [this](const OAuthToken& token) {
-    if (mBlocklist == nullptr) {
-      LOG(LOG_TAG, debug) << "Skipping blocklist check as no blocklist was provided";
-      return false;
-    }
+    assert(mBlocklist != nullptr);
 
     LOG(LOG_TAG, debug) << "Checking token against blocklist";
     const auto blocked = IsBlocking(*mBlocklist, Identifiers(token));
@@ -230,19 +200,14 @@ bool KeyServer::isValid(
 }
 
 X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigningRequest& csr) const {
-  try {
-    const auto certificate = csr.signCertificate(
-        mClientCACertificateChain.leaf(),
-        mClientCAPrivateKey,
-        validityTimeOfGeneratedCertificates);
-    assert(GetEnrolledParty(certificate) == EnrolledParty::User);
-    LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
-                        << " in OU=" << csr.getOrganizationalUnit().value_or("");
-    return certificate;
-  }
-  catch (...) {
-    throw Error{"Certificate generation failed"};
-  }
+  const auto certificate = csr.signCertificate(
+      mClientCa.getCertificateChain().leaf(),
+      mClientCa.getPrivateKey(),
+      validityTimeOfGeneratedCertificates);
+  assert(GetEnrolledParty(certificate) == EnrolledParty::User);
+  LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
+                      << " in OU=" << csr.getOrganizationalUnit().value_or("");
+  return certificate;
 }
 
 } // namespace pep

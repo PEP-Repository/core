@@ -2,12 +2,16 @@
 
 #include <numeric>
 #include <utility>
-
+#include <iostream>
 
 #include <boost/algorithm/string/join.hpp>
 
 namespace pep {
 namespace commandline {
+
+std::string CommandPath::toString() const {
+  return boost::algorithm::join(segments, " ");
+}
 
 Parameter::Parameter(const std::string& name, const std::optional<std::string>& description)
   : mName(name), mDescription(description) {
@@ -26,6 +30,46 @@ Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   return result;
 }
 
+Parameter Parameter::forwardingAlias(std::function<ParameterTransformationResult(Command&, const NamedValues&)> transformer) const {
+  assert(transformer && "Forwarding transformer for parameter must be provided");
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
+  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
+
+  auto result = *this;
+  result.mTransformer = std::move(transformer);
+  return result;
+}
+
+Parameter Parameter::rename(const std::string& newParamName) const {
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine rename() and noLongerSupported() on the same parameter");
+  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
+  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() before rename() on the same parameter");
+
+  const std::string oldName = mName;
+  return this->forwardingAlias([oldName, newParamName](Command&, const NamedValues& values) {
+    NamedValues toAdd;
+    toAdd.set(newParamName, values.at(oldName));
+    return ParameterTransformationResult{std::move(toAdd)};
+  }).deprecated("Use --" + newParamName + " instead.");
+}
+
+Parameter Parameter::deprecated(const std::string& message) const {
+  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() multiple times to the same parameter");
+
+  auto result = *this;
+  result.mDeprecationMessage = message;
+  return result;
+}
+
+Parameter Parameter::noLongerSupported(const std::string& message) const {
+  assert(!mTransformer && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
+
+  auto result = *this;
+  result.mNoLongerSupportedMessage = message;
+  return result;
+}
+
 SwitchAnnouncement Parameter::getCanonicalAnnouncement() const {
   return SwitchAnnouncement(mName);
 }
@@ -35,6 +79,11 @@ std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
   [[maybe_unused]] auto emplaced = result.emplace(this->getCanonicalAnnouncement()).second;
   assert(emplaced);
   return result;
+}
+
+ParameterTransformationResult Parameter::transform(Command& self, const NamedValues& values) const {
+  assert(mTransformer && "No transformer configured for parameter");
+  return mTransformer(self, values);
 }
 
 void Parameter::lex(ProvidedValues& destination, std::queue<std::string>& source) const {
@@ -303,7 +352,7 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
   LexedValues result;
 
   auto positionalIt = mPositional.cbegin();
-  enum class positionalType { None, Named, Unnamed } positionalSeen = positionalType::None;
+  enum class PositionalType { None, Named, Unnamed } positionalSeen = PositionalType::None;
 
   while (!arguments.empty()) {
     const auto& token = arguments.front();
@@ -319,10 +368,10 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
       arguments.pop(); // Discard the announcement from remaining arguments
       s = &mEntries[named->second];
       if (s->isPositional()) {
-        if (positionalSeen == positionalType::Unnamed) {
+        if (positionalSeen == PositionalType::Unnamed) {
           throw std::runtime_error("Cannot mix named and unnamed positional parameters");
         }
-        positionalSeen = positionalType::Named;
+        positionalSeen = PositionalType::Named;
       }
     }
     else { // Not an announcement: process as an unnamed positional parameter
@@ -331,14 +380,14 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
         break;
       }
 
-      if (positionalSeen == positionalType::Named) {
+      if (positionalSeen == PositionalType::Named) {
         if (!this->firstPositional(result)) {
           // All positionals were already specified using names. Assume the next token is not for us.
           break;
         }
         throw std::runtime_error("Cannot mix named and unnamed positional parameters");
       }
-      positionalSeen = positionalType::Unnamed;
+      positionalSeen = PositionalType::Unnamed;
 
       s = &mEntries[*positionalIt];
       assert(s->isPositional());
@@ -363,7 +412,7 @@ NamedValues Parameters::parse(const LexedValues& lexed) const {
     const auto& name = s.getName();
     auto position = lexed.find(name);
     if (position != lexed.cend()) {
-      result[name] = s.parse(position->second);
+      result.set(name, s.parse(position->second));
     }
   }
 
@@ -377,7 +426,7 @@ void Parameters::finalize(NamedValues& parsed) const {
       Values tmp;
       s.finalize(tmp);
       if (!tmp.empty()) {
-        parsed[name] = tmp;
+        parsed.set(name, tmp);
       }
     }
   }

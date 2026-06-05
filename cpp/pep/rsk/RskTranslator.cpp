@@ -91,6 +91,16 @@ ReshuffleRekeyVerifiers RskTranslator::computeReshuffleRekeyVerifiers(
       masterPublicEncryptionKey);
 }
 
+ReshuffleRekeyVerifiersWithProof
+RskTranslator::computeCertifiedReshuffleRekeyVerifiers(
+    const KeyFactors& recipientKeyFactors,
+    const ElgamalPublicKey& masterPublicEncryptionKey) const {
+  return ReshuffleRekeyVerifiersProof::ComputeCertified(
+      recipientKeyFactors.reshuffle,
+      recipientKeyFactors.rekey,
+      masterPublicEncryptionKey);
+}
+
 CurveScalar RskTranslator::generateKeyComponent(
     const CurveScalar& encryptionKeyFactor,
     const CurveScalar& masterPrivateEncryptionKeyShare

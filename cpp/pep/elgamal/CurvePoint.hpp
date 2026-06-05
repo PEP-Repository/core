@@ -66,6 +66,7 @@ class CurvePoint {
   explicit CurvePoint(std::string_view packed, bool unpack = false);
   /// Construct neutral element
   CurvePoint();
+  CurvePoint(BaseT);
 
   std::string_view pack() const;
 

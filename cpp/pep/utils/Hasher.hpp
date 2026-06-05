@@ -6,12 +6,10 @@
 
 namespace pep {
 
-namespace detail {
 class HasherBase : private boost::noncopyable {
   bool mFinished = false;
 
 protected:
-  void update(const void* block, size_t size);
   void update(std::istream& source);
   /// Mark as finished. \c update or this function should not be called after this.
   void setFinished();
@@ -20,11 +18,11 @@ protected:
 
 public:
   virtual ~HasherBase() noexcept = default;
+  void update(const void* block, size_t size);
 };
-}
 
 template <typename THash>
-class Hasher : public detail::HasherBase {
+class Hasher : public HasherBase {
 public:
   using Hash = THash;
 
@@ -37,7 +35,7 @@ public:
     return this->finish();
   }
 
-  Hasher& update(const void* block, size_t size) {
+  Hasher& update(const void* block, size_t size) { //NOLINT(bugprone-derived-method-shadowing-base-method) Does the same thing
     HasherBase::update(block, size);
     return *this;
   }
@@ -46,7 +44,7 @@ public:
     return this->update(data.data(), data.size());
   }
 
-  Hasher& update(std::istream& source) {
+  Hasher& update(std::istream& source) { //NOLINT(bugprone-derived-method-shadowing-base-method) Does the same thing
     HasherBase::update(source);
     return *this;
   }
