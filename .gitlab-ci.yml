@@ -622,10 +622,6 @@ ubuntu-lts-debug-with-sast:
   extends:
     - .ubuntu-build-base
   variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_SERVER
-      $UNIT_TESTS_CASTOR
     ARTIFACTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
@@ -837,9 +833,6 @@ ubuntu-rolling-release:
   extends:
     - .ubuntu-build-base
   variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_WEBLIB
     ARTIFACTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_WEBLIB
