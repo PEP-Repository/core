@@ -465,8 +465,8 @@ provide_base_images() {
   done
   
   download_foss_package wixlibrary pepBinaries.wixlib
-  download_foss_package macos-x86-bins macOS_x86_64_bins.zip
-  download_foss_package macos-arm-bins macOS_arm64_bins.zip
+  download_foss_package macos-x86_64-bins macOS_x86_64_bins.zip
+  download_foss_package macos-arm64-bins macOS_arm64_bins.zip
   download_foss_package flatpak pep.flatpak
 }
 

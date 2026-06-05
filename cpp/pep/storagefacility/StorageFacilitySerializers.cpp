@@ -266,4 +266,37 @@ void Serializer<DataPayloadPage>::moveIntoProtocolBuffer(proto::DataPayloadPage&
   dest.set_index(value.mIndex);
 }
 
+DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeRequest&& source) const {
+  DataSizeRequest result;
+  for (const auto& column : source.columns()) {
+    if (!result.mColumns.emplace(column).second) {
+      throw std::runtime_error("Can't insert duplicate column '" + column + "' into data size request");
+    }
+  }
+  return result;
+}
+
+void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest& dest, DataSizeRequest value) const {
+  dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
+  // We can't directly move values out of a std::set<>. But we can do it with std::set<>::extract
+  for (auto it = value.mColumns.begin(); it != value.mColumns.end(); ++it) {
+    dest.add_columns(std::move(value.mColumns.extract(it).value()));
+  }
+}
+
+DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSizeResponse&& source) const {
+  return DataSizeResponse{
+    .mBlockSize = source.block_size(),
+    .mTotalBlocks = source.total_blocks(),
+    .mRollingBlocks = source.rolling_blocks(),
+  };
+}
+
+void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
+  dest.set_block_size(value.mBlockSize);
+  dest.set_total_blocks(value.mTotalBlocks);
+  dest.set_rolling_blocks(value.mRollingBlocks);
+}
+
+
 }

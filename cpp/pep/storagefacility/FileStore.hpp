@@ -27,6 +27,8 @@ public:
   struct EntryHeader {
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
+    uint64_t payloadSize{};
+    bool isOriginalPayloadOwner{};
   };
   using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
 
@@ -65,6 +67,8 @@ public:
     EntryName getName() const;
 
     bool isTombstone() const { return mContent == nullptr; }
+    uint64_t payloadSize() const;
+    bool isOriginalPayloadOwner() const;
   };
 
   /*!
@@ -146,6 +150,7 @@ public:
     std::filesystem::path path() const;
 
     const EntryHeaders& entryHeaders() const noexcept { return mEntryHeaders; }
+    void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
   };
@@ -169,7 +174,7 @@ public:
 
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
-    size_t entryCount() const;
+    void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
     void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
     EntrySet lookupWithHistory(const std::string& column) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
@@ -183,7 +188,7 @@ public:
   EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
 
-  size_t entryCount() const;
+  void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
   void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
 
   const std::filesystem::path& metaDir() const {
@@ -193,7 +198,7 @@ public:
 private:
   FileStore(
     const std::filesystem::path& metadatapath,
-    std::shared_ptr<Configuration> pageStoreConfig,
+    const Configuration& pageStoreConfig,
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry);
 

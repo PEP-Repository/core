@@ -112,14 +112,29 @@ ci-yml-include-versions:
   script:
     - ./"$PEP_FOSS_REPO_DIR"/ci_cd/check-ci-yml-include-versions.sh "$PEP_GROUP_READ_API_TOKEN" . "$CI_CONFIG_PATH"
 
-analyse-scripts:
+analyse-source:
   stage: static-analysis
   tags: [docker-small]
   image: alpine:latest
+  #language=sh
   before_script:
-    - apk update -qq && apk add --no-cache bash git shellcheck
+    - apk add --no-cache bash git shellcheck check-jsonschema
+  #language=sh
   script:
     - ./"$PEP_FOSS_REPO_DIR"/scripts/analyse-scripts.sh
+    # For pep/dtap>, this also checks review config on feature branches because of the set-up-config-review job
+    - for branch in
+      "$CI_COMMIT_REF_NAME"
+      "$PEP_PROJECT_DEVELOPMENT_BRANCH"
+      "$PEP_PROJECT_TESTING_BRANCH"
+      "$PEP_PROJECT_ACCEPTANCE_BRANCH"
+      "$PEP_PROJECT_PRODUCTION_BRANCH"
+      ; do
+    -   if [ -n "$branch" ] && [ "$branch" != . ] && [ -d "./config/$branch" ]; then
+    -     echo "Validating $branch config"
+    -     ./"$PEP_FOSS_REPO_DIR"/scripts/validate-config.sh "./config/$branch"
+    -   fi
+    - done
 
 #############################################
 # Configuration for the prerequisites stage #

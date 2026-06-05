@@ -19,8 +19,6 @@ spec:
 stages:
   - static-analysis
   - build
-  - runtime-analysis
-  - integration
   - upload
   - publish
   - cleanup
@@ -105,6 +103,7 @@ variables:
 
   UNIT_TESTS_BASE: >-
     cpp/pep/accessmanager/pepAccessManagerUnitTests
+    cpp/pep/application/pepApplicationUnitTests
     cpp/pep/archiving/pepArchivingUnitTests
     cpp/pep/async/pepAsyncUnitTests
     cpp/pep/auth/pepAuthUnitTests
@@ -122,6 +121,7 @@ variables:
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
     cpp/pep/ticketing/pepTicketingUnitTests
+    cpp/pep/transcryptor/pepTranscryptorUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
 
@@ -301,10 +301,12 @@ analyse-source:
     GIT_SUBMODULE_STRATEGY: none
     GIT_DEPTH: 1
   before_script:
-    - apk update -qq && apk add --no-cache bash git shellcheck
+    - apk add --no-cache bash git shellcheck check-jsonschema
   script:
     - ./scripts/analyse-scripts.sh
     - ./scripts/analyse-source.sh
+    - ./scripts/validate-config.sh ./config/local/
+    - ./scripts/validate-config.sh ./config/integration/config/
 
 #######################################
 # Configuration for the cleanup stage #
@@ -802,7 +804,7 @@ ubuntu-rolling-release:
 
 #################### Python Packages ####################
 
-build-pep-connector:
+pep-connector:
   stage: build
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   tags:
@@ -826,7 +828,7 @@ build-pep-connector:
 
 #################### Flatpak ####################
 
-build-flatpak:
+flatpak:
   <<: *ccache-configuration
   stage: build
   needs:
@@ -879,7 +881,7 @@ windows-client:
       - $BUILD_DIRECTORY/wix/artifacts
       - $BUILD_DIRECTORY/wix/pepBinaries.wixlib
 
-windows-all-targets:
+windows-debug:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -922,11 +924,35 @@ windows-all-targets:
     paths:
       - $STAGING_DIRECTORY
 
+test-windows-debug:
+  stage: build
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
+  tags:
+    # Do not run in parallel with other tests, as we may bind to static ports.
+    # May still run in parallel with build jobs.
+    - windows-sequential
+  needs: [windows-debug]
+  script:
+    - *run-tests-windows
+    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
 #################### MacOS ####################
 
-.macos-client-base:
+macos-client:
   <<: *ccache-configuration
   stage: build
+  parallel:
+    matrix:
+      - ARCH: [x86_64, arm64]
+  tags:
+    - macos-${ARCH}
   needs:
     - job: retrieve-lockfile
       optional: true
@@ -941,24 +967,10 @@ windows-all-targets:
     - *ccache-print
   artifacts:
     expire_in: 7d
-
-macos-client-x86:
-  extends: .macos-client-base
-  tags:
-    - macos-intel
-  artifacts:
     paths:
-      - $BUILD_DIRECTORY/macOS_x86_64_bins.zip
+      - $BUILD_DIRECTORY/macOS_${ARCH}_bins.zip
 
-macos-client-arm:
-  extends: .macos-client-base
-  tags:
-    - macos-arm64
-  artifacts:
-    paths:
-      - $BUILD_DIRECTORY/macOS_arm64_bins.zip
-
-macos-all-targets:
+macos-debug:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -971,10 +983,11 @@ macos-all-targets:
       allow_failure: true
   parallel:
     matrix:
-      - ARCH: [intel, arm64]
+      - ARCH: [x86_64, arm64]
   tags:
     - macos-${ARCH}
   variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: >-
@@ -991,7 +1004,7 @@ macos-all-targets:
       --profile:all="docker-build/builder/conan/conan_profile"
       --build=missing
       -s:a os.version=13.3
-      -s:a build_type="Debug"
+      -s:a build_type="$CMAKE_BUILD_TYPE"
       -o "&:with_assessor=True"
       -o "&:with_servers=True"
       -o "&:with_castor=$WITH_CASTOR"
@@ -1027,13 +1040,13 @@ macos-all-targets:
 
 #################### Docker ####################
 
-build-docker-images:
+docker-images:
   stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
     - ubuntu-lts-release-$[[ inputs.autolinting ]]
-    - build-pep-connector
+    - pep-connector
   #language=sh
   script:
     - *docker_login
@@ -1089,37 +1102,10 @@ build-sandbox-docker-image:
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
 
-###############################################
-# Configuration for the runtime-analysis stage#
-###############################################
-
-#################### Windows ##################
-
-windows-test:
-  stage: runtime-analysis
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  tags:
-    # Do not run in parallel with other tests, as we may bind to static ports.
-    # May still run in parallel with build jobs.
-    - windows-sequential
-  needs: [windows-all-targets]
-  script:
-    - *run-tests-windows
-    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-#################### Docker ####################
-
 # We also test directly in services image to try to make sure
 # executables don't depend on something in the builder image
-pep-services-image-test:
-  stage: runtime-analysis
+test-pep-services-image:
+  stage: build
   extends: .dind
   variables:
     TESTS: >-
@@ -1127,7 +1113,7 @@ pep-services-image-test:
       $UNIT_TESTS_CASTOR
   image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
     # Use tests in $STAGING_DIRECTORY from artifacts
     - ubuntu-lts-release-$[[ inputs.autolinting ]]
@@ -1145,16 +1131,12 @@ pep-services-image-test:
     reports:
       junit: test-results/*.xml
 
-##########################################
-# Configuration for the integration stage#
-##########################################
-
-docker-integration:
-  stage: integration
+test-docker-integration:
+  stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
   script:
     - *docker_login
@@ -1168,19 +1150,20 @@ docker-integration:
     paths:
       - ./integration_data
 
-docker-integration-on-base-data:
-  stage: integration
+test-docker-integration-on-base-data:
+  stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
   script:
     - *docker_login
-    - tar xzf tests/test_input/base_integration_data.tar.gz
-    # Replace outdated PKI materials that we extracted from the tarball: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2813#note_56966
-    - cd base_integration_data/pki && ../../pki/pki.sh no-root && cd -
-    - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir base_integration_data
+    - foss_dir="$PWD"
+    - base_integration_data_dir="$foss_dir/tests/test_input/base_integration_data/"
+    # Generate fresh (non-expired) (non-root) certificates: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2813#note_56966
+    - (cd "$base_integration_data_dir/pki/"; "$foss_dir/pki/pki.sh" no-root)
+    - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir "$base_integration_data_dir"
 
 ##########################################
 #   Configuration for the upload stage   #
@@ -1210,27 +1193,25 @@ upload-wix-library:
             --upload-file "$BUILD_DIRECTORY/wix/pepBinaries.wixlib"
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/wixlibrary/${CI_COMMIT_SHA}/pepBinaries.wixlib"'
 
-upload-macos-client-x86:
+upload-macos-client:
   extends: .upload-curl-base
-  needs: [macos-client-x86]
+  parallel:
+    matrix:
+      - ARCH: [x86_64, arm64]
+  needs:
+    - job: macos-client
+      parallel:
+        matrix:
+          - ARCH: ['$[[ matrix.ARCH ]]']
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
-            --upload-file "$BUILD_DIRECTORY/macOS_x86_64_bins.zip"
-            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-x86-bins/${CI_COMMIT_SHA}/macOS_x86_64_bins.zip"'
-
-upload-macos-client-arm:
-  extends: .upload-curl-base
-  needs: [macos-client-arm]
-  script:
-    - 'curl --no-progress-meter --fail
-            --header "JOB-TOKEN: $CI_JOB_TOKEN"
-            --upload-file "$BUILD_DIRECTORY/macOS_arm64_bins.zip"
-            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-arm-bins/${CI_COMMIT_SHA}/macOS_arm64_bins.zip"'
+            --upload-file "$BUILD_DIRECTORY/macOS_${ARCH}_bins.zip"
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-${ARCH}-bins/${CI_COMMIT_SHA}/macOS_${ARCH}_bins.zip"'
 
 upload-flatpak:
   extends: .upload-curl-base
-  needs: [build-flatpak]
+  needs: [flatpak]
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1241,11 +1222,11 @@ retag-pep-docker-images:
   extends: .upload-base
   image: docker
   needs:
-    - job: pep-services-image-test
+    - job: test-pep-services-image
       artifacts: false
-    - job: docker-integration
+    - job: test-docker-integration
       artifacts: false
-    - job: docker-integration-on-base-data
+    - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
   script:
@@ -1271,11 +1252,11 @@ publish-sandbox-image:
   needs:
     - job: build-sandbox-docker-image
       artifacts: false
-    - job: pep-services-image-test
+    - job: test-pep-services-image
       artifacts: false
-    - job: docker-integration
+    - job: test-docker-integration
       artifacts: false
-    - job: docker-integration-on-base-data
+    - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
   script:

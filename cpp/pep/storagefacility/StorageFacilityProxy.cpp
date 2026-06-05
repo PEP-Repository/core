@@ -69,4 +69,9 @@ rxcpp::observable<DataHistoryResponse2> StorageFacilityProxy::requestDataHistory
     .op(RxGetOne());
 }
 
+rxcpp::observable<DataSizeResponse> StorageFacilityProxy::requestDataSize(DataSizeRequest request) const {
+  return this->sendRequest<DataSizeResponse>(this->sign(std::move(request)))
+    .op(RxGetOne());
+}
+
 }

@@ -1,6 +1,7 @@
 #include <pep/morphing/MorphingSerializers.hpp>
 
 #include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/rsk/RskSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
 
 #include <stdexcept>
@@ -67,6 +68,20 @@ void Serializer<Metadata>::moveIntoProtocolBuffer(
       });
     assert(inserted);
   }
+}
+
+ServerVerifiers Serializer<ServerVerifiers>::fromProtocolBuffer(proto::ServerVerifiers&& source) const {
+  return {
+    .accessManager = Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager())),
+    .storageFacility = Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility())),
+    .transcryptor = Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor())),
+  };
+}
+
+void Serializer<ServerVerifiers>::moveIntoProtocolBuffer(proto::ServerVerifiers& dest, ServerVerifiers value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.accessManager);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.storageFacility);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor(), value.transcryptor);
 }
 
 }

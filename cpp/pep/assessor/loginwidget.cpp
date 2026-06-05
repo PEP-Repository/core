@@ -41,7 +41,7 @@ LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, co
   : QWidget(nullptr)
   , authy(pep::OAuthClient::Create(pep::OAuthClient::Parameters{
       .io_context = io_context,
-      .config = config.get_child("AuthenticationServer"),
+      .config = config.get_child("OAuthServer"),
       .authorizationMethod = pep::BrowserAuthorization,
     }))
   , exeDirectory(exeDirectory)

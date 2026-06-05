@@ -10,9 +10,7 @@
 using namespace pep::cli;
 
 pep::commandline::Parameters MultiCellQuery::Parameters() {
-  return pep::commandline::Parameters()
-    + pep::commandline::Parameter("column", "Columns to include").alias("columns").shorthand('c').value(pep::commandline::Value<std::string>().multiple())
-    + pep::commandline::Parameter("column-group", "Column groups to include").alias("column-groups").shorthand('C').value(pep::commandline::Value<std::string>().multiple())
+  return ColumnQuery::Parameters()
     + pep::commandline::Parameter("participant-group", "Participant groups to include").alias("participant-groups").shorthand('P').value(pep::commandline::Value<std::string>().multiple())
     + pep::commandline::Parameter("participant", "Participants to include").alias("participants").shorthand('p').value(pep::commandline::Value<std::string>().multiple())
     + pep::commandline::Parameter("short-pseudonym", "Short pseudonyms of participants to include").alias("short-pseudonyms").alias("sp").value(pep::commandline::Value<std::string>().multiple());
@@ -28,14 +26,6 @@ bool MultiCellQuery::SpecifiesParticipants(const pep::commandline::NamedValues& 
 
 bool MultiCellQuery::IsNonEmpty(const pep::commandline::NamedValues& values) {
   return SpecifiesColumns(values) || SpecifiesParticipants(values);
-}
-
-std::vector<std::string> MultiCellQuery::GetColumnGroups(const pep::commandline::NamedValues& values) {
-  return values.getOptionalMultiple<std::string>("column-group");
-}
-
-std::vector<std::string> MultiCellQuery::GetColumns(const pep::commandline::NamedValues& values) {
-  return values.getOptionalMultiple<std::string>("column");
 }
 
 std::vector<std::string> MultiCellQuery::GetParticipantGroups(const pep::commandline::NamedValues& values) {

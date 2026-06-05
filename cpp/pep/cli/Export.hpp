@@ -29,8 +29,9 @@ protected:
     /// Configuration options that are shared by all formats (child commands)
     struct CommonConfiguration final {
       std::filesystem::path inputDirectory; ///< absolute path to the input directory
-      std::filesystem::path outputFile;     ///< absolute path, where the output will be written to
-      AllowOverwrite allowOverwrite;        ///< Whether or not it is allowed to write the output over an existing file
+      std::optional<std::filesystem::path> outputFile; ///< absolute path, where the output will be written to or
+                                                       ///< nullopt when writing to stdout
+      AllowOverwrite allowOverwrite; ///< Whether or not it is allowed to write the output over an existing file
       ConversionConfig conversion; ///< How the DownloadDirectory to a table
     };
 
