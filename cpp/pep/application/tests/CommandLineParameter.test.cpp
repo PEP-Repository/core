@@ -1,4 +1,4 @@
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/application/tests/CommandLineParameterTestFixture.hpp>
@@ -101,7 +101,7 @@
 //  │ --legacy-port               [DEPRECATED_ALIAS]    -> to "app server start --port"    [3-26]
 //  │ --deploy-name               [DEPRECATED_ALIAS]    -> to "app deploy --name"          [3-27]
 //  │
-//  ├── user                      [NORMAL]              User management                    
+//  ├── user                      [NORMAL]              User management
 //  │     --name                  [NORMAL]              User name                          [1-1][1-6][1-11][1-16][1-21][2-1][2-2][2-4][2-7][2-11][3-1][3-2][3-3][3-4][3-5][3-11][3-12][3-13][3-14][3-15]
 //  │     --old-email             [DEPRECATED]                                             [1-2][1-12][1-17][1-22][2-2][2-3][2-5][2-8][2-12]
 //  │     --mail                  [ALIAS]               -> to "app user --email"           [1-3][1-13][1-18][1-23][2-4][2-5][2-6a][2-9][2-13][3-8][3-21]
@@ -318,7 +318,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
     transformed.set("verbose", verboseValues);
     return transformed;
   };
-  
+
   return {
     std::make_shared<UserCmd>(*this),
     std::make_shared<DatabaseCmd>(*this),
@@ -569,7 +569,7 @@ TEST(ParameterTypes, IntegerParameterTypes) {
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_EQ(cmd.getCapturedValue<int>(userCommandPath, "age"), 30);
   ASSERT_TRUE(err.empty());
-  
+
   // Test with ServerCmd
   AppCmd cmd2;
   const auto [exitCode2, err2] = ProcessWithCapturedStderr(cmd2, {"server", "start", "--workers", "4", "--port", "8080"});
@@ -755,7 +755,7 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameterForwardingToDif
 TEST(CommandParameterCombinations, AliasCommandWithForwardingDeprecatedParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-user", "--username", "user@example.com"});
-    
+
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "user@example.com");
   EXPECT_NE(err.find("Warning: '--username' is deprecated. Use --email instead."), std::string::npos);
@@ -972,7 +972,7 @@ TEST(ParameterParameterCombinations, AliasParameterWithAliasParameterToDifferent
 TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithNormalParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--name", "Bob", "--username", "alice@example.com"});
-  
+
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "alice@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");
@@ -984,7 +984,7 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithNormalPara
 TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithDeprecatedParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--old-email", "old@example.com", "--username", "new@example.com"});
-  
+
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "new@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "old-email"), "old@example.com");
@@ -1009,7 +1009,7 @@ TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithAliasParam
 TEST(ParameterParameterCombinations, ForwardingDeprecatedParameterWithForwardingDeprecatedParameter) {
   AppCmd cmd;
   const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"user", "--username", "bob@example.com", "--legacy-name", "Bob"});
-  
+
   EXPECT_EQ(exitCode, EXIT_SUCCESS);
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "email"), "bob@example.com");
   EXPECT_EQ(cmd.getCapturedValue<std::string>(userCommandPath, "name"), "Bob");

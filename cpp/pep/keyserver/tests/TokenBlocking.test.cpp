@@ -5,7 +5,7 @@
 #include <array>
 #include <chrono>
 #include <filesystem>
-#include <gmock/gmock.h>
+#include <gmock/gmock-more-matchers.h>
 #include <gtest/gtest.h>
 #include <pep/utils/Filesystem.hpp>
 #include <span>
