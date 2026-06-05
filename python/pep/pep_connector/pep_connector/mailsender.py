@@ -521,7 +521,7 @@ class MailSender(Connector):
                 # If we get here, email was sent successfully
                 break
 
-            except (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected) as e:
+            except (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected, TimeoutError) as e:
                 # Connection errors - retry with exponential backoff
                 last_exception = e
                 if attempt < email_config.max_retries:
