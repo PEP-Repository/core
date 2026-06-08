@@ -136,7 +136,7 @@ variables:
     cpp/pep/pullcastor/pepPullCastorUnitTests
 
   UNIT_TESTS_WEBLIB: >-
-    cpp/pep/weblib/pepWeblibUnitTests
+    cpp/pep/weblib/pepWebCommonUnitTests
 
   UNIT_TESTS_ALL: >-
     $UNIT_TESTS_INTEGRATION

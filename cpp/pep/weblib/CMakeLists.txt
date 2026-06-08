@@ -1,5 +1,5 @@
 # Common files
-add_library(${PROJECT_NAME}Webliblib
+add_library(${PROJECT_NAME}WebCommonlib
     Emscripten_fwd.hpp
     EmscriptenMapBinding.hpp
     EmscriptenValPtr.cpp EmscriptenValPtr.hpp
@@ -12,11 +12,11 @@ add_library(${PROJECT_NAME}Webliblib
     ThreadPrintable.cpp ThreadPrintable.hpp
     WeblibApiPromise.cpp WeblibApiPromise.hpp
 )
-target_link_libraries(${PROJECT_NAME}Webliblib
+target_link_libraries(${PROJECT_NAME}WebCommonlib
     ${PROJECT_NAME}Asynclib
     -lembind # Explicit -l for CMAKE_LINK_LIBRARIES_ONLY_TARGETS
 )
-verify_headers_standalone(${PROJECT_NAME}Webliblib)
+verify_headers_standalone(${PROJECT_NAME}WebCommonlib)
 
 # Executable
 add_executable(${PROJECT_NAME}Weblib
@@ -27,7 +27,7 @@ add_executable(${PROJECT_NAME}Weblib
 target_link_libraries(${PROJECT_NAME}Weblib
     # Make sure Embind types are registered by running all static constructors.
     # See https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html#binding-libraries
-    "$<LINK_LIBRARY:WHOLE_ARCHIVE,${PROJECT_NAME}Webliblib>"
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,${PROJECT_NAME}WebCommonlib>"
 
     ${PROJECT_NAME}Applicationlib
     ${PROJECT_NAME}Clientlib
@@ -150,9 +150,9 @@ configure_file(package.in.json package.json.tmp @ONLY)
 file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT "${CMAKE_CURRENT_BINARY_DIR}/package.json.tmp")
 
 # Unit tests
-add_unit_tests(Weblib)
+add_unit_tests(WebCommon)
 if(WITH_TESTS)
-  target_link_options(${PROJECT_NAME}WeblibUnitTests PRIVATE
+  target_link_options(${PROJECT_NAME}WebCommonUnitTests PRIVATE
       -sPROXY_TO_PTHREAD # See ./tests/PromiseHelpers.cpp
   )
 endif()
