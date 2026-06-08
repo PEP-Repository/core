@@ -82,10 +82,7 @@ export interface SubjectGroup {
   name: string;
 }
 
-export interface ParticipantPersonalia {
-  firstName: string;
-  middleName: string;
-  lastName: string;
+export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'> {
   /** Time part is ignored */
   dateOfBirth: Date;
 }
