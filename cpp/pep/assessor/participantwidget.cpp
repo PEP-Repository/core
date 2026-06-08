@@ -664,7 +664,7 @@ void ParticipantWidget::printSummary() {
 
   if (participantData.mPersonalia) {
     htmlFormattedSummary.append(QString::fromStdString("<h1>" + participantData.mPersonalia->getFullName() + "</h1>"));
-    htmlFormattedSummary.append(QString::fromStdString("<h4>" + participantData.mPersonalia->dateOfBirth + "</h4>"));
+    htmlFormattedSummary.append(QString::fromStdString("<h4>" + participantData.mPersonalia->getDateOfBirth() + "</h4>"));
   }
   if (participantData.mIsTestParticipant) {
     htmlFormattedSummary.append("<h4>" + tr("This is a test participant") + "</h4>");
@@ -842,7 +842,7 @@ void ParticipantWidget::processData() {
   if (currentPEPRole.canSeeParticipantPersonalia()) {
     if (participantData.mPersonalia) {
       ui->info1->setText(QString::fromStdString(participantData.mPersonalia->getFullName()));
-      ui->info2->setText(QString::fromStdString(participantData.mPersonalia->dateOfBirth));
+      ui->info2->setText(QString::fromStdString(participantData.mPersonalia->getDateOfBirth()));
     }
     else {
       ui->info1->setText(QString());
@@ -1440,7 +1440,7 @@ ParticipantData ParticipantDataAggregator::getData() const {
   ParticipantData participantData;
   if (mParticipantInfo) {
     auto personalia = pep::ParticipantPersonalia::FromJson(mParticipantInfo->mData);
-    if (personalia.getFullName().empty() && personalia.dateOfBirth.empty()) {
+    if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
       LOG(LOG_TAG, pep::warning) << "Received empty participant personalia";
     }
     participantData.mPersonalia = personalia;

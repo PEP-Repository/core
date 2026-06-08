@@ -74,7 +74,7 @@ void EnrollmentWidget::showRegisteredParticipant(std::shared_ptr<pep::Participan
 
   confirmUi.pepIdField->setText(participantSID);
   confirmUi.participantNameField->setText(QString::fromStdString(personalia->getFullName()));
-  confirmUi.dateOfBirthField->setText(QString::fromStdString(personalia->dateOfBirth));
+  confirmUi.dateOfBirthField->setText(QString::fromStdString(personalia->getDateOfBirth()));
 
   QObject::connect(confirmUi.copyButton, &QPushButton::clicked, [this, confirmWidget]() {
     QApplication::clipboard()->setText(participantSID);
