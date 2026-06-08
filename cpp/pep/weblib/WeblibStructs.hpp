@@ -68,4 +68,13 @@ struct CellData {
   [[nodiscard]] emscripten::val content() const;
 };
 
+struct ParticipantPersonalia {
+  std::string firstName;
+  std::string middleName;
+  std::string lastName;
+  std::string dateOfBirth;
+
+  [[nodiscard]] auto operator<=>(const ParticipantPersonalia&) const = default;
+};
+
 }

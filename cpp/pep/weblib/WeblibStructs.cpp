@@ -72,6 +72,15 @@ BINDINGS
   FIELD(name)
 BINDINGS_END
 
+#undef CUR_STRUCT
+#define CUR_STRUCT ParticipantPersonalia
+BINDINGS
+  FIELD(firstName)
+  FIELD(middleName)
+  FIELD(lastName)
+  FIELD(dateOfBirth)
+BINDINGS_END
+
 //@formatter:on
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {

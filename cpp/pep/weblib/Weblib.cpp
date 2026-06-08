@@ -396,9 +396,15 @@ public:
   }
 
   /// \returns \c Promise<string>
-  WeblibApiPromise registerParticipant(ParticipantPersonalia personalia, bool isTestParticipant) {
+  WeblibApiPromise registerParticipant(weblib::ParticipantPersonalia personalia, bool isTestParticipant) {
+    pep::ParticipantPersonalia personaliaClass{
+      std::move(personalia).firstName,
+      std::move(personalia).middleName,
+      std::move(personalia).lastName,
+      std::move(personalia).dateOfBirth,
+    };
     co_return co_await onIoThread()
-        .flat_map([personalia = std::move(personalia), isTestParticipant](const std::shared_ptr<Weblib>& self) {
+        .flat_map([personalia = std::move(personaliaClass), isTestParticipant](const std::shared_ptr<Weblib>& self) {
           return self->client_->registerParticipant(personalia, isTestParticipant);
         });
   }
@@ -424,12 +430,6 @@ EMSCRIPTEN_BINDINGS(weblib) {
   class_<Weblib::OAuthClient>("OAuthClient")
       .function("completeAuthentication", &Weblib::OAuthClient::completeAuthentication)
       .function("failAuthentication", &Weblib::OAuthClient::failAuthentication)
-  ;
-  value_object<ParticipantPersonalia>("ParticipantPersonalia")
-      .field("firstName", &ParticipantPersonalia::firstName)
-      .field("middleName", &ParticipantPersonalia::middleName)
-      .field("lastName", &ParticipantPersonalia::lastName)
-      .field("dateOfBirth", &ParticipantPersonalia::dateOfBirth)
   ;
   register_optional<EnrolledUser>();
 
