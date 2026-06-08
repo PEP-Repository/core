@@ -101,7 +101,7 @@
 //  │ --legacy-port               [DEPRECATED_ALIAS]    -> to "app server start --port"    [3-26]
 //  │ --deploy-name               [DEPRECATED_ALIAS]    -> to "app deploy --name"          [3-27]
 //  │
-//  ├── user                      [NORMAL]              User management                    
+//  ├── user                      [NORMAL]              User management
 //  │     --name                  [NORMAL]              User name                          [1-1][1-6][1-11][1-16][1-21][2-1][2-2][2-4][2-7][2-11][3-1][3-2][3-3][3-4][3-5][3-11][3-12][3-13][3-14][3-15]
 //  │     --old-email             [DEPRECATED]                                             [1-2][1-12][1-17][1-22][2-2][2-3][2-5][2-8][2-12]
 //  │     --mail                  [ALIAS]               -> to "app user --email"           [1-3][1-13][1-18][1-23][2-4][2-5][2-6a][2-9][2-13][3-8][3-21]
@@ -540,7 +540,7 @@ int StartCmd::execute() {
 
 #ifndef EXPECT_DEBUG_DEATH_IF_SUPPORTED
 # ifdef NDEBUG
-// Replacement for the internal GTEST_EXECUTE_STATEMENT_ that GTEST would call for EXPECT_DEBUG_DEATH in with NDEBUG
+// Replacement for the internal GTEST_EXECUTE_STATEMENT_ that GTEST would call for EXPECT_DEBUG_DEATH with NDEBUG
 #define PEP_GTEST_EXECUTE_STATEMENT(statement, regex_or_matcher) \
   if (true) { \
     statement; \
