@@ -62,12 +62,6 @@ enum EnrollmentScheme {
   EnrollmentV2 = 1;
 }
 
-enum FileOpenType {
-  FILE_OPEN_UNKNOWN = 0;
-  FILE_OPEN_CREATE = 1;
-  FILE_OPEN_EXISTING = 2;
-}
-
 message CurveScalar {
   bytes curve_scalar = 1;
 }
