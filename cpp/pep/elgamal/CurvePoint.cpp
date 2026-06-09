@@ -17,18 +17,18 @@ const CurvePoint BasePoint(PublicCurveScalar(CurveScalar::One()) * CurvePoint::B
 }
 
 void CurvePoint::ensureThreadSafe() const {
-  // This ensures mPacked and mUnpacked are set (ie. mState == gotBoth).
+  // This ensures mPacked and mUnpacked are set (ie. mState == State::GotBoth).
   ensurePacked();
   unpack();
 }
 
 void CurvePoint::ensurePacked() const {
-  if (mState != gotUnpacked)
+  if (mState != State::GotUnpacked)
     return;
   group_ge_pack(
       reinterpret_cast<uint8_t*>(mPacked.data()),
       &mUnpacked);
-  mState = gotBoth;
+  mState = State::GotBoth;
 }
 
 std::string_view CurvePoint::pack() const {
@@ -37,14 +37,14 @@ std::string_view CurvePoint::pack() const {
 }
 
 group_ge* CurvePoint::unpack() const {
-  if (mState == gotPacked) {
+  if (mState == State::GotPacked) {
     auto error = group_ge_unpack(
       &mUnpacked,
       reinterpret_cast<const uint8_t*>(mPacked.data()));
     if (error != 0) {
       throw std::invalid_argument("Invalid packed CurvePoint");
     }
-    mState = gotBoth;
+    mState = State::GotBoth;
   }
   return &mUnpacked;
 }
@@ -57,14 +57,14 @@ CurvePoint::CurvePoint(std::string_view packed, bool unpack) {
     packed.begin(),
     packed.begin() + static_cast<ptrdiff_t>(mPacked.size()),
     mPacked.begin());
-  mState = gotPacked;
+  mState = State::GotPacked;
 
   if (unpack) {
     this->unpack();
   }
 }
 
-CurvePoint::CurvePoint() : mState{gotBoth} {}
+CurvePoint::CurvePoint() : mState{State::GotBoth} {}
 
 CurvePoint::CurvePoint(BaseT) : CurvePoint(BasePoint) {}
 
@@ -76,7 +76,7 @@ CurvePoint::CurvePoint(BaseT) : CurvePoint(BasePoint) {}
  * \return The resulting CurvePoint.
  */
 CurvePoint CurvePoint::operator+(const CurvePoint& p) const {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_add(&r.mUnpacked, unpack(), p.unpack());
   return r;
 }
@@ -88,7 +88,7 @@ CurvePoint CurvePoint::operator+(const CurvePoint& p) const {
  * \return The resulting CurvePoint.
  */
 CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge t;
   group_ge_negate(&t, p.unpack());
   group_ge_add(&r.mUnpacked, unpack(), &t);
@@ -101,19 +101,19 @@ CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
  * \return The resulting CurvePoint.
  */
 CurvePoint CurvePoint::dbl() const {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_double(&r.mUnpacked, unpack());
   return r;
 }
 
 CurvePoint CurvePoint::mult(const CurveScalar& s) const {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_scalarmult(&r.mUnpacked, unpack(), &s.inner);
   return r;
 }
 
 CurvePoint CurvePoint::mult(const PublicCurveScalar& s) const {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_scalarmult_publicinputs(&r.mUnpacked, unpack(), &s.inner);
   return r;
 }
@@ -126,26 +126,26 @@ CurvePoint CurvePoint::mult(const PublicCurveScalar& s) const {
  * \return The derived CurvePoint.
  */
 CurvePoint CurvePoint::Hash(std::string_view s) {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_hashfromstr(&r.mUnpacked, reinterpret_cast<const unsigned char*>(s.data()), s.length());
   return r;
 }
 
 CurvePoint CurvePoint::BaseMult(const CurveScalar& s) {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_scalarmult_base(&r.mUnpacked, &s.inner);
   return r;
 }
 
 CurvePoint CurvePoint::BaseMult(const PublicCurveScalar& s) {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_scalarmult_base_publicinputs(&r.mUnpacked, &s.inner);
   return r;
 }
 
 bool CurvePoint::operator== (const CurvePoint& other) const {
-  if ((mState == gotPacked || mState == gotBoth)
-      && (other.mState == gotPacked || other.mState == gotBoth)) {
+  if ((mState == State::GotPacked || mState == State::GotBoth)
+      && (other.mState == State::GotPacked || other.mState == State::GotBoth)) {
     return mPacked == other.mPacked; //TODO why is this not constant time while isZero is?
   }
   return group_ge_equals(unpack(), other.unpack()) == 1;
@@ -156,7 +156,7 @@ std::strong_ordering CurvePoint::operator<=>(const CurvePoint& other) const {
 }
 
 bool CurvePoint::isZero() const {
-  if (mState == gotPacked || mState == gotBoth) {
+  if (mState == State::GotPacked || mState == State::GotBoth) {
     return const_time::IsZero(mPacked);
   }
   return group_ge_equals(unpack(), &group_ge_neutral) == 1;
@@ -185,13 +185,13 @@ CurvePoint::ScalarMultTable::ScalarMultTable(const CurvePoint& point) { //NOLINT
 }
 
 CurvePoint CurvePoint::ScalarMultTable::mult(const CurveScalar& s) const {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_scalarmult_table(&r.mUnpacked, &mInternal, &s.inner);
   return r;
 }
 
 CurvePoint CurvePoint::ScalarMultTable::mult(const PublicCurveScalar& s) const {
-  CurvePoint r(gotUnpacked);
+  CurvePoint r(State::GotUnpacked);
   group_ge_scalarmult_table_publicinputs(&r.mUnpacked, &mInternal, &s.inner);
   return r;
 }
