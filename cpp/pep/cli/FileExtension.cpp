@@ -631,15 +631,15 @@ public:
 
 private:
   struct ParticipantSpecification {
-    enum Kind {
-      PARTICIPANT,
-      SHORT_PSEUDONYM
+    enum class Kind {
+      Participant,
+      ShortPseudonym
     };
 
     [[nodiscard]] static std::string KindToString(Kind kind) {
       switch (kind) {
-        case PARTICIPANT: return "Participant";
-        case SHORT_PSEUDONYM: return "Short pseudonym";
+      case Kind::Participant: return "Participant";
+      case Kind::ShortPseudonym: return "Short pseudonym";
       }
       throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(pep::ToUnderlying(kind)));
     }
@@ -673,8 +673,8 @@ private:
   }
 
   rxcpp::observable<std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>>> getParticipantSpecs(std::shared_ptr<pep::CoreClient> client) {
-    return this->getParticipantSpecs(client, ParticipantSpecification::Kind::SHORT_PSEUDONYM, &MultiCellQuery::GetPpsForShortPseudonyms)
-      .concat(this->getParticipantSpecs(client, ParticipantSpecification::Kind::PARTICIPANT, &MultiCellQuery::GetPpsForParticipantSpecs))
+    return this->getParticipantSpecs(client, ParticipantSpecification::Kind::ShortPseudonym, &MultiCellQuery::GetPpsForShortPseudonyms)
+      .concat(this->getParticipantSpecs(client, ParticipantSpecification::Kind::Participant, &MultiCellQuery::GetPpsForParticipantSpecs))
       .reduce( // Join both maps into one
         std::make_shared<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>>(),
         [](std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> all, std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> some) {
