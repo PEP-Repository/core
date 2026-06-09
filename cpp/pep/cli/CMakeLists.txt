@@ -49,10 +49,6 @@ add_cli_install_executable(${PROJECT_NAME}cli ${PEPCLI_SRCS})
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
     find_package(Sparkle REQUIRED)
 
-    if(NOT SPARKLE_LIBRARY)
-        message(FATAL_ERROR "Sparkle library not found")
-    endif()
-
     # Get the directory of the Sparkle library
     get_filename_component(SPARKLE_DIR ${SPARKLE_LIBRARY} DIRECTORY)
 

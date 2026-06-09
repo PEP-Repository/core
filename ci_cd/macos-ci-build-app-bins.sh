@@ -43,6 +43,11 @@ else
 
   CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-Release}"
 
+  conan remote add pep-local-recipes \
+    "$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/local-recipes" \
+    --type local-recipes-index \
+    --force
+
   echo "Installing Conan packages."
   # Set macOS version to prevent building things for different versions
   # We set build_type for build requirements as well (with :a), because macdeployqt copies its own dylibs,

@@ -450,6 +450,11 @@ retrieve-lockfile:
       concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
     fi
   - >
+    conan remote add pep-local-recipes
+    "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
+    --type local-recipes-index
+    --force
+  - >
     conan install ./
     --lockfile=./docker-build/builder/conan/conan-ci.lock
     -s build_type=$CMAKE_BUILD_TYPE
@@ -931,6 +936,11 @@ macos-debug:
     - *checkout-docker-build-script-sh-steps
     - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
     - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
+    - >
+      conan remote add pep-local-recipes
+      "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
+      --type local-recipes-index
+      --force
     - >
       conan install .
       --lockfile="docker-build/builder/conan/conan-ci.lock"

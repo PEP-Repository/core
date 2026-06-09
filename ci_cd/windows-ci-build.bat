@@ -59,6 +59,9 @@ if exist "%BUILD_DIR%" (
 
 echo Installing Conan packages.
 
+echo Registering local Conan recipes remote.
+conan remote add pep-local-recipes "%OwnDir%..\docker-build\builder\conan\local-recipes" --type local-recipes-index --force || exit /B 1
+
 REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
 pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
