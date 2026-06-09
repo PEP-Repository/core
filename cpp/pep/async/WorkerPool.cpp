@@ -5,9 +5,13 @@
 #include <thread>
 #include <pep/utils/ThreadUtil.hpp>
 
+namespace pep {
+
+namespace {
+
 static const std::string LOG_TAG("WorkerPool");
 
-namespace pep {
+}
 
 WorkerPool::WorkerPool()
   : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {

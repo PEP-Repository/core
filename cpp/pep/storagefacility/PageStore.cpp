@@ -24,12 +24,13 @@
 #include <prometheus/gauge.h>
 #include <prometheus/registry.h>
 
-static const std::string LOG_TAG ("PageStore");
-
 namespace pep
 {
 
 namespace {
+
+  const std::string LOG_TAG("PageStore");
+
   class S3PageStore
     : public PageStore,
       public std::enable_shared_from_this<S3PageStore>

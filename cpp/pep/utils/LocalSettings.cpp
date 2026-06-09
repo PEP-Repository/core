@@ -16,7 +16,11 @@
 
 namespace pep {
 
-static const std::string LOG_TAG ("LocalSettings");
+namespace {
+
+const std::string LOG_TAG("LocalSettings");
+
+}
 
 bool LocalSettings::retrieveValue(
   std::string* lpValue,

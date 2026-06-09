@@ -7,9 +7,14 @@
 
 #include <iostream>
 
-static const std::string LOG_TAG = "WaitGroup";
 
 namespace pep {
+
+namespace {
+
+const std::string LOG_TAG = "WaitGroup";
+
+}
 
 WaitGroup::Action WaitGroup::add(const std::string& description) {
   std::lock_guard<std::mutex> lock(mLock);

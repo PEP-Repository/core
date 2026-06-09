@@ -45,7 +45,11 @@ namespace {
 
 namespace pep {
 
-static const std::string LOG_TAG ("OAuthProvider");
+namespace {
+
+const std::string LOG_TAG("OAuthProvider");
+
+}
 
 const std::string OAuthProvider::RESPONSE_TYPE_CODE = "code";
 const std::string OAuthProvider::GRANT_TYPE_AUTHORIZATION_CODE = "authorization_code";

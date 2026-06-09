@@ -17,7 +17,11 @@
 
 namespace pep {
 
-static const std::string LOG_TAG ("AuthserverBackend");
+namespace {
+
+const std::string LOG_TAG("AuthserverBackend");
+
+}
 
 AuthserverBackend::Parameters::Parameters(const Configuration& config) {
   std::filesystem::path oauthTokenSecretFile;

@@ -9,6 +9,12 @@
 #include <pep/application/Unwinder.hpp>
 #include <pep/utils/Log.hpp>
 
+namespace {
+
+const std::string LOG_TAG("Unwinder");
+
+}
+
 // TODO rename this macro and/or revise this source's logic, since libunwind and its functionality is not available/used on Windows
 #ifdef WITH_UNWINDER
 
@@ -40,8 +46,11 @@
 
 namespace pep {
 
-static std::string szCrashReportFileName;
-static const std::string LOG_TAG ("Unwinder");
+namespace {
+
+std::string szCrashReportFileName;
+
+}
 
 #ifndef _WIN32
 
@@ -682,10 +691,11 @@ void InitializeUnwinder() {
 #else
 
 namespace pep {
-  static const std::string LOG_TAG ("Unwinder");
-  void InitializeUnwinder() {
-    PEP_LOG(LOG_TAG, warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
-  }
+
+void InitializeUnwinder() {
+  PEP_LOG(LOG_TAG, warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
+}
+
 }
 
 

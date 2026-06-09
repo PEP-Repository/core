@@ -12,13 +12,12 @@
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
-static const std::string LOG_TAG ("S3Client");
-
 using namespace pep;
 using namespace pep::s3;
 
 namespace
 {
+  const std::string LOG_TAG ("S3Client");
 
   // Client::Create returns an instance of the following class.
   class ClientImp

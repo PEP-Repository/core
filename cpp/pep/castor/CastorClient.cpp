@@ -23,12 +23,12 @@
 
 using namespace std::literals;
 
-static const std::string LOG_TAG ("CastorClient");
 namespace pep {
 namespace castor {
 
 namespace {
 
+const std::string LOG_TAG("CastorClient");
 const std::string CASTOR_429_RESPONSE_MESSAGE_HEADER = "Too many requests, retry after: ";
 
 std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::optional<std::filesystem::path> caCertFilepath) {

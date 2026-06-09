@@ -23,7 +23,7 @@ using namespace pep;
 
 namespace {
 
-static const std::string LOG_TAG ("ClientTest");
+const std::string LOG_TAG("ClientTest");
 
 class ClientTestApplication : public Application {
   std::optional<severity_level> consoleLogMinimumSeverityLevel() const override {

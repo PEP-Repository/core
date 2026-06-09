@@ -24,18 +24,19 @@
 #include <unistd.h>
 #endif /*_WIN32*/
 
-static const std::string LOG_TAG("LoginWidget");
+namespace {
+
+const std::string LOG_TAG("LoginWidget");
 
 #ifdef _WIN32
-
-namespace {
 
 std::filesystem::path GetPepAppDataPath() {
   return pep::win32api::GetKnownFolderPath(pep::win32api::KnownFolder::RoamingAppData) / "PEP";
 }
 
-}
 #endif
+
+} // End anonymous namespace
 
 LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, const pep::Configuration& projectConfig, const pep::Configuration& config, const std::filesystem::path& exeDirectory)
   : QWidget(nullptr)

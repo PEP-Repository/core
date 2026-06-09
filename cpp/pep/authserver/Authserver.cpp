@@ -9,7 +9,11 @@
 
 namespace pep {
 
-static const std::string LOG_TAG ("Authserver");
+namespace {
+
+const std::string LOG_TAG ("Authserver");
+
+}
 
 Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config),

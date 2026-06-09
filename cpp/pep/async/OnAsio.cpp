@@ -7,11 +7,12 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/bind/bind.hpp>
 
-static const std::string LOG_TAG("asio_scheduler");
-
 namespace pep {
 
 namespace {
+
+const std::string LOG_TAG("asio_scheduler");
+
 struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
   boost::asio::io_context& io_context;
  private:

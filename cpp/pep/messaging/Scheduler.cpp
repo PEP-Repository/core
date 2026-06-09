@@ -4,9 +4,13 @@
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
 
-static const std::string LOG_TAG = "Messaging scheduler";
-
 namespace pep::messaging {
+
+namespace {
+
+const std::string LOG_TAG = "Messaging scheduler";
+
+}
 
 Scheduler::Batch::Batch(MessageSequence messages)
   : messages(messages) {
