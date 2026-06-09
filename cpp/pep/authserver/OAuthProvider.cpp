@@ -75,30 +75,21 @@ const std::string PepClientId = "123";
 const std::string SERVER_ERROR_DESCRIPTION = "Internal server error";
 
 const std::initializer_list<url> DefaultRedirectUris{
-  // We use `?` to indicate that the query must be empty and cannot be varied by the client,
-  // see https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.2
-  url("http://localhost:16515/?"),
+  url("http://localhost:16515/"),
   // Relative redirect URIs are not actually compliant with RFC6749,
   // see https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2,
   // but we interpret it as relative to the authserver domain
-  url("/code?"),
+  url("/code"),
 };
 
-/// Validate provided redirect_uri according to https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3
+/// Validate provided redirect_uri according to https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3.
+///
+/// We do not allow varying the query part, see https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.2
+/// and https://www.oauth.com/oauth2-servers/redirect-uris/redirect-uri-registration/#per-request.
 bool CompareRedirectUris(boost::urls::url_view providedRedirectUri, boost::urls::url_view registeredRedirectUri) {
+  // Do simple string comparison
   // See also https://www.boost.org/doc/libs/1_87_0/doc/antora/url/urls/normalization.html
-
-  if (registeredRedirectUri.has_query()) {
-    // See note in DefaultRedirectUris
-    // Do simple string comparison
-    if (registeredRedirectUri.encoded_query().empty()) {
-      return boost::urls::url(registeredRedirectUri).remove_query().buffer() == providedRedirectUri.buffer();
-    }
-    return registeredRedirectUri.buffer() == providedRedirectUri.buffer();
-  }
-
-  // We currently skip scheme-based normalization and only do syntax-based normalization, allowing variance in the query
-  return registeredRedirectUri == boost::urls::url(providedRedirectUri).remove_query();
+  return registeredRedirectUri.buffer() == providedRedirectUri.buffer();
 }
 
 HTTPResponse MakeHttpResponse(const std::string& status, const std::string& body, std::string pageType, std::map<std::string, std::string, CaseInsensitiveCompare> headers = std::map<std::string, std::string, CaseInsensitiveCompare>()) {

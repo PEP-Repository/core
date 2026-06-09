@@ -157,6 +157,7 @@ public:
   /// Helper object for OAuth authentication flow
   class OAuthClient {
     std::string redirectUri_;
+    std::string state_;
     val openAuthPage_;
 
     rxcpp::subjects::replay<AuthorizationResult, decltype(asioWorker_)::value_type> authorizationCodeChan_;
@@ -165,8 +166,8 @@ public:
     // Still called on main thread
     rxcpp::observable<AuthorizationResult> authorizationMethod(
         const std::shared_ptr<boost::asio::io_context>&,
-        const std::function<std::string(std::string redirectUri)>& getAuthorizeUri) {
-      openAuthPage_(getAuthorizeUri(redirectUri_));
+        const pep::OAuthClient::GetAuthorizeUriFn& getAuthorizeUri) {
+      openAuthPage_(getAuthorizeUri(redirectUri_, state_));
       // Would be nice to let openAuthPage return a promise,
       // but then we have to add full observable coroutine support,
       // plus val::awaiter currently only works inside val::promise_type, so callback it is
@@ -195,8 +196,9 @@ public:
     }
 
   public:
-    OAuthClient(const std::shared_ptr<Weblib>& weblib, std::string redirectUri, val openAuthPage)
+    OAuthClient(const std::shared_ptr<Weblib>& weblib, std::string redirectUri, std::string state, val openAuthPage)
       : redirectUri_(std::move(redirectUri)),
+        state_(std::move(state)),
         openAuthPage_(std::move(openAuthPage)),
         authorizationCodeChan_(*weblib->asioWorker_) {
       startRun(weblib);
@@ -221,9 +223,9 @@ public:
   };
 
   /// Start OAuth authentication flow
-  OAuthClient authenticate(std::string redirectUri, val openAuthPage) {
+  OAuthClient authenticate(std::string redirectUri, std::string state, val openAuthPage) {
     LOG(LOG_TAG, debug) << "authenticate";
-    return OAuthClient(shared_from_this(), std::move(redirectUri), std::move(openAuthPage));
+    return OAuthClient(shared_from_this(), std::move(redirectUri), std::move(state), std::move(openAuthPage));
   }
 
   WeblibApiVoidPromise authenticateWithToken(std::string token) {

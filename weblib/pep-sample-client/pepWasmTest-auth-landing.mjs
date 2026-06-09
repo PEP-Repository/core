@@ -10,7 +10,7 @@ export {}
     return;
   }
 
-  const chanName = params.get('chan');
+  const chanName = params.get('state');
   if (!chanName) {
     messageElem.textContent = 'Could not find window to log in to.';
     document.documentElement.classList.add('failure');

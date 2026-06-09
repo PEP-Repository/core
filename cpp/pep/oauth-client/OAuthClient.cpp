@@ -46,7 +46,7 @@ OAuthClient::OAuthClient(Parameters parameters)
   mCaCertFilepath = parameters.config.get<std::optional<std::filesystem::path>>("CaCertificateFile");
 }
 
-boost::urls::url OAuthClient::getAuthorizationUri() const {
+boost::urls::url OAuthClient::getAuthorizationUri(std::optional<std::string_view> state) const {
   boost::urls::url uri(mRequestUrl);
   uri.set_params({
     {"client_id", ClientId},
@@ -55,6 +55,9 @@ boost::urls::url OAuthClient::getAuthorizationUri() const {
     {"code_challenge_method", "S256"},
     {"redirect_uri", mRedirectUrl},
   });
+  if (state) {
+    uri.params().set("state", *state);
+  }
   if (mLongLived) {
     if (mValidityDuration) {
       uri.params().set("long_lived_validity", std::to_string(mValidityDuration->count()));
@@ -78,9 +81,9 @@ rxcpp::observable<AuthorizationResult> OAuthClient::run() {
 #endif
 
   mCodeVerifier = GenerateCodeVerifier();
-  return mAuthorizationMethod(mIoContext, [self = shared_from_this()](std::string redirectUri) -> std::string {
+  return mAuthorizationMethod(mIoContext, [self = shared_from_this()](std::string redirectUri, std::optional<std::string_view> state) -> std::string {
         self->mRedirectUrl = std::move(redirectUri);
-        return std::string(self->getAuthorizationUri().buffer());
+        return std::string(self->getAuthorizationUri(state).buffer());
       })
       .op(RxGetOne("AuthorizationResult"))
       .subscribe_on(observe_on_asio(*mIoContext))
@@ -93,7 +96,7 @@ rxcpp::observable<AuthorizationResult> OAuthClient::run() {
       });
 }
 
-rxcpp::observable<std::string> OAuthClient::doTokenRequest(const std::string& code) {
+rxcpp::observable<std::string> OAuthClient::doTokenRequest(std::string_view code) {
   std::string body;
   {
     boost::urls::url form;

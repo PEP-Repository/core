@@ -320,8 +320,8 @@ export default class Pep {
         });
 
         const fullLandUrl = new URL(landingPage);
-        fullLandUrl.searchParams.append('chan', authChan.name);
         oauthClient = this.#client.authenticate(fullLandUrl.href,
+            authChan.name,
             (authUrl: string) => {
               open(authUrl, '_blank', 'popup,top=100,left=100,width=600,height=900');
             });
