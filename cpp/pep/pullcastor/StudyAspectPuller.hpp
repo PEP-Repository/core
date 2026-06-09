@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/pullcastor/CastorParticipant.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/SelfRegistering.hpp>
 
 namespace pep {
@@ -43,7 +44,7 @@ protected:
 
     auto& registered = GetCreateFunctions();
     if (!registered.emplace(std::make_pair(TDerived::STUDY_TYPE, createDerived)).second) {
-      throw std::runtime_error("Duplicate registration for study aspect puller type for Castor study type " + std::to_string(TDerived::STUDY_TYPE));
+      throw std::runtime_error("Duplicate registration for study aspect puller type for Castor study type " + std::to_string(ToUnderlying(TDerived::STUDY_TYPE)));
     }
 
     return TDerived::STUDY_TYPE;

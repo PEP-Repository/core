@@ -843,7 +843,8 @@ message CastorShortPseudonymDefinition {
   repeated CastorStorageDefinition storage = 3; // optional
 }
 enum CastorStudyType {
-  STUDY = 0;
+  // LEGACY: defined as UPPERCASE constants so that protobuf can parse existing (global) configuration JSON
+  STUDY = 0; // LEGACY: this enumerator is called "Crf" in C++ code
   SURVEY = 1;
   REPEATING_DATA = 2;
 }

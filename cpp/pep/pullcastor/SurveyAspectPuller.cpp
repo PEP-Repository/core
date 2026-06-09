@@ -112,7 +112,7 @@ SurveyAspectPuller::LatestSpiPuller::LatestSpiPuller(std::shared_ptr<StudyPuller
 }
 
 SurveyAspectPuller::SurveyAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::SURVEY>(sp, aspect) {
+  : TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::Survey>(sp, aspect) {
 
   mSpis = CreateRxCache([sp]() {
     return SurveyPackageInstance::BulkRetrieve(sp->getStudy(), sp->getParticipants());

@@ -26,7 +26,7 @@ rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateC
     auto type = aspect.getStorage()->getStudyType();
     auto position = creators.find(type);
     if (position == creators.cend()) {
-      auto msg = "Unsupported study type " + std::to_string(type);
+      auto msg = "Unsupported study type " + std::to_string(ToUnderlying(type));
       PEP_PULLCASTOR_LOG(debug) << msg;
       throw std::runtime_error(msg);
     }
