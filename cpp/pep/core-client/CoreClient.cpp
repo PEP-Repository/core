@@ -197,12 +197,9 @@ void CoreClient::Builder::initialize(
   assert(io_context != nullptr && "Caller must provide an I/O context");
 
   try {
-    std::filesystem::path keysFile;
-    std::optional<std::filesystem::path> shadowPublicKeyFile;
-
     // See #1797: the keys file must be (read from and) written to the cwd
     // because the config's directory may be read-only (e.g. on Windows installations).
-    keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
+    auto keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
 
     this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
     this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
