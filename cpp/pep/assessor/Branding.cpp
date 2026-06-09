@@ -5,7 +5,7 @@
 
 namespace {
 
-const std::string LOG_TAG = "PEP Assessor branding";
+const std::string LogTag = "PEP Assessor branding";
 
 }
 
@@ -26,7 +26,7 @@ Branding Branding::Get(const pep::Configuration& configuration, const std::strin
   auto configured = configuration.get<std::optional<BrandingConfiguration>>(path);
   if (configured) {
     if (configured->projectName.empty()) {
-      PEP_LOG(LOG_TAG, pep::warning) << "Empty project name configured; using generic value";
+      PEP_LOG(LogTag, pep::warning) << "Empty project name configured; using generic value";
     }
     else {
       projectName = QString::fromStdString(configured->projectName);
@@ -37,7 +37,7 @@ Branding Branding::Get(const pep::Configuration& configuration, const std::strin
         logoPath = QString::fromStdString(configured->projectLogo.string());
       }
       else {
-        PEP_LOG(LOG_TAG, pep::warning) << "Project logo could not be found at " << configured->projectLogo << "; using PEP logo";
+        PEP_LOG(LogTag, pep::warning) << "Project logo could not be found at " << configured->projectLogo << "; using PEP logo";
       }
     }
   }

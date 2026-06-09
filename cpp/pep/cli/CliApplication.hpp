@@ -10,7 +10,7 @@
 
 namespace pep::cli {
 
-extern const std::string LOG_TAG;
+extern const std::string LogTag;
 
 class CliApplication : public pep::commandline::Utility {
 private:

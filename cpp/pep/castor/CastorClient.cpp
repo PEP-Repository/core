@@ -28,7 +28,7 @@ namespace castor {
 
 namespace {
 
-const std::string LOG_TAG("CastorClient");
+const std::string LogTag("CastorClient");
 const std::string CASTOR_429_RESPONSE_MESSAGE_HEADER = "Too many requests, retry after: ";
 
 std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::optional<std::filesystem::path> caCertFilepath) {
@@ -77,7 +77,7 @@ void CastorClient::start() {
 }
 
 void CastorClient::reauthenticate() {
-  PEP_LOG(LOG_TAG, info) << "Reauthenticating to Castor";
+  PEP_LOG(LogTag, info) << "Reauthenticating to Castor";
   authenticationSubject.get_subscriber().on_next(AuthenticationStatus(AUTHENTICATING));
   std::shared_ptr<HTTPRequest> request = makePost("/oauth/token", "grant_type=client_credentials&client_id=" + mClientId + "&client_secret=" + mClientSecret, false);
   request->setHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -93,7 +93,7 @@ void CastorClient::reauthenticate() {
           seconds{responseJson.get<seconds::rep>("expires_in")});
     })
     .on_error_resume_next([](std::exception_ptr ep){
-      PEP_LOG(LOG_TAG, error) << "Failed authenticating to Castor: " << rxcpp::rxu::what(ep);
+      PEP_LOG(LogTag, error) << "Failed authenticating to Castor: " << rxcpp::rxu::what(ep);
       return rxcpp::observable<>::just(AuthenticationStatus(ep));
     })
     .subscribe([self = SharedFrom(*this)](AuthenticationStatus status){
@@ -218,7 +218,7 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     else {
       // Just to be sure: wait 1 second longer than calculated, since message says to retry _after_ the specified time
       retryWhen += 1s;
-      PEP_LOG(LOG_TAG, info) << "Castor requests throttled until " << xml;
+      PEP_LOG(LogTag, info) << "Castor requests throttled until " << xml;
 
       // We need to use a duration instead of a time_point as Rx wants a steady_clock time
       wait = rxcpp::observable<>::timer(retryWhen - TimeNow())
@@ -257,7 +257,7 @@ rxcpp::observable<JsonPtr> CastorClient::sendCastorRequest(std::shared_ptr<HTTPR
       std::rethrow_exception(ep);
     }
     catch(CastorException &ex) {
-      PEP_LOG(LOG_TAG, debug) << "Castor Error. Retrying once. Error message: " << ex.what();
+      PEP_LOG(LogTag, debug) << "Castor Error. Retrying once. Error message: " << ex.what();
       return self->sendRequest(request).concat_map(parseResponseLambda);
     }
   });

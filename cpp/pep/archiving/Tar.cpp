@@ -13,7 +13,7 @@ using namespace pep;
 
 namespace {
 
-const std::string LOG_TAG ("Tar");
+const std::string LogTag ("Tar");
 
 const size_t RETRIES = 3;
 
@@ -60,7 +60,7 @@ archive_entry* readNextHeader(archive* archive) {
   archive_entry* entry{};
   int result = archive_read_next_header(archive, &entry);
   for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    PEP_LOG(LOG_TAG, warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+    PEP_LOG(LogTag, warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
     result = archive_read_next_header(archive, &entry);
   }
   std::ostringstream oss;
@@ -69,7 +69,7 @@ archive_entry* readNextHeader(archive* archive) {
       oss << "Error while reading tar entry header. Too many retries for error: " << archive_errno(archive) << " - " << archive_error_string(archive);
       throw std::runtime_error(oss.str());
     case ARCHIVE_WARN:
-      PEP_LOG(LOG_TAG, warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+      PEP_LOG(LogTag, warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
       return entry;
     case ARCHIVE_FATAL:
       oss << "Error while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
@@ -91,7 +91,7 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
 
   int result = archive_read_data_block(archive, &buff, &len, &offset);
   for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    PEP_LOG(LOG_TAG, warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+    PEP_LOG(LogTag, warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
     result = archive_read_data_block(archive, &buff, &len, &offset);
   }
   std::ostringstream oss;
@@ -100,7 +100,7 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
       oss << "Error while reading tar entry header. Too many retries for error: " << archive_errno(archive) << " - " << archive_error_string(archive);
       throw std::runtime_error(oss.str());
     case ARCHIVE_WARN:
-      PEP_LOG(LOG_TAG, warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+      PEP_LOG(LogTag, warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
       break;
     case ARCHIVE_FATAL:
       oss << "Error while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
@@ -154,11 +154,11 @@ void Tar::nextEntry(const std::filesystem::path& path, int64_t size) {
   archive_entry_set_perm(entry, 0644);
   int result = archive_write_header(mArchive, entry);
   for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    PEP_LOG(LOG_TAG, warning) << "Retry " << retry << " of " << RETRIES << " after warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+    PEP_LOG(LogTag, warning) << "Retry " << retry << " of " << RETRIES << " after warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
     result = archive_write_header(mArchive, entry);
   }
   if(result == ARCHIVE_WARN) {
-      PEP_LOG(LOG_TAG, warning) << "Warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+      PEP_LOG(LogTag, warning) << "Warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
   }
   else if(result == ARCHIVE_RETRY) {
       std::ostringstream oss;

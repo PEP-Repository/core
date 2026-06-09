@@ -33,7 +33,7 @@
 using namespace pep::cli;
 namespace pt = boost::property_tree;
 
-using pep::cli::LOG_TAG;
+using pep::cli::LogTag;
 
 namespace {
 
@@ -296,7 +296,7 @@ private:
               std::filesystem::remove(entry.path);
             }
             catch (std::exception& e) {
-              PEP_LOG(LOG_TAG, pep::warning) << "Could not remove temporary file \"" << entry.path.string() << "\": " << e.what();
+              PEP_LOG(LogTag, pep::warning) << "Could not remove temporary file \"" << entry.path.string() << "\": " << e.what();
             }
           }
         }));

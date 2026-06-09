@@ -47,7 +47,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("OAuthProvider");
+const std::string LogTag("OAuthProvider");
 
 }
 
@@ -85,7 +85,7 @@ HTTPResponse MakeErrorTextHttpResponse(const std::string& status, const std::str
   if (!body.empty()) {
     beforeBody = ": \n";
   }
-  PEP_LOG(LOG_TAG, error) << "Returning error HTTP response with status " << status
+  PEP_LOG(LogTag, error) << "Returning error HTTP response with status " << status
     << beforeBody
     << body;
   return MakeHttpResponse(status, body, "text/plain");
@@ -99,7 +99,7 @@ HTTPResponse MakeErrorJsonHttpResponse(const std::string& error, const std::stri
   }
   std::ostringstream oss;
   boost::property_tree::write_json(oss, responseData);
-  PEP_LOG(LOG_TAG, pep::warning) << "Returning error HTTP response with status 400 Bad Request";
+  PEP_LOG(LogTag, pep::warning) << "Returning error HTTP response with status 400 Bad Request";
   std::string status = "400 Bad Request";
   if(error == OAuthProvider::ERROR_SERVER_ERROR) {
     status = "500 Internal Server Error";
@@ -112,7 +112,7 @@ HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const 
   redirectUri.params().set("error", error);
   assert(!description.empty());
   redirectUri.params().set("error_description", description);
-  PEP_LOG(LOG_TAG, pep::info) << "Returning error HTTP response with status 302 Found";
+  PEP_LOG(LogTag, pep::info) << "Returning error HTTP response with status 302 Found";
   return MakeHttpResponse("302 Found", "", "text/plain", {{"Location", std::string(redirectUri.buffer())}});
 }
 
@@ -127,7 +127,7 @@ OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HttpsCertificateFile");
   }
   catch (std::exception& e) {
-    PEP_LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, critical) << "Error with configuration file: " << e.what();
     throw;
   }
 #ifndef ENABLE_OAUTH_TEST_USERS
@@ -139,7 +139,7 @@ OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     boost::trim(spoofKey);
   }
   catch (std::exception& e) {
-    PEP_LOG(LOG_TAG, critical) << "Error while reading spoofkey file: " << e.what();
+    PEP_LOG(LogTag, critical) << "Error while reading spoofkey file: " << e.what();
     throw;
   }
 #endif
@@ -196,12 +196,12 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
               .observe_on(observe_on_asio(*io_context)) //We want to run the cleaning up code on the io thread, so we don't have to worry about multithreading issues
               .subscribe([this](auto) {
-    PEP_LOG(LOG_TAG, debug) << "Cleaning up expired grants";
+    PEP_LOG(LogTag, debug) << "Cleaning up expired grants";
 
     auto now = std::chrono::steady_clock::now();
     for(auto it = activeGrants.begin(); it != activeGrants.end(); /* updated inside loop */) {
       if(now - it->second.createdAt > this->activeGrantExpiration) {
-        PEP_LOG(LOG_TAG, debug) << "Removed expired grant";
+        PEP_LOG(LogTag, debug) << "Removed expired grant";
         it = activeGrants.erase(it);
       }
       else {
@@ -240,7 +240,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   const auto& params = request.uri().params();
 
 #ifdef ENABLE_OAUTH_TEST_USERS
-  PEP_LOG(LOG_TAG, pep::critical) << "OAuth test users enabled. This must not happen in production!";
+  PEP_LOG(LogTag, pep::critical) << "OAuth test users enabled. This must not happen in production!";
 
   auto primaryUidIt = params.find("primary_uid"),
       humanReadableUidIt = params.find("human_readable_uid");
@@ -273,24 +273,24 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   }
 #else
   if(!request.hasHeader(SPOOF_CHECK_HEADER) || !const_time::IsEqual(request.header(SPOOF_CHECK_HEADER), spoofKey)) {
-    PEP_LOG(LOG_TAG, critical) << "Spoofkey was not correctly set on the request. Looks like someone has direct access to the authserver, without being authenticated first. Remote IP: " << remoteIp;
+    PEP_LOG(LogTag, critical) << "Spoofkey was not correctly set on the request. Looks like someone has direct access to the authserver, without being authenticated first. Remote IP: " << remoteIp;
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
   for(auto& header : {PRIMARY_UID_HEADER, HUMAN_READABLE_UID_HEADER, ALTERNATIVE_UIDS_HEADER})
     if(!request.hasHeader(header)) {
-      PEP_LOG(LOG_TAG, error) << "No user header '" << header << "' received. Apache/Shibboleth is misconfigured.";
+      PEP_LOG(LogTag, error) << "No user header '" << header << "' received. Apache/Shibboleth is misconfigured.";
       return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
     }
 
   std::string primaryUid = request.header(PRIMARY_UID_HEADER);
   if (primaryUid.empty()) {
-    PEP_LOG(LOG_TAG, error) << "Empty user header '" << PRIMARY_UID_HEADER << "' received. Apache/Shibboleth is misconfigured.";
+    PEP_LOG(LogTag, error) << "Empty user header '" << PRIMARY_UID_HEADER << "' received. Apache/Shibboleth is misconfigured.";
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
 
   std::string humanReadableUid = request.header(HUMAN_READABLE_UID_HEADER);
   if (humanReadableUid.empty()) {
-    PEP_LOG(LOG_TAG, error) << "Empty user header '" << HUMAN_READABLE_UID_HEADER << "' received. Apache/Shibboleth is misconfigured.";
+    PEP_LOG(LogTag, error) << "Empty user header '" << HUMAN_READABLE_UID_HEADER << "' received. Apache/Shibboleth is misconfigured.";
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
 
@@ -357,7 +357,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     }
   }
   catch (std::exception& e) {
-    PEP_LOG(LOG_TAG, error) << "Unexpected error: " << e.what();
+    PEP_LOG(LogTag, error) << "Unexpected error: " << e.what();
     return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
   }
 
@@ -378,7 +378,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
         const auto& selectedGroup = groupQuery->second;
         auto foundGroup = std::ranges::find_if(*groups, [&selectedGroup](const UserGroup& group){ return group.mName == selectedGroup; });
         if(foundGroup == groups->end()) {
-          PEP_LOG(LOG_TAG, warning) << "Trying to login with group '" << selectedGroup << "', but user is not a member of that group.";
+          PEP_LOG(LogTag, warning) << "Trying to login with group '" << selectedGroup << "', but user is not a member of that group.";
           return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "User is not a member of selected group");
         }
         group = *foundGroup;
@@ -425,7 +425,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     } catch (const Error& e) {
       return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, e.what()));
     } catch(const std::exception& e) {
-      PEP_LOG(LOG_TAG, error) << "Unexpected error: " << e.what();
+      PEP_LOG(LogTag, error) << "Unexpected error: " << e.what();
       return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
     }
   });

@@ -214,7 +214,7 @@ protected:
 
       auto value = values.getOptional<std::string>("value");
       if (!value) {
-        PEP_LOG(LOG_TAG, info) << "Reading value from stdin (use --value to specify in command instead)";
+        PEP_LOG(LogTag, info) << "Reading value from stdin (use --value to specify in command instead)";
 
         auto setStdinBinary = SetBinaryFileMode::ForStdin();
         std::ostringstream ss;

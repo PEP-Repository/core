@@ -20,7 +20,7 @@ using namespace std::chrono;
 
 namespace pep::cli {
 
-const std::string LOG_TAG = "Cli";
+const std::string LogTag = "Cli";
 
 std::optional<pep::severity_level> CliApplication::consoleLogMinimumSeverityLevel() const {
   return pep::severity_level::info;
@@ -81,7 +81,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
   // ----- Situation 1: OAuth token provided on command line -----
   token = this->getTokenParameter();
   if (token != std::nullopt) {
-    PEP_LOG(LOG_TAG, pep::info) << "Enrolling using provided OAuth token" << std::endl;
+    PEP_LOG(LogTag, pep::info) << "Enrolling using provided OAuth token" << std::endl;
     enroll = true;
     if (!token->verify(mRequiredSubject, mRequiredGroup)) {
       if (mRequiredSubject && mRequiredGroup)
@@ -100,15 +100,15 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
       auto enrolledSubject = client->getEnrolledUser();
 
       if (mRequiredGroup && (enrolledGroup != *mRequiredGroup)) {
-        PEP_LOG(LOG_TAG, pep::info) << "Enrolled for wrong group (" << enrolledGroup << ")" << std::endl;
+        PEP_LOG(LogTag, pep::info) << "Enrolled for wrong group (" << enrolledGroup << ")" << std::endl;
         enroll = true;
       }
       if (mRequiredSubject && (enrolledSubject != *mRequiredSubject)) {
-        PEP_LOG(LOG_TAG, pep::info) << "Enrolled as wrong user (" << enrolledSubject << ")" << std::endl;
+        PEP_LOG(LogTag, pep::info) << "Enrolled as wrong user (" << enrolledSubject << ")" << std::endl;
         enroll = true;
       }
     } else if (enroll) {
-      PEP_LOG(LOG_TAG, pep::info) << "Not enrolled or certificate expired." << std::endl;
+      PEP_LOG(LogTag, pep::info) << "Not enrolled or certificate expired." << std::endl;
     }
   }
 
@@ -121,12 +121,12 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
     // ----- Situation 4: cached token -----
     if (!token) {
       if (std::filesystem::exists(tokenPath)) {
-        PEP_LOG(LOG_TAG, pep::info)
+        PEP_LOG(LogTag, pep::info)
           << "Cached token found in \""
           << std::filesystem::canonical(tokenPath).string() << '"' << std::endl;
         token = pep::OAuthToken::ReadJson(tokenPath);
         if (!token->verify(mRequiredSubject, mRequiredGroup)) {
-          PEP_LOG(LOG_TAG, pep::info) << "Not using cached token because it did not pass verification";
+          PEP_LOG(LogTag, pep::info) << "Not using cached token because it did not pass verification";
           token = std::nullopt;
         }
       }
@@ -139,7 +139,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
         const auto now = TimeNow<sys_seconds>();
         const seconds oauthTokenDuration{parameterValues.get<seconds::rep>("oauth-token-duration")};
 
-        PEP_LOG(LOG_TAG, pep::info) << " generated new token using oauth token secret" << std::endl;
+        PEP_LOG(LogTag, pep::info) << " generated new token using oauth token secret" << std::endl;
         token = pep::OAuthToken::Generate(
           *tokenSecret,
           cmdlineSubject,
@@ -163,7 +163,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
     result = client->enrollUser(
       token->getSerializedForm()
     ).map([](const EnrolledPartyKeys&) {
-      PEP_LOG(LOG_TAG, pep::info) << " completed enrollment!" << std::endl;
+      PEP_LOG(LogTag, pep::info) << " completed enrollment!" << std::endl;
       return pep::FakeVoid();
       });
   }
@@ -222,14 +222,14 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
       return;
 
     if (exception != nullptr) {
-      PEP_LOG(LOG_TAG, severity) << "error: " << pep::GetExceptionMessage(exception) << std::endl;
+      PEP_LOG(LogTag, severity) << "error: " << pep::GetExceptionMessage(exception) << std::endl;
     }
 
     mClient->shutdown().subscribe(
       [](pep::FakeVoid) {},
       [this](std::exception_ptr ep) {
         mClient->getIoContext()->stop();
-        PEP_LOG(LOG_TAG, pep::error) << "Unexpected problem shutting down SSL streams: " + pep::GetExceptionMessage(ep) << " | Forcefully shutting down.";
+        PEP_LOG(LogTag, pep::error) << "Unexpected problem shutting down SSL streams: " + pep::GetExceptionMessage(ep) << " | Forcefully shutting down.";
       },
       [] {});
     };
@@ -273,7 +273,7 @@ std::optional<std::string> CliApplication::getTokenSecret() const {
   pep::Configuration root = pep::Configuration::FromFile(tokenSecret);
   std::string secret = boost::algorithm::unhex(root.get<std::string>("OAuthTokenSecret"));
 
-  PEP_LOG(LOG_TAG, pep::info)
+  PEP_LOG(LogTag, pep::info)
     << " found oauth token secret in "
     << std::filesystem::canonical(tokenSecret).string() << std::endl;
 

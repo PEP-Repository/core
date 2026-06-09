@@ -35,7 +35,7 @@ namespace {
 const std::vector<std::string> emptyVector{}; // Used as a default for optional vectors.
 using namespace sqlite_orm;
 
-const std::string LOG_TAG("AccessManager::Backend::Storage");
+const std::string LogTag("AccessManager::Backend::Storage");
 
 using id_pair_set = std::unordered_set<std::pair<int64_t, int64_t>,
   boost::hash<std::pair<int64_t, int64_t>>>;
@@ -246,7 +246,7 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   if (mImplementor->raw.count<ColumnGroupRecord>(limit(1)) != 0)
     return;
 
-  PEP_LOG(LOG_TAG, warning) << "Database seems uninitialized.  Initializing ...";
+  PEP_LOG(LogTag, warning) << "Database seems uninitialized.  Initializing ...";
 
   // Column groups
   mImplementor->raw.insert(ColumnGroupRecord("*"));
@@ -349,18 +349,18 @@ void AccessManager::Backend::Storage::ensureInitialized() {
 #endif //ENABLE_OAUTH_TEST_USERS
 
 
-  PEP_LOG(LOG_TAG, info) << "  ... done";
+  PEP_LOG(LogTag, info) << "  ... done";
 }
 
 std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
-  PEP_LOG(LOG_TAG, info) << "Checking whether to create/remove columns ...";
+  PEP_LOG(LogTag, info) << "Checking whether to create/remove columns ...";
   std::set<std::string> allColumns;
   for (auto& col : this->getColumns(TimeNow())) {
     allColumns.insert(col.name);
   }
   auto ensureColumnExists = [implementor = mImplementor, &allColumns](const std::string& column) {
     if (allColumns.count(column) == 0) {
-      PEP_LOG(LOG_TAG, warning) << "  adding column " << column;
+      PEP_LOG(LogTag, warning) << "  adding column " << column;
       allColumns.insert(column);
       implementor->raw.insert(ColumnRecord(column));
     }
@@ -409,7 +409,7 @@ void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& a
     const std::string &name = colSpec.getColumn();
     if (allColumns.find(name) == allColumns.end()) {
       // Just warn, the column may be created later
-      PEP_LOG(LOG_TAG, warning) << "Column " << Logging::Escape(name) << " mentioned in column_specifications does not exist";
+      PEP_LOG(LogTag, warning) << "Column " << Logging::Escape(name) << " mentioned in column_specifications does not exist";
     }
     // Associated short pseudonym column is already checked in GlobalConfiguration::GlobalConfiguration,
     // and was created above
@@ -417,11 +417,11 @@ void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& a
 }
 
 void AccessManager::Backend::Storage::ensureUpToDate() {
-  PEP_LOG(LOG_TAG, info) << "Checking whether to remove participant-group-access-rules ...";
+  PEP_LOG(LogTag, info) << "Checking whether to remove participant-group-access-rules ...";
   // Remove explicit PGARs for Data Administrator: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1923#note_22224
   auto pgars = getParticipantGroupAccessRules(TimeNow(), {.userGroups = std::vector<std::string>{UserGroup::DataAdministrator}});
   for (const auto& pgar : pgars) {
-    PEP_LOG(LOG_TAG, info) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup);
+    PEP_LOG(LogTag, info) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup);
     this->removeParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);
   }
 
@@ -430,7 +430,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
    * Therefore, we now use CurvePoint::packString. This method updates existing entries from the old serialization to the new.
    * See issue #1212
    */
-  PEP_LOG(LOG_TAG, info) << "Checking whether the serialization of local pseudonyms is up to date";
+  PEP_LOG(LogTag, info) << "Checking whether the serialization of local pseudonyms is up to date";
   auto selectStarPseudonymRecordCountTotal = mImplementor->raw.count<SelectStarPseudonymRecord>();
   auto selectStarPseudonymRecordCountOldFormat = mImplementor->raw.count<SelectStarPseudonymRecord>(where(length(&SelectStarPseudonymRecord::localPseudonym) > CurvePoint::PACKEDBYTES &&
       length(&SelectStarPseudonymRecord::polymorphicPseudonym) > ElgamalEncryption::PACKEDBYTES));
@@ -438,7 +438,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
   auto participantGroupParticipantRecordCountOldFormat = mImplementor->raw.count<ParticipantGroupParticipantRecord>(where(length(&ParticipantGroupParticipantRecord::localPseudonym) > CurvePoint::PACKEDBYTES));
 
   if (selectStarPseudonymRecordCountOldFormat == 0 && participantGroupParticipantRecordCountOldFormat == 0) {
-    PEP_LOG(LOG_TAG, info) << "everything up to date";
+    PEP_LOG(LogTag, info) << "everything up to date";
   }
   else if (selectStarPseudonymRecordCountTotal != selectStarPseudonymRecordCountOldFormat) {
     throw std::runtime_error("Some selectStarPseudonymRecords appear to be updated, but some are in the old format. This should not happen! Either all are updated, or all still need to be updated. "
@@ -457,7 +457,7 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
         + backupPath.string() + " already exists. An upgrade was apparently already attempted, but failed. Manual correction is required.");
     }
     std::filesystem::copy_file(this->mStoragePath, backupPath);
-    PEP_LOG(LOG_TAG, info) << "Backed up storage to \"" << backupPath.string() << "\". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
+    PEP_LOG(LogTag, info) << "Backed up storage to \"" << backupPath.string() << "\". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
     auto transactionGuard = mImplementor->raw.transaction_guard();
     for (auto record : mImplementor->raw.iterate<SelectStarPseudonymRecord>()) {
       CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(SpanToString(record.localPseudonym));
@@ -473,13 +473,13 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
       mImplementor->raw.update(record);
     }
     transactionGuard.commit();
-    PEP_LOG(LOG_TAG, info) << "all records have been updated";
+    PEP_LOG(LogTag, info) << "all records have been updated";
   }
 
   //DisplayIds and PrimaryIds where introduced at the same time. So if there are primaryIds already in the DB, we can also assume that the upgrade already happened before.
   //Furthermore, because we check that there are no primaryIds, in the auto-assignment we don't have to worry about whether identifiers are primaryIds or not.
   if (mImplementor->raw.count(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)) == 0) {
-    PEP_LOG(LOG_TAG, info) << "There are no displayIds in the database yet. Auto-assigning...";
+    PEP_LOG(LogTag, info) << "There are no displayIds in the database yet. Auto-assigning...";
     size_t countAssigned = 0;
     size_t countUnassigned = 0;
     auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
@@ -500,9 +500,9 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
       }
     }
     displayIdTransactionGuard.commit();
-    PEP_LOG(LOG_TAG, info) << "A displayId has been assigned to " << countAssigned << " records.";
+    PEP_LOG(LogTag, info) << "A displayId has been assigned to " << countAssigned << " records.";
     if (countUnassigned > 0) {
-      PEP_LOG(LOG_TAG, warning) << "No displayId could be automatically assigned to " << countUnassigned << " records";
+      PEP_LOG(LogTag, warning) << "No displayId could be automatically assigned to " << countUnassigned << " records";
     }
   }
 }
@@ -513,25 +513,25 @@ void AccessManager::Backend::Storage::removeOrphanedRecords() {
   auto cgars = getColumnGroupAccessRules(now);
   for (auto& cgar : cgars) {
     if (hasColumnGroup(cgar.columnGroup) == false) {
-      PEP_LOG(LOG_TAG, warning) << "Removing " << Logging::Escape(cgar.mode) << " access to " << Logging::Escape(cgar.columnGroup) << " column-group for role " << Logging::Escape(cgar.userGroup)<< ", as the column-group is removed.";
+      PEP_LOG(LogTag, warning) << "Removing " << Logging::Escape(cgar.mode) << " access to " << Logging::Escape(cgar.columnGroup) << " column-group for role " << Logging::Escape(cgar.userGroup)<< ", as the column-group is removed.";
       removeColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);
     }
   }
   auto pgars = getParticipantGroupAccessRules(now);
   for (auto& pgar : pgars) {
     if (hasParticipantGroup(pgar.participantGroup) == false) {
-      PEP_LOG(LOG_TAG, warning) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup) << ", as the participant-group is removed.";
+      PEP_LOG(LogTag, warning) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup) << ", as the participant-group is removed.";
       removeParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);
     }
   }
   auto cgcs = getColumnGroupColumns(now);
   for (auto& cgc : cgcs) {
     if (hasColumnGroup(cgc.columnGroup) == false) {
-      PEP_LOG(LOG_TAG, warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column-group is removed.";
+      PEP_LOG(LogTag, warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column-group is removed.";
       removeColumnFromGroup(cgc.column, cgc.columnGroup);
     }
     else if (hasColumn(cgc.column) == false) {
-      PEP_LOG(LOG_TAG, warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column is removed.";
+      PEP_LOG(LogTag, warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column is removed.";
       removeColumnFromGroup(cgc.column, cgc.columnGroup);
     }
   }
@@ -557,12 +557,12 @@ void AccessManager::Backend::Storage::syncColumnGroupContents(const std::string&
   std::set<std::string> strayColumns;
   set_difference(groupColumns, requiredColumns, std::inserter(strayColumns, strayColumns.begin()));
   for (auto& column : strayColumns) {
-    PEP_LOG(LOG_TAG, warning) << "  removing column "
+    PEP_LOG(LogTag, warning) << "  removing column "
       << column << " from column-group " << columnGroup;
     mImplementor->raw.insert(ColumnGroupColumnRecord(column, columnGroup, true));
   }
   for (auto& column : missingColumns) {
-    PEP_LOG(LOG_TAG, warning) << "  adding column " << column << " to column-group " << columnGroup;
+    PEP_LOG(LogTag, warning) << "  adding column " << column << " to column-group " << columnGroup;
     mImplementor->raw.insert(ColumnGroupColumnRecord(column, columnGroup));
   }
 }
@@ -584,7 +584,7 @@ AccessManager::Backend::Storage::Storage( const std::filesystem::path& path, std
   //   - are all times in the past
 
   // Cache select(*) pseudonym list
-  PEP_LOG(LOG_TAG, info) << "Caching SELECT(*) pseudonym list ...";
+  PEP_LOG(LogTag, info) << "Caching SELECT(*) pseudonym list ...";
   for (const auto& record : mImplementor->raw.iterate<SelectStarPseudonymRecord>())
     mLpToPpMap.emplace(
       record.getLocalPseudonym(),
@@ -592,7 +592,7 @@ AccessManager::Backend::Storage::Storage( const std::filesystem::path& path, std
     );
 
   removeOrphanedRecords();
-  PEP_LOG(LOG_TAG, info) << "Ready to accept requests!";
+  PEP_LOG(LogTag, info) << "Ready to accept requests!";
 }
 
 namespace { // TODO: move together with other anonymously-scoped code (at top of source)

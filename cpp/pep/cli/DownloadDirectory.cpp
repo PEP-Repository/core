@@ -26,7 +26,7 @@ using namespace pep::cli;
 
 namespace {
 
-const std::string LOG_TAG = "Download Data";
+const std::string LogTag = "Download Data";
 const std::string SPECIFICATION_FILENAME = DownloadMetadata::GetFilenamePrefix() + "specification" + DownloadMetadata::GetFilenameExtension();
 
 std::filesystem::path ValidateDirectory(const std::filesystem::path& raw) {
@@ -411,7 +411,7 @@ DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<Down
 
 DownloadDirectory::RecordStorageStream::~RecordStorageStream() noexcept {
   if (mRaw) {
-    PEP_LOG(LOG_TAG, error) << "Error destructing RecordStorageStream: uncommitted record at \"" + mPath.string() << '"'; // TODO: improve
+    PEP_LOG(LogTag, error) << "Error destructing RecordStorageStream: uncommitted record at \"" + mPath.string() << '"'; // TODO: improve
   }
 }
 
@@ -509,7 +509,7 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
     mDestination->setStoredDataHash(mDescriptor, path, mFileName, hash);
   }
   catch (...) {
-    PEP_LOG(LOG_TAG, error) << "Could not write stored data hash for record at \"" << mPath.string() << "\": " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, error) << "Could not write stored data hash for record at \"" << mPath.string() << "\": " << GetExceptionMessage(std::current_exception());
     throw;
   }
 }

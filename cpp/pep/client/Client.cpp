@@ -20,7 +20,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("Client");
+const std::string LogTag("Client");
 
 }
 
@@ -131,7 +131,7 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
                         {"ParticipantIdentifier"}) // columns
       .flat_map([this, identifier, pp](std::vector<std::shared_ptr<EnumerateResult>> result) -> rxcpp::observable<DataStorageResult2> {
         if (!result.empty()) {
-          PEP_LOG(LOG_TAG, info) << "Participant identifier already present in PEP";
+          PEP_LOG(LogTag, info) << "Participant identifier already present in PEP";
           // We do not store the participant ID again, but continue with the storage of other stuff in case this failed
           // before
           return rxcpp::observable<>::from(DataStorageResult2());
@@ -147,16 +147,16 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 }
 
 rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
-  PEP_LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
+  PEP_LOG(LogTag, debug) << "Sending RegistrationRequest...";
   return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
 }
 
 rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauthToken) {
 
-  PEP_LOG(LOG_TAG, debug) << "Generating key pair";
+  PEP_LOG(LogTag, debug) << "Generating key pair";
   AsymmetricKeyPair keyPair = AsymmetricKeyPair::GenerateKeyPair();
-  PEP_LOG(LOG_TAG, debug) << "Key pair generated";
-  PEP_LOG(LOG_TAG, debug) << "Generating CSR";
+  PEP_LOG(LogTag, debug) << "Key pair generated";
+  PEP_LOG(LogTag, debug) << "Generating CSR";
 
   // Parse OAuth token
   auto token = OAuthToken::Parse(oauthToken);
@@ -164,12 +164,12 @@ rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauth
   // Generate CSR
   X509CertificateSigningRequest csr(keyPair, token.getSubject(), token.getGroup());
 
-  PEP_LOG(LOG_TAG, debug) << "Generated CSR for CN=" << csr.getCommonName().value_or("") << " and OU=" << csr.getOrganizationalUnit().value_or("");
+  PEP_LOG(LogTag, debug) << "Generated CSR for CN=" << csr.getCommonName().value_or("") << " and OU=" << csr.getOrganizationalUnit().value_or("");
 
   auto privateKey = std::make_shared<AsymmetricKey>(keyPair.getPrivateKey());
 
   EnrollmentRequest request(csr, oauthToken);
-  PEP_LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
+  PEP_LOG(LogTag, debug) << "Sending EnrollmentRequest...";
   return getKeyServerProxy(true)->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
     auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain));

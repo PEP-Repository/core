@@ -8,7 +8,7 @@ namespace pep::messaging {
 
 namespace {
 
-const std::string LOG_TAG = "Messaging scheduler";
+const std::string LogTag = "Messaging scheduler";
 
 }
 
@@ -176,7 +176,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           }
         }
         else {
-          PEP_LOG(LOG_TAG, debug) << "Sending error flag to server";
+          PEP_LOG(LogTag, debug) << "Sending error flag to server";
         }
 
         self->onError.notify(messageId, std::move(e));

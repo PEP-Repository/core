@@ -20,7 +20,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.Data.Read");
+const std::string LogTag("CoreClient.Data.Read");
 
 template <typename TTicketItem, typename TSpecifiedItem>
 void FillHistoryRequestIndices(const SignedTicket2& ticket,
@@ -67,7 +67,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
 }
 
 rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(std::shared_ptr<SignedTicket2> ticket) {
-  PEP_LOG(LOG_TAG, debug) << "enumerateData";
+  PEP_LOG(LogTag, debug) << "enumerateData";
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
   auto enumRequest = std::make_shared<DataEnumerationRequest2>();
@@ -80,7 +80,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
 
 rxcpp::observable<rxcpp::observable<std::shared_ptr<EnumerateResult>>>
 CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<SignedTicket2> ticket) {
-  PEP_LOG(LOG_TAG, debug) << "enumerateDataByIds";
+  PEP_LOG(LogTag, debug) << "enumerateDataByIds";
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
 
@@ -151,7 +151,7 @@ rxcpp::observable<rxcpp::observable<RetrievePage>>
 CoreClient::retrieveData(
   const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
   std::shared_ptr<SignedTicket2> ticket) {
-  PEP_LOG(LOG_TAG, debug) << "retrieveData";
+  PEP_LOG(LogTag, debug) << "retrieveData";
 
   using namespace std::ranges;
   return batchedSubjects
@@ -247,7 +247,7 @@ rxcpp::observable<std::vector<HistoryResult>>
 CoreClient::getHistory2(SignedTicket2 ticket,
   const std::optional<std::vector<PolymorphicPseudonym>>& pps,
   const std::optional<std::vector<std::string>>& columns) {
-  PEP_LOG(LOG_TAG, debug) << "getHistory";
+  PEP_LOG(LogTag, debug) << "getHistory";
 
   auto openedTicket = ticket.openWithoutCheckingSignature();
 

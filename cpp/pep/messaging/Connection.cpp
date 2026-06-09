@@ -16,7 +16,7 @@ namespace pep::messaging {
 
 namespace {
 
-const std::string LOG_TAG = "Messaging connection";
+const std::string LogTag = "Messaging connection";
 
 class RequestRefusedException : public Error {
 public:
@@ -27,7 +27,7 @@ public:
 
 void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& result) {
   if (!this->prepareBodyTransfer(result)) {
-    PEP_LOG(LOG_TAG, severity_level::verbose)
+    PEP_LOG(LogTag, severity_level::verbose)
       << " \\__ error! " << error << ", that is, " << GetExceptionMessage(result.exception());
     return;
   }
@@ -38,14 +38,14 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
     auto length = header.length();
 
     if (length > MAX_SIZE_OF_MESSAGE) {
-      PEP_LOG(LOG_TAG, severity_level::warning)
+      PEP_LOG(LogTag, severity_level::warning)
         << "Connection::handleHeaderReceived: "
         << "refusing " << length << "-byte message from " << describe()
         << " because it's larger than the maximum of " << MAX_SIZE_OF_MESSAGE << " bytes";
       return this->handleError(std::make_exception_ptr(boost::system::system_error(boost::asio::error::message_size)));
     }
 
-    PEP_LOG(LOG_TAG, severity_level::verbose)
+    PEP_LOG(LogTag, severity_level::verbose)
       << "Connection::handleHeaderReceived: "
       << "receiving " << length << "-byte message from " << describe();
 
@@ -59,13 +59,13 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
       });
   }
   catch (...) {
-    PEP_LOG(LOG_TAG, pep::warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, pep::warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
     this->handleError(std::make_exception_ptr(boost::system::system_error(boost::system::errc::make_error_code(boost::system::errc::errc_t::bad_message))));
   }
 }
 
 void Connection::ensureSend() {
-  PEP_LOG(LOG_TAG, severity_level::verbose) << "Connection::ensureSend (sendActive=" << mSendActive << ",mRequestor.pending=" << mRequestor->pending() << ",receivedRequests.size=" << mIncomingRequestTails.size() << ",to=" << describe() << ")";
+  PEP_LOG(LogTag, severity_level::verbose) << "Connection::ensureSend (sendActive=" << mSendActive << ",mRequestor.pending=" << mRequestor->pending() << ",receivedRequests.size=" << mIncomingRequestTails.size() << ",to=" << describe() << ")";
   if (!this->isConnected()) {
     return;
   }
@@ -81,7 +81,7 @@ void Connection::ensureSend() {
   mMessageOutBody = entry.content;
   assert(mMessageOutBody);
 
-  PEP_LOG(LOG_TAG, severity_level::verbose) << "Connection::ensureSend outgoing message streamId=" << properties.messageId().streamId() << " (to " << describe() << ")";
+  PEP_LOG(LogTag, severity_level::verbose) << "Connection::ensureSend outgoing message streamId=" << properties.messageId().streamId() << " (to " << describe() << ")";
 
   if (mMessageOutBody->size() >= MAX_SIZE_OF_MESSAGE) {
     std::ostringstream msg;
@@ -141,7 +141,7 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
     throw std::runtime_error("Unsupported message type " + std::to_string(ToUnderlying(id.type().value())));
   }
 
-  PEP_LOG(LOG_TAG, severity) << caption << " (" << action << " " << this->describe() << "): " << description;
+  PEP_LOG(LogTag, severity) << caption << " (" << action << " " << this->describe() << "): " << description;
 }
 
 void Connection::start() {
@@ -162,12 +162,12 @@ void Connection::start() {
 }
 
 void Connection::handleHeaderSent(const networking::SizedTransfer::Result& result) {
-  PEP_LOG(LOG_TAG, severity_level::verbose) << "handleHeaderSent (" << describe() << ")";
+  PEP_LOG(LogTag, severity_level::verbose) << "handleHeaderSent (" << describe() << ")";
   if (!this->prepareBodyTransfer(result)) {
     return;
   }
 
-  PEP_LOG(LOG_TAG, severity_level::verbose) << "Sending body (" << describe() << ")";
+  PEP_LOG(LogTag, severity_level::verbose) << "Sending body (" << describe() << ")";
 
   if (!mMessageOutBody || mMessageOutBody->empty()) {
     handleMessageSent(networking::SizedTransfer::Result::Success(0));
@@ -187,7 +187,7 @@ void Connection::handleMessageSent(const networking::SizedTransfer::Result& resu
   /* at this point, a message was successfully sent
    */
 
-  PEP_LOG(LOG_TAG, severity_level::verbose) << "Connection:handleMessageSent: "
+  PEP_LOG(LogTag, severity_level::verbose) << "Connection:handleMessageSent: "
     << "completed sending message to " << describe();
 
   /* free body */
@@ -281,7 +281,7 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
     }
   }
   catch (...) {
-    PEP_LOG(LOG_TAG, pep::warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, pep::warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
     // Processed by generic "bad message" handling outside the "catch" clause
   }
 
@@ -293,7 +293,7 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
 
   auto result = mMessageInBody.substr(0U, header.length());
 
-  PEP_LOG(LOG_TAG, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
+  PEP_LOG(LogTag, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
     << (result.size() >= sizeof(MessageMagic) ? DescribeMessageMagic(result) : "no valid message magic")
     << ", stream id " << messageId.streamId() << ", " << this->describe() << ")";
 
@@ -332,7 +332,7 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
     else {
       detail = std::to_string(abValue->size()) + "-byte";
     }
-    PEP_LOG(LOG_TAG, info) << "Dropping (followup?) " << detail << " message for request stream " << streamId.value() << ", which we're already replying to";
+    PEP_LOG(LogTag, info) << "Dropping (followup?) " << detail << " message for request stream " << streamId.value() << ", which we're already replying to";
   }
   else {
     MessageSequence tail;
@@ -358,7 +358,7 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
           // This code assumes that the tail observable will not be subscribed to after the observable returned by
           // handleXXXRequest has completed or resulted in an error. If you use 'tail' as part of the RX pipeline that will be returned
           // by handleXXXRequest, there should not be a problem.
-          PEP_LOG(LOG_TAG, warning) << "Subscribed to the 'tail' observable when the incoming request has already been cleaned up";
+          PEP_LOG(LogTag, warning) << "Subscribed to the 'tail' observable when the incoming request has already been cleaned up";
           assert(false);
         }
         });
@@ -380,7 +380,7 @@ void Connection::IncomingRequestTail::handleChunk(const Flags& flags, std::share
   if (flags.error()) {
     if (mSubscriber) {
       //TODO Why nullptr? Deserialize Error or pass some runtime_error instead?
-      PEP_LOG(LOG_TAG, warning) << "Received error chunk in request tail";
+      PEP_LOG(LogTag, warning) << "Received error chunk in request tail";
       mSubscriber->on_error(nullptr);
     } else {
       mError = true;
@@ -434,7 +434,7 @@ void Connection::dispatchRequest(
       this->scheduleResponses(streamId, *responses);
     }
     catch (...) {
-      PEP_LOG(LOG_TAG, error) << "Error scheduling response(s) for received " << DescribeMessageMagic(magic) << " request: " << GetExceptionMessage(std::current_exception())
+      PEP_LOG(LogTag, error) << "Error scheduling response(s) for received " << DescribeMessageMagic(magic) << " request: " << GetExceptionMessage(std::current_exception())
         << '\n' << "    Connection status is " << ToUnderlying(this->status()) << "; scheduler.available is " << std::boolalpha << mScheduler->available();
       throw;
     }
@@ -465,7 +465,7 @@ rxcpp::observable<std::string> Connection::sendRequest(std::shared_ptr<std::stri
     throw std::runtime_error(msg.str());
   }
 
-  PEP_LOG(LOG_TAG, severity_level::verbose)
+  PEP_LOG(LogTag, severity_level::verbose)
     << "Connection::sendRequest: sending "
     << DescribeMessageMagic(*message)
     << " of size " << message->length() << " to " << describe();
@@ -506,7 +506,7 @@ void Connection::handleError(std::exception_ptr exception) {
   };
 
   if (shouldLog(exception)) {
-    PEP_LOG(LOG_TAG, severity_level::warning)
+    PEP_LOG(LogTag, severity_level::warning)
       << "Error encountered by " << this->describe()
       << ": " << GetExceptionMessage(exception);
   }
@@ -575,7 +575,7 @@ void Connection::performVersionCheck() {
         self->handleVersionResponse(response);
       },
       [self](std::exception_ptr ep) {
-        PEP_LOG(LOG_TAG, warning) << "Version check failed: " << GetExceptionMessage(ep);
+        PEP_LOG(LogTag, warning) << "Version check failed: " << GetExceptionMessage(ep);
         auto getReason = [](std::exception_ptr exception) {
           try {
             std::rethrow_exception(exception);
@@ -639,7 +639,7 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
       this->scheduleResponses(request.streamId, mRequestHandler->handleRequest(request.magic, request.head, request.tail));
     }
     catch (...) {
-      PEP_LOG(LOG_TAG, error) << "Error scheduling response(s) for premature " << DescribeMessageMagic(request.magic) << " request: " << GetExceptionMessage(std::current_exception());
+      PEP_LOG(LogTag, error) << "Error scheduling response(s) for premature " << DescribeMessageMagic(request.magic) << " request: " << GetExceptionMessage(std::current_exception());
       throw;
     }
   }
@@ -708,7 +708,7 @@ void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_pt
   mQueuedItems.clear();
   if (mError) {
     //TODO Why nullptr? Pass deserialized error or some runtime_error instead?
-    PEP_LOG(LOG_TAG, warning) << "Forwarding error chunk from request tail";
+    PEP_LOG(LogTag, warning) << "Forwarding error chunk from request tail";
     mSubscriber->on_error(nullptr);
   } else if (mCompleted) {
     mSubscriber->on_completed();

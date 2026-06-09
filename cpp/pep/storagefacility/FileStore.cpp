@@ -27,7 +27,7 @@ uint64_t GenerateChecksumSubstitute() {
 }
 
 const std::string ENTRY_FILE_TYPE("pepentry");
-const std::string LOG_TAG("StorageFacility");
+const std::string LogTag("StorageFacility");
 
 }
 
@@ -136,7 +136,7 @@ FileStore::FileStore(
   if (seconds != decltype(seconds)::zero()) {
     message << " (" << (static_cast<double>(entryCount) / seconds.count()) << " entries per second)";
   }
-  PEP_LOG(LOG_TAG, info) << message.str();
+  PEP_LOG(LogTag, info) << message.str();
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
@@ -369,7 +369,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   if (this->getCell().entryHeaders().find(availableFrom) != this->getCell().entryHeaders().cend()) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
-    PEP_LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, error) << msg;
     throw std::runtime_error(msg);
   }
 #endif
@@ -528,7 +528,7 @@ void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
   if (!emplaced) {
     auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
-    PEP_LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, error) << msg;
     throw std::runtime_error(msg);
   }
   if (mLatest == nullptr || entry->getValidFrom() > mLatest->getValidFrom()) {

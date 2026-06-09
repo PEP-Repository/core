@@ -16,7 +16,7 @@ namespace {
 
 #define PEP_CRLF "\r\n"
 
-const std::string LOG_TAG = "HTTP client";
+const std::string LogTag = "HTTP client";
 
 struct ProtocolProperties {
   bool tls;
@@ -217,7 +217,7 @@ void HttpClient::restart() {
 
 bool HttpClient::continueSending(std::exception_ptr error) {
   if (error != nullptr) {
-    PEP_LOG(LOG_TAG, debug) << "Error: " << GetExceptionMessage(error);
+    PEP_LOG(LogTag, debug) << "Error: " << GetExceptionMessage(error);
 
     // Reconnect to prevent the binary transport from remaining in a possibly invalid state
     // TODO: only do this if the binary transport didn't close (or reset) itself already
@@ -362,7 +362,7 @@ void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
       mResponse.setHeader(headerName, headerValue);
     }
     else {
-      PEP_LOG(LOG_TAG, warning) << "Ignoring malformed header: " << header << '\n';
+      PEP_LOG(LogTag, warning) << "Ignoring malformed header: " << header << '\n';
     }
     this->readHeaderLine(); // Done processing this header line: read the next one
   }

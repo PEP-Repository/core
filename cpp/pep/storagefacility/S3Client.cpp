@@ -17,7 +17,7 @@ using namespace pep::s3;
 
 namespace
 {
-  const std::string LOG_TAG ("S3Client");
+  const std::string LogTag ("S3Client");
 
   // Client::Create returns an instance of the following class.
   class ClientImp
@@ -68,7 +68,7 @@ namespace
     bool use_https = params.use_https.value_or(true);
 
     if (use_https && params.ca_cert_path.has_value()) {
-      PEP_LOG(LOG_TAG, info) << "Using \"" << params.ca_cert_path->string()
+      PEP_LOG(LogTag, info) << "Using \"" << params.ca_cert_path->string()
         << "\" to verify TLS certificate of " << params.endpoint.hostname
         << ":" << params.endpoint.port;
     }
@@ -113,12 +113,12 @@ namespace
 #endif
     {
 #ifndef SIMULATE_S3_BACKEND_FAILURE
-      PEP_LOG(LOG_TAG, warning) << "HTTP Request to S3 backend gave unexpected "
+      PEP_LOG(LogTag, warning) << "HTTP Request to S3 backend gave unexpected "
         << "status line: " << resp.getStatusCode() << " "
         << resp.getStatusMessage()
         << "; " << resp.getBody(); // TODO: remove (as it might leak info)
 #else
-      PEP_LOG(LOG_TAG, warning) << "Feigning failure of HTTP request"
+      PEP_LOG(LogTag, warning) << "Feigning failure of HTTP request"
         << " to S3 backend, because SIMULATE_S3_BACKEND_FAILURE was set.";
 #endif
       throw std::runtime_error("Request to S3 backend failed.");
@@ -167,7 +167,7 @@ namespace
 
       if (!expected_headers.contains(key)) {
         if (mUnexpectedHeaders.emplace(key).second) {
-          PEP_LOG(LOG_TAG, warning) << "Unexpected header '" << key << "' in response from S3 (with value '" << value << "')";
+          PEP_LOG(LogTag, warning) << "Unexpected header '" << key << "' in response from S3 (with value '" << value << "')";
         }
       }
     }
@@ -250,10 +250,10 @@ namespace
       }
 
       if (error_code != "NoSuchKey") {
-        PEP_LOG(LOG_TAG, warning) << "GetObject request to S3 backend gave unexpected '"
+        PEP_LOG(LogTag, warning) << "GetObject request to S3 backend gave unexpected '"
           << error_code << "' error code, requesting '" << name << "' from bucket '"
           << bucket << "'";
-        PEP_LOG(LOG_TAG, warning) << resp.getBody();
+        PEP_LOG(LogTag, warning) << resp.getBody();
 
         throw std::runtime_error("Request to S3 backend failed");
       }

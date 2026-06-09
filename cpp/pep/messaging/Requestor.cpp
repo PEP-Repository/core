@@ -13,7 +13,7 @@ namespace pep::messaging {
 
 namespace {
 
-const std::string LOG_TAG = "Requestor";
+const std::string LogTag = "Requestor";
 
 }
 
@@ -30,14 +30,14 @@ Requestor::Requestor(boost::asio::io_context& io_context, Scheduler& scheduler)
 
 Requestor::~Requestor() noexcept {
   if (mEntries.size() != 0) {
-    PEP_LOG(LOG_TAG, severity_level::error)
+    PEP_LOG(LogTag, severity_level::error)
       << "outstanding requests list is not empty:";
     for (const auto& kv : mEntries) {
       std::string msgType = "(too short)";
       auto msg = kv.second.message;
       if (msg->size() >= sizeof(MessageMagic))
         msgType = DescribeMessageMagic(*msg);
-      PEP_LOG(LOG_TAG, severity_level::error)
+      PEP_LOG(LogTag, severity_level::error)
         << " streamid " << kv.first
         << " " << msgType;
     }
@@ -77,7 +77,7 @@ rxcpp::observable<std::string> Requestor::send(std::shared_ptr<std::string> requ
 void Requestor::processResponse(const std::string& recipient, const StreamId& streamId, const Flags& flags, std::string body) {
   auto it = mEntries.find(streamId);
   if (it == mEntries.end()) {
-    PEP_LOG(LOG_TAG, warning) << "received response for non existent stream: " << streamId << " (to " << recipient << ")";
+    PEP_LOG(LogTag, warning) << "received response for non existent stream: " << streamId << " (to " << recipient << ")";
     return;
   }
 
@@ -93,7 +93,7 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
   }
   PEP_DEFER(
     if (error || close) {
-      PEP_LOG(LOG_TAG, severity_level::verbose)
+      PEP_LOG(LogTag, severity_level::verbose)
         << "Closed stream " << streamId
         << " (to " << recipient << ")";
     });
@@ -104,7 +104,7 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
       // Backward compatible: if no Error instance could be deserialized, report on an empty instance
       err = std::make_exception_ptr(Error(std::string()));
     }
-    PEP_LOG(LOG_TAG, severity_level::error)
+    PEP_LOG(LogTag, severity_level::error)
       << "Received an error! (stream id " << streamId
       << " to " << recipient << "): "
       << GetExceptionMessage(err);

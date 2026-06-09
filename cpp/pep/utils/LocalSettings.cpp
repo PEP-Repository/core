@@ -18,7 +18,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("LocalSettings");
+const std::string LogTag("LocalSettings");
 
 }
 
@@ -349,14 +349,14 @@ void LocalSettingsRegistry::StoreRecursive (
 
       auto nodeRef = mPropertySubtree.get_child_optional(it->first);
       if (!nodeRef) {
-        PEP_LOG(LOG_TAG, debug) << "Unable to find entry " << it->first << " in value subtree";
+        PEP_LOG(LogTag, debug) << "Unable to find entry " << it->first << " in value subtree";
         continue;
       }
       const auto& mValueNode = *nodeRef;
 
       if (!mValueNode.empty()) {
         /* mValueNode should always contain values, not subtrees */
-        PEP_LOG(LOG_TAG, debug) << "Entry " << it->first << " in value subtree is not a leaf";
+        PEP_LOG(LogTag, debug) << "Entry " << it->first << " in value subtree is not a leaf";
         continue;
       }
 
@@ -388,7 +388,7 @@ void LocalSettingsRegistry::StoreRecursive (
         mChildPropertySubtree = mPropertySubtree.get_child(it->first);
         StoreRecursive(mChildSubKey, mChildPropertySubtree, it->second);
       } catch (const boost::property_tree::ptree_bad_path&) {
-        PEP_LOG(LOG_TAG, debug) << "Entry " << it->first << " is flagged modified but not found in property tree";
+        PEP_LOG(LogTag, debug) << "Entry " << it->first << " is flagged modified but not found in property tree";
       }
 
       ::RegCloseKey(mChildSubKey);
@@ -454,7 +454,7 @@ bool LocalSettingsIni::flushChanges() {
   try {
     boost::property_tree::write_ini (this->szFilename, mPropertyTree);
   } catch (const std::exception& e) {
-    PEP_LOG(LOG_TAG, debug) << "Unable to write ini : " << e.what();
+    PEP_LOG(LogTag, debug) << "Unable to write ini : " << e.what();
     return false;
   }
   return true;

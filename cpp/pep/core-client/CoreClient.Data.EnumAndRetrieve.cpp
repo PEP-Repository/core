@@ -30,7 +30,7 @@ using namespace pep;
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.Data");
+const std::string LogTag("CoreClient.Data");
 
 template<typename TResponse>
 rxcpp::observable<TResponse> BatchedRetrieve(
@@ -76,7 +76,7 @@ rxcpp::observable<TResponse> BatchedRetrieve(
 
 rxcpp::observable<EnumerateAndRetrieveResult>
 CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts) {
-  PEP_LOG(LOG_TAG, debug) << "enumerateAndRetrieveData";
+  PEP_LOG(LogTag, debug) << "enumerateAndRetrieveData";
 
   using Pages = std::vector<std::shared_ptr<DataPayloadPage>>;
   using IndexedPages = std::unordered_map<uint32_t, std::shared_ptr<Pages>>;

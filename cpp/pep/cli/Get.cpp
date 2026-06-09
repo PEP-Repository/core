@@ -83,7 +83,7 @@ protected:
             }
 
             if (datastream) {
-              PEP_LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
+              PEP_LOG(LogTag, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
             }
 
             rxcpp::observable<pep::FileKey> key =

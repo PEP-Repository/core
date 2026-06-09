@@ -59,7 +59,7 @@ int CommandUser::CommandUserQuery::execute() {
         if (user.mPrimaryId) {
           uids.push_back(*user.mPrimaryId);
         }
-        PEP_LOG(LOG_TAG, warning) << "No display-id for user with identifiers: " << boost::algorithm::join(uids, ", ");
+        PEP_LOG(LogTag, warning) << "No display-id for user with identifiers: " << boost::algorithm::join(uids, ", ");
       }
       return pep::FakeVoid();
     });

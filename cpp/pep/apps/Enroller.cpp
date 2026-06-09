@@ -14,7 +14,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("Enrollment");
+const std::string LogTag("Enrollment");
 
 }
 
@@ -83,7 +83,7 @@ int Enroller::execute() {
     std::shared_ptr<Client> client = builder.build();
 
     this->enroll(client).subscribe([this](EnrolledPartyKeys result) {
-      PEP_LOG(LOG_TAG, debug) << "Received EnrolledPartyKeys";
+      PEP_LOG(LogTag, debug) << "Received EnrolledPartyKeys";
 
       // If output filename is provided, write output there, otherwise print it
       auto extendedProperties = this->producesExtendedProperties();
@@ -102,11 +102,11 @@ int Enroller::execute() {
         std::cout << std::endl;
       }
     }, [io_context](std::exception_ptr ep) {
-      PEP_LOG(LOG_TAG, error) << "Exception occurred during enrollment: " << GetExceptionMessage(ep) << std::endl;
+      PEP_LOG(LogTag, error) << "Exception occurred during enrollment: " << GetExceptionMessage(ep) << std::endl;
       io_context->stop();
     }, [io_context, result] {
       // Registration done
-      PEP_LOG(LOG_TAG, info) << "Enrollment done" << std::endl;
+      PEP_LOG(LogTag, info) << "Enrollment done" << std::endl;
       io_context->stop();
       *result = 0;
     });
@@ -114,7 +114,7 @@ int Enroller::execute() {
     io_context->run();
   }
   catch (std::exception& e) {
-    PEP_LOG(LOG_TAG, error) << e.what();
+    PEP_LOG(LogTag, error) << e.what();
     std::cerr << e.what() << std::endl;
   }
 

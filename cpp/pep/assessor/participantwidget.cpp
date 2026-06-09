@@ -44,7 +44,7 @@
 
 namespace {
 
-const std::string LOG_TAG = "Participant widget";
+const std::string LogTag = "Participant widget";
 
 class ParticipantDataAggregator {
 private:
@@ -331,7 +331,7 @@ void ParticipantWidget::onParticipantDataReceived(ParticipantData data, std::str
   participantStudyContexts = mAllContexts.parse(studyContexts);
 
   if (participantData.mPersonalia.has_value() != currentPEPRole.canSeeParticipantPersonalia()) {
-    PEP_LOG(LOG_TAG, pep::warning) << "Participant personalia viewer received no data";
+    PEP_LOG(LogTag, pep::warning) << "Participant personalia viewer received no data";
   }
 
   processData();
@@ -1010,7 +1010,7 @@ void ParticipantWidget::initializeShortPseudonymsUi(const std::optional<uint32_t
     else {
       widgetDescription = "Participant";
     }
-    PEP_LOG(LOG_TAG, pep::warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
+    PEP_LOG(LogTag, pep::warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
     pseudonymTextMain.append("\n\n");
     pseudonymTextMain.append(pseudonymTextOtherVisits);
   }
@@ -1444,7 +1444,7 @@ ParticipantData ParticipantDataAggregator::getData() const {
   if (mParticipantInfo) {
     auto personalia = pep::ParticipantPersonalia::FromJson(mParticipantInfo->mData);
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
-      PEP_LOG(LOG_TAG, pep::warning) << "Received empty participant personalia";
+      PEP_LOG(LogTag, pep::warning) << "Received empty participant personalia";
     }
     participantData.mPersonalia = personalia;
   }

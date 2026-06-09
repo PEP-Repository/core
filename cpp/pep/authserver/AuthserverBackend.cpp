@@ -19,7 +19,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("AuthserverBackend");
+const std::string LogTag("AuthserverBackend");
 
 }
 
@@ -32,7 +32,7 @@ AuthserverBackend::Parameters::Parameters(const Configuration& config) {
     storageFile = config.get<std::optional<std::filesystem::path>>("StorageFile");
   }
   catch (std::exception& e) {
-    PEP_LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
@@ -43,7 +43,7 @@ AuthserverBackend::Parameters::Parameters(const Configuration& config) {
     oauthTokenSecret = boost::algorithm::unhex(secretHex);
   }
   catch (std::exception& e) {
-    PEP_LOG(LOG_TAG, critical) << "Error with oauth file: " << e.what();
+    PEP_LOG(LogTag, critical) << "Error with oauth file: " << e.what();
     throw;
   }
 }
@@ -204,7 +204,7 @@ TokenResponse AuthserverBackend::executeTokenRequest(const std::string& accessGr
 }
 
 void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile) {
-  PEP_LOG(LOG_TAG, info) << "Found authserver storage file. Migrating it to access manager";
+  PEP_LOG(LogTag, info) << "Found authserver storage file. Migrating it to access manager";
   // Because we send the database as a multi-part message, it will not be retried automatically
   // when the connection to the access manager fails. Therefore, we first wait for the connection
   // to succeed, before starting the migration.
@@ -219,10 +219,10 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
       return accessManager->migrateUserDbToAccessManager(messaging::IStreamToMessageBatches(storageStream));
     }).subscribe(
       [](FakeVoid) {
-        PEP_LOG(LOG_TAG, info) << "Migration successful";
+        PEP_LOG(LogTag, info) << "Migration successful";
       },
       [](std::exception_ptr e) {
-        PEP_LOG(LOG_TAG, error) << "Error while trying to migrate authserver storage to access manager: " << rxcpp::rxu::what(e);
+        PEP_LOG(LogTag, error) << "Error while trying to migrate authserver storage to access manager: " << rxcpp::rxu::what(e);
       }
     );
 }

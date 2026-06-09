@@ -13,7 +13,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG = "Key component server";
+const std::string LogTag = "Key component server";
 
 }
 
@@ -75,7 +75,7 @@ KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
     systemPublicKeys = config.get<SystemPublicKeys>("SystemPublicKeys");
   }
   catch (std::exception& e) {
-    PEP_LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, critical) << "Error with configuration file: " << e.what();
     throw;
   }
 

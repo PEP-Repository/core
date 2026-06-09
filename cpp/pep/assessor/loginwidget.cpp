@@ -26,7 +26,7 @@
 
 namespace {
 
-const std::string LOG_TAG("LoginWidget");
+const std::string LogTag("LoginWidget");
 
 #ifdef _WIN32
 
@@ -104,18 +104,18 @@ void LoginWidget::provideUpdateIfAvailable() {
   assert(current != std::nullopt);
 
   if (installer == nullptr) {
-    PEP_LOG(LOG_TAG, pep::debug) << "No available installer found: do not do update";
+    PEP_LOG(LogTag, pep::debug) << "No available installer found: do not do update";
 
     // If no update is found, disable and remove the Update button
     ui->updateButton->setVisible(false);
   }
   else if (!installer->supersedesRunningVersion()) {
-    PEP_LOG(LOG_TAG, pep::debug) << "Available installer does not supersede running software version: do not do update";
+    PEP_LOG(LogTag, pep::debug) << "Available installer does not supersede running software version: do not do update";
 
     ui->updateButton->setVisible(false);
   }
   else {
-    PEP_LOG(LOG_TAG, pep::debug) << "Superseding installer found: providing update option";
+    PEP_LOG(LogTag, pep::debug) << "Superseding installer found: providing update option";
 
     //Change color of LoginWidget to alert user
     this->setStyleSheet(QStringLiteral("background-color: #d3cb58;"));
@@ -166,14 +166,14 @@ void LoginWidget::provideUpdateIfAvailable(bool updateFound) {
 
   // if no update is available, change the login button back to normal
   if (!updateFound) {
-    PEP_LOG(LOG_TAG, pep::debug) << "No available installer found: do not do update";
+    PEP_LOG(LogTag, pep::debug) << "No available installer found: do not do update";
 
     // If no update is found, disable and remove the Update button
     ui->updateButton->setEnabled(false);
     ui->updateButton->setVisible(false);
 
   } else {
-    PEP_LOG(LOG_TAG, pep::debug) << "Superseding installer found: providing update option";
+    PEP_LOG(LogTag, pep::debug) << "Superseding installer found: providing update option";
 
     // If an update is found,
 
@@ -245,11 +245,11 @@ void LoginWidget::on_updateStarted(std::exception_ptr error) {
   auto failureReason = pep::GetExceptionMessage(error);
   QString failureMessage;
   if (!failureReason.empty()) {
-    PEP_LOG(LOG_TAG, pep::error) << "Updating failed: " << failureReason;
+    PEP_LOG(LogTag, pep::error) << "Updating failed: " << failureReason;
     failureMessage = tr("Software cannot update: %1").arg(failureReason.c_str());
   }
   else {
-    PEP_LOG(LOG_TAG, pep::error) << "Updating failed (no detail available)";
+    PEP_LOG(LogTag, pep::error) << "Updating failed (no detail available)";
     failureMessage = tr("Software cannot update.");
   }
 
