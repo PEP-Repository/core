@@ -8,7 +8,7 @@ namespace pep::cli {
 class CommandPseudonym::CommandConvert: public ChildCommandOf<CommandPseudonym> {
 public:
   explicit CommandConvert(CommandPseudonym &parent)
-  : ChildCommandOf<CommandPseudonym>("convert", "Convert a pseudonym to from one type into another", parent)
+  : ChildCommandOf<CommandPseudonym>("convert", "Convert a pseudonym from one type into another", parent)
   {}
 
 protected:
