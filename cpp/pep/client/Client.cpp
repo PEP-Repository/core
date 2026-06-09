@@ -42,7 +42,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     }
 
     // Columns that haven't been checked are inaccessible: return them
-    return RxIterate(*remaining);
+    return RxIterate(std::move(*remaining));
       });
 }
 

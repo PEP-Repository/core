@@ -15,6 +15,8 @@ namespace pep {
     // First pair entry is physical memory, second entry is total memory (incl. swap)
     static std::pair<double, double> GetMemoryUsageProportion();
 
+    static double GetPeakMemoryUsageBytes();
+
     static double GetDiskUsageBytes(std::optional<std::filesystem::path> path);
     static double GetDiskUsageProportion(std::optional<std::filesystem::path> path);
   };

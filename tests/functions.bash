@@ -125,9 +125,15 @@ contains() {
   [ "${string#*"$substring"}" != "$string" ] && true
 }
 
+is_test_included() {
+  test="$1"
+  ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test " && true
+}
+
+# Prints & returns if test will be ran
 should_run_test() {
   test="$1"
-  if ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test "; then
+  if is_test_included "$test"; then
     echo
     printGreen "==== Running tests: $test ===="
   else

@@ -16,7 +16,7 @@ private:
   std::string mNewPseudonym;
 
   std::string mBuffer;
-  static const size_t PAGE_SIZE{ 2048 };
+  static constexpr size_t PageSize{ 2048 };
 
   bool mEndOfSource{ false };
   size_t mStartReplacingFrom{ 0 };
@@ -44,12 +44,12 @@ public:
     std::streamsize amountRequested{ n + static_cast<std::streamsize>(mOldPseudonym.length()) };
 
     if (!mEndOfSource) {
-      assert(n >= 0U);
+      assert(n >= 0);
       // amountRequested is always larger than 0, so casting to size_t is safe.
       if (mBuffer.length() < static_cast<std::size_t>(amountRequested)) { // Only read and process more data when there is not enough in the cache to fill the current call.
         // Read until we have n + length of oldPseudonym chars (including what is already in preread).
         do {
-          std::array<char, PAGE_SIZE> page{};
+          std::array<char, PageSize> page{};
           auto amountReceived = boost::iostreams::read(src, page.data(), page.size());
 
           if (amountReceived == EOF) {
@@ -78,7 +78,7 @@ public:
 
 
     // return either the initially requested n bytes, or all we have left in the buffer.
-    assert(n >= 0U);
+    assert(n >= 0);
     auto amountReturned = std::min(static_cast<size_t>(n), mBuffer.length());
 
     memcpy(s, mBuffer.c_str(), amountReturned);

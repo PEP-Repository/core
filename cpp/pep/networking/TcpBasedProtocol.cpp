@@ -136,7 +136,10 @@ void TcpBasedProtocol::ClientComponent::onResolved(const ConnectionAttempt::Hand
           notify(BoostOperationResult<std::shared_ptr<Protocol::Socket>>(ec));
         }
         else {
+#ifndef __EMSCRIPTEN__  // Unsupported
           socket->basicSocket().set_option(boost::asio::socket_base::keep_alive(true));
+#endif
+
 #ifdef __linux__
           int keep_idle = 75; /* seconds */
           setsockopt(socket->basicSocket().native_handle(), SOL_TCP, TCP_KEEPIDLE, &keep_idle, sizeof(keep_idle));
@@ -152,6 +155,7 @@ std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ClientComponent::openSocket(
   result->setConnectivityStatus(Socket::ConnectivityStatus::Connecting);
 
   auto portString = MakeSharedCopy(std::to_string(mEndPoint.port));
+  // Likely spawns a background thread, see https://www.boost.org/doc/libs/latest/doc/html/boost_asio/overview/implementation.html
   mResolver.async_resolve(boost::asio::ip::tcp::v4(), mEndPoint.hostname, *portString, [self = SharedFrom(*this), notify, result, portString](const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results) {
     self->onResolved(notify, self->tcp().downcastSocket(result), ec, results);
     });

@@ -7,7 +7,7 @@
 
 namespace {
 
-void TestConnectionBasics(TestServerFactory& factory) {
+[[maybe_unused]] void TestConnectionBasics(TestServerFactory& factory) {
   boost::asio::io_context io_context;
   pep::messaging::RequestHandler handler;
 
@@ -46,14 +46,17 @@ void TestConnectionBasics(TestServerFactory& factory) {
   ASSERT_EQ(server.use_count(), 1U) << "Messaging server not discardable (due to circular dependency?)";
 }
 
-} // End anonymous namespace
-
 TEST(Connection, Basics) {
+#ifdef __EMSCRIPTEN__
+  GTEST_SKIP() << "Server not supported on Emscripten";
+#else
+
   TcpTestServerFactory tcp;
   TestConnectionBasics(tcp);
 
   TlsTestServerFactory tls;
   TestConnectionBasics(tls);
+#endif
 }
 
 TEST(Connection, ClientReconnects) {
@@ -87,3 +90,5 @@ TEST(Connection, ClientReconnects) {
 
   ASSERT_EQ(client.use_count(), 1U) << "Messaging client not discardable (due to circular dependency?)";
 }
+
+} // End anonymous namespace

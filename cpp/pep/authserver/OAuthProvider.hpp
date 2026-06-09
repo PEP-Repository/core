@@ -47,6 +47,7 @@ public:
       const std::string& getSpoofKey() const;
       const std::optional<std::filesystem::path>& getHttpsCertificateFile() const;
       std::shared_ptr<boost::asio::io_context> getIoContext() const;
+      const std::vector<boost::urls::url>& getExtraRedirectUris() const { return extraRedirectUris; }
 
       void check() const;
 
@@ -59,6 +60,7 @@ public:
       //TODO: determine if we indeed want/need HTTPS for local testing, or whether we can use plain HTTP instead (HttpClient supports it)
       std::optional<std::filesystem::path> httpsCertificateFile;
       std::shared_ptr<boost::asio::io_context> io_context;
+      std::vector<boost::urls::url> extraRedirectUris;
   };
 
   ~OAuthProvider();
@@ -86,7 +88,8 @@ private:
   HTTPResponse handleCodeRequest(HTTPRequest request, std::string remoteIp);
 
 
-  std::unordered_set<std::string> getRegisteredRedirectURIs(const std::string& clientId);
+  const std::vector<boost::urls::url>& getRegisteredRedirectURIs(const std::string& clientId);
+  const std::set<std::string>& getAllowedTokenRequestOrigins(const std::string& clientId);
 
   std::shared_ptr<HTTPServer> httpServer;
   std::unordered_map<std::string, grant> activeGrants;
@@ -95,6 +98,7 @@ private:
   std::string spoofKey;
   std::shared_ptr<AuthserverBackend> authserverBackend;
   std::shared_ptr<boost::asio::io_context> io_context;
+  std::vector<boost::urls::url> allowedRedirectUris;
 
   TemplateEnvironment mTemplates;
   friend class SharedConstructor<OAuthProvider>;

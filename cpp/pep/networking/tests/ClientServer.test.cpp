@@ -7,6 +7,15 @@
 
 namespace {
 
+class ClientServer : public ::testing::Test {
+public:
+  static void SetUpTestSuite() {
+#ifdef __EMSCRIPTEN__
+    GTEST_SKIP() << "Server not supported on Emscripten";
+#endif
+  }
+};
+
 void TestClientServerBasics(TestServerFactory& factory) {
   const size_t MESSAGE_SIZE = 1024;
 
@@ -85,12 +94,12 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
 }
 
-TEST(ClientServer, Tcp) {
+TEST_F(ClientServer, Tcp) {
   TcpTestServerFactory factory;
   TestClientServerBasics(factory);
 }
 
-TEST(ClientServer, Tls) {
+TEST_F(ClientServer, Tls) {
   TlsTestServerFactory factory;
   TestClientServerBasics(factory);
 }

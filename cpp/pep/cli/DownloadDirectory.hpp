@@ -46,15 +46,14 @@ public:
     RecordDescriptor mDescriptor;
     std::filesystem::path mPath;
     std::string mFileName;
-    size_t mFileSize;
-    size_t mWritten = 0;
+    std::uint64_t mFileSize, mWritten = 0;
     std::shared_ptr<std::ofstream> mRaw;
     XxHasher mHasher;
     bool mPseudonymisationRequired{false};
     bool mArchiveExtractingRequired{false};
 
   private:
-    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
+    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
 
   public:
     // This class has reference semantics: prevent compiler from generating copy operations
@@ -128,7 +127,7 @@ public:
 
   bool hasPristineData(const RecordDescriptor& descriptor) const;
 
-  std::shared_ptr<RecordStorageStream> create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
+  std::shared_ptr<RecordStorageStream> create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
   bool remove(const RecordDescriptor& descriptor); // Would be called "delete" if that weren't a keyword
   bool update(const RecordDescriptor& descriptor, const RecordDescriptor& updated);
 

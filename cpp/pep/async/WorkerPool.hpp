@@ -35,14 +35,14 @@ class WorkerPool : private boost::noncopyable {
   // on each of the batches and return the concatenated results
   // on the given worker.
   template<size_t batchSize, typename S, typename Functor, typename Coordination>
-  rxcpp::observable<std::vector<typename std::invoke_result<Functor, S>::type>>
+  rxcpp::observable<std::vector<std::invoke_result_t<Functor, S>>>
   batched_map(
       std::vector<S> xs,
       Coordination accWorker,
       Functor f) {
-    using T = typename std::invoke_result<Functor, S>::type;
-    using T_iter = typename std::vector<T>::iterator;
-    using S_iter = typename std::vector<S>::iterator;
+    using T = std::invoke_result_t<Functor, S>;
+    using T_iter = std::vector<T>::iterator;
+    using S_iter = std::vector<S>::iterator;
 
     if (xs.empty())
       return rxcpp::observable<>::just(std::vector<T>());
@@ -78,7 +78,7 @@ class WorkerPool : private boost::noncopyable {
     // thus invalidates the iterators into it.  To keep xsPtr alive, we
     // capture it in the final callback.
     return rxcpp::observable<>::iterate(std::move(batches))
-    .map([this, f, accWorker](batch_t batch) {
+    .map([this, f, accWorker](batch_t batch) -> rxcpp::observable<bool> {
       // Handle each batch on separate worker
       return rxcpp::observable<>::just(std::move(batch))
       .observe_on(this->worker())
@@ -91,7 +91,9 @@ class WorkerPool : private boost::noncopyable {
         }
         return true; // rxcpp doesn't like void
       }).observe_on(accWorker);
-    }).merge()
+    })
+    .merge()
+    .as_dynamic() // Reduce symbol name size (especially for WebAssembly)
     .last()
     .map([xsPtr /* keep xsPtr alive, see above */, ys](bool) {
       return std::move(*ys);

@@ -54,6 +54,11 @@ concept DerivedFromSpecialization = requires(const T& t) {
   detail::DerivedFromSpecializationImpl<Template>(t);
 };
 
+template <typename Class, typename FieldType>
+constexpr const FieldType Class::* FieldAsConst(FieldType Class::* field) {
+  return field;
+}
+
 } // namespace pep
 
 /// Marks T as a `FlagEnum`, enabling `FlagEnum`-constrained functions and bitwise operators for T.
@@ -65,4 +70,3 @@ concept DerivedFromSpecialization = requires(const T& t) {
 #define PEP_MARK_AS_FLAG_ENUM_TYPE(T) \
   static_assert(::pep::FlagEnumCandidate<T>); \
   template <> constexpr inline bool ::pep::detail::MARKED_AS_FLAG_ENUM_TYPE<T> = true;
-
