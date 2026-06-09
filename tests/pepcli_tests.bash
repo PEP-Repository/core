@@ -703,21 +703,29 @@ if should_run_test pseudonym-conversion; then
     jq -r ".[] | select(.data.\"pcData.id\"== \"$fromId\") | .$toType" "$PSEUDONYM_LIST_JSON"
   }
 
+  assert_equivalent_pp() {
+    public_key() { echo "$1" | cut -d: -f3; }
+    stable_id() { pepcli pseudonym convert "$1" user; }
+
+    assert_equal "$(public_key "$1")" "$(public_key "$2")"
+    assert_equal "$(stable_id "$1")" "$(stable_id "$2")"
+  }
+
   PP=$(pcLookup ID_1 pp)
   LP=$(pcLookup ID_1 lp)
   UP=$(pcLookup ID_1 blp)
 
   assert_equal "$(pepcli pseudonym convert "$PP" polymorphic)" "$PP"
-  assert_equal "$(pepcli pseudonym convert "$PP" local)"       "$LP"
-  assert_equal "$(pepcli pseudonym convert "$PP" user)"        "$UP"
+  assert_equal "$(pepcli pseudonym convert "$PP" local)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$PP" user)" "$UP"
 
-  assert_equal "$(pepcli pseudonym convert "$LP" polymorphic)" "$PP"
-  assert_equal "$(pepcli pseudonym convert "$LP" local)"       "$LP"
-  assert_equal "$(pepcli pseudonym convert "$LP" user)"        "$UP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$LP" polymorphic)" "$PP"
+  assert_equal "$(pepcli pseudonym convert "$LP" local)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$LP" user)" "$UP"
 
-  assert_equal "$(pepcli pseudonym convert "$UP" polymorphic)" "$PP"
-  assert_equal "$(pepcli pseudonym convert "$UP" local)"       "$LP"
-  assert_equal "$(pepcli pseudonym convert "$UP" user)"        "$UP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$UP" polymorphic)" "$PP"
+  assert_equal "$(pepcli pseudonym convert "$UP" local)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$UP" user)" "$UP"
 
   test_cleanup "$PC_CONFIG"
 fi
