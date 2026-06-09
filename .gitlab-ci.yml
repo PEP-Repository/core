@@ -542,8 +542,7 @@ ubuntu-lts-debug:
   variables:
     WITH_CASTOR: "True"
     TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
+      $UNIT_TESTS_ALL
     MEM_ANALYSIS_TOOL: "none"
   rules:
     - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
@@ -561,44 +560,46 @@ ubuntu-lts-debug:
   script:
     - !reference [.ubuntu-build-base, script]
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+    - | 
+       if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
+         echo "Skipping code coverage processing steps"
+         exit 0
+       fi
+
+      # Merge raw profile files from profiles directory
+    - llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+
     - |
-      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        # Merge raw profile files from profiles directory
-        llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+       BINARIES=""
+       for BINARY in $TESTS $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+         BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
+       done
+    
+    - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
 
-        BINARIES=""
-        for BINARY in $TESTS $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
-          BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
-        done
+      # Generate HTML report
+    - llvm-cov show $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        --project-title="Combined Coverage (Unit + Integration)"
+        --show-directory-coverage
+        -format=html
+        -output-dir=htmlcov
 
-        # Generate HTML report
-        llvm-cov show \
-          $BINARIES \
-          -instr-profile=combined-coverage.profdata \
-          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
-          --project-title="Combined Coverage (Unit + Integration)" \
-          --show-directory-coverage \
-          -format=html \
-          -output-dir=htmlcov
+      # Export to lcov format using llvm-cov
+    - llvm-cov export $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        -format=lcov > coverage.lcov
 
-        # Export to lcov format using llvm-cov
-        llvm-cov export $BINARIES \
-          -instr-profile=combined-coverage.profdata \
-          --ignore-filename-regex='.*(proto/generated/|/tests/|/apps/).*' \
-          -format=lcov \
-          > coverage.lcov
-        
-        # Convert lcov to Cobertura XML using lcov_cobertura
-        lcov_cobertura coverage.lcov --output coverage.xml \
-          --base-dir "$CI_PROJECT_DIR" \
-          --demangle
-        
-        # Show summary with coverage percentage
-        line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
-        echo "Line Coverage: ${line_pct}%"
-      else
-        echo "Skipping code coverage processing steps"
-      fi
+      # Convert lcov to Cobertura XML using lcov_cobertura
+    - lcov_cobertura coverage.lcov --output coverage.xml
+        --base-dir "$CI_PROJECT_DIR"
+        --demangle
+
+      # Show summary with coverage percentage
+    - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
+    - 'echo "Line Coverage: ${line_pct}%"'
   coverage: '/Line Coverage: (\d+\.?\d*)%/'
   artifacts:
     paths:
