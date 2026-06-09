@@ -43,7 +43,9 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
     }
 
     void schedule(clock_type::time_point when, const rxcpp::schedulers::schedulable& scbl) const override {
-      LOG(LOG_TAG, verbose) << "schedule after " << duration_cast<std::chrono::milliseconds>(when - clock_type::now())
+      using namespace std::chrono;
+
+      LOG(LOG_TAG, verbose) << "schedule after " << ceil<milliseconds>(when - clock_type::now())
         << " on thread " << weblib::ThreadPrintable{thread_}
         << " from thread " << weblib::ThreadPrintable{}
         << (thread_ == ::pthread_self() ? " (queuing for current thread)" : "");
@@ -52,7 +54,9 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
 
         // Compute delay after proxying.
         // If non-positive, setTimeout will schedule for the next JS event cycle.
-        const auto delay = duration_cast<std::chrono::duration<double, std::milli>>(when - clock_type::now());
+        // I would do `duration_cast<duration<double, std::milli>>`,
+        // but then the callback sometimes executes around 0.5 ms too early for some reason.
+        const auto delay = ceil<milliseconds>(when - clock_type::now());
 
         auto onUnsubscribe = std::make_shared<rxcpp::subscription::weak_state_type>();
 
