@@ -63,7 +63,7 @@ TEST_F(CastorClientTest, Authentication) {
   .map([](AuthenticationStatus status) {
     return status.state;
   })
-  .contains(AUTHENTICATION_ERROR)
+  .contains(AuthenticationState::Error)
   .as_blocking().first();
   ASSERT_TRUE(authenticationError) << "Castor authentication did not result in an error";
 
@@ -74,7 +74,7 @@ TEST_F(CastorClientTest, Authentication) {
   .map([](AuthenticationStatus status) {
     return status.state;
   })
-  .contains(AUTHENTICATED)
+  .contains(AuthenticationState::Authenticated)
   .as_blocking().first();
   ASSERT_TRUE(authenticated) << "Castor authentication did not succeed";
 

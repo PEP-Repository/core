@@ -43,7 +43,7 @@ const std::chrono::seconds AuthenticationStatus::EXPIRY_MARGIN{30};
 const std::string CastorClient::BASE_PATH = "/api/";
 
 bool AuthenticationStatus::authenticated() const {
-  if (state != AUTHENTICATED) {
+  if (state != AuthenticationState::Authenticated) {
     return false;
   }
   assert(expires.has_value());
@@ -78,7 +78,7 @@ void CastorClient::start() {
 
 void CastorClient::reauthenticate() {
   PEP_LOG(LogTag, info) << "Reauthenticating to Castor";
-  authenticationSubject.get_subscriber().on_next(AuthenticationStatus(AUTHENTICATING));
+  authenticationSubject.get_subscriber().on_next(AuthenticationStatus(AuthenticationState::Authenticating));
   std::shared_ptr<HTTPRequest> request = makePost("/oauth/token", "grant_type=client_credentials&client_id=" + mClientId + "&client_secret=" + mClientSecret, false);
   request->setHeader("Content-Type", "application/x-www-form-urlencoded");
   sendPreAuthorizedRequest(request)
@@ -139,15 +139,15 @@ std::shared_ptr<HTTPRequest> CastorClient::makePost(const std::string& path,
 
 rxcpp::observable<HTTPResponse> CastorClient::sendRequest(std::shared_ptr<HTTPRequest> request) {
   if (!authenticationSubject.get_value().authenticated()
-    && authenticationSubject.get_value().state != AUTHENTICATING) {
+    && authenticationSubject.get_value().state != AuthenticationState::Authenticating) {
     reauthenticate();
   }
 
   return authenticationStatus()
-    .filter([](AuthenticationStatus status) { return status.state == AUTHENTICATION_ERROR || status.authenticated(); })
+    .filter([](AuthenticationStatus status) { return status.state == AuthenticationState::Error || status.authenticated(); })
     .first()
     .flat_map([this, request](AuthenticationStatus status) {
-      if (status.state == AUTHENTICATION_ERROR) {
+      if (status.state == AuthenticationState::Error) {
         std::rethrow_exception(status.exceptionPtr);
       }
 
