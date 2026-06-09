@@ -8,6 +8,10 @@ spec:
       description: Enable SAST build (yes/no)
       type: boolean
       default: false
+    test_coverage:
+      options: ['no-coverage', 'coverage']
+      default: no-coverage
+      description: Enable code coverage reporting
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -405,7 +409,9 @@ cleanup:
         DID_JOB_FAIL=1
       fi
     done
-    exit $DID_JOB_FAIL
+    if [ $DID_JOB_FAIL -ne 0 ]; then
+      exit 1
+    fi
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
 .run-tests-windows: &run-tests-windows
@@ -472,6 +478,7 @@ retrieve-lockfile:
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
 
 .ubuntu-build-base:
   <<: *ccache-configuration
@@ -523,8 +530,6 @@ retrieve-lockfile:
 
 .ubuntu-lts-debug-settings:
   extends: .ubuntu-lts-settings
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "True"
@@ -540,15 +545,79 @@ ubuntu-lts-debug:
       $UNIT_TESTS_BASE
       $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
+  rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
+      variables:
+        ENABLE_COVERAGE: "ON"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  before_script:
+    - !reference [.ubuntu-build-base, before_script]
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        mkdir -p "$CI_PROJECT_DIR/profiles"
+        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
+      fi
   script:
     - !reference [.ubuntu-build-base, script]
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+    - | 
+       if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
+         echo "Skipping code coverage processing steps"
+         exit 0
+       fi
+
+      # Merge raw profile files from profiles directory
+    - llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+
+    - |
+       BINARIES=""
+       for BINARY in $UNIT_TESTS_ALL $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+         BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
+       done
+    
+    - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
+
+      # Generate HTML report
+    - llvm-cov show $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        --project-title="Combined Coverage (Unit + Integration)"
+        --show-directory-coverage
+        -format=html
+        -output-dir=htmlcov
+
+      # Export to lcov format using llvm-cov
+    - llvm-cov export $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        -format=lcov > coverage.lcov
+
+      # Convert lcov to Cobertura XML using lcov_cobertura
+    - lcov_cobertura coverage.lcov --output coverage.xml
+        --base-dir "$CI_PROJECT_DIR"
+        --demangle
+
+      # Show summary with coverage percentage
+    - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
+    - 'echo "Line Coverage: ${line_pct}%"'
+  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+  artifacts:
+    paths:
+      - htmlcov/
+    reports:
+      junit: temp/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 # To test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-debug-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     WITH_CASTOR: "False"
     TESTS: "$UNIT_TESTS_BASE"
