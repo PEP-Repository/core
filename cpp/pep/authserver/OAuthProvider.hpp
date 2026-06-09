@@ -99,7 +99,6 @@ private:
   std::shared_ptr<AuthserverBackend> authserverBackend;
   std::shared_ptr<boost::asio::io_context> io_context;
   std::vector<boost::urls::url> allowedRedirectUris;
-  std::set<std::string> allowedTokenRequestOrigins;
 
   TemplateEnvironment mTemplates;
   friend class SharedConstructor<OAuthProvider>;

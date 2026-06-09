@@ -229,12 +229,6 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
   std::ranges::copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris));
   std::ranges::copy(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris));
 
-  for (auto uri : allowedRedirectUris) {
-    if (auto origin = uri.normalize().encoded_origin(); !origin.empty()) {
-      allowedTokenRequestOrigins.emplace(origin);
-    }
-  }
-
   activeGrantsCleanupSubscription = rxcpp::rxs::interval(std::chrono::minutes(1))
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
               .observe_on(observe_on_asio(*io_context)) //We want to run the cleaning up code on the io thread, so we don't have to worry about multithreading issues
@@ -519,17 +513,10 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     boost::property_tree::write_json(responseStream, responseData);
 
     HTTPMessage::HeaderMap responseHeaders{
-      {"Vary", "Origin"},
+      // It should be fine to put "*" here, because a website can only obtain a valid code for this endpoint by
+      // performing the whole authentication procedure, in which case they should receive a token.
+      {"Access-Control-Allow-Origin", "*"},
     };
-    const auto& requestHeaders = request.getHeaders();
-    if (auto originIt = requestHeaders.find("Origin"); originIt != requestHeaders.end()) {
-      url origin(originIt->second);
-      origin.normalize(); // Syntax-based normalization
-      const auto& allowedOrigins = getAllowedTokenRequestOrigins(clientId);
-      if (allowedOrigins.contains(origin.buffer())) {
-        responseHeaders.emplace("Access-Control-Allow-Origin", originIt->second);
-      }
-    }
     return MakeHttpResponse("200 OK", std::move(responseStream).str(), "application/json", std::move(responseHeaders));
   }
   catch (const Error& err) {
@@ -587,13 +574,6 @@ const std::vector<url>& OAuthProvider::getRegisteredRedirectURIs(const std::stri
     return allowedRedirectUris;
   }
   return Default<std::vector<url>>;
-}
-
-const std::set<std::string>& OAuthProvider::getAllowedTokenRequestOrigins(const std::string& clientId) {
-  if (clientId == PepClientId) {
-    return allowedTokenRequestOrigins;
-  }
-  return Default<std::set<std::string>>;
 }
 
 }
