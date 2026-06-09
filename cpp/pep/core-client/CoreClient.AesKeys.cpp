@@ -57,7 +57,7 @@ CoreClient::unblindAndDecryptKeys(
       request.mEntries.emplace_back(
          entry.mMetadata,
          entry.mPolymorphicKey,
-         KeyBlindMode::BLIND_MODE_UNBLIND,
+         KeyBlindMode::Unblind,
          entry.mLocalPseudonymsIndex
       );
     }
@@ -134,7 +134,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     keyRequests[offset].mEntries.emplace_back(
       entry.mMetadata,
       EncryptedKey(systemPublicKeys.globalDataEncryptionKey, keys[i].point),
-      KeyBlindMode::BLIND_MODE_BLIND,
+      KeyBlindMode::Blind,
       entry.mPseudonymIndex
     );
   }

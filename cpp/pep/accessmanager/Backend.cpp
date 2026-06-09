@@ -508,9 +508,9 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
 
   for (auto const& entry : request->mEntries) {
     std::string mode;
-    if (entry.mKeyBlindMode == KeyBlindMode::BLIND_MODE_BLIND)
+    if (entry.mKeyBlindMode == KeyBlindMode::Blind)
       mode = "write";
-    else if (entry.mKeyBlindMode == KeyBlindMode::BLIND_MODE_UNBLIND)
+    else if (entry.mKeyBlindMode == KeyBlindMode::Unblind)
       mode = "read";
     else
       throw Error("Unexpected KeyBlindMode");

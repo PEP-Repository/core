@@ -12,9 +12,9 @@ option go_package = "./pep_proto";
 //option cc_api_version = 2;
 
 enum KeyBlindMode {
-  BLIND_MODE_UNKNOWN = 0;
-  BLIND_MODE_BLIND = 1;
-  BLIND_MODE_UNBLIND = 2;
+  Unknown = 0;
+  Blind = 1;
+  Unblind = 2;
 }
 
 // Method by which pages are encrypted and how their metadata is

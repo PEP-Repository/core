@@ -378,7 +378,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
 
   size_t dwNumUnblind = 0;
   for (const auto& entry : request->mEntries)
-    if (entry.mKeyBlindMode == KeyBlindMode::BLIND_MODE_UNBLIND)
+    if (entry.mKeyBlindMode == KeyBlindMode::Unblind)
       dwNumUnblind++;
 
   // Decrypt local pseudonyms
@@ -397,7 +397,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                 [server, localPseudonyms](KeyRequestEntry entry) {
                   EncryptedKey key;
 
-                  if (entry.mKeyBlindMode == KeyBlindMode::BLIND_MODE_BLIND) {
+                  if (entry.mKeyBlindMode == KeyBlindMode::Blind) {
                     LocalPseudonym mLocalPseudonym;
                     try {
                       mLocalPseudonym = localPseudonyms->at(entry.mPseudonymIndex);
@@ -412,11 +412,11 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       blindingAD.invertComponent
                     );
                     key.ensurePacked();
-                  } else if (entry.mKeyBlindMode == KeyBlindMode::BLIND_MODE_UNBLIND) {
+                  } else if (entry.mKeyBlindMode == KeyBlindMode::Unblind) {
                     // do nothing --- we need the transcryptor to help out
                   } else {
                     std::ostringstream msg;
-                    msg << "Received unknown blinding mode: " << entry.mKeyBlindMode;
+                    msg << "Received unknown blinding mode: " << ToUnderlying(entry.mKeyBlindMode);
                     throw Error(msg.str());
                   }
                   return key;
@@ -434,7 +434,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   /* if we find at least one unblind entry in the request
                     * we can't deal with this ourselves, we need the transcryptor for this
                     */
-                  PEP_LOG(LogTag, debug) << "Rekey request has a BLIND_MODE_UNBLIND entry -> forwarding to transcryptor";
+                  PEP_LOG(LogTag, debug) << "Rekey request has a KeyBlindMode::Unblind entry -> forwarding to transcryptor";
                   RekeyRequest rkReq{
                     .mKeys{},
                     .mClientCertificateChain = *clientCertificateChain,
@@ -446,7 +446,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
 
                   for (size_t i = 0; i < request->mEntries.size(); i++) {
                     auto& entry = request->mEntries[i];
-                    if (entry.mKeyBlindMode != KeyBlindMode::BLIND_MODE_UNBLIND)
+                    if (entry.mKeyBlindMode != KeyBlindMode::Unblind)
                       continue;
                     try {
                       rkIndices->at(i) = static_cast<uint32_t>(rkReq.mKeys.size());
@@ -475,7 +475,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                               auto& entry = request->mEntries[i];
                               auto& key = lpResponse->mKeys[i];
 
-                              if (entry.mKeyBlindMode != KeyBlindMode::BLIND_MODE_UNBLIND)
+                              if (entry.mKeyBlindMode != KeyBlindMode::Unblind)
                                 return i; // we have to return something
 
                               //TODO: check access once access is based on local pseudonyms

@@ -328,7 +328,7 @@ TEST_F(AccessManagerBackendTest, checkTicketForEncryptionKeyRequest_happy) {
   ticket.mColumns.push_back(constants.w_col);
   ticket.mModes.push_back("write");
   KeyRequestEntry entry;
-  entry.mKeyBlindMode = KeyBlindMode::BLIND_MODE_BLIND; // Needs ticket mode write
+  entry.mKeyBlindMode = KeyBlindMode::Blind; // Needs ticket mode write
   entry.mMetadata.setTag(constants.w_col); // specified col should be in ticket columns.
   request->mEntries.push_back({entry});
 
