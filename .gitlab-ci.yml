@@ -858,6 +858,7 @@ ubuntu-rolling-release:
   rules:
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - !reference [ .skip-stable-release, rules ]
+    - when: on_success
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
 
@@ -873,6 +874,7 @@ weblib-debug:
     - .weblib-settings
   rules:
     - !reference [ .skip-stable-release, rules ]
+    - when: on_success
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
 
