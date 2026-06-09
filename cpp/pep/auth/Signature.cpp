@@ -43,10 +43,10 @@ Signature Signature::Make(std::string_view data, const X509Identity& identity, b
 
   Sha512 hasher;
   hasher.update(PackUint32BE(static_cast<uint32_t>(scheme)));
-  if (scheme == SIGNATURE_SCHEME_V3) {
+  if (scheme == SignatureScheme::V3) {
     hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp))));
     hasher.update(data);
-  } else if (scheme == SIGNATURE_SCHEME_V4) {
+  } else if (scheme == SignatureScheme::V4) {
     hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp))));
     hasher.update(PackUint8(static_cast<uint8_t>(isLogCopy)));
     hasher.update(data);
@@ -88,7 +88,7 @@ Signatory Signature::validate(
     throw SignatureValidityPeriodError(msg.str());
   }
 
-  if (expectLogCopy && (mScheme < SIGNATURE_SCHEME_V4))
+  if (expectLogCopy && (mScheme < SignatureScheme::V4))
     throw Error("Invalid signature: scheme does not support is_log_copy");
   if (expectLogCopy != mIsLogCopy) {
     if (expectLogCopy)
@@ -98,10 +98,10 @@ Signatory Signature::validate(
 
   Sha512 hasher;
   hasher.update(PackUint32BE(static_cast<uint32_t>(mScheme)));
-  if (mScheme == SIGNATURE_SCHEME_V3) {
+  if (mScheme == SignatureScheme::V3) {
     hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
     hasher.update(data);
-  } else if (mScheme == SIGNATURE_SCHEME_V4) {
+  } else if (mScheme == SignatureScheme::V4) {
     hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
     hasher.update(PackUint8(static_cast<uint8_t>(mIsLogCopy)));
     hasher.update(data);
