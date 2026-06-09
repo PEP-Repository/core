@@ -1,3 +1,5 @@
+#pragma once
+
 #include <pep/weblib/Emscripten_fwd.hpp>
 
 namespace pep::weblib {

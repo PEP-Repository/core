@@ -26,7 +26,7 @@ public:
   void cancel() const;
 };
 
-/// Execute \p calback after \p delay.
+/// Execute \p callback after \p delay.
 SetTimeoutHandle SetTimeout(std::chrono::duration<double, std::milli> delay, std::function<void()> callback);
 
 }

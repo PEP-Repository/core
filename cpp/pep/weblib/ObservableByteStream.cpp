@@ -141,7 +141,7 @@ public:
   }
 
   // Enable BYOB mode
-  std::string type() const { return "bytes"; }
+  static std::string type() const { return "bytes"; }
   std::size_t autoAllocateChunkSize() const { return chunkSize_; }
 };
 

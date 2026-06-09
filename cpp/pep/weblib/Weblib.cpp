@@ -82,7 +82,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     });
   }
 
-  rxcpp::observable<bool> connectionStatusChange() {
+  rxcpp::observable<bool> connectionStatusChange() const {
     auto disconnectedServers = std::make_shared<std::unordered_set<std::string>>();
 
     auto serverConnectionStatuses = client_->getServerProxies(true)
@@ -181,7 +181,7 @@ public:
       });
 
       run_ = oAuthClient->run()
-          .flat_map([weblib](AuthorizationResult res) {
+          .flat_map([weblib](const AuthorizationResult& res) {
             if (res) {
               return weblib->client_->enrollUser(*res);
             } else {
@@ -234,7 +234,7 @@ public:
   }
 
   /// For development use: generate OAuth token from secret
-  auto internalGenerateToken(std::string tokenSecretHex, std::string userGroup) {
+  auto internalGenerateToken(const std::string& tokenSecretHex, const std::string& userGroup) {
     using namespace std::chrono;
     auto now = TimeNow<sys_seconds>();
     return OAuthToken::Generate(
@@ -398,10 +398,10 @@ public:
   /// \returns \c Promise<string>
   WeblibApiPromise registerParticipant(weblib::ParticipantPersonalia personalia, bool isTestParticipant) {
     pep::ParticipantPersonalia personaliaClass{
-      std::move(personalia).firstName,
-      std::move(personalia).middleName,
-      std::move(personalia).lastName,
-      std::move(personalia).dateOfBirth,
+      std::move(personalia.firstName),
+      std::move(personalia.middleName),
+      std::move(personalia.lastName),
+      std::move(personalia.dateOfBirth),
     };
     co_return co_await onIoThread()
         .flat_map([personalia = std::move(personaliaClass), isTestParticipant](const std::shared_ptr<Weblib>& self) {

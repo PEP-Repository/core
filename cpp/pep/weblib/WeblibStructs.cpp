@@ -12,10 +12,6 @@
 
 #include <emscripten/bind.h>
 
-#include <rxcpp/operators/rx-map.hpp>
-
-#include <type_traits>
-
 using namespace emscripten;
 using namespace pep;
 using namespace pep::weblib;

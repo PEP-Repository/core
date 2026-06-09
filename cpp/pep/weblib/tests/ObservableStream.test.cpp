@@ -100,7 +100,7 @@ TEST(ObservableStream, errorInConsumer) {
 class TestClass {
   unsigned* numAllocated_;
 public:
-  TestClass(unsigned* numAllocated) : numAllocated_{numAllocated} { ++*numAllocated_; }
+  explicit TestClass(unsigned* numAllocated) : numAllocated_{numAllocated} { ++*numAllocated_; }
   ~TestClass() { --*numAllocated_; }
 
   TestClass(const TestClass&) = delete;

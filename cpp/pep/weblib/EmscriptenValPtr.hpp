@@ -1,6 +1,6 @@
 #pragma once
 
-#include <emscripten/val.h>
+#include <pep/weblib/Emscripten_fwd.hpp>
 
 #include <memory>
 

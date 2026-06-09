@@ -1,14 +1,10 @@
 #include <pep/weblib/ObservableByteStream.hpp>
 
-#include <pep/async/CreateObservable.hpp>
-#include <pep/weblib/OnEmscriptenThread.hpp>
 #include <pep/weblib/tests/PromiseHelpers.hpp>
 
 #include <emscripten/em_js.h>
 #include <emscripten/val.h>
 #include <rxcpp/rx-lite.hpp>
-#include <rxcpp/operators/rx-map.hpp>
-#include <rxcpp/operators/rx-subscribe_on.hpp>
 
 #include <gtest/gtest.h>
 

@@ -4,6 +4,7 @@
 
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
+#include <emscripten/val.h>
 
 #include <utility>
 
