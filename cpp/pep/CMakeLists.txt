@@ -13,6 +13,7 @@ if(ENABLE_CLANG_TIDY)
   if(PROFILE_CLANG_TIDY)
     list(APPEND clang_tidy_opts "--enable-check-profile" "--store-check-profile=${clang_tidy_profile_dir}")
     add_custom_target(clang-tidy-stats
+        COMMENT "Print Clang-Tidy checks performance statistics"
         COMMAND ${INVOKE_SH} "${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-stats.sh" ${clang_tidy_profile_dir}
         USES_TERMINAL
         VERBATIM
@@ -27,6 +28,7 @@ if(ENABLE_CLANG_TIDY)
   endif()
   find_program(CLANG_TIDY_PROGRAM clang-tidy)
   # Recompile when .clang-tidy changes
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.clang-tidy")
   file(SHA256 "${CMAKE_SOURCE_DIR}/.clang-tidy" clang_tidy_hash)
   set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
 endif()
@@ -142,11 +144,30 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       -Wvla
       -Wwrite-strings
       -Wzero-as-null-pointer-constant
-
-      -Wno-deprecated-copy-with-dtor  # Ignore when defaulted...
-      -Wdeprecated-copy-with-user-provided-dtor  # ...but not when provided
       -Wno-unused-parameter
   )
+
+  if(distcc IN_LIST CMAKE_CXX_COMPILER_LAUNCHER)
+    set(distcc_default ON)
+  else()
+    set(distcc_default OFF)
+  endif()
+  option(PEP_DISTCC_COMPATIBLE "Use options compatible with distcc" ${distcc_default})
+  if(PEP_DISTCC_COMPATIBLE)
+    message(STATUS "Disabling warnings introduced when using distcc")
+    set(distcc_options
+        -Wno-unknown-warning-option
+
+        # Warnings are generated because preprocessing is run locally,
+        # so macros are expanded, etc.
+        -Wno-extra-semi-stmt
+        -Wno-gnu-line-marker
+        -Wno-old-style-cast
+        -Wno-unreachable-code
+        -Wno-zero-as-null-pointer-constant
+    )
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:${distcc_options}>")
+  endif()
 
   if(NOT DEPRECATED_WARNINGS_AS_ERROR)
     warn_no_error(CXX
@@ -156,11 +177,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   endif()
 endif()
 
-# For MSVC, bump up the warning level from level 1 (default) to 2
-# TODO: See if we can bump this to level 3 or 4?
+# For MSVC, bump up the warning level from level 1 (default) to 3
+# TODO: See if we can bump this to /W4 or /Wall ?
 if (MSVC)
   # Ref: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=msvc-170
-  add_compile_options("/W2")
+  add_compile_options("/W3")
 endif()
 
 # Treat warnings as errors
@@ -317,6 +338,10 @@ function(verify_headers_standalone target)
         file(WRITE "${src}" "#include <${header}>")
         target_sources("${target}_StandaloneHeaders" PRIVATE "${src}")
       endforeach()
+
+      set_target_properties(${target}_StandaloneHeaders PROPERTIES
+        FOLDER pep-StandaloneHeaders
+      )
     endif()
   endif()
 endfunction()
@@ -403,6 +428,7 @@ add_subdirectory(core-client)
 add_subdirectory(crypto)
 add_subdirectory(database)
 add_subdirectory(elgamal)
+add_subdirectory(key-components)
 add_subdirectory(keyserver)
 add_subdirectory(messaging)
 add_subdirectory(morphing)

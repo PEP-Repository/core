@@ -1,12 +1,12 @@
 #pragma once
 
-#include <pep/utils/File.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
-#include <pep/server/MonitoringSerializers.hpp>
-#include <pep/async/IoContext_fwd.hpp>
-#include <pep/messaging/HousekeepingMessages.hpp>
+#include <pep/server/MonitoringMessages.hpp>
+#include <pep/utils/File.hpp>
 
 namespace pep {
 
@@ -26,7 +26,9 @@ public:
   * \brief Produces a human-readable description of the server.
   * \return A string describing the server (type).
   */
-  virtual std::string describe() const = 0;
+  const std::string& describe() const { return mServerTraits.description(); }
+
+  const ServerTraits& getServerTraits() const noexcept { return mServerTraits; }
 
   /*!
   * \brief Produces the path where the server stores its data (if any).
@@ -50,8 +52,6 @@ protected:
 
   Server(std::shared_ptr<Parameters> parameters);
 
-  virtual std::string makeSerializedPingResponse(const PingRequest& request) const;
-
   virtual std::shared_ptr<prometheus::Registry> getMetricsRegistry();
 
   virtual std::unordered_set<std::string> getAllowedChecksumChainRequesters();
@@ -72,13 +72,12 @@ protected:
   }
 
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return mIoContext; }
-  const X509RootCertificates& getRootCAs() const noexcept { return mRootCAs; }
+  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return mRootCAs; }
   EGCache& getEgCache() { return mEGCache; }
 
   static std::filesystem::path EnsureDirectoryPath(std::filesystem::path);
 
 private:
-  messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
   messaging::MessageBatches handleMetricsRequest(std::shared_ptr<SignedMetricsRequest> signedRequest);
   messaging::MessageBatches handleChecksumChainNamesRequest(std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest);
   messaging::MessageBatches handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest);
@@ -114,8 +113,9 @@ private:
   std::shared_ptr<Metrics> mMetrics;
   EGCache& mEGCache; // <- for metrics
   unsigned int mUncaughtReadExceptions = 0;
+  ServerTraits mServerTraits;
   std::shared_ptr<boost::asio::io_context> mIoContext;
-  X509RootCertificates mRootCAs;
+  std::shared_ptr<X509RootCertificates> mRootCAs;
 };
 
 
@@ -126,7 +126,7 @@ class Server::Parameters {
 private:
   std::shared_ptr<boost::asio::io_context> mIoContext;
   std::filesystem::path rootCACertificatesFilePath_;
-  X509RootCertificates rootCAs_;
+  std::shared_ptr<X509RootCertificates> rootCAs_;
 
 protected:
   virtual void check() const {}
@@ -143,6 +143,8 @@ public:
    * \brief Destructor.
    */
   virtual ~Parameters() noexcept = default;
+
+  virtual ServerTraits serverTraits() const noexcept = 0;
 
   /*!
    * \brief Validates these parameters, raising an exception if they're not valid.
@@ -169,7 +171,7 @@ public:
    * \brief Produces the root CA certificate(s) for this server's constellation.
    * \return (A reference to) this server's constellation's root CA certificate(s).
    */
-  const X509RootCertificates& getRootCAs() const noexcept { return rootCAs_; }
+  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return rootCAs_; }
 };
 
 }

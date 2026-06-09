@@ -21,7 +21,7 @@ OpenSSLError::OpenSSLError(const std::string& message)
     : std::runtime_error(message + " " + TakeOpenSSLErrors()) {}
 
 std::string OpenSSLBIOToString(BIO* bio) {
-  char* data;
+  char* data{};
   auto len = BIO_get_mem_data(bio, &data);
   if (len <= 0) {
     throw pep::OpenSSLError("Failed to get data from BIO in OpenSSLBIOToString");

@@ -1,6 +1,6 @@
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-
-#include <pep/utils/MiscUtil.hpp>
+#include <pep/utils/Math.hpp>
 
 using namespace std::literals;
 
@@ -12,6 +12,14 @@ void LocalPseudonyms::ensurePacked() const {
   mPolymorphic.ensurePacked();
   if (mAccessGroup)
     mAccessGroup->ensurePacked();
+}
+
+std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>& lps) {
+  std::vector<PolymorphicPseudonym> pps;
+  pps.reserve(lps.size());
+  for (const auto& p : lps)
+    pps.push_back(p.mPolymorphic);
+  return pps;
 }
 
 bool Ticket2::hasMode(const std::string& mode) const {
@@ -31,12 +39,9 @@ bool Ticket2::hasMode(const std::string& mode) const {
   return false;
 }
 
-std::vector<PolymorphicPseudonym> Ticket2::getPolymorphicPseudonyms() const {
-  std::vector<PolymorphicPseudonym> ret;
-  ret.reserve(mPseudonyms.size());
-  for (const auto& p : mPseudonyms)
-    ret.push_back(p.mPolymorphic);
-  return ret;
+void SignedTicket2::addTranscryptorSignature(Signature signature) {
+  assert(!mTranscryptorSignature.has_value());
+  mTranscryptorSignature = std::move(signature);
 }
 
 Ticket2 SignedTicket2::openWithoutCheckingSignature() const {
@@ -51,18 +56,19 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     throw Error("Transcryptor signature is missing");
 
   try {
+
     // A longer leeway is used for long downloads etc.
-    mSignature->assertValid(
+    mSignature->validate(
       mData,
       rootCAs,
-      std::string("AccessManager"),
+      ServerTraits::AccessManager().userGroup(true),
       std::chrono::days{1},
       false
     );
-    mTranscryptorSignature->assertValid(
+    mTranscryptorSignature->validate(
       mData,
       rootCAs,
-      std::string("Transcryptor"),
+      ServerTraits::Transcryptor().userGroup(true),
       std::chrono::days{1},
       false
     );
@@ -82,40 +88,49 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
   return ticket;
 }
 
-Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs) const {
+Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const {
   if (!mSignature)
     throw Error("AccessManager signature is missing");
   if (mTranscryptorSignature)
     throw Error("Transcryptor signature should not be set");
 
-  mSignature->assertValid(
+  mSignature->validate(
     mData,
     rootCAs,
-    std::string("AccessManager"),
+    ServerTraits::AccessManager().userGroup(true),
     std::chrono::days{1},
     false
   );
 
   auto ticket = Serialization::FromString<Ticket2>(mData);
+  serialized = mData;
   return ticket;
 }
 
-Signed<Ticket2>::Signed(Ticket2 ticket, X509CertificateChain chain,
-  const AsymmetricKey& privateKey) {
+Signed<Ticket2>::Signed(Ticket2 ticket,
+  const X509Identity& identity) {
   auto data = Serialization::ToString(std::move(ticket));
-  mSignature = Signature::create(data, chain, privateKey);
+  mSignature = Signature::Make(data, identity);
   mData = std::move(data);
 }
 
 Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
-  const X509CertificateChain& chain,
-  const AsymmetricKey& privateKey) {
+  const X509Identity& identity) {
   mData = Serialization::ToString(std::move(ticketRequest));
-  mSignature = Signature::create(mData, chain, privateKey);
-  mLogSignature = Signature::create(mData, chain, privateKey, true);
+  mSignature = Signature::Make(mData, identity);
+  mLogSignature = Signature::Make(mData, identity, true);
 }
 
-TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
+Signature Signed<TicketRequest2>::extractSignature() {
+  if (!mSignature.has_value()) {
+    throw std::runtime_error("Signed ticket request does not contain a signature to extract");
+  }
+  auto result = std::move(*mSignature);
+  mSignature.reset();
+  return result;
+}
+
+Certified<TicketRequest2> Signed<TicketRequest2>::openAsAccessManager(
   const X509RootCertificates& rootCAs) {
   if (!mSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature");
@@ -123,11 +138,11 @@ TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
   // Check signatures separately
-  mSignature->assertValid(mData, rootCAs, std::nullopt, 1h, false);
-  mLogSignature->assertValid(mData, rootCAs, std::nullopt, 1h, true);
+  auto signatory = mSignature->validate(mData, rootCAs, std::nullopt, 1h, false);
+  auto logSignatory = mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
 
   // Check signatures are similar enough
-  auto diff = Abs(mSignature->mTimestamp - mLogSignature->mTimestamp);
+  auto diff = Abs(mSignature->timestamp() - mLogSignature->timestamp());
   if (diff > 1min)
     throw Error("Invalid SignedTicketRequest2: timestamps "
       "of signatures too far apart");
@@ -135,24 +150,29 @@ TicketRequest2 Signed<TicketRequest2>::openAsAccessManager(
   // TODO instead it's better to check the public keys are the same.  (Then
   // don't have to check all the other fields of the certificate that might
   // become relevant).
-  if (mSignature->getLeafCertificateOrganizationalUnit()
-    != mLogSignature->getLeafCertificateOrganizationalUnit())
+  if (signatory.organizationalUnit() != logSignatory.organizationalUnit()) {
     throw Error("Invalid SignedTicketRequest2: organizational "
       "units of signatures do not match");
+  }
 
-  return Serialization::FromString<TicketRequest2>(mData);
+  return Certified<TicketRequest2>{
+    .signatory = std::move(signatory),
+    .message = Serialization::FromString<TicketRequest2>(mData),
+  };
 }
 
-TicketRequest2 Signed<TicketRequest2>::openAsTranscryptor(
+Certified<TicketRequest2> Signed<TicketRequest2>::openAsTranscryptor(
   const X509RootCertificates& rootCAs) {
   if (mSignature)
     throw Error("Invalid SignedTicketRequest2: signature for AM shouldn't be set");
   if (!mLogSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
-  mLogSignature->assertValid(mData, rootCAs, std::nullopt, 1h, true);
-
-  return Serialization::FromString<TicketRequest2>(mData);
+  auto signatory = mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
+  return Certified<TicketRequest2> {
+    .signatory = std::move(signatory),
+    .message = Serialization::FromString<TicketRequest2>(mData),
+  };
 }
 
 }

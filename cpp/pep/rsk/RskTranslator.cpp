@@ -1,7 +1,8 @@
 #include <pep/rsk/RskTranslator.hpp>
 
 #include <pep/utils/Bitpacking.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 #include <stdexcept>
 #include <utility>
@@ -48,20 +49,18 @@ RskTranslator::generateKeyFactors(const SkRecipient& recipient) const {
 ElgamalEncryption RskTranslator::rsk(
     const ElgamalEncryption& encryption,
     const KeyFactors& recipientKeyFactors) const {
-  return cache_->RSK(
+  return cache_->rsk(
       CheckValidEncryption(encryption),
       recipientKeyFactors.reshuffle,
-      recipientKeyFactors.rekey,
-      rng_.get());
+      recipientKeyFactors.rekey);
 }
 
 ElgamalEncryption RskTranslator::rk(
     const ElgamalEncryption& encryption,
     const ElgamalTranslationKey& recipientRekeyKeyFactor) const {
-  return cache_->RK(
+  return cache_->rk(
       CheckValidEncryption(encryption),
-      recipientRekeyKeyFactor,
-      rng_.get());
+      recipientRekeyKeyFactor);
 }
 
 ElgamalEncryption RskTranslator::rs(
@@ -71,22 +70,32 @@ ElgamalEncryption RskTranslator::rs(
   return CheckValidEncryption(encryption).rerandomize().reshuffle(recipientReshuffleKeyFactor);
 }
 
-std::pair<ElgamalEncryption, RSKProof> RskTranslator::certifiedRsk(
+std::pair<ElgamalEncryption, RskProof> RskTranslator::certifiedRsk(
     const ElgamalEncryption& encryption,
     const KeyFactors& recipientKeyFactors) const {
   ElgamalEncryption encryptionOut;
-  //TODO Why is this not cached, and why does it not take a RNG?
-  RSKProof proofOut = RSKProof::certifiedRSK(
+  //TODO Why is this not cached?
+  RskProof proofOut = RskProof::CertifiedRsk(
       CheckValidEncryption(encryption), encryptionOut,
       recipientKeyFactors.reshuffle,
       recipientKeyFactors.rekey);
   return {encryptionOut, proofOut};
 }
 
-RSKVerifiers RskTranslator::computeRskProofVerifiers(
+ReshuffleRekeyVerifiers RskTranslator::computeReshuffleRekeyVerifiers(
     const KeyFactors& recipientKeyFactors,
     const ElgamalPublicKey& masterPublicEncryptionKey) const {
-  return RSKVerifiers::compute(
+  return ReshuffleRekeyVerifiers::Compute(
+      recipientKeyFactors.reshuffle,
+      recipientKeyFactors.rekey,
+      masterPublicEncryptionKey);
+}
+
+ReshuffleRekeyVerifiersWithProof
+RskTranslator::computeCertifiedReshuffleRekeyVerifiers(
+    const KeyFactors& recipientKeyFactors,
+    const ElgamalPublicKey& masterPublicEncryptionKey) const {
+  return ReshuffleRekeyVerifiersProof::ComputeCertified(
       recipientKeyFactors.reshuffle,
       recipientKeyFactors.rekey,
       masterPublicEncryptionKey);
@@ -96,7 +105,7 @@ CurveScalar RskTranslator::generateKeyComponent(
     const CurveScalar& encryptionKeyFactor,
     const CurveScalar& masterPrivateEncryptionKeyShare
 ) const {
-  return encryptionKeyFactor.mult(masterPrivateEncryptionKeyShare);
+  return encryptionKeyFactor * masterPrivateEncryptionKeyShare;
 }
 
 /// Generate a key factor
@@ -115,5 +124,5 @@ CurveScalar RskTranslator::generateKeyFactor(
   hasher.update(PackUint32BE(keys_.domain));
   hasher.update(PackUint32BE(recipient.type()));
   auto digest = hasher.digest(recipient.payload());
-  return CurveScalar::From64Bytes(Sha512::HMac(SpanToString(keyFactorSecret.hmacKey()), digest));
+  return CurveScalar::From64Bytes(Hmac<Sha512>(SpanToString(keyFactorSecret.hmacKey()), digest));
 }

@@ -1,6 +1,7 @@
 #include <pep/storagefacility/S3.hpp>
 
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Hmac.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -117,7 +118,7 @@ namespace pep::s3
             << "SignedHeaders=" << c.signed_headers << ", "
             << "Signature=" << signature;
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
       std::string GetDateTime(const Context& c) {
@@ -136,7 +137,7 @@ namespace pep::s3
         ss  << GetDate(c) << "/" << c.credentials.region
             << "/" << c.credentials.service << "/aws4_request";
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -146,7 +147,7 @@ namespace pep::s3
 
       std::string ComputeSignature(Context& c) {
         return boost::algorithm::to_lower_copy(boost::algorithm::hex(
-              Sha256::HMac(ComputeSigningKey(c),
+              Hmac<Sha256>(ComputeSigningKey(c),
                 ComputeStringToSign(c))));
       }
 
@@ -154,11 +155,11 @@ namespace pep::s3
       std::string ComputeSigningKey(const Context& c) {
         std::string prekey = "AWS4" + c.credentials.secret;
 
-        prekey = Sha256::HMac(prekey, GetDate(c));
-        prekey = Sha256::HMac(prekey, c.credentials.region);
-        prekey = Sha256::HMac(prekey, c.credentials.service);
+        prekey = Hmac<Sha256>(prekey, GetDate(c));
+        prekey = Hmac<Sha256>(prekey, c.credentials.region);
+        prekey = Hmac<Sha256>(prekey, c.credentials.service);
 
-        return Sha256::HMac(prekey, "aws4_request");
+        return Hmac<Sha256>(prekey, "aws4_request");
       }
 
 
@@ -174,7 +175,7 @@ namespace pep::s3
             << boost::algorithm::to_lower_copy(boost::algorithm::hex(
                   Sha256().digest(ComputeCanonicalRequest(c))));
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -192,7 +193,7 @@ namespace pep::s3
             << c.signed_headers << "\n"
             << c.request.header("X-Amz-Content-Sha256");
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -216,7 +217,7 @@ namespace pep::s3
           ss << key << "=" << encodedQueries.find(key)->value;
         }
 
-        return ss.str();
+        return std::move(ss).str();
       }
 
 
@@ -246,9 +247,9 @@ namespace pep::s3
           ss_signed_headers << key_lower_case;
         }
 
-        c.signed_headers = ss_signed_headers.str();
+        c.signed_headers = std::move(ss_signed_headers).str();
 
-        return ss_result.str();
+        return std::move(ss_result).str();
       }
 
 
@@ -274,7 +275,7 @@ namespace pep::s3
     }
     ss << std::put_time(&tm, "%Y%m%dT%H%M%SZ");
 
-    return ss.str();
+    return std::move(ss).str();
   }
 
 

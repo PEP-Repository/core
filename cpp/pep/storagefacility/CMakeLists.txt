@@ -1,15 +1,19 @@
 add_library(${PROJECT_NAME}StorageFacilityApilib
   Constants.hpp
   DataPayloadPage.cpp DataPayloadPage.hpp
+  DataPayloadPageStreamOrder.cpp DataPayloadPageStreamOrder.hpp
   PageHash.cpp PageHash.hpp
   StorageFacilityMessages.hpp
+  StorageFacilityProxy.cpp StorageFacilityProxy.hpp
   StorageFacilitySerializers.cpp StorageFacilitySerializers.hpp
 )
 target_link_libraries(${PROJECT_NAME}StorageFacilityApilib
   ${PROJECT_NAME}Morphinglib
+  ${PROJECT_NAME}ServerApilib
   ${PROJECT_NAME}Ticketinglib
 )
 verify_headers_standalone(${PROJECT_NAME}StorageFacilityApilib)
+
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}StorageFacilitylib
@@ -32,6 +36,13 @@ if (WITH_SERVERS)
     ${PROJECT_NAME}Serverlib
   )
   verify_headers_standalone(${PROJECT_NAME}StorageFacilitylib)
+
+  option(SIMULATE_S3_BACKEND_FAILURE "Simulate S3 backend failure on request")
+  if(SIMULATE_S3_BACKEND_FAILURE)
+    set_source_files_properties(S3Client.cpp PROPERTIES
+      COMPILE_DEFINITIONS SIMULATE_S3_BACKEND_FAILURE
+    )
+  endif()
 
   # Stage s3proxy so we can use it as a backend for Storage Facility's "s3" page store.
   include(${PROJECT_SOURCE_DIR}/s3proxy/s3proxy.cmake)
@@ -76,4 +87,10 @@ if (WITH_SERVERS)
     add_unit_tests(StorageFacility EXTRA_ARGS "--launch-s3proxy")
     add_dependencies(${PROJECT_NAME}StorageFacilityUnitTests ${PROJECT_NAME}StorageFacility_s3proxy storagefacility_pki)
   endif ()
+
+  add_cli_install_executable(${PROJECT_NAME}MakeS3request MakeS3request.cpp)
+  target_link_libraries(${PROJECT_NAME}MakeS3request
+    ${PROJECT_NAME}StorageFacilitylib
+    ${PROJECT_NAME}Applicationlib
+  )
 endif()

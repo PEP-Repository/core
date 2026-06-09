@@ -5,6 +5,7 @@
 #include <pep/assessor/loginwidget.hpp>
 #include <pep/assessor/participantwidget.hpp>
 #include <pep/assessor/UserRole.hpp>
+#include <pep/async/IoContextThread.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
@@ -92,7 +93,7 @@ class PepAssessorApplication : public pep::Application {
     return result;
   }
 
-  void prepareForExecution(QApplication& application) {
+  std::unique_ptr<pep::IoContextThread> prepareForExecution(QApplication& application) {
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
     // Without an organization name and application name the windows build crashes on ssl usage.
@@ -105,7 +106,8 @@ class PepAssessorApplication : public pep::Application {
     qRegisterMetaType<pep::severity_level>("pep::severity_level");
 
     pep::Configuration config = this->loadMainConfigFile();
-    auto pepClient = pep::Client::OpenClient(config, nullptr, false);
+    auto io_context = std::make_shared<boost::asio::io_context>();
+    auto pepClient = pep::Client::OpenClient(config, io_context, false);
 
     pep::Configuration projectConfig = pep::Configuration::FromFile(
       config.get<std::filesystem::path>("ProjectConfigFile"));
@@ -124,6 +126,8 @@ class PepAssessorApplication : public pep::Application {
     QObject::connect(loginWidget, &LoginWidget::loginSuccess, mainWindow, &MainWindow::showForToken);
 
     loginWidget->show();
+
+    return std::make_unique<pep::IoContextThread>("I/O context", io_context);
   }
 
  public:
@@ -160,8 +164,9 @@ class PepAssessorApplication : public pep::Application {
       return EXIT_FAILURE;
     }
 
+    std::unique_ptr<pep::IoContextThread> ioThread; // Thread is stopped and joined (by destructor) at scope exit
     try {
-      this->prepareForExecution(pepAssessor);
+      ioThread = this->prepareForExecution(pepAssessor);
     }
     catch (...) {
       QMessageBox box;

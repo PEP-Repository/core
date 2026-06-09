@@ -20,8 +20,8 @@ struct RxToVector {
   rxcpp::observable<std::shared_ptr<std::vector<TItem>>> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.reduce(
       std::make_shared<std::vector<TItem>>(),
-      [](std::shared_ptr<std::vector<TItem>> result, const TItem& item) {
-      result->push_back(item);
+      [](std::shared_ptr<std::vector<TItem>> result, TItem item) {
+      result->push_back(std::move(item));
       return result;
     });
   }

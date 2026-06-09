@@ -11,12 +11,12 @@ namespace pep {
 
 using MessageMagic = uint32_t;
 
-MessageMagic CalculateMessageMagic(const std::string& crossPlatformName);
+MessageMagic CalculateMessageMagic(std::string_view crossPlatformName);
 
-MessageMagic GetMessageMagic(const std::string_view& str);
+MessageMagic GetMessageMagic(std::string_view str);
 MessageMagic PopMessageMagic(std::string& str);
 
-std::string DescribeMessageMagic(const std::string& str);
+std::string DescribeMessageMagic(std::string_view str);
 std::string DescribeMessageMagic(MessageMagic magic);
 
 template <typename TMessage>

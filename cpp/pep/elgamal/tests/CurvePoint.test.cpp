@@ -5,16 +5,27 @@
 
 namespace {
 
-TEST(CurvePointTest, TestConstructor) {
-  pep::CurvePoint point;
-}
-
 TEST(CurvePointTest, TestCompare) {
   pep::CurvePoint pointA;
   EXPECT_EQ(pointA, pointA) << "Point is not equal to itself";
   pep::CurvePoint pointB = pep::CurvePoint::Random();
   EXPECT_EQ(pointB, pointB) << "Point is not equal to itself";
   EXPECT_NE(pointA, pointB) << "Different points are equal";
+}
+
+TEST(CurvePointTest, TestBase) {
+  const pep::CurvePoint base(pep::CurvePoint::Base);
+  EXPECT_EQ(base, pep::CurveScalar::One() * pep::CurvePoint::Base);
+}
+
+TEST(CurvePointTest, TestNeutral) {
+  const pep::CurvePoint neutral;
+
+  const pep::CurvePoint base(pep::CurvePoint::Base);
+  EXPECT_NE(base, neutral);
+  EXPECT_EQ(base, base + neutral);
+
+  EXPECT_EQ(pep::CurvePoint(neutral.pack()), neutral);
 }
 
 TEST(CurvePointTest, TestRandom) {
@@ -26,13 +37,13 @@ TEST(CurvePointTest, TestRandom) {
 TEST(CurvePointTest, TestAdd) {
   pep::CurvePoint pointA = pep::CurvePoint::Random();
   pep::CurvePoint pointB = pep::CurvePoint::Random();
-  [[maybe_unused]] pep::CurvePoint pointC = pointA.add(pointB);
+  [[maybe_unused]] pep::CurvePoint pointC = pointA + pointB;
 }
 
 TEST(CurvePointTest, TestSub) {
   pep::CurvePoint pointA = pep::CurvePoint::Random();
   pep::CurvePoint pointB = pep::CurvePoint::Random();
-  [[maybe_unused]] pep::CurvePoint pointC = pointA.sub(pointB);
+  [[maybe_unused]] pep::CurvePoint pointC = pointA - pointB;
 }
 
 TEST(CurvePointTest, TestFromText) {
@@ -44,7 +55,7 @@ TEST(CurvePointTest, TestPrecomputedTable) {
     auto pt = pep::CurvePoint::Random();
     auto s = pep::CurveScalar::Random();
     pep::CurvePoint::ScalarMultTable table(pt);
-    EXPECT_EQ(pt.mult(s), table.mult(s));
+    EXPECT_EQ(s * pt, table.mult(s));
   }
 }
 
@@ -52,14 +63,18 @@ TEST(CurvePointTest, TestBaseMult) {
   const auto base = pep::CurvePoint::FromText("e2f2ae0a6abc4e71a884a961c500515f58e30b6aa582dd8db6a65945e08d2d76");
   for (int i = 0; i < 1000; i++) {
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(pep::CurvePoint::BaseMult(s), base.mult(s));
+    EXPECT_EQ(
+      s * pep::CurvePoint::Base,
+      s * base);
   }
 }
 
 TEST(CurvePointTest, TestPublicBaseMult) {
   for (int i = 0; i < 1000; i++) {
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(pep::CurvePoint::BaseMult(s), pep::CurvePoint::PublicBaseMult(s));
+    EXPECT_EQ(
+      s * pep::CurvePoint::Base,
+      pep::PublicCurveScalar(s) * pep::CurvePoint::Base);
   }
 }
 
@@ -67,7 +82,9 @@ TEST(CurvePointTest, TestPublicMult) {
   for (int i = 0; i < 1000; i++) {
     pep::CurvePoint b = pep::CurvePoint::Random();
     pep::CurveScalar s = pep::CurveScalar::Random();
-    EXPECT_EQ(b.mult(s), b.publicMult(s));
+    EXPECT_EQ(
+      s * b,
+      pep::PublicCurveScalar(s) * b);
   }
 }
 
@@ -75,8 +92,8 @@ TEST(CurvePointTest, TestAddSub) {
   pep::CurvePoint pointA = pep::CurvePoint::Random();
   pep::CurvePoint pointB = pep::CurvePoint::Random();
   EXPECT_NE(pointA, pointB) << "Random points are equal";
-  pep::CurvePoint pointC = pointA.add(pointB);
-  pep::CurvePoint pointD = pointC.sub(pointB);
+  pep::CurvePoint pointC = pointA + pointB;
+  pep::CurvePoint pointD = pointC - pointB;
   EXPECT_EQ(pointD, pointA) << "Point A + B - B is not equal to A";
 }
 

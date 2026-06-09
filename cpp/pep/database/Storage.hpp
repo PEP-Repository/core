@@ -7,16 +7,21 @@
 #include <sqlite_orm/sqlite_orm.h>
 
 namespace pep::database {
-
 struct SchemaError : std::logic_error {
   enum class Reason {
-    dropped_and_recreated,
-    old_columns_removed,
+    DroppedAndRecreated,
+    OldColumnsRemoved,
   };
   SchemaError(std::string table, Reason reason);
 
   std::string mTable;
   Reason mReason;
+};
+
+template<typename T>
+struct having {
+  explicit having(T&& expr) : mExpr(std::move(expr)) {}
+  T mExpr;
 };
 
 /// @brief Non-template base class for Storage<> (defined below).
@@ -81,13 +86,19 @@ struct Storage : public BasicStorage {
         case sqlite_orm::sync_schema_result::new_table_created:
         case sqlite_orm::sync_schema_result::new_columns_added:
           break;
+        // sqlite_orm is sometimes able to make a backup of the data before dropping and recreating, and sometimes it is not.
+        // This means the following case sometimes has data loss, and sometimes it doesn't. We can't distinguish.
+        // This has now been fixed in the `dev` branch of sqlite_orm: https://github.com/fnc12/sqlite_orm/issues/1462
+        // Once this lands in a release, and our version of sqlite_orm gets updated, this will cause a compiler error,
+        // because we are no longer handling all enum cases. The new dropped_and_recreated_with_data_loss case should
+        // then produce an error, and the dropped_and_recreated case should no longer produce one.
         case sqlite_orm::sync_schema_result::dropped_and_recreated:
-          throw SchemaError(tableName, SchemaError::Reason::dropped_and_recreated);
+          throw SchemaError(tableName, SchemaError::Reason::DroppedAndRecreated);
         case sqlite_orm::sync_schema_result::old_columns_removed:
         case sqlite_orm::sync_schema_result::new_columns_added_and_old_columns_removed:
           if (allow_old_column_removal)
             break;
-          throw SchemaError(tableName, SchemaError::Reason::old_columns_removed);
+          throw SchemaError(tableName, SchemaError::Reason::OldColumnsRemoved);
         }
       }
       auto syncResults  = raw.sync_schema(true);
@@ -105,11 +116,48 @@ struct Storage : public BasicStorage {
   ///
   /// Example: check if a column group is not empty
   /// \code
-  ///   myStorage->currentRecordExists<ColumnGroupColumnRecord>(storage,
+  ///   myStorage->currentRecordExists<ColumnGroupColumnRecord>(
   ///     c(&ColumnGroupColumnRecord::columnGroup) == columnGroup)
   /// \endcode
   template <Record RecordType>
   [[nodiscard]] bool currentRecordExists(auto whereCondition);
+
+  /// Return whether any non-tombstone records exist without retrieving them.
+  /// The where-clause is evaluated for all records, before determining which records are current. The having-clause is only evaluated for the current records.
+  ///
+  /// Example: check if a UserGroupRecord with a certain name exists
+  /// The name has to be checked in the having-clause. We first need to decide which records are current, before checking the name.
+  /// Otherwise records that used to have the given name, but no longer do, will match the query.
+  /// Even worse, if the record is tombstoned with a different name, that tombstone record will be eliminated before checking which records are current.
+  /// So the method would incorrectly return true.
+  /// \code
+  ///   myStorage->currentRecordExists<UserGroupRecord>(
+  ///     true,
+  ///     having(c(&UserGroupRecord::name) == name))
+  /// \endcode
+  template <Record RecordType, typename havingT>
+  [[nodiscard]] bool currentRecordExists(auto whereCondition, having<havingT> havingCondition);
+
+
+  /// Return non-tombstone records.
+  /// The where-clause is evaluated for all records, before determining which records are current. The having-clause is only evaluated for the current records.
+  ///
+  /// Example: get the current primary identifier for a given internalUserId.
+  /// If we check `isPrimaryId` in the where-clause, we filter out all the records that tell us that a current record is no longer the primary ID.
+  /// So it would return all records that have ever been the primary ID, instead of only the records that are currently the primary ID.
+  /// \code
+  ///   using namespace pep::database;
+  ///   myStorage->getCurrentRecords(storage,
+  ///     c(&UserIdRecord::timestamp) <= timestamp.getTime()
+  ///       && c(&UserIdRecord::internalUserId) == internalUserId,
+  ///     having(c(&UserIdRecord::isPrimaryId) == true),
+  ///     &UserIdRecord::identifier
+  /// \endcode
+  ///
+  /// \returns Collection of tuples with columns from \p selectColumns
+  ///   (or single values if a single column was specified)
+  template <Record RecordType, typename havingT, typename... ColTypes>
+  [[nodiscard]] auto getCurrentRecords(auto whereCondition, having<havingT> havingCondition, ColTypes RecordType::*... selectColumns);
 
   /// Return non-tombstone records.
   ///
@@ -132,17 +180,36 @@ struct Storage : public BasicStorage {
 
 template <auto MakeRaw> template <Record RecordType>
 [[nodiscard]] bool Storage<MakeRaw>::currentRecordExists(auto whereCondition) {
+  return currentRecordExists<RecordType>(whereCondition, having(true));
+}
+
+template <auto MakeRaw> template <Record RecordType, typename havingT>
+[[nodiscard]] bool Storage<MakeRaw>::currentRecordExists(auto whereCondition, having<havingT> havingCondition) {
   using namespace sqlite_orm;
   auto result = raw.iterate(select(
     columns(max(&RecordType::seqno)),
     where(std::move(whereCondition)),
-    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     // SQLite will pick this column from the row with the max() value:
     // https://www.sqlite.org/lang_select.html#bareagg
-    .having(c(&RecordType::tombstone) == false),
+    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr),
     limit(1)
   ));
   return result.begin() != result.end();
+}
+
+template <auto MakeRaw> template <Record RecordType, typename havingT, typename... ColTypes>
+[[nodiscard]] auto Storage<MakeRaw>::getCurrentRecords(auto whereCondition, having<havingT> havingCondition, ColTypes RecordType::*... selectColumns) {
+  static_assert(sizeof...(ColTypes) > 0, "No columns specified");
+  using namespace sqlite_orm;
+  return raw.iterate(select(
+    // SQLite will pick these columns from the row with the max() value:
+    // https://www.sqlite.org/lang_select.html#bareagg
+    columns(max(&RecordType::seqno), selectColumns...),
+    where(whereCondition),
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
+    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr)
+  )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 }
 
 template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
@@ -154,7 +221,7 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapOverloadedFunction(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 

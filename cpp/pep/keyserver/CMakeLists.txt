@@ -2,14 +2,14 @@ add_library(${PROJECT_NAME}KeyServerApilib
   tokenblocking/BlocklistEntry.hpp
   tokenblocking/TokenIdentifier.hpp
   KeyServerMessages.hpp
+  KeyServerProxy.cpp KeyServerProxy.hpp
   KeyServerSerializers.cpp KeyServerSerializers.hpp
 )
-
 target_link_libraries(${PROJECT_NAME}KeyServerApilib
-  ${PROJECT_NAME}Serializationlib
+  ${PROJECT_NAME}ServerApilib
 )
-
 verify_headers_standalone(${PROJECT_NAME}KeyServerApilib)
+
 
 if (WITH_SERVERS)
   add_library(${PROJECT_NAME}KeyServerlib
@@ -17,14 +17,11 @@ if (WITH_SERVERS)
     tokenblocking/Blocklist.hpp
     tokenblocking/SqliteBlocklist.cpp tokenblocking/SqliteBlocklist.hpp
   )
-
-  find_package(SqliteOrm REQUIRED)
   target_link_libraries(${PROJECT_NAME}KeyServerlib
     ${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}KeyServerApilib
     ${PROJECT_NAME}Databaselib
   )
-
   verify_headers_standalone(${PROJECT_NAME}KeyServerlib)
 
   add_cli_install_executable(${PROJECT_NAME}KeyServer Main.cpp)

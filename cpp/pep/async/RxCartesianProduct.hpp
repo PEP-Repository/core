@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
@@ -26,9 +27,9 @@ public:
       .flat_map([o1](std::shared_ptr<std::vector<TItem2>> v2) {
       // Adapted from https://stackoverflow.com/a/26588822
       return o1
-        .flat_map([v2](const TItem& i1) {
-        return rxcpp::observable<>::iterate(*v2)
-          .map([i1](const TItem2& i2) {return std::make_pair(i1, i2); });
+        .flat_map([v2 = std::move(v2)](TItem i1) {
+        return RxIterate(std::move(*v2))
+          .map([i1](TItem2 i2) {return std::make_pair(std::move(i1), std::move(i2)); });
       });
     });
   }

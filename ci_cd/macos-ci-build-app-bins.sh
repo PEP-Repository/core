@@ -18,9 +18,6 @@ fi
 if [[ -z "$CI_COMMIT_REF_NAME" ]]; then
     echo "No CI_COMMIT_REF_NAME specified: performing 'Local' build."
     CI_COMMIT_REF_NAME="Local"
-else
-    # For nonlocal builds: invoking macOS CI runner provisioning script.
-    "$PEP_MACOS_ROOT_DIR/ci_cd/macos-ci-runner.sh"
 fi
 
 echo "Creating macOS CI artifacts for $CI_COMMIT_REF_NAME build."
@@ -43,11 +40,6 @@ if [[ "$CI_COMMIT_REF_NAME" == "Local" ]]; then
   conan install ./ --build=missing -s:a build_type="$LOCAL_BUILD_TYPE"
 else
   export CC=clang CXX=clang++
-  if [[ "$(sw_vers -productVersion | awk -F '.' '{print $1}')" -lt 14 ]]; then
-    echo 'Old macOS, using llvm from brew.'
-    llvm_bin_dir="$(brew --prefix llvm)/bin"
-    export CC="$llvm_bin_dir/clang" CXX="$llvm_bin_dir/clang++"
-  fi
 
   CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-Release}"
 
@@ -83,7 +75,18 @@ else
   MACOS_CMAKE_BUILD_PRESET=$MACOS_CMAKE_CONFIGURE_PRESET
 fi
 
+BUILD_TYPE_DIR="${LOCAL_BUILD_TYPE:-.}"
+
+# Apparently conan scripts use unset variables, so temporarily disable check for this
+set +u
+# Add macdeployqt, cmake etc. to PATH
+# Suppress shellcheck
+# shellcheck source=/dev/null
+. "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/generators/conanbuild.sh"
+set -u
+
 ENABLE_DEPRECATION_ERRORS="${ENABLE_DEPRECATION_ERRORS:-true}"
+BUILD_GO_SERVERS="${BUILD_GO_SERVERS:-OFF}"
 
 cmake -S "$PEP_MACOS_ROOT_DIR" --preset "$MACOS_CMAKE_CONFIGURE_PRESET" \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -91,8 +94,6 @@ cmake -S "$PEP_MACOS_ROOT_DIR" --preset "$MACOS_CMAKE_CONFIGURE_PRESET" \
   -DBUILD_GO_SERVERS="$BUILD_GO_SERVERS" \
   -DENABLE_OAUTH_TEST_USERS=OFF \
   -DDEPRECATED_WARNINGS_AS_ERROR="$ENABLE_DEPRECATION_ERRORS"
-
-BUILD_TYPE_DIR="${LOCAL_BUILD_TYPE:-.}"
 
 echo "Removing old macOS_artifacts folder."
 rm -rf "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts"
@@ -133,20 +134,10 @@ cp -R "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/cpp/pep/assessor/pepAssess
 # Run macdeployqt on pepAssessor
 echo "Running macdeployqt on $PEP_MACOS_ASSESSOR_APP_BUILD_ROOT_DIR."
 
-(
-  # Apparently conan scripts use unset variables, so temporarily disable check for this
-  set +u
-  # Add macdeployqt to PATH
-  # Suppress shellcheck
-  # shellcheck source=/dev/null
-  . "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/generators/conanbuild.sh"
-  set -u
+# Signing the rest of the app using macdeployqt
+macdeployqt "$PEP_MACOS_ASSESSOR_APP_BUILD_ROOT_DIR"
 
-  # Signing the rest of the app using macdeployqt
-  macdeployqt "$PEP_MACOS_ASSESSOR_APP_BUILD_ROOT_DIR"
-)
-
-# Function to create pepcli app and derivate(s) (download tool for now)
+# Function to create pepcli app and derivate(s)
 create_cli_app() {
     local app_name="$1"
     local build_root_dir="$2"
@@ -223,6 +214,16 @@ create_cli_app \
     "$PEP_MACOS_DOWNLOAD_TOOL_APP_BUILD_ROOT_DIR" \
     "$PEP_MACOS_ROOT_DIR/cpp/pep/assessor/guilib/appicondt.icns" \
     "$PEP_MACOS_ROOT_DIR/installer/macOS/runpepdownload.sh" \
+    "false"
+
+PEP_MACOS_UPLOAD_TOOL_APP_NAME="PEP Upload Tool"
+PEP_MACOS_UPLOAD_TOOL_APP_BUILD_ROOT_DIR="$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app"
+
+create_cli_app \
+    "$PEP_MACOS_UPLOAD_TOOL_APP_NAME" \
+    "$PEP_MACOS_UPLOAD_TOOL_APP_BUILD_ROOT_DIR" \
+    "$PEP_MACOS_ROOT_DIR/cpp/pep/assessor/guilib/appicon.icns" \
+    "$PEP_MACOS_ROOT_DIR/installer/macOS/runpepupload.sh" \
     "false"
 
 MACOS_SYS_ARCH=$(uname -m)

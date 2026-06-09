@@ -25,8 +25,8 @@ void TcpBasedProtocol::Socket::startTransfer(size_t& pending, size_t pend) {
 }
 
 void TcpBasedProtocol::Socket::finishConnecting(const ConnectionAttempt::Handler& notify) {
-  assert(this->status() == ConnectivityStatus::connecting);
-  this->setConnectivityStatus(ConnectivityStatus::connected);
+  assert(this->status() == ConnectivityStatus::Connecting);
+  this->setConnectivityStatus(ConnectivityStatus::Connected);
   notify(ConnectionAttempt::Result::Success(SharedFrom(*this)));
 }
 
@@ -149,7 +149,7 @@ void TcpBasedProtocol::ClientComponent::onResolved(const ConnectionAttempt::Hand
 
 std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ClientComponent::openSocket(const ConnectionAttempt::Handler& notify) {
   auto result = this->tcp().createSocket(*this);
-  result->setConnectivityStatus(Socket::ConnectivityStatus::connecting);
+  result->setConnectivityStatus(Socket::ConnectivityStatus::Connecting);
 
   auto portString = MakeSharedCopy(std::to_string(mEndPoint.port));
   mResolver.async_resolve(boost::asio::ip::tcp::v4(), mEndPoint.hostname, *portString, [self = SharedFrom(*this), notify, result, portString](const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results) {
@@ -192,7 +192,7 @@ uint16_t TcpBasedProtocol::ServerComponent::port() const {
 
 std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ServerComponent::openSocket(const ConnectionAttempt::Handler& notify) {
   auto result = this->tcp().createSocket(*this);
-  result->setConnectivityStatus(Socket::ConnectivityStatus::connecting);
+  result->setConnectivityStatus(Socket::ConnectivityStatus::Connecting);
 
   mAcceptor.async_accept(result->basicSocket(), [notify, result, weak = WeakFrom(*this)](const boost::system::error_code& ec) {
     auto self = weak.lock();

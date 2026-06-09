@@ -3,9 +3,12 @@ x-logging-pipeline-pep-services: &logging-pipeline-pep-services
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -33,9 +36,12 @@ x-logging-pipeline-watchdog: &logging-pipeline-watchdog
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -60,9 +66,12 @@ x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -77,10 +86,10 @@ x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
           stages:
             - regex:
                 expression: '^\[s3proxy\] (?P<level>[FTEIDW]) (?P<timestamp>\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) (?P<thread>\S+) (?P<logger>[^\s:]+)(?::\d+)? \|::\] (?P<message>.+)'
+            # Java doesn't pick up localtime and doesn't display timezone information, so we pick up as UTC
             - timestamp:
                 source: timestamp
                 format: '01-02 15:04:05.000'
-                location: 'Europe/Amsterdam'
             - template:
                 source: level
                 template: '{{ if eq .Value "F" }}fatal{{ else if eq .Value "T" }}trace{{ else if eq .Value "E" }}error{{ else if eq .Value "I" }}info{{ else if eq .Value "D" }}debug{{ else if eq .Value "W" }}warn{{ else }}{{ .Value }}{{ end }}'
@@ -112,9 +121,12 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -150,9 +162,14 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 source: timestamp
                 format: 'Mon Jan 02 15:04:05.000000 2006'
                 location: 'Europe/Amsterdam'
+            # Detect malicious/noisy patterns
+            - regex:
+                expression: '.*(?P<noise_type>AH10244|@java\.lang\.|AH01630|AH01276|Unsafe URL with %3f|AH00036).*'
+                source: message
+            # Normalize log levels, downgrade error to warn when background noise detected
             - template:
                 source: level
-                template: '{{ if eq .Value "emerg" }}fatal{{ else if eq .Value "alert" }}critical{{ else if eq .Value "crit" }}critical{{ else if eq .Value "error" }}error{{ else if eq .Value "warn" }}warn{{ else if eq .Value "notice" }}info{{ else if eq .Value "info" }}info{{ else if eq .Value "debug" }}debug{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
+                template: '{{ if and (eq .Value "error") .noise_type }}warn{{ else if eq .Value "emerg" }}fatal{{ else if or (eq .Value "alert") (eq .Value "crit") }}critical{{ else if eq .Value "notice" }}info{{ else if hasPrefix .Value "trace" }}trace{{ else }}{{ ToLower .Value }}{{ end }}'
             - labels:
                 level:
             - structured_metadata:
@@ -160,6 +177,7 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 pid:
                 tid:
                 client:
+                noise_type:
       - labels:
           host: host_part
           vm: vm_part
@@ -170,9 +188,12 @@ x-logging-pipeline-prometheus-node-exporter: &logging-pipeline-prometheus-node-e
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -202,9 +223,12 @@ x-logging-pipeline-nginx: &logging-pipeline-nginx
   driver: loki
   options:
     loki-url: "https://${LOKI_CREDENTIALS}@release.pep.cs.ru.nl/loki/loki/api/v1/push"
-    loki-retries: "5"
     loki-batch-size: "400"
     loki-external-labels: "service_name={{.Name}}"
+    mode: "non-blocking"
+    loki-timeout: "5s"
+    loki-max-backoff: "10s"
+    loki-retries: "3"
     loki-pipeline-stages: |
       - docker: {}
       - labeldrop:
@@ -272,12 +296,18 @@ networks:
     name: authservernetwork
     driver: bridge
 
+volumes:
+  surfconext_metadata:
+  # This is where mod_md stores the Let's Encrypt certificates and related files. Makes sure we don't run into rate limits when the container is restarted a lot.
+  acme_certificates:
+
+# We should only set depends_on in the compose.override.yml, because in a more distributed environment we don't want it at the compose level.
 services:
   # Core PEP Services
   transcryptor:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepTranscryptor"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}16:${PORT_NUMBER_PREFIX}16"
@@ -295,7 +325,7 @@ services:
   keyserver:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepKeyServer"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}11:${PORT_NUMBER_PREFIX}11"
@@ -313,7 +343,7 @@ services:
   s3proxy:
     image: andrewgaul/s3proxy
     container_name: "s3proxy"
-    restart: unless-stopped
+    restart: always
     networks:
       - pepnetwork
     ports:
@@ -334,7 +364,7 @@ services:
   storagefacility:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepStorageFacility"
-    restart: unless-stopped
+    restart: always
     init: true
     networks:
       - pepnetwork
@@ -354,7 +384,7 @@ services:
   accessmanager:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepAccessManager"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}01:${PORT_NUMBER_PREFIX}01"
@@ -372,7 +402,7 @@ services:
   registrationserver:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pepRegistrationServer"
-    restart: unless-stopped
+    restart: always
     init: true
     ports:
       - "${PORT_NUMBER_PREFIX}18:${PORT_NUMBER_PREFIX}18"
@@ -390,7 +420,7 @@ services:
   authserver:
     image: "${DOCKER_IMAGE_BASE}/pep-services:${DOCKER_IMAGE_TAG}"
     container_name: "pep_authserver"
-    restart: unless-stopped
+    restart: always
     init: true
     networks:
       - authservernetwork
@@ -410,7 +440,7 @@ services:
   authserver-apache:
     image: "${DOCKER_IMAGE_BASE}/authserver_apache:${DOCKER_IMAGE_TAG}"
     container_name: "pep_authserver_apache"
-    restart: unless-stopped
+    restart: always
     networks:
       - authservernetwork
     ports:
@@ -418,8 +448,9 @@ services:
     volumes:
       - "${DATA_DIR_BASE}/authserver:/data"
       - "${SECRETS_DIR_BASE}/authserver:/secrets:ro"
-      # - "${SECRETS_DIR_BASE}/acme:/cert:ro" # Only when acme.sh is used
       - "${DATA_DIR_BASE}/authserver/apache_logs:/var/log/apache2"
+      - acme_certificates:/etc/apache2/md
+      - surfconext_metadata:/metadata
       - /etc/localtime:/etc/localtime:ro
     working_dir: /data
     depends_on:
@@ -432,7 +463,7 @@ services:
   watchdog:
     image: "${DOCKER_IMAGE_BASE}/pep-monitoring:${DOCKER_IMAGE_TAG}"
     container_name: "watchdog"
-    restart: unless-stopped
+    restart: always
     ports:
       - "8082:8082"
     volumes:
@@ -449,13 +480,13 @@ services:
   prometheus-node-exporter:
     image: quay.io/prometheus/node-exporter
     container_name: "prometheus-node-exporter"
-    restart: unless-stopped
+    restart: always
     ports:
       - "9100:9100"
     volumes:
       - "${DATA_DIR_BASE}/prometheus-node-exporter:/data"
       - /etc/localtime:/etc/localtime:ro
-    command: [ "--collector.textfile.directory", "/data/textfiles/", "--no-collector.diskstats" ]
+    command: [ "--collector.textfile.directory", "/data/textfiles/", "--no-collector.diskstats"]
     logging:
       <<: *logging-pipeline-prometheus-node-exporter
     profiles: ["prometheus-node-exporter"]
@@ -463,27 +494,11 @@ services:
   nginx:
     image: "${DOCKER_IMAGE_BASE}/nginx:${DOCKER_IMAGE_TAG}"
     container_name: "nginx"
-    restart: unless-stopped
-      # Environment-specific port mappings and volumes, use in override:
-      # release:
-      # --publish 8000:80
-      # --publish 80:80
-      # --publish 443:443
-      # --publish 5000:5000
-      # --volume /data/volumes/secrets/nginx/loki/.htpasswd:/etc/nginx/.htpasswd:ro
-      # --volume /data/volumes/secrets/acme:/cert:ro
-      # selfhosted:
-      # --publish 9000:9000
-      # --volume /data/volumes/secrets/storagefacility/s3certs:/s3cert:ro
+    restart: always
+      # port mappings and volumes are quite environment-specific, set those in compose.override in target repos instead
     volumes:
       - "${SECRETS_DIR_BASE}/nginx/ssl:/etc/nginx/ssl"
       - /etc/localtime:/etc/localtime:ro
-      # Environment-specific volumes:
-      # Release environment: .htpasswd, acme certs
-      # - "${DATA_DIR_BASE}/volumes/secrets/nginx/loki/.htpasswd:/etc/nginx/.htpasswd:ro"
-      # - "${DATA_DIR_BASE}/volumes/secrets/acme:/cert:ro"
-      # Other environments: s3cert for storage facility
-      # - "${DATA_DIR_BASE}/volumes/secrets/storagefacility/s3certs:/s3cert:ro"
     logging:
       <<: *logging-pipeline-nginx
     profiles: ["nginx"]

@@ -11,7 +11,8 @@ using pep::structuredOutput::Table;
 TEST(structuredOutputCsv, FromEmptyTableWithHeader) {
   const auto emptyTable = Table::FromSeparateHeaderAndData({"name", "value 1", "value 2"}, {});
 
-  EXPECT_EQ(csv::to_string(emptyTable), "\"name\";\"value 1\";\"value 2\"\n");
+  EXPECT_EQ(csv::to_string(emptyTable), "");
+  EXPECT_EQ(csv::to_string(emptyTable, csv::Config{ .force_header = true }), "\"name\";\"value 1\";\"value 2\"\n");
 }
 
 TEST(structuredOutputCsv, FromPopulatedTableWithHeader) {
@@ -28,15 +29,15 @@ TEST(structuredOutputCsv, UsesTheDelimiterFromTheConfig) {
   const auto table = Table::FromSeparateHeaderAndData({"H1", "H2"}, {"R1", "R2"});
 
   EXPECT_EQ(
-      csv::to_string(table, {.delimiter = csv::Delimiter::comma}),
+      csv::to_string(table, {.delimiter = csv::Delimiter::Comma}),
       "\"H1\",\"H2\"\n"
       "\"R1\",\"R2\"\n");
   EXPECT_EQ(
-      csv::to_string(table, {.delimiter = csv::Delimiter::semicolon}),
+      csv::to_string(table, {.delimiter = csv::Delimiter::Semicolon}),
       "\"H1\";\"H2\"\n"
       "\"R1\";\"R2\"\n");
   EXPECT_EQ(
-      csv::to_string(table, {.delimiter = csv::Delimiter::tab}),
+      csv::to_string(table, {.delimiter = csv::Delimiter::Tab}),
       "\"H1\"\t\"H2\"\n"
       "\"R1\"\t\"R2\"\n");
 }
@@ -44,13 +45,13 @@ TEST(structuredOutputCsv, UsesTheDelimiterFromTheConfig) {
 TEST(structuredOutputCsv, DoubleQuotesInRecordFieldsAreEscaped) {
   const auto table = Table::EmptyWithHeader({"...\"a\"\"b\"..."});
 
-  EXPECT_EQ(csv::to_string(table), "\"...\"\"a\"\"\"\"b\"\"...\"\n");
+  EXPECT_EQ(csv::to_string(table, csv::Config{ .force_header = true }), "\"...\"\"a\"\"\"\"b\"\"...\"\n");
 }
 
 TEST(structuredOutputCsv, DoubleQuotesInHeaderFieldsAreEscaped) {
   const auto table = Table::FromSeparateHeaderAndData({"...\"...\"\"..."}, {});
 
-  EXPECT_EQ(csv::to_string(table), "\"...\"\"...\"\"\"\"...\"\n");
+  EXPECT_EQ(csv::to_string(table, csv::Config{ .force_header = true }), "\"...\"\"...\"\"\"\"...\"\n");
 }
 
 }

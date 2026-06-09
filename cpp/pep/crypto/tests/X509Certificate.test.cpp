@@ -12,177 +12,6 @@ using namespace std::literals;
 
 namespace {
 
-const std::string ExpiredLeafCertSignedWithserverCACertPEM = "-----BEGIN CERTIFICATE-----\n\
-MIIErzCCApegAwIBAgIRAKTbUN88p6ZnxLLiiOo/8KswDQYJKoZIhvcNAQELBQAw\n\
-gaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQHDAhO\n\
-aWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxJzAlBgNVBAsM\n\
-HlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNlcnZlciBDQTEnMCUGA1UEAwweUEVQIElu\n\
-dGVybWVkaWF0ZSBQRVAgU2VydmVyIENBMB4XDTI1MDEwMzExMzUxN1oXDTI1MDEw\n\
-MzExMzcxN1owKzEYMBYGA1UEAwwPRXhwaXJlZExlYWZDZXJ0MQ8wDQYDVQQLDAZU\n\
-ZXN0T1UwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCdlJGa6BKlTENo\n\
-gcoBO0VdgeI+7AYViAOVbf8m6uarlw9LRJ3D5vy5Z8NnXlxbDAvNzGlGqIYTQL97\n\
-6sKNpnN7DxskRCgbg/UO7V2Xj1SuAA5uvJJR97jb3KHewavAw0PLfFHXXlBqfR0Q\n\
-hj096DNDIspEFKLVfWJ3m9ev7qeVLhYYm723JpTlaakQ6MhLjaMGPkFwCSbRykcD\n\
-bRZsk46rjR0NOhrVk68By8d2aN1xW0oCDGjhPylgU72+pUkO2/Wls1h7fG291J4N\n\
-5ZyIUAT2lKj4/VGd4/XHhES3JKSCVUvcSrYSJVOrNQBiwOJG3mH5Mhu7H6/efBpZ\n\
-B5uop+ntAgMBAAGjUjBQMA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUO7cDx5Xn\n\
-WsOVYMANVjzUqEm3luwwHwYDVR0jBBgwFoAUkURxKyE/HA4K2UniPBtM8UMi+kAw\n\
-DQYJKoZIhvcNAQELBQADggIBAAf+5ZpD5da7QPBvksTxQUgi8bqiYF+JRjtVBoHZ\n\
-r8Xf4Hu2PWSTkM1WtdnWMpqEjxJlu4OnrkMdZdwUGtxtmCsvDBx9fUXkSwgFfb5Z\n\
-hG1hXEi8KBc42X9l/ofuNRRMlMfFxHGBOIewObGXpcAXW2E90FT7sPyFr9XTwd1m\n\
-8n6smuniCvruOU9WES3a+j5t+q8LcAyBi6Rm80sC1mjoSTtD/ae4E7StEJOtb0R/\n\
-h70Wd1x70KNGqPX4DC7Xy/BbYdtRBnsT71NiAsLANghnpl1KchFk/lpJ9wXJKDbj\n\
-/0zVhRBgCR+rIBuaAo5VkmvXC6srVLfo3ZyYh72muyD3c8XamVYTXoReAz5EZdGU\n\
-38fmEK+iH8+PBDT3VPb0AvubULkhlaUd4tkJ6DF4aAPgvZDCyxv1KkNo0RzanWd/\n\
-Lyl+TVyTiiHhFY1JOQeL3+L9sud6bWsGOeAwgYovrFMScuC0sfCrqGsLmZSN2vPz\n\
-CJx1lxlDT8jZte/Vd2JLzQzlF038ccHKZG1Fd8uI+S1luoXZ9wHVVjZp5kvKU99n\n\
-KGJW4uIk1uBSuREkMJolXOA/MP7UL2eXGAqXuabq8n8CddHxgkpGH7/nWBXStwhp\n\
-6BtOe9DUAqrIVs/8917zR6MaiIeBbNOFn/Dy9DVreHvq7daJmD1FXltXPMKtX/Pt\n\
-dNUq\n\
------END CERTIFICATE-----\n";
-
-// From TLSAccessManager.chain
-const std::string accessmanagerTLSCertPEM = "-----BEGIN CERTIFICATE-----\n\
-MIIF6TCCA9GgAwIBAgIUCHsv/XWh8kuqGtdHrQNJp4LHr1kwDQYJKoZIhvcNAQEL\n\
-BQAwgZgxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
-DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxIDAeBgNV\n\
-BAsMF1BFUCBJbnRlcm1lZGlhdGUgVExTIENBMSAwHgYDVQQDDBdQRVAgSW50ZXJt\n\
-ZWRpYXRlIFRMUyBDQTAeFw0yNDEwMzAxNTM2NDlaFw0yNTEwMzAxNTM2NDlaMIGE\n\
-MQswCQYDVQQGEwJOTDETMBEGA1UECAwKR2VsZGVybGFuZDERMA8GA1UEBwwITmlq\n\
-bWVnZW4xHTAbBgNVBAoMFFJhZGJvdWQgVW5pdmVyc2l0ZWl0MRYwFAYDVQQLDA1B\n\
-Y2Nlc3NNYW5hZ2VyMRYwFAYDVQQDDA1BY2Nlc3NNYW5hZ2VyMIIBIjANBgkqhkiG\n\
-9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlApk+pwp3ob1reMG8oxOpv7bwitTJtoJ0aqt\n\
-qkmxC2+0D6pp4wh9qnDKtLoJkFQKu0WBc0zqUelOsZ9xYvBLP6uy5l35GliZCXXU\n\
-KNuaXdEdwjm5xxXvjVtUc4RMF+OoZMbqWHjCNSWnj+xCY6xwW0Ep49iOI8MrMqus\n\
-UM23AEVKN3IfWzyGRG6HGMsprfY2sJ7ZcMIjP64Mc7yV8Djm8exw8YTICzNmeKmN\n\
-RtgQ9KX4DDsojRihUK0VtMTY83ZHAOtP1xAcLqImER3vp1sxphanL7MjnXOEgT64\n\
-M4u22QsjZvqogKd/OFHzMAKaOy4cIpzHXt89fwhldVpi2XGpnwIDAQABo4IBOzCC\n\
-ATcwCQYDVR0TBAIwADAjBgNVHREEHDAagglsb2NhbGhvc3SCDUFjY2Vzc01hbmFn\n\
-ZXIwHQYDVR0OBBYEFEZGUdnJ1h0l3SSnLZUEnv4RbmMkMIHABgNVHSMEgbgwgbWA\n\
-FHH4ZgWD4dUIrO5nMu70vGftr5lqoYGGpIGDMIGAMQswCQYDVQQGEwJOTDETMBEG\n\
-A1UECAwKR2VsZGVybGFuZDERMA8GA1UEBwwITmlqbWVnZW4xHTAbBgNVBAoMFFJh\n\
-ZGJvdWQgVW5pdmVyc2l0ZWl0MRQwEgYDVQQLDAtQRVAgUm9vdCBDQTEUMBIGA1UE\n\
-AwwLUEVQIFJvb3QgQ0GCFAh7L/11ofJLqhrXR60DSaeCx69UMA4GA1UdDwEB/wQE\n\
-AwIFoDATBgNVHSUEDDAKBggrBgEFBQcDATANBgkqhkiG9w0BAQsFAAOCAgEAAwlc\n\
-SDZceKstkTUhdgrx6dbst7rRrozMoQmS500JDquhxfKKCkyfMSE4ghFZ7z7QYZ/s\n\
-fewy7LqqUTOpLPyqx/CM5LFdgD5dqwQfmisX1QLjlKa9e6xguNgB9ErxqpDsHzYZ\n\
-jAM9RHsx13MKQ2H8yEXONwVtdWq/WOjd/8i2lZ4vYc15pb1P6ekk/aDuG9qzOrGB\n\
-bYDAiEyehX03d4nWwTAYmYjT49lC3s2CoE2NM7j6QZTrahzvKyizb53rgSRD8EXt\n\
-E5JcONfXBpmOe2Xpv65e+dYS4u2OWlZp+IFvt1S63WWFZd9h0FEaJxPaDL5933nR\n\
-j/NDG1vB6QXKW0hIuFCMmC/eIpeQHOCr0W0GeQws6tyw2sEM2tx0ZPBrGL8zCFHP\n\
-AaZem9IfWSc6y/BqTpKLmLRl/QL2N5VcZ9FfrybNJ4s2rD6UYLFX4to7oMwVAmb8\n\
-6WbpA1t753GrSFfJkq4KuXFr0qKjNs8hEnhhfJHLcVORMydl+IxmZd52Z/791HOU\n\
-l3aN3A/BXly/1qbDYflgMcqh6XlYg7MNjQ58MsDYCnwStP/9DdQzOrcO0s7H4ycj\n\
-LDNGrvS2dlr7jcKVsa9dvC77moXLfYT01wxPhL7nnGT2MKazE+VH5UCoCpzTiTH5\n\
-QcENulXyum8vAHsbus1YxAneLDnKsw/i92y76lU=\n\
------END CERTIFICATE-----\n";
-
-const std::string caCertificateDer(reinterpret_cast<char const*>(pepServerCACertDER.data()), pepServerCACertDER.size());
-
-const std::string rootCACertPEMExpired = "-----BEGIN CERTIFICATE-----\n\
-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\n\
------END CERTIFICATE-----\n";
-
-const std::string serverCACertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
-MIIGHDCCBASgAwIBAgIUcT+NJ2BEzIwHF7gvg0G/84WPWP4wDQYJKoZIhvcNAQEL\n\
-BQAwgYAxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
-DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxFDASBgNV\n\
-BAsMC1BFUCBSb290IENBMRQwEgYDVQQDDAtQRVAgUm9vdCBDQTAeFw0yNDExMDEx\n\
-NTM2NTlaFw0yNTExMDExNTM2NTlaMIGmMQswCQYDVQQGEwJOTDETMBEGA1UECAwK\n\
-R2VsZGVybGFuZDERMA8GA1UEBwwITmlqbWVnZW4xHTAbBgNVBAoMFFJhZGJvdWQg\n\
-VW5pdmVyc2l0ZWl0MScwJQYDVQQLDB5QRVAgSW50ZXJtZWRpYXRlIFBFUCBTZXJ2\n\
-ZXIgQ0ExJzAlBgNVBAMMHlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNlcnZlciBDQTCC\n\
-AiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBANBhiT9UG4kLmv+H83mkSklh\n\
-dVclB6njGANIZzkU/HXilxvWx0dGhnal0oFO6ddTHe4ow+bUqKfg4kmj6VgjzRBo\n\
-R1axYpNVgmkvahe6dpai/I/4Zey0I/6/BbOSOvb5rSFRIP+dO9CqVBgkfA9OtW2S\n\
-Cax6Ek4J6+BmVKRty0xjFSHSxwrAZGgYGvrlFFLZRW1g2QTxwKQXcHlgABpmBeCA\n\
-wVzZlyTYZQO6oOUihgKHQtYqGeYLzZf6bgsFGxnp+gqHgehrLjCKhgRH30sVIn2Y\n\
-igyndQLmul5k7G1zsBu1SyXCIEG50zu7D46g3lAxWmcFg/WpeFptL7TRESzODvrK\n\
-jCCRE35Uz8D9xwXlR5tsX1BfmILLzqPvt9+MZ/hluBEyG6xVKhKSmTA7+etHMOVt\n\
-OlyaawiO5hzCY9YYLN25zktUFUkGoPR+DldXsrGUZFSsboMHdBEanCiW6hXjwxJw\n\
-R8GOgmxbRxfhArztrgJC4DrzYklBoQyqwE8lOJt/ncuUGWDbonvGCG7TfTnyN32t\n\
-XdWw1YypibN8lWoAl/qXnfzV8puHarEhP57kwymK3v9H1Sk8VgHej5z7OqVS4oz5\n\
-BoIaPUnQXcFw+miZFXWLlpl6Z+vptLQcVw7MUpfdSVky/EaLtfmkncKnzxbOjvxG\n\
-XgFlSbaCmJ6ri0lFZOxJAgMBAAGjZjBkMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYD\n\
-VR0OBBYEFP3xKtR+VpoHD7VCtSvsD4EP7Wt5MB8GA1UdIwQYMBaAFBzQ0iy0gwMc\n\
-kk2WDQG0ZbwzpBwhMA4GA1UdDwEB/wQEAwIBhjANBgkqhkiG9w0BAQsFAAOCAgEA\n\
-MjD4FIuNx8nTSboXzK8YpxIzWTfisyk/jUGsxBgu8NygKSOm3eXQfKieK72gfEWT\n\
-/iOuS/hye9AStsVse16E9M6aFHMrtMk1uzbh6qLJ4U3oGv1GtJhzO1O/X7Gh30nt\n\
-cWPPreSQYlIIeJcGk78Hr9jd0qV/gN/Qk1Eq7PLsMLqZ//vldERrNrxjsptST509\n\
-+rU+XWj035JpWCqoH4SyUxVITFdxwYmKxuh0So0OCgE1GV/PXHjvBsJMSzYiRwnl\n\
-BUQFusxd6IET77ZForUVQYUaGz1YI6bM+1kfuDM5lQJgDphsI2+sn5xM9DUcVXkV\n\
-Dvpy+Wb2xpfWGwofQsfzYMAfWRCorYKgaZXWWpZYHQLs1zEQ3WESj7w987UI0Jx7\n\
-C8NM1K6W3wd5Ay2bfZ1mLCw0EVf0gqlXMfX3/ZBcLJSUCptKNJgvGxi9AJ9+NwiG\n\
-khF3WRNBy+o0BWIuHTLv0iupSEEj9umrTFuoQhjuqOY71HD676ItEKC3ygReEvii\n\
-vMxDtXq1kRgDLTt1J/ja8hwZAg2duphKIz7TvMFp7844ygv9Pcdz35Rse9UEV25H\n\
-6wAdjnyRh+cGvnFFDPUJOKD++iFS7c3p6pff8rt1Bgg1noBC7tqlvZCR0TSdg3HT\n\
-9znrMhSgJqESVVj4uH/wuKLEIcsI9BoQVtjJKkX6lhM=\n\
------END CERTIFICATE-----\n";
-
-const std::string authserverCertPEMWithExpiredRoot = "-----BEGIN CERTIFICATE-----\n\
-MIIFEDCCAvigAwIBAgIUcT+NJ2BEzIwHF7gvg0G/84WPWQswDQYJKoZIhvcNAQEL\n\
-BQAwgaYxCzAJBgNVBAYTAk5MMRMwEQYDVQQIDApHZWxkZXJsYW5kMREwDwYDVQQH\n\
-DAhOaWptZWdlbjEdMBsGA1UECgwUUmFkYm91ZCBVbml2ZXJzaXRlaXQxJzAlBgNV\n\
-BAsMHlBFUCBJbnRlcm1lZGlhdGUgUEVQIFNlcnZlciBDQTEnMCUGA1UEAwweUEVQ\n\
-IEludGVybWVkaWF0ZSBQRVAgU2VydmVyIENBMB4XDTI0MTEwMTE1MzcwMFoXDTI1\n\
-MTEwMTE1MzcwMFowfjELMAkGA1UEBhMCTkwxEzARBgNVBAgMCkdlbGRlcmxhbmQx\n\
-ETAPBgNVBAcMCE5pam1lZ2VuMR0wGwYDVQQKDBRSYWRib3VkIFVuaXZlcnNpdGVp\n\
-dDETMBEGA1UECwwKQXV0aHNlcnZlcjETMBEGA1UEAwwKQXV0aHNlcnZlcjCCASIw\n\
-DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJ8ykw17O4BI1KO0s0mfT+vmdvxH\n\
-rlzU87PMSRS9lFLZtW6QkVCGtWwaHJ6ug6Mj5c4lpXuUxqUvtVX9ffUnL1xpMpBL\n\
-+qS30I4NYnXMyDrGq8QXf/B3xdMBGLL0+PetVoWMeNBRD8pZlEZM9Xjjz0tA6Xym\n\
-oEKMddobDLHMNqWLBRa+FMvw70tuUb8g0I+2pVv3ayTpdcQLsnc3bBlrI9nh8AVD\n\
-c9ReoXqPzm3AscSqVuOPCEYGKyDtU6AqXPSOte0Kr9at4oYUOAeexWQC2y03eqsH\n\
-iLS+5n/cwfKsGqO1DWX/i4V06q1CfsOiTY2NdtpyVEwafIY54KhBjRNFqRUCAwEA\n\
-AaNdMFswCQYDVR0TBAIwADAdBgNVHQ4EFgQUYk+4ZudmcBklWMcliZJL3SlOEC8w\n\
-HwYDVR0jBBgwFoAU/fEq1H5WmgcPtUK1K+wPgQ/ta3kwDgYDVR0PAQH/BAQDAgbA\n\
-MA0GCSqGSIb3DQEBCwUAA4ICAQBRitrVwFkY/VVkoJpbHGUkppuC2/UmHuox0kg9\n\
-HLyHXz4H3bKI3+1hqRaC6/EII95vaQxXIPPxm9u5dqNTh1g8DheBYsLxOhTJoU9I\n\
-LxlN80CuNWDASisMz3uL92FKMmF1bWlcWJekIVnnkfxRutiffzYl+t7qclUw+lpf\n\
-qgYmSY8jCPnks1atuuCc1c+wdGlRZP7shzrdvaC+YFG1reRVXoEUZI6pmxtpx/Pf\n\
-KnjZ+pc5liTZ6XuTInCyf6xLq333I6m0TezzhlJdWDLP87FMLdNUguOP9tpx9ToZ\n\
-MLc6HubEvoBNBiSes/yBp7zVZaVVY0LrWvom82DTcFhRhN6Vu1YHHuCDluHRQByE\n\
-DTcA9u0jGoN/MhugVIxegW/chY3aDt/vVxtuTDxLIj0HZiBCF5EKj29W5tNgVW7M\n\
-bNErLBgLkV0nuOwz/ylnrxWFF3OBliRPvl0O0U5P6bJxNiom6JetPcdng9TU3K4+\n\
-P6nO/shthDl73LnjysCWQ5k7Ft2p3VsqnPEdUT6GqT26TnGyHKjUz3fe7P9e9dUl\n\
-BLIY1CF83Tzd/vLHMAyanlH5CtcKiTIhuGSp47+sSwEbIHDE88OJtdwHda9713sL\n\
-JoduuYQJcUrdusLDlfL9XHkxi8DFQIb1Pakz5Ndj+4Y5hQcau5YgC/jRouitSre5\n\
-UfrRCw==\n\
------END CERTIFICATE-----\n";
-
-
-
 TEST(X509CertificateTest, CopyConstructor) {
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(pepServerCACertPEM);
   pep::X509Certificate caCertificate2(caCertificate);
@@ -191,7 +20,9 @@ TEST(X509CertificateTest, CopyConstructor) {
 
 TEST(X509CertificateTest, AssignmentOperator) {
   pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(pepServerCACertPEM);
-  pep::X509Certificate caCertificate2;
+  pep::X509Certificate caCertificate2 = pep::X509Certificate::FromPem(rootCACertPEM);
+  EXPECT_NE(caCertificate.toPem(), caCertificate2.toPem());
+
   caCertificate2 = caCertificate;
   EXPECT_EQ(caCertificate.toPem(), caCertificate2.toPem());
 }
@@ -259,25 +90,6 @@ TEST(X509CertificateTest, HasTLSServerEKU) {
   EXPECT_TRUE(cert.hasTLSServerEKU()) << "Certificate doesn't have a TLS Server EKU.";
 }
 
-TEST(X509CertificateTest, IsntServerCertificate) {
-  std::string testCN = "TestCN";
-  std::string testOU = "TestOU";
-  pep::AsymmetricKeyPair keyPair = pep::AsymmetricKeyPair::GenerateKeyPair();
-  pep::X509CertificateSigningRequest csr(keyPair, testCN, testOU);
-  pep::AsymmetricKey caPrivateKey(pepServerCAPrivateKeyPEM);
-  pep::X509Certificate caCertificate = pep::X509Certificate::FromPem(pepServerCACertPEM);
-  pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
-
-  EXPECT_FALSE(cert.isPEPServerCertificate()) << "Certificate is incorrectly identified as a server certificate";
-}
-
-TEST(X509CertificateTest, IsServerCertificate) {
-
-  pep::X509Certificate cert = pep::X509Certificate::FromPem(accessmanagerTLSCertPEM);
-
-  EXPECT_TRUE(cert.isPEPServerCertificate()) << "Certificate is not a server certificate.";
-}
-
 TEST(X509CertificateTest, CertificateValidity) {
   std::string testCN = "TestCN";
   std::string testOU = "TestOU";
@@ -290,7 +102,7 @@ TEST(X509CertificateTest, CertificateValidity) {
 
   pep::X509Certificate cert = csr.signCertificate(caCertificate, caPrivateKey, 1min);
   pep::X509Certificate cert2 = csr2.signCertificate(caCertificate, caPrivateKey, 1h);
-  pep::X509Certificate expiredCert = pep::X509Certificate::FromPem(ExpiredLeafCertSignedWithserverCACertPEM);
+  pep::X509Certificate expiredCert = pep::X509Certificate::FromPem(pepAuthserverCertPEMExpired);
 
   EXPECT_TRUE(cert.isCurrentTimeInValidityPeriod()) << "Certificate should be within the validity period";
   EXPECT_TRUE(cert2.isCurrentTimeInValidityPeriod()) << "Certificate should be within the validity period";
@@ -305,7 +117,28 @@ TEST(X509CertificateTest, ToPEM) {
 
 TEST(X509CertificateTest, ToDER) {
   pep::X509Certificate cert = pep::X509Certificate::FromPem(pepServerCACertPEM);
-  EXPECT_EQ(cert.toDer(), caCertificateDer);
+  EXPECT_EQ(cert.toDer(), pep::SpanToString(pepServerCACertDER));
+}
+
+TEST(X509CertificateTest, SelfSigned) {
+  auto cert = pep::X509Certificate::MakeSelfSigned(pep::AsymmetricKeyPair::GenerateKeyPair(), "Metacortex", "Mr. Anderson", "US");
+  EXPECT_TRUE(cert.isSelfSigned());
+
+  auto chain = pep::X509CertificateChain({ std::move(cert) });
+  auto rootCAs = pep::X509RootCertificates({ chain.leaf() });
+  EXPECT_TRUE(chain.verify(rootCAs));
+}
+
+TEST(X509CertificateTest, EqualityInequality) {
+  auto baseCert = pep::X509Certificate::FromPem(pepAuthserverCertPEM);
+  auto equalCert = pep::X509Certificate::FromPem(pepAuthserverCertPEM);
+  auto differentCert = pep::X509Certificate::FromPem(pepServerCACertPEM);
+
+  EXPECT_TRUE(baseCert == equalCert);
+  EXPECT_FALSE(baseCert == differentCert);
+
+  EXPECT_FALSE(baseCert != equalCert);
+  EXPECT_TRUE(baseCert != differentCert);
 }
 
 TEST(X509CertificateSigningRequestTest, GenerationAndSigning) {
@@ -392,13 +225,13 @@ TEST(X509CertificateSigningRequestTest, CertificateExtensions) {
   // The generated certificate should not have basic constraints set
   ASSERT_FALSE(cert.hasBasicConstraints()) << "Generated certificate has the Basic Constraints set, which it should not have";
   // And it should not have a path length constraint, so the result should be std::nullopt
-  ASSERT_FALSE(cert.getPathLength().has_value()) << "Generated certificate has a pathlength constraint";
+  ASSERT_FALSE(cert.pathLengthConstraint().has_value()) << "Generated certificate has a pathlength constraint";
 
   // The intermediate root certificate should however have basic constraints and a pathlength of 0
   pep::X509Certificate intermediateCACert = pep::X509Certificate::FromPem(pepServerCACertPEM);
   ASSERT_TRUE(intermediateCACert.hasBasicConstraints()) << "Intermediate CA cert does not have Basic Constraints";
-  ASSERT_TRUE(intermediateCACert.getPathLength().has_value()) << "Intermediate CA cert does not have a pathlength constraint";
-  ASSERT_TRUE(intermediateCACert.getPathLength().value() == 0) << "Intermediate CA cert has a pathlength constraint different from 0";
+  ASSERT_TRUE(intermediateCACert.pathLengthConstraint().has_value()) << "Intermediate CA cert does not have a pathlength constraint";
+  ASSERT_TRUE(intermediateCACert.pathLengthConstraint().value() == 0) << "Intermediate CA cert has a pathlength constraint different from 0";
 }
 
 TEST(X509CertificateSigningRequestTest, UTF8CharsInUTFField) {
@@ -446,21 +279,39 @@ TEST(X509CertificateSigningRequestTest, LongStringInField) {
   EXPECT_ANY_THROW(pep::X509CertificateSigningRequest csr(keyPair, testCNSucceeds, testOUFails)) << "Creating a CSR with a too long OU string does not throw an error";
 }
 
+TEST(X509CertificateSigningRequestTest, Extensions) {
+  std::unordered_map<std::string, std::pair<std::string, bool>> expectedExtensions = { // name -> (value, critical)
+    {"X509v3 Certificate Policies",  {"Policy: 1.2.3.4", false}},
+    {"X509v3 Subject Alternative Name", {"DNS:authserver.pep.cs.ru.nl", false}},
+    {"X509v3 Basic Constraints",  {"CA:TRUE", true}}
+  };
+  pep::X509CertificateSigningRequest csr = pep::X509CertificateSigningRequest::FromPem(pepAuthserverCSRWithExtension);
+  auto extensions = csr.getExtensions();
+  EXPECT_EQ(extensions.size(), expectedExtensions.size());
+  for (auto& extension : extensions) {
+    auto found = expectedExtensions.find(extension.getName());
+    ASSERT_NE(found, expectedExtensions.end());
+    auto& [value, isCritical] = found->second;
+    EXPECT_EQ(extension.getValue(), value);
+    EXPECT_EQ(extension.isCritical(), isCritical);
+  }
+}
+
 TEST(X509CertificatesTest, X509CertificatesFormatting) {
 
   // An empty string input should throw an error
-  EXPECT_THROW(pep::X509Certificates certificates(""), std::runtime_error);
+  EXPECT_THROW(pep::X509CertificatesFromPem(""), std::runtime_error);
 
   // Certificates chains in PEM format can be interleaved with text, for example as comments
-  EXPECT_NO_THROW(pep::X509Certificates certificates("extra text\n" + pepAuthserverCertPEM + pepServerCACertPEM));
-  EXPECT_NO_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "extra text\n" + pepServerCACertPEM));
+  EXPECT_NO_THROW(pep::X509CertificatesFromPem("extra text\n" + pepAuthserverCertPEM + pepServerCACertPEM));
+  EXPECT_NO_THROW(pep::X509CertificatesFromPem(pepAuthserverCertPEM + "extra text\n" + pepServerCACertPEM));
 
   // But bad formatting after a -----BEGIN CERTIFICATE----- block should produce an error
-  EXPECT_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting\n-----END CERTIFICATE-----" + pepServerCACertPEM), std::runtime_error);
+  EXPECT_THROW(pep::X509CertificatesFromPem(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting\n-----END CERTIFICATE-----" + pepServerCACertPEM), std::runtime_error);
   // Also without a -----END CERTIFICATE----- block
-  EXPECT_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting" + pepServerCACertPEM), std::runtime_error);
+  EXPECT_THROW(pep::X509CertificatesFromPem(pepAuthserverCertPEM + "-----BEGIN CERTIFICATE-----\nbad formatting" + pepServerCACertPEM), std::runtime_error);
   // But bad formatting with only an -----END CERTIFICATE----- doesnt throw an error
-  EXPECT_NO_THROW(pep::X509Certificates certificates(pepAuthserverCertPEM + "bad formatting\n-----END CERTIFICATE-----\n" + pepServerCACertPEM));
+  EXPECT_NO_THROW(pep::X509CertificatesFromPem(pepAuthserverCertPEM + "bad formatting\n-----END CERTIFICATE-----\n" + pepServerCACertPEM));
 
   // Openssl error should be cleared after parsing errors
   EXPECT_TRUE(ERR_get_error() == 0) << "Openssl errors are not cleared after parsing errors";
@@ -470,18 +321,18 @@ TEST(X509CertificatesTest, X509CertificatesFormatting) {
 }
 
 TEST(X509CertificatesTest, ToPem) {
-  pep::X509Certificates certificates(pepAuthserverCertPEM + pepServerCACertPEM);
+  pep::X509Certificates certificates = pep::X509CertificatesFromPem(pepAuthserverCertPEM + pepServerCACertPEM);
   std::string expectedPem = pepAuthserverCertPEM + pepServerCACertPEM;
-  EXPECT_EQ(certificates.toPem(), expectedPem) << "PEM conversion of X509Certificates failed";
+  EXPECT_EQ(X509CertificatesToPem(certificates), expectedPem) << "PEM conversion of X509Certificates failed";
 }
 
 TEST(X509CertificateChainTest, VerifyCertificateChain) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEM);
-  ASSERT_TRUE(rootCA.front().isCurrentTimeInValidityPeriod());
+  pep::X509RootCertificates rootCA(pep::X509CertificatesFromPem(rootCACertPEM));
+  ASSERT_TRUE(rootCA.items().front().isCurrentTimeInValidityPeriod());
 
   // Load the intermediate and server certificates
-  pep::X509CertificateChain certChain(pepAuthserverCertPEM + pepServerCACertPEM);
+  pep::X509CertificateChain certChain(pep::X509CertificatesFromPem(pepAuthserverCertPEM + pepServerCACertPEM));
   ASSERT_TRUE(certChain.isCurrentTimeInValidityPeriod());
 
   // Verify the certificate chain against the root CAs
@@ -490,21 +341,16 @@ TEST(X509CertificateChainTest, VerifyCertificateChain) {
 
 TEST(X509CertificateChainTest, VerifyCertificateChainWithExpiredRootCA) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEMExpired);
-
-  // Load the intermediate and server certificates
-  pep::X509CertificateChain certChain(authserverCertPEMWithExpiredRoot + serverCACertPEMWithExpiredRoot);
-
-  // Verify the certificate chain against the root CAs
-  EXPECT_FALSE(certChain.verify(rootCA)) << "Certificate chain verification succeeded with expired root CA";
+  EXPECT_ANY_THROW(pep::X509RootCertificates(pep::X509CertificatesFromPem(rootCACertPEMExpired)));
 }
 
 TEST(X509CertificateChainTest, VerifyCertificateChainWithExpiredLeafCert) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEM);
+  pep::X509RootCertificates rootCA(pep::X509CertificatesFromPem(rootCACertPEM));
+  ASSERT_TRUE(rootCA.items().front().isCurrentTimeInValidityPeriod());
 
   // Create the certificate chain with the expired leaf certificate and the CA certificate
-  pep::X509CertificateChain certChain(ExpiredLeafCertSignedWithserverCACertPEM + pepServerCACertPEM);
+  pep::X509CertificateChain certChain(pep::X509CertificatesFromPem(pepAuthserverCertPEMExpired + pepServerCACertPEM));
 
   // Verify the certificate chain against the root CAs
   EXPECT_FALSE(certChain.verify(rootCA)) << "Certificate chain verification succeeded with expired leaf certificate";
@@ -512,11 +358,11 @@ TEST(X509CertificateChainTest, VerifyCertificateChainWithExpiredLeafCert) {
 
 TEST(X509CertificateChainTest, VerifyCertificateChainOrdering) {
   // Load the root CA certificate
-  pep::X509RootCertificates rootCA(rootCACertPEM);
-  ASSERT_TRUE(rootCA.front().isCurrentTimeInValidityPeriod());
+  pep::X509RootCertificates rootCA(pep::X509CertificatesFromPem(rootCACertPEM));
+  ASSERT_TRUE(rootCA.items().front().isCurrentTimeInValidityPeriod());
 
   // Load the intermediate and server certificates
-  pep::X509CertificateChain certChain(pepServerCACertPEM + pepAuthserverCertPEM);
+  pep::X509CertificateChain certChain(pep::X509CertificatesFromPem(pepServerCACertPEM + pepAuthserverCertPEM));
   ASSERT_TRUE(certChain.isCurrentTimeInValidityPeriod());
 
   // Verify the certificate chain against the root CAs
@@ -524,9 +370,21 @@ TEST(X509CertificateChainTest, VerifyCertificateChainOrdering) {
 }
 
 TEST(X509CertificateChainTest, CertifiesPrivateKey) {
-  pep::X509CertificateChain certChain(pepServerCACertPEM + rootCACertPEM);
+  pep::X509CertificateChain certChain(pep::X509CertificatesFromPem(pepServerCACertPEM + rootCACertPEM));
   pep::AsymmetricKey privateKey(pepServerCAPrivateKeyPEM);
   EXPECT_TRUE(certChain.certifiesPrivateKey(privateKey)) << "Certificate chain does not certify the private key";
+}
+
+TEST(X509CertificateChainTest, EqualityInequality) {
+  pep::X509CertificateChain baseChain(pep::X509CertificatesFromPem(pepServerCACertPEM + pepAuthserverCertPEM));
+  pep::X509CertificateChain equalChain(pep::X509CertificatesFromPem(pepServerCACertPEM + pepAuthserverCertPEM));
+  pep::X509CertificateChain differentChain(pep::X509CertificatesFromPem(pepServerCACertPEM));
+
+  EXPECT_TRUE(baseChain == equalChain);
+  EXPECT_FALSE(baseChain == differentChain);
+
+  EXPECT_FALSE(baseChain != equalChain);
+  EXPECT_TRUE(baseChain != differentChain);
 }
 
 TEST(X509CertificateSigningRequestTest, GetPublicKey) {

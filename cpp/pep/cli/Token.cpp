@@ -45,6 +45,7 @@ protected:
 
     return executeEventLoopFor([&values, expiration](std::shared_ptr<pep::Client> client) {
       return client
+          ->getAuthServerProxy()
           ->requestToken(
               values.get<std::string>("subject"),
               values.get<std::string>("user-group"),

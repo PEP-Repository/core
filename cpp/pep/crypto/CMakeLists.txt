@@ -9,12 +9,9 @@ add_library(${PROJECT_NAME}Cryptolib STATIC
     Bytes.hpp
     BytesSerializer.cpp BytesSerializer.hpp
     ConstTime.hpp
-    CPRNG.cpp CPRNG.hpp
     CryptoSerializers.cpp CryptoSerializers.hpp
     Encrypted.cpp Encrypted.hpp
     GcmContext.hpp
-    Signature.cpp Signature.hpp
-    Signed.cpp Signed.hpp
     Timestamp.cpp Timestamp.hpp
     X509Certificate.cpp X509Certificate.hpp
 )

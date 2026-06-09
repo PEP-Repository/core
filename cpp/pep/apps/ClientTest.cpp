@@ -4,9 +4,10 @@
 #include <pep/versioning/Version.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 
@@ -14,7 +15,6 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
-#include <rxcpp/operators/rx-zip.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
@@ -65,7 +65,7 @@ class ClientTestApplication : public Application {
     );
 
     client->getIoContext()->run();
-    return (*success) ? 0 : -1;
+    return (*success) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
   std::string getDescription() const override {
@@ -172,13 +172,22 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         tOpts.columns = {"ParticipantInfo"};
         return client->requestTicket2(tOpts).flat_map(
           [client, id](IndexedTicket2 ticket) {
-            return client->retrieveData2(client->getMetadata({id}, ticket.getTicket()), ticket.getTicket(), true);
+            return client->retrieveData(
+                client->enumerateDataByIds({id},
+                    ticket.getTicket()
+                ).concat()
+                .op(RxGetOne("file")),
+                ticket.getTicket());
           });
       })
-      .flat_map([](std::shared_ptr<RetrieveResult> result) {
-        return result->mContent->op(RxConcatenateStrings());
+      .concat()
+      .map([](RetrievePage page) {
+        if (page.fileIndex != 0) {
+          throw std::runtime_error("Unexpected file index");
+        }
+        return std::move(page.content);
       })
-      .op(RxGetOne("result"))
+      .op(RxConcatenateStrings())
       .map(
         [strPayload](const std::string& szResult) {
           std::cout << "Received data : " << szResult << std::endl;
@@ -211,7 +220,9 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
 }
 
 rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std::shared_ptr<Client> client) {
-  std::cout << "Testing storing of 1000 data items" << std::endl;
+  const unsigned NUM_RECORDS = 10;
+  
+  std::cout << "Testing storing of " << NUM_RECORDS << " data items" << std::endl;
 
   PolymorphicPseudonym pp = client->generateParticipantPolymorphicPseudonym(this->getRecordIdentifier());
 
@@ -219,14 +230,13 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
 
   // Test storage of data
   std::vector<rxcpp::observable<DataStorageResult2>> pepRequests;
-  int i;
-  for (i = 0; i < 10; i++) {
+  for (unsigned i = 0; i < NUM_RECORDS; i++) {
     pepRequests.push_back(client->storeData2(pp, "ParticipantInfo",
                 std::make_shared<std::string>(lpPayload), { MetadataXEntry::MakeFileExtension(".txt") }));
     std::cout << i;
   }
 
-  return rxcpp::observable<>::iterate(pepRequests)
+  return RxIterate(pepRequests)
   .merge() // if this is concat(), the requests are send serially
   // does not work yet until we have a better boost threading integration //.timeout(std::chrono::milliseconds(1000))
   .tap(
@@ -239,38 +249,55 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
 
 rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std::shared_ptr<Client> client) {
   std::shared_ptr<SemanticVersion> ownBinarySemver = std::make_shared<SemanticVersion>(BinaryVersion::current.getSemver());
+
+  std::cout << "Client binary version: " << ownBinarySemver->format() << std::endl;
+
   std::shared_ptr<SemanticVersion> ownConfigSemver{};
   auto configVersion = ConfigVersion::Current();
   if(configVersion){
     ownConfigSemver = std::make_shared<SemanticVersion>(configVersion->getSemver());
   }
 
-  return client->getAccessManagerVersion().zip(rxcpp::rxs::just("Access Manager")).merge(
-    client->getTranscryptorVersion().zip(rxcpp::rxs::just("Transcryptor")),
-    client->getKeyServerVersion().zip(rxcpp::rxs::just("Key Server")),
-    client->getStorageFacilityVersion().zip(rxcpp::rxs::just("Storage Facility")),
-    client->getRegistrationServerVersion().zip(rxcpp::rxs::just("Registration Server")),
-    client->getAuthserverVersion().zip(rxcpp::rxs::just("Auth Server"))
-  ).map([ownBinarySemver, ownConfigSemver](std::tuple<VersionResponse, std::string> response) {
-    const BinaryVersion& serverBinaryVersion = std::get<0>(response).binary;
-    std::optional<ConfigVersion> serverConfigVersion = std::get<0>(response).config;
+  if (ownConfigSemver) {
+    std::cout << "Client config version: " << ownConfigSemver->format() << std::endl;
+  }
 
-    const std::string& server = std::get<1>(response);
-    std::cout << server
-      << " Binary version " << serverBinaryVersion.getSummary()
-      << std::endl;
+  return rxcpp::observable<>::iterate(client->getServerProxies(false))
+    .flat_map([ownBinarySemver, ownConfigSemver](const auto& pair) {
+      const ServerTraits& traits = pair.first;
+      const std::shared_ptr<const ServerProxy>& proxy = pair.second;
+      return proxy->requestVersion()
+        .map([ownBinarySemver, ownConfigSemver, description = traits.description()](const VersionResponse& response) {
+          bool result = true;
+          std::ostringstream output;
 
-    bool result = IsSemanticVersionEquivalent(*ownBinarySemver, serverBinaryVersion.getSemver());
+          // Check binary version
+          output << description << " binary version: " << response.binary.getSummary() << "\n";
+          
+          if (!IsSemanticVersionEquivalent(*ownBinarySemver, response.binary.getSemver())) {
+            output << "MISMATCH: client " << ownBinarySemver->format() 
+                   << " vs server " << response.binary.getSemver().format() << "\n";
+            result = false;
+          } else {
+            output << "  Match\n";
+          }
 
-    if (ownConfigSemver && serverConfigVersion.has_value()){
-      std::cout << server
-       << " Config version " << serverConfigVersion->getSummary()
-       << std::endl;
-      if (!IsSemanticVersionEquivalent(*ownConfigSemver, serverConfigVersion->getSemver())){
-        result = false;
-      }
-    }
-    return result;
+          // Check config version
+          if (ownConfigSemver && response.config.has_value()) {
+            output << description << " config version: " << response.config->getSummary() << "\n";
+            
+            if (!IsSemanticVersionEquivalent(*ownConfigSemver, response.config->getSemver())) {
+              output << "MISMATCH: client " << ownConfigSemver->format() 
+                     << " vs server " << response.config->getSemver().format() << "\n";
+              result = false;
+            } else {
+              output << "  Match\n";
+            }
+          }
+
+          std::cout << output.str() << std::flush;
+          return result;
+        });
     });
 }
 

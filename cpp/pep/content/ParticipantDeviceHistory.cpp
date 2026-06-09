@@ -17,7 +17,7 @@ ParticipantDeviceRecord ParticipantDeviceRecord::Deserialize(const boost::proper
 
 ParticipantDeviceRecord ParticipantDeviceRecord::Parse(const std::string& json) {
   boost::property_tree::ptree pepData;
-  std::stringstream ss(json);
+  std::istringstream ss(json);
   boost::property_tree::read_json(ss, pepData);
   return Deserialize(pepData);
 }
@@ -122,7 +122,7 @@ std::string ParticipantDeviceHistory::toJson() const {
   root.push_back(std::make_pair("entries", entries));
   std::ostringstream result;
   boost::property_tree::write_json(result, root);
-  return result.str();
+  return std::move(result).str();
 }
 
 }

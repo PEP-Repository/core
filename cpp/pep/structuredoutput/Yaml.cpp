@@ -5,84 +5,101 @@
 namespace pep::structuredOutput::yaml {
 namespace {
 
-using DisplayFlags = DisplayConfig::Flags;
+enum class ForceQuotes { No, Yes };
 
-std::ostream& appendYamlListHeader(std::ostream& stream, std::string_view text, std::size_t size) {
-  const auto colon_unless_empty = (size != 0 ? ":" : "");
-  return stream << text << colon_unless_empty << " # size=" << size << "\n";
+std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view str, ForceQuotes forceQuotes) {
+  constexpr auto needsQuotes = [](std::string_view str) {
+    // applying quotes generously even though YAML would allow more to go without quotes
+    return str.empty() ||
+      !std::isalpha(str.front()) ||
+      !std::all_of(str.begin(), str.end(), [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
+  };
+  constexpr auto needsEscape = [](char c) { return c == '\\' || c == '"'; };
+
+  const auto quoteOrNothing = (forceQuotes == ForceQuotes::Yes || needsQuotes(str)) ? "\"" : "";
+
+  stream << quoteOrNothing;
+  for (char c : str) { stream << (needsEscape(c) ? "\\" : "") << c; }
+  return stream << quoteOrNothing;
 }
 
-std::ostream& appendYaml(std::ostream& stream,
-                         const std::vector<pep::UserGroup>& group,
-                         const DisplayFlags::T& flags) {
-  const auto withHeader = flags & DisplayFlags::printHeaders;
-  const auto groupOffset = indentations(withHeader ? 1 : 0);
+/// Recursive function to convert a JSON object to a YAML string.
+/// @note does NOT prefix the output with indentation,
+///       the caller should make sure that the output stream is at the correct initial indentation level
+/// @note DOES append a newline character to the output
+void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
+  const std::size_t spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
+  const auto indent = std::string(spacesPerLevel * indentLevel, ' ');
 
-  if (withHeader) {
-    stream << "- ";
-    appendYamlListHeader(stream, stringConstants::userGroups.descriptive, group.size());
-  }
-  for (auto& g : group) {
-    const auto& gMaxAuth = g.mMaxAuthValidity;
+  /// does nothing on the first call and appends indentation on subsequent calls
+  auto indentIfNotFirst = [first = true, &indent](std::ostream& stream) mutable {
+    if (!first) { stream << indent; }
+    first = false;
+  };
 
-    stream << groupOffset << "- " << g.mName;
-    if (gMaxAuth) {
-      stream << ": {" << stringConstants::maxAuthValidityKey << ": " << pep::chrono::ToString(*gMaxAuth) << "}";
+  const auto isAtomic = [](const nlohmann::ordered_json& node) {
+    return !(node.is_object() || node.is_array()) || node.empty();
+  };
+
+  if (node.is_null()) { stream << "null\n"; }
+  else if (node.is_number_integer()) { stream << std::to_string(node.get<int>()) + "\n"; }
+  else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
+  else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
+  else if (node.empty()) {
+    stream << (node.is_array() ? "[]" : "{}");
+    if (node.is_array() && config.includeArraySizeComments && config.includeEmptyArrayComments) {
+      stream << " # item count: 0";
     }
     stream << "\n";
   }
+  else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>(), ForceQuotes::Yes) << "\n"; }
+  else if (node.is_object()) {
+    for (auto it = node.begin(); it != node.end(); it++) {
+      indentIfNotFirst(stream);
+      AppendStringLiteral(stream, it.key(), ForceQuotes::No) << ":";
 
-  return stream;
-}
-
-std::ostream& appendYaml(std::ostream& stream,
-                         const std::vector<pep::QRUser>& users,
-                         const DisplayFlags::T& flags) {
-  const auto printUserGroups = flags & DisplayConfig::Flags::printUserGroups;
-  const auto withHeader = flags & DisplayFlags::printHeaders;
-  const auto userOffset = indentations(withHeader ? 1 : 0);
-  const auto uidAndGroupOffset = indentations(withHeader ? 3 : 2);
-
-  if (withHeader) {
-    appendYamlListHeader(stream, stringConstants::users.descriptive, users.size());
-  }
-  for (auto& user : users) {
-    stream << userOffset << "- ";
-    appendYamlListHeader(stream, stringConstants::identifiersKey, user.mUids.size());
-    for (auto& uid : user.mUids) {
-      stream << uidAndGroupOffset << "- " << uid << "\n";
-    }
-    if(printUserGroups) {
-      // We explicitly use 2 spaces (and not just a call to indentations with a certain indentation level),  so it aligns with "- " for the mUids header, even if we change the indentation size in indentations()
-      stream << userOffset << "  ";
-      appendYamlListHeader(stream, stringConstants::groupsKey, user.mGroups.size());
-      for (auto& group : user.mGroups) {
-        stream << uidAndGroupOffset << "- " << group << "\n";
+      if (isAtomic(*it)) { 
+        stream << " "; 
       }
+      else {
+        if (it->is_array() && config.includeArraySizeComments && 
+            ((it->size() == 0 && config.includeEmptyArrayComments) || it->size() >= config.arrayCountCommentThreshold)) {
+          stream << " # item count: " << it->size();
+        }
+        stream << '\n' << indent << std::string(spacesPerLevel, ' ');
+      }
+      SerializeJsonAsYaml(stream, config, it.value(), indentLevel + 1);
     }
-    stream << "\n";
   }
-
-  return stream;
+  else if (node.is_array()) {
+    for (const auto& element : node) {
+      indentIfNotFirst(stream);
+      stream << "- ";
+      if (element.is_array() && !element.empty()) {
+        if (config.includeArraySizeComments && element.size() >= config.arrayCountCommentThreshold) {
+          stream << "# item count: " << element.size();
+        }
+        stream << "\n" << indent << std::string(spacesPerLevel, ' ');
+      }
+      SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
+    }
+  }
 }
 
 } // namespace
 
-std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& res, DisplayConfig config) {
-  const auto printGroups = config.flags & DisplayConfig::Flags::printGroups;
-  const auto printUsers = config.flags & DisplayConfig::Flags::printUsers;
-
-  if (printGroups) {
-    appendYaml(stream, res.mUserGroups, config.flags);
-  }
-  if (printGroups && printUsers) {
-    stream << "\n"; // empty line between data groups
-  }
-  if (printUsers) {
-    appendYaml(stream, res.mUsers, config.flags);
-  }
-
+/// Appends a YAML representation of a tree to a stream
+std::ostream& append(std::ostream& stream, const Tree& tree, const YamlConfig& config) {
+  SerializeJsonAsYaml(stream, config, tree.rawJson());
   return stream;
+}
+
+/// Converts a tree to string.
+/// @details This is a small wrapper around append for convenience.
+std::string to_string(const Tree& tree, const YamlConfig& config) {
+  std::ostringstream stream;
+  append(stream, tree, config);
+  return std::move(stream).str();
 }
 
 } // namespace pep::structuredOutput::yaml

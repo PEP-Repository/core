@@ -33,7 +33,7 @@ namespace pep {
     }
 
     size_t result = 0;
-    int ignore;
+    int ignore{};
 
     infile >> ignore >> result;
 
@@ -72,7 +72,7 @@ namespace pep {
     infile.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
     infile.close();
 
-    std::stringstream ss;
+    std::istringstream ss;
     ss.rdbuf()->pubsetbuf(buffer.data(), static_cast<std::streamsize>(buffer.size()));
 
     uint64_t memTotal = 0, memAvailable = 0, swapTotal = 0, swapAvailable = 0, readValue = 0;

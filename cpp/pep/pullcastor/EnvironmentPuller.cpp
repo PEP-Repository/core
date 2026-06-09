@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iostream>
 
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/async/RxToVector.hpp>
@@ -10,14 +11,14 @@
 #include <pep/client/Client.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 
 #include <boost/asio/io_context.hpp>
 
+#include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-distinct.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
-#include <rxcpp/operators/rx-window.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
@@ -37,11 +38,11 @@ rxcpp::observable<std::shared_ptr<CoreClient>> EnsureEnrolled(std::shared_ptr<Cl
     return rxcpp::observable<>::just(Upcast(client));
   }
   return client->enrollUser(token)
-    .map([client](EnrollmentResult) {return Upcast(client); });
+    .map([client](const EnrolledPartyKeys&) {return Upcast(client); });
 }
 
 rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreClient> client) {
-  return client->getAccessibleColumns(true)
+  return client->getAccessManagerProxy()->getAccessibleColumns(true)
     .flat_map([](const ColumnAccess& access) {
     std::set<std::string> result;
     for (const auto& group : access.columnGroups) {
@@ -54,7 +55,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
         }
       }
     }
-    return rxcpp::observable<>::iterate(result);
+    return RxIterate(std::move(result));
     })
     .distinct();
 }
@@ -94,13 +95,14 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
     Client::Builder clientBuilder;
 
-    clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CACertificateFile"));
-    clientBuilder.setPublicKeyData(clientConfig.get<ElgamalPublicKey>("PublicKeyData"));
-    clientBuilder.setPublicKeyPseudonyms(clientConfig.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
-    clientBuilder.setAccessManagerEndPoint(clientConfig.get<EndPoint>("AccessManager"));
-    clientBuilder.setStorageFacilityEndPoint(clientConfig.get<EndPoint>("StorageFacility"));
-    clientBuilder.setKeyServerEndPoint(clientConfig.get<EndPoint>("KeyServer"));
-    clientBuilder.setTranscryptorEndPoint(clientConfig.get<EndPoint>("Transcryptor"));
+    clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CaCertificateFile"));
+    clientBuilder.setSystemPublicKeys(clientConfig.get<SystemPublicKeys>("SystemPublicKeys"));
+
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    clientBuilder.setAccessManagerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode()));
+    clientBuilder.setStorageFacilityEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
+    clientBuilder.setKeyServerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::KeyServer().configNode()));
+    clientBuilder.setTranscryptorEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::Transcryptor().configNode()));
 
     clientBuilder.setIoContext(io_context);
 
@@ -128,7 +130,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getGlobalConfiguration(); })
       .flat_map([spColumns, sps](std::shared_ptr<GlobalConfiguration> gc) {
         // Get all SP definitions
-        rxcpp::observable<ShortPseudonymDefinition> allowedSps = rxcpp::observable<>::iterate(gc->getShortPseudonyms());
+        rxcpp::observable<ShortPseudonymDefinition> allowedSps = RxIterate(gc->getShortPseudonyms());
 
         // If SP column names have been specified, limit to those
         if (spColumns.has_value()) {
@@ -158,8 +160,8 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
   mColumnNamer = CreateRxCache([client = mClient, token = mOauthToken]() {
     return EnsureEnrolled(client, token)
-      .flat_map([](std::shared_ptr<CoreClient> client) {return client->getColumnNameMappings(); })
-      .map([](std::shared_ptr<ColumnNameMappings> mappings) { return std::make_shared<ImportColumnNamer>(*mappings); });
+      .flat_map([](std::shared_ptr<CoreClient> client) {return client->getAccessManagerProxy()->getColumnNameMappings(); })
+      .map([](ColumnNameMappings mappings) { return std::make_shared<ImportColumnNamer>(std::move(mappings)); });
     });
 
   mStudiesBySlug = CreateRxCache([castor = mCastor]() {
@@ -198,9 +200,8 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     ++*read;
     return self->getStorageUpdate(castor);
     })
-    .window(STOREDATA_WINDOW_SIZE) // Process StoreData2Entry items in batches
-    .concat_map([](rxcpp::observable<StoreData2Entry> batch) { return batch.op(RxToVector()); }) // Get this batch's items as a vector
-    .flat_map([self](std::shared_ptr<std::vector<StoreData2Entry>> batch) {return self->processBatchToStore(batch); }) // Store the items
+    .buffer(STOREDATA_WINDOW_SIZE) // Process StoreData2Entry items in batches
+    .flat_map([self](const std::vector<StoreData2Entry>& batch) {return self->processBatchToStore(batch); }) // Store the items
     .tap( // Perform housekeeping
       [self, written](size_t count) {
         self->mMetrics->storedEntries_count.Increment(static_cast<double>(count));
@@ -214,12 +215,12 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     );
 }
 
-rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(std::shared_ptr<std::vector<StoreData2Entry>> batch) {
+rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(const std::vector<StoreData2Entry>& batch) {
   if (mDry) {
-    return rxcpp::observable<>::just(batch->size());
+    return rxcpp::observable<>::just(batch.size());
   }
 
-  return mClient->storeData2(*batch)
+  return mClient->storeData2(batch)
     .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.mIds.size(); });
 }
 
@@ -320,7 +321,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> Environmen
   if (!mSps.has_value()) {
     return rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>()); // Return an empty vector rather than an empty observable
   }
-  return rxcpp::observable<>::iterate(*mSps)
+  return RxIterate(*mSps)
     .flat_map([client = mClient](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
     .op(RxToVector());
 }

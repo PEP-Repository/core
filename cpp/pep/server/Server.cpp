@@ -1,10 +1,11 @@
 #include <chrono>
 #include <pep/auth/UserGroup.hpp>
-#include <pep/messaging/MessagingSerializers.hpp>
+#include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/Server.hpp>
 
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <prometheus/text_serializer.h>
 #include <prometheus/gauge.h>
@@ -73,14 +74,11 @@ Server::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   startupTime = std::chrono::steady_clock::now();
 }
 
-messaging::MessageBatches Server::handlePingRequest(std::shared_ptr<PingRequest> request) {
-  return messaging::BatchSingleMessage(this->makeSerializedPingResponse(*request));
-}
-
 messaging::MessageBatches
 Server::handleMetricsRequest(
   std::shared_ptr<SignedMetricsRequest> signedRequest) {
-  signedRequest->validate(getRootCAs(), UserGroup::Watchdog);
+  auto signatory = signedRequest->validate(*getRootCAs());
+  UserGroup::EnsureAccess({ UserGroup::Watchdog }, signatory.organizationalUnit(), "Metrics retrieval");
   auto registry = getMetricsRegistry();
   if (registry == nullptr)
     throw Error("Server does not collect metrics");
@@ -99,8 +97,10 @@ std::unordered_set<std::string> Server::getAllowedChecksumChainRequesters() {
 messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting checksum chains");
-  auto request = signedRequest->open(getRootCAs());
+  auto certified = signedRequest->open(*getRootCAs());
+  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
+
+  const auto& request = certified.message;
   std::optional<uint64_t> maxCheckpoint;
 
   if (!request.mCheckpoint.empty()) {
@@ -109,7 +109,7 @@ Server::handleChecksumChainRequest(
     maxCheckpoint = UnpackUint64BE(request.mCheckpoint);
   }
 
-  uint64_t checksum, checkpoint;
+  uint64_t checksum{}, checkpoint{};
   computeChecksumChainChecksum(
     request.mName,
     maxCheckpoint,
@@ -126,8 +126,8 @@ Server::handleChecksumChainRequest(
 messaging::MessageBatches
 Server::handleChecksumChainNamesRequest(
   std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest) {
-  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signedRequest->getLeafCertificateOrganizationalUnit(), "Requesting checksum chain names");
-  signedRequest->validate(getRootCAs());
+  auto signatory = signedRequest->validate(*getRootCAs());
+  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
   ChecksumChainNamesResponse resp;
   resp.mNames = getChecksumChainNames();
   return messaging::BatchSingleMessage(std::move(resp));
@@ -137,10 +137,10 @@ Server::Server(std::shared_ptr<Parameters> parameters)
   : mRegistry(std::make_shared<prometheus::Registry>()),
   mMetrics(std::make_shared<Metrics>(mRegistry)),
   mEGCache(EGCache::get()),
+  mServerTraits(parameters->serverTraits()),
   mIoContext(parameters->getIoContext()),
   mRootCAs(parameters->ensureValid().getRootCAs()) {
   RegisterRequestHandlers(*this,
-    &Server::handlePingRequest,
     &Server::handleMetricsRequest,
     &Server::handleChecksumChainNamesRequest,
     &Server::handleChecksumChainRequest);
@@ -148,10 +148,6 @@ Server::Server(std::shared_ptr<Parameters> parameters)
 
 std::filesystem::path Server::EnsureDirectoryPath(std::filesystem::path path) {
   return path / "";
-}
-
-std::string Server::makeSerializedPingResponse(const PingRequest& request) const {
-  return Serialization::ToString(PingResponse(request.mId));
 }
 
 std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
@@ -164,6 +160,7 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
 
   auto dataLocation = getStoragePath();
 
+  // Will be NaN for servers without dataLocation
   mMetrics->diskUsageProportion.Set(ApplicationMetrics::GetDiskUsageProportion(dataLocation));
   mMetrics->diskUsageTotal.Set(ApplicationMetrics::GetDiskUsageBytes(dataLocation));
 
@@ -184,7 +181,7 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
 
 Server::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> ioContext, const Configuration& config)
   : mIoContext(std::move(ioContext)),
-  rootCACertificatesFilePath_(config.get<std::filesystem::path>("CACertificateFile")),
-  rootCAs_(ReadFile(rootCACertificatesFilePath_)) {}
+  rootCACertificatesFilePath_(config.get<std::filesystem::path>("CaCertificateFile")),
+  rootCAs_(MakeSharedCopy(X509RootCertificates::FromFile(rootCACertificatesFilePath_))) {}
 
 }

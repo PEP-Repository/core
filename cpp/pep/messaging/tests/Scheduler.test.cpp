@@ -1,9 +1,13 @@
 #include <gtest/gtest.h>
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/messaging/Scheduler.hpp>
 #include <pep/serialization/Error.hpp>
-#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <cmath>
 #include <numeric>
+
+using namespace std::literals;
 
 namespace {
 
@@ -67,7 +71,7 @@ class Emitter : public std::enable_shared_from_this<Emitter>, public pep::Shared
   friend class pep::SharedConstructor<Emitter>;
 
 private:
-  boost::asio::deadline_timer mTimer;
+  boost::asio::steady_timer mTimer;
   rxcpp::subscriber<std::shared_ptr<std::string>> mSubscriber;
   size_t& mExhaustCount;
   std::string mPrefix;
@@ -95,7 +99,7 @@ private:
     if (this->finished()) {
       throw std::runtime_error("Can't schedule a next item from a finished emitter");
     }
-    mTimer.expires_from_now(boost::posix_time::milliseconds(10));
+    mTimer.expires_after(10ms);
     mTimer.async_wait([self = SharedFrom(*this)](const boost::system::error_code& error) { self->handleTimerExpired(error); });
   }
 
@@ -148,7 +152,7 @@ void TestStreams(const std::vector<size_t> sizes) {
   FakeSender sender(scheduler);
 
   for (const auto& stream : streams) {
-    scheduler->push(stream.id, rxcpp::observable<>::iterate(stream.batches));
+    scheduler->push(stream.id, pep::RxIterate(stream.batches));
   }
   ASSERT_NO_FATAL_FAILURE(ioContext.run());
 

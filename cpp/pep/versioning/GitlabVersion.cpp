@@ -33,11 +33,11 @@ std::string GitlabVersion::getSummary() const {
 }
 
 std::string GitlabVersion::prettyPrint() const {
-  std::stringstream result{};
+  std::ostringstream result{};
   result << "Version: " << mSemver.format() << '\n'
          << "Commit: " << getCommit() << '\n'
          << "Project path: " << getProjectPath() << '\n';
-  return result.str();
+  return std::move(result).str();
 }
 
 std::string GitlabVersion::constructSummary(const std::optional<std::string>& project, bool includeReference) const {

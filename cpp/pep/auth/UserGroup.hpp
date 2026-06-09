@@ -37,12 +37,13 @@ public:
   // Special access groups that are checked in the code
   inline static const std::string AccessAdministrator{"Access Administrator"},
     DataAdministrator{"Data Administrator"},
+    SystemAdministrator{"System Administrator"},
     ResearchAssessor{"Research Assessor"},
     Watchdog{"Watchdog"},
-    Monitor{"Monitor"},
-    AccessManager{"AccessManager"};
+    Monitor{"Monitor"};
 
-  inline static const std::unordered_set<std::string> Authserver{"Authserver", "AuthServer"};
+  static const std::string AccessManager;
+  static const std::unordered_set<std::string> Authserver;
 };
 
 }

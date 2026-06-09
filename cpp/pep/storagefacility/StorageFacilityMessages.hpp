@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/serialization/IndexList.hpp>
@@ -11,8 +11,10 @@ namespace pep {
 class DataEnumerationRequest2 {
 public:
   SignedTicket2 mTicket;
-  std::optional<IndexList> mColumns;
-  std::optional<IndexList> mPseudonyms;
+  // Falls back to all columns in ticket
+  std::optional<IndexList> mColumns{};
+  // Falls back to all pseudonyms in ticket
+  std::optional<IndexList> mPseudonyms{};
 };
 
 class DataEnumerationEntry2 {
@@ -112,6 +114,16 @@ public:
   std::vector<DataHistoryEntry2> mEntries;
 };
 
+struct DataSizeRequest {
+  std::set<std::string> mColumns;
+};
+
+struct DataSizeResponse {
+  uint64_t mBlockSize;
+  uint64_t mTotalBlocks;
+  uint64_t mRollingBlocks;
+};
+
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;
 using SignedMetadataReadRequest2 = Signed<MetadataReadRequest2>;
 using SignedDataReadRequest2 = Signed<DataReadRequest2>;
@@ -119,5 +131,6 @@ using SignedMetadataUpdateRequest2 = Signed<MetadataUpdateRequest2>;
 using SignedDataStoreRequest2 = Signed<DataStoreRequest2>;
 using SignedDataDeleteRequest2 = Signed<DataDeleteRequest2>;
 using SignedDataHistoryRequest2 = Signed<DataHistoryRequest2>;
+using SignedDataSizeRequest = Signed<DataSizeRequest>;
 
 }

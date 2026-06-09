@@ -2,6 +2,7 @@
 #include <pep/cli/SingleCellCommand.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -24,7 +25,7 @@ protected:
       .op(pep::RxConcatenateVectors())
       .concat_map([](std::shared_ptr<std::vector<pep::HistoryResult>> results) {
       std::ranges::sort(*results, {}, std::mem_fn(&pep::HistoryResult::mTimestamp));
-      return rxcpp::observable<>::iterate(*results);
+      return pep::RxIterate(std::move(*results));
         });
     return WriteJson(std::cout, entries);
   }

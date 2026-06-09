@@ -4,12 +4,12 @@
 #include <pep/structuredoutput/Tree.hpp>
 
 namespace {
-using nlohmann::json;
+using json = nlohmann::ordered_json;
 using pep::structuredOutput::Table;
 using pep::structuredOutput::Tree;
 
-nlohmann::json At(const Tree& t, std::string_view k0) { return t.toJson().at(k0); }
-nlohmann::json At(const Tree& t, std::string_view k0, std::string_view k1) { return t.toJson().at(k0).at(k1); }
+nlohmann::json At(const Tree& t, std::string_view k0) { return t.rawJson().at(k0); }
+nlohmann::json At(const Tree& t, std::string_view k0, std::string_view k1) { return t.rawJson().at(k0).at(k1); }
 
 } // namespace
 

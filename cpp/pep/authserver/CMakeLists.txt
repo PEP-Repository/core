@@ -1,20 +1,20 @@
 add_library(${PROJECT_NAME}AuthserverApilib
   AuthserverMessages.hpp
+  AuthServerProxy.cpp AuthServerProxy.hpp
   AuthserverSerializers.cpp AuthserverSerializers.hpp
 )
 target_link_libraries(${PROJECT_NAME}AuthserverApilib
-  ${PROJECT_NAME}Cryptolib
+  ${PROJECT_NAME}ServerApilib
 )
 verify_headers_standalone(${PROJECT_NAME}AuthserverApilib)
 
-if (WITH_SERVERS)
 
+if (WITH_SERVERS)
   add_library(${PROJECT_NAME}Authserverlib
     OAuthProvider.cpp OAuthProvider.hpp
     AuthserverBackend.cpp AuthserverBackend.hpp
     Authserver.cpp Authserver.hpp
   )
-
   target_link_libraries(${PROJECT_NAME}Authserverlib
     ${PROJECT_NAME}Serverlib
     ${PROJECT_NAME}Httpserverlib
@@ -22,7 +22,6 @@ if (WITH_SERVERS)
     ${PROJECT_NAME}AccessManagerApilib
     ${PROJECT_NAME}Templatinglib
   )
-
   verify_headers_standalone(${PROJECT_NAME}Authserverlib)
 
   add_cli_install_executable(${PROJECT_NAME}Authserver Main.cpp)

@@ -118,7 +118,7 @@ bool Flags::empty() const noexcept {
 Flags::Flags(bool close, bool error, bool payload)
   : mClose(close), mError(error), mPayload(payload) {
   if (!areValid()) {
-    throw std::invalid_argument((boost::format("These flags cannot be combined: %s") % *this).str());
+    throw std::invalid_argument((boost::format("Inconsistent set of message flags: %s") % *this).str());
   }
 }
 
@@ -128,6 +128,7 @@ Flags Flags::operator|(const Flags& other) const {
 
 std::ostream& operator<<(std::ostream& out, Flags flags) {
   bool first = true;
+  out << '{';
   auto printFlag = [&](std::string_view flag) {
     if (!std::exchange(first, false)) { out << ", "; }
     out << flag;
@@ -135,6 +136,7 @@ std::ostream& operator<<(std::ostream& out, Flags flags) {
   if (flags.close()) { printFlag("close"); }
   if (flags.error()) { printFlag("error"); }
   if (flags.payload()) { printFlag("payload"); }
+  out << '}';
   return out;
 }
 
@@ -191,7 +193,7 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
   auto flagBits = properties & FLAG_BITS;
   auto streamId = properties & STREAM_ID_BITS;
 
-  MessageType::Value type;
+  MessageType::Value type = MessageType::REQUEST;
   if (streamId == CONTROL_STREAM_ID) {
     if (properties != CONTROL_STREAM_ID) {
       throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
@@ -200,9 +202,6 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
   }
   else if (typeBits & TYPE_RESPONSE) {
     type = MessageType::RESPONSE;
-  }
-  else {
-    type = MessageType::REQUEST;
   }
 
   Flags flags(flagBits & FLAG_CLOSE, flagBits & FLAG_ERROR, flagBits & FLAG_PAYLOAD);

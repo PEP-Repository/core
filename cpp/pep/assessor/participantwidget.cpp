@@ -143,7 +143,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      const VisitCaptions* visitCaptions,
                                      pep::UserRole role)
   : QWidget(parent), pepClient(client), ui(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), mAllContexts(allContexts), mStudyContext(studyContext), currentPEPRole(role), mProjectName(branding.getProjectName()), mSpareStickerCount(spareStickerCount), mVisitCaptions(visitCaptions) {
-  baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseURL"));
+  baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
   stickerFilePath = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
   bartenderPath = ReadConfiguredBartenderPath(configuration);
   currentUserPP = pepClient->generateParticipantPolymorphicPseudonym(SID.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
@@ -304,7 +304,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
       emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::warning);
       pepClient->completeParticipantRegistration(participantSID.toStdString())
         .observe_on(observe_on_gui())
-        .subscribe([](std::shared_ptr<pep::RegistrationResponse> result) {
+        .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
         qDebug() << "Exception occured";
         emit statusMessage(tr("Completing registration failed."), pep::error);
@@ -1356,7 +1356,7 @@ void ParticipantDataAggregator::processStudyContexts(const pep::EnumerateAndRetr
 
 void ParticipantDataAggregator::processVisitAssessor(const pep::EnumerateAndRetrieveResult& result) {
   std::string context;
-  unsigned visit;
+  unsigned visit{};
   [[maybe_unused]] auto match = isVisitAssessorColumn(result.mColumn, &context, &visit);
   assert(match);
 

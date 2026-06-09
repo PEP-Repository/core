@@ -22,15 +22,15 @@ class TranscryptorRequestEntry {
 public:
   TranscryptorRequestEntry() = default;
   TranscryptorRequestEntry(
-    PolymorphicPseudonym pp,
-    EncryptedLocalPseudonym am,
-    EncryptedLocalPseudonym sf,
-    EncryptedLocalPseudonym ts,
-    std::optional<EncryptedLocalPseudonym> ug,
-    RSKProof amProof,
-    RSKProof sfProof,
-    RSKProof tsProof,
-    std::optional<RSKProof> ugProof)
+    const PolymorphicPseudonym& pp,
+    const EncryptedLocalPseudonym& am,
+    const EncryptedLocalPseudonym& sf,
+    const EncryptedLocalPseudonym& ts,
+    const std::optional<EncryptedLocalPseudonym>& ug,
+    const RskProof& amProof,
+    const RskProof& sfProof,
+    const RskProof& tsProof,
+    const std::optional<RskProof>& ugProof)
     : mPolymorphic(pp),
     mAccessManager(am),
     mStorageFacility(sf),
@@ -43,15 +43,16 @@ public:
 
   PolymorphicPseudonym mPolymorphic;
 
+  // Partially translated
   EncryptedLocalPseudonym mAccessManager;
   EncryptedLocalPseudonym mStorageFacility;
   EncryptedLocalPseudonym mTranscryptor;
   std::optional<EncryptedLocalPseudonym> mUserGroup;
 
-  RSKProof mAccessManagerProof;
-  RSKProof mStorageFacilityProof;
-  RSKProof mTranscryptorProof;
-  std::optional<RSKProof> mUserGroupProof;
+  RskProof mAccessManagerProof;
+  RskProof mStorageFacilityProof;
+  RskProof mTranscryptorProof;
+  std::optional<RskProof> mUserGroupProof;
 
   // Ensures the underlying CurvePoint's are pre-packed for serialization.
   // See CurvePoint::ensurePacked().
@@ -83,7 +84,6 @@ public:
 
 class LogIssuedTicketResponse {
 public:
-  LogIssuedTicketResponse() = default;
   LogIssuedTicketResponse(Signature sig) : mSignature(std::move(sig)) { }
   Signature mSignature;
 };

@@ -1,12 +1,9 @@
 #pragma once
 
 #include <pep/messaging/ConnectionStatus.hpp>
-#include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/messaging/Node.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/async/FakeVoid.hpp>
-#include <pep/async/WaitGroup.hpp>
-#include <pep/utils/Random.hpp>
 #include <utility>
 
 namespace pep::messaging {
@@ -16,11 +13,16 @@ namespace pep::messaging {
  */
 class ServerConnection : public std::enable_shared_from_this<ServerConnection> {
 private:
+  struct PendingRequest {
+    std::shared_ptr<std::string> message;
+    std::optional<messaging::MessageBatches> tail;
+    rxcpp::subscriber<std::string> subscriber;
+  };
+
   std::shared_ptr<Node> mNode;
+  std::vector<PendingRequest> mPendingRequests;
   std::shared_ptr<Connection> mConnection;
   EventSubscription mConnectionStatusSubscription;
-  std::shared_ptr<WaitGroup> mWaitGroup;
-  std::optional<WaitGroup::Action> mConnecting;
   rxcpp::subjects::behavior<ConnectionStatus> mStatus{ {false, boost::system::errc::make_error_code(boost::system::errc::no_message)} };
   rxcpp::subscriber<ConnectionStatus> mStatusSubscriber = mStatus.get_subscriber();
 
@@ -32,27 +34,19 @@ private:
   void handleConnectivityEnd();
 
   void onConnected(std::shared_ptr<Connection> connection);
-  void onDisconnected();
 
   void finalize();
 
-  template <typename TResponse>
-  using RequestFunction = std::function<rxcpp::observable<TResponse>(std::shared_ptr<Connection>)>;
-
-  template <typename TResponse>
-  rxcpp::observable<TResponse> whenConnected(RequestFunction<TResponse> request) {
-    //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) Function leak seems like a false positive as long as WaitGroup finishes (TODO we should probably support cancellation)
-    return mWaitGroup->delayObservable<TResponse>([weak = WeakFrom(*this), request]() -> rxcpp::observable<TResponse> {
-      auto self = weak.lock();
-      if (self == nullptr || self->mNode == nullptr) {
-        return rxcpp::observable<>::error<TResponse>(std::runtime_error("Server connection was lost or closed"));
-      }
-      assert(self->mConnection != nullptr);
-      return request(self->mConnection);
-      });
-  }
-
 public:
+  /**
+   * @brief Creates a new instance.
+   * @param io_context The I/O context associated with the connection.
+   * @param endPoint The endpoint at which the server lives.
+   * @param caCertFilepath The path to the file containing the (PEM-encoded) CA certificate.
+   * @return A freshly created ServerConnection instance.
+   */
+  static std::shared_ptr<ServerConnection> Create(std::shared_ptr<boost::asio::io_context> io_context, const EndPoint& endPoint, const std::filesystem::path& caCertFilepath);
+
   /**
    * @brief Creates a new instance if the endpoint's host name is set.
    * @param io_context The I/O context associated with the connection.
@@ -81,41 +75,6 @@ public:
    * @return An observable that finishes when shutdown is complete.
    */
   rxcpp::observable<FakeVoid> shutdown();
-
-  /**
-   * @brief Sends a request to the server, returning the server's (single) response message.
-   * @param request The request to send.
-   * @return An observable that emits the server's response.
-   * @remark Usable only for requests (without tail messages) for which the server returns a single response message.
-   */
-  template <typename response_type, typename request_type>
-  rxcpp::observable<response_type> sendRequest(request_type&& request) {
-    return this->whenConnected<response_type>([request = std::forward<request_type>(request)](std::shared_ptr<Connection> connection) {
-      return connection->sendRequest<response_type>(request);
-      });
-  }
-
-  /**
-   * @brief Sends a PingRequest to the server, returning the server's response ("pong") message.
-   * @param getPlainResponse A function that produces a (plain) PingResponse instance from the server's raw response message (e.g. a SignedPingResponse).
-   * @return An observable that emits the server's response.
-   */
-  template <typename TResponse>
-  rxcpp::observable<TResponse> ping(std::function<PingResponse(const TResponse& rawResponse)> getPlainResponse) {
-    uint64_t id;
-    RandomBytes(reinterpret_cast<uint8_t*>(&id), sizeof(id));
-
-    return this->whenConnected<TResponse>([id, getPlainResponse](std::shared_ptr<Connection> connection) -> rxcpp::observable<TResponse> {
-      return connection->sendRequest<TResponse>(PingRequest(id))
-        .map([getPlainResponse, id](const TResponse& rawResponse) {
-        auto response = getPlainResponse(rawResponse);
-        if (response.mId != id) {
-          throw std::runtime_error("Received ping response with incorrect ID");
-        }
-        return rawResponse;
-          });
-      });
-  }
 };
 
 }

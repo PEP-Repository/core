@@ -17,12 +17,11 @@ private:
 
   struct Context;
   rxcpp::observable<std::shared_ptr<IndexedTicket2>> requestTicket(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx);
-  rxcpp::observable<std::shared_ptr<VectorOfVectors<EnumerateResult>>> listFiles(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx);
-  rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>>> locateFileContents(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<VectorOfVectors<EnumerateResult>> metas);
-  void prepareLocalData(std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads, bool assumePristine);
-  rxcpp::observable<FakeVoid> retrieveFromServer(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<std::unordered_map<RecordDescriptor, EnumerateResult>> downloads);
-  rxcpp::observable<FakeVoid> processDataChunk(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx, std::shared_ptr<RetrieveResult> result);
-  void processEmptyFiles(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx);
+  rxcpp::observable<std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>>> listFiles(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx);
+  rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>>> locateFileContents(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>> metas);
+  void prepareLocalData(std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads, bool assumePristine);
+  rxcpp::observable<FakeVoid> retrieveFromServer(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads);
+  void processDataChunk(std::shared_ptr<Progress> retrieveProgress, std::shared_ptr<Context> ctx, const RetrievePage& result);
 
 protected:
   [[noreturn]] void fail(const std::string& message);

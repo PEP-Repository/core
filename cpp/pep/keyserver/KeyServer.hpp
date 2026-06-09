@@ -3,6 +3,7 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp>
 #include <pep/keyserver/tokenblocking/Blocklist.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
 
 namespace pep {
@@ -13,23 +14,9 @@ public:
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
-    /*!
-     * \return The client CA private key
-     */
-    const AsymmetricKey& getClientCAPrivateKey() const;
-    /*!
-     * \param privateKey The client CA private key
-     */
-    void setClientCAPrivateKey(const AsymmetricKey& privateKey);
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::KeyServer(); }
 
-    /*!
-     * \return The certificate chain corresponding with the client CA private key
-     */
-    X509CertificateChain& getClientCACertificateChain();
-    /*!
-     * \param certificateChain The certificate chain corresponding with the client CA private key
-     */
-    void setClientCACertificateChain(const X509CertificateChain& certificateChain);
+    const std::optional<X509Identity>& getClientCa() const { return mClientCa; }
 
     /*!
      * \return The oauth token secret, shared with the authentication server
@@ -43,29 +30,26 @@ public:
     /*!
      * \return The path where the blocklist of the keyserver is stored on disk
      */
-    const std::optional<std::filesystem::path>& getBlocklistStoragePath() const;
+    const std::filesystem::path& getBlocklistStoragePath() const;
     /*!
      * \param path The path where the blocklist of the keyserver is stored on disk
      */
-    void setBlocklistStoragePath(const std::optional<std::filesystem::path>& path);
+    void setBlocklistStoragePath(const std::filesystem::path& path);
 
   protected:
     void check() const override;
 
   private:
-    AsymmetricKey mClientCAPrivateKey;
-    X509CertificateChain mClientCACertificateChain;
+    std::optional<X509Identity> mClientCa;
     std::string mOauthTokenSecret;
-    std::optional<std::filesystem::path> mBlocklistStoragePath;
+    std::filesystem::path mBlocklistStoragePath;
   };
 
 public:
   explicit KeyServer(std::shared_ptr<Parameters>);
 
-protected:
-  std::string describe() const override;
-
 private:
+  messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
   messaging::MessageBatches handleUserEnrollmentRequest(std::shared_ptr<EnrollmentRequest> enrollmentRequest);
   messaging::MessageBatches handleTokenBlockingListRequest(std::shared_ptr<SignedTokenBlockingListRequest> signedRequest);
   messaging::MessageBatches handleTokenBlockingCreateRequest(std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest);
@@ -79,8 +63,7 @@ private:
 
   bool isValid(const OAuthToken& authToken, const std::string& commonName, const std::string& organisationalUnit) const;
 
-  AsymmetricKey mClientCAPrivateKey;
-  X509CertificateChain mClientCACertificateChain;
+  X509Identity mClientCa;
   std::string mOauthTokenSecret;
   std::unique_ptr<tokenBlocking::Blocklist> mBlocklist;
 };

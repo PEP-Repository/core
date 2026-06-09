@@ -4,6 +4,7 @@ add_library(${PROJECT_NAME}Applicationlib STATIC
     Application.cpp Application.hpp
     CommandLineAutocomplete.hpp
     CommandLineCommand.cpp CommandLineCommand.hpp
+    CommandLineCommandWrappers.hpp
     CommandLineHelp.cpp CommandLineHelp.hpp
     CommandLineParameter.cpp CommandLineParameter.hpp
     CommandLineSwitchAnnouncement.cpp CommandLineSwitchAnnouncement.hpp
@@ -31,4 +32,5 @@ if (WITH_UNWINDER)
   endif ()
 endif ()
 
+add_unit_tests(Application)
 verify_headers_standalone(${PROJECT_NAME}Applicationlib)

@@ -21,10 +21,6 @@ namespace {
 
 const std::string LOG_TAG ("FakeCastorApi");
 
-std::filesystem::path GetIdentityFilePath(const std::string& name) {
-  return GetAbsolutePath(name);
-}
-
 }
 
 class FakeCastorApi::Connection : public std::enable_shared_from_this<Connection>, public SharedConstructor<Connection> {
@@ -99,7 +95,7 @@ void FakeCastorApi::Connection::handleReadHeaders(const networking::DelimitedTra
     if(index != std::string::npos) {
       std::string headerName = header.substr(0, index);
       std::string headerValue = header.substr(index + 1);
-      boost::trim_if(headerValue, boost::is_any_of(" \r\n\t"));
+      boost::trim_if(headerValue, boost::is_space());
       mHeaders[headerName] = headerValue;
     } else {
       LOG(LOG_TAG, warning) << "Ignoring malformed header: " << header << '\n';
@@ -176,9 +172,10 @@ void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::
   mBinary->asyncWrite(mOutput.data(), mOutput.length(), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {self->handleWrite(result); });
 }
 
-FakeCastorTest::FakeCastorTest() {
+FakeCastorTest::FakeCastorTest()
+  : mIdentity(TemporaryX509IdentityFiles::Make("Fake Castor b.v.", "localhost")) { // Would be cheaper in a (global) RegisteredTestEnvironment, but this is good enough for now
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
-  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, X509IdentityFilesConfiguration(GetIdentityFilePath("localhost.key"), GetIdentityFilePath("localhost.cert")));
+  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, mIdentity.slicedToX509IdentityFiles());
   mServer = FakeCastorApi::Create(parameters, port, options);
   mServer->start();
 
@@ -186,7 +183,7 @@ FakeCastorTest::FakeCastorTest() {
     EndPoint("localhost", port),
     castor::ApiKey{ "SomeID", "SomeSecret" },
     mClientSide.ioContext(),
-    GetIdentityFilePath("localhost.cert"));
+    mIdentity.getCertificateChainFilePath());
 
   mClientSide.start();
   mServerSide.start();
@@ -205,21 +202,18 @@ void FakeCastorTest::Side::start() {
   if (mThread != nullptr) {
     throw std::runtime_error("Can't start FakeCastorTest::Side multiple times");
   }
-  mThread = std::make_shared<IoContextThread>(mIoContext, &mRun);
+  mThread = std::make_shared<IoContextThread>("Fake Castor test " + this->role(), mIoContext);
 }
 
 void FakeCastorTest::Side::stop(bool force) {
-  if (!mRun) {
+  if (mIoContext == nullptr) {
     throw std::runtime_error("Can't stop FakeCastorTest::Side multiple times");
   }
   if (mThread == nullptr) {
     throw std::runtime_error("Can't stop an unstarted FakeCastorTest::Side");
   }
-  mRun = false; // Don't restart the I/O service if/when it runs out of work
-  if (force) {
-    mIoContext->stop();
-  }
-  mThread->join();
+  mIoContext.reset(); // Allow detection that this instance has already been stop()ped
+  mThread->stop(force);
 }
 
 FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& parameters, uint16_t port, std::shared_ptr<Options> options)

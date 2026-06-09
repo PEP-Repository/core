@@ -1,3 +1,4 @@
+#include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
 #include <cassert>
 #include <random>
@@ -20,6 +21,24 @@ std::filesystem::path Temporary::release() {
   std::filesystem::path p{};
   std::swap(p, mPath);
   return p;
+}
+
+Temporary Temporary::MakeFile(const std::string& content, const std::filesystem::path& directory) {
+  if (!exists(directory)) {
+    throw std::runtime_error("Can't create temporary file in nonexistent directory " + directory.string());
+  }
+
+  // Generate a path to a file...
+  std::filesystem::path file;
+  const std::string pattern(8U, '%'); // ... with an 8-character random name...
+  do {
+    auto name = pep::filesystem::RandomizedName(pattern);
+    file = directory / name;
+  } while (exists(file)); // ... that does not exist (yet)
+
+  pep::filesystem::Temporary result(file); // Take ownership of the path immediately to ensure that it's deleted even if exceptions occur while we write the file (below)
+  pep::WriteFile(result.path(), content); // (Create and) write the file
+  return result;
 }
 
 std::string RandomizedName(std::string str) {

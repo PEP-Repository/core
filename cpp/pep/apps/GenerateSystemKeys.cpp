@@ -1,4 +1,5 @@
 #include <pep/application/Application.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/utils/Random.hpp>
 
@@ -17,9 +18,7 @@ class GenerateSystemKeysApplication : public pep::Application {
   class GenerateKeysFileCommand : public pep::commandline::ChildCommandOf<GenerateSystemKeysApplication> {
   private:
     static std::string GenerateHMACKey() {
-      std::string randomBytes;
-      RandomBytes(randomBytes, HMAC_BYTES);
-      return boost::algorithm::hex(randomBytes);
+      return boost::algorithm::hex(RandomString(HMAC_BYTES));
     }
 
   protected:
@@ -83,8 +82,8 @@ class GenerateSystemKeysApplication : public pep::Application {
       return ADD_DATA_BLINDING;
     }
 
-    GenerateSpecificKeysFileCommand(const std::string& name, const std::string& description, GenerateSystemKeysApplication& parent)
-      : GenerateKeysFileCommand(name, description, parent) {
+    GenerateSpecificKeysFileCommand(const pep::ServerTraits& server, GenerateSystemKeysApplication& parent)
+      : GenerateKeysFileCommand(server.abbreviation(), server.description(), parent) {
     }
 
   public:
@@ -95,12 +94,12 @@ class GenerateSystemKeysApplication : public pep::Application {
 
   class GenerateAmKeysFileCommand : public GenerateSpecificKeysFileCommand<true> {
   public:
-    explicit GenerateAmKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<true>("AM", "Access Manager", parent) {}
+    explicit GenerateAmKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<true>(pep::ServerTraits::AccessManager(), parent) {}
   };
 
   class GenerateTsKeysFileCommand : public GenerateSpecificKeysFileCommand<false> {
   public:
-    explicit GenerateTsKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<false>("TS", "Transcryptor", parent) {}
+    explicit GenerateTsKeysFileCommand(GenerateSystemKeysApplication& parent) : GenerateSpecificKeysFileCommand<false>(pep::ServerTraits::Transcryptor(), parent) {}
   };
 
   class GenerateBothKeysFilesCommand : public pep::commandline::ChildCommandOf<GenerateSystemKeysApplication> {
@@ -115,8 +114,8 @@ class GenerateSystemKeysApplication : public pep::Application {
       auto am = GenerateAmKeysFileCommand::GenerateKeysFile(this->getParameterValues().get<std::filesystem::path>("am-output-path"));
       auto ts = GenerateTsKeysFileCommand::GenerateKeysFile(this->getParameterValues().get<std::filesystem::path>("ts-output-path"));
 
-      CurvePoint masterPublicKeyPseudonymsPoint = CurvePoint::BaseMult(ts.pseudonyms.mult(am.pseudonyms));
-      CurvePoint masterPublicKeyDataPoint = CurvePoint::BaseMult(ts.data.mult(am.data));
+      CurvePoint masterPublicKeyPseudonymsPoint = ts.pseudonyms * am.pseudonyms * CurvePoint::Base;
+      CurvePoint masterPublicKeyDataPoint = ts.data * am.data * CurvePoint::Base;
 
       std::string masterPublicKeyPseudonyms = masterPublicKeyPseudonymsPoint.text();
       std::string masterPublicKeyData = masterPublicKeyDataPoint.text();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
 #include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
@@ -9,7 +9,6 @@ namespace pep {
 
 class EnrollmentRequest {
 public:
-  EnrollmentRequest() = default;
   inline EnrollmentRequest(
     const X509CertificateSigningRequest csr,
     std::string oauthToken
@@ -22,10 +21,7 @@ public:
   X509CertificateSigningRequest mCertificateSigningRequest;
 };
 
-class EnrollmentResponse {
-public:
-  EnrollmentResponse() = default;
-
+struct EnrollmentResponse {
   X509CertificateChain mCertificateChain;
 };
 

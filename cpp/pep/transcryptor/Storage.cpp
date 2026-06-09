@@ -2,11 +2,11 @@
 
 #include <pep/transcryptor/Storage.hpp>
 
-#include <pep/rsk/Proofs.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/Math.hpp>
+#include <pep/utils/Random.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
@@ -64,9 +64,8 @@ struct MigrationRecord {
   constexpr static uint64_t TargetVersion = 2;
 
   MigrationRecord() = default;
-  MigrationRecord(uint64_t toVersion) {
-
-    RandomBytes(this->checksumNonce, 16);
+  MigrationRecord(uint64_t toVersion)
+    : checksumNonce(RandomVector<char>(16)) {
     this->toVersion = toVersion;
     this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   }
@@ -90,24 +89,24 @@ struct MigrationRecord {
 struct TicketRequestRecord {
   TicketRequestRecord() = default;
   TicketRequestRecord(
-      SignedTicketRequest2 ticketRequest,
+      std::string ticketRequest,
       int64_t pseudonymSet,
       int64_t modeSet,
       std::string pseudonymHash,
       std::string accessGroup,
-      std::optional<int64_t> certificateChain) : accessGroup(std::move(accessGroup)), pseudonymSet(pseudonymSet), modeSet(modeSet) {
-
-    RandomBytes(this->checksumNonce, 16);
+      std::optional<int64_t> certificateChain)
+    : checksumNonce(RandomVector<char>(16)),
+      accessGroup(std::move(accessGroup)),
+      pseudonymSet(pseudonymSet),
+      modeSet(modeSet) {
 
     // Work around https://github.com/fnc12/sqlite_orm/issues/245 (again).
     // See #826
-    std::string idBytes;
-    RandomBytes(idBytes, 16);
-    this->id = boost::algorithm::hex(idBytes);
+    this->id = boost::algorithm::hex(RandomString(16));
 
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
-    this->request = Serialization::ToCharVector(ticketRequest);
+    this->request = RangeToVector(std::move(ticketRequest));
     this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
     this->certificateChain = certificateChain;
   }
@@ -180,11 +179,10 @@ struct CertificateChainRecord {
       std::vector<char>&& leaf,
       std::optional<int64_t> parent,
       std::vector<char>&& fingerprint)
-   : parent(parent),
-     leaf(std::move(leaf)),
-     fingerprint(std::move(fingerprint))
-  {
-    RandomBytes(this->checksumNonce, 16);
+    : checksumNonce(RandomVector<char>(16)),
+      parent(parent),
+      leaf(std::move(leaf)),
+      fingerprint(std::move(fingerprint)) {
   }
 
   uint64_t checksum() const {
@@ -210,8 +208,10 @@ struct CertificateChainRecord {
 struct TicketIssueRecord {
   TicketIssueRecord() = default;
   TicketIssueRecord(int64_t request, int64_t columnSet, Timestamp ts)
-  : timestamp(TicksSinceEpoch<milliseconds>(ts)), request(request), columnSet(columnSet) {
-    RandomBytes(this->checksumNonce, 16);
+    : checksumNonce(RandomVector<char>(16)),
+      timestamp(TicksSinceEpoch<milliseconds>(ts)),
+      request(request),
+      columnSet(columnSet) {
   }
 
   uint64_t checksum() const {
@@ -232,8 +232,9 @@ struct TicketIssueRecord {
 // Records an immutable set of local logger pseudonyms.
 struct PseudonymSetRecord {
   PseudonymSetRecord() = default;
-  PseudonymSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+  PseudonymSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -256,9 +257,10 @@ struct PseudonymSetRecord {
 // Records which pseudonym to which pseudonym record
 struct PseudonymSetPseudonymRecord {
   PseudonymSetPseudonymRecord() = default;
-  PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set) : set(set) {
-    this->pseudonym = Serialization::ToCharVector(pseudonym.getValidCurvePoint());
-    RandomBytes(this->checksumNonce, 16);
+  PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set) {
+    this->pseudonym = RangeToVector(Serialization::ToString(pseudonym.getValidCurvePoint()));
   }
 
   uint64_t checksum() const {
@@ -278,8 +280,9 @@ struct PseudonymSetPseudonymRecord {
 // Records an immutable set of local logger pseudonyms.
 struct ColumnSetRecord {
   ColumnSetRecord() = default;
-  ColumnSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+  ColumnSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -301,8 +304,10 @@ struct ColumnSetRecord {
 // Records which column belongs to which column set
 struct ColumnSetColumnRecord {
   ColumnSetColumnRecord() = default;
-  ColumnSetColumnRecord(const std::string& column, int64_t set) : set(set), column(column) {
-    RandomBytes(this->checksumNonce, 16);
+  ColumnSetColumnRecord(const std::string& column, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set),
+      column(column) {
   }
 
   uint64_t checksum() const {
@@ -321,8 +326,9 @@ struct ColumnSetColumnRecord {
 // Records an immutable set of modes.
 struct ModeSetRecord {
   ModeSetRecord() = default;
-  ModeSetRecord(std::string key) : key(std::move(key)) {
-    RandomBytes(this->checksumNonce, 16);
+  ModeSetRecord(std::string key)
+    : checksumNonce(RandomVector<char>(16)),
+      key(std::move(key)) {
   }
 
   uint64_t checksum() const {
@@ -344,8 +350,10 @@ struct ModeSetRecord {
 // Records which mode belongs to which mode set
 struct ModeSetModeRecord {
   ModeSetModeRecord() = default;
-  ModeSetModeRecord(const std::string& mode, int64_t set) : set(set), mode(mode) {
-    RandomBytes(this->checksumNonce, 16);
+  ModeSetModeRecord(const std::string& mode, int64_t set)
+    : checksumNonce(RandomVector<char>(16)),
+      set(set),
+      mode(mode) {
   }
 
   uint64_t checksum() const {
@@ -359,6 +367,62 @@ struct ModeSetModeRecord {
   std::vector<char> checksumNonce;
   int64_t set{};
   std::string mode;
+};
+
+/// Packed CurvePoint as stored in the database
+using DbCurvePoint = std::vector<char>;
+
+struct PseudonymizationDomainVerifiersRecord {
+  PseudonymizationDomainVerifiersRecord() = default;
+  PseudonymizationDomainVerifiersRecord(
+    std::string pseudonymizationDomain,
+    const CurvePoint& reshuffleCommitment)
+    : pseudonymizationDomain(std::move(pseudonymizationDomain)),
+      reshuffleCommitment(RangeToVector(reshuffleCommitment.pack())) {}
+  
+  std::string pseudonymizationDomain; // Primary key
+
+  DbCurvePoint reshuffleCommitment;
+
+  CurvePoint getReshuffleCommitment() const {
+    return CurvePoint(SpanToString(reshuffleCommitment));
+  }
+};
+
+struct SessionVerifiersRecord {
+  SessionVerifiersRecord() = default;
+  SessionVerifiersRecord(
+    std::vector<char> certificateHash,
+    Timestamp expirationTimestamp,
+    std::string pseudonymizationDomain,
+    const CurvePoint& rekeyCommitment,
+    const CurvePoint& reshuffleOverRekeyCommitment,
+    const ElgamalPublicKey& rekeyedPublicKey)
+    : certificateHash(std::move(certificateHash)),
+      expirationTimestamp{TicksSinceEpoch<milliseconds>(expirationTimestamp)},
+      pseudonymizationDomain(std::move(pseudonymizationDomain)),
+      rekeyCommitment(RangeToVector(rekeyCommitment.pack())),
+      reshuffleOverRekeyCommitment(RangeToVector(reshuffleOverRekeyCommitment.pack())),
+      rekeyedPublicKey(RangeToVector(rekeyedPublicKey.pack())) {}
+
+  std::vector<char> certificateHash; // Primary key
+
+  database::UnixMillis expirationTimestamp{};
+  std::string pseudonymizationDomain; // Refers to PseudonymizationDomainVerifiersRecord
+  DbCurvePoint
+    rekeyCommitment,
+    reshuffleOverRekeyCommitment,
+    rekeyedPublicKey;
+
+  CurvePoint getRekeyCommitment() const {
+    return CurvePoint(SpanToString(rekeyCommitment));
+  }
+  CurvePoint getReshuffleOverRekeyCommitment() const {
+    return CurvePoint(SpanToString(reshuffleOverRekeyCommitment));
+  }
+  ElgamalPublicKey getRekeyedPublicKey() const {
+    return CurvePoint(SpanToString(rekeyedPublicKey));
+  }
 };
 
 // This function defines the database scheme used.
@@ -479,7 +543,23 @@ auto ts_create_db(const std::string& path) {
       make_column("checksumNonce", &ModeSetModeRecord::checksumNonce),
       make_column("seqno",
         &ModeSetModeRecord::seqno,
-        primary_key().autoincrement()))
+        primary_key().autoincrement())),
+
+    make_table("PseudonymizationDomainVerifiers",
+      make_column("pseudonymizationDomain", &PseudonymizationDomainVerifiersRecord::pseudonymizationDomain,
+        primary_key()),
+      make_column("reshuffleCommitment", &PseudonymizationDomainVerifiersRecord::reshuffleCommitment)),
+
+    make_table("SessionVerifiers",
+      make_column("certificateHash", &SessionVerifiersRecord::certificateHash,
+        primary_key()),
+      make_column("expirationTimestamp", &SessionVerifiersRecord::expirationTimestamp),
+      make_column("pseudonymizationDomain", &SessionVerifiersRecord::pseudonymizationDomain),
+      make_column("rekeyCommitment", &SessionVerifiersRecord::rekeyCommitment),
+      make_column("reshuffleOverRekeyCommitment", &SessionVerifiersRecord::reshuffleOverRekeyCommitment),
+      make_column("rekeyedPublicKey", &SessionVerifiersRecord::rekeyedPublicKey),
+      foreign_key(&SessionVerifiersRecord::pseudonymizationDomain)
+        .references(&PseudonymizationDomainVerifiersRecord::pseudonymizationDomain))
   );
 }
 
@@ -491,6 +571,7 @@ struct TranscryptorStorageBackend : database::Storage<ts_create_db> {
 };
 
 namespace {
+
 template <typename TRecord>
 class ChecksumChainFor : public transcryptor::ChecksumChain {
 protected:
@@ -519,6 +600,11 @@ protected:
 public:
   explicit ChecksumChainFor(std::string name) noexcept : ChecksumChain(std::move(name)) {}
 };
+
+[[nodiscard]] std::string CertificateHash(const X509Certificate& cert) {
+  return Sha256{}.digest(cert.toDer());
+}
+
 }
 
 TranscryptorStorage::TranscryptorStorage(
@@ -526,6 +612,7 @@ TranscryptorStorage::TranscryptorStorage(
   mStorage = std::make_shared<TranscryptorStorageBackend>(path.string());
 
   ensureInitialized();
+  removeOutdatedRecords();
 
   // Can't assign an { initializer-list } to mChecksumChains because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
   mChecksumChains.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>("migration"));
@@ -584,7 +671,7 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
       throw Error("Detected potentially incomplete migration.");
     }
 
-    // the folliwing should be ensured by this->getCurrentVersion()
+    // the following should be ensured by this->getCurrentVersion()
     assert(version==MigrationRecord::TargetVersion);
 
     LOG(LOG_TAG, info) << "Database has already been migrated to "
@@ -593,7 +680,7 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
 
     return;
   }
-  // Not everyting was in sync, but no tables or columns were removed.
+  // Not everything was in sync, but no tables or columns were removed.
   // This happens in two cases:
   //   I.  when the database was empty;
   //   II. when a database of a different version was loaded.
@@ -610,33 +697,32 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
     return;
   }
 
-  LOG(LOG_TAG, warning) << "Migrating ...";
-
   migrate();
   migrated = true; // let the caller know he should vacuum
 }
 
 void TranscryptorStorage::migrate() {
   std::optional<int64_t> version = getCurrentVersion();
+  const auto prevVersion = version;
 
-  if (version) {
-    std::string message = "The need for a migration of the "
-      "transcryptor database was detected, but we did not expect to find "
-      "a record of a previous migration (to version "
-      + std::to_string(*version) + ".)";
-    LOG(LOG_TAG, error) << message;
-    throw Error(message);
+  if (!version || version == 1) {
+    try {
+      migrate_from_v1_to_v2();
+      version = 2;
+    } catch (...) {
+      LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
+        " to version 2 failed.";
+      throw;
+    }
+    LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
   }
 
-  try {
-    migrate_from_v1_to_v2();
-  } catch (...) {
-    LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
-       " to version 2 failed.";
-    throw;
-  }
+  // [Add future migrations here]
 
-  LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
+  assert(version == MigrationRecord::TargetVersion && "Unexpected version returned from getCurrentVersion");
+  if (version == prevVersion) {
+    LOG(LOG_TAG, warning) << "The database structure changed, but a migration is not necessary";
+  }
 }
 
 
@@ -648,23 +734,19 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
     // store old checksum before we modify record
     uint64_t old_checksum = record.checksum_v1();
 
-    auto request = Serialization::FromCharVector<SignedTicketRequest2>(record.request);
+    auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
 
-    if (!request.mLogSignature) {
+    if (!request.logSignature()) {
       LOG(LOG_TAG, warning) << "Ticket request record number "
         << record.seqno << " has no log signature!";
       // although troublesome, it does not affect migration, so we ...
       continue;
     }
 
-    // move certificate chain from request to table:
-    std::optional<int64_t> chainId = getOrCreateCertificateChain(
-      std::exchange(request.mLogSignature->mCertificateChain,
-        X509CertificateChain()));
+    auto [serialized, chainId] = this->extractCertificateChain(std::move(request));
+    record.request = RangeToVector(std::move(serialized));
     if (chainId)
       record.certificateChain = chainId;
-
-    record.request = Serialization::ToCharVector(std::move(request));
 
     // and, finally, compensate for the checksum change:
     record.checksumCorrection = old_checksum ^ record.checksum();
@@ -680,6 +762,13 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
 
   // record successful migration
   this->mStorage->raw.insert(MigrationRecord(2));
+}
+
+void TranscryptorStorage::removeOutdatedRecords() {
+  auto now = TimeNow();
+  database::UnixMillis nowMillis = TicksSinceEpoch<milliseconds>(now);
+  // Remove outdated session verifiers
+  mStorage->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expirationTimestamp) <= nowMillis));
 }
 
 void TranscryptorStorage::computeChecksum(const std::string& chain,
@@ -787,30 +876,23 @@ int64_t TranscryptorStorage::getOrCreatePseudonymSet(const std::vector<LocalPseu
 }
 
 std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
-    X509CertificateChain&& chain) {
-
-  // Recall that X509CertificateChain is derived from
-  //  std::list<X509Certificate>, so chain is just a list of certificates:
-  //
-  //   chain = cert_0, cert_1, ..., cert_N,
-  //
-  // where the cert_0 is the leaf certificate (and cert_N might be the root).
-  // Cf. Signature::getLeafCertificate in crypto/Signature.hpp.
+    X509CertificateChain chain) {
 
   // First compute the fingerprint of the chain:
   //
   //   fingerprint = sha256(cert_0) sha256(cert_1) ... sha256(cert_N)
   //
+  auto certs = std::move(chain).certificates();
   std::vector<std::string> leafs;
-  leafs.reserve(chain.size());
+  leafs.reserve(certs.size());
   std::string fingerprint;
   {
     std::ostringstream os_fingerprint;
-    for (auto&& cert : chain) {
-      leafs.push_back(Serialization::ToString(cert));
+    for (auto&& cert : certs) {
+      leafs.push_back(Serialization::ToString(std::move(cert)));
       os_fingerprint << Sha256().digest(leafs.back());
     }
-    fingerprint = os_fingerprint.str();
+    fingerprint = std::move(os_fingerprint).str();
   }
   auto fingerprint_it = fingerprint.begin();
 
@@ -820,10 +902,10 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
   size_t K = 0;
   std::optional<int64_t> parentId;
 
-  assert(leafs.size() == chain.size());
-  assert(fingerprint.size() == 32*chain.size());
+  assert(leafs.size() == certs.size());
+  assert(fingerprint.size() == 32 * certs.size());
 
-  for (; K<chain.size(); K++, fingerprint_it += 32) {
+  for (; K < certs.size(); K++, fingerprint_it += 32) {
     // see if  cert_K, ..., cert_N  is our database
     std::vector<int64_t> results = this->mStorage->raw.select(
         &CertificateChainRecord::seqno, where(
@@ -843,7 +925,7 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
   }
   // note that parentId might not be set here when none of the certificates
   // was in our database.  In that case:
-  assert( (K==chain.size()) == (!parentId));
+  assert( (K == certs.size()) == (!parentId));
 
   // Now, roll back and insert new records.
   CertificateChainRecord chainRecord;
@@ -861,47 +943,117 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
   return parentId;
 }
 
+std::pair<std::string, std::optional<int64_t>> TranscryptorStorage::extractCertificateChain(SignedTicketRequest2 request) {
+  // If the request('s log signature) has a certificate chain, store it separately
+  std::optional<int64_t> chainId;
+  const auto& logSignature = request.logSignature();
+  if (logSignature.has_value()) {
+    chainId = this->getOrCreateCertificateChain(logSignature->certificateChain());
+    if (!chainId.has_value()) {
+      throw std::runtime_error("No certificate chain stored for log signature");
+    }
+  }
+
+  // We can't discard the certificate chain out of our pep::SignedTicketRequest2, so we convert it to protobuf...
+  proto::SignedTicketRequest2 buf;
+  Serializer<SignedTicketRequest2> serializer;
+  serializer.moveIntoProtocolBuffer(buf, std::move(request));
+
+  // ... from which we *can* discard the certificate chain
+  auto signature = buf.mutable_log_signature();
+  assert(chainId.has_value() == (signature != nullptr));
+  if (signature != nullptr) {
+    signature->clear_certificate_chain();
+    assert(!signature->has_certificate_chain());
+  }
+
+  // Serialize the protobuf representation without the certificate chain
+  auto serialized = serializer.toString(buf);
+  return std::make_pair(std::move(serialized), chainId);
+}
+
 // Retrieves the current version of the database according to the
 // "Migration" table.  Returns null when no migration has been recorded,
 // which is the case for the original database format (version '1').
 // Creating a database from scratch is (from version 2 onwards) recorded
 // as a migration too, so the result, when non-null should be >= 2.
 std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
-  std::vector<MigrationRecord> records
-    = this->mStorage->raw.get_all<MigrationRecord>();
+  auto latestVersion = RangeToOptional(this->mStorage->raw.select(
+    &MigrationRecord::toVersion,
+    order_by(&MigrationRecord::seqno).desc(),
+    limit(1)));
 
-  if (records.empty())
-    return std::nullopt;
-
-  // sort on timestamp;  the latest record is considered leading
-  std::sort(records.begin(), records.end(),
-    [](const MigrationRecord& a, const MigrationRecord& b) -> bool {
-      return a.timestamp < b.timestamp;
-    });
-
-  MigrationRecord& latest = records.back();
-
-  if (latest.toVersion <= 1) {
+  if (latestVersion <= 1) {
     std::string message = "There cannot have been a migration to version  "
-      + std::to_string(latest.toVersion) + ", yet one has been recorded."
+      + std::to_string(*latestVersion) + ", yet one has been recorded."
       " (The first valid migration is from version 1 to version 2.)";
     LOG(LOG_TAG, error) << message;
     throw Error(message);
   }
 
-  if (latest.toVersion > MigrationRecord::TargetVersion) {
+  if (latestVersion > MigrationRecord::TargetVersion) {
     // This should only happen during a rollback.
     std::string message = "The transcryptor database has version "
-      + std::to_string(latest.toVersion) + ", while this transcryptor only "
+      + std::to_string(*latestVersion) + ", while this transcryptor only "
       "supports versions " + std::to_string(MigrationRecord::TargetVersion)
       + " and older.";
     LOG(LOG_TAG, error) << message;
     throw Error(message);
   }
 
-  return latest.toVersion;
+  return latestVersion;
 }
 
+
+std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(const X509Certificate& userCertificate) {
+  auto domain = userCertificate.getOrganizationalUnit().value();
+  auto hash = RangeToVector(CertificateHash(userCertificate));
+  if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
+    LOG(LOG_TAG, debug) << "Found existing verifiers for "
+      << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
+    auto domainVerifiers = mStorage->raw.get<PseudonymizationDomainVerifiersRecord>(domain);
+    return ReshuffleRekeyVerifiers(
+      domainVerifiers.getReshuffleCommitment(),
+      sessionVerifiers->getRekeyCommitment(),
+      sessionVerifiers->getReshuffleOverRekeyCommitment(),
+      sessionVerifiers->getRekeyedPublicKey());
+  }
+  return {};
+}
+
+void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& userCertificate, const ReshuffleRekeyVerifiers& verifiers) {
+  auto domain = userCertificate.getOrganizationalUnit().value();
+  if (auto domainVerifiers = mStorage->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
+    LOG(LOG_TAG, debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
+    if (domainVerifiers->getReshuffleCommitment() != verifiers.mReshuffleCommitment) {
+      throw std::runtime_error("Inconsistent reshuffle verifier for pseudonymization domain " + Logging::Escape(domain));
+    }
+  } else {
+    LOG(LOG_TAG, debug) << "Storing domain verifiers for " << Logging::Escape(domain);
+    mStorage->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshuffleCommitment));
+  }
+
+  auto hash = RangeToVector(CertificateHash(userCertificate));
+  if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
+    LOG(LOG_TAG, debug) << "Found existing session verifiers for "
+      << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
+    if (sessionVerifiers->getRekeyCommitment() != verifiers.mRekeyCommitment
+      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.mReshuffleOverRekeyCommitment
+      || sessionVerifiers->getRekeyedPublicKey() != verifiers.mRekeyedPublicKey) {
+      throw std::runtime_error("Inconsistent verifiers for session for " + userCertificate.getCommonName().value());
+    }
+  } else {
+    LOG(LOG_TAG, debug) << "Storing session verifiers for "
+      << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
+    mStorage->raw.replace(SessionVerifiersRecord(
+      std::move(hash),
+      userCertificate.getNotAfter(),
+      domain,
+      verifiers.mRekeyCommitment,
+      verifiers.mReshuffleOverRekeyCommitment,
+      verifiers.mRekeyedPublicKey));
+  }
+}
 
 std::string TranscryptorStorage::logTicketRequest(
     const std::vector<LocalPseudonym>& localPseudonyms,
@@ -909,19 +1061,18 @@ std::string TranscryptorStorage::logTicketRequest(
     SignedTicketRequest2 ticketRequest,
     std::string pseudonymHash) {
 
-  // Already compute the access group now,
-  std::string accessGroup
-      = ticketRequest.mLogSignature->getLeafCertificateOrganizationalUnit();
-  // because we move the certificate chain from ticketRequest to its own table.
-  if (!ticketRequest.mLogSignature)
+  const auto& logSignature = ticketRequest.logSignature();
+  if (!logSignature)
     throw Error("log signature on ticket request is not set");
+  // Already compute the access group now,
+  // because we move the certificate chain from ticketRequest to its own table.
+  std::string accessGroup
+      = logSignature->certificateChain().leaf().getOrganizationalUnit().value_or("");
 
-  auto chainId = getOrCreateCertificateChain(
-    std::exchange(ticketRequest.mLogSignature->mCertificateChain,
-      X509CertificateChain()));
+  auto [serialized, chainId] = this->extractCertificateChain(std::move(ticketRequest));
 
   auto record = TicketRequestRecord(
-    std::move(ticketRequest),
+    std::move(serialized),
     getOrCreatePseudonymSet(localPseudonyms),
     getOrCreateModeSet(modes),
     std::move(pseudonymHash),
@@ -953,7 +1104,7 @@ void TranscryptorStorage::logIssuedTicket(
         << std::quoted(accessGroup)
         << ") does not match access group on request ("
         << std::quoted(reqRecord->accessGroup) <<  ")";
-    throw Error(os.str());
+    throw Error(std::move(os).str());
   }
 
   auto drift = Abs(timestamp - TimeNow());

@@ -11,7 +11,7 @@
 #include <rxcpp/operators/rx-merge.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/async/RxLazy.hpp>
 #include <pep/async/RxButFirst.hpp>
 #include <pep/async/RxToVector.hpp>
@@ -29,7 +29,7 @@ static const std::string LOG_TAG ("PageStore");
 namespace pep
 {
 
-
+namespace {
   class S3PageStore
     : public PageStore,
       public std::enable_shared_from_this<S3PageStore>
@@ -46,7 +46,7 @@ namespace pep
     static std::shared_ptr<S3PageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
         std::shared_ptr<prometheus::Registry> metrics_registry,
-        std::shared_ptr<Configuration> config);
+        const Configuration& config);
 
     // pubic constructor for the sake of std::make_shared
     S3PageStore(
@@ -106,23 +106,23 @@ namespace pep
   std::shared_ptr<S3PageStore> S3PageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
       std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
+      const Configuration& config)
   {
     s3::Client::Parameters s3params = {
-      config->get<EndPoint>("EndPoint"),
-      config->get<s3::Credentials>("Credentials"),
+      config.get<EndPoint>("EndPoint"),
+      config.get<s3::Credentials>("Credentials"),
       io_context,
-      config->get<std::optional<std::filesystem::path>>("Ca-Cert-Path"),
-      config->get<std::optional<bool>>("Use-Https")
+      config.get<std::optional<std::filesystem::path>>("CaCertificateFile"),
+      config.get<std::optional<bool>>("UseHttps")
     };
 
-    unsigned int conn_count = config->get<unsigned int>("Connections", 5);
-    std::string write_bucket = config->get<std::string>("Write-To-Bucket");
+    unsigned int conn_count = config.get<unsigned int>("Connections", 5);
+    std::string write_bucket = config.get<std::string>("WriteToBucket");
 
     std::vector<std::string> buckets;
 
     for (const std::string& bucket
-        : config->get<std::vector<std::string>>("Read-From-Buckets")) {
+        : config.get<std::vector<std::string>>("ReadFromBuckets")) {
       buckets.push_back(bucket);
     }
 
@@ -392,7 +392,7 @@ namespace pep
 
     static std::shared_ptr<LocalPageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
-        std::shared_ptr<Configuration> config);
+        const Configuration& config);
 
     // pubic constructor for the sake of std::make_shared
     LocalPageStore(
@@ -417,11 +417,11 @@ namespace pep
 
   std::shared_ptr<LocalPageStore> LocalPageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
-      std::shared_ptr<Configuration> config)
+      const Configuration& config)
   {
     std::filesystem::path datadir =
-        config->get<std::filesystem::path>("DataDir");
-    std::string bucket = config->get<std::string>("Bucket");
+        config.get<std::filesystem::path>("DataDir");
+    std::string bucket = config.get<std::string>("Bucket");
 
     return std::make_shared<LocalPageStore>(datadir, bucket);
   }
@@ -441,8 +441,7 @@ namespace pep
           try {
             *result = ReadFile(fullpath);
           } catch(...) {
-            LOG(LOG_TAG, error) << "could not read from "
-              << std::quoted(fullpath.string());
+            LOG(LOG_TAG, error) << "could not read from \"" << fullpath.string() << '"';
             throw;
           }
           s.on_next(result);
@@ -469,8 +468,7 @@ namespace pep
           std::filesystem::create_directories(fullpath.parent_path());
           WriteFile(fullpath, *page);
         } catch (...) {
-          LOG(LOG_TAG, error) << "could not write to "
-            << std::quoted(fullpath.string());
+          LOG(LOG_TAG, error) << "could not write to \"" << fullpath.string() << '"';
           throw;
         }
         s.on_next(s3::ETag(*page));
@@ -497,7 +495,8 @@ namespace pep
     static std::shared_ptr<DualPageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
         std::shared_ptr<prometheus::Registry> metrics_registry,
-        std::shared_ptr<Configuration> config);
+        const Configuration& s3Config,
+        const Configuration& localConfig);
 
     // pubic constructor for the sake of std::make_shared
     DualPageStore(
@@ -520,14 +519,15 @@ namespace pep
   std::shared_ptr<DualPageStore> DualPageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
       std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
+      const Configuration& s3Config,
+      const Configuration& localConfig)
   {
     return std::make_shared<DualPageStore>(
-        S3PageStore::Create(io_context, metrics_registry, config),
-        LocalPageStore::Create(io_context, config));
+        S3PageStore::Create(io_context, metrics_registry, s3Config),
+        LocalPageStore::Create(io_context, localConfig));
   }
 
-  constexpr char SYNC_ERROR_MSG[]
+  const std::string SYNC_ERROR_MSG
     = "DualPageStore: disagreement between local and S3 storage!";
 
   messaging::MessageSequence
@@ -548,10 +548,10 @@ namespace pep
         case 2:
           if (*(values->at(0)) == *(values->at(1)))
             return rxcpp::observable<>::just(values->at(0));
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Get: Contents differ.");
         case 1:
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Get: Page found in only one of the two stores.");
         default:
           throw std::runtime_error("DualPageStore: Get: assertion error: "
@@ -576,10 +576,10 @@ namespace pep
         case 2:
           if (values->at(0) == values->at(1))
             return rxcpp::observable<>::just(values->at(0));
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Put: ETags differ.");
         case 1:
-          throw std::runtime_error(std::string(SYNC_ERROR_MSG) +
+          throw std::runtime_error(SYNC_ERROR_MSG +
               " Put: only one store failed to put the given put.");
         case 0:
           throw std::runtime_error("DualPageStore: Put: both "
@@ -596,25 +596,29 @@ namespace pep
       }).as_dynamic();
   }
 
+}
 
-  std::shared_ptr<PageStore> PageStore::Create(
-      std::shared_ptr<boost::asio::io_context> io_context,
-      std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
-  {
-    std::string type = config->get<std::string>("Type"); // throws
 
-    if (type == "s3") {
-      return S3PageStore::Create(io_context, metrics_registry, config);
-    } else if (type == "local") {
-      return LocalPageStore::Create(io_context, config);
-    } else if (type == "dual") {
-      return DualPageStore::Create(io_context, metrics_registry, config);
-    }
+std::shared_ptr<PageStore> PageStore::Create(
+    std::shared_ptr<boost::asio::io_context> io_context,
+    std::shared_ptr<prometheus::Registry> metrics_registry,
+    const Configuration& config)
+{
+  auto s3Config = config.get_child_optional("S3");
+  auto localConfig = config.get_child_optional("Local");
 
-    throw std::runtime_error("Configuration error: "
-        "unknown page storage type, " + type
-          + "; use 's3', 'local' or 'dual'.");
+  if (s3Config && localConfig) {
+    return DualPageStore::Create(io_context, metrics_registry, *s3Config, *localConfig);
   }
+  if (s3Config) {
+    return S3PageStore::Create(io_context, metrics_registry, *s3Config);
+  }
+  if (localConfig) {
+    return LocalPageStore::Create(io_context, *localConfig);
+  }
+
+  throw std::runtime_error("Configuration error: no page store implementation specified");
+}
+
 }
 

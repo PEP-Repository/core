@@ -27,10 +27,15 @@ if [[ -z "$SPARKLE_DIR" ]]; then
   exit 1
 fi
 
-# use xattr -d com.apple.quarantine <file> to remove the quarantine attribute from generate appcast which makes it noninteractive
+# use xattr -d com.apple.quarantine <file> to remove the quarantine attribute from generate appcast (which makes the binary noninteractive) 
+# Signing will be enforced in the future which would make this step unneccesary: https://brew.sh/2025/11/12/homebrew-5.0.0/
 if xattr -p com.apple.quarantine "$SPARKLE_DIR/bin/generate_appcast" &> /dev/null; then
-  echo "Sparkle AppCast generation binary is quarantined, please remove quarantine with \"xattr -d com.apple.quarantine $SPARKLE_DIR/bin/generate_appcast\""
-  exit 1
+  if xattr -d com.apple.quarantine "$SPARKLE_DIR/bin/generate_appcast"; then
+    echo "Removed quarantine attribute from generate_appcast"
+  else
+    echo "Failed to remove quarantine attribute from generate_appcast"
+    exit 1
+  fi
 fi
 
 clean_up_sparkle() {

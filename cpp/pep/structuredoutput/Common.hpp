@@ -2,53 +2,72 @@
 
 #include <string>
 #include <string_view>
+#include <variant>
+#include <cstddef>
+
+#include <pep/utils/VariantUtils.hpp>
 
 namespace pep::structuredOutput {
-namespace stringConstants {
 
-struct Strings final {
-  std::string_view option;
+/// Defines the whitespace formatting styles for structured output
+enum class WhitespaceFormat {
+  TwoSpaces, ///< 2 spaces per indentation level
+  FourSpaces, ///< 4 spaces per indentation level
+  Compact   ///< No indentation (single line)
+};
+
+namespace queryKeys {
+struct QueryKey final {
+  std::string_view simple;
   std::string_view descriptive;
 };
 
-constexpr Strings userGroups{"all-user-group", "All User Groups"};
+// common query keys
+constexpr QueryKey name{"name", "Name"};
+constexpr QueryKey userGroup{"user-group", "User Group"};
+constexpr QueryKey userGroups{"user-groups", "User Groups"}; // input for --include flag
 
-constexpr Strings groupsPerUser{"groups-per-user", "User Groups per Interactive User"};
-
-constexpr Strings users{"all-user", "All Interactive Users"};
-
-constexpr std::string_view identifiersKey{"user identifiers"};
-
-constexpr std::string_view groupsKey{"user groups"};
-
-constexpr std::string_view maxAuthValidityKey{"max auth valid time"};
-
-} // namespace stringConstants
-
-enum class Format { yaml, json };
-
-struct DisplayConfig final {
-  // Avoiding boilerplate code that would be needed to support bitwise ops on an enum type.
-  struct Flags final {
-    using T = unsigned;
-    constexpr static T printHeaders = 1 << 1;
-    constexpr static T printGroups = 1 << 2;
-    constexpr static T printUserGroups = 1 << 3;
-    constexpr static T printUsers = 1 << 4;
-
-    Flags() = delete;
-  };
-
-  Flags::T flags = Flags::printHeaders | Flags::printGroups | Flags::printUserGroups | Flags::printUsers;
-  int indent = 0; ///< How many levels the output should be indented by.
-  Format preferredFormat = Format::yaml;
-};
-
-inline std::string indentations(int i) {
-  i = std::max(i, 0); // Treat negative as 0
-  // Brace initialization would result in different/unwanted result here.
-  return std::string(static_cast<std::size_t>(2 * i), ' ');
+/// Helper to get appropriate key name
+inline std::string GetKeyName(const queryKeys::QueryKey& key, bool useDescriptive) {
+  return std::string(useDescriptive ? key.descriptive : key.simple);
 }
 
-} // namespace pep::structuredOutput
+} // namespace queryKeys
 
+enum class Format {
+  Yaml,
+  Json
+};
+
+struct YamlConfig final {
+  WhitespaceFormat indentation = WhitespaceFormat::TwoSpaces;
+  bool includeArraySizeComments = false; ///< Adds a comment to the header of each non-empty list, displaying the number of elements
+  std::size_t arrayCountCommentThreshold = 5; ///< Minimum array size to show item count comment (unless empty)
+  bool includeEmptyArrayComments = false; ///< Show item count comment for empty arrays (size 0) when enabled
+};
+
+struct JsonConfig final {
+  WhitespaceFormat wsFormat = WhitespaceFormat::TwoSpaces;
+};
+
+using FormatConfig = std::variant<YamlConfig, JsonConfig>;
+
+template<typename FlagsEnum>
+struct QueryDisplayConfig final {
+  using Flags = FlagsEnum;
+  
+  Flags flags = Flags::All;
+  bool useDescriptiveKeys = true; ///< Controls whether to use descriptive keys ("Display ID") vs simple keys ("display-id") for all fields
+  
+  FormatConfig formatConfig = YamlConfig{};
+  
+  Format format() const {
+    return std::visit(
+      pep::variant_utils::Overloaded{
+          [](YamlConfig) { return Format::Yaml; },
+          [](JsonConfig) { return Format::Json; }},
+      formatConfig);
+  }
+};
+
+} // namespace pep::structuredOutput

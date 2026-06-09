@@ -4,6 +4,8 @@
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
 
+static const std::string LOG_TAG = "Messaging scheduler";
+
 namespace pep::messaging {
 
 Scheduler::Batch::Batch(MessageSequence messages)
@@ -169,11 +171,17 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
             // Ignore: The exception didn't inherit from Error: don't send back details (keep serialized = nullptr)
           }
         }
+        else {
+          LOG(LOG_TAG, debug) << "Sending error flag to server";
+        }
 
         self->onError.notify(messageId, std::move(e));
 
         if (serialized == nullptr) {
-          serialized = MakeSharedCopy(Serialization::ToString(Error{"Internal server error"}));
+          std::string message = messageId.type() == MessageType::RESPONSE
+                                ? "Internal server error"
+                                : "Internal error";
+          serialized = MakeSharedCopy(Serialization::ToString(Error{std::move(message)}));
         }
         self->mGenerators.erase(messageId);
         self->emplaceOutgoing(messageId, Flags::MakeError(), serialized);

@@ -27,9 +27,10 @@ fi
 IFS=$'\n' apps_ass=($(find "$BUILD_PATH/assessor_app" -maxdepth 1 -name "*.app"))
 IFS=$'\n' apps_cli=($(find "$BUILD_PATH/cli_app" -maxdepth 1 -name "*.app"))
 IFS=$'\n' apps_dt=($(find "$BUILD_PATH/download_tool_app" -maxdepth 1 -name "*.app"))
+IFS=$'\n' apps_ut=($(find "$BUILD_PATH/upload_tool_app" -maxdepth 1 -name "*.app"))
 
 # Check that exactly one .app file was found in each directory
-if [[ ${#apps_ass[@]} -ne 1 ]] || [[ ${#apps_cli[@]} -ne 1 ]] || [[ ${#apps_dt[@]} -ne 1 ]]; then
+if [[ ${#apps_ass[@]} -ne 1 ]] || [[ ${#apps_cli[@]} -ne 1 ]] || [[ ${#apps_dt[@]} -ne 1 ]] || [[ ${#apps_ut[@]} -ne 1 ]]; then
     echo "Error: Expected exactly one .app file in each directory, but found a different number"
     exit 1
 fi
@@ -37,10 +38,12 @@ fi
 PEP_MACOS_ASSESSOR_APP_NAME="$(basename "${apps_ass[0]%.app}")"
 PEP_MACOS_CLI_APP_NAME="$(basename "${apps_cli[0]%.app}")"
 PEP_MACOS_DOWNLOAD_TOOL_APP_NAME="$(basename "${apps_dt[0]%.app}")"
+PEP_MACOS_UPLOAD_TOOL_APP_NAME="$(basename "${apps_ut[0]%.app}")"
 
 ASSESSOR_RESOURCES_DIR="$BUILD_PATH/assessor_app/$PEP_MACOS_ASSESSOR_APP_NAME.app/Contents/Resources"
 CLI_RESOURCES_DIR="$BUILD_PATH/cli_app/$PEP_MACOS_CLI_APP_NAME.app/Contents/Resources"
 DOWNLOAD_TOOL_RESOURCES_DIR="$BUILD_PATH/download_tool_app/$PEP_MACOS_DOWNLOAD_TOOL_APP_NAME.app/Contents/Resources"
+UPLOAD_TOOL_RESOURCES_DIR="$BUILD_PATH/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app/Contents/Resources"
 
 # Commit ref name
 ENV_NAME=$3
@@ -75,3 +78,4 @@ copy_config_files() {
 copy_config_files "$ASSESSOR_RESOURCES_DIR"
 copy_config_files "$CLI_RESOURCES_DIR"
 copy_config_files "$DOWNLOAD_TOOL_RESOURCES_DIR"
+copy_config_files "$UPLOAD_TOOL_RESOURCES_DIR"

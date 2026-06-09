@@ -18,12 +18,12 @@ Your "testing" branch.
 
 Your "development" branch.
 
-## Update acceptance or testing environment
+## Update development branch
 
-The following steps are to be performed in the project repository's "acceptance" branch. If you have a "testing" branch, perform these steps there instead.
+The following steps are to be performed in the project repository's "development" branch unless you have specific reasons why changes should not yet be merged from development to other branches.
 
 - [ ] Determine the PEP binary version that you want to base your project on (usually the latest supported release). The `pep/core` and `pep/ops` repositories use the branch name `release-X.Y` to maintain this version, where `X` is the major version number and `Y` the minor. When these instructions refer to a `release-X.Y` branch or `X.Y` text, replace the text by the actual branch name.
-- [ ] Upgrade the PEP version that your project repository's "acceptance" branch depends on:
+- [ ] Upgrade the PEP version that your project repository's "development" branch depends on:
   - [ ] Update your "FOSS" submodule to the new release. If you use default names and settings, from the git root directory:
 
     ```shell
@@ -53,12 +53,15 @@ The following steps are to be performed in the project repository's "acceptance"
     git commit -m "Upgraded to PEP release X.Y"
     ```
 
-- [ ] Edit your project's `version.json` file and increment the version numbers as required. If the pep binary release has no backward incompatible changes, increment the minor version. If the pep binary does have backward incompatible changes, discuss with the team whether or not this requires a major version increment.
-- [ ] Update your project's (acceptance) configuration according to the new release's requirements: see the PEP `CHANGELOG`.
-- [ ] Push the "acceptance" branch to `origin`, triggering a Gitlab CI pipeline that will update your acceptance environment to the new version.
+- [ ] Edit your project's `version.json` file and increment the version numbers as required. If the pep binary release has no backward incompatible changes, increment the minor version. If the pep binary does have backward incompatible changes, discuss with the team whether or not this requires a major version increment. In general you can follow the same version as the pep binary release, but you may choose to deviate from this if your project has its own versioning scheme.
+- [ ] Update your project's configuration according to the new release's requirements: see the PEP `CHANGELOG`.
+
+## Update testing and/or acceptance environment
+
+- [ ] Merge your "development" branch into your "testing" branch (if it exists), and push to origin.
 - [ ] Perform own testing and fix any issues.
+- [ ] Merge your "testing" branch (if it exists, else "development" branch) into your "acceptance" branch. Push the "acceptance" branch to `origin`, triggering a Gitlab CI pipeline that will update your acceptance environment to the new version.
 - [ ] Have the project team accept the updated acceptance version. Your project repository's documentation should list the people to contact, e.g. in a `docs/private/contact-info.md` file.
-- [ ] If these steps were performed in the "testing" branch, merge your "testing" branch back into your "acceptance" branch.
 
 ## Update production environment
 
@@ -78,5 +81,16 @@ Ensure that the update of the production environment is coordinated with the peo
 
 ## Wrap up
 
-- [ ] Merge your "production" branch back into your "acceptance" branch.
-- [ ] Merge your "acceptance" branch back into your "master" branch.
+Your "production" branch.
+
+- [ ] Merge it into:
+
+Your "acceptance" branch.
+
+- [ ] Merge it into:
+
+Your "testing" branch.
+
+- [ ] Merge it into:
+
+Your "development" branch.

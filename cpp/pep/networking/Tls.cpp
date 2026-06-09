@@ -44,7 +44,7 @@ void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
   mShutdownRequired = true; // We may need to close before we've received the handshake callback, at which point we don't know (yet) if OpenSSL has started or even completed its handshaking
 
   mImplementor.async_handshake(mType, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
-    auto connecting = self->status() == ConnectivityStatus::connecting; // Another ASIO job (e.g. a timer) may have already invoked close() on us
+    auto connecting = self->status() == ConnectivityStatus::Connecting; // Another ASIO job (e.g. a timer) may have already invoked close() on us
 
     if (error) {
       self->mShutdownRequired = false; // Handshake didn't succeed: no need to unestablish TLS
@@ -86,16 +86,16 @@ TlsSocket::~TlsSocket() noexcept {
 void TlsSocket::finishClosing() {
   mShutdownRequired = false;
   mImplementor.lowest_layer().close();
-  this->setConnectivityStatus(ConnectivityStatus::disconnected);
+  this->setConnectivityStatus(ConnectivityStatus::Disconnected);
 }
 
 void TlsSocket::close() {
-  if (this->status() >= ConnectivityStatus::disconnecting) {
+  if (this->status() >= ConnectivityStatus::Disconnecting) {
     return;
   }
 
-  if (this->status() != ConnectivityStatus::unconnected) {
-    this->setConnectivityStatus(ConnectivityStatus::disconnecting);
+  if (this->status() != ConnectivityStatus::Unconnected) {
+    this->setConnectivityStatus(ConnectivityStatus::Disconnecting);
   }
 
   // Cancel pending I/O on the socket
@@ -142,6 +142,7 @@ void TlsSocket::close() {
       && !IsSpecificSslError(error, SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY) // Other party sent us data after (or while) we closed the connection: see https://stackoverflow.com/a/72788966
       && error.default_error_condition().value() != boost::system::errc::connection_reset // Other party already closed the connection: see https://stackoverflow.com/a/39162187
       && error.default_error_condition().value() != boost::system::errc::connection_aborted // Our side already closed the connection
+      && error.default_error_condition().value() != boost::system::errc::operation_canceled // Our timeout was hit: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2834#note_57593
       ) {
       const char* description = "Unexpected problem shutting down connection";
       severity_level severity = pep::error;
@@ -298,7 +299,7 @@ Tls::ClientParameters::ClientParameters(boost::asio::io_context& ioContext, EndP
   : TcpBasedProtocolImplementor<Tls>::ClientParameters(ioContext, std::move(endPoint)) {
 }
 
-Tls::ServerParameters::ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFilesConfiguration identity)
+Tls::ServerParameters::ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFiles identity)
   : TcpBasedProtocolImplementor<Tls>::ServerParameters(ioContext, port), mIdentity(std::move(identity)) {
 }
 

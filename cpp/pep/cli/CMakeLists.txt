@@ -1,13 +1,8 @@
 set(PEPCLI_SRCS
     Ama.cpp
-    user/CommandUserGroup.cpp user/CommandUserGroup.hpp
-    user/UserSubCommands.cpp user/UserSubCommands.hpp
-    user/CommandUserQuery.cpp user/CommandUserQuery.hpp
-    Token.cpp Token.hpp
-    token/CommandTokenBlock.cpp token/CommandTokenBlock.hpp
-    User.cpp User.hpp
     Castor.cpp
     CliApplication.cpp CliApplication.hpp
+    ColumnQuery.cpp ColumnQuery.hpp
     Command.cpp Command.hpp
     Commands.hpp
     Delete.cpp
@@ -15,28 +10,38 @@ set(PEPCLI_SRCS
     DownloadMetadata.cpp DownloadMetadata.hpp
     DownloadMetadata.PropertySerializers.cpp DownloadMetadata.PropertySerializers.hpp
     DownloadProcessor.cpp DownloadProcessor.hpp
-    Export.cpp Export.hpp
     export/CommandExportCsv.cpp export/CommandExportCsv.hpp
     export/CommandExportJson.cpp export/CommandExportJson.hpp
+    export/CommandExportYaml.cpp export/CommandExportYaml.hpp
+    Export.cpp Export.hpp
     FileExtension.cpp
     Get.cpp
     History.cpp
     List.cpp
     Metrics.cpp
     MultiCellQuery.cpp MultiCellQuery.hpp
-    NoLongerSupportedCommand.cpp
     Ping.cpp
     Pull.cpp
     Query.cpp
     Register.cpp
+    server/CommandCertificate.cpp server/CommandCertificate.hpp
+    Server.cpp Server.hpp
     SingleCellCommand.cpp SingleCellCommand.hpp
     Store.cpp
     structuredoutput/TableFromDownloadDirectory.cpp structuredoutput/TableFromDownloadDirectory.hpp
     StructureMetadata.cpp
     TicketFile.cpp TicketFile.hpp
+    token/CommandTokenBlock.cpp token/CommandTokenBlock.hpp
+    Token.cpp Token.hpp
+    user/CommandUserGroup.cpp user/CommandUserGroup.hpp
+    user/CommandUserQuery.cpp user/CommandUserQuery.hpp
+    User.cpp User.hpp
+    user/UserSubCommands.cpp user/UserSubCommands.hpp
     Validate.cpp
     Verifiers.cpp
     XEntry.cpp
+    structuredoutput/TreeFromUserQueryResponse.hpp structuredoutput/TreeFromUserQueryResponse.cpp
+    structuredoutput/TreeFromAmaQueryResponse.hpp structuredoutput/TreeFromAmaQueryResponse.cpp
 )
 
 add_cli_install_executable(${PROJECT_NAME}cli ${PEPCLI_SRCS})
@@ -56,6 +61,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 
     #TODO cleanup using --install approach as used on Windows?
     add_custom_command(TARGET ${PROJECT_NAME}cli POST_BUILD
+        COMMENT "Copy Sparkle framework files to cli"
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}cli>/Frameworks/
         COMMAND cp -R ${SPARKLE_LIBRARY} $<TARGET_FILE_DIR:${PROJECT_NAME}cli>/Frameworks/
 

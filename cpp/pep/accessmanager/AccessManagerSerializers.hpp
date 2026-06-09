@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerMessages.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 
 namespace pep {
 
@@ -49,5 +49,11 @@ PEP_DEFINE_SIGNED_SERIALIZATION(StructureMetadataRequest);
 PEP_DEFINE_CODED_SERIALIZER(SetStructureMetadataRequest);
 PEP_DEFINE_SIGNED_SERIALIZATION(SetStructureMetadataRequest);
 PEP_DEFINE_EMPTY_SERIALIZER(SetStructureMetadataResponse);
+
+PEP_DEFINE_EMPTY_SERIALIZER(VerifiersRequest);
+PEP_DEFINE_CODED_SERIALIZER(VerifiersResponse);
+
+PEP_DEFINE_CODED_SERIALIZER(UserVerifiersRequest);
+PEP_DEFINE_CODED_SERIALIZER(UserVerifiersResponse);
 
 }

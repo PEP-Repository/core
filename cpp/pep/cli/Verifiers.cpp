@@ -1,8 +1,7 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/utils/Exceptions.hpp>
-#include <pep/rsk/RskSerializers.hpp>
+#include <pep/morphing/MorphingSerializers.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -21,10 +20,10 @@ protected:
     return this->executeEventLoopFor(
       false // ensureEnrolled
       , [](std::shared_ptr<pep::CoreClient> client) {
-      return client->getRSKVerifiers().map([](
+      return client->getAccessManagerProxy()->requestVerifiers().map([client](
             pep::VerifiersResponse resp) {
           std::cout
-            << pep::Serialization::ToJsonString(resp)
+            << pep::Serialization::ToJsonString(client->openVerifiers(resp))
             << std::endl;
           return pep::FakeVoid();
         });

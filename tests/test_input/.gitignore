@@ -1,0 +1,19 @@
+!/base_integration_data/**/*.sqlite
+
+/base_integration_data/data/test_output/
+
+/base_integration_data/s3proxy-runtime/s3certs/
+/base_integration_data/s3proxy-runtime/s3proxy.sh
+/base_integration_data/s3proxy-runtime/s3proxyproxy_etc_nginx/
+
+# Config files
+/base_integration_data/data/*/AccessManager.json
+/base_integration_data/data/*/GlobalConfiguration.json
+/base_integration_data/data/*/Authserver.json
+/base_integration_data/data/*/ClientConfig.json
+/base_integration_data/data/*/KeyServer.json
+/base_integration_data/data/*/RegistrationServer.json
+/base_integration_data/data/*/StorageFacility*.json
+/base_integration_data/data/*/Transcryptor.json
+/base_integration_data/data/*/config.yaml
+/base_integration_data/data/*/constellation.yaml

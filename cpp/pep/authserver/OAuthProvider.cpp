@@ -15,10 +15,11 @@
 
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/async/OnAsio.hpp>
@@ -99,7 +100,7 @@ HTTPResponse MakeErrorJsonHttpResponse(const std::string& error, const std::stri
   if(error == OAuthProvider::ERROR_SERVER_ERROR) {
     status = "500 Internal Server Error";
   }
-  return MakeHttpResponse(status, oss.str(), "application/json");
+  return MakeHttpResponse(status, std::move(oss).str(), "application/json");
 }
 
 HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const std::string& description) {
@@ -116,10 +117,10 @@ HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const 
 OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config) : io_context(io_context) {
   std::optional<std::filesystem::path> spoofKeyFile;
   try {
-    httpPort = config.get<uint16_t>("HTTPListenPort");
+    httpPort = config.get<uint16_t>("HttpListenPort");
     activeGrantExpiration = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
     spoofKeyFile = config.get<std::optional<std::filesystem::path>>("SpoofKeyFile");
-    httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HTTPSCertificateFile");
+    httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HttpsCertificateFile");
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -240,24 +241,25 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   auto primaryUidIt = params.find("primary_uid"),
       humanReadableUidIt = params.find("human_readable_uid");
   if(primaryUidIt == params.end() || humanReadableUidIt == params.end()) {
-    std::pair<std::string, std::string> testUsers[] = {
-      {"assessor@master.pep.cs.ru.nl", UserGroup::ResearchAssessor},
-      {"monitor@master.pep.cs.ru.nl", UserGroup::Monitor},
-      {"dataadmin@master.pep.cs.ru.nl", UserGroup::DataAdministrator},
-      {"accessadmin@master.pep.cs.ru.nl", UserGroup::AccessAdministrator},
-      {"multihat@master.pep.cs.ru.nl", "Someone with all roles"},
+    std::array<std::pair<std::string, std::string>, 7> testUsers{{
+      {"assessor@main.pep.cs.ru.nl", UserGroup::ResearchAssessor},
+      {"monitor@main.pep.cs.ru.nl", UserGroup::Monitor},
+      {"dataadmin@main.pep.cs.ru.nl", UserGroup::DataAdministrator},
+      {"accessadmin@main.pep.cs.ru.nl", UserGroup::AccessAdministrator},
+      {"systemadmin@main.pep.cs.ru.nl", UserGroup::SystemAdministrator},
+      {"multihat@main.pep.cs.ru.nl", "Someone with all roles"},
       {"eve@university-of-adversaries.com", "Someone without access"}
-    };
+    }};
     auto linkUri = request.uri();
     std::ostringstream body;
     body << "<html><body>";
     for(auto& [uid, description] : testUsers) {
-      linkUri.params().set("primary_uid", encodeBase64URL(uid));
+      linkUri.params().set("primary_uid", EncodeBase64Url(uid));
       linkUri.params().set("human_readable_uid", uid);
       body << "<a href=\"" << linkUri << "\">" << description << "</a><br>";
     }
     body << "</body></html>";
-    return rxcpp::rxs::just(HTTPResponse("200 OK", body.str()));
+    return rxcpp::rxs::just(HTTPResponse("200 OK", std::move(body).str()));
   }
   const std::string& primaryUid = (*primaryUidIt).value;
   const std::string& humanReadableUid = (*humanReadableUidIt).value;
@@ -266,7 +268,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     alternativeUidsString = (*it).value;
   }
 #else
-  if(!request.hasHeader(SPOOF_CHECK_HEADER) || request.header(SPOOF_CHECK_HEADER) != spoofKey) {
+  if(!request.hasHeader(SPOOF_CHECK_HEADER) || !const_time::IsEqual(request.header(SPOOF_CHECK_HEADER), spoofKey)) {
     LOG(LOG_TAG, critical) << "Spoofkey was not correctly set on the request. Looks like someone has direct access to the authserver, without being authenticated first. Remote IP: " << remoteIp;
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
@@ -292,7 +294,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 #endif //ENABLE_OAUTH_TEST_USERS
 
   std::vector<std::string> alternativeUids;
-  boost::split(alternativeUids, alternativeUidsString, boost::is_any_of(","));
+  boost::split(alternativeUids, alternativeUidsString, std::bind_front(std::equal_to{}, ','));
   // Decode (double-)encoded list values
   for (auto& val : alternativeUids) { val = boost::urls::pct_string_view(val).decode(); }
   alternativeUids.push_back(humanReadableUid);
@@ -386,7 +388,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
           body << "<option>" << g << "</option>";
         }
         body << END_GROUP_SELECTION_TEMPLATE;
-        return HTTPResponse("200 OK", body.str());
+        return HTTPResponse("200 OK", std::move(body).str());
       }
     }
 
@@ -407,15 +409,21 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       }
     }
 
-    std::string code = encodeBase64URL(RandomString(32));
+    std::string code = EncodeBase64Url(RandomString(32));
     self->addActiveGrant(code, grant(clientId, humanReadableUid,  std::move(group), redirectUriString, codeChallenge, validityDuration));
     url returnUri = redirectUri;
     returnUri.params().set("code", code);
 
     return HTTPResponse("302 Found", "", {{"Location", std::string(returnUri.buffer())}});
   }).on_error_resume_next([redirectUri](std::exception_ptr ep) {
-    LOG(LOG_TAG, error) << "Unexpected error: " << rxcpp::rxu::what(ep);
-    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    try {
+      std::rethrow_exception(ep);
+    } catch (const Error& e) {
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, e.what()));
+    } catch(const std::exception& e) {
+      LOG(LOG_TAG, error) << "Unexpected error: " << e.what();
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    }
   });
 }
 
@@ -426,7 +434,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
       if(formData.find(p) == formData.end()) {
         std::ostringstream oss;
         oss << p << " required";
-        return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, oss.str());
+        return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, std::move(oss).str());
       }
     }
 
@@ -444,7 +452,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     if(!grant) {
       return MakeErrorJsonHttpResponse(ERROR_INVALID_GRANT, "Code is unknown or expired");
     }
-    if(grant->codeChallenge != encodeBase64URL(Sha256().digest(codeVerifier))) {
+    if(grant->codeChallenge != EncodeBase64Url(Sha256().digest(codeVerifier))) {
       return MakeErrorJsonHttpResponse(ERROR_INVALID_GRANT, "Code challenge failed");
     }
     if(grant->clientId != clientId) {
@@ -463,7 +471,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     std::ostringstream responseStream;
     boost::property_tree::write_json(responseStream, responseData);
 
-    return MakeHttpResponse("200 OK", responseStream.str(), "application/json");
+    return MakeHttpResponse("200 OK", std::move(responseStream).str(), "application/json");
   }
   catch (const Error& err) {
     return MakeErrorJsonHttpResponse(ERROR_SERVER_ERROR, err.what());

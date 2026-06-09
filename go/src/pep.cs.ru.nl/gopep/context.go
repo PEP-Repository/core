@@ -58,14 +58,14 @@ type EnumerateAndOpenFilesOptions struct {
 	ColumnGroups          []string
 	Columns               []string
 	ParticipantGroups     []string
-	PolymorphicPseudonyms []*Triple
+	AccessSubjects        []*Triple
 }
 
 type EnumerateFilesOptions struct {
 	ColumnGroups          []string
 	Columns               []string
 	ParticipantGroups     []string
-	PolymorphicPseudonyms []*Triple
+	AccessSubjects        []*Triple
 
 	// Request additional write access
 	RequestWriteAccess bool
@@ -317,7 +317,7 @@ func (ctx *Context) HistoryAndOpenFiles(opts EnumerateAndOpenFilesOptions) (
 		EnumerateFilesOptions{
 			ParticipantGroups:     opts.ParticipantGroups,
 			ColumnGroups:          opts.ColumnGroups,
-			PolymorphicPseudonyms: opts.PolymorphicPseudonyms,
+			AccessSubjects:        opts.AccessSubjects,
 			Columns:               opts.Columns,
 		})
 	if err != nil {
@@ -379,7 +379,7 @@ func (ctx *Context) EnumerateAndReadFiles(opts EnumerateAndOpenFilesOptions) (
 		EnumerateFilesOptions{
 			ParticipantGroups:     opts.ParticipantGroups,
 			ColumnGroups:          opts.ColumnGroups,
-			PolymorphicPseudonyms: opts.PolymorphicPseudonyms,
+			AccessSubjects: opts.AccessSubjects,
 			Columns:               opts.Columns,
 		})
 	if err != nil {
@@ -455,7 +455,7 @@ func (ctx *Context) GetTicketAndSigningKey(opts EnumerateFilesOptions) (
 	ticket, err := ctx.amConn.RequestTicket2(signingKey,
 		TicketRequest{
 			Modes:                 modes,
-			PolymorphicPseudonyms: opts.PolymorphicPseudonyms,
+			AccessSubjects: opts.AccessSubjects,
 			ParticipantGroups:     opts.ParticipantGroups,
 			ColumnGroups:          opts.ColumnGroups,
 			Columns:               opts.Columns,
@@ -552,7 +552,7 @@ func (ctx *Context) OpenFile(info *FileInfo) (*FileReader, error) {
 		ticket, err = ctx.amConn.RequestTicket2(secrets.SigningKey,
 			TicketRequest{
 				Modes:                 []string{"read"},
-				PolymorphicPseudonyms: []*Triple{info.PolymorphicPseudonym},
+				AccessSubjects: []*Triple{info.PolymorphicPseudonym},
 				Columns:               []string{info.Column},
 			})
 		if err != nil {
@@ -640,7 +640,7 @@ func (ctx *Context) CreateFiles(cells []Cell) ([]*FileWriter, error) {
 	ticket, err := ctx.amConn.RequestTicket2(signingKey,
 		TicketRequest{
 			Modes:                 []string{"write"},
-			PolymorphicPseudonyms: pps,
+			AccessSubjects: pps,
 			Columns:               columns,
 		})
 	if err != nil {

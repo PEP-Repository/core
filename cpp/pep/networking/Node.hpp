@@ -19,7 +19,7 @@ protected:
 
   explicit Node(std::shared_ptr<Protocol::NodeComponent> component) noexcept;
 
-  bool isRunning() const noexcept { return this->status() == Status::initialized; }
+  bool isRunning() const noexcept { return this->status() == Status::Initialized; }
   void openSocket(const SocketConnectionAttempt::Handler& onSocketConnection);
   void handleConnectionAttempt(const Connection::Attempt::Result& status) const;
   virtual void establishConnection() = 0;

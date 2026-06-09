@@ -5,6 +5,7 @@
 #include <pep/castor/CastorConnection.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/networking/Server.hpp>
+#include <pep/crypto/tests/TemporaryX509IdentityFiles.hpp>
 
 #include <boost/asio/streambuf.hpp>
 
@@ -56,18 +57,22 @@ private:
   class Side : boost::noncopyable {
   private:
     std::shared_ptr<boost::asio::io_context> mIoContext = std::make_shared< boost::asio::io_context>();
-    bool mRun = true;
     std::shared_ptr<IoContextThread> mThread;
+    std::string mRole;
 
   public:
+    explicit Side(std::string role) noexcept : mRole(std::move(role)) {}
+
     std::shared_ptr<boost::asio::io_context> ioContext() const noexcept { return mIoContext; }
+    const std::string& role() const noexcept { return mRole; }
 
     void start();
     void stop(bool force = true);
   };
 
-  Side mClientSide;
-  Side mServerSide;
+  TemporaryX509IdentityFiles mIdentity;
+  Side mClientSide = Side("client");
+  Side mServerSide = Side("server");
   std::shared_ptr<FakeCastorApi> mServer;
 };
 

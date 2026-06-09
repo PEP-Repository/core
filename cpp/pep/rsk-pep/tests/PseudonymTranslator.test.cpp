@@ -25,7 +25,7 @@ protected:
     masterPrivateEncryptionKey = CurveScalar::One();
     for (unsigned i{}; i < translatorsCount; ++i) {
       const auto masterPrivateEncryptionKeyShare = CurveScalar::Random();
-      masterPrivateEncryptionKey = masterPrivateEncryptionKey.mult(masterPrivateEncryptionKeyShare);
+      masterPrivateEncryptionKey = masterPrivateEncryptionKey * masterPrivateEncryptionKeyShare;
       translators.emplace_back(
           PseudonymTranslationKeys{
               .encryptionKeyFactorSecret{RandomArray<64>()},
@@ -33,7 +33,7 @@ protected:
               .masterPrivateEncryptionKeyShare{std::as_bytes(ToSizedSpan<32>(masterPrivateEncryptionKeyShare.pack()))},
           });
     }
-    masterPublicEncryptionKey = CurvePoint::BaseMult(masterPrivateEncryptionKey);
+    masterPublicEncryptionKey = masterPrivateEncryptionKey * CurvePoint::Base;
   }
 
   void translateTest(const bool certified) {
@@ -53,7 +53,8 @@ protected:
         if (std::exchange(first, false) && certified) {
           const auto [afterStep, proof] = translator.certifiedTranslateStep(*encLocalA1, userA1);
           ASSERT_NE(afterStep, *encLocalA1);
-          const auto verifiers = translator.computeTranslationProofVerifiers(userA1, masterPublicEncryptionKey);
+          const auto [verifiers, verifiersProof] = translator.computeCertifiedTranslationProofVerifiers(userA1, masterPublicEncryptionKey);
+          EXPECT_NO_THROW(verifiersProof.verify(verifiers, masterPublicEncryptionKey));
           EXPECT_NO_THROW(translator.checkTranslationProof(*encLocalA1, afterStep, proof, verifiers));
           *encLocalA1 = afterStep;
         } else {
@@ -67,7 +68,7 @@ protected:
       for (const auto& translator: translators) {
         const auto comp = translator.generateKeyComponent(userA1);
         ASSERT_NE(comp, CurveScalar::One());
-        sk1 = sk1.mult(comp);
+        sk1 = sk1 * comp;
       }
       ASSERT_NE(sk1, CurveScalar::One());
       ASSERT_NE(sk1, CurveScalar{});

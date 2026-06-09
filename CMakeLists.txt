@@ -1,7 +1,7 @@
 # Keep consistent with conanfile.py build_requirements.
 # Use https://apt.kitware.com/ to get a recent CMake version if needed,
 # or use the version from Conan via build/generators/conanbuild.*
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.28...4.2)
 
 # We don't use C++ modules yet and don't want to require clang-scan-deps,
 # see https://discourse.cmake.org/t/cmake-3-28-cmake-cxx-compiler-clang-scan-deps-notfound-not-found/9244
@@ -47,6 +47,14 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(INVOKE_SH powershell -ExecutionPolicy Bypass -File ${PROJECT_SOURCE_DIR}/scripts/invoke-sh.ps1)
 else()
     set(INVOKE_SH "")
+endif()
+
+if(CMAKE_GENERATOR MATCHES "Ninja")
+  set(PEP_PARALLEL_LINK_JOBS "$ENV{PEP_PARALLEL_LINK_JOBS}" CACHE STRING "Maximum number of concurrent link jobs")
+  if(PEP_PARALLEL_LINK_JOBS)
+    set_property(GLOBAL APPEND PROPERTY JOB_POOLS "link_job_pool=${PEP_PARALLEL_LINK_JOBS}")
+    set(CMAKE_JOB_POOL_LINK link_job_pool)
+  endif()
 endif()
 
 ##

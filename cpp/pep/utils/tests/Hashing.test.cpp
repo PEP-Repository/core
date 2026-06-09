@@ -2,8 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include <pep/utils/Md5.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 
 namespace {
 

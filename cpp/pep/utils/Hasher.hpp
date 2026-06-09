@@ -1,36 +1,42 @@
 #pragma once
 
-#include <cassert>
 #include <istream>
 #include <string_view>
 #include <boost/core/noncopyable.hpp>
 
 namespace pep {
 
-template <typename THash>
-class Hasher : private boost::noncopyable {
-public:
-  using Hash = THash;
-
-private:
+class HasherBase : private boost::noncopyable {
   bool mFinished = false;
 
 protected:
+  void update(std::istream& source);
+  /// Mark as finished. \c update or this function should not be called after this.
+  void setFinished();
+
   virtual void process(const void* block, size_t size) = 0;
-  virtual Hash finish() = 0;
 
 public:
-  virtual ~Hasher() noexcept = default;
+  virtual ~HasherBase() noexcept = default;
+  void update(const void* block, size_t size);
+};
 
-  Hash digest() {
-    assert(!mFinished);
-    mFinished = true;
+template <typename THash>
+class Hasher : public HasherBase {
+public:
+  using Hash = THash;
+
+protected:
+  [[nodiscard]] virtual Hash finish() = 0;
+
+public:
+  [[nodiscard]] Hash digest() {
+    this->setFinished();
     return this->finish();
   }
 
-  Hasher& update(const void* block, size_t size) {
-    assert(!mFinished);
-    this->process(block, size);
+  Hasher& update(const void* block, size_t size) { //NOLINT(bugprone-derived-method-shadowing-base-method) Does the same thing
+    HasherBase::update(block, size);
     return *this;
   }
 
@@ -38,28 +44,8 @@ public:
     return this->update(data.data(), data.size());
   }
 
-  Hasher& update(std::istream& source) {
-    constexpr std::streamsize HASH_CHUNK_LENGTH{4096};
-
-    char chunk[HASH_CHUNK_LENGTH];
-    std::streamsize actual;
-    do {
-      source.read(chunk, HASH_CHUNK_LENGTH);
-      if (source) {
-        actual = HASH_CHUNK_LENGTH;
-      }
-      else if (source.rdstate() == (std::ios_base::eofbit | std::ios_base::failbit)) {
-        actual = source.gcount();
-      }
-      else {
-        throw std::runtime_error("Read failure on data stream");
-      }
-      if (actual > 0) {
-        auto converted = static_cast<std::make_unsigned_t<std::streamsize>>(actual);
-        this->update(chunk, size_t{converted});
-      }
-    } while (actual == HASH_CHUNK_LENGTH);
-
+  Hasher& update(std::istream& source) { //NOLINT(bugprone-derived-method-shadowing-base-method) Does the same thing
+    HasherBase::update(source);
     return *this;
   }
 
@@ -71,7 +57,7 @@ public:
   }
 
   template <typename... Args>
-  Hash digest(Args&&... lastPieces) {
+  [[nodiscard]] Hash digest(Args&&... lastPieces) {
     return this->update(std::forward<Args>(lastPieces)...)
       .digest();
   }

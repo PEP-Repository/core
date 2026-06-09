@@ -1,4 +1,5 @@
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/pullcastor/PepParticipant.hpp>
 #include <pep/pullcastor/PullCastorUtils.hpp>
@@ -63,7 +64,7 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
       return FakeVoid();
       })
       .op(RxInstead(participants))
-      .flat_map([](auto participants) {return rxcpp::observable<>::iterate(*participants); })
+      .flat_map([](auto participants) {return RxIterate(*participants); })
       .map([](const auto& pair) {return pair.second; });
     });
 }

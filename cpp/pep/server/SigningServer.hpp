@@ -1,63 +1,55 @@
 #pragma once
 
+#include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/server/Server.hpp>
+#include <pep/server/CertificateRenewalMessages.hpp>
 
 namespace pep {
 
 /*!
 * \brief A Server that can cryptographically sign its messages.
 */
-class SigningServer : public Server {
+class SigningServer : public Server, protected MessageSigner {
 public:
   /// \copydoc Server::Parameters
   class Parameters;
 
-private:
-  AsymmetricKey mPrivateKey;
-  X509CertificateChain mCertificateChain;
+  messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
+
+  messaging::MessageBatches handleCsrRequest(std::shared_ptr<SignedCsrRequest> signedRequest);
+  messaging::MessageBatches handleCertificateReplacementRequest(std::shared_ptr<SignedCertificateReplacementRequest> signedRequest);
+  messaging::MessageBatches handleCertificateReplacementCommitRequest(std::shared_ptr<SignedCertificateReplacementCommitRequest> signedRequest);
 
 protected:
   explicit SigningServer(std::shared_ptr<Parameters> parameters);
 
-  std::string makeSerializedPingResponse(const PingRequest& request) const override;
-  const AsymmetricKey& getPrivateKey() const { return mPrivateKey; }
-  const X509CertificateChain& getCertificateChain() const { return mCertificateChain; }
+private:
+  std::shared_ptr<X509IdentityFiles> mIdentityFiles;
+  std::optional<AsymmetricKey> mNewPrivateKey;
 };
 
 
 /// \copydoc Server::Parameters
 class SigningServer::Parameters : public Server::Parameters {
 private:
-  X509IdentityFilesConfiguration signingIdentity_;
+  std::shared_ptr<X509IdentityFiles> mIdentityFiles;
 
 protected:
   void check() const override {
-    auto& certificate = *getCertificateChain().cbegin();
-    if (!certificate.isPEPServerCertificate()) {
-      throw std::runtime_error("certificateChain's leaf certificate must be a PEP server certificate");
+    auto traits = this->serverTraits();
+    if (!traits.signingIdentityMatches(mIdentityFiles->identity()->getCertificateChain())) {
+      throw std::runtime_error("Invalid certificate chain for " + traits.description());
     }
-    if (certificate.hasTLSServerEKU()) {
-      throw std::runtime_error("certificateChain's leaf certificate must not be a TLS certificate");
-    }
+
     Server::Parameters::check();
   }
 
-public:
   /// \copydoc Server::Parameters::Parameters
-  Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-    : Server::Parameters(io_context, config), signingIdentity_(config, "PEP") {}
+  Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
-  /*!
-  * \brief Gets the private key with which the server signs its messages.
-  * \return (A reference to) the private key with which the server signs its messages.
-  */
-  const AsymmetricKey& getPrivateKey() const { return signingIdentity_.getPrivateKey(); }
-
-  /*!
-  * \brief Gets the certificate chain that validates the server's private key.
-  * \return (A reference to) the certificate chain that validates the server's private key.
-  */
-  const X509CertificateChain& getCertificateChain() const { return signingIdentity_.getCertificateChain(); }
+public:
+  std::shared_ptr<const X509Identity> getSigningIdentity() const { return mIdentityFiles->identity(); }
+  std::shared_ptr<X509IdentityFiles> getIdentityFilesConfig() const { return mIdentityFiles; }
 };
 
 }

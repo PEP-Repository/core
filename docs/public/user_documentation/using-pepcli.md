@@ -2,7 +2,12 @@
 
 The `pepcli` application is the primary command line interface (CLI) application to interact with the PEP system. It is available for multiple platforms, and is included in PEP's `client` Docker images and in the Windows client software installer. Among `pepcli`'s functionalities are the ability to [upload and download data](uploading-and-downloading-data.md), and to administer the PEP system.
 
-The use of command line utilities such as `pepcli` is subject to details of the platform on which it is used. For example, a literal `*` (asterisk) parameter value must be escaped to `\*` on Linux to prevent [shell expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Expansions.html) ("globbing"). Such details are not (extensively) covered in this documentation. Users are expected to be knowledgeable enough about their platforms to perform basic tasks and avoid common pitfalls.
+The use of command line utilities such as `pepcli` is subject to details of the platform on which it is used. For example
+
+- a literal `*` (asterisk) parameter value must be escaped to `\*` on Linux to prevent [shell expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Expansions.html) ("globbing").
+- passing an empty parameter value [requires some hoop jumping in PowerShell](https://stackoverflow.com/questions/10297002/passing-empty-arguments-to-executables-using-powershell), e.g. enclosing a set of double quotes `""` by single quotes: `'""'` . Note that the [behavior may even vary across PowerShell versions](https://stackoverflow.com/a/77908046).
+
+Such details are not (extensively) covered in this documentation. Users are expected to be knowledgeable enough about their platforms to perform basic tasks and avoid common pitfalls.
 
 ## General usage
 
@@ -177,6 +182,8 @@ Administrative tasks:
   - [`user query`](#user-query) List users and user groups
   - [`user create/remove`](#user-createremove) Create and remove users
   - [`user addIdentifier/removeIdentifier`](#user-addidentifierremoveidentifier) Add and remove identifiers for users
+  - [`user setDisplayId`](#user-setdisplayid) Set the display ID for users.
+  - [`user setPrimaryId/unsetPrimaryId`](#user-setprimaryidunsetprimaryid) Set or unset the primary ID for users.
   - [`user addTo/removeFrom`](#user-addtoremovefrom) Add users to or remove users from user groups
   - [`user group create/remove/modify`](#user-group-createremovemodify) Create, remove or modify user groups
 - [`token`](#token) provides subcommands for requesting and blocking tokens. Only for users enrolled as an `Access Administrator`:
@@ -341,30 +348,30 @@ This is an example of the invocation and output of `user query`:
 - All Interactive Users: # size=5
   - user identifiers: # size=3
       - YXNzZXNzb3JAbWFzdGVyLnBlcC5jcy5ydS5ubA
-      - assessor@master.pep.cs.ru.nl
+      - assessor@main.pep.cs.ru.nl
       - U1234567@university-of-peppers.com
     user groups: # size=1
       - Research Assessor
 
   - user identifiers: # size=1
-      - monitor@master.pep.cs.ru.nl
+      - monitor@main.pep.cs.ru.nl
     user groups: # size=1
       - Monitor
 
   - user identifiers: # size=1
-      - dataadmin@master.pep.cs.ru.nl
+      - dataadmin@main.pep.cs.ru.nl
     user groups: # size=1
       - Data Administrator
 
   - user identifiers: # size=2
       - YWNjZXNzYWRtaW5AbWFzdGVyLnBlcC5jcy5ydS5ubA
-      - accessadmin@master.pep.cs.ru.nl
+      - accessadmin@main.pep.cs.ru.nl
     user groups: # size=1
       - Access Administrator
 
   - user identifiers: # size=2
       - bXVsdGloYXRAbWFzdGVyLnBlcC5jcy5ydS5ubA
-      - multihat@master.pep.cs.ru.nl
+      - multihat@main.pep.cs.ru.nl
     user groups: # size=4
       - Access Administrator
       - Research Assessor
@@ -372,7 +379,7 @@ This is an example of the invocation and output of `user query`:
       - Monitor
 
   - user identifiers: # size=1
-      - no_group@master.pep.cs.ru.nl
+      - no_group@main.pep.cs.ru.nl
     user groups: # size=0
 ```
 
@@ -450,6 +457,48 @@ pepcli user removeIdentifier <uid>
 
 It is not possible to remove an identifier for a user if that is the only remaining identifier for that user. You can remove
 the user entirely with the `pepcli user remove` command, if that is desired.
+
+### `user setDisplayId`
+The displayID for a user can be set by running
+```shell
+pepcli user setDisplayId <uid>
+```
+
+`<uid>` needs to be an exisitng userId for that user.
+
+The displayId is used when PEP needs to choose one identifier of a user to display to e.g. an access administrator,
+when they are administering users.
+
+When a new user is created with `pepcli user create <uid>`, `<uid>` will be set as the current display ID.
+It can be changed at a later time with `pepcli user setDisplayId <someOtherExistingUid>`.
+
+It is not possible to unset the displayId. Once a displayId has been set for a user, that user will always have a displayId.
+
+### `user setPrimaryId/unsetPrimaryId`
+The primaryID for a user can be set by running
+```shell
+pepcli user setPrimaryId <uid>
+```
+
+`<uid>` needs to be an exisitng userId for that user.
+
+Authentication sources often use a non-human readable, fixed identifier as a permanent identifier for a user. Human readable
+IDs are often not guaranteed to remain the same. We call this fixed identifier the _primary ID_ of the user.
+
+Primary IDs are not very suitable to be used by human users. So instead, we can register the user based on e.g. their e-mail address.
+When a user first logs in, their primary ID is then automatically stored, and marked as the primary ID. If the e-mail address changes
+at a later time, but the primary ID remains the same, the user will still be recognized by PEP.
+
+If the primary ID for a user changes, but their human readable ID is still the same, PEP will not automatically use the new
+primary ID. It is possible that, at different points in time, different users have the same e-mail address. PEP should not treat those
+as being the same user. So that's why it doesn't automatically accept a changed primary ID. The user will get an error message,
+and should contact their PEP support. The access administrator can then unset the primary ID, if that is indeed the desired solution.
+The primary ID will then be auto-assigned again at the next login of the user.
+
+Primary IDs can be unset with:
+```shell
+pepcli user unsetPrimaryId <uid>
+```
 
 ### `user addTo/removeFrom`
 
@@ -539,10 +588,10 @@ Adding the `--json` switch will output the token in JSON format that can be used
 > pepcli token request "U1234567@university-of-peppers.com" "Research Assessor" --expiration-yyyymmdd 20270322
 iMTc1NjQ2[...]62buW1Sf
 
-# Generate a token that authenticates user "dataadmin@master.pep.cs.ru.nl" as a "Access Administrator",
+# Generate a token that authenticates user "dataadmin@main.pep.cs.ru.nl" as a "Access Administrator",
 # that is valid until 10:00:00 AM at August 29, 2025 (GMT).
 # Print the output as JSON this time.
-> pepcli token request --json "dataadmin@master.pep.cs.ru.nl" "Access Administrator" 1756461600
+> pepcli token request --json "dataadmin@main.pep.cs.ru.nl" "Access Administrator" 1756461600
 {
   "OAuthToken": "iMTc1NjQ2[...]CdI-IxNz"
 }

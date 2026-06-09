@@ -38,7 +38,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
     auto length = header.length();
 
     if (length > MAX_SIZE_OF_MESSAGE) {
-      LOG(LOG_TAG, severity_level::error)
+      LOG(LOG_TAG, severity_level::warning)
         << "Connection::handleHeaderReceived: "
         << "refusing " << length << "-byte message from " << describe()
         << " because it's larger than the maximum of " << MAX_SIZE_OF_MESSAGE << " bytes";
@@ -59,7 +59,7 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
       });
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
     this->handleError(std::make_exception_ptr(boost::system::system_error(boost::system::errc::make_error_code(boost::system::errc::errc_t::bad_message))));
   }
 }
@@ -105,7 +105,7 @@ void Connection::ensureSend() {
 void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr error) {
   assert(error != nullptr);
 
-  severity_level severity;
+  severity_level severity{};
   std::string action, caption, description;
 
   switch (id.type().value()) {
@@ -131,7 +131,7 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
       description = e.what();
     } catch (...) {
       severity = severity_level::error;
-      caption = "Stripping error details from reply";
+      caption = "Unexpected exception, treating as uncaught and stripping error details from reply";
       description = GetExceptionMessage(error);
       onUncaughtReadException.notify(error);
     }
@@ -205,7 +205,7 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
     return;
   }
   // Don't (re)start the timer if the connection isn't fully established (probably reinitializing or finalizing)
-  if (this->status() != Status::initialized) {
+  if (this->status() != Status::Initialized) {
     return;
   }
 
@@ -236,15 +236,17 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
 
 Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler)
   : mMessageInBody(MAX_SIZE_OF_MESSAGE, '\0'), mKeepAliveTimer(ioContext), mScheduler(Scheduler::Create(ioContext)), mRequestor(Requestor::Create(ioContext, *mScheduler)),
-  mNode(node), mDescription(node->describe()), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
-  assert(mBinary->status() == networking::Transport::ConnectivityStatus::connected);
-  assert(mNode.lock() != nullptr);
+  mNode(node), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
+  assert(mBinary->status() == networking::Transport::ConnectivityStatus::Connected);
+  assert(node != nullptr);
+
+  mDescription = node->describe() + " connected to " + mBinary->remoteAddress();
 
   if (node->reconnectParameters().has_value()) {
     mVersionCheckBackoff.emplace(mIoContext, *node->reconnectParameters());
   }
 
-  this->setStatus(Status::initializing);
+  this->setStatus(Status::Initializing);
 
   mSchedulerAvailableSubscription = mScheduler->onAvailable.subscribe([this]() {this->ensureSend(); });
   mSchedulerExceptionSubscription = mScheduler->onError.subscribe([this](const MessageId& id, std::exception_ptr e) { this->handleSchedulerError(id, e); });
@@ -279,7 +281,7 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
     }
   }
   catch (...) {
-    LOG(LOG_TAG, pep::error) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
+    LOG(LOG_TAG, pep::warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
     // Processed by generic "bad message" handling outside the "catch" clause
   }
 
@@ -290,10 +292,9 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
   const auto& messageId = header.properties().messageId();
 
   auto result = mMessageInBody.substr(0U, header.length());
-  assert(result.empty() || result.size() >= sizeof(MessageMagic));
 
   LOG(LOG_TAG, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
-    << (result.empty() ? std::string("without message magic") : DescribeMessageMagic(result))
+    << (result.size() >= sizeof(MessageMagic) ? DescribeMessageMagic(result) : "no valid message magic")
     << ", stream id " << messageId.streamId() << ", " << this->describe() << ")";
 
   return result;
@@ -305,8 +306,8 @@ void Connection::close() {
   }
   mBinaryStatusSubscription.cancel();
   mBinary.reset();
-  this->clearState();
-  this->setStatus(Status::finalizing);
+  this->clearState(false);
+  this->setStatus(Status::Finalizing);
 }
 
 void Connection::processReceivedResponse(const StreamId& streamId, const Flags& flags, std::string content) {
@@ -378,6 +379,8 @@ void Connection::IncomingRequestTail::handleChunk(const Flags& flags, std::share
   }
   if (flags.error()) {
     if (mSubscriber) {
+      //TODO Why nullptr? Deserialize Error or pass some runtime_error instead?
+      LOG(LOG_TAG, warning) << "Received error chunk in request tail";
       mSubscriber->on_error(nullptr);
     } else {
       mError = true;
@@ -513,7 +516,7 @@ void Connection::handleError(std::exception_ptr exception) {
   }
 }
 
-void Connection::clearState() {
+void Connection::clearState(bool reconnecting) {
   // Let request handlers know that they won't receive further tail segments
   for (auto& incoming : mIncomingRequestTails) {
     incoming.second.abort();
@@ -521,7 +524,7 @@ void Connection::clearState() {
 
   // Cancel sending of previously scheduled request and response messages
   mScheduler->clear();
-  // Stop sending keepalive messages 
+  // Stop sending keepalive messages
   mKeepAliveTimer.cancel();
   mKeepAliveTimerRunning = false;
   // Clear state for outgoing messages
@@ -533,7 +536,7 @@ void Connection::clearState() {
   // Discard cached incoming requests
   mPrematureRequests.clear();
   // Discard pending requests that cannot be re-sent
-  mRequestor->purge();
+  mRequestor->purge(!reconnecting);
 }
 
 void Connection::handleBinaryConnectionEstablished() {
@@ -565,7 +568,7 @@ void Connection::performVersionCheck() {
   auto self = SharedFrom(*this);
 
   this->sendRequest(MakeSharedCopy(Serialization::ToString(VersionRequest())), std::nullopt, true)
-    .map([](std::string response) {return Serialization::FromString<VersionResponse>(response); })
+    .map([](std::string_view response) {return Serialization::FromString<VersionResponse>(response); })
     .observe_on(observe_on_asio(mIoContext))
     .subscribe(
       [self](VersionResponse response) {
@@ -608,7 +611,7 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
   if (node == nullptr) {
     throw ConnectionFailureException(boost::system::errc::owner_dead, "Node was discarded before connection could perform version verification");
   }
-  if (this->status() != Status::initializing) {
+  if (this->status() != Status::Initializing) {
     throw ConnectionFailureException(boost::system::errc::connection_aborted, "Connection was closed before it could perform version verification");
   }
 
@@ -622,7 +625,7 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
   }
 
   mVersionValidated = true;
-  this->setStatus(Status::initialized);
+  this->setStatus(Status::Initialized);
 
   // Schedule (re)sendable requests
   mRequestor->resend();
@@ -644,22 +647,22 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
 
 void Connection::handleBinaryConnectivityChange(const networking::Connection::ConnectivityChange& change) {
   switch (change.updated) {
-  case networking::Transport::ConnectivityStatus::unconnected: // Prevent compiler warnings due to switch statement not handling all enum values
+  case networking::Transport::ConnectivityStatus::Unconnected: // Prevent compiler warnings due to switch statement not handling all enum values
     assert(false);
     return;
-  case networking::Transport::ConnectivityStatus::reconnecting:
-    this->clearState();
-    this->setStatus(Status::reinitializing);
+  case networking::Transport::ConnectivityStatus::Reconnecting:
+    this->clearState(true);
+    this->setStatus(Status::Reinitializing);
     return;
-  case networking::Transport::ConnectivityStatus::connecting:
+  case networking::Transport::ConnectivityStatus::Connecting:
     assert(!mVersionValidated);
-    this->setStatus(Status::initializing);
+    this->setStatus(Status::Initializing);
     return;
-  case networking::Transport::ConnectivityStatus::connected:
+  case networking::Transport::ConnectivityStatus::Connected:
     this->handleBinaryConnectionEstablished();
     return;
-  case networking::Transport::ConnectivityStatus::disconnecting:
-  case networking::Transport::ConnectivityStatus::disconnected:
+  case networking::Transport::ConnectivityStatus::Disconnecting:
+  case networking::Transport::ConnectivityStatus::Disconnected:
     this->close();
     return;
   }
@@ -678,7 +681,7 @@ bool Connection::isConnected() const noexcept {
 std::shared_ptr<Connection> Connection::Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler) {
   assert(binary->isConnected());
   auto result = std::shared_ptr<Connection>(new Connection(node, binary, ioContext, requestHandler));
-  assert(result->status() == Status::initializing);
+  assert(result->status() == Status::Initializing);
 
   // Subscribe the Connection to connectivity changes in the networking::Connection: the constructor couldn't do so because it can't get a shared_ptr to itself
   result->mBinaryStatusSubscription = result->mBinary->onConnectivityChange.subscribe([weak = std::weak_ptr<Connection>(result)](const networking::Connection::ConnectivityChange& change) {
@@ -704,6 +707,8 @@ void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_pt
   }
   mQueuedItems.clear();
   if (mError) {
+    //TODO Why nullptr? Pass deserialized error or some runtime_error instead?
+    LOG(LOG_TAG, warning) << "Forwarding error chunk from request tail";
     mSubscriber->on_error(nullptr);
   } else if (mCompleted) {
     mSubscriber->on_completed();

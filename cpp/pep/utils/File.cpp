@@ -1,5 +1,6 @@
 #include <pep/utils/File.hpp>
 
+#include <array>
 #include <string>
 #include <fstream>
 #include <regex>
@@ -61,14 +62,33 @@ void IstreamToDestination(std::istream& in, std::function<void(const char * c, c
     if (in.fail()) {
       throw std::runtime_error("Reading from stream failed"); // Exception meant to be rethrown with more information.
     }
-    char buffer[pep::DISK_IO_BUFFERSIZE]{};
-    in.read(buffer, pep::DISK_IO_BUFFERSIZE);
+    std::array<char, DISK_IO_BUFFERSIZE> buffer{};
+    in.read(buffer.data(), buffer.size());
     if (in.gcount() > 0) {
-      writeToDestination(buffer, in.gcount());
+      writeToDestination(buffer.data(), in.gcount());
     }
     else {
       break;
     }
   }
 }
+
+std::filesystem::path AppendDirectoryNameSuffix(const std::filesystem::path& path, std::string_view suffix) {
+  if (path.empty()) {
+    throw std::runtime_error("Directory path is empty");
+  }
+  // Make absolute and collapse "." and ".."
+  auto normalPath = absolute(path).lexically_normal();
+  if (!normalPath.has_filename()) {
+    // Remove trailing separator
+    // "/path/to/dir/" -> "/path/to/dir"
+    normalPath = normalPath.parent_path();
+  }
+  if (!normalPath.has_filename()) { // E.g. "/"
+    throw std::runtime_error("Directory path is filesystem root: " + path.string());
+  }
+  normalPath.replace_filename(normalPath.filename() += suffix);
+  return normalPath;
+}
+
 }

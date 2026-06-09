@@ -2,7 +2,7 @@
 
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/auth/SigningSerializers.hpp>
 
 namespace pep {
 
@@ -35,6 +35,10 @@ PEP_DEFINE_CODED_SERIALIZER(DataHistoryRequest2);
 PEP_DEFINE_SIGNED_SERIALIZATION(DataHistoryRequest2);
 PEP_DEFINE_CODED_SERIALIZER(DataHistoryEntry2);
 PEP_DEFINE_CODED_SERIALIZER(DataHistoryResponse2);
+
+PEP_DEFINE_CODED_SERIALIZER(DataSizeRequest);
+PEP_DEFINE_SIGNED_SERIALIZATION(DataSizeRequest);
+PEP_DEFINE_CODED_SERIALIZER(DataSizeResponse);
 
 PEP_DEFINE_CODED_SERIALIZER(DataPayloadPage);
 

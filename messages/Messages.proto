@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option cc_enable_arenas = true;
-
 package pep.proto;
+
+option cc_enable_arenas = true;
 // The "option go_package" is needed to get rid of breaking protoc change causing
 //   protoc-gen-go: unable to determine Go import path for "Messages.proto"
 // We specify package name "pep_proto" to retain backward compatibility.
@@ -42,6 +42,8 @@ enum EncryptionScheme {
 enum SignatureScheme {
   SIGNATURE_SCHEME_V1 = 0; // deprecated
 
+  reserved 1;
+
   // RSA PKCS1v15(SHA256) with as hash the first 32 bytes of the SHA512
   // of the object concatenated with the big endian encoded timestamp.
   // Signature also includes the X509 certificate chains for the public key.
@@ -59,7 +61,6 @@ enum EnrollmentScheme {
   // Uses DER serialization of the certificate for key component derivation, which is guaranteed to be stable.
   ENROLLMENT_SCHEME_V2 = 1;
 }
-
 
 enum FileOpenType {
   FILE_OPEN_UNKNOWN = 0;
@@ -86,12 +87,14 @@ message Timestamp {
 }
 
 message Metadata {
+  reserved 3;
+
   // hard-coded (legacy) entries:
   string tag = 1; // i.e. column name
   Timestamp timestamp = 2; // warning: not the one used for historical queries
   EncryptionScheme encryption_scheme = 4;
 
-  map<string,MetadataXEntry> extra = 5;
+  map<string, MetadataXEntry> extra = 5;
 
   // (Encrypted storage facility) Identifier of the file that contained the original payload.
   // Empty if the original payload was stored with this entry.
@@ -99,6 +102,8 @@ message Metadata {
 }
 
 message MetadataXEntry {
+  reserved 1;
+
   bytes payload = 2;
 
   bool encrypted = 3;
@@ -163,6 +168,8 @@ message KeyRequestEntry {
 }
 
 message DataPayloadPage {
+  reserved 1, 4;
+
   bytes payload_data = 2;
   bytes crypto_nonce = 5;
   bytes crypto_mac = 6;
@@ -181,19 +188,21 @@ message DataPayloadPage {
 }
 
 message EncryptionKeyRequest {
+  reserved 1, 4;
+
   SignedTicket2 ticket2 = 3;
 
   repeated KeyRequestEntry entries = 2;
-
-  // Add new members starting with field number 5
 }
 
 message SignedEncryptionKeyRequest {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
 
 message EncryptionKeyResponse {
+  reserved 1;
   repeated ElgamalEncryption keys = 2;
 }
 
@@ -209,11 +218,11 @@ message TranscryptorRequestEntry {
 
   // Zero-knowledge proofs that the previous partially RSKed
   // encrypted local pseudonyms were correctly RSKed by the AM.
-  // See https://docs.pages.pep.cs.ru.nl/private/ops/master/development/Design-logger/
-  RSKProof access_manager_proof = 5;
-  RSKProof storage_facility_proof = 6;
-  RSKProof transcryptor_proof = 7;
-  RSKProof user_group_proof = 9; // optional
+  // See https://docs.pages.pep.cs.ru.nl/private/ops/main/development/Design-logger/
+  RskProof access_manager_proof = 5;
+  RskProof storage_facility_proof = 6;
+  RskProof transcryptor_proof = 7;
+  RskProof user_group_proof = 9; // optional
 }
 
 // Separate container for entries, to be sent as "chunks" with a TranscryptorRequest.
@@ -227,6 +236,7 @@ message TranscryptorRequestEntries {
 // RSKed pseudonyms into proper encrypted local pseudonyms, which is
 // an essential step in the creation of a Ticket.
 message TranscryptorRequest {
+  reserved 1 to 3;
   // The TicketRequest which caused this TranscryptorRequest.
   SignedTicketRequest2 request = 4;
 }
@@ -242,6 +252,7 @@ message LogIssuedTicketResponse {
 }
 
 message LocalPseudonyms {
+  reserved 3;
   ElgamalEncryption access_manager = 1;
   ElgamalEncryption storage_facility = 2;
   ElgamalEncryption polymorphic = 4;
@@ -256,48 +267,53 @@ message TranscryptorResponse {
 }
 
 message EnrollmentRequest {
+  reserved 2;
   X509CertificateSigningRequest certificate_signing_request = 1;
   string oauth_token = 3;
 }
 
 message EnrollmentResponse {
+  reserved 1, 3 to 5;
   X509CertificateChain certificate_chain = 2;
-  // field number 5 has already been used in the past
 }
 
 message KeyComponentRequest {
-  // field number 2 has already been used in the past
+  reserved 1, 2;
 }
 
 message SignedKeyComponentRequest {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
 
 message KeyComponentResponse {
+  reserved 1, 4;
   CurveScalar pseudonymisation_key_component = 2;
   CurveScalar encryption_key_component = 3;
-  // field number 4 has already been used in the past
 }
 
 message RekeyRequest {
+  reserved 2;
   repeated ElgamalEncryption keys = 1;
   X509CertificateChain client_certificate_chain = 3;
 }
 
 message RekeyResponse {
+  reserved 1;
   repeated ElgamalEncryption keys = 2;
 }
 
-message PEPIdRegistrationRequest {
-}
+message PEPIdRegistrationRequest {}
 
 message SignedPEPIdRegistrationRequest {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
 
 message PEPIdRegistrationResponse {
+  reserved 1;
   string pep_id = 2;
 }
 
@@ -308,14 +324,15 @@ message RegistrationRequest {
 }
 
 message SignedRegistrationRequest {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
 
-message RegistrationResponse {
-}
+message RegistrationResponse {}
 
 message ListCastorImportColumnsRequest {
+  reserved 2;
   string sp_column = 1;
   uint32 answer_set_count = 3;
 }
@@ -328,8 +345,7 @@ message SignedMetricsRequest {
   Signature signature = 3;
   bytes data = 4;
 }
-message MetricsRequest {
-}
+message MetricsRequest {}
 
 message MetricsResponse {
   bytes metrics = 1;
@@ -345,18 +361,62 @@ message PingResponse {
 }
 
 message SignedPingResponse {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
 
-message VersionRequest {
+message CsrRequest {}
+
+message SignedCsrRequest {
+  Signature signature = 1;
+  bytes data = 2;
 }
+
+message CsrResponse {
+  X509CertificateSigningRequest csr = 1;
+}
+
+message SignedCsrResponse {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CertificateReplacementRequest {
+  X509CertificateChain certificate_chain = 1;
+  bool allow_changing_subject = 2;
+}
+
+message SignedCertificateReplacementRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CertificateReplacementResponse {}
+
+message SignedCertificateReplacementResponse {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CertificateReplacementCommitRequest {
+  X509CertificateChain certificate_chain = 1;
+}
+
+message SignedCertificateReplacementCommitRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message CertificateReplacementCommitResponse {}
+
+message VersionRequest {}
 
 message ConfigVersion {
   // Field indices were defined identically to VersionResponse because it may yield some benefit in the future.
 
   // This message has never had a field with index 1
-  string reference = 2; // 'master', ... (git branches or tags)
+  string reference = 2; // 'main', ... (git branches or tags)
   string version_build = 3; // '123', ... (based on GitLab CI pipeline id)
   string version_revision = 4; // '123', ... (GitLab CI job id)
   string commit = 5; // git commit (SHA) if available
@@ -373,7 +433,7 @@ message VersionResponse {
   // Backward compatible: store binary version values directly instead of encapsulating a GitlabVersion or the likes.
 
   string target = 1; // 'mac', 'win', 'linux'
-  string reference = 2; // 'master', ... (git branches or tags)
+  string reference = 2; // 'main', ... (git branches or tags)
   string version_build = 3; // '123', ... (based on GitLab CI pipeline id)
   string version_revision = 4; // '123', ... (GitLab CI job id)
   string commit = 5; // git commit (SHA) if available
@@ -391,8 +451,7 @@ message SignedChecksumChainNamesRequest {
   Signature signature = 3;
   bytes data = 4;
 }
-message ChecksumChainNamesRequest {
-}
+message ChecksumChainNamesRequest {}
 message ChecksumChainNamesResponse {
   repeated string names = 1;
 }
@@ -405,14 +464,12 @@ message SignedChecksumChainRequest {
 }
 message ChecksumChainRequest {
   string name = 1;
-  /* optional */ bytes checkpoint = 2;
+  bytes checkpoint = 2; // optional
 }
 message ChecksumChainResponse {
   bytes checkpoint = 1; // The last checkpoint included in the XOR
   bytes xorredChecksums = 2;
 }
-
-
 
 // New API
 // ////////////////////////////////////////////////////////////////////////////
@@ -436,8 +493,8 @@ message TicketRequest2 {
   // Groups of participants to request access to.
   repeated string participant_groups = 2;
 
-  // (Additional) polymorphic pseudonyms to request access to.
-  repeated ElgamalEncryption polymorphic_pseudonyms = 3;
+  // Polymorphic pseudonyms of individual subjects to request access to.
+  repeated ElgamalEncryption access_subjects = 3;
 
   // Column-groups to request access to.
   repeated string column_groups = 4;
@@ -453,8 +510,10 @@ message TicketRequest2 {
 }
 
 message SignedTicketRequest2 {
+  reserved 1, 2;
+
   Signature signature = 3;
-  Signature log_signature = 5;   // signature to be stored at logger
+  Signature log_signature = 5; // signature to be stored at logger
 
   bytes data = 4;
 }
@@ -473,8 +532,8 @@ message IndexList {
 message IndexedTicket2 {
   SignedTicket2 ticket = 1;
 
-  map<string,IndexList> column_groups = 2;
-  map<string,IndexList> groups = 3;
+  map<string, IndexList> column_groups = 2;
+  map<string, IndexList> groups = 3;
 }
 
 // A ticket which (when signed) grants access to data
@@ -486,7 +545,7 @@ message Ticket2 {
   repeated string modes = 2;
 
   // The local pseudonyms of the participants to which access was granted.
-  repeated LocalPseudonyms pseudonyms = 3;
+  repeated LocalPseudonyms access_subjects = 3;
 
   // The columns to which access was granted.
   repeated string columns = 4;
@@ -496,6 +555,7 @@ message Ticket2 {
 }
 
 message SignedTicket2 {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 
@@ -509,6 +569,8 @@ message SignedTicket2 {
 
 // Return metadata of files to which access was granted by the ticket.
 message DataEnumerationRequest2 {
+  reserved 2, 3, 6, 7;
+
   SignedTicket2 ticket = 1;
 
   // If set, limits the query to the given columns from the ticket.
@@ -516,11 +578,10 @@ message DataEnumerationRequest2 {
 
   // If set, limits the pseudonyms to the given pseudonyms from the ticket.
   IndexList pseudonyms = 5;
-
-  // Add new members starting with field number 8
 }
 
 message SignedDataEnumerationRequest2 {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
@@ -535,6 +596,8 @@ message DataEnumerationResponse2 {
 
 // Response to DataEnumerationRequest2 or MetadataReadRequest2
 message DataEnumerationEntry2 {
+  reserved 7;
+
   // (Encrypted storage facility) Identifier of the file.
   bytes id = 1;
 
@@ -563,6 +626,7 @@ message DataEnumerationEntry2 {
 // Requests retrieval of Metadata and keys of the given files,
 // which will be returned as DataEnumerationResponse2 messages.
 message MetadataReadRequest2 {
+  reserved 2;
   SignedTicket2 ticket = 1;
   repeated bytes ids = 3;
 }
@@ -575,13 +639,13 @@ message SignedMetadataReadRequest2 {
 // Requests retrieval of the given files.
 // Returns files in chunks via DataPayloadPages.
 message DataReadRequest2 {
+  reserved 2, 4;
   SignedTicket2 ticket = 1;
   repeated bytes ids = 3;
-
-  // Add new members starting with field number 5
 }
 
 message SignedDataReadRequest2 {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
@@ -644,6 +708,7 @@ message DataStoreRequest2 {
 }
 
 message SignedDataStoreRequest2 {
+  reserved 1, 2;
   Signature signature = 3;
   bytes data = 4;
 }
@@ -711,6 +776,21 @@ message DataHistoryResponse2 {
   repeated DataHistoryEntry2 entries = 1;
 }
 
+message DataSizeRequest {
+  repeated string columns = 1;
+}
+
+message SignedDataSizeRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message DataSizeResponse {
+  uint64 block_size = 1;
+  uint64 total_blocks = 2;
+  uint64 rolling_blocks = 3;
+}
+
 // Protocol buffer definition behind the opaque identifiers used by the
 // storage facility.
 message EncryptedSFId {
@@ -728,13 +808,13 @@ message SFId {
 //
 
 // Sent to the accessmanager to request the global configuration.
-message GlobalConfigurationRequest {
-}
+message GlobalConfigurationRequest {}
 
 message GlobalConfiguration {
+  reserved 3;
+
   repeated ShortPseudonymDefinition short_pseudonyms = 1;
   repeated AdditionalStickerDefinition additional_stickers = 2;
-  // Nr. 3 has been removed
 
   // First entry is required and must specify a prefix+digits
   repeated PseudonymFormat participant_identifier_formats = 4;
@@ -758,8 +838,9 @@ message ShortPseudonymDefinition {
   bool suppress_additional_stickers = 8;
 }
 message UserPseudonymFormat {
-    string prefix = 1;
-    uint32 length = 3;
+  reserved 2;
+  string prefix = 1;
+  uint32 length = 3;
 }
 message CastorShortPseudonymDefinition {
   string study_slug = 1;
@@ -819,15 +900,14 @@ message AssessorDefinition {
 }
 
 message StudyContext {
+  reserved 2;
   string id = 1;
-  // Add new members starting with field number 3
 }
 
 message ColumnSpecification {
   string column = 1;
-  string associated_short_pseudonym_column  = 2; //optional. If provided, indicates pseudonymisation should be done.
+  string associated_short_pseudonym_column = 2; //optional. If provided, indicates pseudonymisation should be done.
   bool requires_directory = 3;
-
 }
 message ShortPseudonymErratum {
   string value = 1;
@@ -965,8 +1045,7 @@ message AmaMutationRequest {
   bool force_column_group_removal = 15;
   bool force_participant_group_removal = 16;
 }
-message AmaMutationResponse {
-}
+message AmaMutationResponse {}
 
 // Requests the state of the AM (which columns, groups, column groups,
 // group/column access rules, etc exist) at a given timestamp matching
@@ -986,10 +1065,10 @@ message SignedAmaQuery {
   Signature signature = 3;
   bytes data = 4;
 }
-message  AmaQRColumn {
+message AmaQRColumn {
   string name = 1;
 }
-message  AmaQRColumnGroup {
+message AmaQRColumnGroup {
   string name = 1;
   repeated string columns = 2;
 }
@@ -999,7 +1078,7 @@ message AmaQRColumnGroupAccessRule {
   string mode = 3;
 }
 message AmaQRParticipantGroup {
-    string name = 1;
+  string name = 1;
 }
 message AmaQRParticipantGroupAccessRule {
   string participant_group = 1;
@@ -1015,15 +1094,13 @@ message AmaQueryResponse {
 }
 
 // The actual data comes as a raw sqlite database, in chunks, in the tail of the message
-message MigrateUserDbToAccessManagerRequest {
-}
+message MigrateUserDbToAccessManagerRequest {}
 message SignedMigrateUserDbToAccessManagerRequest {
   Signature signature = 1;
   bytes data = 2;
 }
 
-message MigrateUserDbToAccessManagerResponse{
-}
+message MigrateUserDbToAccessManagerResponse {}
 
 //
 // User administration interface.
@@ -1045,20 +1122,22 @@ message TokenResponse {
 
 message CreateUser {
   string uid = 1;
-};
+}
 
 message RemoveUser {
   string uid = 1;
-};
+}
 
 message AddUserIdentifier {
   string existingUid = 1;
   string newUid = 2;
-};
+  bool is_primary_id = 3;
+  bool is_display_id = 4;
+}
 
 message RemoveUserIdentifier {
   string uid = 1;
-};
+}
 
 message UserGroup {
   string name = 1;
@@ -1066,10 +1145,12 @@ message UserGroup {
 }
 
 message CreateUserGroup {
+  reserved 1, 2;
   UserGroup user_group = 3;
 }
 
 message ModifyUserGroup {
+  reserved 1, 2;
   UserGroup user_group = 3;
 }
 
@@ -1093,6 +1174,9 @@ message UserMutationRequest {
   repeated RemoveUser remove_user = 7;
   repeated AddUserIdentifier add_user_identifier = 8;
   repeated RemoveUserIdentifier remove_user_identifier = 9;
+  repeated string set_primary_identifier = 10;
+  repeated string unset_primary_identifier = 11;
+  repeated string set_display_identifier = 12;
 
   repeated CreateUserGroup create_user_group = 1;
   repeated RemoveUserGroup remove_user_group = 2;
@@ -1107,8 +1191,7 @@ message SignedUserMutationRequest {
   bytes data = 4;
 }
 
-message UserMutationResponse {
-}
+message UserMutationResponse {}
 
 message UserQuery {
   // Optional
@@ -1122,10 +1205,14 @@ message SignedUserQuery {
   bytes data = 4;
 }
 message QRUser {
-  repeated string uids = 1;
+  reserved 1;
+  optional string display_id = 3;
+  optional string primary_id = 4;
+  repeated string other_uids = 5;
   repeated string groups = 2;
 }
 message UserQueryResponse {
+  reserved 1, 2;
   repeated QRUser users = 3;
   repeated UserGroup user_groups = 4;
 }
@@ -1147,7 +1234,7 @@ message FindUserResponse {
 //
 // Zero-knowledge proofs used by the Access Manager to show to the
 // Transcryptor that it correctlyRSKed the polymorphic pseudonyms.
-// See https://docs.pages.pep.cs.ru.nl/private/ops/master/development/Design-logger/
+// See https://docs.pages.pep.cs.ru.nl/private/ops/main/development/Design-logger/
 //
 
 // A compositional zero-knowledge proof that curvepoints (A, M, N)
@@ -1165,8 +1252,8 @@ message ScalarMultProof {
 }
 
 // A compositional zero-knowledge proof that an ElgamalEncryption (b, c, y)
-// has been (z,k)-RSKed to (b', c', y).
-message RSKProof {
+// has been RSKed to (b', c', y).
+message RskProof {
   CurvePoint ry = 1; // r y
   CurvePoint rb = 2; // r B
 
@@ -1175,19 +1262,43 @@ message RSKProof {
   ScalarMultProof cp = 5; // for (z B, c + ry, c')
 }
 
-message VerifiersRequest {
+message ServerVerifiers {
+  ReshuffleRekeyVerifiers access_manager = 1;
+  ReshuffleRekeyVerifiers storage_facility = 2;
+  ReshuffleRekeyVerifiers transcryptor = 3;
 }
+
+message VerifiersRequest {}
+
 message VerifiersResponse {
-  RSKVerifiers access_manager = 1;
-  RSKVerifiers storage_facility = 2;
-  RSKVerifiers transcryptor = 3;
+  reserved 1 to 3;
+  ServerVerifiers verifiers = 4;
+  ReshuffleRekeyVerifiersProof access_manager_proof = 5;
+  ReshuffleRekeyVerifiersProof storage_facility_proof = 6;
+  ReshuffleRekeyVerifiersProof transcryptor_proof = 7;
+}
+
+message UserVerifiersRequest {
+  X509Certificate user_certificate = 1;
+}
+message UserVerifiersResponse {
+  ReshuffleRekeyVerifiers verifiers = 1;
+  ReshuffleRekeyVerifiersProof proof = 2;
 }
 
 // Public information required to verify an RSK proof.
-message RSKVerifiers {
-  CurvePoint z_over_kb = 1;
-  CurvePoint zb = 2;
-  CurvePoint ky = 3;
+message ReshuffleRekeyVerifiers {
+  CurvePoint reshuffle_over_rekey_commitment = 1;
+  CurvePoint reshuffle_commitment = 2;
+  CurvePoint rekeyed_public_key = 3;
+  CurvePoint rekey_commitment = 4;
+}
+
+message ReshuffleRekeyVerifiersProof {
+  CurvePoint rekey_inverse_point = 1;
+  ScalarMultProof rekey_inverse_proof = 2;
+  ScalarMultProof reshuffle_times_rekey_inverse_proof = 3;
+  ScalarMultProof rekey_times_public_key_proof = 4;
 }
 
 message SignedColumnAccessRequest {
@@ -1237,6 +1348,8 @@ enum StructureMetadataType {
   Column = 0;
   ColumnGroup = 1;
   ParticipantGroup = 2;
+  User = 3;
+  UserGroup_ = 4; // UserGroup is already defined as a message, so we need to use a different name
 }
 
 message StructureMetadataRequest {
@@ -1246,6 +1359,7 @@ message StructureMetadataRequest {
 }
 
 message SetStructureMetadataRequest {
+  reserved 2;
   StructureMetadataType subject_type = 1;
   repeated StructureMetadataSubjectKey remove = 3;
 }
@@ -1291,8 +1405,7 @@ message TokenBlockingBlocklistEntry {
   Timestamp metadataCreationDateTime = 5;
 }
 
-message TokenBlockingListRequest {
-}
+message TokenBlockingListRequest {}
 
 message SignedTokenBlockingListRequest {
   Signature signature = 1;

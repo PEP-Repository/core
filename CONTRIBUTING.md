@@ -22,10 +22,10 @@ C++ code is subject to guidelines [documented separately](cpp/CONTRIBUTING.md).
 
 - all code and associated stuff is version controlled using git and Gitlab.
 - when adjusting spacing or trivial name changes, please commit it seperate from other changes (to ease the release process);
-- do not commit directly on master/stable/acc/prod (except for the people doing releases/hotfixes);
+- do not commit directly on main/stable/acc/prod (except for the people doing releases/hotfixes);
 - do use issues, and create a merge request if implementing new features. Commit changes to the branch accompanying the merge request;
-- every morning pull master in your current issue (working) branch;
-- if a feature is not finished, do not merge into master from your issue branch;
+- every morning pull main in your current issue (working) branch;
+- if a feature is not finished, do not merge into main from your issue branch;
 - please contribute noteworthy changes of release to the [changelog](CHANGELOG) file.
 
 ---
@@ -43,6 +43,7 @@ We aim to implement the supposedly [canonical C++ project structure](https://www
 - CMake: Use lowercase function names: CMake functions and macros can be called lower or upper case. Always use lower case. Upper case is for variables.
 
 # Documentation
+
 - when simpler parts of the repository may be described by a single `README.md` file, place it in the respective directory.
 - all other documentation, e.g. on parts of the `core` library, is stored in the `/docs/` folder, using Markdown files. 
 - [Mermaid-js](https://mermaid.live) can be used to insert diagrams in gitlab markdown files. 

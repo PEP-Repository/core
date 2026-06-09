@@ -28,8 +28,8 @@ public:
   rxcpp::observable<std::shared_ptr<std::set<TItem>>> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.reduce(
       std::make_shared<std::set<TItem>>(),
-      [throwOnDuplicate = mThrowOnDuplicate](std::shared_ptr<std::set<TItem>> set, const TItem& item) {
-        auto added = set->emplace(item).second;
+      [throwOnDuplicate = mThrowOnDuplicate](std::shared_ptr<std::set<TItem>> set, auto&& item) {
+        auto added = set->emplace(std::forward<decltype(item)>(item)).second;
         if (throwOnDuplicate && !added) {
           throw std::runtime_error("Could not insert duplicate item into set");
         }

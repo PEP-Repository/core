@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Assumed to be ran in a folder with the assessor_app, cli_app and download_tool_app subdirectories, each containing their corresponding .app bundles
+# Assumed to be ran in a folder with the assessor_app, cli_app, download_tool_app and upload_tool_app subdirectories, each containing their corresponding .app bundles
 # Moving this file will break ci_cd/macos-ci-pkg.sh
 
 # Check if the necessary arguments are provided
@@ -22,6 +22,7 @@ CONFIG_ROOT_PATH="$($PEP_CORE_DIR/scripts/gitdir.sh get-project-root $SCRIPTPATH
 PEP_MACOS_ASSESSOR_APP_ROOT="assessor_app"
 PEP_MACOS_CLI_APP_ROOT="cli_app"
 PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT="download_tool_app"
+PEP_MACOS_UPLOAD_TOOL_APP_ROOT="upload_tool_app"
 
 PEP_KEYCHAIN="$HOME/Library/Keychains/pep.keychain-db"
 
@@ -88,7 +89,11 @@ sign_app() {
   if [[ "$app_root_dir" == "$PEP_MACOS_ASSESSOR_APP_ROOT" ]]; then
     # Sign pepassessor
 
-    find "$app_path/Contents/Plugins" -name "*.dylib" -exec codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" {} \;
+    # Plugins may be absent for statically linked Qt,
+    # see https://doc.qt.io/qt-6/plugins-howto.html#static-plugins
+    if [[ -d "$app_path/Contents/Plugins" ]]; then
+      find "$app_path/Contents/Plugins" -name "*.dylib" -exec codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" {} \;
+    fi
     find "$app_path/Contents/Frameworks" -maxdepth 1 -name "*.dylib" -exec codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" {} \;
     codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" "$app_path/Contents/MacOS/pepAssessor"
   elif [[ "$app_root_dir" == "$PEP_MACOS_CLI_APP_ROOT" ]]; then
@@ -103,6 +108,14 @@ sign_app() {
     # Sign pepcli
 
     local files_to_sign=("pepcli" "pepLogon" "sparkle" "runpepdownload.sh")
+
+    for file in "${files_to_sign[@]}"; do
+      codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" "$app_path/Contents/MacOS/$file"
+    done
+  elif [[ "$app_root_dir" == "$PEP_MACOS_UPLOAD_TOOL_APP_ROOT" ]]; then
+    # Sign pepcli
+
+    local files_to_sign=("pepcli" "pepLogon" "sparkle" "runpepupload.sh")
 
     for file in "${files_to_sign[@]}"; do
       codesign "${codesign_options[@]}" "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" "$app_path/Contents/MacOS/$file"
@@ -159,6 +172,10 @@ if ! PEP_MACOS_DOWNLOAD_TOOL_APP_PLIST_PATH=$(readlink -f "$PEP_MACOS_DOWNLOAD_T
   echo "Error: Could not find Info.plist for root dir: $PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT"
 fi
 
+if ! PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH=$(readlink -f "$PEP_MACOS_UPLOAD_TOOL_APP_ROOT"/*.app/Contents/Info.plist); then
+  echo "Error: Could not find Info.plist for root dir: $PEP_MACOS_UPLOAD_TOOL_APP_ROOT"
+fi
+
 PEP_MACOS_ASSESSOR_APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleDisplayName" "$PEP_MACOS_ASSESSOR_APP_PLIST_PATH")
 PEP_MACOS_ASSESSOR_APP_IDENTIFIER=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$PEP_MACOS_ASSESSOR_APP_PLIST_PATH")
 PEP_MACOS_ASSESSOR_APP_INSTALL_LOCATION="/Applications"
@@ -171,9 +188,14 @@ PEP_MACOS_DOWNLOAD_TOOL_APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleDis
 PEP_MACOS_DOWNLOAD_TOOL_APP_IDENTIFIER=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$PEP_MACOS_DOWNLOAD_TOOL_APP_PLIST_PATH")
 PEP_MACOS_DOWNLOAD_TOOL_APP_INSTALL_LOCATION="/Applications"
 
+PEP_MACOS_UPLOAD_TOOL_APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleDisplayName" "$PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH")
+PEP_MACOS_UPLOAD_TOOL_APP_IDENTIFIER=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH")
+PEP_MACOS_UPLOAD_TOOL_APP_INSTALL_LOCATION="/Applications"
+
 PEP_MACOS_ASSESSOR_APP_INFRA_NAME="$PEP_MACOS_ASSESSOR_APP_NAME"
 PEP_MACOS_CLI_APP_INFRA_NAME="$PEP_MACOS_CLI_APP_NAME"
 PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME="$PEP_MACOS_DOWNLOAD_TOOL_APP_NAME"
+PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME="$PEP_MACOS_UPLOAD_TOOL_APP_NAME"
 
 # Update name to infra names for non-universal apps (universal is already at infra name by now)
 if [[ "$MACOS_INSTALLER_ARCH" != "Universal" ]] && [[ "$PEP_MACOS_ASSESSOR_APP_NAME" != *"$INFRA_NAME"* ]] && [[ "$PEP_MACOS_ASSESSOR_APP_NAME" != *"$BRANCH_NAME"* ]]; then
@@ -191,6 +213,11 @@ if [[ "$MACOS_INSTALLER_ARCH" != "Universal" ]] && [[ "$PEP_MACOS_ASSESSOR_APP_N
   set_or_add_plist "$PEP_MACOS_DOWNLOAD_TOOL_APP_PLIST_PATH" "CFBundleDisplayName" "string" "$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME"
   mv "$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT/$PEP_MACOS_DOWNLOAD_TOOL_APP_NAME.app" "$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT/$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.app"
   PEP_MACOS_DOWNLOAD_TOOL_APP_PLIST_PATH="$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT/$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.app/Contents/Info.plist"
+
+  PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME="$PEP_MACOS_UPLOAD_TOOL_APP_NAME ($INFRA_NAME $BRANCH_NAME)"
+  set_or_add_plist "$PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH" "CFBundleDisplayName" "string" "$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME"
+  mv "$PEP_MACOS_UPLOAD_TOOL_APP_ROOT/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app" "$PEP_MACOS_UPLOAD_TOOL_APP_ROOT/$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.app"
+  PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH="$PEP_MACOS_UPLOAD_TOOL_APP_ROOT/$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.app/Contents/Info.plist"
 fi
 
 # Update versions
@@ -211,6 +238,9 @@ set_or_add_plist "$PEP_MACOS_CLI_APP_PLIST_PATH" "CFBundleShortVersionString" "s
 set_or_add_plist "$PEP_MACOS_DOWNLOAD_TOOL_APP_PLIST_PATH" "CFBundleVersion" "string" "$PEP_MACOS_APP_CONFIG_VERSION_LONG"
 set_or_add_plist "$PEP_MACOS_DOWNLOAD_TOOL_APP_PLIST_PATH" "CFBundleShortVersionString" "string" "$PEP_MACOS_APP_CONFIG_VERSION"
 
+set_or_add_plist "$PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH" "CFBundleVersion" "string" "$PEP_MACOS_APP_CONFIG_VERSION_LONG"
+set_or_add_plist "$PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH" "CFBundleShortVersionString" "string" "$PEP_MACOS_APP_CONFIG_VERSION"
+
 # Update appcast urls
 PEP_MACOS_ASSESSOR_APPCAST_URL="$PEP_MACOS_UPDATE_PATH_PREFIX/$PEP_MACOS_ASSESSOR_APP_ROOT/AppCast.xml"
 set_or_add_plist "$PEP_MACOS_ASSESSOR_APP_PLIST_PATH" "SUFeedURL" "string" "$PEP_MACOS_ASSESSOR_APPCAST_URL"
@@ -221,6 +251,9 @@ set_or_add_plist "$PEP_MACOS_CLI_APP_PLIST_PATH" "SUFeedURL" "string" "$PEP_MACO
 PEP_MACOS_DOWNLOAD_TOOL_APPCAST_URL="$PEP_MACOS_UPDATE_PATH_PREFIX/$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT/AppCast.xml"
 set_or_add_plist "$PEP_MACOS_DOWNLOAD_TOOL_APP_PLIST_PATH" "SUFeedURL" "string" "$PEP_MACOS_DOWNLOAD_TOOL_APPCAST_URL"
 
+PEP_MACOS_UPLOAD_TOOL_APPCAST_URL="$PEP_MACOS_UPDATE_PATH_PREFIX/$PEP_MACOS_UPLOAD_TOOL_APP_ROOT/AppCast.xml"
+set_or_add_plist "$PEP_MACOS_UPLOAD_TOOL_APP_PLIST_PATH" "SUFeedURL" "string" "$PEP_MACOS_UPLOAD_TOOL_APPCAST_URL"
+
 # Create PEP Assessor app
 create_app "$PEP_MACOS_ASSESSOR_APP_ROOT" "$PEP_MACOS_ASSESSOR_APP_INFRA_NAME" "$PEP_MACOS_ASSESSOR_APP_INSTALL_LOCATION" "$PEP_MACOS_APP_CONFIG_VERSION_LONG" "$PEP_MACOS_ASSESSOR_APP_IDENTIFIER"
 
@@ -230,15 +263,20 @@ create_app "$PEP_MACOS_CLI_APP_ROOT" "$PEP_MACOS_CLI_APP_INFRA_NAME" "$PEP_MACOS
 # Create PEP Download Tool app
 create_app "$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT" "$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME" "$PEP_MACOS_DOWNLOAD_TOOL_APP_INSTALL_LOCATION" "$PEP_MACOS_APP_CONFIG_VERSION_LONG" "$PEP_MACOS_DOWNLOAD_TOOL_APP_IDENTIFIER"
 
+# Create PEP Upload Tool app
+create_app "$PEP_MACOS_UPLOAD_TOOL_APP_ROOT" "$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME" "$PEP_MACOS_UPLOAD_TOOL_APP_INSTALL_LOCATION" "$PEP_MACOS_APP_CONFIG_VERSION_LONG" "$PEP_MACOS_UPLOAD_TOOL_APP_IDENTIFIER"
+
 # New installer dirs
 mkdir -p "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_ASSESSOR_APP_ROOT"
 mkdir -p "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_CLI_APP_ROOT"
 mkdir -p "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT"
+mkdir -p "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_UPLOAD_TOOL_APP_ROOT"
 
 # Move signed apps, to installer directory, to be used as update files
 ditto "$PEP_MACOS_ASSESSOR_APP_ROOT/$PEP_MACOS_ASSESSOR_APP_INFRA_NAME.app" "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_ASSESSOR_APP_ROOT/$PEP_MACOS_ASSESSOR_APP_INFRA_NAME.app"
 ditto "$PEP_MACOS_CLI_APP_ROOT/$PEP_MACOS_CLI_APP_INFRA_NAME.app" "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_CLI_APP_ROOT/$PEP_MACOS_CLI_APP_INFRA_NAME.app"
 ditto "$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT/$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.app" "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT/$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.app"
+ditto "$PEP_MACOS_UPLOAD_TOOL_APP_ROOT/$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.app" "installer/$PEP_MACOS_INSTALLER_PATH/update/$PEP_MACOS_UPLOAD_TOOL_APP_ROOT/$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.app"
 
 # Combine the pkg to a complete installer pkg
 cat > "Distribution.dist" <<EOF
@@ -250,6 +288,7 @@ cat > "Distribution.dist" <<EOF
         <line choice="$PEP_MACOS_ASSESSOR_APP_ROOT"/>
         <line choice="$PEP_MACOS_CLI_APP_ROOT"/>
         <line choice="$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT"/>
+        <line choice="$PEP_MACOS_UPLOAD_TOOL_APP_ROOT"/>
     </choices-outline>
     <choice id="$PEP_MACOS_ASSESSOR_APP_ROOT" title="$PEP_MACOS_ASSESSOR_APP_NAME" description="$PEP_MACOS_ASSESSOR_APP_NAME">
         <pkg-ref id="$PEP_MACOS_ASSESSOR_APP_IDENTIFIER" version="$PEP_MACOS_APP_CONFIG_VERSION" onConclusion="none">$PEP_MACOS_ASSESSOR_APP_INFRA_NAME.pkg</pkg-ref>
@@ -259,6 +298,9 @@ cat > "Distribution.dist" <<EOF
     </choice>
     <choice id="$PEP_MACOS_DOWNLOAD_TOOL_APP_ROOT" title="$PEP_MACOS_DOWNLOAD_TOOL_APP_NAME" description="$PEP_MACOS_DOWNLOAD_TOOL_APP_NAME">
         <pkg-ref id="$PEP_MACOS_DOWNLOAD_TOOL_APP_IDENTIFIER" version="$PEP_MACOS_APP_CONFIG_VERSION" onConclusion="none">$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.pkg</pkg-ref>
+    </choice>
+    <choice id="$PEP_MACOS_UPLOAD_TOOL_APP_ROOT" title="$PEP_MACOS_UPLOAD_TOOL_APP_NAME" description="$PEP_MACOS_UPLOAD_TOOL_APP_NAME">
+        <pkg-ref id="$PEP_MACOS_UPLOAD_TOOL_APP_IDENTIFIER" version="$PEP_MACOS_APP_CONFIG_VERSION" onConclusion="none">$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.pkg</pkg-ref>
     </choice>
 </installer-gui-script>
 EOF
@@ -276,6 +318,7 @@ productbuild  --distribution Distribution.dist \
 rm -f "$PEP_MACOS_ASSESSOR_APP_INFRA_NAME.pkg"
 rm -f "$PEP_MACOS_CLI_APP_INFRA_NAME.pkg"
 rm -f "$PEP_MACOS_DOWNLOAD_TOOL_APP_INFRA_NAME.pkg"
+rm -f "$PEP_MACOS_UPLOAD_TOOL_APP_INFRA_NAME.pkg"
 
 # Verify the signature
 pkgutil --check-signature "$INSTALLER_NAME"

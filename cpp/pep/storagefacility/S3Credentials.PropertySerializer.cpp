@@ -15,14 +15,14 @@ namespace pep
 
   s3::Credentials PropertySerializer<s3::Credentials>::read(
       const boost::property_tree::ptree& source,
-      const MultiTypeTransform& transform) const {
+      const DeserializationContext& context) const {
 
     s3::Credentials result;
 
     // To allow the 'Secret' to be stored in a separate file,
     // we use the following '#include' mechanism.
     auto include = DeserializeProperties<std::optional<std::filesystem::path>>
-        (source, "Include", transform);
+        (source, "Include", context);
 
     if (include.has_value()) {
       Configuration config = Configuration::FromFile(*include);
@@ -30,7 +30,7 @@ namespace pep
     }
 
     auto accessKeyOp = DeserializeProperties<std::optional<std::string>>(source,
-        "AccessKey", transform);
+        "AccessKey", context);
     if (accessKeyOp.has_value())
       result.accessKey = *accessKeyOp;
 
@@ -38,7 +38,7 @@ namespace pep
       throw std::runtime_error("Deserializing S3 Credentials: AccessKey not set");
 
     auto secretKeyOp = DeserializeProperties<std::optional<std::string>>(source,
-        "Secret", transform);
+        "Secret", context);
     if (secretKeyOp.has_value())
       result.secret = *secretKeyOp;
 
@@ -46,12 +46,12 @@ namespace pep
       throw std::runtime_error("Deserializing S3 Credentials: Secret not set");
 
     auto serviceOp = DeserializeProperties<std::optional<std::string>>(source,
-        "Service", transform);
+        "Service", context);
     if (serviceOp.has_value())
       result.service = *serviceOp;
 
     auto regionOp = DeserializeProperties<std::optional<std::string>>(source,
-        "Region", transform);
+        "Region", context);
     if (regionOp.has_value())
       result.region = *regionOp;
 

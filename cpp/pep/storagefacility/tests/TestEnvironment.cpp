@@ -14,7 +14,8 @@ private:
   bool invokeS3proxySh(const char* command) {
     if (mS3proxySh.has_value()) {
       std::string cmd = mS3proxySh->string() + " " + command;
-      std::system(cmd.c_str()); //NOLINT(concurrency-mt-unsafe) Tests run single-threaded
+      //NOLINTNEXTLINE(concurrency-mt-unsafe,bugprone-command-processor) Tests run single-threaded; Only used in tests
+      std::system(cmd.c_str());
       return true;
     }
 
@@ -22,7 +23,7 @@ private:
   }
 
 public:
-  StorageFacilityTestEnvironment(int argc, char* argv[])
+  StorageFacilityTestEnvironment(int argc, char* argv[]) //NOLINT(modernize-avoid-c-arrays)
     : pep::SelfRegisteringTestEnvironment<StorageFacilityTestEnvironment>(argc, argv) {
     auto end = argv + argc;
     if (std::find(argv, end, std::string("--launch-s3proxy")) != end) {

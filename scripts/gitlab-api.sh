@@ -10,20 +10,37 @@ set -eu
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 
-git_dir="$1"
-api_key="$2"
-command="$3"
-rel_path="$4"
+no_project=false
+while [ "$#" != 0 ]; do
+  case "$1" in
+    --no-project) # Do not prefix API URL with project
+      no_project=true ;;
+    --help|-h)
+      echo "Usage: '$0' [--no-project] <git-dir> <api-key> <command> <rel-path> [curl args...]"
+      exit ;;
+    --)
+      shift
+      break ;;
+    --*)
+      >&2 echo "$0: Unknown option: $1"
+      exit 2 ;;
+    *) break ;;
+  esac
+  shift
+done
+
+git_dir="${1:?Expected git dir}"; shift
+api_key="${1:?Expected API key}"; shift
+command="${1:?Expected command}"; shift
+rel_path="${1?:Expected URL path}"; shift
 # Further arguments are passed verbatim to the "curl" command(s) that we issue
-shift
-shift
-shift
-shift
 
 git_root=$(cd "$git_dir" && pwd)
 gitlab_host=$("$SCRIPTPATH"/gitdir.sh origin-host "$git_root")
-project_path=$("$SCRIPTPATH"/gitdir.sh origin-path "$git_root")
-project_id=$("$SCRIPTPATH"/url.sh encode "${project_path}")
+if ! $no_project; then
+  project_path=$("$SCRIPTPATH"/gitdir.sh origin-path "$git_root")
+  project_id=$("$SCRIPTPATH"/url.sh encode "${project_path}")
+fi
 
 contains() {
   string="$1"
@@ -37,9 +54,25 @@ request() {
   path="$2"
   shift
   shift
-  url="https://$gitlab_host/api/v4/projects/$project_id/$path"
-  # >&2 echo "Sending $method request to $url" "$@"
-  if ! curl --no-progress-meter --fail --request "$method" -H "PRIVATE-TOKEN: $api_key" -H "Cache-Control: no-cache" "$url" "$@"; then
+
+  url="https://$gitlab_host/api/v4/"
+  if ! $no_project; then
+    url="${url}projects/$project_id/"
+  fi
+  url="$url$path"
+
+  if [ -n "${DRY_DELETE-}" ] && [ "$method" = DELETE ]; then
+    >&2 echo "DELETE $url"
+    return
+  fi
+
+  if ! curl --no-progress-meter \
+            --fail \
+            --retry 7 \
+            --request "$method" \
+            --header "PRIVATE-TOKEN: $api_key" \
+            --header "Cache-Control: no-cache" \
+            "$url" "$@"; then
     >&2 echo "Error while sending $method request to $url" "$@"
     return 1
   fi
@@ -59,7 +92,8 @@ get_multipage() {
   joined=""
   ipage=1
   while [ "$ipage" -ne 0 ]; do
-    page=$(request get "${rel_path}${delim}page=$ipage" "$@")
+    # per_page=100 is the maximum allowed, so like this we minimize the number of requests
+    page=$(request get "${rel_path}${delim}per_page=100&page=$ipage" "$@")
     if [ "$(printf '%s' "$page" | jq length)" -eq 0 ]; then
       ipage=0
     else
@@ -73,7 +107,6 @@ $page"
   printf '%s' "$joined" | jq ".[]" | jq -s
 }
 
-# TODO: support aNyCaSeCoMmAnDs
 case $command in
   get-multipage)
     get_multipage "$rel_path" "$@"

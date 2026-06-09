@@ -4,11 +4,17 @@
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Yaml.hpp>
+#include <pep/structuredoutput/Tree.hpp>
+#include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
@@ -97,8 +103,8 @@ rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::
         participant->readField(gc, ear);
         return states;
       })
-    .concat_map([](std::shared_ptr<StateMap> states) {return rxcpp::observable<>::iterate(*states); })
-    .map([](const std::pair<const uint32_t, std::shared_ptr<ParticipantState>>& pair) {return pair.second; })
+    .concat_map([](std::shared_ptr<StateMap> states) {return pep::RxIterate(std::move(*states)); })
+    .map([](std::pair<const uint32_t, std::shared_ptr<ParticipantState>> pair) {return std::move(pair.second); })
     .filter([](std::shared_ptr<ParticipantState> participant) {return participant->mId != std::nullopt; }); // Rows without ParticipantIdentifier cannot be processed
 }
 
@@ -195,8 +201,8 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetR
 }
 
 rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetExisting(std::shared_ptr<pep::CoreClient> client) {
-  return client->amaQuery(pep::AmaQuery{})
-    .concat_map([](const pep::AmaQueryResponse& response) {return rxcpp::observable<>::iterate(response.mParticipantGroups); })
+  return client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
+    .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.mParticipantGroups); })
     .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.mName); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
     pep::enumerateAndRetrieveData2Opts opts;
@@ -238,7 +244,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupContents(std::shar
     participants[participant].existing = true;
   }
 
-  return rxcpp::observable<>::iterate(participants)
+  return pep::RxIterate(std::move(participants))
     .filter([](const auto& kvp) {
     assert(kvp.second.required || kvp.second.existing);
     return kvp.second.required != kvp.second.existing;
@@ -252,14 +258,14 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupContents(std::shar
         if (!context->applyUpdates()) {
           return rxcpp::observable<>::just(pep::FakeVoid());
         }
-        return context->getClient()->amaAddParticipantToGroup(*group, pp);
+        return context->getClient()->getAccessManagerProxy()->amaAddParticipantToGroup(*group, pp);
       }
       assert(traits->second.existing);
       std::cout << "Removing " << traits->first << " from group " << *group << std::endl;
       if (!context->applyUpdates()) {
         return rxcpp::observable<>::just(pep::FakeVoid());
       }
-      return context->getClient()->amaRemoveParticipantFromGroup(*group, pp);
+      return context->getClient()->getAccessManagerProxy()->amaRemoveParticipantFromGroup(*group, pp);
     });
   });
 }
@@ -271,7 +277,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfiguration(std:
     std::cout << "Creating group " << required->mName << std::endl;
     rxcpp::observable<pep::FakeVoid> create;
     if (context->applyUpdates()) {
-      create = context->getClient()->amaCreateParticipantGroup(required->mName);
+      create = context->getClient()->getAccessManagerProxy()->amaCreateParticipantGroup(required->mName);
     }
     else {
       create = rxcpp::observable<>::just(pep::FakeVoid());
@@ -289,7 +295,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfiguration(std:
       if (!context->applyUpdates()) {
         return rxcpp::observable<>::just(pep::FakeVoid());
       }
-      return context->getClient()->amaRemoveParticipantGroup(existing->mName, false);
+      return context->getClient()->getAccessManagerProxy()->amaRemoveParticipantGroup(existing->mName, false);
         });
   }
 
@@ -305,7 +311,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfigurations(std
     pairs[kvp.first].second = kvp.second;
   }
 
-  return rxcpp::observable<>::iterate(pairs)
+  return RxIterate(std::move(pairs))
     .map([](const auto& kvp) {return kvp.second; })
     .concat_map([context](const auto& pair) {return UpdateGroupConfiguration(context, pair.first, pair.second); });
 }
@@ -320,7 +326,7 @@ ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::Core
   : mClient(client), mApply(apply) {
   for (const auto& mapping : mappings) {
     std::vector<std::string> parts;
-    boost::split(parts, mapping, boost::is_any_of("="));
+    boost::split(parts, mapping, std::bind_front(std::equal_to{}, '='));
     if (parts.size() != 2) {
       throw std::runtime_error("Name mapping must have form \"original=replacement\"");
     }
@@ -389,116 +395,98 @@ private:
     inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli#ama-query"; }
 
     pep::commandline::Parameters getSupportedParameters() const override {
+      namespace so = pep::structuredOutput;
+
+      const auto columnsOpt = std::string{so::queryKeys::columns.simple};
+      const auto columnGroupsOpt = std::string{so::queryKeys::columnGroups.simple};
+      const auto columnGroupAccessRulesOpt = std::string{so::queryKeys::columnGroupAccessRules.simple};
+      const auto participantGroupsOpt = std::string{so::queryKeys::participantGroups.simple};
+      const auto participantGroupAccessRulesOpt = std::string{so::queryKeys::participantGroupAccessRules.simple};
+
       return ChildCommandOf<CommandAma>::getSupportedParameters()
         + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing").value(pep::commandline::Value<std::string>()
-          .allow(std::vector<std::string>({ "columns", "column-groups", "column-group-access-groups", "groups", "group-access-rules" })))
+          .allow(std::vector<std::string>({"columns", "column-groups", "column-group-access-rules", "participant-groups", "participant-group-access-rules" })))
+          .noLongerSupported("Use --include and --format options instead.")
+        + pep::commandline::Parameter("include", "Prints only specified type of data (can be repeated).")
+             .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({columnsOpt, columnGroupsOpt, columnGroupAccessRulesOpt, participantGroupsOpt, participantGroupAccessRulesOpt})).multiple())
+        + pep::commandline::Parameter("format", "The format of the output.")
+            .value(pep::commandline::Value<std::string>()
+                .allow(std::vector<std::string>({"yaml", "json", "json-compact"}))
+                .defaultsTo("yaml"))
         + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
             .value(pep::commandline::Value<milliseconds::rep>())
-        + pep::commandline::Parameter("column", "Match these columns").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("column-group", "Match these column groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("user-group", "Match these user groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("participant-group", "Match these participant groups").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("column-mode", "Match these column-modes").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"))
-        + pep::commandline::Parameter("participant-group-mode", "Match these participant-group-modes").value(pep::commandline::Value<std::string>().defaultsTo("", "empty string"));
+        + pep::commandline::Parameter("column", "Show results related to this column (exact match required). You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-group", "Show results related to this column group (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("user-group", "Show results related to this user group (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group", "Show results related to this participant group (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("column-mode", "Show results related to this column mode (exact match required)").value(pep::commandline::Value<std::string>())
+        + pep::commandline::Parameter("participant-group-mode", "Show results related to this participant group mode (exact match required)").value(pep::commandline::Value<std::string>());
+    }
+
+    static pep::structuredOutput::QueryDisplayConfig<pep::structuredOutput::AmaQueryFlags> extractConfig(const pep::commandline::NamedValues& values) {
+      namespace so = pep::structuredOutput;
+      using namespace pep::enumUtils;
+      using Flags = so::AmaQueryFlags;
+      using FormatConfig = decltype(so::QueryDisplayConfig<so::AmaQueryFlags>::formatConfig);
+
+      const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
+        return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
+      };
+      const auto format = values.get<std::string>("format");
+
+      return {
+        .flags =
+            FlagsIf(Flags::PrintColumns, isIncluded(so::queryKeys::columns)) |
+            FlagsIf(Flags::PrintColumnGroups, isIncluded(so::queryKeys::columnGroups)) |
+            FlagsIf(Flags::PrintColumnGroupAccessRules, isIncluded(so::queryKeys::columnGroupAccessRules)) |
+            FlagsIf(Flags::PrintParticipantGroups, isIncluded(so::queryKeys::participantGroups)) |
+            FlagsIf(Flags::PrintParticipantGroupAccessRules, isIncluded(so::queryKeys::participantGroupAccessRules)),
+        .useDescriptiveKeys = (format == "yaml"),
+        .formatConfig = [&format] () -> FormatConfig {
+            if (format == "json") {
+              return so::JsonConfig{};
+            } else if (format == "json-compact") {
+              return so::JsonConfig{.wsFormat = so::WhitespaceFormat::Compact};
+            } else {
+              return so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
+            }
+        }(),
+      };
+    }
+
+    static pep::AmaQuery extractQuery(const pep::commandline::NamedValues& values) {
+      return {
+        .mAt = pep::GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
+          return pep::Timestamp(milliseconds{ms});
+        }),
+        .mColumnFilter = values.getOptional<std::string>("column").value_or(""),
+        .mColumnGroupFilter = values.getOptional<std::string>("column-group").value_or(""),
+        .mParticipantGroupFilter = values.getOptional<std::string>("participant-group").value_or(""),
+        .mUserGroupFilter = values.getOptional<std::string>("user-group").value_or(""),
+        .mColumnGroupModeFilter = values.getOptional<std::string>("column-mode").value_or(""),
+        .mParticipantGroupModeFilter = values.getOptional<std::string>("participant-group-mode").value_or(""),
+      };
     }
 
     int execute() override {
-      const auto& vm = this->getParameterValues();
-      std::string scriptPrintFilter;
-      if(vm.has("script-print")) {
-        scriptPrintFilter = vm.get<std::string>("script-print");
-      }
+      return executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
+        return client->getAccessManagerProxy()->amaQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::AmaQueryResponse res) {
+          namespace so = pep::structuredOutput;
+          auto tree = so::TreeFrom(res, displayConfig);
 
-      return executeEventLoopFor([&vm, scriptPrintFilter](std::shared_ptr<pep::CoreClient> client) {
-        pep::AmaQuery query{
-          .mAt = pep::GetOptionalValue(vm.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
-            return pep::Timestamp(milliseconds{ms});
-          }),
-          .mColumnFilter = vm.get<std::string>("column"),
-          .mColumnGroupFilter = vm.get<std::string>("column-group"),
-          .mParticipantGroupFilter = vm.get<std::string>("participant-group"),
-          .mUserGroupFilter = vm.get<std::string>("user-group"),
-          .mColumnGroupModeFilter = vm.get<std::string>("column-mode"),
-          .mParticipantGroupModeFilter = vm.get<std::string>("participant-group-mode"),
-        };
-        return client->amaQuery(std::move(query))
-        .map([scriptPrintFilter](pep::AmaQueryResponse res) {
-
-          std::string offset = scriptPrintFilter.empty() ? "  " : "";
-
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "columns") {
-            std::sort(res.mColumns.begin(), res.mColumns.end(), [](auto& a, auto& b) {return a.mName < b.mName; });
-            if(scriptPrintFilter.empty())
-              std::cout << "Columns (" << res.mColumns.size() << "):" << std::endl;
-            for (auto &col : res.mColumns)
-              std::cout << offset << col.mName << std::endl;
-            std::cout << std::endl;
+          if (displayConfig.format() == so::Format::Json) {
+            so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;
+          } else {
+            so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::endl;
           }
 
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-groups") {
-            if (scriptPrintFilter.empty())
-              std::cout << "ColumnGroups (" << res.mColumnGroups.size() << "):" << std::endl;
-            std::sort(res.mColumnGroups.begin(), res.mColumnGroups.end(),
-                      [](auto &a, auto &b) { return a.mName < b.mName; });
-            for (auto &cg : res.mColumnGroups) {
-              std::cout << offset << cg.mName << " (" << cg.mColumns.size() << ")" << std::endl;
-              std::sort(cg.mColumns.begin(), cg.mColumns.end());
-              for (auto &col : cg.mColumns)
-                std::cout << offset << "  " << col << std::endl;
-              std::cout << std::endl;
-            }
-            std::cout << std::endl;
+          if (pep::HasFlags(displayConfig.flags, so::AmaQueryFlags::PrintColumnGroupAccessRules)) {
+            std::cerr << "The \"read\" access privilege grants access to \"read-meta\" data as well." << std::endl;
+            std::cerr << "The \"write-meta\" access privilege grants access to \"write\" data as well." << std::endl;
+            std::cerr << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
           }
-
-          if(scriptPrintFilter.empty() || scriptPrintFilter == "column-group-access-groups") {
-            std::sort(
-              res.mColumnGroupAccessRules.begin(),
-              res.mColumnGroupAccessRules.end(),
-              [](auto &a, auto &b) {
-                return std::make_tuple(a.mAccessGroup, a.mColumnGroup, a.mMode)
-                       < std::make_tuple(b.mAccessGroup, b.mColumnGroup, b.mMode);
-              });
-            if (scriptPrintFilter.empty())
-              std::cout << "ColumnGroupAccessRules (" << res.mColumnGroupAccessRules.size() << "):" << std::endl;
-            for (auto &cgar : res.mColumnGroupAccessRules)
-              std::cout << offset
-                        << std::left << std::setw(30) << cgar.mColumnGroup << " "
-                        << std::setw(30) << cgar.mAccessGroup << " "
-                        << std::setw(10) << cgar.mMode << std::endl;
-            std::cout << std::endl;
-          }
-
-            if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-groups") {
-              std::sort(res.mParticipantGroups.begin(), res.mParticipantGroups.end(), [](auto &a, auto &b) { return a.mName < b.mName; });
-              if (scriptPrintFilter.empty())
-                std::cout << "ParticipantGroups (" << res.mParticipantGroups.size() << "):" << std::endl;
-              for (auto &group : res.mParticipantGroups)
-                std::cout << offset << group.mName << std::endl;
-              std::cout << std::endl;
-            }
-
-          if (scriptPrintFilter.empty() || scriptPrintFilter == "participant-group-access-rules") {
-            std::sort(
-              res.mParticipantGroupAccessRules.begin(),
-              res.mParticipantGroupAccessRules.end(),
-              [](auto &a, auto &b) {
-                return std::make_tuple(a.mUserGroup, a.mParticipantGroup, a.mMode)
-                       < std::make_tuple(b.mUserGroup, b.mParticipantGroup, b.mMode);
-              });
-            if(scriptPrintFilter.empty())
-              std::cout << "ParticipantGroupAccessRules (" << res.mParticipantGroupAccessRules.size() << "):" << std::endl;
-            for (auto &cgar : res.mParticipantGroupAccessRules)
-              std::cout << offset
-                        << std::left << std::setw(30) << cgar.mParticipantGroup << " "
-                        << std::setw(30) << cgar.mUserGroup << " "
-                        << std::setw(10) << cgar.mMode << std::endl;
-
-            std::cout << std::endl;
-            std::cerr
-              << "The \"read\" access privilege grants access to \"read-meta\" data as well." << '\n'
-              << "The \"write-meta\" access privilege grants access to \"write\" data as well." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << '\n'
-              << pep::UserGroup::DataAdministrator << " has implicit \"read-meta\" access to all column groups." << std::endl;
+          if (pep::HasFlags(displayConfig.flags, so::AmaQueryFlags::PrintParticipantGroupAccessRules)) {
+            std::cerr << pep::UserGroup::DataAdministrator << " has implicit full access to all participant groups." << std::endl;
           }
 
           return pep::FakeVoid();
@@ -516,13 +504,13 @@ private:
   private:
     class AmaCgarSubCommand : public ChildCommandOf<CommandAmaCgar> {
     public:
-      using ClientMethod = rxcpp::observable<pep::FakeVoid> (pep::CoreClient::*)(std::string, std::string, std::string);
+      using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, std::string, std::string) const;
 
     private:
-      ClientMethod mMethod;
+      AmProxyMethod mMethod;
 
     public:
-      AmaCgarSubCommand(const std::string& name, const std::string& description, ClientMethod method, CommandAmaCgar& parent)
+      AmaCgarSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaCgar& parent)
         : ChildCommandOf<CommandAmaCgar>(name, description, parent), mMethod(method) {
       }
 
@@ -537,7 +525,8 @@ private:
       int execute() override {
         const auto& vm = this->getParameterValues();
         return executeEventLoopFor([&vm, method = mMethod](std::shared_ptr<pep::CoreClient> client) {
-          return ((*client).*method)(
+          auto& am = *client->getAccessManagerProxy();
+          return (am.*method)(
             vm.get<std::string>("column-group"),
             vm.get<std::string>("access-group"),
             vm.get<std::string>("mode"));
@@ -551,11 +540,11 @@ private:
     std::vector<std::shared_ptr<Command>> createChildCommands() override {
       return {std::make_shared<AmaCgarSubCommand>("create",
                                                   "Creates a new column-group-access-rule",
-                                                  &pep::CoreClient::amaCreateColumnGroupAccessRule,
+                                                  &pep::AccessManagerProxy::amaCreateColumnGroupAccessRule,
                                                   *this),
               std::make_shared<AmaCgarSubCommand>("remove",
                                                   "Remove a column-group-access-rule",
-                                                  &pep::CoreClient::amaRemoveColumnGroupAccessRule,
+                                                  &pep::AccessManagerProxy::amaRemoveColumnGroupAccessRule,
                                                   *this)};
     }
   };
@@ -569,13 +558,13 @@ private:
   private:
     class AmaPgarSubCommand : public ChildCommandOf<CommandAmaPgar> {
     public:
-      using ClientMethod = rxcpp::observable<pep::FakeVoid> (pep::CoreClient::*)(std::string, std::string, std::string);
+      using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, std::string, std::string) const;
 
     private:
-      ClientMethod mMethod;
+      AmProxyMethod mMethod;
 
     public:
-      AmaPgarSubCommand(const std::string& name, const std::string& description, ClientMethod method, CommandAmaPgar& parent)
+      AmaPgarSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaPgar& parent)
         : ChildCommandOf<CommandAmaPgar>(name, description, parent), mMethod(method) {
       }
 
@@ -590,7 +579,8 @@ private:
       int execute() override {
         const auto& vm = this->getParameterValues();
         return executeEventLoopFor([&vm, method = mMethod](std::shared_ptr<pep::CoreClient> client) {
-          return ((*client).*method)(
+          auto& am = *client->getAccessManagerProxy();
+          return (am.*method)(
             vm.get<std::string>("group"),
             vm.get<std::string>("access-group"),
             vm.get<std::string>("mode"));
@@ -602,11 +592,11 @@ private:
     std::vector<std::shared_ptr<Command>> createChildCommands() override {
       return {std::make_shared<AmaPgarSubCommand>("create",
                                                   "Creates a (participant) group-access-rule",
-                                                  &pep::CoreClient::amaCreateGroupAccessRule,
+                                                  &pep::AccessManagerProxy::amaCreateGroupAccessRule,
                                                   *this),
               std::make_shared<AmaPgarSubCommand>("remove",
                                                   "Remove a (participant) group-access-rule",
-                                                  &pep::CoreClient::amaRemoveGroupAccessRule,
+                                                  &pep::AccessManagerProxy::amaRemoveGroupAccessRule,
                                                   *this)};
     }
   };
@@ -637,33 +627,34 @@ private:
 
     class AmaColumnExistenceSubCommand : public AmaColumnSubCommand {
     public:
-      using ClientMethod = rxcpp::observable<pep::FakeVoid> (pep::CoreClient::*)(std::string);
+      using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string) const;
 
     private:
-      ClientMethod mMethod;
+      AmProxyMethod mMethod;
 
     public:
-      AmaColumnExistenceSubCommand(const std::string& name, const std::string& description, ClientMethod method, CommandAmaColumn& parent)
+      AmaColumnExistenceSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaColumn& parent)
         : AmaColumnSubCommand(name, description, parent), mMethod(method) {
       }
 
     protected:
       int execute() override {
         return executeEventLoopFor([column = this->getSpecifiedColumnName(), method = mMethod](std::shared_ptr<pep::CoreClient> client) {
-          return ((*client).*method)(column);
+          auto& am = *client->getAccessManagerProxy();
+          return (am.*method)(column);
         });
       }
     };
 
     class AmaColumnGroupingSubCommand : public AmaColumnSubCommand {
     public:
-      using ClientMethod = rxcpp::observable<pep::FakeVoid> (pep::CoreClient::*)(std::string, std::string);
+      using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, std::string) const;
 
     private:
-      ClientMethod mMethod;
+      AmProxyMethod mMethod;
 
     public:
-      AmaColumnGroupingSubCommand(const std::string& name, const std::string& description, ClientMethod method, CommandAmaColumn& parent)
+      AmaColumnGroupingSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaColumn& parent)
         : AmaColumnSubCommand(name, description, parent), mMethod(method) {
       }
 
@@ -677,7 +668,8 @@ private:
         auto column = this->getSpecifiedColumnName();
         auto group = this->getParameterValues().get<std::string>("group");
         return executeEventLoopFor([column, group, method = mMethod](std::shared_ptr<pep::CoreClient> client) {
-          return ((*client).*method)(column, group);
+          auto& am = *client->getAccessManagerProxy();
+          return (am.*method)(column, group);
         });
       }
     };
@@ -688,19 +680,19 @@ private:
     std::vector<std::shared_ptr<Command>> createChildCommands() override {
       return {std::make_shared<AmaColumnExistenceSubCommand>("create",
                                                              "Create new column",
-                                                             &pep::CoreClient::amaCreateColumn,
+                                                             &pep::AccessManagerProxy::amaCreateColumn,
                                                              *this),
               std::make_shared<AmaColumnExistenceSubCommand>("remove",
                                                              "Remove column",
-                                                             &pep::CoreClient::amaRemoveColumn,
+                                                             &pep::AccessManagerProxy::amaRemoveColumn,
                                                              *this),
               std::make_shared<AmaColumnGroupingSubCommand>("addTo",
                                                             "Add column to group",
-                                                            &pep::CoreClient::amaAddColumnToGroup,
+                                                            &pep::AccessManagerProxy::amaAddColumnToGroup,
                                                             *this),
               std::make_shared<AmaColumnGroupingSubCommand>("removeFrom",
                                                             "Remove column from group",
-                                                            &pep::CoreClient::amaRemoveColumnFromGroup,
+                                                            &pep::AccessManagerProxy::amaRemoveColumnFromGroup,
                                                             *this)};
     }
   };
@@ -728,7 +720,7 @@ private:
       int execute() override {
         const auto& vm = this->getParameterValues();
         return executeEventLoopFor([column = vm.get<std::string>("name")](std::shared_ptr<pep::CoreClient> client) {
-          return client->amaCreateColumnGroup(column);
+          return client->getAccessManagerProxy()->amaCreateColumnGroup(column);
         });
       }
     };
@@ -748,7 +740,7 @@ private:
       int execute() override {
         const auto& vm = this->getParameterValues();
         return executeEventLoopFor([column = vm.get<std::string>("name"), force = vm.has("force")](std::shared_ptr<pep::CoreClient> client) {
-          return client->amaRemoveColumnGroup(column, force);
+          return client->getAccessManagerProxy()->amaRemoveColumnGroup(column, force);
         });
       }
     };
@@ -785,30 +777,24 @@ private:
       }
     };
 
-    class AmaParticipantGroupExistenceSubCommand : public AmaParticipantGroupSubCommand {
+    class AmaParticipantGroupCreateCommand : public AmaParticipantGroupSubCommand {
     public:
-      using ClientMethod = rxcpp::observable<pep::FakeVoid> (pep::CoreClient::*)(std::string);
-
-    private:
-      ClientMethod mMethod;
-
-    public:
-      AmaParticipantGroupExistenceSubCommand(const std::string& name, const std::string& description, ClientMethod method, CommandAmaParticipantGroup& parent)
-        : AmaParticipantGroupSubCommand(name, description, parent), mMethod(method) {
+      AmaParticipantGroupCreateCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("create", "Create new participant group", parent) {
       }
 
     protected:
       int execute() override {
-        return executeEventLoopFor([group = this->getParticipantGroupName(), method = mMethod](std::shared_ptr<pep::CoreClient> client) {
-          return ((*client).*method)(group);
+        return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
+          return client->getAccessManagerProxy()->amaCreateParticipantGroup(group);
         });
       }
     };
 
     class AmaParticipantGroupRemoveSubCommand : public AmaParticipantGroupSubCommand {
     public:
-      AmaParticipantGroupRemoveSubCommand(const std::string& name, const std::string& description, CommandAmaParticipantGroup& parent)
-        : AmaParticipantGroupSubCommand(name, description, parent) {
+      AmaParticipantGroupRemoveSubCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("remove", "Remove participant group", parent) {
       }
 
     protected:
@@ -819,28 +805,51 @@ private:
 
       int execute() override {
         return executeEventLoopFor([group = this->getParticipantGroupName(), force = this->getParameterValues().has("force")](std::shared_ptr<pep::CoreClient> client) {
-          return client->amaRemoveParticipantGroup(group, force);
+          return client->getAccessManagerProxy()->amaRemoveParticipantGroup(group, force);
         });
+      }
+    };
+
+    class AmaParticipantGroupClearSubCommand : public AmaParticipantGroupSubCommand {
+    public:
+      AmaParticipantGroupClearSubCommand(CommandAmaParticipantGroup& parent)
+        : AmaParticipantGroupSubCommand("clear", "Remove all participants from group", parent) {}
+
+    protected:
+      int execute() override {
+        return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
+          pep::requestTicket2Opts requestTicketOpts;
+          requestTicketOpts.participantGroups.emplace_back(group);
+          requestTicketOpts.modes.emplace_back("read-meta");
+          return client->requestTicket2(requestTicketOpts)
+            .flat_map([group, client](const pep::IndexedTicket2& indexed) {
+            auto ticket = indexed.openTicketWithoutCheckingSignature();
+            std::vector<pep::PolymorphicPseudonym> pps;
+            pps.reserve(ticket->mAccessSubjects.size());
+            std::transform(ticket->mAccessSubjects.begin(), ticket->mAccessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
+            return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
+              });
+          });
       }
     };
 
 
     class AmaParticipantGroupingSubCommand : public AmaParticipantGroupSubCommand {
     public:
-      using ClientMethod = rxcpp::observable<pep::FakeVoid> (pep::CoreClient::*)(std::string, const pep::PolymorphicPseudonym&);
+      using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, const pep::PolymorphicPseudonym&) const;
 
     private:
-      ClientMethod mMethod;
+      AmProxyMethod mMethod;
 
     public:
-      AmaParticipantGroupingSubCommand(const std::string& name, const std::string& description, ClientMethod method, CommandAmaParticipantGroup& parent)
+      AmaParticipantGroupingSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaParticipantGroup& parent)
         : AmaParticipantGroupSubCommand(name, description, parent), mMethod(method) {
       }
 
     protected:
       pep::commandline::Parameters getSupportedParameters() const override {
         return AmaParticipantGroupSubCommand::getSupportedParameters()
-          + pep::commandline::Parameter("participant", "Participant identifier or polymorphic pseudonym").value(pep::commandline::Value<std::string>().positional().required());
+          + pep::commandline::Parameter("participant", "Participant identifier, polymorphic pseudonym or local pseudonym").value(pep::commandline::Value<std::string>().positional().required());
       }
 
       int execute() override {
@@ -849,7 +858,8 @@ private:
             .concat_map([client, this](const pep::PolymorphicPseudonym& pp) {
             auto group = this->getParticipantGroupName();
             ParticipantGroup::AutoAssignContext::OnManualAssignment(group);
-            return ((*client).*mMethod)(group, pp);
+            auto& am = *client->getAccessManagerProxy();
+            return (am.*mMethod)(group, pp);
               });
           });
       }
@@ -887,20 +897,16 @@ private:
     inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli#ama-group"; }
 
     std::vector<std::shared_ptr<Command>> createChildCommands() override {
-      return {std::make_shared<AmaParticipantGroupExistenceSubCommand>("create",
-                                                                       "Create new participant group",
-                                                                       &pep::CoreClient::amaCreateParticipantGroup,
-                                                                       *this),
-              std::make_shared<AmaParticipantGroupRemoveSubCommand>("remove",
-                                                                    "Remove participant group",
-                                                                    *this),
+      return {std::make_shared<AmaParticipantGroupCreateCommand>(*this),
+              std::make_shared<AmaParticipantGroupRemoveSubCommand>(*this),
+              std::make_shared<AmaParticipantGroupClearSubCommand>(*this),
               std::make_shared<AmaParticipantGroupingSubCommand>("addTo",
                                                                  "Add participant to group",
-                                                                 &pep::CoreClient::amaAddParticipantToGroup,
+                                                                 &pep::AccessManagerProxy::amaAddParticipantToGroup,
                                                                  *this),
               std::make_shared<AmaParticipantGroupingSubCommand>("removeFrom",
                                                                  "Remove participant from group",
-                                                                 &pep::CoreClient::amaRemoveParticipantFromGroup,
+                                                                 &pep::AccessManagerProxy::amaRemoveParticipantFromGroup,
                                                                  *this),
               std::make_shared<AmaParticipantGroupAutoAssignCommand>(*this)};
     }

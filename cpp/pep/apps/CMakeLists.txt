@@ -17,17 +17,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 target_link_libraries(${PROJECT_NAME}GenerateSystemKeys
   ${PROJECT_NAME}Applicationlib
+  ${PROJECT_NAME}Authlib
   ${PROJECT_NAME}Elgamallib
-)
-
-
-add_cli_install_executable(${PROJECT_NAME}Registration Registration.cpp)
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_sources(${PROJECT_NAME}Registration PRIVATE Registration.VersionInfo.rc)
-endif()
-target_link_libraries(${PROJECT_NAME}Registration
-  ${PROJECT_NAME}Applicationlib
-  ${PROJECT_NAME}Clientlib
 )
 
 
@@ -84,7 +75,6 @@ if (NOT EXISTS "${PEP_INFRA_DIR}/rootCA.cert")
   copy_pki_files(TARGET apps_pki FILES rootCA.cert)
   add_dependencies(${PROJECT_NAME}Enrollment apps_pki)
   add_dependencies(${PROJECT_NAME}GenerateSystemKeys apps_pki)
-  add_dependencies(${PROJECT_NAME}Registration apps_pki)
   add_dependencies(${PROJECT_NAME}DumpShadowAdministration apps_pki)
   add_dependencies(${PROJECT_NAME}ClientTest apps_pki)
   add_dependencies(${PROJECT_NAME}Token apps_pki)

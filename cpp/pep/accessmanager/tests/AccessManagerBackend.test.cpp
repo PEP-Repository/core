@@ -6,10 +6,14 @@
 #include <pep/accessmanager/Storage.hpp>
 
 #include <filesystem>
+#include <gmock/gmock-matchers.h>
 
 using namespace pep;
 
 namespace {
+
+const std::string authServerUserGroup = *pep::ServerTraits::AuthServer().userGroup(true);
+
 /* This testsuite aims to test all interactions with the AccessManager::Backend that involve logic in the backend layer.
 * For any pass through functionality, such as addParticipantToGroup(), see AccessManagerStorage.test.cpp
 *
@@ -23,11 +27,26 @@ public:
   static std::shared_ptr<AccessManager::Backend> backend;
   static std::shared_ptr<AccessManager::Backend::Storage> storage; // Have a direct variable so we can check the storage state directly, without going through backend
   static std::shared_ptr<GlobalConfiguration> globalConf;
+
+  struct User {
+    std::string primaryId;
+    std::string displayId;
+    std::vector<std::string> userGroups;
+  };
+
   struct Constants {
     const std::filesystem::path databasePath{"./testDB.sql"};
 
     const std::string userGroup1{"TestUserGroup"};
     const std::string userGroup2{"TestUserGroupWithoutAccess"};
+    const std::string userGroup3{"TestUserGroupWithoutMembers"};
+
+    const User user1{"123", "TestUserInOneGroup", {userGroup1}};
+    const User user2{"456", "TestUserInMultipleGroups", {userGroup1, userGroup2}};
+    const User user3{"789", "TestUserInNoGroups", {}};
+    const std::vector<User> users{user1, user2, user3};
+    const std::string unusedPrimaryId{"abc"};
+    const std::string nonExistingUser{"NonExistingUser"};
 
     const std::string r_col1{"readColumn_1"};
     const std::string r_col2{"readColumn_2"};
@@ -74,6 +93,18 @@ public:
 
   // Create a basic administration with a few columngroups and participantgroups defined.
   static void populateDatabase() {
+    storage->createUserGroup(UserGroup{constants.userGroup1, {}});
+    storage->createUserGroup(UserGroup{constants.userGroup2, {}});
+    storage->createUserGroup(UserGroup{constants.userGroup3, {}});
+
+    for (auto& user : constants.users) {
+      auto internalId = storage->createUser(user.displayId);
+      storage->addIdentifierForUser(internalId, user.primaryId, UserIdFlags::IsPrimaryId);
+      for (auto& usergroup : user.userGroups) {
+        storage->addUserToGroup(internalId, usergroup);
+      }
+    }
+
     // Normally the LocalPseudonym and PolymorphicPseudonym should be linked. For the purposes of this test this is not required.
     storage->storeLocalPseudonymAndPP(constants.localPseudonym1, constants.dummyPP);
     storage->storeLocalPseudonymAndPP(constants.localPseudonym2, constants.dummyPP);
@@ -136,15 +167,15 @@ AccessManagerBackendTest::Constants AccessManagerBackendTest::constants;
 std::shared_ptr<AccessManager::Backend::Storage> AccessManagerBackendTest::storage;
 std::shared_ptr<GlobalConfiguration> AccessManagerBackendTest::globalConf;
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
 
   const std::vector<std::string> columngroups{constants.r_cg1};
   const std::vector<std::string> modes{"read"};
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns;
-  std::unordered_map<std::string, IndexList> columnGroupMap{};
 
-  backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
+  auto columnGroupMap =
+      backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
   std::unordered_map<std::string, IndexList> expectedColumnGroupMap{{constants.r_cg1, IndexList({0, 1, 2})}};
   std::vector<std::string> expectedColumns = {constants.double_col, constants.r_col1, constants.r_col2};
@@ -159,14 +190,14 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_happy) {
   EXPECT_EQ(columns, expectedColumns);
 }
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.double_col};
-  std::unordered_map<std::string, IndexList> columnGroupMap{};
-  backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
+  auto columnGroupMap =
+      backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
   std::unordered_map<std::string, IndexList> expectedColumnGroupMap{};
   std::vector<std::string> expectedColumns = {constants.double_col};
@@ -175,18 +206,16 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_column_access
   EXPECT_EQ(columns, expectedColumns);
 }
 
-TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndAssertAccess_no_column_access_no_column_groups_in_request) {
+TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_no_column_access_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
   const std::vector<std::string> modes{"read", "write"};
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.w_col};
-  std::unordered_map<std::string, IndexList> columnGroupMap{};
-
 
   try {
     // Act
-    backend->unfoldColumnGroupsAndAssertAccess(constants.userGroup1, columngroups, modes, timestamp, columns, columnGroupMap);
+    (void) backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
 
     FAIL() << "This should not have run without exceptions.";
   }
@@ -201,7 +230,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_happy) {
   // Existing participantGroup
   request.mParticipantGroups.push_back(constants.pg1);
   // Not both participantGroups and participants
-  request.mPolymorphicPseudonyms = {};
+  request.mAccessSubjects = {};
   // Existing columnGroup
   request.mColumnGroups.push_back(constants.w_cg);
   // Existing column
@@ -215,7 +244,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
   // Existing participantGroup
   request.mParticipantGroups.push_back(constants.pg1);
   // Both participantGroups and participants
-  request.mPolymorphicPseudonyms.push_back(constants.dummyPP); // Nonsense pp, the content is irrelevant
+  request.mAccessSubjects.push_back(constants.dummyPP); // Nonsense pp, the content is irrelevant
   // Existing columnGroup
   request.mColumnGroups.push_back(constants.w_cg);
   // Existing column
@@ -239,7 +268,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
   // Existing participantGroup
   request.mParticipantGroups.push_back("Non existing participantGroup");
   // Not both participantGroups and participants
-  request.mPolymorphicPseudonyms = {};
+  request.mAccessSubjects = {};
   // Existing columnGroup
   request.mColumnGroups.push_back("Non existing columnGroup");
   // Existing column
@@ -262,7 +291,7 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
 
   std::vector<std::string> modes{"access", "enumerate"};
   Timestamp timestamp = TimeNow();
-  backend->checkParticipantGroupAccess({constants.pg1}, constants.userGroup1, modes, timestamp);
+  backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, modes, timestamp);
   // No thrown exceptions means correct behaviour.
 }
 
@@ -270,7 +299,7 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
   std::vector<std::string> modes{"access", "enumerate"};
   Timestamp timestamp = TimeNow();
   try {
-    backend->checkParticipantGroupAccess({constants.pg2}, constants.userGroup1, modes, timestamp);
+    backend->checkParticipantGroupAccess(std::vector{constants.pg2}, constants.userGroup1, modes, timestamp);
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {
@@ -283,10 +312,10 @@ TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
   // Two polymorph pseudonyms without known participantgroups. Used to test the offset in IndexList
   std::vector<AccessManager::Backend::pp_t> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
   const std::vector<std::string> participantgroups{constants.pg1, constants.pg2};
-  std::unordered_map<std::string, IndexList> actualParticipantGroupMap{};
 
   // Act
-  backend->fillParticipantGroupMap(participantgroups, prePPs, actualParticipantGroupMap);
+  auto actualParticipantGroupMap =
+      backend->fillParticipantGroupMap(participantgroups, prePPs);
 
   // Assert
   EXPECT_EQ(actualParticipantGroupMap.size(), 2U); // The two participantGroups
@@ -355,19 +384,19 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
 
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  backend->assertParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
   try {
     // Act
-    backend->assertParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
+    backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {
@@ -480,7 +509,61 @@ TEST_F(AccessManagerBackendTest, handleSetMetadataRequestNoAccess) {
       .subjectType = StructureMetadataType::Column,
   };
   EXPECT_THROW(backend->handleSetStructureMetadataRequestHead(request, constants.userGroup1), Error)
-      << "only Data Administrator should be able to set metadata";
+      << "only Data Administrator should be able to set column metadata";
+  EXPECT_NO_THROW(backend->handleSetStructureMetadataRequestHead(request, UserGroup::DataAdministrator))
+      << "Data Administrator should be able to set column metadata";
+
+  request.subjectType = StructureMetadataType::UserGroup;
+  EXPECT_THROW(backend->handleSetStructureMetadataRequestHead(request, constants.userGroup1), Error)
+      << "only Access Administrator should be able to set user-group metadata";
+  EXPECT_NO_THROW(backend->handleSetStructureMetadataRequestHead(request, UserGroup::AccessAdministrator))
+      << "Access Administrator should be able to set user-group metadata";
+}
+
+TEST_F(AccessManagerBackendTest, handleGetMetadataRequestNoAccess) {
+  StructureMetadataRequest request{
+    .subjectType = StructureMetadataType::Column,
+    .subjects = {},
+    .keys = {}
+  };
+  EXPECT_NO_THROW(backend->handleStructureMetadataRequest(request, constants.userGroup1))
+      << "Any group should be able to get column metadata";
+
+  request.subjectType = StructureMetadataType::UserGroup;
+  EXPECT_THROW(backend->handleStructureMetadataRequest(request, constants.userGroup1), Error)
+      << "only Access Administrator should be able to get user-group metadata";
+  EXPECT_NO_THROW(backend->handleStructureMetadataRequest(request, UserGroup::AccessAdministrator))
+      << "Access Administrator should be able to get user-group metadata";
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_all_groups_for_existing_user) {
+  for (auto& user : constants.users) {
+    auto response = backend->handleFindUserRequest(FindUserRequest(user.primaryId, { user.displayId }), authServerUserGroup);
+    EXPECT_NE(response.mUserGroups, std::nullopt);
+    EXPECT_THAT(*response.mUserGroups, testing::SizeIs(user.userGroups.size()));
+    for (auto& group : *response.mUserGroups) {
+      EXPECT_THAT(user.userGroups, testing::Contains(group.mName));
+    }
+  }
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_adds_primary_id_if_not_yet_known) {
+  auto internalIdAtStart = storage->findInternalUserId(constants.user1.primaryId);
+  ASSERT_NE(internalIdAtStart, std::nullopt);
+  storage->removeIdentifierForUser(constants.user1.primaryId);
+  ASSERT_EQ(storage->findInternalUserId(constants.user1.primaryId), std::nullopt);
+  backend->handleFindUserRequest(FindUserRequest{constants.user1.primaryId, {constants.user1.displayId}}, authServerUserGroup);
+  EXPECT_EQ(storage->findInternalUserId(constants.user1.primaryId), internalIdAtStart);
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_nullopt_for_non_existing_user) {
+  auto response = backend->handleFindUserRequest(FindUserRequest{constants.nonExistingUser, {}}, authServerUserGroup);
+  EXPECT_EQ(response.mUserGroups, std::nullopt);
+}
+
+TEST_F(AccessManagerBackendTest, handleFindUserRequest_throws_when_primary_id_does_not_match) {
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.unusedPrimaryId, {constants.user1.displayId}}, authServerUserGroup), Error);
+  EXPECT_THROW(backend->handleFindUserRequest(FindUserRequest{constants.user1.displayId, {}}, authServerUserGroup), Error);
 }
 
 }

@@ -2,7 +2,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/utils/Sha.hpp>
+#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/registrationserver/RegistrationServer.hpp>
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
@@ -11,10 +11,10 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
-#include <pep/auth/FacilityType.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <boost/algorithm/hex.hpp>
@@ -70,7 +70,7 @@ rxcpp::observable<std::shared_ptr<castor::Study>> LoadCastorStudies(rxcpp::obser
       }
 
       // At this point, we know that this is the first (and perhaps only) SP definition referencing this study (slug). Set default site now and include the study in the result.
-      study->setDefaultSiteByAbbreviation(abbrev);
+      study->setDefaultSiteAbbreviation(abbrev);
       abbrevsBySlug->emplace(std::make_pair(slug, abbrev));
       return study;
     })
@@ -84,7 +84,7 @@ rxcpp::observable<ShortPseudonymDefinition> GetShortPseudonymDefinitions(std::sh
     throw std::runtime_error("Cannot get short pseudonym definitions without global configuration");
   }
   return globalConfiguration->observe()
-    .flat_map([](std::shared_ptr<GlobalConfiguration> config) {return rxcpp::observable<>::iterate(config->getShortPseudonyms()); });
+    .flat_map([](std::shared_ptr<GlobalConfiguration> config) {return RxIterate(config->getShortPseudonyms()); });
 }
 
 int ParseSqliteSelectCountResult(void *pArg, int argc, char **argv, char **columnNames) {
@@ -110,7 +110,7 @@ private:
 
 public:
   void add(const std::string& localValue) { mLocal.push_back(localValue); }
-  rxcpp::observable<std::string> observe() const { return mRx->observe().concat(rxcpp::observable<>::iterate(mLocal)); }
+  rxcpp::observable<std::string> observe() const { return mRx->observe().concat(RxIterate(mLocal)); }
 
   static std::shared_ptr<ShortPseudonymCache> Create(RegistrationServer& server, const std::filesystem::path& shadowStorageFile) {
     auto result = std::shared_ptr<ShortPseudonymCache>(new ShortPseudonymCache(server, shadowStorageFile));
@@ -124,22 +124,12 @@ public:
 
 RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config) {
-  std::filesystem::path keysFile;
 
   std::filesystem::path shadowPublicKeyFile;
 
-  CoreClient::Builder clientBuilder;
-
   try {
-    keysFile = config.get<std::filesystem::path>("KeysFile");
-    clientBuilder.setPublicKeyData(config.get<ElgamalPublicKey>("PublicKeyData"));
-    clientBuilder.setPublicKeyPseudonyms(config.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
-
     setShadowStorageFile(config.get<std::filesystem::path>("ShadowStorageFile"));
     shadowPublicKeyFile = config.get<std::filesystem::path>("ShadowPublicKeyFile");
-
-    clientBuilder.setAccessManagerEndPoint(config.get<EndPoint>("AccessManager"));
-    clientBuilder.setStorageFacilityEndPoint(config.get<EndPoint>("StorageFacility"));
   }
   catch (std::exception& e) {
     LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
@@ -148,31 +138,15 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   setShadowPublicKey(AsymmetricKey(ReadFile(shadowPublicKeyFile)));
 
-  std::string strPseudonymKey, strDataKey;
-  try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
-    strDataKey = boost::algorithm::unhex(keysConfig.get<std::string>("DataKey"));
-  }
-  catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
-    throw;
-  }
-
-  clientBuilder.setIoContext(getIoContext())
-    .setCaCertFilepath(getRootCACertificatesFilePath())
-    .setPrivateKey(getPrivateKey())
-    .setCertificateChain(getCertificateChain())
-    .setPrivateKeyData(ElgamalPrivateKey(strDataKey))
-    .setPrivateKeyPseudonyms(ElgamalPrivateKey(strPseudonymKey));
-  std::shared_ptr<CoreClient> client = clientBuilder.build();
-
-  setClient(client);
+  CoreClient::Builder clientBuilder;
+  clientBuilder.initialize(config, getIoContext(), true);
+  clientBuilder.setSigningIdentity(getSigningIdentity());
+  setClient(clientBuilder.build());
 
 #ifdef WITH_CASTOR
-  auto castorAPIKeyFile = config.get<std::optional<std::filesystem::path>>("Castor.APIKeyFile");
+  auto castorAPIKeyFile = config.get<std::optional<std::filesystem::path>>("Castor.ApiKeyFile");
   if (!castorAPIKeyFile) {
-    LOG(LOG_TAG, info) << "No Castor.APIKeyFile configured: attempts to access the Castor API will fail.";
+    LOG(LOG_TAG, info) << "No Castor.ApiKeyFile configured: attempts to access the Castor API will fail.";
   }
   else {
     if(std::filesystem::exists(castorAPIKeyFile.value()))
@@ -248,18 +222,16 @@ void RegistrationServer::Parameters::check() const {
     throw std::runtime_error("shadowStorageFile must not be empty");
   if(!shadowPublicKey.isSet())
     throw std::runtime_error("shadowPublicKey must be set");
-  if (GetFacilityType(getCertificateChain()) != FacilityType::RegistrationServer)
-    throw std::runtime_error("Invalid certificate chain for Registration Server");
   SigningServer::Parameters::check();
 }
 
 
 bool RegistrationServer::openDatabase(const std::filesystem::path& file) {
   auto result = !std::filesystem::exists(file);
-  int err;
 
   try {
     // Open SQLite database for shadow administration of identifiers/short pseudonyms
+    int err{};
     err = sqlite3_open(file.string().c_str(), &pShadowStorage);
     if (err != SQLITE_OK) {
       LOG(LOG_TAG, warning) << "Error opening SQLite database: " << err;
@@ -275,7 +247,7 @@ bool RegistrationServer::openDatabase(const std::filesystem::path& file) {
 
     // There are two versions of the database schemas.  In the second version
     // we have an Id field on ShortPseudonyms.
-    sqlite3_stmt* colStmt;
+    sqlite3_stmt* colStmt{};
     err = sqlite3_prepare_v2(pShadowStorage,
       "PRAGMA table_info(ShadowShortPseudonyms);",
       -1, &colStmt, nullptr);
@@ -377,7 +349,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       if (rebuild) {
         LOG(LOG_TAG, info) << "Initializing shadow storage with short pseudonyms retrieved from Storage Facility";
       }
-      return rxcpp::observable<>::iterate(std::move(*pps));
+      return RxIterate(std::move(*pps));
     })
       .flat_map([this, rebuild, count](const PseudonymsByPp::value_type& ppAndPseudonyms) { // Process each participant
       const auto& pseudonyms = ppAndPseudonyms.second;
@@ -401,7 +373,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
         }
       }
 
-      return rxcpp::observable<>::iterate(pseudonyms)
+      return RxIterate(pseudonyms)
         .map([](const Pseudonyms::value_type& columnAndValue) {return columnAndValue.second; });
     })
       .as_dynamic()
@@ -429,7 +401,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
 }
 
 size_t RegistrationServer::countShadowStoredEntries() const {
-  size_t result;
+  size_t result{};
   auto err = sqlite3_exec(pShadowStorage, "select count(*) from ShadowShortPseudonyms", &ParseSqliteSelectCountResult, &result, nullptr);
   if (err != SQLITE_OK) {
     LOG(LOG_TAG, warning) << "Error counting shadow storage entries: " << err;
@@ -467,11 +439,6 @@ RegistrationServer::~RegistrationServer() {
   closeDatabase();
 }
 
-struct RegistrationContext {
-  std::string encryptedIdentifier;
-  std::shared_ptr<PolymorphicPseudonym> pp;
-};
-
 /*!
   * \brief Store the tag and short pseudonym encrypted in the shadow SQLite database together with the encrypted identifier. It returns the SQLite return code for the query.
   *
@@ -480,10 +447,9 @@ struct RegistrationContext {
   * \param shortPseudonym The short pseudonym to be stored
   */
 void RegistrationServer::storeShortPseudonymShadow(const std::string& encryptedIdentifier, const std::string& tag, const std::string& shortPseudonym) {
-  sqlite3_stmt* insertStmt;
-
   std::string encryptedShortPseudonym = shadowPublicKey.encrypt(tag + ":" + shortPseudonym);
 
+  sqlite3_stmt* insertStmt{};
   //TODO Do we want to re-use the prepared statement?
   if (sqlite3_prepare_v2(pShadowStorage, "INSERT INTO ShadowShortPseudonyms(EncryptedIdentifier, EncryptedShortPseudonym) VALUES(?, ?)", -1, &insertStmt, nullptr) != SQLITE_OK) {
     LOG(LOG_TAG, warning) << "Error occured: " << sqlite3_errmsg(pShadowStorage);
@@ -512,7 +478,7 @@ void RegistrationServer::storeShortPseudonymShadow(const std::string& encryptedI
   }
 }
 
-rxcpp::observable<std::string> RegistrationServer::generatePseudonym(std::string prefix, int len) {
+rxcpp::observable<std::string> RegistrationServer::generatePseudonym(std::string prefix, std::size_t len) {
   auto sp = GenerateShortPseudonym(prefix, len);
   return mShortPseudonyms->observe()
     .map([sp](std::string existing) {return sp == existing; }) // Compare generated SP to each existing one
@@ -543,7 +509,7 @@ std::shared_ptr<castor::CastorConnection> RegistrationServer::getCastorConnectio
 }
 
 rxcpp::observable<std::shared_ptr<castor::Participant>> RegistrationServer::storeShortPseudonymInCastor(std::shared_ptr<castor::Study> study, ShortPseudonymDefinition definition) {
-  return this->generatePseudonym(definition.getPrefix(), static_cast<int>(definition.getLength()))
+  return this->generatePseudonym(definition.getPrefix(), definition.getLength())
     .flat_map([study](std::string sp) {return study->createParticipant(sp); })
     .on_error_resume_next(
       [self = SharedFrom(*this), study, definition](std::exception_ptr ep) -> rxcpp::observable<std::shared_ptr<castor::Participant>> {
@@ -581,7 +547,7 @@ void RegistrationServer::computeChecksumChainChecksum(
   if (!maxCheckpoint)
     maxCheckpoint = std::numeric_limits<int64_t>::max();
 
-  sqlite3_stmt* stmt;
+  sqlite3_stmt* stmt{};
 
   if (chain == "shadow-short-pseudonyms") {
     sqlite3_prepare_v2(pShadowStorage,
@@ -632,7 +598,7 @@ void RegistrationServer::computeChecksumChainChecksum(
 }
 
 messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationRequest(std::shared_ptr<SignedPEPIdRegistrationRequest> signedRequest) {
-  signedRequest->validate(this->getRootCAs());
+  signedRequest->validate(*this->getRootCAs());
 
   struct ParticipantIdentity {
     std::string id;
@@ -645,18 +611,18 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
     auto format = config->getGeneratedParticipantIdentifierFormat();
     assert(format.getNumberOfGeneratedDigits() <= static_cast<unsigned>(std::numeric_limits<int>::max()));
 
-    return server->generatePseudonym(format.getPrefix(), static_cast<int>(format.getNumberOfGeneratedDigits()));
+    return server->generatePseudonym(format.getPrefix(), format.getNumberOfGeneratedDigits());
   })
     .map([server](std::string id) { // Produce a PP for the newly generated PEP ID
     auto pp = server->pClient->generateParticipantPolymorphicPseudonym(id);
     return MakeSharedCopy(ParticipantIdentity{ id, pp });
   }).flat_map([server](std::shared_ptr<ParticipantIdentity> participant) { // Raise an error if the generated (ID+)PP already existed
-    return server->pClient->enumerateData2( // Check with Storage Facility if (the row for) the generated ID already exists
+    return server->pClient->enumerateData( // Check with Storage Facility if (the row for) the generated ID already exists
       {},                        // groups
       { participant->pp },          // pps
       {},                        // columnGroups
       { "ParticipantIdentifier" }) // columns
-      .map([](const std::vector<EnumerateResult>& result) { // Raise an exception if (the row for) our generated ID already existed
+      .map([](const std::vector<std::shared_ptr<EnumerateResult>>& result) { // Raise an exception if (the row for) our generated ID already existed
       if (!result.empty()) {
         throw Error("Generated a duplicate participant ID. Please retry"); // TODO retry automatically instead
       }
@@ -673,7 +639,7 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
 }
 
 messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(std::shared_ptr<SignedRegistrationRequest> signedRequest) {
-  auto request = signedRequest->open(this->getRootCAs());
+  auto request = signedRequest->open(*this->getRootCAs()).message;
 
   if (request.mEncryptionPublicKeyPem.empty()) {
     throw std::runtime_error("Participant registration requires the encryption key for shadow storage to be verified. Please ensure that the client provides one.");
@@ -682,6 +648,10 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
     throw std::runtime_error("Cannot store short pseudonyms because client uses a different encryption key for shadow storage. Please ensure that client and server configurations match.");
   }
 
+  struct RegistrationContext {
+    std::string encryptedIdentifier;
+    std::shared_ptr<PolymorphicPseudonym> pp;
+  };
   std::shared_ptr<RegistrationContext> ctx = std::make_shared<RegistrationContext>();
   ctx->pp = std::make_shared<PolymorphicPseudonym>(request.mPolymorphicPseudonym);
   ctx->encryptedIdentifier = request.mEncryptedIdentifier;
@@ -699,13 +669,13 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
   };
 
   auto server = SharedFrom(*this);
-  return pClient->enumerateData2( // Get previously stored SPs for this participant
+  return pClient->enumerateData( // Get previously stored SPs for this participant
       {},                           // groups
       { *ctx->pp },                 // pps
       { "ShortPseudonyms" },        // columnGroups
       {})                           // columns
-    .flat_map([](std::vector<EnumerateResult> results) { return rxcpp::observable<>::iterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
-    .map([](const EnumerateResult& result) {return result.mMetadata.getTag(); }) // Extract the column name
+    .flat_map([](std::vector<std::shared_ptr<EnumerateResult>> results) { return RxIterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
+    .map([](const std::shared_ptr<EnumerateResult>& result) {return result->mMetadata.getTag(); }) // Extract the column name
     .op(RxToVector()) // Convert to a single vector<> containing column names
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs
     .filter([](std::pair<std::shared_ptr<std::vector<std::string>>, ShortPseudonymDefinition> pair) { // Keep only defined SPs that the participant does not have
@@ -745,7 +715,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
 #endif
       observable = server->generatePseudonym(
         unstored.getPrefix(),
-        static_cast<int>(unstored.getLength())
+        unstored.getLength()
       )
         .map([ctx, unstored](std::string sp) {return ShortPseudonymEntry(ctx->pp, unstored.getColumn().getFullName(), sp); });
 #ifdef WITH_CASTOR
@@ -773,10 +743,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       return rxcpp::observable<>::empty<DataStorageResult2>();
     });
   })
-    .reduce( // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
-      RegistrationResponse(),
-      [](RegistrationResponse response, DataStorageResult2) {return response; }
-    )
+    .op(RxInstead(RegistrationResponse())) // convert observable<DataStorageResult2> (possibly containing multiple entries) to observable<RegistrationResponse> with a single entry
     .map([first_error](RegistrationResponse response) { // Serialize RegistrationResponse
     if (*first_error) {
       std::rethrow_exception(*first_error);
@@ -804,8 +771,8 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
     return sps->front();
   })
     .flat_map([castor = getCastorConnection(), answerSetCount, client = pClient](const ShortPseudonymDefinition& sp) { // Get import column names for the SP
-    return client->getColumnNameMappings()
-      .flat_map([castor, sp, answerSetCount](std::shared_ptr<ColumnNameMappings> colMappings) {return castor::ImportColumnNamer(*colMappings).getImportableColumnNames(castor, sp, answerSetCount); });
+    return client->getAccessManagerProxy()->getColumnNameMappings()
+      .flat_map([castor, sp, answerSetCount](ColumnNameMappings colMappings) {return castor::ImportColumnNamer(std::move(colMappings)).getImportableColumnNames(castor, sp, answerSetCount); });
   })
     .on_error_resume_next([](std::exception_ptr ep) -> rxcpp::observable<std::string> {throw Error(GetExceptionMessage(ep)); }) // Convert exceptions to network-portable Error instances
     .op(RxToVector()) // Aggregate column names into a vector<>
@@ -816,9 +783,5 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
 #endif
 }
 
-
-std::string RegistrationServer::describe() const {
-  return "Registration Server";
-}
 
 }

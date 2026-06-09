@@ -22,7 +22,7 @@ EncryptedLocalPseudonym PseudonymTranslator::translateStep(
   return EncryptedLocalPseudonym(rsk_.rsk(pseudonym.getValidElgamalEncryption(), rsk_.generateKeyFactors(recipient)));
 }
 
-std::pair<EncryptedLocalPseudonym, RSKProof>
+std::pair<EncryptedLocalPseudonym, RskProof>
 PseudonymTranslator::certifiedTranslateStep(
     const EncryptedPseudonym& pseudonym,
     const Recipient& recipient
@@ -32,11 +32,21 @@ PseudonymTranslator::certifiedTranslateStep(
   return {EncryptedLocalPseudonym(encryption), proof};
 }
 
-RSKVerifiers PseudonymTranslator::computeTranslationProofVerifiers(
+ReshuffleRekeyVerifiers PseudonymTranslator::computeTranslationProofVerifiers(
     const Recipient& recipient,
     const ElgamalPublicKey& masterPublicEncryptionKey
 ) const {
-  return rsk_.computeRskProofVerifiers(
+  return rsk_.computeReshuffleRekeyVerifiers(
+      rsk_.generateKeyFactors(recipient),
+      masterPublicEncryptionKey);
+}
+
+ReshuffleRekeyVerifiersWithProof
+PseudonymTranslator::computeCertifiedTranslationProofVerifiers(
+    const Recipient& recipient,
+    const ElgamalPublicKey& masterPublicEncryptionKey
+) const {
+  return rsk_.computeCertifiedReshuffleRekeyVerifiers(
       rsk_.generateKeyFactors(recipient),
       masterPublicEncryptionKey);
 }
@@ -44,8 +54,8 @@ RSKVerifiers PseudonymTranslator::computeTranslationProofVerifiers(
 void PseudonymTranslator::checkTranslationProof(
     const EncryptedPseudonym& preTranslate,
     const EncryptedLocalPseudonym& postTranslate,
-    const RSKProof& proof,
-    const RSKVerifiers& verifiers
+    const RskProof& proof,
+    const ReshuffleRekeyVerifiers& verifiers
 ) const {
   // Don't really need to check for nonzero pk, the proof is enough
   return proof.verify(

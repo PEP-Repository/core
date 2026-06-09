@@ -26,16 +26,19 @@ variables:
 
   # macOS app directories and appcast paths with legacy support to keep autoupdater working in case of changes
   MACOS_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml
-  MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/app/AppCast.xml
+  MACOS_LEGACY_ASSESSOR_APPCAST_PATH: macos/Universal/update/assessor_app/AppCast.xml
   MACOS_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
-  MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli/AppCast.xml
+  MACOS_LEGACY_CLI_APPCAST_PATH: macos/Universal/update/cli_app/AppCast.xml
   MACOS_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
-  MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/dt/AppCast.xml
+  MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH: macos/Universal/update/download_tool_app/AppCast.xml
+  MACOS_UPLOAD_TOOL_APPCAST_PATH: macos/Universal/update/upload_tool_app/AppCast.xml
+  MACOS_LEGACY_UPLOAD_TOOL_APPCAST_PATH: macos/Universal/update/upload_tool_app/AppCast.xml
 
   PEP_DEPLOYING_JSON_FILE: config/$CI_COMMIT_REF_NAME/constellation.json
 
   PROJECT_IMAGE_COMPOSE: "$CI_REGISTRY_IMAGE/$CI_COMMIT_BRANCH/docker-compose:$CI_PIPELINE_ID"
 
+  REGISTRY_PATH: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME
   EXTRA_IMAGE_DIR: $CI_PROJECT_DIR/config/$CI_COMMIT_BRANCH/extra-images
 
 # Applies to whole pipeline
@@ -83,7 +86,7 @@ include:
     - if: '($CI_COMMIT_REF_NAME == $PEP_PROJECT_PRODUCTION_BRANCH) && ($DEPLOYMENT_TYPE_PROD == "compose" || $DEPLOYMENT_TYPE_PROD == "both")'
 
 .docker_login: &docker_login
-  docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" --username gitlab-ci-token --password-stdin
 
 ###############################################
 # Configuration for the static-analysis stage #
@@ -102,14 +105,6 @@ project-settings-foss:
     - if [ -z "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Variable PEP_PUBLISHING_JSON_FILE not set; exit 1; fi
     - if [ ! -f "$PEP_PUBLISHING_JSON_FILE" ]; then >&2 echo Publishing specification JSON file not found at "$PEP_PUBLISHING_JSON_FILE"; exit 1; fi
 
-versioning-consistency:
-  stage: static-analysis
-  tags: [docker-small]
-  image: alpine:latest
-  script:
-    # Version number should match the version number of the PEP binaries they're based on.
-    - diff version.json "$PEP_FOSS_REPO_DIR/version.json"
-
 ci-yml-include-versions:
   stage: static-analysis
   tags: [docker-small]
@@ -117,14 +112,29 @@ ci-yml-include-versions:
   script:
     - ./"$PEP_FOSS_REPO_DIR"/ci_cd/check-ci-yml-include-versions.sh "$PEP_GROUP_READ_API_TOKEN" . "$CI_CONFIG_PATH"
 
-analyse-scripts:
+analyse-source:
   stage: static-analysis
   tags: [docker-small]
   image: alpine:latest
+  #language=sh
   before_script:
-    - apk update -qq && apk add --no-cache bash git shellcheck
+    - apk add --no-cache bash git shellcheck check-jsonschema
+  #language=sh
   script:
     - ./"$PEP_FOSS_REPO_DIR"/scripts/analyse-scripts.sh
+    # For pep/dtap>, this also checks review config on feature branches because of the set-up-config-review job
+    - for branch in
+      "$CI_COMMIT_REF_NAME"
+      "$PEP_PROJECT_DEVELOPMENT_BRANCH"
+      "$PEP_PROJECT_TESTING_BRANCH"
+      "$PEP_PROJECT_ACCEPTANCE_BRANCH"
+      "$PEP_PROJECT_PRODUCTION_BRANCH"
+      ; do
+    -   if [ -n "$branch" ] && [ "$branch" != . ] && [ -d "./config/$branch" ]; then
+    -     echo "Validating $branch config"
+    -     ./"$PEP_FOSS_REPO_DIR"/scripts/validate-config.sh "./config/$branch"
+    -   fi
+    - done
 
 #############################################
 # Configuration for the prerequisites stage #
@@ -245,6 +255,7 @@ windows-installer:
   needs: [provide-binaries, load-version]
   timeout: 1h 30m
   script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
+    - $env:PEP_SKIP_ICE_VALIDATION = '1' # The CI does not use admin users
     - cmd /c "call `"./$env:PEP_FOSS_REPO_DIR/ci_cd/windows-ci-msi.bat`""
   artifacts:
     paths:
@@ -367,6 +378,7 @@ macos-generate-appcast:
     - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_ASSESSOR_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_ASSESSOR_APPCAST_PATH"
     - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_CLI_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_CLI_APPCAST_PATH"
     - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_DOWNLOAD_TOOL_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_DOWNLOAD_TOOL_APPCAST_PATH"
+    - generate_appcast_with_legacy_support "$INSTALLER_BASE_DIR/$MACOS_UPLOAD_TOOL_APPCAST_PATH" "$INSTALLER_BASE_DIR/$MACOS_LEGACY_UPLOAD_TOOL_APPCAST_PATH"
     # Also find .pkg and zip them with ditto, then remove the .pkg
     - find "${INSTALLER_BASE_DIR}/macos/Universal" -type f -name "*.pkg" -exec ditto -c -k --sequesterRsrc "{}" "{}.zip" \; -exec rm -f "{}" \;
   artifacts:
@@ -553,7 +565,7 @@ deploy-data-sync:
 ## Configuration for the test stage       #
 ###########################################
 
-test-deployment:
+test-client-servers-version-diff:
   stage: test
   dependencies: []
   rules:

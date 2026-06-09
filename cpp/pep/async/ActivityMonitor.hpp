@@ -28,7 +28,7 @@ private:
   void handleTimerExpired();
 
 public:
-  static const std::chrono::minutes DEFAULT_MAX_INACTIVE; // 1 minute
+  static const std::chrono::seconds DEFAULT_MAX_INACTIVE; // 1 minute
 
   ~ActivityMonitor() noexcept;
 

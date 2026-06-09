@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Signed.hpp>
+#include <pep/auth/Signed.hpp>
 
 namespace pep {
 
@@ -17,7 +17,7 @@ public:
 class RegistrationRequest {
 public:
   RegistrationRequest() = default;
-  explicit inline RegistrationRequest(const PolymorphicPseudonym& polymorphicPseudonym) : mPolymorphicPseudonym(polymorphicPseudonym) { }
+  explicit RegistrationRequest(const PolymorphicPseudonym& polymorphicPseudonym) : mPolymorphicPseudonym(polymorphicPseudonym) { }
   PolymorphicPseudonym mPolymorphicPseudonym;
   std::string mEncryptedIdentifier;
   std::string mEncryptionPublicKeyPem;

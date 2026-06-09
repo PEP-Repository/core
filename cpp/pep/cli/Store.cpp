@@ -78,7 +78,7 @@ void AddSpecifiedMetadata(std::map<std::string, pep::MetadataXEntry>& metadata, 
     pep::proto::NamedMetadataXEntry e;
     auto status = google::protobuf::util::JsonStringToMessage(json, &e);
     if (!status.ok()) {
-      std::stringstream ss;
+      std::ostringstream ss;
       ss << "Parsing metadata entry " << std::quoted(json) << " failed";
       ss << ": " << status;
       throw std::runtime_error(std::move(ss).str());
@@ -94,7 +94,7 @@ void AddSpecifiedMetadata(std::map<std::string, pep::MetadataXEntry>& metadata, 
       entry
       });
     if (!inserted) {
-      std::stringstream ss;
+      std::ostringstream ss;
       ss << "metadata entry " << std::quoted(e.name())
         << " specified twice.";
       throw std::runtime_error(std::move(ss).str());
@@ -184,9 +184,9 @@ void CheckSymlinkAllowed(const std::filesystem::path& inpath, bool shouldResolve
     std::ostringstream message;
     message << "Symbolic link(s) found. By default this is not supported for pseudonymization.\n If symlinks should be resolved, please add the resolve-symlinks flag to the store command.\n Symlinks found at:\n";
     for (auto &path : foundSymlinks){
-      message << path.string() << "\n";
+      message << "\"" << path.string() << "\"\n";
     }
-    throw std::runtime_error(message.str());
+    throw std::runtime_error(std::move(message).str());
   }
 }
 
@@ -296,7 +296,7 @@ private:
               std::filesystem::remove(entry.path);
             }
             catch (std::exception& e) {
-              LOG(LOG_TAG, pep::warning) << "Could not remove temporary file " << entry.path << ": " << e.what();
+              LOG(LOG_TAG, pep::warning) << "Could not remove temporary file \"" << entry.path.string() << "\": " << e.what();
             }
           }
         }));

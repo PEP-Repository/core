@@ -149,12 +149,12 @@ public:
     return T(valueDescriptor->number());
   }
 
-  std::string toEnumString(T value) const {
+  std::string_view toEnumString(T value) const {
     auto valueDescriptor = mDescriptor->FindValueByNumber(static_cast<int>(value));
     if (valueDescriptor == nullptr) {
-      throw std::runtime_error("Unknown enumerator value " + std::to_string(value));
+      throw std::runtime_error("Unknown enumerator value " + std::to_string(static_cast<int>(value)));
     }
-    return std::string(valueDescriptor->name());
+    return valueDescriptor->name();
   }
 };
 
@@ -203,17 +203,21 @@ public:
     return this->fromProtocolBuffer(std::move(buffer));
   }
 
-  std::string toString(T value, bool withMagic = true) const override {
-    ProtocolBufferType buffer;
-    this->moveIntoProtocolBuffer(buffer, std::move(value));
+  std::string toString(ProtocolBufferType buffer, bool withMagic = true) const {
     std::string ret;
     if (withMagic) {
       std::ostringstream magicStream;
       MessageMagician<T>::WriteMagicTo(magicStream);
-      ret = magicStream.str();
+      ret = std::move(magicStream).str();
     }
     buffer.AppendToString(&ret);
     return ret;
+  }
+
+  std::string toString(T value, bool withMagic = true) const override {
+    ProtocolBufferType buffer;
+    this->moveIntoProtocolBuffer(buffer, std::move(value));
+    return this->toString(std::move(buffer), withMagic);
   }
 
   T fromString(std::string_view szMessage, bool withMagic = true) const override {

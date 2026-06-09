@@ -2,23 +2,25 @@
 
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
-#include <pep/async/WorkerPool.hpp>
-#include <pep/rsk/Verifiers.hpp>
-#include <pep/server/SigningServer.hpp>
-#include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/transcryptor/KeyComponentMessages.hpp>
-#include <pep/messaging/ServerConnection.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/async/WorkerPool.hpp>
+#include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/keyserver/KeyServerProxy.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/transcryptor/TranscryptorProxy.hpp>
 
 #include <filesystem>
 
 namespace pep {
 
-class AccessManager : public SigningServer {
+class AccessManager : public KeyComponentServer {
 public:
   class Backend; // Public to allow unit testing
 
-  class Parameters : public SigningServer::Parameters {
+  class Parameters : public KeyComponentServer::Parameters {
+  protected:
+    ServerTraits serverTraits() const noexcept override { return ServerTraits::AccessManager(); }
+
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
@@ -38,28 +40,14 @@ public:
     void setPublicKeyPseudonyms(const ElgamalPublicKey& pk);
 
     /*!
-    * \return The connection to the transcryptor
+    * \return The endpoint of the transcryptor
     */
-    std::shared_ptr<messaging::ServerConnection> getTranscryptor() const;
-    /*!
-    * \param transcryptor The connection to the transcryptor
-    */
-    void setTranscryptor(std::shared_ptr<messaging::ServerConnection> transcryptor);
+    const EndPoint& getTranscryptorEndPoint() const;
 
     /*!
-    * \return The connection to the keyserver
+    * \return The endpoint of the keyserver
     */
-    std::shared_ptr<messaging::ServerConnection> getKeyServer() const;
-    /*!
-    * \param keyserver The connection to the keyserver
-    */
-    void setKeyServer(std::shared_ptr<messaging::ServerConnection> keyserver);
-
-    std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
-    std::shared_ptr<DataTranslator> getDataTranslator() const;
-    void setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator);
-    void setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator);
-
+    const EndPoint& getKeyServerEndPoint() const;
 
     std::shared_ptr<Backend> getBackend() const;
     void setBackend(std::shared_ptr<Backend> backend);
@@ -70,11 +58,8 @@ public:
   private:
     std::shared_ptr<GlobalConfiguration> globalConf;
     std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::optional<ElgamalPublicKey> publicKeyPseudonyms;
-    std::shared_ptr<messaging::ServerConnection> transcryptor;
-    std::shared_ptr<messaging::ServerConnection> keyserver;
-    std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
-    std::shared_ptr<DataTranslator> dataTranslator;
+    EndPoint transcryptorEndPoint;
+    EndPoint keyServerEndPoint;
     std::shared_ptr<Backend> backend;
   };
 private:
@@ -85,7 +70,6 @@ private:
 
     prometheus::Summary& enckey_request_duration;
     prometheus::Summary& ticket_request2_duration;
-    prometheus::Summary& keyComponent_request_duration;
     prometheus::Summary& ticket_request_duration;
   };
 
@@ -96,7 +80,6 @@ public:
   explicit AccessManager(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::string describe() const override;
   std::optional<std::filesystem::path> getStoragePath() override;
   std::unordered_set<std::string> getAllowedChecksumChainRequesters() override;
   std::vector<std::string> getChecksumChainNames() const override;
@@ -105,7 +88,6 @@ protected:
     uint64_t& checksum, uint64_t& checkpoint) override;
 
 private:
-  messaging::MessageBatches handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> pRequest);
   messaging::MessageBatches handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> pClientRequest);
   messaging::MessageBatches handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> pClientRequest);
   messaging::MessageBatches handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> pRequest);
@@ -114,6 +96,7 @@ private:
   messaging::MessageBatches handleUserMutationRequest(std::shared_ptr<SignedUserMutationRequest> signedRequest);
   messaging::MessageBatches handleGlobalConfigurationRequest(std::shared_ptr<GlobalConfigurationRequest> request);
   messaging::MessageBatches handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request);
+  messaging::MessageBatches handleUserVerifiersRequest(std::shared_ptr<UserVerifiersRequest> request);
   messaging::MessageBatches handleColumnAccessRequest(std::shared_ptr<SignedColumnAccessRequest> request);
   messaging::MessageBatches handleParticipantGroupAccessRequest(std::shared_ptr<SignedParticipantGroupAccessRequest> request);
   messaging::MessageBatches handleColumnNameMappingRequest(std::shared_ptr<SignedColumnNameMappingRequest> signedRequest);
@@ -146,11 +129,8 @@ public:
 
 private:
   ElgamalPrivateKey mPseudonymKey;
-  ElgamalPublicKey mPublicKeyPseudonyms;
-  std::shared_ptr<messaging::ServerConnection> transcryptor;
-  std::shared_ptr<messaging::ServerConnection> mKeyserver;
-  std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
-  std::shared_ptr<DataTranslator> mDataTranslator;
+  TranscryptorProxy mTranscryptorProxy;
+  KeyServerProxy mKeyServerProxy;
   std::shared_ptr<Backend> backend;
   std::shared_ptr<GlobalConfiguration> globalConf;
   std::shared_ptr<Metrics> lpMetrics;

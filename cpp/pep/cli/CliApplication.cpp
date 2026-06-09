@@ -1,3 +1,4 @@
+#include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/auth/UserGroup.hpp>
@@ -121,8 +122,8 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
     if (!token) {
       if (std::filesystem::exists(tokenPath)) {
         LOG(LOG_TAG, pep::info)
-          << "Cached token found in"
-          << std::filesystem::canonical(tokenPath) << std::endl;
+          << "Cached token found in \""
+          << std::filesystem::canonical(tokenPath).string() << '"' << std::endl;
         token = pep::OAuthToken::ReadJson(tokenPath);
         if (!token->verify(mRequiredSubject, mRequiredGroup)) {
           LOG(LOG_TAG, pep::info) << "Not using cached token because it did not pass verification";
@@ -161,7 +162,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
 
     result = client->enrollUser(
       token->getSerializedForm()
-    ).map([](pep::EnrollmentResult result) {
+    ).map([](const EnrolledPartyKeys&) {
       LOG(LOG_TAG, pep::info) << " completed enrollment!" << std::endl;
       return pep::FakeVoid();
       });
@@ -194,22 +195,35 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       CreateCommandHistory(*this),
       CreateCommandFileExtension(*this),
       CreateCommandToken(*this),
-      CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
+      pep::commandline::CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
       CreateCommandStructureMetadata(*this),
+      CreateCommandServer(*this),
   };
   assert(std::ranges::none_of(commands, [](auto& ptr) { return ptr == nullptr; }));
   return commands;
 }
 
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
-  int result;
+  int result{ -1 };
 
-  auto stopEventLoop = [this, &result](int exitCode) {
-    result = exitCode;
+  auto stopEventLoop = [this, &result, invoked = MakeSharedCopy(false)](std::exception_ptr exception) {
+    severity_level severity{};
+    if (!*invoked) { // First invocation: determine the application's (output and) exit code
+      *invoked = true;
+      severity = pep::error;
+      result = (exception ? 4 : 0);
+    }
+    else { // Recursive invocation due to errors during mClient->shutdown, which commonly are "Server connection is shutting down"
+      severity = pep::debug;
+    }
+
     mWorkGuard.reset();
-
     if (mClient == nullptr)
       return;
+
+    if (exception != nullptr) {
+      LOG(LOG_TAG, severity) << "error: " << pep::GetExceptionMessage(exception) << std::endl;
+    }
 
     mClient->shutdown().subscribe(
       [](pep::FakeVoid) {},
@@ -222,23 +236,21 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
 
   connectClient(ensureEnrolled)
     .flat_map([this, callback](pep::FakeVoid unused) {
-    return callback(mClient);
-      }).subscribe(
-        [](pep::FakeVoid) { /* ignore */ },
-        [stopEventLoop](std::exception_ptr ep) {
-          LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
-          stopEventLoop(4);
-        },
-        [stopEventLoop]() {stopEventLoop(0); }
-      );
+        return callback(mClient);
+      })
+    .subscribe(
+      [](pep::FakeVoid) { /* ignore */ },
+      [stopEventLoop](std::exception_ptr ep) { stopEventLoop(ep); },
+      [stopEventLoop]() {stopEventLoop(nullptr); }
+    );
 
-      assert(mClient != nullptr);
+  assert(mClient != nullptr);
 
-      // io_context.run() usually returns when there is no work to do.
-      // Our this->mWorkGuard prevents this though.
-      mClient->getIoContext()->run();
-      mClient = nullptr;
-      return result;
+  // io_context.run() usually returns when there is no work to do.
+  // Our this->mWorkGuard prevents this though.
+  mClient->getIoContext()->run();
+  mClient = nullptr;
+  return result;
 }
 
 std::optional<std::string> CliApplication::getTokenSecret() const {
@@ -263,7 +275,7 @@ std::optional<std::string> CliApplication::getTokenSecret() const {
 
   LOG(LOG_TAG, pep::info)
     << " found oauth token secret in "
-    << std::filesystem::canonical(tokenSecret) << std::endl;
+    << std::filesystem::canonical(tokenSecret).string() << std::endl;
 
   return secret;
 

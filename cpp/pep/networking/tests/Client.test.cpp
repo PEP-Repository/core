@@ -11,6 +11,8 @@
 
 using namespace std::literals;
 
+namespace {
+
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
   friend class pep::SharedConstructor<ClientConnectivityHandler>;
 
@@ -40,10 +42,10 @@ private:
   }
 
   void handleClientStatusChange(const pep::networking::Client::StatusChange& change) {
-    if (change.updated >= pep::LifeCycler::Status::finalizing) {
+    if (change.updated >= pep::LifeCycler::Status::Finalizing) {
       ASSERT_TRUE(mShutdownIssued) << "Client sends close notification without having been shut down";
     }
-    if (change.updated == pep::LifeCycler::Status::finalized) {
+    if (change.updated == pep::LifeCycler::Status::Finalized) {
       ASSERT_FALSE(mShutdownNotified) << "Client sends multiple close notifications";
       mShutdownNotified = true;
     }
@@ -61,8 +63,8 @@ private:
   }
 
   void handleConnectionConnectivityChange(const pep::networking::Connection::ConnectivityChange& change) {
-    if (change.previous == pep::networking::Connection::ConnectivityStatus::connecting) {
-      this->handleConnectionAttempt(change.updated == pep::networking::Connection::ConnectivityStatus::connected);
+    if (change.previous == pep::networking::Connection::ConnectivityStatus::Connecting) {
+      this->handleConnectionAttempt(change.updated == pep::networking::Connection::ConnectivityStatus::Connected);
     }
   }
 
@@ -169,7 +171,6 @@ TEST(Client, Reconnects) { // TODO: simplify
   ASSERT_NO_FATAL_FAILURE(clientHandler->postRunValidate());
 }
 
-namespace {
 
 const std::vector<std::string> LINES_TO_DELIMIT = {
   "The clock struck one, the mouse ran down.",
@@ -200,7 +201,6 @@ void ReadClientLine(std::shared_ptr<pep::networking::Client> client, std::shared
     });
 }
 
-} // End anonymous namespace
 
 TEST(Client, ReadUntil) {
   boost::asio::io_context ioContext;
@@ -258,7 +258,7 @@ TEST(Client, ReadAll) {
     *connectivityChangeSub = connection->onConnectivityChange.subscribe([connectivityChangeSub, client](const pep::networking::Connection::ConnectivityChange& change) {
       PEP_DEFER(client->shutdown()); // Stop trying to reconnect
       connectivityChangeSub->cancel(); // Break circular reference
-      ASSERT_NE(change.updated, pep::networking::Connection::ConnectivityStatus::connected);
+      ASSERT_NE(change.updated, pep::networking::Connection::ConnectivityStatus::Connected);
       });
 
     connection->asyncReadAll([client, connection](const pep::networking::DelimitedTransfer::Result& result) {
@@ -270,4 +270,6 @@ TEST(Client, ReadAll) {
   client->start();
 
   ASSERT_NO_FATAL_FAILURE(ioContext.run());
+}
+
 }
