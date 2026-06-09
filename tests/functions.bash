@@ -111,7 +111,7 @@ assert_equal() {
   local -r lhs=$1
   local -r rhs=$2
   local -r message=$3
-  if [ "$lhs" -ne "$rhs" ]; then
+  if [ "$lhs" != "$rhs" ]; then
     fail "$message"
   fi
 }
