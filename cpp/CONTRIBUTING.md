@@ -222,6 +222,10 @@ else {
 - The names of macros defined in the PEP code base should start with a `PEP_` prefix to prevent naming collisions (e.g. with other libraries).
 - Things that are not macros have names that are *not* written in `SCREAMING_SNAKE_CASE` to prevent naming collisions (e.g. with other libraries).
 
+- Enumerator names are written in `PascalCase`.
+- Names of `constexpr` constants are written in `PascalCase` (since they are so similar to enumerator values).
+- Names of `const` variables are written in `PascalCase` (since they are so similar to `constexpr` constants).
+
 ### Various
 
 - do use tested design patterns and principles;
