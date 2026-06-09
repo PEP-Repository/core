@@ -44,6 +44,7 @@ __pycache__/
 *.pyc
 *.egg-info
 *.whl
+uv.lock
 
 # macOS specific
 .DS_Store

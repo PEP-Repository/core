@@ -1,6 +1,5 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxRequireCount.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 #include <utility>
 
@@ -152,8 +151,7 @@ AccessManagerProxy::amaRemoveGroupAccessRule(std::string group,
 rxcpp::observable<AmaQueryResponse>
 AccessManagerProxy::amaQuery(AmaQuery query) const {
   return this->sendRequest<AmaQueryResponse>(this->sign(std::move(query)))
-    .op(pep::RxRequireNonEmpty()) // Ensure we don't return an AmaQueryResponse if we didn't receive one from AM
-    .reduce( // Concatenate all parts into a single AmaQueryResponse instance
+    .reduce( // Concatenate all parts into a single AmaQueryResponse instance, which will remain empty if we didn't receive (a partial) one from AM
       std::make_shared<AmaQueryResponse>(),
       [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
         AppendVector(all->mColumns, part.mColumns);
@@ -166,7 +164,6 @@ AccessManagerProxy::amaQuery(AmaQuery query) const {
     )
     .map([](std::shared_ptr<AmaQueryResponse> response) {return *response; }); // Return a plain AmaQueryResponse instead of a shared_ptr
 }
-
 
 
 }

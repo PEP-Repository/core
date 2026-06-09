@@ -6,42 +6,70 @@ to a PEP Repository, an external data source (e.g., LimeSurvey API, Excel files)
 interchange the results in a Pythonic way.
 """
 
-from .peprepository import PEPRepository
+from .peprepository import PEPRepository, PEPConfig
 from .accessgroup import AccessGroup
 from .dataadmin import DataAdmin
 from .accessadmin import AccessAdmin
-from .json_connector import JSONConnector
-from .datamonitor import DataMonitor
-from .mailsender import MailSender
+from .connectors import Connector, ConnectorConfig
+from .json_connector import JSONConnector, JSONConnectorConfig
+from .datamonitor import DataMonitor, DataMonitorConfig
 
 try:
-    from .excel_connector import ExcelConnector
+    from .mailsender import (
+        MailSender, 
+        MailSenderConfig, 
+        EmailConfig,
+        MailSenderSurveyConfig
+    )
+except ImportError:
+    MailSender = None
+    MailSenderConfig = None
+    EmailConfig = None
+    MailSenderSurveyConfig = None
+
+try:
+    from .excel_connector import ExcelConnector, ExcelConnectorConfig
 except ImportError:
     ExcelConnector = None
+    ExcelConnectorConfig = None
 
 try:
-    from .google_forms_connector import GoogleFormsConnector
+    from .google_forms_connector import GoogleFormsConnector, GoogleFormsConfig
 except ImportError:
     GoogleFormsConnector = None
+    GoogleFormsConfig = None
 
 try:
-    from .limesurvey_connector import LimeSurveyConnector
+    from .limesurvey_connector import LimeSurveyConnector, LimeSurveyConfig, LimeSurveySurveyConfig
 except ImportError:
     LimeSurveyConnector = None
+    LimeSurveyConfig = None
+    LimeSurveySurveyConfig = None
 
 __all__ = [
     "PEPRepository",
     "AccessGroup",
     "DataAdmin",
     "AccessAdmin",
+    "Connector",
+    "ConnectorConfig",
+    "PEPConfig",
     "JSONConnector",
+    "JSONConnectorConfig",
     "DataMonitor",
-    "MailSender"
+    "DataMonitorConfig"
 ]
 
+if MailSender:
+    __all__.extend([
+        "MailSender", 
+        "MailSenderConfig", 
+        "EmailConfig",
+        "MailSenderSurveyConfig"
+    ])
 if ExcelConnector:
-    __all__.append("ExcelConnector")
+    __all__.extend(["ExcelConnector", "ExcelConnectorConfig"])
 if GoogleFormsConnector:
-    __all__.append("GoogleFormsConnector")
+    __all__.extend(["GoogleFormsConnector", "GoogleFormsConfig"])
 if LimeSurveyConnector:
-    __all__.append("LimeSurveyConnector")
+    __all__.extend(["LimeSurveyConnector", "LimeSurveyConfig", "LimeSurveySurveyConfig"])

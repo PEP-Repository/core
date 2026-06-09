@@ -75,6 +75,9 @@ Release 1.7
 
 - #2875: Some paths are no longer escaped in (e.g. pepcli) application output/logging, making them usable for copy+pasting on Windows.
 
+- #2818: When "pepcli ama query" produces no results (e.g. due to the use of filtering switches), the application now says so
+         instead of producing an error.
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
