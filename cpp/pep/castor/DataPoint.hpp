@@ -5,7 +5,7 @@
 namespace pep {
 namespace castor {
 
-enum DataPointType { STUDY, SURVEY, REPEATING };
+enum class DataPointType { Study, Survey, Repeating };
 
 class DataPointBase : public CastorObject {
  private:
