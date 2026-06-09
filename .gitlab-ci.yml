@@ -542,7 +542,8 @@ ubuntu-lts-debug:
   variables:
     WITH_CASTOR: "True"
     TESTS: >-
-      $UNIT_TESTS_ALL
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
   rules:
     - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
@@ -571,7 +572,7 @@ ubuntu-lts-debug:
 
     - |
        BINARIES=""
-       for BINARY in $TESTS $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+       for BINARY in $UNIT_TESTS_ALL $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
          BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
        done
     
