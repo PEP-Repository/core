@@ -109,7 +109,7 @@ rxcpp::observable<std::string> OAuthClient::doTokenRequest(const std::string& co
   parameters.caCertFilepath(mCaCertFilepath);
   auto client = networking::HttpClient::Create(std::move(parameters));
 
-  HTTPRequest request(networking::HttpMethod::POST, boost::urls::url(mTokenUrl), std::move(body),
+  HTTPRequest request(networking::HttpMethod::Post, boost::urls::url(mTokenUrl), std::move(body),
     HTTPMessage::HeaderMap{{"Content-Type", "application/x-www-form-urlencoded"}});
 
   client->start();

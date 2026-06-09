@@ -103,7 +103,7 @@ void CastorClient::reauthenticate() {
 
 rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shared_ptr<HTTPRequest> request) {
   request->setHeader("Accept", "application/json");
-  if(request->getMethod() == networking::HttpMethod::GET) {
+  if(request->getMethod() == networking::HttpMethod::Get) {
     request->uri().params().set("page_size", std::to_string(PAGE_SIZE));
   }
   return mHttp->sendRequest(*request);
@@ -117,7 +117,7 @@ rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shar
  * \return The created Request
  */
 std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, const bool& useBasePath) {
-  return MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::GET, (useBasePath ? BASE_PATH : "") + path));
+  return MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::Get, (useBasePath ? BASE_PATH : "") + path));
 };
 
 /*!
@@ -131,7 +131,7 @@ std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, cons
 std::shared_ptr<HTTPRequest> CastorClient::makePost(const std::string& path,
   const std::string& body,
   const bool& useBasePath) {
-  auto result = MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::POST, (useBasePath ? BASE_PATH : "") + path));
+  auto result = MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::Post, (useBasePath ? BASE_PATH : "") + path));
   assert(result->getBodyparts().empty());
   result->getBodyparts().emplace_back(MakeSharedCopy(body));
   return result;

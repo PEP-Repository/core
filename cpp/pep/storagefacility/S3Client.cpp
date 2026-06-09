@@ -180,7 +180,7 @@ namespace
   {
     auto request = this->request_template(
         "/" + bucket + "/" + name, // path
-        networking::HttpMethod::PUT, payload);
+        networking::HttpMethod::Put, payload);
 
     request::Sign(request, this->credentials);
 
@@ -208,7 +208,7 @@ namespace
   {
     auto request = this->request_template(
         "/" + bucket + "/" + name,
-        networking::HttpMethod::GET);
+        networking::HttpMethod::Get);
 
     request::Sign(request, this->credentials);
 
