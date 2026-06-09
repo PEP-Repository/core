@@ -217,6 +217,11 @@ else {
 }
 ```
 
+- Prefer using compiled code over defining (and using) macros.
+- When macros *are* defined, their names are written in `SCREAMING_SNAKE_CASE` to make them stand out like the sore thumb that they are.
+- The names of macros defined in the PEP code base should start with a `PEP_` prefix to prevent naming collisions (e.g. with other libraries).
+- Things that are not macros have names that are *not* written in `SCREAMING_SNAKE_CASE` to prevent naming collisions (e.g. with other libraries).
+
 ### Various
 
 - do use tested design patterns and principles;
