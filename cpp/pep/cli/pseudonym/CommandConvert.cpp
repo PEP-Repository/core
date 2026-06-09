@@ -1,11 +1,11 @@
-#include <array>
-#include <cstddef>
+#include <boost/container/flat_map.hpp>
 #include <optional>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/cli/pseudonym/CommandConvert.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <ranges>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/rx-observable.hpp>
 #include <stdexcept>
@@ -27,17 +27,23 @@ enum class IdType {
   UserPseudonym,
 };
 
-constexpr std::size_t StringsPerIdType = 3;
-const std::array<std::string, 3 * StringsPerIdType> IdTypeStrings{
-    "pp", "polymorphic", "polymorphic-pseudonym",
-    "lp", "local",       "local-pseudonym",
-    "up", "user",        "user-pseudonym"};
+const auto stringToIdType = boost::container::flat_map<std::string, IdType> {
+    {"pp", IdType::PolymorphicPseudonym},
+    {"polymorphic", IdType::PolymorphicPseudonym},
+    {"polymorphic-pseudonym", IdType::PolymorphicPseudonym},
+    {"lp", IdType::LocalPseudonym},
+    {"local", IdType::LocalPseudonym},
+    {"local-pseudonym", IdType::LocalPseudonym},
+    {"up", IdType::UserPseudonym},
+    {"user", IdType::UserPseudonym},
+    {"user-pseudonym", IdType::UserPseudonym}
+};
 
 std::optional<IdType> TryParseIdTypeFromString(std::string str){
   for (char& c: str) { c = static_cast<char>(std::tolower(c)); }
-  const auto found = std::ranges::find(IdTypeStrings, str);
-  if (found == IdTypeStrings.end()) { return std::nullopt; }
-  return static_cast<IdType>(static_cast<std::size_t>(distance(IdTypeStrings.begin(), found)) / StringsPerIdType);
+  const auto found = stringToIdType.find(str);
+  if (found == stringToIdType.end()) { return std::nullopt; }
+  return found->second;
 }
 
 IdType ParseIdTypeFromString(const std::string& str){
@@ -73,7 +79,7 @@ CommandPseudonym::CommandConvert::getSupportedParameters() const {
          Parameter(param::to, "Target pseudonym type")
              .value(Value<std::string>()
                 .positional()
-                .allow(IdTypeStrings)
+                .allow(stringToIdType | std::views::keys)
                 .required());
 }
 
