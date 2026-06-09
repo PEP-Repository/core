@@ -62,9 +62,9 @@ EncryptionScheme ExtractPersistedEntryProperty<EncryptionScheme>(PersistedEntryP
 
 template <>
 void SetPersistedEntryProperty<EncryptionScheme>(PersistedEntryProperties& destination, const std::string& key, const EncryptionScheme& scheme) {
-  static_assert(ToUnderlying(EncryptionScheme::LATEST) <= std::numeric_limits<uint8_t>::max()); // Ensure that we don't lose bits in our narrowing cast below
+  static_assert(ToUnderlying(EncryptionScheme::Latest) <= std::numeric_limits<uint8_t>::max()); // Ensure that we don't lose bits in our narrowing cast below
   assert(ToUnderlying(scheme) >= ToUnderlying(EncryptionScheme::V1));
-  assert(ToUnderlying(scheme) <= ToUnderlying(EncryptionScheme::LATEST));
+  assert(ToUnderlying(scheme) <= ToUnderlying(EncryptionScheme::Latest));
   SetPersistedEntryProperty<uint8_t>(destination, key, static_cast<uint8_t>(scheme));
 }
 
