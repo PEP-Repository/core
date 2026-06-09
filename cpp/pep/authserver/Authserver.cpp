@@ -22,7 +22,7 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
     accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
     throw;
   }
 

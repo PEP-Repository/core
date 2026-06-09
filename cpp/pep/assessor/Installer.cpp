@@ -125,11 +125,11 @@ namespace {
   std::shared_ptr<PublishedInstaller> PublishedInstaller::GetAvailable() {
     auto version = pep::ConfigVersion::Current();
     if (version == std::nullopt) {
-      LOG(LOG_TAG, pep::debug) << "Cannot determine configuration version. Not retrieving installer properties.";
+      PEP_LOG(LOG_TAG, pep::debug) << "Cannot determine configuration version. Not retrieving installer properties.";
       return nullptr;
     }
     if (!version->isGitlabBuild()) {
-      LOG(LOG_TAG, pep::debug) << "Manual build - running debug session? Not retrieving installer properties.";
+      PEP_LOG(LOG_TAG, pep::debug) << "Manual build - running debug session? Not retrieving installer properties.";
       return nullptr;
     }
 
@@ -147,7 +147,7 @@ namespace {
       return std::shared_ptr<PublishedInstaller>(new PublishedInstaller(updateXMLTree));
     }
     catch (std::exception& e) {
-      LOG(LOG_TAG, pep::error) << "Error retrieving installer properties: " << e.what();
+      PEP_LOG(LOG_TAG, pep::error) << "Error retrieving installer properties: " << e.what();
     }
     return nullptr;
   }

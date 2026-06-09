@@ -77,7 +77,7 @@ struct Storage : public BasicStorage {
   /// \throws std::system_error if sqlite produces errors
   /// \returns true if changes have been made, false if the whole database schema was already in sync.
   bool syncSchema(bool allow_old_column_removal = false) {
-    LOG("database::Storage", info) << "Syncing database schema...";
+    PEP_LOG("database::Storage", info) << "Syncing database schema...";
     try {
       auto simulateResults = raw.sync_schema_simulate(true);
       for(const auto& [tableName, result] : simulateResults) {
@@ -107,7 +107,7 @@ struct Storage : public BasicStorage {
         [](auto result){ return result.second != sqlite_orm::sync_schema_result::already_in_sync; }) != syncResults.end();
     }
     catch (const std::system_error& e) {
-      LOG("database::Storage", error) << "  failed: " << e.what();
+      PEP_LOG("database::Storage", error) << "  failed: " << e.what();
       throw;
     }
   }
@@ -189,7 +189,7 @@ template <auto MakeRaw> template <Record RecordType, typename havingT>
   auto result = raw.iterate(select(
     columns(max(&RecordType::seqno)),
     where(std::move(whereCondition)),
-    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
     // SQLite will pick this column from the row with the max() value:
     // https://www.sqlite.org/lang_select.html#bareagg
     .having(c(&RecordType::tombstone) == false && havingCondition.mExpr),
@@ -207,7 +207,7 @@ template <auto MakeRaw> template <Record RecordType, typename havingT, typename.
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false && havingCondition.mExpr)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 }
@@ -221,7 +221,7 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 

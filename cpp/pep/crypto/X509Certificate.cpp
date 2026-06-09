@@ -45,7 +45,7 @@ std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
 
   int index = X509_NAME_get_index_by_NID(name, nid, -1);
   if (index == -1) {
-    LOG(LOG_TAG, error) << "Failed to obtain index for NID: " << nid << " in SearchOIDinName.";
+    PEP_LOG(LOG_TAG, error) << "Failed to obtain index for NID: " << nid << " in SearchOIDinName.";
     return std::nullopt;
   } else if (index == -2) {
     throw pep::OpenSSLError("Invalid NID: " + std::to_string(nid) + " in SearchOIDinName.");
@@ -635,8 +635,8 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
   } else if (result == 0) {
     PEP_DEFER(ERR_clear_error());
     std::string diagnostic = X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx));
-    LOG(LOG_TAG, error) << "Verification failed with error string: " << diagnostic << " in X509CertificateChain::verify.";
-    LOG(LOG_TAG, error) << "Leaf certificate public key: " << leaf().getPublicKey().toPem();
+    PEP_LOG(LOG_TAG, error) << "Verification failed with error string: " << diagnostic << " in X509CertificateChain::verify.";
+    PEP_LOG(LOG_TAG, error) << "Leaf certificate public key: " << leaf().getPublicKey().toPem();
     return false;
   }
 
@@ -740,7 +740,7 @@ bool X509CertificateSigningRequest::verifySignature() const {
     return true;
   } else if (result == 0) {
     auto errors = pep::TakeOpenSSLErrors();
-    LOG(LOG_TAG, error) << "Failed to verify CSR signature." << errors;
+    PEP_LOG(LOG_TAG, error) << "Failed to verify CSR signature." << errors;
     return false;
   } else {
     throw pep::OpenSSLError("Error while verifying CSR signature.");
@@ -1038,7 +1038,7 @@ X509IdentityFiles::X509IdentityFiles(std::filesystem::path privateKeyFilePath, s
   mCertificateChainFilePath(std::move(certificateChainFilePath)),
   mIdentity(std::make_shared<X509Identity>(AsymmetricKey(ReadFile(mPrivateKeyFilePath)),
     X509CertificateChain(X509CertificatesFromPem(ReadFile(mCertificateChainFilePath))))) {
-  LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
+  PEP_LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
   if (!mIdentity->getCertificateChain().verify(rootCas)) {
     throw std::runtime_error("X509 identity does not pass validation against root CAs");
   }

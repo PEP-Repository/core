@@ -169,13 +169,13 @@ namespace {
     for (auto client : clients) {
       client->shutdown();
     }
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
     for (unsigned int count : *(this->open_requests_counts))
       assert(count == 0);
     // The "count" variable is only used in an assertion, making it
     // unused in non-debug builds.
     //
-    // Why not a LOG(LOG_TAG, error) here instead of an assert?
+    // Why not a PEP_LOG(LOG_TAG, error) here instead of an assert?
     //
     // Either there's a bug in the open requests counting code---which we don't
     // want to be buried in the logs---or some request is actually still active,
@@ -441,7 +441,7 @@ namespace {
           try {
             *result = ReadFile(fullpath);
           } catch(...) {
-            LOG(LOG_TAG, error) << "could not read from \"" << fullpath.string() << '"';
+            PEP_LOG(LOG_TAG, error) << "could not read from \"" << fullpath.string() << '"';
             throw;
           }
           s.on_next(result);
@@ -468,7 +468,7 @@ namespace {
           std::filesystem::create_directories(fullpath.parent_path());
           WriteFile(fullpath, *page);
         } catch (...) {
-          LOG(LOG_TAG, error) << "could not write to \"" << fullpath.string() << '"';
+          PEP_LOG(LOG_TAG, error) << "could not write to \"" << fullpath.string() << '"';
           throw;
         }
         s.on_next(s3::ETag(*page));
@@ -585,10 +585,10 @@ namespace {
           throw std::runtime_error("DualPageStore: Put: both "
               "stores failed silently.");
         default:
-          LOG(LOG_TAG, error) << "DualPageStore::put: got unexpectedly many "
+          PEP_LOG(LOG_TAG, error) << "DualPageStore::put: got unexpectedly many "
               << "ETags from page stores: ";
           for (auto& etag : *values) {
-            LOG(LOG_TAG, error) << "\t - " << std::quoted(etag);
+            PEP_LOG(LOG_TAG, error) << "\t - " << std::quoted(etag);
           }
           throw std::runtime_error("DualPageStore: Put: assertion error: "
               "got more than one result from a store.");

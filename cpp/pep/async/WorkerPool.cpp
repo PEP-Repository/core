@@ -12,7 +12,7 @@ namespace pep {
 WorkerPool::WorkerPool()
   : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
   unsigned nThreads = std::thread::hardware_concurrency();
-  LOG(LOG_TAG, debug) << "Using " << nThreads << " worker threads";
+  PEP_LOG(LOG_TAG, debug) << "Using " << nThreads << " worker threads";
   mThreads.reserve(nThreads);
   for (unsigned i = 0; i < nThreads; i++) {
     mThreads.emplace_back(

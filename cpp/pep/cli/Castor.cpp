@@ -154,25 +154,25 @@ private:
       auto dir = values.get<std::filesystem::path>("output-directory");
 
       if (std::filesystem::exists(dir) && values.has("force")) {
-        LOG(LOG_TAG, pep::info) << "Output directory " << dir << " exists.  Removing ..."
+        PEP_LOG(LOG_TAG, pep::info) << "Output directory " << dir << " exists.  Removing ..."
                   << std::endl;
         std::filesystem::remove_all(dir);
         std::filesystem::create_directories(dir);
       }
 
       if (!std::filesystem::exists(dir)) {
-        LOG(LOG_TAG, pep::info) << "Output directory " << dir << " does not exist.  "
+        PEP_LOG(LOG_TAG, pep::info) << "Output directory " << dir << " does not exist.  "
                   << "Creating ..." << std::endl;
         std::filesystem::create_directories(dir);
       }
 
       if (!std::filesystem::is_directory(dir)) {
-        LOG(LOG_TAG, pep::error) << "output directory " << dir
+        PEP_LOG(LOG_TAG, pep::error) << "output directory " << dir
               << " is not a directory" << std::endl;
         return 5;
       } else {
         if (std::filesystem::directory_iterator(dir) != std::filesystem::directory_iterator()) {
-          LOG(LOG_TAG, pep::error) << "output directory " << dir << " is not empty"
+          PEP_LOG(LOG_TAG, pep::error) << "output directory " << dir << " is not empty"
                     << std::endl;
           return 5;
         }
@@ -205,14 +205,14 @@ private:
                 study.steps[earResult.mColumn].push_back({earResult.mLocalPseudonymsIndex, *crf});
               }
               else {
-                LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Missing crf data" << std::endl;
+                PEP_LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Missing crf data" << std::endl;
               }
               if(auto reports = dataTree.get_child_optional("reports")) {
                 if(!reports->empty()) {
                   for(const auto& [reportname, report] : *reports) {
                     for(const auto& [rdiName, repeatingDataInstance] : report) {
                       if(rdiName != "") {
-                        LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Report instances should be an array without keys" << std::endl;
+                        PEP_LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Report instances should be an array without keys" << std::endl;
                       }
                       else {
                         study.reports[earResult.mColumn + "." + reportname].push_back({earResult.mLocalPseudonymsIndex, repeatingDataInstance});
@@ -222,7 +222,7 @@ private:
                 }
               }
               else {
-                LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Missing reports data" << std::endl;
+                PEP_LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Missing reports data" << std::endl;
               }
             }
             return data;
@@ -237,7 +237,7 @@ private:
               this->writeDataFiles(study.steps, data.participantIds, stepsdir);
               this->writeDataFiles(study.reports, data.participantIds, reportsdir);
             }
-            LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
+            PEP_LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
             return pep::FakeVoid();
           });
         });
@@ -346,7 +346,7 @@ private:
               std::cout << std::endl;
             },
             [](std::exception_ptr) { /* do nothing */},
-            []() { LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl; }
+            []() { PEP_LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl; }
           ).op(pep::RxInstead(pep::FakeVoid()));
         });
     }
@@ -418,7 +418,7 @@ private:
             << std::endl;
         }, [](std::exception_ptr) { /* do nothing */},
             []() {
-          LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
+          PEP_LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
         }).op(pep::RxInstead(pep::FakeVoid()));
         });
     }
@@ -455,7 +455,7 @@ private:
             .map(ReportColumnNameMappings)
             .op(pep::RxBeforeCompletion(
               []() {
-                LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
+                PEP_LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
               }));
           });
       }

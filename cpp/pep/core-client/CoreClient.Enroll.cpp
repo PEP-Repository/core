@@ -21,13 +21,13 @@ CoreClient::EnrollmentContext::EnrollmentContext(std::shared_ptr<const X509Ident
 }
 
 rxcpp::observable<EnrolledPartyKeys> CoreClient::enrollServer() {
-  LOG(LOG_TAG, debug) << "Enrolling server...";
+  PEP_LOG(LOG_TAG, debug) << "Enrolling server...";
   auto ctx = std::make_shared<EnrollmentContext>(this->getSigningIdentity());
   return completeEnrollment(ctx);
 }
 
 rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_ptr<EnrollmentContext> ctx) {
-  LOG(LOG_TAG, debug) << "Completing enrollment...";
+  PEP_LOG(LOG_TAG, debug) << "Completing enrollment...";
   // Construct key component request for Access Manager and Transcryptor
   // Send request to access manager
   return getAccessManagerProxy(true)->requestKeyComponent(ctx->keyComponentRequest)

@@ -84,7 +84,7 @@ class PepAssessorApplication : public pep::Application {
 
     if (!result) {
       auto pid = assessorPid->get();
-      LOG("Startup", pep::info) << "Terminating because a pepAssessor instance is already running with PID " << pid;
+      PEP_LOG("Startup", pep::info) << "Terminating because a pepAssessor instance is already running with PID " << pid;
 #ifdef _WIN32
       BringToForeground(pid);
 #endif

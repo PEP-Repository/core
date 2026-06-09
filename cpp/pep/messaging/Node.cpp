@@ -23,7 +23,7 @@ std::string GetIncompatibleVersionSummary(const std::optional<GitlabVersion>& ve
 
 void LogIncompatibleVersionDetails(severity_level severity, const std::string& type, const std::optional<GitlabVersion>& remote, const std::optional<GitlabVersion>& local) {
   if (remote != std::nullopt || local != std::nullopt) {
-    LOG(LOG_TAG, severity) << "- " << type << " versions"
+    PEP_LOG(LOG_TAG, severity) << "- " << type << " versions"
       << ": remote = " << GetIncompatibleVersionSummary(remote)
       << "; local = " << GetIncompatibleVersionSummary(local);
   }
@@ -109,7 +109,7 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
     }
 
     if (log) {
-      LOG(LOG_TAG, severity) << msg;
+      PEP_LOG(LOG_TAG, severity) << msg;
       LogIncompatibleVersionDetails(severity, "binary", binary, BinaryVersion::current); // TODO: check if derived (BinaryVersion) details are logged instead of only base (GitlabVersion) details
       LogIncompatibleVersionDetails(severity, "config", config, ConfigVersion::Current()); // TODO: check if derived (ConfigVersion) details are logged instead of only base (GitlabVersion) details
     }
@@ -138,13 +138,13 @@ void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, 
 
   switch (change.updated) {
   case LifeCycler::Status::Reinitializing: // Notify subscriber of our (failed) attempt and retry
-    LOG(LOG_TAG, debug) << "Messaging connection reinitializing";
+    PEP_LOG(LOG_TAG, debug) << "Messaging connection reinitializing";
     if (mSubscriber.has_value()) {
       mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Failed to establish messaging connection: will be retried"))));
     }
     break;
   case LifeCycler::Status::Initialized: // Established: hand off to subscriber
-    LOG(LOG_TAG, debug) << "Messaging connection established";
+    PEP_LOG(LOG_TAG, debug) << "Messaging connection established";
     existing->establishing.cancel();
     existing->own.reset();
     if (mSubscriber.has_value()) {

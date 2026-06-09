@@ -60,7 +60,7 @@ private:
 
   rxcpp::observable<bool> handleAuthorizationResult(const pep::AuthorizationResult& auth) {
     if (!auth) {
-      LOG(LOG_TAG, pep::error) << "Authorization failed: " + pep::GetExceptionMessage(auth.exception());
+      PEP_LOG(LOG_TAG, pep::error) << "Authorization failed: " + pep::GetExceptionMessage(auth.exception());
       return rxcpp::observable<>::just(false);
     }
 
@@ -95,7 +95,7 @@ private:
         })
       .on_error_resume_next([](std::exception_ptr error) // Don't let the application report an **unexpected** problem
         {
-          LOG(LOG_TAG, pep::error) << "Enrollment failed: " << pep::GetExceptionMessage(error);
+          PEP_LOG(LOG_TAG, pep::error) << "Enrollment failed: " << pep::GetExceptionMessage(error);
           return rxcpp::observable<>::just(false);
         });
   }
@@ -124,7 +124,7 @@ private:
           }
         },
         [](std::exception_ptr ep) {
-          LOG(LOG_TAG, pep::error) << "Unexpected problem occurred: " + pep::GetExceptionMessage(ep);
+          PEP_LOG(LOG_TAG, pep::error) << "Unexpected problem occurred: " + pep::GetExceptionMessage(ep);
         }
       );
 

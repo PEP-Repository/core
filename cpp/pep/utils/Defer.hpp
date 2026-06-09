@@ -37,20 +37,20 @@ deferred<F> defer_func(F&& f) {
 
 #if defined(__clang__) && __clang_major__ >= 22
 // For Clang >=22: Silence warning about __COUNTER__, which now apparently is a C2y extension
-# define PEP_SilenceCounterExtensionWarningBegin \
+# define PEP_SILENCE_COUNTER_EXTENSION_WARNING_BEGIN \
   _Pragma("clang diagnostic push") \
   _Pragma("clang diagnostic ignored \"-Wc2y-extensions\"")
-# define PEP_SilenceCounterExtensionWarningEnd \
+# define PEP_SILENCE_COUNTER_EXTENSION_WARNING_END \
   _Pragma("clang diagnostic pop")
 #else
-# define PEP_SilenceCounterExtensionWarningBegin
-# define PEP_SilenceCounterExtensionWarningEnd
+# define PEP_SILENCE_COUNTER_EXTENSION_WARNING_BEGIN
+# define PEP_SILENCE_COUNTER_EXTENSION_WARNING_END
 #endif
 
 // The invocation of BOOST_PP_CAT(_defer_, __COUNTER__) produces unique tokens such as "_defer_1234".
 // This macro defines a variable with that name, and its destructor will run the specified code at scope end.
 #define PEP_DEFER(code) \
-  auto PEP_SilenceCounterExtensionWarningBegin BOOST_PP_CAT(_defer_, __COUNTER__) PEP_SilenceCounterExtensionWarningEnd = \
+  auto PEP_SILENCE_COUNTER_EXTENSION_WARNING_BEGIN BOOST_PP_CAT(_defer_, __COUNTER__) PEP_SILENCE_COUNTER_EXTENSION_WARNING_END = \
     ::pep::defer_func([&](){code;})
 
 // That an explicit lambda must be passed to defer_unique is intentional,

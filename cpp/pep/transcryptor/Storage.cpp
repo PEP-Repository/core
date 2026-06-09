@@ -636,7 +636,7 @@ void TranscryptorStorage::ensureInitialized() {
     this->ensureInitialized_unguarded(migrated);
     guard.commit();
   } catch (...) {
-    LOG(LOG_TAG, error) << "Failed to initialize transcryptor storage! ";
+    PEP_LOG(LOG_TAG, error) << "Failed to initialize transcryptor storage! ";
     throw;
   }
 
@@ -646,27 +646,27 @@ void TranscryptorStorage::ensureInitialized() {
   // (Recall that the VACUUM command cannot be executed while any other
   //  transaction is active, so we do it here.)
   if (migrated) {
-    LOG(LOG_TAG, info) << "Vacuuming database after migration.";
+    PEP_LOG(LOG_TAG, info) << "Vacuuming database after migration.";
     this->mStorage->raw.vacuum();
-    LOG(LOG_TAG, info) << "Vacuumed database.";
+    PEP_LOG(LOG_TAG, info) << "Vacuumed database.";
   }
 }
 
 void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
   if (!mStorage->syncSchema()) {
-    LOG(LOG_TAG, info) << "All database schemas in sync;"
+    PEP_LOG(LOG_TAG, info) << "All database schemas in sync;"
       << " checking whether migration has been performed.";
 
     std::optional<uint64_t> version = this->getCurrentVersion();
 
     if (!version) {
-      LOG(LOG_TAG, error) << "Database schemas are in sync, "
+      PEP_LOG(LOG_TAG, error) << "Database schemas are in sync, "
         << "but no migration has been recorded!";
       throw Error("Detected potentially incomplete migration.");
     }
 
     if (*version < MigrationRecord::TargetVersion) {
-      LOG(LOG_TAG, error) << "Database schemas are in sync, "
+      PEP_LOG(LOG_TAG, error) << "Database schemas are in sync, "
         << "but not all migrations have been performed!";
       throw Error("Detected potentially incomplete migration.");
     }
@@ -674,7 +674,7 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
     // the following should be ensured by this->getCurrentVersion()
     assert(version==MigrationRecord::TargetVersion);
 
-    LOG(LOG_TAG, info) << "Database has already been migrated to "
+    PEP_LOG(LOG_TAG, info) << "Database has already been migrated to "
       << "the current version, "
       << MigrationRecord::TargetVersion << ".";
 
@@ -689,10 +689,10 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
   if(this->mStorage->raw.count<TicketRequestRecord>(limit(1)) == 0 &&
       this->mStorage->raw.count<MigrationRecord>(limit(1)) == 0) {
 
-    LOG(LOG_TAG, warning) << "Detected empty database.";
+    PEP_LOG(LOG_TAG, warning) << "Detected empty database.";
     // Record current version:
     this->mStorage->raw.insert(MigrationRecord(MigrationRecord::TargetVersion));
-    LOG(LOG_TAG, warning) << "Recorded migration to version "
+    PEP_LOG(LOG_TAG, warning) << "Recorded migration to version "
         << MigrationRecord::TargetVersion;
     return;
   }
@@ -710,18 +710,18 @@ void TranscryptorStorage::migrate() {
       migrate_from_v1_to_v2();
       version = 2;
     } catch (...) {
-      LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
+      PEP_LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
         " to version 2 failed.";
       throw;
     }
-    LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
+    PEP_LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
   }
 
   // [Add future migrations here]
 
   assert(version == MigrationRecord::TargetVersion && "Unexpected version returned from getCurrentVersion");
   if (version == prevVersion) {
-    LOG(LOG_TAG, warning) << "The database structure changed, but a migration is not necessary";
+    PEP_LOG(LOG_TAG, warning) << "The database structure changed, but a migration is not necessary";
   }
 }
 
@@ -729,7 +729,7 @@ void TranscryptorStorage::migrate() {
 void TranscryptorStorage::migrate_from_v1_to_v2() {
   int done = 0; // for progress logging
 
-  LOG(LOG_TAG, warning) << "Migrating ticket requests ...";
+  PEP_LOG(LOG_TAG, warning) << "Migrating ticket requests ...";
   for (auto record : this->mStorage->raw.iterate<TicketRequestRecord>()) {
     // store old checksum before we modify record
     uint64_t old_checksum = record.checksum_v1();
@@ -737,7 +737,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
     auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
 
     if (!request.logSignature()) {
-      LOG(LOG_TAG, warning) << "Ticket request record number "
+      PEP_LOG(LOG_TAG, warning) << "Ticket request record number "
         << record.seqno << " has no log signature!";
       // although troublesome, it does not affect migration, so we ...
       continue;
@@ -756,7 +756,7 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
 
     done++;
     if (done % 1000 == 0) {
-      LOG(LOG_TAG, warning) << "  " << done;
+      PEP_LOG(LOG_TAG, warning) << "  " << done;
     }
   }
 
@@ -987,7 +987,7 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
     std::string message = "There cannot have been a migration to version  "
       + std::to_string(*latestVersion) + ", yet one has been recorded."
       " (The first valid migration is from version 1 to version 2.)";
-    LOG(LOG_TAG, error) << message;
+    PEP_LOG(LOG_TAG, error) << message;
     throw Error(message);
   }
 
@@ -997,7 +997,7 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
       + std::to_string(*latestVersion) + ", while this transcryptor only "
       "supports versions " + std::to_string(MigrationRecord::TargetVersion)
       + " and older.";
-    LOG(LOG_TAG, error) << message;
+    PEP_LOG(LOG_TAG, error) << message;
     throw Error(message);
   }
 
@@ -1009,7 +1009,7 @@ std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(con
   auto domain = userCertificate.getOrganizationalUnit().value();
   auto hash = RangeToVector(CertificateHash(userCertificate));
   if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
-    LOG(LOG_TAG, debug) << "Found existing verifiers for "
+    PEP_LOG(LOG_TAG, debug) << "Found existing verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
     auto domainVerifiers = mStorage->raw.get<PseudonymizationDomainVerifiersRecord>(domain);
     return ReshuffleRekeyVerifiers(
@@ -1024,18 +1024,18 @@ std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(con
 void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& userCertificate, const ReshuffleRekeyVerifiers& verifiers) {
   auto domain = userCertificate.getOrganizationalUnit().value();
   if (auto domainVerifiers = mStorage->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
-    LOG(LOG_TAG, debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
+    PEP_LOG(LOG_TAG, debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
     if (domainVerifiers->getReshuffleCommitment() != verifiers.mReshuffleCommitment) {
       throw std::runtime_error("Inconsistent reshuffle verifier for pseudonymization domain " + Logging::Escape(domain));
     }
   } else {
-    LOG(LOG_TAG, debug) << "Storing domain verifiers for " << Logging::Escape(domain);
+    PEP_LOG(LOG_TAG, debug) << "Storing domain verifiers for " << Logging::Escape(domain);
     mStorage->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshuffleCommitment));
   }
 
   auto hash = RangeToVector(CertificateHash(userCertificate));
   if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
-    LOG(LOG_TAG, debug) << "Found existing session verifiers for "
+    PEP_LOG(LOG_TAG, debug) << "Found existing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
     if (sessionVerifiers->getRekeyCommitment() != verifiers.mRekeyCommitment
       || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.mReshuffleOverRekeyCommitment
@@ -1043,7 +1043,7 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
       throw std::runtime_error("Inconsistent verifiers for session for " + userCertificate.getCommonName().value());
     }
   } else {
-    LOG(LOG_TAG, debug) << "Storing session verifiers for "
+    PEP_LOG(LOG_TAG, debug) << "Storing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
     mStorage->raw.replace(SessionVerifiersRecord(
       std::move(hash),

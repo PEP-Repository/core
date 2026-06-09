@@ -84,7 +84,7 @@ rxcpp::observable<std::string> Study::getDefaultSiteId() {
               self->mDefaultSiteId = site->getId();
             }
             else {
-              LOG("Study", warning) << "Multiple sites found for abbreviation " << found
+              PEP_LOG("Study", warning) << "Multiple sites found for abbreviation " << found
                 << " during default site retrieval for study " << self->getName()
                 << " (slug " << self->getSlug() << "). Skipping site with ID " << site->getId()
                 << " in favor of previously found " << (*self->mDefaultSiteId);
@@ -101,7 +101,7 @@ rxcpp::observable<std::string> Study::getDefaultSiteId() {
           std::string description = self->mDefaultSiteAbbrev->empty()
             ? "an empty abbreviation"
             : ("abbreviation \"" + *self->mDefaultSiteAbbrev + '"');
-          LOG("Study", error) << "Not assigning a default site to study " << self->getName()
+          PEP_LOG("Study", error) << "Not assigning a default site to study " << self->getName()
             << " (slug " << self->getSlug() << ")"
             << " because no site could be found with " << description << '.'
             << " Available abbreviations are " << available << '.'; // Makes it (much) easier to find the configuration error

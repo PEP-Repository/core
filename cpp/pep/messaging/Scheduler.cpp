@@ -55,7 +55,7 @@ Scheduler::OutgoingMessage Scheduler::pop() {
 
   const auto& messageId = result.properties.messageId();
 
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   if (result.properties.flags().close()) {
     assert(!this->isScheduledMessageId(messageId));
   } else {
@@ -172,7 +172,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           }
         }
         else {
-          LOG(LOG_TAG, debug) << "Sending error flag to server";
+          PEP_LOG(LOG_TAG, debug) << "Sending error flag to server";
         }
 
         self->onError.notify(messageId, std::move(e));

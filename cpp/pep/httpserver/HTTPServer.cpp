@@ -66,21 +66,21 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
   httpRequestHandlerParams* params = static_cast<httpRequestHandlerParams*>(cbdata);
   const mg_request_info* requestInfo = mg_get_request_info(conn);
 
-  LOG(LOG_TAG, debug) << "Handler method: " << (params->method.empty() ? "<empty>" : params->method) << ". Request method: " << requestInfo->request_method;
-  LOG(LOG_TAG, debug) << "Handler uri: " << params->uri << ". Request uri: " << requestInfo->local_uri;
-  LOG(LOG_TAG, debug) << "match uri exactly: " << params->exactMatchOnly;
+  PEP_LOG(LOG_TAG, debug) << "Handler method: " << (params->method.empty() ? "<empty>" : params->method) << ". Request method: " << requestInfo->request_method;
+  PEP_LOG(LOG_TAG, debug) << "Handler uri: " << params->uri << ". Request uri: " << requestInfo->local_uri;
+  PEP_LOG(LOG_TAG, debug) << "match uri exactly: " << params->exactMatchOnly;
 
   if (params->exactMatchOnly && params->uri != requestInfo->local_uri) {
-    LOG(LOG_TAG, debug) << "Request handler does not match request.";
+    PEP_LOG(LOG_TAG, debug) << "Request handler does not match request.";
     return 0;
   }
 
   if (!params->method.empty() && params->method != requestInfo->request_method) {
-    LOG(LOG_TAG, debug) << "Wrong method.";
+    PEP_LOG(LOG_TAG, debug) << "Wrong method.";
     return writeResponse(conn, HTTPResponse("405 Method Not Allowed", "Expected " + params->method + " request"));
   }
 
-  LOG(LOG_TAG, debug) << "Request handler matches request. Start handling the request";
+  PEP_LOG(LOG_TAG, debug) << "Request handler matches request. Start handling the request";
   try {
     std::map<std::string, std::string, CaseInsensitiveCompare> headers;
     for(size_t i = 0; i < static_cast<size_t>(requestInfo->num_headers); ++i) {
@@ -117,13 +117,13 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
     if(params->io_context->stopped()) {
       // Since io_context is no longer running, the application is already being closed.
       // We want to handle it as gracefully as possible the application doesn't e.g. segfault
-      // Using LOG can already lead to a segfault. Civetweb can however still write a response.
+      // Using PEP_LOG can already lead to a segfault. Civetweb can however still write a response.
       return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Error: application is closing. Can no longer handle requests."));
     }
     return writeResponse(conn, params->runHandler(request, requestInfo->remote_addr).as_blocking().first());
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, pep::error) << "Unexpected error while handling request: " << e.what();
+    PEP_LOG(LOG_TAG, pep::error) << "Unexpected error while handling request: " << e.what();
     return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Internal Server error"));
   }
 }
@@ -194,7 +194,7 @@ void HTTPServer::asyncStop() {
   if (!mCtx) {
     return;
   }
-  LOG(LOG_TAG, debug) << "Stopping server " << mCtx;
+  PEP_LOG(LOG_TAG, debug) << "Stopping server " << mCtx;
 
   //We don't want to block on the call to mg_stop, because:
   // 1. This method is usually called from the main thread

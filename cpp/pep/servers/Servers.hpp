@@ -34,7 +34,7 @@ private:
       mThreads.push_back(thread);
     }
     catch (const std::exception& e) {
-      LOG("Servers", critical) << "Failed to start server from " << configurationFile << ": " << e.what();
+      PEP_LOG("Servers", critical) << "Failed to start server from " << configurationFile << ": " << e.what();
       throw;
     }
   }

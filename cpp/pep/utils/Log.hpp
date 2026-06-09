@@ -20,8 +20,8 @@ enum severity_level {
   critical
 };
 
-// The LOG macro can be used to log messages. The messages will be logged to enabled sinks (file/console/syslog).
-#define LOG(channel, severity) \
+// The PEP_LOG macro can be used to log messages. The messages will be logged to enabled sinks (file/console/syslog).
+#define PEP_LOG(channel, severity) \
     if((severity) < pep::Logging::compiledMinimumSeverityLevel) {} \
         else BOOST_LOG_CHANNEL_SEV(pep::Logging::GetLogger(), channel, severity)
 // TODO ^ find a clean alternative for this hideous if statement.

@@ -69,7 +69,7 @@ namespace
     bool use_https = params.use_https.value_or(true);
 
     if (use_https && params.ca_cert_path.has_value()) {
-      LOG(LOG_TAG, info) << "Using \"" << params.ca_cert_path->string()
+      PEP_LOG(LOG_TAG, info) << "Using \"" << params.ca_cert_path->string()
         << "\" to verify TLS certificate of " << params.endpoint.hostname
         << ":" << params.endpoint.port;
     }
@@ -114,12 +114,12 @@ namespace
 #endif
     {
 #ifndef SIMULATE_S3_BACKEND_FAILURE
-      LOG(LOG_TAG, warning) << "HTTP Request to S3 backend gave unexpected "
+      PEP_LOG(LOG_TAG, warning) << "HTTP Request to S3 backend gave unexpected "
         << "status line: " << resp.getStatusCode() << " "
         << resp.getStatusMessage()
         << "; " << resp.getBody(); // TODO: remove (as it might leak info)
 #else
-      LOG(LOG_TAG, warning) << "Feigning failure of HTTP request"
+      PEP_LOG(LOG_TAG, warning) << "Feigning failure of HTTP request"
         << " to S3 backend, because SIMULATE_S3_BACKEND_FAILURE was set.";
 #endif
       throw std::runtime_error("Request to S3 backend failed.");
@@ -168,7 +168,7 @@ namespace
 
       if (!expected_headers.contains(key)) {
         if (mUnexpectedHeaders.emplace(key).second) {
-          LOG(LOG_TAG, warning) << "Unexpected header '" << key << "' in response from S3 (with value '" << value << "')";
+          PEP_LOG(LOG_TAG, warning) << "Unexpected header '" << key << "' in response from S3 (with value '" << value << "')";
         }
       }
     }
@@ -251,10 +251,10 @@ namespace
       }
 
       if (error_code != "NoSuchKey") {
-        LOG(LOG_TAG, warning) << "GetObject request to S3 backend gave unexpected '"
+        PEP_LOG(LOG_TAG, warning) << "GetObject request to S3 backend gave unexpected '"
           << error_code << "' error code, requesting '" << name << "' from bucket '"
           << bucket << "'";
-        LOG(LOG_TAG, warning) << resp.getBody();
+        PEP_LOG(LOG_TAG, warning) << resp.getBody();
 
         throw std::runtime_error("Request to S3 backend failed");
       }

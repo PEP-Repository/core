@@ -110,17 +110,17 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::getSt
 
   if (!mImmediatePartialData) {
     if (rawParticipant->getProgress() < 100 && !rawParticipant->isLocked()) {
-      PULLCASTOR_LOG(debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which is not completed";
+      PEP_PULLCASTOR_LOG(debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which is not completed";
       return rxcpp::rxs::empty<std::shared_ptr<StorableColumnContent>>();
     }
     auto updatedOn = ParseCastorDateTime(rawParticipant->getUpdatedOn());
     if (updatedOn >= this->getStudyPuller()->getEnvironmentPuller()->getCooldownThreshold()) {
-      PULLCASTOR_LOG(debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which has been updated too recently.";
+      PEP_PULLCASTOR_LOG(debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which has been updated too recently.";
       return rxcpp::rxs::empty<std::shared_ptr<StorableColumnContent>>();
     }
   }
 
-  PULLCASTOR_LOG(debug) << "Loading study " << slug << "'s CRF for participant " << id << " from Castor";
+  PEP_PULLCASTOR_LOG(debug) << "Loading study " << slug << "'s CRF for participant " << id << " from Castor";
   return this->getStudyDataPoints(rawParticipant)
     .op(RxSharedPtrCast<DataPointBase>())
     .flat_map([sp = this->getStudyPuller()](std::shared_ptr<DataPointBase> dp) {return sp->toFieldValue(dp).op(RxGetOne("CRF field value")); })

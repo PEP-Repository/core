@@ -37,7 +37,7 @@ LegacyAuthserverStorage::LegacyAuthserverStorage(const std::filesystem::path& pa
 void LegacyAuthserverStorage::ensureInitialized() {
   mStorage->syncSchema();
   if(mStorage->raw.count<UserIdRecord>() == 0) {
-    LOG(LOG_TAG, info) << "UserId table empty in legacy authserver storage. Initializing based on existing UserGroupRecords";
+    PEP_LOG(LOG_TAG, info) << "UserId table empty in legacy authserver storage. Initializing based on existing UserGroupRecords";
 
     migrateUidToInternalId();
   }

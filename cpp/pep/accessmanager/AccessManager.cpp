@@ -113,7 +113,7 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
     const T& entry = sourceEntries[i];
     auto entryStrings = CountAmaQueryResponseEntryStrings(entry);
     if (entryStrings > AMA_QUERY_RESPONSE_STRINGS_WARNING_THRESHOLD) {
-      LOG(LOG_TAG, warning) << "(Excessively) large AMA query response entry: " << NormalizedTypeNamer<T>::GetTypeName() << " contains " + std::to_string(entryStrings) + " strings";
+      PEP_LOG(LOG_TAG, warning) << "(Excessively) large AMA query response entry: " << NormalizedTypeNamer<T>::GetTypeName() << " contains " + std::to_string(entryStrings) + " strings";
     }
 
     // Create a new  if the entry can't be added to the one that's being filled
@@ -189,7 +189,7 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     storageFile = config.get<std::filesystem::path>("StorageFile");
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
@@ -198,7 +198,7 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
+    PEP_LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
     throw;
   }
 
@@ -402,7 +402,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     try {
                       mLocalPseudonym = localPseudonyms->at(entry.mPseudonymIndex);
                     } catch (const std::out_of_range&) {
-                      LOG(LOG_TAG, critical) << "Out of bounds read on local pseudonyms vector during key blinding";
+                      PEP_LOG(LOG_TAG, critical) << "Out of bounds read on local pseudonyms vector during key blinding";
                       throw;
                     }
                     auto blindingAD = entry.mMetadata.computeKeyBlindingAdditionalData(mLocalPseudonym);
@@ -434,7 +434,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   /* if we find at least one unblind entry in the request
                     * we can't deal with this ourselves, we need the transcryptor for this
                     */
-                  LOG(LOG_TAG, debug) << "Rekey request has a BLIND_MODE_UNBLIND entry -> forwarding to transcryptor";
+                  PEP_LOG(LOG_TAG, debug) << "Rekey request has a BLIND_MODE_UNBLIND entry -> forwarding to transcryptor";
                   RekeyRequest rkReq{
                     .mKeys{},
                     .mClientCertificateChain = *clientCertificateChain,
@@ -451,7 +451,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     try {
                       rkIndices->at(i) = static_cast<uint32_t>(rkReq.mKeys.size());
                     } catch (const std::out_of_range&) {
-                      LOG(LOG_TAG, critical) << "Out of bounds read on rekey indices vector during key unblinding";
+                      PEP_LOG(LOG_TAG, critical) << "Out of bounds read on rekey indices vector during key unblinding";
                       throw;
                     }
                     rkReq.mKeys.push_back(entry.mPolymorphEncryptionKey);
@@ -483,7 +483,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                               try {
                                 lp = localPseudonyms->at(entry.mPseudonymIndex);
                               } catch (const std::out_of_range&) {
-                                LOG(LOG_TAG, critical) << "Out of bounds read on local pseudonyms vector during key unblinding";
+                                PEP_LOG(LOG_TAG, critical) << "Out of bounds read on local pseudonyms vector during key unblinding";
                                 throw;
                               }
                               auto blindingAD = entry.mMetadata.computeKeyBlindingAdditionalData(lp);
@@ -492,7 +492,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                               try {
                                 encryptedKey = transResp->mKeys.at((*rkIndices)[i]);
                               } catch (const std::out_of_range&) {
-                                LOG(LOG_TAG, critical) << "Out of bounds read on keys vector during unblinding-and-rekeying";
+                                PEP_LOG(LOG_TAG, critical) << "Out of bounds read on keys vector during unblinding-and-rekeying";
                                 throw;
                               }
 
@@ -531,7 +531,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto time = std::chrono::steady_clock::now();
   auto requestNumber = mNextTicketRequestNumber++;
 
-  LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " received";
+  PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " received";
 
   // openAsAccessManager checks that mSignature and mLogSignature are set,
   // are valid and match.
@@ -610,7 +610,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // Prepare transcryptor request
   ctx->tsReqEntries.mEntries.resize(ctx->pps.size());
 
-  LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";
+  PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";
 
   // mWorkerPool->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.  If we need this
@@ -645,17 +645,17 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
       .op(RxIndexed<std::uint32_t>())
       .map([requestNumber = ctx->requestNumber](std::pair<std::uint32_t, std::vector<TranscryptorRequestEntry>> pair) {
         auto& [batchNum, batch] = pair;
-        LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sending transcryptor request entry batch " << batchNum << " containing " << batch.size() << " entries";
+        PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sending transcryptor request entry batch " << batchNum << " containing " << batch.size() << " entries";
         return messaging::MakeTailSegment(TranscryptorRequestEntries{std::move(batch)});
       })
       .op(RxBeforeCompletion([requestNumber = ctx->requestNumber, numEntries] {
-        LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sent " << numEntries << " transcryptor request entries";
+        PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sent " << numEntries << " transcryptor request entries";
       }));
 
-    LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
+    PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
     return ctx->server->mTranscryptorProxy.requestTranscryption(ctx->tsReq, tail);
   }).flat_map([ctx](TranscryptorResponse resp) {
-    LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
+    PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
     // Now we have local pseudonyms for the original PPs.
     if (resp.mEntries.size() != ctx->pps.size()) {
       throw std::runtime_error("Transcryptor returned wrong number of entries");
@@ -663,7 +663,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
     ctx->ticket.mAccessSubjects = std::move(resp.mEntries);
     if (ctx->ticket.mUserGroup == UserGroup::DataAdministrator && !ctx->ticket.mAccessSubjects.empty()) {
-      LOG(LOG_TAG, info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mAccessSubjects.size() << " participant(s)";
+      PEP_LOG(LOG_TAG, info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mAccessSubjects.size() << " participant(s)";
     }
     for (size_t i = 0; i < ctx->ticket.mAccessSubjects.size(); i++) {
       LocalPseudonym localPseudonym = ctx->ticket.mAccessSubjects[i].mAccessManager.decrypt(ctx->server->mPseudonymKey);
@@ -683,10 +683,10 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     LogIssuedTicketRequest logReq;
     logReq.mTicket = ctx->signedTicket;
     logReq.mId = resp.mId;
-    LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
+    PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
     return ctx->server->mTranscryptorProxy.requestLogIssuedTicket(std::move(logReq));
   }).map([ctx](LogIssuedTicketResponse resp) {
-    LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
+    PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
     ctx->signedTicket.addTranscryptorSignature(std::move(resp.mSignature));
 
     std::string response;
@@ -702,7 +702,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     auto result = rxcpp::observable<>::from(MakeSharedCopy(std::move(response))).as_dynamic();
 
     ctx->server->lpMetrics->ticket_request2_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count());
-    LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
+    PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
     return result;
   });
 
@@ -711,11 +711,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
       [](auto) { /*ignore */},
       [](std::exception_ptr) { /*ignore */},
       [ctx]() {
-        LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " starting asynchronous processing";
+        PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " starting asynchronous processing";
       })
     .concat(result);
 
-  LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " returning observable";
+  PEP_LOG(LOG_TAG, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " returning observable";
   return result;
 }
 
@@ -931,7 +931,7 @@ messaging::MessageBatches AccessManager::
   assert(getStoragePath().has_value());
   backend->ensureNoUserData();
   auto tmpUserDbMigrationPath = getStoragePath().value() / pep::filesystem::RandomizedName("AuthserverStorage-%%%%%%.sqlite");
-  LOG(LOG_TAG, info) << "Received MigrateUserDbToAccessManagerRequest. Storing authserver storage as \"" << tmpUserDbMigrationPath.string() << '"';
+  PEP_LOG(LOG_TAG, info) << "Received MigrateUserDbToAccessManagerRequest. Storing authserver storage as \"" << tmpUserDbMigrationPath.string() << '"';
 
   return chunksObservable.reduce(
     MakeStreamWithDeferredCleanup(tmpUserDbMigrationPath),

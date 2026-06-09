@@ -23,6 +23,7 @@ namespace {
 
 const auto TIMEOUT = std::chrono::seconds(5);
 
+// Not defined with a PEP_ prefix so that it matches gtest macros
 // Implemented as "invoke this lambda" so that a semicolon is required: ASSERT_THROW_WITH_MESSAGE(mycode(), std::runtime_error);
 #define ASSERT_THROW_WITH_MESSAGE(statement, expected_exception) \
 [&]() { \

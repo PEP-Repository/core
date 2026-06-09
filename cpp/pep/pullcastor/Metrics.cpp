@@ -62,7 +62,7 @@ Metrics::~Metrics() noexcept {
     }
   }
   catch (...) {
-    LOG("PullCastor", error) << "Error writing metrics: " << GetExceptionMessage(std::current_exception());
+    PEP_LOG("PullCastor", error) << "Error writing metrics: " << GetExceptionMessage(std::current_exception());
   }
 }
 

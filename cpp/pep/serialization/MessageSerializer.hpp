@@ -44,7 +44,7 @@ public:
       return parseFromIstream(in);
     }
     catch (const SerializeException& e) {
-      LOG("MessageSerializer::fromString", severity_level::error) << "Caught SerializeException: " << e.what();
+      PEP_LOG("MessageSerializer::fromString", severity_level::error) << "Caught SerializeException: " << e.what();
       throw;
     }
   }

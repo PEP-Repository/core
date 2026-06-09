@@ -26,7 +26,7 @@ rxcpp::observable<std::vector<CoreClient::AESKey>>
 CoreClient::unblindAndDecryptKeys(
       std::span<const std::shared_ptr<EnumerateResult>> entries,
       std::shared_ptr<SignedTicket2> ticket) {
-  LOG(LOG_TAG, debug) << "unblindAndDecryptKeys";
+  PEP_LOG(LOG_TAG, debug) << "unblindAndDecryptKeys";
 
   struct Context {
     std::shared_ptr<WaitGroup> wg;
@@ -117,7 +117,7 @@ CoreClient::unblindAndDecryptKeys(
 rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   std::shared_ptr<DataEntriesRequest2<DataStoreEntry2>> request,
   const std::vector<AESKey>& keys) {
-  LOG(LOG_TAG, debug) << "encryptAndBlindKeys";
+  PEP_LOG(LOG_TAG, debug) << "encryptAndBlindKeys";
 
   assert(request->mEntries.size() == keys.size());
 

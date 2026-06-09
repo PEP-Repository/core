@@ -47,7 +47,7 @@ SetBinaryFileMode::~SetBinaryFileMode() noexcept {
     SetMode(file_, stream_, prevMode_);
     file_ = {};
   } catch (const std::system_error& ex) {
-    LOG("File mode", warning) << ex.what();
+    PEP_LOG("File mode", warning) << ex.what();
   }
 }
 

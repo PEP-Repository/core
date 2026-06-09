@@ -58,7 +58,7 @@ private:
 
     if (data.id.empty()) {
       assert(data.accessGroupPseudonym != nullptr);
-      LOG(LOG_TAG, pep::warning) << "Missing PEP ID for subject with local pseudonym " << data.accessGroupPseudonym->text();
+      PEP_LOG(LOG_TAG, pep::warning) << "Missing PEP ID for subject with local pseudonym " << data.accessGroupPseudonym->text();
       result = 1;
     }
 
@@ -67,11 +67,11 @@ private:
         pep::ParticipantDeviceHistory::Parse(history.second);
       }
       catch (const std::exception& e) {
-        LOG(LOG_TAG, pep::warning) << "Invalid device history in column " << history.first << " for participant " << data.id << ": " << e.what();
+        PEP_LOG(LOG_TAG, pep::warning) << "Invalid device history in column " << history.first << " for participant " << data.id << ": " << e.what();
         result = 1;
       }
       catch (...) {
-        LOG(LOG_TAG, pep::warning) << "Invalid device history in column " << history.first << " for participant " << data.id;
+        PEP_LOG(LOG_TAG, pep::warning) << "Invalid device history in column " << history.first << " for participant " << data.id;
         result = 1;
       }
     }

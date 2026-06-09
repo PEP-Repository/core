@@ -545,7 +545,7 @@ static const char* lpMonthsOfTheYear[] = { "Jan", "Feb", "Mar", "Apr", "May", "J
                                             dumpfile, MiniDumpWithDataSegs, nullptr, nullptr, nullptr);
   if (!dumpSuccessful) {
     HRESULT hError = HRESULT_FROM_WIN32(GetLastError());
-    LOG(LOG_TAG, error) << "Failed to write minidump: " << hError;
+    PEP_LOG(LOG_TAG, error) << "Failed to write minidump: " << hError;
   }
 
   exit(2);
@@ -566,7 +566,7 @@ void InitializeUnwinder() {
   const std::string szReportDirectoryPath = std::string(dirname(std::string(szReportDirectoryTmp).data())) + "/";
 
   if (DIR* lpReportDirectory = opendir (szReportDirectoryPath.c_str()); lpReportDirectory == nullptr) {
-    LOG(LOG_TAG, warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
+    PEP_LOG(LOG_TAG, warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
   } else {
     std::unique_ptr<LocalSettings>& lpLocalSettings = LocalSettings::getInstance();
     struct dirent* lpDirEntry;
@@ -611,12 +611,12 @@ void InitializeUnwinder() {
         std::ifstream mCrashReportStream (szReportDirectoryPath + "/" + lpDirEntry->d_name);
         std::string szLine;
         if (mCrashReportStream.is_open ()) {
-          LOG(LOG_TAG, debug) << "[*] ==== Crash report from previous run ====";
+          PEP_LOG(LOG_TAG, debug) << "[*] ==== Crash report from previous run ====";
           while (getline (mCrashReportStream, szLine)) {
-            LOG(LOG_TAG, debug) << szLine;
+            PEP_LOG(LOG_TAG, debug) << szLine;
           }
           mCrashReportStream.close();
-          LOG(LOG_TAG, debug) << "[*] ==== End Crash report from previous run ====";
+          PEP_LOG(LOG_TAG, debug) << "[*] ==== End Crash report from previous run ====";
         }
 
         if (qwTimestamp > qwLatestTimestamp) {
@@ -684,7 +684,7 @@ void InitializeUnwinder() {
 namespace pep {
   static const std::string LOG_TAG ("Unwinder");
   void InitializeUnwinder() {
-    LOG(LOG_TAG, warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
+    PEP_LOG(LOG_TAG, warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
   }
 }
 

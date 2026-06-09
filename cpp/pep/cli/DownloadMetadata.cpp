@@ -135,7 +135,7 @@ void DownloadMetadata::ensureFormatUpToDate() {
 
   auto legacyPristineFile = mDownloadDirectory / PRISTINE_STATE_FILENAME;
   if (std::filesystem::exists(legacyPristineFile)) {
-    LOG(LOG_TAG, warning) << "Upgrading legacy download directory format.";
+    PEP_LOG(LOG_TAG, warning) << "Upgrading legacy download directory format.";
     boost::property_tree::ptree stateProperties;
     boost::property_tree::read_json(legacyPristineFile.string(), stateProperties);
     auto states = DeserializeProperties<std::vector<RecordState>>(stateProperties, "records", DeserializationContext());
@@ -187,7 +187,7 @@ void DownloadMetadata::ensureFormatUpToDate() {
           + ", blinding timestamp " + std::to_string(TicksSinceEpoch<std::chrono::milliseconds>(first.getBlindingTimestamp())));
     }
     std::filesystem::remove(legacyPristineFile);
-    LOG(LOG_TAG, warning) << "Download directory metadata format upgraded. Please update your (offline) copies.";
+    PEP_LOG(LOG_TAG, warning) << "Download directory metadata format upgraded. Please update your (offline) copies.";
   }
 
   if (!GetLegacyParticipantMetaFilePaths(mDownloadDirectory).empty()) {

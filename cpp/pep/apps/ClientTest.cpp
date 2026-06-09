@@ -42,7 +42,7 @@ class ClientTestApplication : public Application {
       [](FakeVoid unused) {},
       [this](std::exception_ptr ep) {
         client->getIoContext()->stop();
-        LOG(LOG_TAG, error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
+        PEP_LOG(LOG_TAG, error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
       },
       [] {});
   }
@@ -57,7 +57,7 @@ class ClientTestApplication : public Application {
     function(client).subscribe(
       [success](bool entry) {if (!entry) *success = false; },
       [success, this](std::exception_ptr ep) {
-        LOG(LOG_TAG, error) << "Exception occured: " << GetExceptionMessage(ep);
+        PEP_LOG(LOG_TAG, error) << "Exception occured: " << GetExceptionMessage(ep);
         *success = false;
         shutdownClient();
       },
@@ -157,7 +157,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
     *strPayload += " and " + std::to_string(i);
   }
 
-  LOG(LOG_TAG, debug) << "CoreClient.StoreData";
+  PEP_LOG(LOG_TAG, debug) << "CoreClient.StoreData";
   // Test storage and retrieval of data
   return client->storeData2(pp, "ParticipantInfo", strPayload,
                             {MetadataXEntry::MakeFileExtension(".txt")})

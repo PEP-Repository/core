@@ -255,7 +255,7 @@ std::shared_ptr<Logging::Sink> SysLogging::registerSink() const {
     return CreateSinkWrapper(lpSink);
   } catch (const std::exception& e) {
     // Notify our failure to other sinks that may already have been successfully set up
-    LOG("Logging", critical) << "Failed to initialize system log: " << e.what() << std::endl;
+    PEP_LOG("Logging", critical) << "Failed to initialize system log: " << e.what() << std::endl;
     throw;
   }
 }

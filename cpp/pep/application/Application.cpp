@@ -32,7 +32,7 @@ void LogVersionInfo(const std::string& tag, std::string summary) {
   if (summary.empty()) {
     summary = "No version information available. Running a local build?";
   }
-  LOG("Application " + tag, info) << summary;
+  PEP_LOG("Application " + tag, info) << summary;
 }
 
 template <typename T>
@@ -315,7 +315,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
     }
 
     if (usingConsoleLog_) {
-      LOG("Application", severity_level::critical) << "Terminating application " << detail;
+      PEP_LOG("Application", severity_level::critical) << "Terminating application " << detail;
     }
     else {
       auto channel = CreateNotificationChannel(true);
@@ -454,7 +454,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
   // Also, we allow printing version info above.
   if (::GetACP() != CP_UTF8) {
     if (lexed.contains("allow-non-utf8")) {
-      LOG("Application", severity_level::warning)
+      PEP_LOG("Application", severity_level::warning)
         << "Code page was not set to UTF-8, you may be using an old Windows version. "
            "Using --allow-non-utf8 is not recommended, you may experience problems using special characters.";
     } else {

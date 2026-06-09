@@ -75,7 +75,7 @@ rxcpp::observable<StoreData2Entry> StoredData::getUpdateEntry(std::shared_ptr<St
   auto column = storable->getColumn();
   auto existing = participant->tryGetCellContent(column);
   if (existing == nullptr) {
-    PULLCASTOR_LOG(debug) << "Adding new cell to PEP.";
+    PEP_PULLCASTOR_LOG(debug) << "Adding new cell to PEP.";
     return storable->getContent()->getData()
       .map([column, pp = std::make_shared<PolymorphicPseudonym>(participant->getPp()), extension = storable->getFileExtension()](const std::string& data) {
       return StoreData2Entry(pp, column, std::make_shared<std::string>(data), { MetadataXEntry::MakeFileExtension(extension) });
@@ -95,10 +95,10 @@ rxcpp::observable<StoreData2Entry> StoredData::getUpdateEntry(std::shared_ptr<St
       [](std::exception_ptr) {},
       [updating]() {
         if (*updating) {
-          PULLCASTOR_LOG(debug) << "Updating PEP cell with new content.";
+          PEP_PULLCASTOR_LOG(debug) << "Updating PEP cell with new content.";
         }
         else {
-          PULLCASTOR_LOG(debug) << "Skipping cell that was already stored in PEP.";
+          PEP_PULLCASTOR_LOG(debug) << "Skipping cell that was already stored in PEP.";
         }
       }
     );

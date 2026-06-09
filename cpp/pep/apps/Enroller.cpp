@@ -83,7 +83,7 @@ int Enroller::execute() {
     std::shared_ptr<Client> client = builder.build();
 
     this->enroll(client).subscribe([this](EnrolledPartyKeys result) {
-      LOG(LOG_TAG, debug) << "Received EnrolledPartyKeys";
+      PEP_LOG(LOG_TAG, debug) << "Received EnrolledPartyKeys";
 
       // If output filename is provided, write output there, otherwise print it
       auto extendedProperties = this->producesExtendedProperties();
@@ -102,11 +102,11 @@ int Enroller::execute() {
         std::cout << std::endl;
       }
     }, [io_context](std::exception_ptr ep) {
-      LOG(LOG_TAG, error) << "Exception occurred during enrollment: " << GetExceptionMessage(ep) << std::endl;
+      PEP_LOG(LOG_TAG, error) << "Exception occurred during enrollment: " << GetExceptionMessage(ep) << std::endl;
       io_context->stop();
     }, [io_context, result] {
       // Registration done
-      LOG(LOG_TAG, info) << "Enrollment done" << std::endl;
+      PEP_LOG(LOG_TAG, info) << "Enrollment done" << std::endl;
       io_context->stop();
       *result = 0;
     });
@@ -114,7 +114,7 @@ int Enroller::execute() {
     io_context->run();
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, error) << e.what();
+    PEP_LOG(LOG_TAG, error) << e.what();
     std::cerr << e.what() << std::endl;
   }
 

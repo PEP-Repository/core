@@ -328,15 +328,15 @@ private:
               assert(spCount >= fields->size());
               auto spsToGenerate = spCount - fields->size();
               if (id.has_value()) {
-                LOG(LOG_TAG, pep::info) << "Storing participant identifier and " << spsToGenerate << " short pseudonym(s) for " << *id;
+                PEP_LOG(LOG_TAG, pep::info) << "Storing participant identifier and " << spsToGenerate << " short pseudonym(s) for " << *id;
                 return client->completeParticipantRegistration(*id, false);
               }
 
               if (spsToGenerate == 0U) {
-                LOG(LOG_TAG, pep::debug) << "Encountered participant without identifier";
+                PEP_LOG(LOG_TAG, pep::debug) << "Encountered participant without identifier";
               }
               else {
-                LOG(LOG_TAG, pep::error) << "Cannot generate " << spsToGenerate << " short pseudonym(s) for participant without identifier";
+                PEP_LOG(LOG_TAG, pep::error) << "Cannot generate " << spsToGenerate << " short pseudonym(s) for participant without identifier";
               }
               return rxcpp::observable<>::empty<pep::FakeVoid>();
             }
@@ -346,7 +346,7 @@ private:
             assert(spCount + 1U >= fields->size());
             auto spsToGenerate = spCount - (fields->size() - 1U);
             if (spsToGenerate > 0U) {
-              LOG(LOG_TAG, pep::info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->mData;
+              PEP_LOG(LOG_TAG, pep::info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->mData;
               return client->completeParticipantRegistration(idField->mData, true);
             }
 

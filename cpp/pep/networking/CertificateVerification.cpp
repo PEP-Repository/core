@@ -56,11 +56,11 @@ void TrustSystemRootCAs(boost::asio::ssl::context& ctx) {
 }
 
 bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommonName, bool preverified, boost::asio::ssl::verify_context& verifyCtx) {
-  LOG(LOG_TAG, debug) << "Checking certificate for expected commonName " << expectedCommonName;
+  PEP_LOG(LOG_TAG, debug) << "Checking certificate for expected commonName " << expectedCommonName;
 
   if (!preverified) {
     int err = X509_STORE_CTX_get_error(verifyCtx.native_handle());
-    LOG(LOG_TAG, warning) << "Preverification of certificate failed with error " << err << " (" << X509_verify_cert_error_string(err) << ")";
+    PEP_LOG(LOG_TAG, warning) << "Preverification of certificate failed with error " << err << " (" << X509_verify_cert_error_string(err) << ")";
     return false;
   }
 
@@ -82,7 +82,7 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
       if (eku != nullptr) sk_ASN1_OBJECT_pop_free(eku, ASN1_OBJECT_free);
     });
   if (eku == nullptr) {
-    LOG(LOG_TAG, warning) << "Certificate does not contain EKU field";
+    PEP_LOG(LOG_TAG, warning) << "Certificate does not contain EKU field";
     return false;
   }
   for (int i = 0; i < sk_ASN1_OBJECT_num(eku.get()); i++) {
@@ -98,7 +98,7 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
     }
   }
   if (!foundWebServerEKU) {
-    LOG(LOG_TAG, warning) << "Certificate does not have the right EKU";
+    PEP_LOG(LOG_TAG, warning) << "Certificate does not have the right EKU";
     return false;
   }
 
@@ -116,18 +116,18 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
     std::string commonName(
       reinterpret_cast<const char*>(asn1CommonName->data),
       static_cast<size_t>(asn1CommonName->length));
-    LOG(LOG_TAG, debug) << "Received certificate with commonName " << commonName;
+    PEP_LOG(LOG_TAG, debug) << "Received certificate with commonName " << commonName;
     if (expectedCommonName == commonName) {
-      LOG(LOG_TAG, debug) << "Expected commonName (" << expectedCommonName << ") matched with received commonName (" << commonName << ")";
+      PEP_LOG(LOG_TAG, debug) << "Expected commonName (" << expectedCommonName << ") matched with received commonName (" << commonName << ")";
       return true;
     }
     else if (commonName[0] == '*' && commonName[1] == '.' && boost::algorithm::ends_with(expectedCommonName, commonName.substr(1))) {
-      LOG(LOG_TAG, debug) << "Expected commonName (" << expectedCommonName << ") matched with received wildcard commonName (" << commonName << ")";
+      PEP_LOG(LOG_TAG, debug) << "Expected commonName (" << expectedCommonName << ") matched with received wildcard commonName (" << commonName << ")";
       return true;
     }
   }
 
-  LOG(LOG_TAG, warning) << "Certificate verification failed";
+  PEP_LOG(LOG_TAG, warning) << "Certificate verification failed";
   return false;
 }
 

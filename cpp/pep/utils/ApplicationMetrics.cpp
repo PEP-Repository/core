@@ -40,7 +40,7 @@ namespace pep {
     return static_cast<double>(result * pagesize);
 #else
     if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
+      PEP_LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
       warningLogged = true;
     }
     return nan("");
@@ -104,7 +104,7 @@ namespace pep {
     return {physicalRatio, totalRatio};
 #else
     if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
+      PEP_LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
       warningLogged = true;
     }
     return {nan(""), nan("")};

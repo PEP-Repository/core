@@ -41,92 +41,95 @@
 #include <Windows.h>
 #endif /*_WIN32*/
 
-#define LOG_TAG "Participant widget"
 
 namespace {
-  class ParticipantDataAggregator {
-  private:
-    const pep::GlobalConfiguration mGlobalConfig;
-    std::vector<const pep::ShortPseudonymDefinition *> mUnfilledShortPseudonyms;
-    std::map<std::string, pep::EnumerateAndRetrieveResult> mDeviceHistory;
-    std::optional<pep::EnumerateAndRetrieveResult> mParticipantInfo;
-    std::optional<pep::EnumerateAndRetrieveResult> mIsTestParticipant;
-    bool mParticipantIdentifierIsSet;
-    std::map<std::string, std::string> mShortPseudonyms;
-    std::string mStudyContexts;
-    std::unordered_map<std::string, std::unordered_map<unsigned, std::optional<unsigned>>> mVisitAssessors;
 
-  private:
-    const pep::ShortPseudonymDefinition *getShortPseudonymDefinition(const std::string& shortPseudonymTag) const;
+const std::string LOG_TAG = "Participant widget";
 
-    void processDeviceHistory(const pep::EnumerateAndRetrieveResult& result);
-    void processParticipantInfo(const pep::EnumerateAndRetrieveResult& result);
-    void processIsTestParticipant(const pep::EnumerateAndRetrieveResult& result);
-    void processParticipantIdentifier(const pep::EnumerateAndRetrieveResult& result);
-    void processShortPseudonym(const pep::EnumerateAndRetrieveResult& result);
-    void processStudyContexts(const pep::EnumerateAndRetrieveResult& result);
-    void processVisitAssessor(const pep::EnumerateAndRetrieveResult& result);
+class ParticipantDataAggregator {
+private:
+  const pep::GlobalConfiguration mGlobalConfig;
+  std::vector<const pep::ShortPseudonymDefinition*> mUnfilledShortPseudonyms;
+  std::map<std::string, pep::EnumerateAndRetrieveResult> mDeviceHistory;
+  std::optional<pep::EnumerateAndRetrieveResult> mParticipantInfo;
+  std::optional<pep::EnumerateAndRetrieveResult> mIsTestParticipant;
+  bool mParticipantIdentifierIsSet;
+  std::map<std::string, std::string> mShortPseudonyms;
+  std::string mStudyContexts;
+  std::unordered_map<std::string, std::unordered_map<unsigned, std::optional<unsigned>>> mVisitAssessors;
 
-    bool infoPseudonymsIsSet() const noexcept;
+private:
+  const pep::ShortPseudonymDefinition* getShortPseudonymDefinition(const std::string& shortPseudonymTag) const;
 
-    bool isDeviceHistoryColumn(const std::string& columnName) const;
-    bool isVisitAssessorColumn(const std::string& columnName, std::string* context = nullptr, unsigned *visitNumber = nullptr) const;
+  void processDeviceHistory(const pep::EnumerateAndRetrieveResult& result);
+  void processParticipantInfo(const pep::EnumerateAndRetrieveResult& result);
+  void processIsTestParticipant(const pep::EnumerateAndRetrieveResult& result);
+  void processParticipantIdentifier(const pep::EnumerateAndRetrieveResult& result);
+  void processShortPseudonym(const pep::EnumerateAndRetrieveResult& result);
+  void processStudyContexts(const pep::EnumerateAndRetrieveResult& result);
+  void processVisitAssessor(const pep::EnumerateAndRetrieveResult& result);
 
-  public:
-    ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept;
+  bool infoPseudonymsIsSet() const noexcept;
 
-    // Prevent copying, which would have the copy's mUnfilledShortPseudonyms point to the original's mShortPseudonymDefinitions
-    ParticipantDataAggregator(const ParticipantDataAggregator&) = delete;
-    ParticipantDataAggregator& operator =(const ParticipantDataAggregator&) = delete;
+  bool isDeviceHistoryColumn(const std::string& columnName) const;
+  bool isVisitAssessorColumn(const std::string& columnName, std::string* context = nullptr, unsigned* visitNumber = nullptr) const;
 
-    void process(const pep::EnumerateAndRetrieveResult& result);
+public:
+  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept;
 
-    bool hasParticipantData() const noexcept;
-    bool hasCompleteParticipantData() const noexcept;
+  // Prevent copying, which would have the copy's mUnfilledShortPseudonyms point to the original's mShortPseudonymDefinitions
+  ParticipantDataAggregator(const ParticipantDataAggregator&) = delete;
+  ParticipantDataAggregator& operator =(const ParticipantDataAggregator&) = delete;
 
-    ParticipantData getData() const;
-    const std::string& getStudyContexts() const noexcept { return mStudyContexts; }
-  };
+  void process(const pep::EnumerateAndRetrieveResult& result);
 
-  bool ContainsMultipleVisits(const std::vector<pep::ShortPseudonymDefinition>& sps) {
-    std::optional<uint32_t> visit;
-    for (const auto& sp : sps) {
-      auto spVisit = sp.getColumn().getVisitNumber();
-      if (spVisit.has_value()) {
-        if (visit.value_or(*spVisit) != *spVisit) {
-          return true;
-        }
-        visit = spVisit;
+  bool hasParticipantData() const noexcept;
+  bool hasCompleteParticipantData() const noexcept;
+
+  ParticipantData getData() const;
+  const std::string& getStudyContexts() const noexcept { return mStudyContexts; }
+};
+
+bool ContainsMultipleVisits(const std::vector<pep::ShortPseudonymDefinition>& sps) {
+  std::optional<uint32_t> visit;
+  for (const auto& sp : sps) {
+    auto spVisit = sp.getColumn().getVisitNumber();
+    if (spVisit.has_value()) {
+      if (visit.value_or(*spVisit) != *spVisit) {
+        return true;
       }
+      visit = spVisit;
     }
-
-    return false;
   }
 
-  std::filesystem::path StoreConfiguredBartenderPath(const std::filesystem::path& path) {
-    QSettings().setValue("BartenderPath", QString::fromStdString(path.string()));
-    return path;
+  return false;
+}
+
+std::filesystem::path StoreConfiguredBartenderPath(const std::filesystem::path& path) {
+  QSettings().setValue("BartenderPath", QString::fromStdString(path.string()));
+  return path;
+}
+
+std::optional<std::filesystem::path> ReadConfiguredBartenderPath(const std::optional<pep::Configuration>& configuration) {
+  // If we've already stored it in local settings (in a previous run), return that value
+  auto setting = QSettings().value("BartenderPath");
+  if (!setting.isNull()) {
+    return setting.toString().toStdString();
   }
 
-  std::optional<std::filesystem::path> ReadConfiguredBartenderPath(const std::optional<pep::Configuration>& configuration) {
-    // If we've already stored it in local settings (in a previous run), return that value
-    auto setting = QSettings().value("BartenderPath");
-    if (!setting.isNull()) {
-      return setting.toString().toStdString();
-    }
+  /* If configuration contained no "BartenderPath", we'd feed an unqualified "bartend.exe" into the
+   * std::system call when we want to invoke it. Presumably the shell would then (be expected to) locate
+   * the executable on the system's path. But
+   * - we don't want to invoke the .exe here, and
+   * - there does not seem to be a portable way to have C++ find the .exe on the path, and
+   * - I don't think that many systems would (be configured to) have bartend.exe on their paths anyway.
+   * So since finding an unqualified "bartend.exe" would be difficult and yield little benefit, we don't
+   * use that anymore as a fallback.
+   */
 
-    /* If configuration contained no "BartenderPath", we'd feed an unqualified "bartend.exe" into the
-     * std::system call when we want to invoke it. Presumably the shell would then (be expected to) locate
-     * the executable on the system's path. But
-     * - we don't want to invoke the .exe here, and
-     * - there does not seem to be a portable way to have C++ find the .exe on the path, and
-     * - I don't think that many systems would (be configured to) have bartend.exe on their paths anyway.
-     * So since finding an unqualified "bartend.exe" would be difficult and yield little benefit, we don't
-     * use that anymore as a fallback.
-     */
+  return std::nullopt;
+}
 
-    return std::nullopt;
-  }
 }
 
 const QString ParticipantWidget::NO_PARTICIPANT_SID = QString();
@@ -328,7 +331,7 @@ void ParticipantWidget::onParticipantDataReceived(ParticipantData data, std::str
   participantStudyContexts = mAllContexts.parse(studyContexts);
 
   if (participantData.mPersonalia.has_value() != currentPEPRole.canSeeParticipantPersonalia()) {
-    LOG(LOG_TAG, pep::warning) << "Participant personalia viewer received no data";
+    PEP_LOG(LOG_TAG, pep::warning) << "Participant personalia viewer received no data";
   }
 
   processData();
@@ -1007,7 +1010,7 @@ void ParticipantWidget::initializeShortPseudonymsUi(const std::optional<uint32_t
     else {
       widgetDescription = "Participant";
     }
-    LOG(LOG_TAG, pep::warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
+    PEP_LOG(LOG_TAG, pep::warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
     pseudonymTextMain.append("\n\n");
     pseudonymTextMain.append(pseudonymTextOtherVisits);
   }
@@ -1441,7 +1444,7 @@ ParticipantData ParticipantDataAggregator::getData() const {
   if (mParticipantInfo) {
     auto personalia = pep::ParticipantPersonalia::FromJson(mParticipantInfo->mData);
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
-      LOG(LOG_TAG, pep::warning) << "Received empty participant personalia";
+      PEP_LOG(LOG_TAG, pep::warning) << "Received empty participant personalia";
     }
     participantData.mPersonalia = personalia;
   }

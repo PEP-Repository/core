@@ -25,7 +25,7 @@ class DumpShadowAdministrationApplication : public pep::Application {
     // Open SQLite database
     err = sqlite3_open(filename, &pDB);
     if (err != SQLITE_OK) {
-      LOG(LOG_TAG, warning) << "Error opening SQLite database: " << err;
+      PEP_LOG(LOG_TAG, warning) << "Error opening SQLite database: " << err;
       throw std::runtime_error("Error opening SQLite database");
     }
 
@@ -33,7 +33,7 @@ class DumpShadowAdministrationApplication : public pep::Application {
 
     err = sqlite3_prepare(pDB, "SELECT * FROM ShadowShortPseudonyms", -1, &pStmt, nullptr);
     if (err != SQLITE_OK) {
-      LOG(LOG_TAG, warning) << "Error opening SQLite database: " << sqlite3_errmsg(pDB);
+      PEP_LOG(LOG_TAG, warning) << "Error opening SQLite database: " << sqlite3_errmsg(pDB);
       throw std::runtime_error("Error opening SQLite database");
     }
 
@@ -62,17 +62,17 @@ class DumpShadowAdministrationApplication : public pep::Application {
 
     sqlite3_stmt* insertStmt{};
     if(sqlite3_prepare_v2(pDB, "INSERT INTO ShadowShortPseudonyms(EncryptedIdentifier, EncryptedShortPseudonym) VALUES(?, ?)", -1, &insertStmt, nullptr) != SQLITE_OK) {
-      LOG(LOG_TAG, warning) << "Error occured: " << sqlite3_errmsg(pDB);
+      PEP_LOG(LOG_TAG, warning) << "Error occured: " << sqlite3_errmsg(pDB);
       throw std::runtime_error("Error occured");
     }
 
     if (encryptedIdentifier.size() > static_cast<unsigned>(INT_MAX)) {
-      LOG(LOG_TAG, error) << "Encrypted identifier too large to store";
+      PEP_LOG(LOG_TAG, error) << "Encrypted identifier too large to store";
       throw std::runtime_error("Encrypted identifier too large to store");
     }
     sqlite3_bind_blob(insertStmt, 1, encryptedIdentifier.data(), static_cast<int>(encryptedIdentifier.size()), SQLITE_STATIC);
     if (encryptedShortPseudonym.size() > static_cast<unsigned>(INT_MAX)) {
-      LOG(LOG_TAG, error) << "Encrypted short pseudonym too large to store";
+      PEP_LOG(LOG_TAG, error) << "Encrypted short pseudonym too large to store";
       throw std::runtime_error("Encrypted short pseudonym too large to store");
     }
     sqlite3_bind_blob(insertStmt, 2, encryptedShortPseudonym.data(), static_cast<int>(encryptedShortPseudonym.size()), SQLITE_STATIC);
@@ -80,7 +80,7 @@ class DumpShadowAdministrationApplication : public pep::Application {
     sqlite3_step(insertStmt);
 
     if (sqlite3_finalize(insertStmt) != SQLITE_OK) {
-      LOG(LOG_TAG, warning) << "Error occured while storing in shadow administration: " << sqlite3_errmsg(pDB);
+      PEP_LOG(LOG_TAG, warning) << "Error occured while storing in shadow administration: " << sqlite3_errmsg(pDB);
       throw std::runtime_error("Error occured while storing in shadow administration");
     }
   }
@@ -92,14 +92,14 @@ class DumpShadowAdministrationApplication : public pep::Application {
     // Open SQLite database for shadow administration of identifiers/short pseudonyms
     err = sqlite3_open(filenameDB, &pDB);
     if(err != SQLITE_OK) {
-      LOG(LOG_TAG, warning) << "Error opening SQLite database: " << sqlite3_errmsg(pDB);
+      PEP_LOG(LOG_TAG, warning) << "Error opening SQLite database: " << sqlite3_errmsg(pDB);
       throw std::runtime_error("Error opening SQLite database");
     }
 
     // Create table if it does not exist yet
     err = sqlite3_exec(pDB, "CREATE TABLE IF NOT EXISTS `ShadowShortPseudonyms` (`EncryptedIdentifier`  BLOB, `EncryptedShortPseudonym`  BLOB, `Id` INTEGER PRIMARY KEY AUTOINCREMENT);", nullptr, nullptr, nullptr);
     if(err != SQLITE_OK) {
-      LOG(LOG_TAG, warning) << "Error creating SQLite table: " << sqlite3_errmsg(pDB);
+      PEP_LOG(LOG_TAG, warning) << "Error creating SQLite table: " << sqlite3_errmsg(pDB);
       throw std::runtime_error("Error creating SQLite table");
     }
 
