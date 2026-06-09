@@ -74,7 +74,6 @@ CommandPseudonym::CommandConvert::getSupportedParameters() const {
              .value(Value<std::string>()
                 .positional()
                 .allow(IdTypeStrings)
-                .multiple()
                 .required());
 }
 
