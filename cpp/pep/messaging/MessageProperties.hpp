@@ -14,10 +14,10 @@ using EncodedMessageProperties = uint32_t;
 // The (single) high bit in EncodedMessageProperties indicates message type
 class MessageType {
 public:
-  enum Value {
-    CONTROL,
-    REQUEST,
-    RESPONSE
+  enum Value { // Intentionally not an enum _class_ so we can write e.g. "MessageType::Control"
+    Control,
+    Request,
+    Response
   };
 
   static bool IsValidValue(Value value) noexcept;

@@ -109,7 +109,7 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
   std::string action, caption, description;
 
   switch (id.type().value()) {
-  case MessageType::REQUEST:
+  case MessageType::Request:
     severity = severity_level::error;
     action = "sending to";
     caption = "Unexpected exception";
@@ -117,7 +117,7 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
     onUncaughtReadException.notify(error);
     break;
 
-  case MessageType::RESPONSE:
+  case MessageType::Response:
     action = "handling";
     try {
       std::rethrow_exception(error);
@@ -268,14 +268,14 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
 
     // make distinction between message types
     switch (messageId.type().value()) {
-    case MessageType::CONTROL:
+    case MessageType::Control:
       // No processing needed: just wait for the next message
       return;
 
-    case MessageType::RESPONSE:
+    case MessageType::Response:
       this->processReceivedResponse(messageId.streamId(), header.properties().flags(), this->getReceivedMessageContent(header));
       return;
-    case MessageType::REQUEST:
+    case MessageType::Request:
       this->processReceivedRequest(messageId.streamId(), header.properties().flags(), this->getReceivedMessageContent(header));
       return;
     }

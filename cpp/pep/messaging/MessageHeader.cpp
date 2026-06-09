@@ -18,7 +18,7 @@ const size_t MAX_SIZE_OF_MESSAGE =
 
 MessageHeader::MessageHeader(MessageLength length, MessageProperties properties)
   : mLength(length), mProperties(properties) {
-  if (mProperties.messageId().type().value() == MessageType::CONTROL) {
+  if (mProperties.messageId().type().value() == MessageType::Control) {
     if (mLength != 0U) {
       throw std::runtime_error(std::format("Control messages must have zero length, length is {}", mLength));
     }
