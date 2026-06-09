@@ -11,6 +11,7 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/OpensslUtils.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/utils/EnumUtils.hpp>
 
 #include <string>
 #include <mutex>
@@ -30,10 +31,10 @@ AsymmetricKey::~AsymmetricKey() {
  * @param keyType The type of the key (private or public).
  * @param o The EVP_PKEY* representing the key.
  */
-AsymmetricKey::AsymmetricKey(asymmetric_key_type_t keyType, EVP_PKEY* o) {
+AsymmetricKey::AsymmetricKey(AsymmetricKeyType keyType, EVP_PKEY* o) {
   this->keyType = keyType;
 
-  if (keyType != ASYMMETRIC_KEY_TYPE_NONE) {
+  if (keyType != AsymmetricKeyType::None) {
     if (o != nullptr) {
       mKey = EVP_PKEY_dup(o);
       if (mKey != nullptr) {
@@ -72,13 +73,13 @@ AsymmetricKey::AsymmetricKey(std::string_view buf) {
     }
     if (PEM_read_bio_PUBKEY(bio, &mKey, nullptr, nullptr)) {
       set = true;
-      keyType = ASYMMETRIC_KEY_TYPE_PUBLIC;
+      keyType = AsymmetricKeyType::Public;
     } else {
       throw pep::OpenSSLError("Failed to read key from IO buffer (BIO) in AsymmetricKey constructor.");
     }
   } else {
     set = true;
-    keyType = ASYMMETRIC_KEY_TYPE_PRIVATE;
+    keyType = AsymmetricKeyType::Private;
   }
 }
 
@@ -99,7 +100,7 @@ AsymmetricKey::AsymmetricKey(AsymmetricKey&& other) {
   if (other.mKey) {
     mKey = std::exchange(other.mKey, nullptr);
     set = std::exchange(other.set, false);
-    keyType = std::exchange(other.keyType, ASYMMETRIC_KEY_TYPE_NONE);
+    keyType = std::exchange(other.keyType, AsymmetricKeyType::None);
   }
 }
 
@@ -223,7 +224,7 @@ std::string AsymmetricKey::toPem() const {
 
   // Write the key to the BIO
   switch (keyType) {
-  case ASYMMETRIC_KEY_TYPE_PRIVATE:
+  case AsymmetricKeyType::Private:
     bio = BIO_new(BIO_s_secmem());
     if (!bio) {
       throw pep::OpenSSLError("Failed to create secure memory IO buffer (BIO) in AsymmetricKey::toPem.");
@@ -232,7 +233,7 @@ std::string AsymmetricKey::toPem() const {
       throw pep::OpenSSLError("Failed to write private key to IO buffer (BIO) in AsymmetricKey::toPem.");
     }
     break;
-  case ASYMMETRIC_KEY_TYPE_PUBLIC:
+  case AsymmetricKeyType::Public:
     bio = BIO_new(BIO_s_mem());
     if (!bio) {
       throw pep::OpenSSLError("Failed to create IO buffer (BIO) in AsymmetricKey::toPem.");
@@ -241,7 +242,7 @@ std::string AsymmetricKey::toPem() const {
       throw pep::OpenSSLError("Failed to write public key to IO buffer (BIO) in AsymmetricKey::toPem.");
     }
     break;
-  case ASYMMETRIC_KEY_TYPE_NONE:
+  case AsymmetricKeyType::None:
     throw std::runtime_error("Failed to write key to PEM in AsymmetricKey::toPem. Asymmetric key type not set");
   }
   if (!bio) {
@@ -263,7 +264,7 @@ std::string AsymmetricKey::toDer() const {
 
   // Write the key to the BIO
   switch (keyType) {
-    case ASYMMETRIC_KEY_TYPE_PRIVATE:
+    case AsymmetricKeyType::Private:
       bio = BIO_new(BIO_s_secmem());
       if (!bio) {
         throw pep::OpenSSLError("Failed to create secure memory IO buffer (BIO) in AsymmetricKey::toDer.");
@@ -272,7 +273,7 @@ std::string AsymmetricKey::toDer() const {
         throw pep::OpenSSLError("Failed to write private key to IO buffer (BIO) in AsymmetricKey::toDer.");
       }
       break;
-    case ASYMMETRIC_KEY_TYPE_PUBLIC:
+    case AsymmetricKeyType::Public:
       bio = BIO_new(BIO_s_mem());
       if (!bio) {
         throw pep::OpenSSLError("Failed to create IO buffer (BIO) in AsymmetricKey::toDer.");
@@ -281,11 +282,11 @@ std::string AsymmetricKey::toDer() const {
         throw pep::OpenSSLError("Failed to write public key to IO buffer (BIO) in AsymmetricKey::toDer.");
       }
       break;
-    case ASYMMETRIC_KEY_TYPE_NONE:
+    case AsymmetricKeyType::None:
       throw std::invalid_argument("Failure to write key to DER in AsymmetricKey::toDer. Asymmetric key type not set.");
   }
   if (!bio) {
-    throw std::invalid_argument("Failure to write key to DER in AsymmetricKey::toDer. Unsupported key type " + std::to_string(keyType));
+    throw std::invalid_argument("Failure to write key to DER in AsymmetricKey::toDer. Unsupported key type " + std::to_string(ToUnderlying(keyType)));
   }
 
   return OpenSSLBIOToString(bio);
@@ -303,7 +304,7 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   }
 
   // Ensure that this key is a private key and publicKey is a public key
-  if (keyType != ASYMMETRIC_KEY_TYPE_PRIVATE || publicKey.keyType != ASYMMETRIC_KEY_TYPE_PUBLIC) {
+  if (keyType != AsymmetricKeyType::Private || publicKey.keyType != AsymmetricKeyType::Public) {
     return false;
   }
 
@@ -464,12 +465,12 @@ AsymmetricKeyPair AsymmetricKeyPair::GenerateKeyPair() {
 
 AsymmetricKey AsymmetricKeyPair::getPublicKey() const {
   std::lock_guard<std::mutex> lock(m);
-  return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, mKeyPair);
+  return AsymmetricKey(AsymmetricKeyType::Public, mKeyPair);
 }
 
 AsymmetricKey AsymmetricKeyPair::getPrivateKey() const {
   std::lock_guard<std::mutex> lock(m);
-  return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PRIVATE, mKeyPair);
+  return AsymmetricKey(AsymmetricKeyType::Private, mKeyPair);
 }
 
 } // namespace pep

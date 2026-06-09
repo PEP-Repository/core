@@ -8,10 +8,10 @@
 
 namespace pep {
 
-enum asymmetric_key_type_t {
-  ASYMMETRIC_KEY_TYPE_NONE = 0,
-  ASYMMETRIC_KEY_TYPE_PUBLIC,
-  ASYMMETRIC_KEY_TYPE_PRIVATE,
+enum class AsymmetricKeyType {
+  None = 0,
+  Public,
+  Private,
 };
 
 class AsymmetricKey {
@@ -36,7 +36,7 @@ class AsymmetricKey {
   std::string encrypt(const std::string& str) const;
   std::string decrypt(const std::string& str) const;
 
-  asymmetric_key_type_t keyType = ASYMMETRIC_KEY_TYPE_NONE;
+  AsymmetricKeyType keyType = AsymmetricKeyType::None;
 
   bool isSet() const {
     return set;
@@ -44,7 +44,7 @@ class AsymmetricKey {
 
  private:
   EVP_PKEY* mKey = nullptr;
-  AsymmetricKey(asymmetric_key_type_t keyType, EVP_PKEY* o);
+  AsymmetricKey(AsymmetricKeyType keyType, EVP_PKEY* o);
   bool set = false;
   mutable std::mutex m;
 

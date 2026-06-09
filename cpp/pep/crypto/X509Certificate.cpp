@@ -226,7 +226,7 @@ AsymmetricKey X509Certificate::getPublicKey() const {
   if (!pkey) {
     throw pep::OpenSSLError("Failed to get public key from X509 certificate in X509Certificate::getPublicKey.");
   }
-  return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, pkey);
+  return AsymmetricKey(AsymmetricKeyType::Public, pkey);
 }
 
 bool X509Certificate::hasBasicConstraints() const {
@@ -724,7 +724,7 @@ std::vector<X509Extension> X509CertificateSigningRequest::getExtensions() const 
 AsymmetricKey X509CertificateSigningRequest::getPublicKey() const {
   assert(mCSR);
   EVP_PKEY* pkey = X509_REQ_get0_pubkey(mCSR);
-  return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, pkey);
+  return AsymmetricKey(AsymmetricKeyType::Public, pkey);
 }
 
 bool X509CertificateSigningRequest::verifySignature() const {
