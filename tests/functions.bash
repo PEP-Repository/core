@@ -110,7 +110,7 @@ fail() {
 assert_equal() {
   local -r lhs=$1
   local -r rhs=$2
-  local -r message=$3
+  local -r message=${3:-"\"$lhs\" does not equal \"$rhs\""}
   if [ "$lhs" != "$rhs" ]; then
     fail "$message"
   fi
