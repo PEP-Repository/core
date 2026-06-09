@@ -23,11 +23,11 @@ enum KeyBlindMode {
 enum EncryptionScheme {
   // Old scheme which uses protobuf to serialize metadata and
   // does not bind page numbers.  See issue #566 and #460.
-  V1 = 0;
+  EncryptionV1 = 0;
 
   // New scheme which uses a stable serializer for metadata and
   // binds page numbers.
-  V2 = 1;
+  EncryptionV2 = 1;
 
   // Moves inverse() from unblinding to blinding and binds participant
   // to blinding.  See #719 and #720.
@@ -35,31 +35,31 @@ enum EncryptionScheme {
   // Extra (possibly encrypted and bound-to-blinding) metadata fields
   // have been added to the blinding without breaking backwards compatibility,
   // see #1343.
-  V3 = 2;
+  EncryptionV3 = 2;
 }
 
 // Scheme by which signatures are made.
 enum SignatureScheme {
-  SIGNATURE_SCHEME_V1 = 0; // deprecated
+  SignatureV1 = 0; // deprecated
 
   reserved 1;
 
   // RSA PKCS1v15(SHA256) with as hash the first 32 bytes of the SHA512
   // of the object concatenated with the big endian encoded timestamp.
   // Signature also includes the X509 certificate chains for the public key.
-  SIGNATURE_SCHEME_V3 = 2;
+  SignatureV3 = 2;
 
   // Like V3 but with support for the is_log_copy field.
-  SIGNATURE_SCHEME_V4 = 3;
+  SignatureV4 = 3;
 }
 
 enum EnrollmentScheme {
   // deprecated. Uses the protobuf serialization of the certificate of the user to derive keys.
   // This is not guaranteed to be stable. See issue #567
-  ENROLLMENT_SCHEME_V1 = 0;
+  EnrollmentV1 = 0;
 
   // Uses DER serialization of the certificate for key component derivation, which is guaranteed to be stable.
-  ENROLLMENT_SCHEME_V2 = 1;
+  EnrollmentV2 = 1;
 }
 
 enum FileOpenType {
