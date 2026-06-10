@@ -201,6 +201,7 @@ This section lists our own coding guidelines, which we apply on top of the more 
 
 - Use spaces for indentation instead of tabs.
 - Use two spaces per indentation level.
+- Class and struct names start with an `U`ppercase `L`etter.
 - Variable names start with a `l`owerase `l`etter;
 - Names of static methods and free functions start with an `U`ppercase `L`etter;
 - Instance method names start with a `l`owerase `l`etter;
