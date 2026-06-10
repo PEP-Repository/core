@@ -1367,7 +1367,7 @@ upload-flatpak:
 
 upload-weblib-npm:
   stage: upload
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  image: $BUILDER_IMAGE_WEBLIB
   tags:
     - docker-small
   needs:
@@ -1375,6 +1375,8 @@ upload-weblib-npm:
   interruptible: false
   #language=sh
   script:
+    # Add Node.js to PATH
+    - . ~/.profile
     - PEP_VERSION_MAJOR=$(./scripts/parse-version.sh get-major version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
     - PEP_VERSION_MINOR=$(./scripts/parse-version.sh get-minor version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
     - PEP_VERSION_BUILD=$(./scripts/parse-version.sh get-build version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
