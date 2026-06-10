@@ -1380,8 +1380,7 @@ upload-weblib-npm:
     - PEP_VERSION_MAJOR=$(./scripts/parse-version.sh get-major version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
     - PEP_VERSION_MINOR=$(./scripts/parse-version.sh get-minor version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
     - PEP_VERSION_BUILD=$(./scripts/parse-version.sh get-build version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
-    - PEP_VERSION_REVISION=$(./scripts/parse-version.sh get-revision version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
-    - PACKAGE_VERSION="${PEP_VERSION_MAJOR}.${PEP_VERSION_MINOR}.${PEP_VERSION_BUILD}.${PEP_VERSION_REVISION}"
+    - PACKAGE_VERSION="${PEP_VERSION_MAJOR}.${PEP_VERSION_MINOR}.${PEP_VERSION_BUILD}"
     # Only authenticate to the GitLab registry; do NOT set it as the default
     # registry, otherwise npm tries to fetch public (transitive) dependencies
     # from it too and they 404.
