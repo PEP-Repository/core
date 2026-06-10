@@ -204,6 +204,7 @@ This section lists our own coding guidelines, which we apply on top of the more 
 - Variable names start with a `l`owerase `l`etter;
 - Names of static methods and free functions start with an `U`ppercase `L`etter;
 - Instance method names start with a `l`owerase `l`etter;
+- Enumerator(name)s are written in `CamelCase`.
 - Use curly braces `{}` for loop code and condition branches:
 
 ```
