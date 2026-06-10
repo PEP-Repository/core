@@ -203,11 +203,11 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
   }
 
   boost::log::sinks::syslog::custom_severity_mapping<Severity> mSeverityMapper("PepSeverityMapper");
-  mSeverityMapper[Severity::debug] = boost::log::sinks::syslog::debug;
-  mSeverityMapper[Severity::info] = boost::log::sinks::syslog::info;
-  mSeverityMapper[Severity::warning] = boost::log::sinks::syslog::warning;
-  mSeverityMapper[Severity::error] = boost::log::sinks::syslog::error;
-  mSeverityMapper[Severity::critical] = boost::log::sinks::syslog::critical;
+  mSeverityMapper[Severity::Debug] = boost::log::sinks::syslog::debug;
+  mSeverityMapper[Severity::Info] = boost::log::sinks::syslog::info;
+  mSeverityMapper[Severity::Warning] = boost::log::sinks::syslog::warning;
+  mSeverityMapper[Severity::Error] = boost::log::sinks::syslog::error;
+  mSeverityMapper[Severity::Critical] = boost::log::sinks::syslog::critical;
   lpBackend->set_severity_mapper(mSeverityMapper);
 
   return lpBackend;
