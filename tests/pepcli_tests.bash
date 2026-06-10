@@ -691,7 +691,7 @@ if should_run_test pseudonym-conversion; then
 
   test_setup "$PC_CONFIG"
 
-  PSEUDONYM_LIST_JSON="$DEST_DIR/pc-local-pseudonyms.json"
+  PSEUDONYM_LIST_JSON="$DATA_DIR/test_output/pc-local-pseudonyms.json"
 
   pepcli --oauth-token-group pcUsers list\
       -P pcSubjects -C pcData --show-dataless --local-pseudonyms\
