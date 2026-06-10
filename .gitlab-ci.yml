@@ -767,6 +767,18 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "valgrind"
 
+ubuntu-lts-release-manual-lint:
+  extends: ubuntu-lts-release-$[[ inputs.autolinting ]]
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      when: manual
+      allow_failure: true
+    - when: never
+  variables:
+    ENABLE_LINTER: yes
+    ARTIFACTS: ""
+    TEST: ""
+
 ubuntu-lts-release-without-castor:
   extends:
     - .ubuntu-build-base
@@ -814,6 +826,18 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     VERIFY_HEADERS_STANDALONE: "off"
+
+ubuntu-rolling-debug-manual-lint:
+  extends: ubuntu-rolling-debug-$[[ inputs.autolinting ]]
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      when: manual
+      allow_failure: true
+    - when: never
+  variables:
+    ENABLE_LINTER: yes
+    ARTIFACTS: ""
+    TEST: ""
 
 ubuntu-rolling-release:
   extends:
