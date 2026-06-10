@@ -336,21 +336,21 @@ ElevationState GetElevationState() {
     }
     if (te.TokenIsElevated) {
       // we are built-in admin or UAC is disabled in system
-      result = ElevationState::IS_ELEVATED;
+      result = ElevationState::IsElevated;
     }
     else {
       // we can not elevate under same user
-      result = ElevationState::CANNOT_ELEVATE;
+      result = ElevationState::CannotElevate;
     }
     break;
 
   case TokenElevationTypeFull:
-    result = ElevationState::IS_ELEVATED;
+    result = ElevationState::IsElevated;
     break;
 
   case TokenElevationTypeLimited:
     // this mean that we have linked token
-    result = ElevationState::CAN_ELEVATE;
+    result = ElevationState::CanElevate;
     break;
 
   default:
@@ -380,12 +380,12 @@ void StartProcess(const std::filesystem::path& start, const std::optional<std::s
 
   if (elevate) {
     switch (GetElevationState()) {
-    case CANNOT_ELEVATE:
+    case ElevationState::CannotElevate:
       throw std::runtime_error("Cannot start elevated process because current process is running under a limited account");
-    case CAN_ELEVATE:
+    case ElevationState::CanElevate:
       shExInfo.lpVerb = "runas"; // https://stackoverflow.com/a/4893508
       break;
-    case IS_ELEVATED:
+    case ElevationState::IsElevated:
       // Child process will run in an elevated context when using default verb ("open")
       break;
     default:

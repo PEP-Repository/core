@@ -13,10 +13,10 @@ namespace pep {
 
 namespace win32api {
 
-enum ElevationState {
-  CANNOT_ELEVATE = 0,
-  CAN_ELEVATE,
-  IS_ELEVATED
+enum class ElevationState {
+  CannotElevate = 0,
+  CanElevate,
+  IsElevated
 };
 
 std::string FormatWin32Error(DWORD code);

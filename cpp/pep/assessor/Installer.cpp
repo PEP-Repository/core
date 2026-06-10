@@ -221,7 +221,7 @@ void Installer::start(const Context& context) const {
 
   auto prompt = true;
 #ifndef PEP_INSTALLER_ALWAYS_PROMPT_FOR_CREDENTIALS
-  prompt = pep::win32api::GetElevationState() == pep::win32api::CANNOT_ELEVATE;
+  prompt = pep::win32api::GetElevationState() == pep::win32api::ElevationState::CannotElevate;
 #endif
   if (prompt) {
     // Use helper (bootstrapper) .EXE to elevate a different account: see https://techcommunity.microsoft.com/t5/Windows-Blog-Archive/Why-Can-8217-t-I-Elevate-My-Application-to-Run-As-Administrator/ba-p/228626
