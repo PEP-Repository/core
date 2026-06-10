@@ -582,53 +582,12 @@ build_config_images() {
   fi
 }
 
-update_latest_tags() {
-  # CI_REGISTRY_PASSWORD only allows pushes to this project's registry
-  echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
-
-  names="$(config_dockerfiles_to_build | while read -r file; do basename "$file" .Dockerfile; done)"
-  # >&2 echo "Names is $names"
-
-  for name in $names
-  do
-    docker buildx imagetools create --tag "${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_NAME}/${name}:latest" "${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_NAME}/${name}:${images_tag}"
-  done
-}
-
-publish() {
-  image_target="$1"
-  image_source="$2"
-
-  docker_login
-
-  docker buildx imagetools create --tag "${CI_REGISTRY}/pep-public/core/${image_target}" "${image_source}"
-}
-
-publish_client() {
-  caption=$(get_project_caption)
-  publish "${caption}-${environment}:latest" "${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_NAME}/client:${images_tag}"
-}
-
-publish_image() {
-  caption=$(get_project_caption)
-  publish "${image_name}-${caption}-${environment}:latest" "${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_NAME}/${image_name}:${images_tag}"
-}
-
 case $command in
   provide-base-images)
     provide_base_images
     ;;
   build)
     build_config_images
-    ;;
-  update-latest)
-    update_latest_tags
-    ;;
-  publish-client)
-    publish_client
-    ;;
-  publish)
-    publish_image
     ;;
   *)
     >&2 echo "Unsupported command: $command"

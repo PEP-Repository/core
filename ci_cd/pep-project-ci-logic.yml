@@ -490,11 +490,10 @@ docker-update-latest:
   dependencies: []
   environment: $CI_COMMIT_REF_NAME
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command update-latest
-                                                         --git-dir .
-                                                         --env "$CI_COMMIT_REF_NAME"
-                                                         --tag "$CI_PIPELINE_ID"
-                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/publish.sh update-latest --git-dir .
+                                                            --env "$CI_COMMIT_REF_NAME"
+                                                            --tag "$CI_PIPELINE_ID"
+                                                            --foss-dir "$PEP_FOSS_REPO_DIR"
     - *docker_login
     # Dynamically retag all extra images that were built
     - |
@@ -513,12 +512,11 @@ publish-docker-client:
   extends: .publish-base
   dependencies: []
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command publish-client
-                                                         --git-dir .
-                                                         --env "$CI_COMMIT_REF_NAME"
-                                                         --tag "$CI_PIPELINE_ID"
-                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
-                                                         --api-key "$PEP_GROUP_REGISTRY_TOKEN"
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/publish.sh publish-client --git-dir .
+                                                             --env "$CI_COMMIT_REF_NAME"
+                                                             --tag "$CI_PIPELINE_ID"
+                                                             --foss-dir "$PEP_FOSS_REPO_DIR"
+                                                             --api-key "$PEP_GROUP_REGISTRY_TOKEN"
 
 ##########################################
 # Configuration for the deploy stage     #
