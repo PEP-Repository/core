@@ -262,20 +262,21 @@ else {
 
 ### Logging and severity levels
 
-PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/core/include/Log.hpp) based on the [Boost.Log library](https://www.boost.org/doc/libs/1_67_0/libs/log/doc/html/index.html). Use the `LOG` macro to add entries.
+PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/core/include/Log.hpp) based on the [Boost.Log library](https://www.boost.org/doc/libs/1_67_0/libs/log/doc/html/index.html). Use the `PEP_LOG` macro to add entries.
 <details>
   <summary>Example:</summary>
 
   ```c++
-  LOG(LOG_TAG, severity_level::error) << "Received an error! (stream id " << dwStreamId << ")";
+  PEP_LOG(LOG_TAG, Severity::Error) << "Received an error! (stream id " << dwStreamId << ")";
   ```
   
-  The 2nd parameter to the `LOG` macro specifies the severity level associated with the log entry. Supported levels are defined in enumeration `severity_level`:
+  The 2nd parameter to the `LOG` macro specifies the severity level associated with the log entry. Supported levels are defined in enumeration `Severity`:
 
-  - use `severity_level::debug` for log entries intended to help debugging.
-  - use `severity_level::info` for informational messages.
-  - use `severity_level::warning` for trouble that can be safely ignored or recovered from.
-  - use `severity_level::error` for failures that pose no immediate threat to security, data integrity, or the future functioning of the application.
-  - use `severity_level::critical` for end of world events. In most cases the software will need to be terminated after such failures.
+  - use `Severity::Verbose` for log entries providing rich detail.
+  - use `Severity::Debug` for log entries intended to help debugging.
+  - use `Severity::Info` for informational messages.
+  - use `Severity::Warning` for trouble that can be safely ignored or recovered from.
+  - use `Severity::Error` for failures that pose no immediate threat to security, data integrity, or the future functioning of the application.
+  - use `Severity::Critical` for end of world events. In most cases the software will need to be terminated after such failures.
 
 </details>
