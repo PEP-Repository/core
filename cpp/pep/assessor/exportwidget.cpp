@@ -334,7 +334,7 @@ void ExportWidget::doExport() {
 }
 
 rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipantData(const QList<std::shared_ptr<ExportableItem>>& items) {
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups = { "*" };
   opts.columns = { "StudyContexts" };
   for (const auto& item : items) {

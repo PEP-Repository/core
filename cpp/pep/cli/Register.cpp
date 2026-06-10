@@ -298,11 +298,11 @@ private:
           auto spCount = globalConfig->getShortPseudonyms().size();
 
           // TODO: also make this work for participants that don't have any ShortPseudonyms or ParticipantIdentifier (yet)
-          auto opts = std::make_shared<pep::enumerateAndRetrieveData2Opts>();
+          auto opts = std::make_shared<pep::EnumerateAndRetrieveData2Opts>();
           opts->columnGroups = { "ShortPseudonyms" };
           opts->columns = { "ParticipantIdentifier" };
 
-          rxcpp::observable<std::shared_ptr<pep::enumerateAndRetrieveData2Opts>> earOpts;
+          rxcpp::observable<std::shared_ptr<pep::EnumerateAndRetrieveData2Opts>> earOpts;
 
           if (id.has_value()) {
             earOpts = client->parsePPorIdentity(*id)
@@ -317,7 +317,7 @@ private:
           }
 
           return earOpts // Get EAR options for the participant(s) we're going to process
-            .concat_map([client](std::shared_ptr<pep::enumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
+            .concat_map([client](std::shared_ptr<pep::EnumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
             .as_dynamic() // Reduce compiler memory usage
             .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.mLocalPseudonymsIndex; })) // Group by participant
             .concat_map([](auto participants) { return RxIterate(std::move(*participants)); }) // Iterate over participants

@@ -65,7 +65,7 @@ public:
 private:
   OAuthProvider(const Parameters& params, std::shared_ptr<AuthserverBackend> authserverBackend);
 
-  struct grant {
+  struct Grant {
     std::string clientId;
     std::string humanReadableId;
     UserGroup usergroup;
@@ -74,12 +74,12 @@ private:
     std::optional<std::chrono::seconds> validity; //std::nullopt if no long lived token is requested
     std::chrono::time_point<std::chrono::steady_clock> createdAt; //We don't care about the actual clock time, we only want to measure the time that has passed. Therefore: steady_clock.
 
-    grant(const std::string& clientId, const std::string& humanReadableId, UserGroup usergroup, const std::string& redirectUri, const std::string& codeChallenge, std::optional<std::chrono::seconds> validity)
+    Grant(const std::string& clientId, const std::string& humanReadableId, UserGroup usergroup, const std::string& redirectUri, const std::string& codeChallenge, std::optional<std::chrono::seconds> validity)
       : clientId(clientId), humanReadableId(humanReadableId), usergroup(std::move(usergroup)), redirectUri(redirectUri), codeChallenge(codeChallenge), validity(validity), createdAt(std::chrono::steady_clock::now()) {}
   };
 
-  void addActiveGrant(const std::string& code, grant g);
-  std::optional<grant> getActiveGrant(const std::string& code);
+  void addActiveGrant(const std::string& code, Grant g);
+  std::optional<Grant> getActiveGrant(const std::string& code);
 
   rxcpp::observable<HTTPResponse> handleAuthorizationRequest(HTTPRequest request, std::string remoteIp);
   HTTPResponse handleTokenRequest(HTTPRequest request, std::string remoteIp);
@@ -89,7 +89,7 @@ private:
   std::unordered_set<std::string> getRegisteredRedirectURIs(const std::string& clientId);
 
   std::shared_ptr<HTTPServer> httpServer;
-  std::unordered_map<std::string, grant> activeGrants;
+  std::unordered_map<std::string, Grant> activeGrants;
   rxcpp::composite_subscription activeGrantsCleanupSubscription;
   std::chrono::seconds activeGrantExpiration;
   std::string spoofKey;

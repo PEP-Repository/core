@@ -158,24 +158,24 @@ CoreClient::retrieveData(
       .map([this, ticket](const rxcpp::observable<FileKey>& batch) -> rxcpp::observable<RetrievePage> {
         return batch.op(RxToVector())
             .flat_map([this, ticket](const std::shared_ptr<std::vector<FileKey>>& batch) -> rxcpp::observable<RetrievePage> {
-              struct fileContext {
+              struct FileContext {
                 FileKey fileKey;
                 std::uint64_t bytesWritten = 0;
               };
-              struct batchContext {
+              struct BatchContext {
                 DataPayloadPageStreamOrder order;
-                std::vector<fileContext> files;
+                std::vector<FileContext> files;
               };
 
-              auto ctx = std::make_shared<batchContext>();
-              ctx->files = RangeToCollection<std::vector<fileContext>>(std::move(*batch));
+              auto ctx = std::make_shared<BatchContext>();
+              ctx->files = RangeToCollection<std::vector<FileContext>>(std::move(*batch));
 
               // Request the file contents from the storage facility
               auto pagesFromServer =
                   getStorageFacilityProxy(true)->requestDataRead(DataReadRequest2{
                     .mTicket = *ticket,
                     .mIds = RangeToVector(ctx->files
-                        | views::transform([](const fileContext& file) { return file.fileKey.entry->mId; })),
+                        | views::transform([](const FileContext& file) { return file.fileKey.entry->mId; })),
                   })
                   .map([](DataPayloadPage page) {
                     return std::optional{std::move(page)};
@@ -191,7 +191,7 @@ CoreClient::retrieveData(
 
                     // Check previous file(s)
                     for (auto betweenIdx = ctx->order.latestFileIndex(); betweenIdx < index; ++betweenIdx) {
-                      const fileContext& prevFileCtx = ctx->files[betweenIdx];
+                      const FileContext& prevFileCtx = ctx->files[betweenIdx];
                       const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
                       if (prevFileCtx.bytesWritten < prevEntry.mFileSize) {
                         throw std::runtime_error(std::format(
@@ -204,7 +204,7 @@ CoreClient::retrieveData(
 
                     ctx->order.check(*page);
 
-                    fileContext& file = ctx->files[index];
+                    FileContext& file = ctx->files[index];
                     const EnumerateResult& entry = *file.fileKey.entry;
                     RetrievePage retrievedPage{
                       .fileIndex = file.fileKey.fileIndex,
@@ -225,10 +225,10 @@ CoreClient::retrieveData(
                   .op(RxFilterNullopt());
 
               auto emptyFiles = ctx->files
-                  | views::filter([](const fileContext& file) {
+                  | views::filter([](const FileContext& file) {
                     return file.fileKey.entry->mFileSize == 0;
                   })
-                  | views::transform([](const fileContext& file) {
+                  | views::transform([](const FileContext& file) {
                     return RetrievePage{
                       .fileIndex = file.fileKey.fileIndex,
                       .entry = file.fileKey.entry,

@@ -31,12 +31,12 @@ pep::commandline::Parameters MakeCommonSupportedParameters(bool isInput, std::st
       .shorthand(isInput ? 'I' : 'O');
 }
 
-struct commonParams {
+struct CommonParams {
   std::vector<std::string> servers;
   std::optional<std::filesystem::path> targetFile;
   std::optional<std::filesystem::path> targetDirectory;
 
-  commonParams(bool isInput, const pep::commandline::NamedValues& parameterValues) {
+  CommonParams(bool isInput, const pep::commandline::NamedValues& parameterValues) {
     std::string fileSwitch = isInput ? "input-file" : "output-file";
     std::string directorySwitch = isInput ? "input-directory" : "output-directory";
 
@@ -53,7 +53,7 @@ struct commonParams {
 };
 
 using signingServerAction = std::function<rxcpp::observable<pep::FakeVoid>(const pep::SigningServerProxy&, const std::filesystem::path&)>;
-auto EventLoopCallBack(const commonParams& params, std::string_view extension, signingServerAction action) {
+auto EventLoopCallBack(const CommonParams& params, std::string_view extension, signingServerAction action) {
   return [params, extension, action](std::shared_ptr<pep::Client> client) {
     std::unordered_set<pep::ServerTraits> traits;
 
@@ -101,7 +101,7 @@ protected:
   }
 
   int execute() override {
-    commonParams params(false, this->getParameterValues());
+    CommonParams params(false, this->getParameterValues());
 
     return this->executeEventLoopFor(EventLoopCallBack(params, "csr", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       return proxy.requestCertificateSigningRequest().map([targetPath](const X509CertificateSigningRequest& csr) {
@@ -125,7 +125,7 @@ protected:
   }
 
   int execute() override {
-    commonParams params(true, this->getParameterValues());
+    CommonParams params(true, this->getParameterValues());
     bool allowChangingSubject = this->getParameterValues().has("allow-changing-subject");
 
     return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [allowChangingSubject](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
@@ -146,7 +146,7 @@ protected:
   }
 
   int execute() override {
-    commonParams params(true, this->getParameterValues());
+    CommonParams params(true, this->getParameterValues());
 
     return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       X509CertificateChain chain(X509CertificatesFromPem(ReadFile(targetPath)));

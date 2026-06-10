@@ -357,7 +357,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
 
     return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
-      pep::enumerateAndRetrieveData2Opts opts;
+      pep::EnumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
         if (std::find(modes.begin(), modes.end(), "access") != modes.end()
           && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
@@ -400,7 +400,7 @@ rxcpp::observable<PolymorphicPseudonym> CoreClient::findPPforShortPseudonym(std:
 rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 {
   return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
-    requestTicket2Opts tOpts;
+    RequestTicket2Opts tOpts;
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
@@ -416,7 +416,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 
 }
 
-rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket2Opts& opts) {
+rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket2Opts& opts) {
   PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())

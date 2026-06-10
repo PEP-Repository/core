@@ -329,7 +329,7 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       .concat(rxcpp::observable<>::just(std::string("ParticipantIdentifier"))) // Add column name for (pseudonym-like) participant identifier
       .op(RxToVector()) // Aggregate column names into a vector<std::string>
       .flat_map([client = pClient](std::shared_ptr<std::vector<std::string>> columns) { // Retrieve data for all pseudonym-containing columns
-      pep::enumerateAndRetrieveData2Opts opts;
+      pep::EnumerateAndRetrieveData2Opts opts;
       opts.groups = { "*" };
       opts.columns = *columns;
       opts.columnGroups = { "ShortPseudonyms" };

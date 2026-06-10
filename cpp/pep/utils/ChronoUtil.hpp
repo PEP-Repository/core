@@ -36,12 +36,12 @@ namespace detail {
 }
 
 template<typename T>
-struct is_duration
+struct IsDuration
   : std::false_type
 { };
 
 template<typename Rep, typename Period>
-struct is_duration<std::chrono::duration<Rep, Period>>
+struct IsDuration<std::chrono::duration<Rep, Period>>
   : std::true_type
 { };
 

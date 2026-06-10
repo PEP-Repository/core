@@ -93,7 +93,7 @@ private:
         [ownResult](std::shared_ptr<pep::CoreClient> client) {
         return client->getGlobalConfiguration()
           .flat_map([client](std::shared_ptr<pep::GlobalConfiguration> config) {
-          pep::enumerateAndRetrieveData2Opts opts;
+          pep::EnumerateAndRetrieveData2Opts opts;
           opts.groups = { "*" };
           opts.columns = { "ParticipantIdentifier" };
           opts.includeAccessGroupPseudonyms = true;

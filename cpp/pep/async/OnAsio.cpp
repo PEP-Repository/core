@@ -11,17 +11,17 @@ namespace pep {
 
 namespace {
 
-const std::string LogTag("asio_scheduler");
+const std::string LogTag("AsioScheduler");
 
-struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
+struct AsioScheduler : public rxcpp::schedulers::scheduler_interface {
   boost::asio::io_context& io_context;
  private:
-  struct asio_scheduler_worker : public rxcpp::schedulers::worker_interface {
+  struct Worker : public rxcpp::schedulers::worker_interface {
    private:
     boost::asio::io_context& io_context;
    public:
-    asio_scheduler_worker(boost::asio::io_context& io_context) : io_context(io_context) {}
-    asio_scheduler_worker(const asio_scheduler_worker&) = delete;
+    Worker(boost::asio::io_context& io_context) : io_context(io_context) {}
+    Worker(const Worker&) = delete;
 
     clock_type::time_point now() const override {
       return clock_type::now();
@@ -67,11 +67,11 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
       s->start(when);
     }
   };
-  std::shared_ptr<asio_scheduler_worker> wi;
+  std::shared_ptr<Worker> wi;
  public:
-  asio_scheduler(boost::asio::io_context& io_context)
-    : io_context(io_context), wi(std::make_shared<asio_scheduler_worker>(io_context)) {}
-  asio_scheduler(const asio_scheduler&) = delete;
+  AsioScheduler(boost::asio::io_context& io_context)
+    : io_context(io_context), wi(std::make_shared<Worker>(io_context)) {}
+  AsioScheduler(const AsioScheduler&) = delete;
 
   clock_type::time_point now() const override {
     return clock_type::now();
@@ -83,7 +83,7 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
 }
 
 rxcpp::observe_on_one_worker observe_on_asio(boost::asio::io_context& io_context) {
-  rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<asio_scheduler>(io_context);
+  rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<AsioScheduler>(io_context);
   return rxcpp::observe_on_one_worker{ instance };
 }
 

@@ -401,7 +401,7 @@ protected:
             })
           .concat_map([this, client, ownResult, pgs, pps, counts](std::shared_ptr<ColumnExtensions> columnExtensions) {
           counts->processingColumns(columnExtensions->size());
-          pep::requestTicket2Opts ticketRequest;
+          pep::RequestTicket2Opts ticketRequest;
           ticketRequest.modes.emplace_back("read-meta");
           ticketRequest.includeAccessGroupPseudonyms = true;
           ticketRequest.participantGroups = *pgs;
@@ -561,7 +561,7 @@ private:
       return rxcpp::observable<>::just(mTicket);
     }
 
-    auto opts = std::make_shared<pep::requestTicket2Opts>();
+    auto opts = std::make_shared<pep::RequestTicket2Opts>();
     opts->modes = { "read-meta", "write-meta" };
     opts->includeAccessGroupPseudonyms = true;
     opts->columns = MultiCellQuery::GetColumns(this->getParameterValues());
@@ -729,7 +729,7 @@ protected:
         .flat_map([this, client](std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> specs) {
         const auto& vm = this->getParameterValues();
 
-        pep::requestTicket2Opts opts;
+        pep::RequestTicket2Opts opts;
         opts.modes = { "read-meta" };
         opts.includeAccessGroupPseudonyms = true;
         opts.participantGroups = MultiCellQuery::GetParticipantGroups(vm);

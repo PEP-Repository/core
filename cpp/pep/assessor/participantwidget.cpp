@@ -287,7 +287,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
 
   auto aggregator = std::make_shared<ParticipantDataAggregator>(globalConfig);
 
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.pps = {currentUserPP};
   opts.columnGroups = {"ShortPseudonyms", "VisitAssessors"};
   opts.columns = cols;

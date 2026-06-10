@@ -271,9 +271,9 @@ namespace {
     // on account of it being destroyed.
     // We achieve this using a 'defer guard';  when post_pending is
     // destroyed (or manually triggered) pending_requests is decremented.
-    // We use 'defer_shared' instead of 'defer_unique' because rxcpp
+    // We use 'DeferShared' instead of 'DeferUnique' because rxcpp
     // cannot deal with non-copyable callbacks.
-    auto post_pending = defer_shared([self]{
+    auto post_pending = DeferShared([self]{
       if (self->metrics)
         self->metrics->pending_requests.Decrement();
     });
@@ -295,7 +295,7 @@ namespace {
         self->metrics->active_requests.Increment();
       }
 
-      auto post_active = defer_shared([self, conn_idx]{
+      auto post_active = DeferShared([self, conn_idx]{
         (self->open_requests_counts->at(conn_idx))--;
         if (self->metrics)
           self->metrics->active_requests.Decrement();
@@ -334,7 +334,7 @@ namespace {
 
     auto self = this->shared_from_this();
 
-    auto post_pending = defer_shared([self,pages_size]{
+    auto post_pending = DeferShared([self,pages_size]{
       if (self->metrics) {
         self->metrics->pending_requests.Decrement();
         self->metrics->pending_pages_size.Decrement(
@@ -357,7 +357,7 @@ namespace {
         self->metrics->active_requests.Increment();
       }
 
-      auto post_active = defer_shared([self,conn_idx](){
+      auto post_active = DeferShared([self,conn_idx](){
         (self->open_requests_counts->at(conn_idx))--;
         if (self->metrics)
           self->metrics->active_requests.Decrement();

@@ -138,7 +138,7 @@ rxcpp::observable < std::shared_ptr<StoreContext>> CreateContext(std::shared_ptr
         }
       }
       if (auto spColumn = columnSpec->getAssociatedShortPseudonymColumn()) {
-        pep::enumerateAndRetrieveData2Opts opts;
+        pep::EnumerateAndRetrieveData2Opts opts;
         opts.pps = {*context->pp};
         opts.columns = {*spColumn};
         return client->enumerateAndRetrieveData2(opts)
@@ -244,7 +244,7 @@ private:
     return "Please specify exactly one of --input-path, or --data, or --metadata-only";
   }
 
-  rxcpp::observable<pep::DataStorageResult2> storeNewCellData(std::shared_ptr<pep::CoreClient> client, const pep::storeData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
+  rxcpp::observable<pep::DataStorageResult2> storeNewCellData(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
     auto cleanupFiles = std::make_shared<std::vector<PathStreamPair>>();
     return CreateContext(client, this->getParameterValues(), pp, column)
       .flat_map([client, opts, cleanupFiles](std::shared_ptr<StoreContext> context) {
@@ -302,7 +302,7 @@ private:
         }));
   }
 
-  rxcpp::observable<pep::DataStorageResult2> updateCellMetadata(std::shared_ptr<pep::CoreClient> client, const pep::storeData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
+  rxcpp::observable<pep::DataStorageResult2> updateCellMetadata(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
     pep::StoreMetadata2Entry entry(pp, column);
     AddSpecifiedMetadata(entry.mXMetadata, this->getParameterValues());
     return client->updateMetadata2({ entry }, opts);
@@ -371,7 +371,7 @@ protected:
     return SingleCellModificationCommand::ticketAccessModes();
   }
 
-  rxcpp::observable<pep::FakeVoid> performModification(std::shared_ptr<pep::CoreClient> client, const pep::storeData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) override {
+  rxcpp::observable<pep::FakeVoid> performModification(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) override {
     rxcpp::observable<pep::DataStorageResult2> store;
     if (this->getParameterValues().has("metadata-only")) {
       store = this->updateCellMetadata(client, opts, pp, column);

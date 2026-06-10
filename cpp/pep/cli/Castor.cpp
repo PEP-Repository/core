@@ -27,20 +27,20 @@ namespace pt = boost::property_tree;
 
 namespace {
 
-struct participantData {
+struct ParticipantData {
   uint32_t localPseudonymsIndex;
   pt::ptree data;
 };
 
-using datalist = std::vector<participantData>;
+using DataList = std::vector<ParticipantData>;
 
-struct studyData {
-  std::unordered_map<std::string, datalist> steps;
-  std::unordered_map<std::string, datalist> reports;
+struct StudyData {
+  std::unordered_map<std::string, DataList> steps;
+  std::unordered_map<std::string, DataList> reports;
 };
 
-struct castorData {
-  std::unordered_map<std::string, studyData> studies;
+struct CastorData {
+  std::unordered_map<std::string, StudyData> studies;
   std::unordered_map<uint32_t, std::string> participantIds;
 };
 
@@ -80,7 +80,7 @@ private:
       return value;
     }
 
-    void writeDataFiles(const std::unordered_map<std::string, datalist>& tables, const std::unordered_map<uint32_t, std::string>& participantIds, const std::filesystem::path& dir) {
+    void writeDataFiles(const std::unordered_map<std::string, DataList>& tables, const std::unordered_map<uint32_t, std::string>& participantIds, const std::filesystem::path& dir) {
       std::filesystem::create_directories(dir);
 
       for (const auto& [tablename, table] : tables) {
@@ -179,7 +179,7 @@ private:
       }
 
       return this->executeEventLoopFor([this, dir](std::shared_ptr<pep::CoreClient> client) {
-        pep::enumerateAndRetrieveData2Opts earOpts;
+        pep::EnumerateAndRetrieveData2Opts earOpts;
         earOpts.groups = {"*"};
         earOpts.columnGroups = {"Castor"};
         earOpts.columns = {"ParticipantIdentifier"};
@@ -187,8 +187,8 @@ private:
         earOpts.dataSizeLimit = 0;
 
         return client->enumerateAndRetrieveData2(earOpts).reduce(
-          castorData(),
-          [](castorData data, pep::EnumerateAndRetrieveResult earResult) {
+          CastorData(),
+          [](CastorData data, pep::EnumerateAndRetrieveResult earResult) {
             if(earResult.mColumn == "ParticipantIdentifier") {
               data.participantIds.emplace(earResult.mLocalPseudonymsIndex, earResult.mData);
             }
@@ -227,9 +227,9 @@ private:
             }
             return data;
           },
-          [](castorData data) { return data; }
+          [](CastorData data) { return data; }
         ).map(
-          [this, dir](castorData data){
+          [this, dir](CastorData data){
             for(const auto& [studyname, study] : data.studies) {
               const std::filesystem::path stepsdir = dir / studyname / "steps";
               const std::filesystem::path reportsdir = dir / studyname / "reports";

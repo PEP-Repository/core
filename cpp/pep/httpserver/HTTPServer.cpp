@@ -14,39 +14,39 @@ static const std::string LogTag ("HTTPServer");
 
 SingleWorker HTTPServer::CleanupWorker = SingleWorker();
 
-struct httpRequestHandlerParams {
+struct HttpRequestHandlerParams {
   std::string method;
   std::string uri;
   bool exactMatchOnly;
   std::shared_ptr<boost::asio::io_context> io_context;
 
-  virtual ~httpRequestHandlerParams() = default;
+  virtual ~HttpRequestHandlerParams() = default;
 
   virtual rxcpp::observable<HTTPResponse> runHandler(const HTTPRequest& request, std::string remoteIp) = 0;
 
 protected:
-  httpRequestHandlerParams(const std::string& method, const std::string& uri, bool exactMatchOnly, std::shared_ptr<boost::asio::io_context> io_context)
+  HttpRequestHandlerParams(const std::string& method, const std::string& uri, bool exactMatchOnly, std::shared_ptr<boost::asio::io_context> io_context)
     : method(method), uri(uri), exactMatchOnly(exactMatchOnly), io_context(io_context) {}
 };
 
 namespace {
 
-struct httpRequestHandlerParamsBasic : httpRequestHandlerParams {
+struct HttpRequestHandlerParamsBasic : HttpRequestHandlerParams {
   HTTPServer::BasicHandler func;
 
-  httpRequestHandlerParamsBasic(HTTPServer::BasicHandler func, const std::string& method, const std::string& uri, bool exactMatchOnly, std::shared_ptr<boost::asio::io_context> io_context)
-    : httpRequestHandlerParams(method, uri, exactMatchOnly, io_context), func(func) {}
+  HttpRequestHandlerParamsBasic(HTTPServer::BasicHandler func, const std::string& method, const std::string& uri, bool exactMatchOnly, std::shared_ptr<boost::asio::io_context> io_context)
+    : HttpRequestHandlerParams(method, uri, exactMatchOnly, io_context), func(func) {}
 
   rxcpp::observable<HTTPResponse> runHandler(const HTTPRequest& request, std::string remoteIp) override {
     return run_on_asio(*io_context, std::bind(func, request, std::move(remoteIp)));
   }
 };
 
-struct httpRequestHandlerParamsObservable : httpRequestHandlerParams {
+struct HttpRequestHandlerParamsObservable : HttpRequestHandlerParams {
   HTTPServer::ObservableHandler func;
 
-  httpRequestHandlerParamsObservable(HTTPServer::ObservableHandler func, const std::string& method, const std::string& uri, bool exactMatchOnly, std::shared_ptr<boost::asio::io_context> io_context)
-    : httpRequestHandlerParams(method, uri, exactMatchOnly, io_context), func(func) {}
+  HttpRequestHandlerParamsObservable(HTTPServer::ObservableHandler func, const std::string& method, const std::string& uri, bool exactMatchOnly, std::shared_ptr<boost::asio::io_context> io_context)
+    : HttpRequestHandlerParams(method, uri, exactMatchOnly, io_context), func(func) {}
 
   rxcpp::observable<HTTPResponse> runHandler(const HTTPRequest& request, std::string remoteIp) override {
     return func(request, std::move(remoteIp));
@@ -63,7 +63,7 @@ int writeResponse(mg_connection *conn, const pep::HTTPResponse& response) {
 
 int requestHandler(struct mg_connection *conn, void *cbdata)
 {
-  httpRequestHandlerParams* params = static_cast<httpRequestHandlerParams*>(cbdata);
+  HttpRequestHandlerParams* params = static_cast<HttpRequestHandlerParams*>(cbdata);
   const mg_request_info* requestInfo = mg_get_request_info(conn);
 
   PEP_LOG(LogTag, Severity::Debug) << "Handler method: " << (params->method.empty() ? "<empty>" : params->method) << ". Request method: " << requestInfo->request_method;
@@ -181,12 +181,12 @@ HTTPServer::~HTTPServer() noexcept {
 }
 
 void HTTPServer::registerHandler(const std::string& uri, bool exactMatchOnly, BasicHandler handler, const std::string& method) {
-  auto handlerParams = std::make_shared<httpRequestHandlerParamsBasic>(handler, method, uri, exactMatchOnly, mIoContext);
+  auto handlerParams = std::make_shared<HttpRequestHandlerParamsBasic>(handler, method, uri, exactMatchOnly, mIoContext);
   registerHandlerParams(handlerParams);
 }
 
 void HTTPServer::registerHandler(const std::string& uri, bool exactMatchOnly, ObservableHandler handler, const std::string& method) {
-  auto handlerParams = std::make_shared<httpRequestHandlerParamsObservable>(handler, method, uri, exactMatchOnly, mIoContext);
+  auto handlerParams = std::make_shared<HttpRequestHandlerParamsObservable>(handler, method, uri, exactMatchOnly, mIoContext);
   registerHandlerParams(handlerParams);
 }
 
@@ -201,14 +201,14 @@ void HTTPServer::asyncStop() {
   // 2. mg_stop waits for all civetweb worker threads to finish handling any requests
   // 3. When handling a request, we schedule the handler on mIoContext, which runs on the main thread, and then use `as_blocking` to wait for the result
   // So: we have mg_stop blocking the main thread, which will therefore never handle the request on which mg_stop is waiting.
-  // We also capture mRegisteredHandlers, in order to make sure the httpRequestHandlerParams it contains are not cleaned up before all ongoing request handlers have finished
+  // We also capture mRegisteredHandlers, in order to make sure the HttpRequestHandlerParams it contains are not cleaned up before all ongoing request handlers have finished
   CleanupWorker.doWork([ctx = std::exchange(mCtx, {}), registeredHandlers = std::exchange(mRegisteredHandlers, {})]{
     mg_stop(ctx);
     // I'd like to log here that we're stopped, but the logger may actually be destructed here
   });
 }
 
-void HTTPServer::registerHandlerParams(std::shared_ptr<httpRequestHandlerParams> params) {
+void HTTPServer::registerHandlerParams(std::shared_ptr<HttpRequestHandlerParams> params) {
   if(!mRegisteredHandlers->try_emplace(params->uri, params).second) {
     std::ostringstream msg;
     msg << "A handler for uri " << params->uri << "is already registered";

@@ -215,17 +215,17 @@ OAuthProvider::~OAuthProvider() {
   activeGrantsCleanupSubscription.unsubscribe();
 }
 
-void OAuthProvider::addActiveGrant(const std::string& code, grant g) {
+void OAuthProvider::addActiveGrant(const std::string& code, Grant g) {
   activeGrants.emplace(code, g);
 }
 
-std::optional<OAuthProvider::grant>
+std::optional<OAuthProvider::Grant>
 OAuthProvider::getActiveGrant(const std::string& code) {
   auto it = activeGrants.find(code);
   if (it == activeGrants.end()) {
     return std::nullopt;
   }
-  grant g = it->second;
+  Grant g = it->second;
   activeGrants.erase(it);
   auto now = std::chrono::steady_clock::now();
   if (now - g.createdAt < activeGrantExpiration) {
@@ -414,7 +414,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     }
 
     std::string code = EncodeBase64Url(RandomString(32));
-    self->addActiveGrant(code, grant(clientId, humanReadableUid,  std::move(group), redirectUriString, codeChallenge, validityDuration));
+    self->addActiveGrant(code, Grant(clientId, humanReadableUid,  std::move(group), redirectUriString, codeChallenge, validityDuration));
     url returnUri = redirectUri;
     returnUri.params().set("code", code);
 

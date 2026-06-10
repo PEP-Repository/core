@@ -86,7 +86,7 @@ void ParticipantState::readIsTestParticipant(std::shared_ptr<pep::GlobalConfigur
 rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::shared_ptr<pep::CoreClient> client, std::shared_ptr<pep::GlobalConfiguration> gc) {
   using StateMap = std::unordered_map<uint32_t, std::shared_ptr<ParticipantState>>;
 
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups.push_back("*");
   for (const auto& entry : GetFieldReadMethods()) { // Read all columns that we can process
     opts.columns.push_back(entry.first);
@@ -205,7 +205,7 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetE
     .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.mParticipantGroups); })
     .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.mName); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
-    pep::enumerateAndRetrieveData2Opts opts;
+    pep::EnumerateAndRetrieveData2Opts opts;
     opts.groups.push_back(group.mName);
     opts.columns.push_back("ParticipantIdentifier");
     // TODO: re-use ticket from ParticipantGroup::GetRequired
@@ -818,7 +818,7 @@ private:
     protected:
       int execute() override {
         return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
-          pep::requestTicket2Opts requestTicketOpts;
+          pep::RequestTicket2Opts requestTicketOpts;
           requestTicketOpts.participantGroups.emplace_back(group);
           requestTicketOpts.modes.emplace_back("read-meta");
           return client->requestTicket2(requestTicketOpts)

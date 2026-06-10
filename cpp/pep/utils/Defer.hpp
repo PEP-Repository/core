@@ -11,12 +11,12 @@
 namespace pep {
 
 template <typename F>
-struct deferred {
-  static_assert(!pep::DerivedFromSpecialization<F, deferred>);
-  deferred(F&& f) : f(std::move(f)) {}
-  deferred(const deferred<F> &) = delete;
-  deferred(deferred<F> &&) = delete;
-  ~deferred() {
+struct Deferred {
+  static_assert(!pep::DerivedFromSpecialization<F, Deferred>);
+  Deferred(F&& f) : f(std::move(f)) {}
+  Deferred(const Deferred<F> &) = delete;
+  Deferred(Deferred<F> &&) = delete;
+  ~Deferred() {
     this->trigger();
   }
   void trigger() {
@@ -31,8 +31,8 @@ private:
 };
 
 template <typename F>
-deferred<F> defer_func(F&& f) {
-  return deferred<F>(std::forward<F>(f));
+Deferred<F> DeferFunc(F&& f) {
+  return Deferred<F>(std::forward<F>(f));
 }
 
 #if defined(__clang__) && __clang_major__ >= 22
@@ -51,20 +51,20 @@ deferred<F> defer_func(F&& f) {
 // This macro defines a variable with that name, and its destructor will run the specified code at scope end.
 #define PEP_DEFER(code) \
   auto PEP_SILENCE_COUNTER_EXTENSION_WARNING_BEGIN BOOST_PP_CAT(_defer_, __COUNTER__) PEP_SILENCE_COUNTER_EXTENSION_WARNING_END = \
-    ::pep::defer_func([&](){code;})
+    ::pep::DeferFunc([&](){code;})
 
-// That an explicit lambda must be passed to defer_unique is intentional,
+// That an explicit lambda must be passed to DeferUnique is intentional,
 // so that the programmer can control -and is aware of- the captures.
 // (Beware of capturing unique pointers:  they make the lambda non-copyable,
 // which causes problems for rxcpp.)
 template<typename F>
-std::unique_ptr<deferred<F>> defer_unique(F&& f) {
-  return std::make_unique<deferred<F>>(std::forward<F>(f));
+std::unique_ptr<Deferred<F>> DeferUnique(F&& f) {
+  return std::make_unique<Deferred<F>>(std::forward<F>(f));
 }
 
 template<typename F>
-std::shared_ptr<deferred<F>> defer_shared(F&& f) {
-  return std::make_shared<deferred<F>>(std::forward<F>(f));
+std::shared_ptr<Deferred<F>> DeferShared(F&& f) {
+  return std::make_shared<Deferred<F>>(std::forward<F>(f));
 }
 
 }

@@ -36,7 +36,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     const std::string& column,
     std::shared_ptr<std::string> data,
     const std::vector<NamedMetadataXEntry>& xentries,
-    const storeData2Opts& opts) {
+    const StoreData2Opts& opts) {
   return storeData2(
     {StoreData2Entry(
         std::make_shared<PolymorphicPseudonym>(pp),
@@ -50,7 +50,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
 
 rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     const std::vector<StoreData2Entry>& entries,
-    const storeData2Opts& opts) {
+    const StoreData2Opts& opts) {
   PEP_LOG(LogTag, Severity::Debug) << "storeData";
 
   struct Context {
@@ -66,7 +66,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   ctx->keys = std::vector<AESKey>(entries.size()); // the default constructor of AESKey generates a random key
 
   // Create ticket request
-  requestTicket2Opts ticketRequest;
+  RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = {"write"};
@@ -161,7 +161,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
 
 rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   const std::vector<StoreMetadata2Entry>& entries,
-  const storeData2Opts& opts) { // TODO: consolidate duplicate code with deleteData2 method (below)
+  const StoreData2Opts& opts) { // TODO: consolidate duplicate code with deleteData2 method (below)
   PEP_LOG(LogTag, Severity::Debug) << "updateMetadata";
 
   struct Context {
@@ -178,7 +178,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   ctx->request->mEntries.reserve(entries.size());
 
   // Create ticket request
-  requestTicket2Opts ticketRequest;
+  RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = { "read", "write-meta" }; // We need read access so that we can re-encrypt-and-blind the AES keys
@@ -346,7 +346,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
 rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   const PolymorphicPseudonym& pp,
   const std::string& column,
-  const storeData2Opts& opts) {
+  const StoreData2Opts& opts) {
   return deleteData2(
     { Storage2Entry(
         std::make_shared<PolymorphicPseudonym>(pp),
@@ -358,7 +358,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 }
 rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   const std::vector<Storage2Entry>& entries,
-  const storeData2Opts& opts) { // TODO: consolidate duplicate code with storeData2 method (above)
+  const StoreData2Opts& opts) { // TODO: consolidate duplicate code with storeData2 method (above)
   PEP_LOG(LogTag, Severity::Debug) << "deleteData";
 
   struct Context {
@@ -369,7 +369,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   auto ctx = std::make_shared<Context>();
 
   // Create ticket request
-  requestTicket2Opts ticketRequest;
+  RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = { "write" };

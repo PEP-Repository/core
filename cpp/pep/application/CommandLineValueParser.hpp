@@ -20,7 +20,7 @@ struct ValueParser<T, std::enable_if_t<std::is_integral_v<T>>> {
 };
 
 template <typename T>
-struct ValueParser<T, std::enable_if_t<chrono::is_duration<T>::value>> {
+struct ValueParser<T, std::enable_if_t<chrono::IsDuration<T>::value>> {
   T operator()(const std::string& argument) { return chrono::ParseDuration<T>(argument); }
 };
 

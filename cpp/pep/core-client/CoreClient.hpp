@@ -170,7 +170,7 @@ struct StoreData2Entry : public StoreMetadata2Entry {
 };
 
 // Used as arguments for CoreClient::requestTicket2
-struct requestTicket2Opts{
+struct RequestTicket2Opts{
   std::vector<std::string> participantGroups;
   std::vector<PolymorphicPseudonym> pps;
   std::vector<std::string> columnGroups;
@@ -191,7 +191,7 @@ struct requestTicket2Opts{
 };
 
 // Used as arguments for CoreClient::enumerateAndRetrieveData2
-struct enumerateAndRetrieveData2Opts{
+struct EnumerateAndRetrieveData2Opts{
   std::vector<std::string> groups;
   std::vector<PolymorphicPseudonym> pps;
   std::vector<std::string> columnGroups;
@@ -218,7 +218,7 @@ struct enumerateAndRetrieveData2Opts{
 };
 
 // Used as an argument for CoreClient::storeData2
-struct storeData2Opts {
+struct StoreData2Opts {
   // If set, try to use this ticket (if it matches the storage request).
   // Warning: tickets have timestamps.  Reusing an old ticket will yield old
   // data.
@@ -433,22 +433,22 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     const std::string& column,
     std::shared_ptr<std::string> data,
     const std::vector<NamedMetadataXEntry>& xentries = {},
-    const storeData2Opts& opts={});
+    const StoreData2Opts& opts={});
   rxcpp::observable<DataStorageResult2> storeData2(
     const std::vector<StoreData2Entry>& entries,
-    const storeData2Opts& opts={});
+    const StoreData2Opts& opts={});
 
   rxcpp::observable<DataStorageResult2> updateMetadata2(
     const std::vector<StoreMetadata2Entry>& entries,
-    const storeData2Opts& opts = {});
+    const StoreData2Opts& opts = {});
 
   rxcpp::observable<HistoryResult> deleteData2(
     const PolymorphicPseudonym& pp,
     const std::string& column,
-    const storeData2Opts& opts = {});
+    const StoreData2Opts& opts = {});
   rxcpp::observable<HistoryResult> deleteData2(
     const std::vector<Storage2Entry>& entries,
-    const storeData2Opts& opts = {});
+    const StoreData2Opts& opts = {});
 
   /*!
    * \brief Enuremate and retrieve using new API.
@@ -460,7 +460,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    * that are smaller than the specified limit.
    */
   rxcpp::observable<EnumerateAndRetrieveResult>
-  enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts);
+  enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts);
 
   /*!
    * \brief Requests (or reuses) a new-style Ticket.
@@ -471,7 +471,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    * a new ticket.
    */
   rxcpp::observable<IndexedTicket2>
-  requestTicket2(const requestTicket2Opts& opts);
+  requestTicket2(const RequestTicket2Opts& opts);
 
   /// Enumerate cells using a pre-requested ticket.
   rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>

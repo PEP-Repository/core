@@ -146,7 +146,7 @@ protected:
     struct Context {
       const pep::commandline::NamedValues mParameterValues;
       bool mHasPrintedData = false;
-      pep::enumerateAndRetrieveData2Opts mEarOpts;
+      pep::EnumerateAndRetrieveData2Opts mEarOpts;
       bool mPrintMetadata = false;
       bool mGroupOutput = false;
       std::string mFormat;
@@ -263,7 +263,7 @@ protected:
 
         return configObservable.flat_map([ctx, client](pep::FakeVoid) {
 
-        pep::requestTicket2Opts tOpts;
+        pep::RequestTicket2Opts tOpts;
         tOpts.pps = ctx->mEarOpts.pps;
         tOpts.columns = ctx->mEarOpts.columns;
         tOpts.columnGroups = ctx->mEarOpts.columnGroups;

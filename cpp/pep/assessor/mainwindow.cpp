@@ -450,7 +450,7 @@ void MainWindow::on_lookupFailure(QString reason) {
 void MainWindow::selectByPolymorphicPseudonym(pep::PolymorphicPseudonym foundPP) {
   auto sid = std::make_shared<std::string>();
 
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.pps = { foundPP };
   opts.columns = { "ParticipantIdentifier" };
   pepClient->enumerateAndRetrieveData2(opts)

@@ -963,12 +963,12 @@ TEST_F(AccessManagerStorageTest, removeMetadataStructure) {
   const StructureMetadataKey key{"meta_group", "meta_key"};
   const std::string value = "meta value";
 
-  struct context {
+  struct Context {
     StructureMetadataType structureType;
     std::string description;
     std::function<void()> createStructure, removeStructure;
   };
-  auto contexts = std::initializer_list<context>{
+  auto contexts = std::initializer_list<Context>{
       {StructureMetadataType::Column, "column", [&] {storage->createColumn(structure); }, [&] {storage->removeColumn(structure); }},
       {StructureMetadataType::ColumnGroup, "column group", [&] {storage->createColumnGroup(structure); },
           [&] {storage->removeColumnGroup(structure, false); }},
@@ -979,7 +979,7 @@ TEST_F(AccessManagerStorageTest, removeMetadataStructure) {
       {StructureMetadataType::UserGroup, "user group", [&] {storage->createUserGroup(UserGroup{structure, {}}); },
           [&] {storage->removeUserGroup(structure); }},
   };
-  for (const context& ctx : contexts) {
+  for (const Context& ctx : contexts) {
     ctx.createStructure();
     storage->setStructureMetadata(ctx.structureType, structure, key, value);
     {

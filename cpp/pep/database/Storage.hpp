@@ -19,8 +19,8 @@ struct SchemaError : std::logic_error {
 };
 
 template<typename T>
-struct having {
-  explicit having(T&& expr) : mExpr(std::move(expr)) {}
+struct Having {
+  explicit Having(T&& expr) : mExpr(std::move(expr)) {}
   T mExpr;
 };
 
@@ -136,7 +136,7 @@ struct Storage : public BasicStorage {
   ///     having(c(&UserGroupRecord::name) == name))
   /// \endcode
   template <Record RecordType, typename havingT>
-  [[nodiscard]] bool currentRecordExists(auto whereCondition, having<havingT> havingCondition);
+  [[nodiscard]] bool currentRecordExists(auto whereCondition, Having<havingT> havingCondition);
 
 
   /// Return non-tombstone records.
@@ -157,7 +157,7 @@ struct Storage : public BasicStorage {
   /// \returns Collection of tuples with columns from \p selectColumns
   ///   (or single values if a single column was specified)
   template <Record RecordType, typename havingT, typename... ColTypes>
-  [[nodiscard]] auto getCurrentRecords(auto whereCondition, having<havingT> havingCondition, ColTypes RecordType::*... selectColumns);
+  [[nodiscard]] auto getCurrentRecords(auto whereCondition, Having<havingT> havingCondition, ColTypes RecordType::*... selectColumns);
 
   /// Return non-tombstone records.
   ///
@@ -180,11 +180,11 @@ struct Storage : public BasicStorage {
 
 template <auto MakeRaw> template <Record RecordType>
 [[nodiscard]] bool Storage<MakeRaw>::currentRecordExists(auto whereCondition) {
-  return currentRecordExists<RecordType>(whereCondition, having(true));
+  return currentRecordExists<RecordType>(whereCondition, Having(true));
 }
 
 template <auto MakeRaw> template <Record RecordType, typename havingT>
-[[nodiscard]] bool Storage<MakeRaw>::currentRecordExists(auto whereCondition, having<havingT> havingCondition) {
+[[nodiscard]] bool Storage<MakeRaw>::currentRecordExists(auto whereCondition, Having<havingT> havingCondition) {
   using namespace sqlite_orm;
   auto result = raw.iterate(select(
     columns(max(&RecordType::seqno)),
@@ -199,7 +199,7 @@ template <auto MakeRaw> template <Record RecordType, typename havingT>
 }
 
 template <auto MakeRaw> template <Record RecordType, typename havingT, typename... ColTypes>
-[[nodiscard]] auto Storage<MakeRaw>::getCurrentRecords(auto whereCondition, having<havingT> havingCondition, ColTypes RecordType::*... selectColumns) {
+[[nodiscard]] auto Storage<MakeRaw>::getCurrentRecords(auto whereCondition, Having<havingT> havingCondition, ColTypes RecordType::*... selectColumns) {
   static_assert(sizeof...(ColTypes) > 0, "No columns specified");
   using namespace sqlite_orm;
   return raw.iterate(select(

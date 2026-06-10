@@ -139,7 +139,7 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
 
 auto MakeStreamWithDeferredCleanup(const std::filesystem::path& path) {
   auto stream = std::make_shared<std::ofstream>(path, std::ios::binary);
-  auto deferredCleanup = defer_shared([stream, path]() {
+  auto deferredCleanup = DeferShared([stream, path]() {
     stream->close();
     std::filesystem::remove(path);
   });
@@ -544,7 +544,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto timestamp = TimeNow();
 
   auto pps = RangeToVector(request.mAccessSubjects
-    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::pp_t{pp, true}; }));
+    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; }));
 
   std::vector<std::string> modes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
@@ -579,7 +579,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     TicketRequest2 request;
     Ticket2 ticket;
     SignedTicket2 signedTicket{};
-    std::vector<Backend::pp_t> pps;
+    std::vector<Backend::Pp> pps;
     decltype(time) start_time;
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
@@ -620,7 +620,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     ctx->server->mWorkerPool->batched_map<8>(std::move(indexes),
         observe_on_asio(*ctx->server->getIoContext()),
       [ctx](size_t i) {
-    const Backend::pp_t& pp = ctx->pps[i];
+    const Backend::Pp& pp = ctx->pps[i];
     TranscryptorRequestEntry& entry = ctx->tsReqEntries.mEntries[i];
 
     // Rerandomize old PPs (ie. from the database)

@@ -166,7 +166,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         std::cout << "Stored data with result.primaryKey: "
             << boost::algorithm::hex(id) << std::endl;
 
-        requestTicket2Opts tOpts;
+        RequestTicket2Opts tOpts;
         tOpts.modes = {"read"};
         tOpts.pps = {pp.rerandomize()};
         tOpts.columns = {"ParticipantInfo"};
@@ -206,7 +206,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
 
   PolymorphicPseudonym pp = client->generateParticipantPolymorphicPseudonym(this->getRecordIdentifier());
 
-  enumerateAndRetrieveData2Opts opts;
+  EnumerateAndRetrieveData2Opts opts;
   opts.pps = {pp};
   opts.columnGroups = {"ShortPseudonyms"};
   return client->enumerateAndRetrieveData2(opts)
