@@ -38,7 +38,7 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
       });
     }
     // partly see http://stackoverflow.com/questions/11878091/delayed-action-using-boostdeadline-timer
-    class sleep : public std::enable_shared_from_this<sleep> {
+    class Sleep : public std::enable_shared_from_this<Sleep> {
       boost::asio::steady_timer timer;
       const rxcpp::schedulers::schedulable scbl;
       void action(const boost::system::error_code& e) {
@@ -53,17 +53,17 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
         }
       }
      public:
-      sleep(boost::asio::io_context& io_context, const rxcpp::schedulers::schedulable& scbl) : timer(io_context), scbl(scbl) {
+      Sleep(boost::asio::io_context& io_context, const rxcpp::schedulers::schedulable& scbl) : timer(io_context), scbl(scbl) {
       }
       void start(clock_type::time_point when) {
         timer.expires_at(when);
-        timer.async_wait(boost::bind(&sleep::action, shared_from_this(), boost::asio::placeholders::error));
+        timer.async_wait(boost::bind(&Sleep::action, shared_from_this(), boost::asio::placeholders::error));
       }
     };
 
     void schedule(clock_type::time_point when, const rxcpp::schedulers::schedulable& scbl) const override {
       PEP_LOG(LogTag, Severity::Verbose) << "after on io_context" << &io_context;
-      auto s = std::make_shared<sleep>(io_context, scbl);
+      auto s = std::make_shared<Sleep>(io_context, scbl);
       s->start(when);
     }
   };
