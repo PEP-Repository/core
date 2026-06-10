@@ -777,7 +777,7 @@ ubuntu-lts-release-manual-lint:
   variables:
     ENABLE_LINTER: yes
     ARTIFACTS: ""
-    TEST: ""
+    TESTS: ""
 
 ubuntu-lts-release-without-castor:
   extends:
@@ -837,7 +837,7 @@ ubuntu-rolling-debug-manual-lint:
   variables:
     ENABLE_LINTER: yes
     ARTIFACTS: ""
-    TEST: ""
+    TESTS: ""
 
 ubuntu-rolling-release:
   extends:
