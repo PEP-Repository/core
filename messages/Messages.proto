@@ -919,10 +919,10 @@ message ColumnNameMapping {
 }
 
 enum CrudAction {
-  CRUD_ACTION_CREATE = 0;
-  CRUD_ACTION_READ = 1;
-  CRUD_ACTION_UPDATE = 2;
-  CRUD_ACTION_DELETE = 3;
+  CrudActionCreate = 0;
+  CrudActionRead = 1;
+  CrudActionUpdate = 2;
+  CrudActionDelete = 3;
 }
 
 message SignedColumnNameMappingRequest {
