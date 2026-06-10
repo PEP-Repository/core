@@ -305,7 +305,7 @@ protected:
         
         ctx->printQueryInfo();
         if (ctx->mHasPrintedData) {
-          PEP_LOG(LogTag, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
+          PEP_LOG(LogTag, pep::Severity::Warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
         }
       }));
       });

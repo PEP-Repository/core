@@ -130,7 +130,7 @@ bool AsymmetricKey::operator==(const AsymmetricKey& other) const {
   } else if (result == 0) {
     return false;
   } else if (result == -1) {
-    PEP_LOG(LogTag, pep::error) << "Key types are different in AsymmetricKey::operator==.";
+    PEP_LOG(LogTag, Severity::Error) << "Key types are different in AsymmetricKey::operator==.";
     return false;
   } else if (result == -2) {
     throw pep::OpenSSLError("EVP_PKEY_eq operation not supported.");
@@ -426,7 +426,7 @@ bool AsymmetricKey::verifyDigestSha256(const std::string& digest, const std::str
   } else if (verifyResult == 0) {
     // Signature verification failed
     auto errors = pep::TakeOpenSSLErrors();
-    PEP_LOG(LogTag, error) << "Failure to verify signature in AsymmetricKey::verifyDigestSha256." << errors;
+    PEP_LOG(LogTag, Severity::Error) << "Failure to verify signature in AsymmetricKey::verifyDigestSha256." << errors;
     return false;
   } else {
     // Some other error occurred

@@ -23,8 +23,8 @@ ApiKey ApiKey::FromFile(const std::filesystem::path& file) {
     return ApiKey{ id, secret };
   }
   catch (std::exception& e) {
-    PEP_LOG(LogTag, critical) << "Error with Castor API Key file: " << e.what();
-    PEP_LOG(LogTag, critical) << "Castor API Key file is  " << file << std::endl;
+    PEP_LOG(LogTag, Severity::Critical) << "Error with Castor API Key file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Castor API Key file is  " << file << std::endl;
     throw;
   }
 

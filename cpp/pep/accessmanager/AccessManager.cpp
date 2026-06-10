@@ -65,7 +65,7 @@ void FillTranscryptorRequestEntry(
 }
 
 const std::string LogTag ("AccessManager");
-const severity_level TICKET_REQUEST_LOGGING_SEVERITY = debug;
+const Severity TICKET_REQUEST_LOGGING_SEVERITY = Severity::Debug;
 
 constexpr size_t TS_REQUEST_BATCH_SIZE = 400U;
 
@@ -113,7 +113,7 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
     const T& entry = sourceEntries[i];
     auto entryStrings = CountAmaQueryResponseEntryStrings(entry);
     if (entryStrings > AMA_QUERY_RESPONSE_STRINGS_WARNING_THRESHOLD) {
-      PEP_LOG(LogTag, warning) << "(Excessively) large AMA query response entry: " << NormalizedTypeNamer<T>::GetTypeName() << " contains " + std::to_string(entryStrings) + " strings";
+      PEP_LOG(LogTag, Severity::Warning) << "(Excessively) large AMA query response entry: " << NormalizedTypeNamer<T>::GetTypeName() << " contains " + std::to_string(entryStrings) + " strings";
     }
 
     // Create a new  if the entry can't be added to the one that's being filled
@@ -189,7 +189,7 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     storageFile = config.get<std::filesystem::path>("StorageFile");
   }
   catch (std::exception& e) {
-    PEP_LOG(LogTag, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
@@ -198,7 +198,7 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   }
   catch (std::exception& e) {
-    PEP_LOG(LogTag, critical) << "Error with keys file: " << keysFile << " : " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with keys file: " << keysFile << " : " << e.what();
     throw;
   }
 
@@ -402,7 +402,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     try {
                       mLocalPseudonym = localPseudonyms->at(entry.mPseudonymIndex);
                     } catch (const std::out_of_range&) {
-                      PEP_LOG(LogTag, critical) << "Out of bounds read on local pseudonyms vector during key blinding";
+                      PEP_LOG(LogTag, Severity::Critical) << "Out of bounds read on local pseudonyms vector during key blinding";
                       throw;
                     }
                     auto blindingAD = entry.mMetadata.computeKeyBlindingAdditionalData(mLocalPseudonym);
@@ -434,7 +434,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   /* if we find at least one unblind entry in the request
                     * we can't deal with this ourselves, we need the transcryptor for this
                     */
-                  PEP_LOG(LogTag, debug) << "Rekey request has a KeyBlindMode::Unblind entry -> forwarding to transcryptor";
+                  PEP_LOG(LogTag, Severity::Debug) << "Rekey request has a KeyBlindMode::Unblind entry -> forwarding to transcryptor";
                   RekeyRequest rkReq{
                     .mKeys{},
                     .mClientCertificateChain = *clientCertificateChain,
@@ -451,7 +451,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     try {
                       rkIndices->at(i) = static_cast<uint32_t>(rkReq.mKeys.size());
                     } catch (const std::out_of_range&) {
-                      PEP_LOG(LogTag, critical) << "Out of bounds read on rekey indices vector during key unblinding";
+                      PEP_LOG(LogTag, Severity::Critical) << "Out of bounds read on rekey indices vector during key unblinding";
                       throw;
                     }
                     rkReq.mKeys.push_back(entry.mPolymorphEncryptionKey);
@@ -483,7 +483,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                               try {
                                 lp = localPseudonyms->at(entry.mPseudonymIndex);
                               } catch (const std::out_of_range&) {
-                                PEP_LOG(LogTag, critical) << "Out of bounds read on local pseudonyms vector during key unblinding";
+                                PEP_LOG(LogTag, Severity::Critical) << "Out of bounds read on local pseudonyms vector during key unblinding";
                                 throw;
                               }
                               auto blindingAD = entry.mMetadata.computeKeyBlindingAdditionalData(lp);
@@ -492,7 +492,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                               try {
                                 encryptedKey = transResp->mKeys.at((*rkIndices)[i]);
                               } catch (const std::out_of_range&) {
-                                PEP_LOG(LogTag, critical) << "Out of bounds read on keys vector during unblinding-and-rekeying";
+                                PEP_LOG(LogTag, Severity::Critical) << "Out of bounds read on keys vector during unblinding-and-rekeying";
                                 throw;
                               }
 
@@ -663,7 +663,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
     ctx->ticket.mAccessSubjects = std::move(resp.mEntries);
     if (ctx->ticket.mUserGroup == UserGroup::DataAdministrator && !ctx->ticket.mAccessSubjects.empty()) {
-      PEP_LOG(LogTag, info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mAccessSubjects.size() << " participant(s)";
+      PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mAccessSubjects.size() << " participant(s)";
     }
     for (size_t i = 0; i < ctx->ticket.mAccessSubjects.size(); i++) {
       LocalPseudonym localPseudonym = ctx->ticket.mAccessSubjects[i].mAccessManager.decrypt(ctx->server->mPseudonymKey);
@@ -931,7 +931,7 @@ messaging::MessageBatches AccessManager::
   assert(getStoragePath().has_value());
   backend->ensureNoUserData();
   auto tmpUserDbMigrationPath = getStoragePath().value() / pep::filesystem::RandomizedName("AuthserverStorage-%%%%%%.sqlite");
-  PEP_LOG(LogTag, info) << "Received MigrateUserDbToAccessManagerRequest. Storing authserver storage as \"" << tmpUserDbMigrationPath.string() << '"';
+  PEP_LOG(LogTag, Severity::Info) << "Received MigrateUserDbToAccessManagerRequest. Storing authserver storage as \"" << tmpUserDbMigrationPath.string() << '"';
 
   return chunksObservable.reduce(
     MakeStreamWithDeferredCleanup(tmpUserDbMigrationPath),

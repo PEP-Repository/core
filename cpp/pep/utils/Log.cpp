@@ -1,3 +1,4 @@
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/LocalSettings.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/ThreadUtil.hpp>
@@ -28,14 +29,14 @@
 
 namespace pep {
 
-const severity_level Logging::compiledMinimumSeverityLevel = PEP_COMPILED_MIN_LOG_SEVERITY;
+const Severity Logging::compiledMinimumSeverity = Severity::PEP_COMPILED_MIN_LOG_SEVERITY;
 
 namespace {
 
 // Initialise a global logger called 'logger'
 BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(logger, Logging::pep_severity_channel_logger)
 
-BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", severity_level)
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", Severity)
 BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
 BOOST_LOG_ATTRIBUTE_KEYWORD(threadName, "ThreadName", std::string)
 
@@ -62,7 +63,7 @@ public:
     : mImplementor(implementor) {
   }
 
-  void setMinimumSeverityLevel(severity_level minimum) override {
+  void setMinimumSeverity(Severity minimum) override {
     mImplementor->set_filter(severity >= minimum);
   }
 };
@@ -72,15 +73,15 @@ std::shared_ptr<SinkWrapper<TBoost>> CreateSinkWrapper(boost::shared_ptr<TBoost>
   return std::make_shared<SinkWrapper<TBoost>>(implementor);
 }
 
-using SeverityLevelNames = std::map<severity_level, std::string>;
-SeverityLevelNames GetSeverityLevelNames() {
-  return SeverityLevelNames({
-    { severity_level::verbose, "verbose"  },
-    { severity_level::debug, "debug" },
-    { severity_level::info, "info" },
-    { severity_level::warning, "warning" },
-    { severity_level::error, "error" },
-    { severity_level::critical, "critical" }
+using SeverityNames = std::map<Severity, std::string>;
+SeverityNames GetSeverityLevelNames() {
+  return SeverityNames({
+    { Severity::Verbose, "verbose"  },
+    { Severity::Debug, "debug" },
+    { Severity::Info, "info" },
+    { Severity::Warning, "warning" },
+    { Severity::Error, "error" },
+    { Severity::Critical, "critical" }
     });
 }
 
@@ -93,30 +94,30 @@ std::string FormatThreadName() {
 
 } // end anonymous namespace
 
-severity_level Logging::ParseSeverityLevel(const std::string& level) {
+Severity Logging::ParseSeverity(const std::string& level) {
   auto names = GetSeverityLevelNames();
   auto end = names.cend();
-  auto position = std::find_if(names.cbegin(), end, [&level](const std::pair<const severity_level, std::string>& candidate) {return candidate.second == level; });
+  auto position = std::find_if(names.cbegin(), end, [&level](const std::pair<const Severity, std::string>& candidate) {return candidate.second == level; });
   if (position == end) {
     throw std::runtime_error("Invalid severity level " + level);
   }
   return position->first;
 }
 
-std::string Logging::FormatSeverityLevel(severity_level level) {
+std::string Logging::FormatSeverity(Severity level) {
   auto names = GetSeverityLevelNames();
   auto position = names.find(level);
   if (position == names.cend()) {
-    throw std::runtime_error("Invalid severity level " + std::to_string(level));
+    throw std::runtime_error("Invalid severity level " + std::to_string(ToUnderlying(level)));
   }
   return position->second;
 }
 
-std::vector<std::string> Logging::SeverityLevelNames() {
+std::vector<std::string> Logging::SeverityNames() {
   auto pairs = GetSeverityLevelNames();
   std::vector<std::string> result;
   result.reserve(pairs.size());
-  std::transform(pairs.cbegin(), pairs.cend(), std::back_inserter(result), [](const std::pair<const severity_level, std::string>& pair) {return pair.second; });
+  std::transform(pairs.cbegin(), pairs.cend(), std::back_inserter(result), [](const std::pair<const Severity, std::string>& pair) {return pair.second; });
   return result;
 }
 
@@ -125,7 +126,7 @@ Logging::pep_severity_channel_logger& Logging::GetLogger() {
 }
 
 void Logging::apply() const {
-  this->registerSink()->setMinimumSeverityLevel(minimum_level);
+  this->registerSink()->setMinimumSeverity(minimum);
 }
 
 void Logging::Initialize(const std::vector<std::shared_ptr<Logging>>& settings) {
@@ -142,7 +143,7 @@ void Logging::Initialize(const std::vector<std::shared_ptr<Logging>>& settings) 
   if (!initialized) {
     // Prevent Boost's default log sink from sending everything to the console
     auto highest = GetSeverityLevelNames().rbegin()->first; // Get highest severity level
-    auto nonexistent = static_cast<severity_level>(highest + 1); // Get severity level that will never be reached because it doesn't exist
+    auto nonexistent = static_cast<Severity>(ToUnderlying(highest) + 1); // Get severity level that will never be reached because it doesn't exist
     ConsoleLogging console(nonexistent); // Configure console logging that suppresses all existing severity levels
     Logging& upcast = console;
     upcast.apply();
@@ -201,12 +202,12 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
     lpBackend->set_target_address(szHostname, wPort);
   }
 
-  boost::log::sinks::syslog::custom_severity_mapping<severity_level> mSeverityMapper("PepSeverityMapper");
-  mSeverityMapper[severity_level::debug] = boost::log::sinks::syslog::debug;
-  mSeverityMapper[severity_level::info] = boost::log::sinks::syslog::info;
-  mSeverityMapper[severity_level::warning] = boost::log::sinks::syslog::warning;
-  mSeverityMapper[severity_level::error] = boost::log::sinks::syslog::error;
-  mSeverityMapper[severity_level::critical] = boost::log::sinks::syslog::critical;
+  boost::log::sinks::syslog::custom_severity_mapping<Severity> mSeverityMapper("PepSeverityMapper");
+  mSeverityMapper[Severity::debug] = boost::log::sinks::syslog::debug;
+  mSeverityMapper[Severity::info] = boost::log::sinks::syslog::info;
+  mSeverityMapper[Severity::warning] = boost::log::sinks::syslog::warning;
+  mSeverityMapper[Severity::error] = boost::log::sinks::syslog::error;
+  mSeverityMapper[Severity::critical] = boost::log::sinks::syslog::critical;
   lpBackend->set_severity_mapper(mSeverityMapper);
 
   return lpBackend;
@@ -223,12 +224,12 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
                      boost::log::keywords::log_source = "pep"
                    );
 
-  boost::log::sinks::event_log::custom_event_type_mapping< severity_level > mSeverityMapper("PepSeverityMapper");
-  mSeverityMapper[severity_level::debug] = boost::log::sinks::event_log::info;
-  mSeverityMapper[severity_level::info] = boost::log::sinks::event_log::info;
-  mSeverityMapper[severity_level::warning] = boost::log::sinks::event_log::warning;
-  mSeverityMapper[severity_level::error] = boost::log::sinks::event_log::error;
-  mSeverityMapper[severity_level::critical] = boost::log::sinks::event_log::error;
+  boost::log::sinks::event_log::custom_event_type_mapping< Severity > mSeverityMapper("PepSeverityMapper");
+  mSeverityMapper[Severity::Debug] = boost::log::sinks::event_log::info;
+  mSeverityMapper[Severity::Info] = boost::log::sinks::event_log::info;
+  mSeverityMapper[Severity::Warning] = boost::log::sinks::event_log::warning;
+  mSeverityMapper[Severity::Error] = boost::log::sinks::event_log::error;
+  mSeverityMapper[Severity::Critical] = boost::log::sinks::event_log::error;
   lpBackend->set_event_type_mapper(mSeverityMapper);
 
   return lpBackend;
@@ -255,7 +256,7 @@ std::shared_ptr<Logging::Sink> SysLogging::registerSink() const {
     return CreateSinkWrapper(lpSink);
   } catch (const std::exception& e) {
     // Notify our failure to other sinks that may already have been successfully set up
-    PEP_LOG("Logging", critical) << "Failed to initialize system log: " << e.what() << std::endl;
+    PEP_LOG("Logging", Severity::Critical) << "Failed to initialize system log: " << e.what() << std::endl;
     throw;
   }
 }

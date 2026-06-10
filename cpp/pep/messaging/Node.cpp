@@ -21,7 +21,7 @@ std::string GetIncompatibleVersionSummary(const std::optional<GitlabVersion>& ve
   return result;
 }
 
-void LogIncompatibleVersionDetails(severity_level severity, const std::string& type, const std::optional<GitlabVersion>& remote, const std::optional<GitlabVersion>& local) {
+void LogIncompatibleVersionDetails(Severity severity, const std::string& type, const std::optional<GitlabVersion>& remote, const std::optional<GitlabVersion>& local) {
   if (remote != std::nullopt || local != std::nullopt) {
     PEP_LOG(LogTag, severity) << "- " << type << " versions"
       << ": remote = " << GetIncompatibleVersionSummary(remote)
@@ -88,13 +88,13 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
     auto refuse = binary.isGitlabBuild() && BinaryVersion::current.isGitlabBuild(); // TODO: perhaps make this depend on ConfigVersion::getReference() == "local"?
 
     std::string msg;
-    severity_level severity{};
+    Severity severity{};
     if (refuse) {
       msg = "Rejected: " + description + " refusing";
-      severity = error;
+      severity = Severity::Error;
     } else {
       msg = "Development genuflection: " + description + " allowing";
-      severity = warning;
+      severity = Severity::Warning;
     }
 
     msg += " connection between incompatible remote (" + binary.getProtocolChecksum() + " at " + address
@@ -138,13 +138,13 @@ void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, 
 
   switch (change.updated) {
   case LifeCycler::Status::Reinitializing: // Notify subscriber of our (failed) attempt and retry
-    PEP_LOG(LogTag, debug) << "Messaging connection reinitializing";
+    PEP_LOG(LogTag, Severity::Debug) << "Messaging connection reinitializing";
     if (mSubscriber.has_value()) {
       mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Failed to establish messaging connection: will be retried"))));
     }
     break;
   case LifeCycler::Status::Initialized: // Established: hand off to subscriber
-    PEP_LOG(LogTag, debug) << "Messaging connection established";
+    PEP_LOG(LogTag, Severity::Debug) << "Messaging connection established";
     existing->establishing.cancel();
     existing->own.reset();
     if (mSubscriber.has_value()) {

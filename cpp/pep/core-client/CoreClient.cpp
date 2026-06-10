@@ -74,7 +74,7 @@ CoreClient::CoreClient(const Builder& builder) :
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
       [keysFilePath = *keysFilePath](const EnrolledPartyKeys& result){
-        PEP_LOG(LogTag, debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
+        PEP_LOG(LogTag, Severity::Debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
         std::ofstream sf(keysFilePath.string());
         boost::property_tree::ptree keysConfig;
         SerializeProperties(keysConfig, result);
@@ -222,7 +222,7 @@ void CoreClient::Builder::initialize(
         this->setStorageFacilityEndPoint(*sfConfig);
       }
     } catch (std::exception& e) {
-      PEP_LOG(LogTag, error) << "Error with configuration file: " << e.what();
+      PEP_LOG(LogTag, Severity::Error) << "Error with configuration file: " << e.what();
       std::cerr << "Error with configuration file: " << e.what() << std::endl;
       throw;
     }
@@ -244,17 +244,17 @@ void CoreClient::Builder::initialize(
             this->setSigningIdentity(MakeSharedCopy(*enrolledPartyKeys.signingIdentity));
           }
         } catch (const UnsupportedEnrollmentSchemeError& ex) {
-          PEP_LOG(LogTag, info) << "Skipped loading keys file from a different version (" << ex.what() << ")";
+          PEP_LOG(LogTag, Severity::Info) << "Skipped loading keys file from a different version (" << ex.what() << ")";
         }
       }
       else {
-        PEP_LOG(LogTag, info) << "Skipped loading keys file because it does not exist";
+        PEP_LOG(LogTag, Severity::Info) << "Skipped loading keys file because it does not exist";
       }
     }
 
     this->setIoContext(io_context);
   } catch (std::exception& e) {
-    PEP_LOG(LogTag, error) << "Error with configuration file: " << e.what() << std::endl;
+    PEP_LOG(LogTag, Severity::Error) << "Error with configuration file: " << e.what() << std::endl;
     std::cerr << "Error with configuration file: " << e.what() << std::endl;
     throw;
   }
@@ -417,7 +417,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 }
 
 rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket2Opts& opts) {
-  PEP_LOG(LogTag, debug) << "requestTicket";
+  PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())

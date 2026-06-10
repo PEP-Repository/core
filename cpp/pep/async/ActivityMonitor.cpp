@@ -32,7 +32,7 @@ void ActivityMonitor::startTimer(decltype(mTimer)::duration alreadyElapsed) {
     if (ec != boost::asio::error::operation_aborted) {
       auto self = weak.lock();
       if (self == nullptr) {
-        PEP_LOG(LogTag, error) << "Inactivity detected for job that seems to have been completed";
+        PEP_LOG(LogTag, Severity::Error) << "Inactivity detected for job that seems to have been completed";
       }
       else {
         self->handleTimerExpired();
@@ -55,7 +55,7 @@ void ActivityMonitor::handleTimerExpired() {
     this->startTimer(elapsed);
   }
   else {
-    PEP_LOG(LogTag, warning) << "Inactivity detected for job: " << mDescription
+    PEP_LOG(LogTag, Severity::Warning) << "Inactivity detected for job: " << mDescription
       << ". Its last recorded activity was " << mLastActivityWhat.value_or("<none>");
   }
 }
@@ -74,7 +74,7 @@ void ActivityMonitor::activityOccurred(const std::string& what) {
     mLastActivityWhen = decltype(mLastActivityWhen)::value_type::clock::now();
   }
   else {
-    PEP_LOG(LogTag, info) << "Activity resumed for job: " << mDescription
+    PEP_LOG(LogTag, Severity::Info) << "Activity resumed for job: " << mDescription
       << " doing: " << what;
     this->startTimer();
   }

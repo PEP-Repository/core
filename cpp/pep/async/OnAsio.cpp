@@ -27,9 +27,9 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
       return clock_type::now();
     }
     void schedule(const rxcpp::schedulers::schedulable& scbl) const override {
-      PEP_LOG(LogTag, verbose) << "schedule on io_context " << &io_context;
+      PEP_LOG(LogTag, Severity::Verbose) << "schedule on io_context " << &io_context;
       post(io_context.get_executor(), [scbl] {
-        PEP_LOG(LogTag, verbose) << "running on io_context";
+        PEP_LOG(LogTag, Severity::Verbose) << "running on io_context";
         if (scbl.is_subscribed()) {
           // allow recursion
           rxcpp::schedulers::recursion r(true);
@@ -42,7 +42,7 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
       boost::asio::steady_timer timer;
       const rxcpp::schedulers::schedulable scbl;
       void action(const boost::system::error_code& e) {
-        PEP_LOG(LogTag, debug) << "timeout on io_context";
+        PEP_LOG(LogTag, Severity::Debug) << "timeout on io_context";
         if (e == boost::asio::error::operation_aborted) {
           return;
         }
@@ -62,7 +62,7 @@ struct asio_scheduler : public rxcpp::schedulers::scheduler_interface {
     };
 
     void schedule(clock_type::time_point when, const rxcpp::schedulers::schedulable& scbl) const override {
-      PEP_LOG(LogTag, verbose) << "after on io_context" << &io_context;
+      PEP_LOG(LogTag, Severity::Verbose) << "after on io_context" << &io_context;
       auto s = std::make_shared<sleep>(io_context, scbl);
       s->start(when);
     }

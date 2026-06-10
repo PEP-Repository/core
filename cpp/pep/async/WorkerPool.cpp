@@ -16,7 +16,7 @@ static const std::string LogTag("WorkerPool");
 WorkerPool::WorkerPool()
   : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
   unsigned nThreads = std::thread::hardware_concurrency();
-  PEP_LOG(LogTag, debug) << "Using " << nThreads << " worker threads";
+  PEP_LOG(LogTag, Severity::Debug) << "Using " << nThreads << " worker threads";
   mThreads.reserve(nThreads);
   for (unsigned i = 0; i < nThreads; i++) {
     mThreads.emplace_back(

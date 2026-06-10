@@ -4,10 +4,10 @@
 
 if((CMAKE_BUILD_TYPE STREQUAL "Release") OR
    (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-    message("Note: log statements with severity less than info are left out")
-    set(DEFAULT_LOGGING info)
+    message("Note: log statements with severity less than Info are left out")
+    set(DEFAULT_LOGGING Info)
 else()
-    set(DEFAULT_LOGGING verbose)
+    set(DEFAULT_LOGGING Verbose)
 endif()
 set(LOGGING ${DEFAULT_LOGGING} CACHE STRING
         "Logging stataments to compile into binaries.  (Note: there are also runtime filters.)")

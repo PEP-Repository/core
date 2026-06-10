@@ -176,7 +176,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           }
         }
         else {
-          PEP_LOG(LogTag, debug) << "Sending error flag to server";
+          PEP_LOG(LogTag, Severity::Debug) << "Sending error flag to server";
         }
 
         self->onError.notify(messageId, std::move(e));

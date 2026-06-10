@@ -57,13 +57,13 @@ void NetworkedServer::start() {
     .subscribe(
       [this](const messaging::Connection::Attempt::Result& result) {
         if (!result) {
-          PEP_LOG(LogTag, severity_level::warning) << "Incoming connection to " << mServer->describe() << " could not be established: " << GetExceptionMessage(result.exception());
+          PEP_LOG(LogTag, Severity::Warning) << "Incoming connection to " << mServer->describe() << " could not be established: " << GetExceptionMessage(result.exception());
         } else {
           ConnectionKeeper::Create(*result, mServer);
         }
       },
       [](std::exception_ptr error) {
-        PEP_LOG(LogTag, severity_level::error) << "Server networking failed due to " << GetExceptionMessage(error);
+        PEP_LOG(LogTag, Severity::Error) << "Server networking failed due to " << GetExceptionMessage(error);
       },
       []() {
         assert(false); // Should never occur because we don't invoke mNetwork.shutdown()

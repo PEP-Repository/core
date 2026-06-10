@@ -448,7 +448,7 @@ SetConsoleCodePage::SetConsoleCodePage(UINT codePage) {
     const auto err = ::GetLastError();
     // Restore
     if (!::SetConsoleCP(prevInputCodePage)) {
-      PEP_LOG(LogTag, warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ") handing error";
+      PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ") handing error";
     }
     ApiCallFailure::Raise(err);
   }
@@ -456,10 +456,10 @@ SetConsoleCodePage::SetConsoleCodePage(UINT codePage) {
 
 SetConsoleCodePage::~SetConsoleCodePage() noexcept {
   if (prevInputCodePage != 0 && !::SetConsoleCP(prevInputCodePage)) {
-    PEP_LOG(LogTag, warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ")";
+    PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ")";
   }
   if (prevOutputCodePage != 0 && !::SetConsoleOutputCP(prevOutputCodePage)) {
-    PEP_LOG(LogTag, warning) << "Failed to restore console output code page (" << FormatWin32Error(::GetLastError()) << ")";
+    PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console output code page (" << FormatWin32Error(::GetLastError()) << ")";
   }
 }
 

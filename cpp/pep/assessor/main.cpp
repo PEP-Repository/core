@@ -84,7 +84,7 @@ class PepAssessorApplication : public pep::Application {
 
     if (!result) {
       auto pid = assessorPid->get();
-      PEP_LOG("Startup", pep::info) << "Terminating because a pepAssessor instance is already running with PID " << pid;
+      PEP_LOG("Startup", pep::Severity::Info) << "Terminating because a pepAssessor instance is already running with PID " << pid;
 #ifdef _WIN32
       BringToForeground(pid);
 #endif
@@ -103,7 +103,7 @@ class PepAssessorApplication : public pep::Application {
 
     // Allow types to be passed as arguments in signal->slot
     qRegisterMetaType<pep::ParticipantDeviceHistory>("pep::ParticipantDeviceHistory");
-    qRegisterMetaType<pep::severity_level>("pep::severity_level");
+    qRegisterMetaType<pep::Severity>("pep::Severity");
 
     pep::Configuration config = this->loadMainConfigFile();
     auto io_context = std::make_shared<boost::asio::io_context>();
@@ -140,7 +140,7 @@ class PepAssessorApplication : public pep::Application {
   }
 
  protected:
-  std::optional<pep::severity_level> syslogLogMinimumSeverityLevel() const override {
+  std::optional<pep::Severity> syslogLogMinimumSeverityLevel() const override {
     return std::nullopt;
   }
 

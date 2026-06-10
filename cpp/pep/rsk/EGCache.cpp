@@ -152,7 +152,7 @@ private:
     void prune_under_unique_lock() {
       assert(this->enabled);
       if (!this->pruneCooledDown_underSharedLock()) {
-        PEP_LOG(LogTag, warning)
+        PEP_LOG(LogTag, Severity::Warning)
           << Options::Name
           << " cache overflows a second time in a short while. "
           << "Disabling " << Options::Name
@@ -172,7 +172,7 @@ private:
         this->data.erase(entries[i].second);
       }
 
-      PEP_LOG(LogTag, info) << "Pruned " << Options::Name << " cache down to "
+      PEP_LOG(LogTag, Severity::Info) << "Pruned " << Options::Name << " cache down to "
         << this->data.size();
       this->lastPrune = TimeNow<steady_seconds>();
     }
@@ -205,7 +205,7 @@ private:
       if (!it->second) {
         // Creation of the entry failed.  The creation of an RSK entry might
         // fail, for example, when the table cache is disabled.
-        PEP_LOG(LogTag, warning)
+        PEP_LOG(LogTag, Severity::Warning)
           << "Failed to add entry to " << Options::Name << " cache; "
             << "disabling. ";
         this->data.erase(it);
@@ -213,7 +213,7 @@ private:
         return std::nullopt;
       }
 
-      PEP_LOG(LogTag, debug)
+      PEP_LOG(LogTag, Severity::Debug)
         << "Entry added to " << Options::Name << " cache.  size: "
         << this->data.size()
           << "; generation: " << this->generation;
@@ -264,7 +264,7 @@ private:
 
       // enable cache, if necessary
       if (!this->enabled) {
-        PEP_LOG(LogTag, warning)
+        PEP_LOG(LogTag, Severity::Warning)
           << "Re-enabling " << Options::Name
           << " cache.";
         this->enabled = true;

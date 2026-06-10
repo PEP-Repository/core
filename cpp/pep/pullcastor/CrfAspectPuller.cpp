@@ -62,7 +62,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::FormP
 }
 
 CrfAspectPuller::CrfAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::STUDY>(sp, aspect), mImmediatePartialData(aspect.getStorage()->immediatePartialData()) {
+  : TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::Crf>(sp, aspect), mImmediatePartialData(aspect.getStorage()->immediatePartialData()) {
   mFormPullers = CreateRxCache([sp, prefix = this->getColumnNamePrefix()]() {
     return FormPuller::LoadAll(sp, prefix)
       .op(RxToUnorderedMap([](std::shared_ptr<FormPuller> form) {return form->getFormId(); }));
@@ -110,17 +110,17 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::getSt
 
   if (!mImmediatePartialData) {
     if (rawParticipant->getProgress() < 100 && !rawParticipant->isLocked()) {
-      PEP_PULLCASTOR_LOG(debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which is not completed";
+      PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which is not completed";
       return rxcpp::rxs::empty<std::shared_ptr<StorableColumnContent>>();
     }
     auto updatedOn = ParseCastorDateTime(rawParticipant->getUpdatedOn());
     if (updatedOn >= this->getStudyPuller()->getEnvironmentPuller()->getCooldownThreshold()) {
-      PEP_PULLCASTOR_LOG(debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which has been updated too recently.";
+      PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which has been updated too recently.";
       return rxcpp::rxs::empty<std::shared_ptr<StorableColumnContent>>();
     }
   }
 
-  PEP_PULLCASTOR_LOG(debug) << "Loading study " << slug << "'s CRF for participant " << id << " from Castor";
+  PEP_PULLCASTOR_LOG(Severity::Debug) << "Loading study " << slug << "'s CRF for participant " << id << " from Castor";
   return this->getStudyDataPoints(rawParticipant)
     .op(RxSharedPtrCast<DataPointBase>())
     .flat_map([sp = this->getStudyPuller()](std::shared_ptr<DataPointBase> dp) {return sp->toFieldValue(dp).op(RxGetOne("CRF field value")); })

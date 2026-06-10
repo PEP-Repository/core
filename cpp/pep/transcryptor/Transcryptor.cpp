@@ -32,9 +32,9 @@
 namespace pep {
 
 const std::string LogTag ("Transcryptor");
-const severity_level TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY = debug;
-const severity_level LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY = debug;
-const severity_level CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY = debug;
+const Severity TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY = Severity::Debug;
+const Severity LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY = Severity::Debug;
+const Severity CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY = Severity::Debug;
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
@@ -66,7 +66,7 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
     accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
-    PEP_LOG(LogTag, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
@@ -74,7 +74,7 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
     auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
     setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   } catch (std::exception& e) {
-    PEP_LOG(LogTag, warning)
+    PEP_LOG(LogTag, Severity::Warning)
       << "Couldn't read pseudonymKey: " << e.what() << '\n'
       << "This is normal during first start-up when the Transcryptor still "
          "has to be enrolled with help from itself.  In other cases, "
@@ -87,7 +87,7 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
     setVerifiers(
       Serialization::FromJsonString<ServerVerifiers>(ReadFile(verifiersFile)));
   } catch (...) {
-    PEP_LOG(LogTag, error) << "Failed to load verifiers from " << verifiersFile;
+    PEP_LOG(LogTag, Severity::Error) << "Failed to load verifiers from " << verifiersFile;
     throw;
   }
 }
@@ -144,7 +144,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       // Use stored verifiers
       userVerifiersObs = rxcpp::observable<>::just(userVerifiers);
     } else {
-      PEP_LOG(LogTag, debug) << "Requesting verifiers from AccessManager for "
+      PEP_LOG(LogTag, Severity::Debug) << "Requesting verifiers from AccessManager for "
         << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
       userVerifiersObs = mAccessManagerProxy.requestUserVerifiers({userCertificate})
         .map([server, userCertificate](const UserVerifiersResponse& response) {

@@ -29,7 +29,7 @@ rxcpp::observable<std::shared_ptr<CastorParticipant>> GetKnownParticipants(
       ColumnBoundParticipantId cbpId(spColumn, id);
       auto result = stored->hasCastorParticipantId(cbpId);
       if (!result) {
-        PEP_PULLCASTOR_LOG(debug) << "Skipping participant " << id << ", which is not registered in PEP column " << spColumn;
+        PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping participant " << id << ", which is not registered in PEP column " << spColumn;
       }
       return result;
       });
@@ -40,7 +40,7 @@ rxcpp::observable<std::shared_ptr<CastorParticipant>> GetKnownParticipants(
 
 StudyPuller::StudyPuller(std::shared_ptr<EnvironmentPuller> environment, std::shared_ptr<Study> study, std::shared_ptr<std::vector<StudyAspect>> aspects)
   : mEnvironment(environment), mStudy(study), mAspects(aspects) {
-  PEP_PULLCASTOR_LOG(debug) << "Creating puller for study " << this->getStudy()->getSlug();
+  PEP_PULLCASTOR_LOG(Severity::Debug) << "Creating puller for study " << this->getStudy()->getSlug();
   mParticipants = CreateRxCache([environment, study]() {
     return study->getParticipants()
       .filter([environment](std::shared_ptr<Participant> participant) {

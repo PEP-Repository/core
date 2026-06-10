@@ -66,21 +66,21 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
   httpRequestHandlerParams* params = static_cast<httpRequestHandlerParams*>(cbdata);
   const mg_request_info* requestInfo = mg_get_request_info(conn);
 
-  PEP_LOG(LogTag, debug) << "Handler method: " << (params->method.empty() ? "<empty>" : params->method) << ". Request method: " << requestInfo->request_method;
-  PEP_LOG(LogTag, debug) << "Handler uri: " << params->uri << ". Request uri: " << requestInfo->local_uri;
-  PEP_LOG(LogTag, debug) << "match uri exactly: " << params->exactMatchOnly;
+  PEP_LOG(LogTag, Severity::Debug) << "Handler method: " << (params->method.empty() ? "<empty>" : params->method) << ". Request method: " << requestInfo->request_method;
+  PEP_LOG(LogTag, Severity::Debug) << "Handler uri: " << params->uri << ". Request uri: " << requestInfo->local_uri;
+  PEP_LOG(LogTag, Severity::Debug) << "match uri exactly: " << params->exactMatchOnly;
 
   if (params->exactMatchOnly && params->uri != requestInfo->local_uri) {
-    PEP_LOG(LogTag, debug) << "Request handler does not match request.";
+    PEP_LOG(LogTag, Severity::Debug) << "Request handler does not match request.";
     return 0;
   }
 
   if (!params->method.empty() && params->method != requestInfo->request_method) {
-    PEP_LOG(LogTag, debug) << "Wrong method.";
+    PEP_LOG(LogTag, Severity::Debug) << "Wrong method.";
     return writeResponse(conn, HTTPResponse("405 Method Not Allowed", "Expected " + params->method + " request"));
   }
 
-  PEP_LOG(LogTag, debug) << "Request handler matches request. Start handling the request";
+  PEP_LOG(LogTag, Severity::Debug) << "Request handler matches request. Start handling the request";
   try {
     std::map<std::string, std::string, CaseInsensitiveCompare> headers;
     for(size_t i = 0; i < static_cast<size_t>(requestInfo->num_headers); ++i) {
@@ -123,7 +123,7 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
     return writeResponse(conn, params->runHandler(request, requestInfo->remote_addr).as_blocking().first());
   }
   catch (std::exception& e) {
-    PEP_LOG(LogTag, pep::error) << "Unexpected error while handling request: " << e.what();
+    PEP_LOG(LogTag, pep::Severity::Error) << "Unexpected error while handling request: " << e.what();
     return writeResponse(conn, HTTPResponse("500 Internal Server Error", "Internal Server error"));
   }
 }
@@ -194,7 +194,7 @@ void HTTPServer::asyncStop() {
   if (!mCtx) {
     return;
   }
-  PEP_LOG(LogTag, debug) << "Stopping server " << mCtx;
+  PEP_LOG(LogTag, Severity::Debug) << "Stopping server " << mCtx;
 
   //We don't want to block on the call to mg_stop, because:
   // 1. This method is usually called from the main thread

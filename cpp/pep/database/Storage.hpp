@@ -77,7 +77,7 @@ struct Storage : public BasicStorage {
   /// \throws std::system_error if sqlite produces errors
   /// \returns true if changes have been made, false if the whole database schema was already in sync.
   bool syncSchema(bool allow_old_column_removal = false) {
-    PEP_LOG("database::Storage", info) << "Syncing database schema...";
+    PEP_LOG("database::Storage", Severity::Info) << "Syncing database schema...";
     try {
       auto simulateResults = raw.sync_schema_simulate(true);
       for(const auto& [tableName, result] : simulateResults) {
@@ -107,7 +107,7 @@ struct Storage : public BasicStorage {
         [](auto result){ return result.second != sqlite_orm::sync_schema_result::already_in_sync; }) != syncResults.end();
     }
     catch (const std::system_error& e) {
-      PEP_LOG("database::Storage", error) << "  failed: " << e.what();
+      PEP_LOG("database::Storage", Severity::Error) << "  failed: " << e.what();
       throw;
     }
   }

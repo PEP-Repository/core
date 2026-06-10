@@ -75,7 +75,7 @@ KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
     systemPublicKeys = config.get<SystemPublicKeys>("SystemPublicKeys");
   }
   catch (std::exception& e) {
-    PEP_LOG(LogTag, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 

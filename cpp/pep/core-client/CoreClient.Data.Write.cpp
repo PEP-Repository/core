@@ -51,7 +51,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
 rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     const std::vector<StoreData2Entry>& entries,
     const storeData2Opts& opts) {
-  PEP_LOG(LogTag, debug) << "storeData";
+  PEP_LOG(LogTag, Severity::Debug) << "storeData";
 
   struct Context {
     std::unordered_map<std::string,uint32_t> columns;
@@ -120,7 +120,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
-      PEP_LOG(LogTag, error) << msg.str();
+      PEP_LOG(LogTag, Severity::Error) << msg.str();
       throw std::runtime_error(msg.str());
     }
 
@@ -162,7 +162,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
 rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   const std::vector<StoreMetadata2Entry>& entries,
   const storeData2Opts& opts) { // TODO: consolidate duplicate code with deleteData2 method (below)
-  PEP_LOG(LogTag, debug) << "updateMetadata";
+  PEP_LOG(LogTag, Severity::Debug) << "updateMetadata";
 
   struct Context {
     std::unordered_map<std::string, uint32_t> columns;
@@ -221,7 +221,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
-      PEP_LOG(LogTag, error) << msg.str();
+      PEP_LOG(LogTag, Severity::Error) << msg.str();
       throw std::runtime_error(msg.str());
     }
 
@@ -359,7 +359,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   const std::vector<Storage2Entry>& entries,
   const storeData2Opts& opts) { // TODO: consolidate duplicate code with storeData2 method (above)
-  PEP_LOG(LogTag, debug) << "deleteData";
+  PEP_LOG(LogTag, Severity::Debug) << "deleteData";
 
   struct Context {
     std::unordered_map<std::string, uint32_t> columns;
@@ -408,7 +408,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
-      PEP_LOG(LogTag, error) << msg.str();
+      PEP_LOG(LogTag, Severity::Error) << msg.str();
       throw std::runtime_error(msg.str());
     }
 

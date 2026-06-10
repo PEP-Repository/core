@@ -45,11 +45,11 @@ EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWind
       participantSID = QString::fromStdString(id);
     },
     [this](std::exception_ptr ep) {
-      emit enrollFailed(QString::fromStdString(pep::GetExceptionMessage(ep)), pep::error);
+      emit enrollFailed(QString::fromStdString(pep::GetExceptionMessage(ep)), pep::Severity::Error);
     },
     [this, personalia]() {
       if (participantSID == QString("")) {
-        emit enrollFailed(tr("Generated duplicate participant identifier. Please try again."), pep::error);
+        emit enrollFailed(tr("Generated duplicate participant identifier. Please try again."), pep::Severity::Error);
         return;
       }
       emit participantRegistered(personalia);
@@ -94,7 +94,7 @@ void EnrollmentWidget::showRegisteredParticipant(std::shared_ptr<pep::Participan
     if (message.isEmpty()) {
       message = tr("Completing registration failed.");
     }
-    emit enrollFailed(message, pep::error);
+    emit enrollFailed(message, pep::Severity::Error);
     doneCompletingRegistration = true;
     emit registrationProceeding();
   },

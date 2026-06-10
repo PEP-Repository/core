@@ -296,7 +296,7 @@ private:
               std::filesystem::remove(entry.path);
             }
             catch (std::exception& e) {
-              PEP_LOG(LogTag, pep::warning) << "Could not remove temporary file \"" << entry.path.string() << "\": " << e.what();
+              PEP_LOG(LogTag, pep::Severity::Warning) << "Could not remove temporary file \"" << entry.path.string() << "\": " << e.what();
             }
           }
         }));

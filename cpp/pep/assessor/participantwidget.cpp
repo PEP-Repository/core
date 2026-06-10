@@ -297,23 +297,23 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
     aggregator->process(result);
   }, [this](std::exception_ptr ep) {
     emit participantLookupError(tr("Error while retrieving participant information: %1")
-        .arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+        .arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
   }, [this, aggregator, completeRegistration] {
     if (!aggregator->hasParticipantData()) {
       std::cerr << tr("No participant with ID %1 found").arg(participantSID).toStdString() << std::endl;
-      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID), pep::error);
+      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID), pep::Severity::Error);
     }
     else if (completeRegistration && currentPEPRole.canRegisterParticipants() && !aggregator->hasCompleteParticipantData()) {
-      emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::warning);
+      emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::Severity::Warning);
       pepClient->completeParticipantRegistration(participantSID.toStdString())
         .observe_on(observe_on_gui())
         .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
         qDebug() << "Exception occured";
-        emit statusMessage(tr("Completing registration failed."), pep::error);
+        emit statusMessage(tr("Completing registration failed."), pep::Severity::Error);
         emit participantDataReceived(aggregator->getData(), aggregator->getStudyContexts()); // Show data even though it's incomplete
       }, [this] {
-        emit statusMessage(tr("Registration completed succesfully"), pep::info);
+        emit statusMessage(tr("Registration completed succesfully"), pep::Severity::Info);
         runQuery(false);
       });
     }
@@ -331,7 +331,7 @@ void ParticipantWidget::onParticipantDataReceived(ParticipantData data, std::str
   participantStudyContexts = mAllContexts.parse(studyContexts);
 
   if (participantData.mPersonalia.has_value() != currentPEPRole.canSeeParticipantPersonalia()) {
-    PEP_LOG(LogTag, pep::warning) << "Participant personalia viewer received no data";
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Participant personalia viewer received no data";
   }
 
   processData();
@@ -376,7 +376,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   if (current) {
     assert(current->serial == serial);
     if (timestamp < current->time) {
-      emit statusMessage(tr("Cannot deregister device with a scheduled (future) registration."), pep::error);
+      emit statusMessage(tr("Cannot deregister device with a scheduled (future) registration."), pep::Severity::Error);
       return;
     }
     type = "stop";
@@ -392,7 +392,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
     history = pep::ParticipantDeviceHistory(records, true);
   }
   catch (const std::exception &error) {
-    emit statusMessage(tr("Error updating device registration: %1").arg(error.what()), pep::error);
+    emit statusMessage(tr("Error updating device registration: %1").arg(error.what()), pep::Severity::Error);
     return;
   }
 
@@ -402,10 +402,10 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
           std::make_shared<std::string>(history.toJson()), { pep::MetadataXEntry::MakeFileExtension(".json") })
   .observe_on(observe_on_gui())
   .subscribe([this, current](pep::DataStorageResult2 result) {
-    emit statusMessage(current ? tr("Device deregistered.") : tr("Device registered."), pep::info);
+    emit statusMessage(current ? tr("Device deregistered.") : tr("Device registered."), pep::Severity::Info);
     runQuery(false);
   }, [this](std::exception_ptr ep) {
-    emit statusMessage(tr("Device registration failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+    emit statusMessage(tr("Device registration failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
     this->setReadOnly(false);
   });
 }
@@ -428,9 +428,9 @@ void ParticipantWidget::updateVisitAssessor(QString id) {
     .subscribe([](pep::DataStorageResult2 result) {
     // Do nothing
   }, [this](std::exception_ptr ep) {
-    emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+    emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
   }, [this]() {
-    emit statusMessage(tr("Data stored"), pep::info);
+    emit statusMessage(tr("Data stored"), pep::Severity::Info);
     runQuery(false);
   });
 }
@@ -452,7 +452,7 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
     return;
   }
 #ifndef _WIN32
-  emit statusMessage(tr("Printing requires BarTender and is only supported on Windows."), pep::error);
+  emit statusMessage(tr("Printing requires BarTender and is only supported on Windows."), pep::Severity::Error);
 #else
   qDebug() << "Printing stickers";
 
@@ -463,17 +463,17 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   assert(std::filesystem::exists(*bartenderPath));
 
   if (!std::filesystem::exists(stickerFilePath)) {
-    emit statusMessage(tr("The sticker layout file \"%1\" does not exist. Please add it at this location or update its path in the configuration file.").arg(QString::fromStdString(stickerFilePath.string())), pep::error);
+    emit statusMessage(tr("The sticker layout file \"%1\" does not exist. Please add it at this location or update its path in the configuration file.").arg(QString::fromStdString(stickerFilePath.string())), pep::Severity::Error);
     return;
   }
 
   QPrinter printer;
   QPrintDialog dialog(&printer, this);
   if (dialog.exec() != QDialog::Accepted) {
-    emit statusMessage(tr("Printing cancelled."), pep::warning);
+    emit statusMessage(tr("Printing cancelled."), pep::Severity::Warning);
     return;
   }
-  emit statusMessage(tr("Printing..."), pep::info);
+  emit statusMessage(tr("Printing..."), pep::Severity::Info);
 
   std::string printername = printer.printerName().toStdString();
   auto copies = static_cast<unsigned>(printer.copyCount());
@@ -522,7 +522,7 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   std::string xml = str(boost::format(xmlTemplate) % stickersXml);
   std::ofstream out(tempPath);
   if (out.bad()) {
-    emit statusMessage(tr("Printing failed: could not open temporary print file"), pep::error);
+    emit statusMessage(tr("Printing failed: could not open temporary print file"), pep::Severity::Error);
     return;
   }
   out << xml;
@@ -533,9 +533,9 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   int ret = std::system(bartendCommand.c_str());
   if (ret != 0) {
     // TODO: capture and display command line output
-    emit statusMessage(tr("BarTender return error %1").arg(ret), pep::error);
+    emit statusMessage(tr("BarTender return error %1").arg(ret), pep::Severity::Error);
   } else {
-    emit statusMessage(tr("Printing succeeded."), pep::info);
+    emit statusMessage(tr("Printing succeeded."), pep::Severity::Info);
   }
 #endif
 }
@@ -646,7 +646,7 @@ bool ParticipantWidget::provideBartenderPath() {
     return true;
   }
 
-  emit statusMessage(tr(msg), pep::error);
+  emit statusMessage(tr(msg), pep::Severity::Error);
   this->locateBartender();
   return getConfiguredPathError() == nullptr;
 }
@@ -693,12 +693,12 @@ void ParticipantWidget::printSummary() {
   QPrintDialog dialog(&printer, this);
   dialog.setWindowTitle(tr("Print Document"));
   if (dialog.exec() != QDialog::Accepted) {
-    emit statusMessage(tr("Printing cancelled."), pep::warning);
+    emit statusMessage(tr("Printing cancelled."), pep::Severity::Warning);
   } else {
     summary.print(&printer);
   }
 #else
-  emit statusMessage(tr("Printing is only supported on Windows."), pep::error);
+  emit statusMessage(tr("Printing is only supported on Windows."), pep::Severity::Error);
 #endif
 }
 
@@ -872,7 +872,7 @@ void ParticipantWidget::processData() {
     if (mStudyContext.matches(globalConfig.getDevices()[i].studyContext)) {
       std::string historyInvalidReason;
       if (!history.isValid(&historyInvalidReason)) {
-        emit statusMessage(tr("Device history for column %1 is invalid: %2. Please correct the device history.").arg(columnName, historyInvalidReason.c_str()), pep::error);
+        emit statusMessage(tr("Device history for column %1 is invalid: %2. Please correct the device history.").arg(columnName, historyInvalidReason.c_str()), pep::Severity::Error);
       }
     }
   }
@@ -915,7 +915,7 @@ void ParticipantWidget::acquireParticipant() {
           std::make_shared<std::string>(updated.toString()), {pep::MetadataXEntry::MakeFileExtension(".csv")})
     .subscribe(
       [](pep::DataStorageResult2) { /* ignore */ },
-      [this](std::exception_ptr ep) { emit statusMessage(tr("Adding participant to context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::error); },
+      [this](std::exception_ptr ep) { emit statusMessage(tr("Adding participant to context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::Severity::Error); },
       [this]() { runQuery(); }
     );
 }
@@ -1010,7 +1010,7 @@ void ParticipantWidget::initializeShortPseudonymsUi(const std::optional<uint32_t
     else {
       widgetDescription = "Participant";
     }
-    PEP_LOG(LogTag, pep::warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
+    PEP_LOG(LogTag, pep::Severity::Warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
     pseudonymTextMain.append("\n\n");
     pseudonymTextMain.append(pseudonymTextOtherVisits);
   }
@@ -1106,7 +1106,7 @@ void ParticipantWidget::openEditParticipant() {
     }
 
     if (entries.empty()) {
-      emit statusMessage(tr("Unchanged data not stored"), pep::info);
+      emit statusMessage(tr("Unchanged data not stored"), pep::Severity::Info);
       return;
     }
 
@@ -1119,10 +1119,10 @@ void ParticipantWidget::openEditParticipant() {
       .subscribe([](pep::DataStorageResult2 result) {
       // Do nothing
     }, [this](std::exception_ptr ep) {
-      emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+      emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
       this->setReadOnly(false);
     }, [this]() {
-      emit statusMessage(tr("Data stored"), pep::info);
+      emit statusMessage(tr("Data stored"), pep::Severity::Info);
       runQuery(false);
     });
   });
@@ -1155,7 +1155,7 @@ void ParticipantWidget::releaseParticipant() {
         [](pep::DataStorageResult2) { /* ignore */ },
         [this](std::exception_ptr ep) {
       setReadOnly(false);
-      emit statusMessage(tr("Removing participant from context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::error);
+      emit statusMessage(tr("Removing participant from context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::Severity::Error);
     },
         [this]() { runQuery(); }
     );
@@ -1265,7 +1265,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
       history = pep::ParticipantDeviceHistory(records, true);
     }
     catch (const std::exception& error) {
-      emit statusMessage(tr("Input error: %1").arg(error.what()), pep::error);
+      emit statusMessage(tr("Input error: %1").arg(error.what()), pep::Severity::Error);
       return;
     }
 
@@ -1283,8 +1283,8 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
       .observe_on(observe_on_gui())
       .subscribe(
         [](pep::DataStorageResult2 result) { /* ignore */ },
-        [this, cancelReadOnly](std::exception_ptr error) { cancelReadOnly(); emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(error))), pep::error); },
-        [this, dialog]() { dialog->close(); emit statusMessage(tr("Device record updated"), pep::info); runQuery(); }
+        [this, cancelReadOnly](std::exception_ptr error) { cancelReadOnly(); emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(error))), pep::Severity::Error); },
+        [this, dialog]() { dialog->close(); emit statusMessage(tr("Device record updated"), pep::Severity::Info); runQuery(); }
     );
   });
 
@@ -1444,7 +1444,7 @@ ParticipantData ParticipantDataAggregator::getData() const {
   if (mParticipantInfo) {
     auto personalia = pep::ParticipantPersonalia::FromJson(mParticipantInfo->mData);
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
-      PEP_LOG(LogTag, pep::warning) << "Received empty participant personalia";
+      PEP_LOG(LogTag, pep::Severity::Warning) << "Received empty participant personalia";
     }
     participantData.mPersonalia = personalia;
   }

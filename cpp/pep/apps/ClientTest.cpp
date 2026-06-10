@@ -26,8 +26,8 @@ namespace {
 const std::string LogTag("ClientTest");
 
 class ClientTestApplication : public Application {
-  std::optional<severity_level> consoleLogMinimumSeverityLevel() const override {
-    return severity_level::warning;
+  std::optional<Severity> consoleLogMinimumSeverityLevel() const override {
+    return Severity::Warning;
   }
 
   using TestFunction = std::function<rxcpp::observable<bool>(std::shared_ptr<Client>)>;
@@ -42,7 +42,7 @@ class ClientTestApplication : public Application {
       [](FakeVoid unused) {},
       [this](std::exception_ptr ep) {
         client->getIoContext()->stop();
-        PEP_LOG(LogTag, error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
+        PEP_LOG(LogTag, Severity::Error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
       },
       [] {});
   }
@@ -57,7 +57,7 @@ class ClientTestApplication : public Application {
     function(client).subscribe(
       [success](bool entry) {if (!entry) *success = false; },
       [success, this](std::exception_ptr ep) {
-        PEP_LOG(LogTag, error) << "Exception occured: " << GetExceptionMessage(ep);
+        PEP_LOG(LogTag, Severity::Error) << "Exception occured: " << GetExceptionMessage(ep);
         *success = false;
         shutdownClient();
       },
@@ -157,7 +157,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
     *strPayload += " and " + std::to_string(i);
   }
 
-  PEP_LOG(LogTag, debug) << "CoreClient.StoreData";
+  PEP_LOG(LogTag, Severity::Debug) << "CoreClient.StoreData";
   // Test storage and retrieval of data
   return client->storeData2(pp, "ParticipantInfo", strPayload,
                             {MetadataXEntry::MakeFileExtension(".txt")})

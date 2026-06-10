@@ -32,7 +32,7 @@ void LogVersionInfo(const std::string& tag, std::string summary) {
   if (summary.empty()) {
     summary = "No version information available. Running a local build?";
   }
-  PEP_LOG("Application " + tag, info) << summary;
+  PEP_LOG("Application " + tag, Severity::Info) << summary;
 }
 
 template <typename T>
@@ -230,7 +230,7 @@ void Application::initializeLoggingOnce() {
     std::vector<std::shared_ptr<Logging>> logging;
 
     if (auto console_level = values.has("logLevel")
-        ? values.getOptional<severity_level>("logLevel")
+        ? values.getOptional<Severity>("logLevel")
         : consoleLogMinimumSeverityLevel()) {
       logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
       usingConsoleLog_ = true;
@@ -315,7 +315,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
     }
 
     if (usingConsoleLog_) {
-      PEP_LOG("Application", severity_level::critical) << "Terminating application " << detail;
+      PEP_LOG("Application", Severity::Critical) << "Terminating application " << detail;
     }
     else {
       auto channel = CreateNotificationChannel(true);
@@ -389,26 +389,26 @@ bool Application::useUnwinder() const {
 #endif
 }
 
-std::optional<severity_level> Application::syslogLogMinimumSeverityLevel() const {
-  return severity_level::info;
+std::optional<Severity> Application::syslogLogMinimumSeverityLevel() const {
+  return Severity::Info;
 }
 
-std::optional<severity_level> Application::consoleLogMinimumSeverityLevel() const {
-  return severity_level::warning;
+std::optional<Severity> Application::consoleLogMinimumSeverityLevel() const {
+  return Severity::Warning;
 }
 
-std::optional<severity_level> Application::fileLogMinimumSeverityLevel() const {
-  return severity_level::warning;
+std::optional<Severity> Application::fileLogMinimumSeverityLevel() const {
+  return Severity::Warning;
 }
 
 commandline::Parameters Application::getSupportedParameters() const {
-  auto loglevel = commandline::Value<std::string>().allow(Logging::SeverityLevelNames());
+  auto loglevel = commandline::Value<std::string>().allow(Logging::SeverityNames());
   auto defaultValue = this->consoleLogMinimumSeverityLevel();
   if (defaultValue.has_value()) {
-    loglevel = loglevel.defaultsTo(Logging::FormatSeverityLevel(*defaultValue));
+    loglevel = loglevel.defaultsTo(Logging::FormatSeverity(*defaultValue));
   }
   auto result = commandline::Command::getSupportedParameters()
-    + commandline::Parameter("suppress-version-info", "Don't log (" + Logging::FormatSeverityLevel(info) + "-level messages with) version details")
+    + commandline::Parameter("suppress-version-info", "Don't log (" + Logging::FormatSeverity(Severity::Info) + "-level messages with) version details")
     + commandline::Parameter("loglevel", "Write log messages to stderr if they have at least this severity").value(loglevel)
     + commandline::Parameter("version", "Produce version info and exit");
 
@@ -454,7 +454,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
   // Also, we allow printing version info above.
   if (::GetACP() != CP_UTF8) {
     if (lexed.contains("allow-non-utf8")) {
-      PEP_LOG("Application", severity_level::warning)
+      PEP_LOG("Application", Severity::Warning)
         << "Code page was not set to UTF-8, you may be using an old Windows version. "
            "Using --allow-non-utf8 is not recommended, you may experience problems using special characters.";
     } else {

@@ -76,7 +76,7 @@ rxcpp::observable<TResponse> BatchedRetrieve(
 
 rxcpp::observable<EnumerateAndRetrieveResult>
 CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts) {
-  PEP_LOG(LogTag, debug) << "enumerateAndRetrieveData";
+  PEP_LOG(LogTag, Severity::Debug) << "enumerateAndRetrieveData";
 
   using Pages = std::vector<std::shared_ptr<DataPayloadPage>>;
   using IndexedPages = std::unordered_map<uint32_t, std::shared_ptr<Pages>>;

@@ -554,7 +554,7 @@ static const char* lpMonthsOfTheYear[] = { "Jan", "Feb", "Mar", "Apr", "May", "J
                                             dumpfile, MiniDumpWithDataSegs, nullptr, nullptr, nullptr);
   if (!dumpSuccessful) {
     HRESULT hError = HRESULT_FROM_WIN32(GetLastError());
-    PEP_LOG(LogTag, error) << "Failed to write minidump: " << hError;
+    PEP_LOG(LogTag, Severity::Error) << "Failed to write minidump: " << hError;
   }
 
   exit(2);
@@ -575,7 +575,7 @@ void InitializeUnwinder() {
   const std::string szReportDirectoryPath = std::string(dirname(std::string(szReportDirectoryTmp).data())) + "/";
 
   if (DIR* lpReportDirectory = opendir (szReportDirectoryPath.c_str()); lpReportDirectory == nullptr) {
-    PEP_LOG(LogTag, warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
+    PEP_LOG(LogTag, Severity::Warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
   } else {
     std::unique_ptr<LocalSettings>& lpLocalSettings = LocalSettings::getInstance();
     struct dirent* lpDirEntry;
@@ -620,12 +620,12 @@ void InitializeUnwinder() {
         std::ifstream mCrashReportStream (szReportDirectoryPath + "/" + lpDirEntry->d_name);
         std::string szLine;
         if (mCrashReportStream.is_open ()) {
-          PEP_LOG(LogTag, debug) << "[*] ==== Crash report from previous run ====";
+          PEP_LOG(LogTag, Severity::Debug) << "[*] ==== Crash report from previous run ====";
           while (getline (mCrashReportStream, szLine)) {
-            PEP_LOG(LogTag, debug) << szLine;
+            PEP_LOG(LogTag, Severity::Debug) << szLine;
           }
           mCrashReportStream.close();
-          PEP_LOG(LogTag, debug) << "[*] ==== End Crash report from previous run ====";
+          PEP_LOG(LogTag, Severity::Debug) << "[*] ==== End Crash report from previous run ====";
         }
 
         if (qwTimestamp > qwLatestTimestamp) {
@@ -693,7 +693,7 @@ void InitializeUnwinder() {
 namespace pep {
 
 void InitializeUnwinder() {
-  PEP_LOG(LogTag, warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
+  PEP_LOG(LogTag, Severity::Warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
 }
 
 }
