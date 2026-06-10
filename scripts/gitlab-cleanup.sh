@@ -542,6 +542,50 @@ clean_foss_packages() {
 }
 
 
+# ====================================================
+# ==== PEP FOSS npm package versions cleanup ====
+# ====================================================
+# See https://gitlab.pep.cs.ru.nl/pep/core/-/packages.
+# Each version is a semver string; the commit SHA is stored as an npm dist-tag.
+# We keep versions whose dist-tag matches a protected branch/tag commit SHA,
+# but in theory all missing versions can be rebuilt automatically.
+
+list_used_foss_npm_package_versions() {
+  local dist_tags_raw
+  dist_tags_raw=$(gitlab_dir_api "$foss_dir" get 'packages/npm/pep-repo-client-lib' 2>/dev/null) || true
+  [ -z "$dist_tags_raw" ] && return
+  local dist_tags
+  dist_tags=$(raw_echo "$dist_tags_raw" | jq '."dist-tags" // {}')
+  list_protected_commits "$foss_dir" | while read -r sha; do
+    version=$(raw_echo "$dist_tags" | jq -r --arg sha "$sha" '.[$sha] // empty')
+    [ -n "$version" ] && raw_echo "$version"
+  done
+}
+
+list_foss_npm_package_versions() {
+  >&2 echo "Listing npm package versions..."
+  local versions
+  versions="$(set_opts && gitlab_dir_api "$foss_dir" get-multipage 'packages?package_type=npm')"
+  raw_echo "$versions" | jq --compact-output '.[]'
+}
+
+delete_foss_npm_package_version() {
+  local ver_obj="$1"
+  delete_package_version "$foss_dir" "$ver_obj"
+}
+
+# Command to clean PEP FOSS unused npm package versions
+clean_foss_npm_packages() {
+  generic_cleanup 'PEP FOSS npm package cleanup' 'npm package versions' \
+    list_used_foss_npm_package_versions \
+    list_foss_npm_package_versions \
+    .version \
+    "\"\(.name)$chr_tab\(.version)$chr_tab(\(._links.web_path))\"" \
+    delete_foss_npm_package_version \
+    false
+}
+
+
 # ===============================================
 # ==== PEP FOSS container image tags cleanup ====
 # ===============================================
@@ -761,6 +805,7 @@ clean_foss() {
   clean_foss_binaries_for_branches
   clean_docker_build_containers
   clean_foss_packages
+  clean_foss_npm_packages
   clean_foss_containers
 }
 clean_dtap() {
@@ -776,6 +821,8 @@ case $command in
     clean_docker_build_containers ;;
   clean-foss-packages)
     clean_foss_packages ;;
+  clean-foss-npm-packages)
+    clean_foss_npm_packages ;;
   clean-foss-containers)
     clean_foss_containers ;;
   clean-dtap-branches)

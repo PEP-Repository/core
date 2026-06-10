@@ -1365,6 +1365,34 @@ upload-flatpak:
             --upload-file "pep.flatpak"
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/flatpak/${CI_COMMIT_SHA}/pep.flatpak"'
 
+upload-weblib-npm:
+  stage: upload
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  tags:
+    - docker-small
+  needs:
+    - weblib-release
+  interruptible: false
+  #language=sh
+  script:
+    - PEP_VERSION_MAJOR=$(./scripts/parse-version.sh get-major version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PEP_VERSION_MINOR=$(./scripts/parse-version.sh get-minor version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PEP_VERSION_BUILD=$(./scripts/parse-version.sh get-build version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PEP_VERSION_REVISION=$(./scripts/parse-version.sh get-revision version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PACKAGE_VERSION="${PEP_VERSION_MAJOR}.${PEP_VERSION_MINOR}.${PEP_VERSION_BUILD}.${PEP_VERSION_REVISION}"
+    - |
+      cat > weblib/pep-repo-client-lib/.npmrc <<EOF
+      registry=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/npm/
+      //${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}
+      EOF
+    - cd weblib/pep-repo-client-lib
+    - npm version --no-git-tag-version "${PACKAGE_VERSION}"
+    - npm install
+    - npm pack
+    - npm publish ./pep-repo-client-lib-*.tgz
+    # Tag with commit SHA so config-dockerfiles.sh can find this version by SHA
+    - npm dist-tag add pep-repo-client-lib@${PACKAGE_VERSION} ${CI_COMMIT_SHA}
+
 retag-pep-docker-images:
   extends:
     - .upload-base
