@@ -13,7 +13,11 @@ private:
   std::string mDateOfBirth;
 
 public:
-  ParticipantPersonalia(const std::string& firstName, const std::string& middleName, const std::string& lastName, const std::string& dateOfBirth);
+  ParticipantPersonalia(std::string firstName, std::string middleName, std::string lastName, std::string dateOfBirth)
+    : mFirstName(std::move(firstName)),
+      mMiddleName(std::move(middleName)),
+      mLastName(std::move(lastName)),
+      mDateOfBirth(std::move(dateOfBirth)) {}
 
   inline const std::string &getFirstName() const noexcept { return mFirstName; }
   inline const std::string &getMiddleName() const noexcept { return mMiddleName; }

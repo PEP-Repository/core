@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <functional>
 #include <iterator>
+#include <map>
 #include <optional>
 #include <vector>
 #include <ranges>
@@ -14,6 +15,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 
 namespace pep {
@@ -186,6 +188,26 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
     begin(std::forward<decltype(dst)>(dst)));
 }
 
+/// Copy src to dst, checking that it fits
+/// \param exact If \p dst should be required to be the exact same size as \p src
+constexpr auto CheckedCopy(
+  std::ranges::input_range auto&& src,
+  std::ranges::output_range<std::ranges::range_value_t<decltype(src)>> auto& dst,
+  bool exact = false)
+requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<decltype(dst)>) {
+  using namespace std::ranges;
+  if (exact) {
+    if (std::cmp_not_equal(size(dst), size(src))) {
+      throw std::out_of_range("src range is not the same size as dst");
+    }
+  } else {
+    if (std::cmp_less(size(dst), size(src))) {
+      throw std::out_of_range("dst range is smaller than src");
+    }
+  }
+  return copy(std::forward<decltype(src)>(src), begin(dst));
+}
+
 /// Returns optional with the single element in the range, if any.
 /// \throws std::out_of_range if the range contains multiple elements.
 [[nodiscard]] auto RangeToOptional(std::ranges::input_range auto&& range)
@@ -200,5 +222,8 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
   }
   return result;
 }
+
+template <typename T>
+concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecialization<T, std::unordered_map>;
 
 }

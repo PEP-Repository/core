@@ -268,7 +268,7 @@ void DownloadProcessor::processDataChunk(std::shared_ptr<Progress> retrieveProgr
   stream->write(result.content, self->mGlobalConfig);
 }
 
-std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openStorageStream(RecordDescriptor descriptor, size_t fileSize, Progress& progress) {
+std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openStorageStream(RecordDescriptor descriptor, std::uint64_t fileSize, Progress& progress) {
   bool pseudonymisationRequired{ false };
   bool archiveExtractionRequired{ false };
   if (auto columnSpecification = mGlobalConfig->getColumnSpecification(descriptor.getColumn())) {

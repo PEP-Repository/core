@@ -269,7 +269,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   std::shared_ptr<StorageFacilityProxy> storageFacilityProxy;
   std::shared_ptr<TranscryptorProxy> transcryptorProxy;
 
-  rxcpp::subjects::subject<int> registrationSubject;
+  rxcpp::subjects::subject<FakeVoid> registrationSubject;
+  rxcpp::composite_subscription registrationExpiryTimer;
   rxcpp::subjects::subject<EnrolledPartyKeys> enrollmentSubject;
 
  public:
@@ -425,6 +426,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
    */
   rxcpp::observable<EnrolledPartyKeys> enrollServer();
 
+  void unenroll();
+
   /*!
    * \brief Store data in PEP using the new API
    */
@@ -573,7 +576,7 @@ protected:
 public:
   virtual ~CoreClient() noexcept = default;
 
-  rxcpp::observable<int> getRegistrationExpiryObservable();
+  rxcpp::observable<FakeVoid> getRegistrationExpiryObservable();
   inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath; }
 
   std::shared_ptr<const StorageFacilityProxy> getStorageFacilityProxy(bool require = true) const;

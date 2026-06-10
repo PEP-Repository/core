@@ -5,7 +5,7 @@
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Win32Api.hpp>
-#include <pep/networking/HttpClient.hpp>
+#include <pep/networking/SendHttpRequest.hpp>
 
 #include <cassert>
 #include <sstream>
@@ -17,6 +17,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxRequireCount.hpp>
 #include <pep/async/OnAsio.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 
@@ -45,7 +46,7 @@ OAuthClient::OAuthClient(Parameters parameters)
   mCaCertFilepath = parameters.config.get<std::optional<std::filesystem::path>>("CaCertificateFile");
 }
 
-boost::urls::url OAuthClient::getAuthorizationUri() const {
+boost::urls::url OAuthClient::getAuthorizationUri(std::optional<std::string_view> state) const {
   boost::urls::url uri(mRequestUrl);
   uri.set_params({
     {"client_id", ClientId},
@@ -54,6 +55,9 @@ boost::urls::url OAuthClient::getAuthorizationUri() const {
     {"code_challenge_method", "S256"},
     {"redirect_uri", mRedirectUrl},
   });
+  if (state) {
+    uri.params().set("state", *state);
+  }
   if (mLongLived) {
     if (mValidityDuration) {
       uri.params().set("long_lived_validity", std::to_string(mValidityDuration->count()));
@@ -77,10 +81,11 @@ rxcpp::observable<AuthorizationResult> OAuthClient::run() {
 #endif
 
   mCodeVerifier = GenerateCodeVerifier();
-  return mAuthorizationMethod(mIoContext, [self = shared_from_this()](std::string redirectUri) -> std::string {
+  return mAuthorizationMethod(mIoContext, [self = shared_from_this()](std::string redirectUri, std::optional<std::string_view> state) -> std::string {
         self->mRedirectUrl = std::move(redirectUri);
-        return std::string(self->getAuthorizationUri().buffer());
+        return std::string(self->getAuthorizationUri(state).buffer());
       })
+      .op(RxGetOne("AuthorizationResult"))
       .subscribe_on(observe_on_asio(*mIoContext))
       .flat_map([self = shared_from_this()](const AuthorizationResult &result) -> rxcpp::observable<AuthorizationResult> {
         if (!result) {
@@ -91,7 +96,7 @@ rxcpp::observable<AuthorizationResult> OAuthClient::run() {
       });
 }
 
-rxcpp::observable<std::string> OAuthClient::doTokenRequest(const std::string& code) {
+rxcpp::observable<std::string> OAuthClient::doTokenRequest(std::string_view code) {
   std::string body;
   {
     boost::urls::url form;
@@ -105,16 +110,10 @@ rxcpp::observable<std::string> OAuthClient::doTokenRequest(const std::string& co
     });
     body = std::string(form.encoded_query());
   }
-  networking::HttpClient::Parameters parameters(*mIoContext, boost::urls::url(mTokenUrl));
-  parameters.caCertFilepath(mCaCertFilepath);
-  auto client = networking::HttpClient::Create(std::move(parameters));
-
   HTTPRequest request(networking::HttpMethod::Post, boost::urls::url(mTokenUrl), std::move(body),
     HTTPMessage::HeaderMap{{"Content-Type", "application/x-www-form-urlencoded"}});
 
-  client->start();
-  return client->sendRequest(request).map([client](HTTPResponse response) {
-    client->shutdown();
+  return SendHttpRequest(request, mIoContext, mCaCertFilepath).map([](HTTPResponse response) {
     if(response.getStatusCode() != 200) {
       std::string error;
       std::string description;

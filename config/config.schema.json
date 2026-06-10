@@ -90,8 +90,7 @@
         "StorageFacility": { "$ref": "#/$defs/EndPoint" },
         "Transcryptor": { "$ref": "#/$defs/EndPoint" }
       },
-      "additionalProperties": false,
-      "patternProperties": { "^//": {} }
+      "additionalProperties": false
     },
 
     "EndPoint": {
@@ -156,6 +155,10 @@
         "HttpListenPort": { "type": "integer" },
         "ActiveGrantExpirationSeconds": { "type": "integer" },
         "TokenExpirationSeconds": { "type": "integer" },
+        "ExtraRedirectUris": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "SpoofKeyFile": { "type": "string" },
         "HttpsCertificateFile": { "type": "string" }
       },

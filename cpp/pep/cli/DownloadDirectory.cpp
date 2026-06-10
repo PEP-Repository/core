@@ -344,7 +344,7 @@ std::filesystem::path DownloadDirectory::getDataStoragePath(const RecordDescript
   return path;
 }
 
-std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadDirectory::create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize) {
+std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadDirectory::create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize) {
   remove(descriptor);
 
   assert(!getRecordFileName(descriptor));
@@ -400,7 +400,7 @@ std::string DownloadDirectory::Specification::toString() const {
 }
 
 
-DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize)
+DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize)
   : mDestination(std::move(destination)), mDescriptor(std::move(descriptor)), mPath(std::move(path)), mFileName(mPath.filename().string()), mFileSize(fileSize), mHasher(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
 
   mRaw = std::make_shared<std::ofstream>(mPath.string(), std::ios::out | std::ios::binary);

@@ -96,7 +96,7 @@ protected:
 
 public:
   FileLogging(Severity minimum)
-    : Logging(minimum), prefix(GetOutputBasePath().string()) {
+    : Logging(minimum), prefix(GetLogBasePath().string()) {
   }
 };
 
@@ -113,5 +113,16 @@ public:
     : Logging(minimum), host_name(szHostname), port(wPort) {
   }
 };
+
+#ifdef __EMSCRIPTEN__
+class JsConsoleLogging : public Logging {
+protected:
+  std::shared_ptr<Sink> registerSink() const override;
+
+public:
+  explicit JsConsoleLogging(Severity minimum)
+    : Logging(minimum) {}
+};
+#endif
 
 }

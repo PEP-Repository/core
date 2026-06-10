@@ -28,7 +28,7 @@ struct AsioScheduler : public rxcpp::schedulers::scheduler_interface {
     }
     void schedule(const rxcpp::schedulers::schedulable& scbl) const override {
       PEP_LOG(LogTag, Severity::Verbose) << "schedule on io_context " << &io_context;
-      post(io_context.get_executor(), [scbl] {
+      post(io_context, [scbl] {
         PEP_LOG(LogTag, Severity::Verbose) << "running on io_context";
         if (scbl.is_subscribed()) {
           // allow recursion

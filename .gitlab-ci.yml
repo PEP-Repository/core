@@ -8,6 +8,10 @@ spec:
       description: Enable SAST build (yes/no)
       type: boolean
       default: false
+    test_coverage:
+      options: ['no-coverage', 'coverage']
+      default: no-coverage
+      description: Enable code coverage reporting
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -39,6 +43,11 @@ variables:
 
   # For CI scripts
   CLEAN_CONAN: 1
+
+  # Defaults, used in .configure-conan-and-cmake
+  CONAN_FLAGS:
+    -o &:with_assessor=False
+    -o &:with_castor=$WITH_CASTOR
 
   # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_APPS: >-
@@ -98,7 +107,6 @@ variables:
     cpp/pep/storagefacility/pepStorageFacilityUnitTests
 
   UNIT_TESTS_BASE: >-
-    cpp/pep/accessmanager/pepAccessManagerUnitTests
     cpp/pep/application/pepApplicationUnitTests
     cpp/pep/archiving/pepArchivingUnitTests
     cpp/pep/async/pepAsyncUnitTests
@@ -107,7 +115,6 @@ variables:
     cpp/pep/database/pepDatabaseUnitTests
     cpp/pep/crypto/pepCryptoUnitTests
     cpp/pep/elgamal/pepElgamalUnitTests
-    cpp/pep/keyserver/pepKeyServerUnitTests
     cpp/pep/messaging/pepMessagingUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
@@ -117,18 +124,27 @@ variables:
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
     cpp/pep/ticketing/pepTicketingUnitTests
-    cpp/pep/transcryptor/pepTranscryptorUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
+
+  UNIT_TESTS_SERVER: >-
+    cpp/pep/accessmanager/pepAccessManagerUnitTests
+    cpp/pep/keyserver/pepKeyServerUnitTests
+    cpp/pep/transcryptor/pepTranscryptorUnitTests
 
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
     cpp/pep/pullcastor/pepPullCastorUnitTests
 
+  UNIT_TESTS_WEBLIB: >-
+    cpp/pep/weblib/pepWebCommonUnitTests
+
   UNIT_TESTS_ALL: >-
     $UNIT_TESTS_INTEGRATION
     $UNIT_TESTS_BASE
+    $UNIT_TESTS_SERVER
     $UNIT_TESTS_CASTOR
+    $UNIT_TESTS_WEBLIB
 
   FORCE_BUILD_STABLE_RELEASE:
     value: ''
@@ -203,14 +219,20 @@ include:
 .docker_login: &docker_login
   echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" --username gitlab-ci-token --password-stdin
 
-.not-stable-release: &not-stable-release
-  # Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
-  if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN)
-
 .skip-for-binaries-for-xyz:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
       when: never
+
+# Must be last in rules, as it will not run more rules
+.set-enable-linter-and-terminate-rules:
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      variables:
+        ENABLE_LINTER: no
 
 # Sets credentials on the git repo in the current working directory to prevent "fatal: could not read Username"
 # See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2741
@@ -397,6 +419,7 @@ cleanup:
       echo "No artifacts to stage"
     fi
 
+#language=sh
 .run-tests: &run-tests
   - |
     DID_JOB_FAIL=0
@@ -405,9 +428,13 @@ cleanup:
         DID_JOB_FAIL=1
       fi
     done
-    exit $DID_JOB_FAIL
+    if [ $DID_JOB_FAIL -ne 0 ]; then
+      exit 1
+    fi
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
+# See the ci_cd/windows-ci-runner.bat provisioning script.
+#language=powershell
 .run-tests-windows: &run-tests-windows
   - |
     $testsArray = $TESTS -split ' ';
@@ -454,8 +481,7 @@ retrieve-lockfile:
     --lockfile=./docker-build/builder/conan/conan-ci.lock
     -s build_type=$CMAKE_BUILD_TYPE
     $concurrency_option_conan
-    -o "&:with_assessor=False"
-    -o "&:with_castor=$WITH_CASTOR"
+    $CONAN_FLAGS
     -o "&:with_tests=$WITH_TESTS"
     -o "&:with_benchmark=$WITH_BENCHMARK"
     -o "&:custom_build_folder=True"
@@ -472,6 +498,7 @@ retrieve-lockfile:
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
 
 .ubuntu-build-base:
   <<: *ccache-configuration
@@ -485,6 +512,8 @@ retrieve-lockfile:
     HTTPSERVER_WITH_TLS: "OFF"
   #language=bash
   script:
+    # Add stuff like emsdk to PATH (profile is not loaded for docker runners: https://docs.gitlab.com/runner/shells/index.html#shell-profile-loading )
+    - . ~/.profile
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
     - if [ "$ENABLE_LINTER" = yes ]; then
@@ -501,7 +530,7 @@ retrieve-lockfile:
       <(echo "$UNIT_TESTS_ALL" | tr -s ' ' '\n' | sort)
       <(cd "./$BUILD_DIRECTORY/" && find -name 'pep*UnitTests' | sort | sed 's/^.\///') |
       tee /dev/stderr)" ]; then
-    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_BASE?'
+    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_*?'
     -   exit 1
     - fi
     - *run-tests
@@ -523,8 +552,6 @@ retrieve-lockfile:
 
 .ubuntu-lts-debug-settings:
   extends: .ubuntu-lts-settings
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "True"
@@ -538,20 +565,87 @@ ubuntu-lts-debug:
     WITH_CASTOR: "True"
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
+  rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
+      variables:
+        ENABLE_COVERAGE: "ON"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  before_script:
+    - !reference [.ubuntu-build-base, before_script]
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        mkdir -p "$CI_PROJECT_DIR/profiles"
+        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
+      fi
   script:
     - !reference [.ubuntu-build-base, script]
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+    - | 
+       if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
+         echo "Skipping code coverage processing steps"
+         exit 0
+       fi
+
+      # Merge raw profile files from profiles directory
+    - llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+
+    - |
+       BINARIES=""
+       for BINARY in $UNIT_TESTS_ALL $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+         BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
+       done
+    
+    - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
+
+      # Generate HTML report
+    - llvm-cov show $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        --project-title="Combined Coverage (Unit + Integration)"
+        --show-directory-coverage
+        -format=html
+        -output-dir=htmlcov
+
+      # Export to lcov format using llvm-cov
+    - llvm-cov export $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        -format=lcov > coverage.lcov
+
+      # Convert lcov to Cobertura XML using lcov_cobertura
+    - lcov_cobertura coverage.lcov --output coverage.xml
+        --base-dir "$CI_PROJECT_DIR"
+        --demangle
+
+      # Show summary with coverage percentage
+    - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
+    - 'echo "Line Coverage: ${line_pct}%"'
+  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+  artifacts:
+    paths:
+      - htmlcov/
+    reports:
+      junit: temp/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 # To test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-debug-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     WITH_CASTOR: "False"
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
     MEM_ANALYSIS_TOOL: "none"
 
 ubuntu-lts-debug-with-sast:
@@ -651,13 +745,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
-  rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      variables:
-        ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      variables:
-        ENABLE_LINTER: no
+    - .set-enable-linter-and-terminate-rules
   variables:
     WITH_BENCHMARK: "True"
     WITH_CASTOR: "True"
@@ -669,9 +757,13 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $EXECUTABLES_BENCHMARK
       $EXECUTABLE_PULLCASTOR
       $EXECUTABLES_GO
-      $UNIT_TESTS_ALL
+      $UNIT_TESTS_INTEGRATION
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "valgrind"
 
@@ -691,7 +783,9 @@ ubuntu-lts-release-without-castor:
       $EXECUTABLES_CLIENT
       $LOCAL_CONFIG_CLIENT
       $PEPSERVERS_MONOLITH
-    TESTS: "$UNIT_TESTS_BASE"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
     MEM_ANALYSIS_TOOL: "none"
 
 #################### Ubuntu Rolling ####################
@@ -705,6 +799,7 @@ ubuntu-lts-release-without-castor:
     WITH_BENCHMARK: "False"
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
 
@@ -715,12 +810,7 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
     - .ubuntu-rolling-settings
   rules:
     - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      variables:
-        ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      variables:
-        ENABLE_LINTER: no
+    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     VERIFY_HEADERS_STANDALONE: "off"
@@ -838,7 +928,10 @@ windows-debug:
                       $EXECUTABLES_CLIENT
                       $EXECUTABLES_BENCHMARK
                       $PEPSERVERS_MONOLITH
-                      $UNIT_TESTS_ALL"
+                      $UNIT_TESTS_INTEGRATION
+                      $UNIT_TESTS_BASE
+                      $UNIT_TESTS_SERVER
+                      $UNIT_TESTS_CASTOR"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
                                                                           --build-mode "$CMAKE_BUILD_TYPE"
@@ -863,6 +956,7 @@ test-windows-debug:
     MEM_ANALYSIS_TOOL: "none"
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
   tags:
     # Do not run in parallel with other tests, as we may bind to static ports.
@@ -925,6 +1019,7 @@ macos-debug:
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
   #language=bash
   script:
@@ -970,6 +1065,62 @@ macos-debug:
   artifacts:
     reports:
       junit: temp/*.xml
+
+#################### Weblib ##################
+
+.weblib-base:
+  extends:
+    - .ubuntu-build-base
+  image: $BUILDER_IMAGE_WEBLIB
+  variables:
+    WITH_BENCHMARK: "False"
+    WITH_TESTS: "True"
+    MEM_ANALYSIS_TOOL: "none"
+    CONAN_FLAGS: --profile:host=./docker-build/builder/conan/conan_profile_wasm32
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_WEBLIB
+  artifacts:
+    expire_in: 8h
+    paths:
+      - weblib/pep-repo-client-wasm/package.json
+      - weblib/pep-repo-client-wasm/package-lock.json
+      - weblib/pep-repo-client-wasm/pepWeblib*
+
+.weblib-settings-debug:
+  rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - when: on_success
+weblib-debug:
+  extends:
+    - .weblib-base
+    - .weblib-settings-debug
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+
+weblib-release:
+  extends:
+    - .weblib-base
+  variables:
+    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+
+weblib-integration:
+  extends:
+    - .dind
+    - .weblib-settings-debug
+  image: $BUILDER_IMAGE_WEBLIB
+  needs:
+    # Use Debug pepWeblib binaries to run integration tests
+    - weblib-debug
+    - job: docker-images
+      artifacts: false
+  stage: build
+  #language=sh
+  script:
+    - *docker_login
+    # Add Node.js to PATH
+    - . ~/.profile
+    - ./tests/integration.sh --image "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tests-to-run weblib
 
 #################### Docker ####################
 
@@ -1043,6 +1194,7 @@ test-pep-services-image:
   variables:
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
   image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:

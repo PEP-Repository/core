@@ -1,0 +1,158 @@
+# Common files
+add_library(${PROJECT_NAME}WebCommonlib
+    Emscripten_fwd.hpp
+    EmscriptenMapBinding.hpp
+    EmscriptenValPtr.cpp EmscriptenValPtr.hpp
+    EmscriptenVectorBinding.hpp
+    ObservableByteStream.cpp ObservableByteStream.hpp
+    ObservableStream.cpp ObservableStream.hpp
+    ObservableStreamHelpers.cpp ObservableStreamHelpers.hpp
+    OnEmscriptenThread.cpp OnEmscriptenThread.hpp
+    SetTimeout.cpp SetTimeout.hpp
+    ThreadPrintable.cpp ThreadPrintable.hpp
+    WeblibApiPromise.cpp WeblibApiPromise.hpp
+)
+target_link_libraries(${PROJECT_NAME}WebCommonlib
+    ${PROJECT_NAME}Asynclib
+    -lembind # Explicit -l for CMAKE_LINK_LIBRARIES_ONLY_TARGETS
+)
+verify_headers_standalone(${PROJECT_NAME}WebCommonlib)
+
+# Executable
+add_executable(${PROJECT_NAME}Weblib
+    WeblibStructs.cpp WeblibStructs.hpp
+
+    Weblib.cpp
+)
+target_link_libraries(${PROJECT_NAME}Weblib
+    # Make sure Embind types are registered by running all static constructors.
+    # See https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html#binding-libraries
+    "$<LINK_LIBRARY:WHOLE_ARCHIVE,${PROJECT_NAME}WebCommonlib>"
+
+    ${PROJECT_NAME}Applicationlib
+    ${PROJECT_NAME}Clientlib
+    ${PROJECT_NAME}OAuthClientlib
+
+    -lidbfs.js # For IDBFS (IndexedDB persistent File System) used in pep.mts
+)
+set(weblib_additional_files
+    ${PROJECT_NAME}Weblib.d.mts
+    ${PROJECT_NAME}Weblib.wasm
+    ${PROJECT_NAME}Weblib.wasm.debug.wasm
+    ${PROJECT_NAME}Weblib.wasm.map
+
+    node_modules/
+    package-lock.json
+)
+list(TRANSFORM weblib_additional_files PREPEND "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/")
+set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${weblib_additional_files}"
+)
+
+set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
+    SUFFIX .mjs
+    PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG ON
+    LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
+)
+
+set(PEP_WEBLIB_ENVIRONMENT "web,node" CACHE STRING "Environment(s) to build ${PROJECT_NAME}Weblib for")
+
+# See https://emscripten.org/docs/tools_reference/settings_reference.html
+target_link_options(${PROJECT_NAME}Weblib PRIVATE
+    "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
+    -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
+
+    -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
+    # Preallocate threads we need
+    "-sPTHREAD_POOL_SIZE=Math.min(navigator.hardwareConcurrency, 8 /*WorkerPool*/ + 1 /*io_context*/ + 1 /*Boost async_resolve*/)"
+    -sPTHREAD_POOL_DELAY_LOAD # Allow spinning up thread pool in the background, improving startup time
+    -sNO_PTHREAD_POOL_SIZE_STRICT # We disable this such that we can spawn more threads, but we cannot synchronously join them
+
+    # 30 MiB should usually be good to prevent going OOM, but let's leave some room,
+    #  since the memory use depends on e.g. the number of CellEntry objects alive and cell metadata size.
+    # This limit only applied to C++ land, not to data handed off to JS.
+    # We'll get std::bad_alloc when going OOM.
+    # We're not using ALLOW_MEMORY_GROWTH, because it's apparently very slow with threading enabled,
+    #  see https://emscripten.org/docs/porting/pthreads.html#special-considerations
+    -sINITIAL_MEMORY=209715200 # 200 MiB
+    -sNO_SUPPORT_LONGJMP # We're not using this
+    -sTEXTDECODER=2 # Do not generate polyfill for old browsers not supporting TextDecoder
+    -sFETCH # For emscripten_fetch
+    -sNO_INVOKE_RUN # We call callMain ourselves
+    # noExitRuntime required for -sNO_EXIT_RUNTIME
+    -sINCOMING_MODULE_JS_API=thisProgram,noExitRuntime
+    # Used in pep.mts
+    -sEXPORTED_RUNTIME_METHODS=FS,FS_createPreloadedFile,IDBFS,callMain,ExitStatus,getExceptionMessage,incrementExceptionRefcount,decrementExceptionRefcount
+    "--emit-tsd=$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.d.mts" # Emit TypeScript declarations
+
+    "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/prejs.js"
+)
+
+# See https://emscripten.org/docs/tools_reference/settings_reference.html#dynamic-execution
+option(PEP_WEBLIB_NO_DYNAMIC_EXECUTION "Don't use eval & Function")
+if(PEP_WEBLIB_NO_DYNAMIC_EXECUTION)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE
+      -sNO_DYNAMIC_EXECUTION
+  )
+endif()
+
+# Avoid calling very slow (>30s) wasm-emscripten-finalize during build
+option(PEP_WEBLIB_NO_STACK_OVERFLOW_CHECK "Disable stack overflow check" ON)
+if(PEP_WEBLIB_NO_STACK_OVERFLOW_CHECK)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE
+      -sNO_STACK_OVERFLOW_CHECK
+  )
+endif()
+
+option(PEP_WEBLIB_DEBUG_SEPARATE_DWARF "When debug info is enabled, put DWARF debug info into a separate .wasm.debug.wasm instead of the primary .wasm file" ON)
+if(PEP_WEBLIB_DEBUG_SEPARATE_DWARF)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE
+      # -gseparate-dwarf: Separate debug info into .wasm.debug.wasm file
+      "$<$<CONFIG:Debug,RelWithDebInfo>:-gseparate-dwarf>"
+  )
+else()
+  # Prevent old debug info from remaining
+  add_custom_command(
+      TARGET ${PROJECT_NAME}Weblib POST_BUILD
+      COMMENT "Removing any leftover -gseparate-dwarf"
+      COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.debug.wasm"
+      VERBATIM
+  )
+endif()
+
+set(source_map_default ON)
+if(EMSCRIPTEN_VERSION VERSION_GREATER_EQUAL "4.0.22" AND EMSCRIPTEN_VERSION VERSION_LESS "5.0.0")
+  # Work around huge source map in debug mode: https://github.com/emscripten-core/emscripten/issues/26100
+  set(source_map_default OFF)
+endif()
+option(PEP_WEBLIB_SOURCE_MAP "Generate source map for pepWeblib" ${source_map_default})
+if(PEP_WEBLIB_SOURCE_MAP)
+  target_link_options(${PROJECT_NAME}Weblib PRIVATE -gsource-map)
+else()
+  # Prevent old source map from remaining
+  add_custom_command(
+      TARGET ${PROJECT_NAME}Weblib POST_BUILD
+      COMMENT "Removing any leftover source map"
+      COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/${PROJECT_NAME}Weblib.wasm.map"
+      VERBATIM
+  )
+endif()
+
+add_custom_command(
+    TARGET ${PROJECT_NAME}Weblib PRE_LINK
+    COMMENT "Make sure typescript is installed for --emit-tsd"
+    COMMAND ${CMAKE_COMMAND} -E env "EMSCRIPTEN=${EMSCRIPTEN_ROOT_PATH}" -- ${INVOKE_SH} "${CMAKE_CURRENT_SOURCE_DIR}/install-emscripten-typescript.sh"
+    VERBATIM
+)
+
+set(PEP_FULL_BINARY_VERSION "${PEP_VERSION_MAJOR}.${PEP_VERSION_MINOR}.${PEP_VERSION_BUILD}")
+configure_file(package.in.json package.json.tmp @ONLY)
+file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${PROJECT_NAME}Weblib>/package.json" INPUT "${CMAKE_CURRENT_BINARY_DIR}/package.json.tmp")
+
+# Unit tests
+add_unit_tests(WebCommon)
+if(WITH_TESTS)
+  target_link_options(${PROJECT_NAME}WebCommonUnitTests PRIVATE
+      -sPROXY_TO_PTHREAD # See ./tests/PromiseHelpers.cpp
+  )
+endif()

@@ -20,6 +20,7 @@ add_library(${PROJECT_NAME}Networkinglib STATIC
     Node.cpp Node.hpp
     Protocol.hpp
     Server.cpp Server.hpp
+    SendHttpRequest.cpp SendHttpRequest.hpp
     SocketReadBuffer.cpp SocketReadBuffer.hpp
     SslError.cpp SslError.hpp
     StreamSocket.hpp
@@ -40,5 +41,9 @@ target_link_libraries(${PROJECT_NAME}Networkinglib
   OpenSSL::SSL
 )
 
-add_unit_tests(Networking LINK_LIBS pepHttpserverlib)
+set(unit_test_libs)
+if(NOT DEFINED EMSCRIPTEN)
+  list(APPEND unit_test_libs ${PROJECT_NAME}Httpserverlib)
+endif()
+add_unit_tests(Networking LINK_LIBS ${unit_test_libs})
 verify_headers_standalone(${PROJECT_NAME}Networkinglib)

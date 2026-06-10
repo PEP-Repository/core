@@ -134,7 +134,7 @@ void Requestor::purge(bool all) {
       // it might be more consistent to put an "observe_on(observe_on_asio(..))"
       // on the observable returned by sendRequest, but I do not oversee the
       // all the consequences that might have
-      post(mIoContext.get_executor(),
+      post(mIoContext,
         [subscriber = std::move(request.subscriber)] {
           subscriber.on_error(std::make_exception_ptr(
             Error("Aborting multi-message request")));

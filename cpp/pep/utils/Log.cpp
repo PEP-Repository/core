@@ -281,5 +281,53 @@ std::string Logging::Escape(const std::string& in) {
   ss << "\"";
   return std::move(ss).str();
 }
+} // namespace pep
 
+#ifdef __EMSCRIPTEN__
+
+#include <boost/log/sinks/unlocked_frontend.hpp>
+#include <emscripten/val.h>
+
+namespace pep {
+namespace {
+class JsConsoleLoggerBackend
+    : public boost::log::sinks::basic_formatted_sink_backend<char,
+      boost::log::sinks::concurrent_feeding> {
+public:
+  void consume(const boost::log::record_view& rec, const string_type& line) {
+    thread_local const auto console = emscripten::val::global("console");
+    switch (*rec[severity]) {
+    case verbose:
+      console.call<void>("debug", line);
+      return;
+    case debug:
+      console.call<void>("log", line);
+      return;
+    case info:
+      console.call<void>("info", line);
+      return;
+    case warning:
+      console.call<void>("warn", line);
+      return;
+    case error:
+    case critical:
+      console.call<void>("error", line);
+      return;
+    }
+    assert(false && "Invalid log severity");
+  }
+};
 }
+
+std::shared_ptr<Logging::Sink> JsConsoleLogging::registerSink() const {
+  auto sink = boost::make_shared<boost::log::sinks::unlocked_sink<JsConsoleLoggerBackend>>();
+  sink->set_formatter(
+      boost::log::expressions::stream << "<" << severity << "> [" << threadName << channel << "] " <<
+      boost::log::expressions::smessage);
+
+  boost::log::core::get()->add_sink(sink);
+  return CreateSinkWrapper(sink);
+}
+}
+
+#endif

@@ -13,6 +13,15 @@ using namespace std::literals;
 
 namespace {
 
+class Client : public ::testing::Test {
+public:
+  static void SetUpTestSuite() {
+#ifdef __EMSCRIPTEN__
+    GTEST_SKIP() << "Server not supported on Emscripten";
+#endif
+  }
+};
+
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
   friend class pep::SharedConstructor<ClientConnectivityHandler>;
 
@@ -146,7 +155,8 @@ public:
   }
 };
 
-TEST(Client, Reconnects) { // TODO: simplify
+TEST_F(Client, Reconnects) { // TODO: simplify
+
   boost::asio::io_context ioContext;
 
   auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
@@ -202,7 +212,7 @@ void ReadClientLine(std::shared_ptr<pep::networking::Client> client, std::shared
 }
 
 
-TEST(Client, ReadUntil) {
+TEST_F(Client, ReadUntil) {
   boost::asio::io_context ioContext;
 
   auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
@@ -231,7 +241,7 @@ TEST(Client, ReadUntil) {
   ASSERT_NO_FATAL_FAILURE(ioContext.run());
 }
 
-TEST(Client, ReadAll) {
+TEST_F(Client, ReadAll) {
   boost::asio::io_context ioContext;
 
   auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));

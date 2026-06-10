@@ -26,6 +26,17 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::enrollServer() {
   return completeEnrollment(ctx);
 }
 
+void CoreClient::unenroll() {
+  privateKeyData = {};
+  privateKeyPseudonyms = {};
+  setSigningIdentity({});
+
+  registrationExpiryTimer.unsubscribe();
+  if (keysFilePath) {
+    std::filesystem::remove(*keysFilePath);
+  }
+}
+
 rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_ptr<EnrollmentContext> ctx) {
   PEP_LOG(LogTag, Severity::Debug) << "Completing enrollment...";
   // Construct key component request for Access Manager and Transcryptor
@@ -56,8 +67,9 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_
       std::chrono::time_point<std::chrono::steady_clock> steadyExpiry = std::chrono::steady_clock::now() + durationUntilExpiry;
 
       // Then fire a timer when our certificates expire in order to inform the user
-      rxcpp::observable<>::timer(steadyExpiry, rxcpp::observe_on_new_thread()).subscribe([this](auto) {
-        registrationSubject.get_subscriber().on_next(1);
+      registrationExpiryTimer.unsubscribe();
+      registrationExpiryTimer = rxcpp::observable<>::timer(steadyExpiry, rxcpp::observe_on_new_thread()).subscribe([this](auto) {
+        registrationSubject.get_subscriber().on_next(FakeVoid{});
       });
 
       EnrolledPartyKeys result{

@@ -538,6 +538,19 @@ int StartCmd::execute() {
 
 } // namespace pep::application::test
 
+#ifndef EXPECT_DEBUG_DEATH_IF_SUPPORTED
+# ifdef NDEBUG
+// Replacement for the internal GTEST_EXECUTE_STATEMENT_ that GTEST would call for EXPECT_DEBUG_DEATH with NDEBUG
+#define PEP_GTEST_EXECUTE_STATEMENT(statement, regex_or_matcher) \
+  if (true) { \
+    statement; \
+  } else ::testing::Message()
+#  define EXPECT_DEBUG_DEATH_IF_SUPPORTED PEP_GTEST_EXECUTE_STATEMENT
+# else
+#  define EXPECT_DEBUG_DEATH_IF_SUPPORTED EXPECT_DEATH_IF_SUPPORTED
+# endif
+#endif
+
 // Make test infrastructure accessible to TEST() macros
 using namespace pep::application::test;
 
@@ -744,7 +757,7 @@ TEST(CommandParameterCombinations, AliasCommandWithAliasParameter) {
 // X[1-13b]: Alias Cmd + Alias Par (parameter forwards to different command)
 // Programmer error: alias command forwards to 'user', but parameter forwards to 'deploy'
 TEST(CommandParameterCombinations, AliasCommandWithAliasParameterForwardingToDifferentCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"create-user", "--forward-to-deploy", "myapp"});
   }, ".*parameters cannot forward to other commands.*") << "Framework should assert when alias command forwards to one command but parameter forwards to another.";
 }
@@ -962,7 +975,7 @@ TEST(ParameterParameterCombinations, AliasParameterWithAliasParameter) {
 // X[2-6b]: Alias Par + Alias Par (multiple command forwards)
 // Programmer error: Only ONE alias parameter can forward to a different command
 TEST(ParameterParameterCombinations, AliasParameterWithAliasParameterToDifferentCommands) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"--quick-start", "8080", "--quick-deploy", "production"});
   }, ".*") << "Framework should assert when multiple alias parameters forward to commands";
 }
@@ -1090,7 +1103,7 @@ TEST(ForwardingCombinations, AliasCommandToDeprecatedCommand) {
 // X[3-3]: Alias Cmd -> Forwarding Depr Cmd
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"new-user"});
   }, ".*") << "Framework should assert when alias forwards to a deprecated command";
 }
@@ -1098,7 +1111,7 @@ TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedCommand) {
 // X[3-4]: Alias Cmd -> Alias Cmd
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasCommandToAliasCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"user-alias"});
   }, ".*") << "Framework should assert when alias forwards to another alias command";
 }
@@ -1106,7 +1119,7 @@ TEST(ForwardingCombinations, AliasCommandToAliasCommand) {
 // X[3-5]: Alias Cmd -> NoLongSupp Cmd
 // Programmer error: Any forwarding to a no longer supported cmd/par should assert
 TEST(ForwardingCombinations, AliasCommandToNoLongerSupportedCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"removed-alias"});
   }, ".*") << "Framework should assert when alias forwards to a no-longer-supported command";
 }
@@ -1137,7 +1150,7 @@ TEST(ForwardingCombinations, AliasCommandToDeprecatedParameter) {
 // X[3-8]: Alias Cmd -> Alias Par
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasCommandToAliasParameter) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"create-user-mail", "8080"});
   }, ".*") << "Framework should assert when alias command is combined with alias parameter that forwards to different command";
 }
@@ -1145,7 +1158,7 @@ TEST(ForwardingCombinations, AliasCommandToAliasParameter) {
 // X[3-9]: Alias Cmd -> Forwarding Depr Par
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedParameter) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"create-user-fwd-username", "test@example.com"});
   }, ".*") << "Framework should assert when alias command is used with alias parameter that forwards to forwarding deprecated parameter";
 }
@@ -1153,7 +1166,7 @@ TEST(ForwardingCombinations, AliasCommandToForwardingDeprecatedParameter) {
 // X[3-10]: Alias Cmd -> NoLongSupp Par
 // Programmer error: Any forwarding to a no longer supported cmd/par should assert
 TEST(ForwardingCombinations, AliasCommandToNoLongerSupportedParameter) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"create-user-removed-role", "admin"});
   }, ".*") << "Framework should assert when alias command is used with alias parameter that forwards to no-longer-supported parameter";
 }
@@ -1183,7 +1196,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedCommandToDeprecatedCommand) {
 // X[3-13]: Forwarding Depr Cmd -> Forwarding Depr Cmd
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, ForwardingDeprecatedCommandToForwardingDeprecatedCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"old-init", "--name", "ChainTest"});
   }, ".*") << "Framework should assert when deprecated command forwards to another deprecated command";
 }
@@ -1191,7 +1204,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedCommandToForwardingDeprecatedCo
 // X[3-14]: Forwarding Depr Cmd -> Alias Cmd
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, ForwardingDeprecatedCommandToAliasCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"old-db", "--source", "/data/test.db"});
   }, ".*") << "Framework should assert when deprecated command forwards to an alias command";
 }
@@ -1199,7 +1212,7 @@ TEST(ForwardingCombinations, ForwardingDeprecatedCommandToAliasCommand) {
 // X[3-15]: Forwarding Depr Cmd -> NoLongSupp Cmd
 // Programmer error: Any forwarding to a no longer supported cmd/par should assert
 TEST(ForwardingCombinations, ForwardingDeprecatedCommandToNoLongerSupportedCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"removed-init"});
   }, ".*") << "Framework should assert when deprecated command forwards to a no-longer-supported command";
 }
@@ -1230,7 +1243,7 @@ TEST(ForwardingCombinations, AliasParameterToDeprecatedCommand) {
 // X[3-18]: Alias Par -> Forwarding Depr Cmd
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"--bad-forward-depr-cmd", "test"});
   }, ".*") << "Framework should assert when alias parameter forwards to a forwarding deprecated command";
 }
@@ -1238,7 +1251,7 @@ TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedCommand) {
 // X[3-19]: Alias Par -> Alias Cmd
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasParameterToAliasCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"--bad-alias-cmd", "test"});
   }, ".*") << "Framework should assert when alias parameter forwards to an alias command";
 }
@@ -1246,7 +1259,7 @@ TEST(ForwardingCombinations, AliasParameterToAliasCommand) {
 // X[3-20]: Alias Par -> NoLongSupp Cmd
 // Programmer error: Any forwarding to a no longer supported cmd/par should assert
 TEST(ForwardingCombinations, AliasParameterToNoLongerSupportedCommand) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"--bad-removed-cmd", "value"});
   }, ".*") << "Framework should assert when alias parameter forwards to a no-longer-supported command";
 }
@@ -1277,7 +1290,7 @@ TEST(ForwardingCombinations, AliasParameterToDeprecatedParameter) {
 // X[3-23]: Alias Par -> Alias Par
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasParameterToAliasParameter) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"user", "--chain-mail", "test@example.com"});
   }, ".*") << "Framework should assert when alias parameter forwards to another alias parameter (creating chain)";
 }
@@ -1285,7 +1298,7 @@ TEST(ForwardingCombinations, AliasParameterToAliasParameter) {
 // X[3-24]: Alias Par -> Forwarding Depr Par
 // Programmer error: Any forwarding to a forwarding cmd/par should assert
 TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedParameter) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"user", "--forward-username", "test@example.com"});
   }, ".*") << "Framework should assert when alias parameter forwards to a forwarding deprecated parameter";
 }
@@ -1293,7 +1306,7 @@ TEST(ForwardingCombinations, AliasParameterToForwardingDeprecatedParameter) {
 // X[3-25]: Alias Par -> NoLongSupp Par
 // Programmer error: Any forwarding to a no longer supported cmd/par should assert
 TEST(ForwardingCombinations, AliasParameterToNoLongerSupportedParameter) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"user", "--removed-role", "admin"});
   }, ".*") << "Framework should assert when alias parameter forwards to a no-longer-supported parameter";
 }
@@ -1374,7 +1387,7 @@ TEST(ComplexForwarding, RootParametersAvailableAfterSubcommandForward) {
 // [4-4]: Bad forwarding
 // Programmer error: transformed dispatch path must point to an existing subcommand chain
 TEST(ComplexForwarding, InvalidTransformationChildPathAsserts) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"--bad-transform-path", "value"});
   }, ".*") << "Framework should assert when a parameter transformation provides an invalid child path.";
 }
@@ -1383,7 +1396,7 @@ TEST(ComplexForwarding, InvalidTransformationChildPathAsserts) {
 // [4-5]: Conflicting parameter additions
 // Programmer error: multiple transformations cannot add the same parameter
 TEST(ComplexForwarding, ConflictingParameterAdditionsAssert) {
-  EXPECT_DEBUG_DEATH({
+  EXPECT_DEBUG_DEATH_IF_SUPPORTED({
     Process(AppCmd{}, {"database", "--legacy-db-source", "/data/old.db", "--old-db-path", "/data/new.db"});
   }, ".*conflicting parameter additions.*") << "Framework should assert when multiple transformations try to add the same parameter.";
 }

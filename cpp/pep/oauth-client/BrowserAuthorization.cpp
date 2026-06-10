@@ -86,9 +86,9 @@ void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context)
 
 rxcpp::observable<AuthorizationResult> pep::BrowserAuthorization(
   std::shared_ptr<boost::asio::io_context> io_context,
-  std::function<std::string (std::string redirectUri)> getAuthorizeUri
+  OAuthClient::GetAuthorizeUriFn getAuthorizeUri
 ) {
-  auto authorizeUri = getAuthorizeUri(std::format("http://localhost:{}/", ListenPort));
+  auto authorizeUri = getAuthorizeUri(std::format("http://localhost:{}/", ListenPort), {});
   return CreateObservable<AuthorizationResult>([io_context, authorizeUri](rxcpp::subscriber<AuthorizationResult> subscriber) {
     std::shared_ptr<HTTPServer> httpServer = std::make_shared<HTTPServer>(ListenPort, io_context);
     httpServer->registerHandler("/", true, [io_context, subscriber, httpServer](HTTPRequest localhostRequest, std::string remoteIp) {
