@@ -1382,18 +1382,21 @@ upload-weblib-npm:
     - PEP_VERSION_BUILD=$(./scripts/parse-version.sh get-build version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
     - PEP_VERSION_REVISION=$(./scripts/parse-version.sh get-revision version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
     - PACKAGE_VERSION="${PEP_VERSION_MAJOR}.${PEP_VERSION_MINOR}.${PEP_VERSION_BUILD}.${PEP_VERSION_REVISION}"
+    # Only authenticate to the GitLab registry; do NOT set it as the default
+    # registry, otherwise npm tries to fetch public (transitive) dependencies
+    # from it too and they 404.
     - |
       cat > weblib/pep-repo-client-lib/.npmrc <<EOF
-      registry=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/npm/
       //${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}
       EOF
     - cd weblib/pep-repo-client-lib
+    - PEP_NPM_REGISTRY="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/npm/"
     - npm version --no-git-tag-version "${PACKAGE_VERSION}"
     - npm install
     - npm pack
-    - npm publish ./pep-repo-client-lib-*.tgz
+    - npm publish ./pep-repo-client-lib-*.tgz --registry "${PEP_NPM_REGISTRY}"
     # Tag with commit SHA so config-dockerfiles.sh can find this version by SHA
-    - npm dist-tag add pep-repo-client-lib@${PACKAGE_VERSION} ${CI_COMMIT_SHA}
+    - npm dist-tag add pep-repo-client-lib@${PACKAGE_VERSION} ${CI_COMMIT_SHA} --registry "${PEP_NPM_REGISTRY}"
 
 retag-pep-docker-images:
   extends:
