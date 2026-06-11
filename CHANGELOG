@@ -7,6 +7,7 @@ Changes in upcoming release (1.8):
 
 ---------------
 
+- #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
 ---------------
 
@@ -78,6 +79,12 @@ Release 1.7
 
 - #2818: When "pepcli ama query" produces no results (e.g. due to the use of filtering switches), the application now says so
          instead of producing an error.
+
+- #2801: The Transcryptor now verifies consistency of the AccessManager's RSK proofs for the user pseudonym.
+
+- #2196: Fix handling of `--output-directory` with trailing slash in `pepcli pull`.
+
+- !2304: `pepcli get` now properly handles writing binary data to stdout on Windows.
 
 MANUAL CHANGES REQUIRED:
 
