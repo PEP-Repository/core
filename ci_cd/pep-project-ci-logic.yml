@@ -187,8 +187,7 @@ provide-binaries:
   variables:
     WITH_RSYSLOG: true
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command build
-                                                         --git-dir .
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --git-dir .
                                                          --env "$CI_COMMIT_REF_NAME"
                                                          --tag "$CI_PIPELINE_ID"
                                                          --foss-dir "$PEP_FOSS_REPO_DIR"
