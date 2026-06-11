@@ -128,25 +128,8 @@ if [ "$with_rsyslog" = "true" ] && [ -z "$rsyslog_dir" ]; then
   usage 1
 fi
 
-foss_image_names="docker-compose authserver_apache pep-monitoring pep-services client pep-scheduler pep-connector"
-
-git_root=$(cd "$git_dir" && pwd)
-git_config_dir="$git_root/config"
-env_config_dir="$git_config_dir/$environment"
-env_project_dir="$env_config_dir/project"
-
-get_project_caption() {
-  if [ -f "$env_project_dir/caption.txt" ]; then
-    cat "$env_project_dir/caption.txt"
-  else
-    >&2 echo "Error: caption.txt not found in $env_project_dir"
-    exit 1
-  fi
-}
-
-foss_root=$(cd "$git_root" && cd "$foss_dir" && pwd)
-# >&2 echo foss_root is "$foss_root"
-foss_sha=$("$SCRIPTPATH"/../scripts/gitdir.sh commit-sha "$foss_root")
+# shellcheck source=ci_cd/project-common.sh
+. "$SCRIPTPATH/project-common.sh"
 
 dir_api() {
   dir="$1"
@@ -161,35 +144,6 @@ foss_api() {
 
 is_outdated() {
   printf '%s' "$1" | "$SCRIPTPATH/../scripts/gitlab-api.sh" "$git_dir" "$api_key" get-outdated-creation-timestamp
-}
-
-all_config_dockerfiles() {
-  find "$foss_root"/docker/config-dockerfiles -type f
-}
-
-config_dockerfiles_to_build() {
-  all_config_dockerfiles | while read -r file
-  do
-    basename_no_ext=$(basename "$file" .Dockerfile)
-    # If the dockerfiles in foss/docker/config-dockerfiles are also directories in the project's
-    # config directory, they are the dockerfiles that should be built for that project.
-    if [ -d "$env_config_dir/$basename_no_ext" ] ; then
-      echo "$file"
-    fi
-  done
-}
-
-has_foss_base_image() {
-  name="$1"
-  
-  for candidate in $foss_image_names
-  do
-    if [ "$name" = "$candidate" ] ; then
-      return 0
-    fi
-  done
-  
-  return 1
 }
 
 config_images_with_foss_base() {
@@ -229,40 +183,6 @@ provide_foss_image() {
   fi
 }
 
-get_foss_package_file_id() {
-  package_name="$1"
-  file_name="$2"
-
-  package=$(foss_api get "packages?package_name=$package_name&package_type=generic&package_version=$foss_sha" | jq first)
-  # >&2 echo "package is $package"
-
-  if [ -z "$package" ]; then
-    >&2 echo "FOSS package '$package_name' not found for SHA $foss_sha."
-    return
-  fi
-
-  package_id=$(echo "$package" | jq ".id")
-  # >&2 echo "package_id is $package_id"
-  files=$(foss_api get-multipage "packages/$package_id/package_files" | jq --arg file_name "$file_name" --compact-output '.[] | select( .file_name == $file_name ) | { created_at, id }' | sort -r)
-  # >&2 echo "files is $files"
-  
-  if [ -z "$files" ]; then
-    >&2 echo "No file named '$file_name' found in FOSS package '$package_name' for SHA $foss_sha."
-    return
-  fi
-
-  file=$(echo "$files" | head -n 1)
-  # >&2 echo "file is $file"
-  created_at=$(is_outdated "$file")
-  
-  if [ -n "$created_at" ]; then
-    >&2 echo File "$file_name" in FOSS package "$package_name" for SHA "$foss_sha" is outdated \(created at "$created_at"\).
-    return;
-  fi
-
-  echo "$file" | jq ".id"
-}
-
 download_foss_package() {
   package_name="$1"
   file_name="$2"
@@ -276,10 +196,6 @@ download_foss_package() {
       return 1
     }
   fi
-}
-
-docker_login() {
-  echo "$api_key" | docker login "${CI_REGISTRY}" --username "-" --password-stdin
 }
 
 provide_base_images() {
