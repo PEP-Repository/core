@@ -377,23 +377,16 @@ get_foss_package_file_id() {
 download_foss_package() {
   package_name="$1"
   file_name="$2"
-  file_id=$(get_foss_package_file_id "$package_name" "$file_name")
-  if [ -z "$file_id" ]; then
+  if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
+      download-generic "$package_name" "$foss_sha" "$file_name"; then
     echo "Running a FOSS pipeline to (re-)produce file '$file_name' in package '$package_name' for SHA $foss_sha..."
     run_foss_pipeline
-    file_id=$(get_foss_package_file_id "$package_name" "$file_name")
-    if [ -z "$file_id" ]; then
-      >&2 echo "FOSS pipeline did not produce expected file '$file_name' in '$package_name' package for SHA $foss_sha"
+    "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
+      download-generic "$package_name" "$foss_sha" "$file_name" || {
+      >&2 echo "FOSS pipeline did not produce expected file '$file_name' in '$package_name' for SHA $foss_sha"
       return 1
-    fi
+    }
   fi
-
-  # Unfortunately there doesn't seem to be an API endpoint to retrieve (download) the file by ID.
-  # But according to https://docs.gitlab.com/ee/user/packages/generic_packages/#download-package-file ,
-  # "the most recent one is retrieved" when retrieving by name (as we do below), which should be
-  # the one with the file_id that we determined.
-  foss_api get "packages/generic/$package_name/$foss_sha/$file_name" --output "$file_name"
-  echo Downloaded FOSS package file "$file_id" from "packages/generic/$package_name/$foss_sha/$file_name".
 }
 
 docker_login() {
