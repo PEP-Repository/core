@@ -84,9 +84,9 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
   // got response, send it back using the rx subscriber
   auto subscriber = it->second.subscriber;
 
-  bool close = flags.close();
-  bool error = flags.error();
-  bool payload = flags.payload();
+  bool close = HasFlags(flags, Flags::Close);
+  bool error = HasFlags(flags, Flags::Error);
+  bool payload = HasFlags(flags, Flags::Payload);
 
   if (error || close) {
     entries_.erase(it);

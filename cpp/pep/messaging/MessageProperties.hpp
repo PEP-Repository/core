@@ -1,5 +1,9 @@
 #pragma once
 
+#include <pep/utils/Attributes.hpp>
+#include <pep/utils/EnumUtils.hpp>
+#include <pep/utils/TypeTraits.hpp>
+
 #include <cassert>
 #include <compare>
 #include <cstdint>
@@ -36,36 +40,28 @@ private:
 
 
 // (The next-highest) three bits in EncodedMessageProperties are used for state-related flags
-class Flags {
-public:
-  Flags(bool close, bool error, bool payload);
-  std::strong_ordering operator<=>(const Flags& other) const = default;
-
-  static Flags MakeEmpty() noexcept;
-  static Flags MakeError() noexcept;
-  static Flags MakePayload(bool close = false) noexcept;
-  static Flags MakeClose(bool payload = false) noexcept;
-
-  bool empty() const noexcept; // Is any flag set?
-
-  bool close() const noexcept { return close_; } // This is the last piece of the (possibly multi-part) message
-  bool error() const noexcept { return error_; } // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies Flags::close()
-  bool payload() const noexcept { return payload_; } // The message includes content
-
-  Flags operator|(const Flags& other) const;
-
-  EncodedMessageProperties encode() const noexcept;
-
-  friend std::ostream& operator<<(std::ostream& out, Flags flags);
-
-private:
-  [[nodiscard]] bool areValid() const noexcept;
-
-  bool close_;
-  bool error_;
-  bool payload_;
+enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
+  None    = 0,
+  Close   = 0b100, ///< This is the last piece of the (possibly multi-part) message
+  Error   = 0b010, ///< The sending party encountered an error. Implies Close.
+  Payload = 0b001, ///< The message includes content
+  All     = 0b111,
 };
 
+/// Throws std::invalid_argument if \p flags if the combination of values is not invalid
+void AssertValidCombination(Flags flags);
+
+constexpr EncodedMessageProperties Encode(Flags flags) noexcept {
+  return static_cast<EncodedMessageProperties>(ToUnderlying(flags)) << 28U;
+}
+
+std::ostream& operator<<(std::ostream& out, Flags flags);
+
+} // namespace pep::messaging
+
+PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags)
+
+namespace pep::messaging {
 
 // Remaining bits in EncodedMessageProperties represent a unique (serial) number for every request+response cycle
 class StreamId {
