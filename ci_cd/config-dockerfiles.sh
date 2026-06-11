@@ -177,6 +177,6 @@ done
 built_client=$(config_dockerfiles_to_build | grep client || true)
 if [ -n "$built_client" ]; then
   # Provide Docker credentials as environment variables to apptainer: see https://github.com/apptainer/singularity/issues/1302
-  APPTAINER_DOCKER_PASSWORD="-" APPTAINER_DOCKER_PASSWORD="$api_key" \
+  APPTAINER_DOCKER_USERNAME="-" APPTAINER_DOCKER_PASSWORD="$api_key" \
     apptainer build client.sif "docker://$(get_destination_image_path client)"
 fi
