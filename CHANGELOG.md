@@ -2079,16 +2079,18 @@ Joost should know what this is about. Instructions are on https://wiki.surfnet.n
         upgrade.
 
 - #609  Access Mode for /data/docker/authserver/keys/shibboleth/sp-key.pem can
-        be set to 600, which is recommended. A change is necessary to
-        /data/docker/authserver/conf/shibboleth/shibboleth2.xml. Find this line:
+  be set to 600, which is recommended. A change is necessary to
+  /data/docker/authserver/conf/shibboleth/shibboleth2.xml. Find this line:
+  ```xml
+  <CredentialResolver type="File" key="/keys/shibboleth/sp-key.pem" certificate="/keys/shibboleth/sp-cert.pem"/>
+  ```
 
-          <CredentialResolver type="File" key="/keys/shibboleth/sp-key.pem" certificate="/keys/shibboleth/sp-cert.pem"/>
+  change it to:
+  ```xml
+  <CredentialResolver type="File" key="/keys_copy/shibboleth/sp-key.pem" certificate="/keys_copy/shibboleth/sp-cert.pem"/>
+  ```
 
-        change it to:
-
-          <CredentialResolver type="File" key="/keys_copy/shibboleth/sp-key.pem" certificate="/keys_copy/shibboleth/sp-cert.pem"/>
-
-        (so change keys into keys_copy TWICE)
+  (so change `keys` into `keys_copy` TWICE)
 
 
 - #517  Support for the old API has been removed server-side.  This means that
@@ -2173,14 +2175,14 @@ To test the success of the procedure, perform a short-pseudonym lookup.
         to print.
 
 - #579: The docker-prune systemd unit, in ops/config/pep-build2-pep-release.yaml,
-        should be changed. The necessary changes are available in the branch
-        `docker-prune`, in the ops repository. This branch should be merged into
-        master, and pep-build2-pep-release.yaml should be redeployed using deploy.sh
+  should be changed. The necessary changes are available in the branch
+  `docker-prune`, in the ops repository. This branch should be merged into
+  master, and pep-build2-pep-release.yaml should be redeployed using deploy.sh
 
-        The docker-prune service will probably fail the first time it is started,
-        because not all preconditions are met. This is expected behaviour, and it
-        will retry after an hour. You can restart it manually if you want to check
-        if it is working correctly.
+  The docker-prune service will probably fail the first time it is started,
+  because not all preconditions are met. This is expected behaviour, and it
+  will retry after an hour. You can restart it manually if you want to check
+  if it is working correctly.
 
 # Release 2018-09-18:
 ## MANUAL CHANGES REQUIRED:
@@ -2197,10 +2199,10 @@ To test the success of the procedure, perform a short-pseudonym lookup.
         the main Participant-view.  This involves changes to the tricky
         UI-code.  This involes many flows, including:
 
-            - device (de)registration
-            - opening participants with incomplete information
-            - user registration
-            - monitor role
+  - device (de)registration
+  - opening participants with incomplete information
+  - user registration
+  - monitor role
 - #517: The PepAssessorClient and RegistrationServer use the new API to
         store data.  Storage of data should be checked.
 - #512: Decoupled object model from serialization. Objects can no longer
