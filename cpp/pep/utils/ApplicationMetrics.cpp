@@ -136,7 +136,7 @@ namespace pep {
 # endif
 #else
     if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
+      PEP_LOG("ApplicationMetrics", Severity::Warning) << "Memory usage metrics are not implemented for this platform";
       warningLogged = true;
     }
     return nan("");
