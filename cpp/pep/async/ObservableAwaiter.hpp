@@ -51,7 +51,7 @@ template<typename TValue, typename TSourceOperator>
 
     // Well-known name
     void await_suspend(std::coroutine_handle<> h) {
-      const auto& obs = std::get<New>(state_).observable;
+      auto obs = std::move(std::get<New>(state_)).observable;
       state_.template emplace<Running>(h);
       obs.subscribe(
         // on next (could be called multiple times)
