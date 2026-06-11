@@ -221,104 +221,12 @@ config_images_with_foss_base() {
   done
 }
 
-# TODO: consolidate duplicate code with gitlab-api.sh
-contains() {
-  string="$1"
-  substring="$2"
-  if [ "${string#*"$substring"}" != "$string" ]
-  then
-    return 0
-  else
-    return 1
-  fi
-}
-
-gitlab_project_path() {
-  dir="$1"
-  
-  "$SCRIPTPATH"/../scripts/gitdir.sh origin-path "$dir"
-}
-
-foss_pipeline_id=
-
-get_foss_pipeline_id() {
-  # Retry obtaining the pipeline ID for the given branch name, with exponential backoff.
-
-  branchname="$1"
-  max_retries=5
-  retry_delay=5
-  attempt=1
-
-  while [ $attempt -le $max_retries ]; do
-
-    # Initial wait for GitLab to start the pipeline
-    sleep $retry_delay
-
-    id=$(foss_api get "pipelines" | jq -r "[.[] | select(.ref==\"$branchname\")] | .[0].id")
-    if [ "$id" != "null" ] && [ -n "$id" ]; then
-      echo "$id"
-      return 0
-    fi
-    >&2 echo "Pipeline for branch $branchname not found (attempt $attempt/$max_retries), retrying in $retry_delay seconds..."
-
-    retry_delay=$((retry_delay * 2))
-    attempt=$((attempt + 1))
-  done
-
-  >&2 echo "Failed to obtain pipeline ID for branch $branchname after $max_retries attempts."
-  return 1
-}
-
-run_foss_pipeline() {
-  if [ -n "$foss_pipeline_id" ]; then
-    >&2 echo "FOSS pipeline ($foss_pipeline_id) has already been run"
-    return 1
-  fi
-  
-  # Gitlab can only run pipelines for branches (or tags): see https://stackoverflow.com/a/63460457
-  branchname="binaries_for_$images_tag"
-  foss_api post "repository/branches?branch=$branchname&ref=$foss_sha" > /dev/null # Creating the branch will start a CI pipeline
-
-  foss_pipeline_id=$(get_foss_pipeline_id "$branchname") || return 1
-  foss_project_path=$(gitlab_project_path "$foss_root")
-
-  # Set descriptive pipeline name
-  foss_api put "pipelines/$foss_pipeline_id/metadata" --data "name=Providing binaries for $CI_PROJECT_PATH/$CI_COMMIT_REF_NAME" > /dev/null || true
-
-  echo "Running pipeline $foss_pipeline_id in project $foss_project_path for branch $branchname: "\
-    "https://$foss_host/$foss_project_path/-/pipelines/$foss_pipeline_id"
-  
-  # All possible statuses are documented on https://docs.gitlab.com/ee/api/pipelines.html. I cannot find any documentation on what these statuses mean.
-  # Not all statuses are listed below. I don't expect we will encounter the missing statuses, but if we do we must investigate in which category they should fall.
-  running_statuses="\"pending\" \"running\" \"created\" \"preparing\" \"waiting_for_resource\""
-  success_statuses="\"success\" \"skipped\" \"manual\""
-  failure_statuses="\"failed\" \"canceled\" \"canceling\""
-  
-  pipeline_result=
-  while [ -z "$pipeline_result" ]
-  do
-    status=$(foss_api get "pipelines/${foss_pipeline_id}" | jq ".status")
-  
-    if contains "$success_statuses" "$status"
-    then
-      echo "Pipeline succeeded with status: '$status'"
-      pipeline_result=0
-    elif contains "$failure_statuses" "$status"
-    then
-      >&2 echo "Pipeline failed with status: '$status'"
-      pipeline_result=1
-    elif ! contains "$running_statuses" "$status"
-    then
-      >&2 echo "Received unsupported status \"$status\" from Gitlab API"
-      pipeline_result=1
-    fi
-  
-    sleep 30
-  done
-  
-  foss_api delete "repository/branches/$branchname" # Clean up: remove branch
-  
-  return $pipeline_result
+ensure_pipeline_triggered() {
+  if $pipeline_triggered; then return; fi
+  pipeline_triggered=true
+  pipeline_label="Providing binaries for ${CI_PROJECT_PATH:-unknown}/${CI_COMMIT_REF_NAME:-unknown}"
+  "$SCRIPTPATH"/../scripts/gitlab-pipeline.sh "$foss_root" "$api_key" \
+    trigger-and-wait "binaries_for_$images_tag" "$foss_sha" "$pipeline_label"
 }
 
 provide_foss_image() {
@@ -328,7 +236,7 @@ provide_foss_image() {
     "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
   if [ -z "$location" ] ; then
     echo Running a FOSS pipeline to \(re-\)produce Docker image "$name"...
-    run_foss_pipeline
+    ensure_pipeline_triggered
     location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
       "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
     if [ -z "$location" ] ; then
@@ -380,7 +288,7 @@ download_foss_package() {
   if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
       download-generic "$package_name" "$foss_sha" "$file_name"; then
     echo "Running a FOSS pipeline to (re-)produce file '$file_name' in package '$package_name' for SHA $foss_sha..."
-    run_foss_pipeline
+    ensure_pipeline_triggered
     "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
       download-generic "$package_name" "$foss_sha" "$file_name" || {
       >&2 echo "FOSS pipeline did not produce expected file '$file_name' in '$package_name' for SHA $foss_sha"
@@ -395,7 +303,7 @@ docker_login() {
 
 provide_base_images() {
   if [ "$force_rebuild" = "true" ]; then
-    run_foss_pipeline
+    ensure_pipeline_triggered
   fi
   # Provide only the base images needed to build config images.
   provide_images=$(config_images_with_foss_base)
@@ -403,12 +311,10 @@ provide_base_images() {
     # No base images required to build config images.
     provide_images=$foss_image_names
   fi
-  
-  for name in $provide_images
-  do
+  for name in $provide_images; do
     provide_foss_image "$name"
   done
-  
+
   download_foss_package wixlibrary pepBinaries.wixlib
   download_foss_package macos-x86_64-bins macOS_x86_64_bins.zip
   download_foss_package macos-arm64-bins macOS_arm64_bins.zip
