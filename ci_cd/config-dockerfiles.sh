@@ -122,17 +122,6 @@ if [ -z "$command" ] || [ -z "$git_dir" ] || [ -z "$environment" ] || [ -z "$ima
   usage 1
 fi
 
-if [ "$command" != "update-latest" ] && [ -z "$api_key" ]; then
-  echo "Error: Missing API key."
-  usage 1
-fi
-
-# Verify image_name parameter for the "publish" command
-if [ "$command" = "publish" ] && [ -z "$image_name" ]; then
-  echo "Error: The publish command requires an image name (--image)."
-  usage 1
-fi
-
 # Verify rsyslog parameters
 if [ "$with_rsyslog" = "true" ] && [ -z "$rsyslog_dir" ]; then
   echo "Error: --with-rsyslog=true but no rsyslog directory (--rsyslog-dir) specified."
@@ -158,8 +147,6 @@ get_project_caption() {
 foss_root=$(cd "$git_root" && cd "$foss_dir" && pwd)
 # >&2 echo foss_root is "$foss_root"
 foss_sha=$("$SCRIPTPATH"/../scripts/gitdir.sh commit-sha "$foss_root")
-# >&2 echo foss_sha is "$foss_sha"
-foss_host=$("$SCRIPTPATH"/../scripts/gitdir.sh origin-host "$foss_root")
 
 dir_api() {
   dir="$1"
@@ -170,12 +157,6 @@ dir_api() {
 
 foss_api() {
   dir_api "$foss_root" "$@"
-}
-
-get_gitlab_registry() {
-  dir="$1"
-  
-  dir_api "$dir" get "" | jq --raw-output ".container_registry_image_prefix"
 }
 
 is_outdated() {
