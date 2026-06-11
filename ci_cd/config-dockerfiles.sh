@@ -37,7 +37,6 @@ api_key=""
 image_name=""
 with_rsyslog=""
 rsyslog_dir=""
-force_rebuild="false"
 
 usage() {
   exit_code=${1:-1}
@@ -65,10 +64,6 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -b|--force-rebuild)
-      shift
-      force_rebuild="$1"
-      ;;
     -c|--command)
       shift
       command="$1"
@@ -130,93 +125,6 @@ fi
 
 # shellcheck source=ci_cd/project-common.sh
 . "$SCRIPTPATH/project-common.sh"
-
-dir_api() {
-  dir="$1"
-  shift
-  
-  "$SCRIPTPATH/../scripts/gitlab-api.sh" "$dir" "$api_key" "$@"
-}
-
-foss_api() {
-  dir_api "$foss_root" "$@"
-}
-
-is_outdated() {
-  printf '%s' "$1" | "$SCRIPTPATH/../scripts/gitlab-api.sh" "$git_dir" "$api_key" get-outdated-creation-timestamp
-}
-
-config_images_with_foss_base() {
-  config_dockerfiles_to_build | while read -r file
-  do
-    name="$(basename "$file" .Dockerfile)"
-    if has_foss_base_image "$name" ; then
-      echo "$name"
-    fi
-  done
-}
-
-ensure_pipeline_triggered() {
-  if $pipeline_triggered; then return; fi
-  pipeline_triggered=true
-  pipeline_label="Providing binaries for ${CI_PROJECT_PATH:-unknown}/${CI_COMMIT_REF_NAME:-unknown}"
-  "$SCRIPTPATH"/../scripts/gitlab-pipeline.sh "$foss_root" "$api_key" \
-    trigger-and-wait "binaries_for_$images_tag" "$foss_sha" "$pipeline_label"
-}
-
-provide_foss_image() {
-  name="$1"
-
-  location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-    "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
-  if [ -z "$location" ] ; then
-    echo Running a FOSS pipeline to \(re-\)produce Docker image "$name"...
-    ensure_pipeline_triggered
-    location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-      "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
-    if [ -z "$location" ] ; then
-      >&2 echo FOSS pipeline did not produce expected Docker image "$name" for SHA "$foss_sha"
-      return 1
-    fi
-  else
-    echo FOSS Docker image found at "$location"
-  fi
-}
-
-download_foss_package() {
-  package_name="$1"
-  file_name="$2"
-  if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
-      download-generic "$package_name" "$foss_sha" "$file_name"; then
-    echo "Running a FOSS pipeline to (re-)produce file '$file_name' in package '$package_name' for SHA $foss_sha..."
-    ensure_pipeline_triggered
-    "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
-      download-generic "$package_name" "$foss_sha" "$file_name" || {
-      >&2 echo "FOSS pipeline did not produce expected file '$file_name' in '$package_name' for SHA $foss_sha"
-      return 1
-    }
-  fi
-}
-
-provide_base_images() {
-  if [ "$force_rebuild" = "true" ]; then
-    ensure_pipeline_triggered
-  fi
-  # Provide only the base images needed to build config images.
-  provide_images=$(config_images_with_foss_base)
-  if [ -z "$provide_images" ]; then
-    # No base images required to build config images.
-    provide_images=$foss_image_names
-  fi
-  for name in $provide_images; do
-    provide_foss_image "$name"
-  done
-
-  download_foss_package wixlibrary pepBinaries.wixlib
-  download_foss_package macos-x86_64-bins macOS_x86_64_bins.zip
-  download_foss_package macos-arm64-bins macOS_arm64_bins.zip
-  download_foss_package flatpak pep.flatpak
-}
 
 get_destination_image_path() {
   image_name="$1"
@@ -332,9 +240,6 @@ build_config_images() {
 }
 
 case $command in
-  provide-base-images)
-    provide_base_images
-    ;;
   build)
     build_config_images
     ;;

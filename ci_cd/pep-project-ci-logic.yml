@@ -159,13 +159,12 @@ provide-binaries:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   timeout: 1h 30m
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command provide-base-images
-                                                         --git-dir .
-                                                         --env "$CI_COMMIT_REF_NAME"
-                                                         --tag "$CI_PIPELINE_ID"
-                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
-                                                         --api-key "$PEP_GROUP_API_TOKEN"
-                                                         --force-rebuild "$FORCE_REBUILD"
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/provide-binaries.sh --git-dir .
+                                                       --env "$CI_COMMIT_REF_NAME"
+                                                       --tag "$CI_PIPELINE_ID"
+                                                       --foss-dir "$PEP_FOSS_REPO_DIR"
+                                                       --api-key "$PEP_GROUP_API_TOKEN"
+                                                       --force-rebuild "$FORCE_REBUILD"
   artifacts:
     paths:
       # Mark the pepBinaries.wixlib, pep.flatpak and macOS_bins.zip as artifacts so we can (easily) retrieve them by depending on this job
