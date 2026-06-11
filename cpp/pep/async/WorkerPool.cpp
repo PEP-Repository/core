@@ -20,12 +20,6 @@ constexpr unsigned MaxThreads =
 
 namespace pep {
 
-namespace {
-
-static const std::string LogTag("WorkerPool");
-
-}
-
 WorkerPool::WorkerPool()
   : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
   unsigned nThreads = std::min(std::thread::hardware_concurrency(), MaxThreads);
