@@ -86,6 +86,8 @@ Release 1.7
 
 - !2304: `pepcli get` now properly handles writing binary data to stdout on Windows.
 
+- #2863: There is now a JSON schema for server/client configuration files, see `./config/config.schema.json`.
+
 MANUAL CHANGES REQUIRED:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
