@@ -14,11 +14,11 @@
 # Release 1.7
 
 - core#2817: `pepcli ama query`'s `--script-print` parameter is renamed to `--include` and now supports repeated use, allowing multiple groups of data to be printed in a single command.
-             e.g. `pepcli ama query --include columns --include column-groups` will print both columns and column groups.
-             The old output format is no longer supported in favor of yaml (or json) output.
+  e.g. `pepcli ama query --include columns --include column-groups` will print both columns and column groups.
+  The old output format is no longer supported in favor of yaml (or json) output.
 
-             `pepcli user query`'s `--script-print` parameter is renamed to `--include` and now support repeated use, allowing multiple groups of data to be printed in a single command.
-             Its parameter `all-user-group` was renamed to `user-groups`, `groups-per-user` was renamed to `user-groups-per-user`, and `all-user` was renamed to `users`.
+  `pepcli user query`'s `--script-print` parameter is renamed to `--include` and now support repeated use, allowing multiple groups of data to be printed in a single command.
+  Its parameter `all-user-group` was renamed to `user-groups`, `groups-per-user` was renamed to `user-groups-per-user`, and `all-user` was renamed to `users`.
 
 - core#2373: Support is dropped for the old (pseudo-yaml) pepcli ama query output format. It now outputs in correct yaml by default and supports the `--format` flag to optionally produce json and json-compact (without whitespace) output.
 
