@@ -179,7 +179,7 @@ get_gitlab_registry() {
 }
 
 is_outdated() {
-  printf '%s' "$1" | "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" get-outdated-creation-timestamp
+  printf '%s' "$1" | "$SCRIPTPATH/../scripts/gitlab-api.sh" "$git_dir" "$api_key" get-outdated-creation-timestamp
 }
 
 all_config_dockerfiles() {
