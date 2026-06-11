@@ -12,9 +12,8 @@
 #   repository's "docker/config-dockerfiles",
 # - then this script can build a Docker image based on the source repo's
 #   (Docker)file and the project repo's (config) directory.
-# When building such a "config dockerfile", if the config image should be based
-# on a PEP (source repo) binary Docker image, the script locates that binary
-# image in the source repo's registry.
+# When building such a "config dockerfile", if the config image should be based on a PEP (source repo) 
+# binary Docker image, the script locates that binary image in the source repo's registry.
 
 set -eu
 
@@ -24,6 +23,7 @@ SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 # Portable envsubst replacement (But beware: also replaces shell variables and allows command injections)
 envsubst() { eval "echo \"$(sed 's/\\/\\\\/g; s/"/\\"/g')\""; }
 
+# Default values
 git_dir=""
 environment=""
 images_tag=""
@@ -40,7 +40,7 @@ Usage: $0 [OPTIONS]
 Options:
   -g, --git-dir DIR        Git directory
   -e, --env ENV            Environment name
-  -t, --tag TAG            Pipeline tag for images
+  -t, --tag TAG            Tag for images
   -f, --foss-dir DIR       FOSS directory
   -k, --api-key KEY        Registry API token
   -r, --with-rsyslog BOOL  Force enable/disable rsyslog (true|false)
@@ -81,9 +81,7 @@ fi
 . "$SCRIPTPATH/project-common.sh"
 
 get_destination_image_path() {
-  image_name="$1"
-
-  echo "${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_NAME}/$image_name:$images_tag"
+  echo "${CI_REGISTRY_IMAGE}/${CI_COMMIT_REF_NAME}/$1:$images_tag"
 }
 
 stage_rsyslog_config() {
@@ -102,14 +100,14 @@ stage_rsyslog_config() {
 build_config_dockerfile() {
   dockerfile="$1"
 
-  img_name=$(basename "$dockerfile" .Dockerfile)
-  dest_image=$(get_destination_image_path "$img_name")
+  image_name=$(basename "$dockerfile" .Dockerfile)
+  dest_image=$(get_destination_image_path "$image_name")
 
   base_image=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-    "$foss_root" "$api_key" get-image-location "$img_name" "$foss_sha")
-  if has_foss_base_image "$img_name"; then
+    "$foss_root" "$api_key" get-image-location "$image_name" "$foss_sha")
+  if has_foss_base_image "$image_name"; then
     if [ -z "$base_image" ]; then
-      >&2 echo "Cannot find base image '$img_name' with SHA $foss_sha for $dest_image"
+      >&2 echo "Cannot find base image '$image_name' with SHA $foss_sha for $dest_image"
       return 1
     fi
     echo "Building $dest_image for dockerfile $dockerfile with base image $base_image"
@@ -118,7 +116,7 @@ build_config_dockerfile() {
   fi
 
   # Special handling for docker-compose image to expand CI variables in .env file
-  if [ "$img_name" = "docker-compose" ]; then
+  if [ "$image_name" = "docker-compose" ]; then
     env_file="$env_config_dir/docker-compose/.env"
 
     if [ -f "$env_file" ]; then
@@ -147,9 +145,9 @@ build_config_dockerfile() {
   docker push "$dest_image"
 }
 
-"$SCRIPTPATH"/../scripts/createConfigVersionJson.sh "$env_config_dir" "$env_project_dir" \
-  > "$env_config_dir/configVersion.json"
-
+"$SCRIPTPATH/../scripts/createConfigVersionJson.sh" "$env_config_dir" "$env_project_dir" > "$env_config_dir/configVersion.json"
+  
+# Set up rsyslog configuration
 rsyslog_preposition=without
 
 if [ "$with_rsyslog" = "true" ]; then
@@ -179,6 +177,6 @@ done
 built_client=$(config_dockerfiles_to_build | grep client || true)
 if [ -n "$built_client" ]; then
   # Provide Docker credentials as environment variables to apptainer: see https://github.com/apptainer/singularity/issues/1302
-  SINGULARITY_DOCKER_USERNAME="-" SINGULARITY_DOCKER_PASSWORD="$api_key" \
+  APPTAINER_DOCKER_PASSWORD="-" APPTAINER_DOCKER_PASSWORD="$api_key" \
     apptainer build client.sif "docker://$(get_destination_image_path client)"
 fi
