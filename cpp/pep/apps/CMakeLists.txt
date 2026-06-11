@@ -63,6 +63,16 @@ if(RSK_PEP_TESTCASES)
   )
 endif()
 
+if(DEFINED EMSCRIPTEN)
+  set_target_properties(
+      ${PROJECT_NAME}Enrollment
+      ${PROJECT_NAME}GenerateSystemKeys
+      ${PROJECT_NAME}DumpShadowAdministration
+      PROPERTIES
+        EXCLUDE_FROM_ALL ON
+  )
+endif()
+
 configure_executable_companion(${PEP_INFRA_DIR}/client/ClientConfig.json REPLACE_VARIABLES)
 configure_executable_companion(${PEP_INFRA_DIR}/rootCA.cert OPTIONAL)
 configure_executable_companion(${PEP_INFRA_DIR}/ShadowAdministration.pub OPTIONAL)

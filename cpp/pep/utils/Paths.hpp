@@ -16,10 +16,10 @@ std::filesystem::path GetResourceWorkingDirForOS();
 // If the environment variable PEP_USE_CURRENT_PATH is set, 
 // it will compute the absolute path relative to the regular current 
 // working directory instead.
-std::filesystem::path GetAbsolutePath(
-  const std::filesystem::path& p, std::filesystem::path workingDir = "");
+// This function does not support macOS bundles.
+std::filesystem::path GetAbsolutePath(const std::filesystem::path& p);
 
-// Returns a partial path to be used for application output such as log files.
-std::filesystem::path GetOutputBasePath();
+// Returns a partial path to be used for application log files & crash reports.
+std::filesystem::path GetLogBasePath();
 
 }

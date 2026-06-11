@@ -5,13 +5,24 @@
 #include <thread>
 #include <pep/utils/ThreadUtil.hpp>
 
-static const std::string LOG_TAG("WorkerPool");
+namespace {
+const std::string LOG_TAG("WorkerPool");
+
+constexpr unsigned MaxThreads =
+#ifdef __EMSCRIPTEN__
+  // Emscripten threads (workers) seem more expensive
+  8 // Keep consistent with -sPTHREAD_POOL_SIZE
+#else
+  16
+#endif
+;
+}
 
 namespace pep {
 
 WorkerPool::WorkerPool()
   : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
-  unsigned nThreads = std::thread::hardware_concurrency();
+  unsigned nThreads = std::min(std::thread::hardware_concurrency(), MaxThreads);
   LOG(LOG_TAG, debug) << "Using " << nThreads << " worker threads";
   mThreads.reserve(nThreads);
   for (unsigned i = 0; i < nThreads; i++) {

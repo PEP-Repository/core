@@ -181,25 +181,28 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-  return GetExecutablePath().filename().string();
+  if (mArgc > 0) {
+    return std::filesystem::path(this->getArgv()[0]).filename().string();
+  }
+  return "[this program]";
 }
 
 int Application::getArgc() const {
   if (mArgc < 0) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the execute() method is invoked");
+    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
   return mArgc;
 }
 
 char** Application::getArgv() const {
   if (mArgv == nullptr) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the execute() method is invoked");
+    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
   return mArgv;
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
-  // Ensure that uncaught exceptions (in this or any other noexcept function and thread) are reported before the process dies
+  // Ensure that uncaught exceptions (in any noexcept function and thread) are reported before the process dies
   std::set_terminate([]() {
     if (ReportTermination(std::current_exception())) { // If we showed a message to the user...
 #ifdef _WIN32
@@ -210,9 +213,7 @@ int Application::RunWithoutError(std::function<int()> implementor) noexcept {
     std::abort();
     });
 
-  // Explicit try-catch to make sure the stack is unwound,
-  // and because Emscripten does not support termination handlers well:
-  // https://github.com/emscripten-core/emscripten/issues/23720
+  // Explicit try-catch to make sure the stack is unwound
   try {
     return implementor();
   } catch (...) {

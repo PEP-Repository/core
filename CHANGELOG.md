@@ -6,7 +6,7 @@
 
 # Changes in upcoming release (1.8):
 
-- 
+- #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*
@@ -28,7 +28,7 @@
 
 - Added `--format` option to `pepcli list` command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
 
-- Also print brief local pseudonyms (participant aliases) when using `--local-pseudonym` flag.
+- The `pepcli list` command now also prints brief local pseudonyms (participant aliases) when using the `--local-pseudonyms` flag.
 
 - core#2795: Fixed a bug in the `pepcli ama query --script-print participant-groups` and `pepcli ama query --script-print participant-group-access-rules` commands, which caused them to produce no output.
 
@@ -69,15 +69,24 @@
 
 - #2877: Key Server now requires a configured `BlocklistStoragePath` value (was optional).
 
-- #2738: Data Administrators can now retrieve sizes of stored data, either for the full repository, or aggregated over
-         column(s) and/or column group(s). Sizes are reported both for the current (rolling) data set and for the entire
-         history. Values are rounded to a (configurable) resolution to prevent the data from being reconstructible ("guessable")
-         from its size. The sizes for the full repository are also exposed as Storage Facility metrics.
+- #2738: Data Administrators can now use the `pepcli query data-size` command to retrieve sizes of stored data, either
+         for the full repository, or aggregated over column(s) and/or column group(s). Sizes are reported both for the
+         current (rolling) data set and for the entire history. Values are rounded to a (configurable) resolution to
+         prevent the data from being reconstructible ("guessable") from its size. The sizes for the full repository are
+         also exposed as Storage Facility metrics.
 
 - #2875: Some paths are no longer escaped in (e.g. pepcli) application output/logging, making them usable for copy+pasting on Windows.
 
 - #2818: When `pepcli ama query` produces no results (e.g. due to the use of filtering switches), the application now says so
          instead of producing an error.
+
+- #2801: The Transcryptor now verifies consistency of the AccessManager's RSK proofs for the user pseudonym.
+
+- #2196: Fix handling of `--output-directory` with trailing slash in `pepcli pull`.
+
+- !2304: `pepcli get` now properly handles writing binary data to stdout on Windows.
+
+- #2863: There is now a JSON schema for server/client configuration files, see `./config/config.schema.json`.
 
 ## MANUAL CHANGES REQUIRED:
 

@@ -13,7 +13,7 @@ private:
   std::shared_ptr<DownloadDirectory> mDestination;
   std::shared_ptr<GlobalConfiguration> mGlobalConfig;
 
-  std::shared_ptr<DownloadDirectory::RecordStorageStream> openStorageStream(RecordDescriptor descriptor, size_t fileSize, Progress& progress);
+  std::shared_ptr<DownloadDirectory::RecordStorageStream> openStorageStream(RecordDescriptor descriptor, std::uint64_t fileSize, Progress& progress);
 
   struct Context;
   rxcpp::observable<std::shared_ptr<IndexedTicket2>> requestTicket(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx);

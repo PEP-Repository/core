@@ -53,7 +53,7 @@ for filepath in $FILES; do
     # Don't process $BUILD_MODE and/or $EXTENSION in this case: we'll find (executable) files
     # regardless of output (sub)directory and file extension.
     cp -R "$SOURCE_PATH/$filepath" "$DEST_PATH/$filepath"
-    
+
     # Get size of the copied directory
     SIZE_KB=$(get_size_kb "$DEST_PATH/$filepath")
     SIZE_MB=$(kb_to_mb "$SIZE_KB")
@@ -70,7 +70,7 @@ for filepath in $FILES; do
     DEST_DIR="$DEST_PATH/$(dirname "$filepath")"
     mkdir -p "$DEST_DIR"
     cp "${FULL_SOURCE_PATH}" "$DEST_DIR"
-    
+
     # Get size of the copied file
     SIZE_KB=$(get_size_kb "$DEST_DIR/$(basename "$filepath")${EXTENSION}")
     SIZE_MB=$(kb_to_mb "$SIZE_KB")

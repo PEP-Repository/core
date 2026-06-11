@@ -18,6 +18,8 @@ Checks:
   # Suppress warnings about things like a static std::string
   - -bugprone-throwing-static-initialization
   - -bugprone-unchecked-optional-access
+  # Mostly covered by -Wswitch, and conflicts with -Wcovered-switch-default
+  - -bugprone-unhandled-code-paths
 
   - cert-dcl50-cpp
   - cert-dcl58-cpp

@@ -6,7 +6,7 @@ namespace pep {
 
 rxcpp::observable<AuthorizationResult> ConsoleAuthorization(
   std::shared_ptr<boost::asio::io_context> io_context,
-  std::function<std::string (std::string redirectUri)> getAuthorizeUri
+  OAuthClient::GetAuthorizeUriFn getAuthorizeUri
 );
 
 }

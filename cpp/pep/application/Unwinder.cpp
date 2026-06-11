@@ -553,7 +553,7 @@ static const char* lpMonthsOfTheYear[] = { "Jan", "Feb", "Mar", "Apr", "May", "J
 #endif
 
 void InitializeUnwinder() {
-  auto szReportName = GetOutputBasePath().string();
+  auto szReportName = GetLogBasePath().string();
   assert(szReportName.length() < 200);
 
   /*

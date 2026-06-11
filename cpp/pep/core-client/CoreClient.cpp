@@ -261,7 +261,7 @@ void CoreClient::Builder::initialize(
 }
 
 
-rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
+rxcpp::observable<FakeVoid> CoreClient::getRegistrationExpiryObservable() {
   return registrationSubject.get_observable();
 }
 

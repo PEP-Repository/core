@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#ifndef __EMSCRIPTEN__
+
 #include <pep/async/IoContextThread.hpp>
 #include <pep/httpserver/HTTPServer.hpp>
 #include <pep/networking/HttpClient.hpp>
@@ -76,3 +78,11 @@ TEST(HttpClient, BasicFunctioning) {
   // Code below has been disabled to prevent our unit test from requiring a network connection
   // RegisterAndRetrieve(boost::urls::url("https://pep.cs.ru.nl"));
 }
+
+#else // (!)__EMSCRIPTEN__
+
+TEST(HttpClient, BasicFunctioning) {
+  GTEST_SKIP() << "HttpServer not supported on Emscripten";
+}
+
+#endif // !__EMSCRIPTEN__

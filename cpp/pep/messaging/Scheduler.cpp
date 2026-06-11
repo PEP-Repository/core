@@ -175,7 +175,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           LOG(LOG_TAG, debug) << "Sending error flag to server";
         }
 
-        self->onError.notify(messageId, std::move(e));
+        self->onError.notify(messageId, std::move(e)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
 
         if (serialized == nullptr) {
           std::string message = messageId.type() == MessageType::RESPONSE
