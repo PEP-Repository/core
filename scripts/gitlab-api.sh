@@ -32,6 +32,27 @@ done
 git_dir="${1:?Expected git dir}"; shift
 api_key="${1:?Expected API key}"; shift
 command="${1:?Expected command}"; shift
+
+# Commands that don't require a project URL or API connection
+case $command in
+  get-outdated-creation-timestamp)
+    # Read a JSON object from stdin containing a ".created_at" property, e.g.
+    # - Docker image (tag) details: https://docs.gitlab.com/ee/api/container_registry.html#get-details-of-a-registry-repository-tag
+    # - project package details: https://docs.gitlab.com/ee/api/packages.html#get-a-project-package
+    # - pipelines
+    # If the ".created_at" is older than the (hard-coded) threshold, this function prints
+    # the value of that ".created_at" property (so that the caller can report its value), otherwise print nothing. Exit 0 in both cases.
+    entry=$(cat)
+    created_at=$(printf '%s' "$entry" | jq --raw-output ".created_at")
+    seconds=$(( $(date +%s) - $(date -d "$created_at" +%s) ))
+    days=$(( seconds / 60 / 60 / 24 ))
+    if [ "$days" -ge 6 ]; then
+      echo "$created_at"
+    fi
+    exit 0
+    ;;
+esac
+
 rel_path="${1?:Expected URL path}"; shift
 # Further arguments are passed verbatim to the "curl" command(s) that we issue
 

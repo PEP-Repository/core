@@ -178,58 +178,8 @@ get_gitlab_registry() {
   dir_api "$dir" get "" | jq --raw-output ".container_registry_image_prefix"
 }
 
-# Invoke with JSON containing a ".created_at" property, e.g.
-# - Docker image (tag) details: https://docs.gitlab.com/ee/api/container_registry.html#get-details-of-a-registry-repository-tag
-# - project package details: https://docs.gitlab.com/ee/api/packages.html#get-a-project-package
-# - pipelines
-# If the ".created_at" is older than the (hard-coded) threshold, this function echoes
-# the value of that ".created_at" property (so that the caller can report its value).
-# For more recent values of the ".created_at" property, this function does nothing.
-get_outdated_creation_timestamp() {
-  entry="$1"
-
-  created_at=$(echo "$entry" | jq --raw-output ".created_at")
-  # >&2 echo "created_at is $created_at"
-  seconds=$(( $(date +%s) - $(date -d "$created_at" +%s)))
-  # >&2 echo "seconds is $seconds"
-  days=$(( seconds / 60 / 60 / 24 ))
-  # >&2 echo "days is $days"
-
-  if [ "$days" -ge 6 ]; then
-    echo "$created_at"
-  fi
-}
-
-# Invoke as (external) command: myloc=$(get_foss_image_location some_image_name)
-get_foss_image_location() {
-  imgname="$1"
-  # >&2 echo "get_foss_image_location($imgname)"
-
-  repos=$(foss_api get-multipage "registry/repositories")
-  # >&2 echo "repos is $repos"
-  repo=$(echo "$repos" | jq ".[] | select(.name==\"$imgname\")")
-  # >&2 echo "repo is $repo"
-  if [ -z "$repo" ]; then
-    >&2 echo No FOSS Docker images found with name "$imgname".
-    return
-  fi
-  
-  repoid=$(echo "$repo" | jq ".id")
-  # >&2 echo "repoid is $repoid"
-
-  details=$(foss_api get "registry/repositories/$repoid/tags/$foss_sha" || true)
-  # >&2 echo "details is $details"
-  if [ -z "$details" ]; then
-    >&2 echo FOSS Docker image "$imgname" not found for SHA "$foss_sha".
-    return
-  fi
-  created_at=$(get_outdated_creation_timestamp "$details")
-  if [ -n "$created_at" ]; then
-    >&2 echo FOSS Docker image "$imgname" for SHA "$foss_sha" is outdated \(created at "$created_at"\).
-    return;
-  fi
-  
-  echo "$details" | jq --raw-output ".location"
+is_outdated() {
+  printf '%s' "$1" | "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" get-outdated-creation-timestamp
 }
 
 all_config_dockerfiles() {
@@ -374,11 +324,13 @@ run_foss_pipeline() {
 provide_foss_image() {
   name="$1"
 
-  location="$(get_foss_image_location "$name")"
+  location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
+    "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
   if [ -z "$location" ] ; then
     echo Running a FOSS pipeline to \(re-\)produce Docker image "$name"...
     run_foss_pipeline
-    location="$(get_foss_image_location "$name")"
+    location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
+      "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
     if [ -z "$location" ] ; then
       >&2 echo FOSS pipeline did not produce expected Docker image "$name" for SHA "$foss_sha"
       return 1
@@ -412,7 +364,7 @@ get_foss_package_file_id() {
 
   file=$(echo "$files" | head -n 1)
   # >&2 echo "file is $file"
-  created_at=$(get_outdated_creation_timestamp "$file")
+  created_at=$(is_outdated "$file")
   
   if [ -n "$created_at" ]; then
     >&2 echo File "$file_name" in FOSS package "$package_name" for SHA "$foss_sha" is outdated \(created at "$created_at"\).
@@ -482,7 +434,8 @@ build_config_dockerfile() {
   image_name=$(basename "$dockerfile" .Dockerfile)
   dest_image=$(get_destination_image_path "$image_name")
   
-  base_image=$(get_foss_image_location "$image_name")
+  base_image=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
+    "$foss_root" "$api_key" get-image-location "$image_name" "$foss_sha")
   if has_foss_base_image "$image_name" ; then
     if [ -z "$base_image" ]; then
       >&2 echo Cannot find base image "$image_name" with SHA "$foss_sha" for "$dest_image"
