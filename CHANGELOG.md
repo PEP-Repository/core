@@ -26,9 +26,9 @@
 
 - core#2637: `pepcli export` can now output to stdout instead of a file, by passing a hyphen `-` as output location
 
-- Added `--format` option to `pepcli list` command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
+- !2401 Added `--format` option to `pepcli list` command, which allows the output format to be selected between YAML and JSON. The default was pseudo-JSON, and is now proper JSON.
 
-- The `pepcli list` command now also prints brief local pseudonyms (participant aliases) when using the `--local-pseudonyms` flag.
+- !2400 The `pepcli list` command now also prints brief local pseudonyms (participant aliases) when using the `--local-pseudonyms` flag.
 
 - core#2795: Fixed a bug in the `pepcli ama query --script-print participant-groups` and `pepcli ama query --script-print participant-group-access-rules` commands, which caused them to produce no output.
 
