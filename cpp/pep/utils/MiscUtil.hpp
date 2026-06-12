@@ -75,7 +75,7 @@ template<typename T>
 /// Strip the first element from a tuple
 template <typename Head, typename... Tail>
 [[nodiscard]] std::tuple<Tail...> TupleTail(std::tuple<Head, Tail...> tuple) {
-  return std::apply([](const auto&, auto&&... tail) {
+  return std::apply([](const auto&, auto&... tail) {
       return std::tuple{std::move(tail)...};
   }, std::move(tuple));
 }
