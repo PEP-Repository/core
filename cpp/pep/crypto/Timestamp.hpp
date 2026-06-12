@@ -15,7 +15,7 @@ namespace pep {
 
 // Same as STL does for system_clock
 template<class Duration>
-using steady_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
+using steady_time = std::chrono::time_point<std::chrono::steady_clock, Duration>;
 using steady_seconds = steady_time<std::chrono::seconds>;
 
 /// Wall clock timestamp with a precision of milliseconds ('sys_milliseconds').
