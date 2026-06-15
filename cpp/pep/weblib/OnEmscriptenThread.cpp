@@ -13,13 +13,13 @@ static const std::string LogTag("emscripten_scheduler");
 
 namespace {
 
-class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
-  class worker_interface : public rxcpp::schedulers::worker_interface {
+class EmscriptenScheduler : public rxcpp::schedulers::scheduler_interface {
+  class Worker : public rxcpp::schedulers::worker_interface {
     ::pthread_t thread_;
     std::shared_ptr<emscripten::ProxyingQueue> queue_ = std::make_shared<emscripten::ProxyingQueue>();
 
   public:
-    explicit worker_interface(::pthread_t thread) : thread_{thread} {}
+    explicit Worker(::pthread_t thread) : thread_{thread} {}
 
     clock_type::time_point now() const override {
       return clock_type::now();
@@ -89,11 +89,11 @@ class emscripten_scheduler : public rxcpp::schedulers::scheduler_interface {
     }
   };
 
-  std::shared_ptr<worker_interface> workerInterface_;
+  std::shared_ptr<Worker> workerInterface_;
 
 public:
-  explicit emscripten_scheduler(::pthread_t thread)
-    : workerInterface_(std::make_shared<worker_interface>(thread)) {}
+  explicit EmscriptenScheduler(::pthread_t thread)
+    : workerInterface_(std::make_shared<Worker>(thread)) {}
 
   clock_type::time_point now() const override {
     return clock_type::now();
@@ -107,7 +107,7 @@ public:
 }
 
 rxcpp::observe_on_one_worker pep::weblib::observe_on_emscripten(::pthread_t thread) {
-  rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<emscripten_scheduler>(thread);
+  rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<EmscriptenScheduler>(thread);
   return rxcpp::observe_on_one_worker{instance};
 }
 
