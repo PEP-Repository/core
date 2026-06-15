@@ -9,8 +9,6 @@ using ElgamalPrivateKey = CurveScalar;
 using ElgamalPublicKey = CurvePoint;
 using ElgamalTranslationKey = CurveScalar;
 
-// #define MAGIC_ELGAMALENCRYPTION 0xcafef001
-
 /*! \brief An ElGamal Encryption Triple.
  */
 class ElgamalEncryption {

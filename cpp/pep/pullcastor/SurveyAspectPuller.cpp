@@ -22,7 +22,7 @@ int GetWeekNumber(Timestamp moment, Timestamp offset) {
   using namespace std::chrono;
   auto diff = moment - offset;
   if (diff < decltype(diff)::zero()) {
-    PULLCASTOR_LOG(warning) << "Returning negative week number for timestamp that's before the offset";
+    PEP_PULLCASTOR_LOG(Severity::Warning) << "Returning negative week number for timestamp that's before the offset";
   }
   // Explicit floor to handle negative numbers, which may occur,
   //  see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1654
@@ -112,7 +112,7 @@ SurveyAspectPuller::LatestSpiPuller::LatestSpiPuller(std::shared_ptr<StudyPuller
 }
 
 SurveyAspectPuller::SurveyAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::SURVEY>(sp, aspect) {
+  : TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::Survey>(sp, aspect) {
 
   mSpis = CreateRxCache([sp]() {
     return SurveyPackageInstance::BulkRetrieve(sp->getStudy(), sp->getParticipants());
@@ -122,7 +122,7 @@ SurveyAspectPuller::SurveyAspectPuller(std::shared_ptr<StudyPuller> sp, const St
       .filter([](std::shared_ptr<SurveyPackageInstance> spi) {
       bool result = !spi->isArchived();
       if (!result) {
-        PULLCASTOR_LOG(debug) << "Skipping archived SPI " << spi->getId()
+        PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping archived SPI " << spi->getId()
           << " for package '" << spi->getSurveyPackageName() << "'"
           << " for participant " << spi->getParticipantId();
       }
@@ -276,7 +276,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::La
     const auto& latest = tspis->front();
     spi = latest.getSpi();
 
-    PULLCASTOR_LOG(info) << "Out of " << tspis->size() << " finished Survey Package Instances"
+    PEP_PULLCASTOR_LOG(Severity::Info) << "Out of " << tspis->size() << " finished Survey Package Instances"
       << " for survey package " << spi->getSurveyPackageName()
       << " we'll only consider the one finished at " << TimestampToXmlDateTime(latest.getTimestamp());
   }
@@ -294,7 +294,7 @@ rxcpp::observable<Timestamp> SurveyAspectPuller::AllSpisPuller::getWeekNumberOff
     .flat_map([participantId](std::shared_ptr<StudyStartsByParticipantId> ssByRecId) -> rxcpp::observable<Timestamp> {
     auto found = ssByRecId->find(participantId);
     if (found == ssByRecId->cend()) {
-      PULLCASTOR_LOG(warning) << "No surveys will be imported for participant " << participantId << " because the study start cannot be determined";
+      PEP_PULLCASTOR_LOG(Severity::Warning) << "No surveys will be imported for participant " << participantId << " because the study start cannot be determined";
       return rxcpp::observable<>::empty<Timestamp>();
     }
     return rxcpp::observable<>::just(found->second);
@@ -303,7 +303,7 @@ rxcpp::observable<Timestamp> SurveyAspectPuller::AllSpisPuller::getWeekNumberOff
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::getStorableContent(std::shared_ptr<CastorParticipant> participant) {
   auto rawParticipant = participant->getParticipant();
-  PULLCASTOR_LOG(debug) << "Getting content for study " << this->getStudyPuller()->getStudy()->getSlug() << ", surveys, participant " << rawParticipant->getId();
+  PEP_PULLCASTOR_LOG(Severity::Debug) << "Getting content for study " << this->getStudyPuller()->getStudy()->getSlug() << ", surveys, participant " << rawParticipant->getId();
   return mSpisByParticipantId->observe()
     .concat_map([rawParticipant, self = SharedFrom(*this)](std::shared_ptr<SpisById> spisByParticipantId) -> rxcpp::observable<std::shared_ptr<StorableColumnContent>> { // Process SPIs for this participant ID
     auto position = spisByParticipantId->find(rawParticipant->getId());

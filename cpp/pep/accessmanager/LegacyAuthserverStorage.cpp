@@ -17,7 +17,7 @@ namespace pep {
 using namespace sqlite_orm;
 
 namespace {
-const std::string LOG_TAG("AuthserverStorage");
+const std::string LogTag("AuthserverStorage");
 }
 
 uint64_t LegacyUserGroupUserRecord::checksum() const {
@@ -37,7 +37,7 @@ LegacyAuthserverStorage::LegacyAuthserverStorage(const std::filesystem::path& pa
 void LegacyAuthserverStorage::ensureInitialized() {
   mStorage->syncSchema();
   if(mStorage->raw.count<UserIdRecord>() == 0) {
-    LOG(LOG_TAG, info) << "UserId table empty in legacy authserver storage. Initializing based on existing UserGroupRecords";
+    PEP_LOG(LogTag, Severity::Info) << "UserId table empty in legacy authserver storage. Initializing based on existing UserGroupRecords";
 
     migrateUidToInternalId();
   }

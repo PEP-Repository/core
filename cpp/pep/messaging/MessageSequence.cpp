@@ -54,7 +54,7 @@ void ProvideBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<Messag
 
 extern const std::size_t DEFAULT_PAGE_SIZE_RELEASE = 1024 * 1024;
 
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
 extern const std::size_t DEFAULT_PAGE_SIZE = DEFAULT_PAGE_SIZE_RELEASE / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
 #else
 extern const std::size_t DEFAULT_PAGE_SIZE = DEFAULT_PAGE_SIZE_RELEASE;

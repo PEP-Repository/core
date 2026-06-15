@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <QSystemSemaphore>
 
-#define RAW_GET_INTERPROCESS_MEMORY_VALUE(destination) memcpy(destination, mImplementor->constData(), mSize)
+#define PEP_GET_RAW_INTERPROCESS_MEMORY_VALUE(destination) memcpy(destination, mImplementor->constData(), mSize)
 
 void InterProcessMemory::lockedInvoke(std::function<void()> callback) const {
   if (!mImplementor->lock()) {
@@ -15,13 +15,13 @@ void InterProcessMemory::lockedInvoke(std::function<void()> callback) const {
 }
 
 void InterProcessMemory::read(void* data) const {
-  lockedInvoke([this, data]() {RAW_GET_INTERPROCESS_MEMORY_VALUE(data); });
+  lockedInvoke([this, data]() {PEP_GET_RAW_INTERPROCESS_MEMORY_VALUE(data); });
 }
 
 void InterProcessMemory::write(const void* data, void* oldData) {
   lockedInvoke([this, data, oldData] {
     if (oldData != nullptr) {
-      RAW_GET_INTERPROCESS_MEMORY_VALUE(oldData);
+      PEP_GET_RAW_INTERPROCESS_MEMORY_VALUE(oldData);
     }
     memcpy(mImplementor->data(), data, mSize);
   });

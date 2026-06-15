@@ -310,7 +310,7 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
 
 TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
   // Two polymorph pseudonyms without known participantgroups. Used to test the offset in IndexList
-  std::vector<AccessManager::Backend::pp_t> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
+  std::vector<AccessManager::Backend::Pp> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
   const std::vector<std::string> participantgroups{constants.pg1, constants.pg2};
 
   // Act
@@ -328,7 +328,7 @@ TEST_F(AccessManagerBackendTest, checkTicketForEncryptionKeyRequest_happy) {
   ticket.mColumns.push_back(constants.w_col);
   ticket.mModes.push_back("write");
   KeyRequestEntry entry;
-  entry.mKeyBlindMode = KeyBlindMode::BLIND_MODE_BLIND; // Needs ticket mode write
+  entry.mKeyBlindMode = KeyBlindMode::Blind; // Needs ticket mode write
   entry.mMetadata.setTag(constants.w_col); // specified col should be in ticket columns.
   request->mEntries.push_back({entry});
 

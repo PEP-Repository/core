@@ -64,7 +64,7 @@ std::exception_ptr Error::ReconstructIfDeserializable(std::string_view serialize
         }
 
         // An original type name was specified but we don't have a factory for it. Presumably our software is outdated. Issue a warning...
-        LOG("Network error handling", error)
+        PEP_LOG("Network error handling", Severity::Error)
           << "Errors of derived " + type << " type cannot be transported across the network. "
           << "Please ensure that the derived type is properly registered. You may need to upgrade your software.";
         // ... then register a (degenerate) factory so the warning is only issued once...

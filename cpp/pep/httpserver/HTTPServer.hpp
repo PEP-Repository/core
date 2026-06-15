@@ -9,11 +9,11 @@
 #include <filesystem>
 #include <rxcpp/rx-lite.hpp>
 
-struct mg_context;
+struct mg_context; // Forward declares a type provided by CivetWeb
 
 namespace pep {
 
-struct httpRequestHandlerParams;
+struct HttpRequestHandlerParams;
 
 class HTTPServer {
 public:
@@ -29,10 +29,10 @@ public:
   void asyncStop();
 
 private:
-  void registerHandlerParams(std::shared_ptr<httpRequestHandlerParams> params);
+  void registerHandlerParams(std::shared_ptr<HttpRequestHandlerParams> params);
 
   mg_context *mCtx;
-  std::unique_ptr<std::unordered_map<std::string, std::shared_ptr<httpRequestHandlerParams>>> mRegisteredHandlers;
+  std::unique_ptr<std::unordered_map<std::string, std::shared_ptr<HttpRequestHandlerParams>>> mRegisteredHandlers;
   std::shared_ptr<boost::asio::io_context> mIoContext;
 
   static SingleWorker CleanupWorker;

@@ -6,7 +6,7 @@
 #include <pep/utils/ThreadUtil.hpp>
 
 namespace {
-const std::string LOG_TAG("WorkerPool");
+const std::string LogTag("WorkerPool");
 
 constexpr unsigned MaxThreads =
 #ifdef __EMSCRIPTEN__
@@ -23,7 +23,7 @@ namespace pep {
 WorkerPool::WorkerPool()
   : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
   unsigned nThreads = std::min(std::thread::hardware_concurrency(), MaxThreads);
-  LOG(LOG_TAG, debug) << "Using " << nThreads << " worker threads";
+  PEP_LOG(LogTag, Severity::Debug) << "Using " << nThreads << " worker threads";
   mThreads.reserve(nThreads);
   for (unsigned i = 0; i < nThreads; i++) {
     mThreads.emplace_back(

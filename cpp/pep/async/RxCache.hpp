@@ -99,7 +99,7 @@ private:
         subscriber.on_next(item); // ... and let the primary subscriber know about it immediately.
       },
       [subscriber, count = items->size(), self](std::exception_ptr ep) {
-        LOG("RX cache", warning) << "Caching aborted after processing "
+        PEP_LOG("RX cache", Severity::Warning) << "Caching aborted after processing "
           << count << " item(s) of type " << boost::typeindex::type_id<T>().pretty_name()
           << " due to exception: " << GetExceptionMessage(ep);
         self->finishRetrieving(nullptr); // Update our own state...

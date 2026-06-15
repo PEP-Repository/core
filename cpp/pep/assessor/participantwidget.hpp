@@ -113,9 +113,9 @@ class ParticipantWidget : public QWidget {
 
   void participantDataReceived(ParticipantData data, std::string studyContexts);
 
-  void statusMessage(QString, pep::severity_level);
+  void statusMessage(QString, pep::Severity);
 
-  void participantLookupError(QString, pep::severity_level);
+  void participantLookupError(QString, pep::Severity);
 
   void queryComplete();
 

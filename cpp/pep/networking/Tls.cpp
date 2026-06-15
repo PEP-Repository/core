@@ -15,7 +15,7 @@ namespace pep::networking {
 
 namespace {
 
-const std::string LOG_TAG = "TLS";
+const std::string LogTag = "TLS";
 
 class TlsSocket : public TcpBasedProtocolImplementor<Tls>::Socket {
   friend class pep::networking::Tls;
@@ -57,7 +57,7 @@ void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
         } else {
           detail << error;
         }
-        LOG(LOG_TAG, warning) << "Handshake error with " << self->remoteAddress() << ": " << detail.str() << " " << error.message();
+        PEP_LOG(LogTag, Severity::Warning) << "Handshake error with " << self->remoteAddress() << ": " << detail.str() << " " << error.message();
 
         self->close(); // TODO: specify error as reason
       }
@@ -79,7 +79,7 @@ TlsSocket::TlsSocket(const Tls& protocol, boost::asio::io_context& ioContext, bo
 
 TlsSocket::~TlsSocket() noexcept {
   if (mShutdownRequired) {
-    LOG(LOG_TAG, severity_level::warning) << "Socket wasn't shut down properly"; // Either the owner didn't call close(), or the I/O service was stopped before we could perform our shutdown
+    PEP_LOG(LogTag, Severity::Warning) << "Socket wasn't shut down properly"; // Either the owner didn't call close(), or the I/O service was stopped before we could perform our shutdown
   }
 }
 
@@ -145,14 +145,14 @@ void TlsSocket::close() {
       && error.default_error_condition().value() != boost::system::errc::operation_canceled // Our timeout was hit: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2834#note_57593
       ) {
       const char* description = "Unexpected problem shutting down connection";
-      severity_level severity = pep::error;
+      Severity severity = Severity::Error;
       if (error == boost::asio::ssl::error::make_error_code(boost::asio::ssl::error::stream_errors::stream_truncated)  // remote party [...] closed the underlying transport without shutting down the protocol: see https://stackoverflow.com/a/25703699
         || error == boost::asio::error::make_error_code(boost::asio::error::broken_pipe)) { // happens when you write to a socket fully closed on the other [...] side: see https://stackoverflow.com/a/11866962
         description = "Remote party did not properly shut down the connection";
-        severity = pep::debug;
+        severity = Severity::Debug;
       }
 
-      LOG(LOG_TAG, severity) << description << ": "
+      PEP_LOG(LogTag, severity) << description << ": "
         << error.category().name() << " code " << error.value()
         << " (condition " << error.default_error_condition().value() << ')'
         << " - " << error.message();
@@ -183,7 +183,7 @@ void set_keylog_file(SSL_CTX* ctx) {
 
   keylog.open(KEYLOG_FILE, std::ios::app);
   if (!keylog.is_open()) {
-    LOG(LOG_TAG, warning) << "Could not open SSLkeylogfile " << KEYLOG_FILE;
+    PEP_LOG(LogTag, Severity::Warning) << "Could not open SSLkeylogfile " << KEYLOG_FILE;
     return;
   }
 
@@ -198,12 +198,12 @@ std::shared_ptr<TcpBasedProtocol::Socket> Tls::createSocket(TcpBasedProtocol::Cl
   auto result = std::make_shared<TlsSocket>(*this, component.ioContext(), boost::asio::ssl::stream_base::client, component.downcastFor(*this).sslContext());
 
   const auto& endpoint = component.endPoint();
-  LOG(LOG_TAG, debug) << "Connecting to " << endpoint.hostname << ":" << endpoint.port;
+  PEP_LOG(LogTag, Severity::Debug) << "Connecting to " << endpoint.hostname << ":" << endpoint.port;
 
   std::function<bool(bool, boost::asio::ssl::verify_context&)> verifyCallback;
   if (endpoint.expectedCommonName.empty()) {
     // use default verification based on hostname
-    LOG(LOG_TAG, debug) << "Using boost's default hostname verification"
+    PEP_LOG(LogTag, Severity::Debug) << "Using boost's default hostname verification"
       << " for " << endpoint.hostname << ":" << endpoint.port
       << " instead of our custom code.";
     verifyCallback = boost::asio::ssl::host_name_verification(endpoint.hostname);
@@ -231,7 +231,7 @@ std::shared_ptr<TcpBasedProtocol::Socket> Tls::createSocket(TcpBasedProtocol::Cl
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
 #endif
-      LOG(LOG_TAG, debug) << "Enabled TLS Server Name Indication extension for connection to " << endpoint.hostname << ":" << endpoint.port;
+      PEP_LOG(LogTag, Severity::Debug) << "Enabled TLS Server Name Indication extension for connection to " << endpoint.hostname << ":" << endpoint.port;
     }
   }
 
@@ -259,7 +259,7 @@ Tls::ClientComponent::ClientComponent(const ClientParameters& parameters)
   : TcpBasedProtocolImplementor<Tls>::ClientComponent(parameters) {
   auto verify_mode = boost::asio::ssl::verify_peer;
   if (parameters.skipPeerVerification()) {
-    LOG(LOG_TAG, pep::warning) << "Skipping OpenSSL peer verification for client socket";
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Skipping OpenSSL peer verification for client socket";
     verify_mode = boost::asio::ssl::verify_none;
   }
   this->sslContext().set_verify_mode(verify_mode);
@@ -280,7 +280,7 @@ Tls::ClientComponent::ClientComponent(const ClientParameters& parameters)
 Tls::ServerComponent::ServerComponent(const ServerParameters& parameters)
   : TcpBasedProtocolImplementor<Tls>::ServerComponent(parameters) {
   if (parameters.skipCertificateSecurityLevelCheck()) {
-    LOG(LOG_TAG, pep::warning) << "Skipping OpenSSL security level check for certificate";
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Skipping OpenSSL security level check for certificate";
     SSL_CTX_set_security_level(this->sslContext().native_handle(), 0);
   }
 

@@ -13,7 +13,7 @@ struct TicketFile
 {
   static commandline::Parameters GetParameters(bool commandProvidesQuery);
 
-  static rxcpp::observable<IndexedTicket2> GetTicket(CoreClient& client, const commandline::NamedValues& parameterValues, const std::optional<requestTicket2Opts>& opts);
+  static rxcpp::observable<IndexedTicket2> GetTicket(CoreClient& client, const commandline::NamedValues& parameterValues, const std::optional<RequestTicket2Opts>& opts);
 };
 
 }

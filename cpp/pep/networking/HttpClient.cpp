@@ -14,9 +14,9 @@ namespace pep::networking {
 
 namespace {
 
-#define CRLF "\r\n"
+#define PEP_CRLF "\r\n"
 
-const std::string LOG_TAG = "HTTP client";
+const std::string LogTag = "HTTP client";
 
 struct ProtocolProperties {
   bool tls;
@@ -217,7 +217,7 @@ void HttpClient::restart() {
 
 bool HttpClient::continueSending(std::exception_ptr error) {
   if (error != nullptr) {
-    LOG(LOG_TAG, debug) << "Error: " << GetExceptionMessage(error);
+    PEP_LOG(LogTag, Severity::Debug) << "Error: " << GetExceptionMessage(error);
 
     // Reconnect to prevent the binary transport from remaining in a possibly invalid state
     // TODO: only do this if the binary transport didn't close (or reset) itself already
@@ -299,7 +299,7 @@ void HttpClient::handleRequestPartWritten(const SizedTransfer::Result& result, s
   }
 
   // Done sending body parts: start receiving the HTTPResponse
-  mConnection->asyncReadUntil(CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
+  mConnection->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
     self->handleReadStatusLine(result);
     });
 }
@@ -309,7 +309,7 @@ void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
     return;
   }
 
-  assert(result->ends_with(CRLF));
+  assert(result->ends_with(PEP_CRLF));
   std::istringstream responseStream(*result);
 
   std::string http_version;
@@ -337,7 +337,7 @@ void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
 }
 
 void HttpClient::readHeaderLine() {
-  mConnection->asyncReadUntil(CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
+  mConnection->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
     self->handleReadHeaderLine(result);
     });
 }
@@ -347,7 +347,7 @@ void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
     return;
   }
 
-  assert(result->ends_with(CRLF));
+  assert(result->ends_with(PEP_CRLF));
   auto length = result->size() - 2U;
   if (length == 0U) { // This is the empty line that precedes the body
     this->readBody();
@@ -362,7 +362,7 @@ void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
       mResponse.setHeader(headerName, headerValue);
     }
     else {
-      LOG(LOG_TAG, warning) << "Ignoring malformed header: " << header << '\n';
+      PEP_LOG(LogTag, Severity::Warning) << "Ignoring malformed header: " << header << '\n';
     }
     this->readHeaderLine(); // Done processing this header line: read the next one
   }
@@ -402,7 +402,7 @@ void HttpClient::readBody() {
 }
 
 void HttpClient::readChunkSize() {
-  mConnection->asyncReadUntil(CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
+  mConnection->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
     self->handleReadChunkSize(result);
     });
 }
@@ -412,27 +412,27 @@ void HttpClient::handleReadChunkSize(const DelimitedTransfer::Result& result) {
     return;
   }
 
-  assert(boost::ends_with(*result, CRLF));
+  assert(boost::ends_with(*result, PEP_CRLF));
   std::istringstream responseStream(result->substr(0, result->size() - 2));
   size_t chunkSize{};
   responseStream >> std::hex >> chunkSize;
 
   if (chunkSize > 0) {
-    // Read the chunk, including the trailing CRLF
+    // Read the chunk, including the trailing PEP_CRLF
     mContentBuffer.resize(chunkSize + 2);
     mConnection->asyncRead(mContentBuffer.data(), mContentBuffer.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
       self->handleReadChunk(result);
       });
   }
   else {
-    // We're processing the last (empty) chunk: read the CRLF that's written after its (empty) content
+    // We're processing the last (empty) chunk: read the PEP_CRLF that's written after its (empty) content
     mContentBuffer.resize(2);
     mConnection->asyncRead(mContentBuffer.data(), mContentBuffer.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
       if (!self->continueSending(result.exception())) {
         return;
       }
 
-      assert(self->mContentBuffer == CRLF);
+      assert(self->mContentBuffer == PEP_CRLF);
       self->finishSending();
       });
   }
@@ -443,7 +443,7 @@ void HttpClient::handleReadChunk(const SizedTransfer::Result& result) {
     return;
   }
 
-  assert(boost::ends_with(mContentBuffer, CRLF));
+  assert(boost::ends_with(mContentBuffer, PEP_CRLF));
   mContentBuffer.resize(mContentBuffer.size() - 2U);
   mResponse.getBodyparts().push_back(MakeSharedCopy(mContentBuffer));
 

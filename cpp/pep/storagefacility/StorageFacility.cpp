@@ -112,7 +112,7 @@ bool ReadOptionalNonZeroConfigValue(T& destination, const Configuration& config,
   return false;
 }
 
-const std::string LOG_TAG("StorageFacility");
+const std::string LogTag("StorageFacility");
 
 } // End anonymous namespace
 
@@ -192,7 +192,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     this->pageStoreConfig = std::make_shared<Configuration>(config.get_child("PageStore"));
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
@@ -201,7 +201,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with keys file: " << keysFile << " : " << e.what();
     throw;
   }
 
@@ -210,7 +210,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   // main keysfile is read-only.  (We wouldn't want to risk to overwrite it.)
   std::string encIdKey;
   if (!std::filesystem::exists(encIdKeyFile)) {
-    LOG(LOG_TAG, warning)
+    PEP_LOG(LogTag, Severity::Warning)
       << "The file " << encIdKeyFile << " does not exist. "
       << "Generating new one.  This should occur only once!";
     encIdKey = RandomString(32);
@@ -310,7 +310,7 @@ void StorageFacility::computeChecksumChainChecksum(
 
 messaging::MessageBatches
 StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest) {
-  LOG(LOG_TAG, debug) << "Received DataEnumerationRequest2";
+  PEP_LOG(LogTag, Severity::Debug) << "Received DataEnumerationRequest2";
 
   auto time = std::chrono::steady_clock::now();
   const auto& rootCAs = *this->getRootCAs();
@@ -710,7 +710,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       for (size_t j = 0; j < i; ++j) { // TODO: improve performance: we don't want an inner loop making this O(n^2)
         if (ctx->entries[j]->getName() == entryChange->getName()) {
-          LOG(LOG_TAG, error) << "Single request contained duplicate entry change for " + entryChange->getName().string();
+          PEP_LOG(LogTag, Severity::Error) << "Single request contained duplicate entry change for " + entryChange->getName().string();
           // Don't send our internal representation (local pseudonym contained in the entry's name) back to the client
           throw Error("Cannot store multiple values for column " + col + ". The duplicate entries are at indices " + std::to_string(i) + " and " + std::to_string(j));
         }
@@ -743,7 +743,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               std::ostringstream ss;
               ss << "Expected page, but got "
                 << DescribeMessageMagic(*rawPage);
-              LOG(LOG_TAG, warning) << ss.str();
+              PEP_LOG(LogTag, Severity::Warning) << ss.str();
               ctx->errors.push_back(ss.str());
               // An exception will be raised by the call (below) to Serialization::FromString<DataPayloadPage>
             }
@@ -791,7 +791,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
                   ctx->ids[i].clear();
                   std::ostringstream ss;
                   ss << "File " << i << " is not sane: " << e.what();
-                  LOG(LOG_TAG, warning) << ss.str();
+                  PEP_LOG(LogTag, Severity::Warning) << ss.str();
                   ctx->errors.push_back(ss.str());
                 }
               }
@@ -975,7 +975,7 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
 messaging::MessageBatches
 StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest) {
   // TODO: consolidate duplicate code with handleDataEnumerationRequest2
-  LOG(LOG_TAG, debug) << "Received DataHistoryRequest2";
+  PEP_LOG(LogTag, Severity::Debug) << "Received DataHistoryRequest2";
 
   auto start_time = std::chrono::steady_clock::now();
   const auto& rootCAs = this->getRootCAs();

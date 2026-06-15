@@ -10,9 +10,9 @@ class AccessManager::Backend {
 public:
   class Storage; // Public to allow unit testing
 
-  struct pp_t {
-    pp_t() = default;
-    pp_t(PolymorphicPseudonym pp, bool isClientProvided)
+  struct Pp {
+    Pp() = default;
+    Pp(PolymorphicPseudonym pp, bool isClientProvided)
       : pp(pp), isClientProvided(isClientProvided) {}
     PolymorphicPseudonym pp;
     bool isClientProvided{}; // have we seen this pp before?
@@ -49,7 +49,7 @@ public:
   *        of the pps that are in the participantGroup.
   * \param pps Both an in and out parameter. Vector containing the loose requested polymorph pseudonyms. This vector is appended with the pps found in the requested participantGroups.
   */
-  std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<pp_t>& pps);
+  std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<Pp>& pps);
 
   /* !
   * \brief For each column in columns, look up the associated columngroups. Then check whether or not the userGroup has the required access to ANY of those columnGroups. If not, throw an error.

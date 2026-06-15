@@ -55,7 +55,7 @@ int SingleCellCommand::execute() {
       .flat_map([this, client, column](pep::PolymorphicPseudonym pp) {
       const auto& parameterValues = this->getParameterValues();
 
-      pep::requestTicket2Opts tOpts;
+      pep::RequestTicket2Opts tOpts;
       tOpts.pps = { pp };
       tOpts.columns = { column };
       tOpts.modes = this->ticketAccessModes();
@@ -105,7 +105,7 @@ std::vector<std::string> SingleCellModificationCommand::ticketAccessModes() cons
 }
 
 rxcpp::observable<pep::FakeVoid> SingleCellModificationCommand::processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) {
-  pep::storeData2Opts opts;
+  pep::StoreData2Opts opts;
   opts.ticket = pep::MakeSharedCopy(ticket);
   opts.forceTicket = true;
   return this->performModification(client, opts, pep::MakeSharedCopy(pp), column);

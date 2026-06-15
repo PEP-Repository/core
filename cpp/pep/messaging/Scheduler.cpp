@@ -4,9 +4,13 @@
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
 
-static const std::string LOG_TAG = "Messaging scheduler";
-
 namespace pep::messaging {
+
+namespace {
+
+const std::string LogTag = "Messaging scheduler";
+
+}
 
 Scheduler::Batch::Batch(MessageSequence messages)
   : messages(messages) {
@@ -24,7 +28,7 @@ Scheduler::Generator::~Generator() noexcept {
 }
 
 MessageId Scheduler::push(const StreamId& streamId, std::shared_ptr<std::string> request, std::optional<MessageBatches> tail) {
-  MessageId result(MessageType::REQUEST, streamId);
+  MessageId result(MessageType::Request, streamId);
   this->verifyNewMessageId(result);
 
   if (!tail) {
@@ -41,7 +45,7 @@ MessageId Scheduler::push(const StreamId& streamId, std::shared_ptr<std::string>
 }
 
 MessageId Scheduler::push(const StreamId& streamId, MessageBatches responses) {
-  MessageId result(MessageType::RESPONSE, streamId);
+  MessageId result(MessageType::Response, streamId);
   this->verifyNewMessageId(result);
   this->activateGenerator(result, responses);
   return result;
@@ -55,7 +59,7 @@ Scheduler::OutgoingMessage Scheduler::pop() {
 
   const auto& messageId = result.properties.messageId();
 
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   if (result.properties.flags().close()) {
     assert(!this->isScheduledMessageId(messageId));
   } else {
@@ -79,7 +83,7 @@ bool Scheduler::available() const noexcept {
 }
 
 bool Scheduler::hasPendingResponseFor(const StreamId& streamId) const {
-  return this->isScheduledMessageId(MessageId(MessageType::RESPONSE, streamId));
+  return this->isScheduledMessageId(MessageId(MessageType::Response, streamId));
 }
 
 void Scheduler::clear() {
@@ -159,7 +163,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
         if (e == nullptr) {
           e = std::make_exception_ptr(std::runtime_error("null exception ptr")); // So we don't notify our onError event with a nullptr
         }
-        else if (messageId.type() == MessageType::RESPONSE) { // Send Error details back to requestor
+        else if (messageId.type() == MessageType::Response) { // Send Error details back to requestor
           try {
             std::rethrow_exception(e);
           } catch (const Error& err) {
@@ -172,13 +176,13 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           }
         }
         else {
-          LOG(LOG_TAG, debug) << "Sending error flag to server";
+          PEP_LOG(LogTag, Severity::Debug) << "Sending error flag to server";
         }
 
         self->onError.notify(messageId, std::move(e)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
 
         if (serialized == nullptr) {
-          std::string message = messageId.type() == MessageType::RESPONSE
+          std::string message = messageId.type() == MessageType::Response
                                 ? "Internal server error"
                                 : "Internal error";
           serialized = MakeSharedCopy(Serialization::ToString(Error{std::move(message)}));

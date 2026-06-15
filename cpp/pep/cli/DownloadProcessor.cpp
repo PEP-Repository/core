@@ -15,7 +15,7 @@ using namespace pep::cli;
 
 namespace {
 
-const std::string LOG_TAG("DownloadProcessor");
+const std::string LogTag("DownloadProcessor");
 
 rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPayloadEntryBlindingTimestamps(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const VectorOfVectors<std::shared_ptr<EnumerateResult>>& metaEntries) {
   // Collect (IDs of) entries containing original payload
@@ -101,7 +101,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient
 
 rxcpp::observable<std::shared_ptr<IndexedTicket2>> DownloadProcessor::requestTicket(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx) {
   // First request a ticket
-  requestTicket2Opts tOpts;
+  RequestTicket2Opts tOpts;
   tOpts.pps = ctx->content.pps;
   tOpts.columns = ctx->content.columns;
   tOpts.columnGroups = ctx->content.columnGroups;
@@ -186,7 +186,7 @@ void DownloadProcessor::prepareLocalData(
             });
           if (update == downloads->cend()) {
             // Data should have been removed from the local copy, but it wasn't there
-            LOG(LOG_TAG + ":update", pep::warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
+            PEP_LOG(LogTag + ":update", Severity::Warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
               << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
@@ -199,7 +199,7 @@ void DownloadProcessor::prepareLocalData(
         if (!mDestination->update(existing, position->first)) {
           if (assumePristine) {
             // Data file should have been renamed in the local copy, but it wasn't there
-            LOG(LOG_TAG + ":update", pep::warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
+            PEP_LOG(LogTag + ":update", Severity::Warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
               << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
