@@ -941,12 +941,6 @@ macos-debug:
       "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
       --type local-recipes-index
       --force
-    - |
-      finish() {
-        # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
-        conan remote remove pep-local-recipes
-      }
-      trap finish EXIT
     - >
       conan install .
       --lockfile="docker-build/builder/conan/conan-ci.lock"
@@ -960,7 +954,14 @@ macos-debug:
       -o "&:with_tests=True"
       -o "&:with_benchmark=True"
       -o "&:custom_build_folder=True"
-      --output-folder=./$BUILD_DIRECTORY/
+      --output-folder=./$BUILD_DIRECTORY/ && true
+    - conan_error="$?"
+    # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+    - conan remote remove pep-local-recipes
+    - |
+      if [[ "$conan_error" != 0 ]]; then
+        exit "$conan_error"
+      fi
     - |
       if [[ -n "$CLEAN_CONAN" ]]; then
       echo 'Cleaning Conan cache.'
