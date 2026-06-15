@@ -103,7 +103,7 @@ upgrade_config_file() {
         .PageStore |
         (
           {
-            EndPoint: (.EndPoint | .Port |= tonumber),
+            EndPoint: (if .Endpoint then .EndPoint | .Port |= tonumber else {} end),
             Credentials: .Credentials,
             WriteToBucket: .["Write-To-Bucket"],
             ReadFromBuckets: .["Read-From-Buckets"]
@@ -145,8 +145,8 @@ upgrade_config_file() {
   if [ -z "${NO_VALIDATE-}" ] && ! "$script_dir/validate-config.sh" "$config_file.tmp"; then
     read -r -p "Failed to validate upgraded config $config_file.tmp (did you mean to set envvar NO_VALIDATE=1?). Proceed anyway [y/n]? " yn
     case $yn in
-      [Yy]* ) ;;
-      * ) exit 1 ;;
+    [Yy]*) ;;
+    *) exit 1 ;;
     esac
   fi
   mv -f -- "$config_file.tmp" "$config_file"
@@ -158,20 +158,20 @@ if [ -d "$config_file_or_folder" ]; then
   public_key_data="$(jq .SystemPublicKeys.PublicKeyData ./client/ClientConfig.json)"
   public_key_pseudonyms="$(jq .SystemPublicKeys.PublicKeyPseudonyms ./client/ClientConfig.json)"
   access_manager_end_point="$(jq .ServerEndPoints.AccessManager ./client/ClientConfig.json)"
-  
+
   # Find config files regardless of directory structure (e.g. pep-services subfolder).
   # Also include StorageFacility.local.json etc. for integration test config.
   find \
-      -name AccessManager.json \
-      -or -name Authserver.json \
-      -or -name KeyServer.json \
-      -or -name RegistrationServer.json \
-      -or -name StorageFacility.json \
-      -or -name 'StorageFacility.*.json' \
-      -or -name Transcryptor.json |
-  while read -r config_file; do
-    upgrade_config_file "$config_file" "$public_key_data" "$public_key_pseudonyms" "$access_manager_end_point"
-  done
+    -name AccessManager.json \
+    -or -name Authserver.json \
+    -or -name KeyServer.json \
+    -or -name RegistrationServer.json \
+    -or -name StorageFacility.json \
+    -or -name 'StorageFacility.*.json' \
+    -or -name Transcryptor.json |
+    while read -r config_file; do
+      upgrade_config_file "$config_file" "$public_key_data" "$public_key_pseudonyms" "$access_manager_end_point"
+    done
 else
   upgrade_config_file "$config_file_or_folder"
 fi
