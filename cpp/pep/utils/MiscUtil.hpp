@@ -76,7 +76,7 @@ template<typename T>
 template <typename Head, typename... Tail>
 [[nodiscard]] std::tuple<Tail...> TupleTail(std::tuple<Head, Tail...> tuple) {
   return std::apply([](const auto&, auto&&... tail) {
-      return std::tuple{std::move(tail)...};
+      return std::tuple{std::forward<decltype(tail)>(tail)...};
   }, std::move(tuple));
 }
 

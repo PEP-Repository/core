@@ -30,6 +30,7 @@ CallbackCoroutine<int> awaitMulti(std::function<void(int)>, std::function<void()
 }
 TEST(ObservableAwaiter, multi) {
   bool callbackRan = false;
+  //NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Assign) False positive in ObservableAwaiter with old Clang-Tidy 18
   awaitMulti([](int i) {
     FAIL() << "Should throw on multiple values, but got " << i;
   }, [&] {
