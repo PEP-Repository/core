@@ -59,9 +59,6 @@ if exist "%BUILD_DIR%" (
 
 echo Installing Conan packages.
 
-echo Registering local Conan recipes remote.
-conan remote add pep-local-recipes "%OwnDir%..\docker-build\builder\conan\local-recipes" --type local-recipes-index --force || exit /B 1
-
 REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
 pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
@@ -75,11 +72,8 @@ pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   -o "&:with_tests=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_benchmark=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:custom_build_folder=True" ^
-  --output-folder=.\%BUILD_DIR%\
-set conan_error=%ERRORLEVEL%
-REM Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
-conan remote remove pep-local-recipes
-if %conan_error% neq 0 exit /B 1
+  --output-folder=.\%BUILD_DIR%\ ^
+  || exit /B 1
 
 REM Put windeployqt and cmake in path
 call .\%BUILD_DIR%\generators\conanbuild.bat || exit /B 1

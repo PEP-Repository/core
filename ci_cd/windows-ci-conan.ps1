@@ -45,7 +45,13 @@ try {
     pipx upgrade conan
   }
 
-  conan @ConanArgs
+  conan remote add pep-local-recipes "$PSScriptRoot\..\docker-build\builder\conan\local-recipes" --type local-recipes-index --force
+  try {
+    conan @ConanArgs
+  } finally {
+    # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+    conan remote remove pep-local-recipes
+  }
 
   if (Test-Path env:CLEAN_CONAN) {
     echo 'Cleaning Conan cache.'
