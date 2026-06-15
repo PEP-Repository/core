@@ -75,8 +75,11 @@ pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
   -o "&:with_tests=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_benchmark=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:custom_build_folder=True" ^
-  --output-folder=.\%BUILD_DIR%\ ^
-  || exit /B 1
+  --output-folder=.\%BUILD_DIR%\
+set conan_error=%ERRORLEVEL%
+REM Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+conan remote remove pep-local-recipes
+if %conan_error% neq 0 exit /B 1
 
 REM Put windeployqt and cmake in path
 call .\%BUILD_DIR%\generators\conanbuild.bat || exit /B 1

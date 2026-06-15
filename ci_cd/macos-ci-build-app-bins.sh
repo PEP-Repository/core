@@ -48,6 +48,12 @@ else
     --type local-recipes-index \
     --force
 
+  finish() {
+    # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+    conan remote remove pep-local-recipes
+  }
+  trap finish EXIT
+
   echo "Installing Conan packages."
   # Set macOS version to prevent building things for different versions
   # We set build_type for build requirements as well (with :a), because macdeployqt copies its own dylibs,

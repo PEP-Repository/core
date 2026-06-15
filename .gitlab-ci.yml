@@ -941,6 +941,12 @@ macos-debug:
       "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
       --type local-recipes-index
       --force
+    - |
+      finish() {
+        # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+        conan remote remove pep-local-recipes
+      }
+      trap finish EXIT
     - >
       conan install .
       --lockfile="docker-build/builder/conan/conan-ci.lock"
