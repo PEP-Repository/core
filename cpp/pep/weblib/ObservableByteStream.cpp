@@ -18,7 +18,7 @@ using namespace emscripten;
 using namespace pep;
 
 namespace {
-const std::string LOG_TAG("ObservableByteStream");
+const std::string LogTag("ObservableByteStream");
 
 class ByteStreamSource : public boost::noncopyable {
   static std::atomic_flag warnedNoByobSupport;
@@ -39,20 +39,20 @@ public:
   void deleteSelf() {
     self.set("cancel", val::undefined()); // Prevent calling into freed object
     self.call<void>("delete"); // This deletes this, we must not access members after this
-    LOG(LOG_TAG, verbose) << "deleted self";
+    PEP_LOG(LogTag, Severity::Verbose) << "deleted self";
   }
 
   /// \param controller
   ///   <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableByteStreamController">ReadableByteStreamController</a>
   ///   | <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController">ReadableStreamDefaultController</a>
   void start(val controller) {
-    LOG(LOG_TAG, verbose) << this << " start() called";
+    PEP_LOG(LogTag, Severity::Verbose) << this << " start() called";
     assert(!subscription_.is_subscribed() && "Do not call start twice");
     controller_ = std::move(controller);
     val byteStreamControllerClass = val::global("ReadableByteStreamController");
     if ((!byteStreamControllerClass || !controller_.instanceof(byteStreamControllerClass))
         && !warnedNoByobSupport.test_and_set()) {
-      LOG(LOG_TAG, debug) << "ReadableStream BYOB mode not supported by browser, using less-efficient buffer-copying method";
+      PEP_LOG(LogTag, Severity::Debug) << "ReadableStream BYOB mode not supported by browser, using less-efficient buffer-copying method";
     }
     auto deleted = std::make_shared<bool>(false);
     auto subscription = data_
@@ -76,7 +76,7 @@ public:
               byobBuf.call<void>("set", std::move(chunkView));
               byobRequest.call<void>("respond", chunkSpan.size());
             } else {
-              LOG(LOG_TAG, debug) << this << " Provided buffer too small for chunk: "
+              PEP_LOG(LogTag, Severity::Debug) << this << " Provided buffer too small for chunk: "
                   << byobSize << "<" << chunkSpan.size() << ", allocating extra buffer";
 
               std::span
@@ -98,7 +98,7 @@ public:
           } else {
             // Only log if the browser supports BYOB mode
             if (byobRequest.isNull()) {
-              LOG(LOG_TAG, debug) << this << " No buffer provided, allocating new buffer";
+              PEP_LOG(LogTag, Severity::Debug) << this << " No buffer provided, allocating new buffer";
             }
 
             // Copy into new buffer
@@ -108,7 +108,7 @@ public:
         },
         // on error
         [this, deleted](std::exception_ptr ex) noexcept {
-          LOG(LOG_TAG, debug) << this << " on_error: " << GetExceptionMessage(ex);
+          PEP_LOG(LogTag, Severity::Debug) << this << " on_error: " << GetExceptionMessage(ex);
           try {
             std::rethrow_exception(std::move(ex)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
           } catch (...) {
@@ -121,7 +121,7 @@ public:
         },
         // on completed
         [this, deleted]() noexcept {
-           LOG(LOG_TAG, verbose) << this << " on_completed";
+           PEP_LOG(LogTag, Severity::Verbose) << this << " on_completed";
            controller_.call<void>("close");
            *deleted = true;
            deleteSelf();
@@ -130,12 +130,12 @@ public:
     if (!*deleted) {
       subscription_ = std::move(subscription);
     } else {
-      LOG(LOG_TAG, verbose) << this << " completed immediately in start()";
+      PEP_LOG(LogTag, Severity::Verbose) << this << " completed immediately in start()";
     }
   }
 
   void cancel(const val& reason) {
-    LOG(LOG_TAG, debug) << this << " cancel() called, reason: " << val::global("String")(reason).as<std::string>();
+    PEP_LOG(LogTag, Severity::Debug) << this << " cancel() called, reason: " << val::global("String")(reason).as<std::string>();
     subscription_.unsubscribe();
     deleteSelf();
   }

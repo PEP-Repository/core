@@ -297,20 +297,20 @@ public:
   void consume(const boost::log::record_view& rec, const string_type& line) {
     thread_local const auto console = emscripten::val::global("console");
     switch (*rec[severity]) {
-    case verbose:
+    case Severity::Verbose:
       console.call<void>("debug", line);
       return;
-    case debug:
+    case Severity::Debug:
       console.call<void>("log", line);
       return;
-    case info:
+    case Severity::Info:
       console.call<void>("info", line);
       return;
-    case warning:
+    case Severity::Warning:
       console.call<void>("warn", line);
       return;
-    case error:
-    case critical:
+    case Severity::Error:
+    case Severity::Critical:
       console.call<void>("error", line);
       return;
     }

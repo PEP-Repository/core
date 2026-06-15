@@ -43,7 +43,7 @@ using namespace std::literals;
 using namespace std::ranges;
 
 namespace {
-const std::string LOG_TAG = "Weblib";
+const std::string LogTag = "Weblib";
 
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
   friend class SharedConstructor;
@@ -72,13 +72,13 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Run event loop in background thread. Calls from JS will still come from the main thread.
     thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
       ThreadName::Set("Client");
-      LOG(LOG_TAG, debug) << "starting io_context " << io_context << " on thread " << ThreadPrintable{};
+      PEP_LOG(LogTag, Severity::Debug) << "starting io_context " << io_context << " on thread " << ThreadPrintable{};
       std::stop_callback onStop(std::move(stop), [io_context] {
-        LOG(LOG_TAG, debug) << "stopping io_context...";
+        PEP_LOG(LogTag, Severity::Debug) << "stopping io_context...";
         io_context->stop();
       });
       io_context->run();
-      LOG(LOG_TAG, debug) << "io_context stopped";
+      PEP_LOG(LogTag, Severity::Debug) << "io_context stopped";
     });
   }
 
@@ -103,11 +103,11 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
         (const std::pair<std::string, ConnectionStatus>& pair) {
               auto& [server, status] = pair;
               if (status.connected) {
-                LOG(LOG_TAG, debug) << "Reconnected to " << server;
+                PEP_LOG(LogTag, Severity::Debug) << "Reconnected to " << server;
                 disconnectedServers->erase(server);
               } else {
                 if (disconnectedServers->insert(server).second) {
-                  LOG(LOG_TAG, debug) << "Lost connection to " << server;
+                  PEP_LOG(LogTag, Severity::Debug) << "Lost connection to " << server;
                 }
               }
               return disconnectedServers->empty();
@@ -190,7 +190,7 @@ public:
             }
           })
           .map([](const EnrolledPartyKeys&) {
-            LOG(LOG_TAG, pep::info) << "Completed enrollment!";
+            PEP_LOG(LogTag, Severity::Info) << "Completed enrollment!";
             return FakeVoid{};
           });
     }
@@ -206,7 +206,7 @@ public:
 
     /// Call on successful authentication
     WeblibApiVoidPromise completeAuthentication(std::string code) {
-      LOG(LOG_TAG, debug) << "completeAuthentication";
+      PEP_LOG(LogTag, Severity::Debug) << "completeAuthentication";
       rxcpp::observable<>::just(AuthorizationResult::Success(std::move(code)))
           .subscribe(authorizationCodeChan_.get_subscriber());
       co_await run_;
@@ -214,7 +214,7 @@ public:
 
     /// Call on authentication failure
     WeblibApiVoidPromise failAuthentication(std::string error, std::string errorDescription) {
-      LOG(LOG_TAG, debug) << "failAuthentication";
+      PEP_LOG(LogTag, Severity::Debug) << "failAuthentication";
       rxcpp::observable<>::just(AuthorizationResult::Failure(std::make_exception_ptr(
               OAuthError(std::move(error), std::move(errorDescription)))))
           .subscribe(authorizationCodeChan_.get_subscriber());
@@ -224,7 +224,7 @@ public:
 
   /// Start OAuth authentication flow
   OAuthClient authenticate(std::string redirectUri, std::string state, val openAuthPage) {
-    LOG(LOG_TAG, debug) << "authenticate";
+    PEP_LOG(LogTag, Severity::Debug) << "authenticate";
     return OAuthClient(shared_from_this(), std::move(redirectUri), std::move(state), std::move(openAuthPage));
   }
 
@@ -301,7 +301,7 @@ public:
                        .as_dynamic();
 
           return pps.flat_map([self, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
-            return self->client_->requestTicket2(requestTicket2Opts{
+            return self->client_->requestTicket2(RequestTicket2Opts{
                 .participantGroups = std::move(query->subjectGroups).value_or(std::vector<std::string>{}),
                 .pps = std::move(*pps),
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
@@ -374,14 +374,14 @@ public:
                             },
                             // on error
                             [cellStreams](const std::exception_ptr& ex) noexcept {
-                              LOG(LOG_TAG, debug) << "Error retrieving file pages: " << GetExceptionMessage(ex);
+                              PEP_LOG(LogTag, Severity::Debug) << "Error retrieving file pages: " << GetExceptionMessage(ex);
                               for (auto& stream: *cellStreams) {
                                 // Only when on_completed has not been called
                                 if (stream.get_subscription().is_subscribed()) {
                                   stream.get_subscriber().on_error(ex);
                                 }
                               }
-                              LOG(LOG_TAG, debug) << "Closed non-completed streams";
+                              PEP_LOG(LogTag, Severity::Debug) << "Closed non-completed streams";
                             },
                             // on completed
                             [cellStreams]() noexcept {
@@ -389,7 +389,7 @@ public:
                                 assert(!stream.get_subscription().is_subscribed()
                                     && "Not all files were completed?");
                               }
-                              LOG(LOG_TAG, debug) << "Completed retrieve";
+                              PEP_LOG(LogTag, Severity::Debug) << "Completed retrieve";
                             });
                     return rxcpp::observable<>::iterate(std::move(cellDatas));
                   });
@@ -458,11 +458,11 @@ int main() {
   const bool isWeb = val::global("process").isUndefined();
   if (isWeb) {
     // Can likely be filtered via browser console (labeled 'debug', see JsConsoleLogging)
-    Logging::Initialize({std::make_shared<JsConsoleLogging>(verbose)});
+    Logging::Initialize({std::make_shared<JsConsoleLogging>(Severity::Verbose)});
   } else {
     // Do not use console.log on Node as messages from worker threads will not immediately be printed
     // See https://github.com/nodejs/node/issues/30491
-    Logging::Initialize({std::make_shared<ConsoleLogging>(verbose)});
+    Logging::Initialize({std::make_shared<ConsoleLogging>(Severity::Verbose)});
   }
 
   // We exit `main`, but keep the runtime alive. That is, global destructors are not run,

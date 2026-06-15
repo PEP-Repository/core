@@ -15,7 +15,7 @@ using namespace emscripten;
 using namespace pep;
 
 namespace {
-const std::string LOG_TAG("ObservableStream");
+const std::string LogTag("ObservableStream");
 
 class StreamSource : public boost::noncopyable {
   rxcpp::observable<val> data_;
@@ -31,12 +31,12 @@ public:
   void deleteSelf() {
     self.set("cancel", val::undefined()); // Prevent calling into freed object
     self.call<void>("delete"); // Deletes `this`, we must not access members afterwards
-    LOG(LOG_TAG, verbose) << this << " deleted self";
+    PEP_LOG(LogTag, Severity::Verbose) << this << " deleted self";
   }
 
   /// \param controller <a href="https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamDefaultController">ReadableStreamDefaultController</a>
   void start(val controller) {
-    LOG(LOG_TAG, verbose) << this << " start() called";
+    PEP_LOG(LogTag, Severity::Verbose) << this << " start() called";
     assert(!subscription_.is_subscribed() && "Do not call start twice");
     controller_ = std::move(controller);
     auto deleted = std::make_shared<bool>(false);
@@ -48,7 +48,7 @@ public:
         },
         // on error
         [this, deleted](std::exception_ptr ex) noexcept {
-          LOG(LOG_TAG, debug) << this << " on_error: " << GetExceptionMessage(ex);
+          PEP_LOG(LogTag, Severity::Debug) << this << " on_error: " << GetExceptionMessage(ex);
           try {
             std::rethrow_exception(std::move(ex)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
           } catch (...) {
@@ -61,7 +61,7 @@ public:
         },
         // on completed
         [this, deleted]() noexcept {
-          LOG(LOG_TAG, verbose) << this << " on_completed";
+          PEP_LOG(LogTag, Severity::Verbose) << this << " on_completed";
           controller_.call<void>("close");
           *deleted = true;
           deleteSelf();
@@ -70,12 +70,12 @@ public:
     if (!*deleted) {
       subscription_ = std::move(subscription);
     } else {
-      LOG(LOG_TAG, verbose) << this << " completed immediately in start()";
+      PEP_LOG(LogTag, Severity::Verbose) << this << " completed immediately in start()";
     }
   }
 
   void cancel(const val& reason) {
-    LOG(LOG_TAG, debug) << this << " cancel() called, reason: " << val::global("String")(reason).as<std::string>();
+    PEP_LOG(LogTag, Severity::Debug) << this << " cancel() called, reason: " << val::global("String")(reason).as<std::string>();
     // This is not ideal, as it may leak ClassHandles that haven't been enqueud yet.
     // However, even if we'd re-subscribe, already-enqueued objects would be lost.
     subscription_.unsubscribe();
