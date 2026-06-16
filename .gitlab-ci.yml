@@ -772,7 +772,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $UNIT_TESTS_CASTOR
 
 ubuntu-lts-release-manual-lint:
-  extends: ubuntu-lts-release-base
+  extends: .ubuntu-lts-release-base
   rules:
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       when: manual
