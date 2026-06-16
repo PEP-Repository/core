@@ -69,7 +69,7 @@ protected:
 
 class CommandUser::UserUpdateExpirationSubCommand : public CommandUser::UserGroupUserSubCommand {
 public:
-  UserUpdateExpirationSubCommand(CommandUser& parent) : CommandUser::UserGroupUserSubCommand("updateExpiration", "Add user to a group", parent) {};
+  UserUpdateExpirationSubCommand(CommandUser& parent) : CommandUser::UserGroupUserSubCommand("updateExpiration", "Update expiration of membership of a user of a group", parent) {};
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override;

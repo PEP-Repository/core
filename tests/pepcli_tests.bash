@@ -514,13 +514,19 @@ if should_run_test user-removal-and-expiration; then
 
   expiration="$(date -d "now+5 seconds" +%s)"
   pepcli --oauth-token-group "Access Administrator" user addTo --expiration-unixtime "$expiration" test-user test-group
-  token="$(pepcli token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "$(date -d "now+10 years" +%s)")"
   while [ "$(date -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
     pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
-    sleep 1s
+    trace sleep 1s
   done
-  sleep 1s
+  trace sleep 1s
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
+  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration-unixtime "$(date -d "now+10 years" +%s)" test-user test-group \
+    && fail "Shouldn't be able to update expiration for a user group membership that already expired"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration-unixtime "$(date -d "now+10 years" +%s)" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
+  pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
 
   test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
