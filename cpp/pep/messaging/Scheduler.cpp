@@ -60,11 +60,11 @@ Scheduler::OutgoingMessage Scheduler::pop() {
   const auto& messageId = result.properties.messageId();
 
 #if PEP_BUILD_HAS_DEBUG_FLAVOR()
-  if (HasFlags(result.properties.flags().bits(), Flags::Bits::Close)) {
+  if (result.properties.flags().has(Flags::Bits::Close)) {
     assert(!this->isScheduledMessageId(messageId));
   } else {
     auto closeLater = std::ranges::any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) {
-      return candidate.properties.messageId() == messageId && HasFlags(candidate.properties.flags().bits(), Flags::Bits::Close);
+      return candidate.properties.messageId() == messageId && candidate.properties.flags().has(Flags::Bits::Close);
       });
     // check if the stream is closed in a later packet in the queue
     // or that there is an observable

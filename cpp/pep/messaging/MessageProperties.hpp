@@ -52,7 +52,8 @@ public:
   /// Throws std::invalid_argument if the combination of bits is not valid
   explicit constexpr Flags(Bits bits): mBits(bits) { AssertValidCombination(mBits); };
 
-  constexpr Bits bits() const noexcept { return mBits; }
+  [[nodiscard]] constexpr Bits bits() const noexcept { return mBits; }
+  [[nodiscard]] constexpr bool has(Bits) const noexcept;
 
   std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
@@ -74,6 +75,8 @@ std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
 PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags::Bits)
 
 namespace pep::messaging {
+
+inline constexpr bool Flags::has(Flags::Bits bits) const noexcept { return HasFlags(mBits, bits); }
 
 // Remaining bits in EncodedMessageProperties represent a unique (serial) number for every request+response cycle
 class StreamId {
