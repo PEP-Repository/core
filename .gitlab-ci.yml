@@ -740,15 +740,20 @@ ubuntu-lts-debug-with-sast:
     paths:
       - $STAGING_DIRECTORY
 
-# Builds (and optionally lints) binaries for ubuntu-lts-release
-ubuntu-lts-release-$[[ inputs.autolinting ]]:
+.ubuntu-lts-release-base:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
+
+# Builds (and optionally lints) binaries for ubuntu-lts-release
+ubuntu-lts-release-$[[ inputs.autolinting ]]:
+  extends:
+    - .ubuntu-lts-release-base
     - .set-enable-linter-and-terminate-rules
   variables:
     WITH_BENCHMARK: "True"
     WITH_CASTOR: "True"
+    MEM_ANALYSIS_TOOL: "valgrind"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
       $EXECUTABLES_APPS
@@ -765,10 +770,9 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
-    MEM_ANALYSIS_TOOL: "valgrind"
 
 ubuntu-lts-release-manual-lint:
-  extends: ubuntu-lts-release-$[[ inputs.autolinting ]]
+  extends: ubuntu-lts-release-base
   rules:
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       when: manual
@@ -776,13 +780,12 @@ ubuntu-lts-release-manual-lint:
     - when: never
   variables:
     ENABLE_LINTER: yes
-    ARTIFACTS: ""
-    TESTS: ""
+    WITH_BENCHMARK: "True"
+    WITH_CASTOR: "True"
 
 ubuntu-lts-release-without-castor:
   extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-release-settings
+    - .ubuntu-lts-release-base
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
@@ -809,26 +812,31 @@ ubuntu-lts-release-without-castor:
     WITH_CASTOR: "True"
     WITH_TESTS: "True"
     WITH_BENCHMARK: "False"
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_SERVER
-      $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
 
-# Builds (and optionally lints) binaries for ubuntu-rolling-debug
-ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
+.ubuntu-rolling-debug-base:
   extends:
     - .ubuntu-build-base
     - .ubuntu-rolling-settings
-  rules:
-    - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     VERIFY_HEADERS_STANDALONE: "off"
 
+# Builds (and optionally lints) binaries for ubuntu-rolling-debug
+ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
+  extends:
+    - .ubuntu-rolling-debug-base
+  rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
+  variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
+
 ubuntu-rolling-debug-manual-lint:
-  extends: ubuntu-rolling-debug-$[[ inputs.autolinting ]]
+  extends: .ubuntu-rolling-debug-base
   rules:
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       when: manual
@@ -836,8 +844,6 @@ ubuntu-rolling-debug-manual-lint:
     - when: never
   variables:
     ENABLE_LINTER: yes
-    ARTIFACTS: ""
-    TESTS: ""
 
 ubuntu-rolling-release:
   extends:
@@ -848,6 +854,10 @@ ubuntu-rolling-release:
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     VERIFY_HEADERS_STANDALONE: "on"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
 
 #################### Python Packages ####################
 
