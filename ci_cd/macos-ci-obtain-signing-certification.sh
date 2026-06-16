@@ -9,24 +9,33 @@ PEP_KEYCHAIN="$HOME/Library/Keychains/pep.keychain-db"
 if [[ "${CI:-false}" == "true" ]]; then
   echo "Obtaining the signing certificate for macOS"
 
-  required_vars=("GITLAB_CI_MACOS_CERTIFICATE_APP" \
+  required_vars=("GITLAB_CI_MACOS_CERTIFICATE_APP_FILE" \
                 "GITLAB_CI_MACOS_DEVELOPER_NAME" \
                 "GITLAB_CI_MACOS_DEVELOPER_ID" \
-                "GITLAB_CI_MACOS_CERTIFICATE_INSTALL" \
+                "GITLAB_CI_MACOS_CERTIFICATE_INSTALL_FILE" \
                 "GITLAB_CI_MACOS_CERTIFICATE_PWD" \
                 "GITLAB_CI_MACOS_KEYCHAIN_PWD" \
-                "GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA" \
-                "GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA"
+                "GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA_FILE" \
+                "GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA_FILE"
                 )
 
-  # GITLAB_CI_MACOS_CERTIFICATE_APP: Contains the the base64 of the application certificate
+  # GITLAB_CI_MACOS_CERTIFICATE_APP_FILE: Contains path to the application certificate
   # GITLAB_CI_MACOS_CERTIFICATE_APP_NAME: Contains the full certificate name, such as Developer ID Application: Your Name (K1234567)
-  # GITLAB_CI_MACOS_CERTIFICATE_INSTALL: Contains the base64 of the installer certificate
+  # GITLAB_CI_MACOS_CERTIFICATE_INSTALL_FILE: Contains path to the installer certificate
   # GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME: Contains the full certificate name, such as Developer ID Installer: Your Name (K1234567)
   # GITLAB_CI_MACOS_CERTIFICATE_PWD: Contains the password entered when exporting the certificate from the Keychain Access app
   # GITLAB_CI_MACOS_KEYCHAIN_PWD: Contains a randomly generated password for the temporary keychain
-  # GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA: Contains the base64 of the Developer ID Certification Authority certificate
-  # GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA: Contains the base64 of the Apple Root CA certificate
+  # GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA_FILE: Contains path to the Developer ID Certification Authority certificate
+  # GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA_FILE: Contains path to the Apple Root CA certificate
+
+  # Note on certificate files: These can be DER or PEM and can also contain (encrypted) private keys.
+  # We use PEM, because the text format allows it to be entered into a GitLab (file) CI variable.
+  # To convert a DER certificate to PEM, use `openssl x509 -in cert.der -out cert.pem`
+  # To convert a DER certificate + key to PEM, use `openssl pkcs12 -in cert.der -out cert.pem -legacy -noenc`.
+  # To then re-encrypt the private key, use `openssl pkcs8 -in cert.pem -out key.pem -topk8 -v1 PBE-SHA1-3DES` and
+  # replace the ENCRYPTED PRIVATE KEY part in cert.pem.
+  # Note that we cannot use the newer PEM encryption algorithm that `openssl pkcs12` would use without `-noenc`,
+  # because the `security import` command does not support it.
 
   for var in "${required_vars[@]}"; do
     if [[ -z "${!var}" ]]; then
@@ -70,12 +79,10 @@ if [[ "${CI:-false}" == "true" ]]; then
   fi
 
   install_cert_if_missing() {
-    local cert_base64="$1"
-    local cert_file="$2"
-    local keychain="$3"
-    local check_type="$4"      # "identity" or "certificate"
-    local check_value="$5"     # Name/identifier to check for
-    shift 5
+    local cert_file="$1"; shift
+    local keychain="$1"; shift
+    local check_type="$1"; shift      # "identity" or "certificate"
+    local check_value="$1"; shift     # Name/identifier to check for
     local security_args=("$@")
 
     echo "Checking for $check_value in keychain"
@@ -97,18 +104,16 @@ if [[ "${CI:-false}" == "true" ]]; then
     fi
 
     echo "Importing $check_value"
-    echo "$cert_base64" | base64 --decode > "$cert_file"
     security -v import "$cert_file" -k "$keychain" "${security_args[@]}"
-    rm -f "$cert_file"
   }
 
-  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APP" app_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APP_FILE" "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
 
-  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL" install_cert.p12 "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
+  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_FILE" "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
 
-  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA" dev_id_ca.cer "$PEP_KEYCHAIN" certificate "Developer ID Certification Authority" -A
+  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA_FILE" "$PEP_KEYCHAIN" certificate "Developer ID Certification Authority" -A
 
-  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA" apple_root_ca.cer "$PEP_KEYCHAIN" certificate "Apple Root CA" -A
+  install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APPLE_ROOT_CA_FILE" "$PEP_KEYCHAIN" certificate "Apple Root CA" -A
 
   # Determine which operations are allowed without requiring the user to manually unlock the keychain.
   security -v set-key-partition-list -S apple-tool:,apple:,codesign:,productsign:,pkgbuild: -s -k "$GITLAB_CI_MACOS_KEYCHAIN_PWD" "$PEP_KEYCHAIN" >/dev/null
