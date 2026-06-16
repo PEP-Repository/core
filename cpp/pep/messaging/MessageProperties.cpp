@@ -5,6 +5,9 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
+
+#include <boost/algorithm/string/join.hpp>
 
 namespace pep::messaging {
 
@@ -85,17 +88,11 @@ void Flags::AssertValidCombination(Flags::Bits flags) {
 }
 
 std::ostream& operator<<(std::ostream& out, Flags::Bits flags) {
-  bool first = true;
-  out << '{';
-  auto printFlag = [&](std::string_view flag) {
-    if (!std::exchange(first, false)) { out << ", "; }
-    out << flag;
-  };
-  if (HasFlags(flags, Flags::Bits::Close)) { printFlag("close"); }
-  if (HasFlags(flags, Flags::Bits::Error)) { printFlag("error"); }
-  if (HasFlags(flags, Flags::Bits::Payload)) { printFlag("payload"); }
-  out << '}';
-  return out;
+  std::vector<std::string> flagNames;
+  if (HasFlags(flags, Flags::Bits::Close)) { flagNames.push_back("close"); }
+  if (HasFlags(flags, Flags::Bits::Error)) { flagNames.push_back("error"); }
+  if (HasFlags(flags, Flags::Bits::Payload)) { flagNames.push_back("payload"); }
+  return out << '{' << boost::algorithm::join(flagNames, ", ") << '}';
 }
 
 EncodedMessageProperties MessageId::encode() const noexcept {
