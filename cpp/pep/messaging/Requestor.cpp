@@ -75,6 +75,8 @@ rxcpp::observable<std::string> Requestor::send(std::shared_ptr<std::string> requ
 }
 
 void Requestor::processResponse(const std::string& recipient, const StreamId& streamId, const Flags& flags, std::string body) {
+  assert(!flags.has(Flags::Bits::Error) || flags.has(Flags::Bits::Close)); // cannot have error bit without close bit
+
   auto it = entries_.find(streamId);
   if (it == entries_.end()) {
     PEP_LOG(LogTag, Severity::Warning) << "received response for non existent stream: " << streamId << " (to " << recipient << ")";
@@ -84,21 +86,17 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
   // got response, send it back using the rx subscriber
   auto subscriber = it->second.subscriber;
 
-  bool close = HasFlags(flags.bits(), Flags::Bits::Close);
-  bool error = HasFlags(flags.bits(), Flags::Bits::Error);
-  bool payload = HasFlags(flags.bits(), Flags::Bits::Payload);
-
-  if (error || close) {
+  if (flags.has(Flags::Bits::Close)) {
     entries_.erase(it);
   }
   PEP_DEFER(
-    if (error || close) {
+    if (flags.has(Flags::Bits::Close)) {
       PEP_LOG(LogTag, Severity::Verbose)
         << "Closed stream " << streamId
         << " (to " << recipient << ")";
     });
 
-  if (error) {
+  if (flags.has(Flags::Bits::Error)) {
     auto err = Error::ReconstructIfDeserializable(body);
     if (err == nullptr) {
       // Backward compatible: if no Error instance could be deserialized, report on an empty instance
@@ -110,9 +108,9 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
       << GetExceptionMessage(err);
     subscriber.on_error(err);
   } else {
-    if (payload)
+    if (flags.has(Flags::Bits::Payload))
       subscriber.on_next(std::move(body));
-    if (close)
+    if (flags.has(Flags::Bits::Close))
       subscriber.on_completed();
   }
 }
