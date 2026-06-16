@@ -38,28 +38,40 @@ private:
   Value value_;
 };
 
-
 // (The next-highest) three bits in EncodedMessageProperties are used for state-related flags
-enum class PEP_ATTRIBUTE_FLAG_ENUM Flags {
-  None    = 0,
-  Close   = 0b100, ///< This is the last piece of the (possibly multi-part) message
-  Error   = 0b010, ///< The sending party encountered an error. Implies Close.
-  Payload = 0b001, ///< The message includes content
-  All     = 0b111,
+class Flags final {
+public:
+  enum class PEP_ATTRIBUTE_FLAG_ENUM Bits {
+    None    = 0,
+    Close   = 0b100, ///< This is the last piece of the (possibly multi-part) message
+    Error   = 0b010, ///< The sending party encountered an error. Implies Close.
+    Payload = 0b001, ///< The message includes content
+    All     = 0b111,
+  };
+
+  /// Throws std::invalid_argument if the combination of bits is not valid
+  explicit constexpr Flags(Bits bits): mBits(bits) { AssertValidCombination(mBits); };
+
+  constexpr Bits bits() const noexcept { return mBits; }
+
+  std::strong_ordering operator <=>(const Flags&) const noexcept = default;
+
+private:
+  /// Throws std::invalid_argument if the combination of bits is not valid
+  static void AssertValidCombination(Bits);
+
+  Bits mBits;
 };
 
-/// Throws std::invalid_argument if \p flags if the combination of values is not invalid
-void AssertValidCombination(Flags flags);
-
-constexpr EncodedMessageProperties Encode(Flags flags) noexcept {
+constexpr EncodedMessageProperties Encode(Flags::Bits flags) noexcept {
   return static_cast<EncodedMessageProperties>(ToUnderlying(flags)) << 28U;
 }
 
-std::ostream& operator<<(std::ostream& out, Flags flags);
+std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
 
 } // namespace pep::messaging
 
-PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags)
+PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags::Bits)
 
 namespace pep::messaging {
 

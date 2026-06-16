@@ -33,11 +33,11 @@ MessageId Scheduler::push(const StreamId& streamId, std::shared_ptr<std::string>
 
   if (!tail) {
     // We'll only send a single message: close stream immediately
-    this->emplaceOutgoing(result, Flags::Payload | Flags::Close, request);
+    this->emplaceOutgoing(result, Flags{Flags::Bits::Payload | Flags::Bits::Close}, request);
   } else {
     // There's more to this request: we'll send tail entries later
     generators_[result]; // make sure (entry for) this generator exists so that assertion is satisfied if the (non-final) head message is pop()ped before we can activate the generator
-    this->emplaceOutgoing(result, Flags::Payload, request);
+    this->emplaceOutgoing(result, Flags{Flags::Bits::Payload}, request);
     this->activateGenerator(result, *tail);
   }
 
@@ -60,11 +60,11 @@ Scheduler::OutgoingMessage Scheduler::pop() {
   const auto& messageId = result.properties.messageId();
 
 #if PEP_BUILD_HAS_DEBUG_FLAVOR()
-  if (HasFlags(result.properties.flags(), Flags::Close)) {
+  if (HasFlags(result.properties.flags().bits(), Flags::Bits::Close)) {
     assert(!this->isScheduledMessageId(messageId));
   } else {
     auto closeLater = std::ranges::any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) {
-      return candidate.properties.messageId() == messageId && HasFlags(candidate.properties.flags(), Flags::Close);
+      return candidate.properties.messageId() == messageId && HasFlags(candidate.properties.flags().bits(), Flags::Bits::Close);
       });
     // check if the stream is closed in a later packet in the queue
     // or that there is an observable
@@ -153,7 +153,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
     .subscribe(
       // on_next
       [messageId, self](std::shared_ptr<std::string> message) {
-        self->emplaceOutgoing(messageId, Flags::Payload, message);
+        self->emplaceOutgoing(messageId, Flags{Flags::Bits::Payload}, message);
       },
 
       // on_error
@@ -188,7 +188,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           serialized = MakeSharedCopy(Serialization::ToString(Error{std::move(message)}));
         }
         self->generators_.erase(messageId);
-        self->emplaceOutgoing(messageId, Flags::Error | Flags::Close, serialized);
+        self->emplaceOutgoing(messageId, Flags{Flags::Bits::Error | Flags::Bits::Close}, serialized);
       },
 
       // on_complete
@@ -201,13 +201,13 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           // try to reuse a packet already in the outgoing_ queue
           for (auto it = self->outgoing_.rbegin(); it != self->outgoing_.rend(); ++it) {
             if (it->properties.messageId() == messageId) {
-              it->properties = MessageProperties(it->properties.messageId(), it->properties.flags() | Flags::Close);
+              it->properties = MessageProperties(it->properties.messageId(), Flags{it->properties.flags().bits() | Flags::Bits::Close});
               adjustedInlinePayload = true;
               break;
             }
           }
           if (!adjustedInlinePayload) {
-            self->emplaceOutgoing(messageId, Flags::Close, std::make_shared<std::string>(""));
+            self->emplaceOutgoing(messageId, Flags{Flags::Bits::Close}, std::make_shared<std::string>(""));
           }
         } else {
           // erase current observable (because it is not active anymore)

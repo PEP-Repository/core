@@ -336,7 +336,7 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
   }
   else {
     MessageSequence tail;
-    if (HasFlags(flags, Flags::Close)) {
+    if (HasFlags(flags.bits(), Flags::Bits::Close)) {
       // An empty request with a close flag for an unknown stream can safely
       // be ignored, and is probably a superfluous close message, see #1188.
       if (abValue->size() == 0) {
@@ -370,13 +370,14 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
 }
 
 void Connection::IncomingRequestTail::handleChunk(const Flags& flags, std::shared_ptr<std::string> chunk) {
-  if (HasFlags(flags, Flags::Payload)) {
+  if (HasFlags(flags.bits(), Flags::Bits::Payload)) {
     if (subscriber_) {
+      subscriber_->on_next(std::move(chunk));
     } else {
       queuedItems_.emplace_back(std::move(chunk));
     }
   }
-  if (HasFlags(flags, Flags::Error)) {
+  if (HasFlags(flags.bits(), Flags::Bits::Error)) {
     if (subscriber_) {
       //TODO Why nullptr? Deserialize Error or pass some runtime_error instead?
       PEP_LOG(LogTag, Severity::Warning) << "Received error chunk in request tail";
@@ -384,7 +385,7 @@ void Connection::IncomingRequestTail::handleChunk(const Flags& flags, std::share
     } else {
       error_ = true;
     }
-  } else if (HasFlags(flags, Flags::Close)) {
+  } else if (HasFlags(flags.bits(), Flags::Bits::Close)) {
     if (subscriber_) {
       subscriber_->on_completed();
     } else {
@@ -715,7 +716,7 @@ void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_pt
 }
 
 void Connection::IncomingRequestTail::abort() {
-  this->handleChunk(Flags::Error | Flags::Close, pep::MakeSharedCopy(std::string()));
+  this->handleChunk(Flags{Flags::Bits::Error | Flags::Bits::Close}, pep::MakeSharedCopy(std::string()));
 }
 
 }

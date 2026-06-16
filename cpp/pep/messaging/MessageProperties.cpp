@@ -21,10 +21,10 @@ constexpr EncodedMessageProperties FlagError = 0x20000000; // The sending party 
 constexpr EncodedMessageProperties FlagPayload = 0x10000000; // The message includes content
 constexpr EncodedMessageProperties FlagBits = FlagClose | FlagError | FlagPayload;
 
-static_assert(FlagClose == Encode(Flags::Close));
-static_assert(FlagError == Encode(Flags::Error));
-static_assert(FlagPayload == Encode(Flags::Payload));
-static_assert(FlagBits == Encode(Flags::All));
+static_assert(FlagClose == Encode(Flags::Bits::Close));
+static_assert(FlagError == Encode(Flags::Bits::Error));
+static_assert(FlagPayload == Encode(Flags::Bits::Payload));
+static_assert(FlagBits == Encode(Flags::Bits::All));
 
 // MessageProperties uses remaining bits for a unique (serial) number for every request+response cycle
 constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits);
@@ -71,29 +71,29 @@ EncodedMessageProperties MessageType::encode() const noexcept {
   return NoMessagePropertyBits;
 }
 
-void AssertValidCombination(Flags flags) {
+void Flags::AssertValidCombination(Flags::Bits flags) {
   const auto ErrorMessage = [&](std::string_view reason) -> std::string{
     return (std::ostringstream{} << "Invalid Flag Combiation " << flags << " - " << reason).str();
   };
 
-  if (HasFlags(flags, Flags::Error) && !HasFlags(flags, Flags::Close)) {
+  if (HasFlags(flags, Flags::Bits::Error) && !HasFlags(flags, Flags::Bits::Close)) {
     throw std::invalid_argument(ErrorMessage("cannot have 'error' without 'close' flag"));
   }
-  if (HasFlags(flags, Flags::Error | Flags::Payload)) {
+  if (HasFlags(flags, Flags::Bits::Error | Flags::Bits::Payload)) {
     throw std::invalid_argument(ErrorMessage("cannot combine 'payload' with 'close' flag"));
   }
 }
 
-std::ostream& operator<<(std::ostream& out, Flags flags) {
+std::ostream& operator<<(std::ostream& out, Flags::Bits flags) {
   bool first = true;
   out << '{';
   auto printFlag = [&](std::string_view flag) {
     if (!std::exchange(first, false)) { out << ", "; }
     out << flag;
   };
-  if (HasFlags(flags, Flags::Close)) { printFlag("close"); }
-  if (HasFlags(flags, Flags::Error)) { printFlag("error"); }
-  if (HasFlags(flags, Flags::Payload)) { printFlag("payload"); }
+  if (HasFlags(flags, Flags::Bits::Close)) { printFlag("close"); }
+  if (HasFlags(flags, Flags::Bits::Error)) { printFlag("error"); }
+  if (HasFlags(flags, Flags::Bits::Payload)) { printFlag("payload"); }
   out << '}';
   return out;
 }
@@ -139,12 +139,11 @@ MessageId MessageId::MakeForControlMessage() noexcept {
 
 MessageProperties::MessageProperties(MessageId messageId, Flags flags)
   : messageId_(messageId), flags_(flags) {
-  AssertValidCombination(flags_);
-  assert(flags_ == Flags::None || messageId_.type().value() != MessageType::Control);
+  assert(flags_.bits() == Flags::Bits::None || messageId_.type().value() != MessageType::Control);
 }
 
 EncodedMessageProperties MessageProperties::encode() const noexcept {
-  return this->messageId().encode() | Encode(this->flags());
+  return this->messageId().encode() | Encode(this->flags().bits());
 }
 
 MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties properties) {
@@ -163,8 +162,7 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
     type = MessageType::Response;
   }
 
-  Flags flags = static_cast<Flags>((flagBits & FlagBits) >> 28U);
-  AssertValidCombination(flags);
+  const auto flags = Flags{static_cast<Flags::Bits>((flagBits & FlagBits) >> 28U)};
 
   if (!StreamId::IsValidValue(streamId)) {
     throw std::runtime_error("Message properties specify an invalid stream ID");
@@ -174,7 +172,7 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
 }
 
 MessageProperties MessageProperties::MakeForControlMessage() noexcept {
-  return MessageProperties(MessageId::MakeForControlMessage(), Flags::None);
+  return MessageProperties(MessageId::MakeForControlMessage(), Flags{Flags::Bits::None});
 }
 
 }
