@@ -52,7 +52,8 @@ public:
    *
    * \param parent The parent to retrieve data points for.
    */
-  static rxcpp::observable<std::shared_ptr<ChildType>> RetrieveForParent(std::shared_ptr<ParentType> parent) {
+  static rxcpp::observable<std::shared_ptr<ChildType>> RetrieveForParent(std::shared_ptr<ParentType> parent) { // @infer-ignore USE_AFTER_DELETE
+    // See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2916 : Infer falsely detects that the call to DataPointBase::GetApiRoot invalidates the `parent` variable
     return CastorObject::RetrieveList<ChildType, ParentType>(
       parent,
       DataPointBase::GetApiRoot(parent, ChildType::RELATIVE_API_ENDPOINT),

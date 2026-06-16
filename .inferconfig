@@ -21,12 +21,6 @@
     },
     {
       "bug_type": "USE_AFTER_DELETE",
-      "file": "cpp/pep/castor/DataPoint.hpp",
-      "procedure_name": "RetrieveForParent",
-      "comment": "False detection that invocation of GetApiRoot invalidates (the object pointed to by) the `parent` variable"
-    },
-    {
-      "bug_type": "USE_AFTER_DELETE",
       "file": "/usr/include/c++/13/tuple",
       "procedure_name": "_Tuple_impl",
       "comment": "Why does infer even look at cpp internals?"
