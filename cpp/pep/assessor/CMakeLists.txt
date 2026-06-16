@@ -58,6 +58,10 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
   find_package(Sparkle REQUIRED)
 
+  if(NOT SPARKLE_LIBRARY)
+      message(FATAL_ERROR "Sparkle library not found")
+  endif()
+
   set(OSX_APP_ICON ${CMAKE_CURRENT_SOURCE_DIR}/guilib/appicon.icns)
   add_cli_install_executable(${PROJECT_NAME}Assessor MACOSX_BUNDLE ${OSX_APP_ICON})
   set(CLIENT_SUBDIR ${PROJECT_NAME}Assessor.app/Contents/Resources)

@@ -249,6 +249,14 @@ add_compile_definitions(
   "BUILD_TARGET=\"${CMAKE_SYSTEM_NAME}\""
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  # Location of the Sparkle framework, used on macOS for application auto-updates.
+  # This is provided as a cache variable by the Conan build
+  # (see docker-build/builder/conan/conanfile.py).
+  # assessor, cli, assert that it is set.
+  set(SPARKLE_LIBRARY "" CACHE FILEPATH "Path to the Sparkle.framework used for macOS application updates")
+endif()
+
 function(add_windows_manifest target)
   if(WIN32)
     set(WINDOWS_MANIFEST_ASSEMBLY_NAME Pep.Pep.${target})
