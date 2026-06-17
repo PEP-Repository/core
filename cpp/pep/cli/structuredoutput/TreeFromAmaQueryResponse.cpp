@@ -38,7 +38,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
   if (printColumnGroups) {
     json columnGroupsArray = json::array();
 
-    for (const auto& cg : res.mColumnGroups) {
+    for (const auto& cg : res.columnGroups_) {
       json item = json::object();
       item.emplace(GetKeyName(queryKeys::name, useDescriptive), cg.mName);
       item.emplace(GetKeyName(queryKeys::columns, useDescriptive), cg.mColumns);
@@ -73,7 +73,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
   if (printParticipantGroups) {
     json groupsArray = json::array();
 
-    for (const auto& group : res.mParticipantGroups) {
+    for (const auto& group : res.participantGroups_) {
       groupsArray.push_back(group.mName);
     }
 

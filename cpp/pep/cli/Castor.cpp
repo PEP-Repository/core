@@ -293,8 +293,8 @@ private:
               [[maybe_unused]] auto emplaced = config->existing.emplace(column.mName);
               assert(emplaced.second);
             }
-            const auto& castorGroup = std::find_if(response.mColumnGroups.cbegin(), response.mColumnGroups.cend(), [](const pep::AmaQRColumnGroup& group) {return group.mName == "Castor"; });
-            if (castorGroup != response.mColumnGroups.cend()) {
+            const auto& castorGroup = std::find_if(response.columnGroups_.cbegin(), response.columnGroups_.cend(), [](const pep::AmaQRColumnGroup& group) {return group.mName == "Castor"; });
+            if (castorGroup != response.columnGroups_.cend()) {
               for (const auto& column : castorGroup->mColumns) {
                 [[maybe_unused]] auto emplaced = config->grouped.emplace(column);
                 assert(emplaced.second);

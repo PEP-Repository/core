@@ -122,7 +122,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());
           ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms_);
           DataEnumerationRequest2 enumRequest;
-          enumRequest.mTicket = *ctx->signedTicket;
+          enumRequest.ticket_ = *ctx->signedTicket;
 
           if (ctx->requestTicketOpts->ticket != nullptr) {
             std::unordered_set<uint32_t> pseudIdxs;
@@ -230,7 +230,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                   const std::vector<std::string>& ids) {
                   DataReadRequest2 readRequest;
                   readRequest.mIds = ids;
-                  readRequest.mTicket = *ticket;
+                  readRequest.ticket_ = *ticket;
                   return getStorageFacilityProxy(true)->requestDataRead(std::move(readRequest))
                     .map([](DataPayloadPage page) { return MakeSharedCopy(std::move(page)); });
                 })

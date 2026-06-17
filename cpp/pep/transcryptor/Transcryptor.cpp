@@ -343,7 +343,7 @@ Transcryptor::handleLogIssuedTicketRequest(
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " received";
 
   std::string serialized;
-  auto ticket = request->mTicket.openForLogging(*getRootCAs(), serialized);
+  auto ticket = request->ticket_.openForLogging(*getRootCAs(), serialized);
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
   auto hash = ComputePseudonymHash(ticket.mAccessSubjects);

@@ -113,7 +113,7 @@ TranscryptorResponse Serializer<TranscryptorResponse>::fromProtocolBuffer(proto:
 void Serializer<LogIssuedTicketRequest>::moveIntoProtocolBuffer(proto::LogIssuedTicketRequest& dest, LogIssuedTicketRequest value) const {
   Serialization::MoveIntoProtocolBuffer(
     *dest.mutable_ticket(),
-    std::move(value.mTicket)
+    std::move(value.ticket_)
   );
   *dest.mutable_id() = std::move(value.mId);
 }
@@ -121,7 +121,7 @@ void Serializer<LogIssuedTicketRequest>::moveIntoProtocolBuffer(proto::LogIssued
 LogIssuedTicketRequest Serializer<LogIssuedTicketRequest>::fromProtocolBuffer(proto::LogIssuedTicketRequest&& source) const {
   LogIssuedTicketRequest ret;
   ret.mId = std::move(*source.mutable_id());
-  ret.mTicket = Serialization::FromProtocolBuffer(std::move(
+  ret.ticket_ = Serialization::FromProtocolBuffer(std::move(
     *source.mutable_ticket()));
   return ret;
 }

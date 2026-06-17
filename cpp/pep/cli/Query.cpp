@@ -262,8 +262,8 @@ private:
             obs = client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
               .tap([addColumns, columnGroups](const pep::AmaQueryResponse& response) {
                   for (const auto& name : columnGroups) {
-                    auto existing = std::find_if(response.mColumnGroups.begin(), response.mColumnGroups.end(), [&name](const pep::AmaQRColumnGroup& group) { return group.mName == name; });
-                    if (existing != response.mColumnGroups.end()) {
+                    auto existing = std::find_if(response.columnGroups_.begin(), response.columnGroups_.end(), [&name](const pep::AmaQRColumnGroup& group) { return group.mName == name; });
+                    if (existing != response.columnGroups_.end()) {
                       addColumns(existing->mColumns);
                     }
                     else {

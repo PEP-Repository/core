@@ -548,11 +548,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   std::vector<std::string> modes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
-  if (!request.mParticipantGroups.empty()) {
+  if (!request.participantGroups_.empty()) {
     // Access to participants does not imply permission to list groups they are in, so first check that
-    backend->checkParticipantGroupAccess(request.mParticipantGroups, userGroup, modes, timestamp);
+    backend->checkParticipantGroupAccess(request.participantGroups_, userGroup, modes, timestamp);
 
-    participantGroupMap = backend->fillParticipantGroupMap(request.mParticipantGroups, pps);
+    participantGroupMap = backend->fillParticipantGroupMap(request.participantGroups_, pps);
   }
 
   // Prepare ticket
@@ -565,7 +565,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   // Check columns and column groups
   auto columnGroupMap = backend->unfoldColumnGroupsAndCheckAccess(
-      userGroup, request.mColumnGroups, request.mModes, timestamp, ticket.mColumns /*in & out*/);
+      userGroup, request.columnGroups_, request.mModes, timestamp, ticket.mColumns /*in & out*/);
 
   // Remove the main client signature to prevent reuse of
   // the SignedTicketRequest2.
@@ -681,7 +681,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), *ctx->server->getSigningIdentity());
 
     LogIssuedTicketRequest logReq;
-    logReq.mTicket = ctx->signedTicket;
+    logReq.ticket_ = ctx->signedTicket;
     logReq.mId = resp.mId;
     PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
     return ctx->server->mTranscryptorProxy.requestLogIssuedTicket(std::move(logReq));
@@ -757,7 +757,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
       .concat_map([self = SharedFrom(*this), performRemove](const std::pair<const std::string, std::vector<PolymorphicPseudonym>>& entry) {
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
-    ticketRequest.mParticipantGroups = {participantGroup};
+    ticketRequest.participantGroups_ = {participantGroup};
     ticketRequest.mModes = {"enumerate"};
     ticketRequest.mAccessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
@@ -805,7 +805,7 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
 
     // Only if columns were added to the entry OR the source columngroup is empty itself, add it to the response. Otherwise, put it in the next.
     if (entrySize != 0 && (destinationColumnGroup.mColumns.size() != 0 || sourceColumnGroup->mColumns.size() == 0)) {
-      currentResponse.mColumnGroups.push_back(destinationColumnGroup);
+      currentResponse.columnGroups_.push_back(destinationColumnGroup);
       firstColumn += destinationColumnGroup.mColumns.size();
       responseSize += entrySize;
     }
@@ -840,9 +840,9 @@ AccessManager::handleAmaQuery(std::shared_ptr<SignedAmaQuery> signedRequest) {
 
   // Split information over multiple responses to keep message size down. See #1679.
   return RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumns))
-    .concat(RxIterate(ExtractPartialColumnGroupQueryResponse(resp.mColumnGroups)))
+    .concat(RxIterate(ExtractPartialColumnGroupQueryResponse(resp.columnGroups_)))
     .concat(RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mColumnGroupAccessRules)))
-    .concat(RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroups)))
+    .concat(RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::participantGroups_)))
     .concat(RxIterate(ExtractPartialQueryResponse(resp, &AmaQueryResponse::mParticipantGroupAccessRules)))
     .map([](const AmaQueryResponse& response) {
     return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(response))).as_dynamic();

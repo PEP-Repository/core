@@ -232,11 +232,11 @@ AmaQueryResponse Serializer<AmaQueryResponse>::fromProtocolBuffer(proto::AmaQuer
   AmaQueryResponse result;
   Serialization::AssignFromRepeatedProtocolBuffer(result.mColumns,
     std::move(*source.mutable_columns()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mColumnGroups,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.columnGroups_,
     std::move(*source.mutable_column_groups()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mColumnGroupAccessRules,
     std::move(*source.mutable_column_group_access_rules()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mParticipantGroups,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.participantGroups_,
     std::move(*source.mutable_participant_groups()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.mParticipantGroupAccessRules,
     std::move(*source.mutable_participant_group_access_rules()));
@@ -247,13 +247,13 @@ void Serializer<AmaQueryResponse>::moveIntoProtocolBuffer(proto::AmaQueryRespons
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_columns(),
     std::move(value.mColumns));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_column_groups(),
-    std::move(value.mColumnGroups));
+    std::move(value.columnGroups_));
   Serialization::AssignToRepeatedProtocolBuffer(
     *dest.mutable_column_group_access_rules(),
     std::move(value.mColumnGroupAccessRules));
   Serialization::AssignToRepeatedProtocolBuffer(
     *dest.mutable_participant_groups(),
-    std::move(value.mParticipantGroups));
+    std::move(value.participantGroups_));
   Serialization::AssignToRepeatedProtocolBuffer(
     *dest.mutable_participant_group_access_rules(),
     std::move(value.mParticipantGroupAccessRules));

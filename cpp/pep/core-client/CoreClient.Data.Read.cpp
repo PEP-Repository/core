@@ -58,9 +58,9 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
                                                                        const std::vector<std::string>& columns) {
   return getAccessManagerProxy(true)
       ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
-                                               .mParticipantGroups = participantGroups,
+                                               .participantGroups_ = participantGroups,
                                                .mAccessSubjects = pps,
-                                               .mColumnGroups = columnGroups,
+                                               .columnGroups_ = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})
       .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(std::move(ticket))); });
@@ -71,7 +71,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
 
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms_);
   auto enumRequest = std::make_shared<DataEnumerationRequest2>();
-  enumRequest->mTicket = *ticket;
+  enumRequest->ticket_ = *ticket;
   return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(*enumRequest))
     .map([pseudonyms](DataEnumerationResponse2 response) {
       return ConvertDataEnumerationEntries(std::move(response.mEntries), *pseudonyms);
@@ -92,7 +92,7 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
             auto entryCount = batch.size();
             return this->getStorageFacilityProxy(true)->requestMetadataRead(
                 MetadataReadRequest2{
-                  .mTicket = *ticket,
+                  .ticket_ = *ticket,
                   .mIds = std::move(batch),
                 })
                 .map([](DataEnumerationResponse2 response) {
@@ -173,7 +173,7 @@ CoreClient::retrieveData(
               // Request the file contents from the storage facility
               auto pagesFromServer =
                   getStorageFacilityProxy(true)->requestDataRead(DataReadRequest2{
-                    .mTicket = *ticket,
+                    .ticket_ = *ticket,
                     .mIds = RangeToVector(ctx->files
                         | views::transform([](const FileContext& file) { return file.fileKey.entry->mId; })),
                   })
@@ -252,15 +252,15 @@ CoreClient::getHistory2(SignedTicket2 ticket,
   auto openedTicket = ticket.openWithoutCheckingSignature();
 
   DataHistoryRequest2 request{
-    .mTicket = std::move(ticket),
+    .ticket_ = std::move(ticket),
     .mColumns{},
     .mPseudonyms{},
   };
   std::optional<Ticket2> unsignedTicket;
   FillHistoryRequestIndices<LocalPseudonyms, PolymorphicPseudonym>(
-    request.mTicket, unsignedTicket, &Ticket2::mAccessSubjects, pps, request.mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
+    request.ticket_, unsignedTicket, &Ticket2::mAccessSubjects, pps, request.mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
   FillHistoryRequestIndices<std::string, std::string>(
-    request.mTicket, unsignedTicket, &Ticket2::mColumns, columns, request.mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
+    request.ticket_, unsignedTicket, &Ticket2::mColumns, columns, request.mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
   return getStorageFacilityProxy(true)->requestDataHistory(std::move(request))
     .map([](const DataHistoryResponse2& response) {

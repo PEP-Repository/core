@@ -5,21 +5,21 @@
 namespace pep {
 
 std::shared_ptr<SignedTicket2> IndexedTicket2::getTicket() const {
-  return mTicket;
+  return ticket_;
 }
 
 std::vector<std::string> IndexedTicket2::getColumnGroups() const {
   std::vector<std::string> ret;
-  ret.reserve(mColumnGroups.size());
-  for (const auto& kv : mColumnGroups)
+  ret.reserve(columnGroups_.size());
+  for (const auto& kv : columnGroups_)
     ret.push_back(kv.first);
   return ret;
 }
 
 std::vector<std::string> IndexedTicket2::getParticipantGroups() const {
   std::vector<std::string> ret;
-  ret.reserve(mParticipantGroups.size());
-  for (const auto& kv : mParticipantGroups)
+  ret.reserve(participantGroups_.size());
+  for (const auto& kv : participantGroups_)
     ret.push_back(kv.first);
   return ret;
 }
@@ -48,21 +48,21 @@ std::vector<PolymorphicPseudonym> IndexedTicket2::getAccessSubjects() const {
 }
 
 std::shared_ptr<Ticket2> IndexedTicket2::openTicketWithoutCheckingSignature() const {
-  std::lock_guard<std::mutex> lock(mUnpackedTicketLock);
-  if (mUnpackedTicket == nullptr)
-    mUnpackedTicket = std::make_shared<Ticket2>(
-      mTicket->openWithoutCheckingSignature());
-  return mUnpackedTicket;
+  std::lock_guard<std::mutex> lock(unpackedTicketLock_);
+  if (unpackedTicket_ == nullptr)
+    unpackedTicket_ = std::make_shared<Ticket2>(
+      ticket_->openWithoutCheckingSignature());
+  return unpackedTicket_;
 }
 
 const std::unordered_map<std::string, IndexList>&
 IndexedTicket2::getColumnGroupMapping() const {
-  return mColumnGroups;
+  return columnGroups_;
 }
 
 const std::unordered_map<std::string, IndexList>&
 IndexedTicket2::getParticipantGroupMapping() const {
-  return mParticipantGroups;
+  return participantGroups_;
 }
 
 std::string StructureMetadataKey::toString() const {

@@ -315,7 +315,7 @@ void AccessManager::Backend::storeLocalPseudonymAndPP(const LocalPseudonym& loca
 }
 
 void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
-  if (request.mAccessSubjects.size() > 0 && request.mParticipantGroups.size() > 0) {
+  if (request.mAccessSubjects.size() > 0 && request.participantGroups_.size() > 0) {
     // We decided to not support this situation any more, since we don't expect this to be used often.
     // At the time of writing this comment, the code was not written with this assumption in mind, so could possibly be
     // simplified The problem we want to solve with this assumption is that if a participant group is given, as well as
@@ -334,12 +334,12 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
 
   // Check all participantgroups and columngroups for existence
   std::vector<std::string> errorMessageParts;
-  for (const auto& pg : request.mParticipantGroups) {
+  for (const auto& pg : request.participantGroups_) {
     if (!mStorage->hasParticipantGroup(pg)) {
       errorMessageParts.push_back("Unknown participantgroup specified: " + Logging::Escape(pg));
     }
   }
-  for (const auto& cg : request.mColumnGroups) {
+  for (const auto& cg : request.columnGroups_) {
     if (!mStorage->hasColumnGroup(cg)) {
       errorMessageParts.push_back("Unknown columngroup specified: " + Logging::Escape(cg));
     }
@@ -590,10 +590,10 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
                   [&cgsInCgars](const auto& entry){ return !cgsInCgars.contains(entry.first);});
   }
   // Fill the result with the columns, columnGroups and cgars
-  result.mColumnGroups.reserve(columnsByColumnGroup.size());
+  result.columnGroups_.reserve(columnsByColumnGroup.size());
   std::set<std::string> columns{};
   for (auto& [cg, cols] : columnsByColumnGroup){
-    result.mColumnGroups.push_back(AmaQRColumnGroup(cg, cols));
+    result.columnGroups_.push_back(AmaQRColumnGroup(cg, cols));
     std::copy(cols.begin(), cols.end(), std::inserter(columns, columns.end())); // Add the found values to the columns vector.
   }
   transform(columns, result.mColumns, [](const auto& col) { return AmaQRColumn(col);});
@@ -631,7 +631,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   // Fill the result
   result.mParticipantGroupAccessRules.reserve(pgars.size());
   transform(pgars, result.mParticipantGroupAccessRules, [](const auto& pgar){return AmaQRParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);});
-  result.mParticipantGroups.assign(foundParticipantGroups.begin(), foundParticipantGroups.end()); // Makes use of implicit string to AmaQRParticipantGroup conversion.
+  result.participantGroups_.assign(foundParticipantGroups.begin(), foundParticipantGroups.end()); // Makes use of implicit string to AmaQRParticipantGroup conversion.
 
   return result;
 }

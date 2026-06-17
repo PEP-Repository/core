@@ -10,7 +10,7 @@ namespace pep {
 
 class DataEnumerationRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   // Falls back to all columns in ticket
   std::optional<IndexList> mColumns{};
   // Falls back to all pseudonyms in ticket
@@ -36,13 +36,13 @@ public:
 
 class MetadataReadRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::vector<std::string> mIds;
 };
 
 class DataReadRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::vector<std::string> mIds;
 };
 
@@ -65,7 +65,7 @@ class DataEntriesRequest2 {
 public:
   using Entry = TEntry;
 
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::vector<Entry> mEntries;
 };
 
@@ -96,15 +96,15 @@ public:
 
 class DataHistoryRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::optional<IndexList> mColumns;
   std::optional<IndexList> mPseudonyms;
 };
 
 class DataHistoryEntry2 {
 public:
-  uint32_t mColumnIndex{}; // In the DataHistoryRequest2::mTicket
-  uint32_t mPseudonymIndex{}; // In the DataHistoryRequest2::mTicket
+  uint32_t mColumnIndex{}; // In the DataHistoryRequest2::ticket_
+  uint32_t mPseudonymIndex{}; // In the DataHistoryRequest2::ticket_
   Timestamp mTimestamp;
   std::string mId; // Storage facility ID. If empty, this history entry represents a deletion
 };

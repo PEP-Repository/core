@@ -114,7 +114,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   return requestTicket2(ticketRequest)
   .flat_map([this,ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
-    ctx->request->mTicket = *signedTicket;
+    ctx->request->ticket_ = *signedTicket;
 
     const auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
     if (accessSubjectCount < requestedPps) {
@@ -214,7 +214,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   return requestTicket2(ticketRequest) // Request a ticket
     .flat_map([this, ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
-    ctx->request->mTicket = *signedTicket;
+    ctx->request->ticket_ = *signedTicket;
     ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms_);
 
     auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
@@ -227,7 +227,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
 
     // Get previous data (including polymorphic key) for the entries whose metadata we're going to update
     DataEnumerationRequest2 enumRequest;
-    enumRequest.mTicket = *signedTicket;
+    enumRequest.ticket_ = *signedTicket;
     enumRequest.mColumns = IndexList();
     enumRequest.mColumns->mIndices.reserve(ctx->columns.size());
     std::transform(ctx->columns.cbegin(), ctx->columns.cend(), std::back_inserter(enumRequest.mColumns->mIndices), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
@@ -268,11 +268,11 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           // Find the enum entry corresponding with this store entry
           auto correspondingColumn = enumEntryIndices->find(storeEntry.mColumnIndex);
           if (correspondingColumn == enumEntryIndices->cend()) {
-            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->mTicket.openWithoutCheckingSignature().mColumns[storeEntry.mColumnIndex]);
+            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->ticket_.openWithoutCheckingSignature().mColumns[storeEntry.mColumnIndex]);
           }
           auto correspondingEnumEntry = correspondingColumn->second.find(storeEntry.mPseudonymIndex);
           if (correspondingEnumEntry == correspondingColumn->second.cend()) {
-            auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
+            auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
             std::ostringstream message;
             message << "Did not receive existing entry for metadata update"
               << " for participant " << ticket.mAccessSubjects[storeEntry.mPseudonymIndex].mPolymorphic.text()
@@ -306,7 +306,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           assert(offset % METADATA_UPDATE_BATCH_SIZE == 0U);
           if (batches[offset] == nullptr) {
             batches[offset] = std::make_shared<MetadataUpdateRequest2>();
-            batches[offset]->mTicket = ctx->request->mTicket;
+            batches[offset]->ticket_ = ctx->request->ticket_;
           }
           assert(batches[offset]->mEntries.size() == indexInBatch);
           batches[offset]->mEntries.emplace_back(ctx->request->mEntries[i]);
@@ -402,7 +402,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   return requestTicket2(ticketRequest)
     .flat_map([this, ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
-    ctx->request->mTicket = *signedTicket;
+    ctx->request->ticket_ = *signedTicket;
 
     auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
     if (accessSubjectCount < requestedPps) {
@@ -414,7 +414,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 
     return getStorageFacilityProxy(true)->requestDataDelete(*ctx->request)
       .flat_map([this, ctx](const DataDeleteResponse2& response) {
-      auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
+      auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
       // TODO: use CreateObservable instead of rxcpp::iterate over a vector<> that we just create for this purpose
       std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms;
       pseudonyms.reserve(ticket.mAccessSubjects.size());

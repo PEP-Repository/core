@@ -78,7 +78,7 @@ public:
 
 class LogIssuedTicketRequest {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::string mId;
 };
 

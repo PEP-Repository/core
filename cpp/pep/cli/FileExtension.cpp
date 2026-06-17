@@ -554,11 +554,11 @@ public:
 
 private:
   std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> mPps;
-  std::shared_ptr<pep::SignedTicket2> mTicket;
+  std::shared_ptr<pep::SignedTicket2> ticket_;
 
   rxcpp::observable<std::shared_ptr<pep::SignedTicket2>> getTicket(std::shared_ptr<pep::CoreClient> client) {
-    if (mTicket != nullptr) {
-      return rxcpp::observable<>::just(mTicket);
+    if (ticket_ != nullptr) {
+      return rxcpp::observable<>::just(ticket_);
     }
 
     auto opts = std::make_shared<pep::RequestTicket2Opts>();
@@ -576,7 +576,7 @@ private:
       return client->requestTicket2(*opts);
         })
       .map([this](const pep::IndexedTicket2& ticket) {
-          return this->mTicket = ticket.getTicket();
+          return this->ticket_ = ticket.getTicket();
         });
   }
 

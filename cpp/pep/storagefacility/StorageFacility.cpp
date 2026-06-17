@@ -318,7 +318,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto certified = signedRequest->open(rootCAs);
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
-  auto ticket = request.mTicket.open(rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket_.open(rootCAs, accessGroup, "read-meta");
 
   struct ResponseEntry {
     DataEnumerationEntry2 entry;
@@ -451,7 +451,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     const auto& request = certified.message;
     auto userGroup = certified.signatory.organizationalUnit();
 
-    auto ticket = request.mTicket.open(
+    auto ticket = request.ticket_.open(
       *rootCAs,
       userGroup,
       "read-meta"
@@ -522,7 +522,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
-  auto ticket = request.mTicket.open(
+  auto ticket = request.ticket_.open(
     *rootCAs,
     userGroup,
     "read"
@@ -663,7 +663,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     const auto& rootCAs = this->getRootCAs();
     auto certified = signedRequest->open(*rootCAs);
     auto request = MakeSharedCopy(std::move(certified.message));
-    auto ticket = request->mTicket.open(*rootCAs, certified.signatory.organizationalUnit());
+    auto ticket = request->ticket_.open(*rootCAs, certified.signatory.organizationalUnit());
 
     if (!ticket.hasMode("write")) {
       throw Error("Ticket is missing \"write\" access mode");
@@ -845,7 +845,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   auto request = MakeSharedCopy(std::move(certified.message));
   auto userGroup = certified.signatory.organizationalUnit();
 
-  auto ticket = request->mTicket.open(*rootCAs, userGroup);
+  auto ticket = request->ticket_.open(*rootCAs, userGroup);
 
   if (!ticket.hasMode("write-meta")) {
     throw Error("Ticket is missing write-meta access mode");
@@ -985,7 +985,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
-  auto ticket = request.mTicket.open(*rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket_.open(*rootCAs, accessGroup, "read-meta");
 
   DataHistoryResponse2 response;
 

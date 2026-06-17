@@ -255,9 +255,9 @@ public:
 class AmaQueryResponse {
 public:
   std::vector<AmaQRColumn> mColumns;
-  std::vector<AmaQRColumnGroup> mColumnGroups;
+  std::vector<AmaQRColumnGroup> columnGroups_;
   std::vector<AmaQRColumnGroupAccessRule> mColumnGroupAccessRules;
-  std::vector<AmaQRParticipantGroup> mParticipantGroups;
+  std::vector<AmaQRParticipantGroup> participantGroups_;
   std::vector<AmaQRParticipantGroupAccessRule> mParticipantGroupAccessRules;
 };
 

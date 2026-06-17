@@ -155,9 +155,9 @@ AccessManagerProxy::amaQuery(AmaQuery query) const {
       std::make_shared<AmaQueryResponse>(),
       [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
         AppendVector(all->mColumns, part.mColumns);
-        AppendAndSquashVector(all->mColumnGroups, part.mColumnGroups);
+        AppendAndSquashVector(all->columnGroups_, part.columnGroups_);
         AppendVector(all->mColumnGroupAccessRules, part.mColumnGroupAccessRules);
-        AppendVector(all->mParticipantGroups, part.mParticipantGroups);
+        AppendVector(all->participantGroups_, part.participantGroups_);
         AppendVector(all->mParticipantGroupAccessRules, part.mParticipantGroupAccessRules);
         return all;
       }

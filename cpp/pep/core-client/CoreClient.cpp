@@ -424,9 +424,9 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket
   assert(ContainsUniqueValues(opts.pps));
   return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
       .mModes = opts.modes,
-      .mParticipantGroups = opts.participantGroups,
+      .participantGroups_ = opts.participantGroups,
       .mAccessSubjects = opts.pps,
-      .mColumnGroups = opts.columnGroups,
+      .columnGroups_ = opts.columnGroups,
       .mColumns = opts.columns,
       .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
 }

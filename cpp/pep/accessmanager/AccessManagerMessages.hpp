@@ -29,36 +29,36 @@ class IndexedTicket2 {
 protected:
   // Cache unpacked version of ticket.
   // TODO can we do this without a mutex?
-  mutable std::shared_ptr<Ticket2> mUnpackedTicket;
-  mutable std::mutex mUnpackedTicketLock;
+  mutable std::shared_ptr<Ticket2> unpackedTicket_;
+  mutable std::mutex unpackedTicketLock_;
 
-  std::shared_ptr<SignedTicket2> mTicket;
+  std::shared_ptr<SignedTicket2> ticket_;
   /// Maps column group names to indices of their column names in \c Ticket2.mColumns
-  std::unordered_map<std::string, IndexList> mColumnGroups;
+  std::unordered_map<std::string, IndexList> columnGroups_;
   /// Maps participant group names to indices of their pseudonyms in \c Ticket2.mPseudonyms
-  std::unordered_map<std::string, IndexList> mParticipantGroups;
+  std::unordered_map<std::string, IndexList> participantGroups_;
 
 public:
   IndexedTicket2(const IndexedTicket2& other) :
-    mTicket(other.mTicket),
-    mColumnGroups(other.mColumnGroups),
-    mParticipantGroups(other.mParticipantGroups) {
-    std::lock_guard<std::mutex> lock(other.mUnpackedTicketLock);
-    mUnpackedTicket = other.mUnpackedTicket;
+    ticket_(other.ticket_),
+    columnGroups_(other.columnGroups_),
+    participantGroups_(other.participantGroups_) {
+    std::lock_guard<std::mutex> lock(other.unpackedTicketLock_);
+    unpackedTicket_ = other.unpackedTicket_;
   }
   IndexedTicket2(IndexedTicket2&& other) :
-    mTicket(std::move(other.mTicket)),
-    mColumnGroups(std::move(other.mColumnGroups)),
-    mParticipantGroups(std::move(other.mParticipantGroups)) {
-    std::lock_guard<std::mutex> lock(other.mUnpackedTicketLock);
-    mUnpackedTicket = other.mUnpackedTicket;
+    ticket_(std::move(other.ticket_)),
+    columnGroups_(std::move(other.columnGroups_)),
+    participantGroups_(std::move(other.participantGroups_)) {
+    std::lock_guard<std::mutex> lock(other.unpackedTicketLock_);
+    unpackedTicket_ = other.unpackedTicket_;
   }
   IndexedTicket2(
     std::shared_ptr<SignedTicket2> ticket,
     std::unordered_map<std::string, IndexList> columnGroups,
     std::unordered_map<std::string, IndexList> participantGroups)
-    : mTicket(std::move(ticket)), mColumnGroups(std::move(columnGroups)),
-    mParticipantGroups(std::move(participantGroups)) { }
+    : ticket_(std::move(ticket)), columnGroups_(std::move(columnGroups)),
+    participantGroups_(std::move(participantGroups)) { }
 
   std::shared_ptr<Ticket2> openTicketWithoutCheckingSignature() const;
   std::shared_ptr<SignedTicket2> getTicket() const;
