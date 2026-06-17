@@ -21,7 +21,7 @@ struct FlatEntry final {
   std::string metadataNote;
   std::string metadataIssuer;
   database::UnixMillis metaCreationDateTime = 0;
-  database::UnixMillis metaBlockStartDateTime = 0;
+  std::optional<database::UnixMillis> metaBlockStartDateTime = 0;
 };
 
 /// Consumes a FlatEntry to build a Blocklist::Entry
@@ -36,7 +36,7 @@ Blocklist::Entry Inflate(FlatEntry&& flat) {
           .note = std::move(flat.metadataNote),
           .issuer = std::move(flat.metadataIssuer),
           .creationDateTime = Timestamp(milliseconds{flat.metaCreationDateTime}),
-          .blockStartDateTime = Timestamp(milliseconds{flat.metaBlockStartDateTime})}};
+          .blockStartDateTime = flat.metaBlockStartDateTime ? std::make_optional(Timestamp(milliseconds{*flat.metaBlockStartDateTime})) : std::nullopt}};
 }
 
 /// Consumes an optional FlatEntry to build an optional Blocklist::Entry
@@ -130,7 +130,7 @@ int64_t SqliteBlocklist::add(const TokenIdentifier& t, const Entry::Metadata& m)
       .metadataNote = m.note,
       .metadataIssuer = m.issuer,
       .metaCreationDateTime = TicksSinceEpoch<milliseconds>(m.creationDateTime),
-      .metaBlockStartDateTime = TicksSinceEpoch<milliseconds>(m.blockStartDateTime)});
+      .metaBlockStartDateTime = m.blockStartDateTime ? std::make_optional(TicksSinceEpoch<milliseconds>(*m.blockStartDateTime)) : std::nullopt});
 }
 
 std::optional<Blocklist::Entry> SqliteBlocklist::removeById(int64_t id) {

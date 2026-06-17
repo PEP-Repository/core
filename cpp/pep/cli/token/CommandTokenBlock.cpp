@@ -23,7 +23,7 @@ std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBloc
          e.metadata.note,
          e.metadata.issuer,
          pep::TimestampToXmlDateTime(e.metadata.creationDateTime),
-         pep::TimestampToXmlDateTime(e.metadata.blockStartDateTime)});
+         e.metadata.blockStartDateTime ? pep::TimestampToXmlDateTime(*e.metadata.blockStartDateTime) : ""});
   }
 
   return pep::structuredOutput::csv::append(stream, table) << std::endl;
