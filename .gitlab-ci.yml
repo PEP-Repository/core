@@ -724,7 +724,7 @@ ubuntu-lts-debug-without-castor:
   artifacts:
     when: always
     paths:
-      - infer-out/
+      - infer-out/report.json
       - reportFiltered.sarif
 
 ubuntu-lts-debug-with-sast:
