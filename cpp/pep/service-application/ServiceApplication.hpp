@@ -10,7 +10,7 @@ protected:
   commandline::Parameters getSupportedParameters() const override;
   std::string getDescription() const override;
 
-  std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override;
+  std::optional<pep::Severity> consoleLogMinimumSeverityLevel() const override;
 
   virtual std::string getServiceDescription() const = 0;
 };

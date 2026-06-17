@@ -281,7 +281,7 @@ std::string ExportWidget::getExportFilename(const QList<std::shared_ptr<Exportab
   QString caption;
   switch (items.size()) {
   case 0:
-    emit this->sendMessage(tr("Export failed: %1").arg(tr("No items are selected for export")), pep::error);
+    emit this->sendMessage(tr("Export failed: %1").arg(tr("No items are selected for export")), pep::Severity::Error);
     return {};
   case 1:
     caption = this->createCaption(*items.cbegin());
@@ -310,7 +310,7 @@ void ExportWidget::doExport() {
     file->open(fileName);
 
     if (!file->is_open()) {
-      emit this->sendMessage(tr("Export failed: %1").arg(tr("Could not open file for writing")), pep::error);
+      emit this->sendMessage(tr("Export failed: %1").arg(tr("Could not open file for writing")), pep::Severity::Error);
       return;
     }
 
@@ -319,22 +319,22 @@ void ExportWidget::doExport() {
       .subscribe(
         [entries = std::make_shared<QList<std::shared_ptr<ExportableItem>>>(selected), file, expandDetails](const std::map<std::string, std::string>& data) {WriteParticipantData(*entries, data, *file, expandDetails); },
         [this, file](std::exception_ptr ep) {
-          emit this->sendMessage(tr("Export failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+          emit this->sendMessage(tr("Export failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
     file->close();
         },
         [this, file]() {
-          emit this->sendMessage(tr("Data exported"), pep::info);
+          emit this->sendMessage(tr("Data exported"), pep::Severity::Info);
         file->close();
         }
         );
   }
   catch (const std::exception& e) {
-    emit this->sendMessage(tr("Export failed: %1").arg(e.what()), pep::error);
+    emit this->sendMessage(tr("Export failed: %1").arg(e.what()), pep::Severity::Error);
   }
 }
 
 rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipantData(const QList<std::shared_ptr<ExportableItem>>& items) {
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups = { "*" };
   opts.columns = { "StudyContexts" };
   for (const auto& item : items) {

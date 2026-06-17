@@ -204,12 +204,12 @@ void MainWindow::openWidget(QStackedWidget* target, const std::function<void(con
         if (*processed) {
           clearActiveWidget(target);
         }
-      emit statusMessage(tr("Cannot open widget: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+      emit statusMessage(tr("Cannot open widget: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
       },
         [this, processed, target]() {
         if (!processed) {
           clearActiveWidget(target);
-          emit statusMessage(tr("Global configuration not received"), pep::error);
+          emit statusMessage(tr("Global configuration not received"), pep::Severity::Error);
         }
       });
 }
@@ -230,7 +230,7 @@ const VisitCaptions* MainWindow::getVisitCaptionsForCurrentStudyContext() const 
   return &position->second;
 }
 
-void MainWindow::handleWidgetMessage(QString message, pep::severity_level severity) {
+void MainWindow::handleWidgetMessage(QString message, pep::Severity severity) {
   emit statusMessage(message, severity);
 }
 
@@ -268,7 +268,7 @@ void MainWindow::contextComboIndexChanged(int index) {
 }
 
 void MainWindow::on_participantRegistered() {
-  updateStatus(tr("Completing participant registration"), pep::info);
+  updateStatus(tr("Completing participant registration"), pep::Severity::Info);
 }
 
 void MainWindow::showForToken(QString token) {
@@ -360,7 +360,7 @@ void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
   auto currentStackedWidget = ui->open_content;
   showPatienceWidget(currentStackedWidget, "Searching...");
 
-  updateStatus(tr("Searching for short pseudonym %1").arg(QString::fromStdString(shortPseudonym)), pep::severity_level::info);
+  updateStatus(tr("Searching for short pseudonym %1").arg(QString::fromStdString(shortPseudonym)), pep::Severity::Info);
   pepClient->findPPforShortPseudonym(shortPseudonym, getCurrentStudyContext()).subscribe(
     [this](pep::PolymorphicPseudonym pp) {
       emit announcePP(pp);
@@ -436,21 +436,21 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
   }
     });
   QObject::connect(selector, &ParticipantWidget::participantLookupError, this, &MainWindow::on_participantLookupError);
-  QObject::connect(selector, SIGNAL(statusMessage(QString, pep::severity_level)), this, SLOT(updateStatus(QString, pep::severity_level)));
+  QObject::connect(selector, SIGNAL(statusMessage(QString, pep::Severity)), this, SLOT(updateStatus(QString, pep::Severity)));
   selector->runQuery();
     });
 }
 
 void MainWindow::on_lookupFailure(QString reason) {
   clearActiveWidget(ui->open_content);
-  MainWindow::updateStatus(reason, pep::error);
+  MainWindow::updateStatus(reason, pep::Severity::Error);
   ensureFocus(0);
 }
 
 void MainWindow::selectByPolymorphicPseudonym(pep::PolymorphicPseudonym foundPP) {
   auto sid = std::make_shared<std::string>();
 
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.pps = { foundPP };
   opts.columns = { "ParticipantIdentifier" };
   pepClient->enumerateAndRetrieveData2(opts)
@@ -471,7 +471,7 @@ void MainWindow::selectByPolymorphicPseudonym(pep::PolymorphicPseudonym foundPP)
       });
 }
 
-void MainWindow::on_participantLookupError(QString str, pep::severity_level sev) {
+void MainWindow::on_participantLookupError(QString str, pep::Severity sev) {
   clearActiveWidget(ui->register_content);
   clearActiveWidget(ui->open_content);
   updateStatus(str, sev);
@@ -500,8 +500,8 @@ void MainWindow::initializeRegisterPatientContent(bool setFocus) {
       showPatienceWidget(currentStackedWidget, "Loading...");
       });
     QObject::connect(enroll, &EnrollmentWidget::enrollComplete, this, &MainWindow::showParticipantData);
-    QObject::connect(enroll, SIGNAL(enrollFailed(QString, pep::severity_level)), this,
-      SLOT(updateStatus(QString, pep::severity_level)));
+    QObject::connect(enroll, SIGNAL(enrollFailed(QString, pep::Severity)), this,
+      SLOT(updateStatus(QString, pep::Severity)));
     QObject::connect(enroll, &EnrollmentWidget::participantRegistered, this, &MainWindow::on_participantRegistered);
     currentEnrollmentWidget = enroll;
     currentStackedWidget->addWidget(enroll);
@@ -597,7 +597,7 @@ void MainWindow::loginExpired() {
   updateConnectionStatus(true);
 }
 
-void MainWindow::updateStatus(QString message, pep::severity_level mode) {
+void MainWindow::updateStatus(QString message, pep::Severity mode) {
   statusMessages.emplace(std::make_pair(message, mode));
   qDebug() << QStringLiteral("Queueing status message: %1").arg(message);
   updateStatusBar();
@@ -620,18 +620,18 @@ void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
     statusTimer->stop();
   }
   else {
-    std::pair<QString, pep::severity_level> msg = statusMessages.front();
+    std::pair<QString, pep::Severity> msg = statusMessages.front();
     statusMessages.pop();
     switch (msg.second) {
-    case pep::severity_level::debug:
-    case pep::severity_level::info:
+    case pep::Severity::Debug:
+    case pep::Severity::Info:
       bar->setProperty("class", "info");
       break;
-    case pep::severity_level::warning:
+    case pep::Severity::Warning:
       bar->setProperty("class", "warning");
       break;
-    case pep::severity_level::error:
-    case pep::severity_level::critical:
+    case pep::Severity::Error:
+    case pep::Severity::Critical:
       bar->setProperty("class", "error");
       break;
     default:

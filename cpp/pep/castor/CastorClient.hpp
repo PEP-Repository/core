@@ -66,7 +66,7 @@ private:
   rxcpp::observable<JsonPtr> handleCastorResponse(std::shared_ptr<HTTPRequest> request, const HTTPResponse& response);
 
   rxcpp::subjects::behavior<AuthenticationStatus>
-    authenticationSubject{ AuthenticationStatus(UNAUTHENTICATED) };
+    authenticationSubject{ AuthenticationStatus(AuthenticationState::Unauthenticated) };
   static constexpr int PAGE_SIZE = 1000;
   static const std::string BASE_PATH;
 

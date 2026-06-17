@@ -23,12 +23,12 @@
 
 using namespace std::literals;
 
-static const std::string LOG_TAG ("CastorClient");
 namespace pep {
 namespace castor {
 
 namespace {
 
+const std::string LogTag("CastorClient");
 const std::string CASTOR_429_RESPONSE_MESSAGE_HEADER = "Too many requests, retry after: ";
 
 std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::optional<std::filesystem::path> caCertFilepath) {
@@ -43,7 +43,7 @@ const std::chrono::seconds AuthenticationStatus::EXPIRY_MARGIN{30};
 const std::string CastorClient::BASE_PATH = "/api/";
 
 bool AuthenticationStatus::authenticated() const {
-  if (state != AUTHENTICATED) {
+  if (state != AuthenticationState::Authenticated) {
     return false;
   }
   assert(expires.has_value());
@@ -77,8 +77,8 @@ void CastorClient::start() {
 }
 
 void CastorClient::reauthenticate() {
-  LOG(LOG_TAG, info) << "Reauthenticating to Castor";
-  authenticationSubject.get_subscriber().on_next(AuthenticationStatus(AUTHENTICATING));
+  PEP_LOG(LogTag, Severity::Info) << "Reauthenticating to Castor";
+  authenticationSubject.get_subscriber().on_next(AuthenticationStatus(AuthenticationState::Authenticating));
   std::shared_ptr<HTTPRequest> request = makePost("/oauth/token", "grant_type=client_credentials&client_id=" + mClientId + "&client_secret=" + mClientSecret, false);
   request->setHeader("Content-Type", "application/x-www-form-urlencoded");
   sendPreAuthorizedRequest(request)
@@ -93,7 +93,7 @@ void CastorClient::reauthenticate() {
           seconds{responseJson.get<seconds::rep>("expires_in")});
     })
     .on_error_resume_next([](std::exception_ptr ep){
-      LOG(LOG_TAG, error) << "Failed authenticating to Castor: " << rxcpp::rxu::what(ep);
+      PEP_LOG(LogTag, Severity::Error) << "Failed authenticating to Castor: " << rxcpp::rxu::what(ep);
       return rxcpp::observable<>::just(AuthenticationStatus(ep));
     })
     .subscribe([self = SharedFrom(*this)](AuthenticationStatus status){
@@ -103,7 +103,7 @@ void CastorClient::reauthenticate() {
 
 rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shared_ptr<HTTPRequest> request) {
   request->setHeader("Accept", "application/json");
-  if(request->getMethod() == networking::HttpMethod::GET) {
+  if(request->getMethod() == networking::HttpMethod::Get) {
     request->uri().params().set("page_size", std::to_string(PAGE_SIZE));
   }
   return mHttp->sendRequest(*request);
@@ -117,7 +117,7 @@ rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shar
  * \return The created Request
  */
 std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, const bool& useBasePath) {
-  return MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::GET, (useBasePath ? BASE_PATH : "") + path));
+  return MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::Get, (useBasePath ? BASE_PATH : "") + path));
 };
 
 /*!
@@ -131,7 +131,7 @@ std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, cons
 std::shared_ptr<HTTPRequest> CastorClient::makePost(const std::string& path,
   const std::string& body,
   const bool& useBasePath) {
-  auto result = MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::POST, (useBasePath ? BASE_PATH : "") + path));
+  auto result = MakeSharedCopy(mHttp->makeRequest(networking::HttpMethod::Post, (useBasePath ? BASE_PATH : "") + path));
   assert(result->getBodyparts().empty());
   result->getBodyparts().emplace_back(MakeSharedCopy(body));
   return result;
@@ -139,15 +139,15 @@ std::shared_ptr<HTTPRequest> CastorClient::makePost(const std::string& path,
 
 rxcpp::observable<HTTPResponse> CastorClient::sendRequest(std::shared_ptr<HTTPRequest> request) {
   if (!authenticationSubject.get_value().authenticated()
-    && authenticationSubject.get_value().state != AUTHENTICATING) {
+    && authenticationSubject.get_value().state != AuthenticationState::Authenticating) {
     reauthenticate();
   }
 
   return authenticationStatus()
-    .filter([](AuthenticationStatus status) { return status.state == AUTHENTICATION_ERROR || status.authenticated(); })
+    .filter([](AuthenticationStatus status) { return status.state == AuthenticationState::Error || status.authenticated(); })
     .first()
     .flat_map([this, request](AuthenticationStatus status) {
-      if (status.state == AUTHENTICATION_ERROR) {
+      if (status.state == AuthenticationState::Error) {
         std::rethrow_exception(status.exceptionPtr);
       }
 
@@ -218,7 +218,7 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     else {
       // Just to be sure: wait 1 second longer than calculated, since message says to retry _after_ the specified time
       retryWhen += 1s;
-      LOG(LOG_TAG, info) << "Castor requests throttled until " << xml;
+      PEP_LOG(LogTag, Severity::Info) << "Castor requests throttled until " << xml;
 
       // We need to use a duration instead of a time_point as Rx wants a steady_clock time
       wait = rxcpp::observable<>::timer(retryWhen - TimeNow())
@@ -257,7 +257,7 @@ rxcpp::observable<JsonPtr> CastorClient::sendCastorRequest(std::shared_ptr<HTTPR
       std::rethrow_exception(ep);
     }
     catch(CastorException &ex) {
-      LOG(LOG_TAG, debug) << "Castor Error. Retrying once. Error message: " << ex.what();
+      PEP_LOG(LogTag, Severity::Debug) << "Castor Error. Retrying once. Error message: " << ex.what();
       return self->sendRequest(request).concat_map(parseResponseLambda);
     }
   });

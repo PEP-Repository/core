@@ -401,7 +401,7 @@ protected:
             })
           .concat_map([this, client, ownResult, pgs, pps, counts](std::shared_ptr<ColumnExtensions> columnExtensions) {
           counts->processingColumns(columnExtensions->size());
-          pep::requestTicket2Opts ticketRequest;
+          pep::RequestTicket2Opts ticketRequest;
           ticketRequest.modes.emplace_back("read-meta");
           ticketRequest.includeAccessGroupPseudonyms = true;
           ticketRequest.participantGroups = *pgs;
@@ -561,7 +561,7 @@ private:
       return rxcpp::observable<>::just(mTicket);
     }
 
-    auto opts = std::make_shared<pep::requestTicket2Opts>();
+    auto opts = std::make_shared<pep::RequestTicket2Opts>();
     opts->modes = { "read-meta", "write-meta" };
     opts->includeAccessGroupPseudonyms = true;
     opts->columns = MultiCellQuery::GetColumns(this->getParameterValues());
@@ -631,15 +631,15 @@ public:
 
 private:
   struct ParticipantSpecification {
-    enum Kind {
-      PARTICIPANT,
-      SHORT_PSEUDONYM
+    enum class Kind {
+      Participant,
+      ShortPseudonym
     };
 
     [[nodiscard]] static std::string KindToString(Kind kind) {
       switch (kind) {
-        case PARTICIPANT: return "Participant";
-        case SHORT_PSEUDONYM: return "Short pseudonym";
+      case Kind::Participant: return "Participant";
+      case Kind::ShortPseudonym: return "Short pseudonym";
       }
       throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(pep::ToUnderlying(kind)));
     }
@@ -673,8 +673,8 @@ private:
   }
 
   rxcpp::observable<std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>>> getParticipantSpecs(std::shared_ptr<pep::CoreClient> client) {
-    return this->getParticipantSpecs(client, ParticipantSpecification::Kind::SHORT_PSEUDONYM, &MultiCellQuery::GetPpsForShortPseudonyms)
-      .concat(this->getParticipantSpecs(client, ParticipantSpecification::Kind::PARTICIPANT, &MultiCellQuery::GetPpsForParticipantSpecs))
+    return this->getParticipantSpecs(client, ParticipantSpecification::Kind::ShortPseudonym, &MultiCellQuery::GetPpsForShortPseudonyms)
+      .concat(this->getParticipantSpecs(client, ParticipantSpecification::Kind::Participant, &MultiCellQuery::GetPpsForParticipantSpecs))
       .reduce( // Join both maps into one
         std::make_shared<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>>(),
         [](std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> all, std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> some) {
@@ -729,7 +729,7 @@ protected:
         .flat_map([this, client](std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> specs) {
         const auto& vm = this->getParameterValues();
 
-        pep::requestTicket2Opts opts;
+        pep::RequestTicket2Opts opts;
         opts.modes = { "read-meta" };
         opts.includeAccessGroupPseudonyms = true;
         opts.participantGroups = MultiCellQuery::GetParticipantGroups(vm);

@@ -84,7 +84,5 @@ Once you've updated the `stable` branch on `origin`:
 
 1. [ ] In the `pep/ops` repository, ensure that (all) running projects can still interface with the updated service(s):
    1. [ ] If applicable, ensure that the new logger image is used on the `ppp-logger.pep.cs.ru.nl` host (which is managed by Ronny).
-1. [ ] In the **`release-X.Y`** pipelines, update the release documentation by running the following manual jobs:
-   - [ ] `publish-public-docs` and `publish-private-docs` in `pep/dtap`.
-   - [ ] `publish-public-docs` in `pep/core`.
+1. [ ] In `pep/core`, run the `publish-public-docs` manual job of the **`release-X.Y`** pipeline to update the release documentation.
 1. [ ] Announce the new PEP release to project teams, allowing them to upgrade their environments to the new binary version. The PEP team [maintains instructions](https://gitlab.pep.cs.ru.nl/pep/core/-/blob/main/ci_cd/project-release-template.md) on how to upgrade project environments, and project teams can/should base their own tickets on this template.

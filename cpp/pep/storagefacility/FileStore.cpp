@@ -27,7 +27,7 @@ uint64_t GenerateChecksumSubstitute() {
 }
 
 const std::string ENTRY_FILE_TYPE("pepentry");
-const std::string LOG_TAG("StorageFacility");
+const std::string LogTag("StorageFacility");
 
 }
 
@@ -136,7 +136,7 @@ FileStore::FileStore(
   if (seconds != decltype(seconds)::zero()) {
     message << " (" << (static_cast<double>(entryCount) / seconds.count()) << " entries per second)";
   }
-  LOG(LOG_TAG, info) << message.str();
+  PEP_LOG(LogTag, Severity::Info) << message.str();
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
@@ -362,14 +362,14 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   auto newestEntry = this->getFileStore().lookup(this->getName());
   if (newestEntry && newestEntry->getValidFrom() > mLastEntryValidFrom)
     throw std::runtime_error("FileStore: concurrent modification to same entry detected: " + this->getName().string());
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
   if (this->getCell().entryHeaders().find(availableFrom) != this->getCell().entryHeaders().cend()) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
-    LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
 #endif
@@ -528,7 +528,7 @@ void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
   if (!emplaced) {
     auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
-    LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
   if (mLatest == nullptr || entry->getValidFrom() > mLatest->getValidFrom()) {

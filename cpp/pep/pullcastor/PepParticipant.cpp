@@ -28,7 +28,7 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
   const std::vector<std::string>& participantGroups,
   const std::vector<std::string>& columns,
   const std::vector<std::string>& columnGroups) {
-  requestTicket2Opts ticketOpts;
+  RequestTicket2Opts ticketOpts;
   ticketOpts.modes = { "read" };
   ticketOpts.pps = participants;
   ticketOpts.participantGroups = participantGroups;
@@ -39,7 +39,7 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
     .flat_map([client, ticketOpts](IndexedTicket2 ticket) {
     auto signedTicket = ticket.getTicket();  // Capture before move of ticket
 
-    enumerateAndRetrieveData2Opts earOpts;
+    EnumerateAndRetrieveData2Opts earOpts;
     earOpts.pps = ticketOpts.pps;
     earOpts.groups = ticketOpts.participantGroups;
     earOpts.columnGroups = ticketOpts.columnGroups;

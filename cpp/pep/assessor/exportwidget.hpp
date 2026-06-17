@@ -27,7 +27,7 @@ public:
   void doFocus();
 
 signals:
-  void sendMessage(QString message, pep::severity_level severity);
+  void sendMessage(QString message, pep::Severity severity);
 
 private slots:
   void on_selectedItemChanged();

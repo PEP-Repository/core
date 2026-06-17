@@ -31,7 +31,7 @@ std::stack<std::shared_ptr<const Progress>> Progress::getState() const {
 }
 
 void Progress::onChildChange(const Progress& child) {
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   assert(AcquireShared(mCurrentStepChild).get() == &child);
 #endif
 

@@ -19,7 +19,7 @@ namespace castor {
 
 namespace {
 
-const std::string LOG_TAG ("FakeCastorApi");
+const std::string LogTag ("FakeCastorApi");
 
 }
 
@@ -63,7 +63,7 @@ void FakeCastorApi::Connection::acceptMessage() {
 }
 
 void FakeCastorApi::Connection::handleError(std::exception_ptr error) {
-  LOG(LOG_TAG, info) << GetExceptionMessage(error);
+  PEP_LOG(LogTag, Severity::Info) << GetExceptionMessage(error);
   writeOutput("400 Bad Request", "400 Bad Request");
 }
 
@@ -98,7 +98,7 @@ void FakeCastorApi::Connection::handleReadHeaders(const networking::DelimitedTra
       boost::trim_if(headerValue, boost::is_space());
       mHeaders[headerName] = headerValue;
     } else {
-      LOG(LOG_TAG, warning) << "Ignoring malformed header: " << header << '\n';
+      PEP_LOG(LogTag, Severity::Warning) << "Ignoring malformed header: " << header << '\n';
     }
   }
 
@@ -125,7 +125,7 @@ void FakeCastorApi::Connection::handleReadBody(const networking::SizedTransfer::
 }
 
 void FakeCastorApi::Connection::handleRequest() {
-  LOG(LOG_TAG, debug) << "Received request: " << mMethod << " " << mPath << std::endl << mBody;
+  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << mMethod << " " << mPath << std::endl << mBody;
 
   if(mPath.starts_with("/api/")) {
     auto authzHeader = mHeaders.find("Authorization");
@@ -152,11 +152,11 @@ void FakeCastorApi::Connection::handleRequest() {
 
 void FakeCastorApi::Connection::handleWrite(const networking::SizedTransfer::Result& result) {
   if (!result) {
-    LOG(LOG_TAG, warning) << "Error while writing response: " << GetExceptionMessage(result.exception());
+    PEP_LOG(LogTag, Severity::Warning) << "Error while writing response: " << GetExceptionMessage(result.exception());
     return;
   }
 
-  LOG(LOG_TAG, debug) << "Written output " << mOutput.substr(0, *result);
+  PEP_LOG(LogTag, Severity::Debug) << "Written output " << mOutput.substr(0, *result);
 }
 
 void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::string& status, std::map<std::string, std::string> responseHeaders) {
@@ -187,7 +187,7 @@ FakeCastorTest::FakeCastorTest()
 
   mClientSide.start();
   mServerSide.start();
-  LOG(LOG_TAG, info) << "FakeCastorApi listening on port " << port;
+  PEP_LOG(LogTag, Severity::Info) << "FakeCastorApi listening on port " << port;
 }
 
 void FakeCastorTest::TearDown() {
@@ -223,7 +223,7 @@ FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& 
 void FakeCastorApi::start() {
   mConnectivityConnectionAttempt = mConnectivity->onConnectionAttempt.subscribe([self = SharedFrom(*this)](const networking::Connection::Attempt::Result& result) {
     if (!*result) {
-      LOG(LOG_TAG, warning) << "Incoming Fake Castor API connection failed: " << GetExceptionMessage(result.exception());
+      PEP_LOG(LogTag, Severity::Warning) << "Incoming Fake Castor API connection failed: " << GetExceptionMessage(result.exception());
     }
     else {
       Connection::Create(self, *result)->acceptMessage();

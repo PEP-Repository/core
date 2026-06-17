@@ -5,7 +5,7 @@ using namespace std::chrono_literals;
 
 namespace pep {
 
-const auto LOG_TAG = "Activity monitor";
+const auto LogTag = "Activity monitor";
 
 const std::chrono::seconds ActivityMonitor::DEFAULT_MAX_INACTIVE = 1min;
 
@@ -32,7 +32,7 @@ void ActivityMonitor::startTimer(decltype(mTimer)::duration alreadyElapsed) {
     if (ec != boost::asio::error::operation_aborted) {
       auto self = weak.lock();
       if (self == nullptr) {
-        LOG(LOG_TAG, error) << "Inactivity detected for job that seems to have been completed";
+        PEP_LOG(LogTag, Severity::Error) << "Inactivity detected for job that seems to have been completed";
       }
       else {
         self->handleTimerExpired();
@@ -55,7 +55,7 @@ void ActivityMonitor::handleTimerExpired() {
     this->startTimer(elapsed);
   }
   else {
-    LOG(LOG_TAG, warning) << "Inactivity detected for job: " << mDescription
+    PEP_LOG(LogTag, Severity::Warning) << "Inactivity detected for job: " << mDescription
       << ". Its last recorded activity was " << mLastActivityWhat.value_or("<none>");
   }
 }
@@ -74,7 +74,7 @@ void ActivityMonitor::activityOccurred(const std::string& what) {
     mLastActivityWhen = decltype(mLastActivityWhen)::value_type::clock::now();
   }
   else {
-    LOG(LOG_TAG, info) << "Activity resumed for job: " << mDescription
+    PEP_LOG(LogTag, Severity::Info) << "Activity resumed for job: " << mDescription
       << " doing: " << what;
     this->startTimer();
   }

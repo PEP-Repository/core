@@ -10,7 +10,7 @@
 
 namespace pep::cli {
 
-extern const std::string LOG_TAG;
+extern const std::string LogTag;
 
 class CliApplication : public pep::commandline::Utility {
 private:
@@ -19,7 +19,7 @@ private:
   std::optional<std::string> mRequiredGroup, mRequiredSubject;
 
 protected:
-  std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override;
+  std::optional<pep::Severity> consoleLogMinimumSeverityLevel() const override;
   std::string getDescription() const override;
   pep::commandline::Parameters getSupportedParameters() const override;
   inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli"; }

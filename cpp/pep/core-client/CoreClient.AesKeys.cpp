@@ -12,7 +12,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.AesKeys");
+const std::string LogTag("CoreClient.AesKeys");
 
 constexpr unsigned KEY_REQUEST_BATCH_SIZE = 2500;
 
@@ -26,7 +26,7 @@ rxcpp::observable<std::vector<CoreClient::AESKey>>
 CoreClient::unblindAndDecryptKeys(
       std::span<const std::shared_ptr<EnumerateResult>> entries,
       std::shared_ptr<SignedTicket2> ticket) {
-  LOG(LOG_TAG, debug) << "unblindAndDecryptKeys";
+  PEP_LOG(LogTag, Severity::Debug) << "unblindAndDecryptKeys";
 
   struct Context {
     std::shared_ptr<WaitGroup> wg;
@@ -57,7 +57,7 @@ CoreClient::unblindAndDecryptKeys(
       request.mEntries.emplace_back(
          entry.mMetadata,
          entry.mPolymorphicKey,
-         KeyBlindMode::BLIND_MODE_UNBLIND,
+         KeyBlindMode::Unblind,
          entry.mLocalPseudonymsIndex
       );
     }
@@ -117,7 +117,7 @@ CoreClient::unblindAndDecryptKeys(
 rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   std::shared_ptr<DataEntriesRequest2<DataStoreEntry2>> request,
   const std::vector<AESKey>& keys) {
-  LOG(LOG_TAG, debug) << "encryptAndBlindKeys";
+  PEP_LOG(LogTag, Severity::Debug) << "encryptAndBlindKeys";
 
   assert(request->mEntries.size() == keys.size());
 
@@ -134,7 +134,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     keyRequests[offset].mEntries.emplace_back(
       entry.mMetadata,
       EncryptedKey(systemPublicKeys.globalDataEncryptionKey, keys[i].point),
-      KeyBlindMode::BLIND_MODE_BLIND,
+      KeyBlindMode::Blind,
       entry.mPseudonymIndex
     );
   }

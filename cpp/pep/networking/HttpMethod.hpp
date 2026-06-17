@@ -13,11 +13,12 @@ class HttpMethod {
 public:
   /**
    * @brief An enum representing the supported method(type)s.
+   * @remark Intentionally not an enum _class_ so we can write e.g. "HttpMethod::Post"
    */
   enum Value {
-    GET,
-    POST,
-    PUT
+    Get,
+    Post,
+    Put
   };
 
   /**

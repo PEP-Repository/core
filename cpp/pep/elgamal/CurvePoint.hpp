@@ -100,8 +100,8 @@ class CurvePoint {
   // the value cached.  See also ensurePacked().
   mutable group_ge mUnpacked = group_ge_neutral;
   mutable std::array<char, CurvePoint::PACKEDBYTES> mPacked{};
-  enum state_t { gotPacked, gotUnpacked, gotBoth };
-  mutable state_t mState;
+  enum class State { GotPacked, GotUnpacked, GotBoth };
+  mutable State mState;
 
   // Returns a pointer to the internal unpacked CurvePoint (and unpacks
   // it first, if necessary).
@@ -112,7 +112,7 @@ class CurvePoint {
   [[nodiscard]] static CurvePoint BaseMult(const CurveScalar& s);
   [[nodiscard]] static CurvePoint BaseMult(const PublicCurveScalar& s);
 
-  explicit CurvePoint(state_t state) : mState(state) { }
+  explicit CurvePoint(State state) : mState(state) { }
 };
 
 }

@@ -9,7 +9,11 @@
 
 namespace pep {
 
-static const std::string LOG_TAG ("Authserver");
+namespace {
+
+const std::string LogTag ("Authserver");
+
+}
 
 Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config),
@@ -22,7 +26,7 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
     accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 

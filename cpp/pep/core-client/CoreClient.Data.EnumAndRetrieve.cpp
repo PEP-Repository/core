@@ -30,7 +30,7 @@ using namespace pep;
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.Data");
+const std::string LogTag("CoreClient.Data");
 
 template<typename TResponse>
 rxcpp::observable<TResponse> BatchedRetrieve(
@@ -75,15 +75,15 @@ rxcpp::observable<TResponse> BatchedRetrieve(
 
 
 rxcpp::observable<EnumerateAndRetrieveResult>
-CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts) {
-  LOG(LOG_TAG, debug) << "enumerateAndRetrieveData";
+CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts) {
+  PEP_LOG(LogTag, Severity::Debug) << "enumerateAndRetrieveData";
 
   using Pages = std::vector<std::shared_ptr<DataPayloadPage>>;
   using IndexedPages = std::unordered_map<uint32_t, std::shared_ptr<Pages>>;
   struct Context {
     bool includeData{};
     uint64_t dataSizeLimit{};
-    std::shared_ptr<requestTicket2Opts> requestTicketOpts;
+    std::shared_ptr<RequestTicket2Opts> requestTicketOpts;
     std::optional<rxcpp::subscriber<EnumerateAndRetrieveResult>> subscriber;
     std::shared_ptr<SignedTicket2> signedTicket;
     std::shared_ptr<Ticket2> ticket;
@@ -95,7 +95,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
   ctx->includeData = opts.includeData;
   ctx->dataSizeLimit = opts.dataSizeLimit;
 
-  ctx->requestTicketOpts = std::make_shared<requestTicket2Opts>();
+  ctx->requestTicketOpts = std::make_shared<RequestTicket2Opts>();
   ctx->requestTicketOpts->modes = {opts.includeData ? "read" : "read-meta"};
   ctx->requestTicketOpts->participantGroups = opts.groups;
   ctx->requestTicketOpts->pps = opts.pps;

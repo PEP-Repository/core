@@ -9,8 +9,8 @@ ScalarMultProof ScalarMultProof::Create(
     const CurvePoint& pre,
     const CurvePoint& post,
     const CurveScalar& secret) {
-  PEP_CryptoAssert(secretTimesBase == secret * CurvePoint::Base);
-  PEP_CryptoAssert(post == secret * pre);
+  PEP_CRYPTO_ASSERT(secretTimesBase == secret * CurvePoint::Base);
+  PEP_CRYPTO_ASSERT(post == secret * pre);
   auto nonce = CurveScalar::Random();
   auto cb = nonce * CurvePoint::Base;
   auto cm = nonce * pre;
@@ -78,8 +78,8 @@ RskProof RskProof::Create(
     const CurveScalar& rerandomize,
     const CurvePoint& rerandomizePubKey,
     const CurvePoint& rerandomizePoint) {
-  PEP_CryptoAssert(reshuffleCommitment == reshuffle * CurvePoint::Base);
-  PEP_CryptoAssert(reshuffleOverRekeyCommitment == reshuffleOverRekey * CurvePoint::Base);
+  PEP_CRYPTO_ASSERT(reshuffleCommitment == reshuffle * CurvePoint::Base);
+  PEP_CRYPTO_ASSERT(reshuffleOverRekeyCommitment == reshuffleOverRekey * CurvePoint::Base);
   return RskProof(
     rerandomizePubKey,
     rerandomizePoint,

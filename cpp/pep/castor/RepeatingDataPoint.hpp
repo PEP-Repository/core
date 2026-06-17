@@ -16,7 +16,7 @@ class RepeatingDataPoint : public DataPoint<RepeatingDataPoint, RepeatingDataIns
   std::shared_ptr<RepeatingDataInstance> getRepeatingDataInstance() const { return this->getParent(); }
   std::shared_ptr<Participant> getParticipant() const override;
 
-  DataPointType getType() const override { return REPEATING; }
+  DataPointType getType() const override { return DataPointType::Repeating; }
 
   static rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> rdis);
 

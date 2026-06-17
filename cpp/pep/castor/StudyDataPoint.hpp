@@ -14,7 +14,7 @@ class StudyDataPoint : public DataPoint<StudyDataPoint, Participant>, public Sha
 
   std::shared_ptr<Participant> getParticipant() const override;
 
-  DataPointType getType() const override { return STUDY; }
+  DataPointType getType() const override { return DataPointType::Study; }
 
   static rxcpp::observable<std::shared_ptr<StudyDataPoint>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants);
 

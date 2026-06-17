@@ -28,7 +28,7 @@ class SurveyDataPoint : public DataPoint<SurveyDataPoint, SurveyPackageInstance>
   std::shared_ptr<Participant> getParticipant() const override;
   std::shared_ptr<SurveyPackageInstance> getSurveyPackageInstance() const { return this->getParent(); }
 
-  DataPointType getType() const override { return SURVEY; }
+  DataPointType getType() const override { return DataPointType::Survey; }
 
   static rxcpp::observable<std::shared_ptr<SurveyDataPoint>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> spis);
   static rxcpp::observable<std::shared_ptr<SurveyDataPoint>> BulkRetrieve(std::shared_ptr<Participant> participant, rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> spis);

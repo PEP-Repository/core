@@ -15,7 +15,7 @@
 
 
 namespace {
-const std::string LOG_TAG("Plaintext credentials");
+const std::string LogTag("Plaintext credentials");
 }
 
 namespace pep {
@@ -121,7 +121,7 @@ void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
     if (passedDomain[0] != L'\0') {
       throw std::runtime_error("Cannot specify both a domain\\username and a separate domain name");
     }
-    LOG(LOG_TAG, pep::info) << "Splitting domain\\username specification '" << mUserName.getAddress() << "' into separate fields";
+    PEP_LOG(LogTag, Severity::Info) << "Splitting domain\\username specification '" << mUserName.getAddress() << "' into separate fields";
     passedDomain = parts[0].c_str();
     passedUserName = parts[1].c_str();
     break;
@@ -129,7 +129,7 @@ void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
     throw std::runtime_error("More than one domain\\username delimiter in specified user name");
   }
 
-  LOG(LOG_TAG, pep::info) << "Running command line as user '" << passedUserName << "' on domain '" << passedDomain << "'";
+  PEP_LOG(LogTag, Severity::Info) << "Running command line as user '" << passedUserName << "' on domain '" << passedDomain << "'";
 
   auto wideCmdLine = pep::win32api::Utf8StringToWide(cmdLine);
 

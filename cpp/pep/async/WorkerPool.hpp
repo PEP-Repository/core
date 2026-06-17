@@ -50,12 +50,12 @@ class WorkerPool : private boost::noncopyable {
     auto ys = std::make_shared<std::vector<T>>(xs.size());
     auto xsPtr = std::make_shared<std::vector<S>>(std::move(xs));
 
-    struct batch_t {
+    struct Batch {
         S_iter in_begin; // start of batch in *xsPtr
         S_iter in_end;   // end of batch (+1 as usual for iterators)
         T_iter out;      // start of batch in return vector ys
     };
-    std::vector<batch_t> batches;
+    std::vector<Batch> batches;
 
     size_t nBatches = xsPtr->size() / batchSize;
     size_t lastBatchSize = xsPtr->size() % batchSize;
@@ -78,11 +78,11 @@ class WorkerPool : private boost::noncopyable {
     // thus invalidates the iterators into it.  To keep xsPtr alive, we
     // capture it in the final callback.
     return rxcpp::observable<>::iterate(std::move(batches))
-    .map([this, f, accWorker](batch_t batch) -> rxcpp::observable<bool> {
+    .map([this, f, accWorker](Batch batch) -> rxcpp::observable<bool> {
       // Handle each batch on separate worker
       return rxcpp::observable<>::just(std::move(batch))
       .observe_on(this->worker())
-      .map([f](batch_t batch) {
+      .map([f](Batch batch) {
         auto it = batch.in_begin;
         auto out = batch.out;
         while (it != batch.in_end) {

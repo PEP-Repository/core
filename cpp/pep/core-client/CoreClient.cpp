@@ -34,7 +34,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG ("CoreClient");
+const std::string LogTag ("CoreClient");
 
 bool ModesInclude(const std::vector<std::string>& required, std::vector<std::string> provided) {
   auto begin = provided.cbegin(), end = provided.cend();
@@ -74,7 +74,7 @@ CoreClient::CoreClient(const Builder& builder) :
   if (keysFilePath.has_value()) {
     enrollmentSubject.get_observable().subscribe(
       [keysFilePath = *keysFilePath](const EnrolledPartyKeys& result){
-        LOG(LOG_TAG, debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
+        PEP_LOG(LogTag, Severity::Debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
         std::ofstream sf(keysFilePath.string());
         boost::property_tree::ptree keysConfig;
         SerializeProperties(keysConfig, result);
@@ -197,34 +197,25 @@ void CoreClient::Builder::initialize(
   assert(io_context != nullptr && "Caller must provide an I/O context");
 
   try {
-    std::filesystem::path keysFile;
-    std::optional<std::filesystem::path> shadowPublicKeyFile;
+    // See #1797: the keys file must be (read from and) written to the cwd
+    // because the config's directory may be read-only (e.g. on Windows installations).
+    auto keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
 
-    try {
-      // See #1797: the keys file must be (read from and) written to the cwd
-      // because the config's directory may be read-only (e.g. on Windows installations).
-      keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
+    this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
+    this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
 
-      this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
-      this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
+    auto serverEndPoints = config.get_child("ServerEndPoints");
 
-      auto serverEndPoints = config.get_child("ServerEndPoints");
+    if (auto amConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
+      this->setAccessManagerEndPoint(*amConfig);
+    }
 
-      if (auto amConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
-        this->setAccessManagerEndPoint(*amConfig);
-      }
+    if (auto tcConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
+      this->setTranscryptorEndPoint(*tcConfig);
+    }
 
-      if (auto tcConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
-        this->setTranscryptorEndPoint(*tcConfig);
-      }
-
-      if (auto sfConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
-        this->setStorageFacilityEndPoint(*sfConfig);
-      }
-    } catch (std::exception& e) {
-      LOG(LOG_TAG, error) << "Error with configuration file: " << e.what();
-      std::cerr << "Error with configuration file: " << e.what() << std::endl;
-      throw;
+    if (auto sfConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
+      this->setStorageFacilityEndPoint(*sfConfig);
     }
 
     if (persistKeysFile) {
@@ -244,17 +235,17 @@ void CoreClient::Builder::initialize(
             this->setSigningIdentity(MakeSharedCopy(*enrolledPartyKeys.signingIdentity));
           }
         } catch (const UnsupportedEnrollmentSchemeError& ex) {
-          LOG(LOG_TAG, info) << "Skipped loading keys file from a different version (" << ex.what() << ")";
+          PEP_LOG(LogTag, Severity::Info) << "Skipped loading keys file from a different version (" << ex.what() << ")";
         }
       }
       else {
-        LOG(LOG_TAG, info) << "Skipped loading keys file because it does not exist";
+        PEP_LOG(LogTag, Severity::Info) << "Skipped loading keys file because it does not exist";
       }
     }
 
     this->setIoContext(io_context);
   } catch (std::exception& e) {
-    LOG(LOG_TAG, error) << "Error with configuration file: " << e.what() << std::endl;
+    PEP_LOG(LogTag, Severity::Error) << "Error with configuration file: " << e.what() << std::endl;
     std::cerr << "Error with configuration file: " << e.what() << std::endl;
     throw;
   }
@@ -357,7 +348,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
 
     return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
-      pep::enumerateAndRetrieveData2Opts opts;
+      pep::EnumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
         if (std::find(modes.begin(), modes.end(), "access") != modes.end()
           && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
@@ -400,7 +391,7 @@ rxcpp::observable<PolymorphicPseudonym> CoreClient::findPPforShortPseudonym(std:
 rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 {
   return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
-    requestTicket2Opts tOpts;
+    RequestTicket2Opts tOpts;
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
@@ -416,8 +407,8 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 
 }
 
-rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket2Opts& opts) {
-  LOG(LOG_TAG, debug) << "requestTicket";
+rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket2Opts& opts) {
+  PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())

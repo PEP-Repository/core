@@ -71,10 +71,10 @@ public:
   std::vector<PolymorphicPseudonym> getAccessSubjects() const;
 };
 
-enum KeyBlindMode {
-  BLIND_MODE_UNKNOWN = 0,
-  BLIND_MODE_BLIND = 1,
-  BLIND_MODE_UNBLIND = 2
+enum class KeyBlindMode {
+  Unknown = 0,
+  Blind = 1,
+  Unblind = 2
 };
 
 class KeyRequestEntry {
@@ -92,7 +92,7 @@ public:
 
   Metadata mMetadata;
   EncryptedKey mPolymorphEncryptionKey;
-  KeyBlindMode mKeyBlindMode = KeyBlindMode::BLIND_MODE_UNKNOWN;
+  KeyBlindMode mKeyBlindMode = KeyBlindMode::Unknown;
   uint32_t mPseudonymIndex{};
 };
 

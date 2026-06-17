@@ -266,10 +266,10 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
         ctx->content.columnGroups.push_back(cg.first);
       }
       if (ctx->content.groups.empty()) {
-        LOG(LOG_TAG, pep::warning) << "No accessible participants - download will contain no data";
+        PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible participants - download will contain no data";
       }
       if (ctx->content.columnGroups.empty()) {
-        LOG(LOG_TAG, pep::warning) << "No accessible columns - download will contain no data";
+        PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible columns - download will contain no data";
       }
       return ctx;
     });
@@ -278,11 +278,11 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
     if (!UsesSavedConfig(ctx)) {
       bool fullySpecified = true;
       if (!MultiCellQuery::SpecifiesColumns(values)) {
-        LOG(LOG_TAG, pep::error) << "No columns specified";
+        PEP_LOG(LogTag, pep::Severity::Error) << "No columns specified";
         fullySpecified = false;
       }
       if (!MultiCellQuery::SpecifiesParticipants(values)) {
-        LOG(LOG_TAG, pep::error) << "No participants specified";
+        PEP_LOG(LogTag, pep::Severity::Error) << "No participants specified";
         fullySpecified = false;
       }
       if (!fullySpecified) {
@@ -380,7 +380,7 @@ void cleanUp(std::shared_ptr<Context> ctx) {
     throw std::runtime_error("Output directory already exists, please remove it before initiating a pull.");
   }
   fs::rename(ctx->tempDirectory, ctx->outputDirectory);
-  LOG(LOG_TAG, pep::info) << "Data downloaded to " << fs::absolute(ctx->outputDirectory).string();
+  PEP_LOG(LogTag, pep::Severity::Info) << "Data downloaded to " << fs::absolute(ctx->outputDirectory).string();
 }
 
 struct ExportContext final {
@@ -397,12 +397,12 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
   const auto exportAs = [&ctx](const std::string format, std::function<void(std::ofstream&)> write) {
     const auto dest = ctx.input_directory.parent_path() / ("export." + format); // assuming format == file extension
     if (!ctx.force && fs::exists(dest)) {
-      LOG(LOG_TAG, pep::error) << "Export destination \"" + dest.string()
+      PEP_LOG(LogTag, pep::Severity::Error) << "Export destination \"" + dest.string()
               + "\" already exists, please remove it and then run \"pepcli export " + format + "\".";
       return; // skip this format
     }
     auto stream = std::ofstream{dest};
-    LOG(LOG_TAG, pep::info) << "Exporting pulled data as \"" + format + "\" to \"" + dest.string() + "\".";
+    PEP_LOG(LogTag, pep::Severity::Info) << "Exporting pulled data as \"" + format + "\" to \"" + dest.string() + "\".";
     write(stream);
   };
 

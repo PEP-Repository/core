@@ -44,7 +44,7 @@ private:
 
   void handleError(const pep::messaging::MessageId& id, std::exception_ptr error) {
     ASSERT_NE(error, nullptr) << "Scheduler sent notification of a NULL error";
-    ASSERT_FALSE(id.type() == pep::messaging::MessageType::REQUEST && pep::Error::IsSerializable(error)) << "Request streams shouldn't produce exceptions of type Error (or derived)";
+    ASSERT_FALSE(id.type() == pep::messaging::MessageType::Request && pep::Error::IsSerializable(error)) << "Request streams shouldn't produce exceptions of type Error (or derived)";
 
     ASSERT_EQ(mStreams[id].exception, nullptr) << "Scheduler sent multiple error notifications";
     mStreams[id].exception = error;

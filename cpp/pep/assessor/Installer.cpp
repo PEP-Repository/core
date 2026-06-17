@@ -35,7 +35,7 @@
 // #define PEP_INSTALLER_ALWAYS_PROMPT_FOR_CREDENTIALS
 
 namespace {
-  const std::string LOG_TAG = "Installer";
+  const std::string LogTag = "Installer";
 
   class PublishedInstaller : public Installer {
   public:
@@ -125,11 +125,11 @@ namespace {
   std::shared_ptr<PublishedInstaller> PublishedInstaller::GetAvailable() {
     auto version = pep::ConfigVersion::Current();
     if (version == std::nullopt) {
-      LOG(LOG_TAG, pep::debug) << "Cannot determine configuration version. Not retrieving installer properties.";
+      PEP_LOG(LogTag, pep::Severity::Debug) << "Cannot determine configuration version. Not retrieving installer properties.";
       return nullptr;
     }
     if (!version->isGitlabBuild()) {
-      LOG(LOG_TAG, pep::debug) << "Manual build - running debug session? Not retrieving installer properties.";
+      PEP_LOG(LogTag, pep::Severity::Debug) << "Manual build - running debug session? Not retrieving installer properties.";
       return nullptr;
     }
 
@@ -147,7 +147,7 @@ namespace {
       return std::shared_ptr<PublishedInstaller>(new PublishedInstaller(updateXMLTree));
     }
     catch (std::exception& e) {
-      LOG(LOG_TAG, pep::error) << "Error retrieving installer properties: " << e.what();
+      PEP_LOG(LogTag, pep::Severity::Error) << "Error retrieving installer properties: " << e.what();
     }
     return nullptr;
   }
@@ -221,7 +221,7 @@ void Installer::start(const Context& context) const {
 
   auto prompt = true;
 #ifndef PEP_INSTALLER_ALWAYS_PROMPT_FOR_CREDENTIALS
-  prompt = pep::win32api::GetElevationState() == pep::win32api::CANNOT_ELEVATE;
+  prompt = pep::win32api::GetElevationState() == pep::win32api::ElevationState::CannotElevate;
 #endif
   if (prompt) {
     // Use helper (bootstrapper) .EXE to elevate a different account: see https://techcommunity.microsoft.com/t5/Windows-Blog-Archive/Why-Can-8217-t-I-Elevate-My-Application-to-Run-As-Administrator/ba-p/228626

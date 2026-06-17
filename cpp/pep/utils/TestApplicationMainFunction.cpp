@@ -10,9 +10,9 @@ int main(int argc, char* argv[]) {
     testing::AddGlobalTestEnvironment(env); // googletest takes ownership of the registered environment objects. No further memory management required. See: http://google.github.io/googletest/advanced.html
   }
 
-  // Ensure that LOG(...) messages are properly formatted, filtered, and sent to a file sink...
-  pep::Logging::Initialize({ std::make_shared<pep::FileLogging>(pep::info) });
-  // pep::Logging::Initialize({ std::make_shared<pep::ConsoleLogging>(pep::info) }); // ... but not to the console to prevent clutter
+  // Ensure that PEP_LOG(...) messages are properly formatted, filtered, and sent to a file sink...
+  pep::Logging::Initialize({ std::make_shared<pep::FileLogging>(pep::Severity::Info) });
+  // pep::Logging::Initialize({ std::make_shared<pep::ConsoleLogging>(pep::Severity::Info) }); // ... but not to the console to prevent clutter
 
   ::testing::InitGoogleTest(&argc, argv);
   int retval = RUN_ALL_TESTS();

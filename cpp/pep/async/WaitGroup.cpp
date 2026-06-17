@@ -7,9 +7,14 @@
 
 #include <iostream>
 
-static const std::string LOG_TAG = "WaitGroup";
 
 namespace pep {
+
+namespace {
+
+const std::string LogTag = "WaitGroup";
+
+}
 
 WaitGroup::Action WaitGroup::add(const std::string& description) {
   std::lock_guard<std::mutex> lock(mLock);
@@ -27,7 +32,7 @@ void WaitGroup::wait(std::function<void(void)> callback) {
     std::lock_guard<std::mutex> lock(mLock);
     mWaited = true;
     if (!mUnfinishedActions.empty()) {
-      LOG(LOG_TAG, verbose) << this << " waiter is waiting for unfinished actions: " << boost::algorithm::join(mUnfinishedActions | boost::adaptors::map_values, ", ");
+      PEP_LOG(LogTag, Severity::Verbose) << this << " waiter is waiting for unfinished actions: " << boost::algorithm::join(mUnfinishedActions | boost::adaptors::map_values, ", ");
       mWaiters.push_back(callback);
       return;
     }
@@ -51,7 +56,7 @@ void WaitGroup::finish(size_t id) {
       throw ActionAlreadyFinishedException("Action was already finished");
 
     if (!mWaiters.empty()) {
-      LOG(LOG_TAG, verbose) << this << " finished action: " << position->second;
+      PEP_LOG(LogTag, Severity::Verbose) << this << " finished action: " << position->second;
     }
     mUnfinishedActions.erase(position);
 
@@ -62,7 +67,7 @@ void WaitGroup::finish(size_t id) {
   }
 
   if (!cbs.empty()) {
-    LOG(LOG_TAG, verbose) << this << " invoking " << cbs.size() << " waiter(s)";
+    PEP_LOG(LogTag, Severity::Verbose) << this << " invoking " << cbs.size() << " waiter(s)";
     for (const auto& cb : cbs)
       cb();
   }

@@ -17,25 +17,25 @@ using namespace pep;
 
 namespace {
 
-const std::string LOG_TAG = "weblib tests PromiseHelpers";
+const std::string LogTag = "weblib tests PromiseHelpers";
 
 //NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) We do not run tests concurrently
 rxcpp::observer<std::string> CurrentTest;
 
 void ResolveTest(std::string result) {
-  LOG(LOG_TAG, debug) << "ResolveTest: " << result;
+  PEP_LOG(LogTag, Severity::Debug) << "ResolveTest: " << result;
   CurrentTest.on_next(std::move(result));
   CurrentTest.on_completed();
 }
 
 void RejectTest(const val& error) {
   auto str = val::global("String")(error).as<std::string>();
-  LOG(LOG_TAG, debug) << "RejectTest: " << str;
+  PEP_LOG(LogTag, Severity::Debug) << "RejectTest: " << str;
   if (error.instanceof(val::global("WebAssembly")["Exception"])) {
     try {
       error.throw_();
     } catch (...) {
-      LOG(LOG_TAG, debug) << "RejectTest caught C++ exception: " << GetExceptionMessage(std::current_exception());
+      PEP_LOG(LogTag, Severity::Debug) << "RejectTest caught C++ exception: " << GetExceptionMessage(std::current_exception());
       CurrentTest.on_error(std::current_exception());
     }
   } else {
@@ -60,7 +60,7 @@ std::string pep::weblib::tests::PromiseTest(std::function<val()> createPromise) 
             createPromise().call<void>("then",
               val::module_property("pepResolveTest"),
               val::module_property("pepRejectTest"));
-            LOG(LOG_TAG, verbose) << "Promise created";
+            PEP_LOG(LogTag, Severity::Verbose) << "Promise created";
           })
       // Because of -sPROXY_TO_PTHREAD, we are not the main thread.
       // We schedule this on the other (actual main) thread, so that it can complete there while we block here.

@@ -9,6 +9,12 @@
 #include <pep/application/Unwinder.hpp>
 #include <pep/utils/Log.hpp>
 
+namespace {
+
+const std::string LogTag("Unwinder");
+
+}
+
 // TODO rename this macro and/or revise this source's logic, since libunwind and its functionality is not available/used on Windows
 #ifdef WITH_UNWINDER
 
@@ -40,8 +46,11 @@
 
 namespace pep {
 
-static std::string szCrashReportFileName;
-static const std::string LOG_TAG ("Unwinder");
+namespace {
+
+std::string szCrashReportFileName;
+
+}
 
 #ifndef _WIN32
 
@@ -545,7 +554,7 @@ static const char* lpMonthsOfTheYear[] = { "Jan", "Feb", "Mar", "Apr", "May", "J
                                             dumpfile, MiniDumpWithDataSegs, nullptr, nullptr, nullptr);
   if (!dumpSuccessful) {
     HRESULT hError = HRESULT_FROM_WIN32(GetLastError());
-    LOG(LOG_TAG, error) << "Failed to write minidump: " << hError;
+    PEP_LOG(LogTag, Severity::Error) << "Failed to write minidump: " << hError;
   }
 
   exit(2);
@@ -566,7 +575,7 @@ void InitializeUnwinder() {
   const std::string szReportDirectoryPath = std::string(dirname(std::string(szReportDirectoryTmp).data())) + "/";
 
   if (DIR* lpReportDirectory = opendir (szReportDirectoryPath.c_str()); lpReportDirectory == nullptr) {
-    LOG(LOG_TAG, warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
+    PEP_LOG(LogTag, Severity::Warning) << "Unable to look through directory \"" << szReportDirectoryPath << "\" for previous crash reports: " << strerror(errno);
   } else {
     std::unique_ptr<LocalSettings>& lpLocalSettings = LocalSettings::getInstance();
     struct dirent* lpDirEntry;
@@ -611,12 +620,12 @@ void InitializeUnwinder() {
         std::ifstream mCrashReportStream (szReportDirectoryPath + "/" + lpDirEntry->d_name);
         std::string szLine;
         if (mCrashReportStream.is_open ()) {
-          LOG(LOG_TAG, debug) << "[*] ==== Crash report from previous run ====";
+          PEP_LOG(LogTag, Severity::Debug) << "[*] ==== Crash report from previous run ====";
           while (getline (mCrashReportStream, szLine)) {
-            LOG(LOG_TAG, debug) << szLine;
+            PEP_LOG(LogTag, Severity::Debug) << szLine;
           }
           mCrashReportStream.close();
-          LOG(LOG_TAG, debug) << "[*] ==== End Crash report from previous run ====";
+          PEP_LOG(LogTag, Severity::Debug) << "[*] ==== End Crash report from previous run ====";
         }
 
         if (qwTimestamp > qwLatestTimestamp) {
@@ -682,10 +691,11 @@ void InitializeUnwinder() {
 #else
 
 namespace pep {
-  static const std::string LOG_TAG ("Unwinder");
-  void InitializeUnwinder() {
-    LOG(LOG_TAG, warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
-  }
+
+void InitializeUnwinder() {
+  PEP_LOG(LogTag, Severity::Warning) << "InitializeUnwinder called even though USE_UNWINDER is not set";
+}
+
 }
 
 

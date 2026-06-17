@@ -23,6 +23,7 @@ namespace {
 
 const auto TIMEOUT = std::chrono::seconds(5);
 
+// Not defined with a PEP_ prefix so that it matches gtest macros
 // Implemented as "invoke this lambda" so that a semicolon is required: ASSERT_THROW_WITH_MESSAGE(mycode(), std::runtime_error);
 #define ASSERT_THROW_WITH_MESSAGE(statement, expected_exception) \
 [&]() { \
@@ -62,7 +63,7 @@ TEST_F(CastorClientTest, Authentication) {
   .map([](AuthenticationStatus status) {
     return status.state;
   })
-  .contains(AUTHENTICATION_ERROR)
+  .contains(AuthenticationState::Error)
   .as_blocking().first();
   ASSERT_TRUE(authenticationError) << "Castor authentication did not result in an error";
 
@@ -73,7 +74,7 @@ TEST_F(CastorClientTest, Authentication) {
   .map([](AuthenticationStatus status) {
     return status.state;
   })
-  .contains(AUTHENTICATED)
+  .contains(AuthenticationState::Authenticated)
   .as_blocking().first();
   ASSERT_TRUE(authenticated) << "Castor authentication did not succeed";
 

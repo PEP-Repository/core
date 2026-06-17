@@ -28,7 +28,7 @@ enum class EncryptionScheme {
   V3 = 2,
 
   // Alias for the latest encryption scheme: the one that current code uses to encrypt entries
-  LATEST = V3
+  Latest = V3
 };
 
 class MetadataXEntry;

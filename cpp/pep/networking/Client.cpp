@@ -87,7 +87,7 @@ void Client::Connection::establish() {
         message << " Retrying in " << duration_cast<std::chrono::milliseconds>(*latency);
       }
 
-      LOG("Networking client", warning) << message.str();
+      PEP_LOG("Networking client", Severity::Warning) << message.str();
       self->onConnectionAttempt.notify(Attempt::Result::Failure(socketResult.exception()));
       return;
     }

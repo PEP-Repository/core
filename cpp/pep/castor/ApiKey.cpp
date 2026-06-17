@@ -7,7 +7,7 @@ namespace castor {
 
 namespace {
 
-const std::string LOG_TAG = "Castor API key";
+const std::string LogTag = "Castor API key";
 
 }
 
@@ -23,8 +23,8 @@ ApiKey ApiKey::FromFile(const std::filesystem::path& file) {
     return ApiKey{ id, secret };
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with Castor API Key file: " << e.what();
-    LOG(LOG_TAG, critical) << "Castor API Key file is  " << file << std::endl;
+    PEP_LOG(LogTag, Severity::Critical) << "Error with Castor API Key file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Castor API Key file is  " << file << std::endl;
     throw;
   }
 

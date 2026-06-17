@@ -20,7 +20,7 @@ ChecksumChain::Result ChecksumChain::get(std::shared_ptr<TranscryptorStorageBack
   }
 
   if (maxCheckpoint < mLastResult.checkpoint) {
-    LOG("Transcryptor checksum chains", info) << "Discarding pre-calculated checksum for checkpoint " << mLastResult.checkpoint
+    PEP_LOG("Transcryptor checksum chains", Severity::Info) << "Discarding pre-calculated checksum for checkpoint " << mLastResult.checkpoint
       << " for chain " << mName
       << " because earlier checkpoint " << maxCheckpoint << " has been requested";
     mLastResult = Result();

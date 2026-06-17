@@ -110,7 +110,7 @@ rxcpp::observable<std::string> OAuthClient::doTokenRequest(std::string_view code
     });
     body = std::string(form.encoded_query());
   }
-  HTTPRequest request(networking::HttpMethod::POST, boost::urls::url(mTokenUrl), std::move(body),
+  HTTPRequest request(networking::HttpMethod::Post, boost::urls::url(mTokenUrl), std::move(body),
     HTTPMessage::HeaderMap{{"Content-Type", "application/x-www-form-urlencoded"}});
 
   return SendHttpRequest(request, mIoContext, mCaCertFilepath).map([](HTTPResponse response) {

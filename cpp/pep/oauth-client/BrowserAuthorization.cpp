@@ -20,7 +20,7 @@
 using namespace pep;
 
 namespace {
-const std::string LOG_TAG = "BrowserAuthorization";
+const std::string LogTag = "BrowserAuthorization";
 
 // See OAuthProvider::getRegisteredRedirectURIs
 constexpr std::uint16_t ListenPort{16515};
@@ -47,7 +47,7 @@ std::string GetStatusHtml(const std::optional<std::string> failure = std::nullop
 }
 
 void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context) {
-  LOG(LOG_TAG, pep::debug) << "Opening in browser: " << url;
+  PEP_LOG(LogTag, pep::Severity::Debug) << "Opening in browser: " << url;
   if (!url.is_path_absolute())
     throw std::runtime_error("Can not open relative URLs");
   bool success = false;
@@ -67,14 +67,14 @@ void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context)
     if (!cmdPath.empty()) {
       int exitCode = boost::process::process{io_context, cmdPath, {url.buffer()}}.wait();
       if (exitCode != 0) {
-        LOG(LOG_TAG, pep::warning) << "Failed to open browser. '" << command << "' returned exit code: " << exitCode;
+        PEP_LOG(LogTag, pep::Severity::Warning) << "Failed to open browser. '" << command << "' returned exit code: " << exitCode;
       } else {
         success = true;
       }
     }
 #endif
   } catch (std::exception &e) {
-    LOG(LOG_TAG, pep::warning) << "Failed to open browser: " << e.what();
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Failed to open browser: " << e.what();
   }
 
   if (!success) {

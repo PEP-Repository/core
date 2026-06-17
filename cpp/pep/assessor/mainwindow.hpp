@@ -43,7 +43,7 @@ class MainWindow : public QMainWindow {
   pep::ConnectionStatus accessManagerConnectionStatus;
   pep::ConnectionStatus keyServerConnectionStatus;
   pep::ConnectionStatus storageFacilityConnectionStatus;
-  std::queue<std::pair<QString, pep::severity_level>> statusMessages;
+  std::queue<std::pair<QString, pep::Severity>> statusMessages;
   QTimer* statusTimer;
   QLabel* statusbarLabel;
   QPushButton* statusbarCancelButton;
@@ -76,7 +76,7 @@ signals:
 
   void announceLookupFailure(QString reason);
 
-  void statusMessage(QString message, pep::severity_level severity);
+  void statusMessage(QString message, pep::Severity severity);
 
 private slots:
   void initializeRegisterPatientContent(bool setFocus = false);
@@ -87,7 +87,7 @@ private slots:
 
   void on_participantRegistered();
 
-  void on_participantLookupError(QString str, pep::severity_level sev);
+  void on_participantLookupError(QString str, pep::Severity sev);
 
   void on_registerWidgetClosed();
 
@@ -103,7 +103,7 @@ private slots:
 
   void updateConnectionStatus(bool expired = false);
 
-  void updateStatus(QString message, pep::severity_level mode);
+  void updateStatus(QString message, pep::Severity mode);
 
   void updateStatusBar(bool manuallyCalled = true);
 
@@ -119,7 +119,7 @@ private slots:
 
 public slots:
   void showForToken(QString token);
-  void handleWidgetMessage(QString message, pep::severity_level severity);
+  void handleWidgetMessage(QString message, pep::Severity severity);
 
 private:
   void applyLanguage(QLocale::Language language);
