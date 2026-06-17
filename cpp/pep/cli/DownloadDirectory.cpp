@@ -401,30 +401,30 @@ std::string DownloadDirectory::Specification::toString() const {
 
 
 DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize)
-  : mDestination(std::move(destination)), mDescriptor(std::move(descriptor)), mPath(std::move(path)), mFileName(mPath.filename().string()), mFileSize(fileSize), mHasher(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
+  : destination_(std::move(destination)), descriptor_(std::move(descriptor)), path_(std::move(path)), mFileName(path_.filename().string()), mFileSize(fileSize), hasher_(HashedArchive::DOWNLOAD_HASH_SEED), mPseudonymisationRequired(pseudonymisationRequired), mArchiveExtractingRequired(archiveExtractionRequired) {
 
-  mRaw = std::make_shared<std::ofstream>(mPath.string(), std::ios::out | std::ios::binary);
+  mRaw = std::make_shared<std::ofstream>(path_.string(), std::ios::out | std::ios::binary);
   if (!mRaw->is_open()) {
-    throw std::system_error(errno, std::generic_category(), "Failed to open " + mPath.string());
+    throw std::system_error(errno, std::generic_category(), "Failed to open " + path_.string());
   }
 }
 
 DownloadDirectory::RecordStorageStream::~RecordStorageStream() noexcept {
   if (mRaw) {
-    PEP_LOG(LogTag, Severity::Error) << "Error destructing RecordStorageStream: uncommitted record at \"" + mPath.string() << '"'; // TODO: improve
+    PEP_LOG(LogTag, Severity::Error) << "Error destructing RecordStorageStream: uncommitted record at \"" + path_.string() << '"'; // TODO: improve
   }
 }
 
 std::filesystem::path DownloadDirectory::RecordStorageStream::getRelativePath() const {
-  return std::filesystem::relative(mPath, mDestination->getPath());
+  return std::filesystem::relative(path_, destination_->getPath());
 }
 
 void DownloadDirectory::RecordStorageStream::write(const std::string& part, std::shared_ptr<GlobalConfiguration> globalConfig) {
   if (!mRaw) {
-    throw std::runtime_error("Cannot write to record stored at " + mPath.string() + " after it has been committed");
+    throw std::runtime_error("Cannot write to record stored at " + path_.string() + " after it has been committed");
   }
   if(!mPseudonymisationRequired) { //Postpone hashing until after/during the depseudonymisation, since we want to hash the depseudonymised data
-    mHasher.update(part.data(), part.size());
+    hasher_.update(part.data(), part.size());
   }
 
   (*mRaw) << part;
@@ -440,7 +440,7 @@ void DownloadDirectory::RecordStorageStream::write(const std::string& part, std:
 
 void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfiguration> globalConfig) {
   if (!mRaw) {
-    throw std::runtime_error("Record has already been committed and stored at " + mPath.string());
+    throw std::runtime_error("Record has already been committed and stored at " + path_.string());
   }
   mRaw = nullptr;
   XxHasher::Hash hash{};
@@ -448,20 +448,20 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
   std::optional<Pseudonymiser> pseudonymiser{std::nullopt};
 
   if (mArchiveExtractingRequired) {
-    // mPath and the outpath defined below might collide. Add the .raw extension to ensure uniqueness.
-    auto raw = std::filesystem::path(mPath.string() + ".raw");
-    std::filesystem::rename(mPath, raw);
-    mPath = raw;
+    // path_ and the outpath defined below might collide. Add the .raw extension to ensure uniqueness.
+    auto raw = std::filesystem::path(path_.string() + ".raw");
+    std::filesystem::rename(path_, raw);
+    path_ = raw;
 
-    auto outpath = mPath.parent_path() / mDescriptor.getColumn();
+    auto outpath = path_.parent_path() / descriptor_.getColumn();
     auto directoryArchive = DirectoryArchive::Create(outpath);
     auto hashedArchive = HashedArchive::Create(directoryArchive);
 
-    auto in = std::ifstream(mPath.string(), std::ios::binary);
+    auto in = std::ifstream(path_.string(), std::ios::binary);
 
     PEP_DEFER( // code is executed when this scope ends, with or without exceptions.
       in.close();
-      std::filesystem::remove(mPath); // The raw .raw file
+      std::filesystem::remove(path_); // The raw .raw file
     );
 
     auto temppath = std::filesystem::path(outpath.string() + ".tmp");
@@ -472,8 +472,8 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
     Tar::Extract(in, temppath);
 
     if (mPseudonymisationRequired) {
-      auto localPseudonym = globalConfig->getUserPseudonymFormat().makeUserPseudonym(mDescriptor.getParticipant().getLocalPseudonym());
-      pseudonymiser = Pseudonymiser(mDescriptor.getExtra().at("pseudonymPlaceholder").plaintext(), localPseudonym);
+      auto localPseudonym = globalConfig->getUserPseudonymFormat().makeUserPseudonym(descriptor_.getParticipant().getLocalPseudonym());
+      pseudonymiser = Pseudonymiser(descriptor_.getExtra().at("pseudonymPlaceholder").plaintext(), localPseudonym);
     }
 
     WriteToArchive(temppath, hashedArchive, pseudonymiser);
@@ -484,32 +484,32 @@ void DownloadDirectory::RecordStorageStream::commit(std::shared_ptr<GlobalConfig
   else {
     //Single File
     if (mPseudonymisationRequired) {
-      auto localPseudonym = globalConfig->getUserPseudonymFormat().makeUserPseudonym(mDescriptor.getParticipant().getLocalPseudonym());
-      pseudonymiser = Pseudonymiser(mDescriptor.getExtra().at("pseudonymPlaceholder").plaintext(), localPseudonym);
+      auto localPseudonym = globalConfig->getUserPseudonymFormat().makeUserPseudonym(descriptor_.getParticipant().getLocalPseudonym());
+      pseudonymiser = Pseudonymiser(descriptor_.getExtra().at("pseudonymPlaceholder").plaintext(), localPseudonym);
 
-      auto in = std::ifstream(mPath.string(), std::ios::binary);
-      auto temppath = std::filesystem::path(mPath.string() + ".tmp");
+      auto in = std::ifstream(path_.string(), std::ios::binary);
+      auto temppath = std::filesystem::path(path_.string() + ".tmp");
       auto tempOut = std::ofstream(temppath.string(), std::ios::binary);
 
       // Hashing has been postponed, so do it now.
-      auto writeAndHash = [&tempOut, &hasher = mHasher](const char* c, const std::streamsize l) {tempOut.write(c, l); hasher.update(c, static_cast<size_t>(l)); tempOut.flush();};
+      auto writeAndHash = [&tempOut, &hasher = hasher_](const char* c, const std::streamsize l) {tempOut.write(c, l); hasher.update(c, static_cast<size_t>(l)); tempOut.flush();};
       pseudonymiser->pseudonymise(in, writeAndHash);
 
       in.close();
       tempOut.close();
-      std::filesystem::remove(mPath);
-      std::filesystem::rename(temppath, mPath);
+      std::filesystem::remove(path_);
+      std::filesystem::rename(temppath, path_);
     }
 
-    hash = mHasher.digest();
-    path = mPath;
+    hash = hasher_.digest();
+    path = path_;
   }
 
   try {
-    mDestination->setStoredDataHash(mDescriptor, path, mFileName, hash);
+    destination_->setStoredDataHash(descriptor_, path, mFileName, hash);
   }
   catch (...) {
-    PEP_LOG(LogTag, Severity::Error) << "Could not write stored data hash for record at \"" << mPath.string() << "\": " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, Severity::Error) << "Could not write stored data hash for record at \"" << path_.string() << "\": " << GetExceptionMessage(std::current_exception());
     throw;
   }
 }

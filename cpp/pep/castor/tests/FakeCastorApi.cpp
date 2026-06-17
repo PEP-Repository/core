@@ -47,7 +47,7 @@ private:
   std::shared_ptr<FakeCastorApi> mServer;
   std::shared_ptr<networking::Connection> mBinary;
   std::string mMethod;
-  std::string mPath;
+  std::string path_;
   std::map<std::string, std::string> mHeaders;
   std::string mBody;
   size_t mContentlength = 0U;
@@ -76,7 +76,7 @@ void FakeCastorApi::Connection::handleReadRequestLine(const networking::Delimite
   std::istringstream responseStream(*result);
   std::string httpVersion;
   responseStream >> mMethod;
-  responseStream >> mPath;
+  responseStream >> path_;
   std::getline(responseStream, httpVersion);
 
   mBinary->asyncReadUntil("\r\n\r\n", [self = SharedFrom(*this)](const networking::DelimitedTransfer::Result& result) {self->handleReadHeaders(result); });
@@ -125,9 +125,9 @@ void FakeCastorApi::Connection::handleReadBody(const networking::SizedTransfer::
 }
 
 void FakeCastorApi::Connection::handleRequest() {
-  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << mMethod << " " << mPath << std::endl << mBody;
+  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << mMethod << " " << path_ << std::endl << mBody;
 
-  if(mPath.starts_with("/api/")) {
+  if(path_.starts_with("/api/")) {
     auto authzHeader = mHeaders.find("Authorization");
     if(authzHeader == mHeaders.end() || authzHeader->second != "Bearer f74ffb4d8a4c9a0a3992836357d668bee1231172") {
       writeOutput("{\"type\":\"http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"You are not authorized to view this study.\"}", "403 Forbidden");
@@ -136,10 +136,10 @@ void FakeCastorApi::Connection::handleRequest() {
   }
 
   auto options = mServer->mOptions;
-  auto findResponse = options->responses.find(mPath);
+  auto findResponse = options->responses.find(path_);
   if(findResponse != options->responses.end()) {
     writeOutput(boost::algorithm::replace_all_copy(findResponse->second.body, "[URL]", getUrl()), findResponse->second.status);
-  } else if(mMethod == "POST" && mPath == "/oauth/token") {
+  } else if(mMethod == "POST" && path_ == "/oauth/token") {
     if(options->authenticated) {
       writeOutput("{\"access_token\":\"f74ffb4d8a4c9a0a3992836357d668bee1231172\",\"expires_in\":18000,\"token_type\":\"Bearer\",\"scope\":\"1\"}");
     } else {

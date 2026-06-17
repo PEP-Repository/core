@@ -83,7 +83,7 @@ struct DownloadProcessor::Context {
 
 rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient> client, const DownloadDirectory::PullOptions& options, const Progress::OnCreation& onCreateProgress) {
   auto ctx = std::make_shared<Context>();
-  ctx->content = mDestination->getSpecification().content;
+  ctx->content = destination_->getSpecification().content;
   ctx->client = client;
   ctx->options = options;
 
@@ -166,19 +166,19 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shar
 void DownloadProcessor::prepareLocalData(
   std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads, bool assumePristine) {
   progress->advance("Preparing local data");
-  auto localRecords = mDestination->list();
+  auto localRecords = destination_->list();
   if (localRecords.empty()) {
     return;
   }
 
   auto ownProgress = pep::Progress::Create(localRecords.size(), progress->push());
   for (const auto& existing : localRecords) {
-    ownProgress->advance(mDestination->getRecordFileName(existing, false)->string());
+    ownProgress->advance(destination_->getRecordFileName(existing, false)->string());
     auto position = downloads->find(existing);
     if (position == downloads->cend()) {
       // Payload is not in the server's current data set: it has either been removed from the server,
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
-      if (!mDestination->remove(existing)) {
+      if (!destination_->remove(existing)) {
         if (assumePristine) {
           auto update = std::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
             return *enumerated.second->mAccessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
@@ -192,11 +192,11 @@ void DownloadProcessor::prepareLocalData(
           }
         }
       }
-    } else if (assumePristine || mDestination->hasPristineData(existing)) {
+    } else if (assumePristine || destination_->hasPristineData(existing)) {
       // We already have the payload: don't download
       if (existing.getBlindingTimestamp() != position->first.getBlindingTimestamp()) {
         // Server has different metadata than our download directory: apply metadata-only update to the payload that we already have
-        if (!mDestination->update(existing, position->first)) {
+        if (!destination_->update(existing, position->first)) {
           if (assumePristine) {
             // Data file should have been renamed in the local copy, but it wasn't there
             PEP_LOG(LogTag + ":update", Severity::Warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
@@ -208,7 +208,7 @@ void DownloadProcessor::prepareLocalData(
       downloads->erase(position);
     } else {
       // Our copy is not pristine: payload will be downloaded
-      mDestination->remove(existing);
+      destination_->remove(existing);
     }
   }
 }
@@ -278,7 +278,7 @@ std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openS
     archiveExtractionRequired = columnSpecification->getRequiresDirectory();
   }
 
-  auto result = mDestination->create(std::move(descriptor), pseudonymisationRequired, archiveExtractionRequired, fileSize);
+  auto result = destination_->create(std::move(descriptor), pseudonymisationRequired, archiveExtractionRequired, fileSize);
   progress.advance(result->getRelativePath().string());
   return result;
 }

@@ -608,7 +608,7 @@ public:
 }
 
 TranscryptorStorage::TranscryptorStorage(
-    const std::filesystem::path& path) : mPath(path.string()) {
+    const std::filesystem::path& path) : path_(path.string()) {
   mStorage = std::make_shared<TranscryptorStorageBackend>(path.string());
 
   ensureInitialized();

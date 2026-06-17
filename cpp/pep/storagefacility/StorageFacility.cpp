@@ -475,7 +475,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     for (size_t i = 0; i < request.mIds.size(); i++) {
       // TODO execute decryption in WorkerPool
       auto sfid = server->decryptId(request.mIds[i]);
-      auto sfentry = server->mFileStore->lookup(EntryName::Parse(sfid.mPath), sfid.mTime);
+      auto sfentry = server->mFileStore->lookup(EntryName::Parse(sfid.path), sfid.time);
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
       }
@@ -537,7 +537,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   for (size_t i = 0; i < request.mIds.size(); i++) {
     // TODO execute decryption in WorkerPool
     auto sfid = decryptId(request.mIds[i]);
-    auto entry = mFileStore->lookup(EntryName::Parse(sfid.mPath), sfid.mTime);
+    auto entry = mFileStore->lookup(EntryName::Parse(sfid.path), sfid.time);
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }

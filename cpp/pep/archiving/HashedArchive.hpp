@@ -27,10 +27,10 @@ public:
 private:
   HashedArchive(std::shared_ptr<Archive> archive);
 
-  std::shared_ptr<Archive> mArchive;
-  std::unique_ptr<XxHasher> mHasher;
-  std::string mCurrentEntry;
-  std::map<std::string, XxHasher::Hash> mHashes; //The consistency of the final hash relies on the consistent sorting provided by std::map
+  std::shared_ptr<Archive> archive_;
+  std::unique_ptr<XxHasher> hasher_;
+  std::string currentEntry_;
+  std::map<std::string, XxHasher::Hash> hashes_; //The consistency of the final hash relies on the consistent sorting provided by std::map
 };
 
 }

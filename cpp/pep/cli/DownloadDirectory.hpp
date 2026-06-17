@@ -42,13 +42,13 @@ public:
     friend class DownloadDirectory;
 
   private:
-    std::shared_ptr<DownloadDirectory> mDestination;
-    RecordDescriptor mDescriptor;
-    std::filesystem::path mPath;
+    std::shared_ptr<DownloadDirectory> destination_;
+    RecordDescriptor descriptor_;
+    std::filesystem::path path_;
     std::string mFileName;
     std::uint64_t mFileSize, mWritten = 0;
     std::shared_ptr<std::ofstream> mRaw;
-    XxHasher mHasher;
+    XxHasher hasher_;
     bool mPseudonymisationRequired{false};
     bool mArchiveExtractingRequired{false};
 
@@ -65,7 +65,7 @@ public:
 
     ~RecordStorageStream() noexcept;
 
-    const RecordDescriptor& getRecordDescriptor() const noexcept { return mDescriptor; }
+    const RecordDescriptor& getRecordDescriptor() const noexcept { return descriptor_; }
 
     std::filesystem::path getRelativePath() const;
 

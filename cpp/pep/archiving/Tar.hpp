@@ -26,7 +26,7 @@ private:
   Tar(std::shared_ptr<std::ostream> stream);
 
   std::shared_ptr<std::ostream> mStream;
-  archive* mArchive;
+  archive* archive_;
 };
 
 }

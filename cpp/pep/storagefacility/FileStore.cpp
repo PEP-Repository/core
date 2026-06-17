@@ -110,14 +110,14 @@ FileStore::FileStore(
   const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : mPath(metadatapath),
+  : path_(metadatapath),
   mPagestore(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
-  std::filesystem::create_directories(mPath);
+  std::filesystem::create_directories(path_);
 
   auto start_time = steady_clock::now();
-  for (const auto& p : std::filesystem::directory_iterator(mPath)) {
+  for (const auto& p : std::filesystem::directory_iterator(path_)) {
     auto name = p.path().filename().string();
     if (std::filesystem::is_directory(p.path()) && name.size() == LocalPseudonym::TextLength()) {
       mParticipants.emplace(std::make_unique<Participant>(*this, name, true));

@@ -80,15 +80,15 @@ namespace {
 
   class LocalInstaller : public Installer {
   private:
-    std::filesystem::path mPath;
+    std::filesystem::path path_;
 
   private:
     explicit LocalInstaller(const std::string& path)
-      : mPath(path) {
+      : path_(path) {
     }
 
   protected:
-    std::filesystem::path getLocalMsiPath() const override { return mPath; }
+    std::filesystem::path getLocalMsiPath() const override { return path_; }
 
   public:
     unsigned getMajorVersion() const override { return 0U; }

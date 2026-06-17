@@ -192,7 +192,7 @@ public:
   void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
 
   const std::filesystem::path& metaDir() const {
-    return mPath;
+    return path_;
   }
 
 private:
@@ -215,7 +215,7 @@ private:
   Participant& provideParticipant(const std::string& name);
 
   PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set mParticipants;
-  std::filesystem::path mPath;
+  std::filesystem::path path_;
   std::shared_ptr<PageStore> mPagestore;
 };
 
