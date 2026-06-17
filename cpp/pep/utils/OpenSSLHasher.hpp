@@ -9,7 +9,7 @@
 namespace pep {
 
 class OpenSSLHasher : public Hasher<std::string> {
-  EVP_MD_CTX* mCtx = nullptr;
+  EVP_MD_CTX* ctx_ = nullptr;
 
   void process(const void* block, size_t size) override;
   Hash finish() override;

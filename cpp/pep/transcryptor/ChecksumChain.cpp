@@ -19,18 +19,18 @@ ChecksumChain::Result ChecksumChain::get(std::shared_ptr<TranscryptorStorageBack
     throw std::runtime_error("Invalid checkpoint " + std::to_string(maxCheckpoint));
   }
 
-  if (maxCheckpoint < mLastResult.checkpoint) {
-    PEP_LOG("Transcryptor checksum chains", Severity::Info) << "Discarding pre-calculated checksum for checkpoint " << mLastResult.checkpoint
-      << " for chain " << mName
+  if (maxCheckpoint < lastResult_.checkpoint) {
+    PEP_LOG("Transcryptor checksum chains", Severity::Info) << "Discarding pre-calculated checksum for checkpoint " << lastResult_.checkpoint
+      << " for chain " << name_
       << " because earlier checkpoint " << maxCheckpoint << " has been requested";
-    mLastResult = Result();
+    lastResult_ = Result();
   }
-  if (maxCheckpoint == mLastResult.checkpoint) {
-    return mLastResult;
+  if (maxCheckpoint == lastResult_.checkpoint) {
+    return lastResult_;
   }
 
   assert(maxCheckpoint >= FIRST_RECORD_CHECKPOINT);
-  return mLastResult = this->calculate(storage, mLastResult, maxCheckpoint);
+  return lastResult_ = this->calculate(storage, lastResult_, maxCheckpoint);
 }
 
 }

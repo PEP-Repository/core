@@ -58,15 +58,15 @@ class Parameter {
   friend class Parameters;
 
 private:
-  std::string mName;
-  std::optional<std::string> mDescription;
-  std::set<SwitchAnnouncement> mAliases;
-  std::shared_ptr<ValueSpecificationBase> mValueSpecification;
+  std::string name_;
+  std::optional<std::string> description_;
+  std::set<SwitchAnnouncement> aliases_;
+  std::shared_ptr<ValueSpecificationBase> valueSpecification_;
 
   // Deprecation state: at most one of these is set
-  std::optional<std::string> mDeprecationMessage;
-  std::optional<std::string> mNoLongerSupportedMessage;
-  std::function<ParameterTransformationResult(Command&, const NamedValues&)> mTransformer;
+  std::optional<std::string> deprecationMessage_;
+  std::optional<std::string> noLongerSupportedMessage_;
+  std::function<ParameterTransformationResult(Command&, const NamedValues&)> transformer_;
 
   Parameter alias(const SwitchAnnouncement& alias) const;
   std::optional<std::string> getInvocationSummary(const std::string& prefix, const std::string& identifier, bool indicateOptionality) const;
@@ -99,23 +99,23 @@ public:
   template <typename T>
   Parameter value(Value<T> value) const;
 
-  const std::string& getName() const noexcept { return mName; }
-  const std::optional<std::string>& getDescription() const noexcept { return mDescription; }
+  const std::string& getName() const noexcept { return name_; }
+  const std::optional<std::string>& getDescription() const noexcept { return description_; }
 
   SwitchAnnouncement getCanonicalAnnouncement() const;
   std::set<SwitchAnnouncement> getAnnouncements() const;
-  std::shared_ptr<const ValueSpecificationBase> getValueSpecification() const noexcept { return mValueSpecification; }
-  [[nodiscard]] bool hasTransformer() const noexcept { return mTransformer != nullptr; }
-  [[nodiscard]] bool isNoLongerSupported() const noexcept { return mNoLongerSupportedMessage.has_value(); }
-  [[nodiscard]] bool isDeprecated() const noexcept { return mDeprecationMessage.has_value(); }
-  [[nodiscard]] const std::optional<std::string>& getNoLongerSupportedMessage() const noexcept { return mNoLongerSupportedMessage; }
-  [[nodiscard]] const std::optional<std::string>& getDeprecationMessage() const noexcept { return mDeprecationMessage; }
+  std::shared_ptr<const ValueSpecificationBase> getValueSpecification() const noexcept { return valueSpecification_; }
+  [[nodiscard]] bool hasTransformer() const noexcept { return transformer_ != nullptr; }
+  [[nodiscard]] bool isNoLongerSupported() const noexcept { return noLongerSupportedMessage_.has_value(); }
+  [[nodiscard]] bool isDeprecated() const noexcept { return deprecationMessage_.has_value(); }
+  [[nodiscard]] const std::optional<std::string>& getNoLongerSupportedMessage() const noexcept { return noLongerSupportedMessage_; }
+  [[nodiscard]] const std::optional<std::string>& getDeprecationMessage() const noexcept { return deprecationMessage_; }
   ParameterTransformationResult transform(Command& self, const NamedValues& values) const;
 
   bool isRequired() const noexcept;
   bool isPositional() const noexcept;
   bool allowsMultiple() const noexcept;
-  bool isDocumented() const noexcept { return mDescription.has_value() && !this->isDeprecated() && !this->isNoLongerSupported(); }
+  bool isDocumented() const noexcept { return description_.has_value() && !this->isDeprecated() && !this->isNoLongerSupported(); }
 
   Values parse(const ProvidedValues& lexed) const;
 };
@@ -184,18 +184,18 @@ public:
 
 template <typename T>
 Parameter Parameter::value(Value<T> value) const {
-  if (mValueSpecification != nullptr) {
-    throw std::runtime_error("A value has already been specified for command line switch " + mName);
+  if (valueSpecification_ != nullptr) {
+    throw std::runtime_error("A value has already been specified for command line switch " + name_);
   }
   try {
     value.validate();
   }
   catch (const std::exception& error) {
-    throw std::runtime_error("Parameter '" + mName + "': " + error.what());
+    throw std::runtime_error("Parameter '" + name_ + "': " + error.what());
   }
 
   auto result = *this;
-  result.mValueSpecification = MakeSharedCopy(value);
+  result.valueSpecification_ = MakeSharedCopy(value);
   return result;
 }
 

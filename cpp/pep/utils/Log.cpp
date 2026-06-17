@@ -126,7 +126,7 @@ Logging::pep_severity_channel_logger& Logging::GetLogger() {
 }
 
 void Logging::apply() const {
-  this->registerSink()->setMinimumSeverity(minimum);
+  this->registerSink()->setMinimumSeverity(minimum_);
 }
 
 void Logging::Initialize(const std::vector<std::shared_ptr<Logging>>& settings) {
@@ -165,7 +165,7 @@ std::shared_ptr<Logging::Sink> ConsoleLogging::registerSink() const {
 std::shared_ptr<Logging::Sink> FileLogging::registerSink() const {
   return CreateSinkWrapper(
     boost::log::add_file_log(
-                prefix + "_%N.log",
+                prefix_ + "_%N.log",
                 boost::log::keywords::format = (boost::log::expressions::stream << boost::log::expressions::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d %H:%M:%S") << ": <" << severity << "> [" << threadName << channel << "] " << boost::log::expressions::smessage),
                 boost::log::keywords::open_mode = std::ios_base::app,
                 boost::log::keywords::rotation_size = 1024 * 1024,
@@ -241,7 +241,7 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
 std::shared_ptr<Logging::Sink> SysLogging::registerSink() const {
   try {
     using sink_t = boost::log::sinks::synchronous_sink<SystemLogBackend>;
-    auto lpBackend = createSyslogBackend(host_name, port);
+    auto lpBackend = createSyslogBackend(hostName_, port_);
 
     boost::shared_ptr<sink_t> lpSink = boost::make_shared<sink_t>(lpBackend);
     lpSink->set_formatter(

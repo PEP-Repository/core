@@ -8,7 +8,7 @@ const std::string Visit::RELATIVE_API_ENDPOINT = "visit";
 const std::string Visit::EMBEDDED_API_NODE_NAME = "visits";
 
 Visit::Visit(std::shared_ptr<Study> study, JsonPtr json)
-  : SimpleCastorChildObject<Visit, Study>(study, json), mName(GetFromPtree<std::string>(*json, "visit_name")) {}
+  : SimpleCastorChildObject<Visit, Study>(study, json), name_(GetFromPtree<std::string>(*json, "visit_name")) {}
 
 }
 }

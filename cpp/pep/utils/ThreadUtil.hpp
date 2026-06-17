@@ -10,6 +10,6 @@ public:
   static void Set(const std::string &name);
 
 private:
-  static thread_local std::optional<std::string> mName;
+  static thread_local std::optional<std::string> theName;
 };
 }

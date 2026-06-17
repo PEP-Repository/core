@@ -9,13 +9,13 @@ namespace castor
 
 class Visit : public SimpleCastorChildObject<Visit, Study>, public SharedConstructor<Visit> {
  private:
-  std::string mName;
+  std::string name_;
 
  public:
   static const std::string RELATIVE_API_ENDPOINT;
   static const std::string EMBEDDED_API_NODE_NAME;
 
-  std::string getName() const { return mName; }
+  std::string getName() const { return name_; }
 
  protected:
   /*!

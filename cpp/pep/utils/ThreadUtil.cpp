@@ -11,7 +11,7 @@
 
 namespace pep {
 const std::optional<std::string> &ThreadName::Get() {
-  return mName;
+  return theName;
 }
 
 void ThreadName::Set(const std::string &name) {
@@ -24,9 +24,9 @@ void ThreadName::Set(const std::string &name) {
 #elif defined(__linux__)
   (void)::pthread_setname_np(::pthread_self(), name.c_str());
 #endif
-  mName = name;
+  theName = name;
 }
 
-thread_local std::optional<std::string> ThreadName::mName = std::nullopt;
+thread_local std::optional<std::string> ThreadName::theName = std::nullopt;
 
 }

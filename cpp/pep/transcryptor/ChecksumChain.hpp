@@ -29,11 +29,11 @@ public:
   };
 
 private:
-  std::string mName;
-  Result mLastResult;
+  std::string name_;
+  Result lastResult_;
 
 protected:
-  explicit ChecksumChain(std::string name) noexcept : mName(std::move(name)) {}
+  explicit ChecksumChain(std::string name) noexcept : name_(std::move(name)) {}
 
   virtual Result calculate(std::shared_ptr<TranscryptorStorageBackend> storage, const Result& partial, uint64_t maxCheckpoint) const = 0;
 
@@ -43,7 +43,7 @@ protected:
 public:
   virtual ~ChecksumChain() noexcept = default;
 
-  std::string name() const noexcept { return mName; }
+  std::string name() const noexcept { return name_; }
 
   /*!
    * \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one

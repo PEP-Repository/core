@@ -60,13 +60,13 @@ public:
   virtual ~Logging() noexcept = default;
 
 private:
-  Severity minimum;
+  Severity minimum_;
 
   void apply() const;
 
 protected:
   explicit Logging(Severity minimum)
-    : minimum(minimum) {
+    : minimum_(minimum) {
   }
 
   virtual std::shared_ptr<Sink> registerSink() const = 0;
@@ -89,28 +89,28 @@ public:
 
 class FileLogging : public Logging {
 private:
-  std::string prefix;
+  std::string prefix_;
 
 protected:
   std::shared_ptr<Sink> registerSink() const override;
 
 public:
   FileLogging(Severity minimum)
-    : Logging(minimum), prefix(GetLogBasePath().string()) {
+    : Logging(minimum), prefix_(GetLogBasePath().string()) {
   }
 };
 
 class SysLogging: public Logging{
 private:
-  std::string host_name;
-  uint16_t port;
+  std::string hostName_;
+  uint16_t port_;
 
 protected:
   std::shared_ptr<Sink> registerSink() const override;
 
 public:
   SysLogging(Severity minimum, const std::string& szHostname = "", uint16_t wPort = 514)
-    : Logging(minimum), host_name(szHostname), port(wPort) {
+    : Logging(minimum), hostName_(szHostname), port_(wPort) {
   }
 };
 

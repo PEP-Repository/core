@@ -9,8 +9,8 @@ const std::string RepeatingDataForm::EMBEDDED_API_NODE_NAME = "repeating_data_fo
 
 RepeatingDataForm::RepeatingDataForm(std::shared_ptr<RepeatingData> repeatingData, JsonPtr json)
   : SimpleCastorChildObject<RepeatingDataForm, RepeatingData>(repeatingData, json),
-  mName(GetFromPtree<std::string>(*json, "repeating_data_form_name")),
-  mNumber(GetFromPtree<int>(*json, "repeating_data_form_number")) {}
+  name_(GetFromPtree<std::string>(*json, "repeating_data_form_name")),
+  number_(GetFromPtree<int>(*json, "repeating_data_form_number")) {}
 
 }
 }

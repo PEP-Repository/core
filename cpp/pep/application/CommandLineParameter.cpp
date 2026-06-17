@@ -14,38 +14,38 @@ std::string CommandPath::toString() const {
 }
 
 Parameter::Parameter(const std::string& name, const std::optional<std::string>& description)
-  : mName(name), mDescription(description) {
+  : name_(name), description_(description) {
   assert(description == std::nullopt || !description->empty());
 }
 
 Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   auto announcements = this->getAnnouncements();
   if (announcements.find(alias) != announcements.cend()) {
-    throw std::runtime_error("Switch " + mName + " already has announcement " + alias.string());
+    throw std::runtime_error("Switch " + name_ + " already has announcement " + alias.string());
   }
 
   Parameter result = *this;
-  [[maybe_unused]] auto emplaced = result.mAliases.emplace(alias).second;
+  [[maybe_unused]] auto emplaced = result.aliases_.emplace(alias).second;
   assert(emplaced);
   return result;
 }
 
 Parameter Parameter::forwardingAlias(std::function<ParameterTransformationResult(Command&, const NamedValues&)> transformer) const {
   assert(transformer && "Forwarding transformer for parameter must be provided");
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
-  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
+  assert(!noLongerSupportedMessage_.has_value() && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
+  assert(!transformer_ && "Cannot apply multiple transformers to the same parameter");
 
   auto result = *this;
-  result.mTransformer = std::move(transformer);
+  result.transformer_ = std::move(transformer);
   return result;
 }
 
 Parameter Parameter::rename(const std::string& newParamName) const {
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine rename() and noLongerSupported() on the same parameter");
-  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
-  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() before rename() on the same parameter");
+  assert(!noLongerSupportedMessage_.has_value() && "Cannot combine rename() and noLongerSupported() on the same parameter");
+  assert(!transformer_ && "Cannot apply multiple transformers to the same parameter");
+  assert(!deprecationMessage_.has_value() && "Cannot apply deprecated() before rename() on the same parameter");
 
-  const std::string oldName = mName;
+  const std::string oldName = name_;
   return this->forwardingAlias([oldName, newParamName](Command&, const NamedValues& values) {
     NamedValues toAdd;
     toAdd.set(newParamName, values.at(oldName));
@@ -54,36 +54,36 @@ Parameter Parameter::rename(const std::string& newParamName) const {
 }
 
 Parameter Parameter::deprecated(const std::string& message) const {
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
-  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() multiple times to the same parameter");
+  assert(!noLongerSupportedMessage_.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+  assert(!deprecationMessage_.has_value() && "Cannot apply deprecated() multiple times to the same parameter");
 
   auto result = *this;
-  result.mDeprecationMessage = message;
+  result.deprecationMessage_ = message;
   return result;
 }
 
 Parameter Parameter::noLongerSupported(const std::string& message) const {
-  assert(!mTransformer && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
+  assert(!transformer_ && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
 
   auto result = *this;
-  result.mNoLongerSupportedMessage = message;
+  result.noLongerSupportedMessage_ = message;
   return result;
 }
 
 SwitchAnnouncement Parameter::getCanonicalAnnouncement() const {
-  return SwitchAnnouncement(mName);
+  return SwitchAnnouncement(name_);
 }
 
 std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
-  auto result = mAliases;
+  auto result = aliases_;
   [[maybe_unused]] auto emplaced = result.emplace(this->getCanonicalAnnouncement()).second;
   assert(emplaced);
   return result;
 }
 
 ParameterTransformationResult Parameter::transform(Command& self, const NamedValues& values) const {
-  assert(mTransformer && "No transformer configured for parameter");
-  return mTransformer(self, values);
+  assert(transformer_ && "No transformer configured for parameter");
+  return transformer_(self, values);
 }
 
 void Parameter::lex(ProvidedValues& destination, std::queue<std::string>& source) const {
@@ -107,23 +107,23 @@ Values Parameter::parse(const ProvidedValues& lexed) const {
   auto v = this->getValueSpecification();
   if (v != nullptr) {
     if (lexed.size() > 1U && !v->allowsMultiple()) {
-      throw std::runtime_error("Parameter '" + mName + "' provided multiple times");
+      throw std::runtime_error("Parameter '" + name_ + "' provided multiple times");
     }
     for (const auto& unparsed : lexed) {
       if (!unparsed.has_value()) {
-        throw std::runtime_error("Parameter '" + mName + "' requires a value but none was provided");
+        throw std::runtime_error("Parameter '" + name_ + "' requires a value but none was provided");
       }
       try {
         result.add(v->parse(*unparsed));
       }
       catch (const std::exception& error) {
-        throw std::runtime_error("Parameter '" + mName + "': " + error.what());
+        throw std::runtime_error("Parameter '" + name_ + "': " + error.what());
       }
     }
   }
   else {
     if (lexed.size() > 1U) {
-      throw std::runtime_error("Parameter '" + mName + "' provided multiple times");
+      throw std::runtime_error("Parameter '" + name_ + "' provided multiple times");
     }
     result.add(std::nullopt);
   }
@@ -147,7 +147,7 @@ void Parameter::finalize(Values& destination) const {
       v->finalize(destination);
     }
     catch (const std::runtime_error& error) {
-      throw std::runtime_error("Parameter '" + mName + "': " + error.what());
+      throw std::runtime_error("Parameter '" + name_ + "': " + error.what());
     }
   }
 }
@@ -178,7 +178,7 @@ bool Parameter::allowsMultiple() const noexcept {
 
 std::optional<std::string> Parameter::getInvocationSummary(bool indicateOptionality) const {
   if (this->isPositional()) {
-    return this->getInvocationSummary(std::string(), mName, indicateOptionality);
+    return this->getInvocationSummary(std::string(), name_, indicateOptionality);
   }
   auto announcement = this->getCanonicalAnnouncement();
   return this->getInvocationSummary(announcement.getPrefix(), announcement.getText(), indicateOptionality);
@@ -190,7 +190,7 @@ std::unordered_map<SwitchAnnouncement, std::string> Parameter::getAliasInvocatio
     return result;
   }
 
-  for (const auto& alias : mAliases) {
+  for (const auto& alias : aliases_) {
     auto entry = this->getInvocationSummary(alias.getPrefix(), alias.getText(), false);
     assert(entry.has_value());
     result.emplace(alias, *entry);
@@ -225,7 +225,7 @@ std::optional<std::string> Parameter::getInvocationSummary(const std::string& pr
   }
 
   if (v->isPositional()) {
-    return optionalityLeft + mName + further + optionalityRight; // [name] or [name [...]] or <name> or <name [...]>
+    return optionalityLeft + name_ + further + optionalityRight; // [name] or [name [...]] or <name> or <name [...]>
   }
 
   auto result = announcement + " <value>";
@@ -243,9 +243,9 @@ void Parameter::writeHelpText(std::ostream& destination) const {
   if (this->isDocumented()) {
     auto summary = this->getInvocationSummary(false);
 
-    assert(mDescription.has_value());
+    assert(description_.has_value());
     assert(summary.has_value());
-    WriteHelpItem(destination, *summary, *mDescription);
+    WriteHelpItem(destination, *summary, *description_);
 
     auto v = this->getValueSpecification();
     if (v != nullptr) {

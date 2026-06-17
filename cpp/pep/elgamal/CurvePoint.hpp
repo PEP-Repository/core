@@ -101,7 +101,7 @@ class CurvePoint {
   mutable group_ge mUnpacked = group_ge_neutral;
   mutable std::array<char, CurvePoint::PACKEDBYTES> mPacked{};
   enum class State { GotPacked, GotUnpacked, GotBoth };
-  mutable State mState;
+  mutable State state_;
 
   // Returns a pointer to the internal unpacked CurvePoint (and unpacks
   // it first, if necessary).
@@ -112,7 +112,7 @@ class CurvePoint {
   [[nodiscard]] static CurvePoint BaseMult(const CurveScalar& s);
   [[nodiscard]] static CurvePoint BaseMult(const PublicCurveScalar& s);
 
-  explicit CurvePoint(State state) : mState(state) { }
+  explicit CurvePoint(State state) : state_(state) { }
 };
 
 }

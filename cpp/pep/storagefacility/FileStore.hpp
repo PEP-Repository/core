@@ -157,9 +157,9 @@ public:
 
   class Participant {
   private:
-    FileStore& mStore;
-    std::string mName; // text representation of the local SF pseudonym
-    PropertyBasedContainer<std::unique_ptr<Cell>, &Cell::columnName>::set mCells;
+    FileStore& store_;
+    std::string name_; // text representation of the local SF pseudonym
+    PropertyBasedContainer<std::unique_ptr<Cell>, &Cell::columnName>::set cells_;
 
     Cell* getCell(const std::string& columnName) const;
     Cell& provideCell(const std::string& columnName);
@@ -167,8 +167,8 @@ public:
   public:
     Participant(FileStore& store, std::string name, bool load = false);
 
-    FileStore& getFileStore() const noexcept { return mStore; }
-    const std::string& name() const noexcept { return mName; }
+    FileStore& getFileStore() const noexcept { return store_; }
+    const std::string& name() const noexcept { return name_; }
 
     std::filesystem::path path() const;
 

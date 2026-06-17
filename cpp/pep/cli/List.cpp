@@ -62,52 +62,52 @@ protected:
   int execute() override {
     class SubjectData {
     private:
-      pep::PolymorphicPseudonym mPp;
-      bool mCollectMetadata;
-      std::optional<std::string> mLp;
-      std::optional<std::string> mBlp;
-      pt::ptree mValues;
-      pt::ptree mMetadata;
-      pt::ptree mIds;
+      pep::PolymorphicPseudonym pp_;
+      bool collectMetadata_;
+      std::optional<std::string> lp_;
+      std::optional<std::string> blp_;
+      pt::ptree values_;
+      pt::ptree metadata_;
+      pt::ptree ids_;
 
     public:
       SubjectData(const pep::EnumerateAndRetrieveResult& ear, bool collectMetadata, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : mPp(ear.mLocalPseudonyms->mPolymorphic), mCollectMetadata(collectMetadata) {
+        : pp_(ear.mLocalPseudonyms->mPolymorphic), collectMetadata_(collectMetadata) {
         if (ear.mAccessGroupPseudonym != nullptr) {
-          mLp = ear.mAccessGroupPseudonym->text();
+          lp_ = ear.mAccessGroupPseudonym->text();
           if (globalConfig) {
-            mBlp = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*ear.mAccessGroupPseudonym);
+            blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*ear.mAccessGroupPseudonym);
           }
         }
         this->add(ear);
       }
 
       SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : mPp(pp), mCollectMetadata(false), mLp(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
+        : pp_(pp), collectMetadata_(false), lp_(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
         if (lp.has_value() && globalConfig) {
-          mBlp = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*lp);
+          blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*lp);
         }
       }
 
-      const pep::PolymorphicPseudonym& pp() const noexcept { return mPp; }
+      const pep::PolymorphicPseudonym& pp() const noexcept { return pp_; }
 
       bool hasData() const {
-        return !mValues.empty();
+        return !values_.empty();
       }
 
       void add(const pep::EnumerateAndRetrieveResult& ear) {
-        assert(mPp == ear.mLocalPseudonyms->mPolymorphic);
+        assert(pp_ == ear.mLocalPseudonyms->mPolymorphic);
 
         if (ear.mDataSet) {
-          mValues.push_back(pt::ptree::value_type(
+          values_.push_back(pt::ptree::value_type(
             ear.mColumn, ear.mData));
         }
         else {
-          mIds.push_back(pt::ptree::value_type(
+          ids_.push_back(pt::ptree::value_type(
             ear.mColumn, boost::algorithm::hex(ear.mId)));
         }
 
-        if (mCollectMetadata) {
+        if (collectMetadata_) {
           pt::ptree mdpt;
           pep::Metadata md = ear.mMetadataDecrypted
             ? *(ear.mMetadataDecrypted) : ear.mMetadata;
@@ -121,24 +121,24 @@ protected:
           std::istringstream ss(std::move(mdjson));
           pt::json_parser::read_json(ss, mdpt);
 
-          mMetadata.push_back(pt::ptree::value_type(
+          metadata_.push_back(pt::ptree::value_type(
             ear.mColumn, std::move(mdpt)));
         }
       }
 
       pt::ptree toPropertyTree() const {
         pt::ptree tree;
-        if (!mValues.empty())
-          tree.add_child("data", mValues);
-        if (!mIds.empty())
-          tree.add_child("ids", mIds);
-        if (!mMetadata.empty())
-          tree.add_child("metadata", mMetadata);
-        tree.put("pp", mPp.text());
-        if (mLp.has_value())
-          tree.put("lp", *mLp);
-        if (mBlp.has_value())
-          tree.put("blp", *mBlp);
+        if (!values_.empty())
+          tree.add_child("data", values_);
+        if (!ids_.empty())
+          tree.add_child("ids", ids_);
+        if (!metadata_.empty())
+          tree.add_child("metadata", metadata_);
+        tree.put("pp", pp_.text());
+        if (lp_.has_value())
+          tree.put("lp", *lp_);
+        if (blp_.has_value())
+          tree.put("blp", *blp_);
         return tree;
       }
     };

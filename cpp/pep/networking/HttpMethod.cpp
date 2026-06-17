@@ -33,7 +33,7 @@ auto GetHttpMethodMappedValue(const TView& mapSide, const TValue& value) {
 }
 
 std::string HttpMethod::toString() const {
-  return GetHttpMethodMappedValue(HTTP_METHOD_STRING_MAPPINGS.left, mValue);
+  return GetHttpMethodMappedValue(HTTP_METHOD_STRING_MAPPINGS.left, value_);
 }
 
 HttpMethod HttpMethod::FromString(const std::string& str) {

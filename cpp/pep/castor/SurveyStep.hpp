@@ -7,13 +7,13 @@ namespace castor {
 
 class SurveyStep : public SimpleCastorChildObject<SurveyStep, Survey>, public SharedConstructor<SurveyStep> {
  private:
-  std::string mName;
+  std::string name_;
 
  public:
   static const std::string RELATIVE_API_ENDPOINT;
   static const std::string EMBEDDED_API_NODE_NAME;
 
-  std::string getName() const { return mName; }
+  std::string getName() const { return name_; }
   std::shared_ptr<Survey> getSurvey() const { return this->getParent(); }
 
  protected:

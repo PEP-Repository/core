@@ -17,18 +17,18 @@ const CurvePoint BasePoint(PublicCurveScalar(CurveScalar::One()) * CurvePoint::B
 }
 
 void CurvePoint::ensureThreadSafe() const {
-  // This ensures mPacked and mUnpacked are set (ie. mState == State::GotBoth).
+  // This ensures mPacked and mUnpacked are set (ie. state_ == State::GotBoth).
   ensurePacked();
   unpack();
 }
 
 void CurvePoint::ensurePacked() const {
-  if (mState != State::GotUnpacked)
+  if (state_ != State::GotUnpacked)
     return;
   group_ge_pack(
       reinterpret_cast<uint8_t*>(mPacked.data()),
       &mUnpacked);
-  mState = State::GotBoth;
+  state_ = State::GotBoth;
 }
 
 std::string_view CurvePoint::pack() const {
@@ -37,14 +37,14 @@ std::string_view CurvePoint::pack() const {
 }
 
 group_ge* CurvePoint::unpack() const {
-  if (mState == State::GotPacked) {
+  if (state_ == State::GotPacked) {
     auto error = group_ge_unpack(
       &mUnpacked,
       reinterpret_cast<const uint8_t*>(mPacked.data()));
     if (error != 0) {
       throw std::invalid_argument("Invalid packed CurvePoint");
     }
-    mState = State::GotBoth;
+    state_ = State::GotBoth;
   }
   return &mUnpacked;
 }
@@ -57,14 +57,14 @@ CurvePoint::CurvePoint(std::string_view packed, bool unpack) {
     packed.begin(),
     packed.begin() + static_cast<ptrdiff_t>(mPacked.size()),
     mPacked.begin());
-  mState = State::GotPacked;
+  state_ = State::GotPacked;
 
   if (unpack) {
     this->unpack();
   }
 }
 
-CurvePoint::CurvePoint() : mState{State::GotBoth} {}
+CurvePoint::CurvePoint() : state_{State::GotBoth} {}
 
 CurvePoint::CurvePoint(BaseT) : CurvePoint(BasePoint) {}
 
@@ -144,8 +144,8 @@ CurvePoint CurvePoint::BaseMult(const PublicCurveScalar& s) {
 }
 
 bool CurvePoint::operator== (const CurvePoint& other) const {
-  if ((mState == State::GotPacked || mState == State::GotBoth)
-      && (other.mState == State::GotPacked || other.mState == State::GotBoth)) {
+  if ((state_ == State::GotPacked || state_ == State::GotBoth)
+      && (other.state_ == State::GotPacked || other.state_ == State::GotBoth)) {
     return mPacked == other.mPacked; //TODO why is this not constant time while isZero is?
   }
   return group_ge_equals(unpack(), other.unpack()) == 1;
@@ -156,7 +156,7 @@ std::strong_ordering CurvePoint::operator<=>(const CurvePoint& other) const {
 }
 
 bool CurvePoint::isZero() const {
-  if (mState == State::GotPacked || mState == State::GotBoth) {
+  if (state_ == State::GotPacked || state_ == State::GotBoth) {
     return const_time::IsZero(mPacked);
   }
   return group_ge_equals(unpack(), &group_ge_neutral) == 1;

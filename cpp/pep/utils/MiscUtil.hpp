@@ -27,6 +27,7 @@ inline const T Default;
 
 /*
 * \brief Converts a weak_ptr<> to one type to a weak_ptr<> to another type.
+* \remark Named in snake_case so it matches the corresponding std function.
 */
 template <typename TDest, typename TSource>
 std::weak_ptr<TDest> static_pointer_cast(std::weak_ptr<TSource> p) {
@@ -100,7 +101,7 @@ boost::property_tree::path RawPtreePath(const std::string& path);
   })
 
 // U+00B5 (micro symbol) encoded in UTF-8, plus NULterminator
-const inline std::string micro_symbol = "\xc2\xb5";
+const inline std::string MicroSymbol = "\xc2\xb5";
 
 /// @brief Returns the SI prefix for the specified power
 /// @tparam T The (integral) type used to express the power
@@ -113,7 +114,7 @@ std::optional<std::string> SiPrefix(T power) {
     case T(-1): return "d";
     case T(-2): return "c";
     case T(-3): return "m";
-    case T(-6): return micro_symbol;
+    case T(-6): return MicroSymbol;
     case T(-9): return "n";
     case T(-12): return "p";
     case T(-15): return "f";

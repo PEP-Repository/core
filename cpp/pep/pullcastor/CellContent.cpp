@@ -42,7 +42,7 @@ std::shared_ptr<CellContent> CellContent::Create(std::shared_ptr<CoreClient> cli
 }
 
 PreloadedCellContent::PreloadedCellContent(const std::string& value)
-  : mValue(value) {
+  : value_(value) {
 }
 
 std::shared_ptr<PreloadedCellContent> PreloadedCellContent::TryCreate(const EnumerateAndRetrieveResult& ear) {
@@ -63,7 +63,7 @@ rxcpp::observable<std::shared_ptr<PreloadedCellContent>> PreloadedCellContent::L
 }
 
 rxcpp::observable<std::string> PreloadedCellContent::getData() const {
-  return rxcpp::observable<>::just(mValue);
+  return rxcpp::observable<>::just(value_);
 }
 
 LazyCellContent::LazyCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, std::shared_ptr<EnumerateResult> entry) {

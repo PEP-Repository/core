@@ -140,11 +140,11 @@ FileStore::FileStore(
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
-  : mStore(store), mName(std::move(name)) {
+  : store_(store), name_(std::move(name)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
       if (std::filesystem::is_directory(p.path())) {
-        mCells.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
+        cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
       }
     }
   }
@@ -537,8 +537,8 @@ void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
 }
 
 FileStore::Cell* FileStore::Participant::getCell(const std::string& columnName) const {
-  auto pos = mCells.find(columnName);
-  if (pos == mCells.cend()) {
+  auto pos = cells_.find(columnName);
+  if (pos == cells_.cend()) {
     return nullptr;
   }
   return &**pos;
@@ -549,11 +549,11 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   if (existing != nullptr) {
     return *existing;
   }
-  return **mCells.emplace(std::make_unique<Cell>(*this, columnName)).first;
+  return **cells_.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
 std::filesystem::path FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / mName;
+  return this->getFileStore().metaDir() / name_;
 }
 
 void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
@@ -561,7 +561,7 @@ void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPaylo
   totalPayloadBytes = 0U;
   rollingPayloadBytes = 0U;
 
-  for (const auto& cell : mCells) {
+  for (const auto& cell : cells_) {
     if (columns.empty() || columns.contains(cell->columnName())) {
       size_t subEntryCount{};
       uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
@@ -574,7 +574,7 @@ void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPaylo
 }
 
 void FileStore::Participant::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
-  for (const auto& cell : mCells) {
+  for (const auto& cell : cells_) {
     for (const auto& header : cell->entryHeaders()) {
       callback(header);
     }

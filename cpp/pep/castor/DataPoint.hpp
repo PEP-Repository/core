@@ -9,11 +9,11 @@ enum class DataPointType { Study, Survey, Repeating };
 
 class DataPointBase : public CastorObject {
  private:
-  std::string mValue;
+  std::string value_;
 
  public:
   std::string getValue() const {
-    return mValue;
+    return value_;
   }
 
   virtual std::shared_ptr<Participant> getParticipant() const = 0;

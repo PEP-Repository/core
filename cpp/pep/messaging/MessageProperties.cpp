@@ -42,12 +42,12 @@ bool MessageType::IsValidValue(Value value) noexcept {
 }
 
 MessageType::MessageType(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 std::string MessageType::describe() const {
-  switch (mValue) {
+  switch (value_) {
   case Request:
     return "request";
   case Response:
@@ -55,12 +55,12 @@ std::string MessageType::describe() const {
   case Control:
     return "control message";
   }
-  throw std::runtime_error("Unsupported message type value " + std::to_string(mValue));
+  throw std::runtime_error("Unsupported message type value " + std::to_string(value_));
 }
 
 EncodedMessageProperties MessageType::encode() const noexcept {
-  assert(IsValidValue(mValue));
-  if (mValue == Response) {
+  assert(IsValidValue(value_));
+  if (value_ == Response) {
     static_assert(TYPE_RESPONSE != NO_MESSAGE_PROPERTY_BITS);
     return TYPE_RESPONSE;
   }
@@ -149,8 +149,8 @@ bool StreamId::IsValidValue(Value value) noexcept {
 }
 
 StreamId::StreamId(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 StreamId StreamId::BeforeFirst() noexcept {
