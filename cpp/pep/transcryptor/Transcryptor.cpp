@@ -211,7 +211,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       auto& localPseudonym = batch->results.localPseudonyms[i];
 
       if (ctx->includeUserGroupPseudonyms) {
-        if (!entry.mUserGroup)
+        if (!entry.userGroup_)
           throw Error("AccessGroup pseudonym missing "
             "even though includeAccessGroupPseudonyms is set");
         if (!entry.mUserGroupProof)
@@ -219,7 +219,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
             "even though includeAccessGroupPseudonyms is set");
       }
       else {
-        if (entry.mUserGroup)
+        if (entry.userGroup_)
           throw Error("AccessGroup pseudonym set even though "
             "includeAccessGroupPseudonyms is not set");
         if (entry.mUserGroupProof)
@@ -242,7 +242,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
         if (ctx->includeUserGroupPseudonyms) {
           pseudonymTranslator.checkTranslationProof(
-              entry.mPolymorphic, *entry.mUserGroup,
+              entry.mPolymorphic, *entry.userGroup_,
               *entry.mUserGroupProof, *ctx->userVerifiers);
         }
       }
@@ -265,7 +265,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
       if (ctx->includeUserGroupPseudonyms) {
         ret.mAccessGroup = pseudonymTranslator.translateStep(
-            *entry.mUserGroup,
+            *entry.userGroup_,
             *ctx->userRecipient);
       }
 
@@ -354,7 +354,7 @@ Transcryptor::handleLogIssuedTicketRequest(
     hash,
     std::move(ticket.mColumns),
     std::move(ticket.mModes),
-    ticket.mUserGroup,
+    ticket.userGroup_,
     ticket.mTimestamp
   );
 

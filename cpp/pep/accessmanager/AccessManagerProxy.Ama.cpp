@@ -14,7 +14,7 @@ void AppendVector(std::vector<T>& destination, const std::vector<T>& source) {
 
 void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std::vector<AmaQRColumnGroup>& source) {
   for (auto& sourceGroup : source) {
-    auto found = std::find_if(destination.begin(), destination.end(), [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.mName == sourceGroup.mName; });
+    auto found = std::find_if(destination.begin(), destination.end(), [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.name_ == sourceGroup.name_; });
     if (found != destination.end()) {
       // The group already exists in the destination. Add the mColumns of the sourceGroup to this destinationGroup.
       AppendVector<std::string>(found->mColumns, sourceGroup.mColumns);

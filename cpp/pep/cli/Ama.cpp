@@ -138,10 +138,10 @@ public:
   };
 
 private:
-  std::string mName;
+  std::string name_;
   std::set<std::string> mParticipantIds;
 
-  explicit ParticipantGroup(const std::string& name) : mName(name) {}
+  explicit ParticipantGroup(const std::string& name) : name_(name) {}
 
   static void IncludeParticipant(Map& destination, const std::string& group, const std::string& participantId);
   static void IncludeRequiredAssignments(Map& destination, const ParticipantState& participant, const pep::GlobalConfiguration& gc, const AutoAssignContext& context);
@@ -203,15 +203,15 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetR
 rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetExisting(std::shared_ptr<pep::CoreClient> client) {
   return client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
     .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.participantGroups_); })
-    .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.mName); })
+    .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.name_); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
     pep::EnumerateAndRetrieveData2Opts opts;
-    opts.groups.push_back(group.mName);
+    opts.groups.push_back(group.name_);
     opts.columns.push_back("ParticipantIdentifier");
     // TODO: re-use ticket from ParticipantGroup::GetRequired
     return client->enumerateAndRetrieveData2(opts)
       .reduce(
-        ParticipantGroup::Create(group.mName),
+        ParticipantGroup::Create(group.name_),
         [](std::shared_ptr<ParticipantGroup> group, const pep::EnumerateAndRetrieveResult& ear) {
           assert(ear.mDataSet); // TODO: support data not being returned inline
           assert(ear.mColumn == "ParticipantIdentifier");
@@ -224,7 +224,7 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetE
     .reduce( // TODO: add RxToMap utility function
       std::make_shared<Map>(),
       [](std::shared_ptr<Map> result, std::shared_ptr<ParticipantGroup> group) {
-        [[maybe_unused]] auto emplaced = result->emplace(group->mName, group);
+        [[maybe_unused]] auto emplaced = result->emplace(group->name_, group);
         assert(emplaced.second);
         return result;
       })
@@ -274,32 +274,32 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfiguration(std:
   assert(required != nullptr || existing != nullptr);
 
   if (existing == nullptr) {
-    std::cout << "Creating group " << required->mName << std::endl;
+    std::cout << "Creating group " << required->name_ << std::endl;
     rxcpp::observable<pep::FakeVoid> create;
     if (context->applyUpdates()) {
-      create = context->getClient()->getAccessManagerProxy()->amaCreateParticipantGroup(required->mName);
+      create = context->getClient()->getAccessManagerProxy()->amaCreateParticipantGroup(required->name_);
     }
     else {
       create = rxcpp::observable<>::just(pep::FakeVoid());
     }
 
     return create
-      .concat_map([context, required](const pep::FakeVoid&) {return UpdateGroupContents(context, required->mName, required->mParticipantIds, std::set<std::string>()); });
+      .concat_map([context, required](const pep::FakeVoid&) {return UpdateGroupContents(context, required->name_, required->mParticipantIds, std::set<std::string>()); });
   }
 
   if (required == nullptr) {
-    return UpdateGroupContents(context, existing->mName, std::set<std::string>(), existing->mParticipantIds)
+    return UpdateGroupContents(context, existing->name_, std::set<std::string>(), existing->mParticipantIds)
       .op(RxInstead(pep::FakeVoid())) // Ensure remainder of pipeline gets exactly one item
       .concat_map([context, existing](const pep::FakeVoid&) -> rxcpp::observable<pep::FakeVoid> {
-      std::cout << "Removing group " << existing->mName << std::endl;
+      std::cout << "Removing group " << existing->name_ << std::endl;
       if (!context->applyUpdates()) {
         return rxcpp::observable<>::just(pep::FakeVoid());
       }
-      return context->getClient()->getAccessManagerProxy()->amaRemoveParticipantGroup(existing->mName, false);
+      return context->getClient()->getAccessManagerProxy()->amaRemoveParticipantGroup(existing->name_, false);
         });
   }
 
-  return UpdateGroupContents(context, required->mName, required->mParticipantIds, existing->mParticipantIds);
+  return UpdateGroupContents(context, required->name_, required->mParticipantIds, existing->mParticipantIds);
 }
 
 rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfigurations(std::shared_ptr<AutoAssignContext> context, const Map& required, const Map& existing) {

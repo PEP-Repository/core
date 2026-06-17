@@ -5,12 +5,12 @@ namespace pep {
 
 size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, const size_t& cap, const size_t& offset, const size_t& padding) {
   assert(offset == 0 || offset < source.mColumns.size());
-  assert(!source.mName.empty());
-  size_t paddedNameLength = source.mName.length() + padding;
+  assert(!source.name_.empty());
+  size_t paddedNameLength = source.name_.length() + padding;
   if (paddedNameLength > cap) {
     return 0; // sentinel value indicating not even the name fits in the new group.
   }
-  dest.mName = source.mName;
+  dest.name_ = source.name_;
   return paddedNameLength + FillVectorToCapacity(dest.mColumns, source.mColumns, cap - paddedNameLength, offset, padding);
 }
 

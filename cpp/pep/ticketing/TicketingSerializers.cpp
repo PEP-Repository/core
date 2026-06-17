@@ -33,7 +33,7 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
 
   result.mTimestamp = Serialization::FromProtocolBuffer(
     std::move(*source.mutable_timestamp()));
-  result.mUserGroup = std::move(*source.mutable_user_group());
+  result.userGroup_ = std::move(*source.mutable_user_group());
 
   result.mModes.reserve(static_cast<size_t>(source.modes().size()));
   for (auto& x : *source.mutable_modes())
@@ -50,7 +50,7 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
 
 void Serializer<Ticket2>::moveIntoProtocolBuffer(proto::Ticket2& dest, Ticket2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.mTimestamp);
-  *dest.mutable_user_group() = std::move(value.mUserGroup);
+  *dest.mutable_user_group() = std::move(value.userGroup_);
   dest.mutable_modes()->Reserve(static_cast<int>(value.mModes.size()));
   for (auto& x : value.mModes)
     dest.add_modes(std::move(x));

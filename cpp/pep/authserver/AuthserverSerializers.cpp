@@ -13,7 +13,7 @@ TokenRequest Serializer<TokenRequest>::fromProtocolBuffer(proto::TokenRequest&& 
 
 void Serializer<TokenRequest>::moveIntoProtocolBuffer(proto::TokenRequest& dest, TokenRequest value) const {
   *dest.mutable_subject() = std::move(value.mSubject);
-  *dest.mutable_group() = std::move(value.mGroup);
+  *dest.mutable_group() = std::move(value.group_);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_expirationtime(), value.mExpirationTime);
 }
 

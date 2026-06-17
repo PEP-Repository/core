@@ -542,7 +542,7 @@ TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_all_groups_for_ex
     EXPECT_NE(response.mUserGroups, std::nullopt);
     EXPECT_THAT(*response.mUserGroups, testing::SizeIs(user.userGroups.size()));
     for (auto& group : *response.mUserGroups) {
-      EXPECT_THAT(user.userGroups, testing::Contains(group.mName));
+      EXPECT_THAT(user.userGroups, testing::Contains(group.name_));
     }
   }
 }

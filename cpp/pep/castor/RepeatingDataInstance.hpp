@@ -34,7 +34,7 @@ class RepeatingDataInstance : public SimpleCastorChildObject<RepeatingDataInstan
   //! \return Filled in values for this instance
   rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> getRepeatingDataPoints();
 
-  std::shared_ptr<RepeatingData> getRepeatingData() const { return repeatingData; }
+  std::shared_ptr<RepeatingData> getRepeatingData() const { return repeatingData_; }
 
   //! \return Whether the repeating data instance is archived or not
   inline bool isArchived() const { return archived_; }
@@ -61,7 +61,7 @@ class RepeatingDataInstance : public SimpleCastorChildObject<RepeatingDataInstan
   RepeatingDataInstance(std::shared_ptr<Participant> participant, JsonPtr json);
 
  private:
-  std::shared_ptr<RepeatingData> repeatingData;
+  std::shared_ptr<RepeatingData> repeatingData_;
 
   friend class SharedConstructor<RepeatingDataInstance>;
 };

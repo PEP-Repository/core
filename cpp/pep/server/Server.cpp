@@ -111,7 +111,7 @@ Server::handleChecksumChainRequest(
 
   uint64_t checksum{}, checkpoint{};
   computeChecksumChainChecksum(
-    request.mName,
+    request.name_,
     maxCheckpoint,
     checksum,
     checkpoint

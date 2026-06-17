@@ -12,7 +12,7 @@ class UserGroup {
 public:
   UserGroup() = default;
   UserGroup(std::string name, std::optional<std::chrono::seconds> maxAuthValidity)
-    : mName(std::move(name)), mMaxAuthValidity(maxAuthValidity) { }
+    : name_(std::move(name)), mMaxAuthValidity(maxAuthValidity) { }
 
 
   /*!
@@ -31,7 +31,7 @@ public:
     return out;
   }
 
-  std::string mName;
+  std::string name_;
   std::optional<std::chrono::seconds> mMaxAuthValidity;
 
   // Special access groups that are checked in the code

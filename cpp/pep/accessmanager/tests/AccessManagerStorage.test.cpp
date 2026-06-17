@@ -31,7 +31,7 @@ namespace {
 
 void PrepareSortedMine(UserQueryResponse& response) {
   erase_if(response.mUserGroups, [](const UserGroup& group) {
-    return !group.mName.starts_with("My");
+    return !group.name_.starts_with("My");
   });
   erase_if(response.mUsers, [](const QRUser& user) {
     return !(user.mDisplayId.has_value() && user.mDisplayId->starts_with("My"));
@@ -558,8 +558,8 @@ TEST_F(AccessManagerStorageTest, findUserGroupId) {
   int64_t group1_id = storage->createUserGroup(group1);
   int64_t group2_id = storage->createUserGroup(group2);
 
-  EXPECT_EQ(storage->findUserGroupId(group1.mName), group1_id);
-  EXPECT_EQ(storage->findUserGroupId(group2.mName), group2_id);
+  EXPECT_EQ(storage->findUserGroupId(group1.name_), group1_id);
+  EXPECT_EQ(storage->findUserGroupId(group2.name_), group2_id);
 }
 
 TEST_F(AccessManagerStorageTest, findUserGroupId_non_existing) {
@@ -583,8 +583,8 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
   group1.mMaxAuthValidity = 42s;
   storage->modifyUserGroup(group1);
 
-  EXPECT_EQ(storage->findUserGroupId(group1.mName), group1_id);
-  EXPECT_EQ(storage->findUserGroupId(group2.mName), group2_id);
+  EXPECT_EQ(storage->findUserGroupId(group1.name_), group1_id);
+  EXPECT_EQ(storage->findUserGroupId(group2.name_), group2_id);
 }
 
 TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
@@ -621,8 +621,8 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_groups) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
-  EXPECT_EQ(groupNames, (std::vector{group1.mName, group2.mName})) << "should return all group names";
+  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
+  EXPECT_EQ(groupNames, (std::vector{group1.name_, group2.name_})) << "should return all group names";
   EXPECT_EQ(response.mUserGroups, (std::vector<UserGroup>{
       group1,
       group2,
@@ -711,7 +711,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   auto response = storage->executeUserQuery({TimeNow(), "Group1", ""});
   PrepareSortedMine(response);
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return filtered group names";
 
   EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
@@ -750,7 +750,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
       {user1, {}, {user1Alt}, {group1}}, // Note: we also want to see alternative IDs
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -779,7 +779,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
       {user1, {}, {user1Alt}, {group1}},
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -815,7 +815,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_and_group) {
       {userA1, {}, {}, {groupA1}},
     })) << "should return double-filtered users with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{groupA1}) << "should return double-filtered group names";
 }
 

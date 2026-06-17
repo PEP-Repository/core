@@ -135,11 +135,11 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
   // manager goes correctly, we keep the old checksum chains, but instead of
   // calculating them here, we pass them on to the accessmanager.
   //TODO: When the migration has succeeded, this can be removed in a following release.
-  auto checksumMapping = checksumNameMappings.find(request.mName);
+  auto checksumMapping = checksumNameMappings.find(request.name_);
   if (checksumMapping == checksumNameMappings.end()) {
-    throw Error("Checksum chain " + request.mName + " not found");
+    throw Error("Checksum chain " + request.name_ + " not found");
   }
-  request.mName = checksumMapping->second;
+  request.name_ = checksumMapping->second;
   return mAccessManager->requestChecksumChain(std::move(request))
     .op(RxGetOne());
 }
@@ -188,7 +188,7 @@ OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& 
   }
   auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
-    mOauthTokenSecret, uid, group.mName,
+    mOauthTokenSecret, uid, group.name_,
     now,
     now + validity
   );
@@ -198,7 +198,7 @@ TokenResponse AuthserverBackend::executeTokenRequest(const std::string& accessGr
   // Check access
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, accessGroup);
 
-  auto token = getToken(request.mSubject, request.mGroup, request.mExpirationTime);
+  auto token = getToken(request.mSubject, request.group_, request.mExpirationTime);
 
   return TokenResponse(token.getSerializedForm());
 }

@@ -6,7 +6,7 @@
 namespace pep {
 struct TokenRequest {
   std::string mSubject;
-  std::string mGroup;
+  std::string group_;
   Timestamp mExpirationTime;
 };
 

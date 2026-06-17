@@ -15,7 +15,7 @@ private:
   std::string mHmac;
 
   std::string mSubject;
-  std::string mGroup;
+  std::string group_;
 
   std::chrono::sys_seconds mIssuedAt, mExpiresAt;
 
@@ -32,7 +32,7 @@ public:
   OAuthToken() = default;
   const std::string& getSerializedForm() const noexcept { return mSerialized; }
   const std::string& getSubject() const noexcept { return mSubject; }
-  const std::string& getGroup() const noexcept { return mGroup; }
+  const std::string& getGroup() const noexcept { return group_; }
   std::chrono::sys_seconds getIssuedAt() const noexcept { return mIssuedAt; }
   std::chrono::sys_seconds getExpiresAt() const noexcept { return mExpiresAt; }
 

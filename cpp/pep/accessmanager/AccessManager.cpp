@@ -78,7 +78,7 @@ void FillTranscryptorRequestEntry(
     const std::optional<PseudonymTranslator::Recipient>& userRecipient
 ) {
   if (userRecipient) {
-    std::tie(entry.mUserGroup.emplace(), entry.mUserGroupProof.emplace()) =
+    std::tie(entry.userGroup_.emplace(), entry.mUserGroupProof.emplace()) =
         pseudonymTranslator.certifiedTranslateStep(
             entry.mPolymorphic,
             *userRecipient);
@@ -561,7 +561,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   ticket.mTimestamp = TimeNow();
   ticket.mModes = request.mModes;
   ticket.mColumns = request.mColumns;
-  ticket.mUserGroup = userGroup;
+  ticket.userGroup_ = userGroup;
 
   // Check columns and column groups
   auto columnGroupMap = backend->unfoldColumnGroupsAndCheckAccess(
@@ -662,13 +662,13 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     }
 
     ctx->ticket.mAccessSubjects = std::move(resp.mEntries);
-    if (ctx->ticket.mUserGroup == UserGroup::DataAdministrator && !ctx->ticket.mAccessSubjects.empty()) {
-      PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx->ticket.mUserGroup << " unchecked access to " << ctx->ticket.mAccessSubjects.size() << " participant(s)";
+    if (ctx->ticket.userGroup_ == UserGroup::DataAdministrator && !ctx->ticket.mAccessSubjects.empty()) {
+      PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx->ticket.userGroup_ << " unchecked access to " << ctx->ticket.mAccessSubjects.size() << " participant(s)";
     }
     for (size_t i = 0; i < ctx->ticket.mAccessSubjects.size(); i++) {
       LocalPseudonym localPseudonym = ctx->ticket.mAccessSubjects[i].mAccessManager.decrypt(ctx->server->mPseudonymKey);
-      if (ctx->ticket.mUserGroup != UserGroup::DataAdministrator) {
-        ctx->server->backend->checkParticipantAccess(ctx->ticket.mUserGroup, localPseudonym, ctx->participantModes, ctx->ticket.mTimestamp);
+      if (ctx->ticket.userGroup_ != UserGroup::DataAdministrator) {
+        ctx->server->backend->checkParticipantAccess(ctx->ticket.userGroup_, localPseudonym, ctx->participantModes, ctx->ticket.mTimestamp);
       }
       if (ctx->pps[i].isClientProvided && !ctx->server->backend->hasLocalPseudonym(localPseudonym)) {
         if (ctx->ticket.hasMode("write")) {
@@ -812,7 +812,7 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
     else {
       if (responseSize == 0U) {
         // The response is empty, but a new response is prompted. This will lead to an infinite loop.
-        throw std::runtime_error("Processing column group " + sourceColumnGroup->mName + ", a new AmaQueryResponse was prompted while the last response was still empty. Is the maxSize set correctly? maxSize: " + std::to_string(maxSize));
+        throw std::runtime_error("Processing column group " + sourceColumnGroup->name_ + ", a new AmaQueryResponse was prompted while the last response was still empty. Is the maxSize set correctly? maxSize: " + std::to_string(maxSize));
       }
 
       responses.emplace_back();

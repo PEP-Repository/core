@@ -9,91 +9,91 @@ namespace pep {
 class CreateUser {
 public:
   CreateUser() = default;
-  explicit CreateUser(std::string uid) : mUid(std::move(uid)) { };
-  std::string mUid;
+  explicit CreateUser(std::string uid) : uid_(std::move(uid)) { };
+  std::string uid_;
 };
 
 class RemoveUser {
 public:
   RemoveUser() = default;
-  explicit  RemoveUser(std::string uid) : mUid(std::move(uid)) { };
-  std::string mUid;
+  explicit  RemoveUser(std::string uid) : uid_(std::move(uid)) { };
+  std::string uid_;
 };
 
 class AddUserIdentifier {
 public:
   AddUserIdentifier() = default;
   AddUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId)
-    : mExistingUid(std::move(existingUid)), mNewUid(std::move(newUid)), mIsPrimaryId(isPrimaryId),mIsDisplayId(isDisplayId) { }
-  std::string mExistingUid;
-  std::string mNewUid;
-  bool mIsPrimaryId = false;
-  bool mIsDisplayId = false;
+    : existingUid_(std::move(existingUid)), newUid_(std::move(newUid)), isPrimaryId_(isPrimaryId),isDisplayId_(isDisplayId) { }
+  std::string existingUid_;
+  std::string newUid_;
+  bool isPrimaryId_ = false;
+  bool isDisplayId_ = false;
 };
 
 class RemoveUserIdentifier {
 public:
   RemoveUserIdentifier() = default;
-  RemoveUserIdentifier(std::string uid) : mUid(std::move(uid)) { }
-  std::string mUid;
+  RemoveUserIdentifier(std::string uid) : uid_(std::move(uid)) { }
+  std::string uid_;
 };
 
 class CreateUserGroup {
 public:
   CreateUserGroup() = default;
-  CreateUserGroup(UserGroup userGroup) : mUserGroup(std::move(userGroup)) { }
-  UserGroup mUserGroup;
+  CreateUserGroup(UserGroup userGroup) : userGroup_(std::move(userGroup)) { }
+  UserGroup userGroup_;
 };
 
 class ModifyUserGroup {
 public:
   ModifyUserGroup() = default;
-  ModifyUserGroup(UserGroup userGroup) : mUserGroup(std::move(userGroup)) { }
-  UserGroup mUserGroup;
+  ModifyUserGroup(UserGroup userGroup) : userGroup_(std::move(userGroup)) { }
+  UserGroup userGroup_;
 };
 
 class RemoveUserGroup {
 public:
   RemoveUserGroup() = default;
-  RemoveUserGroup(std::string name) : mName(std::move(name)) { }
-  std::string mName;
+  RemoveUserGroup(std::string name) : name_(std::move(name)) { }
+  std::string name_;
 };
 
 class AddUserToGroup {
 public:
   AddUserToGroup() = default;
   AddUserToGroup(std::string uid, std::string group)
-    : mUid(std::move(uid)), mGroup(std::move(group)) { }
-  std::string mUid;
-  std::string mGroup;
+    : uid_(std::move(uid)), group_(std::move(group)) { }
+  std::string uid_;
+  std::string group_;
 };
 
 class RemoveUserFromGroup {
 public:
   RemoveUserFromGroup() = default;
-  RemoveUserFromGroup(std::string uid, std::string group, bool blockTokens) : mUid(std::move(uid)), mGroup(std::move(group)), mBlockTokens(blockTokens) { }
-  std::string mUid;
-  std::string mGroup;
-  bool mBlockTokens = false;
+  RemoveUserFromGroup(std::string uid, std::string group, bool blockTokens) : uid_(std::move(uid)), group_(std::move(group)), blockTokens_(blockTokens) { }
+  std::string uid_;
+  std::string group_;
+  bool blockTokens_ = false;
 };
 
 class UserMutationRequest {
 public:
-  std::vector<CreateUser> mCreateUser;
-  std::vector<RemoveUser> mRemoveUser;
+  std::vector<CreateUser> createUser_;
+  std::vector<RemoveUser> removeUser_;
 
-  std::vector<AddUserIdentifier> mAddUserIdentifier;
-  std::vector<RemoveUserIdentifier> mRemoveUserIdentifier;
-  std::vector<std::string> mSetPrimaryId;
-  std::vector<std::string> mUnsetPrimaryId;
-  std::vector<std::string> mSetDisplayId;
+  std::vector<AddUserIdentifier> addUserIdentifier_;
+  std::vector<RemoveUserIdentifier> removeUserIdentifier_;
+  std::vector<std::string> setPrimaryId_;
+  std::vector<std::string> unsetPrimaryId_;
+  std::vector<std::string> setDisplayId_;
 
-  std::vector<CreateUserGroup> mCreateUserGroup;
-  std::vector<RemoveUserGroup> mRemoveUserGroup;
-  std::vector<ModifyUserGroup> mModifyUserGroup;
+  std::vector<CreateUserGroup> createUserGroup_;
+  std::vector<RemoveUserGroup> removeUserGroup_;
+  std::vector<ModifyUserGroup> modifyUserGroup_;
 
-  std::vector<AddUserToGroup> mAddUserToGroup;
-  std::vector<RemoveUserFromGroup> mRemoveUserFromGroup;
+  std::vector<AddUserToGroup> addUserToGroup_;
+  std::vector<RemoveUserFromGroup> removeUserFromGroup_;
 };
 
 class UserMutationResponse {

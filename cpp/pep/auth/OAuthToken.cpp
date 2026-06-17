@@ -85,8 +85,8 @@ bool OAuthToken::verifySubject(const std::string& required) const {
 }
 
 bool OAuthToken::verifyGroup(const std::string& required) const {
-  if (required != mGroup) {
-    PEP_LOG("OAuthToken::verify", Severity::Info) << "Group in token '" << mGroup << "' does not match required group '" << required << "'";
+  if (required != group_) {
+    PEP_LOG("OAuthToken::verify", Severity::Info) << "Group in token '" << group_ << "' does not match required group '" << required << "'";
     return false;
   }
   return true;
@@ -170,7 +170,7 @@ OAuthToken::OAuthToken(const std::string& serialized)
     boost::property_tree::read_json(jsonStream, root);
 
     mSubject = root.get<std::string>("sub");
-    mGroup = root.get<std::string>("group");
+    group_ = root.get<std::string>("group");
     mIssuedAt = sys_seconds(seconds{root.get<seconds::rep>("iat")});
     mExpiresAt = sys_seconds(seconds{root.get<seconds::rep>("exp")});
 

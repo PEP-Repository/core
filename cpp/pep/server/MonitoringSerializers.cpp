@@ -28,13 +28,13 @@ void Serializer<ChecksumChainNamesResponse>::moveIntoProtocolBuffer(proto::Check
 
 ChecksumChainRequest Serializer<ChecksumChainRequest>::fromProtocolBuffer(proto::ChecksumChainRequest&& source) const {
   ChecksumChainRequest result;
-  result.mName = std::move(*source.mutable_name());
+  result.name_ = std::move(*source.mutable_name());
   result.mCheckpoint = source.checkpoint();
   return result;
 }
 
 void Serializer<ChecksumChainRequest>::moveIntoProtocolBuffer(proto::ChecksumChainRequest& dest, ChecksumChainRequest value) const {
-  *dest.mutable_name() = std::move(value.mName);
+  *dest.mutable_name() = std::move(value.name_);
   dest.set_checkpoint(value.mCheckpoint);
 }
 

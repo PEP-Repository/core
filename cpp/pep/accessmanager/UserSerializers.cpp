@@ -9,7 +9,7 @@ CreateUser Serializer<CreateUser>::fromProtocolBuffer(proto::CreateUser&& source
 }
 
 void Serializer<CreateUser>::moveIntoProtocolBuffer(proto::CreateUser& dest, CreateUser value) const {
-  *dest.mutable_uid() = std::move(value.mUid);
+  *dest.mutable_uid() = std::move(value.uid_);
 }
 
 RemoveUser Serializer<RemoveUser>::fromProtocolBuffer(proto::RemoveUser&& source) const {
@@ -17,7 +17,7 @@ RemoveUser Serializer<RemoveUser>::fromProtocolBuffer(proto::RemoveUser&& source
 }
 
 void Serializer<RemoveUser>::moveIntoProtocolBuffer(proto::RemoveUser& dest, RemoveUser value) const {
-  *dest.mutable_uid() = std::move(value.mUid);
+  *dest.mutable_uid() = std::move(value.uid_);
 }
 
 AddUserIdentifier Serializer<AddUserIdentifier>::fromProtocolBuffer(proto::AddUserIdentifier&& source) const {
@@ -25,10 +25,10 @@ AddUserIdentifier Serializer<AddUserIdentifier>::fromProtocolBuffer(proto::AddUs
 }
 
 void Serializer<AddUserIdentifier>::moveIntoProtocolBuffer(proto::AddUserIdentifier& dest, AddUserIdentifier value) const {
-  *dest.mutable_existinguid() = std::move(value.mExistingUid);
-  *dest.mutable_newuid() = std::move(value.mNewUid);
-  dest.set_is_primary_id(value.mIsPrimaryId);
-  dest.set_is_display_id(value.mIsDisplayId);
+  *dest.mutable_existinguid() = std::move(value.existingUid_);
+  *dest.mutable_newuid() = std::move(value.newUid_);
+  dest.set_is_primary_id(value.isPrimaryId_);
+  dest.set_is_display_id(value.isDisplayId_);
 }
 
 RemoveUserIdentifier Serializer<RemoveUserIdentifier>::fromProtocolBuffer(proto::RemoveUserIdentifier&& source) const {
@@ -36,7 +36,7 @@ RemoveUserIdentifier Serializer<RemoveUserIdentifier>::fromProtocolBuffer(proto:
 }
 
 void Serializer<RemoveUserIdentifier>::moveIntoProtocolBuffer(proto::RemoveUserIdentifier& dest, RemoveUserIdentifier value) const {
-  *dest.mutable_uid() = std::move(value.mUid);
+  *dest.mutable_uid() = std::move(value.uid_);
 }
 
 CreateUserGroup Serializer<CreateUserGroup>::fromProtocolBuffer(proto::CreateUserGroup&& source) const {
@@ -44,7 +44,7 @@ CreateUserGroup Serializer<CreateUserGroup>::fromProtocolBuffer(proto::CreateUse
 }
 
 void Serializer<CreateUserGroup>::moveIntoProtocolBuffer(proto::CreateUserGroup& dest, CreateUserGroup value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_group(), std::move(value.mUserGroup));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_group(), std::move(value.userGroup_));
 }
 
 RemoveUserGroup Serializer<RemoveUserGroup>::fromProtocolBuffer(proto::RemoveUserGroup&& source) const {
@@ -52,7 +52,7 @@ RemoveUserGroup Serializer<RemoveUserGroup>::fromProtocolBuffer(proto::RemoveUse
 }
 
 void Serializer<RemoveUserGroup>::moveIntoProtocolBuffer(proto::RemoveUserGroup& dest, RemoveUserGroup value) const {
-  *dest.mutable_name() = std::move(value.mName);
+  *dest.mutable_name() = std::move(value.name_);
 }
 
 ModifyUserGroup Serializer<ModifyUserGroup>::fromProtocolBuffer(proto::ModifyUserGroup&& source) const {
@@ -60,7 +60,7 @@ ModifyUserGroup Serializer<ModifyUserGroup>::fromProtocolBuffer(proto::ModifyUse
 }
 
 void Serializer<ModifyUserGroup>::moveIntoProtocolBuffer(proto::ModifyUserGroup& dest, ModifyUserGroup value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_group(), std::move(value.mUserGroup));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_group(), std::move(value.userGroup_));
 }
 
 AddUserToGroup Serializer<AddUserToGroup>::fromProtocolBuffer(proto::AddUserToGroup&& source) const {
@@ -71,8 +71,8 @@ AddUserToGroup Serializer<AddUserToGroup>::fromProtocolBuffer(proto::AddUserToGr
 }
 
 void Serializer<AddUserToGroup>::moveIntoProtocolBuffer(proto::AddUserToGroup& dest, AddUserToGroup value) const {
-  *dest.mutable_uid() = std::move(value.mUid);
-  *dest.mutable_group() = std::move(value.mGroup);
+  *dest.mutable_uid() = std::move(value.uid_);
+  *dest.mutable_group() = std::move(value.group_);
 }
 
 RemoveUserFromGroup Serializer<RemoveUserFromGroup>::fromProtocolBuffer(proto::RemoveUserFromGroup&& source) const {
@@ -84,62 +84,62 @@ RemoveUserFromGroup Serializer<RemoveUserFromGroup>::fromProtocolBuffer(proto::R
 }
 
 void Serializer<RemoveUserFromGroup>::moveIntoProtocolBuffer(proto::RemoveUserFromGroup& dest, RemoveUserFromGroup value) const {
-  *dest.mutable_uid() = std::move(value.mUid);
-  *dest.mutable_group() = std::move(value.mGroup);
-  dest.set_block_tokens(value.mBlockTokens);
+  *dest.mutable_uid() = std::move(value.uid_);
+  *dest.mutable_group() = std::move(value.group_);
+  dest.set_block_tokens(value.blockTokens_);
 }
 
 UserMutationRequest Serializer<UserMutationRequest>::fromProtocolBuffer(proto::UserMutationRequest&& source) const {
   UserMutationRequest result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mCreateUser,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.createUser_,
     std::move(*source.mutable_create_user()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUser,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.removeUser_,
     std::move(*source.mutable_remove_user()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mAddUserIdentifier,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.addUserIdentifier_,
     std::move(*source.mutable_add_user_identifier()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUserIdentifier,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.removeUserIdentifier_,
     std::move(*source.mutable_remove_user_identifier()));
-  result.mSetPrimaryId = RangeToVector(MoveElements(*source.mutable_set_primary_identifier()));
-  result.mUnsetPrimaryId = RangeToVector(MoveElements(*source.mutable_unset_primary_identifier()));
-  result.mSetDisplayId = RangeToVector(MoveElements(*source.mutable_set_display_identifier()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mCreateUserGroup,
+  result.setPrimaryId_ = RangeToVector(MoveElements(*source.mutable_set_primary_identifier()));
+  result.unsetPrimaryId_ = RangeToVector(MoveElements(*source.mutable_unset_primary_identifier()));
+  result.setDisplayId_ = RangeToVector(MoveElements(*source.mutable_set_display_identifier()));
+  Serialization::AssignFromRepeatedProtocolBuffer(result.createUserGroup_,
     std::move(*source.mutable_create_user_group()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUserGroup,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.removeUserGroup_,
     std::move(*source.mutable_remove_user_group()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mModifyUserGroup,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.modifyUserGroup_,
     std::move(*source.mutable_modify_user_group()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mAddUserToGroup,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.addUserToGroup_,
     std::move(*source.mutable_add_user_to_group()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mRemoveUserFromGroup,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.removeUserFromGroup_,
     std::move(*source.mutable_remove_user_from_group()));
   return result;
 }
 
 void Serializer<UserMutationRequest>::moveIntoProtocolBuffer(proto::UserMutationRequest& dest, UserMutationRequest value) const {
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_create_user(),
-    std::move(value.mCreateUser));
+    std::move(value.createUser_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user(),
-    std::move(value.mRemoveUser));
+    std::move(value.removeUser_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_add_user_identifier(),
-    std::move(value.mAddUserIdentifier));
-  auto moveSetPrimaryId = MoveElements(value.mSetPrimaryId);
+    std::move(value.addUserIdentifier_));
+  auto moveSetPrimaryId = MoveElements(value.setPrimaryId_);
   dest.mutable_set_primary_identifier()->Assign(moveSetPrimaryId.begin(), moveSetPrimaryId.end());
-  auto moveUnsetPrimaryId = MoveElements(value.mUnsetPrimaryId);
+  auto moveUnsetPrimaryId = MoveElements(value.unsetPrimaryId_);
   dest.mutable_unset_primary_identifier()->Assign(moveUnsetPrimaryId.begin(), moveUnsetPrimaryId.end());
-  auto moveSetDisplayId = MoveElements(value.mSetDisplayId);
+  auto moveSetDisplayId = MoveElements(value.setDisplayId_);
   dest.mutable_set_display_identifier()->Assign(moveSetDisplayId.begin(), moveSetDisplayId.end());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user_identifier(),
-    std::move(value.mRemoveUserIdentifier));
+    std::move(value.removeUserIdentifier_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_create_user_group(),
-    std::move(value.mCreateUserGroup));
+    std::move(value.createUserGroup_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user_group(),
-    std::move(value.mRemoveUserGroup));
+    std::move(value.removeUserGroup_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_modify_user_group(),
-    std::move(value.mModifyUserGroup));
+    std::move(value.modifyUserGroup_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_add_user_to_group(),
-    std::move(value.mAddUserToGroup));
+    std::move(value.addUserToGroup_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user_from_group(),
-    std::move(value.mRemoveUserFromGroup));
+    std::move(value.removeUserFromGroup_));
 }
 
 UserQueryResponse Serializer<UserQueryResponse>::fromProtocolBuffer(proto::UserQueryResponse&& source) const {

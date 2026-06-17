@@ -27,7 +27,7 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
 
     for (const auto& group : res.mUserGroups) {
       json item = json::object();
-      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.mName);
+      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.name_);
       if (group.mMaxAuthValidity) {
         item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.mMaxAuthValidity));
       }

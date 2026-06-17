@@ -26,7 +26,7 @@ public:
   std::vector<std::string> mModes;
   std::vector<LocalPseudonyms> mAccessSubjects;  ///< identifiers for subjects that will be accessed
   std::vector<std::string> mColumns;
-  std::string mUserGroup;
+  std::string userGroup_;
 
   bool hasMode(const std::string& mode) const;
 };

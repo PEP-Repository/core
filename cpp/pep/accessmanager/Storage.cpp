@@ -1404,7 +1404,7 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
         oss << ", ";
         first = false;
       }
-      oss << group.mName;
+      oss << group.name_;
     }
     throw Error(oss.str());
   }
@@ -1683,18 +1683,18 @@ bool AccessManager::Backend::Storage::userGroupIsEmpty(int64_t userGroupId) cons
 }
 
 int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
-  if (hasUserGroup(userGroup.mName)) {
+  if (hasUserGroup(userGroup.name_)) {
     std::ostringstream msg;
-    msg << "User group " << Logging::Escape(userGroup.mName) << " already exists";
+    msg << "User group " << Logging::Escape(userGroup.name_) << " already exists";
     throw Error(msg.str());
   }
   int64_t userGroupId = getNextUserGroupId();
-  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.mName), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.mMaxAuthValidity)));
   return userGroupId;
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(UserGroup userGroup) {
-  modifyUserGroup(userGroup.mName, userGroup);
+  modifyUserGroup(userGroup.name_, userGroup);
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, UserGroup userGroup) {
@@ -1705,7 +1705,7 @@ void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, Use
   }
 
   auto userGroupId = getUserGroupId(name);
-  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.mName), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.mMaxAuthValidity)));
 }
 
 void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
@@ -1812,7 +1812,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
          &UserGroupUserRecord::internalUserId)) {
     auto& [userGroupId, internalUserId] = tuple;
     assert(groups.contains(userGroupId));
-    usersInfo.at(internalUserId).mGroups.push_back(groups.at(userGroupId).mName);
+    usersInfo.at(internalUserId).mGroups.push_back(groups.at(userGroupId).name_);
     groupsWithUsers.insert(userGroupId);
   }
 

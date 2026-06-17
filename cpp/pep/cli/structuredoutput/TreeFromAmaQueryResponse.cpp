@@ -28,7 +28,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
     json columnsArray = json::array();
 
     for (const auto& col : res.mColumns) {
-      columnsArray.push_back(col.mName);
+      columnsArray.push_back(col.name_);
     }
 
     root.emplace(GetKeyName(queryKeys::columns, useDescriptive), std::move(columnsArray));
@@ -40,7 +40,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
 
     for (const auto& cg : res.columnGroups_) {
       json item = json::object();
-      item.emplace(GetKeyName(queryKeys::name, useDescriptive), cg.mName);
+      item.emplace(GetKeyName(queryKeys::name, useDescriptive), cg.name_);
       item.emplace(GetKeyName(queryKeys::columns, useDescriptive), cg.mColumns);
       columnGroupsArray.push_back(std::move(item));
     }
@@ -74,7 +74,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
     json groupsArray = json::array();
 
     for (const auto& group : res.participantGroups_) {
-      groupsArray.push_back(group.mName);
+      groupsArray.push_back(group.name_);
     }
 
     root.emplace(GetKeyName(queryKeys::participantGroups, useDescriptive), std::move(groupsArray));
@@ -84,7 +84,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
   if (printParticipantGroupAccessRules) {
     std::map<std::tuple<std::string, std::string>, std::vector<std::string>> grouped;
     for (const auto& rule : res.mParticipantGroupAccessRules) {
-      grouped[{rule.mParticipantGroup, rule.mUserGroup}].push_back(rule.mMode);
+      grouped[{rule.mParticipantGroup, rule.userGroup_}].push_back(rule.mMode);
     }
 
     json rulesArray = json::array();

@@ -78,7 +78,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
   }
 
   auto ticket = Serialization::FromString<Ticket2>(mData);
-  if (ticket.mUserGroup != userGroup)
+  if (ticket.userGroup_ != userGroup)
     throw Error("Ticket issued for different user group");
   if (accessMode.has_value()) {
     if (!ticket.hasMode(*accessMode)) {

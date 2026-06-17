@@ -298,7 +298,7 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   ticket.mModes = {"read", "write"};
   for (int i = 0; i < 200; i++)
     ticket.mColumns.push_back("Column" + std::to_string(i));
-  ticket.mUserGroup = "some user group";
+  ticket.userGroup_ = "some user group";
   auto p1 = pep::LocalPseudonym::Random();
   auto p4 = pep::LocalPseudonym::Random();
   for (int i = 0; i < 600; i++) {

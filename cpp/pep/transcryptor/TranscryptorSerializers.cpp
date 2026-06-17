@@ -82,10 +82,10 @@ void Serializer<TranscryptorRequestEntry>::moveIntoProtocolBuffer(proto::Transcr
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.mAccessManager.getValidElgamalEncryption());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.mStorageFacility.getValidElgamalEncryption());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor(), value.mTranscryptor.getValidElgamalEncryption());
-  if (value.mUserGroup)
+  if (value.userGroup_)
     Serialization::MoveIntoProtocolBuffer(
       *dest.mutable_user_group(),
-      value.mUserGroup->getValidElgamalEncryption()
+      value.userGroup_->getValidElgamalEncryption()
     );
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager_proof(), value.mAccessManagerProof);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility_proof(), value.mStorageFacilityProof);
