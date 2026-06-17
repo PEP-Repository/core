@@ -630,12 +630,12 @@ You may need to substitute paths, especially when debugging remotely. E.g.:
   "program": "${workspaceFolder}/build/wasm32/Debug/cpp/pep/utils/pepUtilsUnitTests",
 
   "type": "node",
-	"request": "launch",
-	"skipFiles": ["<node_internals>/**"],
-	"sourceMapPathOverrides": {
+  "request": "launch",
+  "skipFiles": ["<node_internals>/**"],
+  "sourceMapPathOverrides": {
     "file:///emsdk/emscripten/*": "${env:EMSDK}/upstream/emscripten/*",
     "file:///emsdk/*": "${env:EMSDK}/*"
-	}
+  }
 }
 ```
 
