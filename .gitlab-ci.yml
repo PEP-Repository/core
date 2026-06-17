@@ -701,6 +701,7 @@ ubuntu-lts-debug-without-castor:
     - infer analyze --incremental-analysis
                     --changed-files-index index.txt
     - infer report --sarif
+    - du -sh infer-out/
     - |
       cat infer-out/report.sarif | jq '
         .runs[0].results |= map(
