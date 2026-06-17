@@ -265,13 +265,13 @@ void DownloadProcessor::processDataChunk(std::shared_ptr<Progress> retrieveProgr
   }
 
   auto self = SharedFrom(*this);
-  stream->write(result.content, self->mGlobalConfig);
+  stream->write(result.content, self->globalConfig_);
 }
 
 std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openStorageStream(RecordDescriptor descriptor, std::uint64_t fileSize, Progress& progress) {
   bool pseudonymisationRequired{ false };
   bool archiveExtractionRequired{ false };
-  if (auto columnSpecification = mGlobalConfig->getColumnSpecification(descriptor.getColumn())) {
+  if (auto columnSpecification = globalConfig_->getColumnSpecification(descriptor.getColumn())) {
     if (columnSpecification->getAssociatedShortPseudonymColumn().has_value()) {
       pseudonymisationRequired = true;
     }

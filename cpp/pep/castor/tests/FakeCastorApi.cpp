@@ -46,7 +46,7 @@ private:
 
   std::shared_ptr<FakeCastorApi> mServer;
   std::shared_ptr<networking::Connection> mBinary;
-  std::string mMethod;
+  std::string method_;
   std::string path_;
   std::map<std::string, std::string> mHeaders;
   std::string mBody;
@@ -75,7 +75,7 @@ void FakeCastorApi::Connection::handleReadRequestLine(const networking::Delimite
 
   std::istringstream responseStream(*result);
   std::string httpVersion;
-  responseStream >> mMethod;
+  responseStream >> method_;
   responseStream >> path_;
   std::getline(responseStream, httpVersion);
 
@@ -125,7 +125,7 @@ void FakeCastorApi::Connection::handleReadBody(const networking::SizedTransfer::
 }
 
 void FakeCastorApi::Connection::handleRequest() {
-  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << mMethod << " " << path_ << std::endl << mBody;
+  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << method_ << " " << path_ << std::endl << mBody;
 
   if(path_.starts_with("/api/")) {
     auto authzHeader = mHeaders.find("Authorization");
@@ -139,7 +139,7 @@ void FakeCastorApi::Connection::handleRequest() {
   auto findResponse = options->responses.find(path_);
   if(findResponse != options->responses.end()) {
     writeOutput(boost::algorithm::replace_all_copy(findResponse->second.body, "[URL]", getUrl()), findResponse->second.status);
-  } else if(mMethod == "POST" && path_ == "/oauth/token") {
+  } else if(method_ == "POST" && path_ == "/oauth/token") {
     if(options->authenticated) {
       writeOutput("{\"access_token\":\"f74ffb4d8a4c9a0a3992836357d668bee1231172\",\"expires_in\":18000,\"token_type\":\"Bearer\",\"scope\":\"1\"}");
     } else {

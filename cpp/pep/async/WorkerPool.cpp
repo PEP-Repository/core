@@ -21,7 +21,7 @@ constexpr unsigned MaxThreads =
 namespace pep {
 
 WorkerPool::WorkerPool()
-  : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
+  : mIoContext(std::make_unique<boost::asio::io_context>()), workGuard_(std::make_unique<WorkGuard>(*mIoContext)) {
   unsigned nThreads = std::min(std::thread::hardware_concurrency(), MaxThreads);
   PEP_LOG(LogTag, Severity::Debug) << "Using " << nThreads << " worker threads";
   mThreads.reserve(nThreads);
@@ -35,7 +35,7 @@ WorkerPool::WorkerPool()
 }
 
 WorkerPool::~WorkerPool() {
-  mWorkGuard.reset();
+  workGuard_.reset();
   mIoContext->stop();
   for (auto& thread : mThreads)
     thread.join();

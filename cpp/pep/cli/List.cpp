@@ -150,7 +150,7 @@ protected:
       bool mPrintMetadata = false;
       bool mGroupOutput = false;
       std::string mFormat;
-      std::shared_ptr<pep::GlobalConfiguration> mGlobalConfig;
+      std::shared_ptr<pep::GlobalConfiguration> globalConfig_;
       std::unordered_map<uint32_t, SubjectData> mSubjects;
       size_t mDataCount{ 0 };
       std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> mPseudsToReport;
@@ -181,7 +181,7 @@ protected:
           if (report.second.has_value()) {
             decrypted = client->decryptLocalPseudonym(*report.second);
           }
-          SubjectData data(report.first, decrypted, mGlobalConfig);
+          SubjectData data(report.first, decrypted, globalConfig_);
           mSubjects.emplace(std::make_pair(index++, std::move(data))); // ...to add an entry to our "subjects" field...
         }
 
@@ -196,7 +196,7 @@ protected:
           if (!mGroupOutput) {
             collectSubjects();
           }
-          [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata, mGlobalConfig));
+          [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata, globalConfig_));
           assert(emplaced.second);
         }
         else {
@@ -254,7 +254,7 @@ protected:
         rxcpp::observable<pep::FakeVoid> configObservable;
         if (ctx->mEarOpts.includeAccessGroupPseudonyms) {
           configObservable = client->getGlobalConfiguration().map([ctx](std::shared_ptr<pep::GlobalConfiguration> gc) { 
-              ctx->mGlobalConfig = gc; 
+              ctx->globalConfig_ = gc; 
               return pep::FakeVoid(); 
             });
         } else {

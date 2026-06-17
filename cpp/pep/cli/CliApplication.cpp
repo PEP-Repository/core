@@ -45,18 +45,18 @@ void CliApplication::finalizeParameters() {
   // Get explicitly specified parameter values (before defaults are applied by base class's finalizeParameters)
   const auto& values = this->getParameterValues();
   if (values.has("oauth-token-subject")) {
-    mRequiredSubject = values.get<std::string>("oauth-token-subject");
+    requiredSubject_ = values.get<std::string>("oauth-token-subject");
   }
   if (values.has("oauth-token-group")) {
-    mRequiredGroup = values.get<std::string>("oauth-token-group");
+    requiredGroup_ = values.get<std::string>("oauth-token-group");
   }
 
   pep::commandline::Utility::finalizeParameters();
 }
 
 rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnrolled) {
-  if (mClient != nullptr) {
-    assert(mWorkGuard != nullptr);
+  if (client_ != nullptr) {
+    assert(workGuard_ != nullptr);
     return rxcpp::observable<>::just(pep::FakeVoid());
   }
 
@@ -83,9 +83,9 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
   if (token != std::nullopt) {
     PEP_LOG(LogTag, Severity::Info) << "Enrolling using provided OAuth token" << std::endl;
     enroll = true;
-    if (!token->verify(mRequiredSubject, mRequiredGroup)) {
-      if (mRequiredSubject && mRequiredGroup)
-        throw std::runtime_error("Provided token not usable, expected subject: " + *mRequiredSubject + "and group: " + *mRequiredGroup);
+    if (!token->verify(requiredSubject_, requiredGroup_)) {
+      if (requiredSubject_ && requiredGroup_)
+        throw std::runtime_error("Provided token not usable, expected subject: " + *requiredSubject_ + "and group: " + *requiredGroup_);
       else
         throw std::runtime_error("Provided token not usable");
     }
@@ -99,11 +99,11 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
       auto enrolledGroup = client->getEnrolledGroup();
       auto enrolledSubject = client->getEnrolledUser();
 
-      if (mRequiredGroup && (enrolledGroup != *mRequiredGroup)) {
+      if (requiredGroup_ && (enrolledGroup != *requiredGroup_)) {
         PEP_LOG(LogTag, Severity::Info) << "Enrolled for wrong group (" << enrolledGroup << ")" << std::endl;
         enroll = true;
       }
-      if (mRequiredSubject && (enrolledSubject != *mRequiredSubject)) {
+      if (requiredSubject_ && (enrolledSubject != *requiredSubject_)) {
         PEP_LOG(LogTag, Severity::Info) << "Enrolled as wrong user (" << enrolledSubject << ")" << std::endl;
         enroll = true;
       }
@@ -125,7 +125,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
           << "Cached token found in \""
           << std::filesystem::canonical(tokenPath).string() << '"' << std::endl;
         token = pep::OAuthToken::ReadJson(tokenPath);
-        if (!token->verify(mRequiredSubject, mRequiredGroup)) {
+        if (!token->verify(requiredSubject_, requiredGroup_)) {
           PEP_LOG(LogTag, Severity::Info) << "Not using cached token because it did not pass verification";
           token = std::nullopt;
         }
@@ -168,8 +168,8 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
       });
   }
 
-  mWorkGuard = std::make_unique<WorkGuard>(*io_context);
-  mClient = client;
+  workGuard_ = std::make_unique<WorkGuard>(*io_context);
+  client_ = client;
 
   return result;
 }
@@ -213,22 +213,22 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
       severity = Severity::Error;
       result = (exception ? 4 : 0);
     }
-    else { // Recursive invocation due to errors during mClient->shutdown, which commonly are "Server connection is shutting down"
+    else { // Recursive invocation due to errors during client_->shutdown, which commonly are "Server connection is shutting down"
       severity = Severity::Debug;
     }
 
-    mWorkGuard.reset();
-    if (mClient == nullptr)
+    workGuard_.reset();
+    if (client_ == nullptr)
       return;
 
     if (exception != nullptr) {
       PEP_LOG(LogTag, severity) << "error: " << pep::GetExceptionMessage(exception) << std::endl;
     }
 
-    mClient->shutdown().subscribe(
+    client_->shutdown().subscribe(
       [](pep::FakeVoid) {},
       [this](std::exception_ptr ep) {
-        mClient->getIoContext()->stop();
+        client_->getIoContext()->stop();
         PEP_LOG(LogTag, Severity::Error) << "Unexpected problem shutting down SSL streams: " + pep::GetExceptionMessage(ep) << " | Forcefully shutting down.";
       },
       [] {});
@@ -236,7 +236,7 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
 
   connectClient(ensureEnrolled)
     .flat_map([this, callback](pep::FakeVoid unused) {
-        return callback(mClient);
+        return callback(client_);
       })
     .subscribe(
       [](pep::FakeVoid) { /* ignore */ },
@@ -244,12 +244,12 @@ int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp
       [stopEventLoop]() {stopEventLoop(nullptr); }
     );
 
-  assert(mClient != nullptr);
+  assert(client_ != nullptr);
 
   // io_context.run() usually returns when there is no work to do.
-  // Our this->mWorkGuard prevents this though.
-  mClient->getIoContext()->run();
-  mClient = nullptr;
+  // Our this->workGuard_ prevents this though.
+  client_->getIoContext()->run();
+  client_ = nullptr;
   return result;
 }
 

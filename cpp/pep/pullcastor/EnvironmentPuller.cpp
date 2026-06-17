@@ -106,7 +106,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
     clientBuilder.setIoContext(io_context);
 
-    mClient = clientBuilder.build();
+    client_ = clientBuilder.build();
   }
   catch (const std::exception& e) {
     PEP_PULLCASTOR_LOG(Severity::Critical) << "Error with client configuration file: " << e.what();
@@ -124,7 +124,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
   mCastor = CastorConnection::Create(castorAPIKeyFile, io_context);
 
-  mAspects = CreateRxCache([client = mClient, token = mOauthToken, spColumns, sps]() {
+  mAspects = CreateRxCache([client = client_, token = mOauthToken, spColumns, sps]() {
     return StudyAspect::GetAll(
       EnsureEnrolled(client, token)
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getGlobalConfiguration(); })
@@ -158,7 +158,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
         }));
     });
 
-  mColumnNamer = CreateRxCache([client = mClient, token = mOauthToken]() {
+  mColumnNamer = CreateRxCache([client = client_, token = mOauthToken]() {
     return EnsureEnrolled(client, token)
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getAccessManagerProxy()->getColumnNameMappings(); })
       .map([](ColumnNameMappings mappings) { return std::make_shared<ImportColumnNamer>(std::move(mappings)); });
@@ -220,7 +220,7 @@ rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(const std::vect
     return rxcpp::observable<>::just(batch.size());
   }
 
-  return mClient->storeData2(batch)
+  return client_->storeData2(batch)
     .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.mIds.size(); });
 }
 
@@ -268,7 +268,7 @@ bool EnvironmentPuller::Pull(const Configuration& config, bool dry, const std::o
 }
 
 rxcpp::observable<std::shared_ptr<CoreClient>> EnvironmentPuller::getClient() {
-  return EnsureEnrolled(mClient, mOauthToken);
+  return EnsureEnrolled(client_, mOauthToken);
 }
 
 void EnvironmentPuller::onCastorRequest(std::shared_ptr<const HTTPRequest> request) {
@@ -303,7 +303,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::string>>> EnvironmentPuller::
     .map([](const StudyAspect& aspect) {return aspect.getStorage()->getDataColumn(); })
     .distinct()
     .op(RxToVector())
-    .flat_map([client = mClient](std::shared_ptr<std::vector<std::string>> prefixes) {
+    .flat_map([client = client_](std::shared_ptr<std::vector<std::string>> prefixes) {
     return GetReadWritableColumnNames(client)
       .filter([prefixes](const std::string& column) {
         for (const auto& prefix : *prefixes) {
@@ -322,7 +322,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> Environmen
     return rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>()); // Return an empty vector rather than an empty observable
   }
   return RxIterate(*mSps)
-    .flat_map([client = mClient](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
+    .flat_map([client = client_](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
     .op(RxToVector());
 }
 

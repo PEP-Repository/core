@@ -48,7 +48,7 @@ const std::string LogTag = "Participant widget";
 
 class ParticipantDataAggregator {
 private:
-  const pep::GlobalConfiguration mGlobalConfig;
+  const pep::GlobalConfiguration globalConfig_;
   std::vector<const pep::ShortPseudonymDefinition*> mUnfilledShortPseudonyms;
   std::map<std::string, pep::EnumerateAndRetrieveResult> mDeviceHistory;
   std::optional<pep::EnumerateAndRetrieveResult> mParticipantInfo;
@@ -1314,7 +1314,7 @@ ParticipantWidget::~ParticipantWidget() {
 }
 
 const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudonymDefinition(const std::string& shortPseudonymTag) const {
-  const auto& spDefinitions = mGlobalConfig.getShortPseudonyms();
+  const auto& spDefinitions = globalConfig_.getShortPseudonyms();
   auto position = std::find_if(std::begin(spDefinitions), std::end(spDefinitions),
     [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
     return definition.getColumn().getFullName() == shortPseudonymTag;
@@ -1392,15 +1392,15 @@ bool ParticipantDataAggregator::isVisitAssessorColumn(const std::string& columnN
 }
 
 bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnName) const {
-  const auto& devices = mGlobalConfig.getDevices();
+  const auto& devices = globalConfig_.getDevices();
   auto end = devices.cend();
   return std::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
 }
 
 ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
-  : mGlobalConfig(globalConfig), mParticipantIdentifierIsSet(false) {
+  : globalConfig_(globalConfig), mParticipantIdentifierIsSet(false) {
   auto inserter = std::back_inserter(mUnfilledShortPseudonyms);
-  std::transform(mGlobalConfig.getShortPseudonyms().begin(), mGlobalConfig.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
+  std::transform(globalConfig_.getShortPseudonyms().begin(), globalConfig_.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
 }
 
 void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& result) {

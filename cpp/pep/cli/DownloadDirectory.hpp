@@ -45,12 +45,12 @@ public:
     std::shared_ptr<DownloadDirectory> destination_;
     RecordDescriptor descriptor_;
     std::filesystem::path path_;
-    std::string mFileName;
-    std::uint64_t mFileSize, mWritten = 0;
-    std::shared_ptr<std::ofstream> mRaw;
+    std::string fileName_;
+    std::uint64_t fileSize_, written_ = 0;
+    std::shared_ptr<std::ofstream> raw_;
     XxHasher hasher_;
-    bool mPseudonymisationRequired{false};
-    bool mArchiveExtractingRequired{false};
+    bool pseudonymisationRequired_{false};
+    bool archiveExtractionRequired_{false};
 
   private:
     explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
@@ -92,10 +92,10 @@ public:
   };
 
 private:
-  std::filesystem::path mRoot;
-  bool mApplyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
-  DownloadMetadata mMetadata;
-  std::shared_ptr<GlobalConfiguration> mGlobalConfig;
+  std::filesystem::path root_;
+  bool applyFileExtensions_ = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
+  DownloadMetadata metadata_;
+  std::shared_ptr<GlobalConfiguration> globalConfig_;
 
   void setStoredDataHash(const RecordDescriptor& field, const std::filesystem::path& path, const std::string& fileName, XxHasher::Hash hash);
   std::optional<XxHasher::Hash> getCurrentDataHash(const std::filesystem::path& path) const;
@@ -133,7 +133,7 @@ public:
 
   rxcpp::observable<FakeVoid> pull(std::shared_ptr<CoreClient> source, const PullOptions& options, const Progress::OnCreation& onCreateProgress);
 
-  const std::filesystem::path& getPath() const noexcept { return mRoot; }
+  const std::filesystem::path& getPath() const noexcept { return root_; }
   std::filesystem::path getSpecificationFilePath() const;
   std::filesystem::path getParticipantDirectory(const ParticipantIdentifier& id) const;
   std::optional<std::filesystem::path> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;

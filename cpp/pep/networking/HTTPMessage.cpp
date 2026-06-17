@@ -173,7 +173,7 @@ HTTPRequest::HTTPRequest(
     bool completeHeaders)
   : HTTPMessage(std::move(bodyparts), std::move(headers)),
     mHost(std::move(host)),
-    mMethod(method),
+    method_(method),
     mUri(std::move(uri)) {
 
   assert(mUri.host_name().empty() || mUri.host_name() == mHost);
@@ -184,7 +184,7 @@ HTTPRequest::HTTPRequest(
 
 std::string HTTPRequest::headerToString() const {
   std::ostringstream ss;
-  ss << mMethod << " " << mUri.encoded_target();
+  ss << method_ << " " << mUri.encoded_target();
 
   ss << " HTTP/1.1\r\n";
 

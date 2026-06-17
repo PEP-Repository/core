@@ -28,7 +28,7 @@ class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConn
 private:
   pep::ExponentialBackoff::Parameters mBackoffParameters;
 
-  std::shared_ptr<pep::networking::Client> mClient;
+  std::shared_ptr<pep::networking::Client> client_;
 
   pep::EventSubscription mClientStatusChangeSubscription;
   pep::EventSubscription mClientConnectionAttemptSubscription;
@@ -80,7 +80,7 @@ private:
   void handleConnectionAttempt(bool successful) {
     if (successful) {
       if (mSuccessfulAttempt.has_value()) {
-        PEP_DEFER(mClient->shutdown());
+        PEP_DEFER(client_->shutdown());
         FAIL() << "Unit test should only produce a single successful connection attempt; got " << *mSuccessfulAttempt << " and " << mAttempts;
       }
       mSuccessfulAttempt = mAttempts;
@@ -105,7 +105,7 @@ private:
     if (!mShutdownIssued) {
       mShutdownIssued = true;
       mClientConnectionAttemptSubscription.cancel();
-      mClient->shutdown();
+      client_->shutdown();
     }
   }
 
@@ -132,13 +132,13 @@ private:
 
 public:
   void handle(std::shared_ptr<pep::networking::Client> client) {
-    assert(mClient == nullptr);
+    assert(client_ == nullptr);
 
-    mClient = std::move(client);
+    client_ = std::move(client);
     auto weak = pep::WeakFrom(*this);
 
-    mClientStatusChangeSubscription = mClient->onStatusChange.subscribe([weak](const pep::networking::Client::StatusChange& change) { pep::AcquireShared(weak)->handleClientStatusChange(change); });
-    mClientConnectionAttemptSubscription = mClient->onConnectionAttempt.subscribe([weak](const pep::networking::Connection::Attempt::Result& result) { pep::AcquireShared(weak)->handleClientConnectionAttempt(result); });
+    mClientStatusChangeSubscription = client_->onStatusChange.subscribe([weak](const pep::networking::Client::StatusChange& change) { pep::AcquireShared(weak)->handleClientStatusChange(change); });
+    mClientConnectionAttemptSubscription = client_->onConnectionAttempt.subscribe([weak](const pep::networking::Connection::Attempt::Result& result) { pep::AcquireShared(weak)->handleClientConnectionAttempt(result); });
   }
 
   void postRunValidate() {

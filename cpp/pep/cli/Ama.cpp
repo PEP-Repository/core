@@ -118,7 +118,7 @@ public:
     friend class pep::SharedConstructor<AutoAssignContext>;
 
   private:
-    std::shared_ptr<pep::CoreClient> mClient;
+    std::shared_ptr<pep::CoreClient> client_;
     bool mApply;
     std::map<std::string, std::string> mMappings;
 
@@ -131,7 +131,7 @@ public:
 
   public:
     std::string getGroupNameForStudyContext(const std::optional<pep::StudyContext>& context = std::nullopt) const;
-    inline std::shared_ptr<pep::CoreClient> getClient() const noexcept { return mClient; }
+    inline std::shared_ptr<pep::CoreClient> getClient() const noexcept { return client_; }
     inline bool applyUpdates() const noexcept { return mApply; }
     static bool IsAutoAssignedGroupName(const std::string& name);
     static void OnManualAssignment(const std::string& group);
@@ -323,7 +323,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::AutoAssign(std::shared_ptr<Au
 }
 
 ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::CoreClient> client, bool apply, const std::vector<std::string>& mappings)
-  : mClient(client), mApply(apply) {
+  : client_(client), mApply(apply) {
   for (const auto& mapping : mappings) {
     std::vector<std::string> parts;
     boost::split(parts, mapping, std::bind_front(std::equal_to{}, '='));
@@ -507,11 +507,11 @@ private:
       using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, std::string, std::string) const;
 
     private:
-      AmProxyMethod mMethod;
+      AmProxyMethod method_;
 
     public:
       AmaCgarSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaCgar& parent)
-        : ChildCommandOf<CommandAmaCgar>(name, description, parent), mMethod(method) {
+        : ChildCommandOf<CommandAmaCgar>(name, description, parent), method_(method) {
       }
 
     protected:
@@ -524,7 +524,7 @@ private:
 
       int execute() override {
         const auto& vm = this->getParameterValues();
-        return executeEventLoopFor([&vm, method = mMethod](std::shared_ptr<pep::CoreClient> client) {
+        return executeEventLoopFor([&vm, method = method_](std::shared_ptr<pep::CoreClient> client) {
           auto& am = *client->getAccessManagerProxy();
           return (am.*method)(
             vm.get<std::string>("column-group"),
@@ -561,11 +561,11 @@ private:
       using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, std::string, std::string) const;
 
     private:
-      AmProxyMethod mMethod;
+      AmProxyMethod method_;
 
     public:
       AmaPgarSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaPgar& parent)
-        : ChildCommandOf<CommandAmaPgar>(name, description, parent), mMethod(method) {
+        : ChildCommandOf<CommandAmaPgar>(name, description, parent), method_(method) {
       }
 
     protected:
@@ -578,7 +578,7 @@ private:
 
       int execute() override {
         const auto& vm = this->getParameterValues();
-        return executeEventLoopFor([&vm, method = mMethod](std::shared_ptr<pep::CoreClient> client) {
+        return executeEventLoopFor([&vm, method = method_](std::shared_ptr<pep::CoreClient> client) {
           auto& am = *client->getAccessManagerProxy();
           return (am.*method)(
             vm.get<std::string>("group"),
@@ -630,16 +630,16 @@ private:
       using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string) const;
 
     private:
-      AmProxyMethod mMethod;
+      AmProxyMethod method_;
 
     public:
       AmaColumnExistenceSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaColumn& parent)
-        : AmaColumnSubCommand(name, description, parent), mMethod(method) {
+        : AmaColumnSubCommand(name, description, parent), method_(method) {
       }
 
     protected:
       int execute() override {
-        return executeEventLoopFor([column = this->getSpecifiedColumnName(), method = mMethod](std::shared_ptr<pep::CoreClient> client) {
+        return executeEventLoopFor([column = this->getSpecifiedColumnName(), method = method_](std::shared_ptr<pep::CoreClient> client) {
           auto& am = *client->getAccessManagerProxy();
           return (am.*method)(column);
         });
@@ -651,11 +651,11 @@ private:
       using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, std::string) const;
 
     private:
-      AmProxyMethod mMethod;
+      AmProxyMethod method_;
 
     public:
       AmaColumnGroupingSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaColumn& parent)
-        : AmaColumnSubCommand(name, description, parent), mMethod(method) {
+        : AmaColumnSubCommand(name, description, parent), method_(method) {
       }
 
     protected:
@@ -667,7 +667,7 @@ private:
       int execute() override {
         auto column = this->getSpecifiedColumnName();
         auto group = this->getParameterValues().get<std::string>("group");
-        return executeEventLoopFor([column, group, method = mMethod](std::shared_ptr<pep::CoreClient> client) {
+        return executeEventLoopFor([column, group, method = method_](std::shared_ptr<pep::CoreClient> client) {
           auto& am = *client->getAccessManagerProxy();
           return (am.*method)(column, group);
         });
@@ -839,11 +839,11 @@ private:
       using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(std::string, const pep::PolymorphicPseudonym&) const;
 
     private:
-      AmProxyMethod mMethod;
+      AmProxyMethod method_;
 
     public:
       AmaParticipantGroupingSubCommand(const std::string& name, const std::string& description, AmProxyMethod method, CommandAmaParticipantGroup& parent)
-        : AmaParticipantGroupSubCommand(name, description, parent), mMethod(method) {
+        : AmaParticipantGroupSubCommand(name, description, parent), method_(method) {
       }
 
     protected:
@@ -859,7 +859,7 @@ private:
             auto group = this->getParticipantGroupName();
             ParticipantGroup::AutoAssignContext::OnManualAssignment(group);
             auto& am = *client->getAccessManagerProxy();
-            return (am.*mMethod)(group, pp);
+            return (am.*method_)(group, pp);
               });
           });
       }

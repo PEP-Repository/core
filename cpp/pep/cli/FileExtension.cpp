@@ -61,7 +61,7 @@ protected:
 
 class FileExtensionRequiringChildCommand : public ChildCommandOf<CommandFileExtension> {
 private:
-  std::weak_ptr<pep::CoreClient> mClient;
+  std::weak_ptr<pep::CoreClient> client_;
   std::shared_ptr<pep::RxCache<std::shared_ptr<const pep::ColumnAccess>>> mMetaReadableColumnGroups;
   std::shared_ptr<pep::RxCache<std::string>> mAccessibleParticipantGroups;
 
@@ -77,12 +77,12 @@ protected:
             return PtrAsConst(pep::MakeSharedCopy(std::move(access)));
           });
         });
-      if (mClient.lock() == nullptr) {
-        mClient = client;
+      if (client_.lock() == nullptr) {
+        client_ = client;
       }
     }
 
-    assert(mClient.lock() == client);
+    assert(client_.lock() == client);
     return mMetaReadableColumnGroups->observe();
   }
 
@@ -110,12 +110,12 @@ protected:
           return pep::RxIterate(std::move(*groups));
           });
         });
-      if (mClient.lock() == nullptr) {
-        mClient = client;
+      if (client_.lock() == nullptr) {
+        client_ = client;
       }
     }
 
-    assert(mClient.lock() == client);
+    assert(client_.lock() == client);
     return mAccessibleParticipantGroups->observe();
   }
 
