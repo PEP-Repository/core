@@ -27,7 +27,7 @@ bool LocalSettings::retrieveValue(
   const std::string& szNamespace,
   const std::string& szPropertyName
 ) const {
-  if (auto value = mPropertyTree.get_optional<std::string>(szNamespace + "." + szPropertyName)) {
+  if (auto value = propertyTree_.get_optional<std::string>(szNamespace + "." + szPropertyName)) {
     *lpValue = std::move(*value);
     return true;
   }
@@ -58,7 +58,7 @@ bool LocalSettings::storeValue(
   const std::string& szPropertyName,
   const std::string& szValue
 ) {
-  mPropertyTree.put (szNamespace + "." + szPropertyName, szValue);
+  propertyTree_.put (szNamespace + "." + szPropertyName, szValue);
   return true;
 }
 
@@ -67,12 +67,12 @@ bool LocalSettings::storeValue(
   const std::string& szPropertyName,
   int dwValue
 ) {
-  mPropertyTree.put (szNamespace + "." + szPropertyName, std::to_string(dwValue));
+  propertyTree_.put (szNamespace + "." + szPropertyName, std::to_string(dwValue));
   return true;
 }
 
 bool LocalSettings::deleteValue (const std::string& szNamespace, const std::string& szPropertyName) {
-  if (auto nodeRef = mPropertyTree.get_child_optional(szNamespace)) {
+  if (auto nodeRef = propertyTree_.get_child_optional(szNamespace)) {
     const auto numErasedChildren = nodeRef->erase(szPropertyName);
     return numErasedChildren > 0;
   }
@@ -202,12 +202,12 @@ LocalSettingsRegistry::LocalSettingsRegistry (const std::string& szSubKeyName) {
     return;
   }
 
-  mPropertyTree = RetrieveRecursive (mRegistryHandle);
+  propertyTree_ = RetrieveRecursive (mRegistryHandle);
 }
 
 bool LocalSettingsRegistry::flushChanges () {
   DeleteRecursive (mRegistryHandle, mDeletedValues);
-  StoreRecursive (mRegistryHandle, mPropertyTree, mModifiedValues);
+  StoreRecursive (mRegistryHandle, propertyTree_, mModifiedValues);
   mDeletedValues.clear();
   mModifiedValues.clear();
   return true;
@@ -441,7 +441,7 @@ LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
 
   // Can we find & open the file?
   if (std::ifstream iniStream{this->szFilename}) {
-    read_ini(iniStream, mPropertyTree);
+    read_ini(iniStream, propertyTree_);
   }
 }
 
@@ -452,7 +452,7 @@ bool LocalSettingsIni::flushChanges() {
   permissions(dir, std::filesystem::perms::owner_all);
 
   try {
-    boost::property_tree::write_ini (this->szFilename, mPropertyTree);
+    boost::property_tree::write_ini (this->szFilename, propertyTree_);
   } catch (const std::exception& e) {
     PEP_LOG(LogTag, Severity::Debug) << "Unable to write ini : " << e.what();
     return false;

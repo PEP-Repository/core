@@ -212,6 +212,14 @@ This section lists our own coding guidelines, which we apply on top of the more 
 - Enumerator (value) names are written in `PascalCase`, starting with an `U`ppercase `L`etter.
 - Names of `constexpr` constants are written in `PascalCase`, starting with an `U`ppercase `L`etter (since they are so similar to enumerator values).
 - Names of `const` variables are written in `PascalCase`, starting with an `U`ppercase `L`etter (since they are so similar to `constexpr` constants).
+- Prefer proper encapsulation and state management over publically accessible state.
+- Properly encapsulating user-defined (non-alias) types are defined using the `class` keyword.
+    - Non-const fields of such types are all `private`.
+    - Private field names are written in `camelCase_`, starting with a `l`owerase `l`etter, and ending with an underscore `_` character. (The suffix prevents naming collisions with similarly named instance methods, such as getter methods.)
+- Property bags (i.e. user-defined aggregate types with public fields) are defined using the `struct` keyword.
+    - Such types do not contain instance methods, putting state management responsibilities firmly into the caller's hands.
+    - Field names are written in `camelCase`, starting with a `l`owerase `l`etter. Note that these names lack the trailing underscore `_` character that's used for non-public fields.
+
 
 - Use curly braces `{}` for loop code and condition branches:
 
