@@ -783,18 +783,6 @@ ubuntu-lts-release-manual-lint:
     WITH_BENCHMARK: "True"
     WITH_CASTOR: "True"
 
-ubuntu-lts-release-manual-lint:
-  extends: ubuntu-lts-release-$[[ inputs.autolinting ]]
-  rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      when: manual
-      allow_failure: true
-    - when: never
-  variables:
-    ENABLE_LINTER: yes
-    ARTIFACTS: ""
-    TESTS: ""
-
 ubuntu-lts-release-without-castor:
   extends:
     - .ubuntu-lts-release-base
@@ -856,18 +844,6 @@ ubuntu-rolling-debug-manual-lint:
     - when: never
   variables:
     ENABLE_LINTER: yes
-
-ubuntu-rolling-debug-manual-lint:
-  extends: ubuntu-rolling-debug-$[[ inputs.autolinting ]]
-  rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      when: manual
-      allow_failure: true
-    - when: never
-  variables:
-    ENABLE_LINTER: yes
-    ARTIFACTS: ""
-    TESTS: ""
 
 ubuntu-rolling-release:
   extends:
