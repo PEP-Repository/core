@@ -106,9 +106,9 @@ CoreClient::unblindAndDecryptKeys(
   }).flat_map([this](std::vector<EncryptedKey> encKeys){
     // Step two: we decrypt the retrieved keys.
     return getWorkerPool()->batched_map<8>(std::move(encKeys),
-           observe_on_asio(*io_context),
+           observe_on_asio(*ioContext_),
         [this](EncryptedKey encKey) {
-      auto point = encKey.decrypt(privateKeyData);
+      auto point = encKey.decrypt(privateKeyData_);
       return AESKey(point);
     });
   });
@@ -133,7 +133,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     assert(keyRequests[offset].mEntries.size() == indexInKeyRequest);
     keyRequests[offset].mEntries.emplace_back(
       entry.mMetadata,
-      EncryptedKey(systemPublicKeys.globalDataEncryptionKey, keys[i].point),
+      EncryptedKey(systemPublicKeys_.globalDataEncryptionKey, keys[i].point),
       KeyBlindMode::Blind,
       entry.mPseudonymIndex
     );

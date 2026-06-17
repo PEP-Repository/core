@@ -27,13 +27,13 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::enrollServer() {
 }
 
 void CoreClient::unenroll() {
-  privateKeyData = {};
-  privateKeyPseudonyms = {};
+  privateKeyData_ = {};
+  privateKeyPseudonyms_ = {};
   setSigningIdentity({});
 
-  registrationExpiryTimer.unsubscribe();
-  if (keysFilePath) {
-    std::filesystem::remove(*keysFilePath);
+  registrationExpiryTimer_.unsubscribe();
+  if (keysFilePath_) {
+    std::filesystem::remove(*keysFilePath_);
   }
 }
 
@@ -56,8 +56,8 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_
       ctx->dataEncryptionKeyComponentTS = lpResponse.mDataEncryptionKeyComponent;
 
       // Compute final keys
-      this->privateKeyPseudonyms = ctx->pseudonymEncryptionKeyComponentAM * ctx->pseudonymEncryptionKeyComponentTS;
-      this->privateKeyData = ctx->dataEncryptionKeyComponentAM * ctx->dataEncryptionKeyComponentTS;
+      this->privateKeyPseudonyms_ = ctx->pseudonymEncryptionKeyComponentAM * ctx->pseudonymEncryptionKeyComponentTS;
+      this->privateKeyData_ = ctx->dataEncryptionKeyComponentAM * ctx->dataEncryptionKeyComponentTS;
 
       // Store identity
       this->setSigningIdentity(ctx->identity);
@@ -67,18 +67,18 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_
       std::chrono::time_point<std::chrono::steady_clock> steadyExpiry = std::chrono::steady_clock::now() + durationUntilExpiry;
 
       // Then fire a timer when our certificates expire in order to inform the user
-      registrationExpiryTimer.unsubscribe();
-      registrationExpiryTimer = rxcpp::observable<>::timer(steadyExpiry, rxcpp::observe_on_new_thread()).subscribe([this](auto) {
-        registrationSubject.get_subscriber().on_next(FakeVoid{});
+      registrationExpiryTimer_.unsubscribe();
+      registrationExpiryTimer_ = rxcpp::observable<>::timer(steadyExpiry, rxcpp::observe_on_new_thread()).subscribe([this](auto) {
+        registrationSubject_.get_subscriber().on_next(FakeVoid{});
       });
 
       EnrolledPartyKeys result{
-        .pseudonymKey = privateKeyPseudonyms,
-        .dataKey = privateKeyData != CurveScalar{} ? std::optional{privateKeyData} : std::nullopt,
+        .pseudonymKey = privateKeyPseudonyms_,
+        .dataKey = privateKeyData_ != CurveScalar{} ? std::optional{privateKeyData_} : std::nullopt,
         .signingIdentity = *ctx->identity,
       };
 
-      enrollmentSubject.get_subscriber().on_next(result);
+      enrollmentSubject_.get_subscriber().on_next(result);
       return result;
     });
 }

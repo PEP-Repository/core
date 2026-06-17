@@ -17,23 +17,23 @@ using LexedValues = std::unordered_map<std::string, ProvidedValues>;
 class Values {
 private:
   using Implementor = std::vector<std::any>;
-  Implementor mItems;
+  Implementor items_;
 
 public:
   using iterator = Implementor::iterator;
   using const_iterator = Implementor::const_iterator;
 
-  inline iterator begin() { return mItems.begin(); }
-  inline iterator end() { return mItems.end(); }
-  inline const_iterator begin() const { return mItems.begin(); }
-  inline const_iterator end() const { return mItems.end(); }
-  inline const_iterator cbegin() const { return mItems.cbegin(); }
-  inline const_iterator cend() const { return mItems.cend(); }
+  inline iterator begin() { return items_.begin(); }
+  inline iterator end() { return items_.end(); }
+  inline const_iterator begin() const { return items_.begin(); }
+  inline const_iterator end() const { return items_.end(); }
+  inline const_iterator cbegin() const { return items_.cbegin(); }
+  inline const_iterator cend() const { return items_.cend(); }
 
-  template <typename T> void add(const T& value) { mItems.push_back(value); }
+  template <typename T> void add(const T& value) { items_.push_back(value); }
 
-  inline bool empty() const noexcept { return mItems.empty(); }
-  inline size_t count() const noexcept { return mItems.size(); }
+  inline bool empty() const noexcept { return items_.empty(); }
+  inline size_t count() const noexcept { return items_.size(); }
 };
 
 class NamedValues {

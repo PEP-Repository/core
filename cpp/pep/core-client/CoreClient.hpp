@@ -247,112 +247,112 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   static constexpr size_t DATA_RETRIEVAL_BATCH_SIZE{4000};
 
  private:
-  std::shared_ptr<boost::asio::io_context> io_context;
-  std::optional<std::filesystem::path> keysFilePath;
-  const std::filesystem::path caCertFilepath;
-  std::shared_ptr<WorkerPool> mWorkerPool = nullptr;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  std::optional<std::filesystem::path> keysFilePath_;
+  const std::filesystem::path caCertFilepath_;
+  std::shared_ptr<WorkerPool> workerPool_ = nullptr;
 
   std::shared_ptr<WorkerPool> getWorkerPool();
 
-  std::shared_ptr<X509RootCertificates> rootCAs;
+  std::shared_ptr<X509RootCertificates> rootCAs_;
 
-  ElgamalPrivateKey privateKeyData;
-  ElgamalPrivateKey privateKeyPseudonyms;
-  const SystemPublicKeys systemPublicKeys;
-  std::shared_ptr<GlobalConfiguration> mGlobalConf;
+  ElgamalPrivateKey privateKeyData_;
+  ElgamalPrivateKey privateKeyPseudonyms_;
+  const SystemPublicKeys systemPublicKeys_;
+  std::shared_ptr<GlobalConfiguration> globalConf_;
 
-  const EndPoint accessManagerEndPoint;
-  const EndPoint storageFacilityEndPoint;
-  const EndPoint transcryptorEndPoint;
+  const EndPoint accessManagerEndPoint_;
+  const EndPoint storageFacilityEndPoint_;
+  const EndPoint transcryptorEndPoint_;
 
-  std::shared_ptr<AccessManagerProxy> accessManagerProxy;
-  std::shared_ptr<StorageFacilityProxy> storageFacilityProxy;
-  std::shared_ptr<TranscryptorProxy> transcryptorProxy;
+  std::shared_ptr<AccessManagerProxy> accessManagerProxy_;
+  std::shared_ptr<StorageFacilityProxy> storageFacilityProxy_;
+  std::shared_ptr<TranscryptorProxy> transcryptorProxy_;
 
-  rxcpp::subjects::subject<FakeVoid> registrationSubject;
-  rxcpp::composite_subscription registrationExpiryTimer;
-  rxcpp::subjects::subject<EnrolledPartyKeys> enrollmentSubject;
+  rxcpp::subjects::subject<FakeVoid> registrationSubject_;
+  rxcpp::composite_subscription registrationExpiryTimer_;
+  rxcpp::subjects::subject<EnrolledPartyKeys> enrollmentSubject_;
 
  public:
   class Builder {
    public:
     Builder& setIoContext(std::shared_ptr<boost::asio::io_context> io_context) {
-      this->io_context = io_context;
+      ioContext_ = io_context;
       return *this;
     }
     std::shared_ptr<boost::asio::io_context> getIoContext() const {
-      return io_context;
+      return ioContext_;
     }
 
     Builder& setKeysFilePath(const std::filesystem::path& keysFilePath) {
-      this->keysFilePath = keysFilePath;
+      keysFilePath_ = keysFilePath;
       return *this;
     }
     const std::optional<std::filesystem::path>& getKeysFilePath() const {
-      return keysFilePath;
+      return keysFilePath_;
     }
 
     Builder& setCaCertFilepath(const std::filesystem::path& caCertFilepath) {
-      this->caCertFilepath = std::filesystem::canonical(caCertFilepath);
+      caCertFilepath_ = std::filesystem::canonical(caCertFilepath);
       return *this;
     }
     const std::filesystem::path& getCaCertFilepath() const {
-      return caCertFilepath;
+      return caCertFilepath_;
     }
 
     std::shared_ptr<const X509Identity> getSigningIdentity() const {
-      return signingIdentity;
+      return signingIdentity_;
     }
     Builder& setSigningIdentity(std::shared_ptr<const X509Identity> identity) {
-      Builder::signingIdentity = identity;
+      signingIdentity_ = identity;
       return *this;
     }
 
     const ElgamalPrivateKey& getPrivateKeyData() const {
-      return privateKeyData;
+      return privateKeyData_;
     }
     Builder& setPrivateKeyData(const ElgamalPrivateKey& privateKeyData) {
-      Builder::privateKeyData = privateKeyData;
+      privateKeyData_ = privateKeyData;
       return *this;
     }
 
     const ElgamalPrivateKey& getPrivateKeyPseudonyms() const {
-      return privateKeyPseudonyms;
+      return privateKeyPseudonyms_;
     }
     Builder& setPrivateKeyPseudonyms(const ElgamalPrivateKey& privateKeyPseudonyms) {
-      Builder::privateKeyPseudonyms = privateKeyPseudonyms;
+      privateKeyPseudonyms_ = privateKeyPseudonyms;
       return *this;
     }
 
     const SystemPublicKeys& getSystemPublicKeys() const {
-      return systemPublicKeys;
+      return systemPublicKeys_;
     }
     Builder& setSystemPublicKeys(const SystemPublicKeys& systemPublicKeys) {
-      Builder::systemPublicKeys = systemPublicKeys;
+      systemPublicKeys_ = systemPublicKeys;
       return *this;
     }
 
     const EndPoint& getAccessManagerEndPoint() const {
-      return accessManagerEndPoint;
+      return accessManagerEndPoint_;
     }
     Builder& setAccessManagerEndPoint(const EndPoint& accessManagerEndPoint) {
-      Builder::accessManagerEndPoint = accessManagerEndPoint;
+      accessManagerEndPoint_ = accessManagerEndPoint;
       return *this;
     }
 
     const EndPoint& getStorageFacilityEndPoint() const {
-      return storageFacilityEndPoint;
+      return storageFacilityEndPoint_;
     }
     Builder& setStorageFacilityEndPoint(const EndPoint& storageFacilityEndPoint) {
-      Builder::storageFacilityEndPoint = storageFacilityEndPoint;
+      storageFacilityEndPoint_ = storageFacilityEndPoint;
       return *this;
     }
 
     const EndPoint& getTranscryptorEndPoint() const {
-      return transcryptorEndPoint;
+      return transcryptorEndPoint_;
     }
     Builder& setTranscryptorEndPoint(const EndPoint& transcryptorEndPoint) {
-      Builder::transcryptorEndPoint = transcryptorEndPoint;
+      transcryptorEndPoint_ = transcryptorEndPoint;
       return *this;
     }
 
@@ -361,23 +361,23 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
                     bool persistKeysFile);
 
     std::shared_ptr<CoreClient> build() const {
-      if (signingIdentity == nullptr) {
+      if (signingIdentity_ == nullptr) {
         throw std::runtime_error("signingIdentity must be set");
       }
       return std::shared_ptr<CoreClient>(new CoreClient(*this));
     }
 
    private:
-    std::shared_ptr<boost::asio::io_context> io_context;
-    std::optional<std::filesystem::path> keysFilePath;
-    std::filesystem::path caCertFilepath;
-    std::shared_ptr<const X509Identity> signingIdentity;
-    ElgamalPrivateKey privateKeyData;
-    ElgamalPrivateKey privateKeyPseudonyms;
-    SystemPublicKeys systemPublicKeys;
-    EndPoint accessManagerEndPoint;
-    EndPoint storageFacilityEndPoint;
-    EndPoint transcryptorEndPoint;
+    std::shared_ptr<boost::asio::io_context> ioContext_;
+    std::optional<std::filesystem::path> keysFilePath_;
+    std::filesystem::path caCertFilepath_;
+    std::shared_ptr<const X509Identity> signingIdentity_;
+    ElgamalPrivateKey privateKeyData_;
+    ElgamalPrivateKey privateKeyPseudonyms_;
+    SystemPublicKeys systemPublicKeys_;
+    EndPoint accessManagerEndPoint_;
+    EndPoint storageFacilityEndPoint_;
+    EndPoint transcryptorEndPoint_;
   };
 
   /*!
@@ -397,7 +397,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> parsePpsOrIdentities(const std::vector<std::string>& idsAndOrPps);
 
   auto openVerifiers(const auto& verifiersResponse) const {
-    return verifiersResponse.open(systemPublicKeys.globalPseudonymEncryptionKey);
+    return verifiersResponse.open(systemPublicKeys_.globalPseudonymEncryptionKey);
   }
 
   /*!
@@ -577,7 +577,7 @@ public:
   virtual ~CoreClient() noexcept = default;
 
   rxcpp::observable<FakeVoid> getRegistrationExpiryObservable();
-  inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath; }
+  inline const std::optional<std::filesystem::path>& getKeysFilePath() const noexcept { return keysFilePath_; }
 
   std::shared_ptr<const StorageFacilityProxy> getStorageFacilityProxy(bool require = true) const;
   std::shared_ptr<const TranscryptorProxy> getTranscryptorProxy(bool require = true) const;
@@ -642,16 +642,16 @@ public:
 
 template <std::derived_from<SigningServerProxy> TProxy>
 std::shared_ptr<TProxy> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {
-  auto untyped = messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
+  auto untyped = messaging::ServerConnection::TryCreate(ioContext_, endPoint, caCertFilepath_);
   if (untyped == nullptr) {
     return nullptr;
   }
-  return std::make_shared<TProxy>(untyped, static_cast<const MessageSigner&>(*this), endPoint.expectedCommonName, rootCAs);
+  return std::make_shared<TProxy>(untyped, static_cast<const MessageSigner&>(*this), endPoint.expectedCommonName, rootCAs_);
 }
 
 template <typename TProxy>
 std::shared_ptr<TProxy> CoreClient::tryConnectServerProxy(const EndPoint& endPoint) const {
-  auto untyped = messaging::ServerConnection::TryCreate(io_context, endPoint, caCertFilepath);
+  auto untyped = messaging::ServerConnection::TryCreate(ioContext_, endPoint, caCertFilepath_);
   if (untyped == nullptr) {
     return nullptr;
   }

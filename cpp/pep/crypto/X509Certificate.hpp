@@ -99,14 +99,14 @@ std::string X509CertificatesToPem(const X509Certificates& certificates);
 
 class X509RootCertificates {
 private:
-  X509Certificates mItems;
+  X509Certificates items_;
 
 public:
   explicit X509RootCertificates(X509Certificates certificates);
 
   static X509RootCertificates FromFile(const std::filesystem::path& caCertFilePath);
 
-  const X509Certificates& items() const noexcept { return mItems; }
+  const X509Certificates& items() const noexcept { return items_; }
 };
 
 

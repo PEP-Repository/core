@@ -9,29 +9,29 @@ namespace pep {
 template <typename T>
 class VectorOfVectors {
 private:
-  std::vector<std::vector<T>> mItems;
-  size_t mSize{};
+  std::vector<std::vector<T>> items_;
+  size_t size_{};
 
 public:
   class const_iterator;
 
-  const_iterator begin() const { return const_iterator(mItems.begin(), mItems.end()); }
-  const_iterator end() const { return const_iterator(mItems.end(), mItems.end()); }
+  const_iterator begin() const { return const_iterator(items_.begin(), items_.end()); }
+  const_iterator end() const { return const_iterator(items_.end(), items_.end()); }
 
   void clear() noexcept {
-    mItems.clear();
-    mSize = 0U;
+    items_.clear();
+    size_ = 0U;
   }
 
   VectorOfVectors& operator +=(std::vector<T> v) {
     if (!v.empty()) {
-      mSize += mItems.emplace_back(std::move(v)).size();
+      size_ += items_.emplace_back(std::move(v)).size();
     }
     return *this;
   }
 
   size_t size() const noexcept {
-    return mSize;
+    return size_;
   }
 };
 
@@ -40,7 +40,7 @@ class VectorOfVectors<T>::const_iterator {
   friend class VectorOfVectors<T>;
 
 private:
-  using VectorIterator = typename decltype(VectorOfVectors<T>::mItems)::const_iterator;
+  using VectorIterator = typename decltype(VectorOfVectors<T>::items_)::const_iterator;
   VectorIterator mPosition;
   VectorIterator mEnd;
 

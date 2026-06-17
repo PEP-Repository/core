@@ -120,7 +120,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
         .flat_map([this, ctx](const IndexedTicket2& indexedTicket) {
           ctx->signedTicket = indexedTicket.getTicket();
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());
-          ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms);
+          ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms_);
           DataEnumerationRequest2 enumRequest;
           enumRequest.mTicket = *ctx->signedTicket;
 

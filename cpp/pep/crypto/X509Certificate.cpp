@@ -524,8 +524,8 @@ std::string X509CertificatesToPem(const X509Certificates& certificates) {
 }
 
 X509RootCertificates::X509RootCertificates(X509Certificates certificates)
-  : mItems(std::move(certificates)) {
-  for (const auto& cert : mItems) {
+  : items_(std::move(certificates)) {
+  for (const auto& cert : items_) {
     if (!cert.isSelfSigned()) {
       throw std::runtime_error("Root CA certificate is not self signed");
     }

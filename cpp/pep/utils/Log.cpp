@@ -56,15 +56,15 @@ std::string getInstallationUuid() {
 template <typename TBoost>
 class SinkWrapper : public Logging::Sink {
 private:
-  boost::shared_ptr<TBoost> mImplementor;
+  boost::shared_ptr<TBoost> implementor_;
 
 public:
   explicit SinkWrapper(boost::shared_ptr<TBoost> implementor)
-    : mImplementor(implementor) {
+    : implementor_(implementor) {
   }
 
   void setMinimumSeverity(Severity minimum) override {
-    mImplementor->set_filter(severity >= minimum);
+    implementor_->set_filter(severity >= minimum);
   }
 };
 

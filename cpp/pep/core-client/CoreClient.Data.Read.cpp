@@ -69,7 +69,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
 rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(std::shared_ptr<SignedTicket2> ticket) {
   PEP_LOG(LogTag, Severity::Debug) << "enumerateData";
 
-  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
+  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms_);
   auto enumRequest = std::make_shared<DataEnumerationRequest2>();
   enumRequest->mTicket = *ticket;
   return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(*enumRequest))
@@ -82,7 +82,7 @@ rxcpp::observable<rxcpp::observable<std::shared_ptr<EnumerateResult>>>
 CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<SignedTicket2> ticket) {
   PEP_LOG(LogTag, Severity::Debug) << "enumerateDataByIds";
 
-  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
+  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms_);
 
   return RxIterate(std::move(ids))
       .buffer(static_cast<int>(DATA_RETRIEVAL_BATCH_SIZE))
@@ -285,7 +285,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
         if (localPseudonyms->mAccessGroup) {
           auto iag = agPseuds.find(entry.mPseudonymIndex);
           if (iag == agPseuds.cend()) {
-            auto ag = localPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
+            auto ag = localPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms_);
             auto emplaced = agPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ag)));
             assert(emplaced.second);
             iag = emplaced.first;
@@ -308,7 +308,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
     });
 }
 
-CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms) {
+CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms_) {
   auto opened = ticket.openWithoutCheckingSignature();
 
   mPseudonyms.reserve(opened.mAccessSubjects.size());
@@ -328,7 +328,7 @@ CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, cons
 
     if (mAgPseuds.has_value()) {
       mAgPseuds->push_back(std::make_shared<LocalPseudonym>(
-        p.mAccessGroup->decrypt(privateKeyPseudonyms)));
+        p.mAccessGroup->decrypt(privateKeyPseudonyms_)));
     }
   }
 }

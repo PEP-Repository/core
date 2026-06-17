@@ -57,26 +57,25 @@ public:
    * \return Observable that immediately emits the current AuthenticationStatus and will emit updates to the status
    */
   rxcpp::observable<AuthenticationStatus> authenticationStatus() {
-    return authenticationSubject.get_observable();
+    return authenticationSubject_.get_observable();
   };
-
-private:
-  rxcpp::observable<HTTPResponse> sendRequest(std::shared_ptr<HTTPRequest> request);
-  rxcpp::observable<HTTPResponse> sendPreAuthorizedRequest(std::shared_ptr<HTTPRequest> request);
-  rxcpp::observable<JsonPtr> handleCastorResponse(std::shared_ptr<HTTPRequest> request, const HTTPResponse& response);
-
-  rxcpp::subjects::behavior<AuthenticationStatus>
-    authenticationSubject{ AuthenticationStatus(AuthenticationState::Unauthenticated) };
-  static constexpr int PAGE_SIZE = 1000;
-  static const std::string BASE_PATH;
 
 private:
   CastorClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::string clientId, std::string clientSecret, std::optional<std::filesystem::path> caCertFilepath = std::nullopt);
 
-  std::shared_ptr<networking::HttpClient> mHttp;
-  EventSubscription mOnRequestForwarding;
-  std::string mClientId;
-  std::string mClientSecret;
+  rxcpp::observable<HTTPResponse> sendRequest(std::shared_ptr<HTTPRequest> request);
+  rxcpp::observable<HTTPResponse> sendPreAuthorizedRequest(std::shared_ptr<HTTPRequest> request);
+  rxcpp::observable<JsonPtr> handleCastorResponse(std::shared_ptr<HTTPRequest> request, const HTTPResponse& response);
+
+  static constexpr int PAGE_SIZE = 1000;
+  static const std::string BASE_PATH;
+
+  rxcpp::subjects::behavior<AuthenticationStatus>
+    authenticationSubject_{ AuthenticationStatus(AuthenticationState::Unauthenticated) };
+  std::shared_ptr<networking::HttpClient> http_;
+  EventSubscription onRequestForwarding_;
+  std::string clientId_;
+  std::string clientSecret_;
 };
 
 }

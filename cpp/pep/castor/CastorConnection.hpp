@@ -105,8 +105,8 @@ class CastorConnection : public std::enable_shared_from_this<CastorConnection>, 
   friend class SharedConstructor<CastorConnection>;
 private:
   struct Implementor;
-  std::unique_ptr<Implementor> mImplementor;
-  EventSubscription mOnRequestForwarding;
+  std::unique_ptr<Implementor> implementor_;
+  EventSubscription onRequestForwarding_;
 
 private:
   CastorConnection(const std::filesystem::path& apiKeyFile, std::shared_ptr<boost::asio::io_context> io_context);

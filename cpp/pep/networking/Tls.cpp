@@ -21,7 +21,7 @@ class TlsSocket : public TcpBasedProtocolImplementor<Tls>::Socket {
   friend class pep::networking::Tls;
 
 private:
-  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> mImplementor;
+  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> implementor_;
   StreamSocket mStreamSocket;
   boost::asio::ssl::stream_base::handshake_type mType;
   bool mShutdownRequired = false;
@@ -29,8 +29,8 @@ private:
   void finishClosing();
 
 protected:
-  BasicSocket& basicSocket() override { return mImplementor.lowest_layer(); }
-  const BasicSocket& basicSocket() const override { return mImplementor.lowest_layer(); }
+  BasicSocket& basicSocket() override { return implementor_.lowest_layer(); }
+  const BasicSocket& basicSocket() const override { return implementor_.lowest_layer(); }
   StreamSocket& streamSocket() override { return mStreamSocket; }
   void finishConnecting(const ConnectionAttempt::Handler& notify) override;
 
@@ -43,7 +43,7 @@ public:
 void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
   mShutdownRequired = true; // We may need to close before we've received the handshake callback, at which point we don't know (yet) if OpenSSL has started or even completed its handshaking
 
-  mImplementor.async_handshake(mType, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
+  implementor_.async_handshake(mType, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
     auto connecting = self->status() == ConnectivityStatus::Connecting; // Another ASIO job (e.g. a timer) may have already invoked close() on us
 
     if (error) {
@@ -74,7 +74,7 @@ void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
 }
 
 TlsSocket::TlsSocket(const Tls& protocol, boost::asio::io_context& ioContext, boost::asio::ssl::stream_base::handshake_type type, boost::asio::ssl::context& ssl_context)
-  : Socket(protocol, ioContext), mImplementor(ioContext, ssl_context), mStreamSocket(mImplementor), mType(type) {
+  : Socket(protocol, ioContext), implementor_(ioContext, ssl_context), mStreamSocket(implementor_), mType(type) {
 }
 
 TlsSocket::~TlsSocket() noexcept {
@@ -85,7 +85,7 @@ TlsSocket::~TlsSocket() noexcept {
 
 void TlsSocket::finishClosing() {
   mShutdownRequired = false;
-  mImplementor.lowest_layer().close();
+  implementor_.lowest_layer().close();
   this->setConnectivityStatus(ConnectivityStatus::Disconnected);
 }
 
@@ -99,7 +99,7 @@ void TlsSocket::close() {
   }
 
   // Cancel pending I/O on the socket
-  auto& lowest = mImplementor.lowest_layer();
+  auto& lowest = implementor_.lowest_layer();
   if (lowest.is_open()) {
     lowest.cancel();
   }
@@ -135,7 +135,7 @@ void TlsSocket::close() {
     finishClosing();
     });
 
-  mImplementor.async_shutdown([finishClosing](boost::system::error_code error) {
+  implementor_.async_shutdown([finishClosing](boost::system::error_code error) {
     if (error
       && !IsSpecificSslError(error, SSL_R_UNINITIALIZED) // (Our mShutdownRequired has been set, but) SSL initialization was unstarted
       && !IsSpecificSslError(error, SSL_R_SHUTDOWN_WHILE_IN_INIT) // SSL initialization/handshaking was started but not completed
@@ -162,7 +162,7 @@ void TlsSocket::close() {
 
   // Don't wait for the other party to acknowledge our async_shutdown. See https://stackoverflow.com/a/32054476 and https://stackoverflow.com/a/25703699
   [[maybe_unused]] auto buffer = std::make_shared<std::string>("\0"); // Ensure the buffer (1) stays alive for the duration of the async_write operation and (2) has at least 1 character of capacity. See the comments on https://stackoverflow.com/a/25703699
-  boost::asio::async_write(mImplementor, boost::asio::buffer(buffer->data(), buffer->size()), [self, buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
+  boost::asio::async_write(implementor_, boost::asio::buffer(buffer->data(), buffer->size()), [self, buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
     if (IsSpecificSslError(error, SSL_R_PROTOCOL_IS_SHUTDOWN)) {
       self->finishClosing();
     }
@@ -213,7 +213,7 @@ std::shared_ptr<TcpBasedProtocol::Socket> Tls::createSocket(TcpBasedProtocol::Cl
     verifyCallback = boost::bind(&VerifyCertificateBasedOnExpectedCommonName,
       endpoint.expectedCommonName, boost::placeholders::_1, boost::placeholders::_2);
   }
-  result->mImplementor.set_verify_callback(verifyCallback);
+  result->implementor_.set_verify_callback(verifyCallback);
 
 
   const std::regex hostnameRegex("^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*$"); // Copied from https://stackoverflow.com/a/3824105
@@ -227,7 +227,7 @@ std::shared_ptr<TcpBasedProtocol::Socket> Tls::createSocket(TcpBasedProtocol::Cl
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wold-style-cast"  // Suppress warning from GCC about C-style cast inside macro
 #endif
-      SSL_set_tlsext_host_name(result->mImplementor.native_handle(), endpoint.hostname.c_str());
+      SSL_set_tlsext_host_name(result->implementor_.native_handle(), endpoint.hostname.c_str());
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
 #endif

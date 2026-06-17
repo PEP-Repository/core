@@ -29,12 +29,12 @@ namespace
 
     ClientImp(const Client::Parameters& params);
 
-    void start() override { mHttp->start(); }
-    void shutdown() override { mHttp->shutdown(); }
+    void start() override { http_->start(); }
+    void shutdown() override { http_->shutdown(); }
 
   private:
 
-    std::shared_ptr<networking::HttpClient> mHttp;
+    std::shared_ptr<networking::HttpClient> http_;
     Credentials credentials;
     EndPoint endpoint;
 
@@ -80,7 +80,7 @@ namespace
 
   ClientImp::ClientImp(const Client::Parameters& params)
     : Client(),
-      mHttp(create_http_client(params)),
+      http_(create_http_client(params)),
       credentials(params.credentials),
       endpoint(params.endpoint)
   {
@@ -93,7 +93,7 @@ namespace
       const networking::HttpMethod& method,
       std::vector<std::shared_ptr<std::string>> bodyparts)
   {
-    auto result = mHttp->makeRequest(method, path);
+    auto result = http_->makeRequest(method, path);
     assert(result.getBodyparts().empty());
     result.getBodyparts() = std::move(bodyparts);
     result.completeHeaders();
@@ -184,7 +184,7 @@ namespace
 
     request::Sign(request, this->credentials);
 
-    return mHttp->sendRequest(std::move(request)).map(
+    return http_->sendRequest(std::move(request)).map(
 
     [self = SharedFrom(*this), name](HTTPResponse resp) -> std::string {
 
@@ -212,7 +212,7 @@ namespace
 
     request::Sign(request, this->credentials);
 
-    return mHttp->sendRequest(std::move(request)).map(
+    return http_->sendRequest(std::move(request)).map(
 
     [self = SharedFrom(*this), bucket, name](HTTPResponse resp)
       -> messaging::MessageSequence {
