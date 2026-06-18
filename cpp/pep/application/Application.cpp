@@ -26,6 +26,9 @@ namespace pep {
 
 namespace {
 
+static Application* applicationInstance = nullptr;
+static bool usingConsoleLog = false;
+
 const std::string CONSOLE_REDIRECTION_WARNING = "Note that output cannot be piped or redirected (e.g. to file) in this mode.";
 
 void LogVersionInfo(const std::string& tag, std::string summary) {
@@ -163,14 +166,11 @@ std::optional<std::filesystem::path> GetEffectiveConfigDirectory(const std::opti
 
 }
 
-Application* Application::instance_ = nullptr;
-bool Application::usingConsoleLog_ = false;
-
 Application::Application() {
-  if (instance_ != nullptr) {
+  if (applicationInstance != nullptr) {
     throw std::runtime_error("Only a single Application instance may exist over the process's lifetime");
   }
-  instance_ = this;
+  applicationInstance = this;
 }
 
 Application::~Application() {
@@ -234,7 +234,7 @@ void Application::initializeLoggingOnce() {
         ? values.getOptional<Severity>("logLevel")
         : consoleLogMinimumSeverityLevel()) {
       logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
-      usingConsoleLog_ = true;
+      usingConsoleLog = true;
     }
 
     if (auto file_level = fileLogMinimumSeverityLevel()) {
@@ -315,7 +315,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
       detail = "because an unrecoverable error has occurred"; // Looks a bit better than no information at all
     }
 
-    if (usingConsoleLog_) {
+    if (usingConsoleLog) {
       PEP_LOG("Application", Severity::Critical) << "Terminating application " << detail;
     }
     else {

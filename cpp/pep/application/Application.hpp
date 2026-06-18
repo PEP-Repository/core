@@ -43,9 +43,6 @@ namespace pep {
 
 class Application : public commandline::Command {
  private:
-  static Application* instance_;
-  static bool usingConsoleLog_;
-
   int argc_ = -1;
   char** argv_ = nullptr;
 
