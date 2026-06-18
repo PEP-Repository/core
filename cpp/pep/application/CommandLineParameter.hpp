@@ -129,7 +129,7 @@ class Parameters {
 
 private:
   std::vector<Parameter> entries_;
-  using Index = typename std::vector<Parameter>::size_type;
+  using Index = decltype(entries_)::size_type;
   /// Non-positional parameters
   std::vector<Index> named_;
   /// Positional parameters
