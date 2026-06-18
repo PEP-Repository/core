@@ -1,7 +1,18 @@
+if(DEFINED EMSCRIPTEN)
+  # pepcli can be used with Emscripten & Node.js, but currently requires some manual actions:
+  # - `npm install ws` in the cli build folder
+  # - Making sure the ClientConfig points to a websocket proxy
+  # - Optional for build performance: disabling -gsource-map and adding -sNO_STACK_OVERFLOW_CHECK (see notes in weblib CMakeLists.txt)
+  set_directory_properties(PROPERTIES
+      EXCLUDE_FROM_ALL ON
+  )
+endif()
+
 set(PEPCLI_SRCS
     Ama.cpp
     Castor.cpp
     CliApplication.cpp CliApplication.hpp
+    ColumnQuery.cpp ColumnQuery.hpp
     Command.cpp Command.hpp
     Commands.hpp
     Delete.cpp
@@ -19,7 +30,6 @@ set(PEPCLI_SRCS
     List.cpp
     Metrics.cpp
     MultiCellQuery.cpp MultiCellQuery.hpp
-    NoLongerSupportedCommand.cpp
     Ping.cpp
     Pull.cpp
     Query.cpp
@@ -40,6 +50,8 @@ set(PEPCLI_SRCS
     Validate.cpp
     Verifiers.cpp
     XEntry.cpp
+    structuredoutput/TreeFromUserQueryResponse.hpp structuredoutput/TreeFromUserQueryResponse.cpp
+    structuredoutput/TreeFromAmaQueryResponse.hpp structuredoutput/TreeFromAmaQueryResponse.cpp
 )
 
 add_cli_install_executable(${PROJECT_NAME}cli ${PEPCLI_SRCS})

@@ -1,6 +1,5 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxRequireCount.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 #include <utility>
 
@@ -15,7 +14,7 @@ void AppendVector(std::vector<T>& destination, const std::vector<T>& source) {
 
 void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std::vector<AmaQRColumnGroup>& source) {
   for (auto& sourceGroup : source) {
-    auto found = std::find_if(destination.begin(), destination.end(), [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.mName == sourceGroup.mName; });
+    auto found = std::find_if(destination.begin(), destination.end(), [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.name_ == sourceGroup.name_; });
     if (found != destination.end()) {
       // The group already exists in the destination. Add the mColumns of the sourceGroup to this destinationGroup.
       AppendVector<std::string>(found->mColumns, sourceGroup.mColumns);
@@ -152,21 +151,19 @@ AccessManagerProxy::amaRemoveGroupAccessRule(std::string group,
 rxcpp::observable<AmaQueryResponse>
 AccessManagerProxy::amaQuery(AmaQuery query) const {
   return this->sendRequest<AmaQueryResponse>(this->sign(std::move(query)))
-    .op(pep::RxRequireNonEmpty()) // Ensure we don't return an AmaQueryResponse if we didn't receive one from AM
-    .reduce( // Concatenate all parts into a single AmaQueryResponse instance
+    .reduce( // Concatenate all parts into a single AmaQueryResponse instance, which will remain empty if we didn't receive (a partial) one from AM
       std::make_shared<AmaQueryResponse>(),
       [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
         AppendVector(all->mColumns, part.mColumns);
-        AppendAndSquashVector(all->mColumnGroups, part.mColumnGroups);
+        AppendAndSquashVector(all->columnGroups_, part.columnGroups_);
         AppendVector(all->mColumnGroupAccessRules, part.mColumnGroupAccessRules);
-        AppendVector(all->mParticipantGroups, part.mParticipantGroups);
+        AppendVector(all->participantGroups_, part.participantGroups_);
         AppendVector(all->mParticipantGroupAccessRules, part.mParticipantGroupAccessRules);
         return all;
       }
     )
     .map([](std::shared_ptr<AmaQueryResponse> response) {return *response; }); // Return a plain AmaQueryResponse instead of a shared_ptr
 }
-
 
 
 }

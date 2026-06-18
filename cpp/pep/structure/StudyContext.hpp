@@ -37,7 +37,7 @@ public:
 
 class StudyContexts {
 private:
-  std::vector<StudyContext> mItems;
+  std::vector<StudyContext> items_;
 
 private:
   std::vector<StudyContext>::const_iterator getPositionOf(const StudyContext& context) const;
@@ -47,7 +47,7 @@ public:
   explicit StudyContexts(std::vector<StudyContext> items);
 
   bool contains(const StudyContext& context) const;
-  const std::vector<StudyContext>& getItems() const noexcept { return mItems; }
+  const std::vector<StudyContext>& getItems() const noexcept { return items_; }
 
   void add(const StudyContext& context);
   void remove(const StudyContext& context);

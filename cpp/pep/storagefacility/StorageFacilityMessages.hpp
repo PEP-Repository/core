@@ -10,7 +10,7 @@ namespace pep {
 
 class DataEnumerationRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   // Falls back to all columns in ticket
   std::optional<IndexList> mColumns{};
   // Falls back to all pseudonyms in ticket
@@ -36,13 +36,13 @@ public:
 
 class MetadataReadRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::vector<std::string> mIds;
 };
 
 class DataReadRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::vector<std::string> mIds;
 };
 
@@ -65,7 +65,7 @@ class DataEntriesRequest2 {
 public:
   using Entry = TEntry;
 
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::vector<Entry> mEntries;
 };
 
@@ -96,15 +96,15 @@ public:
 
 class DataHistoryRequest2 {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::optional<IndexList> mColumns;
   std::optional<IndexList> mPseudonyms;
 };
 
 class DataHistoryEntry2 {
 public:
-  uint32_t mColumnIndex{}; // In the DataHistoryRequest2::mTicket
-  uint32_t mPseudonymIndex{}; // In the DataHistoryRequest2::mTicket
+  uint32_t mColumnIndex{}; // In the DataHistoryRequest2::ticket_
+  uint32_t mPseudonymIndex{}; // In the DataHistoryRequest2::ticket_
   Timestamp mTimestamp;
   std::string mId; // Storage facility ID. If empty, this history entry represents a deletion
 };
@@ -114,6 +114,16 @@ public:
   std::vector<DataHistoryEntry2> mEntries;
 };
 
+struct DataSizeRequest {
+  std::set<std::string> mColumns;
+};
+
+struct DataSizeResponse {
+  uint64_t mBlockSize;
+  uint64_t mTotalBlocks;
+  uint64_t mRollingBlocks;
+};
+
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;
 using SignedMetadataReadRequest2 = Signed<MetadataReadRequest2>;
 using SignedDataReadRequest2 = Signed<DataReadRequest2>;
@@ -121,5 +131,6 @@ using SignedMetadataUpdateRequest2 = Signed<MetadataUpdateRequest2>;
 using SignedDataStoreRequest2 = Signed<DataStoreRequest2>;
 using SignedDataDeleteRequest2 = Signed<DataDeleteRequest2>;
 using SignedDataHistoryRequest2 = Signed<DataHistoryRequest2>;
+using SignedDataSizeRequest = Signed<DataSizeRequest>;
 
 }

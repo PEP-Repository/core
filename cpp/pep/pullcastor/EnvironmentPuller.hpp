@@ -31,7 +31,7 @@ private:
   bool mDry;
   std::optional<std::vector<std::string>> mSps;
   Timestamp mCooldownThreshold;
-  std::shared_ptr<Client> mClient;
+  std::shared_ptr<Client> client_;
   std::string mOauthToken;
   std::shared_ptr<CastorConnection> mCastor;
   EventSubscription mCastorOnRequestSubscription;

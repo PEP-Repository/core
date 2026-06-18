@@ -24,12 +24,13 @@
 #include <prometheus/gauge.h>
 #include <prometheus/registry.h>
 
-static const std::string LOG_TAG ("PageStore");
-
 namespace pep
 {
 
 namespace {
+
+  const std::string LogTag("PageStore");
+
   class S3PageStore
     : public PageStore,
       public std::enable_shared_from_this<S3PageStore>
@@ -46,7 +47,7 @@ namespace {
     static std::shared_ptr<S3PageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
         std::shared_ptr<prometheus::Registry> metrics_registry,
-        std::shared_ptr<Configuration> config);
+        const Configuration& config);
 
     // pubic constructor for the sake of std::make_shared
     S3PageStore(
@@ -106,23 +107,23 @@ namespace {
   std::shared_ptr<S3PageStore> S3PageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
       std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
+      const Configuration& config)
   {
     s3::Client::Parameters s3params = {
-      config->get<EndPoint>("EndPoint"),
-      config->get<s3::Credentials>("Credentials"),
+      config.get<EndPoint>("EndPoint"),
+      config.get<s3::Credentials>("Credentials"),
       io_context,
-      config->get<std::optional<std::filesystem::path>>("Ca-Cert-Path"),
-      config->get<std::optional<bool>>("Use-Https")
+      config.get<std::optional<std::filesystem::path>>("CaCertificateFile"),
+      config.get<std::optional<bool>>("UseHttps")
     };
 
-    unsigned int conn_count = config->get<unsigned int>("Connections", 5);
-    std::string write_bucket = config->get<std::string>("Write-To-Bucket");
+    unsigned int conn_count = config.get<unsigned int>("Connections", 5);
+    std::string write_bucket = config.get<std::string>("WriteToBucket");
 
     std::vector<std::string> buckets;
 
     for (const std::string& bucket
-        : config->get<std::vector<std::string>>("Read-From-Buckets")) {
+        : config.get<std::vector<std::string>>("ReadFromBuckets")) {
       buckets.push_back(bucket);
     }
 
@@ -169,13 +170,13 @@ namespace {
     for (auto client : clients) {
       client->shutdown();
     }
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
     for (unsigned int count : *(this->open_requests_counts))
       assert(count == 0);
     // The "count" variable is only used in an assertion, making it
     // unused in non-debug builds.
     //
-    // Why not a LOG(LOG_TAG, error) here instead of an assert?
+    // Why not a PEP_LOG(LogTag, Severity::Error) here instead of an assert?
     //
     // Either there's a bug in the open requests counting code---which we don't
     // want to be buried in the logs---or some request is actually still active,
@@ -270,9 +271,9 @@ namespace {
     // on account of it being destroyed.
     // We achieve this using a 'defer guard';  when post_pending is
     // destroyed (or manually triggered) pending_requests is decremented.
-    // We use 'defer_shared' instead of 'defer_unique' because rxcpp
+    // We use 'DeferShared' instead of 'DeferUnique' because rxcpp
     // cannot deal with non-copyable callbacks.
-    auto post_pending = defer_shared([self]{
+    auto post_pending = DeferShared([self]{
       if (self->metrics)
         self->metrics->pending_requests.Decrement();
     });
@@ -294,7 +295,7 @@ namespace {
         self->metrics->active_requests.Increment();
       }
 
-      auto post_active = defer_shared([self, conn_idx]{
+      auto post_active = DeferShared([self, conn_idx]{
         (self->open_requests_counts->at(conn_idx))--;
         if (self->metrics)
           self->metrics->active_requests.Decrement();
@@ -333,7 +334,7 @@ namespace {
 
     auto self = this->shared_from_this();
 
-    auto post_pending = defer_shared([self,pages_size]{
+    auto post_pending = DeferShared([self,pages_size]{
       if (self->metrics) {
         self->metrics->pending_requests.Decrement();
         self->metrics->pending_pages_size.Decrement(
@@ -356,7 +357,7 @@ namespace {
         self->metrics->active_requests.Increment();
       }
 
-      auto post_active = defer_shared([self,conn_idx](){
+      auto post_active = DeferShared([self,conn_idx](){
         (self->open_requests_counts->at(conn_idx))--;
         if (self->metrics)
           self->metrics->active_requests.Decrement();
@@ -392,7 +393,7 @@ namespace {
 
     static std::shared_ptr<LocalPageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
-        std::shared_ptr<Configuration> config);
+        const Configuration& config);
 
     // pubic constructor for the sake of std::make_shared
     LocalPageStore(
@@ -417,11 +418,11 @@ namespace {
 
   std::shared_ptr<LocalPageStore> LocalPageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
-      std::shared_ptr<Configuration> config)
+      const Configuration& config)
   {
     std::filesystem::path datadir =
-        config->get<std::filesystem::path>("DataDir");
-    std::string bucket = config->get<std::string>("Bucket");
+        config.get<std::filesystem::path>("DataDir");
+    std::string bucket = config.get<std::string>("Bucket");
 
     return std::make_shared<LocalPageStore>(datadir, bucket);
   }
@@ -441,8 +442,7 @@ namespace {
           try {
             *result = ReadFile(fullpath);
           } catch(...) {
-            LOG(LOG_TAG, error) << "could not read from "
-              << std::quoted(fullpath.string());
+            PEP_LOG(LogTag, Severity::Error) << "could not read from \"" << fullpath.string() << '"';
             throw;
           }
           s.on_next(result);
@@ -469,8 +469,7 @@ namespace {
           std::filesystem::create_directories(fullpath.parent_path());
           WriteFile(fullpath, *page);
         } catch (...) {
-          LOG(LOG_TAG, error) << "could not write to "
-            << std::quoted(fullpath.string());
+          PEP_LOG(LogTag, Severity::Error) << "could not write to \"" << fullpath.string() << '"';
           throw;
         }
         s.on_next(s3::ETag(*page));
@@ -497,7 +496,8 @@ namespace {
     static std::shared_ptr<DualPageStore> Create(
         std::shared_ptr<boost::asio::io_context> io_context,
         std::shared_ptr<prometheus::Registry> metrics_registry,
-        std::shared_ptr<Configuration> config);
+        const Configuration& s3Config,
+        const Configuration& localConfig);
 
     // pubic constructor for the sake of std::make_shared
     DualPageStore(
@@ -520,11 +520,12 @@ namespace {
   std::shared_ptr<DualPageStore> DualPageStore::Create(
       std::shared_ptr<boost::asio::io_context> io_context,
       std::shared_ptr<prometheus::Registry> metrics_registry,
-      std::shared_ptr<Configuration> config)
+      const Configuration& s3Config,
+      const Configuration& localConfig)
   {
     return std::make_shared<DualPageStore>(
-        S3PageStore::Create(io_context, metrics_registry, config),
-        LocalPageStore::Create(io_context, config));
+        S3PageStore::Create(io_context, metrics_registry, s3Config),
+        LocalPageStore::Create(io_context, localConfig));
   }
 
   const std::string SYNC_ERROR_MSG
@@ -585,10 +586,10 @@ namespace {
           throw std::runtime_error("DualPageStore: Put: both "
               "stores failed silently.");
         default:
-          LOG(LOG_TAG, error) << "DualPageStore::put: got unexpectedly many "
+          PEP_LOG(LogTag, Severity::Error) << "DualPageStore::put: got unexpectedly many "
               << "ETags from page stores: ";
           for (auto& etag : *values) {
-            LOG(LOG_TAG, error) << "\t - " << std::quoted(etag);
+            PEP_LOG(LogTag, Severity::Error) << "\t - " << std::quoted(etag);
           }
           throw std::runtime_error("DualPageStore: Put: assertion error: "
               "got more than one result from a store.");
@@ -602,21 +603,22 @@ namespace {
 std::shared_ptr<PageStore> PageStore::Create(
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry,
-    std::shared_ptr<Configuration> config)
+    const Configuration& config)
 {
-  std::string type = config->get<std::string>("Type"); // throws
+  auto s3Config = config.get_child_optional("S3");
+  auto localConfig = config.get_child_optional("Local");
 
-  if (type == "s3") {
-    return S3PageStore::Create(io_context, metrics_registry, config);
-  } else if (type == "local") {
-    return LocalPageStore::Create(io_context, config);
-  } else if (type == "dual") {
-    return DualPageStore::Create(io_context, metrics_registry, config);
+  if (s3Config && localConfig) {
+    return DualPageStore::Create(io_context, metrics_registry, *s3Config, *localConfig);
+  }
+  if (s3Config) {
+    return S3PageStore::Create(io_context, metrics_registry, *s3Config);
+  }
+  if (localConfig) {
+    return LocalPageStore::Create(io_context, *localConfig);
   }
 
-  throw std::runtime_error("Configuration error: "
-      "unknown page storage type, " + type
-        + "; use 's3', 'local' or 'dual'.");
+  throw std::runtime_error("Configuration error: no page store implementation specified");
 }
 
 }

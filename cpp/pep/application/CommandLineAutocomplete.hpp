@@ -18,8 +18,9 @@
 namespace pep::commandline {
 
 namespace detail {
+
 template <typename Range>
-static void printRange(std::ostream& out, const Range& range, char separator) {
+void PrintRange(std::ostream& out, const Range& range, char separator) {
   bool separate = false;
   for (const auto& v : range) {
     if (std::exchange(separate, true)) {
@@ -28,6 +29,7 @@ static void printRange(std::ostream& out, const Range& range, char separator) {
     out << v;
   }
 }
+
 }
 
 // See also /autocomplete/README.md for more info
@@ -38,7 +40,7 @@ class Autocomplete final {
     std::string description; // May be empty
 
     friend std::ostream& operator<<(std::ostream& out, const CompletionValue& v) {
-      detail::printRange(out, v.valueAliases, valueSep);
+      detail::PrintRange(out, v.valueAliases, valueSep);
       return out << colSep << v.displayValue << colSep << v.description;
     }
 
@@ -55,7 +57,7 @@ class Autocomplete final {
     friend std::ostream& operator<<(std::ostream& out, const CompletionEntry& e) {
       // Prefix all rows with 'suggest' in case we want to add other types later
       out << "suggest" << colSep << e.completionType << colSep << e.completionKey << colSep;
-      detail::printRange(out, e.values, valueSep);
+      detail::PrintRange(out, e.values, valueSep);
       return out << colSep << e.valueType;
     }
 
@@ -65,7 +67,7 @@ class Autocomplete final {
     constexpr static char colSep{ '\x1c' }, valueSep{ '\x1d' };
   };
 
-  std::vector<CompletionEntry> mEntries;
+  std::vector<CompletionEntry> entries_;
 
   std::string formatType(ArgValueType type) {
     switch (type) {
@@ -82,7 +84,7 @@ public:
    * \brief Insert completion for '--'
    */
   void stopProcessingMarker() {
-    mEntries.push_back({ "end subcommand", "", {{{SwitchAnnouncement::STOP_PROCESSING}, "", "End subcommand arguments"}}, {} });
+    entries_.push_back({ "end subcommand", "", {{{SwitchAnnouncement::STOP_PROCESSING}, "", "End subcommand arguments"}}, {} });
   }
 
   /*!
@@ -99,7 +101,7 @@ public:
       }
       values.push_back({ {command.getName()}, "", command.getDescription() });
     }
-    mEntries.push_back({ "subcommands", "", values, {} });
+    entries_.push_back({ "subcommands", "", values, {} });
   }
 
   /*!
@@ -129,7 +131,7 @@ public:
 
       switches.push_back({ switchAliases, displayValue, param.getDescription().value_or("") });
     }
-    mEntries.push_back({ "parameters", "", switches, {} });
+    entries_.push_back({ "parameters", "", switches, {} });
   }
 
   /*!
@@ -159,14 +161,14 @@ public:
     if (auto description = param.getDescription()) {
       key = (boost::format("%s: %s") % param.getName() % *description).str();
     }
-    mEntries.push_back({ "values", std::move(key), std::move(values), formatType(valueSpec->getType()) });
+    entries_.push_back({ "values", std::move(key), std::move(values), formatType(valueSpec->getType()) });
   }
 
   /*!
    * \brief Write out accumulated completions in machine-readable format
    */
   void write(std::ostream& out) const {
-    for (const CompletionEntry& e : mEntries) {
+    for (const CompletionEntry& e : entries_) {
       out << e << '\n'; // Also end with newline to ease parsing in scripts
     }
   }

@@ -41,92 +41,95 @@
 #include <Windows.h>
 #endif /*_WIN32*/
 
-#define LOG_TAG "Participant widget"
 
 namespace {
-  class ParticipantDataAggregator {
-  private:
-    const pep::GlobalConfiguration mGlobalConfig;
-    std::vector<const pep::ShortPseudonymDefinition *> mUnfilledShortPseudonyms;
-    std::map<std::string, pep::EnumerateAndRetrieveResult> mDeviceHistory;
-    std::optional<pep::EnumerateAndRetrieveResult> mParticipantInfo;
-    std::optional<pep::EnumerateAndRetrieveResult> mIsTestParticipant;
-    bool mParticipantIdentifierIsSet;
-    std::map<std::string, std::string> mShortPseudonyms;
-    std::string mStudyContexts;
-    std::unordered_map<std::string, std::unordered_map<unsigned, std::optional<unsigned>>> mVisitAssessors;
 
-  private:
-    const pep::ShortPseudonymDefinition *getShortPseudonymDefinition(const std::string& shortPseudonymTag) const;
+const std::string LogTag = "Participant widget";
 
-    void processDeviceHistory(const pep::EnumerateAndRetrieveResult& result);
-    void processParticipantInfo(const pep::EnumerateAndRetrieveResult& result);
-    void processIsTestParticipant(const pep::EnumerateAndRetrieveResult& result);
-    void processParticipantIdentifier(const pep::EnumerateAndRetrieveResult& result);
-    void processShortPseudonym(const pep::EnumerateAndRetrieveResult& result);
-    void processStudyContexts(const pep::EnumerateAndRetrieveResult& result);
-    void processVisitAssessor(const pep::EnumerateAndRetrieveResult& result);
+class ParticipantDataAggregator {
+private:
+  const pep::GlobalConfiguration globalConfig_;
+  std::vector<const pep::ShortPseudonymDefinition*> mUnfilledShortPseudonyms;
+  std::map<std::string, pep::EnumerateAndRetrieveResult> mDeviceHistory;
+  std::optional<pep::EnumerateAndRetrieveResult> mParticipantInfo;
+  std::optional<pep::EnumerateAndRetrieveResult> mIsTestParticipant;
+  bool mParticipantIdentifierIsSet;
+  std::map<std::string, std::string> mShortPseudonyms;
+  std::string mStudyContexts;
+  std::unordered_map<std::string, std::unordered_map<unsigned, std::optional<unsigned>>> mVisitAssessors;
 
-    bool infoPseudonymsIsSet() const noexcept;
+private:
+  const pep::ShortPseudonymDefinition* getShortPseudonymDefinition(const std::string& shortPseudonymTag) const;
 
-    bool isDeviceHistoryColumn(const std::string& columnName) const;
-    bool isVisitAssessorColumn(const std::string& columnName, std::string* context = nullptr, unsigned *visitNumber = nullptr) const;
+  void processDeviceHistory(const pep::EnumerateAndRetrieveResult& result);
+  void processParticipantInfo(const pep::EnumerateAndRetrieveResult& result);
+  void processIsTestParticipant(const pep::EnumerateAndRetrieveResult& result);
+  void processParticipantIdentifier(const pep::EnumerateAndRetrieveResult& result);
+  void processShortPseudonym(const pep::EnumerateAndRetrieveResult& result);
+  void processStudyContexts(const pep::EnumerateAndRetrieveResult& result);
+  void processVisitAssessor(const pep::EnumerateAndRetrieveResult& result);
 
-  public:
-    ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept;
+  bool infoPseudonymsIsSet() const noexcept;
 
-    // Prevent copying, which would have the copy's mUnfilledShortPseudonyms point to the original's mShortPseudonymDefinitions
-    ParticipantDataAggregator(const ParticipantDataAggregator&) = delete;
-    ParticipantDataAggregator& operator =(const ParticipantDataAggregator&) = delete;
+  bool isDeviceHistoryColumn(const std::string& columnName) const;
+  bool isVisitAssessorColumn(const std::string& columnName, std::string* context = nullptr, unsigned* visitNumber = nullptr) const;
 
-    void process(const pep::EnumerateAndRetrieveResult& result);
+public:
+  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept;
 
-    bool hasParticipantData() const noexcept;
-    bool hasCompleteParticipantData() const noexcept;
+  // Prevent copying, which would have the copy's mUnfilledShortPseudonyms point to the original's mShortPseudonymDefinitions
+  ParticipantDataAggregator(const ParticipantDataAggregator&) = delete;
+  ParticipantDataAggregator& operator =(const ParticipantDataAggregator&) = delete;
 
-    ParticipantData getData() const;
-    const std::string& getStudyContexts() const noexcept { return mStudyContexts; }
-  };
+  void process(const pep::EnumerateAndRetrieveResult& result);
 
-  bool ContainsMultipleVisits(const std::vector<pep::ShortPseudonymDefinition>& sps) {
-    std::optional<uint32_t> visit;
-    for (const auto& sp : sps) {
-      auto spVisit = sp.getColumn().getVisitNumber();
-      if (spVisit.has_value()) {
-        if (visit.value_or(*spVisit) != *spVisit) {
-          return true;
-        }
-        visit = spVisit;
+  bool hasParticipantData() const noexcept;
+  bool hasCompleteParticipantData() const noexcept;
+
+  ParticipantData getData() const;
+  const std::string& getStudyContexts() const noexcept { return mStudyContexts; }
+};
+
+bool ContainsMultipleVisits(const std::vector<pep::ShortPseudonymDefinition>& sps) {
+  std::optional<uint32_t> visit;
+  for (const auto& sp : sps) {
+    auto spVisit = sp.getColumn().getVisitNumber();
+    if (spVisit.has_value()) {
+      if (visit.value_or(*spVisit) != *spVisit) {
+        return true;
       }
+      visit = spVisit;
     }
-
-    return false;
   }
 
-  std::filesystem::path StoreConfiguredBartenderPath(const std::filesystem::path& path) {
-    QSettings().setValue("BartenderPath", QString::fromStdString(path.string()));
-    return path;
+  return false;
+}
+
+std::filesystem::path StoreConfiguredBartenderPath(const std::filesystem::path& path) {
+  QSettings().setValue("BartenderPath", QString::fromStdString(path.string()));
+  return path;
+}
+
+std::optional<std::filesystem::path> ReadConfiguredBartenderPath(const std::optional<pep::Configuration>& configuration) {
+  // If we've already stored it in local settings (in a previous run), return that value
+  auto setting = QSettings().value("BartenderPath");
+  if (!setting.isNull()) {
+    return setting.toString().toStdString();
   }
 
-  std::optional<std::filesystem::path> ReadConfiguredBartenderPath(const std::optional<pep::Configuration>& configuration) {
-    // If we've already stored it in local settings (in a previous run), return that value
-    auto setting = QSettings().value("BartenderPath");
-    if (!setting.isNull()) {
-      return setting.toString().toStdString();
-    }
+  /* If configuration contained no "BartenderPath", we'd feed an unqualified "bartend.exe" into the
+   * std::system call when we want to invoke it. Presumably the shell would then (be expected to) locate
+   * the executable on the system's path. But
+   * - we don't want to invoke the .exe here, and
+   * - there does not seem to be a portable way to have C++ find the .exe on the path, and
+   * - I don't think that many systems would (be configured to) have bartend.exe on their paths anyway.
+   * So since finding an unqualified "bartend.exe" would be difficult and yield little benefit, we don't
+   * use that anymore as a fallback.
+   */
 
-    /* If configuration contained no "BartenderPath", we'd feed an unqualified "bartend.exe" into the
-     * std::system call when we want to invoke it. Presumably the shell would then (be expected to) locate
-     * the executable on the system's path. But
-     * - we don't want to invoke the .exe here, and
-     * - there does not seem to be a portable way to have C++ find the .exe on the path, and
-     * - I don't think that many systems would (be configured to) have bartend.exe on their paths anyway.
-     * So since finding an unqualified "bartend.exe" would be difficult and yield little benefit, we don't
-     * use that anymore as a fallback.
-     */
+  return std::nullopt;
+}
 
-    return std::nullopt;
-  }
 }
 
 const QString ParticipantWidget::NO_PARTICIPANT_SID = QString();
@@ -143,7 +146,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      const VisitCaptions* visitCaptions,
                                      pep::UserRole role)
   : QWidget(parent), pepClient(client), ui(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), mAllContexts(allContexts), mStudyContext(studyContext), currentPEPRole(role), mProjectName(branding.getProjectName()), mSpareStickerCount(spareStickerCount), mVisitCaptions(visitCaptions) {
-  baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseURL"));
+  baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
   stickerFilePath = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
   bartenderPath = ReadConfiguredBartenderPath(configuration);
   currentUserPP = pepClient->generateParticipantPolymorphicPseudonym(SID.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
@@ -284,7 +287,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
 
   auto aggregator = std::make_shared<ParticipantDataAggregator>(globalConfig);
 
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.pps = {currentUserPP};
   opts.columnGroups = {"ShortPseudonyms", "VisitAssessors"};
   opts.columns = cols;
@@ -294,23 +297,23 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
     aggregator->process(result);
   }, [this](std::exception_ptr ep) {
     emit participantLookupError(tr("Error while retrieving participant information: %1")
-        .arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+        .arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
   }, [this, aggregator, completeRegistration] {
     if (!aggregator->hasParticipantData()) {
       std::cerr << tr("No participant with ID %1 found").arg(participantSID).toStdString() << std::endl;
-      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID), pep::error);
+      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID), pep::Severity::Error);
     }
     else if (completeRegistration && currentPEPRole.canRegisterParticipants() && !aggregator->hasCompleteParticipantData()) {
-      emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::warning);
+      emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::Severity::Warning);
       pepClient->completeParticipantRegistration(participantSID.toStdString())
         .observe_on(observe_on_gui())
         .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
         qDebug() << "Exception occured";
-        emit statusMessage(tr("Completing registration failed."), pep::error);
+        emit statusMessage(tr("Completing registration failed."), pep::Severity::Error);
         emit participantDataReceived(aggregator->getData(), aggregator->getStudyContexts()); // Show data even though it's incomplete
       }, [this] {
-        emit statusMessage(tr("Registration completed succesfully"), pep::info);
+        emit statusMessage(tr("Registration completed succesfully"), pep::Severity::Info);
         runQuery(false);
       });
     }
@@ -328,7 +331,7 @@ void ParticipantWidget::onParticipantDataReceived(ParticipantData data, std::str
   participantStudyContexts = mAllContexts.parse(studyContexts);
 
   if (participantData.mPersonalia.has_value() != currentPEPRole.canSeeParticipantPersonalia()) {
-    LOG(LOG_TAG, pep::warning) << "Participant personalia viewer received no data";
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Participant personalia viewer received no data";
   }
 
   processData();
@@ -373,7 +376,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   if (current) {
     assert(current->serial == serial);
     if (timestamp < current->time) {
-      emit statusMessage(tr("Cannot deregister device with a scheduled (future) registration."), pep::error);
+      emit statusMessage(tr("Cannot deregister device with a scheduled (future) registration."), pep::Severity::Error);
       return;
     }
     type = "stop";
@@ -389,7 +392,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
     history = pep::ParticipantDeviceHistory(records, true);
   }
   catch (const std::exception &error) {
-    emit statusMessage(tr("Error updating device registration: %1").arg(error.what()), pep::error);
+    emit statusMessage(tr("Error updating device registration: %1").arg(error.what()), pep::Severity::Error);
     return;
   }
 
@@ -399,10 +402,10 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
           std::make_shared<std::string>(history.toJson()), { pep::MetadataXEntry::MakeFileExtension(".json") })
   .observe_on(observe_on_gui())
   .subscribe([this, current](pep::DataStorageResult2 result) {
-    emit statusMessage(current ? tr("Device deregistered.") : tr("Device registered."), pep::info);
+    emit statusMessage(current ? tr("Device deregistered.") : tr("Device registered."), pep::Severity::Info);
     runQuery(false);
   }, [this](std::exception_ptr ep) {
-    emit statusMessage(tr("Device registration failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+    emit statusMessage(tr("Device registration failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
     this->setReadOnly(false);
   });
 }
@@ -425,9 +428,9 @@ void ParticipantWidget::updateVisitAssessor(QString id) {
     .subscribe([](pep::DataStorageResult2 result) {
     // Do nothing
   }, [this](std::exception_ptr ep) {
-    emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+    emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
   }, [this]() {
-    emit statusMessage(tr("Data stored"), pep::info);
+    emit statusMessage(tr("Data stored"), pep::Severity::Info);
     runQuery(false);
   });
 }
@@ -449,7 +452,7 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
     return;
   }
 #ifndef _WIN32
-  emit statusMessage(tr("Printing requires BarTender and is only supported on Windows."), pep::error);
+  emit statusMessage(tr("Printing requires BarTender and is only supported on Windows."), pep::Severity::Error);
 #else
   qDebug() << "Printing stickers";
 
@@ -460,17 +463,17 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   assert(std::filesystem::exists(*bartenderPath));
 
   if (!std::filesystem::exists(stickerFilePath)) {
-    emit statusMessage(tr("The sticker layout file \"%1\" does not exist. Please add it at this location or update its path in the configuration file.").arg(QString::fromStdString(stickerFilePath.string())), pep::error);
+    emit statusMessage(tr("The sticker layout file \"%1\" does not exist. Please add it at this location or update its path in the configuration file.").arg(QString::fromStdString(stickerFilePath.string())), pep::Severity::Error);
     return;
   }
 
   QPrinter printer;
   QPrintDialog dialog(&printer, this);
   if (dialog.exec() != QDialog::Accepted) {
-    emit statusMessage(tr("Printing cancelled."), pep::warning);
+    emit statusMessage(tr("Printing cancelled."), pep::Severity::Warning);
     return;
   }
-  emit statusMessage(tr("Printing..."), pep::info);
+  emit statusMessage(tr("Printing..."), pep::Severity::Info);
 
   std::string printername = printer.printerName().toStdString();
   auto copies = static_cast<unsigned>(printer.copyCount());
@@ -519,7 +522,7 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   std::string xml = str(boost::format(xmlTemplate) % stickersXml);
   std::ofstream out(tempPath);
   if (out.bad()) {
-    emit statusMessage(tr("Printing failed: could not open temporary print file"), pep::error);
+    emit statusMessage(tr("Printing failed: could not open temporary print file"), pep::Severity::Error);
     return;
   }
   out << xml;
@@ -530,9 +533,9 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   int ret = std::system(bartendCommand.c_str());
   if (ret != 0) {
     // TODO: capture and display command line output
-    emit statusMessage(tr("BarTender return error %1").arg(ret), pep::error);
+    emit statusMessage(tr("BarTender return error %1").arg(ret), pep::Severity::Error);
   } else {
-    emit statusMessage(tr("Printing succeeded."), pep::info);
+    emit statusMessage(tr("Printing succeeded."), pep::Severity::Info);
   }
 #endif
 }
@@ -643,7 +646,7 @@ bool ParticipantWidget::provideBartenderPath() {
     return true;
   }
 
-  emit statusMessage(tr(msg), pep::error);
+  emit statusMessage(tr(msg), pep::Severity::Error);
   this->locateBartender();
   return getConfiguredPathError() == nullptr;
 }
@@ -690,12 +693,12 @@ void ParticipantWidget::printSummary() {
   QPrintDialog dialog(&printer, this);
   dialog.setWindowTitle(tr("Print Document"));
   if (dialog.exec() != QDialog::Accepted) {
-    emit statusMessage(tr("Printing cancelled."), pep::warning);
+    emit statusMessage(tr("Printing cancelled."), pep::Severity::Warning);
   } else {
     summary.print(&printer);
   }
 #else
-  emit statusMessage(tr("Printing is only supported on Windows."), pep::error);
+  emit statusMessage(tr("Printing is only supported on Windows."), pep::Severity::Error);
 #endif
 }
 
@@ -869,7 +872,7 @@ void ParticipantWidget::processData() {
     if (mStudyContext.matches(globalConfig.getDevices()[i].studyContext)) {
       std::string historyInvalidReason;
       if (!history.isValid(&historyInvalidReason)) {
-        emit statusMessage(tr("Device history for column %1 is invalid: %2. Please correct the device history.").arg(columnName, historyInvalidReason.c_str()), pep::error);
+        emit statusMessage(tr("Device history for column %1 is invalid: %2. Please correct the device history.").arg(columnName, historyInvalidReason.c_str()), pep::Severity::Error);
       }
     }
   }
@@ -912,7 +915,7 @@ void ParticipantWidget::acquireParticipant() {
           std::make_shared<std::string>(updated.toString()), {pep::MetadataXEntry::MakeFileExtension(".csv")})
     .subscribe(
       [](pep::DataStorageResult2) { /* ignore */ },
-      [this](std::exception_ptr ep) { emit statusMessage(tr("Adding participant to context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::error); },
+      [this](std::exception_ptr ep) { emit statusMessage(tr("Adding participant to context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::Severity::Error); },
       [this]() { runQuery(); }
     );
 }
@@ -1007,7 +1010,7 @@ void ParticipantWidget::initializeShortPseudonymsUi(const std::optional<uint32_t
     else {
       widgetDescription = "Participant";
     }
-    LOG(LOG_TAG, pep::warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
+    PEP_LOG(LogTag, pep::Severity::Warning) << widgetDescription << " widget: no separate label available for pseudonyms for other visits";
     pseudonymTextMain.append("\n\n");
     pseudonymTextMain.append(pseudonymTextOtherVisits);
   }
@@ -1103,7 +1106,7 @@ void ParticipantWidget::openEditParticipant() {
     }
 
     if (entries.empty()) {
-      emit statusMessage(tr("Unchanged data not stored"), pep::info);
+      emit statusMessage(tr("Unchanged data not stored"), pep::Severity::Info);
       return;
     }
 
@@ -1116,10 +1119,10 @@ void ParticipantWidget::openEditParticipant() {
       .subscribe([](pep::DataStorageResult2 result) {
       // Do nothing
     }, [this](std::exception_ptr ep) {
-      emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+      emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
       this->setReadOnly(false);
     }, [this]() {
-      emit statusMessage(tr("Data stored"), pep::info);
+      emit statusMessage(tr("Data stored"), pep::Severity::Info);
       runQuery(false);
     });
   });
@@ -1152,7 +1155,7 @@ void ParticipantWidget::releaseParticipant() {
         [](pep::DataStorageResult2) { /* ignore */ },
         [this](std::exception_ptr ep) {
       setReadOnly(false);
-      emit statusMessage(tr("Removing participant from context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::error);
+      emit statusMessage(tr("Removing participant from context failed: ") + QString::fromStdString(pep::GetExceptionMessage(ep)), pep::Severity::Error);
     },
         [this]() { runQuery(); }
     );
@@ -1262,7 +1265,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
       history = pep::ParticipantDeviceHistory(records, true);
     }
     catch (const std::exception& error) {
-      emit statusMessage(tr("Input error: %1").arg(error.what()), pep::error);
+      emit statusMessage(tr("Input error: %1").arg(error.what()), pep::Severity::Error);
       return;
     }
 
@@ -1280,8 +1283,8 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
       .observe_on(observe_on_gui())
       .subscribe(
         [](pep::DataStorageResult2 result) { /* ignore */ },
-        [this, cancelReadOnly](std::exception_ptr error) { cancelReadOnly(); emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(error))), pep::error); },
-        [this, dialog]() { dialog->close(); emit statusMessage(tr("Device record updated"), pep::info); runQuery(); }
+        [this, cancelReadOnly](std::exception_ptr error) { cancelReadOnly(); emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(error))), pep::Severity::Error); },
+        [this, dialog]() { dialog->close(); emit statusMessage(tr("Device record updated"), pep::Severity::Info); runQuery(); }
     );
   });
 
@@ -1311,7 +1314,7 @@ ParticipantWidget::~ParticipantWidget() {
 }
 
 const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudonymDefinition(const std::string& shortPseudonymTag) const {
-  const auto& spDefinitions = mGlobalConfig.getShortPseudonyms();
+  const auto& spDefinitions = globalConfig_.getShortPseudonyms();
   auto position = std::find_if(std::begin(spDefinitions), std::end(spDefinitions),
     [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
     return definition.getColumn().getFullName() == shortPseudonymTag;
@@ -1389,15 +1392,15 @@ bool ParticipantDataAggregator::isVisitAssessorColumn(const std::string& columnN
 }
 
 bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnName) const {
-  const auto& devices = mGlobalConfig.getDevices();
+  const auto& devices = globalConfig_.getDevices();
   auto end = devices.cend();
   return std::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
 }
 
 ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
-  : mGlobalConfig(globalConfig), mParticipantIdentifierIsSet(false) {
+  : globalConfig_(globalConfig), mParticipantIdentifierIsSet(false) {
   auto inserter = std::back_inserter(mUnfilledShortPseudonyms);
-  std::transform(mGlobalConfig.getShortPseudonyms().begin(), mGlobalConfig.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
+  std::transform(globalConfig_.getShortPseudonyms().begin(), globalConfig_.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
 }
 
 void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& result) {
@@ -1441,7 +1444,7 @@ ParticipantData ParticipantDataAggregator::getData() const {
   if (mParticipantInfo) {
     auto personalia = pep::ParticipantPersonalia::FromJson(mParticipantInfo->mData);
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
-      LOG(LOG_TAG, pep::warning) << "Received empty participant personalia";
+      PEP_LOG(LogTag, pep::Severity::Warning) << "Received empty participant personalia";
     }
     participantData.mPersonalia = personalia;
   }

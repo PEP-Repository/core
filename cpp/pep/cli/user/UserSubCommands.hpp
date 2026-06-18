@@ -11,7 +11,7 @@ public:
   using AmProxyMethod = rxcpp::observable<pep::FakeVoid>(pep::AccessManagerProxy::*)(std::string) const;
 
 private:
-  AmProxyMethod mMethod;
+  AmProxyMethod method_;
 
 public:
   UserSubCommand(const std::string& name,

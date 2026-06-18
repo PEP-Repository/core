@@ -99,14 +99,14 @@ std::string X509CertificatesToPem(const X509Certificates& certificates);
 
 class X509RootCertificates {
 private:
-  X509Certificates mItems;
+  X509Certificates items_;
 
 public:
   explicit X509RootCertificates(X509Certificates certificates);
 
   static X509RootCertificates FromFile(const std::filesystem::path& caCertFilePath);
 
-  const X509Certificates& items() const noexcept { return mItems; }
+  const X509Certificates& items() const noexcept { return items_; }
 };
 
 
@@ -204,9 +204,9 @@ private:
   std::shared_ptr<X509Identity> mIdentity;
 
 public:
-  X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath);
+  X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, const X509RootCertificates& rootCas);
 
-  static X509IdentityFiles FromConfig(const Configuration& config, const std::string& keyPrefix);
+  static X509IdentityFiles FromConfig(const Configuration& identityConfig, const X509RootCertificates& rootCas);
 
   const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
   const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }

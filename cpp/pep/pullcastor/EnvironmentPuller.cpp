@@ -11,7 +11,7 @@
 #include <pep/client/Client.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
-#include <pep/elgamal/CurvePoint.PropertySerializer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 
 #include <boost/asio/io_context.hpp>
 
@@ -38,7 +38,7 @@ rxcpp::observable<std::shared_ptr<CoreClient>> EnsureEnrolled(std::shared_ptr<Cl
     return rxcpp::observable<>::just(Upcast(client));
   }
   return client->enrollUser(token)
-    .map([client](EnrollmentResult) {return Upcast(client); });
+    .map([client](const EnrolledPartyKeys&) {return Upcast(client); });
 }
 
 rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreClient> client) {
@@ -86,7 +86,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     }
   }
   catch (const std::exception& e) {
-    PULLCASTOR_LOG(critical) << "Error with PullCastor configuration file: " << e.what();
+    PEP_PULLCASTOR_LOG(Severity::Critical) << "Error with PullCastor configuration file: " << e.what();
     throw;
   }
 
@@ -95,20 +95,21 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
 
     Client::Builder clientBuilder;
 
-    clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CACertificateFile"));
-    clientBuilder.setPublicKeyData(clientConfig.get<ElgamalPublicKey>("PublicKeyData"));
-    clientBuilder.setPublicKeyPseudonyms(clientConfig.get<ElgamalPublicKey>("PublicKeyPseudonyms"));
-    clientBuilder.setAccessManagerEndPoint(clientConfig.get<EndPoint>(ServerTraits::AccessManager().configNode()));
-    clientBuilder.setStorageFacilityEndPoint(clientConfig.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
-    clientBuilder.setKeyServerEndPoint(clientConfig.get<EndPoint>(ServerTraits::KeyServer().configNode()));
-    clientBuilder.setTranscryptorEndPoint(clientConfig.get<EndPoint>(ServerTraits::Transcryptor().configNode()));
+    clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CaCertificateFile"));
+    clientBuilder.setSystemPublicKeys(clientConfig.get<SystemPublicKeys>("SystemPublicKeys"));
+
+    auto serverEndPoints = config.get_child("ServerEndPoints");
+    clientBuilder.setAccessManagerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode()));
+    clientBuilder.setStorageFacilityEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
+    clientBuilder.setKeyServerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::KeyServer().configNode()));
+    clientBuilder.setTranscryptorEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::Transcryptor().configNode()));
 
     clientBuilder.setIoContext(io_context);
 
-    mClient = clientBuilder.build();
+    client_ = clientBuilder.build();
   }
   catch (const std::exception& e) {
-    PULLCASTOR_LOG(critical) << "Error with client configuration file: " << e.what();
+    PEP_PULLCASTOR_LOG(Severity::Critical) << "Error with client configuration file: " << e.what();
     throw;
   }
 
@@ -116,14 +117,14 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     mOauthToken = OAuthToken::ReadJson(oauthTokenFile).getSerializedForm();
   }
   catch (const std::exception& e) {
-    PULLCASTOR_LOG(critical) << "Error with OAuthToken file: " << e.what();
-    PULLCASTOR_LOG(critical) << "OAuthToken is being read from " << oauthTokenFile << std::endl;
+    PEP_PULLCASTOR_LOG(Severity::Critical) << "Error with OAuthToken file: " << e.what();
+    PEP_PULLCASTOR_LOG(Severity::Critical) << "OAuthToken is being read from " << oauthTokenFile << std::endl;
     throw;
   }
 
   mCastor = CastorConnection::Create(castorAPIKeyFile, io_context);
 
-  mAspects = CreateRxCache([client = mClient, token = mOauthToken, spColumns, sps]() {
+  mAspects = CreateRxCache([client = client_, token = mOauthToken, spColumns, sps]() {
     return StudyAspect::GetAll(
       EnsureEnrolled(client, token)
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getGlobalConfiguration(); })
@@ -157,7 +158,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
         }));
     });
 
-  mColumnNamer = CreateRxCache([client = mClient, token = mOauthToken]() {
+  mColumnNamer = CreateRxCache([client = client_, token = mOauthToken]() {
     return EnsureEnrolled(client, token)
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getAccessManagerProxy()->getColumnNameMappings(); })
       .map([](ColumnNameMappings mappings) { return std::make_shared<ImportColumnNamer>(std::move(mappings)); });
@@ -186,10 +187,10 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
   auto self = SharedFrom(*this);
 
   if (mDry) {
-    PULLCASTOR_LOG(info) << "Performing a dry run: no data will be stored in PEP";
+    PEP_PULLCASTOR_LOG(Severity::Info) << "Performing a dry run: no data will be stored in PEP";
   }
   else {
-    PULLCASTOR_LOG(info) << "Performing an import run: PEP will be updated with data retrieved from Castor";
+    PEP_PULLCASTOR_LOG(Severity::Info) << "Performing an import run: PEP will be updated with data retrieved from Castor";
   }
 
   // Perform the actual pulling.
@@ -209,7 +210,7 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
       [self](std::exception_ptr) {self->mMetrics->uncaughtExceptions_count.Increment(); },
       [self, read, written, startTime]() {
         self->mMetrics->importDuration_seconds.Set(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count()); // in seconds
-        PULLCASTOR_LOG(info) << "Added/updated " << *written << " of " << *read << " entries";
+        PEP_PULLCASTOR_LOG(Severity::Info) << "Added/updated " << *written << " of " << *read << " entries";
       }
     );
 }
@@ -219,7 +220,7 @@ rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(const std::vect
     return rxcpp::observable<>::just(batch.size());
   }
 
-  return mClient->storeData2(batch)
+  return client_->storeData2(batch)
     .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.mIds.size(); });
 }
 
@@ -232,7 +233,7 @@ rxcpp::observable<StoreData2Entry> EnvironmentPuller::getStorageUpdate(std::shar
       [](std::exception_ptr) {},
       [castor, storing]() {
         auto description = (*storing) ? "Storing" : "Skipping";
-        PULLCASTOR_LOG(info) << description << " participant " << castor->getColumnBoundParticipantId().getParticipantId() << " column " << castor->getColumn();
+        PEP_PULLCASTOR_LOG(Severity::Info) << description << " participant " << castor->getColumnBoundParticipantId().getParticipantId() << " column " << castor->getColumn();
       }
     );
 }
@@ -241,17 +242,17 @@ bool EnvironmentPuller::Pull(const Configuration& config, bool dry, const std::o
   auto result = std::make_shared<bool>(false);
   auto io_context = std::make_shared<boost::asio::io_context>();
 
-  PULLCASTOR_LOG(info) << "Starting castor pull";
+  PEP_PULLCASTOR_LOG(Severity::Info) << "Starting castor pull";
   auto instance = EnvironmentPuller::Create(io_context, config, dry, spColumns, sps);
   instance->pull()
     .subscribe(
-      [](size_t count) { PULLCASTOR_LOG(debug) << "Written " << count << " entries"; },
+      [](size_t count) { PEP_PULLCASTOR_LOG(Severity::Debug) << "Written " << count << " entries"; },
       [io_context](std::exception_ptr ep) {
-        PULLCASTOR_LOG(error) << "Exception occured while writing Castor data to PEP: " << rxcpp::rxu::what(ep);
+        PEP_PULLCASTOR_LOG(Severity::Error) << "Exception occured while writing Castor data to PEP: " << rxcpp::rxu::what(ep);
         io_context->stop();
       },
       [io_context, result]() {
-        PULLCASTOR_LOG(info) << "Done pulling Castor data";
+        PEP_PULLCASTOR_LOG(Severity::Info) << "Done pulling Castor data";
         io_context->stop();
         *result = true;
       });
@@ -267,7 +268,7 @@ bool EnvironmentPuller::Pull(const Configuration& config, bool dry, const std::o
 }
 
 rxcpp::observable<std::shared_ptr<CoreClient>> EnvironmentPuller::getClient() {
-  return EnsureEnrolled(mClient, mOauthToken);
+  return EnsureEnrolled(client_, mOauthToken);
 }
 
 void EnvironmentPuller::onCastorRequest(std::shared_ptr<const HTTPRequest> request) {
@@ -278,7 +279,7 @@ void EnvironmentPuller::onCastorRequest(std::shared_ptr<const HTTPRequest> reque
   }
   else {
     position->second++;
-    PULLCASTOR_LOG(debug) << "Sending Castor request no. " << position->second << " to " << uri;
+    PEP_PULLCASTOR_LOG(Severity::Debug) << "Sending Castor request no. " << position->second << " to " << uri;
   }
 }
 
@@ -302,7 +303,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::string>>> EnvironmentPuller::
     .map([](const StudyAspect& aspect) {return aspect.getStorage()->getDataColumn(); })
     .distinct()
     .op(RxToVector())
-    .flat_map([client = mClient](std::shared_ptr<std::vector<std::string>> prefixes) {
+    .flat_map([client = client_](std::shared_ptr<std::vector<std::string>> prefixes) {
     return GetReadWritableColumnNames(client)
       .filter([prefixes](const std::string& column) {
         for (const auto& prefix : *prefixes) {
@@ -321,7 +322,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> Environmen
     return rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>()); // Return an empty vector rather than an empty observable
   }
   return RxIterate(*mSps)
-    .flat_map([client = mClient](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
+    .flat_map([client = client_](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
     .op(RxToVector());
 }
 
@@ -329,7 +330,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData(
   if (mStoredData != nullptr) {
     return rxcpp::observable<>::just(mStoredData);
   }
-  PULLCASTOR_LOG(info) << "Retrieving stored data from PEP";
+  PEP_PULLCASTOR_LOG(Severity::Info) << "Retrieving stored data from PEP";
   return this->getClient().op(RxGetOne("client"))
     .zip(
       this->getShortPseudonymColumns().op(RxGetOne("short pseudonym columns")),
@@ -350,7 +351,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData(
     return StoredData::Load(client, pps, spColumns, nonSpColumns)
       .flat_map([self](std::shared_ptr<StoredData> stored) {
       self->mStoredData = stored;
-      PULLCASTOR_LOG(info) << "Retrieved stored data from PEP";
+      PEP_PULLCASTOR_LOG(Severity::Info) << "Retrieved stored data from PEP";
       return self->getStoredData();
       });
     });

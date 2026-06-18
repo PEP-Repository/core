@@ -5,84 +5,6 @@
 namespace pep::structuredOutput::yaml {
 namespace {
 
-using DisplayFlags = DisplayConfig::Flags;
-
-std::ostream& appendYamlListHeader(std::ostream& stream, std::string_view text, std::size_t size) {
-  const auto colon_unless_empty = (size != 0 ? ":" : "");
-  return stream << text << colon_unless_empty << " # item count: " << size << "\n";
-}
-
-std::ostream& appendYaml(std::ostream& stream,
-                         const std::vector<pep::UserGroup>& group,
-                         const DisplayFlags& flags) {
-  const auto withHeader = HasFlags(flags, DisplayFlags::PrintHeaders);
-  const auto groupOffset = indentations(withHeader ? 1 : 0);
-
-  if (withHeader) {
-    stream << "- ";
-    appendYamlListHeader(stream, stringConstants::userGroups.descriptive, group.size());
-  }
-  for (auto& g : group) {
-    const auto& gMaxAuth = g.mMaxAuthValidity;
-
-    stream << groupOffset << "- " << g.mName;
-    if (gMaxAuth) {
-      stream << ": {" << stringConstants::maxAuthValidityKey << ": " << pep::chrono::ToString(*gMaxAuth) << "}";
-    }
-    stream << "\n";
-  }
-
-  return stream;
-}
-
-std::ostream& appendYaml(std::ostream& stream,
-                         const std::vector<pep::QRUser>& users,
-                         const DisplayFlags& flags) {
-  const auto printUserGroups = HasFlags(flags, DisplayConfig::Flags::PrintUserGroups);
-  const auto withHeader = HasFlags(flags, DisplayFlags::PrintHeaders);
-  const auto userOffset = indentations(withHeader ? 1 : 0);
-  const auto userInnerOffset = userOffset + "  "; //We don't use indentations(), but hardcode the extra indent to two spaces, so it matches the "- " of the first line of the user output.
-  const auto uidAndGroupOffset = indentations(withHeader ? 3 : 2);
-
-  if (withHeader) {
-    appendYamlListHeader(stream, stringConstants::users.descriptive, users.size());
-  }
-  for (auto& user : users) {
-    stream << userOffset << "- ";
-    bool hasWritten = false;
-    if (user.mDisplayId) {
-      hasWritten = true;
-      stream << stringConstants::displayIdKey << ": " << *user.mDisplayId << "\n";
-    }
-    if (user.mPrimaryId) {
-      if (hasWritten)
-        stream << userInnerOffset;
-      hasWritten = true;
-      stream << stringConstants::primaryIdKey << ": " << *user.mPrimaryId << "\n";
-    }
-    if (hasWritten)
-      stream << userInnerOffset;
-    appendYamlListHeader(stream, stringConstants::otherIdentifiersKey, user.mOtherUids.size());
-    for (auto& uid : user.mOtherUids) {
-      stream << uidAndGroupOffset << "- " << uid << "\n";
-    }
-    if(printUserGroups) {
-      stream << userInnerOffset;
-      appendYamlListHeader(stream, stringConstants::groupsKey, user.mGroups.size());
-      for (auto& group : user.mGroups) {
-        stream << uidAndGroupOffset << "- " << group.userGroup;
-        if (group.expiration) {
-          stream << ": {" << stringConstants::expirationKey << ": " << TimestampToXmlDateTime(*group.expiration) << "}";
-        }
-        stream << "\n";
-      }
-    }
-    stream << "\n";
-  }
-
-  return stream;
-}
-
 enum class ForceQuotes { No, Yes };
 
 std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view str, ForceQuotes forceQuotes) {
@@ -105,8 +27,9 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 /// @note does NOT prefix the output with indentation,
 ///       the caller should make sure that the output stream is at the correct initial indentation level
 /// @note DOES append a newline character to the output
-void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::json node, std::size_t indentLevel = {}) {
-  const auto indent = std::string(2 * indentLevel, ' ');
+void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
+  const std::size_t spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
+  const auto indent = std::string(spacesPerLevel * indentLevel, ' ');
 
   /// does nothing on the first call and appends indentation on subsequent calls
   auto indentIfNotFirst = [first = true, &indent](std::ostream& stream) mutable {
@@ -114,7 +37,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
     first = false;
   };
 
-  const auto isAtomic = [](const nlohmann::json& node) {
+  const auto isAtomic = [](const nlohmann::ordered_json& node) {
     return !(node.is_object() || node.is_array()) || node.empty();
   };
 
@@ -122,17 +45,28 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
   else if (node.is_number_integer()) { stream << std::to_string(node.get<int>()) + "\n"; }
   else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
   else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
-  else if (node.empty()) { stream << (node.is_array() ? "[]" : "{}") << "\n"; }
+  else if (node.empty()) {
+    stream << (node.is_array() ? "[]" : "{}");
+    if (node.is_array() && config.includeArraySizeComments && config.includeEmptyArrayComments) {
+      stream << " # item count: 0";
+    }
+    stream << "\n";
+  }
   else if (node.is_string()) { AppendStringLiteral(stream, node.get<std::string>(), ForceQuotes::Yes) << "\n"; }
   else if (node.is_object()) {
     for (auto it = node.begin(); it != node.end(); it++) {
       indentIfNotFirst(stream);
       AppendStringLiteral(stream, it.key(), ForceQuotes::No) << ":";
 
-      if (isAtomic(*it)) { stream << " "; }
+      if (isAtomic(*it)) { 
+        stream << " "; 
+      }
       else {
-        if (it->is_array() && config.includeArraySizeComments) { stream << " # item count: " << it->size(); }
-        stream << '\n' << indent << "  ";
+        if (it->is_array() && config.includeArraySizeComments && 
+            ((it->size() == 0 && config.includeEmptyArrayComments) || it->size() >= config.arrayCountCommentThreshold)) {
+          stream << " # item count: " << it->size();
+        }
+        stream << '\n' << indent << std::string(spacesPerLevel, ' ');
       }
       SerializeJsonAsYaml(stream, config, it.value(), indentLevel + 1);
     }
@@ -141,10 +75,11 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
     for (const auto& element : node) {
       indentIfNotFirst(stream);
       stream << "- ";
-
       if (element.is_array() && !element.empty()) {
-        if (config.includeArraySizeComments) stream << "# item count: " << element.size();
-        stream << '\n' << indent << "  ";
+        if (config.includeArraySizeComments && element.size() >= config.arrayCountCommentThreshold) {
+          stream << "# item count: " << element.size();
+        }
+        stream << "\n" << indent << std::string(spacesPerLevel, ' ');
       }
       SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
     }
@@ -154,31 +89,14 @@ void SerializeJsonAsYaml(std::ostream& stream, const Config config, nlohmann::js
 } // namespace
 
 /// Appends a YAML representation of a tree to a stream
-std::ostream& append(std::ostream& stream, const Tree& tree, const Config config) {
-  SerializeJsonAsYaml(stream, config, tree.toJson());
-  return stream;
-}
-
-std::ostream& append(std::ostream& stream, const pep::UserQueryResponse& res, DisplayConfig config) {
-  const auto printGroups = HasFlags(config.flags, DisplayConfig::Flags::PrintGroups);
-  const auto printUsers = HasFlags(config.flags, DisplayConfig::Flags::PrintUsers);
-
-  if (printGroups) {
-    appendYaml(stream, res.mUserGroups, config.flags);
-  }
-  if (printGroups && printUsers) {
-    stream << "\n"; // empty line between data groups
-  }
-  if (printUsers) {
-    appendYaml(stream, res.mUsers, config.flags);
-  }
-
+std::ostream& append(std::ostream& stream, const Tree& tree, const YamlConfig& config) {
+  SerializeJsonAsYaml(stream, config, tree.rawJson());
   return stream;
 }
 
 /// Converts a tree to string.
 /// @details This is a small wrapper around append for convenience.
-std::string to_string(const Tree& tree, const Config config) {
+std::string to_string(const Tree& tree, const YamlConfig& config) {
   std::ostringstream stream;
   append(stream, tree, config);
   return std::move(stream).str();

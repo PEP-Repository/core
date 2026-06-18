@@ -13,10 +13,10 @@ namespace pep {
  * \tparam TDerived The (derived) class to register.
  * \tparam TRegistrar The registrar class. Must provide a "template <typename T> static some_type RegisterType()",
  *               which is invoked once for every TDerived type (during static variable initialization).
- * \tparam REGISTER Development helper: specify "false" to (temporarily) disable self-registration for specific derived types.
+ * \tparam registerDerived Development helper: specify "false" to (temporarily) disable self-registration for specific derived types.
  * \remark See e.g. https://stackoverflow.com/a/10333643.
  */
-template <class TDerived, class TRegistrar, bool REGISTER = true>
+template <class TDerived, class TRegistrar, bool registerDerived = true>
 class SelfRegistering;
 
 /*!
@@ -27,7 +27,7 @@ class SelfRegistering<TDerived, TRegistrar, true> {
   using RegistrationId = decltype(TRegistrar::template RegisterType<TDerived>());
 
 protected:
-  static const RegistrationId REGISTRATION_ID;
+  static const RegistrationId TheRegistrationId;
   SelfRegistering() = default;
   SelfRegistering(const SelfRegistering&) = default;
 
@@ -35,12 +35,12 @@ public:
   virtual ~SelfRegistering() noexcept {
     static_assert(std::is_base_of_v<SelfRegistering, TDerived>, "The class specified as TDerived must inherit from this class");
     // Reference the static const to force its initialization, causing TRegistrar::RegisterType<TDerived>() to be invoked
-    (void)REGISTRATION_ID;
+    (void)TheRegistrationId;
   }
 };
 
 template <class TDerived, class TRegistrar>
-const typename SelfRegistering<TDerived, TRegistrar, true>::RegistrationId SelfRegistering<TDerived, TRegistrar, true>::REGISTRATION_ID
+const typename SelfRegistering<TDerived, TRegistrar, true>::RegistrationId SelfRegistering<TDerived, TRegistrar, true>::TheRegistrationId
 = TRegistrar::template RegisterType<TDerived>();
 
 /*!
@@ -69,7 +69,7 @@ public:
  *
  * class MyBase {
  * private:
- *   template <class TDerived, class TBase, bool REGISTER>
+ *   template <class TDerived, class TBase, bool registerDerived>
  *   friend class SelfRegistering;
  *
  *   // Helper function to work around the static initialization order fiasco: ensures that our static variable

@@ -28,7 +28,13 @@ private:
 
     prometheus::Gauge& entriesIncludingHistory;
     prometheus::Gauge& entriesInMetaDir;
+
+    prometheus::Gauge& totalPayloadBytes; // including history
+    prometheus::Gauge& rollingPayloadBytes; // "latest" snapshot
   };
+
+  void getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns = {});
+  void updateFileStoreMetrics();
 
 public:
   class Parameters : public SigningServer::Parameters {
@@ -62,6 +68,8 @@ public:
       return this->pageStoreConfig;
     }
 
+    uint64_t getDataSizeResolution() const { return dataSizeResolution; }
+
   protected:
     void check() const override;
 
@@ -69,6 +77,7 @@ public:
     std::optional<ElgamalPrivateKey> pseudonymKey;
     std::optional<std::string> encIdKey;
     uint8_t parallelisation_width = 10; // passed to RxParalellConcat
+    uint64_t dataSizeResolution = 1024U * 1024U;
 
     // passed to FileStore::Create
     std::filesystem::path storagePath;
@@ -95,6 +104,7 @@ private:
   messaging::MessageBatches handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> lpRequest);
   messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> lpRequest);
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest);
+  messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest);
 
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);
@@ -122,6 +132,7 @@ private:
   std::shared_ptr<Metrics> mMetrics;
   boost::asio::steady_timer mTimer;
   const uint8_t mParallelisationWidth = 0; // passed to RxParallelConcat
+  const uint64_t mDataSizeResolution;
 };
 
 }

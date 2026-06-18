@@ -4,10 +4,13 @@
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
+#include <pep/morphing/ServerVerifiers.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/auth/Signed.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/serialization/Serializer.hpp>
 
 #include <compare>
 #include <cstdint>
@@ -26,36 +29,36 @@ class IndexedTicket2 {
 protected:
   // Cache unpacked version of ticket.
   // TODO can we do this without a mutex?
-  mutable std::shared_ptr<Ticket2> mUnpackedTicket;
-  mutable std::mutex mUnpackedTicketLock;
+  mutable std::shared_ptr<Ticket2> unpackedTicket_;
+  mutable std::mutex unpackedTicketLock_;
 
-  std::shared_ptr<SignedTicket2> mTicket;
+  std::shared_ptr<SignedTicket2> ticket_;
   /// Maps column group names to indices of their column names in \c Ticket2.mColumns
-  std::unordered_map<std::string, IndexList> mColumnGroups;
+  std::unordered_map<std::string, IndexList> columnGroups_;
   /// Maps participant group names to indices of their pseudonyms in \c Ticket2.mPseudonyms
-  std::unordered_map<std::string, IndexList> mParticipantGroups;
+  std::unordered_map<std::string, IndexList> participantGroups_;
 
 public:
   IndexedTicket2(const IndexedTicket2& other) :
-    mTicket(other.mTicket),
-    mColumnGroups(other.mColumnGroups),
-    mParticipantGroups(other.mParticipantGroups) {
-    std::lock_guard<std::mutex> lock(other.mUnpackedTicketLock);
-    mUnpackedTicket = other.mUnpackedTicket;
+    ticket_(other.ticket_),
+    columnGroups_(other.columnGroups_),
+    participantGroups_(other.participantGroups_) {
+    std::lock_guard<std::mutex> lock(other.unpackedTicketLock_);
+    unpackedTicket_ = other.unpackedTicket_;
   }
   IndexedTicket2(IndexedTicket2&& other) :
-    mTicket(std::move(other.mTicket)),
-    mColumnGroups(std::move(other.mColumnGroups)),
-    mParticipantGroups(std::move(other.mParticipantGroups)) {
-    std::lock_guard<std::mutex> lock(other.mUnpackedTicketLock);
-    mUnpackedTicket = other.mUnpackedTicket;
+    ticket_(std::move(other.ticket_)),
+    columnGroups_(std::move(other.columnGroups_)),
+    participantGroups_(std::move(other.participantGroups_)) {
+    std::lock_guard<std::mutex> lock(other.unpackedTicketLock_);
+    unpackedTicket_ = other.unpackedTicket_;
   }
   IndexedTicket2(
     std::shared_ptr<SignedTicket2> ticket,
     std::unordered_map<std::string, IndexList> columnGroups,
     std::unordered_map<std::string, IndexList> participantGroups)
-    : mTicket(std::move(ticket)), mColumnGroups(std::move(columnGroups)),
-    mParticipantGroups(std::move(participantGroups)) { }
+    : ticket_(std::move(ticket)), columnGroups_(std::move(columnGroups)),
+    participantGroups_(std::move(participantGroups)) { }
 
   std::shared_ptr<Ticket2> openTicketWithoutCheckingSignature() const;
   std::shared_ptr<SignedTicket2> getTicket() const;
@@ -68,10 +71,10 @@ public:
   std::vector<PolymorphicPseudonym> getAccessSubjects() const;
 };
 
-enum KeyBlindMode {
-  BLIND_MODE_UNKNOWN = 0,
-  BLIND_MODE_BLIND = 1,
-  BLIND_MODE_UNBLIND = 2
+enum class KeyBlindMode {
+  Unknown = 0,
+  Blind = 1,
+  Unblind = 2
 };
 
 class KeyRequestEntry {
@@ -89,7 +92,7 @@ public:
 
   Metadata mMetadata;
   EncryptedKey mPolymorphEncryptionKey;
-  KeyBlindMode mKeyBlindMode = KeyBlindMode::BLIND_MODE_UNKNOWN;
+  KeyBlindMode mKeyBlindMode = KeyBlindMode::Unknown;
   uint32_t mPseudonymIndex{};
 };
 
@@ -221,6 +224,70 @@ struct SetStructureMetadataRequest {
 };
 
 struct SetStructureMetadataResponse {};
+
+class VerifiersRequest {
+};
+
+class VerifiersResponse {
+  friend Serializer<VerifiersResponse>;
+
+  ServerVerifiers verifiers_;
+  ReshuffleRekeyVerifiersProof
+    accessManagerProof_,
+    storageFacilityProof_,
+    transcryptorProof_;
+
+public:
+  VerifiersResponse(
+    const ServerVerifiers& verifiers,
+    const ReshuffleRekeyVerifiersProof& accessManagerProof,
+    const ReshuffleRekeyVerifiersProof& storageFacilityProof,
+    const ReshuffleRekeyVerifiersProof& transcryptorProof)
+    : verifiers_(verifiers),
+      accessManagerProof_(accessManagerProof),
+      storageFacilityProof_(storageFacilityProof),
+      transcryptorProof_(transcryptorProof) {}
+
+  VerifiersResponse(
+    const ReshuffleRekeyVerifiersWithProof& accessManager,
+    const ReshuffleRekeyVerifiersWithProof& storageFacility,
+    const ReshuffleRekeyVerifiersWithProof& transcryptor)
+    : verifiers_{
+        .accessManager = accessManager.first,
+        .storageFacility = storageFacility.first,
+        .transcryptor = transcryptor.first,
+      },
+      accessManagerProof_(accessManager.second),
+      storageFacilityProof_(storageFacility.second),
+      transcryptorProof_(transcryptor.second) {}
+
+  ServerVerifiers open(const ElgamalPublicKey& globalKey) const {
+    accessManagerProof_.verify(verifiers_.accessManager, globalKey);
+    storageFacilityProof_.verify(verifiers_.storageFacility, globalKey);
+    transcryptorProof_.verify(verifiers_.transcryptor, globalKey);
+    return verifiers_;
+  }
+};
+
+struct UserVerifiersRequest {
+  X509Certificate userCertificate;
+};
+
+class UserVerifiersResponse {
+  friend Serializer<UserVerifiersResponse>;
+
+  ReshuffleRekeyVerifiers verifiers_;
+  ReshuffleRekeyVerifiersProof proof_;
+
+public:
+  UserVerifiersResponse(const ReshuffleRekeyVerifiersWithProof& verifiers)
+    : verifiers_(verifiers.first), proof_(verifiers.second) {}
+
+  ReshuffleRekeyVerifiers open(const ElgamalPublicKey& globalKey) const {
+    proof_.verify(verifiers_, globalKey);
+    return verifiers_;
+  }
+};
 
 
 using SignedEncryptionKeyRequest = Signed<EncryptionKeyRequest>;

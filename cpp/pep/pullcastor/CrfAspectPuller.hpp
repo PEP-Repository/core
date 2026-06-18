@@ -10,7 +10,7 @@ namespace castor {
 /*!
   * \brief Pulls Castor CRF (Clinical Research Form or "STUDY") data for a single Castor study.
   */
-class CrfAspectPuller : public TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::STUDY>, private SharedConstructor<CrfAspectPuller> {
+class CrfAspectPuller : public TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::Crf>, private SharedConstructor<CrfAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<CrfAspectPuller>;
 

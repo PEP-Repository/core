@@ -19,7 +19,7 @@ namespace castor {
 
 namespace {
 
-const std::string LOG_TAG ("FakeCastorApi");
+const std::string LogTag ("FakeCastorApi");
 
 }
 
@@ -46,8 +46,8 @@ private:
 
   std::shared_ptr<FakeCastorApi> mServer;
   std::shared_ptr<networking::Connection> mBinary;
-  std::string mMethod;
-  std::string mPath;
+  std::string method_;
+  std::string path_;
   std::map<std::string, std::string> mHeaders;
   std::string mBody;
   size_t mContentlength = 0U;
@@ -63,7 +63,7 @@ void FakeCastorApi::Connection::acceptMessage() {
 }
 
 void FakeCastorApi::Connection::handleError(std::exception_ptr error) {
-  LOG(LOG_TAG, info) << GetExceptionMessage(error);
+  PEP_LOG(LogTag, Severity::Info) << GetExceptionMessage(error);
   writeOutput("400 Bad Request", "400 Bad Request");
 }
 
@@ -75,8 +75,8 @@ void FakeCastorApi::Connection::handleReadRequestLine(const networking::Delimite
 
   std::istringstream responseStream(*result);
   std::string httpVersion;
-  responseStream >> mMethod;
-  responseStream >> mPath;
+  responseStream >> method_;
+  responseStream >> path_;
   std::getline(responseStream, httpVersion);
 
   mBinary->asyncReadUntil("\r\n\r\n", [self = SharedFrom(*this)](const networking::DelimitedTransfer::Result& result) {self->handleReadHeaders(result); });
@@ -98,7 +98,7 @@ void FakeCastorApi::Connection::handleReadHeaders(const networking::DelimitedTra
       boost::trim_if(headerValue, boost::is_space());
       mHeaders[headerName] = headerValue;
     } else {
-      LOG(LOG_TAG, warning) << "Ignoring malformed header: " << header << '\n';
+      PEP_LOG(LogTag, Severity::Warning) << "Ignoring malformed header: " << header << '\n';
     }
   }
 
@@ -125,9 +125,9 @@ void FakeCastorApi::Connection::handleReadBody(const networking::SizedTransfer::
 }
 
 void FakeCastorApi::Connection::handleRequest() {
-  LOG(LOG_TAG, debug) << "Received request: " << mMethod << " " << mPath << std::endl << mBody;
+  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << method_ << " " << path_ << std::endl << mBody;
 
-  if(mPath.starts_with("/api/")) {
+  if(path_.starts_with("/api/")) {
     auto authzHeader = mHeaders.find("Authorization");
     if(authzHeader == mHeaders.end() || authzHeader->second != "Bearer f74ffb4d8a4c9a0a3992836357d668bee1231172") {
       writeOutput("{\"type\":\"http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"You are not authorized to view this study.\"}", "403 Forbidden");
@@ -136,10 +136,10 @@ void FakeCastorApi::Connection::handleRequest() {
   }
 
   auto options = mServer->mOptions;
-  auto findResponse = options->responses.find(mPath);
+  auto findResponse = options->responses.find(path_);
   if(findResponse != options->responses.end()) {
     writeOutput(boost::algorithm::replace_all_copy(findResponse->second.body, "[URL]", getUrl()), findResponse->second.status);
-  } else if(mMethod == "POST" && mPath == "/oauth/token") {
+  } else if(method_ == "POST" && path_ == "/oauth/token") {
     if(options->authenticated) {
       writeOutput("{\"access_token\":\"f74ffb4d8a4c9a0a3992836357d668bee1231172\",\"expires_in\":18000,\"token_type\":\"Bearer\",\"scope\":\"1\"}");
     } else {
@@ -152,11 +152,11 @@ void FakeCastorApi::Connection::handleRequest() {
 
 void FakeCastorApi::Connection::handleWrite(const networking::SizedTransfer::Result& result) {
   if (!result) {
-    LOG(LOG_TAG, warning) << "Error while writing response: " << GetExceptionMessage(result.exception());
+    PEP_LOG(LogTag, Severity::Warning) << "Error while writing response: " << GetExceptionMessage(result.exception());
     return;
   }
 
-  LOG(LOG_TAG, debug) << "Written output " << mOutput.substr(0, *result);
+  PEP_LOG(LogTag, Severity::Debug) << "Written output " << mOutput.substr(0, *result);
 }
 
 void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::string& status, std::map<std::string, std::string> responseHeaders) {
@@ -187,7 +187,7 @@ FakeCastorTest::FakeCastorTest()
 
   mClientSide.start();
   mServerSide.start();
-  LOG(LOG_TAG, info) << "FakeCastorApi listening on port " << port;
+  PEP_LOG(LogTag, Severity::Info) << "FakeCastorApi listening on port " << port;
 }
 
 void FakeCastorTest::TearDown() {
@@ -223,7 +223,7 @@ FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& 
 void FakeCastorApi::start() {
   mConnectivityConnectionAttempt = mConnectivity->onConnectionAttempt.subscribe([self = SharedFrom(*this)](const networking::Connection::Attempt::Result& result) {
     if (!*result) {
-      LOG(LOG_TAG, warning) << "Incoming Fake Castor API connection failed: " << GetExceptionMessage(result.exception());
+      PEP_LOG(LogTag, Severity::Warning) << "Incoming Fake Castor API connection failed: " << GetExceptionMessage(result.exception());
     }
     else {
       Connection::Create(self, *result)->acceptMessage();

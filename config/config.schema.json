@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tag:pep.cs.ru.nl,2026-04-20:config",
+  "title": "PEP config",
+
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+
+    "CaCertificateFile": { "type": "string" }
+  },
+  "required": ["CaCertificateFile"],
+  "unevaluatedProperties": false,
+  "patternProperties": { "^//": {} },
+
+  "anyOf": [
+    { "$ref": "#/$defs/AccessManagerConfig" },
+    { "$ref": "#/$defs/AuthserverConfig" },
+    { "$ref": "#/$defs/KeyServerConfig" },
+    { "$ref": "#/$defs/RegistrationServerConfig" },
+    { "$ref": "#/$defs/StorageFacilityConfig" },
+    { "$ref": "#/$defs/TranscryptorConfig" },
+    { "$ref": "#/$defs/ClientConfig" }
+  ],
+
+  "$defs": {
+    "Server": {
+      "type": "object",
+      "properties": {
+        "ListenPort": { "type": "integer" },
+        "TlsIdentity": { "$ref": "#/$defs/X509IdentityFiles" }
+      },
+      "required": [
+        "ListenPort",
+        "TlsIdentity"
+      ]
+    },
+
+    "SigningServer": {
+      "type": "object",
+      "$ref": "#/$defs/Server",
+      "properties": {
+        "SigningIdentity": { "$ref": "#/$defs/X509IdentityFiles" }
+      },
+      "required": ["SigningIdentity"]
+    },
+
+    "EnrollableServer": {
+      "type": "object",
+      "$ref": "#/$defs/SigningServer",
+      "properties": {
+        "EnrolledPartyKeysFile": { "type": "string" }
+      },
+      "required": [
+        "EnrolledPartyKeysFile"
+      ]
+    },
+
+    "KeyComponentServer": {
+      "type": "object",
+      "$ref": "#/$defs/EnrollableServer",
+      "properties": {
+        "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
+        "SystemPrivateKeysFile": { "type": "string" }
+      },
+      "required": [
+        "SystemPublicKeys",
+        "SystemPrivateKeysFile"
+      ]
+    },
+
+    "X509IdentityFiles": {
+      "type": "object",
+      "properties": {
+        "PrivateKeyFile": { "type": "string" },
+        "CertificateFile": { "type": "string" }
+      },
+      "required": ["PrivateKeyFile", "CertificateFile"],
+      "additionalProperties": false,
+      "patternProperties": { "^//": {} }
+    },
+
+    "ServerEndPoints": {
+      "type": "object",
+      "properties": {
+        "AccessManager": { "$ref": "#/$defs/EndPoint" },
+        "Authserver": { "$ref": "#/$defs/EndPoint" },
+        "KeyServer": { "$ref": "#/$defs/EndPoint" },
+        "RegistrationServer": { "$ref": "#/$defs/EndPoint" },
+        "StorageFacility": { "$ref": "#/$defs/EndPoint" },
+        "Transcryptor": { "$ref": "#/$defs/EndPoint" }
+      },
+      "additionalProperties": false
+    },
+
+    "EndPoint": {
+      "type": "object",
+      "properties": {
+        "Name": { "type": "string" },
+        "Address": { "type": "string" },
+        "Port": { "type": "integer" }
+      },
+      "required": ["Address", "Port"],
+      "additionalProperties": false,
+      "patternProperties": { "^//": {} }
+    },
+
+    "SystemPublicKeys": {
+      "type": "object",
+      "properties": {
+        "PublicKeyData": { "type": "string" },
+        "PublicKeyPseudonyms": { "type": "string" }
+      },
+      "required": ["PublicKeyData", "PublicKeyPseudonyms"],
+      "additionalProperties": false,
+      "patternProperties": { "^//": {} }
+    },
+
+
+    "AccessManagerConfig": {
+      "type": "object",
+      "$ref": "#/$defs/KeyComponentServer",
+      "properties": {
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "Transcryptor",
+            "KeyServer"
+          ]
+        },
+
+        "StorageFile": { "type": "string" },
+        "GlobalConfigurationFile": { "type": "string" }
+      },
+      "required": [
+        "ServerEndPoints",
+        "StorageFile",
+        "GlobalConfigurationFile"
+      ]
+    },
+
+    "AuthserverConfig": {
+      "type": "object",
+      "$ref": "#/$defs/SigningServer",
+      "properties": {
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager"
+          ]
+        },
+
+        "StorageFile": { "type": "string" },
+        "OAuthTokenSecretFile": { "type": "string" },
+        "HttpListenPort": { "type": "integer" },
+        "ActiveGrantExpirationSeconds": { "type": "integer" },
+        "TokenExpirationSeconds": { "type": "integer" },
+        "ExtraRedirectUris": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "SpoofKeyFile": { "type": "string" },
+        "HttpsCertificateFile": { "type": "string" }
+      },
+      "required": [
+        "ServerEndPoints",
+        "OAuthTokenSecretFile",
+        "HttpListenPort",
+        "ActiveGrantExpirationSeconds",
+        "TokenExpirationSeconds"
+      ]
+    },
+
+    "KeyServerConfig": {
+      "type": "object",
+      "$ref": "#/$defs/Server",
+      "properties": {
+        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+
+        "ClientCa": { "$ref": "#/$defs/X509IdentityFiles" },
+        "OAuthTokenSecretFile": { "type": "string" },
+        "BlocklistStoragePath": { "type": "string" }
+      },
+      "required": [
+        "ClientCa",
+        "OAuthTokenSecretFile",
+        "BlocklistStoragePath"
+      ]
+    },
+
+    "RegistrationServerConfig": {
+      "type": "object",
+      "$ref": "#/$defs/EnrollableServer",
+      "properties": {
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager",
+            "StorageFacility"
+          ]
+        },
+        "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
+
+        "ShadowPublicKeyFile": { "type": "string" },
+        "ShadowStorageFile": { "type": "string" },
+        "Castor": {
+          "type": "object",
+          "properties": {
+            "ApiKeyFile": { "type": "string" }
+          },
+          "required": ["ApiKeyFile"],
+          "additionalProperties": false,
+          "patternProperties": { "^//": {} }
+        }
+      },
+      "required": [
+        "ServerEndPoints",
+        "SystemPublicKeys",
+        "ShadowPublicKeyFile",
+        "ShadowStorageFile"
+      ]
+    },
+
+    "StorageFacilityConfig": {
+      "type": "object",
+      "$ref": "#/$defs/EnrollableServer",
+      "properties": {
+        "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
+
+        "StoragePath": { "type": "string" },
+        "EncIdKeyFile": { "type": "string" },
+        "PageStore": { "$ref": "#/$defs/PageStore" },
+        "DataSizeResolution": { "type": "integer" },
+        "ParallelisationWidth": { "type": "integer" }
+      },
+      "required": [
+        "StoragePath",
+        "EncIdKeyFile",
+        "PageStore"
+      ]
+    },
+
+    "PageStore": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^//": {} },
+
+      "anyOf": [
+        { "required": ["Local"] },
+        { "required": ["S3"] }
+      ],
+
+      "properties": {
+        "Local": {
+          "type": "object",
+          "properties": {
+            "DataDir": { "type": "string" },
+            "Bucket": { "type": "string" }
+          },
+          "required": ["DataDir", "Bucket"],
+          "additionalProperties": false,
+          "patternProperties": { "^//": {} }
+        },
+        "S3": {
+          "type": "object",
+          "properties": {
+            "EndPoint": { "$ref": "#/$defs/EndPoint" },
+            "Credentials": {
+              "type": "object",
+              "properties": {
+                "Include": { "type": "string" },
+                "AccessKey": { "type": "string" },
+                "Secret": { "type": "string" },
+                "Service": { "type": "string" },
+                "Region": { "type": "string" }
+              }
+            },
+            "CaCertificateFile": { "type": "string" },
+            "UseHttps": { "type": "boolean" },
+            "Connections": { "type": "integer" },
+            "WriteToBucket": { "type": "string" },
+            "ReadFromBuckets": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": [
+            "EndPoint",
+            "Credentials",
+            "WriteToBucket",
+            "ReadFromBuckets"
+          ],
+          "additionalProperties": false,
+          "patternProperties": { "^//": {} }
+        }
+      }
+    },
+
+    "TranscryptorConfig": {
+      "type": "object",
+      "$ref": "#/$defs/KeyComponentServer",
+      "properties": {
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager"
+          ]
+        },
+
+        "StorageFile": { "type": "string" },
+        "VerifiersFile": { "type": "string" }
+      },
+      "required": [
+        "ServerEndPoints",
+        "StorageFile",
+        "VerifiersFile"
+      ]
+    },
+
+
+    "ClientConfig": {
+      "type": "object",
+      "properties": {
+        "CaCertificateFile": { "type": "string" },
+        "SystemPublicKeys": { "$ref": "#/$defs/SystemPublicKeys" },
+        "ServerEndPoints": {
+          "$ref": "#/$defs/ServerEndPoints",
+          "required": [
+            "AccessManager",
+            "Authserver",
+            "KeyServer",
+            "RegistrationServer",
+            "StorageFacility",
+            "Transcryptor"
+          ]
+        },
+        "EnrolledPartyKeysFile": { "type": "string" },
+
+        "ShadowPublicKeyFile": { "type": "string" },
+        "ProjectConfigFile": { "type": "string" },
+        "OAuthServer": {
+          "type": "object",
+          "properties": {
+            "RequestUrl": { "type": "string", "format": "uri" },
+            "TokenUrl": { "type": "string", "format": "uri" },
+            "CaCertificateFile": { "type": "string" }
+          },
+          "required": [
+            "RequestUrl",
+            "TokenUrl"
+          ],
+          "additionalProperties": false,
+          "patternProperties": { "^//": {} }
+        },
+        "Castor": {
+          "type": "object",
+          "properties": {
+            "BaseUrl": { "type": "string", "format": "uri" }
+          },
+          "required": ["BaseUrl"],
+          "additionalProperties": false,
+          "patternProperties": { "^//": {} }
+        }
+      },
+      "required": [
+        "CaCertificateFile",
+        "ServerEndPoints",
+        "SystemPublicKeys",
+        "EnrolledPartyKeysFile",
+        "OAuthServer"
+      ]
+    }
+  }
+}

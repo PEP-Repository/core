@@ -6,6 +6,8 @@
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/auth/UserGroupSerializers.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/rsk/RskSerializers.hpp>
 
 namespace pep {
 
@@ -321,6 +323,42 @@ SetStructureMetadataRequest Serializer<SetStructureMetadataRequest>::fromProtoco
   result.subjectType = Serialization::FromProtocolBuffer(source.subject_type());
   Serialization::AssignFromRepeatedProtocolBuffer(result.remove, std::move(*source.mutable_remove()));
   return result;
+}
+
+VerifiersResponse Serializer<VerifiersResponse>::fromProtocolBuffer(proto::VerifiersResponse&& source) const {
+  return {
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_verifiers())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager_proof())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility_proof())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor_proof())),
+  };
+}
+
+void Serializer<VerifiersResponse>::moveIntoProtocolBuffer(proto::VerifiersResponse& dest, VerifiersResponse value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_verifiers(), value.verifiers_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager_proof(), value.accessManagerProof_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility_proof(), value.storageFacilityProof_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor_proof(), value.transcryptorProof_);
+}
+
+UserVerifiersRequest Serializer<UserVerifiersRequest>::fromProtocolBuffer(proto::UserVerifiersRequest&& source) const {
+  return UserVerifiersRequest{
+    .userCertificate = Serialization::FromProtocolBuffer(std::move(*source.mutable_user_certificate())),
+  };
+}
+void Serializer<UserVerifiersRequest>::moveIntoProtocolBuffer(proto::UserVerifiersRequest& dest, UserVerifiersRequest value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_certificate(), value.userCertificate);
+}
+
+UserVerifiersResponse Serializer<UserVerifiersResponse>::fromProtocolBuffer(proto::UserVerifiersResponse&& source) const {
+  return UserVerifiersResponse{{
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_verifiers())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_proof())),
+  }};
+}
+void Serializer<UserVerifiersResponse>::moveIntoProtocolBuffer(proto::UserVerifiersResponse& dest, UserVerifiersResponse value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_verifiers(), value.verifiers_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_proof(), value.proof_);
 }
 
 }

@@ -12,13 +12,12 @@
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
-static const std::string LOG_TAG ("S3Client");
-
 using namespace pep;
 using namespace pep::s3;
 
 namespace
 {
+  const std::string LogTag ("S3Client");
 
   // Client::Create returns an instance of the following class.
   class ClientImp
@@ -30,12 +29,12 @@ namespace
 
     ClientImp(const Client::Parameters& params);
 
-    void start() override { mHttp->start(); }
-    void shutdown() override { mHttp->shutdown(); }
+    void start() override { http_->start(); }
+    void shutdown() override { http_->shutdown(); }
 
   private:
 
-    std::shared_ptr<networking::HttpClient> mHttp;
+    std::shared_ptr<networking::HttpClient> http_;
     Credentials credentials;
     EndPoint endpoint;
 
@@ -69,8 +68,8 @@ namespace
     bool use_https = params.use_https.value_or(true);
 
     if (use_https && params.ca_cert_path.has_value()) {
-      LOG(LOG_TAG, info) << "Using " << params.ca_cert_path->string()
-        << " to verify TLS certificate of " << params.endpoint.hostname
+      PEP_LOG(LogTag, Severity::Info) << "Using \"" << params.ca_cert_path->string()
+        << "\" to verify TLS certificate of " << params.endpoint.hostname
         << ":" << params.endpoint.port;
     }
 
@@ -81,7 +80,7 @@ namespace
 
   ClientImp::ClientImp(const Client::Parameters& params)
     : Client(),
-      mHttp(create_http_client(params)),
+      http_(create_http_client(params)),
       credentials(params.credentials),
       endpoint(params.endpoint)
   {
@@ -94,7 +93,7 @@ namespace
       const networking::HttpMethod& method,
       std::vector<std::shared_ptr<std::string>> bodyparts)
   {
-    auto result = mHttp->makeRequest(method, path);
+    auto result = http_->makeRequest(method, path);
     assert(result.getBodyparts().empty());
     result.getBodyparts() = std::move(bodyparts);
     result.completeHeaders();
@@ -114,12 +113,12 @@ namespace
 #endif
     {
 #ifndef SIMULATE_S3_BACKEND_FAILURE
-      LOG(LOG_TAG, warning) << "HTTP Request to S3 backend gave unexpected "
+      PEP_LOG(LogTag, Severity::Warning) << "HTTP Request to S3 backend gave unexpected "
         << "status line: " << resp.getStatusCode() << " "
         << resp.getStatusMessage()
         << "; " << resp.getBody(); // TODO: remove (as it might leak info)
 #else
-      LOG(LOG_TAG, warning) << "Feigning failure of HTTP request"
+      PEP_LOG(LogTag, Severity::Warning) << "Feigning failure of HTTP request"
         << " to S3 backend, because SIMULATE_S3_BACKEND_FAILURE was set.";
 #endif
       throw std::runtime_error("Request to S3 backend failed.");
@@ -168,7 +167,7 @@ namespace
 
       if (!expected_headers.contains(key)) {
         if (mUnexpectedHeaders.emplace(key).second) {
-          LOG(LOG_TAG, warning) << "Unexpected header '" << key << "' in response from S3 (with value '" << value << "')";
+          PEP_LOG(LogTag, Severity::Warning) << "Unexpected header '" << key << "' in response from S3 (with value '" << value << "')";
         }
       }
     }
@@ -181,11 +180,11 @@ namespace
   {
     auto request = this->request_template(
         "/" + bucket + "/" + name, // path
-        networking::HttpMethod::PUT, payload);
+        networking::HttpMethod::Put, payload);
 
     request::Sign(request, this->credentials);
 
-    return mHttp->sendRequest(std::move(request)).map(
+    return http_->sendRequest(std::move(request)).map(
 
     [self = SharedFrom(*this), name](HTTPResponse resp) -> std::string {
 
@@ -209,11 +208,11 @@ namespace
   {
     auto request = this->request_template(
         "/" + bucket + "/" + name,
-        networking::HttpMethod::GET);
+        networking::HttpMethod::Get);
 
     request::Sign(request, this->credentials);
 
-    return mHttp->sendRequest(std::move(request)).map(
+    return http_->sendRequest(std::move(request)).map(
 
     [self = SharedFrom(*this), bucket, name](HTTPResponse resp)
       -> messaging::MessageSequence {
@@ -251,10 +250,10 @@ namespace
       }
 
       if (error_code != "NoSuchKey") {
-        LOG(LOG_TAG, warning) << "GetObject request to S3 backend gave unexpected '"
+        PEP_LOG(LogTag, Severity::Warning) << "GetObject request to S3 backend gave unexpected '"
           << error_code << "' error code, requesting '" << name << "' from bucket '"
           << bucket << "'";
-        LOG(LOG_TAG, warning) << resp.getBody();
+        PEP_LOG(LogTag, Severity::Warning) << resp.getBody();
 
         throw std::runtime_error("Request to S3 backend failed");
       }

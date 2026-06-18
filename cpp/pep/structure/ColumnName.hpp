@@ -8,12 +8,12 @@ namespace pep {
 
 class ColumnNameSection {
 private:
-  std::string mValue;
+  std::string value_;
 
 public:
   explicit ColumnNameSection(std::string value);
 
-  inline const std::string& getValue() const noexcept { return mValue; }
+  inline const std::string& getValue() const noexcept { return value_; }
 
   static ColumnNameSection FromRawString(const std::string& raw);
 };

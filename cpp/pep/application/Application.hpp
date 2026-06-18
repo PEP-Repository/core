@@ -69,6 +69,9 @@ class Application : public commandline::Command {
 
   int run(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 
+  bool mInitializeLoggingOnceFlag = false;  ///< Tracks if initializeLoggingOnce was called
+  void initializeLoggingOnce();
+
   std::filesystem::path rawConfigDirectory() const;
   std::optional<std::filesystem::path> rawConfigFile() const;
   std::filesystem::path getMainConfigPath();
@@ -83,9 +86,9 @@ class Application : public commandline::Command {
   char** getArgv() const;
 
   virtual bool useUnwinder() const;
-  virtual std::optional<severity_level> syslogLogMinimumSeverityLevel() const;
-  virtual std::optional<severity_level> consoleLogMinimumSeverityLevel() const;
-  virtual std::optional<severity_level> fileLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> syslogLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> consoleLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> fileLogMinimumSeverityLevel() const;
   commandline::Parameters getSupportedParameters() const override;
   std::optional<int> processLexedParameters(const commandline::LexedValues& lexed) override;
   void finalizeParameters() override;

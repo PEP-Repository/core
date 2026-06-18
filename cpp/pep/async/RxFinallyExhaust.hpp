@@ -31,7 +31,7 @@ public:
       .finally([create = mCreate, subscribeOn = mSubscribeOn]() { // ... and (create and) run the finalizer observable when the main one is unsubscribed
       create().subscribe_on(subscribeOn).subscribe(
         [](const auto&) {}, // ignore
-        [](std::exception_ptr exception) { LOG("RX cleanup", error) << "Error exhausting finalizer observable: " << GetExceptionMessage(exception); },
+        [](std::exception_ptr exception) { PEP_LOG("RX cleanup", Severity::Error) << "Error exhausting finalizer observable: " << GetExceptionMessage(exception); },
         []() {} // ignore
       );
         });

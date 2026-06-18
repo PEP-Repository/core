@@ -7,30 +7,36 @@ namespace pep {
 
 class Configuration {
 private:
-  boost::property_tree::ptree mProperties;
-  DeserializationContext mDeserializationContext;
+  boost::property_tree::ptree properties_;
+  DeserializationContext deserializationContext_;
 
   void setBasePath(const std::filesystem::path& base);
 
 public:
-
   static Configuration FromFile(const std::filesystem::path& filepath);
 
   static Configuration FromStream(
           std::istream& stream,
           const std::optional<std::filesystem::path>& basePath = std::nullopt);
 
+  static Configuration FromPtree(
+          const boost::property_tree::ptree& properties,
+          const std::optional<std::filesystem::path>& basePath = std::nullopt);
+
   Configuration get_child(
+          const boost::property_tree::ptree::path_type& path) const;
+
+  std::optional<Configuration> get_child_optional(
           const boost::property_tree::ptree::path_type& path) const;
 
   template <typename T>
   T get(const boost::property_tree::ptree::path_type& path) const {
-      return DeserializeProperties<T>(mProperties, path, mDeserializationContext);
+      return DeserializeProperties<T>(properties_, path, deserializationContext_);
   }
 
   template <typename T> // TODO: remove; have callers use get<std::optional<T>> instead
   T get(const boost::property_tree::ptree::path_type& path, const T& defaultValue) const {
-    auto configured = DeserializeProperties<std::optional<T>>(mProperties, path, mDeserializationContext);
+    auto configured = DeserializeProperties<std::optional<T>>(properties_, path, deserializationContext_);
     if (configured) {
       return *configured;
     }

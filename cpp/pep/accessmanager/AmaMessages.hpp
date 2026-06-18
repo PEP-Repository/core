@@ -9,29 +9,29 @@ namespace pep {
 class AmaCreateColumn {
 public:
   AmaCreateColumn() = default;
-  AmaCreateColumn(std::string name) : mName(std::move(name)) { }
-  std::string mName;
+  AmaCreateColumn(std::string name) : name_(std::move(name)) { }
+  std::string name_;
 };
 
 class AmaRemoveColumn {
 public:
   AmaRemoveColumn() = default;
-  AmaRemoveColumn(std::string name) : mName(std::move(name)) { }
-  std::string mName;
+  AmaRemoveColumn(std::string name) : name_(std::move(name)) { }
+  std::string name_;
 };
 
 class AmaCreateColumnGroup {
 public:
   AmaCreateColumnGroup() = default;
-  AmaCreateColumnGroup(std::string name) : mName(std::move(name)) { }
-  std::string mName;
+  AmaCreateColumnGroup(std::string name) : name_(std::move(name)) { }
+  std::string name_;
 };
 
 class AmaRemoveColumnGroup {
 public:
   AmaRemoveColumnGroup() = default;
-  AmaRemoveColumnGroup(std::string name) : mName(std::move(name)) { }
-  std::string mName;
+  AmaRemoveColumnGroup(std::string name) : name_(std::move(name)) { }
+  std::string name_;
 };
 
 class AmaAddColumnToGroup {
@@ -56,16 +56,16 @@ class AmaCreateParticipantGroup {
 public:
   AmaCreateParticipantGroup() = default;
   AmaCreateParticipantGroup(std::string name)
-    : mName(std::move(name)) {}
-  std::string mName;
+    : name_(std::move(name)) {}
+  std::string name_;
 };
 
 class AmaRemoveParticipantGroup {
 public:
   AmaRemoveParticipantGroup() = default;
   AmaRemoveParticipantGroup(std::string name)
-    : mName(std::move(name)) {}
-  std::string mName;
+    : name_(std::move(name)) {}
+  std::string name_;
 };
 
 class AmaAddParticipantToGroup {
@@ -92,10 +92,10 @@ public:
   AmaCreateParticipantGroupAccessRule(std::string participantGroup,
     std::string userGroup, std::string mode)
     : mParticipantGroup(std::move(participantGroup)),
-    mUserGroup(std::move(userGroup)),
+    userGroup_(std::move(userGroup)),
     mMode(std::move(mode)) { }
   std::string mParticipantGroup;
-  std::string mUserGroup;
+  std::string userGroup_;
   std::string mMode;
 };
 
@@ -105,10 +105,10 @@ public:
   AmaRemoveParticipantGroupAccessRule(std::string participantGroup,
     std::string userGroup, std::string mode)
     : mParticipantGroup(std::move(participantGroup)),
-    mUserGroup(std::move(userGroup)),
+    userGroup_(std::move(userGroup)),
     mMode(std::move(mode)) { }
   std::string mParticipantGroup;
-  std::string mUserGroup;
+  std::string userGroup_;
   std::string mMode;
 };
 
@@ -118,10 +118,10 @@ public:
   AmaCreateColumnGroupAccessRule(std::string columnGroup,
     std::string userGroup, std::string mode)
     : mColumnGroup(std::move(columnGroup)),
-    mUserGroup(std::move(userGroup)),
+    userGroup_(std::move(userGroup)),
     mMode(std::move(mode)) { }
   std::string mColumnGroup;
-  std::string mUserGroup;
+  std::string userGroup_;
   std::string mMode;
 };
 
@@ -131,10 +131,10 @@ public:
   AmaRemoveColumnGroupAccessRule(std::string columnGroup,
     std::string userGroup, std::string mode)
     : mColumnGroup(std::move(columnGroup)),
-    mUserGroup(std::move(userGroup)),
+    userGroup_(std::move(userGroup)),
     mMode(std::move(mode)) { }
   std::string mColumnGroup;
-  std::string mUserGroup;
+  std::string userGroup_;
   std::string mMode;
 };
 
@@ -183,18 +183,18 @@ class AmaQRColumn {
 public:
   AmaQRColumn() = default;
   AmaQRColumn(std::string name)
-    : mName(std::move(name)) { }
+    : name_(std::move(name)) { }
 
-  std::string mName;
+  std::string name_;
 };
 
 class AmaQRColumnGroup {
 public:
   AmaQRColumnGroup() = default;
   AmaQRColumnGroup(std::string name, std::vector<std::string> columns)
-    : mName(std::move(name)), mColumns(std::move(columns)) { }
+    : name_(std::move(name)), mColumns(std::move(columns)) { }
 
-  std::string mName;
+  std::string name_;
   std::vector<std::string> mColumns;
 
   /*
@@ -233,9 +233,9 @@ class AmaQRParticipantGroup {
 public:
   AmaQRParticipantGroup() = default;
   AmaQRParticipantGroup(std::string name)
-    : mName(std::move(name)) { }
+    : name_(std::move(name)) { }
 
-  std::string mName;
+  std::string name_;
 };
 
 class AmaQRParticipantGroupAccessRule {
@@ -244,20 +244,20 @@ public:
   AmaQRParticipantGroupAccessRule(std::string participantGroup,
     std::string userGroup, std::string mode)
     : mParticipantGroup(std::move(participantGroup)),
-    mUserGroup(std::move(userGroup)),
+    userGroup_(std::move(userGroup)),
     mMode(std::move(mode)) { }
 
   std::string mParticipantGroup;
-  std::string mUserGroup;
+  std::string userGroup_;
   std::string mMode;
 };
 
 class AmaQueryResponse {
 public:
   std::vector<AmaQRColumn> mColumns;
-  std::vector<AmaQRColumnGroup> mColumnGroups;
+  std::vector<AmaQRColumnGroup> columnGroups_;
   std::vector<AmaQRColumnGroupAccessRule> mColumnGroupAccessRules;
-  std::vector<AmaQRParticipantGroup> mParticipantGroups;
+  std::vector<AmaQRParticipantGroup> participantGroups_;
   std::vector<AmaQRParticipantGroupAccessRule> mParticipantGroupAccessRules;
 };
 

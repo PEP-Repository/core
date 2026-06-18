@@ -5,6 +5,7 @@
 #include <optional>
 #include <unordered_map>
 
+#include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/transcryptor/ChecksumChain.hpp>
@@ -17,13 +18,14 @@ namespace pep {
 class TranscryptorStorage {
 private:
   std::shared_ptr<TranscryptorStorageBackend> mStorage;
-  std::string mPath;
+  std::string path_;
   PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set mChecksumChains;
 
   void ensureInitialized();
   void ensureInitialized_unguarded(bool& migrated);
   void migrate();
   void migrate_from_v1_to_v2();
+  void removeOutdatedRecords();
 
   int64_t getOrCreatePseudonymSet(const std::vector<LocalPseudonym>& ps);
   int64_t getOrCreateColumnSet(std::vector<std::string> cols);
@@ -35,9 +37,16 @@ private:
 
  public:
 
-  std::string getPath() const { return mPath; }
+  std::string getPath() const { return path_; }
 
   TranscryptorStorage(const std::filesystem::path& path);
+
+  /// Retrieve stored verifiers for domain & session corresponding to certificate.
+  std::optional<ReshuffleRekeyVerifiers> getUserVerifiers(const X509Certificate& userCertificate);
+  /// Check consistency of verifiers with stored verifiers for domain (and session) corresponding to certificate.
+  /// If consistent, stores the new verifiers.
+  /// \throws std::runtime_error when inconsistent with stored verifiers.
+  void checkAndStoreUserVerifiers(const X509Certificate& userCertificate, const ReshuffleRekeyVerifiers& verifiers);
 
   std::string logTicketRequest(
     const std::vector<LocalPseudonym>& localPseudonyms,

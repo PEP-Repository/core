@@ -19,7 +19,7 @@
 
 namespace {
 
-const std::string LOG_TAG = "Logon utility";
+const std::string LogTag = "Logon utility";
 
 class LogonApplication : public pep::commandline::Utility {
 
@@ -46,7 +46,7 @@ private:
     assert(mIoContext != nullptr);
     auto oauth = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
       .io_context = mIoContext,
-      .config = mConfig.get_child("AuthenticationServer"),
+      .config = mConfig.get_child("OAuthServer"),
       .authorizationMethod = limitedEnvironment ? pep::ConsoleAuthorization : pep::BrowserAuthorization,
       .longLived = mLongLived,
       .validityDuration = validity });
@@ -60,7 +60,7 @@ private:
 
   rxcpp::observable<bool> handleAuthorizationResult(const pep::AuthorizationResult& auth) {
     if (!auth) {
-      LOG(LOG_TAG, pep::error) << "Authorization failed: " + pep::GetExceptionMessage(auth.exception());
+      PEP_LOG(LogTag, pep::Severity::Error) << "Authorization failed: " + pep::GetExceptionMessage(auth.exception());
       return rxcpp::observable<>::just(false);
     }
 
@@ -88,14 +88,14 @@ private:
     }
 
     return client->enrollUser(token) // Client enrollment will write keys to file
-      .map([keysFilePath = *keysFilePath](const pep::EnrollmentResult& result)
+      .map([keysFilePath = *keysFilePath](const pep::EnrolledPartyKeys& result)
         {
-          std::cout << "Wrote enrollment result (keys) to " << keysFilePath << std::endl;
+          std::cout << "Wrote enrollment result (keys) to \"" << keysFilePath.string() << '"' << std::endl;
           return true;
         })
       .on_error_resume_next([](std::exception_ptr error) // Don't let the application report an **unexpected** problem
         {
-          LOG(LOG_TAG, pep::error) << "Enrollment failed: " << pep::GetExceptionMessage(error);
+          PEP_LOG(LogTag, pep::Severity::Error) << "Enrollment failed: " << pep::GetExceptionMessage(error);
           return rxcpp::observable<>::just(false);
         });
   }
@@ -103,7 +103,7 @@ private:
   rxcpp::observable<bool> writeToken(const std::string& token) {
     auto tokenPath = std::filesystem::current_path() / pep::OAuthToken::DEFAULT_JSON_FILE_NAME;
     pep::OAuthToken::Parse(token).writeJson(tokenPath);
-    std::cout << "Wrote token to " << tokenPath << std::endl;
+    std::cout << "Wrote token to \"" << tokenPath.string() << '"' << std::endl;
     return rxcpp::observable<>::just(true);
   }
 
@@ -124,7 +124,7 @@ private:
           }
         },
         [](std::exception_ptr ep) {
-          LOG(LOG_TAG, pep::error) << "Unexpected problem occurred: " + pep::GetExceptionMessage(ep);
+          PEP_LOG(LogTag, pep::Severity::Error) << "Unexpected problem occurred: " + pep::GetExceptionMessage(ep);
         }
       );
 

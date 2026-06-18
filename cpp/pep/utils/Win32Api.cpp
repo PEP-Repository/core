@@ -23,7 +23,7 @@ namespace win32api {
 
 namespace {
 
-const std::string LOG_TAG = "Win32Api";
+const std::string LogTag = "Win32Api";
 
 GUID KnownFolderToFolderId(KnownFolder folder) {
   switch (folder) {
@@ -151,7 +151,7 @@ std::string FormatWin32Error(DWORD code) {
 }
 
 ApiCallFailure::ApiCallFailure(DWORD code, const std::string& description)
-  : std::runtime_error(description), mCode(code) {
+  : std::runtime_error(description), code_(code) {
 }
 
 void ApiCallFailure::Raise(DWORD code) {
@@ -336,21 +336,21 @@ ElevationState GetElevationState() {
     }
     if (te.TokenIsElevated) {
       // we are built-in admin or UAC is disabled in system
-      result = ElevationState::IS_ELEVATED;
+      result = ElevationState::IsElevated;
     }
     else {
       // we can not elevate under same user
-      result = ElevationState::CANNOT_ELEVATE;
+      result = ElevationState::CannotElevate;
     }
     break;
 
   case TokenElevationTypeFull:
-    result = ElevationState::IS_ELEVATED;
+    result = ElevationState::IsElevated;
     break;
 
   case TokenElevationTypeLimited:
     // this mean that we have linked token
-    result = ElevationState::CAN_ELEVATE;
+    result = ElevationState::CanElevate;
     break;
 
   default:
@@ -380,12 +380,12 @@ void StartProcess(const std::filesystem::path& start, const std::optional<std::s
 
   if (elevate) {
     switch (GetElevationState()) {
-    case CANNOT_ELEVATE:
+    case ElevationState::CannotElevate:
       throw std::runtime_error("Cannot start elevated process because current process is running under a limited account");
-    case CAN_ELEVATE:
+    case ElevationState::CanElevate:
       shExInfo.lpVerb = "runas"; // https://stackoverflow.com/a/4893508
       break;
-    case IS_ELEVATED:
+    case ElevationState::IsElevated:
       // Child process will run in an elevated context when using default verb ("open")
       break;
     default:
@@ -412,21 +412,21 @@ void ClearMemory(void* address, size_t bytes) {
   }
 }
 
-ParentConsoleBinding* ParentConsoleBinding::instance_ = nullptr;
+ParentConsoleBinding* ParentConsoleBinding::theInstance = nullptr;
 
 ParentConsoleBinding::ParentConsoleBinding() {
-  assert(instance_ == nullptr);
-  instance_ = this;
+  assert(theInstance == nullptr);
+  theInstance = this;
 }
 
 ParentConsoleBinding::~ParentConsoleBinding() noexcept {
-  assert(instance_ == this);
-  instance_ = nullptr;
+  assert(theInstance == this);
+  theInstance = nullptr;
   ReleaseConsole();
 }
 
 std::unique_ptr<ParentConsoleBinding> ParentConsoleBinding::TryCreate() {
-  if (instance_ != nullptr) {
+  if (theInstance != nullptr) {
     return nullptr;
   }
   if (!AttachParentConsole(1024)) {
@@ -437,9 +437,9 @@ std::unique_ptr<ParentConsoleBinding> ParentConsoleBinding::TryCreate() {
 }
 
 SetConsoleCodePage::SetConsoleCodePage(UINT codePage) {
-  prevInputCodePage = ::GetConsoleCP();
-  prevOutputCodePage = ::GetConsoleOutputCP();
-  if (prevInputCodePage == 0 || prevOutputCodePage == 0) {
+  prevInputCodePage_ = ::GetConsoleCP();
+  prevOutputCodePage_ = ::GetConsoleOutputCP();
+  if (prevInputCodePage_ == 0 || prevOutputCodePage_ == 0) {
     return; // Probably no console allocated
   }
   if (!::SetConsoleCP(codePage)) {
@@ -447,19 +447,19 @@ SetConsoleCodePage::SetConsoleCodePage(UINT codePage) {
   } else if (!::SetConsoleOutputCP(codePage)) {
     const auto err = ::GetLastError();
     // Restore
-    if (!::SetConsoleCP(prevInputCodePage)) {
-      LOG(LOG_TAG, warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ") handing error";
+    if (!::SetConsoleCP(prevInputCodePage_)) {
+      PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ") handing error";
     }
     ApiCallFailure::Raise(err);
   }
 }
 
 SetConsoleCodePage::~SetConsoleCodePage() noexcept {
-  if (prevInputCodePage != 0 && !::SetConsoleCP(prevInputCodePage)) {
-    LOG(LOG_TAG, warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ")";
+  if (prevInputCodePage_ != 0 && !::SetConsoleCP(prevInputCodePage_)) {
+    PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ")";
   }
-  if (prevOutputCodePage != 0 && !::SetConsoleOutputCP(prevOutputCodePage)) {
-    LOG(LOG_TAG, warning) << "Failed to restore console output code page (" << FormatWin32Error(::GetLastError()) << ")";
+  if (prevOutputCodePage_ != 0 && !::SetConsoleOutputCP(prevOutputCodePage_)) {
+    PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console output code page (" << FormatWin32Error(::GetLastError()) << ")";
   }
 }
 

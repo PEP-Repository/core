@@ -1,13 +1,16 @@
 #include <pep/utils/ApplicationMetrics.hpp>
 
-#ifdef _WIN32
-#include <Windows.h>
-#include <Psapi.h>
-#elif defined(__linux__)
-#include <boost/interprocess/mapped_region.hpp>
-#else
 #include <pep/utils/Log.hpp>
-#endif // _WIN32 or __linux__
+
+#ifdef _WIN32
+# include <Windows.h>
+# include <Psapi.h>
+#else
+# include <sys/resource.h>
+# ifdef __linux__
+#  include <boost/interprocess/mapped_region.hpp>
+# endif
+#endif
 
 #include <cmath>
 #include <iostream>
@@ -23,7 +26,9 @@ namespace pep {
   double pep::ApplicationMetrics::GetMemoryUsageBytes() {
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS_EX pmc;
-    ::GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc));
+    if (!::GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc))) {
+      throw std::runtime_error("Error executing GetProcessMemoryInfo");
+    }
     return static_cast<double>(pmc.PrivateUsage);
 #elif defined(__linux__)
     auto pagesize = boost::interprocess::mapped_region::get_page_size();
@@ -40,7 +45,7 @@ namespace pep {
     return static_cast<double>(result * pagesize);
 #else
     if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
+      PEP_LOG("ApplicationMetrics", Severity::Warning) << "Memory usage metrics are not implemented for this platform";
       warningLogged = true;
     }
     return nan("");
@@ -104,11 +109,38 @@ namespace pep {
     return {physicalRatio, totalRatio};
 #else
     if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
+      PEP_LOG("ApplicationMetrics", Severity::Warning) << "Memory usage metrics are not implemented for this platform";
       warningLogged = true;
     }
     return {nan(""), nan("")};
 #endif // _WIN32 or __linux__
+  }
+
+  double pep::ApplicationMetrics::GetPeakMemoryUsageBytes() {
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS pmc;
+    if (!::GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+      throw std::runtime_error("Error executing GetProcessMemoryInfo");
+    }
+    return static_cast<double>(pmc.PeakWorkingSetSize);
+
+    // getrusage does not work on Emscripten
+#elif defined(__unix__) && !defined(__EMSCRIPTEN__)
+    rusage usage{};
+    ::getrusage(RUSAGE_SELF, &usage);
+# if defined(__APPLE__) && defined(__MACH__)
+    return static_cast<double>(usage.ru_maxrss);
+# else
+    // ru_maxrss is already in KiB
+    return static_cast<double>(usage.ru_maxrss) * 1024;
+# endif
+#else
+    if (!warningLogged) {
+      PEP_LOG("ApplicationMetrics", Severity::Warning) << "Memory usage metrics are not implemented for this platform";
+      warningLogged = true;
+    }
+    return nan("");
+#endif
   }
 
   //Returns current disk usage in bytes of the drive on which the folder is located.

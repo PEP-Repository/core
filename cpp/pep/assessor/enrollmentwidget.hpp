@@ -29,7 +29,7 @@ class EnrollmentWidget : public QStackedWidget {
   void cancelled();
   void enrollConfirmed(std::string pepID);
   void enrollComplete(std::string pepID);
-  void enrollFailed(QString enrollmentError, pep::severity_level);
+  void enrollFailed(QString enrollmentError, pep::Severity);
   void participantRegistered(std::shared_ptr<pep::ParticipantPersonalia> personalia);
   void registrationProceeding();
 

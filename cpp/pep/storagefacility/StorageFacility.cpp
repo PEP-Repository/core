@@ -14,6 +14,7 @@
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -98,7 +99,20 @@ public:
   }
 };
 
-const std::string LOG_TAG("StorageFacility");
+template <typename T>
+bool ReadOptionalNonZeroConfigValue(T& destination, const Configuration& config, const std::string& key) {
+  if (auto value = config.get<std::optional<T>>(key)) {
+    if (*value == T(0)) {
+      throw std::runtime_error(key + " cannot be 0");
+    }
+    destination = *value;
+    return true;
+  }
+
+  return false;
+}
+
+const std::string LogTag("StorageFacility");
 
 } // End anonymous namespace
 
@@ -106,7 +120,7 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
   RegisteredMetrics(registry),
   data_stored_bytes(prometheus::BuildCounter()
     .Name("pep_sf_stored_bytes")
-    .Help("Total amount of bytes in datapages received by clients to be stored")
+    .Help("Total amount of bytes in datapages received by clients to be stored") // by this process (PID), i.e. during this session
     .Register(*registry)
     .Add({})),
   data_retrieved_bytes(prometheus::BuildCounter()
@@ -138,14 +152,24 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
-  entriesIncludingHistory(prometheus::BuildGauge()
+  entriesIncludingHistory(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
     .Name("pep_sf_entries")
     .Help("Number of entries managed by FileStore, includes history of every file")
     .Register(*registry)
     .Add({})),
   entriesInMetaDir(prometheus::BuildGauge()
     .Name("pep_sf_meta_on_disk")
-    .Help("Number of entries in the meta/ dir")
+    .Help("Number of entries in the meta/ dir") // normally the number of subdirectories, i.e. the number of rows ("participants")
+    .Register(*registry)
+    .Add({})),
+  totalPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
+    .Name("pep_total_payload_bytes")
+    .Help("Total bytes in payload(page)s of all entries including history, rounded to configured resolution")
+    .Register(*registry)
+    .Add({})),
+  rollingPayloadBytes(prometheus::BuildGauge()
+    .Name("pep_rolling_payload_bytes")
+    .Help("Total bytes in payload(page)s of current/latest/rolling data, rounded to configured resolution")
     .Register(*registry)
     .Add({}))
 { }
@@ -157,33 +181,27 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   auto pageStoreConfig = std::make_shared<Configuration>();
 
   try {
-    auto pw = config.get<std::optional<uint8_t>>("ParallelisationWidth");
-    if (pw.has_value()) {
-      if (*pw == 0) {
-        throw std::runtime_error("ParallelisationWidth cannot be 0.");
-      }
-      this->parallelisation_width = *pw;
-      // For the default value,
-      //   see the declaration of this->parallelisation_width.
-    }
+    keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+
+    // See the declaration/definition of the fields for default values
+    ReadOptionalNonZeroConfigValue(this->parallelisation_width, config, "ParallelisationWidth");
+    ReadOptionalNonZeroConfigValue(this->dataSizeResolution, config, "DataSizeResolution");
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
-    keysFile = std::filesystem::canonical(config.get<std::filesystem::path>("KeysFile"));
     this->storagePath = config.get<std::filesystem::path>("StoragePath");
     this->pageStoreConfig = std::make_shared<Configuration>(config.get_child("PageStore"));
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
-  std::string strPseudonymKey;
   try {
-    Configuration keysConfig = Configuration::FromFile(keysFile);
-    strPseudonymKey = boost::algorithm::unhex(keysConfig.get<std::string>("PseudonymKey"));
+    auto enrolledPartyKeys = Configuration::FromFile(keysFile).get<EnrolledPartyKeys>("");
+    setPseudonymKey(enrolledPartyKeys.pseudonymKey.value());
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with keys file: " << keysFile << " : " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with keys file: " << keysFile << " : " << e.what();
     throw;
   }
 
@@ -192,7 +210,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   // main keysfile is read-only.  (We wouldn't want to risk to overwrite it.)
   std::string encIdKey;
   if (!std::filesystem::exists(encIdKeyFile)) {
-    LOG(LOG_TAG, warning)
+    PEP_LOG(LogTag, Severity::Warning)
       << "The file " << encIdKeyFile << " does not exist. "
       << "Generating new one.  This should occur only once!";
     encIdKey = RandomString(32);
@@ -210,7 +228,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     encIdKey = boost::algorithm::unhex(encIdKeyConfig.get<std::string>("Key"));
   }
 
-  setPseudonymKey(CurveScalar(strPseudonymKey));
   setEncIdKey(encIdKey);
 }
 
@@ -238,6 +255,9 @@ void StorageFacility::Parameters::check() const {
   SigningServer::Parameters::check();
   if (!this->pageStoreConfig)
     throw std::runtime_error("pageStoreConfig must be set");
+  if (dataSizeResolution == 0U) {
+    throw std::runtime_error("dataSizeResolution cannot be zero");
+  }
   // FIXME: check if errors happend during startup of file store
 }
 
@@ -290,7 +310,7 @@ void StorageFacility::computeChecksumChainChecksum(
 
 messaging::MessageBatches
 StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest) {
-  LOG(LOG_TAG, debug) << "Received DataEnumerationRequest2";
+  PEP_LOG(LogTag, Severity::Debug) << "Received DataEnumerationRequest2";
 
   auto time = std::chrono::steady_clock::now();
   const auto& rootCAs = *this->getRootCAs();
@@ -298,7 +318,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto certified = signedRequest->open(rootCAs);
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
-  auto ticket = request.mTicket.open(rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket_.open(rootCAs, accessGroup, "read-meta");
 
   struct ResponseEntry {
     DataEnumerationEntry2 entry;
@@ -431,7 +451,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     const auto& request = certified.message;
     auto userGroup = certified.signatory.organizationalUnit();
 
-    auto ticket = request.mTicket.open(
+    auto ticket = request.ticket_.open(
       *rootCAs,
       userGroup,
       "read-meta"
@@ -455,7 +475,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     for (size_t i = 0; i < request.mIds.size(); i++) {
       // TODO execute decryption in WorkerPool
       auto sfid = server->decryptId(request.mIds[i]);
-      auto sfentry = server->mFileStore->lookup(EntryName::Parse(sfid.mPath), sfid.mTime);
+      auto sfentry = server->mFileStore->lookup(EntryName::Parse(sfid.path), sfid.time);
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
       }
@@ -502,7 +522,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
-  auto ticket = request.mTicket.open(
+  auto ticket = request.ticket_.open(
     *rootCAs,
     userGroup,
     "read"
@@ -517,7 +537,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   for (size_t i = 0; i < request.mIds.size(); i++) {
     // TODO execute decryption in WorkerPool
     auto sfid = decryptId(request.mIds[i]);
-    auto entry = mFileStore->lookup(EntryName::Parse(sfid.mPath), sfid.mTime);
+    auto entry = mFileStore->lookup(EntryName::Parse(sfid.path), sfid.time);
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
@@ -643,7 +663,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     const auto& rootCAs = this->getRootCAs();
     auto certified = signedRequest->open(*rootCAs);
     auto request = MakeSharedCopy(std::move(certified.message));
-    auto ticket = request->mTicket.open(*rootCAs, certified.signatory.organizationalUnit());
+    auto ticket = request->ticket_.open(*rootCAs, certified.signatory.organizationalUnit());
 
     if (!ticket.hasMode("write")) {
       throw Error("Ticket is missing \"write\" access mode");
@@ -690,7 +710,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       for (size_t j = 0; j < i; ++j) { // TODO: improve performance: we don't want an inner loop making this O(n^2)
         if (ctx->entries[j]->getName() == entryChange->getName()) {
-          LOG(LOG_TAG, error) << "Single request contained duplicate entry change for " + entryChange->getName().string();
+          PEP_LOG(LogTag, Severity::Error) << "Single request contained duplicate entry change for " + entryChange->getName().string();
           // Don't send our internal representation (local pseudonym contained in the entry's name) back to the client
           throw Error("Cannot store multiple values for column " + col + ". The duplicate entries are at indices " + std::to_string(i) + " and " + std::to_string(j));
         }
@@ -723,7 +743,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               std::ostringstream ss;
               ss << "Expected page, but got "
                 << DescribeMessageMagic(*rawPage);
-              LOG(LOG_TAG, warning) << ss.str();
+              PEP_LOG(LogTag, Severity::Warning) << ss.str();
               ctx->errors.push_back(ss.str());
               // An exception will be raised by the call (below) to Serialization::FromString<DataPayloadPage>
             }
@@ -771,11 +791,12 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
                   ctx->ids[i].clear();
                   std::ostringstream ss;
                   ss << "File " << i << " is not sane: " << e.what();
-                  LOG(LOG_TAG, warning) << ss.str();
+                  PEP_LOG(LogTag, Severity::Warning) << ss.str();
                   ctx->errors.push_back(ss.str());
                 }
-                server->mMetrics->entriesIncludingHistory.Set(static_cast<double>(server->mFileStore->entryCount()));
               }
+
+              server->updateFileStoreMetrics();
 
               if (!ctx->errors.empty()) {
                 auto description = boost::algorithm::join(ctx->errors, "; ");
@@ -824,7 +845,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   auto request = MakeSharedCopy(std::move(certified.message));
   auto userGroup = certified.signatory.organizationalUnit();
 
-  auto ticket = request->mTicket.open(*rootCAs, userGroup);
+  auto ticket = request->ticket_.open(*rootCAs, userGroup);
 
   if (!ticket.hasMode("write-meta")) {
     throw Error("Ticket is missing write-meta access mode");
@@ -954,7 +975,7 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
 messaging::MessageBatches
 StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest) {
   // TODO: consolidate duplicate code with handleDataEnumerationRequest2
-  LOG(LOG_TAG, debug) << "Received DataHistoryRequest2";
+  PEP_LOG(LogTag, Severity::Debug) << "Received DataHistoryRequest2";
 
   auto start_time = std::chrono::steady_clock::now();
   const auto& rootCAs = this->getRootCAs();
@@ -964,7 +985,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
-  auto ticket = request.mTicket.open(*rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket_.open(*rootCAs, accessGroup, "read-meta");
 
   DataHistoryResponse2 response;
 
@@ -1026,6 +1047,31 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
+messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = lpRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+
+  const auto& request = certified.message;
+
+  size_t entryCount{};
+  uint64_t totalBytes{}, rollingBytes{};
+  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
+
+  auto countBlocks = [blockSize = mDataSizeResolution](uint64_t bytes) {
+      assert(bytes % blockSize == 0U);
+      return bytes / blockSize;
+    };
+
+  return messaging::BatchSingleMessage(DataSizeResponse{
+    .mBlockSize = mDataSizeResolution,
+    .mTotalBlocks = countBlocks(totalBytes),
+    .mRollingBlocks = countBlocks(rollingBytes),
+    });
+}
+
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
@@ -1085,12 +1131,13 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   mWorkerPool(WorkerPool::getShared()),
   mFileStore(FileStore::Create(
     parameters->getStoragePath().string(),
-    parameters->getPageStoreConfig(),
+    *parameters->getPageStoreConfig(),
     parameters->getIoContext(),
     mRegistry)),
   mMetrics(std::make_shared<Metrics>(mRegistry)),
   mTimer(*parameters->getIoContext()),
-  mParallelisationWidth(parameters->getParallelisationWidth()) {
+  mParallelisationWidth(parameters->getParallelisationWidth()),
+  mDataSizeResolution(parameters->getDataSizeResolution()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,
@@ -1098,10 +1145,37 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleDataDeleteRequest2,
                           &StorageFacility::handleMetadataStoreRequest2,
                           &StorageFacility::handleDataEnumerationRequest2,
-                          &StorageFacility::handleDataHistoryRequest2);
+                          &StorageFacility::handleDataHistoryRequest2,
+                          &StorageFacility::handleDataSizeRequest);
 
-  mMetrics->entriesIncludingHistory.Set(static_cast<double>(mFileStore->entryCount()));
+  this->updateFileStoreMetrics();
   statsTimer({});
+}
+
+void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
+  uint64_t total{}, rolling{};
+  mFileStore->getMetrics(entryCount, total, rolling, columns);
+
+  auto round = [blockSize = mDataSizeResolution](uint64_t bytes) {
+      auto blocks = bytes / blockSize;
+      if (bytes % blockSize != 0U) {
+        ++blocks;
+      }
+      return blocks * blockSize;
+    };
+
+  roundedTotalBytes = round(total);
+  roundedRollingBytes = round(rolling);
+}
+
+void StorageFacility::updateFileStoreMetrics() {
+  size_t entryCount{};
+  uint64_t totalPayloadBytes{}, rollingPayloadBytes{};
+  this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+
+  mMetrics->entriesIncludingHistory.Set(static_cast<double>(entryCount));
+  mMetrics->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
+  mMetrics->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
 }
 
 }

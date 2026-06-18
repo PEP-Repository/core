@@ -186,7 +186,7 @@ public:
 
   //! \return HTTP Method of the request
   const networking::HttpMethod& getMethod() const {
-    return mMethod;
+    return method_;
   }
 
   const std::string& getHost() const {
@@ -207,7 +207,7 @@ private:
   void ensureHeader(const std::string& key, const std::string& value);
 
   std::string mHost;
-  networking::HttpMethod mMethod;
+  networking::HttpMethod method_;
   boost::urls::url mUri;
 };
 

@@ -7,9 +7,9 @@
 namespace pep {
 
 // See Messages.proto for description of versions.
-enum SignatureScheme {
-  SIGNATURE_SCHEME_V3 = 2,
-  SIGNATURE_SCHEME_V4 = 3
+enum class SignatureScheme {
+  V3 = 2,
+  V4 = 3
 };
 
 
@@ -35,7 +35,7 @@ class Signature {
 private:
   std::string mSignature;
   X509CertificateChain mCertificateChain;
-  SignatureScheme mScheme = SIGNATURE_SCHEME_V4;
+  SignatureScheme mScheme = SignatureScheme::V4;
   Timestamp mTimestamp;
   bool mIsLogCopy = false;
 
@@ -56,7 +56,7 @@ public:
       std::string_view data,
       const X509Identity& identity,
       bool isLogCopy=false,
-      SignatureScheme scheme=SIGNATURE_SCHEME_V4);
+      SignatureScheme scheme=SignatureScheme::V4);
 
   const X509CertificateChain& certificateChain() const noexcept { return mCertificateChain; }
   Timestamp timestamp() const { return mTimestamp; }

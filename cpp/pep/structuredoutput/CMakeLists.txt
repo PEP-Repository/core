@@ -6,7 +6,7 @@ add_library(${PROJECT_NAME}StructuredOutputlib STATIC
   Csv.hpp Csv.cpp
   FormatFlags.hpp FormatFlags.cpp
   IndexedStringPool.hpp
-  Json.hpp Json.cpp
+  Json.hpp
   Table.cpp Table.hpp
   Tree.hpp Tree.cpp
   Yaml.cpp Yaml.hpp

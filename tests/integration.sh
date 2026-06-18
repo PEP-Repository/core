@@ -79,7 +79,7 @@ test_cleanup() {
   declpep_wrapper cleanup "$@"
 }
 
-readonly default_skip=''
+readonly default_skip='weblib'
 
 usage() {
   echo "Usage:"
@@ -94,11 +94,14 @@ usage() {
   echo "                                this directory should have the /cpp/pep/ sub dirs. Default: CORE_DIR/build"
   echo " --build-mode <MODE>          - Only relevant when building with Visual Studio. Used to indicate sub directories of the build directory, e.g 'Debug' or 'Release'. Default: ."
   echo " --tests-to-run \"<TEST> [<TEST> [...]]\""
-  echo "                              - Subset of tests to run, separated by spaces, see integration.sh & pepcli_tests.bash. Default all"
+  echo "                              - Subset of tests to run, separated by spaces, see integration.sh & pepcli_tests.bash."
+  echo "                                --tests-to-skip takes precedence over this option. Default all (except --tests-to-skip)"
   echo " --tests-to-skip \"<TEST> [<TEST> [...]]\""
-  echo "                              - Subset of tests to skip, separated by spaces, see --tests-to-run. Default \"$default_skip\" unless included in --tests-to-run"
+  echo "                              - Subset of tests to skip, separated by spaces, see --tests-to-run. Takes precedence over --tests-to-run."
+  echo "                                Default \"$default_skip\" unless explicitly included in --tests-to-run"
   echo " --local                      - Run the tests using your local build. Expects the working directory to be your build directory."
   echo " --no-docker                  - Run tests without using Docker at all (i.e. without s3proxy). Only possible in local mode; some unit tests will be skipped."
+  echo " --publish-ports              - Publish Docker container ports to host, implied with --tests-to-run weblib."
   echo " --reuse-secrets-and-data     - Reuse the secrets and data already present in --generated-data-dir. Configuration is still copied over."
   echo " -h|--help|-?                 - Display this help"
   exit 2
@@ -113,6 +116,7 @@ check_option_has_value() {
 
 LOCAL=false
 USE_DOCKER=true
+PUBLISH_PORTS=false
 REUSE_SECRETS_AND_DATA=false
 while [ ${#} -gt 0 ];
 do
@@ -155,6 +159,7 @@ do
     -h|--help|-\?) usage ;;
     --local) LOCAL=true ;;
     --no-docker) USE_DOCKER=false ;;
+    --publish-ports) PUBLISH_PORTS=true ;;
     --inline-server-log) ;; # Legacy: this is the only option now
     --reuse-secrets-and-data) REUSE_SECRETS_AND_DATA=true ;;
     -?*)
@@ -189,7 +194,12 @@ echo "CORE_DIR: $CORE_DIR"
 
 GENERATED_DATA_DIR="${GENERATED_DATA_DIR:-"$CORE_DIR"/temp/integration}"
 
-if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
+if $REUSE_SECRETS_AND_DATA; then
+  if ! [ -d "$GENERATED_DATA_DIR" ]; then
+    >&2 printYellow "generated-data-dir ($GENERATED_DATA_DIR) does not exist, but reuse-secrets-and-data is enabled"
+    exit 1
+  fi
+else
   rm -rf "$GENERATED_DATA_DIR" || (printYellow "Attempting to delete files that were created by Docker, using elevated credentials. Please remove $GENERATED_DATA_DIR manually using sudo." && exit 1)
 fi
 mkdir -p "$GENERATED_DATA_DIR"
@@ -234,6 +244,10 @@ for test in $default_skip; do
 done
 readonly TESTS_TO_SKIP="$TESTS_TO_SKIP"
 echo "TESTS_TO_RUN: ${TESTS_TO_RUN:-<all>}; except TESTS_TO_SKIP: ${TESTS_TO_SKIP:-<none>}"
+
+if is_test_included weblib; then
+  PUBLISH_PORTS=true
+fi
 
 # Settings for pepStorageFacilityUnitTests
 export PEP_ROOT_CA=../pki/rootCA.cert
@@ -395,7 +409,18 @@ else
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" "$IMAGE" bash /app/config_servers.sh
   fi
-  trace docker run --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
+
+  publish_ports_flags=()
+  if $PUBLISH_PORTS; then
+    readarray -t publish_ports_flags < <(
+      docker inspect --format='{{json .Config.ExposedPorts}}' "$IMAGE" |
+      jq --raw-output 'keys[]' | sed 's/\(.*\)\/.*/--publish=\1:\0/')
+    if [ "${#publish_ports_flags[@]}" -eq 0 ]; then
+      fail "Failed to get exposed ports for Docker image"
+    fi
+  fi
+
+  trace docker run --net pep-network "${publish_ports_flags[@]}" -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
   docker logs --follow pepservertest 2> >(sed -u "s/^/[pep-services]: /" >&2) > >(sed -u "s/^/[pep-services]: /") &
 fi
 
@@ -444,6 +469,9 @@ else
   CONFIG_DIR="/data"
 fi
 
+readonly DEST_DIR="$CONFIG_DIR/test_output"
+execute . mkdir -p "$DEST_DIR"
+
 # shellcheck source=SCRIPTDIR/pepcli_tests.bash
 . "$TESTS_DIR/pepcli_tests.bash"
 
@@ -457,6 +485,63 @@ fi
 
 if should_run_test watchdog; then
   execute watchdog "$BUILD_DIR/go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog" -oneshot -instant-stressor
+fi
+
+####################
+
+# Requires pepWeblibJs target to be built
+if should_run_test weblib; then
+  trace cd "$CORE_DIR/weblib/pep-repo-client-lib/"
+
+  WASM_CONFIG='{
+    "columnGroups": [{
+      "name": "WasmTestColumnGroup",
+      "columns": [ "WasmTestColumn" ],
+      "cgars": { "Research Assessor": [ "read", "write" ] }
+    }],
+    "subjectGroups": [{
+      "name": "WasmTestSubjectGroup",
+      "pgars": { "Research Assessor": [ "enumerate", "access" ] }
+    }]
+  }'
+
+  test_setup "$WASM_CONFIG"
+
+  pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c WasmTestColumn \
+    -d 'Some small test data!' --metadataxentry "$(pepcli xentry --name fileExtension --payload .small)"
+
+  # Around 2MB
+  # Ignore SIGPIPE (141) because output is cut off
+  (yes 'Larger test data!' || [ $? = 141 ]) | head -120000 >"$DATA_DIR/file.large"
+  pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectLarge -c WasmTestColumn \
+    --input-path "$CONFIG_DIR/file.large"
+  rm "$DATA_DIR/file.large"
+
+  pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
+  pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
+
+  trace mkdir -p ./dist-test/
+  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR_ON_HOST/rootCA.cert" ./dist-test/
+
+  start_websocket_proxy_flags=()
+  if [ -n "${CI-}" ]; then
+    # Connect to docker:dind service container, see https://stackoverflow.com/a/48288560
+    start_websocket_proxy_flags+=(docker)
+  fi
+  printGreen "\$ ./start_websocket_proxy.sh ${start_websocket_proxy_flags[*]} &"
+  ./start_websocket_proxy.sh "${start_websocket_proxy_flags[@]}" &
+
+  # If this fails, you may need to source the EMSDK activation script and forward the Node.js PATH when using sudo via 'sudo \"PATH=\$PATH\" ...'
+  trace npm install
+
+  # Run "test" script from package.json
+  # This will run the *.spec.mts tests listed in .mocharc.yaml
+  trace npm test
+
+  trace kill % || true
+  trace wait -f % || true
+
+  test_cleanup "$WASM_CONFIG"
 fi
 
 ####################

@@ -30,7 +30,7 @@ using namespace pep;
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.Data");
+const std::string LogTag("CoreClient.Data");
 
 template<typename TResponse>
 rxcpp::observable<TResponse> BatchedRetrieve(
@@ -75,15 +75,15 @@ rxcpp::observable<TResponse> BatchedRetrieve(
 
 
 rxcpp::observable<EnumerateAndRetrieveResult>
-CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts) {
-  LOG(LOG_TAG, debug) << "enumerateAndRetrieveData";
+CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts) {
+  PEP_LOG(LogTag, Severity::Debug) << "enumerateAndRetrieveData";
 
   using Pages = std::vector<std::shared_ptr<DataPayloadPage>>;
   using IndexedPages = std::unordered_map<uint32_t, std::shared_ptr<Pages>>;
   struct Context {
     bool includeData{};
     uint64_t dataSizeLimit{};
-    std::shared_ptr<requestTicket2Opts> requestTicketOpts;
+    std::shared_ptr<RequestTicket2Opts> requestTicketOpts;
     std::optional<rxcpp::subscriber<EnumerateAndRetrieveResult>> subscriber;
     std::shared_ptr<SignedTicket2> signedTicket;
     std::shared_ptr<Ticket2> ticket;
@@ -95,7 +95,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
   ctx->includeData = opts.includeData;
   ctx->dataSizeLimit = opts.dataSizeLimit;
 
-  ctx->requestTicketOpts = std::make_shared<requestTicket2Opts>();
+  ctx->requestTicketOpts = std::make_shared<RequestTicket2Opts>();
   ctx->requestTicketOpts->modes = {opts.includeData ? "read" : "read-meta"};
   ctx->requestTicketOpts->participantGroups = opts.groups;
   ctx->requestTicketOpts->pps = opts.pps;
@@ -120,9 +120,9 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
         .flat_map([this, ctx](const IndexedTicket2& indexedTicket) {
           ctx->signedTicket = indexedTicket.getTicket();
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());
-          ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms);
+          ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms_);
           DataEnumerationRequest2 enumRequest;
-          enumRequest.mTicket = *ctx->signedTicket;
+          enumRequest.ticket_ = *ctx->signedTicket;
 
           if (ctx->requestTicketOpts->ticket != nullptr) {
             std::unordered_set<uint32_t> pseudIdxs;
@@ -169,7 +169,7 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
               colIdxs.begin(), colIdxs.end()));
           }
 
-          return storageFacilityProxy->requestDataEnumeration(std::move(enumRequest))
+          return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
               [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, DataEnumerationResponse2 response) {
@@ -230,8 +230,8 @@ CoreClient::enumerateAndRetrieveData2(const enumerateAndRetrieveData2Opts& opts)
                   const std::vector<std::string>& ids) {
                   DataReadRequest2 readRequest;
                   readRequest.mIds = ids;
-                  readRequest.mTicket = *ticket;
-                  return storageFacilityProxy->requestDataRead(std::move(readRequest))
+                  readRequest.ticket_ = *ticket;
+                  return getStorageFacilityProxy(true)->requestDataRead(std::move(readRequest))
                     .map([](DataPayloadPage page) { return MakeSharedCopy(std::move(page)); });
                 })
                 .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->mIndex; }))

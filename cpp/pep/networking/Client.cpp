@@ -10,7 +10,7 @@ class Client::Connection : public networking::Connection, public std::enable_sha
   friend class Client;
 
 private:
-  std::weak_ptr<Client> mClient;
+  std::weak_ptr<Client> client_;
   std::optional<ExponentialBackoff> mBackoff;
   bool mReconnect = false;
 
@@ -54,7 +54,7 @@ void Client::Connection::establish() {
   mReconnect = true;
   this->setConnectivityStatus(ConnectivityStatus::Connecting);
 
-  auto client = mClient.lock();
+  auto client = client_.lock();
   if (client == nullptr || !client->isRunning()) {
     return this->close();
   }
@@ -69,7 +69,7 @@ void Client::Connection::establish() {
       return;
     }
 
-    auto client = self->mClient.lock();
+    auto client = self->client_.lock();
     if (client == nullptr || !client->isRunning()) {
       self->onConnectionAttempt.notify(Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Client was shut down"))));
       self->close();
@@ -87,7 +87,7 @@ void Client::Connection::establish() {
         message << " Retrying in " << duration_cast<std::chrono::milliseconds>(*latency);
       }
 
-      LOG("Networking client", warning) << message.str();
+      PEP_LOG("Networking client", Severity::Warning) << message.str();
       self->onConnectionAttempt.notify(Attempt::Result::Failure(socketResult.exception()));
       return;
     }
@@ -110,7 +110,7 @@ void Client::Connection::establish() {
 }
 
 bool Client::Connection::shouldReconnect() const noexcept {
-  auto client = mClient.lock();
+  auto client = client_.lock();
   return client != nullptr && client->isRunning() // Don't reconnect if the client has been shut down...
     && mReconnect && mBackoff.has_value(); // ... or if we've been instructed not to
 }
@@ -151,7 +151,7 @@ void Client::shutdown() {
 }
 
 Client::Connection::Connection(std::weak_ptr<Client> client, boost::asio::io_context& ioContext, const std::optional<ReconnectParameters>& reconnectParameters)
-  : mClient(client) {
+  : client_(client) {
   if (reconnectParameters.has_value()) {
     mBackoff = ExponentialBackoff(ioContext, *reconnectParameters);
   }

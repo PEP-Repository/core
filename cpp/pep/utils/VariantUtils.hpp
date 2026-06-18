@@ -30,11 +30,11 @@ namespace detail {
 ///
 /// @note Requires _partial_ specialization, so this needs to be a class template
 template <typename T, VariantType V>
-struct is_alternative_of;
+struct IsAlternativeOf;
 
 // partial specialization for V matching std::variant<Ts...> (which is exactly VariantType)
 template <typename T, typename... Ts>
-struct is_alternative_of<T, std::variant<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
+struct IsAlternativeOf<T, std::variant<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
 
 } // namespace detail
 
@@ -46,7 +46,7 @@ struct is_alternative_of<T, std::variant<Ts...>> : std::disjunction<std::is_same
 ///   std::size_t toString(T alternative) { return alternative.size(); }
 ///   ```
 template <typename T, typename VariantType> // params seem backwards but works as `AlternativeOf<VariantT> AlternativeT`
-concept AlternativeOf = detail::is_alternative_of<T, VariantType>::value;
+concept AlternativeOf = detail::IsAlternativeOf<T, VariantType>::value;
 
 static_assert(!AlternativeOf<int, std::variant<bool, float>>);
 static_assert(AlternativeOf<int, std::variant<bool, int, float>>);

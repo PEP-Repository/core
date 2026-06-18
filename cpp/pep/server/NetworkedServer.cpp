@@ -7,11 +7,11 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG = "Networked server";
+const std::string LogTag = "Networked server";
 
-std::shared_ptr<messaging::Node> CreateNetworkingNode(boost::asio::io_context& ioContext, std::shared_ptr<Server> server, const Configuration& config) {
+std::shared_ptr<messaging::Node> CreateNetworkingNode(boost::asio::io_context& ioContext, std::shared_ptr<Server> server, const X509RootCertificates& rootCas, const Configuration& config) {
   auto port = config.get<uint16_t>("ListenPort");
-  auto identity = X509IdentityFiles::FromConfig(config, "TLS");
+  auto identity = X509IdentityFiles::FromConfig(config.get_child("TlsIdentity"), rootCas);
   auto binaryParameters = pep::messaging::BinaryProtocol::CreateServerParameters(ioContext, port, std::move(identity));
   return messaging::Node::Create(*binaryParameters, *server);
 }
@@ -48,8 +48,8 @@ public:
 
 }
 
-NetworkedServer::NetworkedServer(std::shared_ptr<boost::asio::io_context> ioContext, std::shared_ptr<Server> server, const Configuration& config)
-  : mIoContext(ioContext), mServer(std::move(server)), mNetwork(CreateNetworkingNode(*ioContext, mServer, config)) {
+NetworkedServer::NetworkedServer(std::shared_ptr<boost::asio::io_context> ioContext, std::shared_ptr<Server> server, const X509RootCertificates& rootCas, const Configuration& config)
+  : mIoContext(ioContext), mServer(std::move(server)), mNetwork(CreateNetworkingNode(*ioContext, mServer, rootCas, config)) {
 }
 
 void NetworkedServer::start() {
@@ -57,13 +57,13 @@ void NetworkedServer::start() {
     .subscribe(
       [this](const messaging::Connection::Attempt::Result& result) {
         if (!result) {
-          LOG(LOG_TAG, severity_level::warning) << "Incoming connection to " << mServer->describe() << " could not be established: " << GetExceptionMessage(result.exception());
+          PEP_LOG(LogTag, Severity::Warning) << "Incoming connection to " << mServer->describe() << " could not be established: " << GetExceptionMessage(result.exception());
         } else {
           ConnectionKeeper::Create(*result, mServer);
         }
       },
       [](std::exception_ptr error) {
-        LOG(LOG_TAG, severity_level::error) << "Server networking failed due to " << GetExceptionMessage(error);
+        PEP_LOG(LogTag, Severity::Error) << "Server networking failed due to " << GetExceptionMessage(error);
       },
       []() {
         assert(false); // Should never occur because we don't invoke mNetwork.shutdown()

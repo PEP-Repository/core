@@ -1,3 +1,4 @@
+#include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/auth/UserGroup.hpp>
@@ -19,10 +20,10 @@ using namespace std::chrono;
 
 namespace pep::cli {
 
-const std::string LOG_TAG = "Cli";
+const std::string LogTag = "Cli";
 
-std::optional<pep::severity_level> CliApplication::consoleLogMinimumSeverityLevel() const {
-  return pep::severity_level::info;
+std::optional<Severity> CliApplication::consoleLogMinimumSeverityLevel() const {
+  return Severity::Info;
 }
 
 std::string CliApplication::getDescription() const {
@@ -44,18 +45,18 @@ void CliApplication::finalizeParameters() {
   // Get explicitly specified parameter values (before defaults are applied by base class's finalizeParameters)
   const auto& values = this->getParameterValues();
   if (values.has("oauth-token-subject")) {
-    mRequiredSubject = values.get<std::string>("oauth-token-subject");
+    requiredSubject_ = values.get<std::string>("oauth-token-subject");
   }
   if (values.has("oauth-token-group")) {
-    mRequiredGroup = values.get<std::string>("oauth-token-group");
+    requiredGroup_ = values.get<std::string>("oauth-token-group");
   }
 
   pep::commandline::Utility::finalizeParameters();
 }
 
 rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnrolled) {
-  if (mClient != nullptr) {
-    assert(mWorkGuard != nullptr);
+  if (client_ != nullptr) {
+    assert(workGuard_ != nullptr);
     return rxcpp::observable<>::just(pep::FakeVoid());
   }
 
@@ -80,11 +81,11 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
   // ----- Situation 1: OAuth token provided on command line -----
   token = this->getTokenParameter();
   if (token != std::nullopt) {
-    LOG(LOG_TAG, pep::info) << "Enrolling using provided OAuth token" << std::endl;
+    PEP_LOG(LogTag, Severity::Info) << "Enrolling using provided OAuth token" << std::endl;
     enroll = true;
-    if (!token->verify(mRequiredSubject, mRequiredGroup)) {
-      if (mRequiredSubject && mRequiredGroup)
-        throw std::runtime_error("Provided token not usable, expected subject: " + *mRequiredSubject + "and group: " + *mRequiredGroup);
+    if (!token->verify(requiredSubject_, requiredGroup_)) {
+      if (requiredSubject_ && requiredGroup_)
+        throw std::runtime_error("Provided token not usable, expected subject: " + *requiredSubject_ + "and group: " + *requiredGroup_);
       else
         throw std::runtime_error("Provided token not usable");
     }
@@ -98,16 +99,16 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
       auto enrolledGroup = client->getEnrolledGroup();
       auto enrolledSubject = client->getEnrolledUser();
 
-      if (mRequiredGroup && (enrolledGroup != *mRequiredGroup)) {
-        LOG(LOG_TAG, pep::info) << "Enrolled for wrong group (" << enrolledGroup << ")" << std::endl;
+      if (requiredGroup_ && (enrolledGroup != *requiredGroup_)) {
+        PEP_LOG(LogTag, Severity::Info) << "Enrolled for wrong group (" << enrolledGroup << ")" << std::endl;
         enroll = true;
       }
-      if (mRequiredSubject && (enrolledSubject != *mRequiredSubject)) {
-        LOG(LOG_TAG, pep::info) << "Enrolled as wrong user (" << enrolledSubject << ")" << std::endl;
+      if (requiredSubject_ && (enrolledSubject != *requiredSubject_)) {
+        PEP_LOG(LogTag, Severity::Info) << "Enrolled as wrong user (" << enrolledSubject << ")" << std::endl;
         enroll = true;
       }
     } else if (enroll) {
-      LOG(LOG_TAG, pep::info) << "Not enrolled or certificate expired." << std::endl;
+      PEP_LOG(LogTag, Severity::Info) << "Not enrolled or certificate expired." << std::endl;
     }
   }
 
@@ -120,12 +121,12 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
     // ----- Situation 4: cached token -----
     if (!token) {
       if (std::filesystem::exists(tokenPath)) {
-        LOG(LOG_TAG, pep::info)
-          << "Cached token found in "
-          << std::filesystem::canonical(tokenPath) << std::endl;
+        PEP_LOG(LogTag, Severity::Info)
+          << "Cached token found in \""
+          << std::filesystem::canonical(tokenPath).string() << '"' << std::endl;
         token = pep::OAuthToken::ReadJson(tokenPath);
-        if (!token->verify(mRequiredSubject, mRequiredGroup)) {
-          LOG(LOG_TAG, pep::info) << "Not using cached token because it did not pass verification";
+        if (!token->verify(requiredSubject_, requiredGroup_)) {
+          PEP_LOG(LogTag, Severity::Info) << "Not using cached token because it did not pass verification";
           token = std::nullopt;
         }
       }
@@ -138,7 +139,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
         const auto now = TimeNow<sys_seconds>();
         const seconds oauthTokenDuration{parameterValues.get<seconds::rep>("oauth-token-duration")};
 
-        LOG(LOG_TAG, pep::info) << " generated new token using oauth token secret" << std::endl;
+        PEP_LOG(LogTag, Severity::Info) << " generated new token using oauth token secret" << std::endl;
         token = pep::OAuthToken::Generate(
           *tokenSecret,
           cmdlineSubject,
@@ -161,14 +162,14 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
 
     result = client->enrollUser(
       token->getSerializedForm()
-    ).map([](pep::EnrollmentResult result) {
-      LOG(LOG_TAG, pep::info) << " completed enrollment!" << std::endl;
+    ).map([](const EnrolledPartyKeys&) {
+      PEP_LOG(LogTag, Severity::Info) << " completed enrollment!" << std::endl;
       return pep::FakeVoid();
       });
   }
 
-  mWorkGuard = std::make_unique<WorkGuard>(*io_context);
-  mClient = client;
+  workGuard_ = std::make_unique<WorkGuard>(*io_context);
+  client_ = client;
 
   return result;
 }
@@ -194,7 +195,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       CreateCommandHistory(*this),
       CreateCommandFileExtension(*this),
       CreateCommandToken(*this),
-      CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
+      pep::commandline::CreateNoLongerSupportedCommand(*this, "asa", "Use 'user' or 'token' instead."),
       CreateCommandStructureMetadata(*this),
       CreateCommandServer(*this),
   };
@@ -203,43 +204,53 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
 }
 
 int CliApplication::executeEventLoopFor(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::Client> client)> callback) {
-  int result{-1};
+  int result{ -1 };
 
-  auto stopEventLoop = [this, &result](int exitCode) {
-    result = exitCode;
-    mWorkGuard.reset();
+  auto stopEventLoop = [this, &result, invoked = MakeSharedCopy(false)](std::exception_ptr exception) {
+    Severity severity{};
+    if (!*invoked) { // First invocation: determine the application's (output and) exit code
+      *invoked = true;
+      severity = Severity::Error;
+      result = (exception ? 4 : 0);
+    }
+    else { // Recursive invocation due to errors during client_->shutdown, which commonly are "Server connection is shutting down"
+      severity = Severity::Debug;
+    }
 
-    if (mClient == nullptr)
+    workGuard_.reset();
+    if (client_ == nullptr)
       return;
 
-    mClient->shutdown().subscribe(
+    if (exception != nullptr) {
+      PEP_LOG(LogTag, severity) << "error: " << pep::GetExceptionMessage(exception) << std::endl;
+    }
+
+    client_->shutdown().subscribe(
       [](pep::FakeVoid) {},
       [this](std::exception_ptr ep) {
-        mClient->getIoContext()->stop();
-        LOG(LOG_TAG, pep::error) << "Unexpected problem shutting down SSL streams: " + pep::GetExceptionMessage(ep) << " | Forcefully shutting down.";
+        client_->getIoContext()->stop();
+        PEP_LOG(LogTag, Severity::Error) << "Unexpected problem shutting down SSL streams: " + pep::GetExceptionMessage(ep) << " | Forcefully shutting down.";
       },
       [] {});
     };
 
   connectClient(ensureEnrolled)
     .flat_map([this, callback](pep::FakeVoid unused) {
-    return callback(mClient);
-      }).subscribe(
-        [](pep::FakeVoid) { /* ignore */ },
-        [stopEventLoop](std::exception_ptr ep) {
-          LOG(LOG_TAG, pep::error) << "error: " << pep::GetExceptionMessage(ep) << std::endl;
-          stopEventLoop(4);
-        },
-        [stopEventLoop]() {stopEventLoop(0); }
-      );
+        return callback(client_);
+      })
+    .subscribe(
+      [](pep::FakeVoid) { /* ignore */ },
+      [stopEventLoop](std::exception_ptr ep) { stopEventLoop(ep); },
+      [stopEventLoop]() {stopEventLoop(nullptr); }
+    );
 
-      assert(mClient != nullptr);
+  assert(client_ != nullptr);
 
-      // io_context.run() usually returns when there is no work to do.
-      // Our this->mWorkGuard prevents this though.
-      mClient->getIoContext()->run();
-      mClient = nullptr;
-      return result;
+  // io_context.run() usually returns when there is no work to do.
+  // Our this->workGuard_ prevents this though.
+  client_->getIoContext()->run();
+  client_ = nullptr;
+  return result;
 }
 
 std::optional<std::string> CliApplication::getTokenSecret() const {
@@ -262,9 +273,9 @@ std::optional<std::string> CliApplication::getTokenSecret() const {
   pep::Configuration root = pep::Configuration::FromFile(tokenSecret);
   std::string secret = boost::algorithm::unhex(root.get<std::string>("OAuthTokenSecret"));
 
-  LOG(LOG_TAG, pep::info)
+  PEP_LOG(LogTag, Severity::Info)
     << " found oauth token secret in "
-    << std::filesystem::canonical(tokenSecret) << std::endl;
+    << std::filesystem::canonical(tokenSecret).string() << std::endl;
 
   return secret;
 

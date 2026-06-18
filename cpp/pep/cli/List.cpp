@@ -62,52 +62,52 @@ protected:
   int execute() override {
     class SubjectData {
     private:
-      pep::PolymorphicPseudonym mPp;
-      bool mCollectMetadata;
-      std::optional<std::string> mLp;
-      std::optional<std::string> mBlp;
-      pt::ptree mValues;
-      pt::ptree mMetadata;
-      pt::ptree mIds;
+      pep::PolymorphicPseudonym pp_;
+      bool collectMetadata_;
+      std::optional<std::string> lp_;
+      std::optional<std::string> blp_;
+      pt::ptree values_;
+      pt::ptree metadata_;
+      pt::ptree ids_;
 
     public:
       SubjectData(const pep::EnumerateAndRetrieveResult& ear, bool collectMetadata, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : mPp(ear.mLocalPseudonyms->mPolymorphic), mCollectMetadata(collectMetadata) {
+        : pp_(ear.mLocalPseudonyms->mPolymorphic), collectMetadata_(collectMetadata) {
         if (ear.mAccessGroupPseudonym != nullptr) {
-          mLp = ear.mAccessGroupPseudonym->text();
+          lp_ = ear.mAccessGroupPseudonym->text();
           if (globalConfig) {
-            mBlp = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*ear.mAccessGroupPseudonym);
+            blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*ear.mAccessGroupPseudonym);
           }
         }
         this->add(ear);
       }
 
       SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : mPp(pp), mCollectMetadata(false), mLp(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
+        : pp_(pp), collectMetadata_(false), lp_(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
         if (lp.has_value() && globalConfig) {
-          mBlp = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*lp);
+          blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*lp);
         }
       }
 
-      const pep::PolymorphicPseudonym& pp() const noexcept { return mPp; }
+      const pep::PolymorphicPseudonym& pp() const noexcept { return pp_; }
 
       bool hasData() const {
-        return !mValues.empty();
+        return !values_.empty();
       }
 
       void add(const pep::EnumerateAndRetrieveResult& ear) {
-        assert(mPp == ear.mLocalPseudonyms->mPolymorphic);
+        assert(pp_ == ear.mLocalPseudonyms->mPolymorphic);
 
         if (ear.mDataSet) {
-          mValues.push_back(pt::ptree::value_type(
+          values_.push_back(pt::ptree::value_type(
             ear.mColumn, ear.mData));
         }
         else {
-          mIds.push_back(pt::ptree::value_type(
+          ids_.push_back(pt::ptree::value_type(
             ear.mColumn, boost::algorithm::hex(ear.mId)));
         }
 
-        if (mCollectMetadata) {
+        if (collectMetadata_) {
           pt::ptree mdpt;
           pep::Metadata md = ear.mMetadataDecrypted
             ? *(ear.mMetadataDecrypted) : ear.mMetadata;
@@ -121,24 +121,24 @@ protected:
           std::istringstream ss(std::move(mdjson));
           pt::json_parser::read_json(ss, mdpt);
 
-          mMetadata.push_back(pt::ptree::value_type(
+          metadata_.push_back(pt::ptree::value_type(
             ear.mColumn, std::move(mdpt)));
         }
       }
 
       pt::ptree toPropertyTree() const {
         pt::ptree tree;
-        if (!mValues.empty())
-          tree.add_child("data", mValues);
-        if (!mIds.empty())
-          tree.add_child("ids", mIds);
-        if (!mMetadata.empty())
-          tree.add_child("metadata", mMetadata);
-        tree.put("pp", mPp.text());
-        if (mLp.has_value())
-          tree.put("lp", *mLp);
-        if (mBlp.has_value())
-          tree.put("blp", *mBlp);
+        if (!values_.empty())
+          tree.add_child("data", values_);
+        if (!ids_.empty())
+          tree.add_child("ids", ids_);
+        if (!metadata_.empty())
+          tree.add_child("metadata", metadata_);
+        tree.put("pp", pp_.text());
+        if (lp_.has_value())
+          tree.put("lp", *lp_);
+        if (blp_.has_value())
+          tree.put("blp", *blp_);
         return tree;
       }
     };
@@ -146,11 +146,11 @@ protected:
     struct Context {
       const pep::commandline::NamedValues mParameterValues;
       bool mHasPrintedData = false;
-      pep::enumerateAndRetrieveData2Opts mEarOpts;
+      pep::EnumerateAndRetrieveData2Opts mEarOpts;
       bool mPrintMetadata = false;
       bool mGroupOutput = false;
       std::string mFormat;
-      std::shared_ptr<pep::GlobalConfiguration> mGlobalConfig;
+      std::shared_ptr<pep::GlobalConfiguration> globalConfig_;
       std::unordered_map<uint32_t, SubjectData> mSubjects;
       size_t mDataCount{ 0 };
       std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> mPseudsToReport;
@@ -181,7 +181,7 @@ protected:
           if (report.second.has_value()) {
             decrypted = client->decryptLocalPseudonym(*report.second);
           }
-          SubjectData data(report.first, decrypted, mGlobalConfig);
+          SubjectData data(report.first, decrypted, globalConfig_);
           mSubjects.emplace(std::make_pair(index++, std::move(data))); // ...to add an entry to our "subjects" field...
         }
 
@@ -196,7 +196,7 @@ protected:
           if (!mGroupOutput) {
             collectSubjects();
           }
-          [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata, mGlobalConfig));
+          [[maybe_unused]] auto emplaced = mSubjects.emplace(ear.mLocalPseudonymsIndex, SubjectData(ear, mPrintMetadata, globalConfig_));
           assert(emplaced.second);
         }
         else {
@@ -254,7 +254,7 @@ protected:
         rxcpp::observable<pep::FakeVoid> configObservable;
         if (ctx->mEarOpts.includeAccessGroupPseudonyms) {
           configObservable = client->getGlobalConfiguration().map([ctx](std::shared_ptr<pep::GlobalConfiguration> gc) { 
-              ctx->mGlobalConfig = gc; 
+              ctx->globalConfig_ = gc; 
               return pep::FakeVoid(); 
             });
         } else {
@@ -263,7 +263,7 @@ protected:
 
         return configObservable.flat_map([ctx, client](pep::FakeVoid) {
 
-        pep::requestTicket2Opts tOpts;
+        pep::RequestTicket2Opts tOpts;
         tOpts.pps = ctx->mEarOpts.pps;
         tOpts.columns = ctx->mEarOpts.columns;
         tOpts.columnGroups = ctx->mEarOpts.columnGroups;
@@ -305,7 +305,7 @@ protected:
         
         ctx->printQueryInfo();
         if (ctx->mHasPrintedData) {
-          LOG(LOG_TAG, pep::warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
+          PEP_LOG(LogTag, pep::Severity::Warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";
         }
       }));
       });

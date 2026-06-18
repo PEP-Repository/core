@@ -54,7 +54,7 @@ endif()
 message("Using infra   config files from directory ${PEP_INFRA_DIR}")
 message("Using project config files from directory ${PEP_PROJECT_DIR}")
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
+if(CMAKE_HOST_SYSTEM_NAME MATCHES "Windows")
     execute_process(
         COMMAND cmd /c ${PROJECT_SOURCE_DIR}/scripts/windows-to-sh-path.bat ${PEP_INFRA_DIR}
         OUTPUT_VARIABLE PEP_SH_INFRA_DIR

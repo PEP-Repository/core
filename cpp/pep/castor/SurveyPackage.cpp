@@ -12,16 +12,16 @@ const std::string SurveyPackage::EMBEDDED_API_NODE_NAME = "survey_packages";
 
 SurveyPackage::SurveyPackage(std::shared_ptr<Study> study, JsonPtr json)
   : SimpleCastorChildObject<SurveyPackage, Study>(study, json),
-  mName(GetFromPtree<std::string>(*json, "name")),
-  mSurveysJson(std::make_unique<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "_embedded.surveys"))) { // Documented on https://data.castoredc.com/api#/survey/get_study__study_id__surveypackage as "_embbeded" (note the typo) and without a child node
+  name_(GetFromPtree<std::string>(*json, "name")),
+  surveysJson_(std::make_unique<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "_embedded.surveys"))) { // Documented on https://data.castoredc.com/api#/survey/get_study__study_id__surveypackage as "_embbeded" (note the typo) and without a child node
 }
 
 std::string SurveyPackage::getName() const {
-  return mName;
+  return name_;
 }
 
 rxcpp::observable<std::shared_ptr<Survey>> SurveyPackage::getSurveys() const {
-  return RxIterate(*mSurveysJson /*don't move member*/)
+  return RxIterate(*surveysJson_ /*don't move member*/)
     .map([self = SharedFrom(*this)](auto item) { return Survey::Create(self->getParent(), std::make_shared<boost::property_tree::ptree>(std::move(item.second))); });
 }
 

@@ -12,8 +12,8 @@ namespace castor {
  */
 class Site : public SimpleCastorChildObject<Site, Study>, public SharedConstructor<Site> {
  private:
-  std::string mAbbreviation;
-  std::string mName;
+  std::string abbreviation_;
+  std::string name_;
 
  public:
   static const std::string RELATIVE_API_ENDPOINT;

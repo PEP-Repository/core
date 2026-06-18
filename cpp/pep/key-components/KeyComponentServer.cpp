@@ -1,5 +1,6 @@
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -12,7 +13,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG = "Key component server";
+const std::string LogTag = "Key component server";
 
 }
 
@@ -37,7 +38,8 @@ KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
   SigningServer(parameters),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
   mDataTranslator(parameters->getDataTranslator()),
-  mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())) {
+  mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())),
+  mSystemPublicKeys(parameters->getSystemPublicKeys()) {
 
   RegisterRequestHandlers(*this, &KeyComponentServer::handleKeyComponentRequest);
 }
@@ -66,28 +68,23 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
 
 KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config) {
-  std::filesystem::path systemKeysFile;
+  std::filesystem::path systemPrivateKeysFile;
 
   try {
-    if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
-      systemKeysFile = optionalSystemKeysFile.value();
-    } else {
-      //Legacy version, from when we still had a (Soft)HSM. TODO: use new version in configuration for all environments, and remove legacy version.
-      systemKeysFile = config.get<std::filesystem::path>("HSM.ConfigFile");
-    }
+    systemPrivateKeysFile = config.get<std::filesystem::path>("SystemPrivateKeysFile");
+    systemPublicKeys = config.get<SystemPublicKeys>("SystemPublicKeys");
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
   boost::property_tree::ptree systemKeys;
-  boost::property_tree::read_json(std::filesystem::canonical(systemKeysFile).string(), systemKeys);
+  boost::property_tree::read_json(std::filesystem::canonical(systemPrivateKeysFile).string(), systemKeys);
   systemKeys = systemKeys.get_child_optional("Keys") //Old HSMKeys.json files have the keys in a Keys-object
     .get_value_or(systemKeys); //we now also allow them to be directly in the root, resulting in cleaner SystemKeys-files
   setPseudonymTranslator(std::make_shared<PseudonymTranslator>(ParsePseudonymTranslationKeys(systemKeys)));
   setDataTranslator(std::make_shared<DataTranslator>(ParseDataTranslationKeys(systemKeys)));
-
 }
 
 std::shared_ptr<PseudonymTranslator> KeyComponentServer::Parameters::getPseudonymTranslator() const {

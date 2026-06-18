@@ -35,7 +35,7 @@ public:
     mAccessManager(am),
     mStorageFacility(sf),
     mTranscryptor(ts),
-    mUserGroup(ug),
+    userGroup_(ug),
     mAccessManagerProof(amProof),
     mStorageFacilityProof(sfProof),
     mTranscryptorProof(tsProof),
@@ -47,7 +47,7 @@ public:
   EncryptedLocalPseudonym mAccessManager;
   EncryptedLocalPseudonym mStorageFacility;
   EncryptedLocalPseudonym mTranscryptor;
-  std::optional<EncryptedLocalPseudonym> mUserGroup;
+  std::optional<EncryptedLocalPseudonym> userGroup_;
 
   RskProof mAccessManagerProof;
   RskProof mStorageFacilityProof;
@@ -78,7 +78,7 @@ public:
 
 class LogIssuedTicketRequest {
 public:
-  SignedTicket2 mTicket;
+  SignedTicket2 ticket_;
   std::string mId;
 };
 

@@ -16,14 +16,18 @@
 
 namespace pep {
 
-static const std::string LOG_TAG ("LocalSettings");
+namespace {
+
+const std::string LogTag("LocalSettings");
+
+}
 
 bool LocalSettings::retrieveValue(
   std::string* lpValue,
   const std::string& szNamespace,
   const std::string& szPropertyName
 ) const {
-  if (auto value = mPropertyTree.get_optional<std::string>(szNamespace + "." + szPropertyName)) {
+  if (auto value = propertyTree_.get_optional<std::string>(szNamespace + "." + szPropertyName)) {
     *lpValue = std::move(*value);
     return true;
   }
@@ -54,7 +58,7 @@ bool LocalSettings::storeValue(
   const std::string& szPropertyName,
   const std::string& szValue
 ) {
-  mPropertyTree.put (szNamespace + "." + szPropertyName, szValue);
+  propertyTree_.put (szNamespace + "." + szPropertyName, szValue);
   return true;
 }
 
@@ -63,12 +67,12 @@ bool LocalSettings::storeValue(
   const std::string& szPropertyName,
   int dwValue
 ) {
-  mPropertyTree.put (szNamespace + "." + szPropertyName, std::to_string(dwValue));
+  propertyTree_.put (szNamespace + "." + szPropertyName, std::to_string(dwValue));
   return true;
 }
 
 bool LocalSettings::deleteValue (const std::string& szNamespace, const std::string& szPropertyName) {
-  if (auto nodeRef = mPropertyTree.get_child_optional(szNamespace)) {
+  if (auto nodeRef = propertyTree_.get_child_optional(szNamespace)) {
     const auto numErasedChildren = nodeRef->erase(szPropertyName);
     return numErasedChildren > 0;
   }
@@ -198,12 +202,12 @@ LocalSettingsRegistry::LocalSettingsRegistry (const std::string& szSubKeyName) {
     return;
   }
 
-  mPropertyTree = RetrieveRecursive (mRegistryHandle);
+  propertyTree_ = RetrieveRecursive (mRegistryHandle);
 }
 
 bool LocalSettingsRegistry::flushChanges () {
   DeleteRecursive (mRegistryHandle, mDeletedValues);
-  StoreRecursive (mRegistryHandle, mPropertyTree, mModifiedValues);
+  StoreRecursive (mRegistryHandle, propertyTree_, mModifiedValues);
   mDeletedValues.clear();
   mModifiedValues.clear();
   return true;
@@ -345,14 +349,14 @@ void LocalSettingsRegistry::StoreRecursive (
 
       auto nodeRef = mPropertySubtree.get_child_optional(it->first);
       if (!nodeRef) {
-        LOG(LOG_TAG, debug) << "Unable to find entry " << it->first << " in value subtree";
+        PEP_LOG(LogTag, Severity::Debug) << "Unable to find entry " << it->first << " in value subtree";
         continue;
       }
       const auto& mValueNode = *nodeRef;
 
       if (!mValueNode.empty()) {
         /* mValueNode should always contain values, not subtrees */
-        LOG(LOG_TAG, debug) << "Entry " << it->first << " in value subtree is not a leaf";
+        PEP_LOG(LogTag, Severity::Debug) << "Entry " << it->first << " in value subtree is not a leaf";
         continue;
       }
 
@@ -384,7 +388,7 @@ void LocalSettingsRegistry::StoreRecursive (
         mChildPropertySubtree = mPropertySubtree.get_child(it->first);
         StoreRecursive(mChildSubKey, mChildPropertySubtree, it->second);
       } catch (const boost::property_tree::ptree_bad_path&) {
-        LOG(LOG_TAG, debug) << "Entry " << it->first << " is flagged modified but not found in property tree";
+        PEP_LOG(LogTag, Severity::Debug) << "Entry " << it->first << " is flagged modified but not found in property tree";
       }
 
       ::RegCloseKey(mChildSubKey);
@@ -437,7 +441,7 @@ LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
 
   // Can we find & open the file?
   if (std::ifstream iniStream{this->szFilename}) {
-    read_ini(iniStream, mPropertyTree);
+    read_ini(iniStream, propertyTree_);
   }
 }
 
@@ -448,9 +452,9 @@ bool LocalSettingsIni::flushChanges() {
   permissions(dir, std::filesystem::perms::owner_all);
 
   try {
-    boost::property_tree::write_ini (this->szFilename, mPropertyTree);
+    boost::property_tree::write_ini (this->szFilename, propertyTree_);
   } catch (const std::exception& e) {
-    LOG(LOG_TAG, debug) << "Unable to write ini : " << e.what();
+    PEP_LOG(LogTag, Severity::Debug) << "Unable to write ini : " << e.what();
     return false;
   }
   return true;

@@ -25,10 +25,10 @@ std::string GenerateShortPseudonym(std::string_view prefix, std::size_t len);
   */
 bool ShortPseudonymIsValid(const std::string& shortPseudonym);
 
-enum CastorStudyType {
-  STUDY = 0,
-  SURVEY = 1,
-  REPEATING_DATA = 2
+enum class CastorStudyType {
+  Crf = 0,
+  Survey = 1,
+  RepeatingData = 2
 };
 
 class CastorStorageDefinition {

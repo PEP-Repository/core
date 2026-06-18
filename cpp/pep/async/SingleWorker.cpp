@@ -4,8 +4,8 @@
 namespace pep {
 
 void SingleWorker::ensureRunning() {
-  if(!mWorkGuard) {
-    mWorkGuard = std::make_unique<WorkGuard>(*mIoContext);
+  if(!workGuard_) {
+    workGuard_ = std::make_unique<WorkGuard>(*mIoContext);
   }
   if(mIoContext->stopped()) {
     if (mThread.joinable()) {
@@ -27,7 +27,7 @@ SingleWorker::SingleWorker()
 
 SingleWorker::~SingleWorker() {
   std::lock_guard lockGuard(mMutex); // Concurrently calling join() on the same thread object from multiple threads constitutes a data race that results in undefined behavior. (https://en.cppreference.com/w/cpp/thread/thread/join)
-  mWorkGuard.reset();
+  workGuard_.reset();
   if(mThread.joinable()) {
     mThread.join();
   }

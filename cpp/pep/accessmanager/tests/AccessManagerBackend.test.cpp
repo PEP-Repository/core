@@ -228,11 +228,11 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_no_column_acce
 TEST_F(AccessManagerBackendTest, checkTicketRequest_happy) {
   TicketRequest2 request;
   // Existing participantGroup
-  request.mParticipantGroups.push_back(constants.pg1);
+  request.participantGroups_.push_back(constants.pg1);
   // Not both participantGroups and participants
   request.mAccessSubjects = {};
   // Existing columnGroup
-  request.mColumnGroups.push_back(constants.w_cg);
+  request.columnGroups_.push_back(constants.w_cg);
   // Existing column
   request.mColumns.push_back(constants.w_col);
 
@@ -242,11 +242,11 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_happy) {
 TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
   TicketRequest2 request;
   // Existing participantGroup
-  request.mParticipantGroups.push_back(constants.pg1);
+  request.participantGroups_.push_back(constants.pg1);
   // Both participantGroups and participants
   request.mAccessSubjects.push_back(constants.dummyPP); // Nonsense pp, the content is irrelevant
   // Existing columnGroup
-  request.mColumnGroups.push_back(constants.w_cg);
+  request.columnGroups_.push_back(constants.w_cg);
   // Existing column
   request.mColumns.push_back(constants.w_col);
 
@@ -266,11 +266,11 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
 TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_and_col) {
   TicketRequest2 request;
   // Existing participantGroup
-  request.mParticipantGroups.push_back("Non existing participantGroup");
+  request.participantGroups_.push_back("Non existing participantGroup");
   // Not both participantGroups and participants
   request.mAccessSubjects = {};
   // Existing columnGroup
-  request.mColumnGroups.push_back("Non existing columnGroup");
+  request.columnGroups_.push_back("Non existing columnGroup");
   // Existing column
   request.mColumns.push_back("Non existing column");
 
@@ -310,7 +310,7 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
 
 TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
   // Two polymorph pseudonyms without known participantgroups. Used to test the offset in IndexList
-  std::vector<AccessManager::Backend::pp_t> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
+  std::vector<AccessManager::Backend::Pp> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
   const std::vector<std::string> participantgroups{constants.pg1, constants.pg2};
 
   // Act
@@ -328,7 +328,7 @@ TEST_F(AccessManagerBackendTest, checkTicketForEncryptionKeyRequest_happy) {
   ticket.mColumns.push_back(constants.w_col);
   ticket.mModes.push_back("write");
   KeyRequestEntry entry;
-  entry.mKeyBlindMode = KeyBlindMode::BLIND_MODE_BLIND; // Needs ticket mode write
+  entry.mKeyBlindMode = KeyBlindMode::Blind; // Needs ticket mode write
   entry.mMetadata.setTag(constants.w_col); // specified col should be in ticket columns.
   request->mEntries.push_back({entry});
 
@@ -411,9 +411,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_noFilter){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 65U);
-  EXPECT_EQ(response.mColumnGroups.size(), 18U);
+  EXPECT_EQ(response.columnGroups_.size(), 18U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 42U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 2U);
+  EXPECT_EQ(response.participantGroups_.size(), 2U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 12U);
 }
 
@@ -423,9 +423,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneColumnGroup){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 3U);
-  EXPECT_EQ(response.mColumnGroups.size(), 1U);
+  EXPECT_EQ(response.columnGroups_.size(), 1U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 1U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 2U);
+  EXPECT_EQ(response.participantGroups_.size(), 2U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 12U);
 }
 
@@ -435,9 +435,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneParticipantGroup){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 65U);
-  EXPECT_EQ(response.mColumnGroups.size(), 18U);
+  EXPECT_EQ(response.columnGroups_.size(), 18U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 42U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 1U);
+  EXPECT_EQ(response.participantGroups_.size(), 1U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 2U);
 }
 
@@ -447,9 +447,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_OneUserGroup){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 6U);
-  EXPECT_EQ(response.mColumnGroups.size(), 5U);
+  EXPECT_EQ(response.columnGroups_.size(), 5U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 5U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 1U);
+  EXPECT_EQ(response.participantGroups_.size(), 1U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 2U);
 }
 
@@ -461,9 +461,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_MultipleFilters){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 1U);
-  EXPECT_EQ(response.mColumnGroups.size(), 2U);
+  EXPECT_EQ(response.columnGroups_.size(), 2U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 2U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 1U);
+  EXPECT_EQ(response.participantGroups_.size(), 1U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 2U);
 }
 
@@ -473,9 +473,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_NonExistingUserGroup){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 0U);
-  EXPECT_EQ(response.mColumnGroups.size(), 0U);
+  EXPECT_EQ(response.columnGroups_.size(), 0U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 0U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 0U);
+  EXPECT_EQ(response.participantGroups_.size(), 0U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 0U);
 }
 
@@ -485,9 +485,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_PartialColumnFilter){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 0U);
-  EXPECT_EQ(response.mColumnGroups.size(), 0U);
+  EXPECT_EQ(response.columnGroups_.size(), 0U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 0U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 2U);
+  EXPECT_EQ(response.participantGroups_.size(), 2U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 12U);
 }
 
@@ -497,9 +497,9 @@ TEST_F(AccessManagerBackendTest, AMAquery_ColumnOnlyInStarFilter){
   auto response = backend->performAMAQuery(request, "Access Administrator");
 
   EXPECT_EQ(response.mColumns.size(), 1U);
-  EXPECT_EQ(response.mColumnGroups.size(), 1U);
+  EXPECT_EQ(response.columnGroups_.size(), 1U);
   EXPECT_EQ(response.mColumnGroupAccessRules.size(), 0U);
-  EXPECT_EQ(response.mParticipantGroups.size(), 2U);
+  EXPECT_EQ(response.participantGroups_.size(), 2U);
   EXPECT_EQ(response.mParticipantGroupAccessRules.size(), 12U);
 }
 
@@ -542,7 +542,7 @@ TEST_F(AccessManagerBackendTest, handleFindUserRequest_returns_all_groups_for_ex
     EXPECT_NE(response.mUserGroups, std::nullopt);
     EXPECT_THAT(*response.mUserGroups, testing::SizeIs(user.userGroups.size()));
     for (auto& group : *response.mUserGroups) {
-      EXPECT_THAT(user.userGroups, testing::Contains(group.mName));
+      EXPECT_THAT(user.userGroups, testing::Contains(group.name_));
     }
   }
 }

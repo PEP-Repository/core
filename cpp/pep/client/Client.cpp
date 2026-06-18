@@ -20,7 +20,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("Client");
+const std::string LogTag("Client");
 
 }
 
@@ -42,7 +42,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     }
 
     // Columns that haven't been checked are inaccessible: return them
-    return RxIterate(*remaining);
+    return RxIterate(std::move(*remaining));
       });
 }
 
@@ -131,7 +131,7 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
                         {"ParticipantIdentifier"}) // columns
       .flat_map([this, identifier, pp](std::vector<std::shared_ptr<EnumerateResult>> result) -> rxcpp::observable<DataStorageResult2> {
         if (!result.empty()) {
-          LOG(LOG_TAG, info) << "Participant identifier already present in PEP";
+          PEP_LOG(LogTag, Severity::Info) << "Participant identifier already present in PEP";
           // We do not store the participant ID again, but continue with the storage of other stuff in case this failed
           // before
           return rxcpp::observable<>::from(DataStorageResult2());
@@ -147,16 +147,16 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 }
 
 rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
-  LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
-  return registrationServerProxy->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
+  PEP_LOG(LogTag, Severity::Debug) << "Sending RegistrationRequest...";
+  return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
 }
 
-rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthToken) {
+rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauthToken) {
 
-  LOG(LOG_TAG, debug) << "Generating key pair";
+  PEP_LOG(LogTag, Severity::Debug) << "Generating key pair";
   AsymmetricKeyPair keyPair = AsymmetricKeyPair::GenerateKeyPair();
-  LOG(LOG_TAG, debug) << "Key pair generated";
-  LOG(LOG_TAG, debug) << "Generating CSR";
+  PEP_LOG(LogTag, Severity::Debug) << "Key pair generated";
+  PEP_LOG(LogTag, Severity::Debug) << "Generating CSR";
 
   // Parse OAuth token
   auto token = OAuthToken::Parse(oauthToken);
@@ -164,13 +164,13 @@ rxcpp::observable<EnrollmentResult> Client::enrollUser(const std::string& oauthT
   // Generate CSR
   X509CertificateSigningRequest csr(keyPair, token.getSubject(), token.getGroup());
 
-  LOG(LOG_TAG, debug) << "Generated CSR for CN=" << csr.getCommonName().value_or("") << " and OU=" << csr.getOrganizationalUnit().value_or("");
+  PEP_LOG(LogTag, Severity::Debug) << "Generated CSR for CN=" << csr.getCommonName().value_or("") << " and OU=" << csr.getOrganizationalUnit().value_or("");
 
   auto privateKey = std::make_shared<AsymmetricKey>(keyPair.getPrivateKey());
 
   EnrollmentRequest request(csr, oauthToken);
-  LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
-  return keyServerProxy->requestUserEnrollment(std::move(request))
+  PEP_LOG(LogTag, Severity::Debug) << "Sending EnrollmentRequest...";
+  return getKeyServerProxy(true)->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
     auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain));
 
@@ -200,8 +200,8 @@ Client::ServerProxies Client::getServerProxies(bool requireAll) const {
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
   return CoreClient::shutdown()
-    .merge(keyServerProxy->shutdown())
-    .merge(registrationServerProxy->shutdown())
+    .merge(keyServerProxy ? keyServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(registrationServerProxy ? registrationServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .merge(authServerProxy ? authServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }
@@ -227,15 +227,14 @@ void Client::Builder::initialize(const Configuration& config,
     this->setPublicKeyShadowAdministration(AsymmetricKey(ReadFile(*shadowPublicKeyFile)));
   }
 
-  if (auto ksConfig = config.get<std::optional<EndPoint>>(ServerTraits::KeyServer().configNode())) {
+  auto serverEndPoints = config.get_child("ServerEndPoints");
+  if (auto ksConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::KeyServer().configNode())) {
     this->setKeyServerEndPoint(*ksConfig);
   }
-
-  if (auto asConfig = config.get<std::optional<EndPoint>>(ServerTraits::AuthServer().configNode())) {
+  if (auto asConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::AuthServer().configNode())) {
     this->setAuthserverEndPoint(*asConfig);
   }
-
-  if (auto rsConfig = config.get<std::optional<EndPoint>>(ServerTraits::RegistrationServer().configNode())) {
+  if (auto rsConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::RegistrationServer().configNode())) {
     this->setRegistrationServerEndPoint(*rsConfig);
   }
 }

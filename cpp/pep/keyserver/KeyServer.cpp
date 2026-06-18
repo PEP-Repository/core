@@ -15,7 +15,7 @@ namespace pep {
 namespace {
 
 constexpr auto validityTimeOfGeneratedCertificates = std::chrono::hours{12};
-const std::string LOG_TAG("KeyServer");
+const std::string LogTag("KeyServer");
 
 tokenBlocking::TokenIdentifier Identifiers(const OAuthToken& token) {
   return {
@@ -33,20 +33,17 @@ void EnsureTokenBlockingAdminAccess(const std::string& organizationalUnit) {
 
 KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : Server::Parameters(std::move(io_context), config) {
-  std::filesystem::path clientCAPrivateKeyFile;
-  std::filesystem::path clientCACertificateChainFile;
   std::filesystem::path oauthTokenSecretFile;
   std::filesystem::path blocklistStoragePath;
   try {
-    clientCAPrivateKeyFile = config.get<std::filesystem::path>("ClientCAPrivateKeyFile");
-    clientCACertificateChainFile = config.get<std::filesystem::path>("ClientCACertificateChainFile");
+    mClientCa = std::move(*X509IdentityFiles::FromConfig(config.get_child("ClientCa"), *getRootCAs()).identity());
 
     oauthTokenSecretFile = canonical(config.get<std::filesystem::path>("OAuthTokenSecretFile"));
 
     blocklistStoragePath = weakly_canonical(config.get<std::filesystem::path>("BlocklistStoragePath"));
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
@@ -58,26 +55,13 @@ KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_co
     setOauthTokenSecret(boost::algorithm::unhex(secretHex));
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with oauth file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with oauth file: " << e.what();
     throw;
   }
 
-  setClientCAPrivateKey(AsymmetricKey(ReadFile(clientCAPrivateKeyFile)));
-  setClientCACertificateChain(X509CertificateChain(X509CertificatesFromPem(ReadFile(clientCACertificateChainFile))));
   setBlocklistStoragePath(blocklistStoragePath);
 }
 
-const AsymmetricKey& KeyServer::Parameters::getClientCAPrivateKey() const { return mClientCAPrivateKey; }
-
-void KeyServer::Parameters::setClientCAPrivateKey(const AsymmetricKey& privateKey) {
-  Parameters::mClientCAPrivateKey = privateKey;
-}
-
-const std::optional<X509CertificateChain>& KeyServer::Parameters::getClientCACertificateChain() { return mClientCACertificateChain; }
-
-void KeyServer::Parameters::setClientCACertificateChain(const X509CertificateChain& certificateChain) {
-  Parameters::mClientCACertificateChain = certificateChain;
-}
 
 const std::string& KeyServer::Parameters::getOauthTokenSecret() const { return mOauthTokenSecret; }
 
@@ -94,8 +78,7 @@ void KeyServer::Parameters::setBlocklistStoragePath(const std::filesystem::path&
 }
 
 void KeyServer::Parameters::check() const {
-  if (!mClientCAPrivateKey.isSet()) throw std::runtime_error("clientCAPrivateKey must be set");
-  if (!mClientCACertificateChain.has_value()) throw std::runtime_error("clientCACertificateChain must be set");
+  if (!mClientCa.has_value()) throw std::runtime_error("clientCa must be set");
   if (mOauthTokenSecret.empty()) throw std::runtime_error("oauthTokenSecret must not be empty");
   if (mBlocklistStoragePath.empty()) throw std::runtime_error("blocklistStoragePath must not be empty");
   Server::Parameters::check();
@@ -111,9 +94,9 @@ messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
   const auto certificate = generateCertificate(enrollmentRequest->mCertificateSigningRequest);
 
   EnrollmentResponse response{
-    .mCertificateChain = mClientCACertificateChain / certificate
+    .mCertificateChain = mClientCa.getCertificateChain() / certificate
   };
-  LOG(LOG_TAG, debug) << "Sending certificate chain len=" << response.mCertificateChain.certificates().size() << ":"
+  PEP_LOG(LogTag, Severity::Debug) << "Sending certificate chain len=" << response.mCertificateChain.certificates().size() << ":"
                       << X509CertificatesToPem(response.mCertificateChain.certificates());
   return messaging::BatchSingleMessage(std::move(response));
 }
@@ -163,8 +146,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingRemoveRequest(
 
 KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
   : Server(parameters),
-    mClientCAPrivateKey(parameters->getClientCAPrivateKey()),
-    mClientCACertificateChain(*parameters->getClientCACertificateChain()),
+    mClientCa(*parameters->getClientCa()),
     mOauthTokenSecret(parameters->getOauthTokenSecret()),
     mBlocklist(tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(parameters->getBlocklistStoragePath())) {
   RegisterRequestHandlers(
@@ -194,7 +176,7 @@ void KeyServer::checkValid(const EnrollmentRequest& request) const {
 
   const auto token = OAuthToken::Parse(request.mOAuthToken);
   if (!isValid(token, cn, ou)) { throw Error("OAuth token invalid"); }
-  LOG(LOG_TAG, debug) << "Checked OAuth ticket for " << cn << " in group " << ou;
+  PEP_LOG(LogTag, Severity::Debug) << "Checked OAuth ticket for " << cn << " in group " << ou;
 
   if (request.mCertificateSigningRequest.verifySignature() == false) {
     throw Error("Could not verify CSR signature");
@@ -208,9 +190,9 @@ bool KeyServer::isValid(
   const auto isBlocked = [this](const OAuthToken& token) {
     assert(mBlocklist != nullptr);
 
-    LOG(LOG_TAG, debug) << "Checking token against blocklist";
+    PEP_LOG(LogTag, Severity::Debug) << "Checking token against blocklist";
     const auto blocked = IsBlocking(*mBlocklist, Identifiers(token));
-    if (blocked) { LOG(LOG_TAG, info) << "Token is blocked and therefore considered invalid"; }
+    if (blocked) { PEP_LOG(LogTag, Severity::Info) << "Token is blocked and therefore considered invalid"; }
     return blocked;
   };
 
@@ -219,19 +201,14 @@ bool KeyServer::isValid(
 }
 
 X509Certificate KeyServer::generateCertificate(const pep::X509CertificateSigningRequest& csr) const {
-  try {
-    const auto certificate = csr.signCertificate(
-        mClientCACertificateChain.leaf(),
-        mClientCAPrivateKey,
-        validityTimeOfGeneratedCertificates);
-    assert(GetEnrolledParty(certificate) == EnrolledParty::User);
-    LOG(LOG_TAG, debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
-                        << " in OU=" << csr.getOrganizationalUnit().value_or("");
-    return certificate;
-  }
-  catch (...) {
-    throw Error{"Certificate generation failed"};
-  }
+  const auto certificate = csr.signCertificate(
+      mClientCa.getCertificateChain().leaf(),
+      mClientCa.getPrivateKey(),
+      validityTimeOfGeneratedCertificates);
+  assert(GetEnrolledParty(certificate) == EnrolledParty::User);
+  PEP_LOG(LogTag, Severity::Debug) << "Generated certificate for CN=" << csr.getCommonName().value_or("")
+                      << " in OU=" << csr.getOrganizationalUnit().value_or("");
+  return certificate;
 }
 
 } // namespace pep

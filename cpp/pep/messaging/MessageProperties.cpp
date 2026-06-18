@@ -33,34 +33,34 @@ constexpr StreamId::Value CONTROL_STREAM_ID = 0;
 
 bool MessageType::IsValidValue(Value value) noexcept {
   switch (value) {
-  case CONTROL:
-  case REQUEST:
-  case RESPONSE:
+  case Control:
+  case Request:
+  case Response:
     return true;
   }
   return false;
 }
 
 MessageType::MessageType(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 std::string MessageType::describe() const {
-  switch (mValue) {
-  case REQUEST:
+  switch (value_) {
+  case Request:
     return "request";
-  case RESPONSE:
+  case Response:
     return "response";
-  case CONTROL:
+  case Control:
     return "control message";
   }
-  throw std::runtime_error("Unsupported message type value " + std::to_string(mValue));
+  throw std::runtime_error("Unsupported message type value " + std::to_string(value_));
 }
 
 EncodedMessageProperties MessageType::encode() const noexcept {
-  assert(IsValidValue(mValue));
-  if (mValue == RESPONSE) {
+  assert(IsValidValue(value_));
+  if (value_ == Response) {
     static_assert(TYPE_RESPONSE != NO_MESSAGE_PROPERTY_BITS);
     return TYPE_RESPONSE;
   }
@@ -149,8 +149,8 @@ bool StreamId::IsValidValue(Value value) noexcept {
 }
 
 StreamId::StreamId(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 StreamId StreamId::BeforeFirst() noexcept {
@@ -176,12 +176,12 @@ MessageId::MessageId(MessageType type, StreamId streamId)
 }
 
 MessageId MessageId::MakeForControlMessage() noexcept {
-  return MessageId(MessageType::CONTROL, StreamId(CONTROL_STREAM_ID));
+  return MessageId(MessageType::Control, StreamId(CONTROL_STREAM_ID));
 }
 
 MessageProperties::MessageProperties(MessageId messageId, Flags flags)
   : mMessageId(messageId), mFlags(flags) {
-  assert(mFlags.empty() || mMessageId.type().value() != MessageType::CONTROL);
+  assert(mFlags.empty() || mMessageId.type().value() != MessageType::Control);
 }
 
 EncodedMessageProperties MessageProperties::encode() const noexcept {
@@ -193,15 +193,15 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
   auto flagBits = properties & FLAG_BITS;
   auto streamId = properties & STREAM_ID_BITS;
 
-  MessageType::Value type = MessageType::REQUEST;
+  MessageType::Value type = MessageType::Request;
   if (streamId == CONTROL_STREAM_ID) {
     if (properties != CONTROL_STREAM_ID) {
       throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
     }
-    type = MessageType::CONTROL;
+    type = MessageType::Control;
   }
   else if (typeBits & TYPE_RESPONSE) {
-    type = MessageType::RESPONSE;
+    type = MessageType::Response;
   }
 
   Flags flags(flagBits & FLAG_CLOSE, flagBits & FLAG_ERROR, flagBits & FLAG_PAYLOAD);

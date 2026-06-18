@@ -26,7 +26,7 @@ private:
 
 
 class TestRegistrar {
-  template <class TDerived, class TRegistrar, bool REGISTER>
+  template <class TDerived, class TRegistrar, bool registerDerived>
   friend class pep::SelfRegistering;
 
 public:

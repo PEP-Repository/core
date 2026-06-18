@@ -1,5 +1,6 @@
 #include <pep/auth/OAuthToken.hpp>
 
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
@@ -28,8 +29,8 @@ namespace pep {
 const std::string OAuthToken::DEFAULT_JSON_FILE_NAME = "OAuthToken.json";
 
 bool OAuthToken::verify(const std::string& secret, const std::string& requiredSubject, const std::string& requiredGroup) const {
-  LOG("OAuthToken::verify", debug) << "Verifying OAuth token " << mSerialized;
-  LOG("OAuthToken::verify", debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(mData);
+  PEP_LOG("OAuthToken::verify", Severity::Debug) << "Verifying OAuth token " << mSerialized;
+  PEP_LOG("OAuthToken::verify", Severity::Debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(mData);
 
   auto result = true;
 
@@ -37,8 +38,8 @@ bool OAuthToken::verify(const std::string& secret, const std::string& requiredSu
   std::string localHMAC = Hmac<Sha256>(secret, mData);
 
   // Check whether the received HMAC is equal to the computed one
-  if(localHMAC != mHmac) {
-    LOG("OAuthToken::verify", info) << "MAC in token invalid";
+  if (!const_time::IsEqual(localHMAC, mHmac)) {
+    PEP_LOG("OAuthToken::verify", Severity::Info) << "MAC in token invalid";
     result = false;
   }
 
@@ -77,15 +78,15 @@ bool OAuthToken::verify(const std::optional<std::string>& requiredSubject, const
 
 bool OAuthToken::verifySubject(const std::string& required) const {
   if (required != mSubject) {
-    LOG("OAuthToken::verify", info) << "Subject in token '" << mSubject << "' does not match required subject '" << required << "'";
+    PEP_LOG("OAuthToken::verify", Severity::Info) << "Subject in token '" << mSubject << "' does not match required subject '" << required << "'";
     return false;
   }
   return true;
 }
 
 bool OAuthToken::verifyGroup(const std::string& required) const {
-  if (required != mGroup) {
-    LOG("OAuthToken::verify", info) << "Group in token '" << mGroup << "' does not match required group '" << required << "'";
+  if (required != group_) {
+    PEP_LOG("OAuthToken::verify", Severity::Info) << "Group in token '" << group_ << "' does not match required group '" << required << "'";
     return false;
   }
   return true;
@@ -96,13 +97,13 @@ bool OAuthToken::verifyValidityPeriod() const {
 
   // Check time of issuance
   if (mIssuedAt >= now + 1min) { // Account for clock drift.  See #677
-    LOG("OAuthToken::verifyValidityPeriod", info) << "Token issued after current time";
+    PEP_LOG("OAuthToken::verifyValidityPeriod", Severity::Info) << "Token issued after current time";
     return false;
   }
 
   // Check whether token already expired
   if (mExpiresAt <= now) {
-    LOG("OAuthToken::verifyValidityPeriod", info) << "Token expired";
+    PEP_LOG("OAuthToken::verifyValidityPeriod", Severity::Info) << "Token expired";
     return false;
   }
 
@@ -150,13 +151,13 @@ OAuthToken::OAuthToken(const std::string& serialized)
 
   // Token should consist of two parts: (encoded) JSON data and HMAC
   if (splitToken.size() != 2) {
-    LOG("OAuthToken",info) << "Invalid token format: did not match the correct format.";
+    PEP_LOG("OAuthToken",Severity::Info) << "Invalid token format: did not match the correct format.";
     throw std::runtime_error("Invalid token format.");
   }
 
   // If the HMAC part of the token is not 43 characters long, it is not a valid OAuthToken.
   if (splitToken[1].length() != 43) {
-    LOG("OAuthToken",info) << "Invalid token format: HMAC was not of the correct length.";
+    PEP_LOG("OAuthToken",Severity::Info) << "Invalid token format: HMAC was not of the correct length.";
     throw std::runtime_error("Invalid token format.");
   }
 
@@ -169,7 +170,7 @@ OAuthToken::OAuthToken(const std::string& serialized)
     boost::property_tree::read_json(jsonStream, root);
 
     mSubject = root.get<std::string>("sub");
-    mGroup = root.get<std::string>("group");
+    group_ = root.get<std::string>("group");
     mIssuedAt = sys_seconds(seconds{root.get<seconds::rep>("iat")});
     mExpiresAt = sys_seconds(seconds{root.get<seconds::rep>("exp")});
 
@@ -183,11 +184,11 @@ OAuthToken::OAuthToken(const std::string& serialized)
     }
   }
   catch(const boost::archive::iterators::dataflow_exception& e) {
-    LOG("OAuthToken",info) << "Error decoding token: " << e.what();
+    PEP_LOG("OAuthToken",Severity::Info) << "Error decoding token: " << e.what();
     throw std::runtime_error("Invalid token format.");
   }
   catch (const boost::property_tree::json_parser_error& e) {
-    LOG("OAuthToken",info) << "Error parsing JSON: " << e.what();
+    PEP_LOG("OAuthToken",Severity::Info) << "Error parsing JSON: " << e.what();
     throw std::runtime_error("Invalid token format.");
   }
 }

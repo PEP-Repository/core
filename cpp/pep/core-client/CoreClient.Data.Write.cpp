@@ -11,7 +11,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.Data.Write");
+const std::string LogTag("CoreClient.Data.Write");
 
 constexpr unsigned METADATA_UPDATE_BATCH_SIZE = 2500;
 
@@ -36,7 +36,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     const std::string& column,
     std::shared_ptr<std::string> data,
     const std::vector<NamedMetadataXEntry>& xentries,
-    const storeData2Opts& opts) {
+    const StoreData2Opts& opts) {
   return storeData2(
     {StoreData2Entry(
         std::make_shared<PolymorphicPseudonym>(pp),
@@ -50,8 +50,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
 
 rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     const std::vector<StoreData2Entry>& entries,
-    const storeData2Opts& opts) {
-  LOG(LOG_TAG, debug) << "storeData";
+    const StoreData2Opts& opts) {
+  PEP_LOG(LogTag, Severity::Debug) << "storeData";
 
   struct Context {
     std::unordered_map<std::string,uint32_t> columns;
@@ -66,7 +66,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   ctx->keys = std::vector<AESKey>(entries.size()); // the default constructor of AESKey generates a random key
 
   // Create ticket request
-  requestTicket2Opts ticketRequest;
+  RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = {"write"};
@@ -114,13 +114,13 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   return requestTicket2(ticketRequest)
   .flat_map([this,ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
-    ctx->request->mTicket = *signedTicket;
+    ctx->request->ticket_ = *signedTicket;
 
     const auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
-      LOG(LOG_TAG, error) << msg.str();
+      PEP_LOG(LogTag, Severity::Error) << msg.str();
       throw std::runtime_error(msg.str());
     }
 
@@ -151,7 +151,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
       subscriber.on_completed();
     }).merge(); // look at comment above for reasoning about the location of this merge
 
-    return storageFacilityProxy->requestDataStore(*ctx->request, pages);
+    return getStorageFacilityProxy(true)->requestDataStore(*ctx->request, pages);
   }).map([ctx](DataStoreResponse2 response) {
     DataStorageResult2 result;
     result.mIds = response.mIds;
@@ -161,8 +161,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
 
 rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   const std::vector<StoreMetadata2Entry>& entries,
-  const storeData2Opts& opts) { // TODO: consolidate duplicate code with deleteData2 method (below)
-  LOG(LOG_TAG, debug) << "updateMetadata";
+  const StoreData2Opts& opts) { // TODO: consolidate duplicate code with deleteData2 method (below)
+  PEP_LOG(LogTag, Severity::Debug) << "updateMetadata";
 
   struct Context {
     std::unordered_map<std::string, uint32_t> columns;
@@ -178,7 +178,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   ctx->request->mEntries.reserve(entries.size());
 
   // Create ticket request
-  requestTicket2Opts ticketRequest;
+  RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = { "read", "write-meta" }; // We need read access so that we can re-encrypt-and-blind the AES keys
@@ -214,20 +214,20 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   return requestTicket2(ticketRequest) // Request a ticket
     .flat_map([this, ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
-    ctx->request->mTicket = *signedTicket;
-    ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms);
+    ctx->request->ticket_ = *signedTicket;
+    ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms_);
 
     auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
-      LOG(LOG_TAG, error) << msg.str();
+      PEP_LOG(LogTag, Severity::Error) << msg.str();
       throw std::runtime_error(msg.str());
     }
 
     // Get previous data (including polymorphic key) for the entries whose metadata we're going to update
     DataEnumerationRequest2 enumRequest;
-    enumRequest.mTicket = *signedTicket;
+    enumRequest.ticket_ = *signedTicket;
     enumRequest.mColumns = IndexList();
     enumRequest.mColumns->mIndices.reserve(ctx->columns.size());
     std::transform(ctx->columns.cbegin(), ctx->columns.cend(), std::back_inserter(enumRequest.mColumns->mIndices), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
@@ -235,7 +235,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     enumRequest.mPseudonyms->mIndices.reserve(ctx->pps.size());
     std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.mPseudonyms->mIndices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
 
-    return this->storageFacilityProxy->requestDataEnumeration(std::move(enumRequest))
+    return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
       .map([ctx](const DataEnumerationResponse2& response) { return response.mEntries; })
       .op(RxConcatenateVectors())
       .flat_map([this, ctx, signedTicket](std::shared_ptr<std::vector<DataEnumerationEntry2>> enumEntries) {
@@ -268,11 +268,11 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           // Find the enum entry corresponding with this store entry
           auto correspondingColumn = enumEntryIndices->find(storeEntry.mColumnIndex);
           if (correspondingColumn == enumEntryIndices->cend()) {
-            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->mTicket.openWithoutCheckingSignature().mColumns[storeEntry.mColumnIndex]);
+            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->ticket_.openWithoutCheckingSignature().mColumns[storeEntry.mColumnIndex]);
           }
           auto correspondingEnumEntry = correspondingColumn->second.find(storeEntry.mPseudonymIndex);
           if (correspondingEnumEntry == correspondingColumn->second.cend()) {
-            auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
+            auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
             std::ostringstream message;
             message << "Did not receive existing entry for metadata update"
               << " for participant " << ticket.mAccessSubjects[storeEntry.mPseudonymIndex].mPolymorphic.text()
@@ -306,7 +306,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           assert(offset % METADATA_UPDATE_BATCH_SIZE == 0U);
           if (batches[offset] == nullptr) {
             batches[offset] = std::make_shared<MetadataUpdateRequest2>();
-            batches[offset]->mTicket = ctx->request->mTicket;
+            batches[offset]->ticket_ = ctx->request->ticket_;
           }
           assert(batches[offset]->mEntries.size() == indexInBatch);
           batches[offset]->mEntries.emplace_back(ctx->request->mEntries[i]);
@@ -317,7 +317,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           .flat_map([this](const std::pair<const size_t, std::shared_ptr<MetadataUpdateRequest2>>& pair) {
           size_t offset = pair.first;
           std::shared_ptr<MetadataUpdateRequest2> request = pair.second;
-          return storageFacilityProxy->requestMetadataStore(*request)
+          return getStorageFacilityProxy(true)->requestMetadataStore(*request)
             .map([offset](MetadataUpdateResponse2 response) {
               return std::make_pair(offset, std::move(response));
             })
@@ -346,7 +346,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
 rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   const PolymorphicPseudonym& pp,
   const std::string& column,
-  const storeData2Opts& opts) {
+  const StoreData2Opts& opts) {
   return deleteData2(
     { Storage2Entry(
         std::make_shared<PolymorphicPseudonym>(pp),
@@ -358,8 +358,8 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 }
 rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   const std::vector<Storage2Entry>& entries,
-  const storeData2Opts& opts) { // TODO: consolidate duplicate code with storeData2 method (above)
-  LOG(LOG_TAG, debug) << "deleteData";
+  const StoreData2Opts& opts) { // TODO: consolidate duplicate code with storeData2 method (above)
+  PEP_LOG(LogTag, Severity::Debug) << "deleteData";
 
   struct Context {
     std::unordered_map<std::string, uint32_t> columns;
@@ -369,7 +369,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   auto ctx = std::make_shared<Context>();
 
   // Create ticket request
-  requestTicket2Opts ticketRequest;
+  RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = { "write" };
@@ -402,19 +402,19 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   return requestTicket2(ticketRequest)
     .flat_map([this, ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
-    ctx->request->mTicket = *signedTicket;
+    ctx->request->ticket_ = *signedTicket;
 
     auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
-      LOG(LOG_TAG, error) << msg.str();
+      PEP_LOG(LogTag, Severity::Error) << msg.str();
       throw std::runtime_error(msg.str());
     }
 
-    return storageFacilityProxy->requestDataDelete(*ctx->request)
+    return getStorageFacilityProxy(true)->requestDataDelete(*ctx->request)
       .flat_map([this, ctx](const DataDeleteResponse2& response) {
-      auto ticket = ctx->request->mTicket.openWithoutCheckingSignature();
+      auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
       // TODO: use CreateObservable instead of rxcpp::iterate over a vector<> that we just create for this purpose
       std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms;
       pseudonyms.reserve(ticket.mAccessSubjects.size());
@@ -433,7 +433,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
         if (*includeAccessGroupPseudonyms) {
           agPseuds.push_back(
             std::make_shared<LocalPseudonym>(
-              p.mAccessGroup->decrypt(privateKeyPseudonyms)
+              p.mAccessGroup->decrypt(privateKeyPseudonyms_)
               )
           );
         }

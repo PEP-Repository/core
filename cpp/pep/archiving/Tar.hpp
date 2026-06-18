@@ -5,7 +5,7 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/archiving/Archive.hpp>
 
-struct archive;
+struct archive; // Forward declares type provided by libarchive
 
 namespace pep {
 
@@ -26,7 +26,7 @@ private:
   Tar(std::shared_ptr<std::ostream> stream);
 
   std::shared_ptr<std::ostream> mStream;
-  archive* mArchive;
+  archive* archive_;
 };
 
 }

@@ -20,7 +20,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.Data.Read");
+const std::string LogTag("CoreClient.Data.Read");
 
 template <typename TTicketItem, typename TSpecifiedItem>
 void FillHistoryRequestIndices(const SignedTicket2& ticket,
@@ -56,23 +56,23 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
                                                                        const std::vector<PolymorphicPseudonym>& pps,
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
-  return accessManagerProxy
+  return getAccessManagerProxy(true)
       ->requestTicket(ClientSideTicketRequest2{.mModes = {"read"},
-                                               .mParticipantGroups = participantGroups,
+                                               .participantGroups_ = participantGroups,
                                                .mAccessSubjects = pps,
-                                               .mColumnGroups = columnGroups,
+                                               .columnGroups_ = columnGroups,
                                                .mColumns = columns,
                                                .mIncludeUserGroupPseudonyms = false})
-      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(ticket)); });
+      .flat_map([this](SignedTicket2 ticket) { return this->enumerateData(std::make_shared<SignedTicket2>(std::move(ticket))); });
 }
 
 rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enumerateData(std::shared_ptr<SignedTicket2> ticket) {
-  LOG(LOG_TAG, debug) << "enumerateData";
+  PEP_LOG(LogTag, Severity::Debug) << "enumerateData";
 
-  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
+  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms_);
   auto enumRequest = std::make_shared<DataEnumerationRequest2>();
-  enumRequest->mTicket = *ticket;
-  return storageFacilityProxy->requestDataEnumeration(std::move(*enumRequest))
+  enumRequest->ticket_ = *ticket;
+  return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(*enumRequest))
     .map([pseudonyms](DataEnumerationResponse2 response) {
       return ConvertDataEnumerationEntries(std::move(response.mEntries), *pseudonyms);
     });
@@ -80,9 +80,9 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
 
 rxcpp::observable<rxcpp::observable<std::shared_ptr<EnumerateResult>>>
 CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<SignedTicket2> ticket) {
-  LOG(LOG_TAG, debug) << "enumerateDataByIds";
+  PEP_LOG(LogTag, Severity::Debug) << "enumerateDataByIds";
 
-  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms);
+  auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms_);
 
   return RxIterate(std::move(ids))
       .buffer(static_cast<int>(DATA_RETRIEVAL_BATCH_SIZE))
@@ -90,9 +90,9 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
       .map([this, ticket, pseudonyms](std::vector<std::string> batch)
         -> rxcpp::observable<std::shared_ptr<EnumerateResult>> {
             auto entryCount = batch.size();
-            return this->storageFacilityProxy->requestMetadataRead(
+            return this->getStorageFacilityProxy(true)->requestMetadataRead(
                 MetadataReadRequest2{
-                  .mTicket = *ticket,
+                  .ticket_ = *ticket,
                   .mIds = std::move(batch),
                 })
                 .map([](DataEnumerationResponse2 response) {
@@ -151,31 +151,31 @@ rxcpp::observable<rxcpp::observable<RetrievePage>>
 CoreClient::retrieveData(
   const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
   std::shared_ptr<SignedTicket2> ticket) {
-  LOG(LOG_TAG, debug) << "retrieveData";
+  PEP_LOG(LogTag, Severity::Debug) << "retrieveData";
 
   using namespace std::ranges;
   return batchedSubjects
       .map([this, ticket](const rxcpp::observable<FileKey>& batch) -> rxcpp::observable<RetrievePage> {
         return batch.op(RxToVector())
             .flat_map([this, ticket](const std::shared_ptr<std::vector<FileKey>>& batch) -> rxcpp::observable<RetrievePage> {
-              struct fileContext {
+              struct FileContext {
                 FileKey fileKey;
                 std::uint64_t bytesWritten = 0;
               };
-              struct batchContext {
+              struct BatchContext {
                 DataPayloadPageStreamOrder order;
-                std::vector<fileContext> files;
+                std::vector<FileContext> files;
               };
 
-              auto ctx = std::make_shared<batchContext>();
-              ctx->files = RangeToCollection<std::vector<fileContext>>(std::move(*batch));
+              auto ctx = std::make_shared<BatchContext>();
+              ctx->files = RangeToCollection<std::vector<FileContext>>(std::move(*batch));
 
               // Request the file contents from the storage facility
               auto pagesFromServer =
-                  storageFacilityProxy->requestDataRead(DataReadRequest2{
-                    .mTicket = *ticket,
+                  getStorageFacilityProxy(true)->requestDataRead(DataReadRequest2{
+                    .ticket_ = *ticket,
                     .mIds = RangeToVector(ctx->files
-                        | views::transform([](const fileContext& file) { return file.fileKey.entry->mId; })),
+                        | views::transform([](const FileContext& file) { return file.fileKey.entry->mId; })),
                   })
                   .map([](DataPayloadPage page) {
                     return std::optional{std::move(page)};
@@ -191,7 +191,7 @@ CoreClient::retrieveData(
 
                     // Check previous file(s)
                     for (auto betweenIdx = ctx->order.latestFileIndex(); betweenIdx < index; ++betweenIdx) {
-                      const fileContext& prevFileCtx = ctx->files[betweenIdx];
+                      const FileContext& prevFileCtx = ctx->files[betweenIdx];
                       const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
                       if (prevFileCtx.bytesWritten < prevEntry.mFileSize) {
                         throw std::runtime_error(std::format(
@@ -204,7 +204,7 @@ CoreClient::retrieveData(
 
                     ctx->order.check(*page);
 
-                    fileContext& file = ctx->files[index];
+                    FileContext& file = ctx->files[index];
                     const EnumerateResult& entry = *file.fileKey.entry;
                     RetrievePage retrievedPage{
                       .fileIndex = file.fileKey.fileIndex,
@@ -225,10 +225,10 @@ CoreClient::retrieveData(
                   .op(RxFilterNullopt());
 
               auto emptyFiles = ctx->files
-                  | views::filter([](const fileContext& file) {
+                  | views::filter([](const FileContext& file) {
                     return file.fileKey.entry->mFileSize == 0;
                   })
-                  | views::transform([](const fileContext& file) {
+                  | views::transform([](const FileContext& file) {
                     return RetrievePage{
                       .fileIndex = file.fileKey.fileIndex,
                       .entry = file.fileKey.entry,
@@ -247,22 +247,22 @@ rxcpp::observable<std::vector<HistoryResult>>
 CoreClient::getHistory2(SignedTicket2 ticket,
   const std::optional<std::vector<PolymorphicPseudonym>>& pps,
   const std::optional<std::vector<std::string>>& columns) {
-  LOG(LOG_TAG, debug) << "getHistory";
+  PEP_LOG(LogTag, Severity::Debug) << "getHistory";
 
   auto openedTicket = ticket.openWithoutCheckingSignature();
 
   DataHistoryRequest2 request{
-    .mTicket = std::move(ticket),
+    .ticket_ = std::move(ticket),
     .mColumns{},
     .mPseudonyms{},
   };
   std::optional<Ticket2> unsignedTicket;
   FillHistoryRequestIndices<LocalPseudonyms, PolymorphicPseudonym>(
-    request.mTicket, unsignedTicket, &Ticket2::mAccessSubjects, pps, request.mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
+    request.ticket_, unsignedTicket, &Ticket2::mAccessSubjects, pps, request.mPseudonyms, [](const LocalPseudonyms& lps, const PolymorphicPseudonym& pp) {return lps.mPolymorphic == pp; });
   FillHistoryRequestIndices<std::string, std::string>(
-    request.mTicket, unsignedTicket, &Ticket2::mColumns, columns, request.mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
+    request.ticket_, unsignedTicket, &Ticket2::mColumns, columns, request.mColumns, [](const std::string& ticketCol, const std::string& specifiedCol) {return ticketCol == specifiedCol; });
 
-  return storageFacilityProxy->requestDataHistory(std::move(request))
+  return getStorageFacilityProxy(true)->requestDataHistory(std::move(request))
     .map([](const DataHistoryResponse2& response) {
       return response.mEntries;
     })
@@ -285,7 +285,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
         if (localPseudonyms->mAccessGroup) {
           auto iag = agPseuds.find(entry.mPseudonymIndex);
           if (iag == agPseuds.cend()) {
-            auto ag = localPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms);
+            auto ag = localPseudonyms->mAccessGroup->decrypt(privateKeyPseudonyms_);
             auto emplaced = agPseuds.emplace(std::make_pair(entry.mPseudonymIndex, MakeSharedCopy(ag)));
             assert(emplaced.second);
             iag = emplaced.first;
@@ -308,7 +308,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
     });
 }
 
-CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms) {
+CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms_) {
   auto opened = ticket.openWithoutCheckingSignature();
 
   mPseudonyms.reserve(opened.mAccessSubjects.size());
@@ -328,7 +328,7 @@ CoreClient::TicketPseudonyms::TicketPseudonyms(const SignedTicket2& ticket, cons
 
     if (mAgPseuds.has_value()) {
       mAgPseuds->push_back(std::make_shared<LocalPseudonym>(
-        p.mAccessGroup->decrypt(privateKeyPseudonyms)));
+        p.mAccessGroup->decrypt(privateKeyPseudonyms_)));
     }
   }
 }

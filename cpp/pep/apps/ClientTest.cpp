@@ -23,11 +23,11 @@ using namespace pep;
 
 namespace {
 
-static const std::string LOG_TAG ("ClientTest");
+const std::string LogTag("ClientTest");
 
 class ClientTestApplication : public Application {
-  std::optional<severity_level> consoleLogMinimumSeverityLevel() const override {
-    return severity_level::warning;
+  std::optional<Severity> consoleLogMinimumSeverityLevel() const override {
+    return Severity::Warning;
   }
 
   using TestFunction = std::function<rxcpp::observable<bool>(std::shared_ptr<Client>)>;
@@ -42,7 +42,7 @@ class ClientTestApplication : public Application {
       [](FakeVoid unused) {},
       [this](std::exception_ptr ep) {
         client->getIoContext()->stop();
-        LOG(LOG_TAG, error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
+        PEP_LOG(LogTag, Severity::Error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
       },
       [] {});
   }
@@ -57,7 +57,7 @@ class ClientTestApplication : public Application {
     function(client).subscribe(
       [success](bool entry) {if (!entry) *success = false; },
       [success, this](std::exception_ptr ep) {
-        LOG(LOG_TAG, error) << "Exception occured: " << GetExceptionMessage(ep);
+        PEP_LOG(LogTag, Severity::Error) << "Exception occured: " << GetExceptionMessage(ep);
         *success = false;
         shutdownClient();
       },
@@ -157,7 +157,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
     *strPayload += " and " + std::to_string(i);
   }
 
-  LOG(LOG_TAG, debug) << "CoreClient.StoreData";
+  PEP_LOG(LogTag, Severity::Debug) << "CoreClient.StoreData";
   // Test storage and retrieval of data
   return client->storeData2(pp, "ParticipantInfo", strPayload,
                             {MetadataXEntry::MakeFileExtension(".txt")})
@@ -166,7 +166,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
         std::cout << "Stored data with result.primaryKey: "
             << boost::algorithm::hex(id) << std::endl;
 
-        requestTicket2Opts tOpts;
+        RequestTicket2Opts tOpts;
         tOpts.modes = {"read"};
         tOpts.pps = {pp.rerandomize()};
         tOpts.columns = {"ParticipantInfo"};
@@ -206,7 +206,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
 
   PolymorphicPseudonym pp = client->generateParticipantPolymorphicPseudonym(this->getRecordIdentifier());
 
-  enumerateAndRetrieveData2Opts opts;
+  EnumerateAndRetrieveData2Opts opts;
   opts.pps = {pp};
   opts.columnGroups = {"ShortPseudonyms"};
   return client->enumerateAndRetrieveData2(opts)

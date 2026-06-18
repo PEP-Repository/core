@@ -15,13 +15,13 @@ namespace pep::networking {
 
 namespace {
 
-const std::string LOG_TAG = "TLS";
+const std::string LogTag = "TLS";
 
 class TlsSocket : public TcpBasedProtocolImplementor<Tls>::Socket {
   friend class pep::networking::Tls;
 
 private:
-  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> mImplementor;
+  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> implementor_;
   StreamSocket mStreamSocket;
   boost::asio::ssl::stream_base::handshake_type mType;
   bool mShutdownRequired = false;
@@ -29,8 +29,8 @@ private:
   void finishClosing();
 
 protected:
-  BasicSocket& basicSocket() override { return mImplementor.lowest_layer(); }
-  const BasicSocket& basicSocket() const override { return mImplementor.lowest_layer(); }
+  BasicSocket& basicSocket() override { return implementor_.lowest_layer(); }
+  const BasicSocket& basicSocket() const override { return implementor_.lowest_layer(); }
   StreamSocket& streamSocket() override { return mStreamSocket; }
   void finishConnecting(const ConnectionAttempt::Handler& notify) override;
 
@@ -43,7 +43,7 @@ public:
 void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
   mShutdownRequired = true; // We may need to close before we've received the handshake callback, at which point we don't know (yet) if OpenSSL has started or even completed its handshaking
 
-  mImplementor.async_handshake(mType, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
+  implementor_.async_handshake(mType, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
     auto connecting = self->status() == ConnectivityStatus::Connecting; // Another ASIO job (e.g. a timer) may have already invoked close() on us
 
     if (error) {
@@ -57,7 +57,7 @@ void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
         } else {
           detail << error;
         }
-        LOG(LOG_TAG, warning) << "Handshake error with " << self->remoteAddress() << ": " << detail.str() << " " << error.message();
+        PEP_LOG(LogTag, Severity::Warning) << "Handshake error with " << self->remoteAddress() << ": " << detail.str() << " " << error.message();
 
         self->close(); // TODO: specify error as reason
       }
@@ -74,18 +74,18 @@ void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
 }
 
 TlsSocket::TlsSocket(const Tls& protocol, boost::asio::io_context& ioContext, boost::asio::ssl::stream_base::handshake_type type, boost::asio::ssl::context& ssl_context)
-  : Socket(protocol, ioContext), mImplementor(ioContext, ssl_context), mStreamSocket(mImplementor), mType(type) {
+  : Socket(protocol, ioContext), implementor_(ioContext, ssl_context), mStreamSocket(implementor_), mType(type) {
 }
 
 TlsSocket::~TlsSocket() noexcept {
   if (mShutdownRequired) {
-    LOG(LOG_TAG, severity_level::warning) << "Socket wasn't shut down properly"; // Either the owner didn't call close(), or the I/O service was stopped before we could perform our shutdown
+    PEP_LOG(LogTag, Severity::Warning) << "Socket wasn't shut down properly"; // Either the owner didn't call close(), or the I/O service was stopped before we could perform our shutdown
   }
 }
 
 void TlsSocket::finishClosing() {
   mShutdownRequired = false;
-  mImplementor.lowest_layer().close();
+  implementor_.lowest_layer().close();
   this->setConnectivityStatus(ConnectivityStatus::Disconnected);
 }
 
@@ -99,7 +99,7 @@ void TlsSocket::close() {
   }
 
   // Cancel pending I/O on the socket
-  auto& lowest = mImplementor.lowest_layer();
+  auto& lowest = implementor_.lowest_layer();
   if (lowest.is_open()) {
     lowest.cancel();
   }
@@ -135,7 +135,7 @@ void TlsSocket::close() {
     finishClosing();
     });
 
-  mImplementor.async_shutdown([finishClosing](boost::system::error_code error) {
+  implementor_.async_shutdown([finishClosing](boost::system::error_code error) {
     if (error
       && !IsSpecificSslError(error, SSL_R_UNINITIALIZED) // (Our mShutdownRequired has been set, but) SSL initialization was unstarted
       && !IsSpecificSslError(error, SSL_R_SHUTDOWN_WHILE_IN_INIT) // SSL initialization/handshaking was started but not completed
@@ -145,14 +145,14 @@ void TlsSocket::close() {
       && error.default_error_condition().value() != boost::system::errc::operation_canceled // Our timeout was hit: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2834#note_57593
       ) {
       const char* description = "Unexpected problem shutting down connection";
-      severity_level severity = pep::error;
+      Severity severity = Severity::Error;
       if (error == boost::asio::ssl::error::make_error_code(boost::asio::ssl::error::stream_errors::stream_truncated)  // remote party [...] closed the underlying transport without shutting down the protocol: see https://stackoverflow.com/a/25703699
         || error == boost::asio::error::make_error_code(boost::asio::error::broken_pipe)) { // happens when you write to a socket fully closed on the other [...] side: see https://stackoverflow.com/a/11866962
         description = "Remote party did not properly shut down the connection";
-        severity = pep::debug;
+        severity = Severity::Debug;
       }
 
-      LOG(LOG_TAG, severity) << description << ": "
+      PEP_LOG(LogTag, severity) << description << ": "
         << error.category().name() << " code " << error.value()
         << " (condition " << error.default_error_condition().value() << ')'
         << " - " << error.message();
@@ -162,7 +162,7 @@ void TlsSocket::close() {
 
   // Don't wait for the other party to acknowledge our async_shutdown. See https://stackoverflow.com/a/32054476 and https://stackoverflow.com/a/25703699
   [[maybe_unused]] auto buffer = std::make_shared<std::string>("\0"); // Ensure the buffer (1) stays alive for the duration of the async_write operation and (2) has at least 1 character of capacity. See the comments on https://stackoverflow.com/a/25703699
-  boost::asio::async_write(mImplementor, boost::asio::buffer(buffer->data(), buffer->size()), [self, buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
+  boost::asio::async_write(implementor_, boost::asio::buffer(buffer->data(), buffer->size()), [self, buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
     if (IsSpecificSslError(error, SSL_R_PROTOCOL_IS_SHUTDOWN)) {
       self->finishClosing();
     }
@@ -183,7 +183,7 @@ void set_keylog_file(SSL_CTX* ctx) {
 
   keylog.open(KEYLOG_FILE, std::ios::app);
   if (!keylog.is_open()) {
-    LOG(LOG_TAG, warning) << "Could not open SSLkeylogfile " << KEYLOG_FILE;
+    PEP_LOG(LogTag, Severity::Warning) << "Could not open SSLkeylogfile " << KEYLOG_FILE;
     return;
   }
 
@@ -198,12 +198,12 @@ std::shared_ptr<TcpBasedProtocol::Socket> Tls::createSocket(TcpBasedProtocol::Cl
   auto result = std::make_shared<TlsSocket>(*this, component.ioContext(), boost::asio::ssl::stream_base::client, component.downcastFor(*this).sslContext());
 
   const auto& endpoint = component.endPoint();
-  LOG(LOG_TAG, debug) << "Connecting to " << endpoint.hostname << ":" << endpoint.port;
+  PEP_LOG(LogTag, Severity::Debug) << "Connecting to " << endpoint.hostname << ":" << endpoint.port;
 
   std::function<bool(bool, boost::asio::ssl::verify_context&)> verifyCallback;
   if (endpoint.expectedCommonName.empty()) {
     // use default verification based on hostname
-    LOG(LOG_TAG, debug) << "Using boost's default hostname verification"
+    PEP_LOG(LogTag, Severity::Debug) << "Using boost's default hostname verification"
       << " for " << endpoint.hostname << ":" << endpoint.port
       << " instead of our custom code.";
     verifyCallback = boost::asio::ssl::host_name_verification(endpoint.hostname);
@@ -213,7 +213,7 @@ std::shared_ptr<TcpBasedProtocol::Socket> Tls::createSocket(TcpBasedProtocol::Cl
     verifyCallback = boost::bind(&VerifyCertificateBasedOnExpectedCommonName,
       endpoint.expectedCommonName, boost::placeholders::_1, boost::placeholders::_2);
   }
-  result->mImplementor.set_verify_callback(verifyCallback);
+  result->implementor_.set_verify_callback(verifyCallback);
 
 
   const std::regex hostnameRegex("^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*$"); // Copied from https://stackoverflow.com/a/3824105
@@ -227,11 +227,11 @@ std::shared_ptr<TcpBasedProtocol::Socket> Tls::createSocket(TcpBasedProtocol::Cl
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wold-style-cast"  // Suppress warning from GCC about C-style cast inside macro
 #endif
-      SSL_set_tlsext_host_name(result->mImplementor.native_handle(), endpoint.hostname.c_str());
+      SSL_set_tlsext_host_name(result->implementor_.native_handle(), endpoint.hostname.c_str());
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
 #endif
-      LOG(LOG_TAG, debug) << "Enabled TLS Server Name Indication extension for connection to " << endpoint.hostname << ":" << endpoint.port;
+      PEP_LOG(LogTag, Severity::Debug) << "Enabled TLS Server Name Indication extension for connection to " << endpoint.hostname << ":" << endpoint.port;
     }
   }
 
@@ -259,7 +259,7 @@ Tls::ClientComponent::ClientComponent(const ClientParameters& parameters)
   : TcpBasedProtocolImplementor<Tls>::ClientComponent(parameters) {
   auto verify_mode = boost::asio::ssl::verify_peer;
   if (parameters.skipPeerVerification()) {
-    LOG(LOG_TAG, pep::warning) << "Skipping OpenSSL peer verification for client socket";
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Skipping OpenSSL peer verification for client socket";
     verify_mode = boost::asio::ssl::verify_none;
   }
   this->sslContext().set_verify_mode(verify_mode);
@@ -280,7 +280,7 @@ Tls::ClientComponent::ClientComponent(const ClientParameters& parameters)
 Tls::ServerComponent::ServerComponent(const ServerParameters& parameters)
   : TcpBasedProtocolImplementor<Tls>::ServerComponent(parameters) {
   if (parameters.skipCertificateSecurityLevelCheck()) {
-    LOG(LOG_TAG, pep::warning) << "Skipping OpenSSL security level check for certificate";
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Skipping OpenSSL security level check for certificate";
     SSL_CTX_set_security_level(this->sslContext().native_handle(), 0);
   }
 

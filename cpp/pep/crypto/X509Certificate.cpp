@@ -35,10 +35,9 @@
 
 namespace pep {
 
-static const std::string LOG_TAG ("X509Certificate");
+static const std::string LogTag ("X509Certificate");
 
-// Max duration of certificate issued is 2 years, change this to std::chrono::years{2} when this is fully supported
-constexpr std::chrono::seconds MAX_PEP_CERTIFICATE_VALIDITY_PERIOD = std::chrono::hours{17520};
+constexpr std::chrono::seconds MAX_PEP_CERTIFICATE_VALIDITY_PERIOD = std::chrono::years{2};
 
 namespace {
 
@@ -46,7 +45,7 @@ std::optional<std::string> SearchOIDinName(X509_NAME* name, int nid) {
 
   int index = X509_NAME_get_index_by_NID(name, nid, -1);
   if (index == -1) {
-    LOG(LOG_TAG, error) << "Failed to obtain index for NID: " << nid << " in SearchOIDinName.";
+    PEP_LOG(LogTag, Severity::Error) << "Failed to obtain index for NID: " << nid << " in SearchOIDinName.";
     return std::nullopt;
   } else if (index == -2) {
     throw pep::OpenSSLError("Invalid NID: " + std::to_string(nid) + " in SearchOIDinName.");
@@ -227,7 +226,7 @@ AsymmetricKey X509Certificate::getPublicKey() const {
   if (!pkey) {
     throw pep::OpenSSLError("Failed to get public key from X509 certificate in X509Certificate::getPublicKey.");
   }
-  return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, pkey);
+  return AsymmetricKey(AsymmetricKeyType::Public, pkey);
 }
 
 bool X509Certificate::hasBasicConstraints() const {
@@ -525,8 +524,8 @@ std::string X509CertificatesToPem(const X509Certificates& certificates) {
 }
 
 X509RootCertificates::X509RootCertificates(X509Certificates certificates)
-  : mItems(std::move(certificates)) {
-  for (const auto& cert : mItems) {
+  : items_(std::move(certificates)) {
+  for (const auto& cert : items_) {
     if (!cert.isSelfSigned()) {
       throw std::runtime_error("Root CA certificate is not self signed");
     }
@@ -636,8 +635,8 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
   } else if (result == 0) {
     PEP_DEFER(ERR_clear_error());
     std::string diagnostic = X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx));
-    LOG(LOG_TAG, error) << "Verification failed with error string: " << diagnostic << " in X509CertificateChain::verify.";
-    LOG(LOG_TAG, error) << "Leaf certificate public key: " << leaf().getPublicKey().toPem();
+    PEP_LOG(LogTag, Severity::Error) << "Verification failed with error string: " << diagnostic << " in X509CertificateChain::verify.";
+    PEP_LOG(LogTag, Severity::Error) << "Leaf certificate public key: " << leaf().getPublicKey().toPem();
     return false;
   }
 
@@ -725,7 +724,7 @@ std::vector<X509Extension> X509CertificateSigningRequest::getExtensions() const 
 AsymmetricKey X509CertificateSigningRequest::getPublicKey() const {
   assert(mCSR);
   EVP_PKEY* pkey = X509_REQ_get0_pubkey(mCSR);
-  return AsymmetricKey(ASYMMETRIC_KEY_TYPE_PUBLIC, pkey);
+  return AsymmetricKey(AsymmetricKeyType::Public, pkey);
 }
 
 bool X509CertificateSigningRequest::verifySignature() const {
@@ -741,7 +740,7 @@ bool X509CertificateSigningRequest::verifySignature() const {
     return true;
   } else if (result == 0) {
     auto errors = pep::TakeOpenSSLErrors();
-    LOG(LOG_TAG, error) << "Failed to verify CSR signature." << errors;
+    PEP_LOG(LogTag, Severity::Error) << "Failed to verify CSR signature." << errors;
     return false;
   } else {
     throw pep::OpenSSLError("Error while verifying CSR signature.");
@@ -1034,22 +1033,22 @@ X509Identity X509Identity::MakeSelfSigned(std::string_view organization, std::st
   return X509Identity(std::move(keys).getPrivateKey(), X509CertificateChain({ std::move(cert) }));
 }
 
-X509IdentityFiles::X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, std::filesystem::path rootCaCertFilePath)
+X509IdentityFiles::X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, const X509RootCertificates& rootCas)
   : mPrivateKeyFilePath(std::move(privateKeyFilePath)),
   mCertificateChainFilePath(std::move(certificateChainFilePath)),
   mIdentity(std::make_shared<X509Identity>(AsymmetricKey(ReadFile(mPrivateKeyFilePath)),
     X509CertificateChain(X509CertificatesFromPem(ReadFile(mCertificateChainFilePath))))) {
-  LOG(LOG_TAG, debug) << "Added X509IdentityFiles from Configuration";
-  if (!mIdentity->getCertificateChain().verify(X509RootCertificates::FromFile(rootCaCertFilePath))) {
+  PEP_LOG(LogTag, Severity::Debug) << "Added X509IdentityFiles from Configuration";
+  if (!mIdentity->getCertificateChain().verify(rootCas)) {
     throw std::runtime_error("X509 identity does not pass validation against root CAs");
   }
 }
 
-X509IdentityFiles X509IdentityFiles::FromConfig(const Configuration& config, const std::string& keyPrefix) {
+X509IdentityFiles X509IdentityFiles::FromConfig(const Configuration& identityConfig, const X509RootCertificates& rootCas) {
   return X509IdentityFiles(
-    config.get<std::filesystem::path>(keyPrefix + "PrivateKeyFile"),
-    config.get<std::filesystem::path>(keyPrefix + "CertificateFile"),
-    config.get<std::filesystem::path>("CACertificateFile"));
+    identityConfig.get<std::filesystem::path>("PrivateKeyFile"),
+    identityConfig.get<std::filesystem::path>("CertificateFile"),
+    rootCas);
 }
 
 }

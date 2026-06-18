@@ -2,7 +2,7 @@
 
 #include <QApplication>
 #include <QTimer>
-
+namespace {
 void postToMainThread(std::function<void()>&& fun);
 
 void postDelayedToMainThread(std::chrono::milliseconds when, std::function<void()>&& fun);
@@ -26,11 +26,11 @@ void postDelayedToMainThread(std::chrono::milliseconds when, std::function<void(
   timer->start(when);
 }
 
-struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
- private:
-  struct gui_scheduler_worker : public rxcpp::schedulers::worker_interface {
-    gui_scheduler_worker() = default;
-    gui_scheduler_worker(const gui_scheduler_worker&) = delete;
+struct GuiScheduler : public rxcpp::schedulers::scheduler_interface {
+private:
+  struct Worker : public rxcpp::schedulers::worker_interface {
+    Worker() = default;
+    Worker(const Worker&) = delete;
 
     clock_type::time_point now() const override {
       return clock_type::now();
@@ -59,13 +59,13 @@ struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
     }
   };
 
-  std::shared_ptr<gui_scheduler_worker> wi;
+  std::shared_ptr<Worker> wi;
 
- public:
-  gui_scheduler()
-    : wi(std::make_shared<gui_scheduler_worker>()) {
+public:
+  GuiScheduler()
+    : wi(std::make_shared<Worker>()) {
   }
-  gui_scheduler(const gui_scheduler&) = delete;
+  GuiScheduler(const GuiScheduler&) = delete;
 
   clock_type::time_point now() const override {
     return clock_type::now();
@@ -77,8 +77,9 @@ struct gui_scheduler : public rxcpp::schedulers::scheduler_interface {
 };
 
 rxcpp::schedulers::scheduler make_gui_scheduler() {
-  rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<gui_scheduler>();
+  rxcpp::schedulers::scheduler instance = rxcpp::schedulers::make_scheduler<GuiScheduler>();
   return instance;
+}
 }
 
 rxcpp::observe_on_one_worker observe_on_gui() {

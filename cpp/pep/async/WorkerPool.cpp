@@ -5,14 +5,25 @@
 #include <thread>
 #include <pep/utils/ThreadUtil.hpp>
 
-static const std::string LOG_TAG("WorkerPool");
+namespace {
+const std::string LogTag("WorkerPool");
+
+constexpr unsigned MaxThreads =
+#ifdef __EMSCRIPTEN__
+  // Emscripten threads (workers) seem more expensive
+  8 // Keep consistent with -sPTHREAD_POOL_SIZE
+#else
+  16
+#endif
+;
+}
 
 namespace pep {
 
 WorkerPool::WorkerPool()
-  : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
-  unsigned nThreads = std::thread::hardware_concurrency();
-  LOG(LOG_TAG, debug) << "Using " << nThreads << " worker threads";
+  : mIoContext(std::make_unique<boost::asio::io_context>()), workGuard_(std::make_unique<WorkGuard>(*mIoContext)) {
+  unsigned nThreads = std::min(std::thread::hardware_concurrency(), MaxThreads);
+  PEP_LOG(LogTag, Severity::Debug) << "Using " << nThreads << " worker threads";
   mThreads.reserve(nThreads);
   for (unsigned i = 0; i < nThreads; i++) {
     mThreads.emplace_back(
@@ -24,7 +35,7 @@ WorkerPool::WorkerPool()
 }
 
 WorkerPool::~WorkerPool() {
-  mWorkGuard.reset();
+  workGuard_.reset();
   mIoContext->stop();
   for (auto& thread : mThreads)
     thread.join();

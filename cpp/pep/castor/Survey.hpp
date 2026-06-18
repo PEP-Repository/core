@@ -9,7 +9,7 @@ class SurveyStep;
 
 class Survey : public SimpleCastorChildObject<Survey, Study>, public SharedConstructor<Survey> {
 private:
-  std::string mName;
+  std::string name_;
 
 public:
   static const std::string RELATIVE_API_ENDPOINT;

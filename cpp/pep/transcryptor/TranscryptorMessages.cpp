@@ -10,8 +10,8 @@ void TranscryptorRequestEntry::ensurePacked() const {
   mAccessManagerProof.ensurePacked();
   mStorageFacilityProof.ensurePacked();
   mTranscryptorProof.ensurePacked();
-  if (mUserGroup)
-    mUserGroup->ensurePacked();
+  if (userGroup_)
+    userGroup_->ensurePacked();
   if (mUserGroupProof)
     mUserGroupProof->ensurePacked();
 }

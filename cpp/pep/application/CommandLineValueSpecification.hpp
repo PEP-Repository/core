@@ -53,7 +53,7 @@ public:
 
 namespace detail {
 template <typename T, typename = void>
-struct format {
+struct Format {
   std::string operator()(const T& v) {
     std::ostringstream ss;
     ss << v;
@@ -62,14 +62,14 @@ struct format {
 };
 
 template <typename R, typename P>
-struct format<std::chrono::duration<R, P>> {
+struct Format<std::chrono::duration<R, P>> {
   std::string operator()(const std::chrono::duration<R, P>& v) {
     return chrono::ToString(v);
   }
 };
 
 template <>
-struct format<std::filesystem::path> {
+struct Format<std::filesystem::path> {
   inline std::string operator()(const std::filesystem::path& v) {
     return v.string(); // Format without quotes
   }
@@ -98,7 +98,7 @@ public:
   ArgValueType getType() const noexcept override { return mType; }
 
   std::optional<std::pair<std::string, std::optional<std::string>>> getDefault() const noexcept override {
-    return mDefault.has_value() ? std::optional{std::pair{detail::format<T>()(*mDefault), mDefaultDescription}} : std::nullopt;
+    return mDefault.has_value() ? std::optional{std::pair{detail::Format<T>()(*mDefault), mDefaultDescription}} : std::nullopt;
   }
   std::vector<std::string> getSuggested() const noexcept override;
 
@@ -136,17 +136,17 @@ template <typename Derived, typename T>
 std::vector<std::string> ValueSpecificationTemplate<Derived, T>::getSuggested() const noexcept {
   std::vector<std::string> result;
   if (mDefault) {
-    result.emplace_back(detail::format<T>()(*mDefault));
+    result.emplace_back(detail::Format<T>()(*mDefault));
   }
   for (const auto& v : mSuggested) {
-    std::string s = detail::format<T>()(v);
+    std::string s = detail::Format<T>()(v);
     if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
       result.emplace_back(s);
     }
   }
   if (mAllowed) {
     for (const auto& v : *mAllowed) {
-      std::string s = detail::format<T>()(v);
+      std::string s = detail::Format<T>()(v);
       if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
         result.emplace_back(s);
       }
@@ -264,7 +264,7 @@ void ValueSpecificationTemplate<Derived, T>::writeHelpText(std::ostream& destina
     std::string delimiter;
     std::ostringstream values;
     for (const auto& entry : *mAllowed) {
-      values << delimiter << format<T>()(entry);
+      values << delimiter << Format<T>()(entry);
       delimiter = ", ";
     }
     WriteHelpItemSupplement(destination, "Value must be one of: " + std::move(values).str());
@@ -272,10 +272,10 @@ void ValueSpecificationTemplate<Derived, T>::writeHelpText(std::ostream& destina
   if (mDefault.has_value()) {
     std::ostringstream text;
     if (mDefaultDescription.has_value()) {
-      text << *mDefaultDescription << " (" << format<T>()(*mDefault) << ')';
+      text << *mDefaultDescription << " (" << Format<T>()(*mDefault) << ')';
     }
     else {
-      text << format<T>()(*mDefault);
+      text << Format<T>()(*mDefault);
     }
     WriteHelpItemSupplement(destination, "Value defaults to " + std::move(text).str());
   }

@@ -12,10 +12,10 @@ const std::string RepeatingDataInstance::EMBEDDED_API_NODE_NAME = "repeatingData
 
 RepeatingDataInstance::RepeatingDataInstance(std::shared_ptr<Participant> participant, JsonPtr json)
   : SimpleCastorChildObject<RepeatingDataInstance, Participant>(participant, json),
-  mParticipantId(GetFromPtree<std::string>(*json, "participant_id")),
-  mName(GetFromPtree<std::string>(*json, "name")),
-  mArchived(GetFromPtree<bool>(*json, "archived")),
-  repeatingData(RepeatingData::Create(participant->getStudy(), std::make_shared<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "_embedded.repeating_data")))) // Node name "repeating_data" differs from RepeatingData::EMBEDDED_API_NODE_NAME (defined to "repeatingData")
+  participantId_(GetFromPtree<std::string>(*json, "participant_id")),
+  name_(GetFromPtree<std::string>(*json, "name")),
+  archived_(GetFromPtree<bool>(*json, "archived")),
+  repeatingData_(RepeatingData::Create(participant->getStudy(), std::make_shared<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "_embedded.repeating_data")))) // Node name "repeating_data" differs from RepeatingData::EMBEDDED_API_NODE_NAME (defined to "repeatingData")
   {
 }
 

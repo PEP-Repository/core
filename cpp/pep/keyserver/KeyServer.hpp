@@ -16,23 +16,7 @@ public:
 
     ServerTraits serverTraits() const noexcept override { return ServerTraits::KeyServer(); }
 
-    /*!
-     * \return The client CA private key
-     */
-    const AsymmetricKey& getClientCAPrivateKey() const;
-    /*!
-     * \param privateKey The client CA private key
-     */
-    void setClientCAPrivateKey(const AsymmetricKey& privateKey);
-
-    /*!
-     * \return The certificate chain corresponding with the client CA private key
-     */
-    const std::optional<X509CertificateChain>& getClientCACertificateChain();
-    /*!
-     * \param certificateChain The certificate chain corresponding with the client CA private key
-     */
-    void setClientCACertificateChain(const X509CertificateChain& certificateChain);
+    const std::optional<X509Identity>& getClientCa() const { return mClientCa; }
 
     /*!
      * \return The oauth token secret, shared with the authentication server
@@ -56,8 +40,7 @@ public:
     void check() const override;
 
   private:
-    AsymmetricKey mClientCAPrivateKey;
-    std::optional<X509CertificateChain> mClientCACertificateChain;
+    std::optional<X509Identity> mClientCa;
     std::string mOauthTokenSecret;
     std::filesystem::path mBlocklistStoragePath;
   };
@@ -80,8 +63,7 @@ private:
 
   bool isValid(const OAuthToken& authToken, const std::string& commonName, const std::string& organisationalUnit) const;
 
-  AsymmetricKey mClientCAPrivateKey;
-  X509CertificateChain mClientCACertificateChain;
+  X509Identity mClientCa;
   std::string mOauthTokenSecret;
   std::unique_ptr<tokenBlocking::Blocklist> mBlocklist;
 };

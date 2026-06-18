@@ -3,6 +3,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
+#include <pep/async/WaitGroup.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -11,7 +12,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("CoreClient.AesKeys");
+const std::string LogTag("CoreClient.AesKeys");
 
 constexpr unsigned KEY_REQUEST_BATCH_SIZE = 2500;
 
@@ -25,7 +26,7 @@ rxcpp::observable<std::vector<CoreClient::AESKey>>
 CoreClient::unblindAndDecryptKeys(
       std::span<const std::shared_ptr<EnumerateResult>> entries,
       std::shared_ptr<SignedTicket2> ticket) {
-  LOG(LOG_TAG, debug) << "unblindAndDecryptKeys";
+  PEP_LOG(LogTag, Severity::Debug) << "unblindAndDecryptKeys";
 
   struct Context {
     std::shared_ptr<WaitGroup> wg;
@@ -56,7 +57,7 @@ CoreClient::unblindAndDecryptKeys(
       request.mEntries.emplace_back(
          entry.mMetadata,
          entry.mPolymorphicKey,
-         KeyBlindMode::BLIND_MODE_UNBLIND,
+         KeyBlindMode::Unblind,
          entry.mLocalPseudonymsIndex
       );
     }
@@ -75,7 +76,7 @@ CoreClient::unblindAndDecryptKeys(
       auto action = ctx->wg->add(
           "unblindKeys offset " + std::to_string(offset));
       auto req_index = i;
-      accessManagerProxy->requestEncryptionKey(std::move(ctx->reqs[i]))
+      getAccessManagerProxy(true)->requestEncryptionKey(std::move(ctx->reqs[i]))
       .last().subscribe([action, offset, ctx, req_index](
           EncryptionKeyResponse resp) {
         if (!ctx->ok)
@@ -105,9 +106,9 @@ CoreClient::unblindAndDecryptKeys(
   }).flat_map([this](std::vector<EncryptedKey> encKeys){
     // Step two: we decrypt the retrieved keys.
     return getWorkerPool()->batched_map<8>(std::move(encKeys),
-           observe_on_asio(*io_context),
+           observe_on_asio(*ioContext_),
         [this](EncryptedKey encKey) {
-      auto point = encKey.decrypt(privateKeyData);
+      auto point = encKey.decrypt(privateKeyData_);
       return AESKey(point);
     });
   });
@@ -116,7 +117,7 @@ CoreClient::unblindAndDecryptKeys(
 rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   std::shared_ptr<DataEntriesRequest2<DataStoreEntry2>> request,
   const std::vector<AESKey>& keys) {
-  LOG(LOG_TAG, debug) << "encryptAndBlindKeys";
+  PEP_LOG(LogTag, Severity::Debug) << "encryptAndBlindKeys";
 
   assert(request->mEntries.size() == keys.size());
 
@@ -132,19 +133,19 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     assert(keyRequests[offset].mEntries.size() == indexInKeyRequest);
     keyRequests[offset].mEntries.emplace_back(
       entry.mMetadata,
-      EncryptedKey(publicKeyData, keys[i].point),
-      KeyBlindMode::BLIND_MODE_BLIND,
+      EncryptedKey(systemPublicKeys_.globalDataEncryptionKey, keys[i].point),
+      KeyBlindMode::Blind,
       entry.mPseudonymIndex
     );
   }
   // Give each KeyRequest a (reference to the) ticket
-  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->mTicket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
+  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket_)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
 
   return RxIterate(std::move(keyRequests))
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
     auto [offset, keyRequest] = std::move(pair);
     const size_t count = keyRequest.mEntries.size();
-    return accessManagerProxy->requestEncryptionKey(std::move(keyRequest))
+    return getAccessManagerProxy(true)->requestEncryptionKey(std::move(keyRequest))
       .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
         if (keyResponse.mKeys.size() != count) {

@@ -27,6 +27,8 @@ public:
   struct EntryHeader {
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
+    uint64_t payloadSize{};
+    bool isOriginalPayloadOwner{};
   };
   using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
 
@@ -65,6 +67,8 @@ public:
     EntryName getName() const;
 
     bool isTombstone() const { return mContent == nullptr; }
+    uint64_t payloadSize() const;
+    bool isOriginalPayloadOwner() const;
   };
 
   /*!
@@ -146,15 +150,16 @@ public:
     std::filesystem::path path() const;
 
     const EntryHeaders& entryHeaders() const noexcept { return mEntryHeaders; }
+    void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
   };
 
   class Participant {
   private:
-    FileStore& mStore;
-    std::string mName; // text representation of the local SF pseudonym
-    PropertyBasedContainer<std::unique_ptr<Cell>, &Cell::columnName>::set mCells;
+    FileStore& store_;
+    std::string name_; // text representation of the local SF pseudonym
+    PropertyBasedContainer<std::unique_ptr<Cell>, &Cell::columnName>::set cells_;
 
     Cell* getCell(const std::string& columnName) const;
     Cell& provideCell(const std::string& columnName);
@@ -162,14 +167,14 @@ public:
   public:
     Participant(FileStore& store, std::string name, bool load = false);
 
-    FileStore& getFileStore() const noexcept { return mStore; }
-    const std::string& name() const noexcept { return mName; }
+    FileStore& getFileStore() const noexcept { return store_; }
+    const std::string& name() const noexcept { return name_; }
 
     std::filesystem::path path() const;
 
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
-    size_t entryCount() const;
+    void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
     void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
     EntrySet lookupWithHistory(const std::string& column) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
@@ -183,17 +188,17 @@ public:
   EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
 
-  size_t entryCount() const;
+  void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
   void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
 
   const std::filesystem::path& metaDir() const {
-    return mPath;
+    return path_;
   }
 
 private:
   FileStore(
     const std::filesystem::path& metadatapath,
-    std::shared_ptr<Configuration> pageStoreConfig,
+    const Configuration& pageStoreConfig,
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry);
 
@@ -210,7 +215,7 @@ private:
   Participant& provideParticipant(const std::string& name);
 
   PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set mParticipants;
-  std::filesystem::path mPath;
+  std::filesystem::path path_;
   std::shared_ptr<PageStore> mPagestore;
 };
 

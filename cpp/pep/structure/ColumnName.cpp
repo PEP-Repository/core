@@ -19,7 +19,7 @@ std::string Mangle(const std::string& columnNameSection) {
 namespace pep {
 
 ColumnNameSection::ColumnNameSection(std::string value)
-  : mValue(std::move(value)) {
+  : value_(std::move(value)) {
 }
 
 ColumnNameSection ColumnNameSection::FromRawString(const std::string& raw) {

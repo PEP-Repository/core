@@ -298,11 +298,11 @@ private:
           auto spCount = globalConfig->getShortPseudonyms().size();
 
           // TODO: also make this work for participants that don't have any ShortPseudonyms or ParticipantIdentifier (yet)
-          auto opts = std::make_shared<pep::enumerateAndRetrieveData2Opts>();
+          auto opts = std::make_shared<pep::EnumerateAndRetrieveData2Opts>();
           opts->columnGroups = { "ShortPseudonyms" };
           opts->columns = { "ParticipantIdentifier" };
 
-          rxcpp::observable<std::shared_ptr<pep::enumerateAndRetrieveData2Opts>> earOpts;
+          rxcpp::observable<std::shared_ptr<pep::EnumerateAndRetrieveData2Opts>> earOpts;
 
           if (id.has_value()) {
             earOpts = client->parsePPorIdentity(*id)
@@ -317,7 +317,7 @@ private:
           }
 
           return earOpts // Get EAR options for the participant(s) we're going to process
-            .concat_map([client](std::shared_ptr<pep::enumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
+            .concat_map([client](std::shared_ptr<pep::EnumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
             .as_dynamic() // Reduce compiler memory usage
             .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.mLocalPseudonymsIndex; })) // Group by participant
             .concat_map([](auto participants) { return RxIterate(std::move(*participants)); }) // Iterate over participants
@@ -328,15 +328,15 @@ private:
               assert(spCount >= fields->size());
               auto spsToGenerate = spCount - fields->size();
               if (id.has_value()) {
-                LOG(LOG_TAG, pep::info) << "Storing participant identifier and " << spsToGenerate << " short pseudonym(s) for " << *id;
+                PEP_LOG(LogTag, pep::Severity::Info) << "Storing participant identifier and " << spsToGenerate << " short pseudonym(s) for " << *id;
                 return client->completeParticipantRegistration(*id, false);
               }
 
               if (spsToGenerate == 0U) {
-                LOG(LOG_TAG, pep::debug) << "Encountered participant without identifier";
+                PEP_LOG(LogTag, pep::Severity::Debug) << "Encountered participant without identifier";
               }
               else {
-                LOG(LOG_TAG, pep::error) << "Cannot generate " << spsToGenerate << " short pseudonym(s) for participant without identifier";
+                PEP_LOG(LogTag, pep::Severity::Error) << "Cannot generate " << spsToGenerate << " short pseudonym(s) for participant without identifier";
               }
               return rxcpp::observable<>::empty<pep::FakeVoid>();
             }
@@ -346,7 +346,7 @@ private:
             assert(spCount + 1U >= fields->size());
             auto spsToGenerate = spCount - (fields->size() - 1U);
             if (spsToGenerate > 0U) {
-              LOG(LOG_TAG, pep::info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->mData;
+              PEP_LOG(LogTag, pep::Severity::Info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->mData;
               return client->completeParticipantRegistration(idField->mData, true);
             }
 

@@ -16,14 +16,15 @@ using AuthorizationResult = OperationResult<std::string>;
 
 class OAuthClient : public std::enable_shared_from_this<OAuthClient>, public SharedConstructor<OAuthClient>  {
 public:
+  using GetAuthorizeUriFn = std::function<std::string (std::string redirectUri, std::optional<std::string_view>)>;
   using AuthorizationMethod = std::function<rxcpp::observable<AuthorizationResult> (
     std::shared_ptr<boost::asio::io_context> io_context,
-    std::function<std::string (std::string redirectUri)> getAuthorizeUri)>;
+    GetAuthorizeUriFn getAuthorizeUri)>;
 
   struct Parameters {
     /// The io_context to run on
     std::shared_ptr<boost::asio::io_context> io_context;
-    /// The "AuthenticationServer" part of the client config
+    /// The "OAuthServer" part of the client config
     const Configuration& config;
     /// Method to retrieve the authorization code, see e.g. BrowserAuthorization & ConsoleAuthorization
     AuthorizationMethod authorizationMethod;
@@ -40,8 +41,8 @@ public:
   rxcpp::observable<AuthorizationResult> run();
 
 private:
-  boost::urls::url getAuthorizationUri() const;
-  rxcpp::observable<std::string> doTokenRequest(const std::string& code);
+  boost::urls::url getAuthorizationUri(std::optional<std::string_view> state) const;
+  rxcpp::observable<std::string> doTokenRequest(std::string_view code);
 
   std::shared_ptr<boost::asio::io_context> mIoContext;
   AuthorizationMethod mAuthorizationMethod;

@@ -5,6 +5,7 @@
 
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <prometheus/text_serializer.h>
 #include <prometheus/gauge.h>
@@ -110,7 +111,7 @@ Server::handleChecksumChainRequest(
 
   uint64_t checksum{}, checkpoint{};
   computeChecksumChainChecksum(
-    request.mName,
+    request.name_,
     maxCheckpoint,
     checksum,
     checkpoint
@@ -180,7 +181,7 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
 
 Server::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> ioContext, const Configuration& config)
   : mIoContext(std::move(ioContext)),
-  rootCACertificatesFilePath_(config.get<std::filesystem::path>("CACertificateFile")),
-  rootCAs_(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(rootCACertificatesFilePath_)))) {}
+  rootCACertificatesFilePath_(config.get<std::filesystem::path>("CaCertificateFile")),
+  rootCAs_(MakeSharedCopy(X509RootCertificates::FromFile(rootCACertificatesFilePath_))) {}
 
 }

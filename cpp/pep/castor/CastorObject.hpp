@@ -28,7 +28,7 @@ namespace castor {
  private:
   std::string mId;
 
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   std::string mJson;
 
  public:

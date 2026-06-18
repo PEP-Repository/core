@@ -22,7 +22,7 @@ void validateExpirationParameterValues(const pep::commandline::NamedValues& valu
 
 CommandUser::UserSubCommand::UserSubCommand(const std::string &name, const std::string &description,
                                             CommandUser::UserSubCommand::AmProxyMethod method, CommandUser &parent)
-        : ChildCommandOf<CommandUser>(name, description, parent), mMethod(method) {
+        : ChildCommandOf<CommandUser>(name, description, parent), method_(method) {
 }
 
 pep::commandline::Parameters CommandUser::UserSubCommand::getSupportedParameters() const {
@@ -33,7 +33,7 @@ pep::commandline::Parameters CommandUser::UserSubCommand::getSupportedParameters
 int CommandUser::UserSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
     auto& am = *client->getAccessManagerProxy();
-    return (am.*mMethod)(this->getParameterValues().get<std::string>("uid"));
+    return (am.*method_)(this->getParameterValues().get<std::string>("uid"));
   });
 }
 

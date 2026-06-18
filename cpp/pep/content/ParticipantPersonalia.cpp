@@ -9,10 +9,6 @@
 
 namespace pep {
 
-ParticipantPersonalia::ParticipantPersonalia(const std::string& firstName, const std::string& middleName, const std::string& lastName, const std::string& dateOfBirth)
-: mFirstName(firstName), mMiddleName(middleName), mLastName(lastName), mDateOfBirth(dateOfBirth) {
-}
-
 std::chrono::year_month_day ParticipantPersonalia::ParseDateOfBirth(const std::string& value) {
   auto result = TryParseDdMonthAbbrevYyyyDate(value);
   if (result == std::nullopt) {

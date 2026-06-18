@@ -6,7 +6,6 @@
 #include <pep/async/WorkerPool.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 
@@ -59,7 +58,6 @@ public:
   private:
     std::shared_ptr<GlobalConfiguration> globalConf;
     std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::optional<ElgamalPublicKey> publicKeyPseudonyms;
     EndPoint transcryptorEndPoint;
     EndPoint keyServerEndPoint;
     std::shared_ptr<Backend> backend;
@@ -98,6 +96,7 @@ private:
   messaging::MessageBatches handleUserMutationRequest(std::shared_ptr<SignedUserMutationRequest> signedRequest);
   messaging::MessageBatches handleGlobalConfigurationRequest(std::shared_ptr<GlobalConfigurationRequest> request);
   messaging::MessageBatches handleVerifiersRequest(std::shared_ptr<VerifiersRequest> request);
+  messaging::MessageBatches handleUserVerifiersRequest(std::shared_ptr<UserVerifiersRequest> request);
   messaging::MessageBatches handleColumnAccessRequest(std::shared_ptr<SignedColumnAccessRequest> request);
   messaging::MessageBatches handleParticipantGroupAccessRequest(std::shared_ptr<SignedParticipantGroupAccessRequest> request);
   messaging::MessageBatches handleColumnNameMappingRequest(std::shared_ptr<SignedColumnNameMappingRequest> signedRequest);
@@ -130,7 +129,6 @@ public:
 
 private:
   ElgamalPrivateKey mPseudonymKey;
-  ElgamalPublicKey mPublicKeyPseudonyms;
   TranscryptorProxy mTranscryptorProxy;
   KeyServerProxy mKeyServerProxy;
   std::shared_ptr<Backend> backend;

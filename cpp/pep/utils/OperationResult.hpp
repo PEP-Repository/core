@@ -17,16 +17,16 @@ class OperationResult {
 private:
   static_assert(!std::is_same_v<TValue, std::exception_ptr>, "Can't distinguish success value from failure");
 
-  std::variant<TValue, std::exception_ptr> mState;
+  std::variant<TValue, std::exception_ptr> state_;
 
   explicit OperationResult(TValue&& value)
-    : mState(std::move(value)) {
+    : state_(std::move(value)) {
     assert(this->successful());
     assert(this->exception() == nullptr);
   }
 
   explicit OperationResult(std::exception_ptr exception)
-    : mState(std::move(exception)) {
+    : state_(std::move(exception)) {
     assert(!this->successful());
     assert(this->exception() != nullptr);
   }
@@ -37,7 +37,7 @@ public:
    * \return An exception_ptr that may be nullptr.
    */
   std::exception_ptr exception() const {
-    const std::exception_ptr* address = std::get_if<std::exception_ptr>(&mState);
+    const std::exception_ptr* address = std::get_if<std::exception_ptr>(&state_);
     if (address != nullptr) {
       return *address;
     }
@@ -53,7 +53,7 @@ public:
     if (exception != nullptr) {
       std::rethrow_exception(exception);
     }
-    return std::get<TValue>(mState);
+    return std::get<TValue>(state_);
   }
 
   /*!
@@ -69,7 +69,7 @@ public:
    * \return TRUE if the operation completed successfully; false if not.
    */
   bool successful() const noexcept {
-    return std::holds_alternative<TValue>(mState);
+    return std::holds_alternative<TValue>(state_);
   }
 
   /*!

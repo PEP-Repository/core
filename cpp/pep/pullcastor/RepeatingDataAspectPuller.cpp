@@ -7,7 +7,7 @@ namespace pep {
 namespace castor {
 
 RepeatingDataAspectPuller::RepeatingDataAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<RepeatingDataAspectPuller, CastorStudyType::REPEATING_DATA>(sp, aspect) {
+  : TypedStudyAspectPuller<RepeatingDataAspectPuller, CastorStudyType::RepeatingData>(sp, aspect) {
   mRepeatingDataPullers = CreateRxCache([sp]() { return sp->getRepeatingDataPullers().op(RxToVector()); });
 }
 

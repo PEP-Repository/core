@@ -13,13 +13,22 @@ using namespace std::literals;
 
 namespace {
 
+class Client : public ::testing::Test {
+public:
+  static void SetUpTestSuite() {
+#ifdef __EMSCRIPTEN__
+    GTEST_SKIP() << "Server not supported on Emscripten";
+#endif
+  }
+};
+
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
   friend class pep::SharedConstructor<ClientConnectivityHandler>;
 
 private:
   pep::ExponentialBackoff::Parameters mBackoffParameters;
 
-  std::shared_ptr<pep::networking::Client> mClient;
+  std::shared_ptr<pep::networking::Client> client_;
 
   pep::EventSubscription mClientStatusChangeSubscription;
   pep::EventSubscription mClientConnectionAttemptSubscription;
@@ -71,7 +80,7 @@ private:
   void handleConnectionAttempt(bool successful) {
     if (successful) {
       if (mSuccessfulAttempt.has_value()) {
-        PEP_DEFER(mClient->shutdown());
+        PEP_DEFER(client_->shutdown());
         FAIL() << "Unit test should only produce a single successful connection attempt; got " << *mSuccessfulAttempt << " and " << mAttempts;
       }
       mSuccessfulAttempt = mAttempts;
@@ -96,7 +105,7 @@ private:
     if (!mShutdownIssued) {
       mShutdownIssued = true;
       mClientConnectionAttemptSubscription.cancel();
-      mClient->shutdown();
+      client_->shutdown();
     }
   }
 
@@ -123,13 +132,13 @@ private:
 
 public:
   void handle(std::shared_ptr<pep::networking::Client> client) {
-    assert(mClient == nullptr);
+    assert(client_ == nullptr);
 
-    mClient = std::move(client);
+    client_ = std::move(client);
     auto weak = pep::WeakFrom(*this);
 
-    mClientStatusChangeSubscription = mClient->onStatusChange.subscribe([weak](const pep::networking::Client::StatusChange& change) { pep::AcquireShared(weak)->handleClientStatusChange(change); });
-    mClientConnectionAttemptSubscription = mClient->onConnectionAttempt.subscribe([weak](const pep::networking::Connection::Attempt::Result& result) { pep::AcquireShared(weak)->handleClientConnectionAttempt(result); });
+    mClientStatusChangeSubscription = client_->onStatusChange.subscribe([weak](const pep::networking::Client::StatusChange& change) { pep::AcquireShared(weak)->handleClientStatusChange(change); });
+    mClientConnectionAttemptSubscription = client_->onConnectionAttempt.subscribe([weak](const pep::networking::Connection::Attempt::Result& result) { pep::AcquireShared(weak)->handleClientConnectionAttempt(result); });
   }
 
   void postRunValidate() {
@@ -146,7 +155,8 @@ public:
   }
 };
 
-TEST(Client, Reconnects) { // TODO: simplify
+TEST_F(Client, Reconnects) { // TODO: simplify
+
   boost::asio::io_context ioContext;
 
   auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
@@ -202,7 +212,7 @@ void ReadClientLine(std::shared_ptr<pep::networking::Client> client, std::shared
 }
 
 
-TEST(Client, ReadUntil) {
+TEST_F(Client, ReadUntil) {
   boost::asio::io_context ioContext;
 
   auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
@@ -231,7 +241,7 @@ TEST(Client, ReadUntil) {
   ASSERT_NO_FATAL_FAILURE(ioContext.run());
 }
 
-TEST(Client, ReadAll) {
+TEST_F(Client, ReadAll) {
   boost::asio::io_context ioContext;
 
   auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));

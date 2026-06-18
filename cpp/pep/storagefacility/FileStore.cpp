@@ -27,7 +27,7 @@ uint64_t GenerateChecksumSubstitute() {
 }
 
 const std::string ENTRY_FILE_TYPE("pepentry");
-const std::string LOG_TAG("StorageFacility");
+const std::string LogTag("StorageFacility");
 
 }
 
@@ -107,40 +107,44 @@ const std::string& FileStore::getColumnString(const std::string& value) {
 
 FileStore::FileStore(
   const std::filesystem::path& metadatapath,
-  std::shared_ptr<Configuration> pageStoreConfig,
+  const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : mPath(metadatapath),
+  : path_(metadatapath),
   mPagestore(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
-  std::filesystem::create_directories(mPath);
+  std::filesystem::create_directories(path_);
 
   auto start_time = steady_clock::now();
-  for (const auto& p : std::filesystem::directory_iterator(mPath)) {
+  for (const auto& p : std::filesystem::directory_iterator(path_)) {
     auto name = p.path().filename().string();
     if (std::filesystem::is_directory(p.path()) && name.size() == LocalPseudonym::TextLength()) {
       mParticipants.emplace(std::make_unique<Participant>(*this, name, true));
     }
   }
 
+  size_t entryCount{};
+  uint64_t mTotalPayloadBytes{}, mRollingPayloadBytes{};
+  this->getMetrics(entryCount, mTotalPayloadBytes, mRollingPayloadBytes);
+
   duration<double> seconds(steady_clock::now() - start_time);
   std::ostringstream message;
   message.setf(std::ios::fixed);
   message.precision(2);
-  message << "Loaded " << this->entryCount() << " file store entries in " << seconds;
+  message << "Loaded " << entryCount << " file store entries in " << seconds;
   if (seconds != decltype(seconds)::zero()) {
-    message << " (" << (static_cast<double>(this->entryCount()) / seconds.count()) << " entries per second)";
+    message << " (" << (static_cast<double>(entryCount) / seconds.count()) << " entries per second)";
   }
-  LOG(LOG_TAG, info) << message.str();
+  PEP_LOG(LogTag, Severity::Info) << message.str();
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
-  : mStore(store), mName(std::move(name)) {
+  : store_(store), name_(std::move(name)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
       if (std::filesystem::is_directory(p.path())) {
-        mCells.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
+        cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
       }
     }
   }
@@ -166,12 +170,21 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   }
 }
 
-size_t FileStore::entryCount() const {
-  size_t result = 0;
+void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
+  entryCount = 0U;
+  totalPayloadBytes = 0U;
+  rollingPayloadBytes = 0U;
+
   for (const auto& participant : mParticipants) {
-    result += participant->entryCount();
+    size_t subEntryCount{};
+    uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
+
+    participant->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes, columns);
+
+    entryCount += subEntryCount;
+    totalPayloadBytes += subTotalPayloadBytes;
+    rollingPayloadBytes += subRollingPayloadBytes;
   }
-  return result;
 }
 
 void FileStore::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
@@ -270,8 +283,29 @@ EntryName FileStore::EntryBase::getName() const {
   return this->getCell().entryName();
 }
 
+uint64_t FileStore::EntryBase::payloadSize() const {
+  if (mContent == nullptr) {
+    return 0U;
+  }
+  auto payload = mContent->payload();
+  assert(payload != nullptr);
+  return payload->size();
+}
+
+bool FileStore::EntryBase::isOriginalPayloadOwner() const {
+  if (mContent == nullptr) {
+    return false;
+  }
+  return !mContent->getOriginalPayloadEntryTimestamp().has_value();
+}
+
 FileStore::EntryHeader FileStore::Entry::header() const {
-  return EntryHeader{ this->getValidFrom(), this->getChecksumSubstitute() };
+  return EntryHeader{
+    .validFrom = this->getValidFrom(),
+    .checksumSubstitute = this->getChecksumSubstitute(),
+    .payloadSize = this->payloadSize(),
+    .isOriginalPayloadOwner = this->isOriginalPayloadOwner(),
+  };
 }
 
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
@@ -328,14 +362,14 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   auto newestEntry = this->getFileStore().lookup(this->getName());
   if (newestEntry && newestEntry->getValidFrom() > mLastEntryValidFrom)
     throw std::runtime_error("FileStore: concurrent modification to same entry detected: " + this->getName().string());
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
   if (this->getCell().entryHeaders().find(availableFrom) != this->getCell().entryHeaders().cend()) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
-    LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
 #endif
@@ -476,12 +510,25 @@ std::filesystem::path FileStore::Cell::path() const {
   return this->getParticipant().path() / mColumnName;
 }
 
+void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
+  entryCount = mEntryHeaders.size();
+
+  totalPayloadBytes = 0U;
+  for (const auto& header : mEntryHeaders) {
+    if (header.isOriginalPayloadOwner) {
+      totalPayloadBytes += header.payloadSize;
+    }
+  }
+
+  rollingPayloadBytes = mLatest ? mLatest->payloadSize() : 0U;
+}
+
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
   auto emplaced = mEntryHeaders.emplace(entry->header()).second;
   if (!emplaced) {
     auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
-    LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
   if (mLatest == nullptr || entry->getValidFrom() > mLatest->getValidFrom()) {
@@ -490,8 +537,8 @@ void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
 }
 
 FileStore::Cell* FileStore::Participant::getCell(const std::string& columnName) const {
-  auto pos = mCells.find(columnName);
-  if (pos == mCells.cend()) {
+  auto pos = cells_.find(columnName);
+  if (pos == cells_.cend()) {
     return nullptr;
   }
   return &**pos;
@@ -502,23 +549,32 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   if (existing != nullptr) {
     return *existing;
   }
-  return **mCells.emplace(std::make_unique<Cell>(*this, columnName)).first;
+  return **cells_.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
 std::filesystem::path FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / mName;
+  return this->getFileStore().metaDir() / name_;
 }
 
-size_t FileStore::Participant::entryCount() const {
-  size_t result = 0U;
-  for (const auto& cell : mCells) {
-    result += cell->entryHeaders().size();
+void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
+  entryCount = 0U;
+  totalPayloadBytes = 0U;
+  rollingPayloadBytes = 0U;
+
+  for (const auto& cell : cells_) {
+    if (columns.empty() || columns.contains(cell->columnName())) {
+      size_t subEntryCount{};
+      uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
+      cell->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
+      entryCount += subEntryCount;
+      totalPayloadBytes += subTotalPayloadBytes;
+      rollingPayloadBytes += subRollingPayloadBytes;
+    }
   }
-  return result;
 }
 
 void FileStore::Participant::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
-  for (const auto& cell : mCells) {
+  for (const auto& cell : cells_) {
     for (const auto& header : cell->entryHeaders()) {
       callback(header);
     }

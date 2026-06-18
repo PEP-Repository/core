@@ -29,6 +29,12 @@ void SetBytesProcessed(benchmark::State& state, size_t bytesPerIteration)
 // Silence errors about `auto _`
 //NOLINTBEGIN(clang-analyzer-deadcode.DeadStores)
 
+#ifdef __clang__
+// For Clang >22: Silence warning about __COUNTER__, which now apparently is a C2y extension
+# pragma clang diagnostic ignored "-Wunknown-warning-option"
+# pragma clang diagnostic ignored "-Wc2y-extensions"
+#endif
+
 static void BM_CurvePointUnpack(benchmark::State& state) {
   std::string packed(boost::algorithm::unhex(std::string(
                        "b01d60504aa5f4c5bd9a7541c457661f9a789d18cb4e136e91d3c953488bd208")));
@@ -292,7 +298,7 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   ticket.mModes = {"read", "write"};
   for (int i = 0; i < 200; i++)
     ticket.mColumns.push_back("Column" + std::to_string(i));
-  ticket.mUserGroup = "some user group";
+  ticket.userGroup_ = "some user group";
   auto p1 = pep::LocalPseudonym::Random();
   auto p4 = pep::LocalPseudonym::Random();
   for (int i = 0; i < 600; i++) {

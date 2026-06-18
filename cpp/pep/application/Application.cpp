@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <filesystem>
+#include <utility>
 
 #ifdef _WIN32
 #include <sstream>
@@ -31,7 +32,7 @@ void LogVersionInfo(const std::string& tag, std::string summary) {
   if (summary.empty()) {
     summary = "No version information available. Running a local build?";
   }
-  LOG("Application " + tag, info) << summary;
+  PEP_LOG("Application " + tag, Severity::Info) << summary;
 }
 
 template <typename T>
@@ -180,25 +181,28 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-  return GetExecutablePath().filename().string();
+  if (mArgc > 0) {
+    return std::filesystem::path(this->getArgv()[0]).filename().string();
+  }
+  return "[this program]";
 }
 
 int Application::getArgc() const {
   if (mArgc < 0) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the execute() method is invoked");
+    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
   return mArgc;
 }
 
 char** Application::getArgv() const {
   if (mArgv == nullptr) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the execute() method is invoked");
+    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
   return mArgv;
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
-  // Ensure that uncaught exceptions (in this or any other noexcept function and thread) are reported before the process dies
+  // Ensure that uncaught exceptions (in any noexcept function and thread) are reported before the process dies
   std::set_terminate([]() {
     if (ReportTermination(std::current_exception())) { // If we showed a message to the user...
 #ifdef _WIN32
@@ -209,14 +213,44 @@ int Application::RunWithoutError(std::function<int()> implementor) noexcept {
     std::abort();
     });
 
-  // Explicit try-catch to make sure the stack is unwound,
-  // and because Emscripten does not support termination handlers well:
-  // https://github.com/emscripten-core/emscripten/issues/23720
+  // Explicit try-catch to make sure the stack is unwound
   try {
     return implementor();
   } catch (...) {
     ReportTermination(std::current_exception());
     return EXIT_FAILURE;
+  }
+}
+
+void Application::initializeLoggingOnce() {
+  if (std::exchange(mInitializeLoggingOnceFlag, true)) return;  // exits early if this is not the first call
+
+  const auto& values = this->getParameterValues();
+
+  { // initialize logging sinks
+    std::vector<std::shared_ptr<Logging>> logging;
+
+    if (auto console_level = values.has("logLevel")
+        ? values.getOptional<Severity>("logLevel")
+        : consoleLogMinimumSeverityLevel()) {
+      logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
+      usingConsoleLog_ = true;
+    }
+
+    if (auto file_level = fileLogMinimumSeverityLevel()) {
+      logging.push_back(std::make_shared<FileLogging>(*file_level));
+    }
+
+    if (auto syslog_level = syslogLogMinimumSeverityLevel()) {
+      logging.push_back(std::make_shared<SysLogging>(*syslog_level));
+    }
+
+    Logging::Initialize(logging);
+  }
+
+  mShowVersionInfo = !values.has("suppress-version-info");
+  if (mShowVersionInfo) {
+    LogVersionInfo("binary", BinaryVersion::current.getSummary());
   }
 }
 
@@ -282,7 +316,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
     }
 
     if (usingConsoleLog_) {
-      LOG("Application", severity_level::critical) << "Terminating application " << detail;
+      PEP_LOG("Application", Severity::Critical) << "Terminating application " << detail;
     }
     else {
       auto channel = CreateNotificationChannel(true);
@@ -356,26 +390,26 @@ bool Application::useUnwinder() const {
 #endif
 }
 
-std::optional<severity_level> Application::syslogLogMinimumSeverityLevel() const {
-  return severity_level::info;
+std::optional<Severity> Application::syslogLogMinimumSeverityLevel() const {
+  return Severity::Info;
 }
 
-std::optional<severity_level> Application::consoleLogMinimumSeverityLevel() const {
-  return severity_level::warning;
+std::optional<Severity> Application::consoleLogMinimumSeverityLevel() const {
+  return Severity::Warning;
 }
 
-std::optional<severity_level> Application::fileLogMinimumSeverityLevel() const {
-  return severity_level::warning;
+std::optional<Severity> Application::fileLogMinimumSeverityLevel() const {
+  return Severity::Warning;
 }
 
 commandline::Parameters Application::getSupportedParameters() const {
-  auto loglevel = commandline::Value<std::string>().allow(Logging::SeverityLevelNames());
+  auto loglevel = commandline::Value<std::string>().allow(Logging::SeverityNames());
   auto defaultValue = this->consoleLogMinimumSeverityLevel();
   if (defaultValue.has_value()) {
-    loglevel = loglevel.defaultsTo(Logging::FormatSeverityLevel(*defaultValue));
+    loglevel = loglevel.defaultsTo(Logging::FormatSeverity(*defaultValue));
   }
   auto result = commandline::Command::getSupportedParameters()
-    + commandline::Parameter("suppress-version-info", "Don't log (" + Logging::FormatSeverityLevel(info) + "-level messages with) version details")
+    + commandline::Parameter("suppress-version-info", "Don't log (" + Logging::FormatSeverity(Severity::Info) + "-level messages with) version details")
     + commandline::Parameter("loglevel", "Write log messages to stderr if they have at least this severity").value(loglevel)
     + commandline::Parameter("version", "Produce version info and exit");
 
@@ -421,7 +455,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
   // Also, we allow printing version info above.
   if (::GetACP() != CP_UTF8) {
     if (lexed.contains("allow-non-utf8")) {
-      LOG("Application", severity_level::warning)
+      PEP_LOG("Application", Severity::Warning)
         << "Code page was not set to UTF-8, you may be using an old Windows version. "
            "Using --allow-non-utf8 is not recommended, you may experience problems using special characters.";
     } else {
@@ -477,39 +511,7 @@ int Application::printVersionInfo(const commandline::LexedValues& lexed) {
 
 void Application::finalizeParameters() {
   Command::finalizeParameters();
-
-  const auto& values = this->getParameterValues();
-  mShowVersionInfo = !values.has("suppress-version-info");
-
-  std::vector<std::shared_ptr<Logging>> logging;
-
-  std::optional<severity_level> console_level;
-  if (values.has("loglevel")) {
-    console_level = Logging::ParseSeverityLevel(values.get<std::string>("loglevel"));
-  }
-  if (!console_level) {
-    console_level = consoleLogMinimumSeverityLevel();
-  }
-  if (console_level) {
-    logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
-    usingConsoleLog_ = true;
-  }
-
-  auto file_level = fileLogMinimumSeverityLevel();
-  if (file_level) {
-    logging.push_back(std::make_shared<FileLogging>(*file_level));
-  }
-
-  auto syslog_level = syslogLogMinimumSeverityLevel();
-  if (syslog_level) {
-    logging.push_back(std::make_shared<SysLogging>(*syslog_level));
-  }
-
-  Logging::Initialize(logging);
-
-  if (mShowVersionInfo) {
-    LogVersionInfo("binary", BinaryVersion::current.getSummary());
-  }
+  initializeLoggingOnce();
 }
 
 commandline::Parameter Application::MakeConfigDirectoryParameter(const std::filesystem::path& defaultValue, bool positional, const std::optional<std::string>& alias) {

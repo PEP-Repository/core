@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <boost/property_tree/ptree_fwd.hpp>
 
-#define PULLCASTOR_LOG(level) LOG("PullCastor", level)
+#define PEP_PULLCASTOR_LOG(level) PEP_LOG("PullCastor", level)
 
 namespace pep {
 namespace castor {
@@ -16,7 +16,7 @@ namespace castor {
 /*!
 * \brief A map type that depends on the build type: std::unordered_map in release builds for speed; (ordered) std::map in debug builds for ease of item lookup in the debugger.
 */
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   template <typename TKey, typename TValue>
   using UnOrOrderedMap = std::map<TKey, TValue>;
 #else

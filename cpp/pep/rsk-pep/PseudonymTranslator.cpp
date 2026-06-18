@@ -41,6 +41,16 @@ ReshuffleRekeyVerifiers PseudonymTranslator::computeTranslationProofVerifiers(
       masterPublicEncryptionKey);
 }
 
+ReshuffleRekeyVerifiersWithProof
+PseudonymTranslator::computeCertifiedTranslationProofVerifiers(
+    const Recipient& recipient,
+    const ElgamalPublicKey& masterPublicEncryptionKey
+) const {
+  return rsk_.computeCertifiedReshuffleRekeyVerifiers(
+      rsk_.generateKeyFactors(recipient),
+      masterPublicEncryptionKey);
+}
+
 void PseudonymTranslator::checkTranslationProof(
     const EncryptedPseudonym& preTranslate,
     const EncryptedLocalPseudonym& postTranslate,

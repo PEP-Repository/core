@@ -27,7 +27,7 @@ public:
 
 class ChecksumChainRequest {
 public:
-  std::string mName;
+  std::string name_;
   std::string mCheckpoint;
 };
 

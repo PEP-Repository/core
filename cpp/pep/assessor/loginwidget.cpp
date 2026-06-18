@@ -24,24 +24,25 @@
 #include <unistd.h>
 #endif /*_WIN32*/
 
-static const std::string LOG_TAG("LoginWidget");
+namespace {
+
+const std::string LogTag("LoginWidget");
 
 #ifdef _WIN32
-
-namespace {
 
 std::filesystem::path GetPepAppDataPath() {
   return pep::win32api::GetKnownFolderPath(pep::win32api::KnownFolder::RoamingAppData) / "PEP";
 }
 
-}
 #endif
+
+} // End anonymous namespace
 
 LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, const pep::Configuration& projectConfig, const pep::Configuration& config, const std::filesystem::path& exeDirectory)
   : QWidget(nullptr)
   , authy(pep::OAuthClient::Create(pep::OAuthClient::Parameters{
       .io_context = io_context,
-      .config = config.get_child("AuthenticationServer"),
+      .config = config.get_child("OAuthServer"),
       .authorizationMethod = pep::BrowserAuthorization,
     }))
   , exeDirectory(exeDirectory)
@@ -103,18 +104,18 @@ void LoginWidget::provideUpdateIfAvailable() {
   assert(current != std::nullopt);
 
   if (installer == nullptr) {
-    LOG(LOG_TAG, pep::debug) << "No available installer found: do not do update";
+    PEP_LOG(LogTag, pep::Severity::Debug) << "No available installer found: do not do update";
 
     // If no update is found, disable and remove the Update button
     ui->updateButton->setVisible(false);
   }
   else if (!installer->supersedesRunningVersion()) {
-    LOG(LOG_TAG, pep::debug) << "Available installer does not supersede running software version: do not do update";
+    PEP_LOG(LogTag, pep::Severity::Debug) << "Available installer does not supersede running software version: do not do update";
 
     ui->updateButton->setVisible(false);
   }
   else {
-    LOG(LOG_TAG, pep::debug) << "Superseding installer found: providing update option";
+    PEP_LOG(LogTag, pep::Severity::Debug) << "Superseding installer found: providing update option";
 
     //Change color of LoginWidget to alert user
     this->setStyleSheet(QStringLiteral("background-color: #d3cb58;"));
@@ -165,14 +166,14 @@ void LoginWidget::provideUpdateIfAvailable(bool updateFound) {
 
   // if no update is available, change the login button back to normal
   if (!updateFound) {
-    LOG(LOG_TAG, pep::debug) << "No available installer found: do not do update";
+    PEP_LOG(LogTag, pep::Severity::Debug) << "No available installer found: do not do update";
 
     // If no update is found, disable and remove the Update button
     ui->updateButton->setEnabled(false);
     ui->updateButton->setVisible(false);
 
   } else {
-    LOG(LOG_TAG, pep::debug) << "Superseding installer found: providing update option";
+    PEP_LOG(LogTag, pep::Severity::Debug) << "Superseding installer found: providing update option";
 
     // If an update is found,
 
@@ -244,11 +245,11 @@ void LoginWidget::on_updateStarted(std::exception_ptr error) {
   auto failureReason = pep::GetExceptionMessage(error);
   QString failureMessage;
   if (!failureReason.empty()) {
-    LOG(LOG_TAG, pep::error) << "Updating failed: " << failureReason;
+    PEP_LOG(LogTag, pep::Severity::Error) << "Updating failed: " << failureReason;
     failureMessage = tr("Software cannot update: %1").arg(failureReason.c_str());
   }
   else {
-    LOG(LOG_TAG, pep::error) << "Updating failed (no detail available)";
+    PEP_LOG(LogTag, pep::Severity::Error) << "Updating failed (no detail available)";
     failureMessage = tr("Software cannot update.");
   }
 

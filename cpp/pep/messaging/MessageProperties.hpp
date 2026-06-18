@@ -14,10 +14,10 @@ using EncodedMessageProperties = uint32_t;
 // The (single) high bit in EncodedMessageProperties indicates message type
 class MessageType {
 public:
-  enum Value {
-    CONTROL,
-    REQUEST,
-    RESPONSE
+  enum Value { // Intentionally not an enum _class_ so we can write e.g. "MessageType::Control"
+    Control,
+    Request,
+    Response
   };
 
   static bool IsValidValue(Value value) noexcept;
@@ -25,13 +25,13 @@ public:
   MessageType(Value value);
   std::strong_ordering operator<=>(const MessageType& other) const = default;
 
-  Value value() const noexcept { return mValue; }
+  Value value() const noexcept { return value_; }
   std::string describe() const;
 
   EncodedMessageProperties encode() const noexcept;
 
 private:
-  Value mValue;
+  Value value_;
 };
 
 
@@ -76,7 +76,7 @@ public:
   explicit StreamId(Value value);
   std::strong_ordering operator<=>(const StreamId& other) const = default;
 
-  Value value() const noexcept { return mValue; }
+  Value value() const noexcept { return value_; }
 
   EncodedMessageProperties encode() const noexcept { return this->value(); }
 
@@ -84,7 +84,7 @@ public:
   static StreamId MakeNext(const StreamId& previous) noexcept;
 
 private:
-  Value mValue;
+  Value value_;
 };
 
 inline std::ostream& operator<<(std::ostream& lhs, const StreamId& rhs) { return lhs << rhs.value(); }

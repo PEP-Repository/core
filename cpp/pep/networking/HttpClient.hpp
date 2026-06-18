@@ -87,7 +87,7 @@ public:
    * @param path The path (relative to the client's base URI) that the request will access. Specify std::nullopt to access the HttpClient's base URI.
    * @return The HTTP request.
    */
-  HTTPRequest makeRequest(HttpMethod method = HttpMethod::GET, const std::optional<std::string>& path = std::nullopt) const;
+  HTTPRequest makeRequest(HttpMethod method = HttpMethod::Get, const std::optional<std::string>& path = std::nullopt) const;
 
   /*!
    * \brief Converts a full URL to a path relative to the HttpClient's base URL
