@@ -247,6 +247,17 @@ if [[ "$MACOS_SYS_ARCH" != "arm64" ]] && [[ "$MACOS_SYS_ARCH" != "x86_64" ]]; th
     exit 1
 fi
 
+# Bundle Sparkle's generate_appcast tool into the binaries zip, so the macos-generate-appcast CI job can use it without
+# invoking Conan or Homebrew. The cli CMake target copies it next to pepcli from the Sparkle Conan package
+echo "Staging generate_appcast tool."
+GENERATE_APPCAST_SRC="$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/cpp/pep/cli/generate_appcast"
+if [[ ! -f "$GENERATE_APPCAST_SRC" ]]; then
+    echo "Error: generate_appcast not found at $GENERATE_APPCAST_SRC"
+    exit 1
+fi
+mkdir -p "$BUILD_DIR/macOS_artifacts/sparkle-tools"
+cp "$GENERATE_APPCAST_SRC" "$BUILD_DIR/macOS_artifacts/sparkle-tools/generate_appcast"
+
 echo "Creating zip file with macOS binaries."
 
 # -c: Create an archive. -k: Create a PKZip archive (.zip)

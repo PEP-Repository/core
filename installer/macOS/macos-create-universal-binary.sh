@@ -101,3 +101,14 @@ lipo_app_files "x86_64/macOS_artifacts/download_tool_app/$PEP_MACOS_DOWNLOAD_TOO
 
 # And for PEP Upload Tool
 lipo_app_files "x86_64/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app" "arm64/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app" "universal/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app"
+
+# Universalize the Sparkle generate_appcast tool (staged per-arch by macos-ci-build-app-bins.sh),
+# so the macos-generate-appcast job has a tool that runs regardless of the runner's architecture.
+generate_appcast_x86="x86_64/macOS_artifacts/sparkle-tools/generate_appcast"
+generate_appcast_arm="arm64/macOS_artifacts/sparkle-tools/generate_appcast"
+if [[ ! -f "$generate_appcast_x86" ]] || [[ ! -f "$generate_appcast_arm" ]]; then
+    echo "Error: generate_appcast missing for one or both architectures"
+    exit 1
+fi
+mkdir -p "universal/macOS_artifacts/sparkle-tools"
+lipo -create "$generate_appcast_x86" "$generate_appcast_arm" -output "universal/macOS_artifacts/sparkle-tools/generate_appcast"

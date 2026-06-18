@@ -312,6 +312,7 @@ macos-universal-installer:
   artifacts:
     paths:
       - ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer
+      - ${STAGING_DIRECTORY}/universal/macOS_artifacts/sparkle-tools
 
 macos-notarization:
   stage: build
@@ -343,6 +344,7 @@ macos-notarization:
   artifacts:
     paths:
       - ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer
+      - ${STAGING_DIRECTORY}/universal/macOS_artifacts/sparkle-tools
 
 macos-generate-appcast:
   stage: build
@@ -358,6 +360,7 @@ macos-generate-appcast:
     # Obtain project caption
     - caption=$(cat config/"$CI_COMMIT_REF_NAME"/project/caption.txt)
     - INSTALLER_BASE_DIR="${STAGING_DIRECTORY}/universal/macOS_artifacts/installer"
+    - export GENERATE_APPCAST="${STAGING_DIRECTORY}/universal/macOS_artifacts/sparkle-tools/generate_appcast"
     - |
       generate_appcast_with_legacy_support() {
         local full_appcast_path="$1"
