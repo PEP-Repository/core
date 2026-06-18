@@ -87,19 +87,19 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   boost::property_tree::ptree keys;
 
   //Subscribe for network status updates from the pepClient
-  client->getAccessManagerProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
+  client->getAccessManagerProxy()->connectionStatus().observe_on(ObserveOnGui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
     accessManagerConnectionStatus = accessManagerStatus;
   updateConnectionStatus();
     });
-  client->getKeyServerProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
+  client->getKeyServerProxy()->connectionStatus().observe_on(ObserveOnGui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
     keyServerConnectionStatus = keyServerStatus;
   updateConnectionStatus();
     });
-  client->getStorageFacilityProxy()->connectionStatus().observe_on(observe_on_gui()).subscribe([this](pep::ConnectionStatus storageFacilityStatus) {
+  client->getStorageFacilityProxy()->connectionStatus().observe_on(ObserveOnGui()).subscribe([this](pep::ConnectionStatus storageFacilityStatus) {
     storageFacilityConnectionStatus = storageFacilityStatus;
   updateConnectionStatus();
     });
-  client->getRegistrationExpiryObservable().observe_on(observe_on_gui()).subscribe([this](pep::FakeVoid) {
+  client->getRegistrationExpiryObservable().observe_on(ObserveOnGui()).subscribe([this](pep::FakeVoid) {
     loginExpired();
     });
 
@@ -191,7 +191,7 @@ void MainWindow::initializeOpenPatientContent(bool setFocus) {
 void MainWindow::openWidget(QStackedWidget* target, const std::function<void(const pep::GlobalConfiguration& config)>& callback) {
   auto processed = std::make_shared<bool>(false);
   pepClient->getGlobalConfiguration()
-    .observe_on(observe_on_gui())
+    .observe_on(ObserveOnGui())
     .subscribe(
       [callback, processed](std::shared_ptr<pep::GlobalConfiguration> configuration) {
         if (*processed) {
@@ -284,7 +284,7 @@ void MainWindow::showForToken(QString token) {
         return std::make_pair(enrollment, config);
       });
       })
-    .observe_on(observe_on_gui())
+    .observe_on(ObserveOnGui())
         .subscribe([this](const std::pair<std::shared_ptr<pep::EnrolledPartyKeys>, std::shared_ptr<pep::GlobalConfiguration>> pair) {
         std::cout << "Received EnrolledPartyKeys" << std::endl;
       auto& cert = pair.first->signingIdentity.value().getCertificateChain().leaf();

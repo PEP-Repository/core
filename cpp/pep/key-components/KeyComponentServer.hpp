@@ -35,7 +35,7 @@ class KeyComponentServer::Parameters : public SigningServer::Parameters {
 public:
   std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
   std::shared_ptr<DataTranslator> getDataTranslator() const;
-  const SystemPublicKeys& getSystemPublicKeys() const { return systemPublicKeys; }
+  const SystemPublicKeys& getSystemPublicKeys() const { return systemPublicKeys_; }
   void setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator);
   void setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator);
 
@@ -44,9 +44,9 @@ protected:
   void check() const override;
 
 private:
-  std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
-  std::shared_ptr<DataTranslator> dataTranslator;
-  SystemPublicKeys systemPublicKeys;
+  std::shared_ptr<PseudonymTranslator> pseudonymTranslator_;
+  std::shared_ptr<DataTranslator> dataTranslator_;
+  SystemPublicKeys systemPublicKeys_;
 };
 
 }

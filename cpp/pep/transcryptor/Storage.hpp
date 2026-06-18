@@ -24,7 +24,7 @@ private:
   void ensureInitialized();
   void ensureInitialized_unguarded(bool& migrated);
   void migrate();
-  void migrate_from_v1_to_v2();
+  void migrateFromV1toV2();
   void removeOutdatedRecords();
 
   int64_t getOrCreatePseudonymSet(const std::vector<LocalPseudonym>& ps);

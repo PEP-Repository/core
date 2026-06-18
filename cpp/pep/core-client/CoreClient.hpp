@@ -252,8 +252,6 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   const std::filesystem::path caCertFilepath_;
   std::shared_ptr<WorkerPool> workerPool_ = nullptr;
 
-  std::shared_ptr<WorkerPool> getWorkerPool();
-
   std::shared_ptr<X509RootCertificates> rootCAs_;
 
   ElgamalPrivateKey privateKeyData_;
@@ -272,6 +270,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   rxcpp::subjects::subject<FakeVoid> registrationSubject_;
   rxcpp::composite_subscription registrationExpiryTimer_;
   rxcpp::subjects::subject<EnrolledPartyKeys> enrollmentSubject_;
+
+  std::shared_ptr<WorkerPool> getWorkerPool();
 
  public:
   class Builder {

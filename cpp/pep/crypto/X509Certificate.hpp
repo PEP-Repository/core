@@ -175,9 +175,9 @@ class X509CertificateSigningRequest {
 
   void sign(const AsymmetricKeyPair& keyPair);
 
-  X509_REQ* cSR_ = nullptr;
+  X509_REQ* csr_ = nullptr;
 
-  explicit X509CertificateSigningRequest(X509_REQ& csr) noexcept : cSR_(&csr) {} // Takes ownership
+  explicit X509CertificateSigningRequest(X509_REQ& csr) noexcept : csr_(&csr) {} // Takes ownership
   std::optional<std::string> searchOIDinSubject(int nid) const;
 };
 

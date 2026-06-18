@@ -315,7 +315,7 @@ void ExportWidget::doExport() {
     }
 
     this->getParticipantData(selected)
-      .observe_on(observe_on_gui())
+      .observe_on(ObserveOnGui())
       .subscribe(
         [entries = std::make_shared<QList<std::shared_ptr<ExportableItem>>>(selected), file, expandDetails](const std::map<std::string, std::string>& data) {WriteParticipantData(*entries, data, *file, expandDetails); },
         [this, file](std::exception_ptr ep) {

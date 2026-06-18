@@ -94,10 +94,10 @@ HTTPResponse::HTTPResponse(const std::string& status, std::string body,
 ) : HTTPMessage(std::move(body), std::move(headers)) {
 
   std::istringstream statusStream(status);
-  statusStream >> statuscode;
+  statusStream >> statuscode_;
   size_t pos = static_cast<size_t>(statusStream.tellg()) + 1;
   if(pos < status.size())
-    statusMessage = status.substr(pos);
+    statusMessage_ = status.substr(pos);
 
   if(completeHeaders) {
     HTTPResponse::completeHeaders();
@@ -108,9 +108,10 @@ HTTPResponse::HTTPResponse(
   unsigned int statuscode, std::string statusMessage, std::string body,
   std::map<std::string, std::string, CaseInsensitiveCompare> headers,
   bool completeHeaders
-) : HTTPMessage(std::move(body), std::move(headers)),
-  statuscode(statuscode),
-  statusMessage(std::move(statusMessage)) {
+)
+  : HTTPMessage(std::move(body), std::move(headers)),
+  statuscode_(statuscode),
+  statusMessage_(std::move(statusMessage)) {
 
   if(completeHeaders) {
     HTTPResponse::completeHeaders();
@@ -119,7 +120,7 @@ HTTPResponse::HTTPResponse(
 
 std::string HTTPResponse::toString() const {
   std::ostringstream ss;
-  ss << "HTTP/1.1 " << statuscode << " " << statusMessage << "\r\n";
+  ss << "HTTP/1.1 " << statuscode_ << " " << statusMessage_ << "\r\n";
 
   for(const auto& header : HTTPMessage::headers) {
     ss << header.first << ": " << header.second << "\r\n";

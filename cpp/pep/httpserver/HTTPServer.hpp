@@ -1,7 +1,7 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/networking/HTTPMessage.hpp>
-#include <pep/async/SingleWorker.hpp>
 #include <unordered_map>
 #include <functional>
 #include <memory>
@@ -34,8 +34,6 @@ private:
   mg_context *ctx_;
   std::unique_ptr<std::unordered_map<std::string, std::shared_ptr<HttpRequestHandlerParams>>> registeredHandlers_;
   std::shared_ptr<boost::asio::io_context> ioContext_;
-
-  static SingleWorker CleanupWorker;
 };
 
 }

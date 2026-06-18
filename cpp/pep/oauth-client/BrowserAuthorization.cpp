@@ -9,6 +9,7 @@
 #include <format>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/url/url_view.hpp>
 
 #include <pep/utils/Win32Api.hpp>

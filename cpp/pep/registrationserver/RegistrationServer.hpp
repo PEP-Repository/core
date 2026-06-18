@@ -76,11 +76,11 @@ class RegistrationServer : public SigningServer {
     void check() const override;
 
    private:
-    std::shared_ptr<CoreClient> client;
-    std::filesystem::path shadowStorageFile;
-    AsymmetricKey shadowPublicKey;
+    std::shared_ptr<CoreClient> client_;
+    std::filesystem::path shadowStorageFile_;
+    AsymmetricKey shadowPublicKey_;
 #ifdef WITH_CASTOR
-    std::shared_ptr<castor::CastorConnection> castorConnection;
+    std::shared_ptr<castor::CastorConnection> castorConnection_;
 #endif
   };
 
@@ -102,9 +102,9 @@ private:
 private:
   class ShortPseudonymCache;
 
-  ::sqlite3* pShadowStorage = nullptr;
-  std::shared_ptr<CoreClient> pClient;
-  AsymmetricKey shadowPublicKey;
+  ::sqlite3* pShadowStorage_ = nullptr;
+  std::shared_ptr<CoreClient> pClient_;
+  AsymmetricKey shadowPublicKey_;
   std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
   std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;
 #ifdef WITH_CASTOR

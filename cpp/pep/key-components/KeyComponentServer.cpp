@@ -72,7 +72,7 @@ KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 
   try {
     systemPrivateKeysFile = config.get<std::filesystem::path>("SystemPrivateKeysFile");
-    systemPublicKeys = config.get<SystemPublicKeys>("SystemPublicKeys");
+    systemPublicKeys_ = config.get<SystemPublicKeys>("SystemPublicKeys");
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
@@ -88,25 +88,25 @@ KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 }
 
 std::shared_ptr<PseudonymTranslator> KeyComponentServer::Parameters::getPseudonymTranslator() const {
-  return pseudonymTranslator;
+  return pseudonymTranslator_;
 }
 
 std::shared_ptr<DataTranslator> KeyComponentServer::Parameters::getDataTranslator() const {
-  return dataTranslator;
+  return dataTranslator_;
 }
 
 void KeyComponentServer::Parameters::setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator) {
-  Parameters::pseudonymTranslator = pseudonymTranslator;
+  pseudonymTranslator_ = pseudonymTranslator;
 }
 
 void KeyComponentServer::Parameters::setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator) {
-  Parameters::dataTranslator = dataTranslator;
+  dataTranslator_ = dataTranslator;
 }
 
 void KeyComponentServer::Parameters::check() const {
-  if (!pseudonymTranslator)
+  if (!pseudonymTranslator_)
     throw std::runtime_error("pseudonymTranslator must be set");
-  if (!dataTranslator)
+  if (!dataTranslator_)
     throw std::runtime_error("dataTranslator must be set");
 
   SigningServer::Parameters::check();

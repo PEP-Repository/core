@@ -184,12 +184,12 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
 
     // See the declaration/definition of the fields for default values
-    ReadOptionalNonZeroConfigValue(this->parallelisation_width, config, "ParallelisationWidth");
-    ReadOptionalNonZeroConfigValue(this->dataSizeResolution, config, "DataSizeResolution");
+    ReadOptionalNonZeroConfigValue(parallelisationWidth_, config, "ParallelisationWidth");
+    ReadOptionalNonZeroConfigValue(dataSizeResolution_, config, "DataSizeResolution");
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
-    this->storagePath = config.get<std::filesystem::path>("StoragePath");
-    this->pageStoreConfig = std::make_shared<Configuration>(config.get_child("PageStore"));
+    storagePath_ = config.get<std::filesystem::path>("StoragePath");
+    pageStoreConfig_ = std::make_shared<Configuration>(config.get_child("PageStore"));
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
@@ -232,30 +232,30 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
 }
 
 const ElgamalPrivateKey& StorageFacility::Parameters::getPseudonymKey() const {
-  return pseudonymKey.value();
+  return pseudonymKey_.value();
 }
 
 void StorageFacility::Parameters::setPseudonymKey(const ElgamalPrivateKey& pseudonymKey) {
-  Parameters::pseudonymKey = pseudonymKey;
+  pseudonymKey_ = pseudonymKey;
 }
 
 const std::string& StorageFacility::Parameters::getEncIdKey() const {
-  return encIdKey.value();
+  return encIdKey_.value();
 }
 
 void StorageFacility::Parameters::setEncIdKey(const std::string& key) {
-  Parameters::encIdKey = key;
+  encIdKey_ = key;
 }
 
 void StorageFacility::Parameters::check() const {
-  if (!encIdKey)
+  if (!encIdKey_)
     throw std::runtime_error("encIdKey must be set");
-  if (!pseudonymKey)
+  if (!pseudonymKey_)
     throw std::runtime_error("pseudonymKey must be set");
   SigningServer::Parameters::check();
-  if (!this->pageStoreConfig)
+  if (!pageStoreConfig_)
     throw std::runtime_error("pageStoreConfig must be set");
-  if (dataSizeResolution == 0U) {
+  if (dataSizeResolution_ == 0U) {
     throw std::runtime_error("dataSizeResolution cannot be zero");
   }
   // FIXME: check if errors happend during startup of file store

@@ -25,9 +25,6 @@ public:
     BackoffFactor backoffFactor() const noexcept { return backoffFactor_; }
   };
 
-private:
-
-public:
   using RetryHandler = std::function<void(const boost::system::error_code&)>;
 
   explicit ExponentialBackoff(boost::asio::io_context& io_context, Parameters parameters = Parameters())
@@ -45,7 +42,6 @@ private:
   Timer timer_;
   Parameters parameters_;
   Timeout nextTimeout_;
-
 };
 
 }

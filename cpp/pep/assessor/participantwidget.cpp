@@ -292,7 +292,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
   opts.columnGroups = {"ShortPseudonyms", "VisitAssessors"};
   opts.columns = cols;
   pepClient_->enumerateAndRetrieveData2(opts)
-  .observe_on(observe_on_gui())
+  .observe_on(ObserveOnGui())
   .subscribe([aggregator](pep::EnumerateAndRetrieveResult result) {
     aggregator->process(result);
   }, [this](std::exception_ptr ep) {
@@ -306,7 +306,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
     else if (completeRegistration && currentPepRole_.canRegisterParticipants() && !aggregator->hasCompleteParticipantData()) {
       emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::Severity::Warning);
       pepClient_->completeParticipantRegistration(participantSID_.toStdString())
-        .observe_on(observe_on_gui())
+        .observe_on(ObserveOnGui())
         .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
         qDebug() << "Exception occured";
@@ -400,7 +400,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 
   pepClient_->storeData2(currentUserPp_, columnName.toStdString(),
           std::make_shared<std::string>(history.toJson()), { pep::MetadataXEntry::MakeFileExtension(".json") })
-  .observe_on(observe_on_gui())
+  .observe_on(ObserveOnGui())
   .subscribe([this, current](pep::DataStorageResult2 result) {
     emit statusMessage(current ? tr("Device deregistered.") : tr("Device registered."), pep::Severity::Info);
     runQuery(false);
@@ -424,7 +424,7 @@ void ParticipantWidget::updateVisitAssessor(QString id) {
   auto column = studyContext_.getAdministeringAssessorColumnName(static_cast<uint32_t>(currentVisitNumber_));
   this->pepClient_->storeData2(currentUserPp_, column,
     std::make_shared<std::string>(id.toStdString()), {pep::MetadataXEntry::MakeFileExtension(".txt")})
-    .observe_on(observe_on_gui())
+    .observe_on(ObserveOnGui())
     .subscribe([](pep::DataStorageResult2 result) {
     // Do nothing
   }, [this](std::exception_ptr ep) {
@@ -1115,7 +1115,7 @@ void ParticipantWidget::openEditParticipant() {
     participantInfoEdit->close();
 
     this->pepClient_->storeData2(entries)
-      .observe_on(observe_on_gui())
+      .observe_on(ObserveOnGui())
       .subscribe([](pep::DataStorageResult2 result) {
       // Do nothing
     }, [this](std::exception_ptr ep) {
@@ -1280,7 +1280,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
     pepClient_->storeData2(currentUserPp_, columnName.toStdString(),
             std::make_shared<std::string>(history.toJson()), {pep::MetadataXEntry::MakeFileExtension(".json")})
-      .observe_on(observe_on_gui())
+      .observe_on(ObserveOnGui())
       .subscribe(
         [](pep::DataStorageResult2 result) { /* ignore */ },
         [this, cancelReadOnly](std::exception_ptr error) { cancelReadOnly(); emit statusMessage(tr("Storage error: %1").arg(QString::fromStdString(pep::GetExceptionMessage(error))), pep::Severity::Error); },

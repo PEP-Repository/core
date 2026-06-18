@@ -63,7 +63,7 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
     verifiersFile = config.get<std::filesystem::path>("VerifiersFile");
 
     auto serverEndPoints = config.get_child("ServerEndPoints");
-    accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
+    accessManagerEndPoint_ = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
@@ -93,30 +93,30 @@ Transcryptor::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io
 }
 
 void Transcryptor::Parameters::setStorage(std::shared_ptr<TranscryptorStorage> storage) {
-  Parameters::storage = storage;
+  storage_ = storage;
 }
 std::shared_ptr<TranscryptorStorage> Transcryptor::Parameters::getStorage() const {
-  return storage;
+  return storage_;
 }
 
 void Transcryptor::Parameters::setPseudonymKey(const ElgamalPrivateKey& key) {
-  Parameters::pseudonymKey = key;
+  pseudonymKey_ = key;
 }
 std::optional<ElgamalPrivateKey> Transcryptor::Parameters::getPseudonymKey() const {
-  return pseudonymKey;
+  return pseudonymKey_;
 }
 
 void Transcryptor::Parameters::setVerifiers(const ServerVerifiers& verifiers) {
-  Parameters::verifiers = verifiers;
+  verifiers_ = verifiers;
 }
 const ServerVerifiers& Transcryptor::Parameters::getVerifiers() const {
-  return verifiers.value();
+  return verifiers_.value();
 }
 
 void Transcryptor::Parameters::check() const {
-  if(!storage)
+  if(!storage_)
     throw std::runtime_error("storage must be set");
-  if(!verifiers)
+  if(!verifiers_)
     throw std::runtime_error("verifiers must be set");
   KeyComponentServer::Parameters::check();
 }
@@ -299,7 +299,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
         pseudonymHash
       );
       auto result = rxcpp::observable<>::just(std::make_shared<std::string>(Serialization::ToString(std::move(response)))).as_dynamic();
-      server->lpMetrics->transcryptor_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
+      server->lpMetrics_->transcryptor_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
       PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " returning result to requestor";
       return result;
     });
@@ -407,7 +407,7 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   pseudonymKey_(parameters->getPseudonymKey()),
   accessManagerProxy_(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
   storage_(parameters->getStorage()),
-  lpMetrics(std::make_shared<Metrics>(registry_)),
+  lpMetrics_(std::make_shared<Metrics>(registry_)),
   verifiers_(parameters->getVerifiers()) {
   RegisterRequestHandlers(*this,
                           &Transcryptor::handleTranscryptorRequest,
@@ -425,7 +425,7 @@ std::optional<std::filesystem::path> Transcryptor::getStoragePath() {
 std::shared_ptr<prometheus::Registry>
 Transcryptor::getMetricsRegistry()  {
   // Collect some metrics ad hoc
-  lpMetrics->transcryptor_log_size.Set(static_cast<double>(
+  lpMetrics_->transcryptor_log_size.Set(static_cast<double>(
         std::filesystem::file_size(storage_->getPath())));
 
   // Collect the base metrics and return the complete registry

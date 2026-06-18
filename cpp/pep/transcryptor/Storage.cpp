@@ -707,7 +707,7 @@ void TranscryptorStorage::migrate() {
 
   if (!version || version == 1) {
     try {
-      migrate_from_v1_to_v2();
+      migrateFromV1toV2();
       version = 2;
     } catch (...) {
       PEP_LOG(LogTag, Severity::Error) << "Migration of transcryptor database from version 1"
@@ -726,7 +726,7 @@ void TranscryptorStorage::migrate() {
 }
 
 
-void TranscryptorStorage::migrate_from_v1_to_v2() {
+void TranscryptorStorage::migrateFromV1toV2() {
   int done = 0; // for progress logging
 
   PEP_LOG(LogTag, Severity::Warning) << "Migrating ticket requests ...";

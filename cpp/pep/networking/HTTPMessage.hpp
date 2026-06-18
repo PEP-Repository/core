@@ -67,8 +67,8 @@ public:
 //! A HTTP Response
 class HTTPResponse : public HTTPMessage {
 private:
-  unsigned int statuscode{};
-  std::string statusMessage;
+  unsigned int statuscode_{};
+  std::string statusMessage_;
 
 public:
   //! Construct an empty response 
@@ -102,20 +102,20 @@ public:
 
   //! \return HTTP status code of the response
   unsigned int getStatusCode() const {
-    return statuscode;
+    return statuscode_;
   }
 
   void setStatusCode(unsigned int statuscode) {
-    this->statuscode = statuscode;
+    statuscode_ = statuscode;
   }
 
   //! \return Status message of the response
   const std::string& getStatusMessage() const {
-    return statusMessage;
+    return statusMessage_;
   }
 
   void setStatusMessage(std::string statusMessage) {
-    this->statusMessage = std::move(statusMessage);
+    statusMessage_ = std::move(statusMessage);
   }
 
   void completeHeaders();

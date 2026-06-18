@@ -1,6 +1,7 @@
 #include <pep/httpserver/HTTPServer.hpp>
 
 #include <pep/async/OnAsio.hpp>
+#include <pep/async/SingleWorker.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 
@@ -11,8 +12,6 @@
 namespace pep {
 
 static const std::string LogTag ("HTTPServer");
-
-SingleWorker HTTPServer::CleanupWorker = SingleWorker();
 
 struct HttpRequestHandlerParams {
   std::string method;
@@ -30,6 +29,8 @@ protected:
 };
 
 namespace {
+
+SingleWorker cleanupWorker;
 
 struct HttpRequestHandlerParamsBasic : HttpRequestHandlerParams {
   HTTPServer::BasicHandler func;
@@ -202,7 +203,7 @@ void HTTPServer::asyncStop() {
   // 3. When handling a request, we schedule the handler on ioContext_, which runs on the main thread, and then use `as_blocking` to wait for the result
   // So: we have mg_stop blocking the main thread, which will therefore never handle the request on which mg_stop is waiting.
   // We also capture registeredHandlers_, in order to make sure the HttpRequestHandlerParams it contains are not cleaned up before all ongoing request handlers have finished
-  CleanupWorker.doWork([ctx = std::exchange(ctx_, {}), registeredHandlers = std::exchange(registeredHandlers_, {})]{
+  cleanupWorker.doWork([ctx = std::exchange(ctx_, {}), registeredHandlers = std::exchange(registeredHandlers_, {})]{
     mg_stop(ctx);
     // I'd like to log here that we're stopped, but the logger may actually be destructed here
   });

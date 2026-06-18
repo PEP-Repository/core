@@ -18,7 +18,7 @@ EntryContent::EntryContent( Metadata metadata, PayloadData payload, std::optiona
   : metadata_(std::move(metadata)),
   payload_(std::move(payload)) {
   if (originalPayloadEntryTimestamp.has_value()) {
-    assert(*originalPayloadEntryTimestamp != NO_PREVIOUS_PAYLOAD_ENTRY);
+    assert(*originalPayloadEntryTimestamp != NoPreviousPayloadEntry);
     originalPayloadEntryTimestamp_ = *originalPayloadEntryTimestamp;
   }
 }
@@ -37,7 +37,7 @@ EntryContent::EntryContent(const EntryContent& other, Timestamp originalEntryVal
       other.getOriginalPayloadEntryTimestamp().value_or(originalEntryValidFrom)) {}
 
 std::optional<Timestamp> EntryContent::getOriginalPayloadEntryTimestamp() const {
-  if (originalPayloadEntryTimestamp_ == NO_PREVIOUS_PAYLOAD_ENTRY) {
+  if (originalPayloadEntryTimestamp_ == NoPreviousPayloadEntry) {
     return std::nullopt;
   }
   return originalPayloadEntryTimestamp_;
@@ -46,7 +46,7 @@ std::optional<Timestamp> EntryContent::getOriginalPayloadEntryTimestamp() const 
 void EntryContent::setPayload(std::shared_ptr<EntryPayload> payload) {
   assert(payload_.ptr == nullptr);
   payload_.ptr = payload;
-  originalPayloadEntryTimestamp_ = NO_PREVIOUS_PAYLOAD_ENTRY;
+  originalPayloadEntryTimestamp_ = NoPreviousPayloadEntry;
 }
 
 void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedEntryProperties& properties, std::vector<PageId>& pages) {

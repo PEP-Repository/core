@@ -38,9 +38,9 @@ public:
   };
 
 private:
-  static constexpr Timestamp NO_PREVIOUS_PAYLOAD_ENTRY{/*zero*/};
+  static constexpr Timestamp NoPreviousPayloadEntry{/*zero*/};
 
-  Timestamp originalPayloadEntryTimestamp_ = NO_PREVIOUS_PAYLOAD_ENTRY; // Sentinel value (0) indicates that this content has its own original payload
+  Timestamp originalPayloadEntryTimestamp_ = NoPreviousPayloadEntry; // Sentinel value (0) indicates that this content has its own original payload
   Metadata metadata_; // Does not include "x-" prefixes: see comment in PersistedEntryProperties.hpp
   PayloadData payload_;
 

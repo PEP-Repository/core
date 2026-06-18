@@ -148,7 +148,7 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 
 rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
   PEP_LOG(LogTag, Severity::Debug) << "Sending RegistrationRequest...";
-  return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
+  return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration_);
 }
 
 rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauthToken) {
@@ -179,15 +179,15 @@ rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauth
 }
 
 std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
-  return GetConstServerProxy(keyServerProxy, ServerTraits::KeyServer(), require);
+  return GetConstServerProxy(keyServerProxy_, ServerTraits::KeyServer(), require);
 }
 
 std::shared_ptr<const AuthServerProxy> Client::getAuthServerProxy(bool require) const {
-  return GetConstServerProxy(authServerProxy, ServerTraits::AuthServer(), require);
+  return GetConstServerProxy(authServerProxy_, ServerTraits::AuthServer(), require);
 }
 
 std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProxy(bool require) const {
-  return GetConstServerProxy(registrationServerProxy, ServerTraits::RegistrationServer(), require);
+  return GetConstServerProxy(registrationServerProxy_, ServerTraits::RegistrationServer(), require);
 }
 
 Client::ServerProxies Client::getServerProxies(bool requireAll) const {
@@ -200,21 +200,21 @@ Client::ServerProxies Client::getServerProxies(bool requireAll) const {
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
   return CoreClient::shutdown()
-    .merge(keyServerProxy ? keyServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(registrationServerProxy ? registrationServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(authServerProxy ? authServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(keyServerProxy_ ? keyServerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(registrationServerProxy_ ? registrationServerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(authServerProxy_ ? authServerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }
 
 Client::Client(const Builder& builder)
   : CoreClient(builder),
-    publicKeyShadowAdministration(builder.getPublicKeyShadowAdministration()),
-    keyServerEndPoint(builder.getKeyServerEndPoint()),
-    authserverEndPoint(builder.getAuthserverEndPoint()),
-    registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
-  keyServerProxy = this->tryConnectServerProxy<KeyServerProxy>(keyServerEndPoint);
-  authServerProxy = this->tryConnectServerProxy<AuthServerProxy>(authserverEndPoint);
-  registrationServerProxy = this->tryConnectServerProxy<RegistrationServerProxy>(registrationServerEndPoint);
+    publicKeyShadowAdministration_(builder.getPublicKeyShadowAdministration()),
+    keyServerEndPoint_(builder.getKeyServerEndPoint()),
+    authserverEndPoint_(builder.getAuthserverEndPoint()),
+    registrationServerEndPoint_(builder.getRegistrationServerEndPoint()) {
+  keyServerProxy_ = this->tryConnectServerProxy<KeyServerProxy>(keyServerEndPoint_);
+  authServerProxy_ = this->tryConnectServerProxy<AuthServerProxy>(authserverEndPoint_);
+  registrationServerProxy_ = this->tryConnectServerProxy<RegistrationServerProxy>(registrationServerEndPoint_);
 }
 
 

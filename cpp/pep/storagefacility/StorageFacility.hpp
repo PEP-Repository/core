@@ -59,29 +59,29 @@ public:
     void setEncIdKey(const std::string& key);
 
     uint8_t getParallelisationWidth() const {
-      return this->parallelisation_width;
+      return parallelisationWidth_;
     }
     std::filesystem::path getStoragePath() const {
-      return this->storagePath;
+      return storagePath_;
     }
     std::shared_ptr<Configuration> getPageStoreConfig() const {
-      return this->pageStoreConfig;
+      return pageStoreConfig_;
     }
 
-    uint64_t getDataSizeResolution() const { return dataSizeResolution; }
+    uint64_t getDataSizeResolution() const { return dataSizeResolution_; }
 
   protected:
     void check() const override;
 
   private:
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::optional<std::string> encIdKey;
-    uint8_t parallelisation_width = 10; // passed to RxParalellConcat
-    uint64_t dataSizeResolution = 1024U * 1024U;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    std::optional<std::string> encIdKey_;
+    uint8_t parallelisationWidth_ = 10; // passed to RxParalellConcat
+    uint64_t dataSizeResolution_ = 1024U * 1024U;
 
     // passed to FileStore::Create
-    std::filesystem::path storagePath;
-    std::shared_ptr<Configuration> pageStoreConfig;
+    std::filesystem::path storagePath_;
+    std::shared_ptr<Configuration> pageStoreConfig_;
   };
 
 public:

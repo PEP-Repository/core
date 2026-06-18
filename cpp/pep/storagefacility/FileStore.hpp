@@ -208,15 +208,15 @@ private:
   std::set<std::string> columnNames_;
   std::map<std::string, std::set<std::string>> metadataValues_;
 
+  PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set participants_;
+  std::filesystem::path path_;
+  std::shared_ptr<PageStore> pagestore_;
+
   const std::string& getColumnString(const std::string& value);
   EntryContent::MetadataEntry makeMetadataEntry(std::string key, std::string value);
 
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
-
-  PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set participants_;
-  std::filesystem::path path_;
-  std::shared_ptr<PageStore> pagestore_;
 };
 
 }

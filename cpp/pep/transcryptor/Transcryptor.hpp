@@ -42,17 +42,17 @@ class Transcryptor : public KeyComponentServer {
     std::optional<ElgamalPrivateKey> getPseudonymKey() const;
     void setPseudonymKey(const ElgamalPrivateKey& key);
 
-    const EndPoint& getAccessManagerEndPoint() const { return accessManagerEndPoint; }
+    const EndPoint& getAccessManagerEndPoint() const { return accessManagerEndPoint_; }
 
    protected:
     void check() const override;
 
    private:
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::shared_ptr<TranscryptorStorage> storage;
-    std::optional<ServerVerifiers> verifiers;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    std::shared_ptr<TranscryptorStorage> storage_;
+    std::optional<ServerVerifiers> verifiers_;
 
-    EndPoint accessManagerEndPoint;
+    EndPoint accessManagerEndPoint_;
   };
 
 public:
@@ -79,7 +79,7 @@ private:
   std::optional<ElgamalPrivateKey> pseudonymKey_;
   AccessManagerProxy accessManagerProxy_;
   std::shared_ptr<TranscryptorStorage> storage_;
-  std::shared_ptr<Metrics> lpMetrics;
+  std::shared_ptr<Metrics> lpMetrics_;
   ServerVerifiers verifiers_;
   uintmax_t nextTranscryptorRequestNumber_ = 1U;
   uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;

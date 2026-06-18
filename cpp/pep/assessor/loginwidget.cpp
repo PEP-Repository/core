@@ -215,7 +215,7 @@ void LoginWidget::on_loginButton_clicked() {
   ui_->loginButton->setEnabled(false);
   ui_->updateButton->setEnabled(false);
   authy->run()
-    .observe_on(observe_on_gui())
+    .observe_on(ObserveOnGui())
     .subscribe(
     [this](const pep::AuthorizationResult& result) {
       if (!result) {

@@ -35,8 +35,8 @@ namespace
   private:
 
     std::shared_ptr<networking::HttpClient> http_;
-    Credentials credentials;
-    EndPoint endpoint;
+    Credentials credentials_;
+    EndPoint endpoint_;
 
     rxcpp::observable<std::string> putObject(
         const std::string& name,
@@ -48,13 +48,13 @@ namespace
         const std::string& bucket) override;
 
     // helper function to create a basic unsigned S3 http request
-    HTTPRequest request_template(
+    HTTPRequest requestTemplate(
         const std::string& path,
         const networking::HttpMethod& method,
         std::vector<std::shared_ptr<std::string>> bodyparts={});
 
     // Throws an exception if the reponse doesn't have one of the accepted status codes (and logs about unexpected HTTP headers)
-    void precheck_response(const HTTPResponse& resp,
+    void precheckResponse(const HTTPResponse& resp,
       const std::vector<unsigned int>& acceptedStatusCodes);
 
     std::set<std::string> unexpectedHeaders_;
@@ -63,7 +63,7 @@ namespace
   // to define the contructor of ClientImp,
   // we need the following function to pass
   // Client::Parameters values to HttpClient::Create
-  std::shared_ptr<networking::HttpClient> create_http_client(const Client::Parameters& params) {
+  std::shared_ptr<networking::HttpClient> CreateHttpClient(const Client::Parameters& params) {
 
     bool use_https = params.use_https.value_or(true);
 
@@ -80,15 +80,15 @@ namespace
 
   ClientImp::ClientImp(const Client::Parameters& params)
     : Client(),
-      http_(create_http_client(params)),
-      credentials(params.credentials),
-      endpoint(params.endpoint)
+      http_(CreateHttpClient(params)),
+      credentials_(params.credentials),
+      endpoint_(params.endpoint)
   {
     // nothing to do
   }
 
 
-  HTTPRequest ClientImp::request_template(
+  HTTPRequest ClientImp::requestTemplate(
       const std::string& path,
       const networking::HttpMethod& method,
       std::vector<std::shared_ptr<std::string>> bodyparts)
@@ -100,7 +100,7 @@ namespace
     return result;
   }
 
-  void ClientImp::precheck_response(const HTTPResponse& resp,
+  void ClientImp::precheckResponse(const HTTPResponse& resp,
       const std::vector<unsigned int>& acceptedStatusCodes)
   {
 #ifndef SIMULATE_S3_BACKEND_FAILURE
@@ -178,17 +178,17 @@ namespace
         const std::string& bucket,
         std::vector<std::shared_ptr<std::string>> payload)
   {
-    auto request = this->request_template(
+    auto request = this->requestTemplate(
         "/" + bucket + "/" + name, // path
         networking::HttpMethod::Put, payload);
 
-    request::Sign(request, this->credentials);
+    request::Sign(request, credentials_);
 
     return http_->sendRequest(std::move(request)).map(
 
     [self = SharedFrom(*this), name](HTTPResponse resp) -> std::string {
 
-      self->precheck_response(resp, { /* acceptable status code: */ 200 });
+      self->precheckResponse(resp, { /* acceptable status code: */ 200 });
 
       if (!resp.hasHeader("ETag")) {
         throw std::runtime_error("S3 did not return the MD5 hash "
@@ -206,18 +206,18 @@ namespace
         const std::string& name,
         const std::string& bucket)
   {
-    auto request = this->request_template(
+    auto request = this->requestTemplate(
         "/" + bucket + "/" + name,
         networking::HttpMethod::Get);
 
-    request::Sign(request, this->credentials);
+    request::Sign(request, credentials_);
 
     return http_->sendRequest(std::move(request)).map(
 
     [self = SharedFrom(*this), bucket, name](HTTPResponse resp)
       -> messaging::MessageSequence {
 
-      self->precheck_response(resp, { // acceptable status codes:
+      self->precheckResponse(resp, { // acceptable status codes:
           200, // everything OK
           404  // it's OK if the key wasn't found
       });
