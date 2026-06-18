@@ -407,7 +407,7 @@ class LocalSettingsIni : public LocalSettings {
   bool flushChanges () override;
 
  private:
-  std::string szFilename;
+  std::string szFilename_;
 };
 
 LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
@@ -434,25 +434,25 @@ LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
       assert(result);
       homeDir = result->pw_dir;
     }
-    this->szFilename = std::string(homeDir) + "/.pep/LocalSettings.ini";
+    szFilename_ = std::string(homeDir) + "/.pep/LocalSettings.ini";
   } else {
-    this->szFilename = szFilename;
+    szFilename_ = szFilename;
   }
 
   // Can we find & open the file?
-  if (std::ifstream iniStream{this->szFilename}) {
+  if (std::ifstream iniStream{szFilename_}) {
     read_ini(iniStream, propertyTree_);
   }
 }
 
 
 bool LocalSettingsIni::flushChanges() {
-  const auto dir = std::filesystem::path(this->szFilename).parent_path();
+  const auto dir = std::filesystem::path(szFilename_).parent_path();
   create_directory(dir);
   permissions(dir, std::filesystem::perms::owner_all);
 
   try {
-    boost::property_tree::write_ini (this->szFilename, propertyTree_);
+    boost::property_tree::write_ini (szFilename_, propertyTree_);
   } catch (const std::exception& e) {
     PEP_LOG(LogTag, Severity::Debug) << "Unable to write ini : " << e.what();
     return false;

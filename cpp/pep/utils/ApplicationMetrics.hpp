@@ -6,8 +6,6 @@
 
 namespace pep {
   class ApplicationMetrics {
-  private:
-    static std::atomic<bool> warningLogged;
   public:
     static double GetMemoryUsageBytes();
 

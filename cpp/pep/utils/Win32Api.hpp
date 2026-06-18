@@ -59,7 +59,6 @@ void StartProcess(const std::filesystem::path& start, const std::optional<std::s
 // RAII wrapper to bind a (Windows subsystem) process's stdio to the parent console. See https://stackoverflow.com/a/55875595
 class ParentConsoleBinding {
 private:
-  static ParentConsoleBinding* theInstance;
   ParentConsoleBinding();
 public:
   ~ParentConsoleBinding() noexcept;

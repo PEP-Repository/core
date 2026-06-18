@@ -20,7 +20,12 @@
 #include <vector>
 
 namespace pep {
-  std::atomic<bool> ApplicationMetrics::warningLogged = false;
+
+namespace {
+
+std::atomic<bool> warningLogged = false;
+
+}
 
   //Returns RAM usage in bytes for the current process. Only on Windows or Linux.
   double pep::ApplicationMetrics::GetMemoryUsageBytes() {
