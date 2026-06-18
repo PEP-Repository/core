@@ -16,7 +16,7 @@ private:
   struct Metrics;
 
   std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
-  std::shared_ptr<DataTranslator> mDataTranslator;
+  std::shared_ptr<DataTranslator> dataTranslator_;
   std::shared_ptr<Metrics> mMetrics;
   SystemPublicKeys mSystemPublicKeys;
 
@@ -26,7 +26,7 @@ protected:
   explicit KeyComponentServer(std::shared_ptr<Parameters> parameters);
 
   const PseudonymTranslator& pseudonymTranslator() const { return *mPseudonymTranslator; }
-  const DataTranslator& dataTranslator() const { return *mDataTranslator; }
+  const DataTranslator& dataTranslator() const { return *dataTranslator_; }
   const SystemPublicKeys& systemPublicKeys() const { return mSystemPublicKeys; }
 };
 

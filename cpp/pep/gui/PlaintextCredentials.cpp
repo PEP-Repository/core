@@ -24,19 +24,19 @@ namespace pep {
 namespace win32api {
 
 PlaintextCredentials::PlaintextCredentials()
-  : mUserName(CREDUI_MAX_USERNAME_LENGTH + 1), mPassword(CREDUI_MAX_PASSWORD_LENGTH + 1), mDomain(CREDUI_MAX_DOMAIN_TARGET_LENGTH + 1) {
+  : mUserName(CREDUI_MAX_USERNAME_LENGTH + 1), mPassword(CREDUI_MAX_PASSWORD_LENGTH + 1), domain_(CREDUI_MAX_DOMAIN_TARGET_LENGTH + 1) {
 }
 
 /* If the buffer contains credentials produced by CredUIPromptForWindowsCredentialsW, and the
  * user entered "user@domain.suffix" then the domain name is not extracted from that information.
- * Instead the mUserName will contain the complete "user@domain.suffix", and the mDomain
+ * Instead the mUserName will contain the complete "user@domain.suffix", and the domain_
  * will be empty.
  */
 PlaintextCredentials PlaintextCredentials::FromAuthenticationBuffer(PVOID buffer, DWORD bufferSize) {
   PlaintextCredentials result;
   auto userNameChars = static_cast<DWORD>(result.mUserName.getMaxItems());
   auto passwordChars = static_cast<DWORD>(result.mPassword.getMaxItems());
-  auto domainChars = static_cast<DWORD>(result.mDomain.getMaxItems());
+  auto domainChars = static_cast<DWORD>(result.domain_.getMaxItems());
   // https://flylib.com/books/en/1.286.1.88/1/
   BOOL fOK = ::CredUnPackAuthenticationBufferW(
     CRED_PACK_PROTECTED_CREDENTIALS,
@@ -44,7 +44,7 @@ PlaintextCredentials PlaintextCredentials::FromAuthenticationBuffer(PVOID buffer
     bufferSize,
     result.mUserName.getAddress(),
     &userNameChars,
-    result.mDomain.getAddress(),
+    result.domain_.getAddress(),
     &domainChars,
     result.mPassword.getAddress(),
     &passwordChars);
@@ -97,7 +97,7 @@ PlaintextCredentials PlaintextCredentials::FromPrompt(HWND parentWindow, const s
 void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
   // Default to passing the raw member values to CreateProcessWithLogonW
   LPCWSTR passedUserName = mUserName.getAddress();
-  LPCWSTR passedDomain = mDomain.getAddress();
+  LPCWSTR passedDomain = domain_.getAddress();
 
   // But if our mUserName contains a "domain\username" specification, split them for the call to CreateProcessWithLogonW (below)
   std::vector<std::wstring> parts;
@@ -138,7 +138,7 @@ void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
   STARTUPINFOW si{};
   si.cb = sizeof(STARTUPINFOW);
   /* CreateProcessWithLogonW works for domain account information entered as "user@domain.suffix",
-   * even though mUserName will contain that entire string and mDomain will be empty.
+   * even though mUserName will contain that entire string and domain_ will be empty.
    */
   if (::CreateProcessWithLogonW(passedUserName,
                                 passedDomain,

@@ -458,7 +458,7 @@ void MainWindow::selectByPolymorphicPseudonym(pep::PolymorphicPseudonym foundPP)
     if (!sid->empty()) {
       throw std::runtime_error("Multiple identifiers found for participant");
     }
-  *sid = result.mData;
+  *sid = result.data_;
       }, [this](std::exception_ptr ep) {
         emit announceLookupFailure(QString::fromStdString(pep::GetExceptionMessage(ep)));
       }, [this, sid]() {

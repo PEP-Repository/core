@@ -114,12 +114,12 @@ ShortPseudonymDefinition::ShortPseudonymDefinition(
   mCastor(std::move(castor)),
   mStickers(stickers),
   mSuppressAdditionalStickers(suppressAdditionalStickers),
-  mDescription(std::move(description)),
+  description_(std::move(description)),
   mStudyContext(std::move(studyContext)) {
 }
 
 std::string ShortPseudonymDefinition::getDescription() const {
-  std::string result = mDescription;
+  std::string result = description_;
   if (result.empty()) { // Use the column's core name if no description was specified
     result = mColumn.getCoreName();
     auto lastPeriod = result.find_last_of('.');

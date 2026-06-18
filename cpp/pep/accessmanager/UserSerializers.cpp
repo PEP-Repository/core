@@ -192,8 +192,8 @@ QRUser Serializer<QRUser>::fromProtocolBuffer(proto::QRUser&& source) const {
 }
 
 void Serializer<QRUser>::moveIntoProtocolBuffer(proto::QRUser& dest, QRUser value) const {
-  if (value.mDisplayId)
-    *dest.mutable_display_id() = std::move(*value.mDisplayId);
+  if (value.displayId_)
+    *dest.mutable_display_id() = std::move(*value.displayId_);
   if (value.mPrimaryId)
     *dest.mutable_primary_id() = std::move(*value.mPrimaryId);
   auto moveOtherUids = MoveElements(value.mOtherUids);

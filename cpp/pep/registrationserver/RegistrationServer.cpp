@@ -339,10 +339,10 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       .reduce( // Group pseudonyms by participant (PP)
         std::make_shared<PseudonymsByPp>(),
         [](std::shared_ptr<PseudonymsByPp> pps, const EnumerateAndRetrieveResult& result) {
-      if (!result.mDataSet) { // TODO: support this
+      if (!result.dataSet_) { // TODO: support this
         throw std::runtime_error("Storage Facility did not return pseudonym as inline data for column " + result.mColumn + " and participant " + result.mLocalPseudonyms->mPolymorphic.text());
       }
-      (*pps)[result.mLocalPseudonyms->mPolymorphic][result.mColumn] = result.mData;
+      (*pps)[result.mLocalPseudonyms->mPolymorphic][result.mColumn] = result.data_;
       return pps;
     })
       .flat_map([rebuild](std::shared_ptr<PseudonymsByPp> pps) { // Convert single unordered_map<> to observable<participant-data>

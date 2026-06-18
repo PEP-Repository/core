@@ -141,7 +141,7 @@ private:
   static std::shared_ptr<Connection> Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler);
 
   std::weak_ptr<Node> mNode;
-  std::string mDescription;
+  std::string description_;
   std::shared_ptr<networking::Connection> mBinary;
   EventSubscription mBinaryStatusSubscription;
   boost::asio::io_context& mIoContext;

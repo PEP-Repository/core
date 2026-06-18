@@ -240,7 +240,7 @@ Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::C
   assert(mBinary->status() == networking::Transport::ConnectivityStatus::Connected);
   assert(node != nullptr);
 
-  mDescription = node->describe() + " connected to " + mBinary->remoteAddress();
+  description_ = node->describe() + " connected to " + mBinary->remoteAddress();
 
   if (node->reconnectParameters().has_value()) {
     mVersionCheckBackoff.emplace(mIoContext, *node->reconnectParameters());
@@ -671,7 +671,7 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
 }
 
 std::string Connection::describe() const {
-  return mDescription;
+  return description_;
 }
 
 bool Connection::isConnected() const noexcept {

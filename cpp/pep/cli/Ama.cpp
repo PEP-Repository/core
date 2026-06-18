@@ -64,8 +64,8 @@ void ParticipantState::readField(std::shared_ptr<pep::GlobalConfiguration> gc, c
   }
   auto method = entry->second;
 
-  assert(ear.mDataSet); // TODO: support data that isn't returned inline
-  (this->*method)(gc, ear.mData);
+  assert(ear.dataSet_); // TODO: support data that isn't returned inline
+  (this->*method)(gc, ear.data_);
 }
 
 void ParticipantState::readParticipantIdentifier(std::shared_ptr<pep::GlobalConfiguration> gc, const std::string& value) {
@@ -213,9 +213,9 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetE
       .reduce(
         ParticipantGroup::Create(group.name_),
         [](std::shared_ptr<ParticipantGroup> group, const pep::EnumerateAndRetrieveResult& ear) {
-          assert(ear.mDataSet); // TODO: support data not being returned inline
+          assert(ear.dataSet_); // TODO: support data not being returned inline
           assert(ear.mColumn == "ParticipantIdentifier");
-          group->mParticipantIds.emplace(ear.mData);
+          group->mParticipantIds.emplace(ear.data_);
           return group;
         }
       );

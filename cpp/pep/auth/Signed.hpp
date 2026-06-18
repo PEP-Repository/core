@@ -7,7 +7,7 @@ namespace pep {
 
 class SignedBase {
 public: // You should have no business accessing these unless you're (de)serializing
-  std::string mData;
+  std::string data_;
   Signature mSignature;
 
 public:
@@ -21,12 +21,12 @@ protected:
   SignedBase(
     std::string data,
     Signature signature)
-    : mData(std::move(data)),
+    : data_(std::move(data)),
     mSignature(std::move(signature)) { }
 
   template <typename T>
   T deserializeAs() const {
-    return Serialization::FromString<T>(mData);
+    return Serialization::FromString<T>(data_);
   }
 };
 

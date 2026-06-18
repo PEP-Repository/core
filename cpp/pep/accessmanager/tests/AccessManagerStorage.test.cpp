@@ -34,7 +34,7 @@ void PrepareSortedMine(UserQueryResponse& response) {
     return !group.name_.starts_with("My");
   });
   erase_if(response.mUsers, [](const QRUser& user) {
-    return !(user.mDisplayId.has_value() && user.mDisplayId->starts_with("My"));
+    return !(user.displayId_.has_value() && user.displayId_->starts_with("My"));
   });
   for (QRUser& user : response.mUsers) {
     sort(user.mGroups);

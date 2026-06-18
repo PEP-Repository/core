@@ -15,7 +15,7 @@ namespace pep {
 
 class ActivityMonitor : public std::enable_shared_from_this<ActivityMonitor>, private boost::noncopyable {
 private:
-  const std::string mDescription;
+  const std::string description_;
   boost::asio::steady_timer mTimer;
   bool mTimerRunning = false;
   const decltype(mTimer)::duration mMaxInactive;

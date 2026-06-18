@@ -17,7 +17,7 @@ void Error::AddFactory(const std::string& type, Factory factory) {
 }
 
 Error::Error(std::string derivedTypeName, std::string description)
-  : mOriginalTypeName(std::move(derivedTypeName)), mDescription(std::move(description)) {
+  : mOriginalTypeName(std::move(derivedTypeName)), description_(std::move(description)) {
   assert(mOriginalTypeName != GetNormalizedTypeName<Error>()); // Leave mOriginalTypeName empty for basic Error instances
   assert(this->isDeserializable()); // Do not test-and-throw: allow clients to raise a basic Error instance when receiving an unsupported derived type
 }
@@ -60,7 +60,7 @@ std::exception_ptr Error::ReconstructIfDeserializable(std::string_view serialize
         auto found = factories.find(type);
         if (found != factories.cend()) {
           // Invoke factory to create an exception_ptr for this original type name
-          return found->second(deserialized.mDescription);
+          return found->second(deserialized.description_);
         }
 
         // An original type name was specified but we don't have a factory for it. Presumably our software is outdated. Issue a warning...

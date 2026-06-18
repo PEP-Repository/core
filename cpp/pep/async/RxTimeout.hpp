@@ -43,7 +43,7 @@ rxcpp::observable<FakeVoid> RxAsioTimer(const RxAsioDuration& duration, boost::a
  */
 class RxAsioTimeout {
 private:
-  RxAsioDuration mDuration;
+  RxAsioDuration duration_;
   boost::asio::io_context& mIoContext;
   rxcpp::observe_on_one_worker mObserveOn;
 
@@ -54,7 +54,7 @@ public:
     * \param observe_on The coordination to use for (on_next, on_error, on_completed) notifications.
     */
   inline RxAsioTimeout(const RxAsioDuration& duration, boost::asio::io_context& io_context, rxcpp::observe_on_one_worker observe_on)
-    : mDuration(duration), mIoContext(io_context), mObserveOn(observe_on) {
+    : duration_(duration), mIoContext(io_context), mObserveOn(observe_on) {
   }
 
   /*! \brief Applies the timeout to a (source) observable.
@@ -175,7 +175,7 @@ public:
     };
 
     // Wait for a(n outer) subscriber before subscribing to the source ("items") observable and starting the timeout
-    return CreateObservable<TItem>([items, duration = mDuration, &io_context = mIoContext, observe_on = mObserveOn](rxcpp::subscriber<TItem> subscriber) {
+    return CreateObservable<TItem>([items, duration = duration_, &io_context = mIoContext, observe_on = mObserveOn](rxcpp::subscriber<TItem> subscriber) {
       Implementor::Create(subscriber)->process(items, duration, io_context, observe_on);
       });
   }

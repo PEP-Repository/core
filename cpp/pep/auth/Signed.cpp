@@ -3,12 +3,12 @@
 namespace pep {
 
 SignedBase::SignedBase(std::string data, const X509Identity& identity)
-  : mData(std::move(data)), mSignature(Signature::Make(mData, identity)) {
+  : data_(std::move(data)), mSignature(Signature::Make(data_, identity)) {
 }
 
 Signatory SignedBase::validate(const X509RootCertificates& rootCAs) const {
   return mSignature.validate(
-    mData,
+    data_,
     rootCAs,
     std::nullopt,
     std::chrono::hours{1}

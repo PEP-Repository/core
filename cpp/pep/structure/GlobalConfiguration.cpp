@@ -45,11 +45,11 @@ bool UserPseudonymFormat::matches(const std::string& input) const
 }
 
 PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
-  : prefix_(std::move(prefix)), mDigits(digits) {
+  : prefix_(std::move(prefix)), digits_(digits) {
   if (prefix_.empty()) {
     throw std::runtime_error("Pseudonym format prefix must be nonempty");
   }
-  if (mDigits == 0U) {
+  if (digits_ == 0U) {
     throw std::runtime_error("Number of generated pseudonym digits must be a positive number");
   }
 
@@ -72,7 +72,7 @@ PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
 }
 
 PseudonymFormat::PseudonymFormat(std::string regexPattern)
-  : prefix_(), mDigits(0U), mRegexPattern(std::move(regexPattern)) {
+  : prefix_(), digits_(0U), mRegexPattern(std::move(regexPattern)) {
   if (mRegexPattern.empty()) {
     throw std::runtime_error("No pattern specified for pseudonym format");
   }
@@ -152,7 +152,7 @@ GlobalConfiguration::GlobalConfiguration(
   , mShortPseudonyms(std::move(shortPseudonyms))
   , mUserPseudonymFormat(std::move(userPseudonymFormat))
   , mAdditionalStickers(std::move(additionalStickers))
-  , mDevices(std::move(devices))
+  , devices_(std::move(devices))
   , assessors_(std::move(assessors))
   , mColumnSpecifications(std::move(columnSpecifications))
   , mSpErrata(std::move(spErrata)) {

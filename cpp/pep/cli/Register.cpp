@@ -342,12 +342,12 @@ private:
             }
 
             // At this point we're processing a record that has a stored ParticipantIdentifier
-            assert(id.value_or(idField->mData) == idField->mData); // If an ID was specified in our invocation, it should match the stored ParticipantIdentifier
+            assert(id.value_or(idField->data_) == idField->data_); // If an ID was specified in our invocation, it should match the stored ParticipantIdentifier
             assert(spCount + 1U >= fields->size());
             auto spsToGenerate = spCount - (fields->size() - 1U);
             if (spsToGenerate > 0U) {
-              PEP_LOG(LogTag, pep::Severity::Info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->mData;
-              return client->completeParticipantRegistration(idField->mData, true);
+              PEP_LOG(LogTag, pep::Severity::Info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->data_;
+              return client->completeParticipantRegistration(idField->data_, true);
             }
 
             return rxcpp::observable<>::empty<pep::FakeVoid>();

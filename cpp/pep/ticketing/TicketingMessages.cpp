@@ -45,7 +45,7 @@ void SignedTicket2::addTranscryptorSignature(Signature signature) {
 }
 
 Ticket2 SignedTicket2::openWithoutCheckingSignature() const {
-  return Serialization::FromString<Ticket2>(mData);
+  return Serialization::FromString<Ticket2>(data_);
 }
 
 Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
@@ -59,14 +59,14 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
 
     // A longer leeway is used for long downloads etc.
     mSignature->validate(
-      mData,
+      data_,
       rootCAs,
       ServerTraits::AccessManager().userGroup(true),
       std::chrono::days{1},
       false
     );
     mTranscryptorSignature->validate(
-      mData,
+      data_,
       rootCAs,
       ServerTraits::Transcryptor().userGroup(true),
       std::chrono::days{1},
@@ -74,10 +74,10 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     );
   }
   catch (const SignatureValidityPeriodError& sig) {
-    throw SignedTicket2ValidityPeriodError(sig.mDescription);
+    throw SignedTicket2ValidityPeriodError(sig.description_);
   }
 
-  auto ticket = Serialization::FromString<Ticket2>(mData);
+  auto ticket = Serialization::FromString<Ticket2>(data_);
   if (ticket.userGroup_ != userGroup)
     throw Error("Ticket issued for different user group");
   if (accessMode.has_value()) {
@@ -95,15 +95,15 @@ Ticket2 SignedTicket2::openForLogging(const X509RootCertificates& rootCAs, std::
     throw Error("Transcryptor signature should not be set");
 
   mSignature->validate(
-    mData,
+    data_,
     rootCAs,
     ServerTraits::AccessManager().userGroup(true),
     std::chrono::days{1},
     false
   );
 
-  auto ticket = Serialization::FromString<Ticket2>(mData);
-  serialized = mData;
+  auto ticket = Serialization::FromString<Ticket2>(data_);
+  serialized = data_;
   return ticket;
 }
 
@@ -111,14 +111,14 @@ Signed<Ticket2>::Signed(Ticket2 ticket,
   const X509Identity& identity) {
   auto data = Serialization::ToString(std::move(ticket));
   mSignature = Signature::Make(data, identity);
-  mData = std::move(data);
+  data_ = std::move(data);
 }
 
 Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
   const X509Identity& identity) {
-  mData = Serialization::ToString(std::move(ticketRequest));
-  mSignature = Signature::Make(mData, identity);
-  mLogSignature = Signature::Make(mData, identity, true);
+  data_ = Serialization::ToString(std::move(ticketRequest));
+  mSignature = Signature::Make(data_, identity);
+  mLogSignature = Signature::Make(data_, identity, true);
 }
 
 Signature Signed<TicketRequest2>::extractSignature() {
@@ -138,8 +138,8 @@ Certified<TicketRequest2> Signed<TicketRequest2>::openAsAccessManager(
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
   // Check signatures separately
-  auto signatory = mSignature->validate(mData, rootCAs, std::nullopt, 1h, false);
-  auto logSignatory = mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
+  auto signatory = mSignature->validate(data_, rootCAs, std::nullopt, 1h, false);
+  auto logSignatory = mLogSignature->validate(data_, rootCAs, std::nullopt, 1h, true);
 
   // Check signatures are similar enough
   auto diff = Abs(mSignature->timestamp() - mLogSignature->timestamp());
@@ -157,7 +157,7 @@ Certified<TicketRequest2> Signed<TicketRequest2>::openAsAccessManager(
 
   return Certified<TicketRequest2>{
     .signatory = std::move(signatory),
-    .message = Serialization::FromString<TicketRequest2>(mData),
+    .message = Serialization::FromString<TicketRequest2>(data_),
   };
 }
 
@@ -168,10 +168,10 @@ Certified<TicketRequest2> Signed<TicketRequest2>::openAsTranscryptor(
   if (!mLogSignature)
     throw Error("Invalid SignedTicketRequest2: missing signature for logger");
 
-  auto signatory = mLogSignature->validate(mData, rootCAs, std::nullopt, 1h, true);
+  auto signatory = mLogSignature->validate(data_, rootCAs, std::nullopt, 1h, true);
   return Certified<TicketRequest2> {
     .signatory = std::move(signatory),
-    .message = Serialization::FromString<TicketRequest2>(mData),
+    .message = Serialization::FromString<TicketRequest2>(data_),
   };
 }
 

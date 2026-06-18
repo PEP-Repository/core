@@ -190,14 +190,14 @@ private:
           CastorData(),
           [](CastorData data, pep::EnumerateAndRetrieveResult earResult) {
             if(earResult.mColumn == "ParticipantIdentifier") {
-              data.participantIds.emplace(earResult.mLocalPseudonymsIndex, earResult.mData);
+              data.participantIds.emplace(earResult.mLocalPseudonymsIndex, earResult.data_);
             }
             else if(earResult.mColumn.starts_with(castorColumnPrefix)) {
               std::string studyName = earResult.mColumn.substr(castorColumnPrefixLength,
                 earResult.mColumn.find_first_of('.', castorColumnPrefixLength) - castorColumnPrefixLength);
 
               auto& study = data.studies[studyName];
-              std::istringstream iss(earResult.mData);
+              std::istringstream iss(earResult.data_);
               pt::ptree dataTree;
               pt::read_json(iss, dataTree);
 

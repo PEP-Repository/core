@@ -58,8 +58,8 @@ class ParticipantWidget : public QWidget {
   QString baseUrl;
   std::optional<std::filesystem::path> bartenderPath;
   std::filesystem::path stickerFilePath;
-  std::vector<DeviceWidget *> mDeviceWidgets;
-  std::vector<DeviceHistoryWidget *> mDeviceHistoryWidgets;
+  std::vector<DeviceWidget *> deviceWidgets_;
+  std::vector<DeviceHistoryWidget *> deviceHistoryWidgets_;
   std::vector<VisitWidget *> mVisitWidgets;
   QString summaryPrintStyle = "body {margin:10; width:90%;} \\"
                               " h1 {font-size:xx-large; text-align:center;} \\"

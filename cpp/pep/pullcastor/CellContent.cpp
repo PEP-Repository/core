@@ -47,8 +47,8 @@ PreloadedCellContent::PreloadedCellContent(const std::string& value)
 
 std::shared_ptr<PreloadedCellContent> PreloadedCellContent::TryCreate(const EnumerateAndRetrieveResult& ear) {
   std::shared_ptr<PreloadedCellContent> result;
-  if (ear.mDataSet) {
-    result = PreloadedCellContent::Create(ear.mData);
+  if (ear.dataSet_) {
+    result = PreloadedCellContent::Create(ear.data_);
   }
   return result;
 }
@@ -67,13 +67,13 @@ rxcpp::observable<std::string> PreloadedCellContent::getData() const {
 }
 
 LazyCellContent::LazyCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, std::shared_ptr<EnumerateResult> entry) {
-  mData = CreateRxCache([client, ticket, entry]() {
+  data_ = CreateRxCache([client, ticket, entry]() {
     return LoadCellContent(client, ticket, entry);
   });
 }
 
 rxcpp::observable<std::string> LazyCellContent::getData() const {
-  return mData->observe();
+  return data_->observe();
 }
 
 }

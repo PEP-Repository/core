@@ -83,7 +83,7 @@ class SurveyAspectPuller::AllSpisPuller : public SurveyAspectPuller::SpisPuller,
 private:
   using StudyStartsByParticipantId = std::unordered_map<std::string, Timestamp>;
 
-  std::string mDeviceHistoryColumn;
+  std::string deviceHistoryColumn_;
   std::shared_ptr<RxCache<std::shared_ptr<StudyStartsByParticipantId>>> mStudyStartsByParticipantId;
 
   AllSpisPuller(std::shared_ptr<StudyPuller> sp, const std::string& spColumnName, const std::string& columnNamePrefix, const std::string& deviceHistoryColumn);
@@ -183,7 +183,7 @@ SurveyAspectPuller::SpisPuller::SpisPuller(std::shared_ptr<StudyPuller> sp, cons
 }
 
 SurveyAspectPuller::AllSpisPuller::AllSpisPuller(std::shared_ptr<StudyPuller> sp, const std::string& spColumnName, const std::string& columnNamePrefix, const std::string& deviceHistoryColumn)
-  : SpisPuller(sp, columnNamePrefix), mDeviceHistoryColumn(deviceHistoryColumn) {
+  : SpisPuller(sp, columnNamePrefix), deviceHistoryColumn_(deviceHistoryColumn) {
   mStudyStartsByParticipantId = CreateRxCache([ep = this->getStudyPuller()->getEnvironmentPuller(), spCol = spColumnName, dhCol = deviceHistoryColumn]() {
     return ep->getStoredData()
       .flat_map([spCol, dhCol](std::shared_ptr<StoredData> stored) {

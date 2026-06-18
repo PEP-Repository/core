@@ -42,14 +42,14 @@ class IndexedStringPool<T>::Ptr final {
 public:
   /// The index of the string within the parent stringpool
   std::size_t index() const noexcept { return mIndex; }
-  const std::string_view& operator*() const noexcept { return mData; }
+  const std::string_view& operator*() const noexcept { return data_; }
   const std::string_view* operator->() const noexcept { return &this->operator*(); }
 
 private:
   friend class IndexedStringPool<T>;
-  Ptr(const std::string& data, std::size_t index) : mData{data.begin(), data.end()}, mIndex{index} {}
+  Ptr(const std::string& data, std::size_t index) : data_{data.begin(), data.end()}, mIndex{index} {}
 
-  std::string_view mData;
+  std::string_view data_;
   std::size_t mIndex;
 };
 

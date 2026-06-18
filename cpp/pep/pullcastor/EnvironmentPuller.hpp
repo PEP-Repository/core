@@ -28,7 +28,7 @@ class EnvironmentPuller : public std::enable_shared_from_this<EnvironmentPuller>
 private:
   using StudiesBySlug = std::unordered_map<std::string, std::shared_ptr<Study>>;
 
-  bool mDry;
+  bool dry_;
   std::optional<std::vector<std::string>> mSps;
   Timestamp mCooldownThreshold;
   std::shared_ptr<Client> client_;

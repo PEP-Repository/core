@@ -8,19 +8,19 @@
 DeviceHistoryWidget::DeviceHistoryWidget(const pep::DeviceRegistrationDefinition& definition, QWidget *parent) :
   QWidget(parent),
   ui(new Ui::DeviceHistoryWidget),
-  mDefinition(definition)
+  definition_(definition)
 {
   ui->setupUi(this);
   ui->retranslateUi(this);
 
-  if (!mDefinition.description.empty()) {
-    ui->devices_history_subheader->setText(QString::fromStdString(mDefinition.description));
+  if (!definition_.description.empty()) {
+    ui->devices_history_subheader->setText(QString::fromStdString(definition_.description));
   }
   QObject::connect(ui->device_history_listWidget, &QListWidget::itemActivated, this, &DeviceHistoryWidget::listItemActivated);
 }
 
 QString DeviceHistoryWidget::getColumnName() const {
-  return QString::fromStdString(mDefinition.columnName);
+  return QString::fromStdString(definition_.columnName);
 }
 
 void DeviceHistoryWidget::listItemActivated(QListWidgetItem* item) {

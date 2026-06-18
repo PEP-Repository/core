@@ -12,7 +12,7 @@ class PlaintextCredentials {
 private:
   pep::win32api::SecureBuffer<WCHAR> mUserName;
   pep::win32api::SecureBuffer<WCHAR> mPassword;
-  pep::win32api::SecureBuffer<WCHAR> mDomain;
+  pep::win32api::SecureBuffer<WCHAR> domain_;
 
   PlaintextCredentials();
 

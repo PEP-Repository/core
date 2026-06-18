@@ -44,8 +44,8 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
     for (const auto& user : res.mUsers) {
       json item = json::object();
 
-      if (user.mDisplayId) {
-        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.mDisplayId);
+      if (user.displayId_) {
+        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.displayId_);
       }
 
       if (user.mPrimaryId) {

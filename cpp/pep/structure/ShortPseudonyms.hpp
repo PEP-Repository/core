@@ -34,7 +34,7 @@ enum class CastorStudyType {
 class CastorStorageDefinition {
 private:
   CastorStudyType mStudyType;
-  std::string mDataColumn;
+  std::string dataColumn_;
   std::string mImportStudySlug;
   bool mImmediatePartialData;
   std::string mWeekOffsetDeviceColumn;
@@ -47,13 +47,13 @@ public:
     bool immediatePartialData,
     std::string weekOffsetDeviceColumn)
     : mStudyType(studyType),
-      mDataColumn(std::move(dataColumn)),
+      dataColumn_(std::move(dataColumn)),
       mImportStudySlug(std::move(importStudySlug)),
       mImmediatePartialData(immediatePartialData),
       mWeekOffsetDeviceColumn(std::move(weekOffsetDeviceColumn)) { }
 
   inline CastorStudyType getStudyType() const noexcept { return mStudyType; }
-  inline const std::string& getDataColumn() const noexcept { return mDataColumn; }
+  inline const std::string& getDataColumn() const noexcept { return dataColumn_; }
   inline const std::string& getImportStudySlug() const noexcept { return mImportStudySlug; }
   inline bool immediatePartialData() const noexcept { return mImmediatePartialData; }
   inline const std::string& getWeekOffsetDeviceColumn() const noexcept { return mWeekOffsetDeviceColumn; }
@@ -104,7 +104,7 @@ private:
   std::optional<CastorShortPseudonymDefinition> mCastor;
   uint32_t mStickers;
   bool mSuppressAdditionalStickers;
-  std::string mDescription;
+  std::string description_;
   std::string mStudyContext;
 
 public:
@@ -126,7 +126,7 @@ public:
   inline const std::optional<CastorShortPseudonymDefinition>& getCastor() const { return mCastor; }
   inline uint32_t getStickers() const { return mStickers; }
   inline bool getSuppressAdditionalStickers() const noexcept { return mSuppressAdditionalStickers; }
-  inline const std::string& getConfiguredDescription() const { return mDescription; }
+  inline const std::string& getConfiguredDescription() const { return description_; }
   inline const std::string& getStudyContext() const { return mStudyContext; }
 
   std::string getDescription() const;

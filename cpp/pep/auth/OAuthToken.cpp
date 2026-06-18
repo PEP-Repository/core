@@ -30,12 +30,12 @@ const std::string OAuthToken::DEFAULT_JSON_FILE_NAME = "OAuthToken.json";
 
 bool OAuthToken::verify(const std::string& secret, const std::string& requiredSubject, const std::string& requiredGroup) const {
   PEP_LOG("OAuthToken::verify", Severity::Debug) << "Verifying OAuth token " << mSerialized;
-  PEP_LOG("OAuthToken::verify", Severity::Debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(mData);
+  PEP_LOG("OAuthToken::verify", Severity::Debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(data_);
 
   auto result = true;
 
   // Compute the HMAC on the json using the shared secret
-  std::string localHMAC = Hmac<Sha256>(secret, mData);
+  std::string localHMAC = Hmac<Sha256>(secret, data_);
 
   // Check whether the received HMAC is equal to the computed one
   if (!const_time::IsEqual(localHMAC, mHmac)) {
@@ -162,11 +162,11 @@ OAuthToken::OAuthToken(const std::string& serialized)
   }
 
   try {
-    mData = DecodeBase64Url(splitToken[0]);
+    data_ = DecodeBase64Url(splitToken[0]);
     mHmac = DecodeBase64Url(splitToken[1]);
 
     boost::property_tree::ptree root;
-    std::istringstream jsonStream(mData);
+    std::istringstream jsonStream(data_);
     boost::property_tree::read_json(jsonStream, root);
 
     mSubject = root.get<std::string>("sub");

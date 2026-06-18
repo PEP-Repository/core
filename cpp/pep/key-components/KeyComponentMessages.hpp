@@ -17,10 +17,10 @@ public:
     const CurveScalar& pseudonymKeyComponent,
     const CurveScalar& encryptionKeyComponent
   ) : mPseudonymEncryptionKeyComponent(pseudonymKeyComponent),
-    mDataEncryptionKeyComponent(encryptionKeyComponent) {}
+    dataEncryptionKeyComponent_(encryptionKeyComponent) {}
 
   CurveScalar mPseudonymEncryptionKeyComponent;
-  CurveScalar mDataEncryptionKeyComponent;
+  CurveScalar dataEncryptionKeyComponent_;
 };
 
 }

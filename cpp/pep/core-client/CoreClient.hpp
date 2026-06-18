@@ -102,15 +102,15 @@ struct RetrievePage {
 
 // Represents a file retrieved using enumerateAndRetrieveData2.
 struct EnumerateAndRetrieveResult : public EnumerateResult {
-  std::string mData;    // contents of the file
+  std::string data_;    // contents of the file
 
   // metadata of the file with the decrypted metadata entries - set only
-  // when mDataSet is true.
+  // when dataSet_ is true.
   std::optional<Metadata> mMetadataDecrypted;
 
-  // If a dataSizeLimit was specified, mData might not be set.  This
-  // field indicates whether mData was set.
-  bool mDataSet{};
+  // If a dataSizeLimit was specified, data_ might not be set.  This
+  // field indicates whether data_ was set.
+  bool dataSet_{};
 };
 
 // Result of a getHistory2 or deleteData2 call

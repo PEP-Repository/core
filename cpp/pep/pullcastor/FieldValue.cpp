@@ -30,7 +30,7 @@ void AddCheckBox(boost::property_tree::ptree& destination, const std::string& na
 }
 
 FieldValue::FieldValue(std::shared_ptr<Field> field, std::shared_ptr<DataPointBase> dataPoint)
-  : mField(field), mDataPoint(dataPoint) {
+  : mField(field), dataPoint_(dataPoint) {
 }
 
 void FieldValue::addTo(boost::property_tree::ptree& destination) const {
@@ -38,8 +38,8 @@ void FieldValue::addTo(boost::property_tree::ptree& destination) const {
   auto name = mField->getVariableName();
 
   std::string value;
-  if (mDataPoint != nullptr) {
-    value = mDataPoint->getValue();
+  if (dataPoint_ != nullptr) {
+    value = dataPoint_->getValue();
   }
 
   if (type == Field::TYPE_CHECKBOX) {

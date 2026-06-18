@@ -367,8 +367,8 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
     .reduce(
       std::make_shared<std::vector<std::optional<PolymorphicPseudonym>>>(allSps->size()),
       [allSps](std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>> result, const EnumerateAndRetrieveResult& ear) {
-        assert(ear.mDataSet);
-        auto position = allSps->find(ear.mData);
+        assert(ear.dataSet_);
+        auto position = allSps->find(ear.data_);
         if (position != allSps->cend()) {
           auto index = position->second;
           (*result)[index] = ear.mLocalPseudonyms->mPolymorphic;

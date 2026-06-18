@@ -37,12 +37,12 @@ class WaitGroup : public std::enable_shared_from_this<WaitGroup>, public SharedC
 
    private:
     size_t mId;
-    std::string mDescription;
+    std::string description_;
     std::shared_ptr<WaitGroup> mWg;
 
     Action(std::shared_ptr<WaitGroup> wg,
       size_t id, const std::string& description) :
-      mId(id), mDescription(description), mWg(wg) { }
+      mId(id), description_(description), mWg(wg) { }
   };
 
   // Add a new action to wait for.  Call Action.done() to signal the action

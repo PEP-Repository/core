@@ -37,7 +37,7 @@ KeyComponentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> regis
 KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
   SigningServer(parameters),
   mPseudonymTranslator(parameters->getPseudonymTranslator()),
-  mDataTranslator(parameters->getDataTranslator()),
+  dataTranslator_(parameters->getDataTranslator()),
   mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())),
   mSystemPublicKeys(parameters->getSystemPublicKeys()) {
 
@@ -57,7 +57,7 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
   KeyComponentResponse response;
   response.mPseudonymEncryptionKeyComponent = mPseudonymTranslator->generateKeyComponent(recipient);
   if (HasDataAccess(*party)) {
-    response.mDataEncryptionKeyComponent = mDataTranslator->generateKeyComponent(recipient);
+    response.dataEncryptionKeyComponent_ = dataTranslator_->generateKeyComponent(recipient);
   }
 
   mMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds

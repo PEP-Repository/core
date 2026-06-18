@@ -22,12 +22,12 @@ public:
 class ExportableDeviceHistoryItem : public ExportableItem {
 private:
   std::string mColumnName;
-  std::optional<std::string> mDescription;
+  std::optional<std::string> description_;
 public:
   ExportableDeviceHistoryItem(const std::string& columnName, const std::optional<std::string>& description);
 
   std::string getSourceColumnName() const override { return mColumnName; }
-  std::optional<std::string> getDescription() const override { return mDescription; }
+  std::optional<std::string> getDescription() const override { return description_; }
   std::string getCaptionPrefix() const override { return "Device history"; }
 
   std::optional<std::function<void(ExportDataTable&, const std::optional<std::string>&)>> getDetailExpander() const override;
@@ -36,13 +36,13 @@ public:
 class ExportableShortPseudonymItem : public ExportableItem {
 private:
   std::string mColumnName;
-  std::string mDescription;
+  std::string description_;
   std::optional<unsigned int> mVisitNumber;
 
 public:
   explicit ExportableShortPseudonymItem(const pep::ShortPseudonymDefinition& definition);
   std::string getSourceColumnName() const override { return mColumnName; }
-  std::optional<std::string> getDescription() const override { return mDescription; }
+  std::optional<std::string> getDescription() const override { return description_; }
   std::optional<unsigned int> getVisitNumber() const override { return mVisitNumber; }
   std::string getCaptionPrefix() const override { return "Short Pseudonym"; }
 };

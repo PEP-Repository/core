@@ -7,7 +7,7 @@
 namespace pep {
 
 std::string ServerTraits::defaultId() const {
-  auto result = mDescription;
+  auto result = description_;
   result.erase(remove_if(result.begin(), result.end(), isspace), result.end());
   return result;
 }
@@ -27,7 +27,7 @@ std::string ServerTraits::lowercaseId() const {
 }
 
 ServerTraits::ServerTraits(std::string abbreviation, std::string description) noexcept
-  : mAbbreviation(std::move(abbreviation)), mDescription(std::move(description)) {
+  : mAbbreviation(std::move(abbreviation)), description_(std::move(description)) {
 }
 
 ServerTraits::ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAsParty) noexcept

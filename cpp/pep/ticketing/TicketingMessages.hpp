@@ -38,7 +38,7 @@ class Signed<Ticket2> {
 private:
   std::optional<Signature> mSignature;
   std::optional<Signature> mTranscryptorSignature;
-  std::string mData;
+  std::string data_;
 
 public:
   Signed() = default;
@@ -48,10 +48,10 @@ public:
   Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mTranscryptorSignature,
-    std::string mData)
+    std::string data_)
     : mSignature(std::move(mSignature)),
     mTranscryptorSignature(std::move(mTranscryptorSignature)),
-    mData(std::move(mData)) { }
+    data_(std::move(data_)) { }
 
   void addTranscryptorSignature(Signature signature);
 
@@ -92,7 +92,7 @@ class Signed<TicketRequest2> {
 private:
   std::optional<Signature> mSignature;
   std::optional<Signature> mLogSignature;
-  std::string mData;
+  std::string data_;
 
 public:
   Signed(TicketRequest2 ticketRequest,
@@ -100,10 +100,10 @@ public:
   Signed(
     std::optional<Signature> mSignature,
     std::optional<Signature> mLogSignature,
-    std::string mData)
+    std::string data_)
     : mSignature(std::move(mSignature)),
     mLogSignature(std::move(mLogSignature)),
-    mData(std::move(mData)) { }
+    data_(std::move(data_)) { }
 
   const std::optional<Signature>& logSignature() const noexcept { return mLogSignature; }
   Signature extractSignature();

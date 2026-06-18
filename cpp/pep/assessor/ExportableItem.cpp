@@ -5,11 +5,11 @@
 #include <cassert>
 
 ExportableShortPseudonymItem::ExportableShortPseudonymItem(const pep::ShortPseudonymDefinition& definition)
-  : mColumnName(definition.getColumn().getFullName()), mDescription(definition.getDescription()), mVisitNumber(definition.getColumn().getVisitNumber()) {
+  : mColumnName(definition.getColumn().getFullName()), description_(definition.getDescription()), mVisitNumber(definition.getColumn().getVisitNumber()) {
 }
 
 ExportableDeviceHistoryItem::ExportableDeviceHistoryItem(const std::string& columnName, const std::optional<std::string>& description)
-  : mColumnName(columnName), mDescription(description) {
+  : mColumnName(columnName), description_(description) {
 }
 ExportableVisitAssessorItem::ExportableVisitAssessorItem(const std::string& columnName, const unsigned int visitNumber) :
   mColumnName(columnName), mVisitNumber(visitNumber) {

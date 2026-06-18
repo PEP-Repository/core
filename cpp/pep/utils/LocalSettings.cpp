@@ -128,7 +128,7 @@ class LocalSettingsRegistry: public LocalSettings {
    */
   static void DeleteRecursive(
     HKEY mRegistrySubKey,
-    boost::property_tree::ptree& mDeletedSubtree
+    boost::property_tree::ptree& deletedSubtree_
   );
   /* setModifiedFlag flags the given property so that it will be updated when flushChanges() is called.
    * Additionally, in case the property was flagged deleted before, the flag is removed
@@ -137,7 +137,7 @@ class LocalSettingsRegistry: public LocalSettings {
 
   HKEY mRegistryHandle;
   std::string szSubKeyName;
-  boost::property_tree::ptree mDeletedValues;
+  boost::property_tree::ptree deletedValues_;
   boost::property_tree::ptree mModifiedValues;
 };
 
@@ -173,7 +173,7 @@ bool LocalSettingsRegistry::deleteValue (const std::string& szNamespace, const s
   LocalSettings::deleteValue(szNamespace, szPropertyName);
   boost::property_tree::ptree mNamespace;
 
-  mDeletedValues.put(szNamespace + "." + szPropertyName, "");
+  deletedValues_.put(szNamespace + "." + szPropertyName, "");
   try {
     mNamespace = mModifiedValues.get_child(szNamespace);
     mNamespace.erase(szPropertyName);
@@ -206,9 +206,9 @@ LocalSettingsRegistry::LocalSettingsRegistry (const std::string& szSubKeyName) {
 }
 
 bool LocalSettingsRegistry::flushChanges () {
-  DeleteRecursive (mRegistryHandle, mDeletedValues);
+  DeleteRecursive (mRegistryHandle, deletedValues_);
   StoreRecursive (mRegistryHandle, propertyTree_, mModifiedValues);
-  mDeletedValues.clear();
+  deletedValues_.clear();
   mModifiedValues.clear();
   return true;
 }
@@ -301,11 +301,11 @@ boost::property_tree::ptree LocalSettingsRegistry::RetrieveRecursive (
 
 void LocalSettingsRegistry::DeleteRecursive(
   HKEY mRegistrySubKey,
-  boost::property_tree::ptree& mDeletedSubtree
+  boost::property_tree::ptree& deletedSubtree_
 ) {
   boost::property_tree::ptree::iterator it;
 
-  for (it = mDeletedSubtree.begin(); it != mDeletedSubtree.end(); it++) {
+  for (it = deletedSubtree_.begin(); it != deletedSubtree_.end(); it++) {
     HKEY mChildSubKey;
     if (it->second.empty()) {
       if (::RegDeleteValue(

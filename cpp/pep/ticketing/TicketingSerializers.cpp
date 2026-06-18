@@ -75,7 +75,7 @@ SignedTicket2 Serializer<SignedTicket2>::fromProtocolBuffer(proto::SignedTicket2
 }
 
 void Serializer<SignedTicket2>::moveIntoProtocolBuffer(proto::SignedTicket2& dest, SignedTicket2 value) const {
-  *dest.mutable_data() = std::move(value.mData);
+  *dest.mutable_data() = std::move(value.data_);
   if (value.mSignature)
     Serialization::MoveIntoProtocolBuffer(
       *dest.mutable_signature(),
@@ -150,7 +150,7 @@ SignedTicketRequest2 Serializer<SignedTicketRequest2>::fromProtocolBuffer(proto:
 }
 
 void Serializer<SignedTicketRequest2>::moveIntoProtocolBuffer(proto::SignedTicketRequest2& dest, SignedTicketRequest2 value) const {
-  *dest.mutable_data() = std::move(value.mData);
+  *dest.mutable_data() = std::move(value.data_);
   if (value.mSignature)
     Serialization::MoveIntoProtocolBuffer(
       *dest.mutable_signature(),

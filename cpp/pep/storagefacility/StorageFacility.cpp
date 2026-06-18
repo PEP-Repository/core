@@ -1060,13 +1060,13 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
   uint64_t totalBytes{}, rollingBytes{};
   this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
 
-  auto countBlocks = [blockSize = mDataSizeResolution](uint64_t bytes) {
+  auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
       assert(bytes % blockSize == 0U);
       return bytes / blockSize;
     };
 
   return messaging::BatchSingleMessage(DataSizeResponse{
-    .mBlockSize = mDataSizeResolution,
+    .mBlockSize = dataSizeResolution_,
     .mTotalBlocks = countBlocks(totalBytes),
     .mRollingBlocks = countBlocks(rollingBytes),
     });
@@ -1137,7 +1137,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   mMetrics(std::make_shared<Metrics>(mRegistry)),
   mTimer(*parameters->getIoContext()),
   mParallelisationWidth(parameters->getParallelisationWidth()),
-  mDataSizeResolution(parameters->getDataSizeResolution()) {
+  dataSizeResolution_(parameters->getDataSizeResolution()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,
@@ -1156,7 +1156,7 @@ void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedT
   uint64_t total{}, rolling{};
   mFileStore->getMetrics(entryCount, total, rolling, columns);
 
-  auto round = [blockSize = mDataSizeResolution](uint64_t bytes) {
+  auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
       auto blocks = bytes / blockSize;
       if (bytes % blockSize != 0U) {
         ++blocks;

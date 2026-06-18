@@ -11,7 +11,7 @@ class OAuthToken {
 private:
   std::string mSerialized;
 
-  std::string mData;
+  std::string data_;
   std::string mHmac;
 
   std::string mSubject;

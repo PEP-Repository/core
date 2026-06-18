@@ -132,7 +132,7 @@ private:
   std::shared_ptr<Metrics> mMetrics;
   boost::asio::steady_timer mTimer;
   const uint8_t mParallelisationWidth = 0; // passed to RxParallelConcat
-  const uint64_t mDataSizeResolution;
+  const uint64_t dataSizeResolution_;
 };
 
 }

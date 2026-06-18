@@ -145,7 +145,7 @@ rxcpp::observable < std::shared_ptr<StoreContext>> CreateContext(std::shared_ptr
           .op(pep::RxGetOne("short pseudonym result"))
           .map([context](pep::EnumerateAndRetrieveResult result) {
           assert(!context->pseudonym.has_value());
-          context->pseudonym = result.mData;
+          context->pseudonym = result.data_;
           auto placeholder = pep::Pseudonymiser::GetDefaultPlaceholder().substr(0, context->pseudonym->length());
           std::string placeholderKey{"pseudonymPlaceholder"};
 

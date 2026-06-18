@@ -56,7 +56,7 @@ public:
 class PseudonymFormat {
 private:
   std::string prefix_;
-  size_t mDigits;
+  size_t digits_;
   std::string mRegexPattern;
 
 public:
@@ -65,9 +65,9 @@ public:
 
   const std::string& getRegexPattern() const noexcept { return mRegexPattern; }
 
-  bool isGenerable() const noexcept { return mDigits > 0U; }
+  bool isGenerable() const noexcept { return digits_ > 0U; }
   const std::string& getPrefix() const noexcept { return prefix_; }
-  size_t getNumberOfGeneratedDigits() const { return mDigits; }
+  size_t getNumberOfGeneratedDigits() const { return digits_; }
   std::optional<size_t> getTotalNumberOfDigits() const; // Only produces a value for generable formats
   std::optional<size_t> getLength() const; // Only produces a value for generable formats
 };
@@ -103,7 +103,7 @@ class GlobalConfiguration {
   std::vector<ShortPseudonymDefinition> mShortPseudonyms;
   UserPseudonymFormat mUserPseudonymFormat;
   std::vector<AdditionalStickerDefinition> mAdditionalStickers;
-  std::vector<DeviceRegistrationDefinition> mDevices;
+  std::vector<DeviceRegistrationDefinition> devices_;
   std::unordered_map<std::string, uint32_t> mNumberOfVisits;
   std::vector<AssessorDefinition> assessors_;
   std::vector<ColumnSpecification> mColumnSpecifications;
@@ -134,7 +134,7 @@ class GlobalConfiguration {
   const std::vector<ShortPseudonymDefinition>& getShortPseudonyms() const noexcept { return mShortPseudonyms; }
   const UserPseudonymFormat& getUserPseudonymFormat() const noexcept { return mUserPseudonymFormat; }
   const std::vector<AdditionalStickerDefinition>& getAdditionalStickers() const noexcept { return mAdditionalStickers; }
-  const std::vector<DeviceRegistrationDefinition>& getDevices() const noexcept { return mDevices; }
+  const std::vector<DeviceRegistrationDefinition>& getDevices() const noexcept { return devices_; }
   const std::vector<AssessorDefinition>& getAssessors() const noexcept { return assessors_; }
   const std::vector<ColumnSpecification>& getColumnSpecifications() const noexcept { return mColumnSpecifications; }
   const std::vector<ShortPseudonymErratum>& getShortPseudonymErrata() const noexcept { return mSpErrata; }

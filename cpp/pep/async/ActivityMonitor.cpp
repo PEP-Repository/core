@@ -10,7 +10,7 @@ const auto LogTag = "Activity monitor";
 const std::chrono::seconds ActivityMonitor::DEFAULT_MAX_INACTIVE = 1min;
 
 ActivityMonitor::ActivityMonitor(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(mTimer)::duration maxInactive)
-  : mDescription(jobDescription), mTimer(io_context), mMaxInactive(maxInactive) {
+  : description_(jobDescription), mTimer(io_context), mMaxInactive(maxInactive) {
 }
 
 ActivityMonitor::~ActivityMonitor() noexcept {
@@ -55,7 +55,7 @@ void ActivityMonitor::handleTimerExpired() {
     this->startTimer(elapsed);
   }
   else {
-    PEP_LOG(LogTag, Severity::Warning) << "Inactivity detected for job: " << mDescription
+    PEP_LOG(LogTag, Severity::Warning) << "Inactivity detected for job: " << description_
       << ". Its last recorded activity was " << mLastActivityWhat.value_or("<none>");
   }
 }
@@ -74,7 +74,7 @@ void ActivityMonitor::activityOccurred(const std::string& what) {
     mLastActivityWhen = decltype(mLastActivityWhen)::value_type::clock::now();
   }
   else {
-    PEP_LOG(LogTag, Severity::Info) << "Activity resumed for job: " << mDescription
+    PEP_LOG(LogTag, Severity::Info) << "Activity resumed for job: " << description_
       << " doing: " << what;
     this->startTimer();
   }

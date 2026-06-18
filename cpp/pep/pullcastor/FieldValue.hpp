@@ -12,7 +12,7 @@ namespace castor {
 class FieldValue {
 private:
   std::shared_ptr<Field> mField;
-  std::shared_ptr<DataPointBase> mDataPoint;
+  std::shared_ptr<DataPointBase> dataPoint_;
 
   void addTo(boost::property_tree::ptree& destination) const;
 

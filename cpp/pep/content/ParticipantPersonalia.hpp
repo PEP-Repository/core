@@ -10,19 +10,19 @@ private:
   std::string mFirstName;
   std::string mMiddleName;
   std::string mLastName;
-  std::string mDateOfBirth;
+  std::string dateOfBirth_;
 
 public:
   ParticipantPersonalia(std::string firstName, std::string middleName, std::string lastName, std::string dateOfBirth)
     : mFirstName(std::move(firstName)),
       mMiddleName(std::move(middleName)),
       mLastName(std::move(lastName)),
-      mDateOfBirth(std::move(dateOfBirth)) {}
+      dateOfBirth_(std::move(dateOfBirth)) {}
 
   inline const std::string &getFirstName() const noexcept { return mFirstName; }
   inline const std::string &getMiddleName() const noexcept { return mMiddleName; }
   inline const std::string &getLastName() const noexcept { return mLastName; }
-  inline const std::string &getDateOfBirth() const noexcept { return mDateOfBirth; }
+  inline const std::string &getDateOfBirth() const noexcept { return dateOfBirth_; }
 
   std::string getFullName() const;
 

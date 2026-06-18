@@ -30,7 +30,7 @@ public:
 
 private:
   static std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> AddEnumerateAndRetrieveResult(std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> data, const pep::EnumerateAndRetrieveResult& result) {
-    if (!result.mDataSet) {
+    if (!result.dataSet_) {
       throw std::runtime_error("Data could not be retrieved inline"); // TODO: support this
     }
     if (result.mAccessGroupPseudonym == nullptr) {
@@ -44,10 +44,10 @@ private:
     assert(*entry.accessGroupPseudonym == *result.mAccessGroupPseudonym);
 
     if (result.mColumn == "ParticipantIdentifier") {
-      entry.id = result.mData;
+      entry.id = result.data_;
     }
     else {
-      entry.deviceHistory[result.mColumn] = result.mData;
+      entry.deviceHistory[result.mColumn] = result.data_;
     }
 
     return data;

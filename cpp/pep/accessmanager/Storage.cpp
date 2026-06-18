@@ -1840,7 +1840,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
 
     QRUser& user = usersInfo.at(internalId);
     if (isDisplayId) {
-      user.mDisplayId = identifier;
+      user.displayId_ = identifier;
     }
     if (isPrimaryId) {
       user.mPrimaryId = identifier;

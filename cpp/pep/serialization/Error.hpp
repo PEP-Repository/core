@@ -43,11 +43,11 @@ private:
 
 public:
   explicit inline Error(std::string description)
-    : mDescription(std::move(description)) { }
+    : description_(std::move(description)) { }
 
-  std::string mDescription;
+  std::string description_;
 
-  inline const char* what() const noexcept override { return mDescription.c_str(); }
+  inline const char* what() const noexcept override { return description_.c_str(); }
   inline const std::string& getOriginalTypeName() const noexcept { return mOriginalTypeName; }
 
   static bool IsSerializable(std::exception_ptr exception) noexcept;

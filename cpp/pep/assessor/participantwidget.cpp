@@ -50,7 +50,7 @@ class ParticipantDataAggregator {
 private:
   const pep::GlobalConfiguration globalConfig_;
   std::vector<const pep::ShortPseudonymDefinition*> mUnfilledShortPseudonyms;
-  std::map<std::string, pep::EnumerateAndRetrieveResult> mDeviceHistory;
+  std::map<std::string, pep::EnumerateAndRetrieveResult> deviceHistory_;
   std::optional<pep::EnumerateAndRetrieveResult> mParticipantInfo;
   std::optional<pep::EnumerateAndRetrieveResult> mIsTestParticipant;
   bool mParticipantIdentifierIsSet;
@@ -163,14 +163,14 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
 
   for (const auto& deviceDefinition : globalConfig.getDevices()) {
     auto deviceWidget = new DeviceWidget(deviceDefinition, this);
-    mDeviceWidgets.push_back(deviceWidget);
+    deviceWidgets_.push_back(deviceWidget);
     ui->verticalLayout_devices->addWidget(deviceWidget);
 
     QObject::connect(deviceWidget, &DeviceWidget::deviceDeregistered, this, &ParticipantWidget::updateDevice);
     QObject::connect(deviceWidget, &DeviceWidget::deviceRegistered, this, &ParticipantWidget::updateDevice);
 
     auto historyWidget = new DeviceHistoryWidget(deviceDefinition, this);
-    mDeviceHistoryWidgets.push_back(historyWidget);
+    deviceHistoryWidgets_.push_back(historyWidget);
     ui->verticalLayout_deviceHistories->addWidget(historyWidget);
 
     QObject::connect(historyWidget, &DeviceHistoryWidget::itemActivated, this, &ParticipantWidget::editDeviceHistoryEntry);
@@ -237,7 +237,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
   }
 
   //Disable stuff based on user role
-  for (auto device : mDeviceWidgets) {
+  for (auto device : deviceWidgets_) {
     device->setEnabled(currentPEPRole.canManageDevices());
   }
   if (currentPEPRole.canSeeParticipantPersonalia()) {
@@ -344,7 +344,7 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
 
   this->readOnly = readOnly;
 
-  for (auto device : mDeviceWidgets) {
+  for (auto device : deviceWidgets_) {
     device->setEnabled(currentPEPRole.canManageDevices() && !readOnly);
   }
 
@@ -858,15 +858,15 @@ void ParticipantWidget::processData() {
 
   release_participant_button->setEnabled(currentPEPRole.canSetParticipantContext() && participantStudyContexts.getItems().size() > 1);
 
-  for (auto i = 0U; i < mDeviceWidgets.size(); ++i) {
-    auto widget = mDeviceWidgets[i];
+  for (auto i = 0U; i < deviceWidgets_.size(); ++i) {
+    auto widget = deviceWidgets_[i];
     auto columnName = widget->getColumnName();
 
     const auto& history = participantData.mParticipantDeviceHistory[columnName.toStdString()];
     auto current = history.getCurrent();
     widget->setDeviceId(current ? QString::fromStdString(current->serial) : QString());
 
-    auto historyWidget = std::find_if(mDeviceHistoryWidgets.begin(), mDeviceHistoryWidgets.end(), [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
+    auto historyWidget = std::find_if(deviceHistoryWidgets_.begin(), deviceHistoryWidgets_.end(), [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
     (*historyWidget)->setHistory(history);
 
     if (mStudyContext.matches(globalConfig.getDevices()[i].studyContext)) {
@@ -1326,8 +1326,8 @@ const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudony
 }
 
 void ParticipantDataAggregator::processDeviceHistory(const pep::EnumerateAndRetrieveResult& result) {
-  assert(mDeviceHistory.find(result.mColumn) == mDeviceHistory.cend());
-  mDeviceHistory[result.mColumn] = result;
+  assert(deviceHistory_.find(result.mColumn) == deviceHistory_.cend());
+  deviceHistory_[result.mColumn] = result;
 }
 
 void ParticipantDataAggregator::processParticipantInfo(const pep::EnumerateAndRetrieveResult& result) {
@@ -1348,13 +1348,13 @@ void ParticipantDataAggregator::processShortPseudonym(const pep::EnumerateAndRet
   auto shortPseudonymTag = result.mColumn;
   auto definition = getShortPseudonymDefinition(shortPseudonymTag);
   if (definition != nullptr) {
-    mShortPseudonyms[shortPseudonymTag] = result.mData;
+    mShortPseudonyms[shortPseudonymTag] = result.data_;
     mUnfilledShortPseudonyms.erase(std::remove(mUnfilledShortPseudonyms.begin(), mUnfilledShortPseudonyms.end(), definition), mUnfilledShortPseudonyms.end());
   }
 }
 
 void ParticipantDataAggregator::processStudyContexts(const pep::EnumerateAndRetrieveResult& result) {
-  mStudyContexts = result.mData;
+  mStudyContexts = result.data_;
 }
 
 void ParticipantDataAggregator::processVisitAssessor(const pep::EnumerateAndRetrieveResult& result) {
@@ -1364,8 +1364,8 @@ void ParticipantDataAggregator::processVisitAssessor(const pep::EnumerateAndRetr
   assert(match);
 
   std::optional<unsigned int> assessorId;
-  if (!result.mData.empty()) {
-    assessorId = static_cast<unsigned int>(std::stoul(result.mData));
+  if (!result.data_.empty()) {
+    assessorId = static_cast<unsigned int>(std::stoul(result.data_));
   }
   auto inserted = mVisitAssessors[context].insert(std::make_pair(visit, assessorId)).second;
   if (!inserted) {
@@ -1428,7 +1428,7 @@ void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& r
 }
 
 bool ParticipantDataAggregator::hasParticipantData() const noexcept {
-  return !mDeviceHistory.empty() || mParticipantInfo || mParticipantIdentifierIsSet || !mShortPseudonyms.empty() || !mStudyContexts.empty();
+  return !deviceHistory_.empty() || mParticipantInfo || mParticipantIdentifierIsSet || !mShortPseudonyms.empty() || !mStudyContexts.empty();
 }
 
 bool ParticipantDataAggregator::hasCompleteParticipantData() const noexcept {
@@ -1442,18 +1442,18 @@ ParticipantData ParticipantDataAggregator::getData() const {
 
   ParticipantData participantData;
   if (mParticipantInfo) {
-    auto personalia = pep::ParticipantPersonalia::FromJson(mParticipantInfo->mData);
+    auto personalia = pep::ParticipantPersonalia::FromJson(mParticipantInfo->data_);
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
       PEP_LOG(LogTag, pep::Severity::Warning) << "Received empty participant personalia";
     }
     participantData.mPersonalia = personalia;
   }
   if (mIsTestParticipant) {
-    participantData.mIsTestParticipant = pep::StringToBool(mIsTestParticipant->mData);
+    participantData.mIsTestParticipant = pep::StringToBool(mIsTestParticipant->data_);
   }
   participantData.mShortPseudonyms = mShortPseudonyms;
-  for (const auto& history: mDeviceHistory) {
-    participantData.mParticipantDeviceHistory[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.mData, false);
+  for (const auto& history: deviceHistory_) {
+    participantData.mParticipantDeviceHistory[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.data_, false);
   }
 
   for (const auto& context : mVisitAssessors) {

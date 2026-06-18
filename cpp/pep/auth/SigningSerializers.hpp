@@ -25,7 +25,7 @@ public:
 template <typename T>
 void Serializer<Signed<T> >::moveIntoProtocolBuffer(
   SignedProtocolBufferType& dest, Signed<T> value) const {
-  dest.set_data(std::move(value.mData));
+  dest.set_data(std::move(value.data_));
   Serialization::MoveIntoProtocolBuffer(
     *dest.mutable_signature(),
     std::move(value.mSignature)

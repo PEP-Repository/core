@@ -179,7 +179,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                     entriesWithData->emplace_back(std::move(entry));
                   } else { // This entry won't include data: emit it now
                     EnumerateAndRetrieveResult res;
-                    res.mDataSet = false;
+                    res.dataSet_ = false;
                     res.mId = entry.mId;
                     res.mMetadata = entry.mMetadata;
                     res.mColumn = entry.mMetadata.getTag();
@@ -258,7 +258,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                       // Convert EnumerateResult (without data) to EnumerateAndRetrieveResult (with data)
                       EnumerateAndRetrieveResult res;
                       static_cast<EnumerateResult&>(res) = std::move(enumResult); // Initialize base class (sub-object) fields
-                      res.mDataSet = true;
+                      res.dataSet_ = true;
                       res.mMetadataDecrypted = res.mMetadata.decrypt(key);
 
                       // Fill the entry's data with the pages we retrieved for it
@@ -270,13 +270,13 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                           assert(pages[i]->mPageNumber == i);
                           buffer << pages[i]->decrypt(key, res.mMetadata);
                         }
-                        res.mData = std::move(buffer).str();
+                        res.data_ = std::move(buffer).str();
                       }
 
                       // Verify consistency
-                      if (res.mData.size() != res.mFileSize) {
+                      if (res.data_.size() != res.mFileSize) {
                         std::ostringstream message;
-                        message << "Received " << res.mData.size()
+                        message << "Received " << res.data_.size()
                                 << " bytes of data for a storage facility entry that was supposed to have "
                                 << res.mFileSize << " bytes";
                         throw std::runtime_error(message.str());

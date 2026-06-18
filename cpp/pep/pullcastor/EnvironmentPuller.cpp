@@ -63,7 +63,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
 }
 
 EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config, bool dry, const std::optional<std::vector<std::string>>& spColumns, const std::optional<std::vector<std::string>>& sps)
-  : mDry(dry), mSps(sps) {
+  : dry_(dry), mSps(sps) {
   std::filesystem::path oauthTokenFile;
   std::filesystem::path castorAPIKeyFile;
   std::filesystem::path clientConfigFile;
@@ -186,7 +186,7 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
   auto written = std::make_shared<size_t>(0U);
   auto self = SharedFrom(*this);
 
-  if (mDry) {
+  if (dry_) {
     PEP_PULLCASTOR_LOG(Severity::Info) << "Performing a dry run: no data will be stored in PEP";
   }
   else {
@@ -216,7 +216,7 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
 }
 
 rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(const std::vector<StoreData2Entry>& batch) {
-  if (mDry) {
+  if (dry_) {
     return rxcpp::observable<>::just(batch.size());
   }
 

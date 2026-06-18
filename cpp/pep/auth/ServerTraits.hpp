@@ -10,7 +10,7 @@ namespace pep {
 class ServerTraits {
 private:
   std::string mAbbreviation;
-  std::string mDescription;
+  std::string description_;
   std::optional<EnrolledParty> mEnrollsAsParty;
   std::optional<std::string> mCustomId;
 
@@ -26,7 +26,7 @@ private:
 public:
   // String properties
   const std::string& abbreviation() const noexcept { return mAbbreviation; }
-  const std::string& description() const noexcept { return mDescription; }
+  const std::string& description() const noexcept { return description_; }
   std::string configNode() const;
   std::string commandLineId() const;
   std::string metricsId() const;

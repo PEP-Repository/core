@@ -214,7 +214,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
     [](EnumerateAndRetrieveResult result) {
       std::cout << "Primary key: " << result.mId << std::endl;
       std::cout << "Column: " << result.mColumn << std::endl;
-      std::cout << "Data: " << result.mData << std::endl;
+      std::cout << "Data: " << result.data_ << std::endl;
     })
     .op(RxInstead(true));
 }

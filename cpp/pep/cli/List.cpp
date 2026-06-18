@@ -98,9 +98,9 @@ protected:
       void add(const pep::EnumerateAndRetrieveResult& ear) {
         assert(pp_ == ear.mLocalPseudonyms->mPolymorphic);
 
-        if (ear.mDataSet) {
+        if (ear.dataSet_) {
           values_.push_back(pt::ptree::value_type(
-            ear.mColumn, ear.mData));
+            ear.mColumn, ear.data_));
         }
         else {
           ids_.push_back(pt::ptree::value_type(
@@ -152,7 +152,7 @@ protected:
       std::string mFormat;
       std::shared_ptr<pep::GlobalConfiguration> globalConfig_;
       std::unordered_map<uint32_t, SubjectData> mSubjects;
-      size_t mDataCount{ 0 };
+      size_t dataCount_{ 0 };
       std::unordered_map<pep::PolymorphicPseudonym, std::optional<pep::EncryptedLocalPseudonym>> mPseudsToReport;
       pt::ptree mResults;
 
@@ -190,7 +190,7 @@ protected:
       }
 
       void processResult(const pep::EnumerateAndRetrieveResult& ear) {
-        mDataCount++;
+        dataCount_++;
         auto existing = mSubjects.find(ear.mLocalPseudonymsIndex);
         if (existing == mSubjects.cend()) {
           if (!mGroupOutput) {
@@ -207,7 +207,7 @@ protected:
       void printQueryInfo() {
           std::ostringstream out;
 
-          out << "Listed " << mDataCount << " results for: ";
+          out << "Listed " << dataCount_ << " results for: ";
           if (mEarOpts.columnGroups.size() > 0 || mEarOpts.columns.size() == 0) {
               out << mEarOpts.columnGroups.size() << " Column Group(s) ";
           }
