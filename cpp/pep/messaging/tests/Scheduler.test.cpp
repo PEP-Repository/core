@@ -74,19 +74,19 @@ private:
   boost::asio::steady_timer mTimer;
   rxcpp::subscriber<std::shared_ptr<std::string>> mSubscriber;
   size_t& mExhaustCount;
-  std::string mPrefix;
+  std::string prefix_;
   size_t mTotal;
   size_t mIndex = 0U;
 
   explicit Emitter(boost::asio::io_context& ioContext, rxcpp::subscriber<std::shared_ptr<std::string>> subscriber, size_t& exhaustCount, size_t index)
-    : mTimer(ioContext), mSubscriber(subscriber), mExhaustCount(exhaustCount), mPrefix(std::to_string(index) + '.'), mTotal(ItemCount(index)) {}
+    : mTimer(ioContext), mSubscriber(subscriber), mExhaustCount(exhaustCount), prefix_(std::to_string(index) + '.'), mTotal(ItemCount(index)) {}
 
   void handleTimerExpired(const boost::system::error_code& error) {
     if (error && error != boost::asio::error::operation_aborted) {
       throw boost::system::system_error(error);
     }
 
-    mSubscriber.on_next(pep::MakeSharedCopy(mPrefix + std::to_string(mIndex++)));
+    mSubscriber.on_next(pep::MakeSharedCopy(prefix_ + std::to_string(mIndex++)));
     if (this->finished()) {
       ++mExhaustCount;
       mSubscriber.on_completed();

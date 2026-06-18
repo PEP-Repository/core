@@ -145,7 +145,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      const pep::StudyContext& studyContext,
                                      const VisitCaptions* visitCaptions,
                                      pep::UserRole role)
-  : QWidget(parent), pepClient(client), ui(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), mAllContexts(allContexts), mStudyContext(studyContext), currentPEPRole(role), mProjectName(branding.getProjectName()), mSpareStickerCount(spareStickerCount), mVisitCaptions(visitCaptions) {
+  : QWidget(parent), pepClient(client), ui(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), mAllContexts(allContexts), mStudyContext(studyContext), currentPEPRole(role), projectName_(branding.getProjectName()), mSpareStickerCount(spareStickerCount), mVisitCaptions(visitCaptions) {
   baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
   stickerFilePath = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
   bartenderPath = ReadConfiguredBartenderPath(configuration);
@@ -663,7 +663,7 @@ void ParticipantWidget::printSummary() {
 
   QString htmlFormattedSummary = "<html>";
 
-  htmlFormattedSummary.append("<p><b>" + mProjectName + "</b></p>");
+  htmlFormattedSummary.append("<p><b>" + projectName_ + "</b></p>");
 
   if (participantData.mPersonalia) {
     htmlFormattedSummary.append(QString::fromStdString("<h1>" + participantData.mPersonalia->getFullName() + "</h1>"));

@@ -10,13 +10,13 @@ const std::string LogTag = "PEP Assessor branding";
 }
 
 Branding::Branding(const QString& logoPath, const QString& projectName)
-  : mLogo(logoPath), mProjectName(projectName) {
+  : logo_(logoPath), projectName_(projectName) {
 }
 
 void Branding::showLogo(QLabel& host) const {
   host.setScaledContents(false);
   host.setAlignment(Qt::AlignCenter);
-  host.setPixmap(mLogo.scaled(host.size(), Qt::KeepAspectRatio));
+  host.setPixmap(logo_.scaled(host.size(), Qt::KeepAspectRatio));
 }
 
 Branding Branding::Get(const pep::Configuration& configuration, const std::string& path) {

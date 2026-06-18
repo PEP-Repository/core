@@ -86,7 +86,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   // Construct request to storage facility already to
   // prevent another copy of entries.
   ctx->request = std::make_shared<DataStoreRequest2>();
-  ctx->request->mEntries.reserve(entries.size());
+  ctx->request->entries_.reserve(entries.size());
   ctx->data.reserve(entries.size());
 
   for (size_t i=0; i<entries.size(); i++) {
@@ -104,7 +104,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
       entry2.mMetadata.extra()[name] = xentry.prepareForStore(ctx->keys[i].bytes);
     }
 
-    ctx->request->mEntries.emplace_back(entry2);
+    ctx->request->entries_.emplace_back(entry2);
 
     ctx->data.push_back(entry.mBatches);
   }
@@ -133,7 +133,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     // we use a outer merge of obs^2 here, as the inner obs^2's should not be merge (because of ordering that needs to be intact due to the lambda used below)
     // (no a concat on the ineer obs^2 can also NOT be used, due to loading the file at once)
     auto pages = CreateObservable<messaging::Tail<DataPayloadPage>>([ctx](rxcpp::subscriber<messaging::Tail<DataPayloadPage>> subscriber) {
-      for (size_t i = 0; i < ctx->request->mEntries.size(); ++i) {
+      for (size_t i = 0; i < ctx->request->entries_.size(); ++i) {
         subscriber.on_next(ctx->data[i].map([i, ctx, fileContext = std::make_shared<uint64_t>()](messaging::MessageSequence obs) -> messaging::TailSegment<DataPayloadPage> {
           return obs.map([i, ctx, fileContext](std::shared_ptr<std::string> in) {
             DataPayloadPage page;
@@ -142,7 +142,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
             page.setEncrypted(
                   *in,
                   ctx->keys[i].bytes,
-                  ctx->request->mEntries[i].mMetadata
+                  ctx->request->entries_[i].mMetadata
                   );
             return page;
             });
@@ -175,7 +175,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   // Construct request to storage facility already to
   // prevent another copy of entries.
   ctx->request = std::make_shared<MetadataUpdateRequest2>();
-  ctx->request->mEntries.reserve(entries.size());
+  ctx->request->entries_.reserve(entries.size());
 
   // Create ticket request
   RequestTicket2Opts ticketRequest;
@@ -207,7 +207,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     // storeEntry2.mPolymorphicKey is set later, once we have retrieved it
     storeEntry2.mMetadata.extra() = entry.mXMetadata; // These are encrypted later, once we have retrieved the keys
 
-    ctx->request->mEntries.emplace_back(storeEntry2);
+    ctx->request->entries_.emplace_back(storeEntry2);
   }
 
   auto requestedPps = ticketRequest.pps.size();
@@ -236,10 +236,10 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.mPseudonyms->mIndices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
 
     return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
-      .map([ctx](const DataEnumerationResponse2& response) { return response.mEntries; })
+      .map([ctx](const DataEnumerationResponse2& response) { return response.entries_; })
       .op(RxConcatenateVectors())
       .flat_map([this, ctx, signedTicket](std::shared_ptr<std::vector<DataEnumerationEntry2>> enumEntries) {
-      if (enumEntries->size() < ctx->request->mEntries.size()) {
+      if (enumEntries->size() < ctx->request->entries_.size()) {
         throw std::runtime_error("Could not find all entries for metadata update. Attempting to update deleted entries?");
       }
 
@@ -263,8 +263,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
 
         // Update every DataStoreEntry2 with properties from the enum entry representing the data card that we'll overwrite
         std::vector<AESKey> storeKeys;
-        storeKeys.reserve(ctx->request->mEntries.size());
-        for (auto& storeEntry : ctx->request->mEntries) {
+        storeKeys.reserve(ctx->request->entries_.size());
+        for (auto& storeEntry : ctx->request->entries_) {
           // Find the enum entry corresponding with this store entry
           auto correspondingColumn = enumEntryIndices->find(storeEntry.mColumnIndex);
           if (correspondingColumn == enumEntryIndices->cend()) {
@@ -299,8 +299,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         .flat_map([this, ctx](FakeVoid) {
         // (The entries in) our MetadataUpdateRequest2 are now ready: split them over multiple requests to prevent individual messages from becoming too large for our network layer
         std::unordered_map<size_t, std::shared_ptr<MetadataUpdateRequest2>> batches;
-        batches.reserve(ctx->request->mEntries.size() / METADATA_UPDATE_BATCH_SIZE + 1);
-        for (size_t i = 0U; i < ctx->request->mEntries.size(); ++i) {
+        batches.reserve(ctx->request->entries_.size() / METADATA_UPDATE_BATCH_SIZE + 1);
+        for (size_t i = 0U; i < ctx->request->entries_.size(); ++i) {
           auto indexInBatch = i % METADATA_UPDATE_BATCH_SIZE;
           auto offset = i - indexInBatch;
           assert(offset % METADATA_UPDATE_BATCH_SIZE == 0U);
@@ -308,8 +308,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
             batches[offset] = std::make_shared<MetadataUpdateRequest2>();
             batches[offset]->ticket_ = ctx->request->ticket_;
           }
-          assert(batches[offset]->mEntries.size() == indexInBatch);
-          batches[offset]->mEntries.emplace_back(ctx->request->mEntries[i]);
+          assert(batches[offset]->entries_.size() == indexInBatch);
+          batches[offset]->entries_.emplace_back(ctx->request->entries_[i]);
         }
 
         // Send individual MetadataUpdateRequest2 instances to Storage Facility
@@ -389,13 +389,13 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   // Construct request to storage facility already to
   // prevent another copy of entries.
   ctx->request = std::make_shared<DataDeleteRequest2>();
-  ctx->request->mEntries.reserve(entries.size());
+  ctx->request->entries_.reserve(entries.size());
 
   for (const auto &entry: entries) {
     DataStoreEntry2 entry2;
     entry2.mColumnIndex = ctx->columns[entry.mColumn];
     entry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
-    ctx->request->mEntries.emplace_back(entry2);
+    ctx->request->entries_.emplace_back(entry2);
   }
 
   auto requestedPps = ticketRequest.pps.size();
@@ -441,9 +441,9 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 
       std::vector<HistoryResult> ress;
 
-      ress.reserve(response.mEntries.mIndices.size());
-      for (auto i : response.mEntries.mIndices) {
-        const auto& requestEntry = ctx->request->mEntries[i];
+      ress.reserve(response.entries_.mIndices.size());
+      for (auto i : response.entries_.mIndices) {
+        const auto& requestEntry = ctx->request->entries_[i];
         ress.push_back(HistoryResult{
           DataCellResult{
             .mLocalPseudonyms = pseudonyms[requestEntry.mPseudonymIndex],

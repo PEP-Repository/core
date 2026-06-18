@@ -46,11 +46,11 @@ class Application : public commandline::Command {
   static Application* instance_;
   static bool usingConsoleLog_;
 
-  int mArgc = -1;
-  char** mArgv = nullptr;
+  int argc_ = -1;
+  char** argv_ = nullptr;
 
-  std::optional<std::filesystem::path> mConfigDirectory;
-  bool mShowVersionInfo = false;
+  std::optional<std::filesystem::path> configDirectory_;
+  bool showVersionInfo_ = false;
 
   static int RunWithoutError(std::function<int()> implementor) noexcept;
   static bool ReportTermination(std::exception_ptr exception) noexcept;
@@ -69,7 +69,7 @@ class Application : public commandline::Command {
 
   int run(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 
-  bool mInitializeLoggingOnceFlag = false;  ///< Tracks if initializeLoggingOnce was called
+  bool initializeLoggingOnceFlag_ = false;  ///< Tracks if initializeLoggingOnce was called
   void initializeLoggingOnce();
 
   std::filesystem::path rawConfigDirectory() const;

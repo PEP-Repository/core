@@ -54,14 +54,14 @@ CoreClient::unblindAndDecryptKeys(
          i < std::min(static_cast<unsigned>(entries.size()), offset + KEY_REQUEST_BATCH_SIZE);
          i++) {
       const auto& entry = *entries[i];
-      request.mEntries.emplace_back(
+      request.entries_.emplace_back(
          entry.mMetadata,
          entry.mPolymorphicKey,
          KeyBlindMode::Unblind,
          entry.mLocalPseudonymsIndex
       );
     }
-    baseCtx->reqSizes.push_back(request.mEntries.size());
+    baseCtx->reqSizes.push_back(request.entries_.size());
     baseCtx->reqs.push_back(std::move(request));
   }
   // We proceed in two steps.  Step one: we send the request to unblind the keys.
@@ -119,19 +119,19 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   const std::vector<AESKey>& keys) {
   PEP_LOG(LogTag, Severity::Debug) << "encryptAndBlindKeys";
 
-  assert(request->mEntries.size() == keys.size());
+  assert(request->entries_.size() == keys.size());
 
   // Use multiple KeyRequest instances as needed to keep message size down.
-  std::unordered_map<size_t, EncryptionKeyRequest> keyRequests; // Associate each KeyRequest with the corresponding offset in DataEntriesRequest2::mEntries
-  keyRequests.reserve(request->mEntries.size() / KEY_REQUEST_BATCH_SIZE + 1);
-  for (size_t i = 0U; i < request->mEntries.size(); i++) {
-    const auto& entry = request->mEntries[i];
+  std::unordered_map<size_t, EncryptionKeyRequest> keyRequests; // Associate each KeyRequest with the corresponding offset in DataEntriesRequest2::entries_
+  keyRequests.reserve(request->entries_.size() / KEY_REQUEST_BATCH_SIZE + 1);
+  for (size_t i = 0U; i < request->entries_.size(); i++) {
+    const auto& entry = request->entries_[i];
 
     auto indexInKeyRequest = i % KEY_REQUEST_BATCH_SIZE;
     auto offset = i - indexInKeyRequest; // a multiple of KEY_REQUEST_BATCH_SIZE
     assert(offset % KEY_REQUEST_BATCH_SIZE == 0U);
-    assert(keyRequests[offset].mEntries.size() == indexInKeyRequest);
-    keyRequests[offset].mEntries.emplace_back(
+    assert(keyRequests[offset].entries_.size() == indexInKeyRequest);
+    keyRequests[offset].entries_.emplace_back(
       entry.mMetadata,
       EncryptedKey(systemPublicKeys_.globalDataEncryptionKey, keys[i].point),
       KeyBlindMode::Blind,
@@ -144,7 +144,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   return RxIterate(std::move(keyRequests))
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
     auto [offset, keyRequest] = std::move(pair);
-    const size_t count = keyRequest.mEntries.size();
+    const size_t count = keyRequest.entries_.size();
     return getAccessManagerProxy(true)->requestEncryptionKey(std::move(keyRequest))
       .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
@@ -156,7 +156,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
         }
 
         for (size_t i = 0; i < count; i++) {
-          request->mEntries[i + offset].mPolymorphicKey = keyResponse.mKeys[i];
+          request->entries_[i + offset].mPolymorphicKey = keyResponse.mKeys[i];
         }
 
         return FakeVoid();

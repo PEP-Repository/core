@@ -99,7 +99,7 @@ public:
 class EncryptionKeyRequest {
 public:
   std::shared_ptr<SignedTicket2> mTicket2;
-  std::vector<KeyRequestEntry> mEntries;
+  std::vector<KeyRequestEntry> entries_;
 };
 
 class EncryptionKeyResponse {

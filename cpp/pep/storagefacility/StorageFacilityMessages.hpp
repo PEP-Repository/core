@@ -30,7 +30,7 @@ public:
 
 class DataEnumerationResponse2 {
 public:
-  std::vector<DataEnumerationEntry2> mEntries;
+  std::vector<DataEnumerationEntry2> entries_;
   bool mHasMore = false;
 };
 
@@ -66,7 +66,7 @@ public:
   using Entry = TEntry;
 
   SignedTicket2 ticket_;
-  std::vector<Entry> mEntries;
+  std::vector<Entry> entries_;
 };
 
 class MetadataUpdateRequest2 : public DataEntriesRequest2<DataStoreEntry2> {
@@ -91,7 +91,7 @@ class DataDeleteRequest2 : public DataEntriesRequest2<DataRequestEntry2> {
 class DataDeleteResponse2 {
 public:
   Timestamp mTimestamp;
-  IndexList mEntries; // Indices correspond with DataDeleteRequest2's mEntries
+  IndexList entries_; // Indices correspond with DataDeleteRequest2's entries_
 };
 
 class DataHistoryRequest2 {
@@ -111,7 +111,7 @@ public:
 
 class DataHistoryResponse2 {
 public:
-  std::vector<DataHistoryEntry2> mEntries;
+  std::vector<DataHistoryEntry2> entries_;
 };
 
 struct DataSizeRequest {

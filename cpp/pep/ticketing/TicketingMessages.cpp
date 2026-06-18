@@ -7,7 +7,7 @@ using namespace std::literals;
 namespace pep {
 
 void LocalPseudonyms::ensurePacked() const {
-  mAccessManager.ensurePacked();
+  accessManager_.ensurePacked();
   mStorageFacility.ensurePacked();
   mPolymorphic.ensurePacked();
   if (mAccessGroup)

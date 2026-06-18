@@ -74,7 +74,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
   enumRequest->ticket_ = *ticket;
   return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(*enumRequest))
     .map([pseudonyms](DataEnumerationResponse2 response) {
-      return ConvertDataEnumerationEntries(std::move(response.mEntries), *pseudonyms);
+      return ConvertDataEnumerationEntries(std::move(response.entries_), *pseudonyms);
     });
 }
 
@@ -96,7 +96,7 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
                   .mIds = std::move(batch),
                 })
                 .map([](DataEnumerationResponse2 response) {
-                  return std::move(response.mEntries);
+                  return std::move(response.entries_);
                 })
                 .op(RxConcatenateVectors())
                 .flat_map([entryCount, pseudonyms](const std::shared_ptr<std::vector<DataEnumerationEntry2>>& entries) {
@@ -264,7 +264,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
 
   return getStorageFacilityProxy(true)->requestDataHistory(std::move(request))
     .map([](const DataHistoryResponse2& response) {
-      return response.mEntries;
+      return response.entries_;
     })
     .op(RxConcatenateVectors())
     .flat_map([this, ticket = std::move(openedTicket)](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {

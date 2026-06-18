@@ -144,7 +144,7 @@ protected:
     };
 
     struct Context {
-      const pep::commandline::NamedValues mParameterValues;
+      const pep::commandline::NamedValues parameterValues_;
       bool mHasPrintedData = false;
       pep::EnumerateAndRetrieveData2Opts mEarOpts;
       bool mPrintMetadata = false;
@@ -157,7 +157,7 @@ protected:
       pt::ptree mResults;
 
       explicit Context(const pep::commandline::NamedValues& parameterValues)
-        : mParameterValues(parameterValues) {
+        : parameterValues_(parameterValues) {
       }
 
       void collectSubjects() {
@@ -229,26 +229,26 @@ protected:
     auto ctx = std::make_shared<Context>(this->getParameterValues());
 
     return this->executeEventLoopFor([ctx](std::shared_ptr<pep::CoreClient> client) {
-      return MultiCellQuery::GetPps(ctx->mParameterValues, client)
+      return MultiCellQuery::GetPps(ctx->parameterValues_, client)
         .op(pep::RxToVector())
       .as_dynamic() // Reduce compiler memory usage
       .flat_map([client, ctx](std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> all_pps){
-        ctx->mEarOpts.groups = MultiCellQuery::GetParticipantGroups(ctx->mParameterValues);
+        ctx->mEarOpts.groups = MultiCellQuery::GetParticipantGroups(ctx->parameterValues_);
         ctx->mEarOpts.pps = *all_pps;
-        ctx->mEarOpts.columnGroups = MultiCellQuery::GetColumnGroups(ctx->mParameterValues);
-        ctx->mEarOpts.columns = MultiCellQuery::GetColumns(ctx->mParameterValues);
+        ctx->mEarOpts.columnGroups = MultiCellQuery::GetColumnGroups(ctx->parameterValues_);
+        ctx->mEarOpts.columns = MultiCellQuery::GetColumns(ctx->parameterValues_);
 
-        if (ctx->mParameterValues.has("no-inline-data")) {
+        if (ctx->parameterValues_.has("no-inline-data")) {
           ctx->mEarOpts.includeData = false;
         } else {
           ctx->mEarOpts.includeData = true;
-          ctx->mEarOpts.dataSizeLimit = ctx->mParameterValues.get<uint64_t>("inline-data-size-limit");
+          ctx->mEarOpts.dataSizeLimit = ctx->parameterValues_.get<uint64_t>("inline-data-size-limit");
         }
         ctx->mEarOpts.forceTicket = true;
-        ctx->mEarOpts.includeAccessGroupPseudonyms = ctx->mParameterValues.has("local-pseudonyms");
-        ctx->mPrintMetadata = ctx->mParameterValues.has("metadata");
-        ctx->mGroupOutput = ctx->mParameterValues.has("group-output");
-        ctx->mFormat = ctx->mParameterValues.get<std::string>("format");
+        ctx->mEarOpts.includeAccessGroupPseudonyms = ctx->parameterValues_.has("local-pseudonyms");
+        ctx->mPrintMetadata = ctx->parameterValues_.has("metadata");
+        ctx->mGroupOutput = ctx->parameterValues_.has("group-output");
+        ctx->mFormat = ctx->parameterValues_.get<std::string>("format");
 
         // Only fetch GlobalConfiguration if we need it for brief local pseudonyms
         rxcpp::observable<pep::FakeVoid> configObservable;
@@ -270,12 +270,12 @@ protected:
         tOpts.participantGroups = ctx->mEarOpts.groups;
         tOpts.modes = {ctx->mEarOpts.includeData ? "read" : "read-meta"};
         tOpts.includeAccessGroupPseudonyms = ctx->mEarOpts.includeAccessGroupPseudonyms;
-        return pep::cli::TicketFile::GetTicket(*client, ctx->mParameterValues, tOpts)
+        return pep::cli::TicketFile::GetTicket(*client, ctx->parameterValues_, tOpts)
         .flat_map([client, ctx](pep::IndexedTicket2 ticket)
             -> rxcpp::observable<pep::EnumerateAndRetrieveResult> {
           ctx->mEarOpts.ticket = std::make_shared<pep::IndexedTicket2>(
               std::move(ticket));
-          if (ctx->mParameterValues.has("show-dataless")) {
+          if (ctx->parameterValues_.has("show-dataless")) {
             auto pseuds = ctx->mEarOpts.ticket->openTicketWithoutCheckingSignature()->mAccessSubjects;
             std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->mPseudsToReport, ctx->mPseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
               return std::make_pair(lps.mPolymorphic, lps.mAccessGroup);

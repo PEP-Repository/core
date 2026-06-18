@@ -17,7 +17,7 @@ namespace pep {
 
 class TranscryptorStorage {
 private:
-  std::shared_ptr<TranscryptorStorageBackend> mStorage;
+  std::shared_ptr<TranscryptorStorageBackend> storage_;
   std::string path_;
   PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set mChecksumChains;
 

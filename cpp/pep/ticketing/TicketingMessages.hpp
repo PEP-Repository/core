@@ -7,7 +7,7 @@ namespace pep {
 
 class LocalPseudonyms {
 public:
-  EncryptedLocalPseudonym mAccessManager;
+  EncryptedLocalPseudonym accessManager_;
   EncryptedLocalPseudonym mStorageFacility;
   PolymorphicPseudonym mPolymorphic;
   std::optional<EncryptedLocalPseudonym> mAccessGroup{};

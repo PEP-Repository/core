@@ -99,7 +99,7 @@ public:
 class ShortPseudonymDefinition {
 private:
   ShortPseudonymColumn mColumn;
-  std::string mPrefix;
+  std::string prefix_;
   uint32_t mLength;
   std::optional<CastorShortPseudonymDefinition> mCastor;
   uint32_t mStickers;
@@ -120,7 +120,7 @@ public:
 
   inline const ShortPseudonymColumn& getColumn() const { return mColumn; }
 
-  inline const std::string& getPrefix() const { return mPrefix; }
+  inline const std::string& getPrefix() const { return prefix_; }
   inline uint32_t getLength() const { return mLength; }
 
   inline const std::optional<CastorShortPseudonymDefinition>& getCastor() const { return mCastor; }

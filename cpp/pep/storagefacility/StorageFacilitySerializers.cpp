@@ -49,14 +49,14 @@ void Serializer<DataEnumerationEntry2>::moveIntoProtocolBuffer(proto::DataEnumer
 
 DataEnumerationResponse2 Serializer<DataEnumerationResponse2>::fromProtocolBuffer(proto::DataEnumerationResponse2&& source) const {
   DataEnumerationResponse2 result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
   result.mHasMore = source.has_more();
   return result;
 }
 
 void Serializer<DataEnumerationResponse2>::moveIntoProtocolBuffer(proto::DataEnumerationResponse2& dest, DataEnumerationResponse2 value) const {
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
   dest.set_has_more(value.mHasMore);
 }
 
@@ -95,14 +95,14 @@ void Serializer<DataReadRequest2>::moveIntoProtocolBuffer(proto::DataReadRequest
 MetadataUpdateRequest2 Serializer<MetadataUpdateRequest2>::fromProtocolBuffer(proto::MetadataUpdateRequest2&& source) const {
   MetadataUpdateRequest2 result;
   result.ticket_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
   return result;
 }
 
 void Serializer<MetadataUpdateRequest2>::moveIntoProtocolBuffer(proto::MetadataUpdateRequest2& dest, MetadataUpdateRequest2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket(), std::move(value.ticket_));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
 }
 
 MetadataUpdateResponse2 Serializer<MetadataUpdateResponse2>::fromProtocolBuffer(proto::MetadataUpdateResponse2&& source) const {
@@ -138,14 +138,14 @@ void Serializer<DataStoreResponse2>::moveIntoProtocolBuffer(proto::DataStoreResp
 DataStoreRequest2 Serializer<DataStoreRequest2>::fromProtocolBuffer(proto::DataStoreRequest2&& source) const {
   DataStoreRequest2 result;
   result.ticket_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
   return result;
 }
 
 void Serializer<DataStoreRequest2>::moveIntoProtocolBuffer(proto::DataStoreRequest2& dest, DataStoreRequest2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket(), std::move(value.ticket_));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
 }
 
 DataStoreEntry2 Serializer<DataStoreEntry2>::fromProtocolBuffer(proto::DataStoreEntry2&& source) const {
@@ -167,26 +167,26 @@ void Serializer<DataStoreEntry2>::moveIntoProtocolBuffer(proto::DataStoreEntry2&
 DataDeleteResponse2 Serializer<DataDeleteResponse2>::fromProtocolBuffer(proto::DataDeleteResponse2&& source) const {
   return {
     .mTimestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
-    .mEntries = Serialization::FromProtocolBuffer(std::move(*source.mutable_entries())),
+    .entries_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_entries())),
   };
 }
 
 void Serializer<DataDeleteResponse2>::moveIntoProtocolBuffer(proto::DataDeleteResponse2& dest, DataDeleteResponse2 value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.mTimestamp);
 }
 
 DataDeleteRequest2 Serializer<DataDeleteRequest2>::fromProtocolBuffer(proto::DataDeleteRequest2&& source) const {
   DataDeleteRequest2 result;
   result.ticket_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
   return result;
 }
 
 void Serializer<DataDeleteRequest2>::moveIntoProtocolBuffer(proto::DataDeleteRequest2& dest, DataDeleteRequest2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket(), std::move(value.ticket_));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
 }
 
 DataRequestEntry2 Serializer<DataRequestEntry2>::fromProtocolBuffer(proto::DataRequestEntry2&& source) const {
@@ -237,13 +237,13 @@ void Serializer<DataHistoryEntry2>::moveIntoProtocolBuffer(proto::DataHistoryEnt
 
 DataHistoryResponse2 Serializer<DataHistoryResponse2>::fromProtocolBuffer(proto::DataHistoryResponse2&& source) const {
   DataHistoryResponse2 result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
   return result;
 }
 
 void Serializer<DataHistoryResponse2>::moveIntoProtocolBuffer(proto::DataHistoryResponse2& dest, DataHistoryResponse2 value) const {
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
 }
 
 DataPayloadPage Serializer<DataPayloadPage>::fromProtocolBuffer(proto::DataPayloadPage&& source) const {

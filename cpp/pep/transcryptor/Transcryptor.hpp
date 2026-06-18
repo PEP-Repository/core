@@ -75,10 +75,10 @@ private:
     const std::vector<LocalPseudonyms>& pseuds);
 
 private:
-  std::shared_ptr<WorkerPool> mWorkerPool;
-  std::optional<ElgamalPrivateKey> mPseudonymKey;
+  std::shared_ptr<WorkerPool> workerPool_;
+  std::optional<ElgamalPrivateKey> pseudonymKey_;
   AccessManagerProxy mAccessManagerProxy;
-  std::shared_ptr<TranscryptorStorage> mStorage;
+  std::shared_ptr<TranscryptorStorage> storage_;
   std::shared_ptr<Metrics> lpMetrics;
   ServerVerifiers mVerifiers;
   uintmax_t mNextTranscryptorRequestNumber = 1U;

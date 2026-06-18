@@ -28,15 +28,15 @@ uint64_t LegacyUserGroupUserRecord::checksum() const {
 }
 
 LegacyAuthserverStorage::LegacyAuthserverStorage(const std::filesystem::path& path) {
-  mStorage = std::make_shared<Implementor>(path.string());
+  storage_ = std::make_shared<Implementor>(path.string());
 
   ensureInitialized();
 }
 
 // Checks whether the database has been initialized
 void LegacyAuthserverStorage::ensureInitialized() {
-  mStorage->syncSchema();
-  if(mStorage->raw.count<UserIdRecord>() == 0) {
+  storage_->syncSchema();
+  if(storage_->raw.count<UserIdRecord>() == 0) {
     PEP_LOG(LogTag, Severity::Info) << "UserId table empty in legacy authserver storage. Initializing based on existing UserGroupRecords";
 
     migrateUidToInternalId();
@@ -44,7 +44,7 @@ void LegacyAuthserverStorage::ensureInitialized() {
 }
 
 int64_t LegacyAuthserverStorage::getNextInternalUserId() const {
-  auto currentMax = mStorage->raw.max(&UserIdRecord::internalUserId);
+  auto currentMax = storage_->raw.max(&UserIdRecord::internalUserId);
   if (currentMax) {
     return *currentMax + 1;
   }
@@ -52,7 +52,7 @@ int64_t LegacyAuthserverStorage::getNextInternalUserId() const {
 }
 
 void LegacyAuthserverStorage::migrateUidToInternalId() {
-  auto transactionGuard = mStorage->raw.transaction_guard();
+  auto transactionGuard = storage_->raw.transaction_guard();
 
   // We're first collecting all records we want to create, so that if we add a
   // tombstone for a user which we encounter again afterwards, we can remove the
@@ -65,7 +65,7 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
   };
   int64_t nextInternalId = getNextInternalUserId();
   std::unordered_map<std::string /* uid */, UserInfo> knownUsers;
-  for (auto record : mStorage->raw.iterate<LegacyUserGroupUserRecord>()) {
+  for (auto record : storage_->raw.iterate<LegacyUserGroupUserRecord>()) {
     Timestamp recordTimestamp(std::chrono::milliseconds{record.timestamp});
     auto knownUser = knownUsers.find(record.uid);
     if (knownUser == knownUsers.end()) {
@@ -85,7 +85,7 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
     }
     // Set the internalId on the UserGroupRecord
     record.internalUserId = knownUser->second.internalId;
-    mStorage->raw.update(record);
+    storage_->raw.update(record);
     if (record.tombstone) {
       knownUser->second.groups.erase(record.group);
       if (knownUser->second.groups.empty()) {
@@ -100,7 +100,7 @@ void LegacyAuthserverStorage::migrateUidToInternalId() {
     }
   }
 
-  mStorage->raw.insert_range(recordsToCreate.begin(), recordsToCreate.end());
+  storage_->raw.insert_range(recordsToCreate.begin(), recordsToCreate.end());
 
   transactionGuard.commit();
 }

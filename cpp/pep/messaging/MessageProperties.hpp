@@ -98,13 +98,13 @@ public:
 
   static MessageId MakeForControlMessage() noexcept;
 
-  MessageType type() const noexcept { return mType; }
+  MessageType type() const noexcept { return type_; }
   const StreamId& streamId() const noexcept { return mStreamId; }
 
   EncodedMessageProperties encode() const noexcept;
 
 private:
-  MessageType mType;
+  MessageType type_;
   StreamId mStreamId;
 };
 

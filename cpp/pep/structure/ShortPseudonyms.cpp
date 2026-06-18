@@ -109,7 +109,7 @@ ShortPseudonymDefinition::ShortPseudonymDefinition(
   std::string description,
   std::string studyContext)
   : mColumn(ShortPseudonymColumn::Parse(studyContext, column)),
-  mPrefix(std::move(prefix)),
+  prefix_(std::move(prefix)),
   mLength(length),
   mCastor(std::move(castor)),
   mStickers(stickers),

@@ -9,7 +9,7 @@ namespace pep {
 namespace castor {
 
 SurveyPackageInstancePuller::SurveyPackageInstancePuller(std::shared_ptr<ImportColumnNamer> namer, const std::string& prefix, const std::string& surveyPackageName)
-  : mNamer(namer), mPrefix(prefix), mSurveyPackageName(surveyPackageName) {
+  : mNamer(namer), prefix_(prefix), mSurveyPackageName(surveyPackageName) {
 }
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyPackageInstancePuller::loadContent(

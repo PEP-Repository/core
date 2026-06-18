@@ -15,7 +15,7 @@ class StudyAspect {
 private:
   std::string mSlug;
   std::string mSpColumn;
-  std::shared_ptr<CastorStorageDefinition> mStorage;
+  std::shared_ptr<CastorStorageDefinition> storage_;
 
   StudyAspect(const std::string& slug, const std::string& spColumn, std::shared_ptr<CastorStorageDefinition> storage);
 
@@ -43,7 +43,7 @@ public:
   * \brief Produces the CastorStorageDefinition associated with the study aspect.
   * \return A CastorStorageDefinition extracted from GlobalConfiguration.
   */
-  inline std::shared_ptr<CastorStorageDefinition> getStorage() const noexcept { return mStorage; }
+  inline std::shared_ptr<CastorStorageDefinition> getStorage() const noexcept { return storage_; }
 };
 
 }

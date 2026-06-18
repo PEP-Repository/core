@@ -4,7 +4,7 @@ namespace pep {
 
 void TranscryptorRequestEntry::ensurePacked() const {
   mPolymorphic.ensurePacked();
-  mAccessManager.ensurePacked();
+  accessManager_.ensurePacked();
   mStorageFacility.ensurePacked();
   mTranscryptor.ensurePacked();
   mAccessManagerProof.ensurePacked();

@@ -6,8 +6,8 @@
 namespace pep {
 
 UserPseudonymFormat::UserPseudonymFormat(const std::string &prefix, size_t length)
-  : mPrefix(prefix),mLength(length) {
-  if(mPrefix.empty()) {
+  : prefix_(prefix),mLength(length) {
+  if(prefix_.empty()) {
     throw std::runtime_error("User pseudonym format prefix must be nonempty");
   }
   if(mLength <= 0) {
@@ -32,21 +32,21 @@ size_t UserPseudonymFormat::getTotalLength() const {
 
 std::string UserPseudonymFormat::stripPrefix(std::string userPseudonym) const {
   assert(this->matches(userPseudonym));
-  return userPseudonym.erase(0, mPrefix.length());
+  return userPseudonym.erase(0, prefix_.length());
 }
 
 std::string UserPseudonymFormat::makeUserPseudonym(const LocalPseudonym& localpseudonym) const {
-  return mPrefix + localpseudonym.text().substr(0, mLength);
+  return prefix_ + localpseudonym.text().substr(0, mLength);
 }
 
 bool UserPseudonymFormat::matches(const std::string& input) const
 {
-  return input.length() == this->getTotalLength() && input.starts_with(mPrefix);
+  return input.length() == this->getTotalLength() && input.starts_with(prefix_);
 }
 
 PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
-  : mPrefix(std::move(prefix)), mDigits(digits) {
-  if (mPrefix.empty()) {
+  : prefix_(std::move(prefix)), mDigits(digits) {
+  if (prefix_.empty()) {
     throw std::runtime_error("Pseudonym format prefix must be nonempty");
   }
   if (mDigits == 0U) {
@@ -54,7 +54,7 @@ PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
   }
 
   // Case insensitive matching on prefix
-  for (auto c : mPrefix) {
+  for (auto c : prefix_) {
     char upper = static_cast<char>(toupper(c));
     char lower = static_cast<char>(tolower(c));
     assert(c == upper || c == lower);
@@ -72,7 +72,7 @@ PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
 }
 
 PseudonymFormat::PseudonymFormat(std::string regexPattern)
-  : mPrefix(), mDigits(0U), mRegexPattern(std::move(regexPattern)) {
+  : prefix_(), mDigits(0U), mRegexPattern(std::move(regexPattern)) {
   if (mRegexPattern.empty()) {
     throw std::runtime_error("No pattern specified for pseudonym format");
   }
@@ -153,7 +153,7 @@ GlobalConfiguration::GlobalConfiguration(
   , mUserPseudonymFormat(std::move(userPseudonymFormat))
   , mAdditionalStickers(std::move(additionalStickers))
   , mDevices(std::move(devices))
-  , mAssessors(std::move(assessors))
+  , assessors_(std::move(assessors))
   , mColumnSpecifications(std::move(columnSpecifications))
   , mSpErrata(std::move(spErrata)) {
   if (mParticipantIdentifierFormats.empty()) {
@@ -188,7 +188,7 @@ GlobalConfiguration::GlobalConfiguration(
     mNumberOfVisits[additional.mStudyContext] = std::max(getNumberOfVisits(additional.mStudyContext), additional.mVisit);
   }
 
-  for (const auto& assessor : mAssessors) {
+  for (const auto& assessor : assessors_) {
     for (const auto& contextId : assessor.studyContexts) {
       try {
         mStudyContexts.getById(contextId); // Throws an exception if context not found

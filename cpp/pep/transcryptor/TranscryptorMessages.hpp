@@ -32,7 +32,7 @@ public:
     const RskProof& tsProof,
     const std::optional<RskProof>& ugProof)
     : mPolymorphic(pp),
-    mAccessManager(am),
+    accessManager_(am),
     mStorageFacility(sf),
     mTranscryptor(ts),
     userGroup_(ug),
@@ -44,7 +44,7 @@ public:
   PolymorphicPseudonym mPolymorphic;
 
   // Partially translated
-  EncryptedLocalPseudonym mAccessManager;
+  EncryptedLocalPseudonym accessManager_;
   EncryptedLocalPseudonym mStorageFacility;
   EncryptedLocalPseudonym mTranscryptor;
   std::optional<EncryptedLocalPseudonym> userGroup_;
@@ -61,7 +61,7 @@ public:
 
 class TranscryptorRequestEntries {
 public:
-  std::vector<TranscryptorRequestEntry> mEntries;
+  std::vector<TranscryptorRequestEntry> entries_;
 };
 
 class TranscryptorRequest {
@@ -72,7 +72,7 @@ public:
 class TranscryptorResponse {
 public:
   TranscryptorResponse() = default;
-  std::vector<LocalPseudonyms> mEntries;
+  std::vector<LocalPseudonyms> entries_;
   std::string mId;
 };
 

@@ -125,9 +125,9 @@ private:
     const GetDataAlterationResponse& getResponse);
 
 private:
-  ElgamalPrivateKey mPseudonymKey;
+  ElgamalPrivateKey pseudonymKey_;
   std::string mEncIdKey;
-  std::shared_ptr<WorkerPool> mWorkerPool;
+  std::shared_ptr<WorkerPool> workerPool_;
   std::shared_ptr<FileStore> mFileStore;
   std::shared_ptr<Metrics> mMetrics;
   boost::asio::steady_timer mTimer;

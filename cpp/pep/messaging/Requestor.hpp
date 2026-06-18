@@ -34,8 +34,8 @@ private:
       rxcpp::subscriber<std::string> subscriber);
   };
 
-  std::map<StreamId, Entry> mEntries;
-  void schedule(decltype(mEntries)::value_type& entry);
+  std::map<StreamId, Entry> entries_;
+  void schedule(decltype(entries_)::value_type& entry);
 
   Requestor(boost::asio::io_context& io_context, Scheduler& scheduler);
 
@@ -65,7 +65,7 @@ public:
   * @brief Counts the number of requests that have been sent but for which no (full) response has been received yet.
   * @return The number of pending requests.
   */
-  size_t pending() const noexcept { return mEntries.size(); }
+  size_t pending() const noexcept { return entries_.size(); }
 
   /**
   * @brief Discards pending requests, producing an error on the associated observable<>.

@@ -56,14 +56,14 @@ public:
     void check() const override;
 
   private:
-    std::shared_ptr<GlobalConfiguration> globalConf;
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    EndPoint transcryptorEndPoint;
-    EndPoint keyServerEndPoint;
-    std::shared_ptr<Backend> backend;
+    std::shared_ptr<GlobalConfiguration> globalConf_;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    EndPoint transcryptorEndPoint_;
+    EndPoint keyServerEndPoint_;
+    std::shared_ptr<Backend> backend_;
   };
-private:
 
+private:
   class Metrics : public RegisteredMetrics {
   public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
@@ -72,9 +72,6 @@ private:
     prometheus::Summary& ticket_request2_duration;
     prometheus::Summary& ticket_request_duration;
   };
-
-
-
 
 public:
   explicit AccessManager(std::shared_ptr<Parameters> parameters);
@@ -128,14 +125,14 @@ public:
   static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MAX_SIZE_OF_MESSAGE); // TODO: move out of AM's (public even!) interface
 
 private:
-  ElgamalPrivateKey mPseudonymKey;
-  TranscryptorProxy mTranscryptorProxy;
-  KeyServerProxy mKeyServerProxy;
-  std::shared_ptr<Backend> backend;
-  std::shared_ptr<GlobalConfiguration> globalConf;
-  std::shared_ptr<Metrics> lpMetrics;
-  std::shared_ptr<WorkerPool> mWorkerPool;
-  uintmax_t mNextTicketRequestNumber = 1U;
+  ElgamalPrivateKey pseudonymKey_;
+  TranscryptorProxy transcryptorProxy_;
+  KeyServerProxy keyServerProxy_;
+  std::shared_ptr<Backend> backend_;
+  std::shared_ptr<GlobalConfiguration> globalConf_;
+  std::shared_ptr<Metrics> lpMetrics_;
+  std::shared_ptr<WorkerPool> workerPool_;
+  uintmax_t nextTicketRequestNumber_ = 1U;
 };
 
 }

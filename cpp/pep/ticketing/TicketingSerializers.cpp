@@ -8,7 +8,7 @@ namespace pep {
 
 LocalPseudonyms Serializer<LocalPseudonyms>::fromProtocolBuffer(proto::LocalPseudonyms&& source) const {
   LocalPseudonyms result{
-    .mAccessManager = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager()))),
+    .accessManager_ = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager()))),
     .mStorageFacility = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility()))),
     .mPolymorphic = PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic()))),
   };
@@ -21,7 +21,7 @@ LocalPseudonyms Serializer<LocalPseudonyms>::fromProtocolBuffer(proto::LocalPseu
 }
 
 void Serializer<LocalPseudonyms>::moveIntoProtocolBuffer(proto::LocalPseudonyms& dest, LocalPseudonyms value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.mAccessManager.getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.accessManager_.getValidElgamalEncryption());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.mStorageFacility.getValidElgamalEncryption());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic(), value.mPolymorphic.getValidElgamalEncryption());
   if (value.mAccessGroup)

@@ -30,7 +30,7 @@ private:
   void closeWidget();
 
 private:
-  std::vector<pep::AssessorDefinition> mAssessors;
-  int mStoredAssessorIndex = 0;
+  std::vector<pep::AssessorDefinition> assessors_;
+  int storedAssessorIndex_ = 0;
   Ui::AssessorWidget *ui;
 };

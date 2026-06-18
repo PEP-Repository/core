@@ -173,7 +173,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
               [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, DataEnumerationResponse2 response) {
-                for (auto& entry: response.mEntries) {
+                for (auto& entry: response.entries_) {
                   if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.mFileSize <= ctx->dataSizeLimit)) {
                     // This entry will include data: save it for data retrieval
                     entriesWithData->emplace_back(std::move(entry));

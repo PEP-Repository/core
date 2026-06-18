@@ -13,14 +13,14 @@ namespace castor {
 class SurveyPackageInstancePuller : public std::enable_shared_from_this<SurveyPackageInstancePuller>, boost::noncopyable {
 private:
   std::shared_ptr<ImportColumnNamer> mNamer;
-  std::string mPrefix;
+  std::string prefix_;
   std::string mSurveyPackageName;
 
 protected:
   explicit SurveyPackageInstancePuller(std::shared_ptr<ImportColumnNamer> namer, const std::string& prefix, const std::string& surveyPackageName);
 
   inline std::shared_ptr<ImportColumnNamer> getImportColumnNamer() const noexcept { return mNamer; }
-  inline const std::string& getColumnNamePrefix() const noexcept { return mPrefix; }
+  inline const std::string& getColumnNamePrefix() const noexcept { return prefix_; }
   inline const std::string& getSurveyPackageName() const noexcept { return mSurveyPackageName; }
 
   /*!

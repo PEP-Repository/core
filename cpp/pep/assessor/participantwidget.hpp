@@ -88,7 +88,7 @@ class ParticipantWidget : public QWidget {
                           "color: grey;\n"
                           " border-color: grey;\n"
                           "}\n";
-  QString mProjectName;
+  QString projectName_;
   unsigned mSpareStickerCount;
   const VisitCaptions* mVisitCaptions;
 

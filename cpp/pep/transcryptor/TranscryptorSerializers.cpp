@@ -34,12 +34,12 @@ void Serializer<RekeyResponse>::moveIntoProtocolBuffer(proto::RekeyResponse& des
 
 void Serializer<TranscryptorRequestEntries>::moveIntoProtocolBuffer(proto::TranscryptorRequestEntries& dest, TranscryptorRequestEntries value) const {
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(),
-    std::move(value.mEntries));
+    std::move(value.entries_));
 }
 
 TranscryptorRequestEntries Serializer<TranscryptorRequestEntries>::fromProtocolBuffer(proto::TranscryptorRequestEntries&& source) const {
   TranscryptorRequestEntries result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
   return result;
 }
@@ -79,7 +79,7 @@ TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffe
 
 void Serializer<TranscryptorRequestEntry>::moveIntoProtocolBuffer(proto::TranscryptorRequestEntry& dest, TranscryptorRequestEntry value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic(), value.mPolymorphic.getValidElgamalEncryption());
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.mAccessManager.getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.accessManager_.getValidElgamalEncryption());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.mStorageFacility.getValidElgamalEncryption());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor(), value.mTranscryptor.getValidElgamalEncryption());
   if (value.userGroup_)
@@ -98,13 +98,13 @@ void Serializer<TranscryptorRequestEntry>::moveIntoProtocolBuffer(proto::Transcr
 }
 
 void Serializer<TranscryptorResponse>::moveIntoProtocolBuffer(proto::TranscryptorResponse& dest, TranscryptorResponse value) const {
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
   *dest.mutable_id() = std::move(value.mId);
 }
 
 TranscryptorResponse Serializer<TranscryptorResponse>::fromProtocolBuffer(proto::TranscryptorResponse&& source) const {
   TranscryptorResponse result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
   result.mId = std::move(*source.mutable_id());
   return result;

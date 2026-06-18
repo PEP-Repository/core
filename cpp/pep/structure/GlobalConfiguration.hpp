@@ -38,13 +38,13 @@ struct AssessorDefinition {
 /// Format for participant alias (shortened local pseudonym)
 class UserPseudonymFormat {
 private:
-  std::string mPrefix;
+  std::string prefix_;
   size_t mLength;
 
 public:
   UserPseudonymFormat(const std::string& prefix, size_t length);
 
-  const std::string& getPrefix() const noexcept { return mPrefix; }
+  const std::string& getPrefix() const noexcept { return prefix_; }
   size_t getLength() const { return mLength; }
   size_t getTotalLength() const;
   std::string stripPrefix(std::string userPseudonym) const;
@@ -55,7 +55,7 @@ public:
 /// Format for participant identifier (PEP ID)
 class PseudonymFormat {
 private:
-  std::string mPrefix;
+  std::string prefix_;
   size_t mDigits;
   std::string mRegexPattern;
 
@@ -66,7 +66,7 @@ public:
   const std::string& getRegexPattern() const noexcept { return mRegexPattern; }
 
   bool isGenerable() const noexcept { return mDigits > 0U; }
-  const std::string& getPrefix() const noexcept { return mPrefix; }
+  const std::string& getPrefix() const noexcept { return prefix_; }
   size_t getNumberOfGeneratedDigits() const { return mDigits; }
   std::optional<size_t> getTotalNumberOfDigits() const; // Only produces a value for generable formats
   std::optional<size_t> getLength() const; // Only produces a value for generable formats
@@ -105,7 +105,7 @@ class GlobalConfiguration {
   std::vector<AdditionalStickerDefinition> mAdditionalStickers;
   std::vector<DeviceRegistrationDefinition> mDevices;
   std::unordered_map<std::string, uint32_t> mNumberOfVisits;
-  std::vector<AssessorDefinition> mAssessors;
+  std::vector<AssessorDefinition> assessors_;
   std::vector<ColumnSpecification> mColumnSpecifications;
   std::vector<ShortPseudonymErratum> mSpErrata;
 
@@ -135,7 +135,7 @@ class GlobalConfiguration {
   const UserPseudonymFormat& getUserPseudonymFormat() const noexcept { return mUserPseudonymFormat; }
   const std::vector<AdditionalStickerDefinition>& getAdditionalStickers() const noexcept { return mAdditionalStickers; }
   const std::vector<DeviceRegistrationDefinition>& getDevices() const noexcept { return mDevices; }
-  const std::vector<AssessorDefinition>& getAssessors() const noexcept { return mAssessors; }
+  const std::vector<AssessorDefinition>& getAssessors() const noexcept { return assessors_; }
   const std::vector<ColumnSpecification>& getColumnSpecifications() const noexcept { return mColumnSpecifications; }
   const std::vector<ShortPseudonymErratum>& getShortPseudonymErrata() const noexcept { return mSpErrata; }
 

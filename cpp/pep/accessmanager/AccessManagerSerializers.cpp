@@ -53,7 +53,7 @@ EncryptionKeyRequest Serializer<EncryptionKeyRequest>::fromProtocolBuffer(proto:
   EncryptionKeyRequest result;
   result.mTicket2 = std::make_shared<SignedTicket2>(Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket2())));
 
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mEntries,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
 
   return result;
@@ -63,7 +63,7 @@ void Serializer<EncryptionKeyRequest>::moveIntoProtocolBuffer(proto::EncryptionK
   if (value.mTicket2 == nullptr)
     throw std::runtime_error("mTicket2 should be set");
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket2(), *value.mTicket2);
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.mEntries));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
 }
 
 EncryptionKeyResponse Serializer<EncryptionKeyResponse>::fromProtocolBuffer(proto::EncryptionKeyResponse&& source) const {

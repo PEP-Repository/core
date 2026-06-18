@@ -24,7 +24,7 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
 
   // Calculate hash of (serialized) pages as they are processed
   messaging::MessageBatches batches = pages
-    .map([ctx, numFiles = request.mEntries.size()](messaging::TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
+    .map([ctx, numFiles = request.entries_.size()](messaging::TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
     return segment
       .map([ctx, numFiles](DataPayloadPage page) {
 

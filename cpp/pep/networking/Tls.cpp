@@ -23,7 +23,7 @@ class TlsSocket : public TcpBasedProtocolImplementor<Tls>::Socket {
 private:
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> implementor_;
   StreamSocket mStreamSocket;
-  boost::asio::ssl::stream_base::handshake_type mType;
+  boost::asio::ssl::stream_base::handshake_type type_;
   bool mShutdownRequired = false;
 
   void finishClosing();
@@ -43,7 +43,7 @@ public:
 void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
   mShutdownRequired = true; // We may need to close before we've received the handshake callback, at which point we don't know (yet) if OpenSSL has started or even completed its handshaking
 
-  implementor_.async_handshake(mType, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
+  implementor_.async_handshake(type_, [self = SharedFrom(*this), notify](const boost::system::error_code& error) {
     auto connecting = self->status() == ConnectivityStatus::Connecting; // Another ASIO job (e.g. a timer) may have already invoked close() on us
 
     if (error) {
@@ -74,7 +74,7 @@ void TlsSocket::finishConnecting(const ConnectionAttempt::Handler& notify) {
 }
 
 TlsSocket::TlsSocket(const Tls& protocol, boost::asio::io_context& ioContext, boost::asio::ssl::stream_base::handshake_type type, boost::asio::ssl::context& ssl_context)
-  : Socket(protocol, ioContext), implementor_(ioContext, ssl_context), mStreamSocket(implementor_), mType(type) {
+  : Socket(protocol, ioContext), implementor_(ioContext, ssl_context), mStreamSocket(implementor_), type_(type) {
 }
 
 TlsSocket::~TlsSocket() noexcept {

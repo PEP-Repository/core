@@ -127,7 +127,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
   PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << requestNumber << " received";
 
-  if (!mPseudonymKey)
+  if (!pseudonymKey_)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
 
   auto certified = request->mRequest.openAsTranscryptor(*this->getRootCAs());
@@ -140,7 +140,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   auto userVerifiersObs = rxcpp::observable<>::just<std::optional<ReshuffleRekeyVerifiers>>(std::nullopt)
     .as_dynamic();
   if (userRequest.mIncludeUserGroupPseudonyms) {
-    if (auto userVerifiers = mStorage->getUserVerifiers(userCertificate)) {
+    if (auto userVerifiers = storage_->getUserVerifiers(userCertificate)) {
       // Use stored verifiers
       userVerifiersObs = rxcpp::observable<>::just(userVerifiers);
     } else {
@@ -151,7 +151,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
           // Check internal consistency of verifiers
           auto verifiers = response.open(server->systemPublicKeys().globalPseudonymEncryptionKey);
           // Cross-reference with existing verifiers and store if consistent
-          server->mStorage->checkAndStoreUserVerifiers(userCertificate, verifiers);
+          server->storage_->checkAndStoreUserVerifiers(userCertificate, verifiers);
           return std::optional{verifiers};
         });
     }
@@ -194,7 +194,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     .map([](std::shared_ptr<std::string> serializedEntries) {
     auto deserialized = Serialization::FromString<TranscryptorRequestEntries>(*serializedEntries);
     auto batch = std::make_shared<Batch>();
-    batch->requestEntries = std::move(deserialized.mEntries);
+    batch->requestEntries = std::move(deserialized.entries_);
     batch->results.responseEntries.resize(batch->requestEntries.size());
     batch->results.localPseudonyms.resize(batch->requestEntries.size());
     return batch;
@@ -203,7 +203,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     std::vector<size_t> is(batch->requestEntries.size());
     PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " processing " << batch->requestEntries.size() << "-entry batch";
     std::iota(is.begin(), is.end(), 0);
-    return server->mWorkerPool->batched_map<8>(std::move(is),
+    return server->workerPool_->batched_map<8>(std::move(is),
       observe_on_asio(*server->getIoContext()),
       [server, ctx, batch](size_t i) {
       const auto& entry = batch->requestEntries[i];
@@ -231,7 +231,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       // Verify that the AM has properly RSKed the pseudonyms.
       try {
         pseudonymTranslator.checkTranslationProof(
-            entry.mPolymorphic, entry.mAccessManager,
+            entry.mPolymorphic, entry.accessManager_,
             entry.mAccessManagerProof, server->mVerifiers.accessManager);
         pseudonymTranslator.checkTranslationProof(
             entry.mPolymorphic, entry.mStorageFacility,
@@ -255,13 +255,13 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       ret.mStorageFacility = pseudonymTranslator.translateStep(
           entry.mStorageFacility,
           RecipientForServer(EnrolledParty::StorageFacility));
-      ret.mAccessManager = pseudonymTranslator.translateStep(
-          entry.mAccessManager,
+      ret.accessManager_ = pseudonymTranslator.translateStep(
+          entry.accessManager_,
           RecipientForServer(EnrolledParty::AccessManager));
       localPseudonym = pseudonymTranslator.translateStep(
           entry.mTranscryptor,
           RecipientForServer(EnrolledParty::Transcryptor)
-      ).decrypt(*server->mPseudonymKey);
+      ).decrypt(*server->pseudonymKey_);
 
       if (ctx->includeUserGroupPseudonyms) {
         ret.mAccessGroup = pseudonymTranslator.translateStep(
@@ -291,8 +291,8 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       auto pseudonymHash = ComputePseudonymHash(results->responseEntries);
 
       TranscryptorResponse response;
-      response.mEntries = std::move(results->responseEntries);
-      response.mId = server->mStorage->logTicketRequest(
+      response.entries_ = std::move(results->responseEntries);
+      response.mId = server->storage_->logTicketRequest(
         results->localPseudonyms,
         ctx->modes,
         std::move(ctx->ticketRequest),
@@ -322,7 +322,7 @@ std::string Transcryptor::ComputePseudonymHash(
     const std::vector<LocalPseudonyms>& lps) {
   Sha512 hash;
   for (const auto& lp : lps) {
-    hash.update(lp.mAccessManager.text());
+    hash.update(lp.accessManager_.text());
     hash.update(lp.mStorageFacility.text());
     hash.update(lp.mPolymorphic.text());
 
@@ -349,7 +349,7 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto hash = ComputePseudonymHash(ticket.mAccessSubjects);
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " calculated hash";
 
-  mStorage->logIssuedTicket(
+  storage_->logIssuedTicket(
     request->mId,
     hash,
     std::move(ticket.mColumns),
@@ -386,7 +386,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
 
   const auto recipient = RekeyRecipientForCertificate(pRequest->mClientCertificateChain.leaf());
 
-  return mWorkerPool->batched_map<8>(std::move(pRequest->mKeys),
+  return workerPool_->batched_map<8>(std::move(pRequest->mKeys),
           observe_on_asio(*getIoContext()),
       [server = SharedFrom(*this), recipient](EncryptedKey entry) {
 
@@ -403,10 +403,10 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
 
 Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   : KeyComponentServer(parameters),
-  mWorkerPool(WorkerPool::getShared()),
-  mPseudonymKey(parameters->getPseudonymKey()),
+  workerPool_(WorkerPool::getShared()),
+  pseudonymKey_(parameters->getPseudonymKey()),
   mAccessManagerProxy(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
-  mStorage(parameters->getStorage()),
+  storage_(parameters->getStorage()),
   lpMetrics(std::make_shared<Metrics>(mRegistry)),
   mVerifiers(parameters->getVerifiers()) {
   RegisterRequestHandlers(*this,
@@ -418,7 +418,7 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
 }
 
 std::optional<std::filesystem::path> Transcryptor::getStoragePath() {
-  std::filesystem::path path = (std::filesystem::path(mStorage->getPath())).remove_filename();
+  std::filesystem::path path = (std::filesystem::path(storage_->getPath())).remove_filename();
   return EnsureDirectoryPath(path);
 }
 
@@ -426,14 +426,14 @@ std::shared_ptr<prometheus::Registry>
 Transcryptor::getMetricsRegistry()  {
   // Collect some metrics ad hoc
   lpMetrics->transcryptor_log_size.Set(static_cast<double>(
-        std::filesystem::file_size(mStorage->getPath())));
+        std::filesystem::file_size(storage_->getPath())));
 
   // Collect the base metrics and return the complete registry
   return SigningServer::getMetricsRegistry();
 }
 
 std::vector<std::string> Transcryptor::getChecksumChainNames() const {
-  return mStorage->getChecksumChainNames();
+  return storage_->getChecksumChainNames();
 }
 
 void Transcryptor::computeChecksumChainChecksum(
@@ -444,7 +444,7 @@ void Transcryptor::computeChecksumChainChecksum(
     when = " at checkpoint " + std::to_string(*maxCheckpoint);
   }
   PEP_LOG(LogTag, CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY) << "Starting calculation for checksum chain " << chain << when;
-  mStorage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
+  storage_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
   PEP_LOG(LogTag, CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY) << "Finished calculation for checksum chain " << chain << when;
 }
 

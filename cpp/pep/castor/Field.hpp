@@ -11,10 +11,10 @@ class Field : public ParentedCastorObject<Study>, public SharedConstructor<Field
  private:
   std::string mParentId;
   int mNumber;
-  std::string mType;
+  std::string type_;
   std::string mVariableName;
   std::string mLabel;
-  bool mRequired;
+  bool required_;
   std::string mUnits;
   std::string mInfo;
   bool mHidden;
@@ -33,10 +33,10 @@ class Field : public ParentedCastorObject<Study>, public SharedConstructor<Field
   std::string getParentId() const { return mParentId; }
 
   int getNumber() const { return mNumber; }
-  std::string getType() const { return mType; }
+  std::string getType() const { return type_; }
   std::string getVariableName() const { return mVariableName; }
   std::string getLabel() const { return mLabel; }
-  bool isRequired() const { return mRequired; }
+  bool isRequired() const { return required_; }
   std::string getUnits() const { return mUnits; }
   std::string getInfo() const { return mInfo; }
   bool isHidden() const { return mHidden; }

@@ -141,7 +141,7 @@ std::ostream& operator<<(std::ostream& out, Flags flags) {
 }
 
 EncodedMessageProperties MessageId::encode() const noexcept {
-  return mType.encode() | mStreamId.encode();
+  return type_.encode() | mStreamId.encode();
 }
 
 bool StreamId::IsValidValue(Value value) noexcept {
@@ -172,7 +172,7 @@ StreamId StreamId::MakeNext(const StreamId& previous) noexcept {
 }
 
 MessageId::MessageId(MessageType type, StreamId streamId)
-  : mType(type), mStreamId(streamId) {
+  : type_(type), mStreamId(streamId) {
 }
 
 MessageId MessageId::MakeForControlMessage() noexcept {

@@ -304,7 +304,7 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   for (int i = 0; i < 600; i++) {
     auto q = pep::ElgamalPublicKey::Random();
     pep::LocalPseudonyms lp;
-    lp.mAccessManager = p1.encrypt(q);
+    lp.accessManager_ = p1.encrypt(q);
     lp.mPolymorphic = pep::PolymorphicPseudonym::FromIdentifier(q, "1234");
     lp.mStorageFacility = p4.encrypt(q);
     ticket.mAccessSubjects.push_back(lp);
@@ -318,7 +318,7 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
     kre.mPseudonymIndex = i;
     auto p = pep::CurvePoint::Random();
     kre.mPolymorphEncryptionKey = pep::EncryptedKey(p, p);
-    ret.mEntries.push_back(std::move(kre));
+    ret.entries_.push_back(std::move(kre));
   }
   return ret;
 }

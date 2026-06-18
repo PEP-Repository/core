@@ -51,12 +51,12 @@ std::ostream& GetStdioNotificationStream(bool error) noexcept {
 
 class StdioNotificationChannel : public Application::UserNotificationChannel {
 private:
-  std::ostream& mStream;
+  std::ostream& stream_;
 
 public:
-  explicit StdioNotificationChannel(bool error) noexcept : mStream(GetStdioNotificationStream(error)) {}
-  ~StdioNotificationChannel() noexcept override { mStream.flush(); }
-  inline std::ostream& stream() override { return mStream; }
+  explicit StdioNotificationChannel(bool error) noexcept : stream_(GetStdioNotificationStream(error)) {}
+  ~StdioNotificationChannel() noexcept override { stream_.flush(); }
+  inline std::ostream& stream() override { return stream_; }
 };
 
 #ifdef _WIN32
@@ -181,24 +181,24 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-  if (mArgc > 0) {
+  if (argc_ > 0) {
     return std::filesystem::path(this->getArgv()[0]).filename().string();
   }
   return "[this program]";
 }
 
 int Application::getArgc() const {
-  if (mArgc < 0) {
+  if (argc_ < 0) {
     throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
-  return mArgc;
+  return argc_;
 }
 
 char** Application::getArgv() const {
-  if (mArgv == nullptr) {
+  if (argv_ == nullptr) {
     throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
-  return mArgv;
+  return argv_;
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
@@ -223,7 +223,7 @@ int Application::RunWithoutError(std::function<int()> implementor) noexcept {
 }
 
 void Application::initializeLoggingOnce() {
-  if (std::exchange(mInitializeLoggingOnceFlag, true)) return;  // exits early if this is not the first call
+  if (std::exchange(initializeLoggingOnceFlag_, true)) return;  // exits early if this is not the first call
 
   const auto& values = this->getParameterValues();
 
@@ -248,8 +248,8 @@ void Application::initializeLoggingOnce() {
     Logging::Initialize(logging);
   }
 
-  mShowVersionInfo = !values.has("suppress-version-info");
-  if (mShowVersionInfo) {
+  showVersionInfo_ = !values.has("suppress-version-info");
+  if (showVersionInfo_) {
     LogVersionInfo("binary", BinaryVersion::current.getSummary());
   }
 }
@@ -262,8 +262,8 @@ int Application::run(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays
   std::queue<std::string> args;
   std::for_each(argv + 1, argv + argc, [&args](const char* arg) {args.push(arg); });
 
-  mArgc = argc;
-  mArgv = argv;
+  argc_ = argc;
+  argv_ = argv;
   return this->process(args);
 }
 
@@ -285,16 +285,16 @@ std::filesystem::path Application::getMainConfigPath() {
 }
 
 std::filesystem::path Application::getConfigDirectory() {
-  if (!mConfigDirectory.has_value()) {
-    mConfigDirectory = GetEffectiveConfigDirectory(this->rawConfigDirectory(), this->rawConfigFile());
+  if (!configDirectory_.has_value()) {
+    configDirectory_ = GetEffectiveConfigDirectory(this->rawConfigDirectory(), this->rawConfigFile());
 
     // Version info cannot be logged until the config directory is known
-    if (mShowVersionInfo) {
-      LogVersionInfo("configuration", ConfigVersion::TryLoad(*mConfigDirectory));
-      mShowVersionInfo = false;
+    if (showVersionInfo_) {
+      LogVersionInfo("configuration", ConfigVersion::TryLoad(*configDirectory_));
+      showVersionInfo_ = false;
     }
   }
-  return *mConfigDirectory;
+  return *configDirectory_;
 }
 
 Configuration Application::loadMainConfigFile() {

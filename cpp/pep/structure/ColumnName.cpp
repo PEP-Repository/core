@@ -27,10 +27,10 @@ ColumnNameSection ColumnNameSection::FromRawString(const std::string& raw) {
 }
 
 ColumnNameMappings::ColumnNameMappings(const std::vector<ColumnNameMapping>& entries) {
-  mEntries.reserve(entries.size());
+  entries_.reserve(entries.size());
   for (const auto& mapping : entries) {
     const auto& key = mapping.original.getValue();
-    if (!mEntries.emplace(key, mapping).second) {
+    if (!entries_.emplace(key, mapping).second) {
       throw std::runtime_error("Column name mapping could not be stored for \"" + key + "\". Were duplicate names provided?");
     }
   }
@@ -38,8 +38,8 @@ ColumnNameMappings::ColumnNameMappings(const std::vector<ColumnNameMapping>& ent
 
 std::string ColumnNameMappings::getColumnNameSectionFor(const std::string& rawOriginal) const {
   auto original = ColumnNameSection::FromRawString(rawOriginal).getValue();
-  auto position = mEntries.find(original);
-  if (position != mEntries.cend()) {
+  auto position = entries_.find(original);
+  if (position != entries_.cend()) {
     return position->second.mapped.getValue();
   }
   return original;
@@ -47,8 +47,8 @@ std::string ColumnNameMappings::getColumnNameSectionFor(const std::string& rawOr
 
 std::vector<ColumnNameMapping> ColumnNameMappings::getEntries() const {
   std::vector<ColumnNameMapping> result;
-  result.reserve(mEntries.size());
-  std::transform(mEntries.cbegin(), mEntries.cend(), std::back_inserter(result), [](const std::pair<const std::string, ColumnNameMapping>& entry) {return entry.second; });
+  result.reserve(entries_.size());
+  std::transform(entries_.cbegin(), entries_.cend(), std::back_inserter(result), [](const std::pair<const std::string, ColumnNameMapping>& entry) {return entry.second; });
   return result;
 }
 
