@@ -225,8 +225,7 @@ struct SetStructureMetadataRequest {
 
 struct SetStructureMetadataResponse {};
 
-class VerifiersRequest {
-};
+struct VerifiersRequest {};
 
 class VerifiersResponse {
   friend Serializer<VerifiersResponse>;

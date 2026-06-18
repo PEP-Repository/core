@@ -20,8 +20,6 @@ const size_t RETRIES = 3;
 struct TarCtx {
    std::istream& stream;
    std::array<char, 10240> buf{};
-
-   TarCtx(std::istream &stream) : stream(stream) {}
 };
 
 int open_callback(archive* archive, void* clientData) {

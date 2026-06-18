@@ -38,13 +38,6 @@ namespace {
   const std::string LogTag = "Installer";
 
   class PublishedInstaller : public Installer {
-  public:
-    struct Context {
-      std::filesystem::path logDirectory;
-      std::filesystem::path elevateExe;
-      std::function<pep::win32api::PlaintextCredentials()> getAdministrativeCredentials;
-    };
-
   private:
     std::shared_ptr<boost::property_tree::ptree> properties_;
 

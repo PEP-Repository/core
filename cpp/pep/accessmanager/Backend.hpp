@@ -11,9 +11,6 @@ public:
   class Storage; // Public to allow unit testing
 
   struct Pp {
-    Pp() = default;
-    Pp(PolymorphicPseudonym pp, bool isClientProvided)
-      : pp(pp), isClientProvided(isClientProvided) {}
     PolymorphicPseudonym pp;
     bool isClientProvided{}; // have we seen this pp before?
   };

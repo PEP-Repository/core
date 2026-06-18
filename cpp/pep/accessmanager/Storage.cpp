@@ -55,7 +55,7 @@ std::optional<uint64_t> to_optional_uint64(std::optional<std::chrono::seconds> v
 }
 
 // This function defines the database scheme used.
-auto am_create_db(const std::string& path) {
+auto CreateAmDb(const std::string& path) {
   return make_storage(path,
     make_table("SelectStarPseudonyms",
       make_column("LocalPseudonym",
@@ -236,7 +236,7 @@ auto am_create_db(const std::string& path) {
 }
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
-struct AccessManager::Backend::Storage::Implementor : database::Storage<am_create_db> {
+struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAmDb> {
   using Storage::Storage;
 };
 
