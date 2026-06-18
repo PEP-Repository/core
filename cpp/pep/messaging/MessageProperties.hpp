@@ -4,6 +4,7 @@
 #include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/TypeTraits.hpp>
 
+#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
@@ -14,6 +15,13 @@ namespace pep::messaging {
 // Every message is sent and received with some properties encoded into a single integral value
 using EncodedMessageProperties = uint32_t;
 
+namespace detail::encoding_layout {
+
+constexpr EncodedMessageProperties TypeBits = 0x8000'0000; // single high bit to indicate message type
+constexpr EncodedMessageProperties FlagBits = 0x7000'0000; // (the next-highest) three bits for state-related flags
+constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits); // remaining bits for a unique (serial) number for every request+response cycle
+
+} // namespace encoding
 
 // The (single) high bit in EncodedMessageProperties indicates message type
 class MessageType {
@@ -40,13 +48,15 @@ private:
 
 // (The next-highest) three bits in EncodedMessageProperties are used for state-related flags
 class Flags final {
+  constexpr static auto Shift = std::countr_zero(detail::encoding_layout::FlagBits);
+
 public:
-  enum class PEP_ATTRIBUTE_FLAG_ENUM Bits {
+  enum class PEP_ATTRIBUTE_FLAG_ENUM Bits : EncodedMessageProperties {
     None    = 0,
-    Close   = 0b100, ///< This is the last piece of the (possibly multi-part) message
-    Error   = 0b010, ///< The sending party encountered an error. Implies Close.
-    Payload = 0b001, ///< The message includes content
-    All     = 0b111,
+    Close   = 0b100 << Shift, ///< This is the last piece of the (possibly multi-part) message
+    Error   = 0b010 << Shift, ///< The sending party encountered an error. Implies Close.
+    Payload = 0b001 << Shift, ///< The message includes content
+    All     = 0b111 << Shift,
   };
 
   /// Throws std::invalid_argument if the combination of bits is not valid
@@ -64,17 +74,27 @@ private:
   Bits bits_;
 };
 
-constexpr EncodedMessageProperties Encode(Flags::Bits flags) noexcept {
-  return static_cast<EncodedMessageProperties>(ToUnderlying(flags)) << 28U;
-}
-
-std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
-
 } // namespace pep::messaging
 
 PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags::Bits)
 
 namespace pep::messaging {
+
+[[nodiscard]] constexpr EncodedMessageProperties Encode(Flags::Bits flags) noexcept {
+  return ToUnderlying(flags);
+}
+
+static_assert(Encode(Flags::Bits::All) == detail::encoding_layout::FlagBits);
+static_assert(Encode(Flags::Bits::None) == 0U);
+
+[[nodiscard]] constexpr Flags::Bits DecodeFlagBits(EncodedMessageProperties type) noexcept {
+  return static_cast<Flags::Bits>(type & detail::encoding_layout::FlagBits);
+}
+
+static_assert(DecodeFlagBits(detail::encoding_layout::FlagBits) == Flags::Bits::All);
+static_assert(DecodeFlagBits(~detail::encoding_layout::FlagBits) == Flags::Bits::None);
+
+std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
 
 inline constexpr bool Flags::has(Flags::Bits bits) const noexcept { return HasFlags(bits_, bits); }
 
