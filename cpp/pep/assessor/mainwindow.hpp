@@ -37,7 +37,7 @@ class MainWindow : public QMainWindow {
   std::shared_ptr<QTranslator> currentTranslator = nullptr;
   QString enrollmentToken;
   QString currentUser;
-  std::optional<pep::UserRole> currentPEPRole;
+  std::optional<pep::UserRole> currentPepRole_;
   std::shared_ptr<pep::Client> pepClient;
   pep::Configuration config;
   pep::ConnectionStatus accessManagerConnectionStatus;

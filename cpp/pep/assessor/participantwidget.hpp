@@ -28,44 +28,44 @@ class ParticipantWidget : public QWidget {
  private:
   static const QString NO_PARTICIPANT_SID;
 
-  std::shared_ptr<pep::Client> pepClient;
+  std::shared_ptr<pep::Client> pepClient_;
   Ui::ParticipantWidget* ui_;
-  MainWindow* mainWindow;
+  MainWindow* mainWindow_;
 
-  ButtonBar* castor_buttons;
+  ButtonBar* castorButtons_;
 
-  ButtonBar* participant_buttons;
-  QPushButton* edit_participant_button;
-  QPushButton* release_participant_button;
+  ButtonBar* participantButtons_;
+  QPushButton* editParticipantButton_;
+  QPushButton* releaseParticipantButton_;
 
-  ButtonBar* print_buttons;
-  QPushButton* print_stickers_button;
-  QPushButton* print_oneSticker_button;
+  ButtonBar* printButtons_;
+  QPushButton* printStickersButton_;
+  QPushButton* printOneStickerButton_;
 
-  pep::GlobalConfiguration globalConfig;
+  pep::GlobalConfiguration globalConfig_;
   pep::StudyContexts allContexts_;
   pep::StudyContext studyContext_;
 
-  pep::PolymorphicPseudonym currentUserPP;
-  ParticipantData participantData;
-  pep::StudyContexts participantStudyContexts;
+  pep::PolymorphicPseudonym currentUserPp_;
+  ParticipantData participantData_;
+  pep::StudyContexts participantStudyContexts_;
 
-  int currentVisitNumber = 1;
-  pep::UserRole currentPEPRole;
+  int currentVisitNumber_ = 1;
+  pep::UserRole currentPepRole_;
 
-  bool readOnly = false;
-  QString participantSID = NO_PARTICIPANT_SID;
-  QString baseUrl;
-  std::optional<std::filesystem::path> bartenderPath;
-  std::filesystem::path stickerFilePath;
+  bool readOnly_ = false;
+  QString participantSID_ = NO_PARTICIPANT_SID;
+  QString baseUrl_;
+  std::optional<std::filesystem::path> bartenderPath_;
+  std::filesystem::path stickerFilePath_;
   std::vector<DeviceWidget *> deviceWidgets_;
   std::vector<DeviceHistoryWidget *> deviceHistoryWidgets_;
   std::vector<VisitWidget *> visitWidgets_;
-  QString summaryPrintStyle = "body {margin:10; width:90%;} \\"
+  QString summaryPrintStyle_ = "body {margin:10; width:90%;} \\"
                               " h1 {font-size:xx-large; text-align:center;} \\"
                               " h3 {border: 2px solid #a1a1a1; border-radius: 25px; background: #8db6d3;} \\"
                               " div{font-weight:normal; font-size:medium; text-align:left;}";
-  QString infoEditStyle = "QWidget {\n"
+  QString infoEditStyle_ = "QWidget {\n"
                           " border: 0.05em solid #CA0B5E;\n"
                           " border-radius: 0.25em;\n"
                           " color: #CA0B5E;\n"

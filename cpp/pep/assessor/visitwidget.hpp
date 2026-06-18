@@ -18,7 +18,7 @@ class VisitWidget : public QWidget
   Q_OBJECT
 
 public:
-  VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, pep::UserRole& currentPEPRole, pep::StudyContext& studyContext, QWidget *parent);
+  VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, pep::UserRole& currentPepRole_, pep::StudyContext& studyContext, QWidget *parent);
   ~VisitWidget() override;
 
   void disablePrinting();
@@ -51,13 +51,13 @@ signals:
 
 private:
   Ui::VisitWidget *ui_;
-  ButtonBar* print_buttons;
-  QPushButton* print_stickers_button; 
-  QPushButton* print_oneSticker_button; 
-  ButtonBar* data_castor_buttons;
+  ButtonBar* printButtons_;
+  QPushButton* printStickersButton_; 
+  QPushButton* printOneStickerButton_; 
+  ButtonBar* dataCastorButtons_;
   
-  const std::vector<pep::AssessorDefinition>& assessors;
-  pep::UserRole& currentPEPRole;
-  pep::StudyContext& studyContext;
-  std::optional<unsigned> currentAssessorId;
+  const std::vector<pep::AssessorDefinition>& assessors_;
+  pep::UserRole& currentPepRole_;
+  pep::StudyContext& studyContext_;
+  std::optional<unsigned> currentAssessorId_;
 };

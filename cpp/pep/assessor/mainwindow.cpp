@@ -166,7 +166,7 @@ void MainWindow::closeWidget(QWidget* widget) {
 void MainWindow::initializeOpenPatientContent(bool setFocus) {
   //Remove old layout and child widgets that might be hanging around
   auto currentStackedWidget = ui_->open_content;
-  if (!currentPEPRole) {
+  if (!currentPepRole_) {
     showPatienceWidget(currentStackedWidget, "Not allowed to search for participant data.");
     return;
   }
@@ -236,7 +236,7 @@ void MainWindow::handleWidgetMessage(QString message, pep::Severity severity) {
 
 void MainWindow::initializeExportContent() {
   auto currentStackedWidget = ui_->export_content;
-  if (!currentPEPRole) {
+  if (!currentPepRole_) {
     showPatienceWidget(currentStackedWidget, "Not allowed to export data.");
     return;
   }
@@ -244,7 +244,7 @@ void MainWindow::initializeExportContent() {
   ClearStackedWidget(*currentStackedWidget);
 
   openWidget(currentStackedWidget, [this, currentStackedWidget](const pep::GlobalConfiguration& configuration) {
-    auto widget = new ExportWidget(configuration, getCurrentStudyContext(), *currentPEPRole, this->visitCaptionsByContext_, pepClient, this);
+    auto widget = new ExportWidget(configuration, getCurrentStudyContext(), *currentPepRole_, this->visitCaptionsByContext_, pepClient, this);
   QObject::connect(widget, &ExportWidget::sendMessage, this, &MainWindow::handleWidgetMessage);
   currentExportWidget = widget;
   currentStackedWidget->addWidget(widget);
@@ -303,7 +303,7 @@ void MainWindow::showForToken(QString token) {
 
       enrollmentToken.clear();
       currentUser = user;
-      currentPEPRole = pep::UserRole::GetForOAuthRole(role.toStdString());
+      currentPepRole_ = pep::UserRole::GetForOAuthRole(role.toStdString());
 
       allContexts_ = std::make_shared<pep::StudyContexts>(pair.second->getStudyContexts());
 
@@ -394,7 +394,7 @@ void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
 */
 void MainWindow::showParticipantData(std::string participantIdentifier) {
   auto currentStackedWidget = ui_->register_content;
-  if (!currentPEPRole) {
+  if (!currentPepRole_) {
     showPatienceWidget(currentStackedWidget, "Not allowed to view participant data.");
     return;
   }
@@ -406,7 +406,7 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
   }
 
   openWidget(widgets[0], [this, participantIdentifier, widgets](const pep::GlobalConfiguration& globalConfiguration) {
-    auto selector = new ParticipantWidget(this, pepClient, QString::fromStdString(participantIdentifier), config, globalConfiguration, *allContexts_, branding_, spareStickerCount_, getCurrentStudyContext(), getVisitCaptionsForCurrentStudyContext(), *currentPEPRole);
+    auto selector = new ParticipantWidget(this, pepClient, QString::fromStdString(participantIdentifier), config, globalConfiguration, *allContexts_, branding_, spareStickerCount_, getCurrentStudyContext(), getVisitCaptionsForCurrentStudyContext(), *currentPepRole_);
   selector->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   selector->setVisible(false);
   QObject::connect(this, SIGNAL(translation()), selector, SLOT(onTranslation()));
@@ -485,7 +485,7 @@ void MainWindow::on_participantLookupError(QString str, pep::Severity sev) {
 void MainWindow::initializeRegisterPatientContent(bool setFocus) {
   auto currentStackedWidget = ui_->register_content;
 
-  auto allow = currentPEPRole.has_value() && currentPEPRole->canRegisterParticipants();
+  auto allow = currentPepRole_.has_value() && currentPepRole_->canRegisterParticipants();
   if (!allow) {
     showPatienceWidget(currentStackedWidget, "Not allowed to register participants.");
   }
@@ -592,7 +592,7 @@ void MainWindow::loginExpired() {
   assert(enrollmentToken.isEmpty());
 
   currentUser.clear();
-  currentPEPRole = std::nullopt;
+  currentPepRole_ = std::nullopt;
 
   updateConnectionStatus(true);
 }

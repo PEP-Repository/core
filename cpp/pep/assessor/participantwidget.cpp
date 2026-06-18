@@ -75,7 +75,7 @@ private:
   bool isVisitAssessorColumn(const std::string& columnName, std::string* context = nullptr, unsigned* visitNumber = nullptr) const;
 
 public:
-  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept;
+  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig_) noexcept;
 
   // Prevent copying, which would have the copy's unfilledShortPseudonyms_ point to the original's shortPseudonymDefinitions_
   ParticipantDataAggregator(const ParticipantDataAggregator&) = delete;
@@ -145,12 +145,12 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      const pep::StudyContext& studyContext,
                                      const VisitCaptions* visitCaptions,
                                      pep::UserRole role)
-  : QWidget(parent), pepClient(client), ui_(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), allContexts_(allContexts), studyContext_(studyContext), currentPEPRole(role), projectName_(branding.getProjectName()), spareStickerCount_(spareStickerCount), visitCaptions_(visitCaptions) {
-  baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
-  stickerFilePath = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
-  bartenderPath = ReadConfiguredBartenderPath(configuration);
-  currentUserPP = pepClient->generateParticipantPolymorphicPseudonym(SID.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
-  participantSID = SID;
+  : QWidget(parent), pepClient_(client), ui_(new Ui::ParticipantWidget), mainWindow_(parent), globalConfig_(globalConfiguration), allContexts_(allContexts), studyContext_(studyContext), currentPepRole_(role), projectName_(branding.getProjectName()), spareStickerCount_(spareStickerCount), visitCaptions_(visitCaptions) {
+  baseUrl_ = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
+  stickerFilePath_ = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
+  bartenderPath_ = ReadConfiguredBartenderPath(configuration);
+  currentUserPp_ = pepClient_->generateParticipantPolymorphicPseudonym(SID.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
+  participantSID_ = SID;
 
   setAttribute(Qt::WA_DeleteOnClose);
 
@@ -161,7 +161,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
 
   auto hasDevice = false;
 
-  for (const auto& deviceDefinition : globalConfig.getDevices()) {
+  for (const auto& deviceDefinition : globalConfig_.getDevices()) {
     auto deviceWidget = new DeviceWidget(deviceDefinition, this);
     deviceWidgets_.push_back(deviceWidget);
     ui_->verticalLayout_devices->addWidget(deviceWidget);
@@ -190,41 +190,41 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
   }
 
   //initializes a participant button bar
-  participant_buttons = new ButtonBar(this);
-  ui_->participant_buttonBar_layout->addWidget(participant_buttons);
+  participantButtons_ = new ButtonBar(this);
+  ui_->participant_buttonBar_layout->addWidget(participantButtons_);
 
-  edit_participant_button = participant_buttons->addButton(tr("edit-participant"), std::bind(&ParticipantWidget::openEditParticipant, this),  currentPEPRole.canEditParticipantPersonalia());
-  release_participant_button = participant_buttons->addButton(tr("release-participant"), std::bind(&ParticipantWidget::releaseParticipant, this),  currentPEPRole.canSetParticipantContext());
+  editParticipantButton_ = participantButtons_->addButton(tr("edit-participant"), std::bind(&ParticipantWidget::openEditParticipant, this),  currentPepRole_.canEditParticipantPersonalia());
+  releaseParticipantButton_ = participantButtons_->addButton(tr("release-participant"), std::bind(&ParticipantWidget::releaseParticipant, this),  currentPepRole_.canSetParticipantContext());
 
   //initializes a ops castor button bar
-  castor_buttons = new ButtonBar(this);
-  ui_->ops_castorButtonBar_layout->addWidget(castor_buttons);
+  castorButtons_ = new ButtonBar(this);
+  ui_->ops_castorButtonBar_layout->addWidget(castorButtons_);
 
   //initializes a print button bar
-  print_buttons = new ButtonBar(this);
-  ui_->print_buttonBar_layout->addWidget(print_buttons);
+  printButtons_ = new ButtonBar(this);
+  ui_->print_buttonBar_layout->addWidget(printButtons_);
 
-  print_stickers_button = print_buttons->addButton(tr("print-stickers"), std::bind(&ParticipantWidget::printAllParticipantStickers, this), currentPEPRole.canPrintStickers());
-  print_oneSticker_button = print_buttons->addButton(tr("print-one-sticker"), std::bind(&ParticipantWidget::printSingleParticipantSticker, this), currentPEPRole.canPrintStickers());
-  print_buttons->addButton(tr("locate-bartender"), std::bind(&ParticipantWidget::locateBartender, this), currentPEPRole.canPrintStickers());
+  printStickersButton_ = printButtons_->addButton(tr("print-stickers"), std::bind(&ParticipantWidget::printAllParticipantStickers, this), currentPepRole_.canPrintStickers());
+  printOneStickerButton_ = printButtons_->addButton(tr("print-one-sticker"), std::bind(&ParticipantWidget::printSingleParticipantSticker, this), currentPepRole_.canPrintStickers());
+  printButtons_->addButton(tr("locate-bartender"), std::bind(&ParticipantWidget::locateBartender, this), currentPepRole_.canPrintStickers());
 
   QObject::connect(ui_->tabWidget_right, SIGNAL(currentChanged(int)), this, SLOT(setCurrentVisitNumber(int))); // Track visit number for printing
 
-  auto numberOfVisits = globalConfig.getNumberOfVisits(studyContext_.getIdIfNonDefault());
+  auto numberOfVisits = globalConfig_.getNumberOfVisits(studyContext_.getIdIfNonDefault());
   for (auto visitIndex = 0U; visitIndex < numberOfVisits; ++visitIndex) {
-    auto visitWidget = new VisitWidget(globalConfig.getAssessors(), currentPEPRole, studyContext_, this);
+    auto visitWidget = new VisitWidget(globalConfig_.getAssessors(), currentPepRole_, studyContext_, this);
     visitWidgets_.push_back(visitWidget);
     auto caption = getVisitCaption(visitIndex + 1).replace('&', "&&"); // Escape ampersands to prevent them from announcing a shortcut key / hotkey / mnemonic. See e.g. https://stackoverflow.com/a/16666135
     ui_->tabWidget_right->addTab(visitWidget, caption);
 
-    if (currentPEPRole.canPrintStickers()) {
+    if (currentPepRole_.canPrintStickers()) {
       QObject::connect(visitWidget, &VisitWidget::printAllStickers, this, &ParticipantWidget::printAllVisitStickers);
       QObject::connect(visitWidget, &VisitWidget::printSingleSticker, this, &ParticipantWidget::printSingleVisitSticker);
       QObject::connect(visitWidget, &VisitWidget::printSummary, this, &ParticipantWidget::printSummary);
       QObject::connect(visitWidget, &VisitWidget::locateBartender, this, &ParticipantWidget::locateBartender);
     }
 
-    if (currentPEPRole.canEditVisitAdministeringAssessor()) {
+    if (currentPepRole_.canEditVisitAdministeringAssessor()) {
       QObject::connect(visitWidget, &VisitWidget::updateVisitAssessor, this, &ParticipantWidget::updateVisitAssessor);
     }
     else {
@@ -232,15 +232,15 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
     }
   }
 
-  if (!currentPEPRole.canPrintStickers()) {
+  if (!currentPepRole_.canPrintStickers()) {
     this->disablePrinting();
   }
 
   //Disable stuff based on user role
   for (auto device : deviceWidgets_) {
-    device->setEnabled(currentPEPRole.canManageDevices());
+    device->setEnabled(currentPepRole_.canManageDevices());
   }
-  if (currentPEPRole.canSeeParticipantPersonalia()) {
+  if (currentPepRole_.canSeeParticipantPersonalia()) {
     ui_->info_header->show();
     ui_->info1->show();
     ui_->info2->show();
@@ -254,12 +254,12 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
 
 
   if (allContexts_.getItems().size() <= 1U) {
-    release_participant_button->hide();
+    releaseParticipantButton_->hide();
   }
 }
 
 void ParticipantWidget::disablePrinting() {
-  print_buttons->setEnabled(false);
+  printButtons_->setEnabled(false);
 
   for (auto visit : visitWidgets_) {
     visit->disablePrinting();
@@ -277,21 +277,21 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
     "StudyContexts"
   };
 
-  for (const auto& device : globalConfig.getDevices()) {
+  for (const auto& device : globalConfig_.getDevices()) {
     cols.push_back(device.columnName);
   }
 
-  if (currentPEPRole.canSeeParticipantPersonalia()) {
+  if (currentPepRole_.canSeeParticipantPersonalia()) {
     cols.push_back("ParticipantInfo");
   }
 
-  auto aggregator = std::make_shared<ParticipantDataAggregator>(globalConfig);
+  auto aggregator = std::make_shared<ParticipantDataAggregator>(globalConfig_);
 
   pep::EnumerateAndRetrieveData2Opts opts;
-  opts.pps = {currentUserPP};
+  opts.pps = {currentUserPp_};
   opts.columnGroups = {"ShortPseudonyms", "VisitAssessors"};
   opts.columns = cols;
-  pepClient->enumerateAndRetrieveData2(opts)
+  pepClient_->enumerateAndRetrieveData2(opts)
   .observe_on(observe_on_gui())
   .subscribe([aggregator](pep::EnumerateAndRetrieveResult result) {
     aggregator->process(result);
@@ -300,12 +300,12 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
         .arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
   }, [this, aggregator, completeRegistration] {
     if (!aggregator->hasParticipantData()) {
-      std::cerr << tr("No participant with ID %1 found").arg(participantSID).toStdString() << std::endl;
-      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID), pep::Severity::Error);
+      std::cerr << tr("No participant with ID %1 found").arg(participantSID_).toStdString() << std::endl;
+      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID_), pep::Severity::Error);
     }
-    else if (completeRegistration && currentPEPRole.canRegisterParticipants() && !aggregator->hasCompleteParticipantData()) {
+    else if (completeRegistration && currentPepRole_.canRegisterParticipants() && !aggregator->hasCompleteParticipantData()) {
       emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::Severity::Warning);
-      pepClient->completeParticipantRegistration(participantSID.toStdString())
+      pepClient_->completeParticipantRegistration(participantSID_.toStdString())
         .observe_on(observe_on_gui())
         .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
@@ -327,10 +327,10 @@ void ParticipantWidget::onParticipantDataReceived(ParticipantData data, std::str
   //At this point all network IO is done. Emit an all clear signal and continue
   emit queryComplete();
 
-  participantData = data;
-  participantStudyContexts = allContexts_.parse(studyContexts);
+  participantData_ = data;
+  participantStudyContexts_ = allContexts_.parse(studyContexts);
 
-  if (participantData.personalia_.has_value() != currentPEPRole.canSeeParticipantPersonalia()) {
+  if (participantData_.personalia_.has_value() != currentPepRole_.canSeeParticipantPersonalia()) {
     PEP_LOG(LogTag, pep::Severity::Warning) << "Participant personalia viewer received no data";
   }
 
@@ -342,14 +342,14 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
   auto vertical = ui_->scrollArea->verticalScrollBar()->value();
   auto horizontal = ui_->scrollArea->horizontalScrollBar()->value();
 
-  this->readOnly = readOnly;
+  readOnly_ = readOnly;
 
   for (auto device : deviceWidgets_) {
-    device->setEnabled(currentPEPRole.canManageDevices() && !readOnly);
+    device->setEnabled(currentPepRole_.canManageDevices() && !readOnly);
   }
 
-  edit_participant_button->setEnabled(currentPEPRole.canEditParticipantPersonalia() && !readOnly);
-  release_participant_button->setEnabled(currentPEPRole.canSetParticipantContext() && (participantStudyContexts.getItems().size() > 1) && !readOnly);
+  editParticipantButton_->setEnabled(currentPepRole_.canEditParticipantPersonalia() && !readOnly);
+  releaseParticipantButton_->setEnabled(currentPepRole_.canSetParticipantContext() && (participantStudyContexts_.getItems().size() > 1) && !readOnly);
 
   // Restore scroll state that may have been updated by disabling our button(s): see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2494#note_40659
   ui_->scrollArea->verticalScrollBar()->setValue(vertical);
@@ -368,8 +368,8 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 
   const pep::ParticipantDeviceRecord* current = nullptr;
   std::vector<pep::ParticipantDeviceRecord> records;
-  auto previous = participantData.participantDeviceHistory_.find(columnName.toStdString());
-  if (previous != participantData.participantDeviceHistory_.cend()) {
+  auto previous = participantData_.participantDeviceHistory_.find(columnName.toStdString());
+  if (previous != participantData_.participantDeviceHistory_.cend()) {
     current = previous->second.getCurrent();
     std::copy(previous->second.begin(), previous->second.end(), std::back_inserter(records));
   }
@@ -398,7 +398,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 
   this->setReadOnly(true);
 
-  pepClient->storeData2(currentUserPP, columnName.toStdString(),
+  pepClient_->storeData2(currentUserPp_, columnName.toStdString(),
           std::make_shared<std::string>(history.toJson()), { pep::MetadataXEntry::MakeFileExtension(".json") })
   .observe_on(observe_on_gui())
   .subscribe([this, current](pep::DataStorageResult2 result) {
@@ -411,7 +411,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 }
 
 std::vector<pep::ShortPseudonymDefinition> ParticipantWidget::getPrintableShortPseudonyms(const std::optional<unsigned int>& visit) const {
-  auto all = globalConfig.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visit);
+  auto all = globalConfig_.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visit);
   std::vector<pep::ShortPseudonymDefinition> retval;
   std::copy_if(all.cbegin(), all.cend(), std::back_inserter(retval), [](const pep::ShortPseudonymDefinition& entry) {
     return entry.getStickers() > 0;
@@ -420,9 +420,9 @@ std::vector<pep::ShortPseudonymDefinition> ParticipantWidget::getPrintableShortP
 }
 
 void ParticipantWidget::updateVisitAssessor(QString id) {
-  qDebug() << "Setting assessor for visit " << currentVisitNumber << " to ID " << id;
-  auto column = studyContext_.getAdministeringAssessorColumnName(static_cast<uint32_t>(currentVisitNumber));
-  this->pepClient->storeData2(currentUserPP, column,
+  qDebug() << "Setting assessor for visit " << currentVisitNumber_ << " to ID " << id;
+  auto column = studyContext_.getAdministeringAssessorColumnName(static_cast<uint32_t>(currentVisitNumber_));
+  this->pepClient_->storeData2(currentUserPp_, column,
     std::make_shared<std::string>(id.toStdString()), {pep::MetadataXEntry::MakeFileExtension(".txt")})
     .observe_on(observe_on_gui())
     .subscribe([](pep::DataStorageResult2 result) {
@@ -440,7 +440,7 @@ void ParticipantWidget::updateVisitAssessor(QString id) {
  * This function requires the external bartender application. Prints all stickers for the current participant visit based on a template loaded from the client application directory.
  */
 void ParticipantWidget::printAllVisitStickers() {
-  this->invokeBartender(getPrintableShortPseudonyms(currentVisitNumber));
+  this->invokeBartender(getPrintableShortPseudonyms(currentVisitNumber_));
 }
 
 void ParticipantWidget::printAllParticipantStickers() {
@@ -448,7 +448,7 @@ void ParticipantWidget::printAllParticipantStickers() {
 }
 
 void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDefinition>& printPseudonyms) {
-  if(!currentPEPRole.canPrintStickers()) {
+  if(!currentPepRole_.canPrintStickers()) {
     return;
   }
 #ifndef _WIN32
@@ -459,11 +459,11 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   if (!this->provideBartenderPath()) {
     return;
   }
-  assert(bartenderPath != std::nullopt);
-  assert(std::filesystem::exists(*bartenderPath));
+  assert(bartenderPath_ != std::nullopt);
+  assert(std::filesystem::exists(*bartenderPath_));
 
-  if (!std::filesystem::exists(stickerFilePath)) {
-    emit statusMessage(tr("The sticker layout file \"%1\" does not exist. Please add it at this location or update its path in the configuration file.").arg(QString::fromStdString(stickerFilePath.string())), pep::Severity::Error);
+  if (!std::filesystem::exists(stickerFilePath_)) {
+    emit statusMessage(tr("The sticker layout file \"%1\" does not exist. Please add it at this location or update its path in the configuration file.").arg(QString::fromStdString(stickerFilePath_.string())), pep::Severity::Error);
     return;
   }
 
@@ -513,9 +513,9 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
     count *= copies;
 
     const std::string& label = pseudonymHuman.toStdString();
-    const std::string& pseudonym = participantData.shortPseudonyms_.at(pseudonymName);
+    const std::string& pseudonym = participantData_.shortPseudonyms_.at(pseudonymName);
     stickersXml += str(boost::format(stickerTemplate)
-                       % ++i % stickerFilePath.string() % pseudonym  % label % printername % count);
+                       % ++i % stickerFilePath_.string() % pseudonym  % label % printername % count);
   }
 
   // Write print xml file
@@ -529,7 +529,7 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
   out.close();
 
   // o_O ... https://stackoverflow.com/a/27976653 ... =_=
-  std::string bartendCommand = str(boost::format("\"\"%s\" /XMLScript=\"%s\" /X\"") % bartenderPath->string() % tempPath);
+  std::string bartendCommand = str(boost::format("\"\"%s\" /XMLScript=\"%s\" /X\"") % bartenderPath_->string() % tempPath);
   int ret = std::system(bartendCommand.c_str());
   if (ret != 0) {
     // TODO: capture and display command line output
@@ -555,7 +555,7 @@ QString ParticipantWidget::describeShortPseudonymDefinition(const pep::ShortPseu
  * This function requires the external bartender application. Prints a test sticker for the current participant based on a template loaded from the client application directory.
  */
 void ParticipantWidget::printSingleVisitSticker() {
-  this->printSingleSticker(currentVisitNumber);
+  this->printSingleSticker(currentVisitNumber_);
 }
 
 void ParticipantWidget::printSingleParticipantSticker() {
@@ -566,7 +566,7 @@ void ParticipantWidget::printSingleSticker(const std::optional<unsigned int>& vi
   auto entries = pep::MakeSharedCopy(getPrintableShortPseudonyms(visit));
 
   auto dialog = new QDialog(this);
-  dialog->setStyleSheet(infoEditStyle);
+  dialog->setStyleSheet(infoEditStyle_);
   dialog->setModal(true);
   dialog->setWindowTitle(tr("Select sticker to print"));
 
@@ -608,7 +608,7 @@ void ParticipantWidget::appendShortPseudonymsHtmlTable(QString& htmlFormattedSum
   const QString& header, const std::function<bool(const pep::ShortPseudonymDefinition&)>& includeSp) {
   QString rows;
 
-  auto sps = globalConfig.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visitNumber);
+  auto sps = globalConfig_.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visitNumber);
   auto includeVisitNumber = ContainsMultipleVisits(sps);
   for (const auto& p : sps) {
     if (includeSp(p)) {
@@ -617,7 +617,7 @@ void ParticipantWidget::appendShortPseudonymsHtmlTable(QString& htmlFormattedSum
 
       rows.append(QString("<tr>"));
       rows.append("<td>" + pseudonymHuman + "</td>");
-      rows.append(QString::fromStdString("<td>" + participantData.shortPseudonyms_[pseudonymName] + "</td>"));
+      rows.append(QString::fromStdString("<td>" + participantData_.shortPseudonyms_[pseudonymName] + "</td>"));
       rows.append(QString("</tr>\n"));
     }
   }
@@ -632,10 +632,10 @@ void ParticipantWidget::appendShortPseudonymsHtmlTable(QString& htmlFormattedSum
 
 bool ParticipantWidget::provideBartenderPath() {
   auto getConfiguredPathError = [this]() -> const char* {
-    if (bartenderPath == std::nullopt) {
+    if (bartenderPath_ == std::nullopt) {
       return "Bartender path not configured.";
     }
-    if (!std::filesystem::exists(*bartenderPath)) {
+    if (!std::filesystem::exists(*bartenderPath_)) {
       return "Bartender not found at configured location.";
     }
     return nullptr;
@@ -657,7 +657,7 @@ bool ParticipantWidget::provideBartenderPath() {
  */
 void ParticipantWidget::printSummary() {
 #ifdef _WIN32
-  if(!currentPEPRole.canPrintSummary()) {
+  if(!currentPepRole_.canPrintSummary()) {
     return;
   }
 
@@ -665,18 +665,18 @@ void ParticipantWidget::printSummary() {
 
   htmlFormattedSummary.append("<p><b>" + projectName_ + "</b></p>");
 
-  if (participantData.personalia_) {
-    htmlFormattedSummary.append(QString::fromStdString("<h1>" + participantData.personalia_->getFullName() + "</h1>"));
-    htmlFormattedSummary.append(QString::fromStdString("<h4>" + participantData.personalia_->getDateOfBirth() + "</h4>"));
+  if (participantData_.personalia_) {
+    htmlFormattedSummary.append(QString::fromStdString("<h1>" + participantData_.personalia_->getFullName() + "</h1>"));
+    htmlFormattedSummary.append(QString::fromStdString("<h4>" + participantData_.personalia_->getDateOfBirth() + "</h4>"));
   }
-  if (participantData.isTestParticipant_) {
+  if (participantData_.isTestParticipant_) {
     htmlFormattedSummary.append("<h4>" + tr("This is a test participant") + "</h4>");
   }
-  htmlFormattedSummary.append(QString("<h4>")+participantSID+"</h4>");
+  htmlFormattedSummary.append(QString("<h4>")+participantSID_+"</h4>");
 
   appendShortPseudonymsHtmlTable(htmlFormattedSummary, std::nullopt, tr("Participant pseudonyms"),
     [](const pep::ShortPseudonymDefinition& sp) {return true; });
-  auto visitNumber = static_cast<unsigned int>(currentVisitNumber);
+  auto visitNumber = static_cast<unsigned int>(currentVisitNumber_);
   appendShortPseudonymsHtmlTable(htmlFormattedSummary, visitNumber, tr("%1 pseudonyms").arg(this->getVisitCaption(visitNumber)),
     [nr = visitNumber](const pep::ShortPseudonymDefinition& sp) {return sp.getColumn().getVisitNumber() == nr; });
   appendShortPseudonymsHtmlTable(htmlFormattedSummary, visitNumber, tr("Pseudonyms for other visits"),
@@ -685,7 +685,7 @@ void ParticipantWidget::printSummary() {
   htmlFormattedSummary.append(QString("</html>\n"));
 
   QTextDocument summary;
-  summary.setDefaultStyleSheet(summaryPrintStyle);
+  summary.setDefaultStyleSheet(summaryPrintStyle_);
   summary.setHtml(htmlFormattedSummary);
 
   QPrinter printer(QPrinter::PrinterResolution);
@@ -706,9 +706,9 @@ void ParticipantWidget::locateBartender() {
   std::optional<std::filesystem::path> bestDir;
   std::optional<std::string> bestFile;
 
-  if (bartenderPath != std::nullopt) {
-    bestDir = bartenderPath->parent_path();
-    bestFile = bartenderPath->filename().string();
+  if (bartenderPath_ != std::nullopt) {
+    bestDir = bartenderPath_->parent_path();
+    bestFile = bartenderPath_->filename().string();
   }
 
 #ifdef _WIN32
@@ -802,7 +802,7 @@ void ParticipantWidget::locateBartender() {
 
   if (dialog.exec()) {
     assert(dialog.selectedFiles().size() == 1);
-    bartenderPath = StoreConfiguredBartenderPath(dialog.selectedFiles()[0].toStdString());
+    bartenderPath_ = StoreConfiguredBartenderPath(dialog.selectedFiles()[0].toStdString());
   }
 }
 
@@ -813,8 +813,8 @@ void ParticipantWidget::locateBartender() {
 void ParticipantWidget::closeParticipant() {
   //Should also clear out current patient data
   //std::cout << ">>>ParticipantWidget on_exitPatient_clicked called" << std::endl;
-  mainWindow->changeActiveTab(0);
-  mainWindow->openedParticipants_.remove(participantSID);
+  mainWindow_->changeActiveTab(0);
+  mainWindow_->openedParticipants_.remove(participantSID_);
   deleteLater();
   parent()->deleteLater();
 }
@@ -834,18 +834,18 @@ void ParticipantWidget::onTranslation() {
  * This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
  */
 void ParticipantWidget::processData() {
-  ui_->participant->setText(tr("participant '%1'").arg(participantSID));
+  ui_->participant->setText(tr("participant '%1'").arg(participantSID_));
 
-  if (!participantStudyContexts.contains(studyContext_)) {
+  if (!participantStudyContexts_.contains(studyContext_)) {
     ui_->label_unavailable->setText(tr("This participant is unavailable in the current (%1) context.").arg(QString::fromStdString(studyContext_.getId())));
     ui_->state->setCurrentWidget(ui_->acquire);
     return;
   }
 
-  if (currentPEPRole.canSeeParticipantPersonalia()) {
-    if (participantData.personalia_) {
-      ui_->info1->setText(QString::fromStdString(participantData.personalia_->getFullName()));
-      ui_->info2->setText(QString::fromStdString(participantData.personalia_->getDateOfBirth()));
+  if (currentPepRole_.canSeeParticipantPersonalia()) {
+    if (participantData_.personalia_) {
+      ui_->info1->setText(QString::fromStdString(participantData_.personalia_->getFullName()));
+      ui_->info2->setText(QString::fromStdString(participantData_.personalia_->getDateOfBirth()));
     }
     else {
       ui_->info1->setText(QString());
@@ -854,22 +854,22 @@ void ParticipantWidget::processData() {
     this->setReadOnly(false);
   }
 
-  ui_->infoIsTestParticipant->setVisible(participantData.isTestParticipant_);
+  ui_->infoIsTestParticipant->setVisible(participantData_.isTestParticipant_);
 
-  release_participant_button->setEnabled(currentPEPRole.canSetParticipantContext() && participantStudyContexts.getItems().size() > 1);
+  releaseParticipantButton_->setEnabled(currentPepRole_.canSetParticipantContext() && participantStudyContexts_.getItems().size() > 1);
 
   for (auto i = 0U; i < deviceWidgets_.size(); ++i) {
     auto widget = deviceWidgets_[i];
     auto columnName = widget->getColumnName();
 
-    const auto& history = participantData.participantDeviceHistory_[columnName.toStdString()];
+    const auto& history = participantData_.participantDeviceHistory_[columnName.toStdString()];
     auto current = history.getCurrent();
     widget->setDeviceId(current ? QString::fromStdString(current->serial) : QString());
 
     auto historyWidget = std::find_if(deviceHistoryWidgets_.begin(), deviceHistoryWidgets_.end(), [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
     (*historyWidget)->setHistory(history);
 
-    if (studyContext_.matches(globalConfig.getDevices()[i].studyContext)) {
+    if (studyContext_.matches(globalConfig_.getDevices()[i].studyContext)) {
       std::string historyInvalidReason;
       if (!history.isValid(&historyInvalidReason)) {
         emit statusMessage(tr("Device history for column %1 is invalid: %2. Please correct the device history.").arg(columnName, historyInvalidReason.c_str()), pep::Severity::Error);
@@ -878,8 +878,8 @@ void ParticipantWidget::processData() {
   }
 
   const std::unordered_map<unsigned, unsigned>* visitAssessors = nullptr;
-  auto assessorsForContext = participantData.visitAssessors_.find(studyContext_.getIdIfNonDefault());
-  if (assessorsForContext != participantData.visitAssessors_.cend()) {
+  auto assessorsForContext = participantData_.visitAssessors_.find(studyContext_.getIdIfNonDefault());
+  if (assessorsForContext != participantData_.visitAssessors_.cend()) {
     visitAssessors = &assessorsForContext->second;
   }
   //Fill in ui_ elements with the appropriate short pseudonyms
@@ -901,17 +901,17 @@ void ParticipantWidget::processData() {
     widget->setCurrentAssessor(assessorId);
   }
   initializeShortPseudonymsUi(std::nullopt,
-    *ui_->ops_header, *castor_buttons, *ui_->verticalSpacer_3,
+    *ui_->ops_header, *castorButtons_, *ui_->verticalSpacer_3,
     *ui_->pseudo_header, *ui_->pseudo_participant,
-    *print_stickers_button, *print_oneSticker_button);
+    *printStickersButton_, *printOneStickerButton_);
 
   ui_->state->setCurrentWidget(ui_->editor);
 }
 
 void ParticipantWidget::acquireParticipant() {
-  auto updated = participantStudyContexts;
+  auto updated = participantStudyContexts_;
   updated.add(studyContext_);
-  pepClient->storeData2(currentUserPP, "StudyContexts",
+  pepClient_->storeData2(currentUserPp_, "StudyContexts",
           std::make_shared<std::string>(updated.toString()), {pep::MetadataXEntry::MakeFileExtension(".csv")})
     .subscribe(
       [](pep::DataStorageResult2) { /* ignore */ },
@@ -958,19 +958,19 @@ void ParticipantWidget::initializeShortPseudonymsUi(const std::optional<uint32_t
   auto hasCastorButton = false;
   auto hasSticker = false;
 
-  for (auto p : globalConfig.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visitNumber)) {
+  for (auto p : globalConfig_.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visitNumber)) {
     if (p.getStickers() > 0) {
       hasSticker = true;
     }
 
-    auto sp = participantData.shortPseudonyms_[p.getColumn().getFullName()];
+    auto sp = participantData_.shortPseudonyms_[p.getColumn().getFullName()];
 
     if (p.getColumn().getVisitNumber() == visitNumber) {
       ownVisit.push_back({ p, sp });
       auto castor = p.getCastor();
       if (castor) {
         hasCastorButton = true;
-        auto url = baseUrl.arg(castor->getStudySlug().c_str(), sp.c_str());
+        auto url = baseUrl_.arg(castor->getStudySlug().c_str(), sp.c_str());
         auto slot = [url]() {QDesktopServices::openUrl(QUrl(url));};
         buttonBar.addButton(QString::fromStdString(p.getDescription()), slot, !sp.empty());
       }
@@ -1019,14 +1019,14 @@ void ParticipantWidget::initializeShortPseudonymsUi(const std::optional<uint32_t
   pseudonymsLabel.setVisible(!pseudonymTextMain.isEmpty());
   pseudonymsLabel.setText(pseudonymTextMain);
 
-  if (currentPEPRole.canPrintStickers()) {
+  if (currentPepRole_.canPrintStickers()) {
     printAllButton.setEnabled(hasSticker);
     printOneButton.setEnabled(hasSticker);
   }
 }
 
 void ParticipantWidget::openEditParticipant() {
-  if (!currentPEPRole.canEditParticipantPersonalia()) {
+  if (!currentPepRole_.canEditParticipantPersonalia()) {
     return;
   }
 
@@ -1087,21 +1087,21 @@ void ParticipantWidget::openEditParticipant() {
   QVBoxLayout* infoEditLayout = new QVBoxLayout(this);
 
   auto editor = new ParticipantEditor(participantInfoEdit);
-  if (participantData.personalia_) {
-    editor->setPersonalia(*participantData.personalia_);
+  if (participantData_.personalia_) {
+    editor->setPersonalia(*participantData_.personalia_);
   }
-  editor->setIsTestParticipant(participantData.isTestParticipant_);
+  editor->setIsTestParticipant(participantData_.isTestParticipant_);
 
   QObject::connect(editor, &ParticipantEditor::cancelled, participantInfoEdit, &QDialog::close);
   QObject::connect(editor, &ParticipantEditor::confirmed, this, [this, participantInfoEdit, editor]() {
-    auto pp = pep::MakeSharedCopy(currentUserPP);
+    auto pp = pep::MakeSharedCopy(currentUserPp_);
     std::vector<pep::StoreData2Entry> entries;
     auto personalia = editor->getPersonalia();
-    if (personalia != this->participantData.personalia_) {
+    if (personalia != this->participantData_.personalia_) {
       entries.push_back(pep::StoreData2Entry(pp, "ParticipantInfo", pep::MakeSharedCopy(personalia.toJson()), {pep::MetadataXEntry::MakeFileExtension(".json")}));
     }
     auto isTestParticipant = editor->getIsTestParticipant();
-    if (isTestParticipant != this->participantData.isTestParticipant_) {
+    if (isTestParticipant != this->participantData_.isTestParticipant_) {
       entries.push_back(pep::StoreData2Entry(pp, "IsTestParticipant", pep::MakeSharedCopy(pep::BoolToString(isTestParticipant)), { pep::MetadataXEntry::MakeFileExtension(".txt") }));
     }
 
@@ -1114,7 +1114,7 @@ void ParticipantWidget::openEditParticipant() {
     this->setReadOnly(true);
     participantInfoEdit->close();
 
-    this->pepClient->storeData2(entries)
+    this->pepClient_->storeData2(entries)
       .observe_on(observe_on_gui())
       .subscribe([](pep::DataStorageResult2 result) {
       // Do nothing
@@ -1135,7 +1135,7 @@ void ParticipantWidget::openEditParticipant() {
 }
 
 void ParticipantWidget::releaseParticipant() {
-  if ((!currentPEPRole.canSetParticipantContext()) || (participantStudyContexts.getItems().size() <= 1)) {
+  if ((!currentPepRole_.canSetParticipantContext()) || (participantStudyContexts_.getItems().size() <= 1)) {
     return;
   }
 
@@ -1145,11 +1145,11 @@ void ParticipantWidget::releaseParticipant() {
   confirm.setDefaultButton(QMessageBox::Cancel);
   confirm.setIcon(QMessageBox::Warning);
   if (confirm.exec() == QMessageBox::Ok) {
-    auto updated = participantStudyContexts;
+    auto updated = participantStudyContexts_;
     updated.remove(studyContext_);
 
     setReadOnly(true);
-    this->pepClient->storeData2(currentUserPP, "StudyContexts",
+    this->pepClient_->storeData2(currentUserPp_, "StudyContexts",
             std::make_shared<std::string>(updated.toString()), {pep::MetadataXEntry::MakeFileExtension(".csv")})
       .subscribe(
         [](pep::DataStorageResult2) { /* ignore */ },
@@ -1163,10 +1163,10 @@ void ParticipantWidget::releaseParticipant() {
 }
 
 void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index) {
-  if (readOnly || !currentPEPRole.canManageDevices()) {
+  if (readOnly_ || !currentPepRole_.canManageDevices()) {
     return;
   }
-  const auto& history = participantData.participantDeviceHistory_[columnName.toStdString()];
+  const auto& history = participantData_.participantDeviceHistory_[columnName.toStdString()];
 
   auto isLastRecord = (index + 1 == history.size());
 
@@ -1278,7 +1278,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
       cancelButton->setEnabled(true);
     };
 
-    pepClient->storeData2(currentUserPP, columnName.toStdString(),
+    pepClient_->storeData2(currentUserPp_, columnName.toStdString(),
             std::make_shared<std::string>(history.toJson()), {pep::MetadataXEntry::MakeFileExtension(".json")})
       .observe_on(observe_on_gui())
       .subscribe(
@@ -1301,7 +1301,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
 
 void ParticipantWidget::setCurrentVisitNumber(int visitNumber) {
   ////std::cout << "Visit number changed to " << visitNumber << std::endl;
-  currentVisitNumber = visitNumber +1; //Input in 0 indexed and labels are 1 indexed.
+  currentVisitNumber_ = visitNumber +1; //Input in 0 indexed and labels are 1 indexed.
 }
 
 /*! \brief Destructor
@@ -1397,8 +1397,8 @@ bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnN
   return std::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
 }
 
-ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
-  : globalConfig_(globalConfig), participantIdentifierIsSet_(false) {
+ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig_) noexcept
+  : globalConfig_(globalConfig_), participantIdentifierIsSet_(false) {
   auto inserter = std::back_inserter(unfilledShortPseudonyms_);
   std::transform(globalConfig_.getShortPseudonyms().begin(), globalConfig_.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
 }
@@ -1440,29 +1440,29 @@ ParticipantData ParticipantDataAggregator::getData() const {
     throw std::runtime_error("No participant data aggregated");
   }
 
-  ParticipantData participantData;
+  ParticipantData participantData_;
   if (participantInfo_) {
     auto personalia = pep::ParticipantPersonalia::FromJson(participantInfo_->data_);
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
       PEP_LOG(LogTag, pep::Severity::Warning) << "Received empty participant personalia";
     }
-    participantData.personalia_ = personalia;
+    participantData_.personalia_ = personalia;
   }
   if (isTestParticipant_) {
-    participantData.isTestParticipant_ = pep::StringToBool(isTestParticipant_->data_);
+    participantData_.isTestParticipant_ = pep::StringToBool(isTestParticipant_->data_);
   }
-  participantData.shortPseudonyms_ = shortPseudonyms_;
+  participantData_.shortPseudonyms_ = shortPseudonyms_;
   for (const auto& history: deviceHistory_) {
-    participantData.participantDeviceHistory_[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.data_, false);
+    participantData_.participantDeviceHistory_[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.data_, false);
   }
 
   for (const auto& context : visitAssessors_) {
     for (const auto& visit: context.second) {
       if (visit.second.has_value()) { // Only copy if nonempty assessor ID has been retrieved from storage
-        participantData.visitAssessors_[context.first][visit.first] = *visit.second;
+        participantData_.visitAssessors_[context.first][visit.first] = *visit.second;
       }
     }
   }
 
-  return participantData;
+  return participantData_;
 }

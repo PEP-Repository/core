@@ -8,12 +8,12 @@
 #include <QLabel>
 
 
-VisitWidget::VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, pep::UserRole& currentPEPRole, pep::StudyContext& studyContext, QWidget *parent) :
+VisitWidget::VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, pep::UserRole& currentPepRole_, pep::StudyContext& studyContext, QWidget *parent) :
   QWidget(parent),
   ui_(new Ui::VisitWidget),
-  assessors(assessors),
-  currentPEPRole(currentPEPRole),
-  studyContext(studyContext)
+  assessors_(assessors),
+  currentPepRole_(currentPepRole_),
+  studyContext_(studyContext)
 {
   ui_->setupUi(this);
   ui_->retranslateUi(this);
@@ -21,17 +21,17 @@ VisitWidget::VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, 
   QObject::connect(ui_->edit_assessor, &QPushButton::clicked, this, &VisitWidget::openEditAssessor);
 
   //initializes a data castor button bar
-  data_castor_buttons = new ButtonBar(this);
-  ui_->data_castorButtonBar_layout->addWidget(data_castor_buttons);
+  dataCastorButtons_ = new ButtonBar(this);
+  ui_->data_castorButtonBar_layout->addWidget(dataCastorButtons_);
 
   //initializes a print button bar and adds buttons
-  print_buttons = new ButtonBar(this);
-  ui_->print_buttonBar_layout->addWidget(print_buttons);
+  printButtons_ = new ButtonBar(this);
+  ui_->print_buttonBar_layout->addWidget(printButtons_);
 
-  print_buttons->addButton(tr("print-summary"), std::bind(&VisitWidget::printSummary, this), true);
-  print_stickers_button = print_buttons->addButton(tr("print-stickers"), std::bind(&VisitWidget::printAllStickers, this), true);
-  print_oneSticker_button = print_buttons->addButton(tr("print-one-sticker"), std::bind(&VisitWidget::printSingleSticker, this), true);
-  print_buttons->addButton(tr("locate-bartender"), std::bind(&VisitWidget::locateBartender, this), true);
+  printButtons_->addButton(tr("print-summary"), std::bind(&VisitWidget::printSummary, this), true);
+  printStickersButton_ = printButtons_->addButton(tr("print-stickers"), std::bind(&VisitWidget::printAllStickers, this), true);
+  printOneStickerButton_ = printButtons_->addButton(tr("print-one-sticker"), std::bind(&VisitWidget::printSingleSticker, this), true);
+  printButtons_->addButton(tr("locate-bartender"), std::bind(&VisitWidget::locateBartender, this), true);
 }
 
 VisitWidget::~VisitWidget()
@@ -40,7 +40,7 @@ VisitWidget::~VisitWidget()
 }
 
 void VisitWidget::disablePrinting() {
-  print_buttons->setEnabled(false); 
+  printButtons_->setEnabled(false); 
 }
 
 void VisitWidget::disableAssessorSelection() {
@@ -52,7 +52,7 @@ QLabel& VisitWidget::getPseudonymButtonCaption() {
 }
 
 ButtonBar& VisitWidget::getPseudonymButtonBar() {
-  return *data_castor_buttons;
+  return *dataCastorButtons_;
 }
 
 QSpacerItem& VisitWidget::getPseudonymButtonSpacer() {
@@ -80,25 +80,25 @@ QLabel& VisitWidget::getPseudonymLabelForOtherVisits() {
 }
 
 QPushButton& VisitWidget::getPrintAllButton() {
-  return *print_stickers_button;
+  return *printStickersButton_;
 }
 
 QPushButton& VisitWidget::getPrintOneButton() {
-  return *print_oneSticker_button;
+  return *printOneStickerButton_;
 }
 
 void VisitWidget::setCurrentAssessor(const std::optional<unsigned>& id) {
-  currentAssessorId = id;
+  currentAssessorId_ = id;
   if(id.has_value()) {
-    auto position = std::find_if(assessors.cbegin(), assessors.cend(),
+    auto position = std::find_if(assessors_.cbegin(), assessors_.cend(),
                                                [&id](const pep::AssessorDefinition &candidate) { return candidate.id == id; });
-    if (position == assessors.cend()) {
+    if (position == assessors_.cend()) {
       ui_->currentAssessorLabel->setText(tr("<assessor %1>").arg(QString::number(*id)));
     }
     else {
-      size_t index = static_cast<size_t>(position - assessors.cbegin());
+      size_t index = static_cast<size_t>(position - assessors_.cbegin());
       ui_->currentAssessorLabel->setText(
-        QString::fromStdString(assessors.at(index).name));
+        QString::fromStdString(assessors_.at(index).name));
     }
   }
   else
@@ -108,7 +108,7 @@ void VisitWidget::setCurrentAssessor(const std::optional<unsigned>& id) {
 }
 
 void VisitWidget::openEditAssessor() {
-  if (!currentPEPRole.canEditVisitAdministeringAssessor()) {
+  if (!currentPepRole_.canEditVisitAdministeringAssessor()) {
     return;
   }
 
@@ -118,8 +118,8 @@ void VisitWidget::openEditAssessor() {
   QVBoxLayout* layoutVisitAssessor = new QVBoxLayout(this);
   auto editor = new AssessorWidget();
 
-  editor->setAssessors(assessors, studyContext);
-  editor->setCurrentAssessor(currentAssessorId);
+  editor->setAssessors(assessors_, studyContext_);
+  editor->setCurrentAssessor(currentAssessorId_);
 
   QObject::connect(editor, &AssessorWidget::updateIssued, this, &VisitWidget::updateVisitAssessor);
 

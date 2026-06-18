@@ -31,8 +31,8 @@ class ParticipantEditor : public QWidget {
 
  private:
   Ui::ParticipantEditor* ui_;
-  QString participantFirstName;
-  QString participantTussenvoegsels;
-  QString participantLastName;
-  QString participantDOB;
+  QString participantFirstName_;
+  QString participantTussenvoegsels_;
+  QString participantLastName_;
+  QString participantDOB_;
 };
