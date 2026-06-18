@@ -116,7 +116,7 @@ MessageProperties::MessageProperties(MessageId messageId, Flags flags)
 }
 
 EncodedMessageProperties MessageProperties::encode() const noexcept {
-  return this->messageId().encode() | Encode(this->flags().bits());
+  return this->messageId().encode() | this->flags().encode();
 }
 
 MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties properties) {
@@ -138,8 +138,7 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
     throw std::runtime_error("Message properties specify an invalid stream ID");
   }
 
-  const auto flagBits = DecodeFlagBits(properties);
-  return MessageProperties(MessageId(MessageType(type), StreamId(streamId)), Flags(flagBits));
+  return MessageProperties(MessageId(MessageType(type), StreamId(streamId)), Flags::DecodeFrom(properties));
 }
 
 MessageProperties MessageProperties::MakeForControlMessage() noexcept {

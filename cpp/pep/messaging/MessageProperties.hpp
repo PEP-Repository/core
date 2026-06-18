@@ -65,6 +65,12 @@ public:
   [[nodiscard]] constexpr Bits bits() const noexcept { return bits_; }
   [[nodiscard]] constexpr bool has(Bits) const noexcept;
 
+  [[nodiscard]] constexpr EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
+
+  [[nodiscard]] static constexpr Flags DecodeFrom(EncodedMessageProperties properties) noexcept {
+    return Flags(Bits(static_cast<EncodedMessageProperties>(properties & detail::encoding_layout::FLAG_BITS)));
+  }
+
   std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
 private:
@@ -79,20 +85,6 @@ private:
 PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags::Bits)
 
 namespace pep::messaging {
-
-[[nodiscard]] constexpr EncodedMessageProperties Encode(Flags::Bits flags) noexcept {
-  return ToUnderlying(flags);
-}
-
-static_assert(Encode(Flags::Bits::All) == detail::encoding_layout::FlagBits);
-static_assert(Encode(Flags::Bits::None) == 0U);
-
-[[nodiscard]] constexpr Flags::Bits DecodeFlagBits(EncodedMessageProperties type) noexcept {
-  return static_cast<Flags::Bits>(type & detail::encoding_layout::FlagBits);
-}
-
-static_assert(DecodeFlagBits(detail::encoding_layout::FlagBits) == Flags::Bits::All);
-static_assert(DecodeFlagBits(~detail::encoding_layout::FlagBits) == Flags::Bits::None);
 
 std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
 
