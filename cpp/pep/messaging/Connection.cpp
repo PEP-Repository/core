@@ -443,7 +443,7 @@ void Connection::dispatchRequest(
 
 void Connection::scheduleResponses(const StreamId& streamId, MessageBatches responses) {
   scheduler_->push(streamId, responses
-    .observe_on(observe_on_asio(ioContext_))
+    .observe_on(ObserveOnAsio(ioContext_))
     .op(RxBeforeTermination([self = SharedFrom(*this), streamId](std::optional<std::exception_ptr>) {
       self->incomingRequestTails_.erase(streamId);
       })));
@@ -569,7 +569,7 @@ void Connection::performVersionCheck() {
 
   this->sendRequest(MakeSharedCopy(Serialization::ToString(VersionRequest())), std::nullopt, true)
     .map([](std::string_view response) {return Serialization::FromString<VersionResponse>(response); })
-    .observe_on(observe_on_asio(ioContext_))
+    .observe_on(ObserveOnAsio(ioContext_))
     .subscribe(
       [self](VersionResponse response) {
         self->handleVersionResponse(response);

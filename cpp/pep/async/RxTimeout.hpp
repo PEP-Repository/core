@@ -158,7 +158,7 @@ public:
         );
         // Attach our forwarding subscriber to the source ("items") observable
         items
-          .subscribe_on(pep::observe_on_asio(io_context)) // Schedule the source observable on our I/O context (preventing it from e.g. blocking this thread)...
+          .subscribe_on(pep::ObserveOnAsio(io_context)) // Schedule the source observable on our I/O context (preventing it from e.g. blocking this thread)...
           .observe_on(observe_on) // ...but ensure that notifications are serviced using the caller-supplied coordination
           .subscribe(*itemsSubscriber_);
 

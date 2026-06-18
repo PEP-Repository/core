@@ -204,7 +204,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " processing " << batch->requestEntries.size() << "-entry batch";
     std::iota(is.begin(), is.end(), 0);
     return server->workerPool_->batched_map<8>(std::move(is),
-      observe_on_asio(*server->getIoContext()),
+      ObserveOnAsio(*server->getIoContext()),
       [server, ctx, batch](size_t i) {
       const auto& entry = batch->requestEntries[i];
       auto& ret = batch->results.responseEntries[i];
@@ -387,7 +387,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
   const auto recipient = RekeyRecipientForCertificate(pRequest->clientCertificateChain_.leaf());
 
   return workerPool_->batched_map<8>(std::move(pRequest->keys_),
-          observe_on_asio(*getIoContext()),
+          ObserveOnAsio(*getIoContext()),
       [server = SharedFrom(*this), recipient](EncryptedKey entry) {
 
     EncryptedKey retEntry = server->dataTranslator().translateStep(entry, recipient);

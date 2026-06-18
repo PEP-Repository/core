@@ -399,7 +399,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   // Rerandomize encrypted polymorphic keys and add the encrypted
   // SF identifiers.
   return workerPool_->batched_map<8>(std::move(responseEntries),
-    observe_on_asio(*getIoContext()),
+    ObserveOnAsio(*getIoContext()),
     [ctx, this](ResponseEntry re) {
       re.entry.polymorphicKey_ = this->getEgCache().rerandomize(
         re.entry.polymorphicKey_

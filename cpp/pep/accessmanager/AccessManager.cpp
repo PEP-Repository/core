@@ -385,7 +385,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
   auto server = SharedFrom(*this);
   auto localPseudonyms = std::make_shared<std::vector<LocalPseudonym>>();
   return server->workerPool_->batched_map<8>(ticket.accessSubjects_,
-        observe_on_asio(*server->getIoContext()),
+        ObserveOnAsio(*server->getIoContext()),
         [server, localPseudonyms](LocalPseudonyms elp) -> LocalPseudonym {
           return elp.accessManager_.decrypt(server->pseudonymKey_);
         })
@@ -393,7 +393,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
         ](std::vector<LocalPseudonym> localPseudonymsOnStack) {
           *localPseudonyms = std::move(localPseudonymsOnStack);
           return server->workerPool_->batched_map<8>(request->entries_,
-                observe_on_asio(*server->getIoContext()),
+                ObserveOnAsio(*server->getIoContext()),
                 [server, localPseudonyms](KeyRequestEntry entry) {
                   EncryptedKey key;
 
@@ -469,7 +469,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       std::vector<size_t> is(request->entries_.size());
                       std::iota(is.begin(), is.end(), 0);
                       return server->workerPool_->batched_map<8>(is,
-                            observe_on_asio(*server->getIoContext()),
+                            ObserveOnAsio(*server->getIoContext()),
                             [server, request, lpResponse, transResp, rkIndices, localPseudonyms, recipient
                             ](size_t i) {
                               auto& entry = request->entries_[i];
@@ -618,7 +618,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto indexes = RangeToVector(views::iota(std::size_t{}, ctx->pps.size()));
   messaging::MessageBatches result =
     ctx->server->workerPool_->batched_map<8>(std::move(indexes),
-        observe_on_asio(*ctx->server->getIoContext()),
+        ObserveOnAsio(*ctx->server->getIoContext()),
       [ctx](size_t i) {
     const Backend::Pp& pp = ctx->pps[i];
     TranscryptorRequestEntry& entry = ctx->tsReqEntries.entries_[i];

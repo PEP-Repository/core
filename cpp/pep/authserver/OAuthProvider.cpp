@@ -226,7 +226,7 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
 
   activeGrantsCleanupSubscription = rxcpp::rxs::interval(std::chrono::minutes(1))
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
-              .observe_on(observe_on_asio(*io_context)) //We want to run the cleaning up code on the io thread, so we don't have to worry about multithreading issues
+              .observe_on(ObserveOnAsio(*io_context)) //We want to run the cleaning up code on the io thread, so we don't have to worry about multithreading issues
               .subscribe([this](auto) {
     PEP_LOG(LogTag, Severity::Debug) << "Cleaning up expired grants";
 

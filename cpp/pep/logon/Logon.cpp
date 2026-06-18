@@ -72,7 +72,7 @@ private:
     assert(ioContext_ != nullptr);
     auto client = pep::Client::OpenClient(config_, ioContext_);
     return this->writeShortLived(token, client)
-      .op(pep::RxFinallyExhaust(pep::observe_on_asio(*ioContext_), [client]() {
+      .op(pep::RxFinallyExhaust(pep::ObserveOnAsio(*ioContext_), [client]() {
       return client->shutdown()
         .tap(
           [](pep::FakeVoid) { /* ignore*/ },

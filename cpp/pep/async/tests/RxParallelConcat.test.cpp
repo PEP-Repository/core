@@ -55,7 +55,7 @@ TEST(RxParallelConcat, test_test_interval)
 
   values = rxcpp::observable<>::interval(period);
   done = false;
-  values.take(4).count().subscribe_on(observe_on_asio(io_context))
+  values.take(4).count().subscribe_on(ObserveOnAsio(io_context))
     .subscribe(
       [](int count){ // on_next
         EXPECT_EQ(count, 4);

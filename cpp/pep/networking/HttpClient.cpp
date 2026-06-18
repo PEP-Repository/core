@@ -186,7 +186,7 @@ rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
     subscriber.add([self, sendable]() { self->unpend(sendable); });
 
     self->ensureSend();
-    }).subscribe_on(observe_on_asio(parameters_.ioContext()));
+    }).subscribe_on(ObserveOnAsio(parameters_.ioContext()));
 }
 
 void HttpClient::stop() {

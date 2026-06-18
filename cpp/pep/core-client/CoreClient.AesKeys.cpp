@@ -106,7 +106,7 @@ CoreClient::unblindAndDecryptKeys(
   }).flat_map([this](std::vector<EncryptedKey> encKeys){
     // Step two: we decrypt the retrieved keys.
     return getWorkerPool()->batched_map<8>(std::move(encKeys),
-           observe_on_asio(*ioContext_),
+           ObserveOnAsio(*ioContext_),
         [this](EncryptedKey encKey) {
       auto point = encKey.decrypt(privateKeyData_);
       return AESKey(point);

@@ -112,7 +112,7 @@ void Scheduler::activateGenerator(const MessageId& messageId, MessageBatches bat
   auto self = SharedFrom(*this);
 
   generators_[messageId].subscription = batches
-    .observe_on(observe_on_asio(ioContext_))
+    .observe_on(ObserveOnAsio(ioContext_))
     .subscribe(
       // On_next
       [messageId, self](MessageSequence batch) {
@@ -149,7 +149,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
   auto& batch = batches[0];
   batch.active = true; // mark active
   batch.messages
-    .observe_on(observe_on_asio(ioContext_))
+    .observe_on(ObserveOnAsio(ioContext_))
     .subscribe(
       // on_next
       [messageId, self](std::shared_ptr<std::string> message) {

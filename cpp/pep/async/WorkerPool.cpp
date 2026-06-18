@@ -43,7 +43,7 @@ WorkerPool::~WorkerPool() {
 }
 
 rxcpp::observe_on_one_worker WorkerPool::worker() {
-  return observe_on_asio(*ioContext_);
+  return ObserveOnAsio(*ioContext_);
 }
 
 std::shared_ptr<WorkerPool> WorkerPool::getShared() {

@@ -86,7 +86,7 @@ rxcpp::observable<AuthorizationResult> OAuthClient::run() {
         return std::string(self->getAuthorizationUri(state).buffer());
       })
       .op(RxGetOne("AuthorizationResult"))
-      .subscribe_on(observe_on_asio(*ioContext_))
+      .subscribe_on(ObserveOnAsio(*ioContext_))
       .flat_map([self = shared_from_this()](const AuthorizationResult &result) -> rxcpp::observable<AuthorizationResult> {
         if (!result) {
           return rxcpp::observable<>::just(result);

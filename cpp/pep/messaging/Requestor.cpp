@@ -71,7 +71,7 @@ rxcpp::observable<std::string> Requestor::send(std::shared_ptr<std::string> requ
       self->schedule(*emplacement.first);
     }
     })
-    .subscribe_on(observe_on_asio(ioContext_));
+    .subscribe_on(ObserveOnAsio(ioContext_));
 }
 
 void Requestor::processResponse(const std::string& recipient, const StreamId& streamId, const Flags& flags, std::string body) {
@@ -131,7 +131,7 @@ void Requestor::purge(bool all) {
       // notify caller of the failure, but not directly!, since this might
       // affect the this->requests map while we're looping over it
       //
-      // it might be more consistent to put an "observe_on(observe_on_asio(..))"
+      // it might be more consistent to put an "observe_on(ObserveOnAsio(..))"
       // on the observable returned by sendRequest, but I do not oversee the
       // all the consequences that might have
       post(ioContext_,

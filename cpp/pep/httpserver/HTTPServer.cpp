@@ -38,7 +38,7 @@ struct HttpRequestHandlerParamsBasic : HttpRequestHandlerParams {
     : HttpRequestHandlerParams(method, uri, exactMatchOnly, io_context), func(func) {}
 
   rxcpp::observable<HTTPResponse> runHandler(const HTTPRequest& request, std::string remoteIp) override {
-    return run_on_asio(*io_context, std::bind(func, request, std::move(remoteIp)));
+    return RunOnAsio(*io_context, std::bind(func, request, std::move(remoteIp)));
   }
 };
 

@@ -67,7 +67,7 @@ auto RxFinallyExhaust(rxcpp::observe_on_one_worker subscribeOn, TCreateFinisher&
  */
 template <typename TCreateFinisher>
 auto RxFinallyExhaust(boost::asio::io_context& io_context, TCreateFinisher&& create) {
-  return RxFinallyExhaust(observe_on_asio(io_context), std::forward<TCreateFinisher>(create));
+  return RxFinallyExhaust(ObserveOnAsio(io_context), std::forward<TCreateFinisher>(create));
 }
 
 }
