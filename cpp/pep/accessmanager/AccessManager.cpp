@@ -150,19 +150,19 @@ auto MakeStreamWithDeferredCleanup(const std::filesystem::path& path) {
 
 AccessManager::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
-  enckey_request_duration(prometheus::BuildSummary()
+  enckeyRequestDuration(prometheus::BuildSummary()
     .Name("pep_accessmanager_enckey_request_duration_seconds")
     .Help("Duration of a successful encryptionkey request")
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-  ticket_request2_duration(prometheus::BuildSummary()
+  ticketRequest2Duration(prometheus::BuildSummary()
     .Name("pep_accessmanager_ticket_request2_duration_seconds")
     .Help("Duration of a successful ticket2 request")
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-  ticket_request_duration(prometheus::BuildSummary()
+  ticketRequestDuration(prometheus::BuildSummary()
     .Name("pep_accessmanager_ticket_request_duration_seconds")
     .Help("Duration of a successful ticket request")
     .Register(*registry)
@@ -426,7 +426,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                   lpResponse->keys_ = std::move(keys);
 
                   if (dwNumUnblind == 0) {
-                    server->lpMetrics_->enckey_request_duration.Observe(
+                    server->lpMetrics_->enckeyRequestDuration.Observe(
                       std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count());
                     return messaging::BatchSingleMessage(*lpResponse);
                   }
@@ -505,7 +505,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                               return i; // we have to return something
                             })
                           .map([server, lpResponse, start_time](std::vector<size_t>) {
-                            server->lpMetrics_->enckey_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count());
+                            server->lpMetrics_->enckeyRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count());
                             return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(*lpResponse))).as_dynamic();
                           });
                     });
@@ -701,7 +701,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     }
     auto result = rxcpp::observable<>::from(MakeSharedCopy(std::move(response))).as_dynamic();
 
-    ctx->server->lpMetrics_->ticket_request2_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count());
+    ctx->server->lpMetrics_->ticketRequest2Duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count());
     PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
     return result;
   });

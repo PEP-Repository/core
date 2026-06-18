@@ -68,9 +68,9 @@ private:
   public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
 
-    prometheus::Summary& enckey_request_duration;
-    prometheus::Summary& ticket_request2_duration;
-    prometheus::Summary& ticket_request_duration;
+    prometheus::Summary& enckeyRequestDuration;
+    prometheus::Summary& ticketRequest2Duration;
+    prometheus::Summary& ticketRequestDuration;
   };
 
 public:
