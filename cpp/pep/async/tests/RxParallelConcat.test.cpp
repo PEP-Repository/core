@@ -76,37 +76,37 @@ TEST(RxParallelConcat, CachingSubscriber_I)
 {
   detail::CachingSubscriber<int> cache;
 
-  ASSERT_FALSE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_FALSE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   cache.on_next(1);
-  ASSERT_TRUE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_TRUE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   cache.on_next(2);
-  ASSERT_TRUE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_TRUE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   ASSERT_EQ(cache.pop(), 1);
-  ASSERT_TRUE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_TRUE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   ASSERT_EQ(cache.pop(), 2);
-  ASSERT_FALSE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_FALSE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   cache.on_next(3);
   cache.on_completed();
-  ASSERT_TRUE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_TRUE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   cache.pop();
-  ASSERT_FALSE(cache.item_ready());
-  ASSERT_TRUE(cache.end_ready());
+  ASSERT_FALSE(cache.itemReady());
+  ASSERT_TRUE(cache.endReady());
 
   bool completed = false;
 
-  cache.take_one(
+  cache.takeOne(
     [](int i){ // on_next
       ASSERT_TRUE(false);
     },
@@ -125,22 +125,22 @@ TEST(RxParallelConcat, CachingSubscriber_II)
 {
   detail::CachingSubscriber<int> cache;
 
-  ASSERT_FALSE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_FALSE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   cache.on_next(1);
 
-  ASSERT_TRUE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_TRUE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   cache.on_error(std::make_exception_ptr(std::runtime_error("foobar")));
 
-  ASSERT_TRUE(cache.item_ready());
-  ASSERT_FALSE(cache.end_ready());
+  ASSERT_TRUE(cache.itemReady());
+  ASSERT_FALSE(cache.endReady());
 
   bool had_one = false;
 
-  cache.take_one(
+  cache.takeOne(
     [&had_one](int i){ // on_next
       ASSERT_FALSE(had_one);
       had_one = true;
@@ -155,11 +155,11 @@ TEST(RxParallelConcat, CachingSubscriber_II)
   );
   ASSERT_TRUE(had_one);
 
-  ASSERT_FALSE(cache.item_ready());
-  ASSERT_TRUE(cache.end_ready());
+  ASSERT_FALSE(cache.itemReady());
+  ASSERT_TRUE(cache.endReady());
 
   bool had_on_error = false;
-  cache.take_one(
+  cache.takeOne(
     [](int i){ // on_next
       ASSERT_FALSE(true);
     },
@@ -193,8 +193,8 @@ TEST(RxParallelConcat, CachingObservable)
 
   sub->on_next(1);
 
-  ASSERT_TRUE(co.item_cache.item_ready());
-  ASSERT_EQ(co.item_cache.pop(), 1);
+  ASSERT_TRUE(co.itemCache.itemReady());
+  ASSERT_EQ(co.itemCache.pop(), 1);
 
   bool had_one = false;
   bool had_completed = false;
@@ -217,21 +217,21 @@ TEST(RxParallelConcat, CachingObservable)
 
   ASSERT_TRUE(sption.is_subscribed());
 
-  ASSERT_FALSE(co.subscription.has_value());
+  ASSERT_FALSE(co.hasSubscription());
 
   ASSERT_FALSE(had_one || had_completed);
 
   sub->on_next(2);
 
   ASSERT_TRUE(had_one && !had_completed);
-  ASSERT_FALSE(co.item_cache.item_ready());
-  ASSERT_FALSE(co.item_cache.end_ready());
+  ASSERT_FALSE(co.itemCache.itemReady());
+  ASSERT_FALSE(co.itemCache.endReady());
 
   sub->on_completed();
 
   ASSERT_TRUE(had_one && had_completed);
-  ASSERT_FALSE(co.item_cache.item_ready());
-  ASSERT_FALSE(co.item_cache.end_ready());
+  ASSERT_FALSE(co.itemCache.itemReady());
+  ASSERT_FALSE(co.itemCache.endReady());
   ASSERT_FALSE(sption.is_subscribed());
 }
 
