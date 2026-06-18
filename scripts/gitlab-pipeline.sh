@@ -7,18 +7,15 @@ set -eu
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 
+# shellcheck source=scripts/sh-utils.sh
+. "$SCRIPTPATH/sh-utils.sh"
+
 git_dir="${1:?Expected git dir}"; shift
 api_key="${1:?Expected API key}"; shift
 command="${1:?Expected command}"; shift
 
 gitlab_api() {
   "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" "$@"
-}
-
-contains() {
-  string="$1"
-  substring="$2"
-  [ "${string#*"$substring"}" != "$string" ] && true
 }
 
 get_pipeline_id() {
@@ -65,21 +62,21 @@ trigger_and_wait() {
   echo "Running pipeline $pipeline_id in project $project_path for branch $branchname:" \
     "https://$gitlab_host/$project_path/-/pipelines/$pipeline_id"
 
-  running_statuses="\"pending\" \"running\" \"created\" \"preparing\" \"waiting_for_resource\""
-  success_statuses="\"success\" \"skipped\" \"manual\""
-  failure_statuses="\"failed\" \"canceled\" \"canceling\""
+  running_statuses=$(printf '%s\n' pending running created preparing waiting_for_resource)
+  success_statuses=$(printf '%s\n' success skipped manual)
+  failure_statuses=$(printf '%s\n' failed canceled canceling)
 
   pipeline_result=
   while [ -z "$pipeline_result" ]; do
-    status=$(gitlab_api get "pipelines/${pipeline_id}" | jq ".status")
+    status=$(gitlab_api get "pipelines/${pipeline_id}" | jq -r ".status")
 
-    if contains "$success_statuses" "$status"; then
+    if list_contains "$success_statuses" "$status"; then
       echo "Pipeline succeeded with status: '$status'"
       pipeline_result=0
-    elif contains "$failure_statuses" "$status"; then
+    elif list_contains "$failure_statuses" "$status"; then
       >&2 echo "Pipeline failed with status: '$status'"
       pipeline_result=1
-    elif ! contains "$running_statuses" "$status"; then
+    elif ! list_contains "$running_statuses" "$status"; then
       >&2 echo "Received unsupported status \"$status\" from GitLab API"
       pipeline_result=1
     fi

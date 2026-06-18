@@ -10,6 +10,9 @@ set -eu
 SCRIPTSELF=$(command -v "$0")
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 
+# shellcheck source=scripts/sh-utils.sh
+. "$SCRIPTPATH/sh-utils.sh"
+
 no_project=false
 while [ "$#" != 0 ]; do
   case "$1" in
@@ -62,13 +65,6 @@ if ! $no_project; then
   project_path=$("$SCRIPTPATH"/gitdir.sh origin-path "$git_root")
   project_id=$("$SCRIPTPATH"/url.sh encode "${project_path}")
 fi
-
-contains() {
-  string="$1"
-  substring="$2"
-  # `&& true` prevents quitting for nonzero exit code
-  [ "${string#*"$substring"}" != "$string" ] && true
-}
 
 request() {
   method=$(echo "$1" | tr "[:lower:]" "[:upper:]")

@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 # shellcheck disable=SC2154  # git_dir, environment, foss_dir, api_key are set by the sourcing script
-# shellcheck disable=SC2034  # foss_image_names, foss_sha etc. are consumed by sourcing scripts
+# shellcheck disable=SC2034  # foss_sha etc. are consumed by sourcing scripts
 
-# Common helpers for PEP config-image scripts (provide-binaries.sh,
-# build-config-images.sh, publish.sh).
+# Common helpers for project scripts, such as:
+# provide-binaries.sh, config-dockerfiles.sh, publish.sh.
 #
 # Source this after parsing arguments. Before sourcing, the sourcing script must
 # define: SCRIPTPATH, git_dir, environment, foss_dir. For docker_login it must
@@ -11,8 +11,8 @@
 #
 #   . "$SCRIPTPATH/project-common.sh"
 
-# The FOSS base images that config images can be built on top of.
-foss_image_names="docker-compose authserver_apache pep-monitoring pep-services client pep-scheduler pep-connector"
+# shellcheck source=scripts/sh-utils.sh
+. "$SCRIPTPATH/../scripts/sh-utils.sh"
 
 git_root=$(cd "$git_dir" && pwd)
 git_config_dir="$git_root/config"
@@ -45,12 +45,19 @@ config_dockerfiles_to_build() {
   done
 }
 
-has_foss_base_image() {
-  name="$1"
-  for candidate in $foss_image_names; do
-    if [ "$name" = "$candidate" ]; then return 0; fi
+# The names of the FOSS base images that config images can be built on top of.
+# A config Dockerfile builds on top of a FOSS base image iff it declares a BASE_IMAGE
+# arg; its basename matches the FOSS image name.
+foss_image_names() {
+  all_config_dockerfiles | while read -r file; do
+    if grep -q 'ARG BASE_IMAGE' "$file"; then
+      basename "$file" .Dockerfile
+    fi
   done
-  return 1
+}
+
+has_foss_base_image() {
+  list_contains "$(foss_image_names)" "$1"
 }
 
 docker_login() {

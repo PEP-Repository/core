@@ -114,7 +114,7 @@ fi
 # Determine which FOSS base images to provide
 provide_images=$(config_images_with_foss_base)
 if [ -z "$provide_images" ]; then
-  provide_images=$foss_image_names
+  provide_images=$(foss_image_names)
 fi
 
 for name in $provide_images; do
