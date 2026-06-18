@@ -262,11 +262,11 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     }));
   }))
   .concat(rxcpp::rxs::iterate(request.updateExpiration_).concat_map([this](const UpdateExpiration& x)-> rxcpp::observable<FakeVoid> {
-    int64_t internalUserId = mStorage->getInternalUserId(x.mUid);
-    return updateTokenBlocking(internalUserId, x.mGroup, x.mExpiration, "User added to group with expiration", x.mExpiration)
+    int64_t internalUserId = mStorage->getInternalUserId(x.uid_);
+    return updateTokenBlocking(internalUserId, x.group_, x.expiration_, "User added to group with expiration", x.expiration_)
     .op(RxSubsequently([storage=mStorage, internalUserId, x] {
-      storage->setExpiration(internalUserId, x.mGroup, x.mExpiration);
-      PEP_LOG(LogTag, Severity::Info) << "Updated expiration for user in group " << Logging::Escape(x.mGroup);
+      storage->setExpiration(internalUserId, x.group_, x.expiration_);
+      PEP_LOG(LogTag, Severity::Info) << "Updated expiration for user in group " << Logging::Escape(x.group_);
     }));
   })).op(RxInstead(UserMutationResponse()));
 }

@@ -110,10 +110,10 @@ UpdateExpiration Serializer<UpdateExpiration>::fromProtocolBuffer(proto::UpdateE
 }
 
 void Serializer<UpdateExpiration>::moveIntoProtocolBuffer(proto::UpdateExpiration& dest, UpdateExpiration value) const {
-  *dest.mutable_uid() = std::move(value.mUid);
-  *dest.mutable_group() = std::move(value.mGroup);
-  if (value.mExpiration) {
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_expiration(), *value.mExpiration);
+  *dest.mutable_uid() = std::move(value.uid_);
+  *dest.mutable_group() = std::move(value.group_);
+  if (value.expiration_) {
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_expiration(), *value.expiration_);
   }
 }
 

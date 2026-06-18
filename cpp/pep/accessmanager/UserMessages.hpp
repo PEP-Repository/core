@@ -82,10 +82,10 @@ class UpdateExpiration {
 public:
   UpdateExpiration() = default;
   UpdateExpiration(std::string uid, std::string group, std::optional<Timestamp> expiration)
-    : mUid(std::move(uid)), mGroup(std::move(group)), mExpiration(expiration) { }
-  std::string mUid;
-  std::string mGroup;
-  std::optional<Timestamp> mExpiration;
+    : uid_(std::move(uid)), group_(std::move(group)), expiration_(expiration) { }
+  std::string uid_;
+  std::string group_;
+  std::optional<Timestamp> expiration_;
 };
 
 class UserMutationRequest {
