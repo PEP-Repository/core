@@ -99,7 +99,7 @@ private:
                 }
 
                 // Create and/or update entries for columns associated with the group
-                for (auto i : entry.second.columns.mIndices) {
+                for (auto i : entry.second.columns.indices_) {
                   auto& column = columns[access.columns[i]];
                   column.readable |= modes.readable;
                   column.writable |= modes.writable;
@@ -249,7 +249,7 @@ private:
       return this->executeEventLoopFor(true, [this](std::shared_ptr<pep::CoreClient> client) {
           auto request = std::make_shared<pep::DataSizeRequest>();
           auto addColumns = [request](const std::vector<std::string>& columns) {
-            std::copy(columns.begin(), columns.end(), std::inserter(request->mColumns, request->mColumns.begin()));
+            std::copy(columns.begin(), columns.end(), std::inserter(request->columns_, request->columns_.begin()));
             };
           addColumns(ColumnQuery::GetColumns(this->getParameterValues()));
 
@@ -264,7 +264,7 @@ private:
                   for (const auto& name : columnGroups) {
                     auto existing = std::find_if(response.columnGroups_.begin(), response.columnGroups_.end(), [&name](const pep::AmaQRColumnGroup& group) { return group.name_ == name; });
                     if (existing != response.columnGroups_.end()) {
-                      addColumns(existing->mColumns);
+                      addColumns(existing->columns_);
                     }
                     else {
                       std::cerr << "Not including columns from group '" << name << "' because the column group does not exist." << std::endl;
@@ -274,7 +274,7 @@ private:
               .op(RxInstead(request))
               .tap([](std::shared_ptr<pep::DataSizeRequest> request) {
                   // Don't confuse user by reporting unfiltered byte counts in case all specified column groups didn't exist
-                  if (request->mColumns.empty()) {
+                  if (request->columns_.empty()) {
                     throw std::runtime_error("No columns found for specified column group(s)");
                   }
                 });
@@ -285,10 +285,10 @@ private:
             .map([](pep::DataSizeResponse response) {
                 // Determine prefix and base for output: e.g. "Mi" for base-2 megabyte or "G" for base-10 gigabyte
                 std::optional<std::string> units;
-                if (auto base2 = pep::IntegralLog(response.mBlockSize, static_cast<uint64_t>(2U))) {
+                if (auto base2 = pep::IntegralLog(response.blockSize_, static_cast<uint64_t>(2U))) {
                   units = pep::BinaryPrefix(*base2);
                 }
-                else if (auto base10 = pep::IntegralLog(response.mBlockSize, static_cast<uint64_t>(10U))) {
+                else if (auto base10 = pep::IntegralLog(response.blockSize_, static_cast<uint64_t>(10U))) {
                   units = pep::SiPrefix(*base10);
                 }
 
@@ -299,16 +299,16 @@ private:
                 }
                 else {
                   units = "bytes";
-                  chunk = "multiple of " + std::to_string(response.mBlockSize) + " bytes";
+                  chunk = "multiple of " + std::to_string(response.blockSize_) + " bytes";
                   // (Ab)use response fields to store byte counts. While this makes the "response" object's state inconsistent,
                   // it allows us to check for the original block size when outputting rounding information (below).
-                  response.mTotalBlocks *= response.mBlockSize;
-                  response.mRollingBlocks *= response.mBlockSize;
+                  response.totalBlocks_ *= response.blockSize_;
+                  response.rollingBlocks_ *= response.blockSize_;
                 }
 
                 // Left pad numbers (with spaces) so that we can...
-                auto entire = std::to_string(response.mTotalBlocks);
-                auto latest = std::to_string(response.mRollingBlocks);
+                auto entire = std::to_string(response.totalBlocks_);
+                auto latest = std::to_string(response.rollingBlocks_);
                 auto width = std::max(entire.size(), latest.size());
                 entire = std::string(width - entire.size(), ' ') + entire;
                 latest = std::string(width - latest.size(), ' ') + latest;
@@ -317,7 +317,7 @@ private:
                 std::cout
                   << "Entire history contains " << entire << ' ' << *units << '\n'
                   << "Latest version contains " << latest << ' ' << *units;
-                if (response.mBlockSize != 1U) {
+                if (response.blockSize_ != 1U) {
                   std::cout << '\n'
                     << "(rounded up to the nearest " << chunk << ')';
                 }

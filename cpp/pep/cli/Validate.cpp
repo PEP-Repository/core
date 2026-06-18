@@ -33,21 +33,21 @@ private:
     if (!result.dataSet_) {
       throw std::runtime_error("Data could not be retrieved inline"); // TODO: support this
     }
-    if (result.mAccessGroupPseudonym == nullptr) {
+    if (result.accessGroupPseudonym_ == nullptr) {
       throw std::runtime_error("Access group pseudonym required");
     }
 
-    auto& entry = (*data)[result.mLocalPseudonymsIndex];
+    auto& entry = (*data)[result.localPseudonymsIndex_];
     if (entry.accessGroupPseudonym == nullptr) { // A new ParticipantData instance (with .accessGroupPseudonym = nullptr) was just inserted
-      entry.accessGroupPseudonym = result.mAccessGroupPseudonym;
+      entry.accessGroupPseudonym = result.accessGroupPseudonym_;
     }
-    assert(*entry.accessGroupPseudonym == *result.mAccessGroupPseudonym);
+    assert(*entry.accessGroupPseudonym == *result.accessGroupPseudonym_);
 
-    if (result.mColumn == "ParticipantIdentifier") {
+    if (result.column_ == "ParticipantIdentifier") {
       entry.id = result.data_;
     }
     else {
-      entry.deviceHistory[result.mColumn] = result.data_;
+      entry.deviceHistory[result.column_] = result.data_;
     }
 
     return data;

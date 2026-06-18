@@ -78,12 +78,12 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
 
     destination << '\n'
       << "\t{\n"
-      << "\t\t\"timestamp\": " << TicksSinceEpoch<std::chrono::milliseconds>(entry.mTimestamp) << ",\n"
-      << "\t\t\"pp\": \"" << entry.mLocalPseudonyms->mPolymorphic.text() << "\",\n"
-      << "\t\t\"column\": \"" << entry.mColumn << "\",\n"
+      << "\t\t\"timestamp\": " << TicksSinceEpoch<std::chrono::milliseconds>(entry.timestamp_) << ",\n"
+      << "\t\t\"pp\": \"" << entry.localPseudonyms_->polymorphic_.text() << "\",\n"
+      << "\t\t\"column\": \"" << entry.column_ << "\",\n"
       << "\t\t\"id\": ";
-    if (entry.mId.has_value()) {
-      destination << '"' << boost::algorithm::hex(*entry.mId) << '"';
+    if (entry.id_.has_value()) {
+      destination << '"' << boost::algorithm::hex(*entry.id_) << '"';
     }
     else {
       destination << "null";

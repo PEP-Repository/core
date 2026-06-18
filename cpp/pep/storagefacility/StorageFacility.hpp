@@ -126,12 +126,12 @@ private:
 
 private:
   ElgamalPrivateKey pseudonymKey_;
-  std::string mEncIdKey;
+  std::string encIdKey_;
   std::shared_ptr<WorkerPool> workerPool_;
-  std::shared_ptr<FileStore> mFileStore;
-  std::shared_ptr<Metrics> mMetrics;
-  boost::asio::steady_timer mTimer;
-  const uint8_t mParallelisationWidth = 0; // passed to RxParallelConcat
+  std::shared_ptr<FileStore> fileStore_;
+  std::shared_ptr<Metrics> metrics_;
+  boost::asio::steady_timer timer_;
+  const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
 };
 

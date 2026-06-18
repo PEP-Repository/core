@@ -39,7 +39,7 @@ protected:
   int execute() override {
     return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
       pep::UserGroup userGroup;
-      userGroup.mMaxAuthValidity = this->getParameterValues().getOptional<std::chrono::seconds>("max-auth-validity");
+      userGroup.maxAuthValidity_ = this->getParameterValues().getOptional<std::chrono::seconds>("max-auth-validity");
       userGroup.name_ = this->getParameterValues().get<std::string>("name");
       auto& am = *client->getAccessManagerProxy();
       return (am.*method_)(userGroup);

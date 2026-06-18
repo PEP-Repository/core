@@ -112,7 +112,7 @@ protected:
   ConnectivityStatus setConnectivityStatus(ConnectivityStatus status);
 
 private:
-  EventSubscription mLifeCycleStatusForwarding;
+  EventSubscription lifeCycleStatusForwarding_;
 
   void handleLifeCycleStatusChanged(const StatusChange& change) const;
 };

@@ -18,7 +18,7 @@ std::string DataPayloadPage::computeAdditionalData(
   }
   if (scheme == EncryptionScheme::V2
       || scheme == EncryptionScheme::V3) {
-    return PackUint64BE(mPageNumber);
+    return PackUint64BE(pageNumber_);
   }
   throw std::runtime_error("Unknown page encryption scheme");
 }
@@ -32,9 +32,9 @@ void DataPayloadPage::setEncrypted(
       const std::string& key,
       const Metadata& metadata) {
   auto ctx = createGcmContext();
-  mCryptoNonce = RandomString(16);
-  mCryptoMac.resize(16);
-  mPayloadData.resize(plaintext.size());
+  cryptoNonce_ = RandomString(16);
+  cryptoMac_.resize(16);
+  payloadData_.resize(plaintext.size());
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
   std::string ad = computeAdditionalData(metadata);
@@ -45,7 +45,7 @@ void DataPayloadPage::setEncrypted(
   ret = EVP_CIPHER_CTX_ctrl(
     ctx.get(),
     EVP_CTRL_GCM_SET_IVLEN,
-    static_cast<int>(mCryptoNonce.size()),
+    static_cast<int>(cryptoNonce_.size()),
     nullptr
   );
   if (ret != 1)
@@ -54,7 +54,7 @@ void DataPayloadPage::setEncrypted(
     nullptr,
     nullptr,
     reinterpret_cast<const uint8_t*>(key.data()),
-    reinterpret_cast<const uint8_t*>(mCryptoNonce.data())
+    reinterpret_cast<const uint8_t*>(cryptoNonce_.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex 2nd failed");
@@ -68,18 +68,18 @@ void DataPayloadPage::setEncrypted(
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptUpdate for AD failed");
   ret = EVP_EncryptUpdate(ctx.get(),
-    reinterpret_cast<uint8_t*>(mPayloadData.data()),
+    reinterpret_cast<uint8_t*>(payloadData_.data()),
     &len,
     reinterpret_cast<const uint8_t*>(plaintext.data()),
     static_cast<int>(plaintext.size())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptUpdate for plaintext failed");
-  if (len != static_cast<int>(mPayloadData.size()))
+  if (len != static_cast<int>(payloadData_.size()))
     throw std::runtime_error("EVP_EncryptUpdate wrote wrong amount of data");
   ret = EVP_EncryptFinal_ex(
     ctx.get(),
-    reinterpret_cast<uint8_t*>(mPayloadData.data() + len),
+    reinterpret_cast<uint8_t*>(payloadData_.data() + len),
     &len
   );
   if (ret != 1)
@@ -88,8 +88,8 @@ void DataPayloadPage::setEncrypted(
     throw std::runtime_error("EVP_EncryptFinal overshot");
   ret = EVP_CIPHER_CTX_ctrl(ctx.get(),
     EVP_CTRL_GCM_GET_TAG,
-    static_cast<int>(mCryptoMac.size()),
-    reinterpret_cast<int8_t*>(mCryptoMac.data())
+    static_cast<int>(cryptoMac_.size()),
+    reinterpret_cast<int8_t*>(cryptoMac_.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_CIPHER_CTX_ctrl GET_TAG failed");
@@ -100,7 +100,7 @@ std::string DataPayloadPage::decrypt(
   auto ctx = createGcmContext();
   int ret = 0;
   int len = 0;
-  std::string plaintext(mPayloadData.size(), '\0');
+  std::string plaintext(payloadData_.size(), '\0');
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
   std::string ad = computeAdditionalData(metadata);
@@ -111,7 +111,7 @@ std::string DataPayloadPage::decrypt(
   ret = EVP_CIPHER_CTX_ctrl(
     ctx.get(),
     EVP_CTRL_GCM_SET_IVLEN,
-    static_cast<int>(mCryptoNonce.size()),
+    static_cast<int>(cryptoNonce_.size()),
     nullptr
   );
   if (ret != 1)
@@ -120,7 +120,7 @@ std::string DataPayloadPage::decrypt(
     nullptr,
     nullptr,
     reinterpret_cast<const uint8_t*>(key.data()),
-    reinterpret_cast<const uint8_t*>(mCryptoNonce.data())
+    reinterpret_cast<const uint8_t*>(cryptoNonce_.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_DecryptInit_ex 2nd failed");
@@ -135,8 +135,8 @@ std::string DataPayloadPage::decrypt(
   ret = EVP_DecryptUpdate(ctx.get(),
     reinterpret_cast<uint8_t*>(plaintext.data()),
     &len,
-    reinterpret_cast<const uint8_t*>(mPayloadData.data()),
-    static_cast<int>(mPayloadData.size())
+    reinterpret_cast<const uint8_t*>(payloadData_.data()),
+    static_cast<int>(payloadData_.size())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_DecryptUpdate for plaintext failed");
@@ -144,9 +144,9 @@ std::string DataPayloadPage::decrypt(
     throw std::runtime_error("EVP_DecryptUpdate wrote wrong amount of data");
   ret = EVP_CIPHER_CTX_ctrl(ctx.get(),
     EVP_CTRL_GCM_SET_TAG,
-    static_cast<int>(mCryptoMac.size()),
+    static_cast<int>(cryptoMac_.size()),
     //NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) Not written to for EVP_CTRL_GCM_SET_TAG
-    const_cast<char *>(mCryptoMac.data())
+    const_cast<char *>(cryptoMac_.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_CIPHER_CTX_ctrl TAG failed");

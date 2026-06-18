@@ -13,16 +13,16 @@ public:
 
   class Parameters {
   private:
-    Timeout mMinTimeout;
-    Timeout mMaxTimeout;
-    BackoffFactor mBackoffFactor;
+    Timeout minTimeout_;
+    Timeout maxTimeout_;
+    BackoffFactor backoffFactor_;
 
   public:
     Parameters(Timeout minTimeout = std::chrono::seconds{ 1 }, Timeout maxTimeout = std::chrono::minutes{ 5 }, BackoffFactor backoffFactor = 2) noexcept;
 
-    Timeout minTimeout() const noexcept { return mMinTimeout; }
-    Timeout maxTimeout() const noexcept { return mMaxTimeout; }
-    BackoffFactor backoffFactor() const noexcept { return mBackoffFactor; }
+    Timeout minTimeout() const noexcept { return minTimeout_; }
+    Timeout maxTimeout() const noexcept { return maxTimeout_; }
+    BackoffFactor backoffFactor() const noexcept { return backoffFactor_; }
   };
 
 private:
@@ -31,7 +31,7 @@ public:
   using RetryHandler = std::function<void(const boost::system::error_code&)>;
 
   explicit ExponentialBackoff(boost::asio::io_context& io_context, Parameters parameters = Parameters())
-    : mTimer(io_context), mParameters(parameters), mNextTimeout(mParameters.minTimeout()) {}
+    : timer_(io_context), parameters_(parameters), nextTimeout_(parameters_.minTimeout()) {}
 
   // retry the RetryHandler, with exponential backoff. Returns the timeout or nullopt if already queued.
   std::optional<Timeout> retry(RetryHandler handler);
@@ -42,9 +42,9 @@ public:
   void stop();
 
 private:
-  Timer mTimer;
-  Parameters mParameters;
-  Timeout mNextTimeout;
+  Timer timer_;
+  Parameters parameters_;
+  Timeout nextTimeout_;
 
 };
 

@@ -13,16 +13,16 @@ public:
     const X509CertificateSigningRequest csr,
     std::string oauthToken
   ) :
-    mOAuthToken(std::move(oauthToken)),
-    mCertificateSigningRequest(csr) {
+    oAuthToken_(std::move(oauthToken)),
+    certificateSigningRequest_(csr) {
   }
 
-  std::string mOAuthToken;
-  X509CertificateSigningRequest mCertificateSigningRequest;
+  std::string oAuthToken_;
+  X509CertificateSigningRequest certificateSigningRequest_;
 };
 
 struct EnrollmentResponse {
-  X509CertificateChain mCertificateChain;
+  X509CertificateChain certificateChain_;
 };
 
 struct TokenBlockingListRequest final {};

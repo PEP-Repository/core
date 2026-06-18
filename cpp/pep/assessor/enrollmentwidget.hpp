@@ -42,7 +42,7 @@ class EnrollmentWidget : public QStackedWidget {
   Ui::EnrollmentWidget* ui;
   MainWindow* mainWindow;
   std::shared_ptr<pep::Client> pepClient;
-  pep::StudyContext mStudyContext;
+  pep::StudyContext studyContext_;
   QString participantSID;
   rxcpp::composite_subscription registerParticipantSubscription;
   rxcpp::composite_subscription completeParticipantRegistrationSubscription;

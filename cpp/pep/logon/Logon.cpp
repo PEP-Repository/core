@@ -24,9 +24,9 @@ const std::string LogTag = "Logon utility";
 class LogonApplication : public pep::commandline::Utility {
 
 private:
-  pep::Configuration mConfig;
-  std::shared_ptr<boost::asio::io_context> mIoContext;
-  bool mLongLived = false;
+  pep::Configuration config_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  bool longLived_ = false;
 
   rxcpp::observable<pep::AuthorizationResult> authorize(const pep::commandline::NamedValues& params) {
     std::optional<std::chrono::seconds> validity = std::nullopt;
@@ -43,17 +43,17 @@ private:
       limitedEnvironment |= std::string_view(limitedEnvironmentEnvVar) == "1";
     }
 
-    assert(mIoContext != nullptr);
+    assert(ioContext_ != nullptr);
     auto oauth = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
-      .io_context = mIoContext,
-      .config = mConfig.get_child("OAuthServer"),
+      .io_context = ioContext_,
+      .config = config_.get_child("OAuthServer"),
       .authorizationMethod = limitedEnvironment ? pep::ConsoleAuthorization : pep::BrowserAuthorization,
-      .longLived = mLongLived,
+      .longLived = longLived_,
       .validityDuration = validity });
 
     // Use a work guard to ensure that the I/O service doesn't terminate while we authenticate e.g. using BrowserAuthorization.
     // TODO: BrowserAuthorization should do this itself, making it more compatible with ConsoleAuthorization (which blocks until user has authorized)
-    auto workGuard = pep::MakeSharedCopy(make_work_guard(*mIoContext));
+    auto workGuard = pep::MakeSharedCopy(make_work_guard(*ioContext_));
     return oauth->run()
       .finally([workGuard]() { workGuard->reset(); });
   }
@@ -65,14 +65,14 @@ private:
     }
 
     const auto& token = *auth;
-    if (mLongLived) {
+    if (longLived_) {
       return this->writeToken(token);
     }
 
-    assert(mIoContext != nullptr);
-    auto client = pep::Client::OpenClient(mConfig, mIoContext);
+    assert(ioContext_ != nullptr);
+    auto client = pep::Client::OpenClient(config_, ioContext_);
     return this->writeShortLived(token, client)
-      .op(pep::RxFinallyExhaust(pep::observe_on_asio(*mIoContext), [client]() {
+      .op(pep::RxFinallyExhaust(pep::observe_on_asio(*ioContext_), [client]() {
       return client->shutdown()
         .tap(
           [](pep::FakeVoid) { /* ignore*/ },
@@ -108,11 +108,11 @@ private:
   }
 
   int execute() override {
-    mConfig = this->loadMainConfigFile();
+    config_ = this->loadMainConfigFile();
     auto& params = this->getParameterValues();
 
-    mIoContext = std::make_shared<boost::asio::io_context>();
-    mLongLived = params.has("long-lived");
+    ioContext_ = std::make_shared<boost::asio::io_context>();
+    longLived_ = params.has("long-lived");
 
     int exitCode = EXIT_FAILURE;
     this->authorize(params)
@@ -128,7 +128,7 @@ private:
         }
       );
 
-    mIoContext->run();
+    ioContext_->run();
     return exitCode;
   }
 

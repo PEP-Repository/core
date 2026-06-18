@@ -13,9 +13,9 @@ const std::string Participant::EMBEDDED_API_NODE_NAME = "participants";
 
 Participant::Participant(std::shared_ptr<Study> study, JsonPtr json)
   : SimpleCastorChildObject<Participant, Study>(study, json),
-  mProgress(GetFromPtree<int>(*json, "progress")),
-  mStatus(GetFromPtree<std::string>(*json, "status")),
-  mUpdatedOn(std::make_unique<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "updated_on"))) {}
+  progress_(GetFromPtree<int>(*json, "progress")),
+  status_(GetFromPtree<std::string>(*json, "status")),
+  updatedOn_(std::make_unique<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "updated_on"))) {}
 
 rxcpp::observable<std::shared_ptr<Participant>> Participant::CreateNew(std::shared_ptr<Study> study, const std::string& participantId, const std::string& siteId) {
   auto connection = study->getConnection();
@@ -36,7 +36,7 @@ rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> Participant::getRepeat
 }
 
 const boost::property_tree::ptree& Participant::getUpdatedOn() const {
-  return *mUpdatedOn;
+  return *updatedOn_;
 }
 
 }

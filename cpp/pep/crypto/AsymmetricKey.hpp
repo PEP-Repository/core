@@ -43,7 +43,7 @@ class AsymmetricKey {
   }
 
  private:
-  EVP_PKEY* mKey = nullptr;
+  EVP_PKEY* key_ = nullptr;
   AsymmetricKey(AsymmetricKeyType keyType, EVP_PKEY* o);
   bool set = false;
   mutable std::mutex m;
@@ -66,7 +66,7 @@ class AsymmetricKeyPair {
   AsymmetricKey getPrivateKey() const;
 
  private:
-  EVP_PKEY* mKeyPair = nullptr;
+  EVP_PKEY* keyPair_ = nullptr;
   mutable std::mutex m;
 
   friend class X509CertificateSigningRequest;

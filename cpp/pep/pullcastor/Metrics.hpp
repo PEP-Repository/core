@@ -25,7 +25,7 @@ public:
   prometheus::Gauge& importTimestamp_seconds;
 
 private:
-  std::optional<std::filesystem::path> mMetricsFile;
+  std::optional<std::filesystem::path> metricsFile_;
 };
 
 }

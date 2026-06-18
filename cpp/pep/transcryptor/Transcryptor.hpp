@@ -77,12 +77,12 @@ private:
 private:
   std::shared_ptr<WorkerPool> workerPool_;
   std::optional<ElgamalPrivateKey> pseudonymKey_;
-  AccessManagerProxy mAccessManagerProxy;
+  AccessManagerProxy accessManagerProxy_;
   std::shared_ptr<TranscryptorStorage> storage_;
   std::shared_ptr<Metrics> lpMetrics;
-  ServerVerifiers mVerifiers;
-  uintmax_t mNextTranscryptorRequestNumber = 1U;
-  uintmax_t mNextLogIssuedTicketRequestNumber = 1U;
+  ServerVerifiers verifiers_;
+  uintmax_t nextTranscryptorRequestNumber_ = 1U;
+  uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;
 };
 
 }

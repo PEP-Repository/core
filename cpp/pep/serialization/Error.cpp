@@ -17,17 +17,17 @@ void Error::AddFactory(const std::string& type, Factory factory) {
 }
 
 Error::Error(std::string derivedTypeName, std::string description)
-  : mOriginalTypeName(std::move(derivedTypeName)), description_(std::move(description)) {
-  assert(mOriginalTypeName != GetNormalizedTypeName<Error>()); // Leave mOriginalTypeName empty for basic Error instances
+  : originalTypeName_(std::move(derivedTypeName)), description_(std::move(description)) {
+  assert(originalTypeName_ != GetNormalizedTypeName<Error>()); // Leave originalTypeName_ empty for basic Error instances
   assert(this->isDeserializable()); // Do not test-and-throw: allow clients to raise a basic Error instance when receiving an unsupported derived type
 }
 
 bool Error::isDeserializable() const {
-  if (mOriginalTypeName.empty()) {
+  if (originalTypeName_.empty()) {
     return true;
   }
   auto registered = Factories();
-  return registered.find(mOriginalTypeName) != registered.cend();
+  return registered.find(originalTypeName_) != registered.cend();
 }
 
 bool Error::IsSerializable(std::exception_ptr exception) noexcept {
@@ -53,7 +53,7 @@ std::exception_ptr Error::ReconstructIfDeserializable(std::string_view serialize
       Error deserialized = Serialization::FromString<Error>(serialized);
 
       // If it was originally a different (derived) type, try to reconstruct that
-      auto type = deserialized.mOriginalTypeName;
+      auto type = deserialized.originalTypeName_;
       if (!type.empty()) {
         // Find a factory function for this original type name
         auto& factories = Factories();
@@ -68,7 +68,7 @@ std::exception_ptr Error::ReconstructIfDeserializable(std::string_view serialize
           << "Errors of derived " + type << " type cannot be transported across the network. "
           << "Please ensure that the derived type is properly registered. You may need to upgrade your software.";
         // ... then register a (degenerate) factory so the warning is only issued once...
-        AddFactory(deserialized.mOriginalTypeName, [type](const std::string& description) {
+        AddFactory(deserialized.originalTypeName_, [type](const std::string& description) {
           return std::make_exception_ptr(Error(type, description));
         });
         // ... and finally let default handling return the basic Error instance that we deserialized.

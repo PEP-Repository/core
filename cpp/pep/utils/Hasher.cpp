@@ -6,7 +6,7 @@
 namespace pep {
 
 void HasherBase::update(const void* block, size_t size) {
-  assert(!mFinished);
+  assert(!finished_);
   this->process(block, size);
 }
 
@@ -34,8 +34,8 @@ void HasherBase::update(std::istream& source) {
 }
 
 void HasherBase::setFinished() {
-  assert(!mFinished);
-  mFinished = true;
+  assert(!finished_);
+  finished_ = true;
 }
 
 }

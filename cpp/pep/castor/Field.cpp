@@ -21,19 +21,19 @@ std::string Field::makeUrl() const {
 
 Field::Field(std::shared_ptr<Study> study, JsonPtr json)
   : ParentedCastorObject<Study>(study, json),
-  mParentId(GetFromPtree<std::string>(*json, "parent_id")),
-  mNumber(GetFromPtree<int>(*json, "field_number")),
+  parentId_(GetFromPtree<std::string>(*json, "parent_id")),
+  number_(GetFromPtree<int>(*json, "field_number")),
   type_(GetFromPtree<std::string>(*json, "field_type")),
-  mVariableName(GetFromPtree<std::string>(*json, "field_variable_name")),
-  mLabel(GetFromPtree<std::string>(*json, "field_label")),
+  variableName_(GetFromPtree<std::string>(*json, "field_variable_name")),
+  label_(GetFromPtree<std::string>(*json, "field_label")),
   required_(GetFromPtree<bool>(*json, "field_required")),
-  mUnits(GetFromPtree<std::string>(*json, "field_units")),
-  mInfo(GetFromPtree<std::string>(*json, "field_info")),
-  mHidden(GetFromPtree<bool>(*json, "field_hidden")),
-  mReportId(GetFromPtree<std::string>(*json, "report_id")) {
+  units_(GetFromPtree<std::string>(*json, "field_units")),
+  info_(GetFromPtree<std::string>(*json, "field_info")),
+  hidden_(GetFromPtree<bool>(*json, "field_hidden")),
+  reportId_(GetFromPtree<std::string>(*json, "report_id")) {
 
   if (auto optionGroupJson = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*json, "option_group")) {
-    mOptionGroup = OptionGroup::Create(this->getParent(), std::make_shared<boost::property_tree::ptree>(*optionGroupJson));
+    optionGroup_ = OptionGroup::Create(this->getParent(), std::make_shared<boost::property_tree::ptree>(*optionGroupJson));
   }
 
 }

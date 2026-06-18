@@ -20,17 +20,17 @@ private:
   using FieldsById = std::unordered_map<std::string, std::shared_ptr<Field>>;
   using RepeatingDataPullersById = std::unordered_map<std::string, std::shared_ptr<RepeatingDataPuller>>;
 
-  std::shared_ptr<EnvironmentPuller> mEnvironment;
-  std::shared_ptr<Study> mStudy;
-  std::shared_ptr<std::vector<StudyAspect>> mAspects;
+  std::shared_ptr<EnvironmentPuller> environment_;
+  std::shared_ptr<Study> study_;
+  std::shared_ptr<std::vector<StudyAspect>> aspects_;
 
-  std::shared_ptr<RxCache<std::shared_ptr<Participant>>> mParticipants;
-  std::shared_ptr<RxCache<std::shared_ptr<Field>>> mFields;
-  std::shared_ptr<RxCache<std::shared_ptr<FieldsById>>> mFieldsById;
-  std::shared_ptr<RxCache<std::shared_ptr<RepeatingDataPullersById>>> mRepeatingDataPullers;
+  std::shared_ptr<RxCache<std::shared_ptr<Participant>>> participants_;
+  std::shared_ptr<RxCache<std::shared_ptr<Field>>> fields_;
+  std::shared_ptr<RxCache<std::shared_ptr<FieldsById>>> fieldsById_;
+  std::shared_ptr<RxCache<std::shared_ptr<RepeatingDataPullersById>>> repeatingDataPullers_;
 
-  std::shared_ptr<RxCache<std::shared_ptr<RepeatingDataInstance>>> mRepeatingDataInstances;
-  std::shared_ptr<RxCache<std::shared_ptr<RepeatingDataPoint>>> mRepeatingDataPoints;
+  std::shared_ptr<RxCache<std::shared_ptr<RepeatingDataInstance>>> repeatingDataInstances_;
+  std::shared_ptr<RxCache<std::shared_ptr<RepeatingDataPoint>>> repeatingDataPoints_;
 
   explicit StudyPuller(std::shared_ptr<EnvironmentPuller> environment, std::shared_ptr<Study> study, std::shared_ptr<std::vector<StudyAspect>> aspects);
 
@@ -52,27 +52,27 @@ public:
     * \brief Produces the EnvironmentPuller associated with this instance.
     * \return An EnvironmentPuller instance.
     */
-  inline std::shared_ptr<EnvironmentPuller> getEnvironmentPuller() const noexcept { return mEnvironment; }
+  inline std::shared_ptr<EnvironmentPuller> getEnvironmentPuller() const noexcept { return environment_; }
 
   /*!
     * \brief Produces the aspects to pull for this study.
     * \return StudyAspect instances.
     */
-  inline std::shared_ptr<std::vector<StudyAspect>> getAspects() const noexcept { return mAspects; }
+  inline std::shared_ptr<std::vector<StudyAspect>> getAspects() const noexcept { return aspects_; }
 
   /*!
     * \brief Produces the castor::Study instance for this study.
     * \return A castor::Study instance.
     * \remark Prefer using the methods in this class over the ones in castor::Study, since this class caches stuff.
     */
-  inline std::shared_ptr<Study> getStudy() const noexcept { return mStudy; }
+  inline std::shared_ptr<Study> getStudy() const noexcept { return study_; }
 
   /*!
     * \brief Produces the castor::Participant instances to process for this study.
     * \return The castor::Participant instances associated with this study.
     * \remark Data are retrieved from Castor only once. Subsequent calls of this method are served from cached data.
     */
-  inline rxcpp::observable<std::shared_ptr<Participant>> getParticipants() { return mParticipants->observe(); }
+  inline rxcpp::observable<std::shared_ptr<Participant>> getParticipants() { return participants_->observe(); }
 
   /*!
     * \brief Produces the castor::RepeatingDataInstance instances for the specified participant.

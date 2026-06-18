@@ -12,7 +12,7 @@ class UserGroup {
 public:
   UserGroup() = default;
   UserGroup(std::string name, std::optional<std::chrono::seconds> maxAuthValidity)
-    : name_(std::move(name)), mMaxAuthValidity(maxAuthValidity) { }
+    : name_(std::move(name)), maxAuthValidity_(maxAuthValidity) { }
 
 
   /*!
@@ -26,13 +26,13 @@ public:
 
   friend std::ostream& operator<<(std::ostream& out, const UserGroup& group) {
     out << '{';
-    if (group.mMaxAuthValidity) { out << " maxAuthValidity:" << *group.mMaxAuthValidity; }
+    if (group.maxAuthValidity_) { out << " maxAuthValidity:" << *group.maxAuthValidity_; }
     out << '}';
     return out;
   }
 
   std::string name_;
-  std::optional<std::chrono::seconds> mMaxAuthValidity;
+  std::optional<std::chrono::seconds> maxAuthValidity_;
 
   // Special access groups that are checked in the code
   inline static const std::string AccessAdministrator{"Access Administrator"},

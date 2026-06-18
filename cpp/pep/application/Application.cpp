@@ -62,18 +62,18 @@ public:
 #ifdef _WIN32
 class MessageBoxNotificationChannel : public Application::UserNotificationChannel {
 private:
-  bool mError;
-  std::ostringstream mContent;
+  bool error_;
+  std::ostringstream content_;
 
 public:
-  explicit MessageBoxNotificationChannel(bool error) noexcept : mError(error) {}
-  inline std::ostream& stream() override { return mContent; }
+  explicit MessageBoxNotificationChannel(bool error) noexcept : error_(error) {}
+  inline std::ostream& stream() override { return content_; }
 
   ~MessageBoxNotificationChannel() noexcept override {
-    auto message = std::move(mContent).str();
+    auto message = std::move(content_).str();
 
     // Write message to stdio so that it can be piped or redirected
-    auto& destination = GetStdioNotificationStream(mError);
+    auto& destination = GetStdioNotificationStream(error_);
     destination << message;
     destination.flush();
 
@@ -83,7 +83,7 @@ public:
       "\n" "If this notification's formatting looks corrupted, please view it using a fixed-width font, e.g. by"
       "\n" "- copying it (Ctrl+C) and pasting it to a text editor, or"
       "\n" "- invoking the application from a command line and passing the --bind-to-console switch.";
-    UINT icon = mError ? MB_ICONERROR : MB_ICONINFORMATION;
+    UINT icon = error_ ? MB_ICONERROR : MB_ICONINFORMATION;
     ::MessageBoxA(nullptr, display.c_str(), "Application", MB_OK | MB_APPLMODAL | icon);
   }
 };

@@ -19,16 +19,16 @@ public:
   using CreateFinisher = std::function<TFinisher()>;
 
 private:
-  CreateFinisher mCreate;
-  rxcpp::observe_on_one_worker mSubscribeOn;
+  CreateFinisher create_;
+  rxcpp::observe_on_one_worker subscribeOn_;
 
 public:
-  RxFinallyExhaustOperator(CreateFinisher create, rxcpp::observe_on_one_worker subscribeOn) : mCreate(std::move(create)), mSubscribeOn(subscribeOn) {}
+  RxFinallyExhaustOperator(CreateFinisher create, rxcpp::observe_on_one_worker subscribeOn) : create_(std::move(create)), subscribeOn_(subscribeOn) {}
 
   template <typename TMainItem, typename MainSourceOperator>
   rxcpp::observable<TMainItem> operator()(rxcpp::observable<TMainItem, MainSourceOperator> items) const {
     return items // Return the (main observable's) items...
-      .finally([create = mCreate, subscribeOn = mSubscribeOn]() { // ... and (create and) run the finalizer observable when the main one is unsubscribed
+      .finally([create = create_, subscribeOn = subscribeOn_]() { // ... and (create and) run the finalizer observable when the main one is unsubscribed
       create().subscribe_on(subscribeOn).subscribe(
         [](const auto&) {}, // ignore
         [](std::exception_ptr exception) { PEP_LOG("RX cleanup", Severity::Error) << "Error exhausting finalizer observable: " << GetExceptionMessage(exception); },

@@ -40,8 +40,8 @@ private:
   messaging::MessageBatches handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest);
 
 
-  std::shared_ptr<AuthserverBackend> mBackend;
-  std::shared_ptr<OAuthProvider> mOAuth;
+  std::shared_ptr<AuthserverBackend> backend_;
+  std::shared_ptr<OAuthProvider> oAuth_;
 };
 
 }

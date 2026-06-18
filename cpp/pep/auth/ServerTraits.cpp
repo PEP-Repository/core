@@ -13,8 +13,8 @@ std::string ServerTraits::defaultId() const {
 }
 
 std::string ServerTraits::id() const {
-  if (mCustomId.has_value()) {
-    return *mCustomId;
+  if (customId_.has_value()) {
+    return *customId_;
   }
   return this->defaultId();
 }
@@ -27,18 +27,18 @@ std::string ServerTraits::lowercaseId() const {
 }
 
 ServerTraits::ServerTraits(std::string abbreviation, std::string description) noexcept
-  : mAbbreviation(std::move(abbreviation)), description_(std::move(description)) {
+  : abbreviation_(std::move(abbreviation)), description_(std::move(description)) {
 }
 
 ServerTraits::ServerTraits(std::string abbreviation, std::string description, EnrolledParty enrollsAsParty) noexcept
   : ServerTraits(std::move(abbreviation), std::move(description)) {
   assert(enrollsAsParty != EnrolledParty::User);
-  mEnrollsAsParty = enrollsAsParty;
+  enrollsAsParty_ = enrollsAsParty;
 }
 
 ServerTraits::ServerTraits(std::string abbreviation, std::string description, std::string customId) noexcept
   : ServerTraits(std::move(abbreviation), std::move(description)) {
-  mCustomId = std::move(customId);
+  customId_ = std::move(customId);
 }
 
 std::string ServerTraits::configNode() const {
@@ -62,15 +62,15 @@ std::unordered_set<std::string> ServerTraits::certificateSubjects() const {
 }
 
 bool ServerTraits::hasSigningIdentity() const {
-  return this->isEnrollable() || mCustomId.has_value();
+  return this->isEnrollable() || customId_.has_value();
 }
 
 bool ServerTraits::isEnrollable() const {
-  return mEnrollsAsParty.has_value();
+  return enrollsAsParty_.has_value();
 }
 
 bool ServerTraits::hasDataAccess() const {
-  return mEnrollsAsParty == EnrolledParty::RegistrationServer;
+  return enrollsAsParty_ == EnrolledParty::RegistrationServer;
 }
 
 std::optional<std::string> ServerTraits::userGroup(bool require) const {
@@ -106,10 +106,10 @@ bool ServerTraits::signingIdentityMatches(const X509CertificateChain& chain) con
 }
 
 const std::optional<EnrolledParty>& ServerTraits::enrollsAsParty(bool require) const {
-  if (require && !mEnrollsAsParty.has_value()) {
+  if (require && !enrollsAsParty_.has_value()) {
     throw std::runtime_error(this->description() + " is not enrollable");
   }
-  return mEnrollsAsParty;
+  return enrollsAsParty_;
 }
 
 std::optional<std::string> ServerTraits::enrollmentSubject(bool require) const {

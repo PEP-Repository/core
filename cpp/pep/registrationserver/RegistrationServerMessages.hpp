@@ -10,17 +10,17 @@ class PEPIdRegistrationRequest {
 
 class PEPIdRegistrationResponse {
 public:
-  std::string mPepId;
+  std::string pepId_;
 };
 
 
 class RegistrationRequest {
 public:
   RegistrationRequest() = default;
-  explicit RegistrationRequest(const PolymorphicPseudonym& polymorphicPseudonym) : mPolymorphicPseudonym(polymorphicPseudonym) { }
-  PolymorphicPseudonym mPolymorphicPseudonym;
-  std::string mEncryptedIdentifier;
-  std::string mEncryptionPublicKeyPem;
+  explicit RegistrationRequest(const PolymorphicPseudonym& polymorphicPseudonym) : polymorphicPseudonym_(polymorphicPseudonym) { }
+  PolymorphicPseudonym polymorphicPseudonym_;
+  std::string encryptedIdentifier_;
+  std::string encryptionPublicKeyPem_;
 };
 
 class RegistrationResponse {
@@ -29,13 +29,13 @@ class RegistrationResponse {
 
 class ListCastorImportColumnsRequest {
 public:
-  std::string mSpColumn;
-  unsigned mAnswerSetCount{};
+  std::string spColumn_;
+  unsigned answerSetCount_{};
 };
 
 class ListCastorImportColumnsResponse {
 public:
-  std::vector<std::string> mImportColumns;
+  std::vector<std::string> importColumns_;
 };
 
 

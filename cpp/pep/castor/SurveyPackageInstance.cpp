@@ -17,26 +17,26 @@ const std::string EMBEDDED_API_NODE_NAME = "surveypackageinstance";
 
 SurveyPackageInstance::SurveyPackageInstance(std::shared_ptr<Participant> participant, JsonPtr json)
   : ParentedCastorObject<Participant>(participant, json, "survey_package_instance_id"),
-  mParticipantId(GetFromPtree<std::string>(*json, "participant_id")),
-  mLocked(GetFromPtree<bool>(*json, "locked")),
-  mProgress(GetFromPtree<int>(*json, "progress")),
-  mArchived(GetFromPtree<bool>(*json, "archived")),
-  mSurveyPackageId(GetFromPtree<std::string>(*json, "survey_package_id")),
-  mSurveyPackageName(GetFromPtree<std::string>(*json, "survey_package_name")) {
+  participantId_(GetFromPtree<std::string>(*json, "participant_id")),
+  locked_(GetFromPtree<bool>(*json, "locked")),
+  progress_(GetFromPtree<int>(*json, "progress")),
+  archived_(GetFromPtree<bool>(*json, "archived")),
+  surveyPackageId_(GetFromPtree<std::string>(*json, "survey_package_id")),
+  surveyPackageName_(GetFromPtree<std::string>(*json, "survey_package_name")) {
 
   if (const auto& finishedOn = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*json, "finished_on")) {
-    mFinishedOn = MakeSharedCopy(*finishedOn);
+    finishedOn_ = MakeSharedCopy(*finishedOn);
   }
   if (const auto& sentOn = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*json, "sent_on")) {
-    mSentOn = MakeSharedCopy(*sentOn);
+    sentOn_ = MakeSharedCopy(*sentOn);
   }
 
   const auto& embedded = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*json, "_embedded");
   if (embedded) {
     const auto& siPtrees = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*embedded, "survey_instances");
     if (siPtrees) {
-      mSurveyInstanceIds.reserve(siPtrees->size());
-      std::transform(siPtrees->begin(), siPtrees->end(), std::back_inserter(mSurveyInstanceIds), [](const auto& keyValuePair) {
+      surveyInstanceIds_.reserve(siPtrees->size());
+      std::transform(siPtrees->begin(), siPtrees->end(), std::back_inserter(surveyInstanceIds_), [](const auto& keyValuePair) {
         const auto& siPtree = keyValuePair.second;
         return GetFromPtree<std::string>(siPtree, "id");
         });
@@ -44,11 +44,11 @@ SurveyPackageInstance::SurveyPackageInstance(std::shared_ptr<Participant> partic
   }
 }
 const std::shared_ptr<const boost::property_tree::ptree>& SurveyPackageInstance::getFinishedOn() const {
-  return mFinishedOn;
+  return finishedOn_;
 }
 
 const std::shared_ptr<const boost::property_tree::ptree>& SurveyPackageInstance::getSentOn() const {
-  return mSentOn;
+  return sentOn_;
 }
 
 std::string SurveyPackageInstance::makeUrl() const {
@@ -60,7 +60,7 @@ rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyPackageInstance::getSu
 }
 
 const std::vector<std::string>& SurveyPackageInstance::getSurveyInstanceIds() const {
-  return mSurveyInstanceIds;
+  return surveyInstanceIds_;
 }
 
 rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> SurveyPackageInstance::BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants) {

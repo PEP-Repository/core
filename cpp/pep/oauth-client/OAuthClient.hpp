@@ -44,17 +44,17 @@ private:
   boost::urls::url getAuthorizationUri(std::optional<std::string_view> state) const;
   rxcpp::observable<std::string> doTokenRequest(std::string_view code);
 
-  std::shared_ptr<boost::asio::io_context> mIoContext;
-  AuthorizationMethod mAuthorizationMethod;
-  std::string mRequestUrl;
-  std::string mTokenUrl;
-  std::string mCodeVerifier;
-  std::string mRedirectUrl;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  AuthorizationMethod authorizationMethod_;
+  std::string requestUrl_;
+  std::string tokenUrl_;
+  std::string codeVerifier_;
+  std::string redirectUrl_;
   //For local testing we use a self-signed HTTPS certificate for the authserver. We need to tell the HTTPS client to trust this certificate, so we need to know the path to the used certificate.
   //If this is left unset, the system CA store is used.
-  std::optional<std::filesystem::path> mCaCertFilepath;
-  bool mLongLived;
-  std::optional<std::chrono::seconds> mValidityDuration;
+  std::optional<std::filesystem::path> caCertFilepath_;
+  bool longLived_;
+  std::optional<std::chrono::seconds> validityDuration_;
 
 
   friend class SharedConstructor<OAuthClient>;

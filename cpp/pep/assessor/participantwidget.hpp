@@ -43,8 +43,8 @@ class ParticipantWidget : public QWidget {
   QPushButton* print_oneSticker_button;
 
   pep::GlobalConfiguration globalConfig;
-  pep::StudyContexts mAllContexts;
-  pep::StudyContext mStudyContext;
+  pep::StudyContexts allContexts_;
+  pep::StudyContext studyContext_;
 
   pep::PolymorphicPseudonym currentUserPP;
   ParticipantData participantData;
@@ -60,7 +60,7 @@ class ParticipantWidget : public QWidget {
   std::filesystem::path stickerFilePath;
   std::vector<DeviceWidget *> deviceWidgets_;
   std::vector<DeviceHistoryWidget *> deviceHistoryWidgets_;
-  std::vector<VisitWidget *> mVisitWidgets;
+  std::vector<VisitWidget *> visitWidgets_;
   QString summaryPrintStyle = "body {margin:10; width:90%;} \\"
                               " h1 {font-size:xx-large; text-align:center;} \\"
                               " h3 {border: 2px solid #a1a1a1; border-radius: 25px; background: #8db6d3;} \\"
@@ -89,8 +89,8 @@ class ParticipantWidget : public QWidget {
                           " border-color: grey;\n"
                           "}\n";
   QString projectName_;
-  unsigned mSpareStickerCount;
-  const VisitCaptions* mVisitCaptions;
+  unsigned spareStickerCount_;
+  const VisitCaptions* visitCaptions_;
 
  public:
   explicit ParticipantWidget(MainWindow* parent,

@@ -13,10 +13,10 @@ class Requestor : public std::enable_shared_from_this<Requestor>, public SharedC
   friend class SharedConstructor<Requestor>;
 
 private:
-  boost::asio::io_context& mIoContext;
-  Scheduler& mScheduler;
+  boost::asio::io_context& ioContext_;
+  Scheduler& scheduler_;
 
-  StreamId mPreviousRequestStreamId = StreamId::BeforeFirst();
+  StreamId previousRequestStreamId_ = StreamId::BeforeFirst();
 
   StreamId getNewRequestStreamId();
 

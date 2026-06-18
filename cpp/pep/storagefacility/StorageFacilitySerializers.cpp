@@ -11,84 +11,84 @@ DataEnumerationRequest2 Serializer<DataEnumerationRequest2>::fromProtocolBuffer(
   DataEnumerationRequest2 result;
   result.ticket_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
   if (source.has_columns())
-    result.mColumns = Serialization::FromProtocolBuffer(std::move(*source.mutable_columns()));
+    result.columns_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_columns()));
   if (source.has_pseudonyms())
-    result.mPseudonyms = Serialization::FromProtocolBuffer(std::move(*source.mutable_pseudonyms()));
+    result.pseudonyms_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_pseudonyms()));
   return result;
 }
 
 void Serializer<DataEnumerationRequest2>::moveIntoProtocolBuffer(proto::DataEnumerationRequest2& dest, DataEnumerationRequest2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket(), std::move(value.ticket_));
-  if (value.mPseudonyms)
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_pseudonyms(), std::move(*value.mPseudonyms));
-  if (value.mColumns)
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_columns(), std::move(*value.mColumns));
+  if (value.pseudonyms_)
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_pseudonyms(), std::move(*value.pseudonyms_));
+  if (value.columns_)
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_columns(), std::move(*value.columns_));
 }
 
 DataEnumerationEntry2 Serializer<DataEnumerationEntry2>::fromProtocolBuffer(proto::DataEnumerationEntry2&& source) const {
   DataEnumerationEntry2 result;
-  result.mMetadata = Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata()));
-  result.mPolymorphicKey = Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic_key()));
-  result.mFileSize = source.file_size();
-  result.mId = std::move(*source.mutable_id());
-  result.mColumnIndex = source.column_index();
-  result.mPseudonymIndex = source.pseudonym_index();
-  result.mIndex = source.index();
+  result.metadata_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata()));
+  result.polymorphicKey_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic_key()));
+  result.fileSize_ = source.file_size();
+  result.id_ = std::move(*source.mutable_id());
+  result.columnIndex_ = source.column_index();
+  result.pseudonymIndex_ = source.pseudonym_index();
+  result.index_ = source.index();
   return result;
 }
 
 void Serializer<DataEnumerationEntry2>::moveIntoProtocolBuffer(proto::DataEnumerationEntry2& dest, DataEnumerationEntry2 value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_metadata(), std::move(value.mMetadata));
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic_key(), value.mPolymorphicKey);
-  dest.set_file_size(value.mFileSize);
-  *dest.mutable_id() = std::move(value.mId);
-  dest.set_column_index(value.mColumnIndex);
-  dest.set_pseudonym_index(value.mPseudonymIndex);
-  dest.set_index(value.mIndex);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_metadata(), std::move(value.metadata_));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic_key(), value.polymorphicKey_);
+  dest.set_file_size(value.fileSize_);
+  *dest.mutable_id() = std::move(value.id_);
+  dest.set_column_index(value.columnIndex_);
+  dest.set_pseudonym_index(value.pseudonymIndex_);
+  dest.set_index(value.index_);
 }
 
 DataEnumerationResponse2 Serializer<DataEnumerationResponse2>::fromProtocolBuffer(proto::DataEnumerationResponse2&& source) const {
   DataEnumerationResponse2 result;
   Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
-  result.mHasMore = source.has_more();
+  result.hasMore_ = source.has_more();
   return result;
 }
 
 void Serializer<DataEnumerationResponse2>::moveIntoProtocolBuffer(proto::DataEnumerationResponse2& dest, DataEnumerationResponse2 value) const {
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
-  dest.set_has_more(value.mHasMore);
+  dest.set_has_more(value.hasMore_);
 }
 
 MetadataReadRequest2 Serializer<MetadataReadRequest2>::fromProtocolBuffer(proto::MetadataReadRequest2&& source) const {
   MetadataReadRequest2 result;
   result.ticket_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  result.mIds.reserve(static_cast<size_t>(source.ids().size()));
+  result.ids_.reserve(static_cast<size_t>(source.ids().size()));
   for (auto& x : *source.mutable_ids())
-    result.mIds.push_back(std::move(x));
+    result.ids_.push_back(std::move(x));
   return result;
 }
 
 void Serializer<MetadataReadRequest2>::moveIntoProtocolBuffer(proto::MetadataReadRequest2& dest, MetadataReadRequest2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket(), std::move(value.ticket_));
-  dest.mutable_ids()->Reserve(static_cast<int>(value.mIds.size()));
-  for (auto x : value.mIds)
+  dest.mutable_ids()->Reserve(static_cast<int>(value.ids_.size()));
+  for (auto x : value.ids_)
     dest.add_ids(std::move(x));
 }
 
 DataReadRequest2 Serializer<DataReadRequest2>::fromProtocolBuffer(proto::DataReadRequest2&& source) const {
   DataReadRequest2 result;
   result.ticket_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  result.mIds.reserve(static_cast<size_t>(source.ids().size()));
+  result.ids_.reserve(static_cast<size_t>(source.ids().size()));
   for (auto& x : *source.mutable_ids())
-    result.mIds.push_back(std::move(x));
+    result.ids_.push_back(std::move(x));
   return result;
 }
 
 void Serializer<DataReadRequest2>::moveIntoProtocolBuffer(proto::DataReadRequest2& dest, DataReadRequest2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket(), std::move(value.ticket_));
-  dest.mutable_ids()->Reserve(static_cast<int>(value.mIds.size()));
-  for (auto x : value.mIds)
+  dest.mutable_ids()->Reserve(static_cast<int>(value.ids_.size()));
+  for (auto x : value.ids_)
     dest.add_ids(std::move(x));
 }
 
@@ -107,32 +107,32 @@ void Serializer<MetadataUpdateRequest2>::moveIntoProtocolBuffer(proto::MetadataU
 
 MetadataUpdateResponse2 Serializer<MetadataUpdateResponse2>::fromProtocolBuffer(proto::MetadataUpdateResponse2&& source) const {
   MetadataUpdateResponse2 result;
-  result.mIds.reserve(static_cast<size_t>(source.ids().size()));
+  result.ids_.reserve(static_cast<size_t>(source.ids().size()));
   for (auto& x : *source.mutable_ids())
-    result.mIds.push_back(std::move(x));
+    result.ids_.push_back(std::move(x));
   return result;
 }
 
 void Serializer<MetadataUpdateResponse2>::moveIntoProtocolBuffer(proto::MetadataUpdateResponse2& dest, MetadataUpdateResponse2 value) const {
-  dest.mutable_ids()->Reserve(static_cast<int>(value.mIds.size()));
-  for (auto x : value.mIds)
+  dest.mutable_ids()->Reserve(static_cast<int>(value.ids_.size()));
+  for (auto x : value.ids_)
     dest.add_ids(std::move(x));
 }
 
 DataStoreResponse2 Serializer<DataStoreResponse2>::fromProtocolBuffer(proto::DataStoreResponse2&& source) const {
   DataStoreResponse2 result;
-  result.mIds.reserve(static_cast<size_t>(source.ids().size()));
+  result.ids_.reserve(static_cast<size_t>(source.ids().size()));
   for (auto& x : *source.mutable_ids())
-    result.mIds.push_back(std::move(x));
-  result.mHash = source.hash();
+    result.ids_.push_back(std::move(x));
+  result.hash_ = source.hash();
   return result;
 }
 
 void Serializer<DataStoreResponse2>::moveIntoProtocolBuffer(proto::DataStoreResponse2& dest, DataStoreResponse2 value) const {
-  dest.mutable_ids()->Reserve(static_cast<int>(value.mIds.size()));
-  for (auto x : value.mIds)
+  dest.mutable_ids()->Reserve(static_cast<int>(value.ids_.size()));
+  for (auto x : value.ids_)
     dest.add_ids(std::move(x));
-  dest.set_hash(value.mHash);
+  dest.set_hash(value.hash_);
 }
 
 DataStoreRequest2 Serializer<DataStoreRequest2>::fromProtocolBuffer(proto::DataStoreRequest2&& source) const {
@@ -150,30 +150,30 @@ void Serializer<DataStoreRequest2>::moveIntoProtocolBuffer(proto::DataStoreReque
 
 DataStoreEntry2 Serializer<DataStoreEntry2>::fromProtocolBuffer(proto::DataStoreEntry2&& source) const {
   DataStoreEntry2 result;
-  result.mMetadata = Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata()));
-  result.mPolymorphicKey = Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic_key()));
-  result.mColumnIndex = source.column_index();
-  result.mPseudonymIndex = source.pseudonym_index();
+  result.metadata_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata()));
+  result.polymorphicKey_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic_key()));
+  result.columnIndex_ = source.column_index();
+  result.pseudonymIndex_ = source.pseudonym_index();
   return result;
 }
 
 void Serializer<DataStoreEntry2>::moveIntoProtocolBuffer(proto::DataStoreEntry2& dest, DataStoreEntry2 value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_metadata(), std::move(value.mMetadata));
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic_key(), value.mPolymorphicKey);
-  dest.set_column_index(value.mColumnIndex);
-  dest.set_pseudonym_index(value.mPseudonymIndex);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_metadata(), std::move(value.metadata_));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic_key(), value.polymorphicKey_);
+  dest.set_column_index(value.columnIndex_);
+  dest.set_pseudonym_index(value.pseudonymIndex_);
 }
 
 DataDeleteResponse2 Serializer<DataDeleteResponse2>::fromProtocolBuffer(proto::DataDeleteResponse2&& source) const {
   return {
-    .mTimestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
+    .timestamp_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
     .entries_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_entries())),
   };
 }
 
 void Serializer<DataDeleteResponse2>::moveIntoProtocolBuffer(proto::DataDeleteResponse2& dest, DataDeleteResponse2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.mTimestamp);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp_);
 }
 
 DataDeleteRequest2 Serializer<DataDeleteRequest2>::fromProtocolBuffer(proto::DataDeleteRequest2&& source) const {
@@ -191,48 +191,48 @@ void Serializer<DataDeleteRequest2>::moveIntoProtocolBuffer(proto::DataDeleteReq
 
 DataRequestEntry2 Serializer<DataRequestEntry2>::fromProtocolBuffer(proto::DataRequestEntry2&& source) const {
   DataRequestEntry2 result;
-  result.mColumnIndex = source.column_index();
-  result.mPseudonymIndex = source.pseudonym_index();
+  result.columnIndex_ = source.column_index();
+  result.pseudonymIndex_ = source.pseudonym_index();
   return result;
 }
 
 void Serializer<DataRequestEntry2>::moveIntoProtocolBuffer(proto::DataRequestEntry2& dest, DataRequestEntry2 value) const {
-  dest.set_column_index(value.mColumnIndex);
-  dest.set_pseudonym_index(value.mPseudonymIndex);
+  dest.set_column_index(value.columnIndex_);
+  dest.set_pseudonym_index(value.pseudonymIndex_);
 }
 
 DataHistoryRequest2 Serializer<DataHistoryRequest2>::fromProtocolBuffer(proto::DataHistoryRequest2&& source) const {
   DataHistoryRequest2 result;
   result.ticket_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
   if (source.has_columns())
-    result.mColumns = Serialization::FromProtocolBuffer(std::move(*source.mutable_columns()));
+    result.columns_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_columns()));
   if (source.has_pseudonyms())
-    result.mPseudonyms = Serialization::FromProtocolBuffer(std::move(*source.mutable_pseudonyms()));
+    result.pseudonyms_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_pseudonyms()));
   return result;
 }
 
 void Serializer<DataHistoryRequest2>::moveIntoProtocolBuffer(proto::DataHistoryRequest2& dest, DataHistoryRequest2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket(), std::move(value.ticket_));
-  if (value.mPseudonyms)
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_pseudonyms(), std::move(*value.mPseudonyms));
-  if (value.mColumns)
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_columns(), std::move(*value.mColumns));
+  if (value.pseudonyms_)
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_pseudonyms(), std::move(*value.pseudonyms_));
+  if (value.columns_)
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_columns(), std::move(*value.columns_));
 }
 
 DataHistoryEntry2 Serializer<DataHistoryEntry2>::fromProtocolBuffer(proto::DataHistoryEntry2&& source) const {
   return {
-    .mColumnIndex = source.column_index(),
-    .mPseudonymIndex = source.pseudonym_index(),
-    .mTimestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
-    .mId = std::move(*source.mutable_id()),
+    .columnIndex_ = source.column_index(),
+    .pseudonymIndex_ = source.pseudonym_index(),
+    .timestamp_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
+    .id_ = std::move(*source.mutable_id()),
   };
 }
 
 void Serializer<DataHistoryEntry2>::moveIntoProtocolBuffer(proto::DataHistoryEntry2& dest, DataHistoryEntry2 value) const {
-  dest.set_column_index(value.mColumnIndex);
-  dest.set_pseudonym_index(value.mPseudonymIndex);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.mTimestamp);
-  *dest.mutable_id() = std::move(value.mId);
+  dest.set_column_index(value.columnIndex_);
+  dest.set_pseudonym_index(value.pseudonymIndex_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp_);
+  *dest.mutable_id() = std::move(value.id_);
 }
 
 DataHistoryResponse2 Serializer<DataHistoryResponse2>::fromProtocolBuffer(proto::DataHistoryResponse2&& source) const {
@@ -249,27 +249,27 @@ void Serializer<DataHistoryResponse2>::moveIntoProtocolBuffer(proto::DataHistory
 DataPayloadPage Serializer<DataPayloadPage>::fromProtocolBuffer(proto::DataPayloadPage&& source) const {
   DataPayloadPage result;
 
-  result.mCryptoNonce = std::move(*source.mutable_crypto_nonce());
-  result.mCryptoMac = std::move(*source.mutable_crypto_mac());
-  result.mPayloadData = std::move(*source.mutable_payload_data());
-  result.mPageNumber = source.page_number();
-  result.mIndex = source.index();
+  result.cryptoNonce_ = std::move(*source.mutable_crypto_nonce());
+  result.cryptoMac_ = std::move(*source.mutable_crypto_mac());
+  result.payloadData_ = std::move(*source.mutable_payload_data());
+  result.pageNumber_ = source.page_number();
+  result.index_ = source.index();
 
   return result;
 }
 
 void Serializer<DataPayloadPage>::moveIntoProtocolBuffer(proto::DataPayloadPage& dest, DataPayloadPage value) const {
-  *dest.mutable_crypto_nonce() = std::move(value.mCryptoNonce);
-  *dest.mutable_crypto_mac() = std::move(value.mCryptoMac);
-  *dest.mutable_payload_data() = std::move(value.mPayloadData);
-  dest.set_page_number(value.mPageNumber);
-  dest.set_index(value.mIndex);
+  *dest.mutable_crypto_nonce() = std::move(value.cryptoNonce_);
+  *dest.mutable_crypto_mac() = std::move(value.cryptoMac_);
+  *dest.mutable_payload_data() = std::move(value.payloadData_);
+  dest.set_page_number(value.pageNumber_);
+  dest.set_index(value.index_);
 }
 
 DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeRequest&& source) const {
   DataSizeRequest result;
   for (const auto& column : source.columns()) {
-    if (!result.mColumns.emplace(column).second) {
+    if (!result.columns_.emplace(column).second) {
       throw std::runtime_error("Can't insert duplicate column '" + column + "' into data size request");
     }
   }
@@ -277,24 +277,24 @@ DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeR
 }
 
 void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest& dest, DataSizeRequest value) const {
-  dest.mutable_columns()->Reserve(static_cast<int>(value.mColumns.size()));
-  for (auto& column : value.mColumns) {
+  dest.mutable_columns()->Reserve(static_cast<int>(value.columns_.size()));
+  for (auto& column : value.columns_) {
     dest.add_columns(column);
   }
 }
 
 DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSizeResponse&& source) const {
   return DataSizeResponse{
-    .mBlockSize = source.block_size(),
-    .mTotalBlocks = source.total_blocks(),
-    .mRollingBlocks = source.rolling_blocks(),
+    .blockSize_ = source.block_size(),
+    .totalBlocks_ = source.total_blocks(),
+    .rollingBlocks_ = source.rolling_blocks(),
   };
 }
 
 void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
-  dest.set_block_size(value.mBlockSize);
-  dest.set_total_blocks(value.mTotalBlocks);
-  dest.set_rolling_blocks(value.mRollingBlocks);
+  dest.set_block_size(value.blockSize_);
+  dest.set_total_blocks(value.totalBlocks_);
+  dest.set_rolling_blocks(value.rollingBlocks_);
 }
 
 

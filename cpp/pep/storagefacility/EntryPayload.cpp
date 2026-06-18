@@ -52,24 +52,24 @@ std::shared_ptr<EntryPayload> EntryPayload::Load(PersistedEntryProperties& prope
 
 bool InlinedEntryPayload::allMemberVarsAreEqual(const EntryPayload& rhs) const {
   const auto& downcast = static_cast<const InlinedEntryPayload&>(rhs);
-  return this->mContent == downcast.mContent
-      && this->mPayloadSize == downcast.mPayloadSize;
+  return this->content_ == downcast.content_
+      && this->payloadSize_ == downcast.payloadSize_;
 }
 
 messaging::MessageSequence InlinedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {
   this->validatedPageIndex(index);
-  return rxcpp::observable<>::just(MakeSharedCopy(mContent));
+  return rxcpp::observable<>::just(MakeSharedCopy(content_));
 }
 
 std::string InlinedEntryPayload::getEtag() const {
-  auto xxhashstr = GetXxHashString(mContent);
-  return ETag(mContent, xxhashstr);
+  auto xxhashstr = GetXxHashString(content_);
+  return ETag(content_, xxhashstr);
 }
 
 void InlinedEntryPayload::save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const {
   assert(pages.empty());
 
-  SetPersistedEntryProperty(properties, INLINE_PAGE_KEY, mContent);
+  SetPersistedEntryProperty(properties, INLINE_PAGE_KEY, content_);
   EntryPayload::save(properties, pages);
 }
 
@@ -89,15 +89,15 @@ std::shared_ptr<InlinedEntryPayload> InlinedEntryPayload::Load(PersistedEntryPro
 
 bool PagedEntryPayload::allMemberVarsAreEqual(const EntryPayload& rhs) const {
   const auto& downcast = static_cast<const PagedEntryPayload&>(rhs);
-  return this->mPages == downcast.mPages
-      && this->mPayloadSize == downcast.mPayloadSize
-      && this->mPageSize == downcast.mPageSize;
+  return this->pages_ == downcast.pages_
+      && this->payloadSize_ == downcast.payloadSize_
+      && this->pageSize_ == downcast.pageSize_;
 }
 
 void PagedEntryPayload::save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const {
   assert(pages.empty());
 
-  pages = mPages;
+  pages = pages_;
   EntryPayload::save(properties, pages);
 }
 
@@ -146,14 +146,14 @@ rxcpp::observable<std::string> PagedEntryPayload::appendPage(PageStore& pageStor
   auto xxhashstr = XxHashToString(xxhash);
 
   // Throw an exception when a duplicate hash is found
-  if (std::find(mPages.begin(), mPages.end(), xxhash) != mPages.end()) {
+  if (std::find(pages_.begin(), pages_.end(), xxhash) != pages_.end()) {
     throw std::runtime_error("FileStore error, duplicate data hash found in Entry Change: " + name.string() + ", a hashing collision has (likely) occurred.");
   }
 
-  this->mPages.push_back(xxhash);
-  mPayloadSize += payloadSize;
+  this->pages_.push_back(xxhash);
+  payloadSize_ += payloadSize;
   if (pagenr == 0) {
-    mPageSize = payloadSize;
+    pageSize_ = payloadSize;
   }
 
   return pageStore.put(
@@ -169,20 +169,20 @@ size_t EntryPayload::validatedPageIndex(size_t index) const {
 }
 
 PagedEntryPayload::PagedEntryPayload(PersistedEntryProperties& properties, std::vector<PageId> pages)
-  : mPages(std::move(pages)), mPayloadSize(ExtractFileSize(properties)), mPageSize(ExtractPageSize(properties)) {
+  : pages_(std::move(pages)), payloadSize_(ExtractFileSize(properties)), pageSize_(ExtractPageSize(properties)) {
 }
 
 std::optional<uint64_t> PagedEntryPayload::pageSize() const {
-  if (mPageSize == 0U) {
+  if (pageSize_ == 0U) {
     return std::nullopt;
   }
-  return mPageSize;
+  return pageSize_;
 }
 
 messaging::MessageSequence PagedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {
   index = this->validatedPageIndex(index);
 
-  uint64_t expected_hash = mPages[index];
+  uint64_t expected_hash = pages_[index];
   std::string path = GetPagePath(name, expected_hash);
 
   return pageStore->get(path).map(

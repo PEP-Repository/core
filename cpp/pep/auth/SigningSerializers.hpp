@@ -28,7 +28,7 @@ void Serializer<Signed<T> >::moveIntoProtocolBuffer(
   dest.set_data(std::move(value.data_));
   Serialization::MoveIntoProtocolBuffer(
     *dest.mutable_signature(),
-    std::move(value.mSignature)
+    std::move(value.signature_)
   );
 }
 

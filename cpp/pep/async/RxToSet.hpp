@@ -13,11 +13,11 @@ namespace pep {
 /// \endcode
 struct RxToSet {
 private:
-  bool mThrowOnDuplicate;
+  bool throwOnDuplicate_;
 
 public:
   explicit inline RxToSet(bool throwOnDuplicate = true)
-    : mThrowOnDuplicate(throwOnDuplicate) {
+    : throwOnDuplicate_(throwOnDuplicate) {
   }
 
   /// \param items The observable emitting individual items.
@@ -28,7 +28,7 @@ public:
   rxcpp::observable<std::shared_ptr<std::set<TItem>>> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.reduce(
       std::make_shared<std::set<TItem>>(),
-      [throwOnDuplicate = mThrowOnDuplicate](std::shared_ptr<std::set<TItem>> set, auto&& item) {
+      [throwOnDuplicate = throwOnDuplicate_](std::shared_ptr<std::set<TItem>> set, auto&& item) {
         auto added = set->emplace(std::forward<decltype(item)>(item)).second;
         if (throwOnDuplicate && !added) {
           throw std::runtime_error("Could not insert duplicate item into set");

@@ -4,50 +4,50 @@ namespace pep {
 
 MetricsResponse Serializer<MetricsResponse>::fromProtocolBuffer(proto::MetricsResponse&& source) const {
   MetricsResponse result;
-  result.mMetrics = std::move(*source.mutable_metrics());
+  result.metrics_ = std::move(*source.mutable_metrics());
   return result;
 }
 
 void Serializer<MetricsResponse>::moveIntoProtocolBuffer(proto::MetricsResponse& dest, MetricsResponse value) const {
-  *dest.mutable_metrics() = std::move(value.mMetrics);
+  *dest.mutable_metrics() = std::move(value.metrics_);
 }
 
 ChecksumChainNamesResponse Serializer<ChecksumChainNamesResponse>::fromProtocolBuffer(proto::ChecksumChainNamesResponse&& source) const {
   ChecksumChainNamesResponse result;
-  result.mNames.reserve(static_cast<size_t>(source.names().size()));
+  result.names_.reserve(static_cast<size_t>(source.names().size()));
   for (auto& name : *source.mutable_names())
-    result.mNames.push_back(std::move(name));
+    result.names_.push_back(std::move(name));
   return result;
 }
 
 void Serializer<ChecksumChainNamesResponse>::moveIntoProtocolBuffer(proto::ChecksumChainNamesResponse& dest, ChecksumChainNamesResponse value) const {
-  dest.mutable_names()->Reserve(static_cast<int>(value.mNames.size()));
-  for (auto& name : value.mNames)
+  dest.mutable_names()->Reserve(static_cast<int>(value.names_.size()));
+  for (auto& name : value.names_)
     dest.add_names(std::move(name));
 }
 
 ChecksumChainRequest Serializer<ChecksumChainRequest>::fromProtocolBuffer(proto::ChecksumChainRequest&& source) const {
   ChecksumChainRequest result;
   result.name_ = std::move(*source.mutable_name());
-  result.mCheckpoint = source.checkpoint();
+  result.checkpoint_ = source.checkpoint();
   return result;
 }
 
 void Serializer<ChecksumChainRequest>::moveIntoProtocolBuffer(proto::ChecksumChainRequest& dest, ChecksumChainRequest value) const {
   *dest.mutable_name() = std::move(value.name_);
-  dest.set_checkpoint(value.mCheckpoint);
+  dest.set_checkpoint(value.checkpoint_);
 }
 
 ChecksumChainResponse Serializer<ChecksumChainResponse>::fromProtocolBuffer(proto::ChecksumChainResponse&& source) const {
   ChecksumChainResponse result;
-  result.mXorredChecksums = source.xorredchecksums();
-  result.mCheckpoint = source.checkpoint();
+  result.xorredChecksums_ = source.xorredchecksums();
+  result.checkpoint_ = source.checkpoint();
   return result;
 }
 
 void Serializer<ChecksumChainResponse>::moveIntoProtocolBuffer(proto::ChecksumChainResponse& dest, ChecksumChainResponse value) const {
-  dest.set_xorredchecksums(value.mXorredChecksums);
-  dest.set_checkpoint(value.mCheckpoint);
+  dest.set_xorredchecksums(value.xorredChecksums_);
+  dest.set_checkpoint(value.checkpoint_);
 }
 
 }

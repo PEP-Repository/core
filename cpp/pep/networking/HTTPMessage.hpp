@@ -190,15 +190,15 @@ public:
   }
 
   const std::string& getHost() const {
-    return mHost;
+    return host_;
   }
 
   const boost::urls::url& uri() const {
-    return mUri;
+    return uri_;
   }
 
   boost::urls::url& uri() {
-    return mUri;
+    return uri_;
   }
 
   void completeHeaders();
@@ -206,9 +206,9 @@ public:
 private:
   void ensureHeader(const std::string& key, const std::string& value);
 
-  std::string mHost;
+  std::string host_;
   networking::HttpMethod method_;
-  boost::urls::url mUri;
+  boost::urls::url uri_;
 };
 
 }

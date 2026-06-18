@@ -15,11 +15,11 @@ const std::string ORIGINAL_PAYLOAD_TIMESTAMP_KEY = "original-payload-timestamp";
 } // anonymous namespace
 
 EntryContent::EntryContent( Metadata metadata, PayloadData payload, std::optional<Timestamp> originalPayloadEntryTimestamp)
-  : mMetadata(std::move(metadata)),
-  mPayload(std::move(payload)) {
+  : metadata_(std::move(metadata)),
+  payload_(std::move(payload)) {
   if (originalPayloadEntryTimestamp.has_value()) {
     assert(*originalPayloadEntryTimestamp != NO_PREVIOUS_PAYLOAD_ENTRY);
-    mOriginalPayloadEntryTimestamp = *originalPayloadEntryTimestamp;
+    originalPayloadEntryTimestamp_ = *originalPayloadEntryTimestamp;
   }
 }
 
@@ -32,21 +32,21 @@ EntryContent::PayloadData& EntryContent::PayloadData::operator= (const PayloadDa
 }
 
 EntryContent::EntryContent(const EntryContent& other, Timestamp originalEntryValidFrom)
-  : EntryContent(other.mMetadata,
-      other.mPayload,
+  : EntryContent(other.metadata_,
+      other.payload_,
       other.getOriginalPayloadEntryTimestamp().value_or(originalEntryValidFrom)) {}
 
 std::optional<Timestamp> EntryContent::getOriginalPayloadEntryTimestamp() const {
-  if (mOriginalPayloadEntryTimestamp == NO_PREVIOUS_PAYLOAD_ENTRY) {
+  if (originalPayloadEntryTimestamp_ == NO_PREVIOUS_PAYLOAD_ENTRY) {
     return std::nullopt;
   }
-  return mOriginalPayloadEntryTimestamp;
+  return originalPayloadEntryTimestamp_;
 }
 
 void EntryContent::setPayload(std::shared_ptr<EntryPayload> payload) {
-  assert(mPayload.ptr == nullptr);
-  mPayload.ptr = payload;
-  mOriginalPayloadEntryTimestamp = NO_PREVIOUS_PAYLOAD_ENTRY;
+  assert(payload_.ptr == nullptr);
+  payload_.ptr = payload;
+  originalPayloadEntryTimestamp_ = NO_PREVIOUS_PAYLOAD_ENTRY;
 }
 
 void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedEntryProperties& properties, std::vector<PageId>& pages) {
@@ -61,11 +61,11 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
       SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, *original);
     }
 
-    std::transform(content->mMetadata.cbegin(), content->mMetadata.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {
+    std::transform(content->metadata_.cbegin(), content->metadata_.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {
       auto key = X_ENTRY_PREFIX + *entry.first;
       return std::make_pair(key, *entry.second);
       });
-    payload = content->mPayload.ptr;
+    payload = content->payload_.ptr;
   }
 
   // Backward compatible: save (absent/empty) payload properties even if there's no content

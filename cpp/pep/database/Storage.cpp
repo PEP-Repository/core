@@ -18,7 +18,7 @@ std::string GenerateSchemaErrorMessage(std::string_view table, pep::database::Sc
 namespace pep::database {
 
 SchemaError::SchemaError(std::string table, Reason reason)
-    : logic_error(GenerateSchemaErrorMessage(table, reason)), mTable(std::move(table)), mReason(reason) {}
+    : logic_error(GenerateSchemaErrorMessage(table, reason)), table_(std::move(table)), reason_(reason) {}
 
 const char* const BasicStorage::STORE_IN_MEMORY = ":memory:";
 

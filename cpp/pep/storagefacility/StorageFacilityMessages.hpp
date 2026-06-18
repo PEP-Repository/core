@@ -12,50 +12,50 @@ class DataEnumerationRequest2 {
 public:
   SignedTicket2 ticket_;
   // Falls back to all columns in ticket
-  std::optional<IndexList> mColumns{};
+  std::optional<IndexList> columns_{};
   // Falls back to all pseudonyms in ticket
-  std::optional<IndexList> mPseudonyms{};
+  std::optional<IndexList> pseudonyms_{};
 };
 
 class DataEnumerationEntry2 {
 public:
-  std::string mId;
-  Metadata mMetadata;
-  EncryptedKey mPolymorphicKey;
-  uint64_t mFileSize{};
-  uint32_t mColumnIndex{};
-  uint32_t mPseudonymIndex{};
-  uint32_t mIndex = 0;
+  std::string id_;
+  Metadata metadata_;
+  EncryptedKey polymorphicKey_;
+  uint64_t fileSize_{};
+  uint32_t columnIndex_{};
+  uint32_t pseudonymIndex_{};
+  uint32_t index_ = 0;
 };
 
 class DataEnumerationResponse2 {
 public:
   std::vector<DataEnumerationEntry2> entries_;
-  bool mHasMore = false;
+  bool hasMore_ = false;
 };
 
 class MetadataReadRequest2 {
 public:
   SignedTicket2 ticket_;
-  std::vector<std::string> mIds;
+  std::vector<std::string> ids_;
 };
 
 class DataReadRequest2 {
 public:
   SignedTicket2 ticket_;
-  std::vector<std::string> mIds;
+  std::vector<std::string> ids_;
 };
 
 class DataRequestEntry2 {
 public:
-  uint32_t mColumnIndex{};
-  uint32_t mPseudonymIndex{};
+  uint32_t columnIndex_{};
+  uint32_t pseudonymIndex_{};
 };
 
 class DataStoreEntry2 : public DataRequestEntry2 {
 public:
-  Metadata mMetadata;
-  EncryptedKey mPolymorphicKey;
+  Metadata metadata_;
+  EncryptedKey polymorphicKey_;
 };
 
 // Base class for request classes that specify the entries they manipulate.
@@ -74,7 +74,7 @@ class MetadataUpdateRequest2 : public DataEntriesRequest2<DataStoreEntry2> {
 
 class MetadataUpdateResponse2 {
 public:
-  std::vector<std::string> mIds;
+  std::vector<std::string> ids_;
 };
 
 class DataStoreRequest2 : public DataEntriesRequest2<DataStoreEntry2> {
@@ -82,7 +82,7 @@ class DataStoreRequest2 : public DataEntriesRequest2<DataStoreEntry2> {
 
 class DataStoreResponse2 : public MetadataUpdateResponse2 {
 public:
-  uint64_t mHash{};
+  uint64_t hash_{};
 };
 
 class DataDeleteRequest2 : public DataEntriesRequest2<DataRequestEntry2> {
@@ -90,23 +90,23 @@ class DataDeleteRequest2 : public DataEntriesRequest2<DataRequestEntry2> {
 
 class DataDeleteResponse2 {
 public:
-  Timestamp mTimestamp;
+  Timestamp timestamp_;
   IndexList entries_; // Indices correspond with DataDeleteRequest2's entries_
 };
 
 class DataHistoryRequest2 {
 public:
   SignedTicket2 ticket_;
-  std::optional<IndexList> mColumns;
-  std::optional<IndexList> mPseudonyms;
+  std::optional<IndexList> columns_;
+  std::optional<IndexList> pseudonyms_;
 };
 
 class DataHistoryEntry2 {
 public:
-  uint32_t mColumnIndex{}; // In the DataHistoryRequest2::ticket_
-  uint32_t mPseudonymIndex{}; // In the DataHistoryRequest2::ticket_
-  Timestamp mTimestamp;
-  std::string mId; // Storage facility ID. If empty, this history entry represents a deletion
+  uint32_t columnIndex_{}; // In the DataHistoryRequest2::ticket_
+  uint32_t pseudonymIndex_{}; // In the DataHistoryRequest2::ticket_
+  Timestamp timestamp_;
+  std::string id_; // Storage facility ID. If empty, this history entry represents a deletion
 };
 
 class DataHistoryResponse2 {
@@ -115,13 +115,13 @@ public:
 };
 
 struct DataSizeRequest {
-  std::set<std::string> mColumns;
+  std::set<std::string> columns_;
 };
 
 struct DataSizeResponse {
-  uint64_t mBlockSize;
-  uint64_t mTotalBlocks;
-  uint64_t mRollingBlocks;
+  uint64_t blockSize_;
+  uint64_t totalBlocks_;
+  uint64_t rollingBlocks_;
 };
 
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;

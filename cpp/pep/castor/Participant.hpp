@@ -13,9 +13,9 @@ class RepeatingDataInstance;
 //! A participant in a Castor Study
 class Participant : public SimpleCastorChildObject<Participant, Study>, public SharedConstructor<Participant> {
  private:
-  int mProgress;
-  std::string mStatus;
-  std::unique_ptr<boost::property_tree::ptree> mUpdatedOn;
+  int progress_;
+  std::string status_;
+  std::unique_ptr<boost::property_tree::ptree> updatedOn_;
 
  public:
   static const std::string RELATIVE_API_ENDPOINT;
@@ -36,13 +36,13 @@ class Participant : public SimpleCastorChildObject<Participant, Study>, public S
   rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> getRepeatingDataInstances();
 
   //! \return The percentage of filled in form fields for this participant
-  int getProgress() const { return mProgress; }
+  int getProgress() const { return progress_; }
 
   std::shared_ptr<Study> getStudy() const { return this->getParent(); }
 
   const boost::property_tree::ptree& getUpdatedOn() const;
 
-  std::string getStatus() const { return mStatus; }
+  std::string getStatus() const { return status_; }
 
   bool isLocked() const { return this->getStatus() == "locked"; }
 

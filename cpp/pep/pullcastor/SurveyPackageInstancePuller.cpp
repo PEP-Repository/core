@@ -9,7 +9,7 @@ namespace pep {
 namespace castor {
 
 SurveyPackageInstancePuller::SurveyPackageInstancePuller(std::shared_ptr<ImportColumnNamer> namer, const std::string& prefix, const std::string& surveyPackageName)
-  : mNamer(namer), prefix_(prefix), mSurveyPackageName(surveyPackageName) {
+  : namer_(namer), prefix_(prefix), surveyPackageName_(surveyPackageName) {
 }
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyPackageInstancePuller::loadContent(
@@ -28,18 +28,18 @@ std::string SimpleSpiPuller::getColumnName(std::shared_ptr<SurveyStep> step) con
 }
 
 IndexedSpiPuller::IndexedSpiPuller(std::shared_ptr<ImportColumnNamer> namer, const std::string& prefix, const std::string& surveyPackageName, unsigned index, int weekNumber)
-  : SurveyPackageInstancePuller(namer, prefix, surveyPackageName), mIndex(index), mWeekNumber(weekNumber) {
+  : SurveyPackageInstancePuller(namer, prefix, surveyPackageName), index_(index), weekNumber_(weekNumber) {
 }
 
 std::string IndexedSpiPuller::getColumnName(std::shared_ptr<SurveyStep> step) const {
-  return this->getImportColumnNamer()->getColumnName(this->getColumnNamePrefix(), this->getSurveyPackageName(), step, mIndex);
+  return this->getImportColumnNamer()->getColumnName(this->getColumnNamePrefix(), this->getSurveyPackageName(), step, index_);
 }
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> IndexedSpiPuller::loadContent(
   std::shared_ptr<SurveyStep> step,
   std::shared_ptr<std::vector<std::shared_ptr<FieldValue>>> fvs) const {
-  auto column = this->getImportColumnNamer()->getWeekNumberColumnName(this->getColumnNamePrefix(), this->getSurveyPackageName(), step, mIndex);
-  auto content = PreloadedCellContent::Create(std::to_string(mWeekNumber));
+  auto column = this->getImportColumnNamer()->getWeekNumberColumnName(this->getColumnNamePrefix(), this->getSurveyPackageName(), step, index_);
+  auto content = PreloadedCellContent::Create(std::to_string(weekNumber_));
   auto weekno = StorableColumnContent::Create(column, content, ".txt");
 
   return SurveyPackageInstancePuller::loadContent(step, fvs) // Return (JSON) payload for this step

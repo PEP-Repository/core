@@ -62,15 +62,15 @@ protected:
 class FileExtensionRequiringChildCommand : public ChildCommandOf<CommandFileExtension> {
 private:
   std::weak_ptr<pep::CoreClient> client_;
-  std::shared_ptr<pep::RxCache<std::shared_ptr<const pep::ColumnAccess>>> mMetaReadableColumnGroups;
-  std::shared_ptr<pep::RxCache<std::string>> mAccessibleParticipantGroups;
+  std::shared_ptr<pep::RxCache<std::shared_ptr<const pep::ColumnAccess>>> metaReadableColumnGroups_;
+  std::shared_ptr<pep::RxCache<std::string>> accessibleParticipantGroups_;
 
 protected:
   using ColumnExtensions = std::map<std::string, std::string>;
 
   rxcpp::observable<std::shared_ptr<const pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
-    if (mMetaReadableColumnGroups == nullptr) {
-      mMetaReadableColumnGroups = pep::CreateRxCache([client]() {
+    if (metaReadableColumnGroups_ == nullptr) {
+      metaReadableColumnGroups_ = pep::CreateRxCache([client]() {
         return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read-meta" })
           .op(pep::RxGetOne("column access specification"))
           .map([](pep::ColumnAccess access) {
@@ -83,12 +83,12 @@ protected:
     }
 
     assert(client_.lock() == client);
-    return mMetaReadableColumnGroups->observe();
+    return metaReadableColumnGroups_->observe();
   }
 
   rxcpp::observable<std::string> getAccessibleParticipantGroups(std::shared_ptr<pep::CoreClient> client) {
-    if (mAccessibleParticipantGroups == nullptr) {
-      mAccessibleParticipantGroups = pep::CreateRxCache([client]() {
+    if (accessibleParticipantGroups_ == nullptr) {
+      accessibleParticipantGroups_ = pep::CreateRxCache([client]() {
         return client->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
           .flat_map([](const pep::ParticipantGroupAccess& access) {
           std::set<std::string> result;
@@ -116,7 +116,7 @@ protected:
     }
 
     assert(client_.lock() == client);
-    return mAccessibleParticipantGroups->observe();
+    return accessibleParticipantGroups_->observe();
   }
 
   rxcpp::observable<std::string> getMetaReadableColumns(std::shared_ptr<pep::CoreClient> client) {
@@ -134,7 +134,7 @@ protected:
         std::cerr << "Skipping inaccessible column group " << group << std::endl;
       }
       else {
-        const auto& indices = position->second.columns.mIndices;
+        const auto& indices = position->second.columns.indices_;
         columns.reserve(indices.size());
         for (auto i : indices) {
           columns.emplace_back(access->columns[i]);
@@ -234,13 +234,13 @@ protected:
 
   class Update {
   private:
-    pep::StoreMetadata2Entry mStoreEntry;
-    pep::LocalPseudonym mParticipantAlias;
-    std::optional<std::string> mPreviousExtension;
+    pep::StoreMetadata2Entry storeEntry_;
+    pep::LocalPseudonym participantAlias_;
+    std::optional<std::string> previousExtension_;
 
     static std::optional<std::string> GetExtension(const pep::EnumerateResult& enumResult) {
-      auto position = enumResult.mMetadata.extra().find("fileExtension");
-      if (position == enumResult.mMetadata.extra().cend()) {
+      auto position = enumResult.metadata_.extra().find("fileExtension");
+      if (position == enumResult.metadata_.extra().cend()) {
         return std::nullopt;
       }
       return position->second.plaintext();
@@ -248,25 +248,25 @@ protected:
 
 
     Update(const pep::EnumerateResult& enumResult, const std::optional<std::string>& currentExtension, const std::string& correctExtension)
-      : mStoreEntry(pep::MakeSharedCopy(enumResult.mLocalPseudonyms->mPolymorphic), enumResult.mColumn),
-      mParticipantAlias(*enumResult.mAccessGroupPseudonym),
-      mPreviousExtension(currentExtension) {
-      assert(mPreviousExtension == GetExtension(enumResult));
+      : storeEntry_(pep::MakeSharedCopy(enumResult.localPseudonyms_->polymorphic_), enumResult.column_),
+      participantAlias_(*enumResult.accessGroupPseudonym_),
+      previousExtension_(currentExtension) {
+      assert(previousExtension_ == GetExtension(enumResult));
 
       // Initialize the storage entry with current metadata values (from the entry that we'll overwrite)
-      mStoreEntry.mXMetadata = enumResult.mMetadata.extra();
+      storeEntry_.xMetadata_ = enumResult.metadata_.extra();
       // Overwrite file extension entry with the correct value
-      mStoreEntry.mXMetadata["fileExtension"] = pep::MetadataXEntry::FromPlaintext(correctExtension, false, false);
+      storeEntry_.xMetadata_["fileExtension"] = pep::MetadataXEntry::FromPlaintext(correctExtension, false, false);
     }
 
   public:
-    const pep::StoreMetadata2Entry& getStoreEntry() const noexcept { return mStoreEntry; }
-    const pep::LocalPseudonym& getParticipantAlias() const noexcept { return mParticipantAlias; }
-    const std::optional<std::string>& getPreviousExtension() const noexcept { return mPreviousExtension; }
+    const pep::StoreMetadata2Entry& getStoreEntry() const noexcept { return storeEntry_; }
+    const pep::LocalPseudonym& getParticipantAlias() const noexcept { return participantAlias_; }
+    const std::optional<std::string>& getPreviousExtension() const noexcept { return previousExtension_; }
 
     std::string getAssignedExtension() const {
-      auto position = mStoreEntry.mXMetadata.find("fileExtension");
-      assert(position != mStoreEntry.mXMetadata.cend());
+      auto position = storeEntry_.xMetadata_.find("fileExtension");
+      assert(position != storeEntry_.xMetadata_.cend());
       return position->second.plaintext();
     }
 
@@ -286,18 +286,18 @@ protected:
   }
 
   static void ReportParticipantAndColumn(std::ostream& destination, const pep::EnumerateResult& enumResult) {
-    return ReportParticipantAndColumn(destination, *enumResult.mAccessGroupPseudonym, enumResult.mColumn);
+    return ReportParticipantAndColumn(destination, *enumResult.accessGroupPseudonym_, enumResult.column_);
   }
 
   static void ReportParticipantAndColumn(std::ostream& destination, const Update& update) {
-    return ReportParticipantAndColumn(destination, update.getParticipantAlias(), update.getStoreEntry().mColumn);
+    return ReportParticipantAndColumn(destination, update.getParticipantAlias(), update.getStoreEntry().column_);
   }
 
 private:
   std::optional<Update> getUpdateFor(const pep::EnumerateResult& enumResult, const ColumnExtensions& requiredExtensions) {
     auto verbose = this->getParameterValues().has("verbose");
 
-    auto required = requiredExtensions.find(enumResult.mColumn);
+    auto required = requiredExtensions.find(enumResult.column_);
     if (required == requiredExtensions.cend()) { // This column has no associated expected file extension
       if (verbose) {
         std::cout << "Skipping ";
@@ -345,38 +345,38 @@ protected:
 
         class Counts {
         private:
-          std::optional<std::chrono::steady_clock::time_point> mStartTime;
-          size_t mTotalColumns = 0U;
-          size_t mColumnsSeen = 0U;
-          size_t mCellsSeen = 0U;
-          size_t mUpdatesSeen = 0U;
+          std::optional<std::chrono::steady_clock::time_point> startTime_;
+          size_t totalColumns_ = 0U;
+          size_t columnsSeen_ = 0U;
+          size_t cellsSeen_ = 0U;
+          size_t updatesSeen_ = 0U;
 
         public:
           void start(size_t totalColumns) {
-            assert(!mStartTime.has_value());
-            mStartTime = std::chrono::steady_clock::now();
-            mTotalColumns = totalColumns;
+            assert(!startTime_.has_value());
+            startTime_ = std::chrono::steady_clock::now();
+            totalColumns_ = totalColumns;
           }
 
           void processingColumns(size_t count) {
-            mColumnsSeen += count;
+            columnsSeen_ += count;
           }
 
           void processingCells(size_t count) {
-            mCellsSeen += count;
+            cellsSeen_ += count;
           }
 
           void processingUpdates(size_t count) {
-            mUpdatesSeen += count;
+            updatesSeen_ += count;
           }
 
           void reportProgress() const {
-            assert(mStartTime.has_value());
-            if (mTotalColumns != 0U && mColumnsSeen < mTotalColumns) {
-              double completed = static_cast<double>(mColumnsSeen) / static_cast<double>(mTotalColumns);
+            assert(startTime_.has_value());
+            if (totalColumns_ != 0U && columnsSeen_ < totalColumns_) {
+              double completed = static_cast<double>(columnsSeen_) / static_cast<double>(totalColumns_);
               assert(completed >= 0.0);
               assert(completed <= 1.0);
-              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *mStartTime);
+              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *startTime_);
               auto total = elapsed / completed;
               auto remaining = total - elapsed;
 
@@ -387,7 +387,7 @@ protected:
                 << std::endl;
             }
             else {
-              std::cout << mUpdatesSeen << " assignable out of " << mCellsSeen << " total cells processed in " << pep::chrono::ToString(std::chrono::steady_clock::now() - *mStartTime) << std::endl;
+              std::cout << updatesSeen_ << " assignable out of " << cellsSeen_ << " total cells processed in " << pep::chrono::ToString(std::chrono::steady_clock::now() - *startTime_) << std::endl;
             }
           }
         };
@@ -553,7 +553,7 @@ public:
   }
 
 private:
-  std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> mPps;
+  std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> pps_;
   std::shared_ptr<pep::SignedTicket2> ticket_;
 
   rxcpp::observable<std::shared_ptr<pep::SignedTicket2>> getTicket(std::shared_ptr<pep::CoreClient> client) {
@@ -599,7 +599,7 @@ protected:
       .map([this](std::shared_ptr<pep::SignedTicket2> ticket) {
       auto extension = this->getParameterValues().get<std::string>("extension");
       auto result = std::make_shared<ColumnExtensions>();
-      for (const auto& column : ticket->openWithoutCheckingSignature().mColumns) {
+      for (const auto& column : ticket->openWithoutCheckingSignature().columns_) {
         [[maybe_unused]] auto emplaced = result->emplace(column, extension).second;
         assert(emplaced);
       }
@@ -612,13 +612,13 @@ protected:
   }
 
   rxcpp::observable<std::shared_ptr<std::vector<pep::PolymorphicPseudonym>>> getPpsToProcess(std::shared_ptr<pep::CoreClient> client) override {
-    if (mPps != nullptr) {
-      return rxcpp::observable<>::just(mPps);
+    if (pps_ != nullptr) {
+      return rxcpp::observable<>::just(pps_);
     }
 
     return MultiCellQuery::GetPps(this->getParameterValues(), client)
       .op(pep::RxToVector())
-      .tap([this](std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> pps) { this->mPps = pps; });
+      .tap([this](std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> pps) { this->pps_ = pps; });
   }
 
 };
@@ -746,15 +746,15 @@ protected:
           .map([this, specs](const std::vector<std::shared_ptr<pep::EnumerateResult>>& result) {
           for (const auto& entryPtr : result) {
             const auto& entry = *entryPtr;
-            auto position = specs->find(entry.mLocalPseudonyms->mPolymorphic);
+            auto position = specs->find(entry.localPseudonyms_->polymorphic_);
             if (position != specs->cend()) { // If this participant was identified by the user on the command line, report back using that identifier
               for (auto& spec : position->second) {
-                this->reportFileExtension(spec.str(), entry.mColumn, entry.mMetadata.extra());
+                this->reportFileExtension(spec.str(), entry.column_, entry.metadata_.extra());
               }
             }
             else { // This PP was (only) requested as part of a participant group: we don't have a user-requested identifier for it
-              assert(entry.mAccessGroupPseudonym != nullptr);
-              this->reportFileExtension("Local pseudonym " + entry.mAccessGroupPseudonym->text(), entry.mColumn, entry.mMetadata.extra());
+              assert(entry.accessGroupPseudonym_ != nullptr);
+              this->reportFileExtension("Local pseudonym " + entry.accessGroupPseudonym_->text(), entry.column_, entry.metadata_.extra());
             }
           }
           return pep::FakeVoid();

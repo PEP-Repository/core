@@ -9,12 +9,12 @@ namespace pep {
   */
 class RegisteredMetrics {
 private:
-  std::shared_ptr<prometheus::Registry> mRegistry;
+  std::shared_ptr<prometheus::Registry> registry_;
 
 protected:
   explicit RegisteredMetrics(std::shared_ptr<prometheus::Registry> registry);
 
-  inline std::shared_ptr<prometheus::Registry> getRegistry() noexcept { return mRegistry; }
+  inline std::shared_ptr<prometheus::Registry> getRegistry() noexcept { return registry_; }
 };
 
 }

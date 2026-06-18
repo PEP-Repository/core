@@ -12,9 +12,9 @@ TokenRequest Serializer<TokenRequest>::fromProtocolBuffer(proto::TokenRequest&& 
 }
 
 void Serializer<TokenRequest>::moveIntoProtocolBuffer(proto::TokenRequest& dest, TokenRequest value) const {
-  *dest.mutable_subject() = std::move(value.mSubject);
+  *dest.mutable_subject() = std::move(value.subject_);
   *dest.mutable_group() = std::move(value.group_);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_expirationtime(), value.mExpirationTime);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_expirationtime(), value.expirationTime_);
 }
 
 TokenResponse Serializer<TokenResponse>::fromProtocolBuffer(proto::TokenResponse&& source) const {
@@ -22,7 +22,7 @@ TokenResponse Serializer<TokenResponse>::fromProtocolBuffer(proto::TokenResponse
 }
 
 void Serializer<TokenResponse>::moveIntoProtocolBuffer(proto::TokenResponse& dest, TokenResponse value) const {
-  *dest.mutable_token() = std::move(value.mToken);
+  *dest.mutable_token() = std::move(value.token_);
 }
 
 }

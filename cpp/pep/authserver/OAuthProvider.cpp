@@ -215,7 +215,7 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
 : httpServer(std::make_shared<HTTPServer>(params.getHttpPort(), params.getIoContext(), params.getHttpsCertificateFile())),
   activeGrantExpiration(params.getActiveGrantExpiration()),
   spoofKey(params.getSpoofKey()), authserverBackend(authserverBackend),
-  io_context(params.getIoContext()), mTemplates(std::filesystem::canonical(GetExecutablePath()).parent_path() / "templates") {
+  io_context(params.getIoContext()), templates_(std::filesystem::canonical(GetExecutablePath()).parent_path() / "templates") {
   httpServer->registerHandler("/auth", true, std::bind_front(&OAuthProvider::handleAuthorizationRequest, this), "");
   httpServer->registerHandler("/token", true, std::bind_front(&OAuthProvider::handleTokenRequest, this), "POST");
   httpServer->registerHandler("/code", true, std::bind_front(&OAuthProvider::handleCodeRequest, this), "");
@@ -430,7 +430,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 
     std::optional<std::chrono::seconds> validityDuration;
     if (longLivedValidityStr) {
-      auto maxValidity = group.mMaxAuthValidity;
+      auto maxValidity = group.maxAuthValidity_;
       if(!maxValidity) {
         return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "User is not allowed to request long-lived tokens");
       }
@@ -544,7 +544,7 @@ HTTPResponse OAuthProvider::handleCodeRequest(HTTPRequest request, std::string r
         {"validity", chrono::ToString(activeGrantExpiration)}
       };
 
-      result = mTemplates.renderTemplate("authserver/code.html.j2", data);
+      result = templates_.renderTemplate("authserver/code.html.j2", data);
     }
   }
   else {
@@ -558,7 +558,7 @@ HTTPResponse OAuthProvider::handleCodeRequest(HTTPRequest request, std::string r
       {"content", error.value() }
     };
 
-    result = mTemplates.renderTemplate("common/page.html.j2", data);
+    result = templates_.renderTemplate("common/page.html.j2", data);
   }
   return MakeHttpResponse(status, result, "text/html");
 }

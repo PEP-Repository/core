@@ -25,7 +25,7 @@ Requestor::Entry::Entry(std::shared_ptr<std::string> message,
 }
 
 Requestor::Requestor(boost::asio::io_context& io_context, Scheduler& scheduler)
-  : mIoContext(io_context), mScheduler(scheduler) {
+  : ioContext_(io_context), scheduler_(scheduler) {
 }
 
 Requestor::~Requestor() noexcept {
@@ -47,7 +47,7 @@ Requestor::~Requestor() noexcept {
 
 StreamId Requestor::getNewRequestStreamId() {
   // use the previous request ID to start looking for a new one
-  auto result = mPreviousRequestStreamId;
+  auto result = previousRequestStreamId_;
 
   do {
     // ensure that ID differs from the previously generated one
@@ -55,7 +55,7 @@ StreamId Requestor::getNewRequestStreamId() {
   } while (entries_.find(result) != entries_.end()); // ensure that we don't recycle IDs of requests that we haven't received a reply to
 
   // ensure that a future call doesn't produce this ID again
-  return mPreviousRequestStreamId = result;
+  return previousRequestStreamId_ = result;
 }
 
 rxcpp::observable<std::string> Requestor::send(std::shared_ptr<std::string> request, std::optional<MessageBatches> tail, bool immediately, bool resend) {
@@ -71,7 +71,7 @@ rxcpp::observable<std::string> Requestor::send(std::shared_ptr<std::string> requ
       self->schedule(*emplacement.first);
     }
     })
-    .subscribe_on(observe_on_asio(mIoContext));
+    .subscribe_on(observe_on_asio(ioContext_));
 }
 
 void Requestor::processResponse(const std::string& recipient, const StreamId& streamId, const Flags& flags, std::string body) {
@@ -134,7 +134,7 @@ void Requestor::purge(bool all) {
       // it might be more consistent to put an "observe_on(observe_on_asio(..))"
       // on the observable returned by sendRequest, but I do not oversee the
       // all the consequences that might have
-      post(mIoContext,
+      post(ioContext_,
         [subscriber = std::move(request.subscriber)] {
           subscriber.on_error(std::make_exception_ptr(
             Error("Aborting multi-message request")));
@@ -163,7 +163,7 @@ void Requestor::schedule(decltype(entries_)::value_type& entry) {
   if (request.tail.has_value()) {
     request.resendable = false; // currently we cannot re-generate tail messages already sent, see #1225
   }
-  mScheduler.push(streamId, request.message, request.tail);
+  scheduler_.push(streamId, request.message, request.tail);
 }
 
 }

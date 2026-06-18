@@ -8,7 +8,7 @@ namespace castor {
 
 class SurveyDataPoint : public DataPoint<SurveyDataPoint, SurveyPackageInstance>, public SharedConstructor<SurveyDataPoint> {
  private:
-  std::string mSurveyInstanceId;
+  std::string surveyInstanceId_;
 
   /* !
    * \brief Implementor for the two public "BulkRetrieve" methods.

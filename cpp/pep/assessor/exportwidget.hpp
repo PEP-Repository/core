@@ -54,9 +54,9 @@ private:
 
 private:
   Ui::ExportWidget* ui;
-  std::vector<std::shared_ptr<ExportableItem>> mAllItems;
-  std::shared_ptr<pep::CoreClient> mPepClient;
-  const VisitCaptions mVisitCaptions;
-  const pep::StudyContext mStudyContext;
-  bool mMultiSelect = false;
+  std::vector<std::shared_ptr<ExportableItem>> allItems_;
+  std::shared_ptr<pep::CoreClient> pepClient_;
+  const VisitCaptions visitCaptions_;
+  const pep::StudyContext studyContext_;
+  bool multiSelect_ = false;
 };

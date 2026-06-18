@@ -189,12 +189,12 @@ private:
         return client->enumerateAndRetrieveData2(earOpts).reduce(
           CastorData(),
           [](CastorData data, pep::EnumerateAndRetrieveResult earResult) {
-            if(earResult.mColumn == "ParticipantIdentifier") {
-              data.participantIds.emplace(earResult.mLocalPseudonymsIndex, earResult.data_);
+            if(earResult.column_ == "ParticipantIdentifier") {
+              data.participantIds.emplace(earResult.localPseudonymsIndex_, earResult.data_);
             }
-            else if(earResult.mColumn.starts_with(castorColumnPrefix)) {
-              std::string studyName = earResult.mColumn.substr(castorColumnPrefixLength,
-                earResult.mColumn.find_first_of('.', castorColumnPrefixLength) - castorColumnPrefixLength);
+            else if(earResult.column_.starts_with(castorColumnPrefix)) {
+              std::string studyName = earResult.column_.substr(castorColumnPrefixLength,
+                earResult.column_.find_first_of('.', castorColumnPrefixLength) - castorColumnPrefixLength);
 
               auto& study = data.studies[studyName];
               std::istringstream iss(earResult.data_);
@@ -202,7 +202,7 @@ private:
               pt::read_json(iss, dataTree);
 
               if(auto crf = dataTree.get_child_optional("crf")) {
-                study.steps[earResult.mColumn].push_back({earResult.mLocalPseudonymsIndex, *crf});
+                study.steps[earResult.column_].push_back({earResult.localPseudonymsIndex_, *crf});
               }
               else {
                 PEP_LOG(LogTag, pep::Severity::Warning) << "warning: Castor data is malformed. Missing crf data" << std::endl;
@@ -215,7 +215,7 @@ private:
                         PEP_LOG(LogTag, pep::Severity::Warning) << "warning: Castor data is malformed. Report instances should be an array without keys" << std::endl;
                       }
                       else {
-                        study.reports[earResult.mColumn + "." + reportname].push_back({earResult.mLocalPseudonymsIndex, repeatingDataInstance});
+                        study.reports[earResult.column_ + "." + reportname].push_back({earResult.localPseudonymsIndex_, repeatingDataInstance});
                       }
                     }
                   }
@@ -289,13 +289,13 @@ private:
             .op(pep::RxGetOne())
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();
-            for (const auto& column : response.mColumns) {
+            for (const auto& column : response.columns_) {
               [[maybe_unused]] auto emplaced = config->existing.emplace(column.name_);
               assert(emplaced.second);
             }
             const auto& castorGroup = std::find_if(response.columnGroups_.cbegin(), response.columnGroups_.cend(), [](const pep::AmaQRColumnGroup& group) {return group.name_ == "Castor"; });
             if (castorGroup != response.columnGroups_.cend()) {
-              for (const auto& column : castorGroup->mColumns) {
+              for (const auto& column : castorGroup->columns_) {
                 [[maybe_unused]] auto emplaced = config->grouped.emplace(column);
                 assert(emplaced.second);
               }

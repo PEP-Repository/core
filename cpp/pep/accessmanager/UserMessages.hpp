@@ -102,38 +102,38 @@ class UserMutationResponse {
 class UserQuery {
 public:
   // Use nullopt for current server time, such that a wrong client time does not influence query
-  std::optional<Timestamp> mAt;
-  std::string mGroupFilter;
-  std::string mUserFilter;
+  std::optional<Timestamp> at_;
+  std::string groupFilter_;
+  std::string userFilter_;
 };
 
 class QRUser {
 public:
   QRUser() = default;
   QRUser(std::optional<std::string> displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<std::string> groups)
-    : displayId_(std::move(displayId)), mPrimaryId(std::move(primaryId)), mOtherUids(std::move(otherUids)), mGroups(std::move(groups)) { }
+    : displayId_(std::move(displayId)), primaryId_(std::move(primaryId)), otherUids_(std::move(otherUids)), groups_(std::move(groups)) { }
 
   std::optional<std::string> displayId_;
-  std::optional<std::string> mPrimaryId;
-  std::vector<std::string> mOtherUids;
-  std::vector<std::string> mGroups;
+  std::optional<std::string> primaryId_;
+  std::vector<std::string> otherUids_;
+  std::vector<std::string> groups_;
 
   [[nodiscard]] auto operator<=>(const QRUser&) const = default;
 
   friend std::ostream& operator<<(std::ostream& out, const QRUser& user) {
     out << user.displayId_.value_or("[NO DISPLAY ID]") << ":{";
     out << "uids:{";
-    if (user.mPrimaryId) {
-      out << "*" << *user.mPrimaryId;
+    if (user.primaryId_) {
+      out << "*" << *user.primaryId_;
     }
-    for (bool first = !user.mPrimaryId; const auto& uid : user.mOtherUids) {
+    for (bool first = !user.primaryId_; const auto& uid : user.otherUids_) {
       if (!std::exchange(first, false)) { out << ", "; }
       out << uid;
     }
     out << '}';
 
     out << " groups:{";
-    for (bool first = true; const auto& group : user.mGroups) {
+    for (bool first = true; const auto& group : user.groups_) {
       if (!std::exchange(first, false)) { out << ", "; }
       out << group;
     }
@@ -145,8 +145,8 @@ public:
 
 class UserQueryResponse {
 public:
-  std::vector<QRUser> mUsers;
-  std::vector<UserGroup> mUserGroups;
+  std::vector<QRUser> users_;
+  std::vector<UserGroup> userGroups_;
 };
 
 using SignedUserMutationRequest = Signed<UserMutationRequest>;

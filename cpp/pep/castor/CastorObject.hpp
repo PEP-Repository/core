@@ -26,16 +26,16 @@ namespace castor {
   std::string getId() const;
 
  private:
-  std::string mId;
+  std::string id_;
 
 #if PEP_BUILD_HAS_DEBUG_FLAVOR()
-  std::string mJson;
+  std::string json_;
 
  public:
   /*!
    * \return The pretty printed Json representation for this object. For debugging purposes.
    */
-  std::string toJsonString() const { return mJson; }
+  std::string toJsonString() const { return json_; }
 
 #endif
 
@@ -79,20 +79,20 @@ namespace castor {
 template <typename TParent, typename TBase = CastorObject>
 class ParentedCastorObject : public TBase {
 private:
-  std::shared_ptr<TParent> mParent;
+  std::shared_ptr<TParent> parent_;
 
 protected:
   ParentedCastorObject(std::shared_ptr<TParent> parent, JsonPtr json)
-    : TBase(json), mParent(parent) {
-    assert(mParent != nullptr);
+    : TBase(json), parent_(parent) {
+    assert(parent_ != nullptr);
   }
 
   ParentedCastorObject(std::shared_ptr<TParent> parent, JsonPtr json, const std::string& idField)
-    : TBase(json, idField), mParent(parent) {
-    assert(mParent != nullptr);
+    : TBase(json, idField), parent_(parent) {
+    assert(parent_ != nullptr);
   }
 
-  std::shared_ptr<TParent> getParent() const { return mParent; }
+  std::shared_ptr<TParent> getParent() const { return parent_; }
 
 public:
   ~ParentedCastorObject() override {
@@ -101,14 +101,14 @@ public:
   }
 
   //! \return The CastorConnection for this object
-  std::shared_ptr<CastorConnection> getConnection() const override { return mParent->getConnection(); }
+  std::shared_ptr<CastorConnection> getConnection() const override { return parent_->getConnection(); }
 
 protected:
   static std::string GetParentRelativeEndpoint(std::shared_ptr<TParent> parent, const std::string& relative) {
     return parent->makeUrl() + "/" + relative;
   }
 
-  std::string makeParentRelativeUrl(const std::string& relative) const { return GetParentRelativeEndpoint(mParent, relative) + "/" + this->getId(); }
+  std::string makeParentRelativeUrl(const std::string& relative) const { return GetParentRelativeEndpoint(parent_, relative) + "/" + this->getId(); }
 };
 
 /*!

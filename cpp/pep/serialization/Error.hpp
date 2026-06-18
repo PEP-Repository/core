@@ -37,7 +37,7 @@ private:
   template <typename TDerived, bool registerDerived> friend class DeserializableDerivedError;
 
   Error(std::string derivedTypeName, std::string description);
-  std::string mOriginalTypeName;
+  std::string originalTypeName_;
 
   bool isDeserializable() const;
 
@@ -48,7 +48,7 @@ public:
   std::string description_;
 
   inline const char* what() const noexcept override { return description_.c_str(); }
-  inline const std::string& getOriginalTypeName() const noexcept { return mOriginalTypeName; }
+  inline const std::string& getOriginalTypeName() const noexcept { return originalTypeName_; }
 
   static bool IsSerializable(std::exception_ptr exception) noexcept;
   static std::exception_ptr ReconstructIfDeserializable(std::string_view serialized);

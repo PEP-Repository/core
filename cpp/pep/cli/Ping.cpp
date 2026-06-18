@@ -35,7 +35,7 @@ private:
       if (printDrift) {
         std::cout
           << duration_cast<std::chrono::milliseconds>(
-            pep::TimeNow() - response.mTimestamp
+            pep::TimeNow() - response.timestamp_
           ).count();
       } else {
         std::cout << "Received response";

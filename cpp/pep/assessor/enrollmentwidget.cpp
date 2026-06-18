@@ -20,7 +20,7 @@
 #include <pep/versioning/Version.hpp>
 
 EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWindow* parent, const pep::StudyContext& studyContext)
-  : QStackedWidget(parent), ui(new Ui::EnrollmentWidget), mainWindow(parent), pepClient(client), mStudyContext(studyContext), doneCompletingRegistration(false), continueButtonPressed(false) {
+  : QStackedWidget(parent), ui(new Ui::EnrollmentWidget), mainWindow(parent), pepClient(client), studyContext_(studyContext), doneCompletingRegistration(false), continueButtonPressed(false) {
   ui->setupUi(this);
   ui->retranslateUi(this);
 
@@ -39,7 +39,7 @@ EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWind
     setCurrentIndex(1);
 
     participantSID = QString("");
-    registerParticipantSubscription = pepClient->registerParticipant(*personalia, isTest, mStudyContext.getIdIfNonDefault(), false)
+    registerParticipantSubscription = pepClient->registerParticipant(*personalia, isTest, studyContext_.getIdIfNonDefault(), false)
     .subscribe(
     [this](const std::string &id) {
       participantSID = QString::fromStdString(id);

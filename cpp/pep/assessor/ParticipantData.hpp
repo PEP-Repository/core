@@ -6,9 +6,9 @@
 #include <map>
 
 struct ParticipantData {
-  std::optional<pep::ParticipantPersonalia> mPersonalia;
-  bool mIsTestParticipant = false;
-  std::map<std::string, std::string> mShortPseudonyms;
-  std::map<std::string, pep::ParticipantDeviceHistory> mParticipantDeviceHistory;
-  std::unordered_map<std::string, std::unordered_map<unsigned, unsigned>> mVisitAssessors;
+  std::optional<pep::ParticipantPersonalia> personalia_;
+  bool isTestParticipant_ = false;
+  std::map<std::string, std::string> shortPseudonyms_;
+  std::map<std::string, pep::ParticipantDeviceHistory> participantDeviceHistory_;
+  std::unordered_map<std::string, std::unordered_map<unsigned, unsigned>> visitAssessors_;
 };

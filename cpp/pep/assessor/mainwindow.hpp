@@ -48,16 +48,16 @@ class MainWindow : public QMainWindow {
   QLabel* statusbarLabel;
   QPushButton* statusbarCancelButton;
   QWidget* notConnectedWidget = nullptr;
-  std::shared_ptr<pep::StudyContexts> mAllContexts;
-  Branding mBranding;
-  unsigned mSpareStickerCount;
+  std::shared_ptr<pep::StudyContexts> allContexts_;
+  Branding branding_;
+  unsigned spareStickerCount_;
   EnrollmentWidget* currentEnrollmentWidget = nullptr;
   ParticipantSelector* currentSelectorWidget = nullptr;
   ExportWidget* currentExportWidget = nullptr;
-  VisitCaptionsByContext mVisitCaptionsByContext;
+  VisitCaptionsByContext visitCaptionsByContext_;
 
 public:
-  QMap<QString, QWidget*> mOpenedParticipants;
+  QMap<QString, QWidget*> openedParticipants_;
 
   explicit MainWindow(std::shared_ptr<pep::Client> incommingIOObject, const Branding& branding, const pep::Configuration& config_tree, unsigned spareStickerCount, const VisitCaptionsByContext& visitCaptionsByContext);
   ~MainWindow() override;

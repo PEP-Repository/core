@@ -48,9 +48,9 @@ public:
 
   bool empty() const noexcept; // Is any flag set?
 
-  bool close() const noexcept { return mClose; } // This is the last piece of the (possibly multi-part) message
-  bool error() const noexcept { return mError; } // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies Flags::close()
-  bool payload() const noexcept { return mPayload; } // The message includes content
+  bool close() const noexcept { return close_; } // This is the last piece of the (possibly multi-part) message
+  bool error() const noexcept { return error_; } // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies Flags::close()
+  bool payload() const noexcept { return payload_; } // The message includes content
 
   Flags operator|(const Flags& other) const;
 
@@ -61,9 +61,9 @@ public:
 private:
   [[nodiscard]] bool areValid() const noexcept;
 
-  bool mClose;
-  bool mError;
-  bool mPayload;
+  bool close_;
+  bool error_;
+  bool payload_;
 };
 
 
@@ -99,13 +99,13 @@ public:
   static MessageId MakeForControlMessage() noexcept;
 
   MessageType type() const noexcept { return type_; }
-  const StreamId& streamId() const noexcept { return mStreamId; }
+  const StreamId& streamId() const noexcept { return streamId_; }
 
   EncodedMessageProperties encode() const noexcept;
 
 private:
   MessageType type_;
-  StreamId mStreamId;
+  StreamId streamId_;
 };
 
 
@@ -115,15 +115,15 @@ public:
 
   static MessageProperties MakeForControlMessage() noexcept;
 
-  const MessageId& messageId() const noexcept { return mMessageId; }
-  const Flags& flags() const noexcept { return mFlags; }
+  const MessageId& messageId() const noexcept { return messageId_; }
+  const Flags& flags() const noexcept { return flags_; }
 
   EncodedMessageProperties encode() const noexcept;
   static MessageProperties DecodeFrom(EncodedMessageProperties properties);
 
 private:
-  MessageId mMessageId;
-  Flags mFlags;
+  MessageId messageId_;
+  Flags flags_;
 };
 
 

@@ -42,7 +42,7 @@ Metrics::Metrics(const std::string& jobname, const std::optional<std::filesystem
     .Help("Unix Timestamp of the last Castor import")
     .Register(*getRegistry())
     .Add({})),
-    mMetricsFile(metricsFile)
+    metricsFile_(metricsFile)
 { }
 
 Metrics::~Metrics() noexcept {
@@ -51,14 +51,14 @@ Metrics::~Metrics() noexcept {
 
     std::vector<prometheus::MetricFamily> metrics = this->getRegistry()->Collect();
 
-    if (mMetricsFile.has_value()) {
-      std::filesystem::path tmpPath = *mMetricsFile;
+    if (metricsFile_.has_value()) {
+      std::filesystem::path tmpPath = *metricsFile_;
       tmpPath += ".$$";
 
       prometheus::TextSerializer serializer;
       WriteFile(tmpPath, serializer.Serialize(metrics));
 
-      std::filesystem::rename(tmpPath, *mMetricsFile); //Atomic write, as per https://github.com/prometheus/node_exporter#textfile-collector
+      std::filesystem::rename(tmpPath, *metricsFile_); //Atomic write, as per https://github.com/prometheus/node_exporter#textfile-collector
     }
   }
   catch (...) {

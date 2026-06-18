@@ -16,8 +16,8 @@ void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std
   for (auto& sourceGroup : source) {
     auto found = std::find_if(destination.begin(), destination.end(), [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.name_ == sourceGroup.name_; });
     if (found != destination.end()) {
-      // The group already exists in the destination. Add the mColumns of the sourceGroup to this destinationGroup.
-      AppendVector<std::string>(found->mColumns, sourceGroup.mColumns);
+      // The group already exists in the destination. Add the columns_ of the sourceGroup to this destinationGroup.
+      AppendVector<std::string>(found->columns_, sourceGroup.columns_);
     }
     else {
       destination.push_back(sourceGroup);
@@ -35,73 +35,73 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::requestAmaMutation(AmaMutationRe
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaCreateColumn(std::string name) const {
   AmaMutationRequest request;
-  request.mCreateColumn.emplace_back(std::move(name));
+  request.createColumn_.emplace_back(std::move(name));
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveColumn(std::string name) const {
   AmaMutationRequest request;
-  request.mRemoveColumn.emplace_back(std::move(name));
+  request.removeColumn_.emplace_back(std::move(name));
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaCreateColumnGroup(std::string name) const {
   AmaMutationRequest request;
-  request.mCreateColumnGroup.emplace_back(std::move(name));
+  request.createColumnGroup_.emplace_back(std::move(name));
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveColumnGroup(std::string name, bool force) const {
   AmaMutationRequest request;
-  request.mRemoveColumnGroup.emplace_back(std::move(name));
-  request.mForceColumnGroupRemoval = force;
+  request.removeColumnGroup_.emplace_back(std::move(name));
+  request.forceColumnGroupRemoval_ = force;
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaAddColumnToGroup(std::string column, std::string group) const {
   AmaMutationRequest request;
-  request.mAddColumnToGroup.emplace_back(std::move(column), std::move(group));
+  request.addColumnToGroup_.emplace_back(std::move(column), std::move(group));
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveColumnFromGroup(std::string column, std::string group) const {
   AmaMutationRequest request;
-  request.mRemoveColumnFromGroup.emplace_back(std::move(column), std::move(group));
+  request.removeColumnFromGroup_.emplace_back(std::move(column), std::move(group));
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaCreateParticipantGroup(std::string name) const {
   AmaMutationRequest request;
-  request.mCreateParticipantGroup.emplace_back(std::move(name));
+  request.createParticipantGroup_.emplace_back(std::move(name));
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveParticipantGroup(std::string name, bool force) const {
   AmaMutationRequest request;
-  request.mRemoveParticipantGroup.emplace_back(std::move(name));
-  request.mForceParticipantGroupRemoval = force;
+  request.removeParticipantGroup_.emplace_back(std::move(name));
+  request.forceParticipantGroupRemoval_ = force;
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaAddParticipantToGroup(std::string group, const PolymorphicPseudonym& participant) const {
   AmaMutationRequest request;
-  request.mAddParticipantToGroup.emplace_back(std::move(group), participant);
+  request.addParticipantToGroup_.emplace_back(std::move(group), participant);
   return requestAmaMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveParticipantsFromGroup(const std::string& group, const std::vector<PolymorphicPseudonym>& participants) const {
   AmaMutationRequest request;
-  request.mRemoveParticipantFromGroup.reserve(participants.size());
-  std::transform(participants.begin(), participants.end(), std::back_inserter(request.mRemoveParticipantFromGroup), [&group](const PolymorphicPseudonym& pp) {
+  request.removeParticipantFromGroup_.reserve(participants.size());
+  std::transform(participants.begin(), participants.end(), std::back_inserter(request.removeParticipantFromGroup_), [&group](const PolymorphicPseudonym& pp) {
     return AmaRemoveParticipantFromGroup(group, pp);
     });
   return requestAmaMutation(std::move(request));
@@ -116,7 +116,7 @@ rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaCreateColumnGroupAccessRule(std::string columnGroup,
     std::string accessGroup, std::string mode) const {
   AmaMutationRequest request;
-  request.mCreateColumnGroupAccessRule.emplace_back(std::move(columnGroup),
+  request.createColumnGroupAccessRule_.emplace_back(std::move(columnGroup),
         std::move(accessGroup), std::move(mode));
   return requestAmaMutation(std::move(request));
 }
@@ -125,7 +125,7 @@ rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveColumnGroupAccessRule(std::string columnGroup,
     std::string accessGroup, std::string mode) const {
   AmaMutationRequest request;
-  request.mRemoveColumnGroupAccessRule.emplace_back(std::move(columnGroup),
+  request.removeColumnGroupAccessRule_.emplace_back(std::move(columnGroup),
         std::move(accessGroup), std::move(mode));
   return requestAmaMutation(std::move(request));
 }
@@ -134,7 +134,7 @@ rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaCreateGroupAccessRule(std::string group,
     std::string accessGroup, std::string mode) const {
   AmaMutationRequest request;
-  request.mCreateParticipantGroupAccessRule.emplace_back(std::move(group),
+  request.createParticipantGroupAccessRule_.emplace_back(std::move(group),
         std::move(accessGroup), std::move(mode));
   return requestAmaMutation(std::move(request));
 }
@@ -143,7 +143,7 @@ rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveGroupAccessRule(std::string group,
     std::string accessGroup, std::string mode) const {
   AmaMutationRequest request;
-  request.mRemoveParticipantGroupAccessRule.emplace_back(std::move(group),
+  request.removeParticipantGroupAccessRule_.emplace_back(std::move(group),
         std::move(accessGroup), std::move(mode));
   return requestAmaMutation(std::move(request));
 }
@@ -154,11 +154,11 @@ AccessManagerProxy::amaQuery(AmaQuery query) const {
     .reduce( // Concatenate all parts into a single AmaQueryResponse instance, which will remain empty if we didn't receive (a partial) one from AM
       std::make_shared<AmaQueryResponse>(),
       [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
-        AppendVector(all->mColumns, part.mColumns);
+        AppendVector(all->columns_, part.columns_);
         AppendAndSquashVector(all->columnGroups_, part.columnGroups_);
-        AppendVector(all->mColumnGroupAccessRules, part.mColumnGroupAccessRules);
+        AppendVector(all->columnGroupAccessRules_, part.columnGroupAccessRules_);
         AppendVector(all->participantGroups_, part.participantGroups_);
-        AppendVector(all->mParticipantGroupAccessRules, part.mParticipantGroupAccessRules);
+        AppendVector(all->participantGroupAccessRules_, part.participantGroupAccessRules_);
         return all;
       }
     )

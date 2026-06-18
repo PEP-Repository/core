@@ -35,23 +35,23 @@ void Serializer<IndexedTicket2>::moveIntoProtocolBuffer(proto::IndexedTicket2& d
 
 KeyRequestEntry Serializer<KeyRequestEntry>::fromProtocolBuffer(proto::KeyRequestEntry&& source) const {
   KeyRequestEntry result;
-  result.mMetadata = Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata()));
-  result.mPolymorphEncryptionKey = Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorph_encryption_key()));
-  result.mKeyBlindMode = Serialization::FromProtocolBuffer(source.blind_mode());
-  result.mPseudonymIndex = source.pseudonym_index();
+  result.metadata_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata()));
+  result.polymorphEncryptionKey_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorph_encryption_key()));
+  result.keyBlindMode_ = Serialization::FromProtocolBuffer(source.blind_mode());
+  result.pseudonymIndex_ = source.pseudonym_index();
   return result;
 }
 
 void Serializer<KeyRequestEntry>::moveIntoProtocolBuffer(proto::KeyRequestEntry& dest, KeyRequestEntry value) const {
-  dest.set_blind_mode(Serialization::ToProtocolBuffer(value.mKeyBlindMode));
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_metadata(), std::move(value.mMetadata));
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorph_encryption_key(), value.mPolymorphEncryptionKey);
-  dest.set_pseudonym_index(value.mPseudonymIndex);
+  dest.set_blind_mode(Serialization::ToProtocolBuffer(value.keyBlindMode_));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_metadata(), std::move(value.metadata_));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorph_encryption_key(), value.polymorphEncryptionKey_);
+  dest.set_pseudonym_index(value.pseudonymIndex_);
 }
 
 EncryptionKeyRequest Serializer<EncryptionKeyRequest>::fromProtocolBuffer(proto::EncryptionKeyRequest&& source) const {
   EncryptionKeyRequest result;
-  result.mTicket2 = std::make_shared<SignedTicket2>(Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket2())));
+  result.ticket2_ = std::make_shared<SignedTicket2>(Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket2())));
 
   Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
     std::move(*source.mutable_entries()));
@@ -60,20 +60,20 @@ EncryptionKeyRequest Serializer<EncryptionKeyRequest>::fromProtocolBuffer(proto:
 }
 
 void Serializer<EncryptionKeyRequest>::moveIntoProtocolBuffer(proto::EncryptionKeyRequest& dest, EncryptionKeyRequest value) const {
-  if (value.mTicket2 == nullptr)
-    throw std::runtime_error("mTicket2 should be set");
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket2(), *value.mTicket2);
+  if (value.ticket2_ == nullptr)
+    throw std::runtime_error("ticket2_ should be set");
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ticket2(), *value.ticket2_);
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
 }
 
 EncryptionKeyResponse Serializer<EncryptionKeyResponse>::fromProtocolBuffer(proto::EncryptionKeyResponse&& source) const {
   EncryptionKeyResponse result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mKeys, std::move(*source.mutable_keys()));
+  Serialization::AssignFromRepeatedProtocolBuffer(result.keys_, std::move(*source.mutable_keys()));
   return result;
 }
 
 void Serializer<EncryptionKeyResponse>::moveIntoProtocolBuffer(proto::EncryptionKeyResponse& dest, EncryptionKeyResponse value) const {
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.mKeys));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.keys_));
 }
 
 ColumnAccessRequest Serializer<ColumnAccessRequest>::fromProtocolBuffer(proto::ColumnAccessRequest&& source) const {
@@ -215,18 +215,18 @@ ColumnNameMappingResponse Serializer<ColumnNameMappingResponse>::fromProtocolBuf
 
 FindUserRequest Serializer<FindUserRequest>::fromProtocolBuffer(proto::FindUserRequest&& source) const {
   FindUserRequest result;
-  result.mPrimaryId = std::move(*source.mutable_primary_id());
-  result.mAlternativeIds.reserve(static_cast<size_t>(source.alternative_ids_size()));
+  result.primaryId_ = std::move(*source.mutable_primary_id());
+  result.alternativeIds_.reserve(static_cast<size_t>(source.alternative_ids_size()));
   for (auto& alternative_id : *source.mutable_alternative_ids()) {
-    result.mAlternativeIds.emplace_back(std::move(alternative_id));
+    result.alternativeIds_.emplace_back(std::move(alternative_id));
   }
   return result;
 }
 
 void Serializer<FindUserRequest>::moveIntoProtocolBuffer(proto::FindUserRequest& dest, FindUserRequest value) const {
-  *dest.mutable_primary_id() = std::move(value.mPrimaryId);
-  dest.mutable_alternative_ids()->Reserve(static_cast<int>(value.mAlternativeIds.size()));
-  for (auto& alternative_id : value.mAlternativeIds) {
+  *dest.mutable_primary_id() = std::move(value.primaryId_);
+  dest.mutable_alternative_ids()->Reserve(static_cast<int>(value.alternativeIds_.size()));
+  for (auto& alternative_id : value.alternativeIds_) {
     dest.add_alternative_ids(std::move(alternative_id));
   }
 }
@@ -237,15 +237,15 @@ FindUserResponse Serializer<FindUserResponse>::fromProtocolBuffer(proto::FindUse
   if (source.found()) {
     std::vector<UserGroup> user_groups;
     Serialization::AssignFromRepeatedProtocolBuffer(user_groups, std::move(*source.mutable_user_groups()));
-    result.mUserGroups = std::move(user_groups);
+    result.userGroups_ = std::move(user_groups);
   }
   return result;
 }
 
 void Serializer<FindUserResponse>::moveIntoProtocolBuffer(proto::FindUserResponse& dest, FindUserResponse value) const {
-  if (value.mUserGroups.has_value()) {
+  if (value.userGroups_.has_value()) {
     dest.set_found(true);
-    Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_user_groups(), *value.mUserGroups);
+    Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_user_groups(), *value.userGroups_);
   }
   else {
     dest.set_found(false);

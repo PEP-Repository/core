@@ -10,9 +10,9 @@ namespace pep {
 
 class OAuthError : public std::exception {
 private:
-  std::string mError;
+  std::string error_;
   std::string description_;
-  std::string mWhat;
+  std::string what_;
 
 public:
   OAuthError(std::string error, std::string description);

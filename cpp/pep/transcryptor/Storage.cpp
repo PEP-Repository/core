@@ -614,16 +614,16 @@ TranscryptorStorage::TranscryptorStorage(
   ensureInitialized();
   removeOutdatedRecords();
 
-  // Can't assign an { initializer-list } to mChecksumChains because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>("migration"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<TicketRequestRecord>>("ticket-request"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<TicketIssueRecord>>("ticket-issue"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<PseudonymSetRecord>>("pseudonym-set"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>("pseudonym-set-pseudonym"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ColumnSetRecord>>("column-set"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>("column-set-column"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ModeSetRecord>>("mode-set"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ModeSetModeRecord>>("mode-set-mode"));
+  // Can't assign an { initializer-list } to checksumChains_ because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>("migration"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketRequestRecord>>("ticket-request"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketIssueRecord>>("ticket-issue"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetRecord>>("pseudonym-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>("pseudonym-set-pseudonym"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetRecord>>("column-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>("column-set-column"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetRecord>>("mode-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetModeRecord>>("mode-set-mode"));
 }
 
 // Makes sure that the database is correctly initialized.  Adds columns
@@ -774,8 +774,8 @@ void TranscryptorStorage::removeOutdatedRecords() {
 void TranscryptorStorage::computeChecksum(const std::string& chain,
       std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
       uint64_t& checkpoint) {
-  auto position = mChecksumChains.find(chain);
-  if (position == mChecksumChains.cend()) {
+  auto position = checksumChains_.find(chain);
+  if (position == checksumChains_.cend()) {
     throw Error("No such checksum chain");
   }
 
@@ -786,8 +786,8 @@ void TranscryptorStorage::computeChecksum(const std::string& chain,
 
 std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
   std::vector<std::string> ret;
-  ret.reserve(mChecksumChains.size());
-  for (const auto& pair : mChecksumChains) {
+  ret.reserve(checksumChains_.size());
+  for (const auto& pair : checksumChains_) {
     ret.push_back(pair->name());
   }
   return  ret;
@@ -1025,21 +1025,21 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
   auto domain = userCertificate.getOrganizationalUnit().value();
   if (auto domainVerifiers = storage_->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
     PEP_LOG(LogTag, Severity::Debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
-    if (domainVerifiers->getReshuffleCommitment() != verifiers.mReshuffleCommitment) {
+    if (domainVerifiers->getReshuffleCommitment() != verifiers.reshuffleCommitment_) {
       throw std::runtime_error("Inconsistent reshuffle verifier for pseudonymization domain " + Logging::Escape(domain));
     }
   } else {
     PEP_LOG(LogTag, Severity::Debug) << "Storing domain verifiers for " << Logging::Escape(domain);
-    storage_->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshuffleCommitment));
+    storage_->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.reshuffleCommitment_));
   }
 
   auto hash = RangeToVector(CertificateHash(userCertificate));
   if (auto sessionVerifiers = storage_->raw.get_optional<SessionVerifiersRecord>(hash)) {
     PEP_LOG(LogTag, Severity::Debug) << "Found existing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
-    if (sessionVerifiers->getRekeyCommitment() != verifiers.mRekeyCommitment
-      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.mReshuffleOverRekeyCommitment
-      || sessionVerifiers->getRekeyedPublicKey() != verifiers.mRekeyedPublicKey) {
+    if (sessionVerifiers->getRekeyCommitment() != verifiers.rekeyCommitment_
+      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.reshuffleOverRekeyCommitment_
+      || sessionVerifiers->getRekeyedPublicKey() != verifiers.rekeyedPublicKey_) {
       throw std::runtime_error("Inconsistent verifiers for session for " + userCertificate.getCommonName().value());
     }
   } else {
@@ -1049,9 +1049,9 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
       std::move(hash),
       userCertificate.getNotAfter(),
       domain,
-      verifiers.mRekeyCommitment,
-      verifiers.mReshuffleOverRekeyCommitment,
-      verifiers.mRekeyedPublicKey));
+      verifiers.rekeyCommitment_,
+      verifiers.reshuffleOverRekeyCommitment_,
+      verifiers.rekeyedPublicKey_));
   }
 }
 

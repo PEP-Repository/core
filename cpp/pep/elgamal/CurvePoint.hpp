@@ -60,7 +60,7 @@ class CurvePoint {
     CurvePoint mult(const PublicCurveScalar& p) const;
 
   private:
-    group_scalarmult_table mInternal;
+    group_scalarmult_table internal_;
   };
 
   explicit CurvePoint(std::string_view packed, bool unpack = false);
@@ -98,8 +98,8 @@ class CurvePoint {
   // the packed/unpacked version around until we really need to
   // unpack/pack it.  And if we need to pack/unpack twice, we already have
   // the value cached.  See also ensurePacked().
-  mutable group_ge mUnpacked = group_ge_neutral;
-  mutable std::array<char, CurvePoint::PACKEDBYTES> mPacked{};
+  mutable group_ge unpacked_ = group_ge_neutral;
+  mutable std::array<char, CurvePoint::PACKEDBYTES> packed_{};
   enum class State { GotPacked, GotUnpacked, GotBoth };
   mutable State state_;
 

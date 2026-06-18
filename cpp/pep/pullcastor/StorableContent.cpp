@@ -94,7 +94,7 @@ public:
 }
 
 StorableColumnContent::StorableColumnContent(const std::string& column, std::shared_ptr<CellContent> content, const std::string& fileExtension)
-  : mColumn(column), mContent(content), mFileExtension(fileExtension) {
+  : column_(column), content_(content), fileExtension_(fileExtension) {
 }
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> StorableColumnContent::CreateJson(
@@ -116,7 +116,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> StorableColumnContent:
 }
 
 StorableCellContent::StorableCellContent(const ColumnBoundParticipantId& cbpId, const std::string& column, std::shared_ptr<const CellContent> content, const std::string& fileExtension)
-  : mCbpId(cbpId), mColumn(column), mContent(content), mFileExtension(fileExtension) {
+  : cbpId_(cbpId), column_(column), content_(content), fileExtension_(fileExtension) {
 }
 
 }

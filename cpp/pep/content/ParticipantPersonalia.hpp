@@ -7,21 +7,21 @@ namespace pep {
 
 class ParticipantPersonalia {
 private:
-  std::string mFirstName;
-  std::string mMiddleName;
-  std::string mLastName;
+  std::string firstName_;
+  std::string middleName_;
+  std::string lastName_;
   std::string dateOfBirth_;
 
 public:
   ParticipantPersonalia(std::string firstName, std::string middleName, std::string lastName, std::string dateOfBirth)
-    : mFirstName(std::move(firstName)),
-      mMiddleName(std::move(middleName)),
-      mLastName(std::move(lastName)),
+    : firstName_(std::move(firstName)),
+      middleName_(std::move(middleName)),
+      lastName_(std::move(lastName)),
       dateOfBirth_(std::move(dateOfBirth)) {}
 
-  inline const std::string &getFirstName() const noexcept { return mFirstName; }
-  inline const std::string &getMiddleName() const noexcept { return mMiddleName; }
-  inline const std::string &getLastName() const noexcept { return mLastName; }
+  inline const std::string &getFirstName() const noexcept { return firstName_; }
+  inline const std::string &getMiddleName() const noexcept { return middleName_; }
+  inline const std::string &getLastName() const noexcept { return lastName_; }
   inline const std::string &getDateOfBirth() const noexcept { return dateOfBirth_; }
 
   std::string getFullName() const;

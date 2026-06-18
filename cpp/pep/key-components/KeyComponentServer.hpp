@@ -15,19 +15,19 @@ public:
 private:
   struct Metrics;
 
-  std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
+  std::shared_ptr<PseudonymTranslator> pseudonymTranslator_;
   std::shared_ptr<DataTranslator> dataTranslator_;
-  std::shared_ptr<Metrics> mMetrics;
-  SystemPublicKeys mSystemPublicKeys;
+  std::shared_ptr<Metrics> metrics_;
+  SystemPublicKeys systemPublicKeys_;
 
   messaging::MessageBatches handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest);
 
 protected:
   explicit KeyComponentServer(std::shared_ptr<Parameters> parameters);
 
-  const PseudonymTranslator& pseudonymTranslator() const { return *mPseudonymTranslator; }
+  const PseudonymTranslator& pseudonymTranslator() const { return *pseudonymTranslator_; }
   const DataTranslator& dataTranslator() const { return *dataTranslator_; }
-  const SystemPublicKeys& systemPublicKeys() const { return mSystemPublicKeys; }
+  const SystemPublicKeys& systemPublicKeys() const { return systemPublicKeys_; }
 };
 
 

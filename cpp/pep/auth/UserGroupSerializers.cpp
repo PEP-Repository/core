@@ -6,15 +6,15 @@ UserGroup Serializer<UserGroup>::fromProtocolBuffer(proto::UserGroup&& source) c
   UserGroup result;
   result.name_ = std::move(*source.mutable_name());
   if (source.has_max_auth_validity_seconds()) {
-    result.mMaxAuthValidity = std::chrono::seconds(source.max_auth_validity_seconds());
+    result.maxAuthValidity_ = std::chrono::seconds(source.max_auth_validity_seconds());
   }
   return result;
 }
 
 void Serializer<UserGroup>::moveIntoProtocolBuffer(proto::UserGroup& dest, UserGroup value) const {
   *dest.mutable_name() = std::move(value.name_);
-  if (value.mMaxAuthValidity) {
-    dest.set_max_auth_validity_seconds(static_cast<uint64_t>(value.mMaxAuthValidity->count()));
+  if (value.maxAuthValidity_) {
+    dest.set_max_auth_validity_seconds(static_cast<uint64_t>(value.maxAuthValidity_->count()));
   }
 }
 

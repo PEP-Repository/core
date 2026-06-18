@@ -54,7 +54,7 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
     if (!boost::istarts_with(remaining, prefix)) {
       throw std::runtime_error("Invalid short pseudonym column name for study context " + studyContext);
     }
-    result.mStudyContext = remaining.substr(0, studyContext.length());
+    result.studyContext_ = remaining.substr(0, studyContext.length());
     remaining = remaining.substr(prefix.length());
   }
 
@@ -65,8 +65,8 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
       throw std::runtime_error("Invalid short pseudonym column name: missing visit number");
     }
     char *visit_end{};
-    result.mVisit = strtol(remaining.data(), &visit_end, 10);
-    if (*result.mVisit <= 0) {
+    result.visit_ = strtol(remaining.data(), &visit_end, 10);
+    if (*result.visit_ <= 0) {
       throw std::runtime_error("Invalid short pseudonym column name");
     }
     if (visit_end == visit_start) {
@@ -75,13 +75,13 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
     if (*visit_end != SHORT_PSEUDONYM_SECTION_DELIMITER) {
       throw std::runtime_error("Invalid short pseudonym column name");
     }
-    result.mCoreName = visit_end + 1;
+    result.coreName_ = visit_end + 1;
   }
   else {
-    result.mCoreName = std::move(remaining);
+    result.coreName_ = std::move(remaining);
   }
 
-  if (result.mCoreName.empty()) {
+  if (result.coreName_.empty()) {
     throw std::runtime_error("Invalid short pseudonym column name");
   }
   return result;
@@ -89,13 +89,13 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
 
 std::string ShortPseudonymColumn::getFullName() const {
   auto result = SHORT_PSEUDONYM_PREAMBLE;
-  if (!mStudyContext.empty()) {
-    result += mStudyContext + SHORT_PSEUDONYM_SECTION_DELIMITER;
+  if (!studyContext_.empty()) {
+    result += studyContext_ + SHORT_PSEUDONYM_SECTION_DELIMITER;
   }
-  if (mVisit) {
-    result += SHORT_PSEUDONYM_VISIT_PREFIX + std::to_string(*mVisit) + SHORT_PSEUDONYM_SECTION_DELIMITER;
+  if (visit_) {
+    result += SHORT_PSEUDONYM_VISIT_PREFIX + std::to_string(*visit_) + SHORT_PSEUDONYM_SECTION_DELIMITER;
   }
-  result += mCoreName;
+  result += coreName_;
   return result;
 }
 
@@ -108,20 +108,20 @@ ShortPseudonymDefinition::ShortPseudonymDefinition(
   bool suppressAdditionalStickers,
   std::string description,
   std::string studyContext)
-  : mColumn(ShortPseudonymColumn::Parse(studyContext, column)),
+  : column_(ShortPseudonymColumn::Parse(studyContext, column)),
   prefix_(std::move(prefix)),
-  mLength(length),
-  mCastor(std::move(castor)),
-  mStickers(stickers),
-  mSuppressAdditionalStickers(suppressAdditionalStickers),
+  length_(length),
+  castor_(std::move(castor)),
+  stickers_(stickers),
+  suppressAdditionalStickers_(suppressAdditionalStickers),
   description_(std::move(description)),
-  mStudyContext(std::move(studyContext)) {
+  studyContext_(std::move(studyContext)) {
 }
 
 std::string ShortPseudonymDefinition::getDescription() const {
   std::string result = description_;
   if (result.empty()) { // Use the column's core name if no description was specified
-    result = mColumn.getCoreName();
+    result = column_.getCoreName();
     auto lastPeriod = result.find_last_of('.');
     if (lastPeriod < result.size()) {
       result = result.substr(lastPeriod + 1);

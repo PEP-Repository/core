@@ -25,11 +25,11 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
   if (printUserGroups) {
     json groups = json::array();
 
-    for (const auto& group : res.mUserGroups) {
+    for (const auto& group : res.userGroups_) {
       json item = json::object();
       item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.name_);
-      if (group.mMaxAuthValidity) {
-        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.mMaxAuthValidity));
+      if (group.maxAuthValidity_) {
+        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.maxAuthValidity_));
       }
       groups.push_back(std::move(item));
     }
@@ -41,21 +41,21 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
   if (printUsers) {
     json users = json::array();
 
-    for (const auto& user : res.mUsers) {
+    for (const auto& user : res.users_) {
       json item = json::object();
 
       if (user.displayId_) {
         item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.displayId_);
       }
 
-      if (user.mPrimaryId) {
-        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.mPrimaryId);
+      if (user.primaryId_) {
+        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.primaryId_);
       }
 
-      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.mOtherUids);
+      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.otherUids_);
 
       if (printUserGroupsForUsers) {
-        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), user.mGroups);
+        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), user.groups_);
       }
       users.push_back(std::move(item));
     }

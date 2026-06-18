@@ -13,8 +13,8 @@ namespace castor {
   */
 class StudyAspect {
 private:
-  std::string mSlug;
-  std::string mSpColumn;
+  std::string slug_;
+  std::string spColumn_;
   std::shared_ptr<CastorStorageDefinition> storage_;
 
   StudyAspect(const std::string& slug, const std::string& spColumn, std::shared_ptr<CastorStorageDefinition> storage);
@@ -31,13 +31,13 @@ public:
   * \brief Produces the slug of the Castor study that data should be pulled from.
   * \return The slug of the Castor study to import data from.
   */
-  inline const std::string& getSlug() const noexcept { return mSlug; }
+  inline const std::string& getSlug() const noexcept { return slug_; }
 
   /*!
   * \brief Produces the name of the PEP column containing short pseudonyms that correspond with Castor participant IDs.
   * \return The name of the PEP short pseudonym column.
   */
-  inline const std::string& getShortPseudonymColumn() const noexcept { return mSpColumn; }
+  inline const std::string& getShortPseudonymColumn() const noexcept { return spColumn_; }
 
   /*!
   * \brief Produces the CastorStorageDefinition associated with the study aspect.

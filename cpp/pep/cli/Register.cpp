@@ -319,11 +319,11 @@ private:
           return earOpts // Get EAR options for the participant(s) we're going to process
             .concat_map([client](std::shared_ptr<pep::EnumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
             .as_dynamic() // Reduce compiler memory usage
-            .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.mLocalPseudonymsIndex; })) // Group by participant
+            .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.localPseudonymsIndex_; })) // Group by participant
             .concat_map([](auto participants) { return RxIterate(std::move(*participants)); }) // Iterate over participants
             .map([](const std::pair<const uint32_t, std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>>>& pair) {return pair.second; }) // Keep only (shared_ptr to) vector of fields
             .concat_map([client, id, spCount](std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>> fields) -> rxcpp::observable<pep::FakeVoid> {
-            auto idField = std::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.mColumn == "ParticipantIdentifier"; });
+            auto idField = std::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.column_ == "ParticipantIdentifier"; });
             if (idField == fields->cend()) {
               assert(spCount >= fields->size());
               auto spsToGenerate = spCount - fields->size();

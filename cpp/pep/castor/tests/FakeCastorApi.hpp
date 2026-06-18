@@ -36,12 +36,12 @@ private:
   class Connection;
 
   explicit FakeCastorApi(const pep::networking::Protocol::ServerParameters& parameters, uint16_t port, std::shared_ptr<Options> options);
-  uint16_t getListenPort() const noexcept { return mPort; }
+  uint16_t getListenPort() const noexcept { return port_; }
 
-  std::shared_ptr<Options> mOptions;
-  std::shared_ptr<networking::Server> mConnectivity;
-  EventSubscription mConnectivityConnectionAttempt;
-  uint16_t mPort;
+  std::shared_ptr<Options> options_;
+  std::shared_ptr<networking::Server> connectivity_;
+  EventSubscription connectivityConnectionAttempt_;
+  uint16_t port_;
 };
 
 
@@ -56,24 +56,24 @@ protected:
 private:
   class Side : boost::noncopyable {
   private:
-    std::shared_ptr<boost::asio::io_context> mIoContext = std::make_shared< boost::asio::io_context>();
-    std::shared_ptr<IoContextThread> mThread;
-    std::string mRole;
+    std::shared_ptr<boost::asio::io_context> ioContext_ = std::make_shared< boost::asio::io_context>();
+    std::shared_ptr<IoContextThread> thread_;
+    std::string role_;
 
   public:
-    explicit Side(std::string role) noexcept : mRole(std::move(role)) {}
+    explicit Side(std::string role) noexcept : role_(std::move(role)) {}
 
-    std::shared_ptr<boost::asio::io_context> ioContext() const noexcept { return mIoContext; }
-    const std::string& role() const noexcept { return mRole; }
+    std::shared_ptr<boost::asio::io_context> ioContext() const noexcept { return ioContext_; }
+    const std::string& role() const noexcept { return role_; }
 
     void start();
     void stop(bool force = true);
   };
 
-  TemporaryX509IdentityFiles mIdentity;
-  Side mClientSide = Side("client");
-  Side mServerSide = Side("server");
-  std::shared_ptr<FakeCastorApi> mServer;
+  TemporaryX509IdentityFiles identity_;
+  Side clientSide_ = Side("client");
+  Side serverSide_ = Side("server");
+  std::shared_ptr<FakeCastorApi> server_;
 };
 
 }

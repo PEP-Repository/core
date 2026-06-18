@@ -1689,7 +1689,7 @@ int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
     throw Error(msg.str());
   }
   int64_t userGroupId = getNextUserGroupId();
-  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.maxAuthValidity_)));
   return userGroupId;
 }
 
@@ -1705,7 +1705,7 @@ void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, Use
   }
 
   auto userGroupId = getUserGroupId(name);
-  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.maxAuthValidity_)));
 }
 
 void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
@@ -1770,13 +1770,13 @@ void AccessManager::Backend::Storage::removeUserFromGroup(int64_t internalUserId
 UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQuery& query) {
   using namespace std::ranges;
 
-  auto timestamp = query.mAt ? *query.mAt : TimeNow();
+  auto timestamp = query.at_ ? *query.at_ : TimeNow();
 
   // Select groups matching group filter
   auto groups = RangeToCollection<std::map<int64_t, UserGroup>>(
     implementor_->getCurrentRecords(
       c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-      && instr(&UserGroupRecord::name, query.mGroupFilter) /*true if filter is empty*/,
+      && instr(&UserGroupRecord::name, query.groupFilter_) /*true if filter is empty*/,
       &UserGroupRecord::userGroupId,
       &UserGroupRecord::name,
       &UserGroupRecord::maxAuthValiditySeconds)
@@ -1790,7 +1790,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // List users matching user filter
   for (auto internalId: implementor_->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.mUserFilter)) /*true if filter is empty*/,
+         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.userFilter_)) /*true if filter is empty*/,
          &UserIdRecord::internalUserId)) {
     // Add internalId, we add all identifiers below
     usersInfo.try_emplace(internalId);
@@ -1800,33 +1800,33 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // List group memberships for filtered groups & users
   for (auto tuple: implementor_->getCurrentRecords(
          c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && (query.mGroupFilter.empty()
+         && (query.groupFilter_.empty()
            || in(&UserGroupUserRecord::userGroupId,
              // Avoid passing list to query when not filtered
-             RangeToVector(views::keys(!query.mGroupFilter.empty() ? groups : Default<decltype(groups)>))) )
-         && (query.mUserFilter.empty()
+             RangeToVector(views::keys(!query.groupFilter_.empty() ? groups : Default<decltype(groups)>))) )
+         && (query.userFilter_.empty()
            || in(&UserGroupUserRecord::internalUserId,
              // Avoid passing list to query when not filtered
-             RangeToVector(views::keys(!query.mUserFilter.empty() ? usersInfo : Default<decltype(usersInfo)>)))),
+             RangeToVector(views::keys(!query.userFilter_.empty() ? usersInfo : Default<decltype(usersInfo)>)))),
          &UserGroupUserRecord::userGroupId,
          &UserGroupUserRecord::internalUserId)) {
     auto& [userGroupId, internalUserId] = tuple;
     assert(groups.contains(userGroupId));
-    usersInfo.at(internalUserId).mGroups.push_back(groups.at(userGroupId).name_);
+    usersInfo.at(internalUserId).groups_.push_back(groups.at(userGroupId).name_);
     groupsWithUsers.insert(userGroupId);
   }
 
   // Backpropagate user filter to filter groups
-  if (!query.mUserFilter.empty()) {
+  if (!query.userFilter_.empty()) {
     // Remove groups without selected users
     std::erase_if(groups, [&groupsWithUsers](const std::pair<int64_t, UserGroup>& keyValuePair) {
       return !groupsWithUsers.contains(keyValuePair.first);
     });
   }
   // Backpropagate group filter to filter users
-  if (!query.mGroupFilter.empty()) {
+  if (!query.groupFilter_.empty()) {
     erase_if(usersInfo, [](const std::pair<int64_t, QRUser>& userInfo) {
-      return userInfo.second.mGroups.empty();
+      return userInfo.second.groups_.empty();
     });
   }
 
@@ -1843,10 +1843,10 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
       user.displayId_ = identifier;
     }
     if (isPrimaryId) {
-      user.mPrimaryId = identifier;
+      user.primaryId_ = identifier;
     }
     if (!isPrimaryId && !isDisplayId) {
-      user.mOtherUids.push_back(std::move(identifier));
+      user.otherUids_.push_back(std::move(identifier));
     }
   }
 

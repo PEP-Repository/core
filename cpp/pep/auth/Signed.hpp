@@ -8,7 +8,7 @@ namespace pep {
 class SignedBase {
 public: // You should have no business accessing these unless you're (de)serializing
   std::string data_;
-  Signature mSignature;
+  Signature signature_;
 
 public:
   Signatory validate(const X509RootCertificates& rootCAs) const;
@@ -22,7 +22,7 @@ protected:
     std::string data,
     Signature signature)
     : data_(std::move(data)),
-    mSignature(std::move(signature)) { }
+    signature_(std::move(signature)) { }
 
   template <typename T>
   T deserializeAs() const {
@@ -59,7 +59,7 @@ public:
 
 class MessageSigner {
 private:
-  std::shared_ptr<const X509Identity> mSigningIdentity;
+  std::shared_ptr<const X509Identity> signingIdentity_;
 
 protected:
   std::shared_ptr<const X509Identity> getSigningIdentity(bool require = true) const;

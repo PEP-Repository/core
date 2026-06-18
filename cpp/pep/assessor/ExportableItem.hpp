@@ -21,12 +21,12 @@ public:
 
 class ExportableDeviceHistoryItem : public ExportableItem {
 private:
-  std::string mColumnName;
+  std::string columnName_;
   std::optional<std::string> description_;
 public:
   ExportableDeviceHistoryItem(const std::string& columnName, const std::optional<std::string>& description);
 
-  std::string getSourceColumnName() const override { return mColumnName; }
+  std::string getSourceColumnName() const override { return columnName_; }
   std::optional<std::string> getDescription() const override { return description_; }
   std::string getCaptionPrefix() const override { return "Device history"; }
 
@@ -35,15 +35,15 @@ public:
 
 class ExportableShortPseudonymItem : public ExportableItem {
 private:
-  std::string mColumnName;
+  std::string columnName_;
   std::string description_;
-  std::optional<unsigned int> mVisitNumber;
+  std::optional<unsigned int> visitNumber_;
 
 public:
   explicit ExportableShortPseudonymItem(const pep::ShortPseudonymDefinition& definition);
-  std::string getSourceColumnName() const override { return mColumnName; }
+  std::string getSourceColumnName() const override { return columnName_; }
   std::optional<std::string> getDescription() const override { return description_; }
-  std::optional<unsigned int> getVisitNumber() const override { return mVisitNumber; }
+  std::optional<unsigned int> getVisitNumber() const override { return visitNumber_; }
   std::string getCaptionPrefix() const override { return "Short Pseudonym"; }
 };
 
@@ -55,12 +55,12 @@ public:
 
 class ExportableVisitAssessorItem : public ExportableItem {
 private:
-  std::string mColumnName;
-  std::optional<unsigned int> mVisitNumber;
+  std::string columnName_;
+  std::optional<unsigned int> visitNumber_;
 
 public:
   ExportableVisitAssessorItem(const std::string& columnName, const unsigned int visitNumber);
-  std::string getSourceColumnName() const override { return mColumnName; }
+  std::string getSourceColumnName() const override { return columnName_; }
   std::string getCaptionPrefix() const override { return "Assessor"; }
-  std::optional<unsigned int> getVisitNumber() const override { return mVisitNumber; }
+  std::optional<unsigned int> getVisitNumber() const override { return visitNumber_; }
 };

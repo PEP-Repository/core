@@ -35,7 +35,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     for (const auto& cg : access.columnGroups) {
       const auto& cgAccess = cg.second;
       if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
-        for (auto index : cgAccess.columns.mIndices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
+        for (auto index : cgAccess.columns.indices_) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
           remaining->erase(access.columns[index]);
         }
       }
@@ -98,7 +98,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                          const CellProperties& props = pair.second;
                          StoreData2Entry result(polymorphicPseudonym, column, props.value);
                          if (!props.fileExtension.empty()) {
-                           result.mXMetadata.emplace(MetadataXEntry::MakeFileExtension(props.fileExtension));
+                           result.xMetadata_.emplace(MetadataXEntry::MakeFileExtension(props.fileExtension));
                          }
                          return result;
                        });
@@ -172,7 +172,7 @@ rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauth
   PEP_LOG(LogTag, Severity::Debug) << "Sending EnrollmentRequest...";
   return getKeyServerProxy(true)->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
-    auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain));
+    auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.certificateChain_));
 
     return completeEnrollment(ctx);
       });

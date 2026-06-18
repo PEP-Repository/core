@@ -33,9 +33,9 @@ protected:
   mutable std::mutex unpackedTicketLock_;
 
   std::shared_ptr<SignedTicket2> ticket_;
-  /// Maps column group names to indices of their column names in \c Ticket2.mColumns
+  /// Maps column group names to indices of their column names in \c Ticket2.columns_
   std::unordered_map<std::string, IndexList> columnGroups_;
-  /// Maps participant group names to indices of their pseudonyms in \c Ticket2.mPseudonyms
+  /// Maps participant group names to indices of their pseudonyms in \c Ticket2.pseudonyms_
   std::unordered_map<std::string, IndexList> participantGroups_;
 
 public:
@@ -85,26 +85,26 @@ public:
     EncryptedKey polymorphEncryptionKey,
     KeyBlindMode keyBlindMode,
     uint32_t pseudonymIndex = 0
-  ) : mMetadata(metadata.getBound()),
-    mPolymorphEncryptionKey(polymorphEncryptionKey),
-    mKeyBlindMode(keyBlindMode),
-    mPseudonymIndex(pseudonymIndex) {}
+  ) : metadata_(metadata.getBound()),
+    polymorphEncryptionKey_(polymorphEncryptionKey),
+    keyBlindMode_(keyBlindMode),
+    pseudonymIndex_(pseudonymIndex) {}
 
-  Metadata mMetadata;
-  EncryptedKey mPolymorphEncryptionKey;
-  KeyBlindMode mKeyBlindMode = KeyBlindMode::Unknown;
-  uint32_t mPseudonymIndex{};
+  Metadata metadata_;
+  EncryptedKey polymorphEncryptionKey_;
+  KeyBlindMode keyBlindMode_ = KeyBlindMode::Unknown;
+  uint32_t pseudonymIndex_{};
 };
 
 class EncryptionKeyRequest {
 public:
-  std::shared_ptr<SignedTicket2> mTicket2;
+  std::shared_ptr<SignedTicket2> ticket2_;
   std::vector<KeyRequestEntry> entries_;
 };
 
 class EncryptionKeyResponse {
 public:
-  std::vector<EncryptedKey> mKeys;
+  std::vector<EncryptedKey> keys_;
 };
 
 class ColumnAccess {
@@ -158,19 +158,19 @@ struct MigrateUserDbToAccessManagerResponse {};
 class FindUserRequest {
 public:
   FindUserRequest() = default;
-  FindUserRequest(std::string primaryId, std::vector<std::string> alternativeIds) : mPrimaryId(std::move(primaryId)), mAlternativeIds(std::move(alternativeIds)) { }
+  FindUserRequest(std::string primaryId, std::vector<std::string> alternativeIds) : primaryId_(std::move(primaryId)), alternativeIds_(std::move(alternativeIds)) { }
 
-  std::string mPrimaryId;
-  std::vector<std::string> mAlternativeIds;
+  std::string primaryId_;
+  std::vector<std::string> alternativeIds_;
 };
 
 class FindUserResponse {
 public:
   FindUserResponse() = default;
-  FindUserResponse(std::optional<std::vector<UserGroup>> userGroups) : mUserGroups(std::move(userGroups)) { }
+  FindUserResponse(std::optional<std::vector<UserGroup>> userGroups) : userGroups_(std::move(userGroups)) { }
 
   /// nullopt if the user doesn't exist. Otherwise the list of user groups the user is in.
-  std::optional<std::vector<UserGroup>> mUserGroups;
+  std::optional<std::vector<UserGroup>> userGroups_;
 };
 
 struct StructureMetadataKey {

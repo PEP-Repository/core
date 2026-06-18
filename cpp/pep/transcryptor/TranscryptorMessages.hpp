@@ -9,13 +9,13 @@ namespace pep {
 
 class RekeyRequest {
 public:
-  std::vector<EncryptedKey> mKeys;
-  X509CertificateChain mClientCertificateChain;
+  std::vector<EncryptedKey> keys_;
+  X509CertificateChain clientCertificateChain_;
 };
 
 class RekeyResponse {
 public:
-  std::vector<EncryptedKey> mKeys;
+  std::vector<EncryptedKey> keys_;
 };
 
 class TranscryptorRequestEntry {
@@ -31,28 +31,28 @@ public:
     const RskProof& sfProof,
     const RskProof& tsProof,
     const std::optional<RskProof>& ugProof)
-    : mPolymorphic(pp),
+    : polymorphic_(pp),
     accessManager_(am),
-    mStorageFacility(sf),
-    mTranscryptor(ts),
+    storageFacility_(sf),
+    transcryptor_(ts),
     userGroup_(ug),
-    mAccessManagerProof(amProof),
-    mStorageFacilityProof(sfProof),
-    mTranscryptorProof(tsProof),
-    mUserGroupProof(ugProof) { }
+    accessManagerProof_(amProof),
+    storageFacilityProof_(sfProof),
+    transcryptorProof_(tsProof),
+    userGroupProof_(ugProof) { }
 
-  PolymorphicPseudonym mPolymorphic;
+  PolymorphicPseudonym polymorphic_;
 
   // Partially translated
   EncryptedLocalPseudonym accessManager_;
-  EncryptedLocalPseudonym mStorageFacility;
-  EncryptedLocalPseudonym mTranscryptor;
+  EncryptedLocalPseudonym storageFacility_;
+  EncryptedLocalPseudonym transcryptor_;
   std::optional<EncryptedLocalPseudonym> userGroup_;
 
-  RskProof mAccessManagerProof;
-  RskProof mStorageFacilityProof;
-  RskProof mTranscryptorProof;
-  std::optional<RskProof> mUserGroupProof;
+  RskProof accessManagerProof_;
+  RskProof storageFacilityProof_;
+  RskProof transcryptorProof_;
+  std::optional<RskProof> userGroupProof_;
 
   // Ensures the underlying CurvePoint's are pre-packed for serialization.
   // See CurvePoint::ensurePacked().
@@ -66,26 +66,26 @@ public:
 
 class TranscryptorRequest {
 public:
-  SignedTicketRequest2 mRequest;
+  SignedTicketRequest2 request_;
 };
 
 class TranscryptorResponse {
 public:
   TranscryptorResponse() = default;
   std::vector<LocalPseudonyms> entries_;
-  std::string mId;
+  std::string id_;
 };
 
 class LogIssuedTicketRequest {
 public:
   SignedTicket2 ticket_;
-  std::string mId;
+  std::string id_;
 };
 
 class LogIssuedTicketResponse {
 public:
-  LogIssuedTicketResponse(Signature sig) : mSignature(std::move(sig)) { }
-  Signature mSignature;
+  LogIssuedTicketResponse(Signature sig) : signature_(std::move(sig)) { }
+  Signature signature_;
 };
 
 }

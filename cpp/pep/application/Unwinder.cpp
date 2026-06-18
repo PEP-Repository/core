@@ -579,7 +579,7 @@ void InitializeUnwinder() {
   } else {
     std::unique_ptr<LocalSettings>& lpLocalSettings = LocalSettings::getInstance();
     struct dirent* lpDirEntry;
-    struct stat mFileStat;
+    struct stat fileStat_;
     std::string szPreviousTimestamp;
     std::string szPropertyName = std::string ("LatestCrashReportTimestamp_") + szReportFileName;
     long long qwPreviousTimestamp = -1;
@@ -598,33 +598,33 @@ void InitializeUnwinder() {
         continue;
       }
 
-      if (stat ((szReportDirectoryPath + "/" + lpDirEntry->d_name).c_str(), &mFileStat) != 0) {
+      if (stat ((szReportDirectoryPath + "/" + lpDirEntry->d_name).c_str(), &fileStat_) != 0) {
         /* stat should always succeed
          * but there may be a race condition in which the file has been deleted at this point
          */
         continue;
-      } else if ((mFileStat.st_mode & S_IFMT) != S_IFREG) {
+      } else if ((fileStat_.st_mode & S_IFMT) != S_IFREG) {
         /* must be a regular file */
         continue;
       }
 
 #ifdef __linux__
       long long qwTimestamp =
-        mFileStat.st_mtim.tv_sec * 1000 +
-        mFileStat.st_mtim.tv_nsec / 1000000;
+        fileStat_.st_mtim.tv_sec * 1000 +
+        fileStat_.st_mtim.tv_nsec / 1000000;
 #else
-      long long qwTimestamp = mFileStat.st_mtime * 1000;
+      long long qwTimestamp = fileStat_.st_mtime * 1000;
 #endif
 
       if (qwTimestamp > qwPreviousTimestamp) {
-        std::ifstream mCrashReportStream (szReportDirectoryPath + "/" + lpDirEntry->d_name);
+        std::ifstream crashReportStream_ (szReportDirectoryPath + "/" + lpDirEntry->d_name);
         std::string szLine;
-        if (mCrashReportStream.is_open ()) {
+        if (crashReportStream_.is_open ()) {
           PEP_LOG(LogTag, Severity::Debug) << "[*] ==== Crash report from previous run ====";
-          while (getline (mCrashReportStream, szLine)) {
+          while (getline (crashReportStream_, szLine)) {
             PEP_LOG(LogTag, Severity::Debug) << szLine;
           }
-          mCrashReportStream.close();
+          crashReportStream_.close();
           PEP_LOG(LogTag, Severity::Debug) << "[*] ==== End Crash report from previous run ====";
         }
 

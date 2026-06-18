@@ -57,7 +57,7 @@ namespace
     void precheck_response(const HTTPResponse& resp,
       const std::vector<unsigned int>& acceptedStatusCodes);
 
-    std::set<std::string> mUnexpectedHeaders;
+    std::set<std::string> unexpectedHeaders_;
   };
 
   // to define the contructor of ClientImp,
@@ -166,7 +166,7 @@ namespace
       };
 
       if (!expected_headers.contains(key)) {
-        if (mUnexpectedHeaders.emplace(key).second) {
+        if (unexpectedHeaders_.emplace(key).second) {
           PEP_LOG(LogTag, Severity::Warning) << "Unexpected header '" << key << "' in response from S3 (with value '" << value << "')";
         }
       }

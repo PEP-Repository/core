@@ -56,25 +56,25 @@ TEST(Proofs, ReshuffleRekeyVerifiersProof) {
     pep::InvalidProof) << "Proof should fail to validate with wrong global key";
   {
     auto evilVerifiers = verifiers;
-    evilVerifiers.mRekeyedPublicKey = pep::CurvePoint::Random();
+    evilVerifiers.rekeyedPublicKey_ = pep::CurvePoint::Random();
     EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
       pep::InvalidProof) << "Proof should fail to validate with wrong rekeyedPublicKey";
   }
   {
     auto evilVerifiers = verifiers;
-    evilVerifiers.mRekeyCommitment = pep::CurvePoint::Random();
+    evilVerifiers.rekeyCommitment_ = pep::CurvePoint::Random();
     EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
       pep::InvalidProof) << "Proof should fail to validate with wrong rekeyCommitment";
   }
   {
     auto evilVerifiers = verifiers;
-    evilVerifiers.mReshuffleCommitment = pep::CurvePoint::Random();
+    evilVerifiers.reshuffleCommitment_ = pep::CurvePoint::Random();
     EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
       pep::InvalidProof) << "Proof should fail to validate with wrong reshuffleCommitment";
   }
   {
     auto evilVerifiers = verifiers;
-    evilVerifiers.mReshuffleOverRekeyCommitment = pep::CurvePoint::Random();
+    evilVerifiers.reshuffleOverRekeyCommitment_ = pep::CurvePoint::Random();
     EXPECT_THROW(proof.verify(evilVerifiers, globalKey),
       pep::InvalidProof) << "Proof should fail to validate with wrong reshuffleOverRekeyCommitment";
   }

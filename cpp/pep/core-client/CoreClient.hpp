@@ -38,43 +38,43 @@
 namespace pep {
 
 struct DataStorageResult2 {
-  std::vector<std::string> mIds;
+  std::vector<std::string> ids_;
 };
 
 // Represents a cell denotation returned by a CoreClient method
 struct DataCellResult {
   // Encrypted local pseudonyms belonging to the polymorphic pseudonym to which
   // the file belongs.  The encrypted "row identifier".
-  std::shared_ptr<LocalPseudonyms> mLocalPseudonyms;
+  std::shared_ptr<LocalPseudonyms> localPseudonyms_;
 
-  // Can be used to match equal mLocalPseudonyms (without having to
-  // compare mLocalPseudonyms) within the result of a single call
+  // Can be used to match equal localPseudonyms_ (without having to
+  // compare localPseudonyms_) within the result of a single call
   // to a CoreClient method that produces DataCellResult instances.
-  uint32_t mLocalPseudonymsIndex{};
+  uint32_t localPseudonymsIndex_{};
 
-  std::string mColumn; // column to which this file belongs
+  std::string column_; // column to which this file belongs
 
   // The decrypted local pseudonym for the access group of the client
   // belonging to the PP of this file.  This is the "row identifier"
   // of this file with respect to our access group.
   // This field is only set if includeAccessGroupPseudonyms was set.
-  std::shared_ptr<LocalPseudonym> mAccessGroupPseudonym;
+  std::shared_ptr<LocalPseudonym> accessGroupPseudonym_;
 };
 
 /// Represents a file with metadata but without content
 struct EnumerateResult : public DataCellResult {
   /// Partially encrypted metadata of the file
-  Metadata mMetadata;
+  Metadata metadata_;
 
   /// Encrypted key to decrypt the data
-  EncryptedKey mPolymorphicKey;
+  EncryptedKey polymorphicKey_;
 
   /// Size of file on storage facility, in bytes
   /// Note that this is both the size of the encrypted ciphertext as its plaintext alternative
-  uint64_t mFileSize{};
+  uint64_t fileSize_{};
 
   /// Storage facility identifier
-  std::string mId;
+  std::string id_;
 };
 
 struct FileKey {
@@ -83,7 +83,7 @@ struct FileKey {
   std::string symmetricKey;
 
   [[nodiscard]] Metadata decryptMetadata() const {
-    return entry->mMetadata.decrypt(symmetricKey);
+    return entry->metadata_.decrypt(symmetricKey);
   }
 };
 
@@ -106,7 +106,7 @@ struct EnumerateAndRetrieveResult : public EnumerateResult {
 
   // metadata of the file with the decrypted metadata entries - set only
   // when dataSet_ is true.
-  std::optional<Metadata> mMetadataDecrypted;
+  std::optional<Metadata> metadataDecrypted_;
 
   // If a dataSizeLimit was specified, data_ might not be set.  This
   // field indicates whether data_ was set.
@@ -115,8 +115,8 @@ struct EnumerateAndRetrieveResult : public EnumerateResult {
 
 // Result of a getHistory2 or deleteData2 call
 struct HistoryResult : public DataCellResult {
-  Timestamp mTimestamp;
-  std::optional<std::string> mId{};
+  Timestamp timestamp_;
+  std::optional<std::string> id_{};
 };
 
 // Used as parameter to CoreClient::deleteData2
@@ -124,18 +124,18 @@ struct Storage2Entry {
   Storage2Entry(
     std::shared_ptr<PolymorphicPseudonym> pp,
     std::string column) :
-    mColumn(std::move(column)),
-    mPolymorphicPseudonym(std::move(pp)) { }
+    column_(std::move(column)),
+    polymorphicPseudonym_(std::move(pp)) { }
 
   // Column of the storage location.
-  std::string mColumn;
+  std::string column_;
 
   // Polymorphic pseudonym of the storage location.
-  std::shared_ptr<PolymorphicPseudonym> mPolymorphicPseudonym;
+  std::shared_ptr<PolymorphicPseudonym> polymorphicPseudonym_;
 
   // Request to overwrite timestamp.
   // XXX This is a temporary field and will be removed.
-  std::optional<Timestamp> mTimestamp;
+  std::optional<Timestamp> timestamp_;
 };
 
 struct StoreMetadata2Entry : public Storage2Entry {
@@ -147,7 +147,7 @@ struct StoreMetadata2Entry : public Storage2Entry {
   // Extra metadata entries. The payload of the MetadataXEntry-s with
   // encrypted=true will be encrypted by the storeData2 or
   // updateMetadata2 method.
-  std::map<std::string, MetadataXEntry> mXMetadata;
+  std::map<std::string, MetadataXEntry> xMetadata_;
 };
 
 // Used as parameter to CoreClient::storeData2
@@ -157,7 +157,7 @@ struct StoreData2Entry : public StoreMetadata2Entry {
     std::string column,
     messaging::MessageBatches batches) :
       StoreMetadata2Entry(pp, column),
-      mBatches(batches) { }
+      batches_(batches) { }
 
   StoreData2Entry(
       std::shared_ptr<PolymorphicPseudonym> pp,
@@ -166,7 +166,7 @@ struct StoreData2Entry : public StoreMetadata2Entry {
       const std::vector<NamedMetadataXEntry>& xentries = {});
 
   // The data to store should be provided as a rx stream^2 of strings (^2 due to have control over when stuff is send)
-  messaging::MessageBatches mBatches;
+  messaging::MessageBatches batches_;
 };
 
 // Used as arguments for CoreClient::requestTicket2
@@ -627,8 +627,8 @@ struct CoreClient::AESKey {
 
 class CoreClient::TicketPseudonyms {
 private:
-  std::vector<std::shared_ptr<LocalPseudonyms>> mPseudonyms;
-  std::optional<std::vector<std::shared_ptr<LocalPseudonym>>> mAgPseuds;
+  std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms_;
+  std::optional<std::vector<std::shared_ptr<LocalPseudonym>>> agPseuds_;
 
 public:
   TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms);
@@ -636,7 +636,7 @@ public:
   TicketPseudonyms(const TicketPseudonyms&) = delete;
   TicketPseudonyms& operator =(const TicketPseudonyms&) = delete;
 
-  std::shared_ptr<LocalPseudonyms> getLocalPseudonyms(uint32_t index) const { return mPseudonyms.at(index); }
+  std::shared_ptr<LocalPseudonyms> getLocalPseudonyms(uint32_t index) const { return pseudonyms_.at(index); }
   std::shared_ptr<LocalPseudonym> getAccessGroupPseudonym(uint32_t index) const; // Returns NULL if ticket didn't include access group pseudonyms
 };
 

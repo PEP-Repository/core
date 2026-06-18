@@ -47,36 +47,36 @@ constexpr size_t PAYLOAD_PAGES_MAX_CONCURRENCY = 1000; // Prevent excessive memo
 
 class TicketIndices {
 public:
-  using Index = decltype(IndexList::mIndices)::value_type;
+  using Index = decltype(IndexList::indices_)::value_type;
 
 private:
-  std::unordered_map<std::string, Index> mColumns;
-  std::unordered_map<LocalPseudonym, Index> mPseudonyms;
+  std::unordered_map<std::string, Index> columns_;
+  std::unordered_map<LocalPseudonym, Index> pseudonyms_;
 
 public:
   TicketIndices(const Ticket2& ticket, const ElgamalPrivateKey& pseudonymKey) {
-    if (ticket.mColumns.size() > std::numeric_limits<Index>::max()) {
+    if (ticket.columns_.size() > std::numeric_limits<Index>::max()) {
       throw std::runtime_error("Ticket contains too many columns to map into an IndexList");
     }
-    for (size_t i = 0U; i < ticket.mColumns.size(); ++i) {
-      mColumns[ticket.mColumns[i]] = static_cast<Index>(i);
+    for (size_t i = 0U; i < ticket.columns_.size(); ++i) {
+      columns_[ticket.columns_[i]] = static_cast<Index>(i);
     }
 
-    if (ticket.mAccessSubjects.size() > std::numeric_limits<Index>::max()) {
+    if (ticket.accessSubjects_.size() > std::numeric_limits<Index>::max()) {
       throw std::runtime_error("Ticket contains too many subjects to map into an IndexList");
     }
     // TODO keep a decryption cache?  If a ticket with a lot of pseudonyms is
     // reused often (for each file), then we're wasting a lot of time.
     // See issue #592.
-    for (size_t i = 0U; i < ticket.mAccessSubjects.size(); ++i) {
-      LocalPseudonym sfPseud = ticket.mAccessSubjects[i].mStorageFacility.decrypt(pseudonymKey);
-      mPseudonyms[sfPseud] = static_cast<Index>(i);
+    for (size_t i = 0U; i < ticket.accessSubjects_.size(); ++i) {
+      LocalPseudonym sfPseud = ticket.accessSubjects_[i].storageFacility_.decrypt(pseudonymKey);
+      pseudonyms_[sfPseud] = static_cast<Index>(i);
     }
   }
 
   Index getColumnIndex(const std::string& column) const {
-    auto position = mColumns.find(column);
-    if (position == mColumns.cend()) {
+    auto position = columns_.find(column);
+    if (position == columns_.cend()) {
       throw Error("Ticket does not grant access to that column");
     }
     return position->second;
@@ -87,8 +87,8 @@ public:
   }
 
   Index getPseudonymIndex(const LocalPseudonym& spPseud) {
-    auto position = mPseudonyms.find(spPseud);
-    if (position == mPseudonyms.cend()) {
+    auto position = pseudonyms_.find(spPseud);
+    if (position == pseudonyms_.cend()) {
       throw Error("Ticket does not grant access to that participant");
     }
     return position->second;
@@ -299,7 +299,7 @@ void StorageFacility::computeChecksumChainChecksum(
     maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
   }
 
-  mFileStore->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
+  fileStore_->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
     std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(header.validFrom))};
     if (validFromMs <= max) {
       checkpoint = std::max(checkpoint, validFromMs);
@@ -328,29 +328,29 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 
   // Look-up table to check whether to include column
   std::vector<std::string> includeColumn;
-  if (request.mColumns) {
-    includeColumn.reserve(request.mColumns->mIndices.size());
-    for (uint32_t idx : request.mColumns->mIndices) {
-      includeColumn.push_back(ticket.mColumns.at(idx));
+  if (request.columns_) {
+    includeColumn.reserve(request.columns_->indices_.size());
+    for (uint32_t idx : request.columns_->indices_) {
+      includeColumn.push_back(ticket.columns_.at(idx));
     }
   }
   else {
-    includeColumn.reserve(ticket.mColumns.size());
-    for (const auto& column : ticket.mColumns) {
+    includeColumn.reserve(ticket.columns_.size());
+    for (const auto& column : ticket.columns_) {
       includeColumn.push_back(column);
     }
   }
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
-  columnIndex.reserve(ticket.mColumns.size());
-  for (uint32_t i = 0; i < ticket.mColumns.size(); i++) {
-    columnIndex[ticket.mColumns[i]] = i;
+  columnIndex.reserve(ticket.columns_.size());
+  for (uint32_t i = 0; i < ticket.columns_.size(); i++) {
+    columnIndex[ticket.columns_[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects_, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
 
-  std::vector<uint64_t> ids; // used to lookup id from responseEntry mIndex
+  std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
     if (!localPseudonyms[pseud_index].has_value()) {
       continue;
@@ -364,7 +364,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       // enumerateData returns an error if there are no entries, which
       // we will ignore. Other errors are already logged.
       EntryName key(*localPseudonyms[pseud_index], col);
-      auto entry = mFileStore->lookup(key, ticket.mTimestamp);
+      auto entry = fileStore_->lookup(key, ticket.timestamp_);
       if (!entry) {
         continue;
       }
@@ -376,16 +376,16 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 
       auto& re = responseEntries.emplace_back();
       re.fileStoreEntry = entry;
-      re.entry.mMetadata = this->compileMetadata(col, *entry);
-      re.entry.mFileSize = entry->content()->payload()->size();
-      re.entry.mPolymorphicKey = content->getPolymorphicKey(); // will be rerandomized later
-      re.entry.mColumnIndex = colIndexIt->second;
-      re.entry.mPseudonymIndex = static_cast<uint32_t>(pseud_index);
+      re.entry.metadata_ = this->compileMetadata(col, *entry);
+      re.entry.fileSize_ = entry->content()->payload()->size();
+      re.entry.polymorphicKey_ = content->getPolymorphicKey(); // will be rerandomized later
+      re.entry.columnIndex_ = colIndexIt->second;
+      re.entry.pseudonymIndex_ = static_cast<uint32_t>(pseud_index);
     }
   }
 
   if (responseEntries.size() > std::numeric_limits<uint32_t>::max()) {
-    // Would overflow mIndex otherwise.
+    // Would overflow index_ otherwise.
     throw Error("Number of matching entries exceeds uint32");
   }
 
@@ -401,13 +401,13 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   return workerPool_->batched_map<8>(std::move(responseEntries),
     observe_on_asio(*getIoContext()),
     [ctx, this](ResponseEntry re) {
-      re.entry.mPolymorphicKey = this->getEgCache().rerandomize(
-        re.entry.mPolymorphicKey
+      re.entry.polymorphicKey_ = this->getEgCache().rerandomize(
+        re.entry.polymorphicKey_
       );
-      re.entry.mPolymorphicKey.ensurePacked();
+      re.entry.polymorphicKey_.ensurePacked();
 
       auto& sfEntry = re.fileStoreEntry;
-      re.entry.mId = encryptId(sfEntry->getName().string(), sfEntry->getValidFrom());
+      re.entry.id_ = encryptId(sfEntry->getName().string(), sfEntry->getValidFrom());
 
       return re;
     })
@@ -422,12 +422,12 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       for (const auto& re : *respEntriesPtr) {
         responseMsgs.back().entries_.push_back(re.entry);
 
-        // We use mIndex to lookup the primary key in ids when serving data below.
-        // The client should not learn mIndex, so we clear it.
-        responseMsgs.back().entries_.back().mIndex = 0;
+        // We use index_ to lookup the primary key in ids when serving data below.
+        // The client should not learn index_, so we clear it.
+        responseMsgs.back().entries_.back().index_ = 0;
         if (++i == ENUMERATION_RESPONSE_MAX_ENTRIES) {
           i = 0;
-          responseMsgs.back().mHasMore = true;
+          responseMsgs.back().hasMore_ = true;
           responseMsgs.emplace_back();
         }
       }
@@ -438,7 +438,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
           std::make_shared<std::string>(Serialization::ToString(msg))));
       }
 
-      server->mMetrics->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
+      server->metrics_->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
       return RxIterate(std::move(response));
       });
 }
@@ -472,10 +472,10 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response = std::make_shared<DataEnumerationResponse2>();
     };
 
-    for (size_t i = 0; i < request.mIds.size(); i++) {
+    for (size_t i = 0; i < request.ids_.size(); i++) {
       // TODO execute decryption in WorkerPool
-      auto sfid = server->decryptId(request.mIds[i]);
-      auto sfentry = server->mFileStore->lookup(EntryName::Parse(sfid.path), sfid.time);
+      auto sfid = server->decryptId(request.ids_[i]);
+      auto sfentry = server->fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
       }
@@ -490,24 +490,24 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       std::string column = sfentry->getName().column();
 
       DataEnumerationEntry2 entry;
-      entry.mMetadata = server->compileMetadata(column, *sfentry);
+      entry.metadata_ = server->compileMetadata(column, *sfentry);
       // TODO execute rerandomization in WorkerPool
-      entry.mPolymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
-      entry.mFileSize = sfcontent->payload()->size();
-      entry.mId = request.mIds[i];
-      entry.mIndex = static_cast<uint32_t>(i);
-      entry.mColumnIndex = indices.getColumnIndex(column);
-      entry.mPseudonymIndex = indices.getPseudonymIndex(pseud);
+      entry.polymorphicKey_ = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
+      entry.fileSize_ = sfcontent->payload()->size();
+      entry.id_ = request.ids_[i];
+      entry.index_ = static_cast<uint32_t>(i);
+      entry.columnIndex_ = indices.getColumnIndex(column);
+      entry.pseudonymIndex_ = indices.getPseudonymIndex(pseud);
       response->entries_.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
       if (response->entries_.size() >= ENUMERATION_RESPONSE_MAX_ENTRIES) {
-        response->mHasMore = true;
+        response->hasMore_ = true;
         sendResponse();
       }
     }
 
-    // Always send a final response with mHasMore = false. If zero entries were requested, this will be the only response we send.
+    // Always send a final response with hasMore_ = false. If zero entries were requested, this will be the only response we send.
     sendResponse();
     subscriber.on_completed();
   }));
@@ -531,13 +531,13 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   // Create look-up-tables for columns and pseudonyms from ticket
   TicketIndices indices(ticket, pseudonymKey_);
   std::vector<std::shared_ptr<FileStore::Entry>> entries;
-  entries.resize(request.mIds.size());
+  entries.resize(request.ids_.size());
 
   // open files
-  for (size_t i = 0; i < request.mIds.size(); i++) {
+  for (size_t i = 0; i < request.ids_.size(); i++) {
     // TODO execute decryption in WorkerPool
-    auto sfid = decryptId(request.mIds[i]);
-    auto entry = mFileStore->lookup(EntryName::Parse(sfid.path), sfid.time);
+    auto sfid = decryptId(request.ids_[i]);
+    auto entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
@@ -557,14 +557,14 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
 
   private:
     std::vector<std::shared_ptr<FileStore::Entry>> entries_;
-    std::shared_ptr<Metrics> mMetrics;
-    std::chrono::steady_clock::time_point mStartTime;
-    std::optional<rxcpp::subscriber<messaging::MessageSequence>> mSubscriber;
-    uint32_t mFileIndex = 0U;
-    uint32_t mPageIndex = 0U;
+    std::shared_ptr<Metrics> metrics_;
+    std::chrono::steady_clock::time_point startTime_;
+    std::optional<rxcpp::subscriber<messaging::MessageSequence>> subscriber_;
+    uint32_t fileIndex_ = 0U;
+    uint32_t pageIndex_ = 0U;
 
     StreamContext(std::vector<std::shared_ptr<FileStore::Entry>> entries, std::shared_ptr<Metrics> metrics, std::chrono::steady_clock::time_point startTime)
-      : entries_(std::move(entries)), mMetrics(std::move(metrics)), mStartTime(startTime) {
+      : entries_(std::move(entries)), metrics_(std::move(metrics)), startTime_(startTime) {
     }
 
     /// \brief Provides the next individual page (observable) to the subscriber
@@ -572,62 +572,62 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
     /// \remark To properly provide all page(observable)s to the subscriber, keep invoking this method
     ///         until it returns FALSE. Subsequent invocations will then return FALSE without doing anything.
     bool emitNextPage() {
-      if (mFileIndex >= entries_.size()) {
-        if (mSubscriber.has_value()) {
+      if (fileIndex_ >= entries_.size()) {
+        if (subscriber_.has_value()) {
           // TODO: postpone duration measurement until all page _contents_ (i.e. inner observables) have been processed
-          mMetrics->dataRead_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - mStartTime).count()); // in seconds
-          mSubscriber->on_completed();
-          mSubscriber.reset();
+          metrics_->dataRead_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime_).count()); // in seconds
+          subscriber_->on_completed();
+          subscriber_.reset();
         }
         return false;
       }
 
-      assert(mSubscriber.has_value());
+      assert(subscriber_.has_value());
 
-      auto& sfentry = entries_[mFileIndex];
+      auto& sfentry = entries_[fileIndex_];
       assert(sfentry->content() != nullptr);
       assert(sfentry->content()->payload() != nullptr);
 
       auto pageCount = sfentry->content()->payload()->pageCount();
       if (pageCount != 0U) {
-        assert(mPageIndex < pageCount); // Implies that pageCount != 0U
+        assert(pageIndex_ < pageCount); // Implies that pageCount != 0U
 
-        mSubscriber->on_next(sfentry->readPage(mPageIndex)
-          .map([self = SharedFrom(*this), fileIndex = mFileIndex, pageIndex = mPageIndex](std::shared_ptr<std::string> contents) {
+        subscriber_->on_next(sfentry->readPage(pageIndex_)
+          .map([self = SharedFrom(*this), fileIndex = fileIndex_, pageIndex = pageIndex_](std::shared_ptr<std::string> contents) {
             // Schedule a followup page (observable) when caller is done processing this page's contents.
             // PEP_DEFER ensures that the outer observable keeps going even if we raise an exception (on the inner observable) from this lambda
             PEP_DEFER(self->emitNextPage());
 
             auto page = Serialization::FromString<DataPayloadPage>(*contents);
-            page.mIndex = fileIndex;
-            page.mPageNumber = pageIndex;
+            page.index_ = fileIndex;
+            page.pageNumber_ = pageIndex;
 
             auto returnedPage = std::make_shared<std::string>(
               Serialization::ToString(std::move(page)));
             if (returnedPage->size() >= messaging::MAX_SIZE_OF_MESSAGE) {
               throw std::runtime_error("Data payload page too large to send out");
             }
-            self->mMetrics->data_retrieved_bytes.Increment(
+            self->metrics_->data_retrieved_bytes.Increment(
               static_cast<double>(returnedPage->size()));
             return returnedPage;
             }));
       }
 
-      ++mPageIndex;
-      if (mPageIndex >= pageCount) {
-        ++mFileIndex;
-        mPageIndex = 0U;
+      ++pageIndex_;
+      if (pageIndex_ >= pageCount) {
+        ++fileIndex_;
+        pageIndex_ = 0U;
       }
       return true;
     }
 
   public:
     void emitTo(rxcpp::subscriber<messaging::MessageSequence> subscriber) {
-      assert(mFileIndex == 0U);
-      assert(mPageIndex == 0U);
-      assert(!mSubscriber.has_value());
+      assert(fileIndex_ == 0U);
+      assert(pageIndex_ == 0U);
+      assert(!subscriber_.has_value());
 
-      mSubscriber = subscriber;
+      subscriber_ = subscriber;
       /* We queue a batch of pages to be sent out "immediately" (i.e. as soon as possible),
        * but we don't queue more than PAYLOAD_PAGES_MAX_CONCURRENCY at the same time.
        * If there are more pages than the initial batch, a new page is scheduled only when
@@ -643,7 +643,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
     }
   };
 
-  auto ctx = StreamContext::Create(std::move(entries), mMetrics, time);
+  auto ctx = StreamContext::Create(std::move(entries), metrics_, time);
 
   return CreateObservable<messaging::MessageSequence>(
     [ctx](rxcpp::subscriber<messaging::MessageSequence> subscriber) {
@@ -690,17 +690,17 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       const auto& entry = request->entries_[i];
 
       // Decrypt local pseudonym
-      if (pseudonymLut.count(entry.mPseudonymIndex) == 0) {
-        pseudonymLut[entry.mPseudonymIndex] = MakeSharedCopy(
-          ticket.mAccessSubjects.at(entry.mPseudonymIndex)
-          .mStorageFacility.decrypt(pseudonymKey_));
+      if (pseudonymLut.count(entry.pseudonymIndex_) == 0) {
+        pseudonymLut[entry.pseudonymIndex_] = MakeSharedCopy(
+          ticket.accessSubjects_.at(entry.pseudonymIndex_)
+          .storageFacility_.decrypt(pseudonymKey_));
       }
-      ctx->pseudonyms[i] = pseudonymLut[entry.mPseudonymIndex];
+      ctx->pseudonyms[i] = pseudonymLut[entry.pseudonymIndex_];
 
-      auto& col = ticket.mColumns.at(entry.mColumnIndex);
+      auto& col = ticket.columns_.at(entry.columnIndex_);
 
       // Modify entry, only creating a new one if we don't require an overwrite
-      auto entryChange = mFileStore->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite);
+      auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite);
       if (entryChange == nullptr) {
         throw Error("Cannot find cell to update");
       }
@@ -751,22 +751,22 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             auto page = Serialization::FromString<DataPayloadPage>(*rawPage);
 
             // Note that .at() tests bounds.
-            auto& sfentry = ctx->entries.at(page.mIndex);
-            auto fs = uint64_t{page.mPayloadData.size()};
-            ctx->fileSizes[page.mIndex] += fs;
+            auto& sfentry = ctx->entries.at(page.index_);
+            auto fs = uint64_t{page.payloadData_.size()};
+            ctx->fileSizes[page.index_] += fs;
 
             if (fs > 100000000) {
               throw Error("Incoming page is too large");
             }
-            return sfentry->appendPage(rawPage, fs, page.mPageNumber).tap(
+            return sfentry->appendPage(rawPage, fs, page.pageNumber_).tap(
               [server, rawPage](const std::string& md5hash) {
-                server->mMetrics->data_stored_bytes.Increment(static_cast<double>(rawPage->size()));
+                server->metrics_->data_stored_bytes.Increment(static_cast<double>(rawPage->size()));
               });
           })
           .as_dynamic()
           // We can't use merge here because the md5hashes need to be added to
           // the hasher in the correct order, so we use concat
-          .op(RxParallelConcat(mParallelisationWidth))
+          .op(RxParallelConcat(parallelisationWidth_))
           .subscribe(
             [hasher](std::string md5hash) { // on next
               hasher->update(md5hash);
@@ -806,7 +806,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
               subscriber.on_next(rxcpp::observable<>::from(
                 MakeSharedCopy(getResponse(time, ctx->ids, hasher->digest()))));
-              server->mMetrics->dataStore_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
+              server->metrics_->dataStore_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
               subscriber.on_completed();
             });
       });
@@ -815,22 +815,22 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
   std::shared_ptr<SignedDataStoreRequest2> signedRequest,
   messaging::MessageSequence tail) {
-  auto getEntryContent = [filestore = mFileStore](const DataStoreEntry2& entry) {
-    auto metadata = filestore->makeMetadataMap(entry.mMetadata.extra());
+  auto getEntryContent = [filestore = fileStore_](const DataStoreEntry2& entry) {
+    auto metadata = filestore->makeMetadataMap(entry.metadata_.extra());
     return std::make_unique<EntryContent>(
         std::move(metadata),
         EntryContent::PayloadData(
-          { .polymorphicKey = entry.mPolymorphicKey,
-            .blindingTimestamp = entry.mMetadata.getBlindingTimestamp(),
-            .scheme = entry.mMetadata.getEncryptionScheme()
+          { .polymorphicKey = entry.polymorphicKey_,
+            .blindingTimestamp = entry.metadata_.getBlindingTimestamp(),
+            .scheme = entry.metadata_.getEncryptionScheme()
           },
           nullptr));
   };
 
   auto getResponse = [](Timestamp /* ignored */, const std::vector<std::string>& ids, XxHasher::Hash hash) {
     DataStoreResponse2 resp;
-    resp.mIds = ids;
-    resp.mHash = hash;
+    resp.ids_ = ids;
+    resp.hash_ = hash;
     return Serialization::ToString(
       std::move(resp));
   };
@@ -854,18 +854,18 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   std::vector<uint32_t> pseudIndices;
   pseudIndices.reserve(request->entries_.size());
-  std::transform(request->entries_.cbegin(), request->entries_.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.mPseudonymIndex; });
+  std::transform(request->entries_.cbegin(), request->entries_.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex_; });
 
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, &pseudIndices);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects_, &pseudIndices);
 
   std::vector<std::shared_ptr<FileStore::EntryChange>> changes;
   for (const auto& entry : request->entries_) {
-    auto column = ticket.mColumns[entry.mColumnIndex];
-    assert(localPseudonyms[entry.mPseudonymIndex].has_value());
-    EntryName key(*localPseudonyms[entry.mPseudonymIndex], column);
+    auto column = ticket.columns_[entry.columnIndex_];
+    assert(localPseudonyms[entry.pseudonymIndex_].has_value());
+    EntryName key(*localPseudonyms[entry.pseudonymIndex_], column);
 
-    auto entryChange = mFileStore->modifyEntry(key, false);
+    auto entryChange = fileStore_->modifyEntry(key, false);
     if (entryChange == nullptr) {
       throw Error("Cannot find cell to update metadata for");
     }
@@ -890,12 +890,12 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     // - the encryption scheme that the client has used to re-blind and re-encrypt the polymorphic key.
     // - the specified metadata "x-"entries.
     auto content = std::make_unique<EntryContent>(
-        mFileStore->makeMetadataMap(entry.mMetadata.extra()),
+        fileStore_->makeMetadataMap(entry.metadata_.extra()),
         EntryContent::PayloadData{
           {
-            .polymorphicKey = entry.mPolymorphicKey,
-            .blindingTimestamp = entry.mMetadata.getBlindingTimestamp(),
-            .scheme = entry.mMetadata.getEncryptionScheme()
+            .polymorphicKey = entry.polymorphicKey_,
+            .blindingTimestamp = entry.metadata_.getBlindingTimestamp(),
+            .scheme = entry.metadata_.getEncryptionScheme()
           },
           payload},
         *originalPayloadEntryTimestamp);
@@ -909,7 +909,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   for (const auto& change : changes) {
     auto id = this->encryptId(change->getName().string(), time);
     std::move(*change).commit(time);
-    response.mIds.push_back(id);
+    response.ids_.push_back(id);
   }
 
   return rxcpp::observable<>::just(rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
@@ -927,14 +927,14 @@ StorageFacility::handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteReques
     assert(ids.size() <= std::numeric_limits<uint32_t>::max());
 
     DataDeleteResponse2 resp{
-      .mTimestamp = timestamp,
+      .timestamp_ = timestamp,
       .entries_{}, // Filled below
     };
 
-    resp.entries_.mIndices.reserve(ids.size());
+    resp.entries_.indices_.reserve(ids.size());
     for (size_t i = 0U; i < ids.size(); ++i) {
       if (!ids[i].empty()) {
-        resp.entries_.mIndices.emplace_back(static_cast<uint32_t>(i));
+        resp.entries_.indices_.emplace_back(static_cast<uint32_t>(i));
       }
     }
 
@@ -961,7 +961,7 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
   result.reserve(source.size());
   for (size_t i = 0; i < source.size(); ++i) {
     if (includePseudonym[i]) { // Caller wants/needs this pseudonym: decrypt it
-      result.emplace_back(source[i].mStorageFacility.decrypt(pseudonymKey_));
+      result.emplace_back(source[i].storageFacility_.decrypt(pseudonymKey_));
     }
     else { // Caller doesn't need this pseudonym: don't decrypt
       result.emplace_back(std::nullopt);
@@ -991,27 +991,27 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
 
   // Look-up table to check whether to include column
   std::vector<std::string> includeColumn;
-  if (request.mColumns) {
-    includeColumn.reserve(request.mColumns->mIndices.size());
-    for (uint32_t idx : request.mColumns->mIndices)
-      includeColumn.push_back(ticket.mColumns.at(idx));
+  if (request.columns_) {
+    includeColumn.reserve(request.columns_->indices_.size());
+    for (uint32_t idx : request.columns_->indices_)
+      includeColumn.push_back(ticket.columns_.at(idx));
   }
   else {
-    includeColumn.reserve(ticket.mColumns.size());
-    for (const auto& column : ticket.mColumns)
+    includeColumn.reserve(ticket.columns_.size());
+    for (const auto& column : ticket.columns_)
       includeColumn.push_back(column);
   }
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
-  columnIndex.reserve(ticket.mColumns.size());
-  for (uint32_t i = 0; i < ticket.mColumns.size(); i++) {
-    columnIndex[ticket.mColumns[i]] = i;
+  columnIndex.reserve(ticket.columns_.size());
+  for (uint32_t i = 0; i < ticket.columns_.size(); i++) {
+    columnIndex[ticket.columns_[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.mAccessSubjects, request.mPseudonyms.has_value() ? &request.mPseudonyms->mIndices : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects_, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
 
-  std::vector<uint64_t> ids; // used to lookup id from responseEntry mIndex
+  std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
     if (!localPseudonyms[pseud_index].has_value()) {
       continue;
@@ -1026,22 +1026,22 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
       // enumerateData returns an error if there are no entries, which
       // we will ignore. Other errors are already logged.
       EntryName key(localPseudonym, col);
-      auto history = mFileStore->lookupWithHistory(key);
+      auto history = fileStore_->lookupWithHistory(key);
       for (const auto& entry : history) {
         assert(entry != nullptr);
 
         Timestamp validFrom = entry->getValidFrom();
         response.entries_.push_back({
-          .mColumnIndex = colIndexIt->second,
-          .mPseudonymIndex = static_cast<uint32_t>(pseud_index),
-          .mTimestamp = validFrom,
-          .mId = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
+          .columnIndex_ = colIndexIt->second,
+          .pseudonymIndex_ = static_cast<uint32_t>(pseud_index),
+          .timestamp_ = validFrom,
+          .id_ = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
         });
       }
     }
   }
 
-  mMetrics->dataHistory_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
+  metrics_->dataHistory_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
 
   return rxcpp::observable<>::just(
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
@@ -1058,7 +1058,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   size_t entryCount{};
   uint64_t totalBytes{}, rollingBytes{};
-  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.mColumns);
+  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns_);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
       assert(bytes % blockSize == 0U);
@@ -1066,22 +1066,22 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
     };
 
   return messaging::BatchSingleMessage(DataSizeResponse{
-    .mBlockSize = dataSizeResolution_,
-    .mTotalBlocks = countBlocks(totalBytes),
-    .mRollingBlocks = countBlocks(rollingBytes),
+    .blockSize_ = dataSizeResolution_,
+    .totalBlocks_ = countBlocks(totalBytes),
+    .rollingBlocks_ = countBlocks(rollingBytes),
     });
 }
 
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
-      mEncIdKey,
+      encIdKey_,
       SFId{std::move(path), time}),
     false);
 }
 
 SFId StorageFacility::decryptId(std::string_view encId) {
-  return Serialization::FromString<EncryptedSFId>(encId, false).decrypt(mEncIdKey);
+  return Serialization::FromString<EncryptedSFId>(encId, false).decrypt(encIdKey_);
 }
 
 Metadata StorageFacility::compileMetadata(
@@ -1103,40 +1103,40 @@ Metadata StorageFacility::compileMetadata(
 
   // Extract the 'extra' PEP metadata entries from
   //  the file store entry's metadata - those entries that start with 'x-'.
-  result.extra() = mFileStore->extractMetadataMap(content->metadata());
+  result.extra() = fileStore_->extractMetadataMap(content->metadata());
 
   return result;
 }
 
 std::optional<std::filesystem::path> StorageFacility::getStoragePath() {
-  return EnsureDirectoryPath(mFileStore->metaDir());
+  return EnsureDirectoryPath(fileStore_->metaDir());
 }
 
 void StorageFacility::statsTimer(const boost::system::error_code& e) {
   if (e == boost::asio::error::operation_aborted) {
     return;
   }
-  auto metaDirs = std::filesystem::directory_iterator(mFileStore->metaDir());
+  auto metaDirs = std::filesystem::directory_iterator(fileStore_->metaDir());
   auto metaDirsCount = std::distance(metaDirs, std::filesystem::directory_iterator());
 
-  mMetrics->entriesInMetaDir.Set(static_cast<double>(metaDirsCount));
+  metrics_->entriesInMetaDir.Set(static_cast<double>(metaDirsCount));
 
-  mTimer.expires_after(60s);
-  mTimer.async_wait(boost::bind(&pep::StorageFacility::statsTimer, this, boost::asio::placeholders::error));
+  timer_.expires_after(60s);
+  timer_.async_wait(boost::bind(&pep::StorageFacility::statsTimer, this, boost::asio::placeholders::error));
 }
 
 StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameters> parameters)
   : SigningServer(parameters),
-  pseudonymKey_(parameters->getPseudonymKey()), mEncIdKey(parameters->getEncIdKey()),
+  pseudonymKey_(parameters->getPseudonymKey()), encIdKey_(parameters->getEncIdKey()),
   workerPool_(WorkerPool::getShared()),
-  mFileStore(FileStore::Create(
+  fileStore_(FileStore::Create(
     parameters->getStoragePath().string(),
     *parameters->getPageStoreConfig(),
     parameters->getIoContext(),
-    mRegistry)),
-  mMetrics(std::make_shared<Metrics>(mRegistry)),
-  mTimer(*parameters->getIoContext()),
-  mParallelisationWidth(parameters->getParallelisationWidth()),
+    registry_)),
+  metrics_(std::make_shared<Metrics>(registry_)),
+  timer_(*parameters->getIoContext()),
+  parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
@@ -1154,7 +1154,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
 
 void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
   uint64_t total{}, rolling{};
-  mFileStore->getMetrics(entryCount, total, rolling, columns);
+  fileStore_->getMetrics(entryCount, total, rolling, columns);
 
   auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
       auto blocks = bytes / blockSize;
@@ -1173,9 +1173,9 @@ void StorageFacility::updateFileStoreMetrics() {
   uint64_t totalPayloadBytes{}, rollingPayloadBytes{};
   this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
 
-  mMetrics->entriesIncludingHistory.Set(static_cast<double>(entryCount));
-  mMetrics->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
-  mMetrics->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
+  metrics_->entriesIncludingHistory.Set(static_cast<double>(entryCount));
+  metrics_->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
+  metrics_->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
 }
 
 }

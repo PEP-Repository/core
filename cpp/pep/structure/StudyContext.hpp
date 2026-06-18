@@ -13,17 +13,17 @@ class StudyContext {
   friend class StudyContexts;
 
 private:
-  std::string mId;
-  bool mIsDefault;
+  std::string id_;
+  bool isDefault_;
 
 private:
-  StudyContext(std::string id, bool isDefault) : mId(std::move(id)), mIsDefault(isDefault) {}
+  StudyContext(std::string id, bool isDefault) : id_(std::move(id)), isDefault_(isDefault) {}
 
 public:
   explicit StudyContext(std::string id) : StudyContext(std::move(id), false) {}
 
-  bool isDefault() const noexcept { return mIsDefault; }
-  inline const std::string& getId() const noexcept { return mId; }
+  bool isDefault() const noexcept { return isDefault_; }
+  inline const std::string& getId() const noexcept { return id_; }
   std::string getIdIfNonDefault() const;
 
   bool matches(const std::string& contexts) const;

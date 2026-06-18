@@ -18,8 +18,8 @@ class RepeatingDataPuller : public std::enable_shared_from_this<RepeatingDataPul
   friend class SharedConstructor<RepeatingDataPuller>;
 
 private:
-  std::shared_ptr<RepeatingData> mRepeatingData;
-  std::shared_ptr<RxCache<std::shared_ptr<Field>>> mFields;
+  std::shared_ptr<RepeatingData> repeatingData_;
+  std::shared_ptr<RxCache<std::shared_ptr<Field>>> fields_;
 
   RepeatingDataPuller(std::shared_ptr<RepeatingData> repeatingData, std::shared_ptr<std::vector<std::shared_ptr<Field>>> allFields);
 
@@ -34,14 +34,14 @@ public:
   * \brief Produces the RepeatingData (type, definition) instance associated with this object.
   * \return A castor::RepeatingData instance.
   */
-  inline std::shared_ptr<RepeatingData> getRepeatingData() const noexcept { return mRepeatingData; }
+  inline std::shared_ptr<RepeatingData> getRepeatingData() const noexcept { return repeatingData_; }
 
   /*!
   * \brief Produces (an observable emitting) the Field instances associated with this repeating data (type, definition).
   * \return (An observable emitting) Field instances.
   * \remark Data are retrieved from Castor only once. Subsequent calls of this method are served from cached data.
   */
-  inline rxcpp::observable<std::shared_ptr<Field>> getFields() { return mFields->observe(); }
+  inline rxcpp::observable<std::shared_ptr<Field>> getFields() { return fields_->observe(); }
 
   /*!
   * \brief Collects data for the specified RepeatingDataPuller instances into a Ptree.

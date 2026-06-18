@@ -67,9 +67,9 @@ class TcpBasedProtocol::Socket : public Protocol::Socket, public TcpBound {
   friend class ServerComponent;
 
 private:
-  size_t mPendingReadBytes = 0U;
-  size_t mPendingWriteBytes = 0U;
-  std::shared_ptr<SocketReadBuffer> mReadBuffer;
+  size_t pendingReadBytes_ = 0U;
+  size_t pendingWriteBytes_ = 0U;
+  std::shared_ptr<SocketReadBuffer> readBuffer_;
 
   [[noreturn]] void raiseTransferStartFailure(size_t& pending, size_t pend, const std::string& reason) const;
   void startTransfer(size_t& pending, size_t pend);
@@ -105,34 +105,34 @@ public:
 /// \copydoc Protocol::ClientParameters
 class TcpBasedProtocol::ClientParameters : public Protocol::ClientParameters, public TcpBound {
 private:
-  EndPoint mEndPoint;
+  EndPoint endPoint_;
 
 protected:
   ClientParameters(const TcpBasedProtocol& protocol, boost::asio::io_context& ioContext, EndPoint endPoint)
-    : Protocol::ClientParameters(protocol, ioContext), TcpBound(protocol), mEndPoint(std::move(endPoint)) {
+    : Protocol::ClientParameters(protocol, ioContext), TcpBound(protocol), endPoint_(std::move(endPoint)) {
   }
 
-  std::string addressSummary() const override { return mEndPoint.describe() + ':' + std::to_string(mEndPoint.port); }
+  std::string addressSummary() const override { return endPoint_.describe() + ':' + std::to_string(endPoint_.port); }
 
 public:
   /* \brief Produces the endpoint to which the client connects.
    * \return (A reference to) this client's EndPoint.
    */
-  const EndPoint& endPoint() const noexcept { return mEndPoint; }
+  const EndPoint& endPoint() const noexcept { return endPoint_; }
 };
 
 
 /// \copydoc Protocol::ServerParameters
 class TcpBasedProtocol::ServerParameters : public Protocol::ServerParameters, public TcpBound {
 private:
-  uint16_t mPort;
+  uint16_t port_;
 
 protected:
   ServerParameters(const TcpBasedProtocol& protocol, boost::asio::io_context& ioContext, uint16_t port) noexcept
-    : Protocol::ServerParameters(protocol, ioContext), TcpBound(protocol), mPort(port) {
+    : Protocol::ServerParameters(protocol, ioContext), TcpBound(protocol), port_(port) {
   }
 
-  std::string addressSummary() const override { return "localhost:" + std::to_string(mPort); }
+  std::string addressSummary() const override { return "localhost:" + std::to_string(port_); }
 
 public:
   /* \brief When passed to the constructor, specifies that the server will expose itself on a random port.
@@ -144,16 +144,16 @@ public:
    * \remark May produce a sentinel value such as RANDOM_PORT. Invoke ServerComponent::port to determine the actual
    *         (non-sentinel) port number on which a server has been exposed.
    */
-  uint16_t port() const noexcept { return mPort; }
+  uint16_t port() const noexcept { return port_; }
 };
 
 
 /// \copydoc Protocol::ClientComponent
 class TcpBasedProtocol::ClientComponent : public Protocol::ClientComponent, public TcpBound {
 private:
-  EndPoint mEndPoint;
-  boost::asio::ip::tcp::resolver mResolver;
-  bool mClosed = false;
+  EndPoint endPoint_;
+  boost::asio::ip::tcp::resolver resolver_;
+  bool closed_ = false;
 
   void onResolved(const ConnectionAttempt::Handler& notify, std::shared_ptr<Socket> socket, const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results);
 
@@ -164,7 +164,7 @@ public:
   explicit ClientComponent(const ClientParameters& parameters);
 
   /// \copydoc TcpBasedProtocol::ClientParameters::endPoint
-  const EndPoint& endPoint() const noexcept { return mEndPoint; }
+  const EndPoint& endPoint() const noexcept { return endPoint_; }
 
   /// \copydoc Protocol::ClientComponent::openSocket
   std::shared_ptr<Protocol::Socket> openSocket(const ConnectionAttempt::Handler& notify) override;
@@ -177,8 +177,8 @@ public:
 /// \copydoc Protocol::ServerComponent
 class TcpBasedProtocol::ServerComponent : public Protocol::ServerComponent, public TcpBound {
 private:
-  boost::asio::ip::tcp::endpoint mEndPoint;
-  boost::asio::ip::tcp::acceptor mAcceptor;
+  boost::asio::ip::tcp::endpoint endPoint_;
+  boost::asio::ip::tcp::acceptor acceptor_;
 
 public:
   /* \brief Constructor.

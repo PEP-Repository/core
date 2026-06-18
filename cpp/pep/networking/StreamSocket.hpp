@@ -16,9 +16,9 @@ public:
   using Handler = std::function<void(const boost::system::error_code&, std::size_t)>;
 
 private:
-  std::function<void(void*, size_t, const Handler&)> mAsyncRead;
-  std::function<void(boost::asio::streambuf&, const char*, const Handler&)> mAsyncReadUntil;
-  std::function<void(const void*, size_t, const Handler&)> mAsyncWrite;
+  std::function<void(void*, size_t, const Handler&)> asyncRead_;
+  std::function<void(boost::asio::streambuf&, const char*, const Handler&)> asyncReadUntil_;
+  std::function<void(const void*, size_t, const Handler&)> asyncWrite_;
 
 public:
   /*!
@@ -29,9 +29,9 @@ public:
    */
   template <typename TSocket>
   explicit StreamSocket(TSocket& implementor)
-    : mAsyncRead([&implementor](void* buffer, size_t bytes, const Handler& handler) { boost::asio::async_read(implementor, boost::asio::buffer(buffer, bytes), boost::asio::transfer_exactly(bytes), handler); }),
-    mAsyncReadUntil([&implementor](boost::asio::streambuf& buffer, const char* delimiter, const Handler& handler) { boost::asio::async_read_until(implementor, buffer, delimiter, handler); }),
-    mAsyncWrite([&implementor](const void* buffer, size_t bytes, const Handler& handler) { boost::asio::async_write(implementor, boost::asio::buffer(buffer, bytes), handler); }) {
+    : asyncRead_([&implementor](void* buffer, size_t bytes, const Handler& handler) { boost::asio::async_read(implementor, boost::asio::buffer(buffer, bytes), boost::asio::transfer_exactly(bytes), handler); }),
+    asyncReadUntil_([&implementor](boost::asio::streambuf& buffer, const char* delimiter, const Handler& handler) { boost::asio::async_read_until(implementor, buffer, delimiter, handler); }),
+    asyncWrite_([&implementor](const void* buffer, size_t bytes, const Handler& handler) { boost::asio::async_write(implementor, boost::asio::buffer(buffer, bytes), handler); }) {
   }
 
   /*!
@@ -41,7 +41,7 @@ public:
   * \param handler A callback function that's invoked when the data has been received, or when the operation has failed.
   * \remark Caller must ensure that the StreamSocket instance and the "buffer" parameter remain valid for the duration of the operation, i.e. until the "handler" has been invoked.
   */
-  void asyncRead(void* buffer, size_t bytes, const Handler& handler) { mAsyncRead(buffer, bytes, handler); }
+  void asyncRead(void* buffer, size_t bytes, const Handler& handler) { asyncRead_(buffer, bytes, handler); }
 
   /*!
   * \brief Asynchronously reads (receives) data from the socket until it contains a specified delimiter, placing received data into a caller-provided buffer.
@@ -51,7 +51,7 @@ public:
   * \remark Caller must ensure that the StreamSocket instance and the "buffer" and "delimiter" parameters remain valid for the duration of the operation, i.e. until the "handler" has been invoked.
   * \remark This method may place excess data into the buffer _after_ the specified delimiter. Check the SocketReadBuffer class for a way to deal with this.
   */
-  void asyncReadUntil(boost::asio::streambuf& buffer, const char* delimiter, const Handler& handler) { mAsyncReadUntil(buffer, delimiter, handler); }
+  void asyncReadUntil(boost::asio::streambuf& buffer, const char* delimiter, const Handler& handler) { asyncReadUntil_(buffer, delimiter, handler); }
 
   /*!
   * \brief Asynchronously writes (sends) data from a caller-provided buffer to the socket.
@@ -60,7 +60,7 @@ public:
   * \param handler A callback function that's invoked when the data has been sent, or when the operation has failed.
   * \remark Caller must ensure that the StreamSocket instance and the "buffer" parameter remain valid for the duration of the operation, i.e. until the "handler" has been invoked.
   */
-  void asyncWrite(const void* buffer, size_t bytes, const Handler& handler) { mAsyncWrite(buffer, bytes, handler); }
+  void asyncWrite(const void* buffer, size_t bytes, const Handler& handler) { asyncWrite_(buffer, bytes, handler); }
 };
 
 }

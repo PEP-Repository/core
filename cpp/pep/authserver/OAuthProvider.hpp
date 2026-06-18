@@ -100,7 +100,7 @@ private:
   std::shared_ptr<boost::asio::io_context> io_context;
   std::vector<boost::urls::url> allowedRedirectUris;
 
-  TemplateEnvironment mTemplates;
+  TemplateEnvironment templates_;
   friend class SharedConstructor<OAuthProvider>;
 };
 }

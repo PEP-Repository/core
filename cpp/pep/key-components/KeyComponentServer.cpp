@@ -36,10 +36,10 @@ KeyComponentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> regis
 
 KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
   SigningServer(parameters),
-  mPseudonymTranslator(parameters->getPseudonymTranslator()),
+  pseudonymTranslator_(parameters->getPseudonymTranslator()),
   dataTranslator_(parameters->getDataTranslator()),
-  mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())),
-  mSystemPublicKeys(parameters->getSystemPublicKeys()) {
+  metrics_(std::make_shared<KeyComponentServer::Metrics>(registry_, parameters->serverTraits())),
+  systemPublicKeys_(parameters->getSystemPublicKeys()) {
 
   RegisterRequestHandlers(*this, &KeyComponentServer::handleKeyComponentRequest);
 }
@@ -55,12 +55,12 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
 
   auto recipient = RecipientForCertificate(signatory.certificateChain().leaf());
   KeyComponentResponse response;
-  response.mPseudonymEncryptionKeyComponent = mPseudonymTranslator->generateKeyComponent(recipient);
+  response.pseudonymEncryptionKeyComponent_ = pseudonymTranslator_->generateKeyComponent(recipient);
   if (HasDataAccess(*party)) {
     response.dataEncryptionKeyComponent_ = dataTranslator_->generateKeyComponent(recipient);
   }
 
-  mMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
+  metrics_->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
 
   return messaging::BatchSingleMessage(response);
 }

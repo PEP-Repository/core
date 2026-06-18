@@ -61,8 +61,8 @@ public:
  */
 class InlinedEntryPayload : public EntryPayload {
 private:
-  std::string mContent;
-  uint64_t mPayloadSize;
+  std::string content_;
+  uint64_t payloadSize_;
 
 protected:
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
@@ -70,12 +70,12 @@ protected:
   bool allMemberVarsAreEqual(const EntryPayload& rhs) const override;
 
 public:
-  InlinedEntryPayload(std::string content, uint64_t payloadSize) : mContent(std::move(content)), mPayloadSize(payloadSize) {}
+  InlinedEntryPayload(std::string content, uint64_t payloadSize) : content_(std::move(content)), payloadSize_(payloadSize) {}
 
   std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<InlinedEntryPayload>(*this); }
 
   size_t pageCount() const noexcept override { return 1U; }
-  uint64_t size() const noexcept override { return mPayloadSize; }
+  uint64_t size() const noexcept override { return payloadSize_; }
   std::optional<uint64_t> pageSize() const override { return this->size(); }
 
   messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const override;
@@ -89,9 +89,9 @@ public:
  */
 class PagedEntryPayload : public EntryPayload {
 private:
-  std::vector<PageId> mPages;
-  uint64_t mPayloadSize = 0;
-  uint64_t mPageSize = 0; // Zero for old entries that didn't store the property
+  std::vector<PageId> pages_;
+  uint64_t payloadSize_ = 0;
+  uint64_t pageSize_ = 0; // Zero for old entries that didn't store the property
 
 protected:
   void save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const override;
@@ -104,8 +104,8 @@ public:
 
   std::shared_ptr<EntryPayload> clone() const override { return std::make_shared<PagedEntryPayload>(*this); }
 
-  size_t pageCount() const noexcept override { return mPages.size(); }
-  uint64_t size() const noexcept override { return mPayloadSize; }
+  size_t pageCount() const noexcept override { return pages_.size(); }
+  uint64_t size() const noexcept override { return payloadSize_; }
   std::optional<uint64_t> pageSize() const override;
 
   messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const override;

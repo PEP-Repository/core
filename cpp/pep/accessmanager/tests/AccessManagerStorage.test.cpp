@@ -30,18 +30,18 @@ constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
 namespace {
 
 void PrepareSortedMine(UserQueryResponse& response) {
-  erase_if(response.mUserGroups, [](const UserGroup& group) {
+  erase_if(response.userGroups_, [](const UserGroup& group) {
     return !group.name_.starts_with("My");
   });
-  erase_if(response.mUsers, [](const QRUser& user) {
+  erase_if(response.users_, [](const QRUser& user) {
     return !(user.displayId_.has_value() && user.displayId_->starts_with("My"));
   });
-  for (QRUser& user : response.mUsers) {
-    sort(user.mGroups);
-    sort(user.mOtherUids);
+  for (QRUser& user : response.users_) {
+    sort(user.groups_);
+    sort(user.otherUids_);
   }
-  sort(response.mUserGroups);
-  sort(response.mUsers);
+  sort(response.userGroups_);
+  sort(response.users_);
 }
 
 /*
@@ -580,7 +580,7 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
 
   int64_t group1_id = storage->createUserGroup(group1);
   int64_t group2_id = storage->createUserGroup(group2);
-  group1.mMaxAuthValidity = 42s;
+  group1.maxAuthValidity_ = 42s;
   storage->modifyUserGroup(group1);
 
   EXPECT_EQ(storage->findUserGroupId(group1.name_), group1_id);
@@ -621,9 +621,9 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_groups) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
+  const auto groupNames = RangeToVector(response.userGroups_ | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, (std::vector{group1.name_, group2.name_})) << "should return all group names";
-  EXPECT_EQ(response.mUserGroups, (std::vector<UserGroup>{
+  EXPECT_EQ(response.userGroups_, (std::vector<UserGroup>{
       group1,
       group2,
     })) << "should return all group properties";
@@ -638,7 +638,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users_, (std::vector<QRUser>{
       {user1, {}, {}, {}},
       {user2, {}, {}, {}},
     })) << "should return all users";
@@ -653,7 +653,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users_alt_ids) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users_, (std::vector<QRUser>{
       {user1, {}, {user1Alt}, {}},
     })) << "should return alternative identifiers";
 }
@@ -679,7 +679,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users_, (std::vector<QRUser>{
       {user1, {}, {user1Alt}, {group1}},
       {user2, {}, {}, {group2}},
     })) << "should return user-group memberships";
@@ -711,10 +711,10 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   auto response = storage->executeUserQuery({TimeNow(), "Group1", ""});
   PrepareSortedMine(response);
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
+  const auto groupNames = RangeToVector(response.userGroups_ | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return filtered group names";
 
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users_, (std::vector<QRUser>{
       {user1, {}, {user1Alt}, {group1}},
       {user3, {}, {}, {group1}}, // Note: we don't return group2 for user3
     })) << "should return group-filtered users with group memberships";
@@ -746,11 +746,11 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   auto response = storage->executeUserQuery({TimeNow(), "", "User1"});
   PrepareSortedMine(response);
 
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users_, (std::vector<QRUser>{
       {user1, {}, {user1Alt}, {group1}}, // Note: we also want to see alternative IDs
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
+  const auto groupNames = RangeToVector(response.userGroups_ | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -775,11 +775,11 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", "-alt"});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users_, (std::vector<QRUser>{
       {user1, {}, {user1Alt}, {group1}},
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
+  const auto groupNames = RangeToVector(response.userGroups_ | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -811,11 +811,11 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_and_group) {
 
   auto response = storage->executeUserQuery({TimeNow(), "GroupA", "UserA"});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users_, (std::vector<QRUser>{
       {userA1, {}, {}, {groupA1}},
     })) << "should return double-filtered users with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::name_)));
+  const auto groupNames = RangeToVector(response.userGroups_ | views::transform(std::mem_fn(&UserGroup::name_)));
   EXPECT_EQ(groupNames, std::vector{groupA1}) << "should return double-filtered group names";
 }
 

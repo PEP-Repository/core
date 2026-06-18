@@ -46,15 +46,15 @@ namespace {
     };
 
   private:
-    std::shared_ptr<boost::property_tree::ptree> mProperties;
+    std::shared_ptr<boost::property_tree::ptree> properties_;
 
   private:
     PublishedInstaller(std::shared_ptr<boost::property_tree::ptree> properties)
-      : mProperties(properties) {
+      : properties_(properties) {
     }
 
     static std::string GetDownloadUrl();
-    unsigned getUnsignedProperty(const std::string& partialKey) const { return mProperties->get<unsigned>("installer." + partialKey); }
+    unsigned getUnsignedProperty(const std::string& partialKey) const { return properties_->get<unsigned>("installer." + partialKey); }
 
   protected:
     std::filesystem::path getLocalMsiPath() const override;
@@ -156,7 +156,7 @@ namespace {
     auto directory = pep::win32api::CreateTemporaryDirectory(); // TODO: delete when done
     std::filesystem::path result;
 
-    for (const auto& node : mProperties->get_child("installer.files")) {
+    for (const auto& node : properties_->get_child("installer.files")) {
       auto relative = node.second.get<std::string>("path");
       if (!boost::iends_with(relative, std::string(".msi"))) {
         throw std::runtime_error("Only .MSI update files are currently supported");

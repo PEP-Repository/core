@@ -49,16 +49,16 @@ CoreClient::unblindAndDecryptKeys(
   baseCtx->reqs.reserve(entries.size() / KEY_REQUEST_BATCH_SIZE + 1);
   for (unsigned offset = 0; offset < entries.size(); offset += KEY_REQUEST_BATCH_SIZE) {
     EncryptionKeyRequest request;
-    request.mTicket2 = ticket;
+    request.ticket2_ = ticket;
     for (unsigned i = offset;
          i < std::min(static_cast<unsigned>(entries.size()), offset + KEY_REQUEST_BATCH_SIZE);
          i++) {
       const auto& entry = *entries[i];
       request.entries_.emplace_back(
-         entry.mMetadata,
-         entry.mPolymorphicKey,
+         entry.metadata_,
+         entry.polymorphicKey_,
          KeyBlindMode::Unblind,
-         entry.mLocalPseudonymsIndex
+         entry.localPseudonymsIndex_
       );
     }
     baseCtx->reqSizes.push_back(request.entries_.size());
@@ -81,9 +81,9 @@ CoreClient::unblindAndDecryptKeys(
           EncryptionKeyResponse resp) {
         if (!ctx->ok)
           return;
-        if (resp.mKeys.size() != ctx->reqSizes[req_index]) {
+        if (resp.keys_.size() != ctx->reqSizes[req_index]) {
           std::ostringstream ss;
-          ss << "EncryptionKeyResponse contains " << resp.mKeys.size()
+          ss << "EncryptionKeyResponse contains " << resp.keys_.size()
              << " entries instead of " << ctx->reqSizes[req_index];
           ctx->on_error(std::make_exception_ptr(
                 std::runtime_error(ss.str())));
@@ -93,7 +93,7 @@ CoreClient::unblindAndDecryptKeys(
         for (unsigned i = offset;
             i < std::min(static_cast<unsigned>(ctx->encKeys.size()), offset + KEY_REQUEST_BATCH_SIZE);
             i++)
-          ctx->encKeys[i] = resp.mKeys.at(i - offset);
+          ctx->encKeys[i] = resp.keys_.at(i - offset);
         action.done();
       }, [ctx](std::exception_ptr ep){
         ctx->on_error(ep);
@@ -132,14 +132,14 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     assert(offset % KEY_REQUEST_BATCH_SIZE == 0U);
     assert(keyRequests[offset].entries_.size() == indexInKeyRequest);
     keyRequests[offset].entries_.emplace_back(
-      entry.mMetadata,
+      entry.metadata_,
       EncryptedKey(systemPublicKeys_.globalDataEncryptionKey, keys[i].point),
       KeyBlindMode::Blind,
-      entry.mPseudonymIndex
+      entry.pseudonymIndex_
     );
   }
   // Give each KeyRequest a (reference to the) ticket
-  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket_)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.mTicket2 = ticket; });
+  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket_)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.ticket2_ = ticket; });
 
   return RxIterate(std::move(keyRequests))
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
@@ -148,15 +148,15 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     return getAccessManagerProxy(true)->requestEncryptionKey(std::move(keyRequest))
       .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
-        if (keyResponse.mKeys.size() != count) {
+        if (keyResponse.keys_.size() != count) {
           std::ostringstream ss;
-          ss << "EncryptionKeyResponse contains " << keyResponse.mKeys.size()
+          ss << "EncryptionKeyResponse contains " << keyResponse.keys_.size()
             << " entries instead of " << count;
           throw std::runtime_error(ss.str());
         }
 
         for (size_t i = 0; i < count; i++) {
-          request->entries_[i + offset].mPolymorphicKey = keyResponse.mKeys[i];
+          request->entries_[i + offset].polymorphicKey_ = keyResponse.keys_[i];
         }
 
         return FakeVoid();

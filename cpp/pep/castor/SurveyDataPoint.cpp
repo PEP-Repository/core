@@ -13,7 +13,7 @@ namespace castor {
 const std::string SurveyDataPoint::RELATIVE_API_ENDPOINT = "survey-package-instance";
 
 std::string SurveyDataPoint::makeUrl() const {
-  return this->getParticipant()->makeUrl() + "/data-point/survey/" + mSurveyInstanceId + "/" + this->getId();
+  return this->getParticipant()->makeUrl() + "/data-point/survey/" + surveyInstanceId_ + "/" + this->getId();
 }
 
 std::shared_ptr<Participant> SurveyDataPoint::getParticipant() const {
@@ -22,7 +22,7 @@ std::shared_ptr<Participant> SurveyDataPoint::getParticipant() const {
 
 SurveyDataPoint::SurveyDataPoint(std::shared_ptr<SurveyPackageInstance> surveyPackageInstance,
                                  JsonPtr json)
-    : DataPoint(surveyPackageInstance, json), mSurveyInstanceId(GetFromPtree<std::string>(*json,"survey_instance_id")) {}
+    : DataPoint(surveyPackageInstance, json), surveyInstanceId_(GetFromPtree<std::string>(*json,"survey_instance_id")) {}
 
 rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyDataPoint::BulkRetrieveFor(std::shared_ptr<CastorObject> object, rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> spis) {
 

@@ -144,36 +144,36 @@ void Serializer<UserMutationRequest>::moveIntoProtocolBuffer(proto::UserMutation
 
 UserQueryResponse Serializer<UserQueryResponse>::fromProtocolBuffer(proto::UserQueryResponse&& source) const {
   UserQueryResponse result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mUsers,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.users_,
     std::move(*source.mutable_users()));
-  Serialization::AssignFromRepeatedProtocolBuffer(result.mUserGroups,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.userGroups_,
     std::move(*source.mutable_user_groups()));
   return result;
 }
 
 void Serializer<UserQueryResponse>::moveIntoProtocolBuffer(proto::UserQueryResponse& dest, UserQueryResponse value) const {
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_users(),
-    std::move(value.mUsers));
+    std::move(value.users_));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_user_groups(),
-    std::move(value.mUserGroups));
+    std::move(value.userGroups_));
 }
 
 UserQuery Serializer<UserQuery>::fromProtocolBuffer(proto::UserQuery&& source) const {
   return {
-    .mAt = source.has_at()
+    .at_ = source.has_at()
         ? std::optional(Serialization::FromProtocolBuffer(std::move(*source.mutable_at())))
         : std::nullopt,
-    .mGroupFilter = std::move(*source.mutable_group_filter()),
-    .mUserFilter = std::move(*source.mutable_user_filter()),
+    .groupFilter_ = std::move(*source.mutable_group_filter()),
+    .userFilter_ = std::move(*source.mutable_user_filter()),
   };
 }
 
 void Serializer<UserQuery>::moveIntoProtocolBuffer(proto::UserQuery& dest, UserQuery value) const {
-  if (value.mAt) {
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_at(), *value.mAt);
+  if (value.at_) {
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_at(), *value.at_);
   }
-  *dest.mutable_group_filter() = std::move(value.mGroupFilter);
-  *dest.mutable_user_filter() = std::move(value.mUserFilter);
+  *dest.mutable_group_filter() = std::move(value.groupFilter_);
+  *dest.mutable_user_filter() = std::move(value.userFilter_);
 }
 
 QRUser Serializer<QRUser>::fromProtocolBuffer(proto::QRUser&& source) const {
@@ -194,12 +194,12 @@ QRUser Serializer<QRUser>::fromProtocolBuffer(proto::QRUser&& source) const {
 void Serializer<QRUser>::moveIntoProtocolBuffer(proto::QRUser& dest, QRUser value) const {
   if (value.displayId_)
     *dest.mutable_display_id() = std::move(*value.displayId_);
-  if (value.mPrimaryId)
-    *dest.mutable_primary_id() = std::move(*value.mPrimaryId);
-  auto moveOtherUids = MoveElements(value.mOtherUids);
+  if (value.primaryId_)
+    *dest.mutable_primary_id() = std::move(*value.primaryId_);
+  auto moveOtherUids = MoveElements(value.otherUids_);
   dest.mutable_other_uids()->Assign(moveOtherUids.begin(), moveOtherUids.end());
 
-  auto moveGroups = MoveElements(value.mGroups);
+  auto moveGroups = MoveElements(value.groups_);
   dest.mutable_groups()->Assign(moveGroups.begin(), moveGroups.end());
 }
 

@@ -4,35 +4,35 @@
 namespace pep {
 
 size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, const size_t& cap, const size_t& offset, const size_t& padding) {
-  assert(offset == 0 || offset < source.mColumns.size());
+  assert(offset == 0 || offset < source.columns_.size());
   assert(!source.name_.empty());
   size_t paddedNameLength = source.name_.length() + padding;
   if (paddedNameLength > cap) {
     return 0; // sentinel value indicating not even the name fits in the new group.
   }
   dest.name_ = source.name_;
-  return paddedNameLength + FillVectorToCapacity(dest.mColumns, source.mColumns, cap - paddedNameLength, offset, padding);
+  return paddedNameLength + FillVectorToCapacity(dest.columns_, source.columns_, cap - paddedNameLength, offset, padding);
 }
 
 bool AmaMutationRequest::hasDataAdminOperation() const {
   // if any of these operations are present, the Data Admin accessgroup is required:
-  return (!this->mCreateColumn.empty() ||
-    !this->mRemoveColumn.empty() ||
-    !this->mCreateColumnGroup.empty() ||
-    !this->mRemoveColumnGroup.empty() ||
-    !this->mAddColumnToGroup.empty() ||
-    !this->mRemoveColumnFromGroup.empty() ||
-    !this->mCreateParticipantGroup.empty() ||
-    !this->mRemoveParticipantGroup.empty() ||
-    !this->mAddParticipantToGroup.empty() ||
-    !this->mRemoveParticipantFromGroup.empty());
+  return (!this->createColumn_.empty() ||
+    !this->removeColumn_.empty() ||
+    !this->createColumnGroup_.empty() ||
+    !this->removeColumnGroup_.empty() ||
+    !this->addColumnToGroup_.empty() ||
+    !this->removeColumnFromGroup_.empty() ||
+    !this->createParticipantGroup_.empty() ||
+    !this->removeParticipantGroup_.empty() ||
+    !this->addParticipantToGroup_.empty() ||
+    !this->removeParticipantFromGroup_.empty());
 }
 bool AmaMutationRequest::hasAccessAdminOperation() const {
   // if any of these operations are present, the Access Admin accessgroup is required:
-  return (!this->mCreateColumnGroupAccessRule.empty() ||
-    !this->mRemoveColumnGroupAccessRule.empty() ||
-    !this->mCreateParticipantGroupAccessRule.empty() ||
-    !this->mRemoveParticipantGroupAccessRule.empty());
+  return (!this->createColumnGroupAccessRule_.empty() ||
+    !this->removeColumnGroupAccessRule_.empty() ||
+    !this->createParticipantGroupAccessRule_.empty() ||
+    !this->removeParticipantGroupAccessRule_.empty());
 }
 
 }

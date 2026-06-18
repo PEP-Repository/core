@@ -31,9 +31,9 @@ public:
 private:
   void registerHandlerParams(std::shared_ptr<HttpRequestHandlerParams> params);
 
-  mg_context *mCtx;
-  std::unique_ptr<std::unordered_map<std::string, std::shared_ptr<HttpRequestHandlerParams>>> mRegisteredHandlers;
-  std::shared_ptr<boost::asio::io_context> mIoContext;
+  mg_context *ctx_;
+  std::unique_ptr<std::unordered_map<std::string, std::shared_ptr<HttpRequestHandlerParams>>> registeredHandlers_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
 
   static SingleWorker CleanupWorker;
 };

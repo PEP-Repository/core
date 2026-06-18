@@ -202,13 +202,13 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
     lpBackend->set_target_address(szHostname, wPort);
   }
 
-  boost::log::sinks::syslog::custom_severity_mapping<Severity> mSeverityMapper("PepSeverityMapper");
-  mSeverityMapper[Severity::Debug] = boost::log::sinks::syslog::debug;
-  mSeverityMapper[Severity::Info] = boost::log::sinks::syslog::info;
-  mSeverityMapper[Severity::Warning] = boost::log::sinks::syslog::warning;
-  mSeverityMapper[Severity::Error] = boost::log::sinks::syslog::error;
-  mSeverityMapper[Severity::Critical] = boost::log::sinks::syslog::critical;
-  lpBackend->set_severity_mapper(mSeverityMapper);
+  boost::log::sinks::syslog::custom_severity_mapping<Severity> severityMapper_("PepSeverityMapper");
+  severityMapper_[Severity::Debug] = boost::log::sinks::syslog::debug;
+  severityMapper_[Severity::Info] = boost::log::sinks::syslog::info;
+  severityMapper_[Severity::Warning] = boost::log::sinks::syslog::warning;
+  severityMapper_[Severity::Error] = boost::log::sinks::syslog::error;
+  severityMapper_[Severity::Critical] = boost::log::sinks::syslog::critical;
+  lpBackend->set_severity_mapper(severityMapper_);
 
   return lpBackend;
 }
@@ -224,13 +224,13 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
                      boost::log::keywords::log_source = "pep"
                    );
 
-  boost::log::sinks::event_log::custom_event_type_mapping< Severity > mSeverityMapper("PepSeverityMapper");
-  mSeverityMapper[Severity::Debug] = boost::log::sinks::event_log::info;
-  mSeverityMapper[Severity::Info] = boost::log::sinks::event_log::info;
-  mSeverityMapper[Severity::Warning] = boost::log::sinks::event_log::warning;
-  mSeverityMapper[Severity::Error] = boost::log::sinks::event_log::error;
-  mSeverityMapper[Severity::Critical] = boost::log::sinks::event_log::error;
-  lpBackend->set_event_type_mapper(mSeverityMapper);
+  boost::log::sinks::event_log::custom_event_type_mapping< Severity > severityMapper_("PepSeverityMapper");
+  severityMapper_[Severity::Debug] = boost::log::sinks::event_log::info;
+  severityMapper_[Severity::Info] = boost::log::sinks::event_log::info;
+  severityMapper_[Severity::Warning] = boost::log::sinks::event_log::warning;
+  severityMapper_[Severity::Error] = boost::log::sinks::event_log::error;
+  severityMapper_[Severity::Critical] = boost::log::sinks::event_log::error;
+  lpBackend->set_event_type_mapper(severityMapper_);
 
   return lpBackend;
 }

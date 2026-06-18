@@ -10,8 +10,8 @@ class MetricsRequest {
 class MetricsResponse {
 public:
   MetricsResponse() = default;
-  explicit inline MetricsResponse(const std::string& metrics) : mMetrics(metrics) { }
-  std::string mMetrics;
+  explicit inline MetricsResponse(const std::string& metrics) : metrics_(metrics) { }
+  std::string metrics_;
 };
 
 class ChecksumChainNamesRequest {
@@ -20,15 +20,15 @@ class ChecksumChainNamesRequest {
 class ChecksumChainNamesResponse {
 public:
   ChecksumChainNamesResponse() = default;
-  explicit inline ChecksumChainNamesResponse(const std::vector<std::string>& names) : mNames(names) { }
+  explicit inline ChecksumChainNamesResponse(const std::vector<std::string>& names) : names_(names) { }
 
-  std::vector<std::string> mNames;
+  std::vector<std::string> names_;
 };
 
 class ChecksumChainRequest {
 public:
   std::string name_;
-  std::string mCheckpoint;
+  std::string checkpoint_;
 };
 
 class ChecksumChainResponse {
@@ -36,10 +36,10 @@ public:
   ChecksumChainResponse() = default;
   inline ChecksumChainResponse(const std::string& xorredChecksums,
     const std::string& checkpoint)
-    : mXorredChecksums(xorredChecksums),
-    mCheckpoint(checkpoint) { }
-  std::string mXorredChecksums;
-  std::string mCheckpoint;
+    : xorredChecksums_(xorredChecksums),
+    checkpoint_(checkpoint) { }
+  std::string xorredChecksums_;
+  std::string checkpoint_;
 };
 
 using SignedChecksumChainNamesRequest = Signed<ChecksumChainNamesRequest>;

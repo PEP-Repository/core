@@ -24,7 +24,7 @@ protected:
     auto entries = client->getHistory2(*ticket.getTicket(), std::vector<pep::PolymorphicPseudonym>({ pp }), std::vector<std::string>({ column }))
       .op(pep::RxConcatenateVectors())
       .concat_map([](std::shared_ptr<std::vector<pep::HistoryResult>> results) {
-      std::ranges::sort(*results, {}, std::mem_fn(&pep::HistoryResult::mTimestamp));
+      std::ranges::sort(*results, {}, std::mem_fn(&pep::HistoryResult::timestamp_));
       return pep::RxIterate(std::move(*results));
         });
     return WriteJson(std::cout, entries);

@@ -48,14 +48,14 @@ const int MainWindow::statusMessageDuration = 3000;
  * \param config_tree The boost::property_tree::ptree which contains the working configuration that this client instance should use. This too is passed to the children as needed.
  */
 MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& branding, const pep::Configuration& config_tree, unsigned spareStickerCount, const VisitCaptionsByContext& visitCaptionsByContext)
-  : QMainWindow(nullptr), config(config_tree), mBranding(branding), mSpareStickerCount(spareStickerCount), mVisitCaptionsByContext(visitCaptionsByContext), ui(new Ui::MainWindow) {
+  : QMainWindow(nullptr), config(config_tree), branding_(branding), spareStickerCount_(spareStickerCount), visitCaptionsByContext_(visitCaptionsByContext), ui(new Ui::MainWindow) {
   pepClient = client;
   ui->setupUi(this);
   tooltipFont->setPointSize(12);
   //ui->currentPatient->hide();
   //Remove language option
 
-  mBranding.showLogo(*ui->icon);
+  branding_.showLogo(*ui->icon);
 
   if (pep::ConfigVersion::Current() != std::nullopt) {
     if (!pep::ConfigVersion::Current()->exposesProductionData()) {
@@ -215,16 +215,16 @@ void MainWindow::openWidget(QStackedWidget* target, const std::function<void(con
 }
 
 const pep::StudyContext& MainWindow::getCurrentStudyContext() const {
-  if (mAllContexts->getItems().size() > 1U) {
-    return mAllContexts->getItems()[static_cast<unsigned int>(ui->contextComboBox->currentIndex())];
+  if (allContexts_->getItems().size() > 1U) {
+    return allContexts_->getItems()[static_cast<unsigned int>(ui->contextComboBox->currentIndex())];
   }
-  return *mAllContexts->getDefault();
+  return *allContexts_->getDefault();
 }
 
 const VisitCaptions* MainWindow::getVisitCaptionsForCurrentStudyContext() const {
   const auto& context = this->getCurrentStudyContext();
-  auto position = mVisitCaptionsByContext.find(context.getId());
-  if (position == mVisitCaptionsByContext.cend()) {
+  auto position = visitCaptionsByContext_.find(context.getId());
+  if (position == visitCaptionsByContext_.cend()) {
     return nullptr;
   }
   return &position->second;
@@ -244,7 +244,7 @@ void MainWindow::initializeExportContent() {
   ClearStackedWidget(*currentStackedWidget);
 
   openWidget(currentStackedWidget, [this, currentStackedWidget](const pep::GlobalConfiguration& configuration) {
-    auto widget = new ExportWidget(configuration, getCurrentStudyContext(), *currentPEPRole, this->mVisitCaptionsByContext, pepClient, this);
+    auto widget = new ExportWidget(configuration, getCurrentStudyContext(), *currentPEPRole, this->visitCaptionsByContext_, pepClient, this);
   QObject::connect(widget, &ExportWidget::sendMessage, this, &MainWindow::handleWidgetMessage);
   currentExportWidget = widget;
   currentStackedWidget->addWidget(widget);
@@ -256,13 +256,13 @@ void MainWindow::contextComboIndexChanged(int index) {
   QSettings().setValue("StudyContext", QString::fromStdString(getCurrentStudyContext().getId()));
 
   // Participants in open widgets may not be available in new context
-  for (const auto& widget : mOpenedParticipants) {
+  for (const auto& widget : openedParticipants_) {
     int index = ui->content_tabs->indexOf(widget);
     auto tabToRemove = ui->content_tabs->widget(index);
     ui->content_tabs->removeTab(index);
     tabToRemove->deleteLater();
   }
-  mOpenedParticipants.clear();
+  openedParticipants_.clear();
 
   initializeTabsIfConnected();
 }
@@ -305,16 +305,16 @@ void MainWindow::showForToken(QString token) {
       currentUser = user;
       currentPEPRole = pep::UserRole::GetForOAuthRole(role.toStdString());
 
-      mAllContexts = std::make_shared<pep::StudyContexts>(pair.second->getStudyContexts());
+      allContexts_ = std::make_shared<pep::StudyContexts>(pair.second->getStudyContexts());
 
-      if (mAllContexts->getItems().size() > 1U) {
-        auto defaultContext = mAllContexts->getDefault();
+      if (allContexts_->getItems().size() > 1U) {
+        auto defaultContext = allContexts_->getDefault();
         assert(defaultContext != nullptr);
         auto setting = QSettings().value("StudyContext");
         auto selectId = setting.isNull() ? defaultContext->getId() : setting.toString().toStdString();
 
         //Set UI elements
-        for (const auto& context : mAllContexts->getItems()) {
+        for (const auto& context : allContexts_->getItems()) {
           auto id = context.getId();
           ui->contextComboBox->addItem(QString::fromStdString(id));
           if (id == selectId) {
@@ -406,26 +406,26 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
   }
 
   openWidget(widgets[0], [this, participantIdentifier, widgets](const pep::GlobalConfiguration& globalConfiguration) {
-    auto selector = new ParticipantWidget(this, pepClient, QString::fromStdString(participantIdentifier), config, globalConfiguration, *mAllContexts, mBranding, mSpareStickerCount, getCurrentStudyContext(), getVisitCaptionsForCurrentStudyContext(), *currentPEPRole);
+    auto selector = new ParticipantWidget(this, pepClient, QString::fromStdString(participantIdentifier), config, globalConfiguration, *allContexts_, branding_, spareStickerCount_, getCurrentStudyContext(), getVisitCaptionsForCurrentStudyContext(), *currentPEPRole);
   selector->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   selector->setVisible(false);
   QObject::connect(this, SIGNAL(translation()), selector, SLOT(onTranslation()));
   QObject::connect(selector, &ParticipantWidget::queryComplete, [this, selector, participantIdentifier, widgets]() {
     QString participantSID = QString::fromStdString(participantIdentifier);
 
-  auto checkOpened = mOpenedParticipants.find(participantSID);
-  if (checkOpened != mOpenedParticipants.end()) {
+  auto checkOpened = openedParticipants_.find(participantSID);
+  if (checkOpened != openedParticipants_.end()) {
     //Remove participant that was already opened.
     int index = ui->content_tabs->indexOf(checkOpened.value());
     auto tabToRemove = ui->content_tabs->widget(index);
     ui->content_tabs->removeTab(index);
-    mOpenedParticipants.remove(participantSID);
+    openedParticipants_.remove(participantSID);
     tabToRemove->deleteLater();
   }
 
   auto newTab = new QStackedWidget(ui->content_tabs);
   newTab->addWidget(selector);
-  mOpenedParticipants.insert(participantSID, newTab);
+  openedParticipants_.insert(participantSID, newTab);
 
   int newIndex = ui->content_tabs->addTab(newTab, participantSID);
   ui->content_tabs->setCurrentIndex(newIndex);

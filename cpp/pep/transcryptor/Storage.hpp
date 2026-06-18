@@ -19,7 +19,7 @@ class TranscryptorStorage {
 private:
   std::shared_ptr<TranscryptorStorageBackend> storage_;
   std::string path_;
-  PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set mChecksumChains;
+  PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set checksumChains_;
 
   void ensureInitialized();
   void ensureInitialized_unguarded(bool& migrated);

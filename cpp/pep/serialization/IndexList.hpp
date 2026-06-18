@@ -12,11 +12,11 @@ class IndexList {
 public:
   IndexList() = default;
 
-  explicit IndexList(std::vector<uint32_t> indices) : mIndices(std::move(indices)) {}
+  explicit IndexList(std::vector<uint32_t> indices) : indices_(std::move(indices)) {}
 
   std::strong_ordering operator<=>(const IndexList& other) const = default;
 
-  std::vector<uint32_t> mIndices;
+  std::vector<uint32_t> indices_;
 };
 
 // This is a free function such that we can enforce that we don't keep a reference to an rvalue \c IndexList

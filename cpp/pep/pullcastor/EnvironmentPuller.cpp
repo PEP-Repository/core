@@ -49,7 +49,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
       const ColumnAccess::GroupProperties& properties = group.second;
       if (std::find(properties.modes.cbegin(), properties.modes.cend(), "read") != properties.modes.cend()
         && std::find(properties.modes.cbegin(), properties.modes.cend(), "write") != properties.modes.cend()) {
-        for (const auto index : properties.columns.mIndices) {
+        for (const auto index : properties.columns.indices_) {
           const auto& column = access.columns[index];
           result.emplace(column);
         }
@@ -63,7 +63,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
 }
 
 EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config, bool dry, const std::optional<std::vector<std::string>>& spColumns, const std::optional<std::vector<std::string>>& sps)
-  : dry_(dry), mSps(sps) {
+  : dry_(dry), sps_(sps) {
   std::filesystem::path oauthTokenFile;
   std::filesystem::path castorAPIKeyFile;
   std::filesystem::path clientConfigFile;
@@ -74,15 +74,15 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     castorAPIKeyFile = std::filesystem::canonical(config.get<std::filesystem::path>("CastorAPIKeyFile"));
 
     auto waitPeriod = std::chrono::days{config.get<std::chrono::days::rep>("WaitPeriodDays")};
-    mCooldownThreshold = TimeNow() - waitPeriod;
+    cooldownThreshold_ = TimeNow() - waitPeriod;
 
     auto metricsFile = config.get<std::optional<std::filesystem::path>>("Metrics.TargetFile");
     if (metricsFile) {
-      mMetrics = std::make_shared<Metrics>(config.get<std::string>("Metrics.JobName"), *metricsFile);
+      metrics_ = std::make_shared<Metrics>(config.get<std::string>("Metrics.JobName"), *metricsFile);
     }
     else {
       // Create a Metrics instance that doesn't write to file, so we'll be able to use it without repeated NULL checks.
-      mMetrics = std::make_shared<Metrics>();
+      metrics_ = std::make_shared<Metrics>();
     }
   }
   catch (const std::exception& e) {
@@ -114,7 +114,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
   }
 
   try {
-    mOauthToken = OAuthToken::ReadJson(oauthTokenFile).getSerializedForm();
+    oauthToken_ = OAuthToken::ReadJson(oauthTokenFile).getSerializedForm();
   }
   catch (const std::exception& e) {
     PEP_PULLCASTOR_LOG(Severity::Critical) << "Error with OAuthToken file: " << e.what();
@@ -122,9 +122,9 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     throw;
   }
 
-  mCastor = CastorConnection::Create(castorAPIKeyFile, io_context);
+  castor_ = CastorConnection::Create(castorAPIKeyFile, io_context);
 
-  mAspects = CreateRxCache([client = client_, token = mOauthToken, spColumns, sps]() {
+  aspects_ = CreateRxCache([client = client_, token = oauthToken_, spColumns, sps]() {
     return StudyAspect::GetAll(
       EnsureEnrolled(client, token)
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getGlobalConfiguration(); })
@@ -158,13 +158,13 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
         }));
     });
 
-  mColumnNamer = CreateRxCache([client = client_, token = mOauthToken]() {
+  columnNamer_ = CreateRxCache([client = client_, token = oauthToken_]() {
     return EnsureEnrolled(client, token)
       .flat_map([](std::shared_ptr<CoreClient> client) {return client->getAccessManagerProxy()->getColumnNameMappings(); })
       .map([](ColumnNameMappings mappings) { return std::make_shared<ImportColumnNamer>(std::move(mappings)); });
     });
 
-  mStudiesBySlug = CreateRxCache([castor = mCastor]() {
+  studiesBySlug_ = CreateRxCache([castor = castor_]() {
     return castor->getStudies()
       .op(RxToUnorderedMap([](std::shared_ptr<Study> study) {return study->getSlug(); }));
     });
@@ -175,7 +175,7 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
 
   // Register a callback so we can detect duplicate Castor requests.
   // Use a weak_ptr to prevent circular references between EnvironmentPuller and its CastorClient::Connection
-  mCastorOnRequestSubscription = mCastor->onRequest.subscribe([weak = WeakFrom(*this)](std::shared_ptr<const HTTPRequest> request) {
+  castorOnRequestSubscription_ = castor_->onRequest.subscribe([weak = WeakFrom(*this)](std::shared_ptr<const HTTPRequest> request) {
     auto self = weak.lock();
     if (self != nullptr) {
       self->onCastorRequest(request);
@@ -204,12 +204,12 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     .flat_map([self](const std::vector<StoreData2Entry>& batch) {return self->processBatchToStore(batch); }) // Store the items
     .tap( // Perform housekeeping
       [self, written](size_t count) {
-        self->mMetrics->storedEntries_count.Increment(static_cast<double>(count));
+        self->metrics_->storedEntries_count.Increment(static_cast<double>(count));
         (*written) += count;
       },
-      [self](std::exception_ptr) {self->mMetrics->uncaughtExceptions_count.Increment(); },
+      [self](std::exception_ptr) {self->metrics_->uncaughtExceptions_count.Increment(); },
       [self, read, written, startTime]() {
-        self->mMetrics->importDuration_seconds.Set(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count()); // in seconds
+        self->metrics_->importDuration_seconds.Set(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count()); // in seconds
         PEP_PULLCASTOR_LOG(Severity::Info) << "Added/updated " << *written << " of " << *read << " entries";
       }
     );
@@ -221,7 +221,7 @@ rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(const std::vect
   }
 
   return client_->storeData2(batch)
-    .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.mIds.size(); });
+    .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.ids_.size(); });
 }
 
 rxcpp::observable<StoreData2Entry> EnvironmentPuller::getStorageUpdate(std::shared_ptr<StorableCellContent> castor) {
@@ -268,14 +268,14 @@ bool EnvironmentPuller::Pull(const Configuration& config, bool dry, const std::o
 }
 
 rxcpp::observable<std::shared_ptr<CoreClient>> EnvironmentPuller::getClient() {
-  return EnsureEnrolled(client_, mOauthToken);
+  return EnsureEnrolled(client_, oauthToken_);
 }
 
 void EnvironmentPuller::onCastorRequest(std::shared_ptr<const HTTPRequest> request) {
   std::string uri(request->uri().buffer());
-  auto position = mCastorRequests.find(uri);
-  if (position == mCastorRequests.cend()) {
-    mCastorRequests.emplace(std::make_pair(uri, 1U));
+  auto position = castorRequests_.find(uri);
+  if (position == castorRequests_.cend()) {
+    castorRequests_.emplace(std::make_pair(uri, 1U));
   }
   else {
     position->second++;
@@ -318,17 +318,17 @@ rxcpp::observable<std::shared_ptr<std::vector<std::string>>> EnvironmentPuller::
 }
 
 rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> EnvironmentPuller::getPps() {
-  if (!mSps.has_value()) {
+  if (!sps_.has_value()) {
     return rxcpp::observable<>::just(std::make_shared<std::vector<PolymorphicPseudonym>>()); // Return an empty vector rather than an empty observable
   }
-  return RxIterate(*mSps)
+  return RxIterate(*sps_)
     .flat_map([client = client_](const std::string& sp) {return client->findPPforShortPseudonym(sp); })
     .op(RxToVector());
 }
 
 rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData() {
-  if (mStoredData != nullptr) {
-    return rxcpp::observable<>::just(mStoredData);
+  if (storedData_ != nullptr) {
+    return rxcpp::observable<>::just(storedData_);
   }
   PEP_PULLCASTOR_LOG(Severity::Info) << "Retrieving stored data from PEP";
   return this->getClient().op(RxGetOne("client"))
@@ -350,7 +350,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData(
 
     return StoredData::Load(client, pps, spColumns, nonSpColumns)
       .flat_map([self](std::shared_ptr<StoredData> stored) {
-      self->mStoredData = stored;
+      self->storedData_ = stored;
       PEP_PULLCASTOR_LOG(Severity::Info) << "Retrieved stored data from PEP";
       return self->getStoredData();
       });
@@ -358,7 +358,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData(
 }
 
 rxcpp::observable<std::shared_ptr<Study>> EnvironmentPuller::getStudyBySlug(const std::string& slug) {
-  return mStudiesBySlug->observe()
+  return studiesBySlug_->observe()
     .map([slug](std::shared_ptr<StudiesBySlug> studies) {return studies->at(slug); });
 }
 

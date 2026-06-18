@@ -41,7 +41,7 @@ std::string StudyContext::getAdministeringAssessorColumnName(uint32_t visitNumbe
 }
 
 bool StudyContext::operator ==(const StudyContext& other) const {
-  return (mId == other.mId) && (mIsDefault == other.mIsDefault);
+  return (id_ == other.id_) && (isDefault_ == other.isDefault_);
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::getPositionOf(const StudyContext& context) const {
@@ -54,7 +54,7 @@ StudyContexts::StudyContexts(std::vector<StudyContext> items)
     if (getDefault() != nullptr) {
       throw std::runtime_error("Don't specify a default when initializing StudyContexts");
     }
-    items_.front().mIsDefault = true;
+    items_.front().isDefault_ = true;
   }
   else {
     items_.push_back(StudyContext(std::string(), true));

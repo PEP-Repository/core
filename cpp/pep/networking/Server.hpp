@@ -14,10 +14,10 @@ class Server : public SharedConstructor<Server>, public Node {
 private:
   class Connection;
 
-  std::shared_ptr<Protocol::ServerComponent> mComponent;
+  std::shared_ptr<Protocol::ServerComponent> component_;
 
   explicit Server(std::shared_ptr<Protocol::ServerComponent> component)
-    : Node(component), mComponent(component) {
+    : Node(component), component_(component) {
   }
 
   explicit Server(const Protocol::ServerParameters& parameters)

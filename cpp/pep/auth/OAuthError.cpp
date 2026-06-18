@@ -3,8 +3,8 @@
 namespace pep {
 
 OAuthError::OAuthError(std::string error, std::string description)
-  : mError(std::move(error)), description_(std::move(description)), mWhat(description_ + " (" + mError + ")") {
-  assert(!mError.empty());
+  : error_(std::move(error)), description_(std::move(description)), what_(description_ + " (" + error_ + ")") {
+  assert(!error_.empty());
   assert(!description_.empty());
 }
 
@@ -22,7 +22,7 @@ std::optional<OAuthError> OAuthError::TryRead(const boost::urls::url& source) {
 }
 
 const char* OAuthError::what() const noexcept {
-  return mWhat.c_str();
+  return what_.c_str();
 }
 
 }

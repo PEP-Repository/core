@@ -310,13 +310,13 @@ private:
             const ElgamalTranslationKey& reshuffle) const;
     ElgamalEncryption rk(const CurvePoint& b, const CurvePoint& c) const;
 
-    CurveScalar mKInv;
-    CurvePoint mKY;
-    std::shared_ptr<CurvePoint::ScalarMultTable> mYTable;
+    CurveScalar kInv_;
+    CurvePoint kY_;
+    std::shared_ptr<CurvePoint::ScalarMultTable> yTable_;
 
     // returns whether the value was successfully initialized
     inline explicit operator bool() const {
-      return this->mYTable ? true : false;
+      return this->yTable_ ? true : false;
     }
   };
 
@@ -334,7 +334,7 @@ private:
   // Scalar multiplication (table) cache
   struct TableValue {
     TableValue(EGCacheImp* egcache, const CurvePoint& p);
-    std::shared_ptr<CurvePoint::ScalarMultTable> mTable;
+    std::shared_ptr<CurvePoint::ScalarMultTable> table_;
 
     // creation of a TableValue, unlike RSKValue, always succeeds
     inline explicit operator bool() const { return true; }
@@ -392,7 +392,7 @@ EGCacheImp::scalarMultTable(const CurvePoint& b) {
   if (!optional_it)
     return nullptr;
 
-  return (*optional_it)->second.getValue().mTable;
+  return (*optional_it)->second.getValue().table_;
 }
 
 ElgamalEncryption EGCacheImp::rsk(
@@ -457,9 +457,9 @@ ElgamalEncryption EGCacheImp::RekeyValue::rk(
     const CurvePoint& c) const {
   const auto r = CurveScalar::Random();
   return {
-    mKInv * (b + (r * CurvePoint::Base)),
-    c + mYTable->mult(r),
-    mKY,
+    kInv_ * (b + (r * CurvePoint::Base)),
+    c + yTable_->mult(r),
+    kY_,
   };
 }
 
@@ -469,24 +469,24 @@ ElgamalEncryption EGCacheImp::RekeyValue::rsk(
     const ElgamalTranslationKey& reshuffle) const {
   const auto r = CurveScalar::Random();
   return {
-    reshuffle * mKInv * (b + (r * CurvePoint::Base)),
-    reshuffle * (c + mYTable->mult(r)),
-    mKY,
+    reshuffle * kInv_ * (b + (r * CurvePoint::Base)),
+    reshuffle * (c + yTable_->mult(r)),
+    kY_,
   };
 }
 
 EGCacheImp::RekeyValue::RekeyValue(
     EGCacheImp* egcache, const EGCacheImp::RekeyKey& key)  {
 
-  this->mYTable = egcache->scalarMultTable(key.mY);
+  this->yTable_ = egcache->scalarMultTable(key.mY);
 
-  if (!this->mYTable) {
+  if (!this->yTable_) {
     // table cache is disabled; abort
     return;
   }
 
-  this->mKY = this->mYTable->mult(key.mK);
-  this->mKInv = key.mK.invert();
+  this->kY_ = this->yTable_->mult(key.mK);
+  this->kInv_ = key.mK.invert();
 }
 
 size_t EGCacheImp::RekeyKey::hash::operator()(const pep::EGCacheImp::RekeyKey& k) const {
@@ -497,7 +497,7 @@ size_t EGCacheImp::RekeyKey::hash::operator()(const pep::EGCacheImp::RekeyKey& k
 }
 
 EGCacheImp::TableValue::TableValue(EGCacheImp* egcache, const CurvePoint& p) {
-  mTable = std::make_shared<CurvePoint::ScalarMultTable>(p);
+  table_ = std::make_shared<CurvePoint::ScalarMultTable>(p);
 }
 
 EGCache::Metrics EGCacheImp::getMetrics() {

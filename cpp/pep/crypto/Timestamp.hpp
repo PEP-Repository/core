@@ -56,8 +56,8 @@ public:
   [[nodiscard]] Timestamp timestampFromYyyyMmDd(std::string_view yyyyMmDd) const;
 
 private:
-  TimeZone(std::string str) : mStr(std::move(str)) {}
-  std::string mStr;
+  TimeZone(std::string str) : str_(std::move(str)) {}
+  std::string str_;
 };
 
 [[nodiscard]] std::chrono::year_month_day BoostDateToStd(const boost::gregorian::date& date);

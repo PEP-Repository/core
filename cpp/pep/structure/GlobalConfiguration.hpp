@@ -11,11 +11,11 @@ namespace pep {
 
 class AdditionalStickerDefinition {
  public:
-  uint32_t mVisit = 0;
-  std::string mColumn;
-  uint32_t mStickers = 1;
-  bool mSuppressAdditionalStickers = false;
-  std::string mStudyContext;
+  uint32_t visit_ = 0;
+  std::string column_;
+  uint32_t stickers_ = 1;
+  bool suppressAdditionalStickers_ = false;
+  std::string studyContext_;
 };
 
 struct DeviceRegistrationDefinition {
@@ -39,13 +39,13 @@ struct AssessorDefinition {
 class UserPseudonymFormat {
 private:
   std::string prefix_;
-  size_t mLength;
+  size_t length_;
 
 public:
   UserPseudonymFormat(const std::string& prefix, size_t length);
 
   const std::string& getPrefix() const noexcept { return prefix_; }
-  size_t getLength() const { return mLength; }
+  size_t getLength() const { return length_; }
   size_t getTotalLength() const;
   std::string stripPrefix(std::string userPseudonym) const;
   std::string makeUserPseudonym(const LocalPseudonym& localpseudonym) const;
@@ -57,13 +57,13 @@ class PseudonymFormat {
 private:
   std::string prefix_;
   size_t digits_;
-  std::string mRegexPattern;
+  std::string regexPattern_;
 
 public:
   PseudonymFormat(std::string prefix, size_t digits);
   explicit PseudonymFormat(std::string regexPattern);
 
-  const std::string& getRegexPattern() const noexcept { return mRegexPattern; }
+  const std::string& getRegexPattern() const noexcept { return regexPattern_; }
 
   bool isGenerable() const noexcept { return digits_ > 0U; }
   const std::string& getPrefix() const noexcept { return prefix_; }
@@ -78,17 +78,17 @@ public:
  */
 class ColumnSpecification {
 private:
-  std::string mColumn;
-  std::optional<std::string> mAssociatedShortPseudonymColumn;
-  bool mRequiresDirectory;
+  std::string column_;
+  std::optional<std::string> associatedShortPseudonymColumn_;
+  bool requiresDirectory_;
 
 public:
   ColumnSpecification(const std::string& column, const std::optional<std::string>& associatedShortPseudonymColumn, const bool requiresDirectory)
-    : mColumn(column), mAssociatedShortPseudonymColumn(associatedShortPseudonymColumn), mRequiresDirectory(requiresDirectory) {}
+    : column_(column), associatedShortPseudonymColumn_(associatedShortPseudonymColumn), requiresDirectory_(requiresDirectory) {}
 
-  const std::string& getColumn() const noexcept { return mColumn; }
-  const std::optional<std::string>& getAssociatedShortPseudonymColumn() const noexcept { return mAssociatedShortPseudonymColumn; }
-  bool getRequiresDirectory() const noexcept { return mRequiresDirectory; }
+  const std::string& getColumn() const noexcept { return column_; }
+  const std::optional<std::string>& getAssociatedShortPseudonymColumn() const noexcept { return associatedShortPseudonymColumn_; }
+  bool getRequiresDirectory() const noexcept { return requiresDirectory_; }
 };
 
 struct ShortPseudonymErratum {
@@ -98,16 +98,16 @@ struct ShortPseudonymErratum {
 
 class GlobalConfiguration {
  private:
-  std::vector<PseudonymFormat> mParticipantIdentifierFormats;
-  StudyContexts mStudyContexts;
-  std::vector<ShortPseudonymDefinition> mShortPseudonyms;
-  UserPseudonymFormat mUserPseudonymFormat;
-  std::vector<AdditionalStickerDefinition> mAdditionalStickers;
+  std::vector<PseudonymFormat> participantIdentifierFormats_;
+  StudyContexts studyContexts_;
+  std::vector<ShortPseudonymDefinition> shortPseudonyms_;
+  UserPseudonymFormat userPseudonymFormat_;
+  std::vector<AdditionalStickerDefinition> additionalStickers_;
   std::vector<DeviceRegistrationDefinition> devices_;
-  std::unordered_map<std::string, uint32_t> mNumberOfVisits;
+  std::unordered_map<std::string, uint32_t> numberOfVisits_;
   std::vector<AssessorDefinition> assessors_;
-  std::vector<ColumnSpecification> mColumnSpecifications;
-  std::vector<ShortPseudonymErratum> mSpErrata;
+  std::vector<ColumnSpecification> columnSpecifications_;
+  std::vector<ShortPseudonymErratum> spErrata_;
 
  public:
   GlobalConfiguration(
@@ -122,7 +122,7 @@ class GlobalConfiguration {
     std::vector<ShortPseudonymErratum> spErrata
   );
 
-  const StudyContexts& getStudyContexts() const noexcept { return mStudyContexts; }
+  const StudyContexts& getStudyContexts() const noexcept { return studyContexts_; }
 
   std::optional<ShortPseudonymDefinition> getShortPseudonym(const std::string& column) const noexcept;
   std::optional<ShortPseudonymDefinition> getShortPseudonymForValue(const std::string& value) const noexcept;
@@ -130,16 +130,16 @@ class GlobalConfiguration {
 
   std::optional<ColumnSpecification> getColumnSpecification(const std::string& column) const noexcept;
 
-  const std::vector<PseudonymFormat>& getParticipantIdentifierFormats() const noexcept { return mParticipantIdentifierFormats; }
-  const std::vector<ShortPseudonymDefinition>& getShortPseudonyms() const noexcept { return mShortPseudonyms; }
-  const UserPseudonymFormat& getUserPseudonymFormat() const noexcept { return mUserPseudonymFormat; }
-  const std::vector<AdditionalStickerDefinition>& getAdditionalStickers() const noexcept { return mAdditionalStickers; }
+  const std::vector<PseudonymFormat>& getParticipantIdentifierFormats() const noexcept { return participantIdentifierFormats_; }
+  const std::vector<ShortPseudonymDefinition>& getShortPseudonyms() const noexcept { return shortPseudonyms_; }
+  const UserPseudonymFormat& getUserPseudonymFormat() const noexcept { return userPseudonymFormat_; }
+  const std::vector<AdditionalStickerDefinition>& getAdditionalStickers() const noexcept { return additionalStickers_; }
   const std::vector<DeviceRegistrationDefinition>& getDevices() const noexcept { return devices_; }
   const std::vector<AssessorDefinition>& getAssessors() const noexcept { return assessors_; }
-  const std::vector<ColumnSpecification>& getColumnSpecifications() const noexcept { return mColumnSpecifications; }
-  const std::vector<ShortPseudonymErratum>& getShortPseudonymErrata() const noexcept { return mSpErrata; }
+  const std::vector<ColumnSpecification>& getColumnSpecifications() const noexcept { return columnSpecifications_; }
+  const std::vector<ShortPseudonymErratum>& getShortPseudonymErrata() const noexcept { return spErrata_; }
 
-  const PseudonymFormat& getGeneratedParticipantIdentifierFormat() const noexcept { return mParticipantIdentifierFormats.front(); }
+  const PseudonymFormat& getGeneratedParticipantIdentifierFormat() const noexcept { return participantIdentifierFormats_.front(); }
   std::vector<std::string> getVisitAssessorColumns(const pep::StudyContext& context) const;
   uint32_t getNumberOfVisits(const std::string& studyContext) const noexcept;
 };

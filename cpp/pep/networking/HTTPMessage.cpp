@@ -172,11 +172,11 @@ HTTPRequest::HTTPRequest(
     std::map<std::string, std::string, CaseInsensitiveCompare> headers,
     bool completeHeaders)
   : HTTPMessage(std::move(bodyparts), std::move(headers)),
-    mHost(std::move(host)),
+    host_(std::move(host)),
     method_(method),
-    mUri(std::move(uri)) {
+    uri_(std::move(uri)) {
 
-  assert(mUri.host_name().empty() || mUri.host_name() == mHost);
+  assert(uri_.host_name().empty() || uri_.host_name() == host_);
   if(completeHeaders) {
     HTTPRequest::completeHeaders();
   }
@@ -184,7 +184,7 @@ HTTPRequest::HTTPRequest(
 
 std::string HTTPRequest::headerToString() const {
   std::ostringstream ss;
-  ss << method_ << " " << mUri.encoded_target();
+  ss << method_ << " " << uri_.encoded_target();
 
   ss << " HTTP/1.1\r\n";
 
@@ -211,7 +211,7 @@ void HTTPRequest::ensureHeader(const std::string& key, const std::string& value)
 
 void HTTPRequest::completeHeaders() {
   this->ensureHeader("Content-Length", std::to_string(HTTPMessage::bodysize()));
-  this->ensureHeader("Host", mHost);
+  this->ensureHeader("Host", host_);
 }
 
 }

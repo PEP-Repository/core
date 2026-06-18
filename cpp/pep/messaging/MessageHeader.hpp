@@ -28,15 +28,15 @@ public:
 
   static MessageHeader MakeForControlMessage() noexcept;
 
-  MessageLength length() const noexcept { return mLength; }
-  const MessageProperties& properties() const noexcept { return mProperties; }
+  MessageLength length() const noexcept { return length_; }
+  const MessageProperties& properties() const noexcept { return properties_; }
 
   EncodedMessageHeader encode() const noexcept;
   static MessageHeader Decode(const EncodedMessageHeader& encoded);
 
 private:
-  MessageLength mLength;
-  MessageProperties mProperties;
+  MessageLength length_;
+  MessageProperties properties_;
 };
 
 }

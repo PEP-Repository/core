@@ -125,25 +125,25 @@ void ExportWidget::WriteCartesianToDestination(std::ostream& destination, const 
 ExportWidget::ExportWidget(const pep::GlobalConfiguration& configuration, const pep::StudyContext& studyContext, const pep::UserRole& role, VisitCaptionsByContext visitCaptionsByContext, std::shared_ptr<pep::CoreClient> client, QWidget* parent) :
   QWidget(parent),
   ui(new Ui::ExportWidget),
-  mStudyContext(studyContext),
-  mMultiSelect(role.canCrossTabulate())
+  studyContext_(studyContext),
+  multiSelect_(role.canCrossTabulate())
 {
-  mPepClient = client;
-  mAllItems = this->getAllExportableItems(configuration, studyContext);
+  pepClient_ = client;
+  allItems_ = this->getAllExportableItems(configuration, studyContext);
 
   ui->setupUi(this);
 
   //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) QListWidget takes ownership of QListWidgetItem
-  for (const auto& item : mAllItems) {
+  for (const auto& item : allItems_) {
     auto caption = createCaption(item);
     auto listItem = new QListWidgetItem(caption, ui->listWidget);
-    if (mMultiSelect) {
+    if (multiSelect_) {
       listItem->setFlags(listItem->flags() | Qt::ItemIsUserCheckable);
       listItem->setCheckState(Qt::Unchecked);
     }
   }
 
-  if (!mMultiSelect) {
+  if (!multiSelect_) {
     QObject::connect(ui->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::on_selectedItemChanged);
     QObject::connect(ui->listWidget, &QListWidget::itemActivated, this, &ExportWidget::on_itemActivated);
   }
@@ -227,8 +227,8 @@ QString ExportWidget::getVisitCaption(const unsigned visitNumber) {
     throw std::runtime_error("Please provide a 1-based visit number (as opposed to a 0-based index)");
   }
   auto index = visitNumber - 1;
-  if (index < mVisitCaptions.size()) {
-    return QString::fromStdString(mVisitCaptions.at(index));
+  if (index < visitCaptions_.size()) {
+    return QString::fromStdString(visitCaptions_.at(index));
   }
   return tr("Visit %1").arg(visitNumber);
 }
@@ -251,17 +251,17 @@ void ExportWidget::updateSelectionState() {
 QList<std::shared_ptr<ExportableItem>> ExportWidget::getSelectedItems() const {
   QList<std::shared_ptr<ExportableItem>> result;
 
-  if (mMultiSelect) { // Selection depends on each item's check state, which must be inspected individually: see https://stackoverflow.com/a/29240727
+  if (multiSelect_) { // Selection depends on each item's check state, which must be inspected individually: see https://stackoverflow.com/a/29240727
     for (auto i = 0; i < ui->listWidget->count(); ++i) {
       if (ui->listWidget->item(i)->checkState() == Qt::Checked) {
-        result.push_back(mAllItems[static_cast<unsigned>(i)]);
+        result.push_back(allItems_[static_cast<unsigned>(i)]);
       }
     }
   }
   else { // Selection depends on highlight
     auto row = ui->listWidget->currentRow();
     if (row >= 0) {
-      result.push_back(mAllItems[static_cast<size_t>(row)]);
+      result.push_back(allItems_[static_cast<size_t>(row)]);
     }
   }
 
@@ -342,12 +342,12 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
   }
 
   using ParticipantData = std::map<std::string, std::string>;
-  return mPepClient->enumerateAndRetrieveData2(opts) // Get study contexts, plus values for all requested columns
+  return pepClient_->enumerateAndRetrieveData2(opts) // Get study contexts, plus values for all requested columns
       .reduce( // Associate participant indices with values for that participant
           std::make_shared<std::unordered_map<uint32_t, ParticipantData>>(),
           [](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> entries,
           const pep::EnumerateAndRetrieveResult& result) {
-            (*entries)[result.mLocalPseudonymsIndex][result.mColumn] = result.data_;
+            (*entries)[result.localPseudonymsIndex_][result.column_] = result.data_;
             return entries;
           })
       // Convert observable<std::unordered_map<entry>> to observable<entry>
@@ -356,7 +356,7 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
       })
       // Convert to std::nullopt for participants that don't match the user's context
       .map([this](std::pair<const uint32_t, ParticipantData> entry) -> std::optional<ParticipantData> {
-        if (!mStudyContext.matches(entry.second["StudyContexts"])) {
+        if (!studyContext_.matches(entry.second["StudyContexts"])) {
           return std::nullopt;
         }
         entry.second.erase("StudyContexts");

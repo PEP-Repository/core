@@ -11,31 +11,31 @@ class SurveyDataPoint;
 //! \remark Does not inherit from SimpleCastorChildObject<>, a.o. because there's no API endpoint to retrieve the survey package instances for a specific participant.
 class SurveyPackageInstance : public ParentedCastorObject<Participant>, public SharedConstructor<SurveyPackageInstance> {
  private:
-  std::string mParticipantId;
-  bool mLocked;
-  int mProgress;
-  bool mArchived;
-  std::string mSurveyPackageId;
-  std::string mSurveyPackageName;
-  std::shared_ptr<const boost::property_tree::ptree> mFinishedOn;
-  std::shared_ptr<const boost::property_tree::ptree> mSentOn;
-  std::vector<std::string> mSurveyInstanceIds;
+  std::string participantId_;
+  bool locked_;
+  int progress_;
+  bool archived_;
+  std::string surveyPackageId_;
+  std::string surveyPackageName_;
+  std::shared_ptr<const boost::property_tree::ptree> finishedOn_;
+  std::shared_ptr<const boost::property_tree::ptree> sentOn_;
+  std::vector<std::string> surveyInstanceIds_;
 
  public:
   //! \return The ID of the participant this SurveyPackageInstance belongs to, as returned by the API. This is needed, for example, to filter SurveyPackageInstances that actually belong to a certain participant
   //! \see Participant::getSurveyPackageInstances
   std::string getParticipantId() const {
-    return mParticipantId;
+    return participantId_;
   }
 
   //! \return Whether the SurveyPackageInstance is locked. Castor should be configured to autolock a SurveyPackageInstance once it is finished
-  bool isLocked() const { return mLocked; }
+  bool isLocked() const { return locked_; }
 
   //! \return The percentage of filled in form fields for this survey
-  int getProgress() const { return mProgress; }
+  int getProgress() const { return progress_; }
 
   //! \return Whether the SurveyPackageInstance is archived or not
-  inline bool isArchived() const { return mArchived; }
+  inline bool isArchived() const { return archived_; }
 
   const std::shared_ptr<const boost::property_tree::ptree>& getFinishedOn() const;
   const std::shared_ptr<const boost::property_tree::ptree>& getSentOn() const;
@@ -49,11 +49,11 @@ class SurveyPackageInstance : public ParentedCastorObject<Participant>, public S
   std::string makeUrl() const override;
 
   std::string getSurveyPackageId() const {
-    return mSurveyPackageId;
+    return surveyPackageId_;
   }
 
   std::string getSurveyPackageName() const {
-    return mSurveyPackageName;
+    return surveyPackageName_;
   }
 
   //! \return Filled in values for this instance

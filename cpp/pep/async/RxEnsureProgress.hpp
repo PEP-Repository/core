@@ -102,12 +102,12 @@ RxEnsureProgress(boost::asio::io_context& io_context, const std::string& descrip
 /// \endcode
 struct RxRecordActivity {
 private:
-  std::shared_ptr<ActivityMonitor> mMonitor;
+  std::shared_ptr<ActivityMonitor> monitor_;
   std::string description_;
 
 public:
   explicit RxRecordActivity(std::shared_ptr<ActivityMonitor> monitor, const std::string& description)
-    : mMonitor(monitor), description_(description) {
+    : monitor_(monitor), description_(description) {
   }
 
   /// \param items The observable whose activity is to be recorded.
@@ -117,9 +117,9 @@ public:
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.tap(
-      [monitor = mMonitor, description = description_](const TItem&) {monitor->activityOccurred("(busy) " + description); },
-      [monitor = mMonitor, description = description_](std::exception_ptr ep) {monitor->activityOccurred("(failed) " + description + " (" + GetExceptionMessage(ep) + ")"); },
-      [monitor = mMonitor, description = description_]() {monitor->activityOccurred("(done) " + description); }
+      [monitor = monitor_, description = description_](const TItem&) {monitor->activityOccurred("(busy) " + description); },
+      [monitor = monitor_, description = description_](std::exception_ptr ep) {monitor->activityOccurred("(failed) " + description + " (" + GetExceptionMessage(ep) + ")"); },
+      [monitor = monitor_, description = description_]() {monitor->activityOccurred("(done) " + description); }
     );
   }
 };

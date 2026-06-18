@@ -116,8 +116,8 @@ const std::unordered_map<std::string, std::string> checksumNameMappings{
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
       accessManager_(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this, params.getAccessManagerEndPoint().expectedCommonName, params.getRootCertificates())),
-      mTokenExpiration(params.getTokenExpiration()),
-      mOauthTokenSecret(params.getOAuthTokenSecret()){
+      tokenExpiration_(params.getTokenExpiration()),
+      oauthTokenSecret_(params.getOAuthTokenSecret()){
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
     migrateDatabase(*params.getStorageFile());
   }
@@ -150,7 +150,7 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
 
   return accessManager_->findUser(primaryId, alternativeIds)
     .map([](FindUserResponse response) {
-      return response.mUserGroups;
+      return response.userGroups_;
     });
 }
 
@@ -158,14 +158,14 @@ rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::find
 OAuthToken AuthserverBackend::getToken(const std::string& uid, const std::string& group, const Timestamp& expirationTime) const {
   auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
-    mOauthTokenSecret, uid, group,
+    oauthTokenSecret_, uid, group,
     now,
     time_point_cast<std::chrono::seconds>(expirationTime)
   );
 }
 
 OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& group, const std::optional<std::chrono::seconds>& longLivedValidity) const {
-  auto maxValidity = group.mMaxAuthValidity;
+  auto maxValidity = group.maxAuthValidity_;
 
   std::chrono::seconds validity;
   if (longLivedValidity) {
@@ -179,16 +179,16 @@ OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& 
     validity = *longLivedValidity;
   }
   else {
-    if(group.mMaxAuthValidity) {
-      validity = std::min(this->mTokenExpiration, *group.mMaxAuthValidity);
+    if(group.maxAuthValidity_) {
+      validity = std::min(this->tokenExpiration_, *group.maxAuthValidity_);
     }
     else {
-      validity = this->mTokenExpiration;
+      validity = this->tokenExpiration_;
     }
   }
   auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
-    mOauthTokenSecret, uid, group.name_,
+    oauthTokenSecret_, uid, group.name_,
     now,
     now + validity
   );
@@ -198,7 +198,7 @@ TokenResponse AuthserverBackend::executeTokenRequest(const std::string& accessGr
   // Check access
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, accessGroup);
 
-  auto token = getToken(request.mSubject, request.group_, request.mExpirationTime);
+  auto token = getToken(request.subject_, request.group_, request.expirationTime_);
 
   return TokenResponse(token.getSerializedForm());
 }

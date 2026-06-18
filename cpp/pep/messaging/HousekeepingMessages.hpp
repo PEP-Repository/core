@@ -18,16 +18,16 @@ public:
 class PingRequest {
 public:
   PingRequest(); // sets ID to a random value
-  explicit PingRequest(uint64_t id) : mId(id) {}
-  uint64_t mId;
+  explicit PingRequest(uint64_t id) : id_(id) {}
+  uint64_t id_;
 };
 
 class PingResponse {
 public:
-  explicit PingResponse(uint64_t id) : mId(id), mTimestamp(TimeNow()) { }
+  explicit PingResponse(uint64_t id) : id_(id), timestamp_(TimeNow()) { }
 
-  uint64_t mId;
-  Timestamp mTimestamp;
+  uint64_t id_;
+  Timestamp timestamp_;
 
   void validate(const PingRequest& isReplyTo) const;
 };

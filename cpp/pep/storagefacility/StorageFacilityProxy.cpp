@@ -28,9 +28,9 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
     return segment
       .map([ctx, numFiles](DataPayloadPage page) {
 
-      if (page.mIndex >= numFiles) {
+      if (page.index_ >= numFiles) {
         throw std::runtime_error(std::format("Received out-of-bounds file index: {} >= {}",
-            page.mIndex, numFiles));
+            page.index_, numFiles));
       }
 
       ctx->order.check(page);
@@ -44,7 +44,7 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
   return this->sendRequest<DataStoreResponse2>(this->sign(std::move(request)), std::move(batches))
     .op(RxGetOne())
     .tap([ctx](const DataStoreResponse2& response) {
-    if (response.mHash != ctx->hasher.digest()) {
+    if (response.hash_ != ctx->hasher.digest()) {
       throw std::runtime_error("Returned hash from the storage facility did not match the calculated hash for the data to be stored.");
     }
       });

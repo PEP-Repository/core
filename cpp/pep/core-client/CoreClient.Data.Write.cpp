@@ -24,7 +24,7 @@ StoreData2Entry::StoreData2Entry(
   const std::vector<NamedMetadataXEntry>& xentries)
   : StoreData2Entry(pp, std::move(column), rxcpp::observable<>::just(rxcpp::observable<>::just(data).as_dynamic())) {
   for (const auto& xentry : xentries) {
-    auto emplaced = mXMetadata.emplace(xentry).second;
+    auto emplaced = xMetadata_.emplace(xentry).second;
     if (!emplaced) {
       throw std::runtime_error("Duplicate metadata entry name specified: " + xentry.first);
     }
@@ -71,15 +71,15 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = {"write"};
   for (const auto& entry : entries) {
-    if (ctx->columns.count(entry.mColumn) == 0) {
-      ctx->columns[entry.mColumn] = static_cast<uint32_t>(
+    if (ctx->columns.count(entry.column_) == 0) {
+      ctx->columns[entry.column_] = static_cast<uint32_t>(
           ticketRequest.columns.size());
-      ticketRequest.columns.push_back(entry.mColumn);
+      ticketRequest.columns.push_back(entry.column_);
     }
-    if (ctx->pps.count(*entry.mPolymorphicPseudonym) == 0) {
-      ctx->pps[*entry.mPolymorphicPseudonym] = static_cast<uint32_t>(
+    if (ctx->pps.count(*entry.polymorphicPseudonym_) == 0) {
+      ctx->pps[*entry.polymorphicPseudonym_] = static_cast<uint32_t>(
           ticketRequest.pps.size());
-      ticketRequest.pps.push_back(*entry.mPolymorphicPseudonym);
+      ticketRequest.pps.push_back(*entry.polymorphicPseudonym_);
     }
   }
 
@@ -93,20 +93,20 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     const auto& entry = entries.at(i);
 
     DataStoreEntry2 entry2;
-    entry2.mColumnIndex = ctx->columns[entry.mColumn];
-    entry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
-    entry2.mMetadata = Metadata(entry.mColumn,
-      entry.mTimestamp ? *entry.mTimestamp : TimeNow());
+    entry2.columnIndex_ = ctx->columns[entry.column_];
+    entry2.pseudonymIndex_ = ctx->pps[*entry.polymorphicPseudonym_];
+    entry2.metadata_ = Metadata(entry.column_,
+      entry.timestamp_ ? *entry.timestamp_ : TimeNow());
 
     // set extra metadata entries, encrypting them with the entry's key
     // when requested.
-    for (auto&& [name, xentry] : entry.mXMetadata) {
-      entry2.mMetadata.extra()[name] = xentry.prepareForStore(ctx->keys[i].bytes);
+    for (auto&& [name, xentry] : entry.xMetadata_) {
+      entry2.metadata_.extra()[name] = xentry.prepareForStore(ctx->keys[i].bytes);
     }
 
     ctx->request->entries_.emplace_back(entry2);
 
-    ctx->data.push_back(entry.mBatches);
+    ctx->data.push_back(entry.batches_);
   }
 
   // Send ticket request
@@ -116,7 +116,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     auto signedTicket = std::move(indexedTicket).getTicket();
     ctx->request->ticket_ = *signedTicket;
 
-    const auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
+    const auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects_.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
@@ -137,12 +137,12 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
         subscriber.on_next(ctx->data[i].map([i, ctx, fileContext = std::make_shared<uint64_t>()](messaging::MessageSequence obs) -> messaging::TailSegment<DataPayloadPage> {
           return obs.map([i, ctx, fileContext](std::shared_ptr<std::string> in) {
             DataPayloadPage page;
-            page.mPageNumber = (*fileContext)++;
-            page.mIndex = static_cast<uint32_t>(i);
+            page.pageNumber_ = (*fileContext)++;
+            page.index_ = static_cast<uint32_t>(i);
             page.setEncrypted(
                   *in,
                   ctx->keys[i].bytes,
-                  ctx->request->entries_[i].mMetadata
+                  ctx->request->entries_[i].metadata_
                   );
             return page;
             });
@@ -154,7 +154,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     return getStorageFacilityProxy(true)->requestDataStore(*ctx->request, pages);
   }).map([ctx](DataStoreResponse2 response) {
     DataStorageResult2 result;
-    result.mIds = response.mIds;
+    result.ids_ = response.ids_;
     return result;
   });
 }
@@ -188,24 +188,24 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     // specifies the column(name)s and PPs , allowing us to easily/speedily find
     // the associated indices when we construct the DataStoreEntry2 (below).
 
-    if (ctx->columns.count(entry.mColumn) == 0) {
-      ctx->columns[entry.mColumn] = static_cast<uint32_t>(
+    if (ctx->columns.count(entry.column_) == 0) {
+      ctx->columns[entry.column_] = static_cast<uint32_t>(
         ticketRequest.columns.size()); // Associate the column(name) with the index it'll get in the ticket
-      ticketRequest.columns.push_back(entry.mColumn);
+      ticketRequest.columns.push_back(entry.column_);
     }
-    if (ctx->pps.count(*entry.mPolymorphicPseudonym) == 0) {
-      ctx->pps[*entry.mPolymorphicPseudonym] = static_cast<uint32_t>(
+    if (ctx->pps.count(*entry.polymorphicPseudonym_) == 0) {
+      ctx->pps[*entry.polymorphicPseudonym_] = static_cast<uint32_t>(
         ticketRequest.pps.size()); // Associate the PP with the index it'll get in the ticket
-      ticketRequest.pps.push_back(*entry.mPolymorphicPseudonym);
+      ticketRequest.pps.push_back(*entry.polymorphicPseudonym_);
     }
 
     DataStoreEntry2 storeEntry2;
-    storeEntry2.mColumnIndex = ctx->columns[entry.mColumn];
-    storeEntry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
-    storeEntry2.mMetadata = Metadata(entry.mColumn,
-      entry.mTimestamp ? *entry.mTimestamp : TimeNow());
-    // storeEntry2.mPolymorphicKey is set later, once we have retrieved it
-    storeEntry2.mMetadata.extra() = entry.mXMetadata; // These are encrypted later, once we have retrieved the keys
+    storeEntry2.columnIndex_ = ctx->columns[entry.column_];
+    storeEntry2.pseudonymIndex_ = ctx->pps[*entry.polymorphicPseudonym_];
+    storeEntry2.metadata_ = Metadata(entry.column_,
+      entry.timestamp_ ? *entry.timestamp_ : TimeNow());
+    // storeEntry2.polymorphicKey_ is set later, once we have retrieved it
+    storeEntry2.metadata_.extra() = entry.xMetadata_; // These are encrypted later, once we have retrieved the keys
 
     ctx->request->entries_.emplace_back(storeEntry2);
   }
@@ -217,7 +217,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     ctx->request->ticket_ = *signedTicket;
     ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms_);
 
-    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
+    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects_.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
@@ -228,12 +228,12 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     // Get previous data (including polymorphic key) for the entries whose metadata we're going to update
     DataEnumerationRequest2 enumRequest;
     enumRequest.ticket_ = *signedTicket;
-    enumRequest.mColumns = IndexList();
-    enumRequest.mColumns->mIndices.reserve(ctx->columns.size());
-    std::transform(ctx->columns.cbegin(), ctx->columns.cend(), std::back_inserter(enumRequest.mColumns->mIndices), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
-    enumRequest.mPseudonyms = IndexList();
-    enumRequest.mPseudonyms->mIndices.reserve(ctx->pps.size());
-    std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.mPseudonyms->mIndices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
+    enumRequest.columns_ = IndexList();
+    enumRequest.columns_->indices_.reserve(ctx->columns.size());
+    std::transform(ctx->columns.cbegin(), ctx->columns.cend(), std::back_inserter(enumRequest.columns_->indices_), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
+    enumRequest.pseudonyms_ = IndexList();
+    enumRequest.pseudonyms_->indices_.reserve(ctx->pps.size());
+    std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.pseudonyms_->indices_), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
 
     return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
       .map([ctx](const DataEnumerationResponse2& response) { return response.entries_; })
@@ -248,8 +248,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
       enumEntryIndices.reserve(enumEntries->size());
       for (size_t i = 0U; i < enumEntries->size(); ++i) {
         const auto& enumEntry = (*enumEntries)[i];
-        auto& pseudIndices = enumEntryIndices[enumEntry.mColumnIndex]; // Get (reference to) an unordered_map for this column index
-        auto emplaced [[maybe_unused]] = pseudIndices.emplace(std::make_pair(enumEntry.mPseudonymIndex, i)).second;
+        auto& pseudIndices = enumEntryIndices[enumEntry.columnIndex_]; // Get (reference to) an unordered_map for this column index
+        auto emplaced [[maybe_unused]] = pseudIndices.emplace(std::make_pair(enumEntry.pseudonymIndex_, i)).second;
         assert(emplaced); // or we have received multiple enumeration entries for the same columnIndex+pseudonymIndex combination
       }
 
@@ -266,17 +266,17 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         storeKeys.reserve(ctx->request->entries_.size());
         for (auto& storeEntry : ctx->request->entries_) {
           // Find the enum entry corresponding with this store entry
-          auto correspondingColumn = enumEntryIndices->find(storeEntry.mColumnIndex);
+          auto correspondingColumn = enumEntryIndices->find(storeEntry.columnIndex_);
           if (correspondingColumn == enumEntryIndices->cend()) {
-            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->ticket_.openWithoutCheckingSignature().mColumns[storeEntry.mColumnIndex]);
+            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->ticket_.openWithoutCheckingSignature().columns_[storeEntry.columnIndex_]);
           }
-          auto correspondingEnumEntry = correspondingColumn->second.find(storeEntry.mPseudonymIndex);
+          auto correspondingEnumEntry = correspondingColumn->second.find(storeEntry.pseudonymIndex_);
           if (correspondingEnumEntry == correspondingColumn->second.cend()) {
             auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
             std::ostringstream message;
             message << "Did not receive existing entry for metadata update"
-              << " for participant " << ticket.mAccessSubjects[storeEntry.mPseudonymIndex].mPolymorphic.text()
-              << ", column " << ticket.mColumns[storeEntry.mColumnIndex];
+              << " for participant " << ticket.accessSubjects_[storeEntry.pseudonymIndex_].polymorphic_.text()
+              << ", column " << ticket.columns_[storeEntry.columnIndex_];
             throw std::runtime_error(message.str());
           }
 
@@ -286,7 +286,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           storeKeys.emplace_back(aes);
 
           // Initialize the store entry's metadata using the AES key
-          for (auto& keyValuePair : storeEntry.mMetadata.extra()) {
+          for (auto& keyValuePair : storeEntry.metadata_.extra()) {
             auto& xEntry = keyValuePair.second;
             xEntry = xEntry.prepareForStore(aes.bytes);
           }
@@ -328,14 +328,14 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
             [](std::shared_ptr<DataStorageResult2> result, const std::pair<size_t, MetadataUpdateResponse2>& batch) {
               size_t offset = batch.first;
               const MetadataUpdateResponse2& response = batch.second;
-              result->mIds.resize(std::max(result->mIds.size(), offset + response.mIds.size()));
-              for (size_t i = 0U; i < response.mIds.size(); ++i) {
-                result->mIds[offset + i] = response.mIds[i];
+              result->ids_.resize(std::max(result->ids_.size(), offset + response.ids_.size()));
+              for (size_t i = 0U; i < response.ids_.size(); ++i) {
+                result->ids_[offset + i] = response.ids_[i];
               }
               return result;
             })
           .map([](std::shared_ptr<DataStorageResult2> result) {
-            assert(std::all_of(result->mIds.cbegin(), result->mIds.cend(), [](const std::string& id) {return !id.empty(); }));
+            assert(std::all_of(result->ids_.cbegin(), result->ids_.cend(), [](const std::string& id) {return !id.empty(); }));
             return *result;
             }).as_dynamic();
           }).as_dynamic(); // Reduce compiler memory usage
@@ -374,15 +374,15 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = { "write" };
   for (const auto& entry : entries) {
-    if (ctx->columns.count(entry.mColumn) == 0) {
-      ctx->columns[entry.mColumn] = static_cast<uint32_t>(
+    if (ctx->columns.count(entry.column_) == 0) {
+      ctx->columns[entry.column_] = static_cast<uint32_t>(
         ticketRequest.columns.size());
-      ticketRequest.columns.push_back(entry.mColumn);
+      ticketRequest.columns.push_back(entry.column_);
     }
-    if (ctx->pps.count(*entry.mPolymorphicPseudonym) == 0) {
-      ctx->pps[*entry.mPolymorphicPseudonym] = static_cast<uint32_t>(
+    if (ctx->pps.count(*entry.polymorphicPseudonym_) == 0) {
+      ctx->pps[*entry.polymorphicPseudonym_] = static_cast<uint32_t>(
         ticketRequest.pps.size());
-      ticketRequest.pps.push_back(*entry.mPolymorphicPseudonym);
+      ticketRequest.pps.push_back(*entry.polymorphicPseudonym_);
     }
   }
 
@@ -393,8 +393,8 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 
   for (const auto &entry: entries) {
     DataStoreEntry2 entry2;
-    entry2.mColumnIndex = ctx->columns[entry.mColumn];
-    entry2.mPseudonymIndex = ctx->pps[*entry.mPolymorphicPseudonym];
+    entry2.columnIndex_ = ctx->columns[entry.column_];
+    entry2.pseudonymIndex_ = ctx->pps[*entry.polymorphicPseudonym_];
     ctx->request->entries_.emplace_back(entry2);
   }
 
@@ -404,7 +404,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
     auto signedTicket = std::move(indexedTicket).getTicket();
     ctx->request->ticket_ = *signedTicket;
 
-    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().mAccessSubjects.size();
+    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects_.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
@@ -417,23 +417,23 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
       auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
       // TODO: use CreateObservable instead of rxcpp::iterate over a vector<> that we just create for this purpose
       std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms;
-      pseudonyms.reserve(ticket.mAccessSubjects.size());
+      pseudonyms.reserve(ticket.accessSubjects_.size());
       std::optional<bool> includeAccessGroupPseudonyms;
       std::vector<std::shared_ptr<LocalPseudonym>> agPseuds;
-      for (const auto& p : ticket.mAccessSubjects) {
+      for (const auto& p : ticket.accessSubjects_) {
         pseudonyms.push_back(std::make_shared<LocalPseudonyms>(p));
         if (includeAccessGroupPseudonyms.has_value()) {
-          if (p.mAccessGroup.has_value() != *includeAccessGroupPseudonyms) {
+          if (p.accessGroup_.has_value() != *includeAccessGroupPseudonyms) {
             throw std::runtime_error("Inconsistent access group pseudonym presence in ticket");
           }
         }
         else {
-          includeAccessGroupPseudonyms = p.mAccessGroup.has_value();
+          includeAccessGroupPseudonyms = p.accessGroup_.has_value();
         }
         if (*includeAccessGroupPseudonyms) {
           agPseuds.push_back(
             std::make_shared<LocalPseudonym>(
-              p.mAccessGroup->decrypt(privateKeyPseudonyms_)
+              p.accessGroup_->decrypt(privateKeyPseudonyms_)
               )
           );
         }
@@ -441,19 +441,19 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
 
       std::vector<HistoryResult> ress;
 
-      ress.reserve(response.entries_.mIndices.size());
-      for (auto i : response.entries_.mIndices) {
+      ress.reserve(response.entries_.indices_.size());
+      for (auto i : response.entries_.indices_) {
         const auto& requestEntry = ctx->request->entries_[i];
         ress.push_back(HistoryResult{
           DataCellResult{
-            .mLocalPseudonyms = pseudonyms[requestEntry.mPseudonymIndex],
-            .mLocalPseudonymsIndex = requestEntry.mPseudonymIndex,
-            .mColumn = ticket.mColumns[requestEntry.mColumnIndex],
-            .mAccessGroupPseudonym = includeAccessGroupPseudonyms.value_or(false)
-                                       ? agPseuds[requestEntry.mPseudonymIndex]
+            .localPseudonyms_ = pseudonyms[requestEntry.pseudonymIndex_],
+            .localPseudonymsIndex_ = requestEntry.pseudonymIndex_,
+            .column_ = ticket.columns_[requestEntry.columnIndex_],
+            .accessGroupPseudonym_ = includeAccessGroupPseudonyms.value_or(false)
+                                       ? agPseuds[requestEntry.pseudonymIndex_]
                                        : nullptr,
           },
-          response.mTimestamp,
+          response.timestamp_,
         });
       }
       return RxIterate(std::move(ress));

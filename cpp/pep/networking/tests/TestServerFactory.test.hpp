@@ -47,16 +47,16 @@ struct TcpTestServerFactory : public TestServerFactory {
 
 class TlsTestServerFactory : public TestServerFactory {
 private:
-  TemporaryX509IdentityFiles mIdentityFiles;
+  TemporaryX509IdentityFiles identityFiles_;
 
   void setClientParameterProperties(pep::networking::Tls::ClientParameters& parameters) const {
-    parameters.caCertFilePath(mIdentityFiles.getCertificateChainFilePath());
+    parameters.caCertFilePath(identityFiles_.getCertificateChainFilePath());
     parameters.skipPeerVerification(true); // Skip (client side) certificate verification: our sample certificate fails it. Curiously the server also flunks the handshake with "tlsv1 alert unknown ca (SSL routines)" if the client doesn't set_verify_mode(boost::asio::ssl::verify_none)
   }
 
 public:
   std::shared_ptr<pep::networking::Protocol::ServerParameters> createServerParameters(boost::asio::io_context& ioContext, uint16_t port) const override {
-    auto result = std::make_shared<pep::networking::Tls::ServerParameters>(ioContext, port, mIdentityFiles);
+    auto result = std::make_shared<pep::networking::Tls::ServerParameters>(ioContext, port, identityFiles_);
     result->skipCertificateSecurityLevelCheck(true); // Skip (server side) certificate security check: our sample certificate fails OpenSSL's default security level with "ca md too weak"
     return result;
   }
@@ -85,6 +85,6 @@ public:
 
 
 TlsTestServerFactory::TlsTestServerFactory()
-  : mIdentityFiles(TemporaryX509IdentityFiles::Make("TLS Test Factory, inc.", "localhost")) {
+  : identityFiles_(TemporaryX509IdentityFiles::Make("TLS Test Factory, inc.", "localhost")) {
 
 }

@@ -3,17 +3,17 @@
 namespace pep {
 
 void TranscryptorRequestEntry::ensurePacked() const {
-  mPolymorphic.ensurePacked();
+  polymorphic_.ensurePacked();
   accessManager_.ensurePacked();
-  mStorageFacility.ensurePacked();
-  mTranscryptor.ensurePacked();
-  mAccessManagerProof.ensurePacked();
-  mStorageFacilityProof.ensurePacked();
-  mTranscryptorProof.ensurePacked();
+  storageFacility_.ensurePacked();
+  transcryptor_.ensurePacked();
+  accessManagerProof_.ensurePacked();
+  storageFacilityProof_.ensurePacked();
+  transcryptorProof_.ensurePacked();
   if (userGroup_)
     userGroup_->ensurePacked();
-  if (mUserGroupProof)
-    mUserGroupProof->ensurePacked();
+  if (userGroupProof_)
+    userGroupProof_->ensurePacked();
 }
 
 }

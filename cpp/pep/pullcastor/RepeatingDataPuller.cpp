@@ -16,10 +16,10 @@ namespace pep {
 namespace castor {
 
 RepeatingDataPuller::RepeatingDataPuller(std::shared_ptr<RepeatingData> repeatingData, std::shared_ptr<std::vector<std::shared_ptr<Field>>> allFields)
-  : mRepeatingData(repeatingData) {
+  : repeatingData_(repeatingData) {
   assert(!allFields->empty());
 
-  mFields = CreateRxCache([repeatingData, allFields]() {
+  fields_ = CreateRxCache([repeatingData, allFields]() {
     return repeatingData->getRepeatingDataForms()
       .map([](std::shared_ptr<RepeatingDataForm> form) {return form->getId(); })
       .op(RxToVector())
@@ -38,7 +38,7 @@ rxcpp::observable<std::shared_ptr<FieldValue>> RepeatingDataPuller::getRepeating
 
   return sp->getRepeatingDataPoints(rdi) // Get the repeating data instance's data points
     .op(RxToUnorderedMap([](std::shared_ptr<RepeatingDataPoint> dp) {return dp->getId(); })) // Index data points by (field) ID for ease of lookup
-    .flat_map([fields = mFields](std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<RepeatingDataPoint>>> dpsByFieldId) {
+    .flat_map([fields = fields_](std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<RepeatingDataPoint>>> dpsByFieldId) {
     return fields->observe() // Iterate over all of the RepeatingData (type)'s fields
       .map([dpsByFieldId](std::shared_ptr<Field> field) {
       // Find the repeating data instance's data point for this field
@@ -55,7 +55,7 @@ rxcpp::observable<std::shared_ptr<FieldValue>> RepeatingDataPuller::getRepeating
 
 rxcpp::observable<FakeVoid> RepeatingDataPuller::addMatchingInstancesTo(std::shared_ptr<StudyPuller> sp, std::shared_ptr<boost::property_tree::ptree> destination, rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> candidates) {
   return candidates
-    .filter([id = mRepeatingData->getId()](std::shared_ptr<RepeatingDataInstance> ri) {return ri->getRepeatingData()->getId() == id; }) // Limit to instances for this RepeatingData (type)
+    .filter([id = repeatingData_->getId()](std::shared_ptr<RepeatingDataInstance> ri) {return ri->getRepeatingData()->getId() == id; }) // Limit to instances for this RepeatingData (type)
     .op(RxToVector()) // We need to determine if we have any repeating data instances
     .flat_map([self = SharedFrom(*this), sp, destination](std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataInstance>>> instances) ->rxcpp::observable<FakeVoid> {
     // If there are no repeating data instances, don't write anything to the destination tree

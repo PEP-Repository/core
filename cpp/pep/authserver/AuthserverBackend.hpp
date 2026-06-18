@@ -75,8 +75,8 @@ private:
   void migrateDatabase(const std::filesystem::path& storageFile);
 
   std::shared_ptr<AccessManagerProxy> accessManager_;
-  std::chrono::seconds mTokenExpiration;
-  std::string mOauthTokenSecret;
+  std::chrono::seconds tokenExpiration_;
+  std::string oauthTokenSecret_;
 };
 
 }
