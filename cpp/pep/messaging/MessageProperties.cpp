@@ -120,23 +120,18 @@ EncodedMessageProperties MessageProperties::encode() const noexcept {
 }
 
 MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties properties) {
-  const auto typeBits = properties & encoding_layout::TypeBits;
   const auto streamId = properties & encoding_layout::StreamIdBits;
-
-  MessageType::Value type = MessageType::Request;
-  if (streamId == ControlStreamId) {
-    if (properties != ControlStreamId) {
-      throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
-    }
-    type = MessageType::Control;
+  if (streamId == ControlStreamId && properties != ControlStreamId) {
+    throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
   }
-  else if (typeBits & TypeResponseBit) {
-    type = MessageType::Response;
-  }
-
   if (!StreamId::IsValidValue(streamId)) {
     throw std::runtime_error("Message properties specify an invalid stream ID");
   }
+
+  const auto type =
+      (streamId == ControlStreamId) ? MessageType::Control :
+      (properties & TypeResponseBit) ? MessageType::Response :
+      MessageType::Request;
 
   return MessageProperties(MessageId(MessageType(type), StreamId(streamId)), Flags::DecodeFrom(properties));
 }

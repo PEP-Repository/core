@@ -68,8 +68,7 @@ public:
   [[nodiscard]] constexpr EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
 
   [[nodiscard]] static constexpr Flags DecodeFrom(EncodedMessageProperties properties) noexcept {
-    return Flags(Bits(static_cast<EncodedMessageProperties>(properties & detail::encoding_layout::FLAG_BITS)));
-  }
+    return Flags(Bits(static_cast<EncodedMessageProperties>(properties & detail::encoding_layout::FlagBits))); }
 
   std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
