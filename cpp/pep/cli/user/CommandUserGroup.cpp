@@ -1,4 +1,5 @@
 #include <pep/cli/user/CommandUserGroup.hpp>
+#include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
@@ -75,5 +76,13 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CommandUser::CommandUser
                                           *this),
     std::make_shared<UserGroupSubCommand>("modify", "Modify user group", &pep::AccessManagerProxy::modifyUserGroup, *this),
     std::make_shared<UserGroupRemoveCommand>(*this),
+    pep::commandline::CreateAliasCommand(*this, "query", this->getParent(), {"query"}, 
+      [](std::queue<std::string>& /*forwarded*/) {
+        pep::commandline::NamedValues injected;
+        pep::commandline::Values includeValues;
+        includeValues.add<std::string>("user-groups");
+        injected.set("include", includeValues);
+        return injected;
+      }),
   };
 }
