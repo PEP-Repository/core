@@ -22,8 +22,8 @@ public:
     void check() const override;
 
   private:
-    AuthserverBackend::Parameters backendParams;
-    OAuthProvider::Parameters oauthParams;
+    AuthserverBackend::Parameters backendParams_;
+    OAuthProvider::Parameters oauthParams_;
   };
 
 public:

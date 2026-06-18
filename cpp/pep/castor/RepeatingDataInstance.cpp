@@ -7,15 +7,15 @@
 namespace pep {
 namespace castor {
 
-const std::string RepeatingDataInstance::RELATIVE_API_ENDPOINT = "repeating-data-instance";
-const std::string RepeatingDataInstance::EMBEDDED_API_NODE_NAME = "repeatingDataInstance"; // Documented as "repeatingDataInstances" on https://data.castoredc.com/api#/repeating-data-instance/get_study__study_id__participant__participant_id__repeating_data_instance
+const std::string RepeatingDataInstance::RelativeApiEndpoint = "repeating-data-instance";
+const std::string RepeatingDataInstance::EmbeddedApiNodeName = "repeatingDataInstance"; // Documented as "repeatingDataInstances" on https://data.castoredc.com/api#/repeating-data-instance/get_study__study_id__participant__participant_id__repeating_data_instance
 
 RepeatingDataInstance::RepeatingDataInstance(std::shared_ptr<Participant> participant, JsonPtr json)
   : SimpleCastorChildObject<RepeatingDataInstance, Participant>(participant, json),
   participantId_(GetFromPtree<std::string>(*json, "participant_id")),
   name_(GetFromPtree<std::string>(*json, "name")),
   archived_(GetFromPtree<bool>(*json, "archived")),
-  repeatingData_(RepeatingData::Create(participant->getStudy(), std::make_shared<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "_embedded.repeating_data")))) // Node name "repeating_data" differs from RepeatingData::EMBEDDED_API_NODE_NAME (defined to "repeatingData")
+  repeatingData_(RepeatingData::Create(participant->getStudy(), std::make_shared<boost::property_tree::ptree>(GetFromPtree<boost::property_tree::ptree>(*json, "_embedded.repeating_data")))) // Node name "repeating_data" differs from RepeatingData::EmbeddedApiNodeName (defined to "repeatingData")
   {
 }
 
@@ -26,8 +26,8 @@ rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> RepeatingDataInstance::ge
 rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> RepeatingDataInstance::BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants) {
   return BulkRetrieveChildren<RepeatingDataInstance, Participant>(
     participants,
-    study->makeUrl() + "/" + RELATIVE_API_ENDPOINT,
-    EMBEDDED_API_NODE_NAME,
+    study->makeUrl() + "/" + RelativeApiEndpoint,
+    EmbeddedApiNodeName,
     "participant_id");
 }
 
@@ -36,7 +36,7 @@ rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> RepeatingDataInstance:
     std::rethrow_exception(ep);
   }
   catch (const castor::CastorException& ex) {
-    if (ex.status == castor::CastorConnection::NOT_FOUND) {
+    if (ex.status == castor::CastorConnection::NotFound) {
       return rxcpp::rxs::empty<std::shared_ptr<RepeatingDataInstance>>();
     }
     throw;

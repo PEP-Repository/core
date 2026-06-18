@@ -22,8 +22,8 @@ class Field : public ParentedCastorObject<Study>, public SharedConstructor<Field
   std::shared_ptr<OptionGroup> optionGroup_;
 
  public:
-  static const std::string TYPE_CHECKBOX;
-  static const std::string TYPE_REPEATED_MEASURE;
+  static const std::string TypeCheckbox;
+  static const std::string TypeRepeatedMeasure;
 
   //! \return A url that can be used to retrieve this Field object from the Castor API
   std::string makeUrl() const override;
@@ -42,7 +42,7 @@ class Field : public ParentedCastorObject<Study>, public SharedConstructor<Field
   bool isHidden() const { return hidden_; }
 
   /* See e-mail from support@pep.cs.ru.nl to Castor support dated 23/02/2023, 10:13.
-   * For Field instances with TYPE_REPEATED_MEASURE, we use the "report_id" property to determine
+   * For Field instances with TypeRepeatedMeasure, we use the "report_id" property to determine
    * which RepeatingData is associated with the field. Unfortunately the property is no longer
    * included in the Castor API documentation at https://data.castoredc.com/api , and its name
    * is associated with an older API version that has been deprecated. We can only hope that

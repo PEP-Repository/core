@@ -101,7 +101,7 @@ private:
   }
 
   rxcpp::observable<bool> writeToken(const std::string& token) {
-    auto tokenPath = std::filesystem::current_path() / pep::OAuthToken::DEFAULT_JSON_FILE_NAME;
+    auto tokenPath = std::filesystem::current_path() / pep::OAuthToken::DefaultJsonFileName;
     pep::OAuthToken::Parse(token).writeJson(tokenPath);
     std::cout << "Wrote token to \"" << tokenPath.string() << '"' << std::endl;
     return rxcpp::observable<>::just(true);
@@ -145,7 +145,7 @@ protected:
       + pep::commandline::Parameter("validity-duration", "If a long-lived authentication file is requested, it should be valid for the specified amount of time."
           "Use either 'max' or a numerical value with suffix d/day(s), h/hour(s), m/minute(s) or s/second(s)").shorthand('d').value(pep::commandline::Value<std::string>().defaultsTo("max"))
      + pep::commandline::Parameter("oauth-token-path", "Store the OAuthToken file to the specified location.").shorthand('o').value(pep::commandline::Value<std::filesystem::path>()
-       .defaultsTo(pep::OAuthToken::DEFAULT_JSON_FILE_NAME))
+       .defaultsTo(pep::OAuthToken::DefaultJsonFileName))
      + pep::commandline::Parameter("limited-environment", "Use this if you are running on a limited environment, e.g. a server."
                                                           " Can also be enabled by setting environment variable 'PEP_LOGON_LIMITED' to 1.");
   }

@@ -64,7 +64,7 @@ using ProduceNextInnerIfAvailable = std::function<void(std::shared_ptr<unsigned>
 void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, const char* description) {
   constexpr unsigned count = 5U;
   std::vector<unsigned> produced;
-  bool recursion_detected = false;
+  bool recursionDetected = false;
 
   auto callbackInstancesBefore = InstanceCountedCallback::InstanceCount();
 
@@ -72,15 +72,15 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
     produce(counter, subscriber);
     })
     .concat()
-    .subscribe([&recursion_detected, &produced](Result entry) {
+    .subscribe([&recursionDetected, &produced](Result entry) {
         produced.emplace_back(entry.value_);
         if (entry.recursion_ != 0U) {
-          recursion_detected = true;
+          recursionDetected = true;
         }
       });
 
   // Validate our primary concern
-  EXPECT_EQ(recurs, recursion_detected) << description << (recurs ? "should" : "shouldn't") << " cause recursive calls";
+  EXPECT_EQ(recurs, recursionDetected) << description << (recurs ? "should" : "shouldn't") << " cause recursive calls";
 
   // Validate the "produce" function's results
   std::vector<unsigned> expected(count);

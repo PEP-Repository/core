@@ -21,7 +21,7 @@ class DataPointBase : public CastorObject {
   virtual DataPointType getType() const = 0;
 
  protected:
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string EmbeddedApiNodeName;
 
   /*!
    * \brief Construct a new DataPointBase
@@ -42,7 +42,7 @@ class DataPointBase : public CastorObject {
 /*!
  * \brief Utility base for data point types.
  *
- * \remark Inheritors must define static const strings RELATIVE_API_ENDPOINT for their data point type.
+ * \remark Inheritors must define static const strings RelativeApiEndpoint for their data point type.
  */
 template<class ChildType, class ParentType>
 class DataPoint : public ParentedCastorObject<ParentType, DataPointBase> {
@@ -55,8 +55,8 @@ public:
   static rxcpp::observable<std::shared_ptr<ChildType>> RetrieveForParent(std::shared_ptr<ParentType> parent) {
     return CastorObject::RetrieveList<ChildType, ParentType>(
       parent,
-      DataPointBase::GetApiRoot(parent, ChildType::RELATIVE_API_ENDPOINT),
-      DataPointBase::EMBEDDED_API_NODE_NAME);
+      DataPointBase::GetApiRoot(parent, ChildType::RelativeApiEndpoint),
+      DataPointBase::EmbeddedApiNodeName);
   }
 
 private:

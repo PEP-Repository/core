@@ -5,8 +5,8 @@
 namespace pep {
 namespace castor {
 
-const std::string Form::RELATIVE_API_ENDPOINT = "form";
-const std::string Form::EMBEDDED_API_NODE_NAME = "forms";
+const std::string Form::RelativeApiEndpoint = "form";
+const std::string Form::EmbeddedApiNodeName = "forms";
 
 Form::Form(std::shared_ptr<Study> study, JsonPtr json)
     : SimpleCastorChildObject<Form, Study>(study, json),

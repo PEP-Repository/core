@@ -11,8 +11,8 @@ private:
   std::unique_ptr<boost::property_tree::ptree> surveysJson_;
 
 public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
   std::string getName() const;
 

@@ -21,7 +21,7 @@ class SurveyDataPoint : public DataPoint<SurveyDataPoint, SurveyPackageInstance>
   static rxcpp::observable<std::shared_ptr<SurveyDataPoint>> BulkRetrieveFor(std::shared_ptr<CastorObject> object, rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> spis);
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
+  static const std::string RelativeApiEndpoint;
 
   std::string makeUrl() const override;
 

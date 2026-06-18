@@ -26,10 +26,10 @@ const std::string LogTag("AuthserverBackend");
 AuthserverBackend::Parameters::Parameters(const Configuration& config) {
   std::filesystem::path oauthTokenSecretFile;
   try {
-    tokenExpiration = std::chrono::seconds(config.get<unsigned int>("TokenExpirationSeconds"));
+    tokenExpiration_ = std::chrono::seconds(config.get<unsigned int>("TokenExpirationSeconds"));
     oauthTokenSecretFile = std::filesystem::canonical(config.get<std::filesystem::path>("OAuthTokenSecretFile"));
 
-    storageFile = config.get<std::optional<std::filesystem::path>>("StorageFile");
+    storageFile_ = config.get<std::optional<std::filesystem::path>>("StorageFile");
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
@@ -40,7 +40,7 @@ AuthserverBackend::Parameters::Parameters(const Configuration& config) {
     Configuration secretFile = Configuration::FromFile(oauthTokenSecretFile);
 
     std::string secretHex = secretFile.get<std::string>("OAuthTokenSecret");
-    oauthTokenSecret = boost::algorithm::unhex(secretHex);
+    oauthTokenSecret_ = boost::algorithm::unhex(secretHex);
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with oauth file: " << e.what();
@@ -49,64 +49,64 @@ AuthserverBackend::Parameters::Parameters(const Configuration& config) {
 }
 
 const EndPoint& AuthserverBackend::Parameters::getAccessManagerEndPoint() const {
-  return accessManagerEndpoint;
+  return accessManagerEndpoint_;
 }
 void AuthserverBackend::Parameters::setAccessManagerEndPoint(EndPoint endPoint) {
-  this->accessManagerEndpoint = std::move(endPoint);
+  this->accessManagerEndpoint_ = std::move(endPoint);
 }
 
 std::shared_ptr<messaging::ServerConnection>
 AuthserverBackend::Parameters::getAccessManager() const {
-  return this->accessManager;
+  return accessManager_;
 }
 
 void AuthserverBackend::Parameters::setAccessManager(
     std::shared_ptr<messaging::ServerConnection> accessManager) {
-  this->accessManager = accessManager;
+  accessManager_ = accessManager;
 }
 
 std::shared_ptr<const X509Identity> AuthserverBackend::Parameters::getSigningIdentity() const {
-  return signingIdentity;
+  return signingIdentity_;
 }
 void AuthserverBackend::Parameters::setSigningIdentity(std::shared_ptr<const X509Identity> identity) {
-  this->signingIdentity = identity;
+  signingIdentity_ = identity;
 }
 
 std::chrono::seconds AuthserverBackend::Parameters::getTokenExpiration() const {
-  return tokenExpiration;
+  return tokenExpiration_;
 }
 
-const std::string& AuthserverBackend::Parameters::getOAuthTokenSecret() const { return oauthTokenSecret; }
+const std::string& AuthserverBackend::Parameters::getOAuthTokenSecret() const { return oauthTokenSecret_; }
 
-const std::optional<std::filesystem::path>& AuthserverBackend::Parameters::getStorageFile() const {return storageFile; }
+const std::optional<std::filesystem::path>& AuthserverBackend::Parameters::getStorageFile() const {return storageFile_; }
 
-std::shared_ptr<X509RootCertificates> AuthserverBackend::Parameters::getRootCertificates() const { return rootCertificates; }
+std::shared_ptr<X509RootCertificates> AuthserverBackend::Parameters::getRootCertificates() const { return rootCertificates_; }
 
-void AuthserverBackend::Parameters::setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates) { this->rootCertificates = std::move(rootCertificates); }
+void AuthserverBackend::Parameters::setRootCertificates(std::shared_ptr<X509RootCertificates> rootCertificates) { rootCertificates_ = std::move(rootCertificates); }
 
 void AuthserverBackend::Parameters::check() const {
-  if (!accessManager) {
+  if (!accessManager_) {
     throw std::runtime_error("AccessManager must be set");
   }
-  if (accessManagerEndpoint.expectedCommonName.empty() || accessManagerEndpoint.hostname.empty() || accessManagerEndpoint.port == 0) {
-    throw std::runtime_error("accessManagerEndpoint must be set");
+  if (accessManagerEndpoint_.expectedCommonName.empty() || accessManagerEndpoint_.hostname.empty() || accessManagerEndpoint_.port == 0) {
+    throw std::runtime_error("accessManagerEndpoint_ must be set");
   }
-  if(storageFile && storageFile->empty()) {
-    throw std::runtime_error("If a storageFile is set, it may not be empty");
+  if(storageFile_ && storageFile_->empty()) {
+    throw std::runtime_error("If a storageFile_ is set, it may not be empty");
   }
-  if(tokenExpiration == decltype(tokenExpiration)::zero()) {
-    throw std::runtime_error("tokenExpiration must be set");
+  if(tokenExpiration_ == decltype(tokenExpiration_)::zero()) {
+    throw std::runtime_error("tokenExpiration_ must be set");
   }
-  if(oauthTokenSecret.empty()) {
-    throw std::runtime_error("oauthTokenSecret must be set");
+  if(oauthTokenSecret_.empty()) {
+    throw std::runtime_error("oauthTokenSecret_ must be set");
   }
-  if (signingIdentity == nullptr) {
+  if (signingIdentity_ == nullptr) {
     throw std::runtime_error("signingIdentity must be set");
   }
-  if (!rootCertificates) {
+  if (!rootCertificates_) {
     throw std::runtime_error("rootCertificates must be set");
   }
-  if (rootCertificates->items().empty()) {
+  if (rootCertificates_->items().empty()) {
     throw std::runtime_error("rootCertificates must not be empty");
   }
 }
@@ -203,7 +203,7 @@ TokenResponse AuthserverBackend::executeTokenRequest(const std::string& accessGr
   return TokenResponse(token.getSerializedForm());
 }
 
-void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile) {
+void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile_) {
   PEP_LOG(LogTag, Severity::Info) << "Found authserver storage file. Migrating it to access manager";
   // Because we send the database as a multi-part message, it will not be retried automatically
   // when the connection to the access manager fails. Therefore, we first wait for the connection
@@ -211,10 +211,10 @@ void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile
   accessManager_->connectionStatus()
     .filter([](const ConnectionStatus& status){ return status.connected; })
     .first()
-    .flat_map([accessManager=accessManager_, storageFile](ConnectionStatus status) {
-      auto storageStream = std::make_shared<std::ifstream>(storageFile, std::ios::binary);
+    .flat_map([accessManager=accessManager_, storageFile_](ConnectionStatus status) {
+      auto storageStream = std::make_shared<std::ifstream>(storageFile_, std::ios::binary);
       if (!storageStream->is_open()) {
-        throw std::runtime_error("Failed to open storageFile");
+        throw std::runtime_error("Failed to open storageFile_");
       }
       return accessManager->migrateUserDbToAccessManager(messaging::IStreamToMessageBatches(storageStream));
     }).subscribe(

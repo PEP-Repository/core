@@ -4,8 +4,8 @@
 namespace pep {
 namespace castor {
 
-const std::string RepeatingData::RELATIVE_API_ENDPOINT = "repeating-data";
-const std::string RepeatingData::EMBEDDED_API_NODE_NAME = "repeatingData";
+const std::string RepeatingData::RelativeApiEndpoint = "repeating-data";
+const std::string RepeatingData::EmbeddedApiNodeName = "repeatingData";
 
 RepeatingData::RepeatingData(std::shared_ptr<Study> study, JsonPtr json)
   : SimpleCastorChildObject<RepeatingData, Study>(study, json), name_(GetFromPtree<std::string>(*json, "name")) {

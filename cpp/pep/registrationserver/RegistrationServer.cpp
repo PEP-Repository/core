@@ -517,7 +517,7 @@ rxcpp::observable<std::shared_ptr<castor::Participant>> RegistrationServer::stor
       std::rethrow_exception(ep);
     }
     catch (const castor::CastorException& ex) {
-      if (ex.status == castor::CastorConnection::RECORD_EXISTS) {
+      if (ex.status == castor::CastorConnection::RecordExists) {
         PEP_LOG(LogTag, Severity::Info) << "Participant exists. Retrying with a different participant ID";
         return self->storeShortPseudonymInCastor(study, definition);
       }

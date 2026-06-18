@@ -27,6 +27,8 @@ namespace pt = boost::property_tree;
 
 namespace {
 
+constexpr char CsvNewline = '\n';
+
 struct ParticipantData {
   uint32_t localPseudonymsIndex;
   pt::ptree data;
@@ -44,8 +46,8 @@ struct CastorData {
   std::unordered_map<uint32_t, std::string> participantIds;
 };
 
-const std::string castorColumnPrefix = "Castor.";
-const size_t castorColumnPrefixLength = castorColumnPrefix.length();
+const std::string CastorColumnPrefix = "Castor.";
+const size_t CastorColumnPrefixLength = CastorColumnPrefix.length();
 
 class CommandCastor : public ChildCommandOf<CliApplication> {
 public:
@@ -61,12 +63,11 @@ private:
     }
 
   private:
-    const char csvNewline = '\n';
-    std::string csvSeparator;
+    std::string csvSeparator_;
 
     std::string csvEscape(std::string value) {
       size_t quotePos = value.find('"');
-      bool useQuotes = value.find(csvSeparator) != std::string::npos
+      bool useQuotes = value.find(csvSeparator_) != std::string::npos
         || value.find(' ') != std::string::npos
         || value.find('\n') != std::string::npos
         || value.find('\r') != std::string::npos
@@ -92,9 +93,9 @@ private:
           size_t added = AddMissingColumns(columns, row.data);
           if (added > 0) {
             std::string commas;
-            commas.reserve(added * csvSeparator.length());
+            commas.reserve(added * csvSeparator_.length());
             for (size_t i = 0; i < added; i++) {
-              commas.append(csvSeparator);
+              commas.append(csvSeparator_);
             }
             for (std::string& row : rows) {
               row.append(commas);
@@ -103,7 +104,7 @@ private:
 
           std::string newRow = participantId;
           for (const std::string& column : columns) {
-            newRow.append(csvSeparator);
+            newRow.append(csvSeparator_);
             newRow.append(csvEscape(row.data.get<std::string>(column, "")));
           }
           rows.push_back(std::move(newRow));
@@ -116,11 +117,11 @@ private:
         }
         os << "participantIdentifier";
         for (const std::string& column : columns) {
-          os << csvSeparator << csvEscape(column);
+          os << csvSeparator_ << csvEscape(column);
         }
-        os << csvNewline;
+        os << CsvNewline;
         for (const std::string& row : rows) {
-          os << row << csvNewline;
+          os << row << CsvNewline;
         }
         os.close();
       }
@@ -149,7 +150,7 @@ private:
     int execute() override {
       const auto& values = this->getParameterValues();
 
-      csvSeparator = values.get<std::string>("separator");
+      csvSeparator_ = values.get<std::string>("separator");
 
       auto dir = values.get<std::filesystem::path>("output-directory");
 
@@ -192,9 +193,9 @@ private:
             if(earResult.column_ == "ParticipantIdentifier") {
               data.participantIds.emplace(earResult.localPseudonymsIndex_, earResult.data_);
             }
-            else if(earResult.column_.starts_with(castorColumnPrefix)) {
-              std::string studyName = earResult.column_.substr(castorColumnPrefixLength,
-                earResult.column_.find_first_of('.', castorColumnPrefixLength) - castorColumnPrefixLength);
+            else if(earResult.column_.starts_with(CastorColumnPrefix)) {
+              std::string studyName = earResult.column_.substr(CastorColumnPrefixLength,
+                earResult.column_.find_first_of('.', CastorColumnPrefixLength) - CastorColumnPrefixLength);
 
               auto& study = data.studies[studyName];
               std::istringstream iss(earResult.data_);

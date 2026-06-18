@@ -118,7 +118,7 @@ private:
   std::queue<std::unique_ptr<CachingObservable>> caching_;
   std::optional<rxcpp::composite_subscription> head_;
 
-  void inline clear_head() {
+  void inline clearHead() {
     assert(head_.has_value());
     if (head_->is_subscribed())
       head_->unsubscribe();
@@ -135,7 +135,7 @@ private:
   void stop() {
     assert(!stopped_);
     if(head_.has_value())
-      this->clear_head();
+      this->clearHead();
 
     while (!caching_.empty()) {
       caching_.pop(); // the CachingObservable will destroy itself
@@ -150,7 +150,7 @@ private:
   }
 
   // sets head_ if necessary and possible; returns whether it was
-  inline bool adjust_head() {
+  inline bool adjustHead() {
     assert(!stopped_);
 
     bool did_something = false;
@@ -209,7 +209,7 @@ private:
         },
         [this](){ // on_complete
           assert(!stopped_);
-          this->clear_head();
+          this->clearHead();
           this->adjust();
           // WARNING: 'this' might be destroyed here
         }
@@ -222,7 +222,7 @@ private:
 
   // moves observables from obsCache_ to caching_ if necessary
   // and possible; returns if it was.
-  inline bool adjust_caching() {
+  inline bool adjustCaching() {
     assert(!stopped_);
 
     bool did_something = false;
@@ -239,10 +239,10 @@ private:
 
   // adjust head_ and caching_;
   // returns whether something was changed.
-  inline bool adjust_one_pass() {
-    bool did_something = this->adjust_head();
+  inline bool adjustOnePass() {
+    bool did_something = this->adjustHead();
     if (!stopped_)
-      did_something |= this->adjust_caching();
+      did_something |= this->adjustCaching();
     return did_something;
   }
 
@@ -255,7 +255,7 @@ private:
     std::shared_ptr<RxParallelConcatContext> keepThisAlive_
       = this->shared_from_this();
 
-    while (this->adjust_one_pass())
+    while (this->adjustOnePass())
       if (stopped_)
         return;
 
@@ -284,7 +284,7 @@ private:
     );
   }
 
-  void enable_keep_alive() {
+  void enableKeepAlive() {
     // We're being kept alive by the subscription we received;
     // once it has finised, we keep ourselves alive with a shared_ptr.
     assert(!keepThisAlive_);
@@ -292,7 +292,7 @@ private:
   }
 
 public:
-  inline void handle_on_next(rxcpp::observable<T> obs) {
+  inline void handleOnNext(rxcpp::observable<T> obs) {
     // We might already be stopped_ by an error in one of the subobservables.
     if (stopped_)
       return;
@@ -301,23 +301,23 @@ public:
     this->adjust();
   }
 
-  inline void handle_on_error(const std::exception_ptr& ep) {
+  inline void handleOnError(const std::exception_ptr& ep) {
     // We might already be stopped_ by an error in one of the subobservables.
     if (stopped_)
       return;
 
-    this->enable_keep_alive();
+    this->enableKeepAlive();
     obsCache_.on_error(ep);
     this->adjust();
     // WARNING: this might be destroyed here
   }
 
-  inline void handle_on_completed() {
+  inline void handleOnCompleted() {
     // We might already be stopped_ by an error in one of the subobservables.
     if (stopped_)
       return;
 
-    this->enable_keep_alive();
+    this->enableKeepAlive();
     obsCache_.on_completed();
     this->adjust();
     // WARNING: this might be destroyed here
@@ -418,7 +418,7 @@ public:
 // Instances of this class are made to be passed to
 //   rxcpp::observable<...>.lift(   )
 template <typename T>
-class RxParallelConcat_on_subscribers
+class RxParallelConcatOnSubscribers
 {
   const size_t maxSubscriptions_;
 
@@ -431,18 +431,18 @@ public:
 
     return rxcpp::make_subscriber<rxcpp::observable<T>>(
         [context](rxcpp::observable<T> obs){
-          context->handle_on_next(obs);
+          context->handleOnNext(obs);
         },
         [context](const std::exception_ptr & e){
-          context->handle_on_error(e);
+          context->handleOnError(e);
         },
         [context](){
-          context->handle_on_completed();
+          context->handleOnCompleted();
         }
     );
   }
 
-  RxParallelConcat_on_subscribers(size_t maxSubscriptions_)
+  RxParallelConcatOnSubscribers(size_t maxSubscriptions_)
     : maxSubscriptions_(maxSubscriptions_) {
 
       // If maxSubscriptions_==1, then you should have used the regular concat.
@@ -469,7 +469,7 @@ public:
       return obs.concat();
 
     return obs.template lift<T>(
-        detail::RxParallelConcat_on_subscribers<T>(maxSubscriptions_))
+        detail::RxParallelConcatOnSubscribers<T>(maxSubscriptions_))
               .as_dynamic();
   }
 };

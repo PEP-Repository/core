@@ -11,8 +11,8 @@ class RepeatingDataForm : public SimpleCastorChildObject<RepeatingDataForm, Repe
   int number_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
   std::string getName() const { return name_; }
   int getNumber() const { return number_; }

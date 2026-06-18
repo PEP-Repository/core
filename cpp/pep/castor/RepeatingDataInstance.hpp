@@ -19,8 +19,8 @@ class RepeatingDataInstance : public SimpleCastorChildObject<RepeatingDataInstan
   bool archived_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
   //! \return The ID of the participant this RepeatingDataInstance belongs to, as returned by the API. This is needed, for example, to filter RepeatingDataInstances that actually belong to a certain participant
   //! \see Participant::getRepeatingDataInstances

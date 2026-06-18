@@ -38,7 +38,7 @@ rxcpp::observable<std::shared_ptr<CrfAspectPuller::FormPuller>> CrfAspectPuller:
       .flat_map([sp, columnPrefix, namer](std::shared_ptr<Form> form) {
       auto formId = form->getId();
       return sp->getFields()
-        .filter([formId](std::shared_ptr<Field> field) { return field->getParentId() == formId && field->getType() == Field::TYPE_REPEATED_MEASURE; })
+        .filter([formId](std::shared_ptr<Field> field) { return field->getParentId() == formId && field->getType() == Field::TypeRepeatedMeasure; })
         .flat_map([sp](std::shared_ptr<Field> field) {return sp->getRepeatingDataPuller(field->getReportId()); })
         .op(RxToVector())
         .map([formId, columnName = namer->getColumnName(columnPrefix, form)](std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>> repeatingDataPullers) {

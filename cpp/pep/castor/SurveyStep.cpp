@@ -4,8 +4,8 @@
 namespace pep {
 namespace castor {
 
-const std::string SurveyStep::RELATIVE_API_ENDPOINT = "survey-form";
-const std::string SurveyStep::EMBEDDED_API_NODE_NAME = "survey_forms";
+const std::string SurveyStep::RelativeApiEndpoint = "survey-form";
+const std::string SurveyStep::EmbeddedApiNodeName = "survey_forms";
 
 SurveyStep::SurveyStep(std::shared_ptr<Survey> survey, JsonPtr json)
   : SimpleCastorChildObject<SurveyStep, Survey>(survey, json),

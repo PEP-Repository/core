@@ -704,8 +704,6 @@ private:
     }
 
   private:
-
-
     class AmaColumnGroupCreateCommand : public ChildCommandOf<CommandAmaColumnGroup> {
     public:
       AmaColumnGroupCreateCommand(CommandAmaColumnGroup& parent)

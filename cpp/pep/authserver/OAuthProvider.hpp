@@ -47,20 +47,20 @@ public:
       const std::string& getSpoofKey() const;
       const std::optional<std::filesystem::path>& getHttpsCertificateFile() const;
       std::shared_ptr<boost::asio::io_context> getIoContext() const;
-      const std::vector<boost::urls::url>& getExtraRedirectUris() const { return extraRedirectUris; }
+      const std::vector<boost::urls::url>& getExtraRedirectUris() const { return extraRedirectUris_; }
 
       void check() const;
 
     private:
-      uint16_t httpPort = 0;
-      std::chrono::seconds activeGrantExpiration = std::chrono::seconds::zero();
-      std::string spoofKey;
+      uint16_t httpPort_ = 0;
+      std::chrono::seconds activeGrantExpiration_ = std::chrono::seconds::zero();
+      std::string spoofKey_;
       //On production environments, there is an apache2 server that handles HTTPS. But for local testing we want HTTPS, and therefore a certificate.
       //If this is left unset, plain HTTP is used
       //TODO: determine if we indeed want/need HTTPS for local testing, or whether we can use plain HTTP instead (HttpClient supports it)
-      std::optional<std::filesystem::path> httpsCertificateFile;
-      std::shared_ptr<boost::asio::io_context> io_context;
-      std::vector<boost::urls::url> extraRedirectUris;
+      std::optional<std::filesystem::path> httpsCertificateFile_;
+      std::shared_ptr<boost::asio::io_context> ioContext_;
+      std::vector<boost::urls::url> extraRedirectUris_;
   };
 
   ~OAuthProvider();
@@ -87,18 +87,16 @@ private:
   HTTPResponse handleTokenRequest(HTTPRequest request, std::string remoteIp);
   HTTPResponse handleCodeRequest(HTTPRequest request, std::string remoteIp);
 
-
   const std::vector<boost::urls::url>& getRegisteredRedirectURIs(const std::string& clientId);
-  const std::set<std::string>& getAllowedTokenRequestOrigins(const std::string& clientId);
 
-  std::shared_ptr<HTTPServer> httpServer;
-  std::unordered_map<std::string, Grant> activeGrants;
-  rxcpp::composite_subscription activeGrantsCleanupSubscription;
-  std::chrono::seconds activeGrantExpiration;
-  std::string spoofKey;
-  std::shared_ptr<AuthserverBackend> authserverBackend;
-  std::shared_ptr<boost::asio::io_context> io_context;
-  std::vector<boost::urls::url> allowedRedirectUris;
+  std::shared_ptr<HTTPServer> httpServer_;
+  std::unordered_map<std::string, Grant> activeGrants_;
+  rxcpp::composite_subscription activeGrantsCleanupSubscription_;
+  std::chrono::seconds activeGrantExpiration_;
+  std::string spoofKey_;
+  std::shared_ptr<AuthserverBackend> authserverBackend_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  std::vector<boost::urls::url> allowedRedirectUris_;
 
   TemplateEnvironment templates_;
   friend class SharedConstructor<OAuthProvider>;

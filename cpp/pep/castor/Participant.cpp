@@ -8,8 +8,8 @@
 namespace pep {
 namespace castor {
 
-const std::string Participant::RELATIVE_API_ENDPOINT = "participant";
-const std::string Participant::EMBEDDED_API_NODE_NAME = "participants";
+const std::string Participant::RelativeApiEndpoint = "participant";
+const std::string Participant::EmbeddedApiNodeName = "participants";
 
 Participant::Participant(std::shared_ptr<Study> study, JsonPtr json)
   : SimpleCastorChildObject<Participant, Study>(study, json),
@@ -19,7 +19,7 @@ Participant::Participant(std::shared_ptr<Study> study, JsonPtr json)
 
 rxcpp::observable<std::shared_ptr<Participant>> Participant::CreateNew(std::shared_ptr<Study> study, const std::string& participantId, const std::string& siteId) {
   auto connection = study->getConnection();
-  auto request = connection->makePost(study->makeUrl() + "/" + RELATIVE_API_ENDPOINT,
+  auto request = connection->makePost(study->makeUrl() + "/" + RelativeApiEndpoint,
     "{\"participant_id\": \"" + participantId + "\",\"site_id\": \"" + siteId + "\"}");
   return connection->sendCastorRequest(request).map([study](JsonPtr response) {
     return Participant::Create(study, response);

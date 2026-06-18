@@ -27,7 +27,7 @@ private:
   bool verifyGroup(const std::string& required) const;
 
 public:
-  static const std::string DEFAULT_JSON_FILE_NAME;
+  static const std::string DefaultJsonFileName;
 
   OAuthToken() = default;
   const std::string& getSerializedForm() const noexcept { return serialized_; }

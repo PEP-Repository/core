@@ -26,7 +26,7 @@ const std::string OAUTH_TOKEN_JSON_KEY = "OAuthToken";
 
 namespace pep {
 
-const std::string OAuthToken::DEFAULT_JSON_FILE_NAME = "OAuthToken.json";
+const std::string OAuthToken::DefaultJsonFileName = "OAuthToken.json";
 
 bool OAuthToken::verify(const std::string& secret, const std::string& requiredSubject, const std::string& requiredGroup) const {
   PEP_LOG("OAuthToken::verify", Severity::Debug) << "Verifying OAuth token " << serialized_;

@@ -4,8 +4,8 @@
 namespace pep{
 namespace castor {
 
-const std::string OptionGroup::RELATIVE_API_ENDPOINT = "field-optiongroup";
-const std::string OptionGroup::EMBEDDED_API_NODE_NAME = "fieldOptionGroups";
+const std::string OptionGroup::RelativeApiEndpoint = "field-optiongroup";
+const std::string OptionGroup::EmbeddedApiNodeName = "fieldOptionGroups";
 
 OptionGroup::OptionGroup(std::shared_ptr<Study> study, JsonPtr json)
   : SimpleCastorChildObject(study, json), name_(GetFromPtree<std::string>(*json, "name")) {

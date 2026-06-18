@@ -143,14 +143,15 @@ HTTPResponse MakeErrorRedirect(url redirectUri, const std::string& error, const 
 
 } // End anonymous namespace
 
-OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config) : io_context(io_context) {
+OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
+  : ioContext_(io_context) {
   [[maybe_unused]] std::optional<std::filesystem::path> spoofKeyFile;
   try {
-    httpPort = config.get<uint16_t>("HttpListenPort");
-    activeGrantExpiration = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
+    httpPort_ = config.get<uint16_t>("HttpListenPort");
+    activeGrantExpiration_ = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
     spoofKeyFile = config.get<std::optional<std::filesystem::path>>("SpoofKeyFile");
-    httpsCertificateFile = config.get<std::optional<std::filesystem::path>>("HttpsCertificateFile");
-    extraRedirectUris = RangeToVector(
+    httpsCertificateFile_ = config.get<std::optional<std::filesystem::path>>("HttpsCertificateFile");
+    extraRedirectUris_ = RangeToVector(
       config.get<std::optional<std::vector<std::string>>>("ExtraRedirectUris")
         .value_or(std::vector<std::string>{})
       | std::views::transform([](std::string_view str) { return url{str}; }));
@@ -175,33 +176,33 @@ OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
 }
 
 uint16_t OAuthProvider::Parameters::getHttpPort() const {
-  return httpPort;
+  return httpPort_;
 }
 
 std::chrono::seconds OAuthProvider::Parameters::getActiveGrantExpiration() const {
-  return activeGrantExpiration;
+  return activeGrantExpiration_;
 }
 
 const std::string& OAuthProvider::Parameters::getSpoofKey() const {
-  return spoofKey;
+  return spoofKey_;
 }
 
 const std::optional<std::filesystem::path>& OAuthProvider::Parameters::getHttpsCertificateFile() const {
-  return httpsCertificateFile;
+  return httpsCertificateFile_;
 }
 
 std::shared_ptr<boost::asio::io_context> OAuthProvider::Parameters::getIoContext() const {
-  return io_context;
+  return ioContext_;
 }
 
 void OAuthProvider::Parameters::check() const {
-  if(httpPort == 0) {
+  if(httpPort_ == 0) {
     throw std::runtime_error("httpPort must be set");
   }
-  if(activeGrantExpiration == decltype(activeGrantExpiration)::zero()) {
+  if(activeGrantExpiration_ == decltype(activeGrantExpiration_)::zero()) {
     throw std::runtime_error("activeGrantExpiration must be set");
   }
-  if(!io_context) {
+  if(!ioContext_) {
     throw std::runtime_error("io_context must be set");
   }
   #ifndef ENABLE_OAUTH_TEST_USERS
@@ -212,29 +213,30 @@ void OAuthProvider::Parameters::check() const {
 }
 
 OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<AuthserverBackend> authserverBackend)
-: httpServer(std::make_shared<HTTPServer>(params.getHttpPort(), params.getIoContext(), params.getHttpsCertificateFile())),
-  activeGrantExpiration(params.getActiveGrantExpiration()),
-  spoofKey(params.getSpoofKey()), authserverBackend(authserverBackend),
-  io_context(params.getIoContext()), templates_(std::filesystem::canonical(GetExecutablePath()).parent_path() / "templates") {
-  httpServer->registerHandler("/auth", true, std::bind_front(&OAuthProvider::handleAuthorizationRequest, this), "");
-  httpServer->registerHandler("/token", true, std::bind_front(&OAuthProvider::handleTokenRequest, this), "POST");
-  httpServer->registerHandler("/code", true, std::bind_front(&OAuthProvider::handleCodeRequest, this), "");
+: httpServer_(std::make_shared<HTTPServer>(params.getHttpPort(), params.getIoContext(), params.getHttpsCertificateFile())),
+  activeGrantExpiration_(params.getActiveGrantExpiration()),
+  spoofKey_(params.getSpoofKey()),
+  authserverBackend_(authserverBackend),
+  ioContext_(params.getIoContext()), templates_(std::filesystem::canonical(GetExecutablePath()).parent_path() / "templates") {
+  httpServer_->registerHandler("/auth", true, std::bind_front(&OAuthProvider::handleAuthorizationRequest, this), "");
+  httpServer_->registerHandler("/token", true, std::bind_front(&OAuthProvider::handleTokenRequest, this), "POST");
+  httpServer_->registerHandler("/code", true, std::bind_front(&OAuthProvider::handleCodeRequest, this), "");
 
-  allowedRedirectUris.reserve(DefaultRedirectUris.size() + params.getExtraRedirectUris().size());
-  std::ranges::copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris));
-  std::ranges::copy(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris));
+  allowedRedirectUris_.reserve(DefaultRedirectUris.size() + params.getExtraRedirectUris().size());
+  std::ranges::copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris_));
+  std::ranges::copy(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris_));
 
-  activeGrantsCleanupSubscription = rxcpp::rxs::interval(std::chrono::minutes(1))
+  activeGrantsCleanupSubscription_ = rxcpp::rxs::interval(std::chrono::minutes(1))
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
-              .observe_on(ObserveOnAsio(*io_context)) //We want to run the cleaning up code on the io thread, so we don't have to worry about multithreading issues
+              .observe_on(ObserveOnAsio(*ioContext_)) //We want to run the cleaning up code on the io thread, so we don't have to worry about multithreading issues
               .subscribe([this](auto) {
     PEP_LOG(LogTag, Severity::Debug) << "Cleaning up expired grants";
 
     auto now = std::chrono::steady_clock::now();
-    for(auto it = activeGrants.begin(); it != activeGrants.end(); /* updated inside loop */) {
-      if(now - it->second.createdAt > this->activeGrantExpiration) {
+    for(auto it = activeGrants_.begin(); it != activeGrants_.end(); /* updated inside loop */) {
+      if(now - it->second.createdAt > activeGrantExpiration_) {
         PEP_LOG(LogTag, Severity::Debug) << "Removed expired grant";
-        it = activeGrants.erase(it);
+        it = activeGrants_.erase(it);
       }
       else {
         ++it;
@@ -244,23 +246,23 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
 }
 
 OAuthProvider::~OAuthProvider() {
-  activeGrantsCleanupSubscription.unsubscribe();
+  activeGrantsCleanupSubscription_.unsubscribe();
 }
 
 void OAuthProvider::addActiveGrant(const std::string& code, Grant g) {
-  activeGrants.emplace(code, g);
+  activeGrants_.emplace(code, g);
 }
 
 std::optional<OAuthProvider::Grant>
 OAuthProvider::getActiveGrant(const std::string& code) {
-  auto it = activeGrants.find(code);
-  if (it == activeGrants.end()) {
+  auto it = activeGrants_.find(code);
+  if (it == activeGrants_.end()) {
     return std::nullopt;
   }
   Grant g = it->second;
-  activeGrants.erase(it);
+  activeGrants_.erase(it);
   auto now = std::chrono::steady_clock::now();
-  if (now - g.createdAt < activeGrantExpiration) {
+  if (now - g.createdAt < activeGrantExpiration_) {
     return g;
   }
   else {
@@ -393,7 +395,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
   }
 
-  return authserverBackend->findUserGroupsAndStorePrimaryIdIfMissing(primaryUid, alternativeUids)
+  return authserverBackend_->findUserGroupsAndStorePrimaryIdIfMissing(primaryUid, alternativeUids)
       .map([redirectUri, redirectUriString, request, clientId, humanReadableUid, codeChallenge, longLivedValidityStr, self=shared_from_this()](std::optional<std::vector<UserGroup>> groups) {
     if(!groups){
       return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "Unknown user");
@@ -498,7 +500,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
       return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, "redirect_uri does not match the known redirect_uri for this code");
     }
 
-    OAuthToken token = authserverBackend->getToken(grant->humanReadableId, grant->usergroup, grant->validity);
+    OAuthToken token = authserverBackend_->getToken(grant->humanReadableId, grant->usergroup, grant->validity);
 
     boost::property_tree::ptree responseData;
     responseData.add("access_token", token.getSerializedForm());
@@ -533,15 +535,15 @@ HTTPResponse OAuthProvider::handleCodeRequest(HTTPRequest request, std::string r
   }
   else if (auto codeIt = params.find("code"); codeIt != params.end()) {
     const std::string& code = (*codeIt).value;
-    auto grantIterator = this->activeGrants.find(code);
-    if(grantIterator == this->activeGrants.end()) {
+    auto grantIterator = activeGrants_.find(code);
+    if(grantIterator == activeGrants_.end()) {
       status = "404 Not Found";
       error = "Unknown code";
     }
     else {
       TemplateEnvironment::Data data {
         {"code", grantIterator->first},
-        {"validity", chrono::ToString(activeGrantExpiration)}
+        {"validity", chrono::ToString(activeGrantExpiration_)}
       };
 
       result = templates_.renderTemplate("authserver/code.html.j2", data);
@@ -566,7 +568,7 @@ HTTPResponse OAuthProvider::handleCodeRequest(HTTPRequest request, std::string r
 const std::vector<url>& OAuthProvider::getRegisteredRedirectURIs(const std::string& clientId) {
   //We currently only support one client_id. There are no plans to change this, so no need to make this more complicated for now.
   if (clientId == PepClientId) {
-    return allowedRedirectUris;
+    return allowedRedirectUris_;
   }
   return Default<std::vector<url>>;
 }

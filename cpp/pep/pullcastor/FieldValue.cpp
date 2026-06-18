@@ -42,7 +42,7 @@ void FieldValue::addTo(boost::property_tree::ptree& destination) const {
     value = dataPoint_->getValue();
   }
 
-  if (type == Field::TYPE_CHECKBOX) {
+  if (type == Field::TypeCheckbox) {
     AddCheckBox(destination, name, value, field_->getOptionGroup());
   }
   else {

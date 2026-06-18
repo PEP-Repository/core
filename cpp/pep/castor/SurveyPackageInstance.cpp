@@ -10,8 +10,8 @@ namespace castor {
 
 namespace {
 
-const std::string RELATIVE_API_ENDPOINT = "survey-package-instance";
-const std::string EMBEDDED_API_NODE_NAME = "surveypackageinstance";
+const std::string RelativeApiEndpoint = "survey-package-instance";
+const std::string EmbeddedApiNodeName = "surveypackageinstance";
 
 }
 
@@ -52,7 +52,7 @@ const std::shared_ptr<const boost::property_tree::ptree>& SurveyPackageInstance:
 }
 
 std::string SurveyPackageInstance::makeUrl() const {
-  return this->getParent()->getStudy()->makeUrl() + "/" + RELATIVE_API_ENDPOINT + "/" + getId();
+  return this->getParent()->getStudy()->makeUrl() + "/" + RelativeApiEndpoint + "/" + getId();
 }
 
 rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyPackageInstance::getSurveyDataPoints() {
@@ -66,8 +66,8 @@ const std::vector<std::string>& SurveyPackageInstance::getSurveyInstanceIds() co
 rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> SurveyPackageInstance::BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants) {
   return BulkRetrieveChildren<SurveyPackageInstance, Participant>(
     participants,
-    study->makeUrl() + "/" + RELATIVE_API_ENDPOINT,
-    EMBEDDED_API_NODE_NAME,
+    study->makeUrl() + "/" + RelativeApiEndpoint,
+    EmbeddedApiNodeName,
     "participant_id");
 }
 

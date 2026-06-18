@@ -7,16 +7,16 @@ namespace castor {
 
 namespace {
 
-const std::string RELATIVE_API_ENDPOINT = "field";
-const std::string EMBEDDED_API_NODE_NAME = "fields";
+const std::string RelativeApiEndpoint = "field";
+const std::string EmbeddedApiNodeName = "fields";
 
 }
 
-const std::string Field::TYPE_CHECKBOX = "checkbox";
-const std::string Field::TYPE_REPEATED_MEASURE = "repeated_measures";
+const std::string Field::TypeCheckbox = "checkbox";
+const std::string Field::TypeRepeatedMeasure = "repeated_measures";
 
 std::string Field::makeUrl() const {
-  return this->makeParentRelativeUrl(RELATIVE_API_ENDPOINT);
+  return this->makeParentRelativeUrl(RelativeApiEndpoint);
 }
 
 Field::Field(std::shared_ptr<Study> study, JsonPtr json)
@@ -39,7 +39,7 @@ Field::Field(std::shared_ptr<Study> study, JsonPtr json)
 }
 
 rxcpp::observable<std::shared_ptr<Field>> Field::RetrieveForParent(std::shared_ptr<Study> study) {
-  return CastorObject::RetrieveList<Field, Study>(study, GetParentRelativeEndpoint(study, RELATIVE_API_ENDPOINT + "?include=optiongroup"), EMBEDDED_API_NODE_NAME);
+  return CastorObject::RetrieveList<Field, Study>(study, GetParentRelativeEndpoint(study, RelativeApiEndpoint + "?include=optiongroup"), EmbeddedApiNodeName);
 }
 
 

@@ -50,8 +50,8 @@ protected:
   FakeCastorTest();
   void TearDown() override;
 
-  std::shared_ptr<CastorConnection> castorConnection;
-  std::shared_ptr<FakeCastorApi::Options> options = std::make_shared<FakeCastorApi::Options>();
+  std::shared_ptr<CastorConnection> castorConnection_;
+  std::shared_ptr<FakeCastorApi::Options> options_ = std::make_shared<FakeCastorApi::Options>();
 
 private:
   class Side : boost::noncopyable {

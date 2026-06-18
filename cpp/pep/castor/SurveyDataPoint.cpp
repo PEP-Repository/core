@@ -10,7 +10,7 @@
 namespace pep {
 namespace castor {
 
-const std::string SurveyDataPoint::RELATIVE_API_ENDPOINT = "survey-package-instance";
+const std::string SurveyDataPoint::RelativeApiEndpoint = "survey-package-instance";
 
 std::string SurveyDataPoint::makeUrl() const {
   return this->getParticipant()->makeUrl() + "/data-point/survey/" + surveyInstanceId_ + "/" + this->getId();
@@ -46,7 +46,7 @@ rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyDataPoint::BulkRetriev
         return BulkRetrieveChildren<SurveyDataPoint, SurveyPackageInstance>(
           spisBySurveyInstanceId,
           object->makeUrl() + "/data-points/survey-instance",
-          EMBEDDED_API_NODE_NAME,
+          EmbeddedApiNodeName,
           "survey_instance_id");
       });
 }

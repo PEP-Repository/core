@@ -20,7 +20,7 @@ class DownloadDirectory : public std::enable_shared_from_this<DownloadDirectory>
   friend class SharedConstructor<DownloadDirectory>;
 
 public:
-  static const bool APPLY_FILE_EXTENSIONS_BY_DEFAULT = true;
+  static const bool ApplyFileExtensionsByDefault = true;
 
   struct ContentSpecification {
     std::vector<std::string> groups;
@@ -32,7 +32,7 @@ public:
   struct Specification {
     ContentSpecification content;
     std::string accessGroup;
-    bool applyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
+    bool applyFileExtensions = ApplyFileExtensionsByDefault;
 
     std::string toString() const;
     static Specification FromString(const std::string& value);
@@ -93,7 +93,7 @@ public:
 
 private:
   std::filesystem::path root_;
-  bool applyFileExtensions_ = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
+  bool applyFileExtensions_ = ApplyFileExtensionsByDefault;
   DownloadMetadata metadata_;
   std::shared_ptr<GlobalConfiguration> globalConfig_;
 

@@ -116,7 +116,7 @@ rxcpp::observable<pep::FakeVoid> CliApplication::connectClient(bool ensureEnroll
   rxcpp::observable<pep::FakeVoid> result = rxcpp::observable<>::just(pep::FakeVoid());
 
   if (enroll) {
-    auto tokenPath = pep::OAuthToken::DEFAULT_JSON_FILE_NAME;
+    auto tokenPath = pep::OAuthToken::DefaultJsonFileName;
 
     // ----- Situation 4: cached token -----
     if (!token) {

@@ -17,7 +17,7 @@ const std::string LogTag ("Authserver");
 
 Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config),
-  backendParams(config), oauthParams(io_context, config) {
+  backendParams_(config), oauthParams_(io_context, config) {
 
   EndPoint accessManagerEndPoint;
 
@@ -30,23 +30,23 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
     throw;
   }
 
-  backendParams.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
-  backendParams.setAccessManagerEndPoint(std::move(accessManagerEndPoint));
-  backendParams.setSigningIdentity(getSigningIdentity());
-  backendParams.setRootCertificates(getRootCAs());
+  backendParams_.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
+  backendParams_.setAccessManagerEndPoint(std::move(accessManagerEndPoint));
+  backendParams_.setSigningIdentity(getSigningIdentity());
+  backendParams_.setRootCertificates(getRootCAs());
 }
 
 const AuthserverBackend::Parameters& Authserver::Parameters::getBackendParams() const {
-  return backendParams;
+  return backendParams_;
 }
 
 const OAuthProvider::Parameters& Authserver::Parameters::getOAuthParams() const {
-  return oauthParams;
+  return oauthParams_;
 }
 
 void Authserver::Parameters::check() const {
-  backendParams.check();
-  oauthParams.check();
+  backendParams_.check();
+  oauthParams_.check();
   SigningServer::Parameters::check();
 }
 

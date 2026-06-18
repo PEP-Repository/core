@@ -176,10 +176,10 @@ FakeCastorTest::FakeCastorTest()
   : identity_(TemporaryX509IdentityFiles::Make("Fake Castor b.v.", "localhost")) { // Would be cheaper in a (global) RegisteredTestEnvironment, but this is good enough for now
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
   networking::Tls::ServerParameters parameters(*serverSide_.ioContext(), port, identity_.slicedToX509IdentityFiles());
-  server_ = FakeCastorApi::Create(parameters, port, options);
+  server_ = FakeCastorApi::Create(parameters, port, options_);
   server_->start();
 
-  castorConnection = castor::CastorConnection::Create(
+  castorConnection_ = castor::CastorConnection::Create(
     EndPoint("localhost", port),
     castor::ApiKey{ "SomeID", "SomeSecret" },
     clientSide_.ioContext(),
@@ -191,7 +191,7 @@ FakeCastorTest::FakeCastorTest()
 }
 
 void FakeCastorTest::TearDown() {
-  castorConnection = nullptr;
+  castorConnection_ = nullptr;
   clientSide_.stop(false);
 
   server_->stop();

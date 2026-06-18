@@ -120,7 +120,7 @@ protected:
  * \tparam TChild The (most) derived type that inherits this class.
  * \tparam TParent The parent type.
  *
- * \remark Inheritors must define static const strings RELATIVE_API_ENDPOINT and EMBEDDED_API_NODE_NAME in their own (TChild) type.
+ * \remark Inheritors must define static const strings RelativeApiEndpoint and EmbeddedApiNodeName in their own (TChild) type.
  */
 template <typename TChild, typename TParent>
 class SimpleCastorChildObject : public ParentedCastorObject<TParent> {
@@ -131,7 +131,7 @@ class SimpleCastorChildObject : public ParentedCastorObject<TParent> {
 
 public:
   //! \return A url that can be used to retrieve this child object from the Castor API
-  std::string makeUrl() const override { return this->makeParentRelativeUrl(TChild::RELATIVE_API_ENDPOINT); }
+  std::string makeUrl() const override { return this->makeParentRelativeUrl(TChild::RelativeApiEndpoint); }
 
   /*!
  * \brief Get a list of objects that are children of a specified parent object
@@ -142,8 +142,8 @@ public:
   static rxcpp::observable<std::shared_ptr<TChild>> RetrieveForParent(std::shared_ptr<TParent> parent) {
     return CastorObject::RetrieveList<TChild, TParent>(
       parent,
-      ParentedCastorObject<TParent>::GetParentRelativeEndpoint(parent, TChild::RELATIVE_API_ENDPOINT),
-      TChild::EMBEDDED_API_NODE_NAME);
+      ParentedCastorObject<TParent>::GetParentRelativeEndpoint(parent, TChild::RelativeApiEndpoint),
+      TChild::EmbeddedApiNodeName);
   }
 };
 

@@ -4,8 +4,8 @@
 namespace pep {
 namespace castor {
 
-const std::string RepeatingDataForm::RELATIVE_API_ENDPOINT = "repeating-data-form";
-const std::string RepeatingDataForm::EMBEDDED_API_NODE_NAME = "repeating_data_forms";
+const std::string RepeatingDataForm::RelativeApiEndpoint = "repeating-data-form";
+const std::string RepeatingDataForm::EmbeddedApiNodeName = "repeating_data_forms";
 
 RepeatingDataForm::RepeatingDataForm(std::shared_ptr<RepeatingData> repeatingData, JsonPtr json)
   : SimpleCastorChildObject<RepeatingDataForm, RepeatingData>(repeatingData, json),

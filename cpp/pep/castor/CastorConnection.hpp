@@ -113,8 +113,8 @@ private:
   CastorConnection(const EndPoint& endPoint, const ApiKey& apiKey, std::shared_ptr<boost::asio::io_context> io_context, const std::optional<std::filesystem::path>& caCert = std::nullopt);
 
 public:
-  static const int RECORD_EXISTS = 422;
-  static const int NOT_FOUND = 404;
+  static const int RecordExists = 422;
+  static const int NotFound = 404;
 
   ~CastorConnection() noexcept;
 
