@@ -26,8 +26,8 @@ void NotConnectedWidget::appendConnectionStatus(QString& destination, const std:
 }
 
 NotConnectedWidget::NotConnectedWidget(pep::ConnectionStatus accessManager, pep::ConnectionStatus keyServer, pep::ConnectionStatus storageFacility, QWidget* parent) :
-  QWidget(parent), accessManager(accessManager), keyServer(keyServer), storageFacility(storageFacility), ui(new Ui::NotConnectedWidget) {
-  ui->setupUi(this);
+  QWidget(parent), accessManager(accessManager), keyServer(keyServer), storageFacility(storageFacility), ui_(new Ui::NotConnectedWidget) {
+  ui_->setupUi(this);
   QString text;
 
   appendConnectionStatus(text, pep::ServerTraits::AccessManager().description(), accessManager);
@@ -38,9 +38,9 @@ NotConnectedWidget::NotConnectedWidget(pep::ConnectionStatus accessManager, pep:
     text = tr("Your session has expired and you have been logged out. Please restart the application.");
   }
 
-  ui->label->setText(text);
+  ui_->label->setText(text);
 }
 
 NotConnectedWidget::~NotConnectedWidget() {
-  delete ui;
+  delete ui_;
 }

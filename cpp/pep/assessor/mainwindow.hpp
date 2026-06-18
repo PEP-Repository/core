@@ -131,5 +131,5 @@ private:
   const pep::StudyContext& getCurrentStudyContext() const;
   const VisitCaptions* getVisitCaptionsForCurrentStudyContext() const;
 
-  Ui::MainWindow* ui;
+  Ui::MainWindow* ui_;
 };

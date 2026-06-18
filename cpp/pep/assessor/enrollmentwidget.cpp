@@ -20,9 +20,9 @@
 #include <pep/versioning/Version.hpp>
 
 EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWindow* parent, const pep::StudyContext& studyContext)
-  : QStackedWidget(parent), ui(new Ui::EnrollmentWidget), mainWindow(parent), pepClient(client), studyContext_(studyContext), doneCompletingRegistration(false), continueButtonPressed(false) {
-  ui->setupUi(this);
-  ui->retranslateUi(this);
+  : QStackedWidget(parent), ui_(new Ui::EnrollmentWidget), mainWindow(parent), pepClient(client), studyContext_(studyContext), doneCompletingRegistration(false), continueButtonPressed(false) {
+  ui_->setupUi(this);
+  ui_->retranslateUi(this);
 
   // Allow types to be passed as arguments in signal->slot
   qRegisterMetaType<std::shared_ptr<pep::ParticipantPersonalia>>("std::shared_ptr<pep::ParticipantPersonalia>");
@@ -31,10 +31,10 @@ EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWind
   QObject::connect(this, &EnrollmentWidget::registrationProceeding, this, &EnrollmentWidget::onRegistrationProceeding);
 
 
-  QObject::connect(ui->editor, &ParticipantEditor::cancelled, this, &EnrollmentWidget::cancelled);
-  QObject::connect(ui->editor, &ParticipantEditor::confirmed, [this]() {
-    auto personalia = std::make_shared<pep::ParticipantPersonalia>(ui->editor->getPersonalia());
-    auto isTest = ui->editor->getIsTestParticipant();
+  QObject::connect(ui_->editor, &ParticipantEditor::cancelled, this, &EnrollmentWidget::cancelled);
+  QObject::connect(ui_->editor, &ParticipantEditor::confirmed, [this]() {
+    auto personalia = std::make_shared<pep::ParticipantPersonalia>(ui_->editor->getPersonalia());
+    auto isTest = ui_->editor->getIsTestParticipant();
 
     setCurrentIndex(1);
 
@@ -123,11 +123,11 @@ void EnrollmentWidget::onRegistrationProceeding() {
 EnrollmentWidget::~EnrollmentWidget() {
   completeParticipantRegistrationSubscription.unsubscribe();
   registerParticipantSubscription.unsubscribe();
-  delete ui;
+  delete ui_;
 }
 
 /*! \brief Set UI focus to the personalia editor
  */
 void EnrollmentWidget::doFocus() {
-  ui->editor->doFocus();
+  ui_->editor->doFocus();
 }

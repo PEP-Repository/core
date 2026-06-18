@@ -19,7 +19,7 @@ class NotConnectedWidget : public QWidget {
   ~NotConnectedWidget() override;
 
  private:
-  Ui::NotConnectedWidget* ui;
+  Ui::NotConnectedWidget* ui_;
 
   void appendConnectionStatus(QString& destination, const std::string& server, pep::ConnectionStatus status) const;
 };

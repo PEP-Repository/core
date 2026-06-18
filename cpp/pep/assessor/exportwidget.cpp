@@ -124,19 +124,19 @@ void ExportWidget::WriteCartesianToDestination(std::ostream& destination, const 
 
 ExportWidget::ExportWidget(const pep::GlobalConfiguration& configuration, const pep::StudyContext& studyContext, const pep::UserRole& role, VisitCaptionsByContext visitCaptionsByContext, std::shared_ptr<pep::CoreClient> client, QWidget* parent) :
   QWidget(parent),
-  ui(new Ui::ExportWidget),
+  ui_(new Ui::ExportWidget),
   studyContext_(studyContext),
   multiSelect_(role.canCrossTabulate())
 {
   pepClient_ = client;
   allItems_ = this->getAllExportableItems(configuration, studyContext);
 
-  ui->setupUi(this);
+  ui_->setupUi(this);
 
   //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) QListWidget takes ownership of QListWidgetItem
   for (const auto& item : allItems_) {
     auto caption = createCaption(item);
-    auto listItem = new QListWidgetItem(caption, ui->listWidget);
+    auto listItem = new QListWidgetItem(caption, ui_->listWidget);
     if (multiSelect_) {
       listItem->setFlags(listItem->flags() | Qt::ItemIsUserCheckable);
       listItem->setCheckState(Qt::Unchecked);
@@ -144,21 +144,21 @@ ExportWidget::ExportWidget(const pep::GlobalConfiguration& configuration, const 
   }
 
   if (!multiSelect_) {
-    QObject::connect(ui->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::on_selectedItemChanged);
-    QObject::connect(ui->listWidget, &QListWidget::itemActivated, this, &ExportWidget::on_itemActivated);
+    QObject::connect(ui_->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::on_selectedItemChanged);
+    QObject::connect(ui_->listWidget, &QListWidget::itemActivated, this, &ExportWidget::on_itemActivated);
   }
   else {
-    QObject::connect(ui->listWidget, &QListWidget::itemChanged, this, &ExportWidget::on_itemChanged);
+    QObject::connect(ui_->listWidget, &QListWidget::itemChanged, this, &ExportWidget::on_itemChanged);
   }
 }
 
 ExportWidget::~ExportWidget()
 {
-  delete ui;
+  delete ui_;
 }
 
 void ExportWidget::doFocus() {
-  ui->listWidget->setFocus();
+  ui_->listWidget->setFocus();
 }
 
 
@@ -244,22 +244,22 @@ void ExportWidget::on_itemChanged(QListWidgetItem* item) {
 
 void ExportWidget::updateSelectionState() {
   auto selected = getSelectedItems();
-  ui->exportButton->setEnabled(!selected.empty());
-  ui->expandDetailsCheckBox->setEnabled(std::find_if(selected.cbegin(), selected.cend(), [](const std::shared_ptr<ExportableItem>& item) {return item->getDetailExpander(); }) != selected.cend());
+  ui_->exportButton->setEnabled(!selected.empty());
+  ui_->expandDetailsCheckBox->setEnabled(std::find_if(selected.cbegin(), selected.cend(), [](const std::shared_ptr<ExportableItem>& item) {return item->getDetailExpander(); }) != selected.cend());
 }
 
 QList<std::shared_ptr<ExportableItem>> ExportWidget::getSelectedItems() const {
   QList<std::shared_ptr<ExportableItem>> result;
 
   if (multiSelect_) { // Selection depends on each item's check state, which must be inspected individually: see https://stackoverflow.com/a/29240727
-    for (auto i = 0; i < ui->listWidget->count(); ++i) {
-      if (ui->listWidget->item(i)->checkState() == Qt::Checked) {
+    for (auto i = 0; i < ui_->listWidget->count(); ++i) {
+      if (ui_->listWidget->item(i)->checkState() == Qt::Checked) {
         result.push_back(allItems_[static_cast<unsigned>(i)]);
       }
     }
   }
   else { // Selection depends on highlight
-    auto row = ui->listWidget->currentRow();
+    auto row = ui_->listWidget->currentRow();
     if (row >= 0) {
       result.push_back(allItems_[static_cast<size_t>(row)]);
     }
@@ -305,7 +305,7 @@ void ExportWidget::doExport() {
     return;
   }
   try {
-    auto expandDetails = ui->expandDetailsCheckBox->isChecked();
+    auto expandDetails = ui_->expandDetailsCheckBox->isChecked();
     auto file = std::make_shared<std::ofstream>();
     file->open(fileName);
 

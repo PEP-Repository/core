@@ -39,7 +39,7 @@ class EnrollmentWidget : public QStackedWidget {
   void onRegistrationProceeding();
 
  private:
-  Ui::EnrollmentWidget* ui;
+  Ui::EnrollmentWidget* ui_;
   MainWindow* mainWindow;
   std::shared_ptr<pep::Client> pepClient;
   pep::StudyContext studyContext_;

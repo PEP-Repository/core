@@ -32,5 +32,5 @@ private:
 private:
   std::vector<pep::AssessorDefinition> assessors_;
   int storedAssessorIndex_ = 0;
-  Ui::AssessorWidget *ui;
+  Ui::AssessorWidget *ui_;
 };

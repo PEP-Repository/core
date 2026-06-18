@@ -39,14 +39,15 @@ class AsymmetricKey {
   AsymmetricKeyType keyType = AsymmetricKeyType::None;
 
   bool isSet() const {
-    return set;
+    return set_;
   }
 
  private:
   EVP_PKEY* key_ = nullptr;
+  bool set_ = false;
+  mutable std::mutex m_;
+
   AsymmetricKey(AsymmetricKeyType keyType, EVP_PKEY* o);
-  bool set = false;
-  mutable std::mutex m;
 
   friend class X509Certificate;
   friend class X509CertificateSigningRequest;
@@ -67,7 +68,7 @@ class AsymmetricKeyPair {
 
  private:
   EVP_PKEY* keyPair_ = nullptr;
-  mutable std::mutex m;
+  mutable std::mutex m_;
 
   friend class X509CertificateSigningRequest;
 };

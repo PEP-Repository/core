@@ -53,7 +53,7 @@ private:
   static void WriteCartesianToDestination(std::ostream& destination, const ExportDataTable& cartesian);
 
 private:
-  Ui::ExportWidget* ui;
+  Ui::ExportWidget* ui_;
   std::vector<std::shared_ptr<ExportableItem>> allItems_;
   std::shared_ptr<pep::CoreClient> pepClient_;
   const VisitCaptions visitCaptions_;

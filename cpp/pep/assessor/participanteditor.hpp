@@ -30,7 +30,7 @@ class ParticipantEditor : public QWidget {
   void confirmed();
 
  private:
-  Ui::ParticipantEditor* ui;
+  Ui::ParticipantEditor* ui_;
   QString participantFirstName;
   QString participantTussenvoegsels;
   QString participantLastName;

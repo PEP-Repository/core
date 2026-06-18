@@ -4,16 +4,16 @@
 
 AssessorWidget::AssessorWidget(QWidget *parent) :
   QWidget(parent),
-  ui(new Ui::AssessorWidget)
+  ui_(new Ui::AssessorWidget)
 {
-  ui->setupUi(this);
+  ui_->setupUi(this);
 
-  QObject::connect(ui->assessorComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onAssessorComboIndexChanged(int)));
-  QObject::connect(ui->cancelButton, &QAbstractButton::clicked, this, &AssessorWidget::closeWidget);
-  QObject::connect(ui->updateButton, &QAbstractButton::clicked, [this]() {
-    ui->updateButton->setEnabled(false);
+  QObject::connect(ui_->assessorComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onAssessorComboIndexChanged(int)));
+  QObject::connect(ui_->cancelButton, &QAbstractButton::clicked, this, &AssessorWidget::closeWidget);
+  QObject::connect(ui_->updateButton, &QAbstractButton::clicked, [this]() {
+    ui_->updateButton->setEnabled(false);
     QString id;
-    auto index = ui->assessorComboBox->currentIndex() - 1; // The first item is "<none/unspecified>"
+    auto index = ui_->assessorComboBox->currentIndex() - 1; // The first item is "<none/unspecified>"
     if (index >= 0) {
       id = QString::number(assessors_[static_cast<size_t>(index)].id);
     }
@@ -24,7 +24,7 @@ AssessorWidget::AssessorWidget(QWidget *parent) :
 
 AssessorWidget::~AssessorWidget()
 {
-  delete ui;
+  delete ui_;
 }
 
 void AssessorWidget::setAssessors(const std::vector<pep::AssessorDefinition>& assessors, const pep::StudyContext& studyContext) {
@@ -35,18 +35,18 @@ void AssessorWidget::setAssessors(const std::vector<pep::AssessorDefinition>& as
   std::sort(assessors_.begin(), assessors_.end(), [](const pep::AssessorDefinition& lhs, const pep::AssessorDefinition& rhs) {return strcmp(lhs.name.c_str(), rhs.name.c_str()) < 0; });
 
   auto enable = !assessors_.empty();
-  ui->assessorComboBox->setEnabled(enable);
-  ui->updateButton->setEnabled(enable);
+  ui_->assessorComboBox->setEnabled(enable);
+  ui_->updateButton->setEnabled(enable);
 
-  while (ui->assessorComboBox->count() > 0) {
-    ui->assessorComboBox->removeItem(0);
+  while (ui_->assessorComboBox->count() > 0) {
+    ui_->assessorComboBox->removeItem(0);
   }
   if (enable) {
-    ui->assessorComboBox->addItem(tr("<none/unspecified>"));
+    ui_->assessorComboBox->addItem(tr("<none/unspecified>"));
     for (const auto& assessor : assessors_) {
-      ui->assessorComboBox->addItem(QString::fromStdString(assessor.name));
+      ui_->assessorComboBox->addItem(QString::fromStdString(assessor.name));
     }
-    ui->assessorComboBox->setCurrentIndex(0);
+    ui_->assessorComboBox->setCurrentIndex(0);
     enableDisableUpdateButton();
   }
 }
@@ -62,14 +62,14 @@ void AssessorWidget::setCurrentAssessor(const std::optional<unsigned int>& id) {
        * - or study context was removed from assessor.
        */
       index = static_cast<int>(assessors_.size());
-      ui->assessorComboBox->addItem(tr("<assessor %1>").arg(QString::number(*id)));
+      ui_->assessorComboBox->addItem(tr("<assessor %1>").arg(QString::number(*id)));
     }
     else {
       // Remove any <assessor with ID '%1'> entry that may have been added previously
-      index = ui->assessorComboBox->count() - 1;
+      index = ui_->assessorComboBox->count() - 1;
       while (index > static_cast<int>(assessors_.size())) {
-        ui->assessorComboBox->removeItem(index);
-        index = ui->assessorComboBox->count() - 1;
+        ui_->assessorComboBox->removeItem(index);
+        index = ui_->assessorComboBox->count() - 1;
       }
 
       index = static_cast<int>(position - assessors_.cbegin());
@@ -78,9 +78,9 @@ void AssessorWidget::setCurrentAssessor(const std::optional<unsigned int>& id) {
     ++index; // UI index is one greater than data index due to <none/unspecified> entry
   }
 
-  ui->assessorComboBox->setCurrentIndex(index);
+  ui_->assessorComboBox->setCurrentIndex(index);
   storedAssessorIndex_ = index;
-  ui->updateButton->setEnabled(false);
+  ui_->updateButton->setEnabled(false);
 }
 
 void AssessorWidget::onAssessorComboIndexChanged(int newIndex) {
@@ -88,7 +88,7 @@ void AssessorWidget::onAssessorComboIndexChanged(int newIndex) {
 }
 
 void AssessorWidget::enableDisableUpdateButton() {
-  ui->updateButton->setEnabled(storedAssessorIndex_ != ui->assessorComboBox->currentIndex());
+  ui_->updateButton->setEnabled(storedAssessorIndex_ != ui_->assessorComboBox->currentIndex());
 }
 
 void AssessorWidget::closeWidget() {

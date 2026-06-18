@@ -11,7 +11,7 @@ class DeviceWidget : public QWidget {
   Q_OBJECT
 
  private:
-  Ui::DeviceWidget* ui;
+  Ui::DeviceWidget* ui_;
   pep::DeviceRegistrationDefinition definition_;
   QString deviceId_;
 

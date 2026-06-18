@@ -48,34 +48,34 @@ const int MainWindow::statusMessageDuration = 3000;
  * \param config_tree The boost::property_tree::ptree which contains the working configuration that this client instance should use. This too is passed to the children as needed.
  */
 MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& branding, const pep::Configuration& config_tree, unsigned spareStickerCount, const VisitCaptionsByContext& visitCaptionsByContext)
-  : QMainWindow(nullptr), config(config_tree), branding_(branding), spareStickerCount_(spareStickerCount), visitCaptionsByContext_(visitCaptionsByContext), ui(new Ui::MainWindow) {
+  : QMainWindow(nullptr), config(config_tree), branding_(branding), spareStickerCount_(spareStickerCount), visitCaptionsByContext_(visitCaptionsByContext), ui_(new Ui::MainWindow) {
   pepClient = client;
-  ui->setupUi(this);
+  ui_->setupUi(this);
   tooltipFont->setPointSize(12);
-  //ui->currentPatient->hide();
+  //ui_->currentPatient->hide();
   //Remove language option
 
-  branding_.showLogo(*ui->icon);
+  branding_.showLogo(*ui_->icon);
 
   if (pep::ConfigVersion::Current() != std::nullopt) {
     if (!pep::ConfigVersion::Current()->exposesProductionData()) {
-      ui->topBar->setProperty("nonrelease", true);
-      ui->topBar->style()->unpolish(ui->topBar);
-      ui->topBar->style()->polish(ui->topBar);
+      ui_->topBar->setProperty("nonrelease", true);
+      ui_->topBar->style()->unpolish(ui_->topBar);
+      ui_->topBar->style()->polish(ui_->topBar);
     }
   }
 
-  ui->statusBar->hide(); // Only show it when there are messages
+  ui_->statusBar->hide(); // Only show it when there are messages
   statusTimer = new QTimer(this);
   statusTimer->setSingleShot(true);
   connect(statusTimer, &QTimer::timeout, [this]() {
     updateStatusBar(false);
     });
-  // There is apparently no way to add these in the .ui file instead of here.
-  statusbarCancelButton = new QPushButton(QString::fromWCharArray(L"\u2715"), ui->statusBar);
-  statusbarLabel = new QLabel(ui->statusBar);
-  ui->statusBar->addWidget(statusbarCancelButton);
-  ui->statusBar->addWidget(statusbarLabel);
+  // There is apparently no way to add these in the .ui_ file instead of here.
+  statusbarCancelButton = new QPushButton(QString::fromWCharArray(L"\u2715"), ui_->statusBar);
+  statusbarLabel = new QLabel(ui_->statusBar);
+  ui_->statusBar->addWidget(statusbarCancelButton);
+  ui_->statusBar->addWidget(statusbarLabel);
   QObject::connect(statusbarCancelButton, &QPushButton::clicked, this, [this]() {
     updateStatusBar(false);
     });
@@ -111,16 +111,16 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   QObject::connect(this, &MainWindow::announceSID, this, &MainWindow::showParticipantData);
   QObject::connect(this, &MainWindow::announceLookupFailure, this, &MainWindow::on_lookupFailure);
   QObject::connect(this, &MainWindow::statusMessage, this, &MainWindow::updateStatus);
-  QObject::connect(ui->content_tabs, &QTabWidget::currentChanged, this, &MainWindow::ensureFocus);
-  QObject::connect(ui->contextComboBox, SIGNAL(currentIndexChanged(int)), SLOT(contextComboIndexChanged(int)));
+  QObject::connect(ui_->content_tabs, &QTabWidget::currentChanged, this, &MainWindow::ensureFocus);
+  QObject::connect(ui_->contextComboBox, SIGNAL(currentIndexChanged(int)), SLOT(contextComboIndexChanged(int)));
 }
 
 /*! \brief Mainwindows destructor
  *
- * Simple destructor which clears out the working ui object.
+ * Simple destructor which clears out the working ui_ object.
  */
 MainWindow::~MainWindow() {
-  delete ui;
+  delete ui_;
 }
 
 /*! \brief Show a widget in the register content display
@@ -130,7 +130,7 @@ MainWindow::~MainWindow() {
  * \param widget Pointer to the QWidget which should be displayed.
  */
 void MainWindow::showRegistrationWidget(QWidget* widget) {
-  auto target = ui->register_content;
+  auto target = ui_->register_content;
   target->setCurrentIndex(target->addWidget(widget));
 }
 
@@ -165,7 +165,7 @@ void MainWindow::closeWidget(QWidget* widget) {
  */
 void MainWindow::initializeOpenPatientContent(bool setFocus) {
   //Remove old layout and child widgets that might be hanging around
-  auto currentStackedWidget = ui->open_content;
+  auto currentStackedWidget = ui_->open_content;
   if (!currentPEPRole) {
     showPatienceWidget(currentStackedWidget, "Not allowed to search for participant data.");
     return;
@@ -216,7 +216,7 @@ void MainWindow::openWidget(QStackedWidget* target, const std::function<void(con
 
 const pep::StudyContext& MainWindow::getCurrentStudyContext() const {
   if (allContexts_->getItems().size() > 1U) {
-    return allContexts_->getItems()[static_cast<unsigned int>(ui->contextComboBox->currentIndex())];
+    return allContexts_->getItems()[static_cast<unsigned int>(ui_->contextComboBox->currentIndex())];
   }
   return *allContexts_->getDefault();
 }
@@ -235,7 +235,7 @@ void MainWindow::handleWidgetMessage(QString message, pep::Severity severity) {
 }
 
 void MainWindow::initializeExportContent() {
-  auto currentStackedWidget = ui->export_content;
+  auto currentStackedWidget = ui_->export_content;
   if (!currentPEPRole) {
     showPatienceWidget(currentStackedWidget, "Not allowed to export data.");
     return;
@@ -257,9 +257,9 @@ void MainWindow::contextComboIndexChanged(int index) {
 
   // Participants in open widgets may not be available in new context
   for (const auto& widget : openedParticipants_) {
-    int index = ui->content_tabs->indexOf(widget);
-    auto tabToRemove = ui->content_tabs->widget(index);
-    ui->content_tabs->removeTab(index);
+    int index = ui_->content_tabs->indexOf(widget);
+    auto tabToRemove = ui_->content_tabs->widget(index);
+    ui_->content_tabs->removeTab(index);
     tabToRemove->deleteLater();
   }
   openedParticipants_.clear();
@@ -273,8 +273,8 @@ void MainWindow::on_participantRegistered() {
 
 void MainWindow::showForToken(QString token) {
   enrollmentToken = token;
-  ui->user->setText(tr("Not connected"));
-  showPatienceWidget(ui->register_content, tr("Connecting to servers..."));
+  ui_->user->setText(tr("Not connected"));
+  showPatienceWidget(ui_->register_content, tr("Connecting to servers..."));
   showMaximized();
 
   pepClient->enrollUser(token.toStdString())
@@ -316,19 +316,19 @@ void MainWindow::showForToken(QString token) {
         //Set UI elements
         for (const auto& context : allContexts_->getItems()) {
           auto id = context.getId();
-          ui->contextComboBox->addItem(QString::fromStdString(id));
+          ui_->contextComboBox->addItem(QString::fromStdString(id));
           if (id == selectId) {
-            ui->contextComboBox->setCurrentIndex(ui->contextComboBox->count() - 1);
+            ui_->contextComboBox->setCurrentIndex(ui_->contextComboBox->count() - 1);
           }
         }
-        ui->user->setText(tr("logged-in-as %1 (%2) for context").arg(user, role));
+        ui_->user->setText(tr("logged-in-as %1 (%2) for context").arg(user, role));
       }
       else {
-        ui->contextComboBox->setVisible(false);
-        ui->user->setText(tr("logged-in-as %1 (%2)").arg(user, role));
+        ui_->contextComboBox->setVisible(false);
+        ui_->user->setText(tr("logged-in-as %1 (%2)").arg(user, role));
       }
 
-      clearActiveWidget(ui->register_content);
+      clearActiveWidget(ui_->register_content);
       updateConnectionStatus();
           }, [this](std::exception_ptr ep) {
             qDebug() << "Exception occured: " << QString::fromStdString(pep::GetExceptionMessage(ep));
@@ -357,7 +357,7 @@ void MainWindow::showPatienceWidget(QStackedWidget* target, const QString& text)
 * \param shortPseudonym Short pseudonym which is the key for the lookup query.
 */
 void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
-  auto currentStackedWidget = ui->open_content;
+  auto currentStackedWidget = ui_->open_content;
   showPatienceWidget(currentStackedWidget, "Searching...");
 
   updateStatus(tr("Searching for short pseudonym %1").arg(QString::fromStdString(shortPseudonym)), pep::Severity::Info);
@@ -393,13 +393,13 @@ void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
 * \param participantIdentifier Participant ID which is the key for the lookup query.
 */
 void MainWindow::showParticipantData(std::string participantIdentifier) {
-  auto currentStackedWidget = ui->register_content;
+  auto currentStackedWidget = ui_->register_content;
   if (!currentPEPRole) {
     showPatienceWidget(currentStackedWidget, "Not allowed to view participant data.");
     return;
   }
 
-  std::array widgets{ ui->register_content, ui->open_content };
+  std::array widgets{ ui_->register_content, ui_->open_content };
 
   for (auto widget : widgets) {
     showPatienceWidget(widget, "Loading...");
@@ -416,19 +416,19 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
   auto checkOpened = openedParticipants_.find(participantSID);
   if (checkOpened != openedParticipants_.end()) {
     //Remove participant that was already opened.
-    int index = ui->content_tabs->indexOf(checkOpened.value());
-    auto tabToRemove = ui->content_tabs->widget(index);
-    ui->content_tabs->removeTab(index);
+    int index = ui_->content_tabs->indexOf(checkOpened.value());
+    auto tabToRemove = ui_->content_tabs->widget(index);
+    ui_->content_tabs->removeTab(index);
     openedParticipants_.remove(participantSID);
     tabToRemove->deleteLater();
   }
 
-  auto newTab = new QStackedWidget(ui->content_tabs);
+  auto newTab = new QStackedWidget(ui_->content_tabs);
   newTab->addWidget(selector);
   openedParticipants_.insert(participantSID, newTab);
 
-  int newIndex = ui->content_tabs->addTab(newTab, participantSID);
-  ui->content_tabs->setCurrentIndex(newIndex);
+  int newIndex = ui_->content_tabs->addTab(newTab, participantSID);
+  ui_->content_tabs->setCurrentIndex(newIndex);
 
   //Clear patienceWidgets
   for (auto widget : widgets) {
@@ -442,7 +442,7 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
 }
 
 void MainWindow::on_lookupFailure(QString reason) {
-  clearActiveWidget(ui->open_content);
+  clearActiveWidget(ui_->open_content);
   MainWindow::updateStatus(reason, pep::Severity::Error);
   ensureFocus(0);
 }
@@ -472,8 +472,8 @@ void MainWindow::selectByPolymorphicPseudonym(pep::PolymorphicPseudonym foundPP)
 }
 
 void MainWindow::on_participantLookupError(QString str, pep::Severity sev) {
-  clearActiveWidget(ui->register_content);
-  clearActiveWidget(ui->open_content);
+  clearActiveWidget(ui_->register_content);
+  clearActiveWidget(ui_->open_content);
   updateStatus(str, sev);
   ensureFocus(0);
 }
@@ -483,7 +483,7 @@ void MainWindow::on_participantLookupError(QString str, pep::Severity sev) {
  * Run when the enroll button is pressed this ensures that the current user has the privilage to enroll a new participant and begins the process.
  */
 void MainWindow::initializeRegisterPatientContent(bool setFocus) {
-  auto currentStackedWidget = ui->register_content;
+  auto currentStackedWidget = ui_->register_content;
 
   auto allow = currentPEPRole.has_value() && currentPEPRole->canRegisterParticipants();
   if (!allow) {
@@ -544,7 +544,7 @@ void MainWindow::applyLanguage(QLocale::Language language) {
   QLocale::setDefault(newLocale);
 
   // Update UI
-  ui->retranslateUi(this);
+  ui_->retranslateUi(this);
   emit translation();
 }
 
@@ -568,8 +568,8 @@ void MainWindow::updateConnectionStatus(bool expired /* = false */) {
   if (expired || !enrollmentToken.isEmpty() // Enrollment expired or initial enrollment failed
     || !accessManagerConnectionStatus.connected || !keyServerConnectionStatus.connected || !storageFacilityConnectionStatus.connected) { //Check server status
     notConnectedWidget = new NotConnectedWidget(accessManagerConnectionStatus, keyServerConnectionStatus,
-      storageFacilityConnectionStatus, ui->root_content);
-    showWidget(ui->root_content, notConnectedWidget);
+      storageFacilityConnectionStatus, ui_->root_content);
+    showWidget(ui_->root_content, notConnectedWidget);
   }
   initializeTabsIfConnected();
 }
@@ -579,7 +579,7 @@ void MainWindow::initializeTabsIfConnected() {
     initializeRegisterPatientContent();
     initializeOpenPatientContent();
     initializeExportContent();
-    ui->content_tabs->setCurrentIndex(0);
+    ui_->content_tabs->setCurrentIndex(0);
   }
 }
 
@@ -614,7 +614,7 @@ void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
     return; // Just wait till the timer fires
   }
 
-  QStatusBar* bar = ui->statusBar;
+  QStatusBar* bar = ui_->statusBar;
   if (statusMessages.empty()) {
     bar->hide();
     statusTimer->stop();
@@ -641,7 +641,7 @@ void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
     // http://lists.qt-project.org/pipermail/interest/2013-October/009482.html
     // Qt doesn't automatically redraw a widget when its CSS class gets updated.
     // This isn't very pretty, but there is no pretty way to deal with this.
-    for (QWidget* widget : std::initializer_list<QWidget*>{ ui->statusBar, statusbarCancelButton }) {
+    for (QWidget* widget : std::initializer_list<QWidget*>{ ui_->statusBar, statusbarCancelButton }) {
       widget->style()->unpolish(widget);
       widget->style()->polish(widget);
       widget->update();
@@ -698,15 +698,15 @@ void MainWindow::clearAndSetWidget(QStackedWidget* contentToClear, QWidget* newA
 }
 
 void MainWindow::on_registerWidgetClosed() {
-  bool needsFocus = (ui->content_tabs->currentIndex() == 1);
-  if (ui->register_content->count() == 0) {
+  bool needsFocus = (ui_->content_tabs->currentIndex() == 1);
+  if (ui_->register_content->count() == 0) {
     initializeRegisterPatientContent(needsFocus);
   }
 }
 
 void MainWindow::on_openWidgetClosed() {
-  bool needsFocus = (ui->content_tabs->currentIndex() == 0);
-  if (ui->open_content->count() == 0) {
+  bool needsFocus = (ui_->content_tabs->currentIndex() == 0);
+  if (ui_->open_content->count() == 0) {
     initializeOpenPatientContent(needsFocus);
   }
 }
@@ -714,7 +714,7 @@ void MainWindow::on_openWidgetClosed() {
 void MainWindow::ensureFocus(int index) {
   switch (index) {
   case 0:
-    if (ui->open_content->currentWidget() == currentSelectorWidget) {
+    if (ui_->open_content->currentWidget() == currentSelectorWidget) {
       currentSelectorWidget->doFocus();
     }
     else {
@@ -722,7 +722,7 @@ void MainWindow::ensureFocus(int index) {
     }
     break;
   case 1:
-    if (ui->register_content->currentWidget() == currentEnrollmentWidget) {
+    if (ui_->register_content->currentWidget() == currentEnrollmentWidget) {
       currentEnrollmentWidget->doFocus();
     }
     else {
@@ -730,7 +730,7 @@ void MainWindow::ensureFocus(int index) {
     }
     break;
   case 2:
-    if (ui->export_content->currentWidget() == currentExportWidget) {
+    if (ui_->export_content->currentWidget() == currentExportWidget) {
       currentExportWidget->doFocus();
     }
     else {
@@ -743,5 +743,5 @@ void MainWindow::ensureFocus(int index) {
 }
 
 void MainWindow::changeActiveTab(int index) {
-  ui->content_tabs->setCurrentIndex(index);
+  ui_->content_tabs->setCurrentIndex(index);
 }

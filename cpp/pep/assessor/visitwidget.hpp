@@ -50,7 +50,7 @@ signals:
   void locateBartender();
 
 private:
-  Ui::VisitWidget *ui;
+  Ui::VisitWidget *ui_;
   ButtonBar* print_buttons;
   QPushButton* print_stickers_button; 
   QPushButton* print_oneSticker_button; 

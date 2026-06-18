@@ -49,5 +49,5 @@ private:
   void on_updateStarted(std::exception_ptr error);
 
 private:
-  Ui::LoginWidget* ui;
+  Ui::LoginWidget* ui_;
 };

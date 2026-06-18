@@ -145,7 +145,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      const pep::StudyContext& studyContext,
                                      const VisitCaptions* visitCaptions,
                                      pep::UserRole role)
-  : QWidget(parent), pepClient(client), ui(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), allContexts_(allContexts), studyContext_(studyContext), currentPEPRole(role), projectName_(branding.getProjectName()), spareStickerCount_(spareStickerCount), visitCaptions_(visitCaptions) {
+  : QWidget(parent), pepClient(client), ui_(new Ui::ParticipantWidget), mainWindow(parent), globalConfig(globalConfiguration), allContexts_(allContexts), studyContext_(studyContext), currentPEPRole(role), projectName_(branding.getProjectName()), spareStickerCount_(spareStickerCount), visitCaptions_(visitCaptions) {
   baseUrl = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
   stickerFilePath = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
   bartenderPath = ReadConfiguredBartenderPath(configuration);
@@ -156,22 +156,22 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
 
   QObject::connect(this, &ParticipantWidget::participantDataReceived, this, &ParticipantWidget::onParticipantDataReceived);
 
-  ui->setupUi(this);
-  ui->retranslateUi(this);
+  ui_->setupUi(this);
+  ui_->retranslateUi(this);
 
   auto hasDevice = false;
 
   for (const auto& deviceDefinition : globalConfig.getDevices()) {
     auto deviceWidget = new DeviceWidget(deviceDefinition, this);
     deviceWidgets_.push_back(deviceWidget);
-    ui->verticalLayout_devices->addWidget(deviceWidget);
+    ui_->verticalLayout_devices->addWidget(deviceWidget);
 
     QObject::connect(deviceWidget, &DeviceWidget::deviceDeregistered, this, &ParticipantWidget::updateDevice);
     QObject::connect(deviceWidget, &DeviceWidget::deviceRegistered, this, &ParticipantWidget::updateDevice);
 
     auto historyWidget = new DeviceHistoryWidget(deviceDefinition, this);
     deviceHistoryWidgets_.push_back(historyWidget);
-    ui->verticalLayout_deviceHistories->addWidget(historyWidget);
+    ui_->verticalLayout_deviceHistories->addWidget(historyWidget);
 
     QObject::connect(historyWidget, &DeviceHistoryWidget::itemActivated, this, &ParticipantWidget::editDeviceHistoryEntry);
     if (studyContext_.matches(deviceDefinition.studyContext)) {
@@ -184,38 +184,38 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
   }
 
   if (!hasDevice) {
-    ui->devices_header->setVisible(false);
-    ui->verticalSpacer_2->changeSize(0, 0);
-    ui->tabWidget_left->removeTab(1);
+    ui_->devices_header->setVisible(false);
+    ui_->verticalSpacer_2->changeSize(0, 0);
+    ui_->tabWidget_left->removeTab(1);
   }
 
   //initializes a participant button bar
   participant_buttons = new ButtonBar(this);
-  ui->participant_buttonBar_layout->addWidget(participant_buttons);
+  ui_->participant_buttonBar_layout->addWidget(participant_buttons);
 
   edit_participant_button = participant_buttons->addButton(tr("edit-participant"), std::bind(&ParticipantWidget::openEditParticipant, this),  currentPEPRole.canEditParticipantPersonalia());
   release_participant_button = participant_buttons->addButton(tr("release-participant"), std::bind(&ParticipantWidget::releaseParticipant, this),  currentPEPRole.canSetParticipantContext());
 
   //initializes a ops castor button bar
   castor_buttons = new ButtonBar(this);
-  ui->ops_castorButtonBar_layout->addWidget(castor_buttons);
+  ui_->ops_castorButtonBar_layout->addWidget(castor_buttons);
 
   //initializes a print button bar
   print_buttons = new ButtonBar(this);
-  ui->print_buttonBar_layout->addWidget(print_buttons);
+  ui_->print_buttonBar_layout->addWidget(print_buttons);
 
   print_stickers_button = print_buttons->addButton(tr("print-stickers"), std::bind(&ParticipantWidget::printAllParticipantStickers, this), currentPEPRole.canPrintStickers());
   print_oneSticker_button = print_buttons->addButton(tr("print-one-sticker"), std::bind(&ParticipantWidget::printSingleParticipantSticker, this), currentPEPRole.canPrintStickers());
   print_buttons->addButton(tr("locate-bartender"), std::bind(&ParticipantWidget::locateBartender, this), currentPEPRole.canPrintStickers());
 
-  QObject::connect(ui->tabWidget_right, SIGNAL(currentChanged(int)), this, SLOT(setCurrentVisitNumber(int))); // Track visit number for printing
+  QObject::connect(ui_->tabWidget_right, SIGNAL(currentChanged(int)), this, SLOT(setCurrentVisitNumber(int))); // Track visit number for printing
 
   auto numberOfVisits = globalConfig.getNumberOfVisits(studyContext_.getIdIfNonDefault());
   for (auto visitIndex = 0U; visitIndex < numberOfVisits; ++visitIndex) {
     auto visitWidget = new VisitWidget(globalConfig.getAssessors(), currentPEPRole, studyContext_, this);
     visitWidgets_.push_back(visitWidget);
     auto caption = getVisitCaption(visitIndex + 1).replace('&', "&&"); // Escape ampersands to prevent them from announcing a shortcut key / hotkey / mnemonic. See e.g. https://stackoverflow.com/a/16666135
-    ui->tabWidget_right->addTab(visitWidget, caption);
+    ui_->tabWidget_right->addTab(visitWidget, caption);
 
     if (currentPEPRole.canPrintStickers()) {
       QObject::connect(visitWidget, &VisitWidget::printAllStickers, this, &ParticipantWidget::printAllVisitStickers);
@@ -241,15 +241,15 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
     device->setEnabled(currentPEPRole.canManageDevices());
   }
   if (currentPEPRole.canSeeParticipantPersonalia()) {
-    ui->info_header->show();
-    ui->info1->show();
-    ui->info2->show();
-    ui->info_spacer->changeSize(20, 20);
+    ui_->info_header->show();
+    ui_->info1->show();
+    ui_->info2->show();
+    ui_->info_spacer->changeSize(20, 20);
   } else {
-    ui->info_header->hide();
-    ui->info1->hide();
-    ui->info2->hide();
-    ui->info_spacer->changeSize(0, 0);
+    ui_->info_header->hide();
+    ui_->info1->hide();
+    ui_->info2->hide();
+    ui_->info_spacer->changeSize(0, 0);
   }
 
 
@@ -339,8 +339,8 @@ void ParticipantWidget::onParticipantDataReceived(ParticipantData data, std::str
 
 void ParticipantWidget::setReadOnly(bool readOnly) {
   // Remember scroll state so that we can restore it at the end of this method
-  auto vertical = ui->scrollArea->verticalScrollBar()->value();
-  auto horizontal = ui->scrollArea->horizontalScrollBar()->value();
+  auto vertical = ui_->scrollArea->verticalScrollBar()->value();
+  auto horizontal = ui_->scrollArea->horizontalScrollBar()->value();
 
   this->readOnly = readOnly;
 
@@ -352,14 +352,14 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
   release_participant_button->setEnabled(currentPEPRole.canSetParticipantContext() && (participantStudyContexts.getItems().size() > 1) && !readOnly);
 
   // Restore scroll state that may have been updated by disabling our button(s): see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2494#note_40659
-  ui->scrollArea->verticalScrollBar()->setValue(vertical);
-  ui->scrollArea->horizontalScrollBar()->setValue(horizontal);
+  ui_->scrollArea->verticalScrollBar()->setValue(vertical);
+  ui_->scrollArea->horizontalScrollBar()->setValue(horizontal);
 }
 
 /*! \brief Update device in pep infrastructure
  *
  * Once a user has changed the participant device through the ParticipantWidget::manageDevices() function the change needs to be sent to the pep infrastructure.
- * This function mangages changing the device ID in the infrastructure. This function is tied to a ui button defined in participantwidget.ui
+ * This function mangages changing the device ID in the infrastructure. This function is tied to a ui_ button defined in participantwidget.ui_
  */
 void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   std::string serial = deviceId.toStdString();
@@ -825,7 +825,7 @@ void ParticipantWidget::closeParticipant() {
  * At time of writing (1-16-2018) only one translation call is made and this happens on construction.
  */
 void ParticipantWidget::onTranslation() {
-  ui->retranslateUi(this);
+  ui_->retranslateUi(this);
   this->processData();
 }
 
@@ -834,27 +834,27 @@ void ParticipantWidget::onTranslation() {
  * This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
  */
 void ParticipantWidget::processData() {
-  ui->participant->setText(tr("participant '%1'").arg(participantSID));
+  ui_->participant->setText(tr("participant '%1'").arg(participantSID));
 
   if (!participantStudyContexts.contains(studyContext_)) {
-    ui->label_unavailable->setText(tr("This participant is unavailable in the current (%1) context.").arg(QString::fromStdString(studyContext_.getId())));
-    ui->state->setCurrentWidget(ui->acquire);
+    ui_->label_unavailable->setText(tr("This participant is unavailable in the current (%1) context.").arg(QString::fromStdString(studyContext_.getId())));
+    ui_->state->setCurrentWidget(ui_->acquire);
     return;
   }
 
   if (currentPEPRole.canSeeParticipantPersonalia()) {
     if (participantData.personalia_) {
-      ui->info1->setText(QString::fromStdString(participantData.personalia_->getFullName()));
-      ui->info2->setText(QString::fromStdString(participantData.personalia_->getDateOfBirth()));
+      ui_->info1->setText(QString::fromStdString(participantData.personalia_->getFullName()));
+      ui_->info2->setText(QString::fromStdString(participantData.personalia_->getDateOfBirth()));
     }
     else {
-      ui->info1->setText(QString());
-      ui->info2->setText(QString());
+      ui_->info1->setText(QString());
+      ui_->info2->setText(QString());
     }
     this->setReadOnly(false);
   }
 
-  ui->infoIsTestParticipant->setVisible(participantData.isTestParticipant_);
+  ui_->infoIsTestParticipant->setVisible(participantData.isTestParticipant_);
 
   release_participant_button->setEnabled(currentPEPRole.canSetParticipantContext() && participantStudyContexts.getItems().size() > 1);
 
@@ -882,7 +882,7 @@ void ParticipantWidget::processData() {
   if (assessorsForContext != participantData.visitAssessors_.cend()) {
     visitAssessors = &assessorsForContext->second;
   }
-  //Fill in ui elements with the appropriate short pseudonyms
+  //Fill in ui_ elements with the appropriate short pseudonyms
   for (auto i = 0U; i < visitWidgets_.size(); i++) {
     auto widget = visitWidgets_[i];
     initializeShortPseudonymsUi(i + 1,
@@ -901,11 +901,11 @@ void ParticipantWidget::processData() {
     widget->setCurrentAssessor(assessorId);
   }
   initializeShortPseudonymsUi(std::nullopt,
-    *ui->ops_header, *castor_buttons, *ui->verticalSpacer_3,
-    *ui->pseudo_header, *ui->pseudo_participant,
+    *ui_->ops_header, *castor_buttons, *ui_->verticalSpacer_3,
+    *ui_->pseudo_header, *ui_->pseudo_participant,
     *print_stickers_button, *print_oneSticker_button);
 
-  ui->state->setCurrentWidget(ui->editor);
+  ui_->state->setCurrentWidget(ui_->editor);
 }
 
 void ParticipantWidget::acquireParticipant() {
@@ -1310,7 +1310,7 @@ void ParticipantWidget::setCurrentVisitNumber(int visitNumber) {
  */
 
 ParticipantWidget::~ParticipantWidget() {
-  delete ui;
+  delete ui_;
 }
 
 const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudonymDefinition(const std::string& shortPseudonymTag) const {

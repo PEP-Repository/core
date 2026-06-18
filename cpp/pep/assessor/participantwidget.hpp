@@ -29,7 +29,7 @@ class ParticipantWidget : public QWidget {
   static const QString NO_PARTICIPANT_SID;
 
   std::shared_ptr<pep::Client> pepClient;
-  Ui::ParticipantWidget* ui;
+  Ui::ParticipantWidget* ui_;
   MainWindow* mainWindow;
 
   ButtonBar* castor_buttons;

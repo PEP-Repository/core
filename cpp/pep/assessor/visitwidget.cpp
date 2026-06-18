@@ -10,23 +10,23 @@
 
 VisitWidget::VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, pep::UserRole& currentPEPRole, pep::StudyContext& studyContext, QWidget *parent) :
   QWidget(parent),
-  ui(new Ui::VisitWidget),
+  ui_(new Ui::VisitWidget),
   assessors(assessors),
   currentPEPRole(currentPEPRole),
   studyContext(studyContext)
 {
-  ui->setupUi(this);
-  ui->retranslateUi(this);
+  ui_->setupUi(this);
+  ui_->retranslateUi(this);
 
-  QObject::connect(ui->edit_assessor, &QPushButton::clicked, this, &VisitWidget::openEditAssessor);
+  QObject::connect(ui_->edit_assessor, &QPushButton::clicked, this, &VisitWidget::openEditAssessor);
 
   //initializes a data castor button bar
   data_castor_buttons = new ButtonBar(this);
-  ui->data_castorButtonBar_layout->addWidget(data_castor_buttons);
+  ui_->data_castorButtonBar_layout->addWidget(data_castor_buttons);
 
   //initializes a print button bar and adds buttons
   print_buttons = new ButtonBar(this);
-  ui->print_buttonBar_layout->addWidget(print_buttons);
+  ui_->print_buttonBar_layout->addWidget(print_buttons);
 
   print_buttons->addButton(tr("print-summary"), std::bind(&VisitWidget::printSummary, this), true);
   print_stickers_button = print_buttons->addButton(tr("print-stickers"), std::bind(&VisitWidget::printAllStickers, this), true);
@@ -36,7 +36,7 @@ VisitWidget::VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, 
 
 VisitWidget::~VisitWidget()
 {
-  delete ui;
+  delete ui_;
 }
 
 void VisitWidget::disablePrinting() {
@@ -44,11 +44,11 @@ void VisitWidget::disablePrinting() {
 }
 
 void VisitWidget::disableAssessorSelection() {
-  ui->edit_assessor->setEnabled(false);
+  ui_->edit_assessor->setEnabled(false);
 }
 
 QLabel& VisitWidget::getPseudonymButtonCaption() {
-  return *ui->data_gathering_header;
+  return *ui_->data_gathering_header;
 }
 
 ButtonBar& VisitWidget::getPseudonymButtonBar() {
@@ -56,27 +56,27 @@ ButtonBar& VisitWidget::getPseudonymButtonBar() {
 }
 
 QSpacerItem& VisitWidget::getPseudonymButtonSpacer() {
-  return *ui->verticalSpacer_1;
+  return *ui_->verticalSpacer_1;
 }
 
 QLabel& VisitWidget::getPseudonymCaption() {
-  return *ui->pseudonyms_header;
+  return *ui_->pseudonyms_header;
 }
 
 QLabel& VisitWidget::getPseudonymLabel() {
-  return *ui->pseudonymLabel;
+  return *ui_->pseudonymLabel;
 }
 
 QSpacerItem& VisitWidget::getPseudonymSpacerForOtherVisits() {
-  return *ui->verticalSpacer_pseudonyms_other_visits;
+  return *ui_->verticalSpacer_pseudonyms_other_visits;
 }
 
 QLabel& VisitWidget::getPseudonymCaptionForOtherVisits() {
-  return *ui->pseudonyms_header_other_visits;
+  return *ui_->pseudonyms_header_other_visits;
 }
 
 QLabel& VisitWidget::getPseudonymLabelForOtherVisits() {
-  return *ui->pseudonymLabel_other_visits;
+  return *ui_->pseudonymLabel_other_visits;
 }
 
 QPushButton& VisitWidget::getPrintAllButton() {
@@ -93,18 +93,18 @@ void VisitWidget::setCurrentAssessor(const std::optional<unsigned>& id) {
     auto position = std::find_if(assessors.cbegin(), assessors.cend(),
                                                [&id](const pep::AssessorDefinition &candidate) { return candidate.id == id; });
     if (position == assessors.cend()) {
-      ui->currentAssessorLabel->setText(tr("<assessor %1>").arg(QString::number(*id)));
+      ui_->currentAssessorLabel->setText(tr("<assessor %1>").arg(QString::number(*id)));
     }
     else {
       size_t index = static_cast<size_t>(position - assessors.cbegin());
-      ui->currentAssessorLabel->setText(
+      ui_->currentAssessorLabel->setText(
         QString::fromStdString(assessors.at(index).name));
     }
   }
   else
-    ui->currentAssessorLabel->setText(tr("<none/unspecified>"));
+    ui_->currentAssessorLabel->setText(tr("<none/unspecified>"));
 
-  //ui->retranslateUi(this);
+  //ui_->retranslateUi(this);
 }
 
 void VisitWidget::openEditAssessor() {
