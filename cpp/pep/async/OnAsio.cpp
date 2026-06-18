@@ -17,12 +17,11 @@ class AsioScheduler : public rxcpp::schedulers::scheduler_interface {
 private:
   class Worker;
 
-  boost::asio::io_context& ioContext_;
   std::shared_ptr<Worker> wi_;
 
  public:
   AsioScheduler(boost::asio::io_context& io_context)
-    : ioContext_(io_context), wi_(std::make_shared<Worker>(io_context)) {}
+    : wi_(std::make_shared<Worker>(io_context)) {}
   AsioScheduler(const AsioScheduler&) = delete;
 
   clock_type::time_point now() const override {
