@@ -28,13 +28,13 @@
     {
       "bug_type": "USE_AFTER_DELETE",
       "file": "cpp/pep/castor/RepeatingDataInstance.cpp",
-      "procedure_name": "pep::castor::RepeatingDataInstance::getRepeatingDataPoints",
+      "procedure_name": "getRepeatingDataPoints",
       "comment": "FP: shared_ptr copy in DataPoint::RetrieveForParent trace"
     },
     {
       "bug_type": "USE_AFTER_DELETE",
       "file": "cpp/pep/castor/SurveyPackageInstance.cpp",
-      "procedure_name": "pep::castor::SurveyPackageInstance::getSurveyDataPoints",
+      "procedure_name": "getSurveyDataPoints",
       "comment": "FP: shared_ptr copy in DataPoint::RetrieveForParent trace"
     }
   ]
