@@ -23,7 +23,7 @@ namespace pep {
 
 namespace {
 
-std::atomic<bool> warningLogged = false;
+[[maybe_unused]] std::atomic<bool> warningLogged = false;
 
 }
 
