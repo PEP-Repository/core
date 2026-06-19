@@ -101,10 +101,7 @@ public:
   }
 
   //! \return The CastorConnection for this object
-  std::shared_ptr<CastorConnection> getConnection() const override {
-    // @infer-ignore USE_AFTER_DELETE
-    return mParent->getConnection();
-  }
+  std::shared_ptr<CastorConnection> getConnection() const override { return mParent->getConnection(); }
 
 protected:
   static std::string GetParentRelativeEndpoint(std::shared_ptr<TParent> parent, const std::string& relative) {
