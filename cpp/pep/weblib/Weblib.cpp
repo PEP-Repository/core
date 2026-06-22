@@ -62,7 +62,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Set up event loop
     auto io_context = std::make_shared<boost::asio::io_context>();
     workGuard_.emplace(make_work_guard(*io_context));
-    asioWorker_.emplace(observe_on_asio(*io_context));
+    asioWorker_.emplace(ObserveOnAsio(*io_context));
     emscriptenMainWorker_.emplace(observe_on_emscripten_main_thread());
 
     clientConfig_ = Configuration::FromFile("ClientConfig.json");
@@ -261,7 +261,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .columns = RangeToVector(SafeIndexInto(columnGroup.columns.mIndices, access.columns)),
+                  .columns = RangeToVector(SafeIndexInto(columnGroup.columns.indices_, access.columns)),
               };
             })
           );

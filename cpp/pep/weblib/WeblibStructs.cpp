@@ -82,7 +82,7 @@ PEP_BINDINGS_END
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
   return RangeToCollection<decltype(partialMetadataView())>(
-    inner->mMetadata.extra()
+    inner->metadata_.extra()
     | views::transform([](const auto& entry) {
       const auto& [key, value] = entry;
       std::optional<val> view;
@@ -96,20 +96,20 @@ std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataVi
 }
 
 std::string CellEntry::id() const {
-  return boost::algorithm::hex(inner->mId);
+  return boost::algorithm::hex(inner->id_);
 }
 
 std::string CellEntry::subjectLocalPseudonym() const {
-  assert(inner->mAccessGroupPseudonym && "mAccessGroupPseudonym not set");
-  return inner->mAccessGroupPseudonym->text();
+  assert(inner->accessGroupPseudonym_ && "accessGroupPseudonym_ not set");
+  return inner->accessGroupPseudonym_->text();
 }
 
 std::string CellEntry::subjectEncryptedOriginId() const {
-  return inner->mLocalPseudonyms->mPolymorphic.text();
+  return inner->localPseudonyms_->polymorphic_.text();
 }
 
-const std::string& CellEntry::column() const { return inner->mColumn; }
-double CellEntry::fileSize() const { return static_cast<double>(inner->mFileSize); }
+const std::string& CellEntry::column() const { return inner->column_; }
+double CellEntry::fileSize() const { return static_cast<double>(inner->fileSize_); }
 
 CellData::CellData(const CellEntry* entry, val contentReadableStream)
       : entry{entry}, contentReadableStream(std::move(contentReadableStream)) {}

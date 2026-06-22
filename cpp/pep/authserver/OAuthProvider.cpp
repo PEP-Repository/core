@@ -165,8 +165,8 @@ OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     if (!spoofKeyFile) {
       throw std::runtime_error("Path to SpoofKeyFile not configured");
     }
-    spoofKey = ReadFile(*spoofKeyFile);
-    boost::trim(spoofKey);
+    spoofKey_ = ReadFile(*spoofKeyFile);
+    boost::trim(spoofKey_);
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error while reading spoofkey file: " << e.what();
@@ -206,7 +206,7 @@ void OAuthProvider::Parameters::check() const {
     throw std::runtime_error("io_context must be set");
   }
   #ifndef ENABLE_OAUTH_TEST_USERS
-  if(spoofKey.empty()) {
+  if(spoofKey_.empty()) {
     throw std::runtime_error("spoofkey must be set");
   }
   #endif
@@ -306,7 +306,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     alternativeUidsString = (*it).value;
   }
 #else
-  if(!request.hasHeader(SPOOF_CHECK_HEADER) || !const_time::IsEqual(request.header(SPOOF_CHECK_HEADER), spoofKey)) {
+  if(!request.hasHeader(SPOOF_CHECK_HEADER) || !const_time::IsEqual(request.header(SPOOF_CHECK_HEADER), spoofKey_)) {
     PEP_LOG(LogTag, Severity::Critical) << "Spoofkey was not correctly set on the request. Looks like someone has direct access to the authserver, without being authenticated first. Remote IP: " << remoteIp;
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
