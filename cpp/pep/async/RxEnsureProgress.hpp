@@ -100,7 +100,7 @@ RxEnsureProgress(boost::asio::io_context& io_context, const std::string& descrip
 /// \code
 ///   myObs.op(RxRecordActivity(monitor, "barring the foo"))
 /// \endcode
-struct RxRecordActivity {
+class RxRecordActivity {
 private:
   std::shared_ptr<ActivityMonitor> monitor_;
   std::string description_;

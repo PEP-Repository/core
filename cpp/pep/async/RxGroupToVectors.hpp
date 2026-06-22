@@ -31,7 +31,7 @@ namespace pep {
 ///     });
 /// \endcode
 template <typename TGetKey>
-struct RxGroupToVectors {
+class RxGroupToVectors {
 private:
   template <typename TItem>
   using KeyFinder = typename detail::RxToUnorderedMapOperator<TGetKey>::template KeyFinder<TItem>;

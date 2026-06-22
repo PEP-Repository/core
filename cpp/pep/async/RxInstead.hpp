@@ -11,7 +11,7 @@ namespace detail {
 
 /// Implementor class for RxInstead<> function (below).
 template <typename T>
-struct RxInsteadOperator {
+class RxInsteadOperator {
 private:
   T replacement_;
 

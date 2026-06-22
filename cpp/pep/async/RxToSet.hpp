@@ -11,7 +11,7 @@ namespace pep {
 /// \code
 ///   myObservable.op(RxToSet()).
 /// \endcode
-struct RxToSet {
+class RxToSet {
 private:
   bool throwOnDuplicate_;
 

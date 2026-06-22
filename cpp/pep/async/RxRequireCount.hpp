@@ -13,7 +13,7 @@ namespace pep {
 /// \code
 ///   myObs.op(RxRequireCount(2U, 46U))
 /// \endcode
-struct RxRequireCount {
+class RxRequireCount {
 private:
   size_t min_;
   size_t max_;
@@ -48,12 +48,14 @@ public:
 /// \code
 ///   myObs.op(RxRequireNonEmpty())
 /// \endcode
-struct RxRequireNonEmpty : public RxRequireCount {
+class RxRequireNonEmpty : public RxRequireCount {
+public:
   RxRequireNonEmpty() noexcept : RxRequireCount(1U, std::numeric_limits<size_t>::max()) {}
 };
 
 /// Makes sure you get one and only one item back from an RX call.
-struct RxGetOne : public RxRequireCount {
+class RxGetOne : public RxRequireCount {
+public:
   /// \param errorText Custom text to be displayed in the errors when no of multiple items are found.
   RxGetOne(std::optional<std::string> errorText = std::nullopt) noexcept : RxRequireCount(1U, 1U, std::move(errorText)) {}
 };

@@ -99,8 +99,8 @@ TEST(RxCache, doesNotCacheErrors)
   // Exception class that contains a number that we'll increment for every time it's raised
   struct NumberedError : public std::exception
   {
-    const int number_;
-    explicit NumberedError(int number) : number_(number) {}
+    const int number;
+    explicit NumberedError(int number) : number(number) {}
   };
   auto errnum = std::make_shared<int>(0);
 
@@ -119,7 +119,7 @@ TEST(RxCache, doesNotCacheErrors)
       std::rethrow_exception(ep);
     }
     catch (const NumberedError& expected) {
-      ASSERT_TRUE(expected.number_ == 1) << "Subscription 1 should produce exception number 1";
+      ASSERT_TRUE(expected.number == 1) << "Subscription 1 should produce exception number 1";
     }
     catch (...) { ASSERT_TRUE(false) << "Subscription 1 should have raised exception of type NumberedError"; }
   },
@@ -135,7 +135,7 @@ TEST(RxCache, doesNotCacheErrors)
       std::rethrow_exception(ep);
     }
     catch (const NumberedError& expected) {
-      ASSERT_TRUE(expected.number_ == 2) << "Subscription 2 should produce exception number 2";
+      ASSERT_TRUE(expected.number == 2) << "Subscription 2 should produce exception number 2";
     }
     catch (...) { ASSERT_TRUE(false) << "Subscription 2 should have raised exception of type NumberedError"; }
   },

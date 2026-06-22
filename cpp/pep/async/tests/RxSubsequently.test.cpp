@@ -9,8 +9,8 @@
 namespace {
 
 struct Result {
-  unsigned value_;
-  unsigned recursion_;
+  unsigned value;
+  unsigned recursion;
 };
 
 using Inner = rxcpp::observable<Result>;
@@ -47,8 +47,8 @@ Inner MakeInner(std::shared_ptr<unsigned> counter, InstanceCountedCallback andIn
     thread_local unsigned recursion = 0U;
 
     Result result{
-      .value_ = (*counter)--,
-      .recursion_ = recursion++,
+      .value = (*counter)--,
+      .recursion = recursion++,
     };
     PEP_DEFER(--recursion);
 
@@ -73,8 +73,8 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
     })
     .concat()
     .subscribe([&recursionDetected, &produced](Result entry) {
-        produced.emplace_back(entry.value_);
-        if (entry.recursion_ != 0U) {
+        produced.emplace_back(entry.value);
+        if (entry.recursion != 0U) {
           recursionDetected = true;
         }
       });
