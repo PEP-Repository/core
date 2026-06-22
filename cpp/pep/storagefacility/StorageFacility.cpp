@@ -391,10 +391,10 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 
   struct StreamContext {
     // Context used earlier
-    decltype(time) start_time;
+    decltype(time) startTime;
   };
   auto ctx = std::make_shared<StreamContext>();
-  ctx->start_time = time;
+  ctx->startTime = time;
 
   // Rerandomize encrypted polymorphic keys and add the encrypted
   // SF identifiers.
@@ -438,7 +438,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
           std::make_shared<std::string>(Serialization::ToString(msg))));
       }
 
-      server->metrics_->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
+      server->metrics_->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->startTime).count()); // in seconds
       return RxIterate(std::move(response));
       });
 }
@@ -675,7 +675,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       std::vector<std::string> ids;
       std::vector<std::string> errors;
       std::vector<uint64_t> fileSizes;
-      decltype(time) start_time;
+      decltype(time) startTime;
     };
     auto ctx = std::make_shared<StreamContext>();
 
@@ -683,7 +683,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     ctx->pseudonyms.resize(request->entries_.size());
     ctx->ids.resize(request->entries_.size());
     ctx->fileSizes.resize(request->entries_.size());
-    ctx->start_time = time;
+    ctx->startTime = time;
 
     std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> pseudonymLut;
     for (size_t i = 0; i < request->entries_.size(); i++) {
@@ -806,7 +806,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
               subscriber.on_next(rxcpp::observable<>::from(
                 MakeSharedCopy(getResponse(time, ctx->ids, hasher->digest()))));
-              server->metrics_->dataStore_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count()); // in seconds
+              server->metrics_->dataStore_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->startTime).count()); // in seconds
               subscriber.on_completed();
             });
       });
@@ -1058,7 +1058,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   size_t entryCount{};
   uint64_t totalBytes{}, rollingBytes{};
-  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns_);
+  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
       assert(bytes % blockSize == 0U);
@@ -1066,9 +1066,9 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
     };
 
   return messaging::BatchSingleMessage(DataSizeResponse{
-    .blockSize_ = dataSizeResolution_,
-    .totalBlocks_ = countBlocks(totalBytes),
-    .rollingBlocks_ = countBlocks(rollingBytes),
+    .blockSize = dataSizeResolution_,
+    .totalBlocks = countBlocks(totalBytes),
+    .rollingBlocks = countBlocks(rollingBytes),
     });
 }
 

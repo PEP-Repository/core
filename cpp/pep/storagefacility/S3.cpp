@@ -67,8 +67,8 @@ namespace pep::s3
       struct Context {
         const HttpRequest& request;
         const Credentials& credentials;
-        const std::vector<std::string>& sign_headers;
-        std::string signed_headers = ""; // e.g. "host;range;x-amz-date"
+        const std::vector<std::string>& signHeaders;
+        std::string signedHeaders = ""; // e.g. "host;range;x-amz-date"
       };
 
       std::string ComputeAuthorizationHeader(Context& c);
@@ -115,7 +115,7 @@ namespace pep::s3
             << "Credential="
               << c.credentials.accessKey
               << "/" << GetScope(c) << ", "
-            << "SignedHeaders=" << c.signed_headers << ", "
+            << "SignedHeaders=" << c.signedHeaders << ", "
             << "Signature=" << signature;
 
         return std::move(ss).str();
@@ -190,7 +190,7 @@ namespace pep::s3
             << c.request.uri().encoded_path() << "\n"
             << ComputeCanonicalQuery(c) << "\n"
             << ComputeCanonicalHeaders(c) << "\n" // sets c.signed_headers
-            << c.signed_headers << "\n"
+            << c.signedHeaders << "\n"
             << c.request.header("X-Amz-Content-Sha256");
 
         return std::move(ss).str();
@@ -225,12 +225,12 @@ namespace pep::s3
         const std::map<std::string, std::string, CaseInsensitiveCompare>& headers(c.request.getHeaders());
         std::vector<std::string> keys;
 
-        if(c.sign_headers.empty()) {
+        if(c.signHeaders.empty()) {
           // sign all headers
           for (const auto& [key, value] : headers)
             keys.push_back(key);
         } else
-          keys = c.sign_headers;
+          keys = c.signHeaders;
 
         std::sort(keys.begin(), keys.end());
 
@@ -247,7 +247,7 @@ namespace pep::s3
           ss_signed_headers << key_lower_case;
         }
 
-        c.signed_headers = std::move(ss_signed_headers).str();
+        c.signedHeaders = std::move(ss_signed_headers).str();
 
         return std::move(ss_result).str();
       }

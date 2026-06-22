@@ -21,7 +21,7 @@
 #include <numeric>
 #include <utility>
 
-// The schema of the database is defined in the ts_create_db() function.
+// The schema of the database is defined in the TsCreateDb() function.
 // For each table, we have a struct <TableName>Record that represents a
 // row in that table.
 
@@ -426,7 +426,7 @@ struct SessionVerifiersRecord {
 };
 
 // This function defines the database scheme used.
-auto ts_create_db(const std::string& path) {
+auto TsCreateDb(const std::string& path) {
   // BEWARE!  Changing a column below causes the whole table to be dropped!
   // by the call to "sync_storage" below.  Adding and removing columns,
   // on the other hand, should be fine.  For more info, see:
@@ -566,7 +566,7 @@ auto ts_create_db(const std::string& path) {
 }
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
-struct TranscryptorStorageBackend : database::Storage<ts_create_db> {
+struct TranscryptorStorageBackend : database::Storage<TsCreateDb> {
   using Storage::Storage;
 };
 

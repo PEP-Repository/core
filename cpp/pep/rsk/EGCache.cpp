@@ -292,11 +292,11 @@ private:
   // ElgamalEncryption::rekey operations.
   struct RekeyKey {
     RekeyKey(const CurveScalar& k, const CurvePoint& y)
-      : k_(k), y_(y) { }
+      : k(k), y(y) { }
     bool operator== (const RekeyKey& p) const;
 
-    CurveScalar k_;
-    CurvePoint y_;
+    CurveScalar k;
+    CurvePoint y;
 
     struct hash { size_t operator()(const pep::EGCacheImp::RekeyKey& k) const; };
   };
@@ -309,13 +309,13 @@ private:
             const ElgamalTranslationKey& reshuffle) const;
     ElgamalEncryption rk(const CurvePoint& b, const CurvePoint& c) const;
 
-    CurveScalar kInv_;
-    CurvePoint kY_;
-    std::shared_ptr<CurvePoint::ScalarMultTable> yTable_;
+    CurveScalar kInv;
+    CurvePoint kY;
+    std::shared_ptr<CurvePoint::ScalarMultTable> yTable;
 
     // returns whether the value was successfully initialized
     inline explicit operator bool() const {
-      return yTable_ ? true : false;
+      return yTable ? true : false;
     }
   };
 
@@ -404,9 +404,9 @@ ElgamalEncryption EGCacheImp::rsk(
 
   if (!opt_it) {
     // fall back to uncached rsk
-    return ElgamalEncryption(eg.b, eg.c, key.y_)
+    return ElgamalEncryption(eg.b, eg.c, key.y)
       .rerandomize()
-      .reshuffleRekey(reshuffle, key.k_);
+      .reshuffleRekey(reshuffle, key.k);
   }
 
   return (*opt_it)->second.getValue().rsk(eg.b, eg.c, reshuffle);
@@ -422,9 +422,9 @@ ElgamalEncryption EGCacheImp::rk(
 
   if (!opt_it) {
     // fall back to uncached rk
-    return ElgamalEncryption(eg.b, eg.c, key.y_)
+    return ElgamalEncryption(eg.b, eg.c, key.y)
       .rerandomize()
-      .rekey(key.k_);
+      .rekey(key.k);
   }
 
   return (*opt_it)->second.getValue().rk(eg.b, eg.c);
@@ -447,7 +447,7 @@ ElgamalEncryption EGCacheImp::rerandomize(
 }
 
 bool EGCacheImp::RekeyKey::operator== (const EGCacheImp::RekeyKey& k) const {
-  return k.k_ == k_ && k.y_ == y_;
+  return k.k == this->k && k.y == this->y;
 }
 
 ElgamalEncryption EGCacheImp::RekeyValue::rk(
@@ -455,9 +455,9 @@ ElgamalEncryption EGCacheImp::RekeyValue::rk(
     const CurvePoint& c) const {
   const auto r = CurveScalar::Random();
   return {
-    kInv_ * (b + (r * CurvePoint::Base)),
-    c + yTable_->mult(r),
-    kY_,
+    kInv * (b + (r * CurvePoint::Base)),
+    c + yTable->mult(r),
+    kY,
   };
 }
 
@@ -467,30 +467,30 @@ ElgamalEncryption EGCacheImp::RekeyValue::rsk(
     const ElgamalTranslationKey& reshuffle) const {
   const auto r = CurveScalar::Random();
   return {
-    reshuffle * kInv_ * (b + (r * CurvePoint::Base)),
-    reshuffle * (c + yTable_->mult(r)),
-    kY_,
+    reshuffle * kInv * (b + (r * CurvePoint::Base)),
+    reshuffle * (c + yTable->mult(r)),
+    kY,
   };
 }
 
 EGCacheImp::RekeyValue::RekeyValue(
     EGCacheImp* egcache, const EGCacheImp::RekeyKey& key)  {
 
-  yTable_ = egcache->scalarMultTable(key.y_);
+  yTable = egcache->scalarMultTable(key.y);
 
-  if (!yTable_) {
+  if (!yTable) {
     // table cache is disabled; abort
     return;
   }
 
-  kY_ = yTable_->mult(key.k_);
-  kInv_ = key.k_.invert();
+  kY = yTable->mult(key.k);
+  kInv = key.k.invert();
 }
 
 size_t EGCacheImp::RekeyKey::hash::operator()(const pep::EGCacheImp::RekeyKey& k) const {
   size_t ret = 0;
-  boost::hash_combine(ret, std::hash<CurvePoint>{}(k.y_));
-  boost::hash_combine(ret, std::hash<CurveScalar>{}(k.k_));
+  boost::hash_combine(ret, std::hash<CurvePoint>{}(k.y));
+  boost::hash_combine(ret, std::hash<CurveScalar>{}(k.k));
   return ret;
 }
 

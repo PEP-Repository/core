@@ -45,7 +45,7 @@ private:
 
     assert(ioContext_ != nullptr);
     auto oauth = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
-      .io_context = ioContext_,
+      .ioContext = ioContext_,
       .config = config_.get_child("OAuthServer"),
       .authorizationMethod = limitedEnvironment ? pep::ConsoleAuthorization : pep::BrowserAuthorization,
       .longLived = longLived_,

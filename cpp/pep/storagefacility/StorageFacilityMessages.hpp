@@ -115,13 +115,13 @@ public:
 };
 
 struct DataSizeRequest {
-  std::set<std::string> columns_;
+  std::set<std::string> columns;
 };
 
 struct DataSizeResponse {
-  uint64_t blockSize_;
-  uint64_t totalBlocks_;
-  uint64_t rollingBlocks_;
+  uint64_t blockSize;
+  uint64_t totalBlocks;
+  uint64_t rollingBlocks;
 };
 
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;

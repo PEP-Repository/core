@@ -269,7 +269,7 @@ void Serializer<DataPayloadPage>::moveIntoProtocolBuffer(proto::DataPayloadPage&
 DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeRequest&& source) const {
   DataSizeRequest result;
   for (const auto& column : source.columns()) {
-    if (!result.columns_.emplace(column).second) {
+    if (!result.columns.emplace(column).second) {
       throw std::runtime_error("Can't insert duplicate column '" + column + "' into data size request");
     }
   }
@@ -277,24 +277,24 @@ DataSizeRequest Serializer<DataSizeRequest>::fromProtocolBuffer(proto::DataSizeR
 }
 
 void Serializer<DataSizeRequest>::moveIntoProtocolBuffer(proto::DataSizeRequest& dest, DataSizeRequest value) const {
-  dest.mutable_columns()->Reserve(static_cast<int>(value.columns_.size()));
-  for (auto& column : value.columns_) {
+  dest.mutable_columns()->Reserve(static_cast<int>(value.columns.size()));
+  for (auto& column : value.columns) {
     dest.add_columns(column);
   }
 }
 
 DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSizeResponse&& source) const {
   return DataSizeResponse{
-    .blockSize_ = source.block_size(),
-    .totalBlocks_ = source.total_blocks(),
-    .rollingBlocks_ = source.rolling_blocks(),
+    .blockSize = source.block_size(),
+    .totalBlocks = source.total_blocks(),
+    .rollingBlocks = source.rolling_blocks(),
   };
 }
 
 void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
-  dest.set_block_size(value.blockSize_);
-  dest.set_total_blocks(value.totalBlocks_);
-  dest.set_rolling_blocks(value.rollingBlocks_);
+  dest.set_block_size(value.blockSize);
+  dest.set_total_blocks(value.totalBlocks);
+  dest.set_rolling_blocks(value.rollingBlocks);
 }
 
 

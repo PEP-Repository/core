@@ -22,7 +22,7 @@ public:
 };
 
 struct EnrollmentResponse {
-  X509CertificateChain certificateChain_;
+  X509CertificateChain certificateChain;
 };
 
 struct TokenBlockingListRequest final {};

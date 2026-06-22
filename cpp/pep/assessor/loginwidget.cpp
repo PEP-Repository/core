@@ -41,7 +41,7 @@ std::filesystem::path GetPepAppDataPath() {
 LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, const pep::Configuration& projectConfig, const pep::Configuration& config, const std::filesystem::path& exeDirectory)
   : QWidget(nullptr)
   , authy(pep::OAuthClient::Create(pep::OAuthClient::Parameters{
-      .io_context = io_context,
+      .ioContext = io_context,
       .config = config.get_child("OAuthServer"),
       .authorizationMethod = pep::BrowserAuthorization,
     }))

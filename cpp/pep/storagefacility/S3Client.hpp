@@ -22,9 +22,9 @@ public:
 
     EndPoint endpoint;  // hostname, port
     Credentials credentials; // accessKey, secret, ...
-    std::shared_ptr<boost::asio::io_context> io_context;
-    std::optional<std::filesystem::path> ca_cert_path; // ignored if not set
-    std::optional<bool> use_https; // defaults to true
+    std::shared_ptr<boost::asio::io_context> ioContext;
+    std::optional<std::filesystem::path> caCertPath; // ignored if not set
+    std::optional<bool> useHttps; // defaults to true
   };
 
   static std::shared_ptr<Client> Create(const Parameters& params);

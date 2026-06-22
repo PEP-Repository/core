@@ -36,7 +36,7 @@ namespace {
 namespace pep {
 
 OAuthClient::OAuthClient(Parameters parameters)
-  : ioContext_(std::move(parameters.io_context)),
+  : ioContext_(std::move(parameters.ioContext)),
     authorizationMethod_(std::move(parameters.authorizationMethod)),
     longLived_(parameters.longLived),
     validityDuration_(parameters.validityDuration) {

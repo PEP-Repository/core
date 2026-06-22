@@ -172,7 +172,7 @@ rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauth
   PEP_LOG(LogTag, Severity::Debug) << "Sending EnrollmentRequest...";
   return getKeyServerProxy(true)->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
-    auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.certificateChain_));
+    auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.certificateChain));
 
     return completeEnrollment(ctx);
       });

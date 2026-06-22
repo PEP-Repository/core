@@ -94,10 +94,10 @@ messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
   const auto certificate = generateCertificate(enrollmentRequest->certificateSigningRequest_);
 
   EnrollmentResponse response{
-    .certificateChain_ = clientCa_.getCertificateChain() / certificate
+    .certificateChain = clientCa_.getCertificateChain() / certificate
   };
-  PEP_LOG(LogTag, Severity::Debug) << "Sending certificate chain len=" << response.certificateChain_.certificates().size() << ":"
-                      << X509CertificatesToPem(response.certificateChain_.certificates());
+  PEP_LOG(LogTag, Severity::Debug) << "Sending certificate chain len=" << response.certificateChain.certificates().size() << ":"
+                      << X509CertificatesToPem(response.certificateChain.certificates());
   return messaging::BatchSingleMessage(std::move(response));
 }
 

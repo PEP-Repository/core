@@ -16,12 +16,12 @@ void Serializer<EnrollmentRequest>::moveIntoProtocolBuffer(proto::EnrollmentRequ
 
 EnrollmentResponse Serializer<EnrollmentResponse>::fromProtocolBuffer(proto::EnrollmentResponse&& source) const {
   return EnrollmentResponse{
-    .certificateChain_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()))
+    .certificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()))
   };
 }
 
 void Serializer<EnrollmentResponse>::moveIntoProtocolBuffer(proto::EnrollmentResponse& dest, EnrollmentResponse value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.certificateChain_));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.certificateChain));
 }
 
 void Serializer<TokenBlockingTokenIdentifier>::moveIntoProtocolBuffer(
