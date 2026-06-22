@@ -75,9 +75,6 @@ private:
     std::string codeChallenge;
     std::optional<std::chrono::seconds> validity; //std::nullopt if no long lived token is requested
     std::chrono::time_point<std::chrono::steady_clock> createdAt; //We don't care about the actual clock time, we only want to measure the time that has passed. Therefore: steady_clock.
-
-    Grant(const std::string& clientId, const std::string& humanReadableId, UserGroup usergroup, const std::string& redirectUri, const std::string& codeChallenge, std::optional<std::chrono::seconds> validity)
-      : clientId(clientId), humanReadableId(humanReadableId), usergroup(std::move(usergroup)), redirectUri(redirectUri), codeChallenge(codeChallenge), validity(validity), createdAt(std::chrono::steady_clock::now()) {}
   };
 
   void addActiveGrant(const std::string& code, Grant g);

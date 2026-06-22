@@ -198,9 +198,11 @@ TokenResponse AuthserverBackend::executeTokenRequest(const std::string& accessGr
   // Check access
   UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, accessGroup);
 
-  auto token = getToken(request.subject_, request.group_, request.expirationTime_);
+  auto token = getToken(request.subject, request.group, request.expirationTime);
 
-  return TokenResponse(token.getSerializedForm());
+  return TokenResponse{
+    .token = token.getSerializedForm()
+  };
 }
 
 void AuthserverBackend::migrateDatabase(const std::filesystem::path& storageFile_) {
