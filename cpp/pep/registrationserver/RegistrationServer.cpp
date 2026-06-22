@@ -339,10 +339,10 @@ rxcpp::observable<std::string> RegistrationServer::initPseudonymStorage(const st
       .reduce( // Group pseudonyms by participant (PP)
         std::make_shared<PseudonymsByPp>(),
         [](std::shared_ptr<PseudonymsByPp> pps, const EnumerateAndRetrieveResult& result) {
-      if (!result.dataSet_) { // TODO: support this
-        throw std::runtime_error("Storage Facility did not return pseudonym as inline data for column " + result.column_ + " and participant " + result.localPseudonyms_->polymorphic_.text());
+      if (!result.dataSet) { // TODO: support this
+        throw std::runtime_error("Storage Facility did not return pseudonym as inline data for column " + result.column + " and participant " + result.localPseudonyms->polymorphic_.text());
       }
-      (*pps)[result.localPseudonyms_->polymorphic_][result.column_] = result.data_;
+      (*pps)[result.localPseudonyms->polymorphic_][result.column] = result.data;
       return pps;
     })
       .flat_map([rebuild](std::shared_ptr<PseudonymsByPp> pps) { // Convert single unordered_map<> to observable<participant-data>
@@ -675,7 +675,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
       { "ShortPseudonyms" },        // columnGroups
       {})                           // columns
     .flat_map([](std::vector<std::shared_ptr<EnumerateResult>> results) { return RxIterate(std::move(results)); }) // Convert observable<vector<EnumerateResult>> to observable<EnumerateResult>
-    .map([](const std::shared_ptr<EnumerateResult>& result) {return result->metadata_.getTag(); }) // Extract the column name
+    .map([](const std::shared_ptr<EnumerateResult>& result) {return result->metadata.getTag(); }) // Extract the column name
     .op(RxToVector()) // Convert to a single vector<> containing column names
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs
     .filter([](std::pair<std::shared_ptr<std::vector<std::string>>, ShortPseudonymDefinition> pair) { // Keep only defined SPs that the participant does not have
@@ -729,7 +729,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
     });
   })
     .map([server, ctx](const ShortPseudonymEntry& entry) { // Store each participant (ID) in shadow administration
-    server->storeShortPseudonymShadow(ctx->encryptedIdentifier, entry.store.column_, entry.sp);
+    server->storeShortPseudonymShadow(ctx->encryptedIdentifier, entry.store.column, entry.sp);
     return entry.store; // Return only the StoreData2Entry for further processing
   })
     .op(RxToVector()) // Collect all StoreData2Entry instances into a vector<>

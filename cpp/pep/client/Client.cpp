@@ -98,7 +98,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                          const CellProperties& props = pair.second;
                          StoreData2Entry result(polymorphicPseudonym, column, props.value);
                          if (!props.fileExtension.empty()) {
-                           result.xMetadata_.emplace(MetadataXEntry::MakeFileExtension(props.fileExtension));
+                           result.xMetadata.emplace(MetadataXEntry::MakeFileExtension(props.fileExtension));
                          }
                          return result;
                        });

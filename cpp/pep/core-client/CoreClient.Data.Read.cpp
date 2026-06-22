@@ -175,7 +175,7 @@ CoreClient::retrieveData(
                   getStorageFacilityProxy(true)->requestDataRead(DataReadRequest2{
                     .ticket_ = *ticket,
                     .ids_ = RangeToVector(ctx->files
-                        | views::transform([](const FileContext& file) { return file.fileKey.entry->id_; })),
+                        | views::transform([](const FileContext& file) { return file.fileKey.entry->id; })),
                   })
                   .map([](DataPayloadPage page) {
                     return std::optional{std::move(page)};
@@ -193,10 +193,10 @@ CoreClient::retrieveData(
                     for (auto betweenIdx = ctx->order.latestFileIndex(); betweenIdx < index; ++betweenIdx) {
                       const FileContext& prevFileCtx = ctx->files[betweenIdx];
                       const EnumerateResult& prevEntry = *prevFileCtx.fileKey.entry;
-                      if (prevFileCtx.bytesWritten < prevEntry.fileSize_) {
+                      if (prevFileCtx.bytesWritten < prevEntry.fileSize) {
                         throw std::runtime_error(std::format(
                             "Received file {} smaller than signaled file size: {} < {}",
-                            betweenIdx, prevFileCtx.bytesWritten, prevEntry.fileSize_));
+                            betweenIdx, prevFileCtx.bytesWritten, prevEntry.fileSize));
                       }
                     }
                     // Return when we received the sentinel: we just wanted to check remaining files
@@ -209,24 +209,24 @@ CoreClient::retrieveData(
                     RetrievePage retrievedPage{
                       .fileIndex = file.fileKey.fileIndex,
                       .entry = file.fileKey.entry,
-                      .content = page->decrypt(file.fileKey.symmetricKey, entry.metadata_),
+                      .content = page->decrypt(file.fileKey.symmetricKey, entry.metadata),
                     };
                     // Omit empty pages
                     if (retrievedPage.content.empty()) { return {}; }
                     file.bytesWritten += retrievedPage.content.size();
-                    if (file.bytesWritten > entry.fileSize_) {
+                    if (file.bytesWritten > entry.fileSize) {
                       throw std::runtime_error(std::format(
                           "Received file {} larger than signaled file size: {}+ > {}",
-                          index, file.bytesWritten, entry.fileSize_));
+                          index, file.bytesWritten, entry.fileSize));
                     }
-                    retrievedPage.last = file.bytesWritten == entry.fileSize_;
+                    retrievedPage.last = file.bytesWritten == entry.fileSize;
                     return retrievedPage;
                   })
                   .op(RxFilterNullopt());
 
               auto emptyFiles = ctx->files
                   | views::filter([](const FileContext& file) {
-                    return file.fileKey.entry->fileSize_ == 0;
+                    return file.fileKey.entry->fileSize == 0;
                   })
                   | views::transform([](const FileContext& file) {
                     return RetrievePage{
@@ -295,10 +295,10 @@ CoreClient::getHistory2(SignedTicket2 ticket,
 
         return HistoryResult{
           DataCellResult{
-            .localPseudonyms_ = localPseudonyms,
-            .localPseudonymsIndex_ = entry.pseudonymIndex_,
-            .column_ = ticket.columns_[entry.columnIndex_],
-            .accessGroupPseudonym_ = accessGroupPseudonym,
+            .localPseudonyms = localPseudonyms,
+            .localPseudonymsIndex = entry.pseudonymIndex_,
+            .column = ticket.columns_[entry.columnIndex_],
+            .accessGroupPseudonym = accessGroupPseudonym,
           },
           entry.timestamp_,
           !entry.id_.empty() ? std::optional{entry.id_} : std::nullopt,
@@ -350,15 +350,15 @@ std::vector<std::shared_ptr<EnumerateResult>> CoreClient::ConvertDataEnumeration
   ress.reserve(entries.size());
   for (DataEnumerationEntry2& entry : entries) {
     EnumerateResult& r = *ress.emplace_back(std::make_shared<EnumerateResult>());
-    r.column_ = entry.metadata_.getTag();
+    r.column = entry.metadata_.getTag();
 
-    r.id_ = std::move(entry.id_);
-    r.metadata_ = std::move(entry.metadata_);
-    r.polymorphicKey_ = entry.polymorphicKey_;
-    r.localPseudonymsIndex_ = entry.pseudonymIndex_;
-    r.fileSize_ = entry.fileSize_;
-    r.accessGroupPseudonym_ = pseudonyms.getAccessGroupPseudonym(entry.pseudonymIndex_);
-    r.localPseudonyms_ = pseudonyms.getLocalPseudonyms(entry.pseudonymIndex_);
+    r.id = std::move(entry.id_);
+    r.metadata = std::move(entry.metadata_);
+    r.polymorphicKey = entry.polymorphicKey_;
+    r.localPseudonymsIndex = entry.pseudonymIndex_;
+    r.fileSize = entry.fileSize_;
+    r.accessGroupPseudonym = pseudonyms.getAccessGroupPseudonym(entry.pseudonymIndex_);
+    r.localPseudonyms = pseudonyms.getLocalPseudonyms(entry.pseudonymIndex_);
   }
 
   return ress;

@@ -55,10 +55,10 @@ CoreClient::unblindAndDecryptKeys(
          i++) {
       const auto& entry = *entries[i];
       request.entries_.emplace_back(
-         entry.metadata_,
-         entry.polymorphicKey_,
+         entry.metadata,
+         entry.polymorphicKey,
          KeyBlindMode::Unblind,
-         entry.localPseudonymsIndex_
+         entry.localPseudonymsIndex
       );
     }
     baseCtx->reqSizes.push_back(request.entries_.size());

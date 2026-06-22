@@ -162,7 +162,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
   return client->storeData2(pp, "ParticipantInfo", strPayload,
                             {MetadataXEntry::MakeFileExtension(".txt")})
       .concat_map([client, pp](const DataStorageResult2& result) {
-        auto id = result.ids_.at(0);
+        auto id = result.ids.at(0);
         std::cout << "Stored data with result.primaryKey: "
             << boost::algorithm::hex(id) << std::endl;
 
@@ -212,9 +212,9 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
   return client->enumerateAndRetrieveData2(opts)
   .tap(
     [](EnumerateAndRetrieveResult result) {
-      std::cout << "Primary key: " << result.id_ << std::endl;
-      std::cout << "Column: " << result.column_ << std::endl;
-      std::cout << "Data: " << result.data_ << std::endl;
+      std::cout << "Primary key: " << result.id << std::endl;
+      std::cout << "Column: " << result.column << std::endl;
+      std::cout << "Data: " << result.data << std::endl;
     })
     .op(RxInstead(true));
 }
@@ -242,7 +242,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
   .tap(
     [](DataStorageResult2 result) {
       std::cout << "Stored data with result.primaryKey: "
-        << boost::algorithm::hex(result.ids_.at(0)) << std::endl;
+        << boost::algorithm::hex(result.ids.at(0)) << std::endl;
     })
     .op(RxInstead(true));
 }

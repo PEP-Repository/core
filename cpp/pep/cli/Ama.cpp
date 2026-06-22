@@ -58,14 +58,14 @@ const ParticipantState::FieldReadMethods& ParticipantState::GetFieldReadMethods(
 
 void ParticipantState::readField(std::shared_ptr<pep::GlobalConfiguration> gc, const pep::EnumerateAndRetrieveResult& ear) {
   const auto& readers = GetFieldReadMethods();
-  auto entry = readers.find(ear.column_);
+  auto entry = readers.find(ear.column);
   if (entry == readers.cend()) {
-    throw std::runtime_error("Cannot read participant state from field " + ear.column_);
+    throw std::runtime_error("Cannot read participant state from field " + ear.column);
   }
   auto method = entry->second;
 
-  assert(ear.dataSet_); // TODO: support data that isn't returned inline
-  (this->*method)(gc, ear.data_);
+  assert(ear.dataSet); // TODO: support data that isn't returned inline
+  (this->*method)(gc, ear.data);
 }
 
 void ParticipantState::readParticipantIdentifier(std::shared_ptr<pep::GlobalConfiguration> gc, const std::string& value) {
@@ -96,7 +96,7 @@ rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::
     .reduce(
       std::make_shared<StateMap>(),
       [gc](std::shared_ptr<StateMap> states, const pep::EnumerateAndRetrieveResult& ear) {
-        auto& participant = (*states)[ear.localPseudonymsIndex_];
+        auto& participant = (*states)[ear.localPseudonymsIndex];
         if (participant == nullptr) {
           participant = std::make_shared<ParticipantState>();
         }
@@ -213,9 +213,9 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetE
       .reduce(
         ParticipantGroup::Create(group.name_),
         [](std::shared_ptr<ParticipantGroup> group, const pep::EnumerateAndRetrieveResult& ear) {
-          assert(ear.dataSet_); // TODO: support data not being returned inline
-          assert(ear.column_ == "ParticipantIdentifier");
-          group->participantIds_.emplace(ear.data_);
+          assert(ear.dataSet); // TODO: support data not being returned inline
+          assert(ear.column == "ParticipantIdentifier");
+          group->participantIds_.emplace(ear.data);
           return group;
         }
       );

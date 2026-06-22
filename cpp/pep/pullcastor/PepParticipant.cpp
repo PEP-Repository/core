@@ -14,9 +14,9 @@ PepParticipant::PepParticipant(const PolymorphicPseudonym& pp)
 }
 
 void PepParticipant::loadCell(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const EnumerateAndRetrieveResult& ear) {
-  assert(pp_ == ear.localPseudonyms_->polymorphic_);
+  assert(pp_ == ear.localPseudonyms->polymorphic_);
 
-  auto column = ear.column_;
+  auto column = ear.column;
   auto content = CellContent::Create(client, ticket, ear);
   if (!cells_.emplace(std::make_pair(column, content)).second) {
     throw std::runtime_error("Cannot store duplicate cell for column " + column);
@@ -51,10 +51,10 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
     return client->enumerateAndRetrieveData2(earOpts)
       .map([client, ticket = std::move(signedTicket), participants](EnumerateAndRetrieveResult ear) {
       std::shared_ptr<PepParticipant> participant;
-      auto position = participants->find(ear.localPseudonymsIndex_);
+      auto position = participants->find(ear.localPseudonymsIndex);
       if (position == participants->cend()) {
-        participant = PepParticipant::Create(ear.localPseudonyms_->polymorphic_);
-        participants->emplace(std::make_pair(ear.localPseudonymsIndex_, participant));
+        participant = PepParticipant::Create(ear.localPseudonyms->polymorphic_);
+        participants->emplace(std::make_pair(ear.localPseudonymsIndex, participant));
       }
       else {
         participant = position->second;
