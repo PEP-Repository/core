@@ -20,12 +20,6 @@ struct ParticipantDeviceRecord {
   bool isSet() const { return time != Timestamp{/*zero*/}; }
   inline bool isActive() const { return type == "start"; }
 
-  ParticipantDeviceRecord(std::string type, std::string serial, std::string note, Timestamp time) :
-    type(std::move(type)),
-    serial(std::move(serial)),
-    note(std::move(note)),
-    time(time) {}
-
   inline bool operator<(const ParticipantDeviceRecord& rhs) const { return std::tie(time, type) < std::tie(rhs.time, rhs.type); }
 
   void serialize(boost::property_tree::ptree& destination) const;
