@@ -330,7 +330,7 @@ void ParticipantWidget::onParticipantDataReceived(ParticipantData data, std::str
   participantData_ = data;
   participantStudyContexts_ = allContexts_.parse(studyContexts);
 
-  if (participantData_.personalia_.has_value() != currentPepRole_.canSeeParticipantPersonalia()) {
+  if (participantData_.personalia.has_value() != currentPepRole_.canSeeParticipantPersonalia()) {
     PEP_LOG(LogTag, pep::Severity::Warning) << "Participant personalia viewer received no data";
   }
 
@@ -368,8 +368,8 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 
   const pep::ParticipantDeviceRecord* current = nullptr;
   std::vector<pep::ParticipantDeviceRecord> records;
-  auto previous = participantData_.participantDeviceHistory_.find(columnName.toStdString());
-  if (previous != participantData_.participantDeviceHistory_.cend()) {
+  auto previous = participantData_.participantDeviceHistory.find(columnName.toStdString());
+  if (previous != participantData_.participantDeviceHistory.cend()) {
     current = previous->second.getCurrent();
     std::copy(previous->second.begin(), previous->second.end(), std::back_inserter(records));
   }
@@ -513,7 +513,7 @@ void ParticipantWidget::invokeBartender(const std::vector<pep::ShortPseudonymDef
     count *= copies;
 
     const std::string& label = pseudonymHuman.toStdString();
-    const std::string& pseudonym = participantData_.shortPseudonyms_.at(pseudonymName);
+    const std::string& pseudonym = participantData_.shortPseudonyms.at(pseudonymName);
     stickersXml += str(boost::format(stickerTemplate)
                        % ++i % stickerFilePath_.string() % pseudonym  % label % printername % count);
   }
@@ -617,7 +617,7 @@ void ParticipantWidget::appendShortPseudonymsHtmlTable(QString& htmlFormattedSum
 
       rows.append(QString("<tr>"));
       rows.append("<td>" + pseudonymHuman + "</td>");
-      rows.append(QString::fromStdString("<td>" + participantData_.shortPseudonyms_[pseudonymName] + "</td>"));
+      rows.append(QString::fromStdString("<td>" + participantData_.shortPseudonyms[pseudonymName] + "</td>"));
       rows.append(QString("</tr>\n"));
     }
   }
@@ -665,11 +665,11 @@ void ParticipantWidget::printSummary() {
 
   htmlFormattedSummary.append("<p><b>" + projectName_ + "</b></p>");
 
-  if (participantData_.personalia_) {
-    htmlFormattedSummary.append(QString::fromStdString("<h1>" + participantData_.personalia_->getFullName() + "</h1>"));
-    htmlFormattedSummary.append(QString::fromStdString("<h4>" + participantData_.personalia_->getDateOfBirth() + "</h4>"));
+  if (participantData_.personalia) {
+    htmlFormattedSummary.append(QString::fromStdString("<h1>" + participantData_.personalia->getFullName() + "</h1>"));
+    htmlFormattedSummary.append(QString::fromStdString("<h4>" + participantData_.personalia->getDateOfBirth() + "</h4>"));
   }
-  if (participantData_.isTestParticipant_) {
+  if (participantData_.isTestParticipant) {
     htmlFormattedSummary.append("<h4>" + tr("This is a test participant") + "</h4>");
   }
   htmlFormattedSummary.append(QString("<h4>")+participantSID_+"</h4>");
@@ -843,9 +843,9 @@ void ParticipantWidget::processData() {
   }
 
   if (currentPepRole_.canSeeParticipantPersonalia()) {
-    if (participantData_.personalia_) {
-      ui_->info1->setText(QString::fromStdString(participantData_.personalia_->getFullName()));
-      ui_->info2->setText(QString::fromStdString(participantData_.personalia_->getDateOfBirth()));
+    if (participantData_.personalia) {
+      ui_->info1->setText(QString::fromStdString(participantData_.personalia->getFullName()));
+      ui_->info2->setText(QString::fromStdString(participantData_.personalia->getDateOfBirth()));
     }
     else {
       ui_->info1->setText(QString());
@@ -854,7 +854,7 @@ void ParticipantWidget::processData() {
     this->setReadOnly(false);
   }
 
-  ui_->infoIsTestParticipant->setVisible(participantData_.isTestParticipant_);
+  ui_->infoIsTestParticipant->setVisible(participantData_.isTestParticipant);
 
   releaseParticipantButton_->setEnabled(currentPepRole_.canSetParticipantContext() && participantStudyContexts_.getItems().size() > 1);
 
@@ -862,7 +862,7 @@ void ParticipantWidget::processData() {
     auto widget = deviceWidgets_[i];
     auto columnName = widget->getColumnName();
 
-    const auto& history = participantData_.participantDeviceHistory_[columnName.toStdString()];
+    const auto& history = participantData_.participantDeviceHistory[columnName.toStdString()];
     auto current = history.getCurrent();
     widget->setDeviceId(current ? QString::fromStdString(current->serial) : QString());
 
@@ -878,8 +878,8 @@ void ParticipantWidget::processData() {
   }
 
   const std::unordered_map<unsigned, unsigned>* visitAssessors = nullptr;
-  auto assessorsForContext = participantData_.visitAssessors_.find(studyContext_.getIdIfNonDefault());
-  if (assessorsForContext != participantData_.visitAssessors_.cend()) {
+  auto assessorsForContext = participantData_.visitAssessors.find(studyContext_.getIdIfNonDefault());
+  if (assessorsForContext != participantData_.visitAssessors.cend()) {
     visitAssessors = &assessorsForContext->second;
   }
   //Fill in ui_ elements with the appropriate short pseudonyms
@@ -963,7 +963,7 @@ void ParticipantWidget::initializeShortPseudonymsUi(const std::optional<uint32_t
       hasSticker = true;
     }
 
-    auto sp = participantData_.shortPseudonyms_[p.getColumn().getFullName()];
+    auto sp = participantData_.shortPseudonyms[p.getColumn().getFullName()];
 
     if (p.getColumn().getVisitNumber() == visitNumber) {
       ownVisit.push_back({ p, sp });
@@ -1087,21 +1087,21 @@ void ParticipantWidget::openEditParticipant() {
   QVBoxLayout* infoEditLayout = new QVBoxLayout(this);
 
   auto editor = new ParticipantEditor(participantInfoEdit);
-  if (participantData_.personalia_) {
-    editor->setPersonalia(*participantData_.personalia_);
+  if (participantData_.personalia) {
+    editor->setPersonalia(*participantData_.personalia);
   }
-  editor->setIsTestParticipant(participantData_.isTestParticipant_);
+  editor->setIsTestParticipant(participantData_.isTestParticipant);
 
   QObject::connect(editor, &ParticipantEditor::cancelled, participantInfoEdit, &QDialog::close);
   QObject::connect(editor, &ParticipantEditor::confirmed, this, [this, participantInfoEdit, editor]() {
     auto pp = pep::MakeSharedCopy(currentUserPp_);
     std::vector<pep::StoreData2Entry> entries;
     auto personalia = editor->getPersonalia();
-    if (personalia != this->participantData_.personalia_) {
+    if (personalia != this->participantData_.personalia) {
       entries.push_back(pep::StoreData2Entry(pp, "ParticipantInfo", pep::MakeSharedCopy(personalia.toJson()), {pep::MetadataXEntry::MakeFileExtension(".json")}));
     }
     auto isTestParticipant = editor->getIsTestParticipant();
-    if (isTestParticipant != this->participantData_.isTestParticipant_) {
+    if (isTestParticipant != this->participantData_.isTestParticipant) {
       entries.push_back(pep::StoreData2Entry(pp, "IsTestParticipant", pep::MakeSharedCopy(pep::BoolToString(isTestParticipant)), { pep::MetadataXEntry::MakeFileExtension(".txt") }));
     }
 
@@ -1166,7 +1166,7 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
   if (readOnly_ || !currentPepRole_.canManageDevices()) {
     return;
   }
-  const auto& history = participantData_.participantDeviceHistory_[columnName.toStdString()];
+  const auto& history = participantData_.participantDeviceHistory[columnName.toStdString()];
 
   auto isLastRecord = (index + 1 == history.size());
 
@@ -1446,20 +1446,20 @@ ParticipantData ParticipantDataAggregator::getData() const {
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
       PEP_LOG(LogTag, pep::Severity::Warning) << "Received empty participant personalia";
     }
-    participantData_.personalia_ = personalia;
+    participantData_.personalia = personalia;
   }
   if (isTestParticipant_) {
-    participantData_.isTestParticipant_ = pep::StringToBool(isTestParticipant_->data_);
+    participantData_.isTestParticipant = pep::StringToBool(isTestParticipant_->data_);
   }
-  participantData_.shortPseudonyms_ = shortPseudonyms_;
+  participantData_.shortPseudonyms = shortPseudonyms_;
   for (const auto& history: deviceHistory_) {
-    participantData_.participantDeviceHistory_[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.data_, false);
+    participantData_.participantDeviceHistory[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.data_, false);
   }
 
   for (const auto& context : visitAssessors_) {
     for (const auto& visit: context.second) {
       if (visit.second.has_value()) { // Only copy if nonempty assessor ID has been retrieved from storage
-        participantData_.visitAssessors_[context.first][visit.first] = *visit.second;
+        participantData_.visitAssessors[context.first][visit.first] = *visit.second;
       }
     }
   }
