@@ -14,8 +14,8 @@ struct SchemaError : std::logic_error {
   };
   SchemaError(std::string table, Reason reason);
 
-  std::string table_;
-  Reason reason_;
+  std::string table;
+  Reason reason;
 };
 
 /// @brief Represents an SQL "HAVING" clause
