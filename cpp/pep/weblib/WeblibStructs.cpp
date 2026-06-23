@@ -105,7 +105,7 @@ std::string CellEntry::subjectLocalPseudonym() const {
 }
 
 std::string CellEntry::subjectEncryptedOriginId() const {
-  return inner->localPseudonyms->polymorphic_.text();
+  return inner->localPseudonyms->polymorphic.text();
 }
 
 const std::string& CellEntry::column() const { return inner->column; }
