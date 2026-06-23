@@ -93,7 +93,7 @@ int CommandPseudonym::CommandConvert::execute() {
         return rxcpp::observable<>::just(FakeVoid()).as_dynamic();
       }
 
-      pep::requestTicket2Opts tOpts;
+      pep::RequestTicket2Opts tOpts;
       tOpts.pps = {pp};
       tOpts.modes = {"read"};
       tOpts.includeAccessGroupPseudonyms = true;
@@ -101,12 +101,12 @@ int CommandPseudonym::CommandConvert::execute() {
       return client->requestTicket2(tOpts)
           .flat_map([client, config](pep::IndexedTicket2 ticket) {
             const auto opened = ticket.openTicketWithoutCheckingSignature();
-            const auto& subjects = opened->mAccessSubjects;
-            if (subjects.empty() || !subjects.front().mAccessGroup.has_value()) {
+            const auto& subjects = opened->accessSubjects_;
+            if (subjects.empty() || !subjects.front().accessGroup_.has_value()) {
               throw std::runtime_error{"No localized pseudonym available for the supplied polymorphic pseudonym"};
             }
 
-            const auto lp = client->decryptLocalPseudonym(*subjects.front().mAccessGroup);
+            const auto lp = client->decryptLocalPseudonym(*subjects.front().accessGroup_);
             if (config.to == IdType::LocalPseudonym) {
               std::cout << lp.text() << std::endl;
               return rxcpp::observable<>::just(FakeVoid()).as_dynamic();

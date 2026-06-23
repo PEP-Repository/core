@@ -410,16 +410,16 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 
 rxcpp::observable<LocalPseudonym> CoreClient::getSingleLocalizedPseudonym(const PolymorphicPseudonym& pp) {
   return getLocalizedPseudonyms()
-      .filter([pp](const LocalPseudonyms &lp) { return lp.mPolymorphic == pp; })
+      .filter([pp](const LocalPseudonyms &lp) { return lp.polymorphic_ == pp; })
       .map([this](const LocalPseudonyms &lp) {
-        assert(lp.mAccessGroup.has_value());
-        return this->decryptLocalPseudonym(lp.mAccessGroup.value());
+        assert(lp.accessGroup_.has_value());
+        return this->decryptLocalPseudonym(lp.accessGroup_.value());
       });
 }
 
 rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
-    const requestTicket2Opts &opts) {
-  PEP_LOG(LOG_TAG, debug) << "requestTicket";
+    const RequestTicket2Opts &opts) {
+  PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
