@@ -641,10 +641,10 @@ messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationReque
 messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(std::shared_ptr<SignedRegistrationRequest> signedRequest) {
   auto request = signedRequest->open(*this->getRootCAs()).message;
 
-  if (request.encryptionPublicKeyPem_.empty()) {
+  if (request.encryptionPublicKeyPem.empty()) {
     throw std::runtime_error("Participant registration requires the encryption key for shadow storage to be verified. Please ensure that the client provides one.");
   }
-  if (shadowPublicKey_ != AsymmetricKey(request.encryptionPublicKeyPem_)) {
+  if (shadowPublicKey_ != AsymmetricKey(request.encryptionPublicKeyPem)) {
     throw std::runtime_error("Cannot store short pseudonyms because client uses a different encryption key for shadow storage. Please ensure that client and server configurations match.");
   }
 
@@ -653,8 +653,8 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
     std::shared_ptr<PolymorphicPseudonym> pp;
   };
   std::shared_ptr<RegistrationContext> ctx = std::make_shared<RegistrationContext>();
-  ctx->pp = std::make_shared<PolymorphicPseudonym>(request.polymorphicPseudonym_);
-  ctx->encryptedIdentifier = request.encryptedIdentifier_;
+  ctx->pp = std::make_shared<PolymorphicPseudonym>(request.polymorphicPseudonym);
+  ctx->encryptedIdentifier = request.encryptedIdentifier;
 
   auto first_error = std::make_shared<std::exception_ptr>();
   auto reauthenticated = std::make_shared<bool>(false);
@@ -757,16 +757,16 @@ messaging::MessageBatches RegistrationServer::handleListCastorImportColumnsReque
   throw Error("Registration Server cannot retrieve Castor data because it wasn't compiled WITH_CASTOR");
 #else
   std::optional<unsigned> answerSetCount;
-  if (lpRequest->answerSetCount_ != 0) {
-    answerSetCount = lpRequest->answerSetCount_;
+  if (lpRequest->answerSetCount != 0) {
+    answerSetCount = lpRequest->answerSetCount;
   }
 
   return getShortPseudonymDefinitions() // Get short pseudonym definitions
-    .filter([lpRequest](const ShortPseudonymDefinition& sp) {return sp.getColumn().getFullName() == lpRequest->spColumn_; }) // Find the SP definition matching the request
+    .filter([lpRequest](const ShortPseudonymDefinition& sp) {return sp.getColumn().getFullName() == lpRequest->spColumn; }) // Find the SP definition matching the request
     .op(RxToVector()) // Aggregate to vector<> so we can check whether SP was found
     .map([lpRequest](std::shared_ptr<std::vector<ShortPseudonymDefinition>> sps) { // Produce matching SP or raise (network-portable) exception if not found
     if (sps->empty()) {
-      throw Error("Short pseudonym " + lpRequest->spColumn_ + " not found");
+      throw Error("Short pseudonym " + lpRequest->spColumn + " not found");
     }
     return sps->front();
   })

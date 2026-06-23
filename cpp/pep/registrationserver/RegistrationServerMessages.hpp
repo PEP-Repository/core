@@ -5,37 +5,29 @@
 
 namespace pep {
 
-class PEPIdRegistrationRequest {
-};
+struct PEPIdRegistrationRequest {};
 
-class PEPIdRegistrationResponse {
-public:
-  std::string pepId_;
-};
-
-
-class RegistrationRequest {
-public:
-  RegistrationRequest() = default;
-  explicit RegistrationRequest(const PolymorphicPseudonym& polymorphicPseudonym) : polymorphicPseudonym_(polymorphicPseudonym) { }
-  PolymorphicPseudonym polymorphicPseudonym_;
-  std::string encryptedIdentifier_;
-  std::string encryptionPublicKeyPem_;
-};
-
-class RegistrationResponse {
+struct PEPIdRegistrationResponse {
+  std::string pepId;
 };
 
 
-class ListCastorImportColumnsRequest {
-public:
-  std::string spColumn_;
-  unsigned answerSetCount_{};
+struct RegistrationRequest {
+  PolymorphicPseudonym polymorphicPseudonym;
+  std::string encryptedIdentifier;
+  std::string encryptionPublicKeyPem;
 };
 
-class ListCastorImportColumnsResponse {
-public:
-  std::vector<std::string> importColumns_;
+struct RegistrationResponse {};
+
+
+struct ListCastorImportColumnsRequest {
+  std::string spColumn;
+  unsigned answerSetCount{};
+};
+
+struct ListCastorImportColumnsResponse {
+  std::vector<std::string> importColumns;
 };
 
 
