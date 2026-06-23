@@ -13,6 +13,7 @@ namespace pep {
 
 namespace {
 
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 thread_local std::optional<std::string> threadName;
 
 }
