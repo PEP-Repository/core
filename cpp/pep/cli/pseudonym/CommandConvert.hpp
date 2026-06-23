@@ -14,7 +14,7 @@ public:
 protected:
   int execute() override;
   commandline::Parameters getSupportedParameters() const override;
-  std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli#psuedonym-convert"; }
+  std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli#pseudonym-convert"; }
 };
 
 } // namespace pep::cli

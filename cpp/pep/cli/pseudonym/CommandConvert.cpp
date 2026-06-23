@@ -24,7 +24,7 @@ constexpr auto to = "to";
 enum class IdType {
   PolymorphicPseudonym,
   LocalPseudonym,
-  UserPseudonym,
+  BriefLocalPseudonym,
 };
 
 const auto stringToIdType = boost::container::flat_map<std::string, IdType> {
@@ -32,8 +32,8 @@ const auto stringToIdType = boost::container::flat_map<std::string, IdType> {
     {"polymorphic-pseudonym", IdType::PolymorphicPseudonym},
     {"lp", IdType::LocalPseudonym},
     {"local-pseudonym", IdType::LocalPseudonym},
-    {"up", IdType::UserPseudonym},
-    {"user-pseudonym", IdType::UserPseudonym}
+    {"blp", IdType::BriefLocalPseudonym},
+    {"brief-local-pseudonym", IdType::BriefLocalPseudonym}
 };
 
 std::optional<IdType> TryParseIdTypeFromString(std::string str){
