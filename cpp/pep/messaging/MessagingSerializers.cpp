@@ -32,7 +32,7 @@ PingRequest Serializer<PingRequest>::fromProtocolBuffer(proto::PingRequest&& sou
 }
 
 void Serializer<PingRequest>::moveIntoProtocolBuffer(proto::PingRequest& dest, PingRequest value) const {
-  dest.set_id(value.id_);
+  dest.set_id(value.id());
 }
 
 PingResponse Serializer<PingResponse>::fromProtocolBuffer(proto::PingResponse&& source) const {

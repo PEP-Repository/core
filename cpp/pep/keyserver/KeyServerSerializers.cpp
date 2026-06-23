@@ -10,8 +10,8 @@ EnrollmentRequest Serializer<EnrollmentRequest>::fromProtocolBuffer(proto::Enrol
 }
 
 void Serializer<EnrollmentRequest>::moveIntoProtocolBuffer(proto::EnrollmentRequest& dest, EnrollmentRequest value) const {
-  *dest.mutable_oauth_token() = std::move(value.oAuthToken_);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_signing_request(), std::move(value.certificateSigningRequest_));
+  *dest.mutable_oauth_token() = std::move(value.oAuthToken);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_signing_request(), std::move(value.certificateSigningRequest));
 }
 
 EnrollmentResponse Serializer<EnrollmentResponse>::fromProtocolBuffer(proto::EnrollmentResponse&& source) const {

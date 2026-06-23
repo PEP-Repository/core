@@ -85,13 +85,13 @@ void KeyServer::Parameters::check() const {
 }
 
 messaging::MessageBatches KeyServer::handlePingRequest(std::shared_ptr<PingRequest> request) {
-  return messaging::BatchSingleMessage(Serialization::ToString(PingResponse(request->id_)));
+  return messaging::BatchSingleMessage(Serialization::ToString(PingResponse(request->id())));
 }
 
 messaging::MessageBatches KeyServer::handleUserEnrollmentRequest(
     std::shared_ptr<EnrollmentRequest> enrollmentRequest) {
   checkValid(*enrollmentRequest);
-  const auto certificate = generateCertificate(enrollmentRequest->certificateSigningRequest_);
+  const auto certificate = generateCertificate(enrollmentRequest->certificateSigningRequest);
 
   EnrollmentResponse response{
     .certificateChain = clientCa_.getCertificateChain() / certificate
@@ -159,25 +159,25 @@ KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
 
 void KeyServer::checkValid(const EnrollmentRequest& request) const {
 
-  if(!request.certificateSigningRequest_.getCommonName().has_value()) {
+  if(!request.certificateSigningRequest.getCommonName().has_value()) {
     throw Error("Certificate does not contain a common name for user enrollment request");
   }
-  auto cn = request.certificateSigningRequest_.getCommonName().value();
+  auto cn = request.certificateSigningRequest.getCommonName().value();
 
-  if(!request.certificateSigningRequest_.getOrganizationalUnit().has_value()) {
+  if(!request.certificateSigningRequest.getOrganizationalUnit().has_value()) {
     throw Error("Certificate does not contain an organizational unit for user enrollment request");
   }
-  auto ou = request.certificateSigningRequest_.getOrganizationalUnit().value();
+  auto ou = request.certificateSigningRequest.getOrganizationalUnit().value();
 
   if (ServerTraits::Find([ou](const ServerTraits& candidate) {return candidate.enrollmentSubject(false) == ou; })) {
     throw Error("Can't enroll user into server group " + ou);
   }
 
-  const auto token = OAuthToken::Parse(request.oAuthToken_);
+  const auto token = OAuthToken::Parse(request.oAuthToken);
   if (!isValid(token, cn, ou)) { throw Error("OAuth token invalid"); }
   PEP_LOG(LogTag, Severity::Debug) << "Checked OAuth ticket for " << cn << " in group " << ou;
 
-  if (request.certificateSigningRequest_.verifySignature() == false) {
+  if (request.certificateSigningRequest.verifySignature() == false) {
     throw Error("Could not verify CSR signature");
   }
 }

@@ -6,11 +6,9 @@
 
 namespace pep {
 
-class VersionRequest {
-};
+struct VersionRequest {};
 
-class VersionResponse {
-public:
+struct VersionResponse {
   BinaryVersion binary;
   std::optional<ConfigVersion> config;
 };
@@ -19,13 +17,14 @@ class PingRequest {
 public:
   PingRequest(); // sets ID to a random value
   explicit PingRequest(uint64_t id) : id_(id) {}
+
+  uint64_t id() const noexcept { return id_; }
+
+private:
   uint64_t id_;
 };
 
-class PingResponse {
-public:
-  explicit PingResponse(uint64_t id) : id_(id), timestamp_(TimeNow()) { }
-
+struct PingResponse {
   uint64_t id_;
   Timestamp timestamp_;
 

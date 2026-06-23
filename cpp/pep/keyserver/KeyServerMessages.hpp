@@ -7,18 +7,9 @@
 
 namespace pep {
 
-class EnrollmentRequest {
-public:
-  inline EnrollmentRequest(
-    const X509CertificateSigningRequest csr,
-    std::string oauthToken
-  ) :
-    oAuthToken_(std::move(oauthToken)),
-    certificateSigningRequest_(csr) {
-  }
-
-  std::string oAuthToken_;
-  X509CertificateSigningRequest certificateSigningRequest_;
+struct EnrollmentRequest {
+  X509CertificateSigningRequest certificateSigningRequest;
+  std::string oAuthToken;
 };
 
 struct EnrollmentResponse {

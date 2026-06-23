@@ -55,9 +55,9 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
 
   auto recipient = RecipientForCertificate(signatory.certificateChain().leaf());
   KeyComponentResponse response;
-  response.pseudonymEncryptionKeyComponent_ = pseudonymTranslator_->generateKeyComponent(recipient);
+  response.pseudonymEncryptionKeyComponent = pseudonymTranslator_->generateKeyComponent(recipient);
   if (HasDataAccess(*party)) {
-    response.dataEncryptionKeyComponent_ = dataTranslator_->generateKeyComponent(recipient);
+    response.dataEncryptionKeyComponent = dataTranslator_->generateKeyComponent(recipient);
   }
 
   metrics_->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds

@@ -18,7 +18,7 @@ SigningServer::SigningServer(std::shared_ptr<Parameters> parameters)
 }
 
 messaging::MessageBatches SigningServer::handlePingRequest(std::shared_ptr<PingRequest> request) {
-  return messaging::BatchSingleMessage(Serialization::ToString(this->sign(PingResponse(request->id_))));
+  return messaging::BatchSingleMessage(Serialization::ToString(this->sign(PingResponse(request->id()))));
 }
 
 messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<SignedCsrRequest> signedRequest) {
