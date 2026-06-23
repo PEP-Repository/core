@@ -585,8 +585,6 @@ public:
 
   rxcpp::observable<LocalPseudonyms> getLocalizedPseudonyms();
 
-  rxcpp::observable<LocalPseudonym> getSingleLocalizedPseudonym(const PolymorphicPseudonym&);
-
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const;
   virtual rxcpp::observable<FakeVoid> shutdown();
 
