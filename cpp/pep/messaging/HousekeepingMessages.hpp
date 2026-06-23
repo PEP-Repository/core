@@ -25,8 +25,8 @@ private:
 };
 
 struct PingResponse {
-  uint64_t id_;
-  Timestamp timestamp_;
+  uint64_t id;
+  Timestamp timestamp;
 
   void validate(const PingRequest& isReplyTo) const;
 };
