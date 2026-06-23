@@ -47,8 +47,8 @@ PreloadedCellContent::PreloadedCellContent(const std::string& value)
 
 std::shared_ptr<PreloadedCellContent> PreloadedCellContent::TryCreate(const EnumerateAndRetrieveResult& ear) {
   std::shared_ptr<PreloadedCellContent> result;
-  if (ear.dataSet_) {
-    result = PreloadedCellContent::Create(ear.data_);
+  if (ear.dataSet) {
+    result = PreloadedCellContent::Create(ear.data);
   }
   return result;
 }
@@ -59,7 +59,7 @@ rxcpp::observable<std::shared_ptr<PreloadedCellContent>> PreloadedCellContent::L
     return rxcpp::observable<>::just(result);
   }
   return LoadCellContent(client, ticket, std::make_shared<EnumerateResult>(ear))
-    .map([column = ear.column_](std::string content) {return PreloadedCellContent::Create(std::move(content)); });
+    .map([column = ear.column](std::string content) {return PreloadedCellContent::Create(std::move(content)); });
 }
 
 rxcpp::observable<std::string> PreloadedCellContent::getData() const {

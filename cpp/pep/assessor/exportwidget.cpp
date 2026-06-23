@@ -347,7 +347,7 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
           std::make_shared<std::unordered_map<uint32_t, ParticipantData>>(),
           [](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> entries,
           const pep::EnumerateAndRetrieveResult& result) {
-            (*entries)[result.localPseudonymsIndex_][result.column_] = result.data_;
+            (*entries)[result.localPseudonymsIndex][result.column] = result.data;
             return entries;
           })
       // Convert observable<std::unordered_map<entry>> to observable<entry>

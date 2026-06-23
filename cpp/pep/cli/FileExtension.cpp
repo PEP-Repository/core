@@ -239,8 +239,8 @@ protected:
     std::optional<std::string> previousExtension_;
 
     static std::optional<std::string> GetExtension(const pep::EnumerateResult& enumResult) {
-      auto position = enumResult.metadata_.extra().find("fileExtension");
-      if (position == enumResult.metadata_.extra().cend()) {
+      auto position = enumResult.metadata.extra().find("fileExtension");
+      if (position == enumResult.metadata.extra().cend()) {
         return std::nullopt;
       }
       return position->second.plaintext();
@@ -248,15 +248,15 @@ protected:
 
 
     Update(const pep::EnumerateResult& enumResult, const std::optional<std::string>& currentExtension, const std::string& correctExtension)
-      : storeEntry_(pep::MakeSharedCopy(enumResult.localPseudonyms_->polymorphic_), enumResult.column_),
-      participantAlias_(*enumResult.accessGroupPseudonym_),
+      : storeEntry_(pep::MakeSharedCopy(enumResult.localPseudonyms->polymorphic_), enumResult.column),
+      participantAlias_(*enumResult.accessGroupPseudonym),
       previousExtension_(currentExtension) {
       assert(previousExtension_ == GetExtension(enumResult));
 
       // Initialize the storage entry with current metadata values (from the entry that we'll overwrite)
-      storeEntry_.xMetadata_ = enumResult.metadata_.extra();
+      storeEntry_.xMetadata = enumResult.metadata.extra();
       // Overwrite file extension entry with the correct value
-      storeEntry_.xMetadata_["fileExtension"] = pep::MetadataXEntry::FromPlaintext(correctExtension, false, false);
+      storeEntry_.xMetadata["fileExtension"] = pep::MetadataXEntry::FromPlaintext(correctExtension, false, false);
     }
 
   public:
@@ -265,8 +265,8 @@ protected:
     const std::optional<std::string>& getPreviousExtension() const noexcept { return previousExtension_; }
 
     std::string getAssignedExtension() const {
-      auto position = storeEntry_.xMetadata_.find("fileExtension");
-      assert(position != storeEntry_.xMetadata_.cend());
+      auto position = storeEntry_.xMetadata.find("fileExtension");
+      assert(position != storeEntry_.xMetadata.cend());
       return position->second.plaintext();
     }
 
@@ -286,18 +286,18 @@ protected:
   }
 
   static void ReportParticipantAndColumn(std::ostream& destination, const pep::EnumerateResult& enumResult) {
-    return ReportParticipantAndColumn(destination, *enumResult.accessGroupPseudonym_, enumResult.column_);
+    return ReportParticipantAndColumn(destination, *enumResult.accessGroupPseudonym, enumResult.column);
   }
 
   static void ReportParticipantAndColumn(std::ostream& destination, const Update& update) {
-    return ReportParticipantAndColumn(destination, update.getParticipantAlias(), update.getStoreEntry().column_);
+    return ReportParticipantAndColumn(destination, update.getParticipantAlias(), update.getStoreEntry().column);
   }
 
 private:
   std::optional<Update> getUpdateFor(const pep::EnumerateResult& enumResult, const ColumnExtensions& requiredExtensions) {
     auto verbose = this->getParameterValues().has("verbose");
 
-    auto required = requiredExtensions.find(enumResult.column_);
+    auto required = requiredExtensions.find(enumResult.column);
     if (required == requiredExtensions.cend()) { // This column has no associated expected file extension
       if (verbose) {
         std::cout << "Skipping ";
@@ -746,15 +746,15 @@ protected:
           .map([this, specs](const std::vector<std::shared_ptr<pep::EnumerateResult>>& result) {
           for (const auto& entryPtr : result) {
             const auto& entry = *entryPtr;
-            auto position = specs->find(entry.localPseudonyms_->polymorphic_);
+            auto position = specs->find(entry.localPseudonyms->polymorphic_);
             if (position != specs->cend()) { // If this participant was identified by the user on the command line, report back using that identifier
               for (auto& spec : position->second) {
-                this->reportFileExtension(spec.str(), entry.column_, entry.metadata_.extra());
+                this->reportFileExtension(spec.str(), entry.column, entry.metadata.extra());
               }
             }
             else { // This PP was (only) requested as part of a participant group: we don't have a user-requested identifier for it
-              assert(entry.accessGroupPseudonym_ != nullptr);
-              this->reportFileExtension("Local pseudonym " + entry.accessGroupPseudonym_->text(), entry.column_, entry.metadata_.extra());
+              assert(entry.accessGroupPseudonym != nullptr);
+              this->reportFileExtension("Local pseudonym " + entry.accessGroupPseudonym->text(), entry.column, entry.metadata.extra());
             }
           }
           return pep::FakeVoid();

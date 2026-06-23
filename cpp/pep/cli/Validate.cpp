@@ -30,24 +30,24 @@ public:
 
 private:
   static std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> AddEnumerateAndRetrieveResult(std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> data, const pep::EnumerateAndRetrieveResult& result) {
-    if (!result.dataSet_) {
+    if (!result.dataSet) {
       throw std::runtime_error("Data could not be retrieved inline"); // TODO: support this
     }
-    if (result.accessGroupPseudonym_ == nullptr) {
+    if (result.accessGroupPseudonym == nullptr) {
       throw std::runtime_error("Access group pseudonym required");
     }
 
-    auto& entry = (*data)[result.localPseudonymsIndex_];
+    auto& entry = (*data)[result.localPseudonymsIndex];
     if (entry.accessGroupPseudonym == nullptr) { // A new ParticipantData instance (with .accessGroupPseudonym = nullptr) was just inserted
-      entry.accessGroupPseudonym = result.accessGroupPseudonym_;
+      entry.accessGroupPseudonym = result.accessGroupPseudonym;
     }
-    assert(*entry.accessGroupPseudonym == *result.accessGroupPseudonym_);
+    assert(*entry.accessGroupPseudonym == *result.accessGroupPseudonym);
 
-    if (result.column_ == "ParticipantIdentifier") {
-      entry.id = result.data_;
+    if (result.column == "ParticipantIdentifier") {
+      entry.id = result.data;
     }
     else {
-      entry.deviceHistory[result.column_] = result.data_;
+      entry.deviceHistory[result.column] = result.data;
     }
 
     return data;

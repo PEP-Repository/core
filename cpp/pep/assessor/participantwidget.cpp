@@ -1326,8 +1326,8 @@ const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudony
 }
 
 void ParticipantDataAggregator::processDeviceHistory(const pep::EnumerateAndRetrieveResult& result) {
-  assert(deviceHistory_.find(result.column_) == deviceHistory_.cend());
-  deviceHistory_[result.column_] = result;
+  assert(deviceHistory_.find(result.column) == deviceHistory_.cend());
+  deviceHistory_[result.column] = result;
 }
 
 void ParticipantDataAggregator::processParticipantInfo(const pep::EnumerateAndRetrieveResult& result) {
@@ -1345,27 +1345,27 @@ void ParticipantDataAggregator::processParticipantIdentifier(const pep::Enumerat
 }
 
 void ParticipantDataAggregator::processShortPseudonym(const pep::EnumerateAndRetrieveResult& result) {
-  auto shortPseudonymTag = result.column_;
+  auto shortPseudonymTag = result.column;
   auto definition = getShortPseudonymDefinition(shortPseudonymTag);
   if (definition != nullptr) {
-    shortPseudonyms_[shortPseudonymTag] = result.data_;
+    shortPseudonyms_[shortPseudonymTag] = result.data;
     unfilledShortPseudonyms_.erase(std::remove(unfilledShortPseudonyms_.begin(), unfilledShortPseudonyms_.end(), definition), unfilledShortPseudonyms_.end());
   }
 }
 
 void ParticipantDataAggregator::processStudyContexts(const pep::EnumerateAndRetrieveResult& result) {
-  studyContexts_ = result.data_;
+  studyContexts_ = result.data;
 }
 
 void ParticipantDataAggregator::processVisitAssessor(const pep::EnumerateAndRetrieveResult& result) {
   std::string context;
   unsigned visit{};
-  [[maybe_unused]] auto match = isVisitAssessorColumn(result.column_, &context, &visit);
+  [[maybe_unused]] auto match = isVisitAssessorColumn(result.column, &context, &visit);
   assert(match);
 
   std::optional<unsigned int> assessorId;
-  if (!result.data_.empty()) {
-    assessorId = static_cast<unsigned int>(std::stoul(result.data_));
+  if (!result.data.empty()) {
+    assessorId = static_cast<unsigned int>(std::stoul(result.data));
   }
   auto inserted = visitAssessors_[context].insert(std::make_pair(visit, assessorId)).second;
   if (!inserted) {
@@ -1404,25 +1404,25 @@ ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfigurat
 }
 
 void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& result) {
-  if (result.column_.starts_with("ShortPseudonym.")) {
+  if (result.column.starts_with("ShortPseudonym.")) {
     this->processShortPseudonym(result);
   }
-  else if (isDeviceHistoryColumn(result.column_)) {
+  else if (isDeviceHistoryColumn(result.column)) {
     this->processDeviceHistory(result);
   }
-  else if (result.column_ == "ParticipantInfo") {
+  else if (result.column == "ParticipantInfo") {
     this->processParticipantInfo(result);
   }
-  else if (result.column_ == "IsTestParticipant") {
+  else if (result.column == "IsTestParticipant") {
     this->processIsTestParticipant(result);
   }
-  else if (result.column_ == "ParticipantIdentifier") {
+  else if (result.column == "ParticipantIdentifier") {
     this->processParticipantIdentifier(result);
   }
-  else if (result.column_ == "StudyContexts") {
+  else if (result.column == "StudyContexts") {
     this->processStudyContexts(result);
   }
-  else if (isVisitAssessorColumn(result.column_)) {
+  else if (isVisitAssessorColumn(result.column)) {
     this->processVisitAssessor(result);
   }
 }
@@ -1442,18 +1442,18 @@ ParticipantData ParticipantDataAggregator::getData() const {
 
   ParticipantData participantData_;
   if (participantInfo_) {
-    auto personalia = pep::ParticipantPersonalia::FromJson(participantInfo_->data_);
+    auto personalia = pep::ParticipantPersonalia::FromJson(participantInfo_->data);
     if (personalia.getFullName().empty() && personalia.getDateOfBirth().empty()) {
       PEP_LOG(LogTag, pep::Severity::Warning) << "Received empty participant personalia";
     }
     participantData_.personalia = personalia;
   }
   if (isTestParticipant_) {
-    participantData_.isTestParticipant = pep::StringToBool(isTestParticipant_->data_);
+    participantData_.isTestParticipant = pep::StringToBool(isTestParticipant_->data);
   }
   participantData_.shortPseudonyms = shortPseudonyms_;
   for (const auto& history: deviceHistory_) {
-    participantData_.participantDeviceHistory[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.data_, false);
+    participantData_.participantDeviceHistory[history.first] = pep::ParticipantDeviceHistory::Parse(history.second.data, false);
   }
 
   for (const auto& context : visitAssessors_) {

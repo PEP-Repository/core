@@ -221,7 +221,7 @@ rxcpp::observable<size_t> EnvironmentPuller::processBatchToStore(const std::vect
   }
 
   return client_->storeData2(batch)
-    .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.ids_.size(); });
+    .map([](DataStorageResult2 dataStorageResult) { return dataStorageResult.ids.size(); });
 }
 
 rxcpp::observable<StoreData2Entry> EnvironmentPuller::getStorageUpdate(std::shared_ptr<StorableCellContent> castor) {

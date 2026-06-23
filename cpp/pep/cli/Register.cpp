@@ -319,11 +319,11 @@ private:
           return earOpts // Get EAR options for the participant(s) we're going to process
             .concat_map([client](std::shared_ptr<pep::EnumerateAndRetrieveData2Opts> earOpts) { return client->enumerateAndRetrieveData2(*earOpts); }) // Retrieve fields for participant(s)
             .as_dynamic() // Reduce compiler memory usage
-            .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.localPseudonymsIndex_; })) // Group by participant
+            .op(pep::RxGroupToVectors([](const pep::EnumerateAndRetrieveResult& ear) {return ear.localPseudonymsIndex; })) // Group by participant
             .concat_map([](auto participants) { return RxIterate(std::move(*participants)); }) // Iterate over participants
             .map([](const std::pair<const uint32_t, std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>>>& pair) {return pair.second; }) // Keep only (shared_ptr to) vector of fields
             .concat_map([client, id, spCount](std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>> fields) -> rxcpp::observable<pep::FakeVoid> {
-            auto idField = std::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.column_ == "ParticipantIdentifier"; });
+            auto idField = std::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.column == "ParticipantIdentifier"; });
             if (idField == fields->cend()) {
               assert(spCount >= fields->size());
               auto spsToGenerate = spCount - fields->size();
@@ -342,12 +342,12 @@ private:
             }
 
             // At this point we're processing a record that has a stored ParticipantIdentifier
-            assert(id.value_or(idField->data_) == idField->data_); // If an ID was specified in our invocation, it should match the stored ParticipantIdentifier
+            assert(id.value_or(idField->data) == idField->data); // If an ID was specified in our invocation, it should match the stored ParticipantIdentifier
             assert(spCount + 1U >= fields->size());
             auto spsToGenerate = spCount - (fields->size() - 1U);
             if (spsToGenerate > 0U) {
-              PEP_LOG(LogTag, pep::Severity::Info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->data_;
-              return client->completeParticipantRegistration(idField->data_, true);
+              PEP_LOG(LogTag, pep::Severity::Info) << "Storing " << spsToGenerate << " short pseudonym(s) for " << idField->data;
+              return client->completeParticipantRegistration(idField->data, true);
             }
 
             return rxcpp::observable<>::empty<pep::FakeVoid>();

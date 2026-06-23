@@ -24,7 +24,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
   auto m = metaEntries.begin();
   for (size_t i = 0U; i < metaEntries.size(); ++i, ++m) {
     assert(m != metaEntries.end());
-    const auto& metadata = (*m)->metadata_;
+    const auto& metadata = (*m)->metadata;
     if (metadata.getOriginalPayloadEntryId().has_value()) {
       payloadIds.emplace_back(*metadata.getOriginalPayloadEntryId());
       metaIndices->emplace_back(i);
@@ -44,10 +44,10 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
   return client->enumerateDataByIds(payloadIds, ticket)
     .concat()
     .map([](const std::shared_ptr<EnumerateResult>& payloadEntry) {
-    if (payloadEntry->metadata_.getOriginalPayloadEntryId().has_value()) {
+    if (payloadEntry->metadata.getOriginalPayloadEntryId().has_value()) {
       throw std::runtime_error("Received a metadata-only update entry from server, but expected a payload-bearing entry");
     }
-    return payloadEntry->metadata_.getBlindingTimestamp();
+    return payloadEntry->metadata.getBlindingTimestamp();
       })
     .op(RxToVector())
     .map([metaCount = metaEntries.size(), metaIndices](std::shared_ptr<std::vector<Timestamp>> payloadTimestamps) { // Match timestamps to items in "metaEntries" vector
@@ -140,10 +140,10 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shar
       const std::optional<Timestamp>& payloadTimestamp = *t;
 
       ParticipantIdentifier id(
-        entry->localPseudonyms_->polymorphic_,
-        *entry->accessGroupPseudonym_);
+        entry->localPseudonyms->polymorphic_,
+        *entry->accessGroupPseudonym);
       auto emplaced = mapped->emplace(
-        RecordDescriptor(id, entry->column_, entry->metadata_.getBlindingTimestamp(), entry->metadata_.extra(), payloadTimestamp),
+        RecordDescriptor(id, entry->column, entry->metadata.getBlindingTimestamp(), entry->metadata.extra(), payloadTimestamp),
         std::move(entry));
       if (!emplaced.second) {
         const RecordDescriptor& key = emplaced.first->first;
@@ -181,8 +181,8 @@ void DownloadProcessor::prepareLocalData(
       if (!destination_->remove(existing)) {
         if (assumePristine) {
           auto update = std::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
-            return *enumerated.second->accessGroupPseudonym_ == existing.getParticipant().getLocalPseudonym()
-              && enumerated.second->column_ == existing.getColumn();
+            return *enumerated.second->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
+              && enumerated.second->column == existing.getColumn();
             });
           if (update == downloads->cend()) {
             // Data should have been removed from the local copy, but it wasn't there
@@ -228,7 +228,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
   while (!downloads->empty()) {
     auto position = downloads->begin();
     ctx->descriptors.emplace_back(MakeSharedCopy(position->first));
-    ctx->sizes.emplace_back(position->second->fileSize_);
+    ctx->sizes.emplace_back(position->second->fileSize);
     subjects->push(std::move(position->second));
 
     downloads->erase(position); // Discard source value to reduce memory use

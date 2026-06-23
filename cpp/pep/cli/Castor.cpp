@@ -190,20 +190,20 @@ private:
         return client->enumerateAndRetrieveData2(earOpts).reduce(
           CastorData(),
           [](CastorData data, pep::EnumerateAndRetrieveResult earResult) {
-            if(earResult.column_ == "ParticipantIdentifier") {
-              data.participantIds.emplace(earResult.localPseudonymsIndex_, earResult.data_);
+            if(earResult.column == "ParticipantIdentifier") {
+              data.participantIds.emplace(earResult.localPseudonymsIndex, earResult.data);
             }
-            else if(earResult.column_.starts_with(CastorColumnPrefix)) {
-              std::string studyName = earResult.column_.substr(CastorColumnPrefixLength,
-                earResult.column_.find_first_of('.', CastorColumnPrefixLength) - CastorColumnPrefixLength);
+            else if(earResult.column.starts_with(CastorColumnPrefix)) {
+              std::string studyName = earResult.column.substr(CastorColumnPrefixLength,
+                earResult.column.find_first_of('.', CastorColumnPrefixLength) - CastorColumnPrefixLength);
 
               auto& study = data.studies[studyName];
-              std::istringstream iss(earResult.data_);
+              std::istringstream iss(earResult.data);
               pt::ptree dataTree;
               pt::read_json(iss, dataTree);
 
               if(auto crf = dataTree.get_child_optional("crf")) {
-                study.steps[earResult.column_].push_back({earResult.localPseudonymsIndex_, *crf});
+                study.steps[earResult.column].push_back({earResult.localPseudonymsIndex, *crf});
               }
               else {
                 PEP_LOG(LogTag, pep::Severity::Warning) << "warning: Castor data is malformed. Missing crf data" << std::endl;
@@ -216,7 +216,7 @@ private:
                         PEP_LOG(LogTag, pep::Severity::Warning) << "warning: Castor data is malformed. Report instances should be an array without keys" << std::endl;
                       }
                       else {
-                        study.reports[earResult.column_ + "." + reportname].push_back({earResult.localPseudonymsIndex_, repeatingDataInstance});
+                        study.reports[earResult.column + "." + reportname].push_back({earResult.localPseudonymsIndex, repeatingDataInstance});
                       }
                     }
                   }

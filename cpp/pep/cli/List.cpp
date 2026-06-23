@@ -72,11 +72,11 @@ protected:
 
     public:
       SubjectData(const pep::EnumerateAndRetrieveResult& ear, bool collectMetadata, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : pp_(ear.localPseudonyms_->polymorphic_), collectMetadata_(collectMetadata) {
-        if (ear.accessGroupPseudonym_ != nullptr) {
-          lp_ = ear.accessGroupPseudonym_->text();
+        : pp_(ear.localPseudonyms->polymorphic_), collectMetadata_(collectMetadata) {
+        if (ear.accessGroupPseudonym != nullptr) {
+          lp_ = ear.accessGroupPseudonym->text();
           if (globalConfig) {
-            blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*ear.accessGroupPseudonym_);
+            blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*ear.accessGroupPseudonym);
           }
         }
         this->add(ear);
@@ -96,21 +96,21 @@ protected:
       }
 
       void add(const pep::EnumerateAndRetrieveResult& ear) {
-        assert(pp_ == ear.localPseudonyms_->polymorphic_);
+        assert(pp_ == ear.localPseudonyms->polymorphic_);
 
-        if (ear.dataSet_) {
+        if (ear.dataSet) {
           values_.push_back(pt::ptree::value_type(
-            ear.column_, ear.data_));
+            ear.column, ear.data));
         }
         else {
           ids_.push_back(pt::ptree::value_type(
-            ear.column_, boost::algorithm::hex(ear.id_)));
+            ear.column, boost::algorithm::hex(ear.id)));
         }
 
         if (collectMetadata_) {
           pt::ptree mdpt;
-          pep::Metadata md = ear.metadataDecrypted_
-            ? *(ear.metadataDecrypted_) : ear.metadata_;
+          pep::Metadata md = ear.metadataDecrypted
+            ? *(ear.metadataDecrypted) : ear.metadata;
 
           // woefully inefficient, but consistency is assured
           auto mdpb = pep::Serialization::ToProtocolBuffer(std::move(md));
@@ -122,7 +122,7 @@ protected:
           pt::json_parser::read_json(ss, mdpt);
 
           metadata_.push_back(pt::ptree::value_type(
-            ear.column_, std::move(mdpt)));
+            ear.column, std::move(mdpt)));
         }
       }
 
@@ -191,12 +191,12 @@ protected:
 
       void processResult(const pep::EnumerateAndRetrieveResult& ear) {
         dataCount++;
-        auto existing = subjects.find(ear.localPseudonymsIndex_);
+        auto existing = subjects.find(ear.localPseudonymsIndex);
         if (existing == subjects.cend()) {
           if (!groupOutput) {
             collectSubjects();
           }
-          [[maybe_unused]] auto emplaced = subjects.emplace(ear.localPseudonymsIndex_, SubjectData(ear, printMetadata, globalConfig));
+          [[maybe_unused]] auto emplaced = subjects.emplace(ear.localPseudonymsIndex, SubjectData(ear, printMetadata, globalConfig));
           assert(emplaced.second);
         }
         else {
