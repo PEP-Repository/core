@@ -20,10 +20,11 @@ class HTTPMessage {
 public:
   using HeaderMap = std::map<std::string, std::string, CaseInsensitiveCompare>;
 
-protected:
-  HeaderMap headers;
-  std::vector<std::shared_ptr<std::string>> bodyparts;
+private:
+  HeaderMap headers_;
+  std::vector<std::shared_ptr<std::string>> bodyparts_;
 
+protected:
   /*!
     * \brief Construct a message
     *
@@ -60,7 +61,7 @@ public:
   std::map<std::string, std::string> getBodyAsFormData() const;
 
   std::vector<std::shared_ptr<std::string>>& getBodyparts() {
-    return this->bodyparts;
+    return this->bodyparts_;
   }
 };
 
