@@ -290,13 +290,13 @@ private:
             .op(pep::RxGetOne())
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();
-            for (const auto& column : response.columns_) {
-              [[maybe_unused]] auto emplaced = config->existing.emplace(column.name_);
+            for (const auto& column : response.columns) {
+              [[maybe_unused]] auto emplaced = config->existing.emplace(column.name);
               assert(emplaced.second);
             }
-            const auto& castorGroup = std::find_if(response.columnGroups_.cbegin(), response.columnGroups_.cend(), [](const pep::AmaQRColumnGroup& group) {return group.name_ == "Castor"; });
-            if (castorGroup != response.columnGroups_.cend()) {
-              for (const auto& column : castorGroup->columns_) {
+            const auto& castorGroup = std::find_if(response.columnGroups.cbegin(), response.columnGroups.cend(), [](const pep::AmaQRColumnGroup& group) {return group.name == "Castor"; });
+            if (castorGroup != response.columnGroups.cend()) {
+              for (const auto& column : castorGroup->columns) {
                 [[maybe_unused]] auto emplaced = config->grouped.emplace(column);
                 assert(emplaced.second);
               }

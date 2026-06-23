@@ -248,7 +248,7 @@ protected:
 
 
     Update(const pep::EnumerateResult& enumResult, const std::optional<std::string>& currentExtension, const std::string& correctExtension)
-      : storeEntry_(pep::MakeSharedCopy(enumResult.localPseudonyms->polymorphic_), enumResult.column),
+      : storeEntry_(pep::MakeSharedCopy(enumResult.localPseudonyms->polymorphic), enumResult.column),
       participantAlias_(*enumResult.accessGroupPseudonym),
       previousExtension_(currentExtension) {
       assert(previousExtension_ == GetExtension(enumResult));
@@ -599,7 +599,7 @@ protected:
       .map([this](std::shared_ptr<pep::SignedTicket2> ticket) {
       auto extension = this->getParameterValues().get<std::string>("extension");
       auto result = std::make_shared<ColumnExtensions>();
-      for (const auto& column : ticket->openWithoutCheckingSignature().columns_) {
+      for (const auto& column : ticket->openWithoutCheckingSignature().columns) {
         [[maybe_unused]] auto emplaced = result->emplace(column, extension).second;
         assert(emplaced);
       }
@@ -746,7 +746,7 @@ protected:
           .map([this, specs](const std::vector<std::shared_ptr<pep::EnumerateResult>>& result) {
           for (const auto& entryPtr : result) {
             const auto& entry = *entryPtr;
-            auto position = specs->find(entry.localPseudonyms->polymorphic_);
+            auto position = specs->find(entry.localPseudonyms->polymorphic);
             if (position != specs->cend()) { // If this participant was identified by the user on the command line, report back using that identifier
               for (auto& spec : position->second) {
                 this->reportFileExtension(spec.str(), entry.column, entry.metadata.extra());

@@ -53,11 +53,11 @@ int CommandUser::CommandUserQuery::execute() {
       }
 
       // Warn for users without displayId
-      auto usersWithoutDisplayId = res.users_ | std::ranges::views::filter([](QRUser user){ return !user.displayId_; });
+      auto usersWithoutDisplayId = res.users | std::ranges::views::filter([](QRUser user){ return !user.displayId; });
       for (auto& user : usersWithoutDisplayId) {
-        auto uids = std::move(user.otherUids_);
-        if (user.primaryId_) {
-          uids.push_back(*user.primaryId_);
+        auto uids = std::move(user.otherUids);
+        if (user.primaryId) {
+          uids.push_back(*user.primaryId);
         }
         PEP_LOG(LogTag, Severity::Warning) << "No display-id for user with identifiers: " << boost::algorithm::join(uids, ", ");
       }
@@ -95,10 +95,10 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
 
 pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandline::NamedValues& values) {
   return {
-      .at_ = GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
+      .at = GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
         return Timestamp(milliseconds{ms});
       }),
-      .groupFilter_ = values.getOptional<std::string>("group").value_or(""),
-      .userFilter_ = values.getOptional<std::string>("user").value_or(""),
+      .groupFilter = values.getOptional<std::string>("group").value_or(""),
+      .userFilter = values.getOptional<std::string>("user").value_or(""),
   };
 }

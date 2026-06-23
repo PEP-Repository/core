@@ -202,16 +202,16 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetR
 
 rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetExisting(std::shared_ptr<pep::CoreClient> client) {
   return client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
-    .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.participantGroups_); })
-    .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.name_); })
+    .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.participantGroups); })
+    .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.name); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
     pep::EnumerateAndRetrieveData2Opts opts;
-    opts.groups.push_back(group.name_);
+    opts.groups.push_back(group.name);
     opts.columns.push_back("ParticipantIdentifier");
     // TODO: re-use ticket from ParticipantGroup::GetRequired
     return client->enumerateAndRetrieveData2(opts)
       .reduce(
-        ParticipantGroup::Create(group.name_),
+        ParticipantGroup::Create(group.name),
         [](std::shared_ptr<ParticipantGroup> group, const pep::EnumerateAndRetrieveResult& ear) {
           assert(ear.dataSet); // TODO: support data not being returned inline
           assert(ear.column == "ParticipantIdentifier");
@@ -456,15 +456,15 @@ private:
 
     static pep::AmaQuery extractQuery(const pep::commandline::NamedValues& values) {
       return {
-        .at_ = pep::GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
+        .at = pep::GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
           return pep::Timestamp(milliseconds{ms});
         }),
-        .columnFilter_ = values.getOptional<std::string>("column").value_or(""),
-        .columnGroupFilter_ = values.getOptional<std::string>("column-group").value_or(""),
-        .participantGroupFilter_ = values.getOptional<std::string>("participant-group").value_or(""),
-        .userGroupFilter_ = values.getOptional<std::string>("user-group").value_or(""),
-        .columnGroupModeFilter_ = values.getOptional<std::string>("column-mode").value_or(""),
-        .participantGroupModeFilter_ = values.getOptional<std::string>("participant-group-mode").value_or(""),
+        .columnFilter = values.getOptional<std::string>("column").value_or(""),
+        .columnGroupFilter = values.getOptional<std::string>("column-group").value_or(""),
+        .participantGroupFilter = values.getOptional<std::string>("participant-group").value_or(""),
+        .userGroupFilter = values.getOptional<std::string>("user-group").value_or(""),
+        .columnGroupModeFilter = values.getOptional<std::string>("column-mode").value_or(""),
+        .participantGroupModeFilter = values.getOptional<std::string>("participant-group-mode").value_or(""),
       };
     }
 
@@ -823,8 +823,8 @@ private:
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
             std::vector<pep::PolymorphicPseudonym> pps;
-            pps.reserve(ticket->accessSubjects_.size());
-            std::transform(ticket->accessSubjects_.begin(), ticket->accessSubjects_.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.polymorphic_; });
+            pps.reserve(ticket->accessSubjects.size());
+            std::transform(ticket->accessSubjects.begin(), ticket->accessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.polymorphic; });
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });

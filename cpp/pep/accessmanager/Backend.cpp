@@ -46,87 +46,87 @@ AccessManager::Backend::Backend(const std::filesystem::path& path, std::shared_p
 
 /********** START AMA Operations For Requests **********/
 void AccessManager::Backend::createColumnsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.createColumn_) {
-    this->storage_->createColumn(mutation.name_);
-    PEP_LOG(LogTag, Severity::Info) << "Created column " << Logging::Escape(mutation.name_);
+  for (auto& mutation : amRequest.createColumn) {
+    this->storage_->createColumn(mutation.name);
+    PEP_LOG(LogTag, Severity::Info) << "Created column " << Logging::Escape(mutation.name);
   }
 }
 void AccessManager::Backend::removeColumnsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.removeColumn_) {
-    this->storage_->removeColumn(mutation.name_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed column " << Logging::Escape(mutation.name_);
+  for (auto& mutation : amRequest.removeColumn) {
+    this->storage_->removeColumn(mutation.name);
+    PEP_LOG(LogTag, Severity::Info) << "Removed column " << Logging::Escape(mutation.name);
   }
 }
 void AccessManager::Backend::createColumnGroupsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.createColumnGroup_) {
-    this->storage_->createColumnGroup(mutation.name_);
-    PEP_LOG(LogTag, Severity::Info) << "Created columngroup " << Logging::Escape(mutation.name_);
+  for (auto& mutation : amRequest.createColumnGroup) {
+    this->storage_->createColumnGroup(mutation.name);
+    PEP_LOG(LogTag, Severity::Info) << "Created columngroup " << Logging::Escape(mutation.name);
   }
 }
 void AccessManager::Backend::removeColumnGroupsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.removeColumnGroup_) {
-    this->storage_->removeColumnGroup(mutation.name_, amRequest.forceColumnGroupRemoval_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed columngroup " << Logging::Escape(mutation.name_);
+  for (auto& mutation : amRequest.removeColumnGroup) {
+    this->storage_->removeColumnGroup(mutation.name, amRequest.forceColumnGroupRemoval);
+    PEP_LOG(LogTag, Severity::Info) << "Removed columngroup " << Logging::Escape(mutation.name);
   }
 }
 void AccessManager::Backend::addColumnsToGroupsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.addColumnToGroup_) {
-    this->storage_->addColumnToGroup(mutation.column_, mutation.columnGroup_);
-    PEP_LOG(LogTag, Severity::Info) << "Added column " << Logging::Escape(mutation.column_) << " to group "
-                                               << Logging::Escape(mutation.columnGroup_);
+  for (auto& mutation : amRequest.addColumnToGroup) {
+    this->storage_->addColumnToGroup(mutation.column, mutation.columnGroup);
+    PEP_LOG(LogTag, Severity::Info) << "Added column " << Logging::Escape(mutation.column) << " to group "
+                                               << Logging::Escape(mutation.columnGroup);
   }
 }
 void AccessManager::Backend::removeColumnsFromGroupsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.removeColumnFromGroup_) {
-    this->storage_->removeColumnFromGroup(mutation.column_, mutation.columnGroup_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed column " << Logging::Escape(mutation.column_)
-                                               << " from group " << Logging::Escape(mutation.columnGroup_);
+  for (auto& mutation : amRequest.removeColumnFromGroup) {
+    this->storage_->removeColumnFromGroup(mutation.column, mutation.columnGroup);
+    PEP_LOG(LogTag, Severity::Info) << "Removed column " << Logging::Escape(mutation.column)
+                                               << " from group " << Logging::Escape(mutation.columnGroup);
   }
 }
 void AccessManager::Backend::createParticipantGroupsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.createParticipantGroup_) {
-    this->storage_->createParticipantGroup(mutation.name_);
+  for (auto& mutation : amRequest.createParticipantGroup) {
+    this->storage_->createParticipantGroup(mutation.name);
     PEP_LOG(LogTag, Severity::Info)
-        << "Created participant group via ref " << Logging::Escape(mutation.name_);
+        << "Created participant group via ref " << Logging::Escape(mutation.name);
   }
 }
 void AccessManager::Backend::removeParticipantGroupsForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.removeParticipantGroup_) {
-    this->storage_->removeParticipantGroup(mutation.name_, amRequest.forceParticipantGroupRemoval_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed participant group " << Logging::Escape(mutation.name_);
+  for (auto& mutation : amRequest.removeParticipantGroup) {
+    this->storage_->removeParticipantGroup(mutation.name, amRequest.forceParticipantGroupRemoval);
+    PEP_LOG(LogTag, Severity::Info) << "Removed participant group " << Logging::Escape(mutation.name);
   }
 }
 void AccessManager::Backend::createColumnGroupAccessRulesForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.createColumnGroupAccessRule_) {
-    this->storage_->createColumnGroupAccessRule(mutation.columnGroup_, mutation.userGroup_, mutation.mode_);
+  for (auto& mutation : amRequest.createColumnGroupAccessRule) {
+    this->storage_->createColumnGroupAccessRule(mutation.columnGroup, mutation.userGroup, mutation.mode);
     PEP_LOG(LogTag, Severity::Info)
-        << "Created column-group-access-rule: " << Logging::Escape(mutation.userGroup_) << " has access to mode "
-        << Logging::Escape(mutation.mode_) << " for column group " << Logging::Escape(mutation.columnGroup_);
+        << "Created column-group-access-rule: " << Logging::Escape(mutation.userGroup) << " has access to mode "
+        << Logging::Escape(mutation.mode) << " for column group " << Logging::Escape(mutation.columnGroup);
   }
 }
 void AccessManager::Backend::removeColumnGroupAccessRulesForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.removeColumnGroupAccessRule_) {
-    this->storage_->removeColumnGroupAccessRule(mutation.columnGroup_, mutation.userGroup_, mutation.mode_);
+  for (auto& mutation : amRequest.removeColumnGroupAccessRule) {
+    this->storage_->removeColumnGroupAccessRule(mutation.columnGroup, mutation.userGroup, mutation.mode);
     PEP_LOG(LogTag, Severity::Info)
-        << "Removed column-group-access-rule: " << Logging::Escape(mutation.userGroup_)
-        << " no longer has access to mode " << Logging::Escape(mutation.mode_) << " for column group "
-        << Logging::Escape(mutation.columnGroup_);
+        << "Removed column-group-access-rule: " << Logging::Escape(mutation.userGroup)
+        << " no longer has access to mode " << Logging::Escape(mutation.mode) << " for column group "
+        << Logging::Escape(mutation.columnGroup);
   }
 }
 void AccessManager::Backend::createParticipantGroupAccessRulesForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.createParticipantGroupAccessRule_) {
-    this->storage_->createParticipantGroupAccessRule(mutation.participantGroup_, mutation.userGroup_, mutation.mode_);
+  for (auto& mutation : amRequest.createParticipantGroupAccessRule) {
+    this->storage_->createParticipantGroupAccessRule(mutation.participantGroup, mutation.userGroup, mutation.mode);
     PEP_LOG(LogTag, Severity::Info)
-        << "Created group-access-rule: " << Logging::Escape(mutation.userGroup_) << " has access to mode "
-        << Logging::Escape(mutation.mode_) << " for group " << Logging::Escape(mutation.participantGroup_);
+        << "Created group-access-rule: " << Logging::Escape(mutation.userGroup) << " has access to mode "
+        << Logging::Escape(mutation.mode) << " for group " << Logging::Escape(mutation.participantGroup);
   }
 }
 void AccessManager::Backend::removeParticipantGroupAccessRulesForRequest(const AmaMutationRequest& amRequest) {
-  for (auto& mutation : amRequest.removeParticipantGroupAccessRule_) {
-    this->storage_->removeParticipantGroupAccessRule(mutation.participantGroup_, mutation.userGroup_, mutation.mode_);
+  for (auto& mutation : amRequest.removeParticipantGroupAccessRule) {
+    this->storage_->removeParticipantGroupAccessRule(mutation.participantGroup, mutation.userGroup, mutation.mode);
     PEP_LOG(LogTag, Severity::Info)
-        << "Removed group-access-rule: " << Logging::Escape(mutation.userGroup_) << " no longer has access to mode "
-        << Logging::Escape(mutation.mode_) << " for group " << Logging::Escape(mutation.participantGroup_);
+        << "Removed group-access-rule: " << Logging::Escape(mutation.userGroup) << " no longer has access to mode "
+        << Logging::Escape(mutation.mode) << " for group " << Logging::Escape(mutation.participantGroup);
   }
 }
 
@@ -159,59 +159,59 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
 
   // Execute mutations
   std::vector<rxcpp::observable<rxcpp::observable<std::string>>> observables;
-  for (auto& x : request.createUser_) {
-    storage_->createUser(x.uid_);
-    PEP_LOG(LogTag, Severity::Info) << "Created user " << Logging::Escape(x.uid_);
+  for (auto& x : request.createUser) {
+    storage_->createUser(x.uid);
+    PEP_LOG(LogTag, Severity::Info) << "Created user " << Logging::Escape(x.uid);
   }
-  for (auto& x : request.removeUser_) {
-    storage_->removeUser(x.uid_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed user " << Logging::Escape(x.uid_);
+  for (auto& x : request.removeUser) {
+    storage_->removeUser(x.uid);
+    PEP_LOG(LogTag, Severity::Info) << "Removed user " << Logging::Escape(x.uid);
   }
-  for (auto& x : request.addUserIdentifier_) {
+  for (auto& x : request.addUserIdentifier) {
     const auto flags =
-        FlagsIf(UserIdFlags::IsDisplayId, x.isDisplayId_) |
-        FlagsIf(UserIdFlags::IsPrimaryId, x.isPrimaryId_);
-    storage_->addIdentifierForUser(x.existingUid_, x.newUid_, flags);
-    PEP_LOG(LogTag, Severity::Info) << "Added user identifier " << Logging::Escape(x.newUid_) << " for user " << Logging::Escape(x.existingUid_);
+        FlagsIf(UserIdFlags::IsDisplayId, x.isDisplayId) |
+        FlagsIf(UserIdFlags::IsPrimaryId, x.isPrimaryId);
+    storage_->addIdentifierForUser(x.existingUid, x.newUid, flags);
+    PEP_LOG(LogTag, Severity::Info) << "Added user identifier " << Logging::Escape(x.newUid) << " for user " << Logging::Escape(x.existingUid);
   }
-  for (auto& x : request.removeUserIdentifier_) {
-    storage_->removeIdentifierForUser(x.uid_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed user identifier " << Logging::Escape(x.uid_);
+  for (auto& x : request.removeUserIdentifier) {
+    storage_->removeIdentifierForUser(x.uid);
+    PEP_LOG(LogTag, Severity::Info) << "Removed user identifier " << Logging::Escape(x.uid);
   }
-  for (auto& x : request.setPrimaryId_) {
+  for (auto& x : request.setPrimaryId) {
     storage_->setPrimaryIdentifierForUser(x);
     PEP_LOG(LogTag, Severity::Info) << "Set identifier " << Logging::Escape(x) << " as primary identifier.";
   }
-  for (auto& x : request.unsetPrimaryId_) {
+  for (auto& x : request.unsetPrimaryId) {
     storage_->unsetPrimaryIdentifierForUser(x);
     PEP_LOG(LogTag, Severity::Info) << "Unset identifier " << Logging::Escape(x) << " as primary identifier.";
   }
-  for (auto& x : request.setDisplayId_) {
+  for (auto& x : request.setDisplayId) {
     storage_->setDisplayIdentifierForUser(x);
     PEP_LOG(LogTag, Severity::Info) << "Set identifier " << Logging::Escape(x) << " as display identifier.";
   }
-  for (auto& x : request.createUserGroup_) {
-    storage_->createUserGroup(x.userGroup_);
-    PEP_LOG(LogTag, Severity::Info) << "Created user group " << Logging::Escape(x.userGroup_.name_);
+  for (auto& x : request.createUserGroup) {
+    storage_->createUserGroup(x.userGroup);
+    PEP_LOG(LogTag, Severity::Info) << "Created user group " << Logging::Escape(x.userGroup.name);
   }
-  for (auto& x : request.removeUserGroup_) {
-    storage_->removeUserGroup(x.name_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed user group " << Logging::Escape(x.name_);
+  for (auto& x : request.removeUserGroup) {
+    storage_->removeUserGroup(x.name);
+    PEP_LOG(LogTag, Severity::Info) << "Removed user group " << Logging::Escape(x.name);
   }
-  for (auto& x : request.modifyUserGroup_) {
-    storage_->modifyUserGroup(x.userGroup_);
-    PEP_LOG(LogTag, Severity::Info) << "Modified user group " << Logging::Escape(x.userGroup_.name_);
+  for (auto& x : request.modifyUserGroup) {
+    storage_->modifyUserGroup(x.userGroup);
+    PEP_LOG(LogTag, Severity::Info) << "Modified user group " << Logging::Escape(x.userGroup.name);
   }
-  for (auto& x : request.addUserToGroup_) {
-    storage_->addUserToGroup(x.uid_, x.group_);
-    PEP_LOG(LogTag, Severity::Info) << "Added user to user group " << Logging::Escape(x.group_);
+  for (auto& x : request.addUserToGroup) {
+    storage_->addUserToGroup(x.uid, x.group);
+    PEP_LOG(LogTag, Severity::Info) << "Added user to user group " << Logging::Escape(x.group);
   }
-  return rxcpp::rxs::iterate(request.removeUserFromGroup_).concat_map([storage=storage_, accessManager=this->accessManager_](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
-    int64_t internalUserId = storage->getInternalUserId(x.uid_);
-    storage->removeUserFromGroup(internalUserId, x.group_);
-    PEP_LOG(LogTag, Severity::Info) << "Removed user from user group " << Logging::Escape(x.group_);
-    if (x.blockTokens_) {
-      return rxcpp::rxs::iterate(storage->getAllIdentifiersForUser(internalUserId)).concat_map([group=x.group_, accessManager](const std::string& uid) {
+  return rxcpp::rxs::iterate(request.removeUserFromGroup).concat_map([storage=storage_, accessManager=this->accessManager_](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
+    int64_t internalUserId = storage->getInternalUserId(x.uid);
+    storage->removeUserFromGroup(internalUserId, x.group);
+    PEP_LOG(LogTag, Severity::Info) << "Removed user from user group " << Logging::Escape(x.group);
+    if (x.blockTokens) {
+      return rxcpp::rxs::iterate(storage->getAllIdentifiersForUser(internalUserId)).concat_map([group=x.group, accessManager](const std::string& uid) {
         TokenBlockingCreateRequest tokenBlockRequest{
           .target = {
             .subject = uid,
@@ -242,28 +242,28 @@ FindUserResponse AccessManager::Backend::handleFindUserRequest(
   constexpr auto CaseSensitive = Storage::CaseSensitivity::CaseSensitive;
 
   UserGroup::EnsureAccess(UserGroup::Authserver, userGroup);
-  std::optional<int64_t> userId = storage_->findInternalUserId(request.primaryId_, CaseSensitive);
+  std::optional<int64_t> userId = storage_->findInternalUserId(request.primaryId, CaseSensitive);
   if (userId) {
     auto primary = storage_->getPrimaryIdentifierForUser(*userId);
     if (!primary) {
-      storage_->setPrimaryIdentifierForUser(*userId, request.primaryId_);
+      storage_->setPrimaryIdentifierForUser(*userId, request.primaryId);
     }
-    else if (primary != request.primaryId_) {
-      PEP_LOG(LogTag, Severity::Error) << "Found a user based on the primary ID we received from the authentication source (" << request.primaryId_
+    else if (primary != request.primaryId) {
+      PEP_LOG(LogTag, Severity::Error) << "Found a user based on the primary ID we received from the authentication source (" << request.primaryId
         << "), but according to our storage a different id for this user is the primary ID. (" << *primary << ")";
       throw Error("There is a problem with your user account. Please contact support to resolve this issue.");
     }
   }
   else {
-    userId = storage_->findInternalUserId(request.alternativeIds_, CaseInsensitive);
+    userId = storage_->findInternalUserId(request.alternativeIds, CaseInsensitive);
     if (userId) {
       auto primary = storage_->getPrimaryIdentifierForUser(*userId);
       if (!primary) {
-        storage_->addIdentifierForUser(*userId, request.primaryId_, UserIdFlags::IsPrimaryId, CaseSensitive);
+        storage_->addIdentifierForUser(*userId, request.primaryId, UserIdFlags::IsPrimaryId, CaseSensitive);
       }
       else{
         PEP_LOG(LogTag, Severity::Error) << "A user tried to login as a user for which we already have a primary ID (" << *primary
-          << "), that does not match the primary ID we received from the authentication source (" << request.primaryId_ << ").";
+          << "), that does not match the primary ID we received from the authentication source (" << request.primaryId << ").";
         throw Error("A different user account already exists for the provided user ID. Please contact support to resolve this issue.");
       }
     }
@@ -315,7 +315,7 @@ void AccessManager::Backend::storeLocalPseudonymAndPP(const LocalPseudonym& loca
 }
 
 void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
-  if (request.accessSubjects_.size() > 0 && request.participantGroups_.size() > 0) {
+  if (request.accessSubjects.size() > 0 && request.participantGroups.size() > 0) {
     // We decided to not support this situation any more, since we don't expect this to be used often.
     // At the time of writing this comment, the code was not written with this assumption in mind, so could possibly be
     // simplified The problem we want to solve with this assumption is that if a participant group is given, as well as
@@ -325,7 +325,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
                 "supported. Use either groups or specific participants.");
   }
 
-  auto duplicate = TryFindDuplicateValue(request.accessSubjects_);
+  auto duplicate = TryFindDuplicateValue(request.accessSubjects);
   if (duplicate != std::nullopt) {
     PEP_LOG(LogTag, Severity::Error) << "Failing ticket request due to duplicate PP " << duplicate->text();
     throw Error("Ticket request failed due to duplicate polymorphic pseudonym. Please request access to unique "
@@ -334,17 +334,17 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
 
   // Check all participantgroups and columngroups for existence
   std::vector<std::string> errorMessageParts;
-  for (const auto& pg : request.participantGroups_) {
+  for (const auto& pg : request.participantGroups) {
     if (!storage_->hasParticipantGroup(pg)) {
       errorMessageParts.push_back("Unknown participantgroup specified: " + Logging::Escape(pg));
     }
   }
-  for (const auto& cg : request.columnGroups_) {
+  for (const auto& cg : request.columnGroups) {
     if (!storage_->hasColumnGroup(cg)) {
       errorMessageParts.push_back("Unknown columngroup specified: " + Logging::Escape(cg));
     }
   }
-  for (const auto& col : request.columns_) {
+  for (const auto& col : request.columns) {
     if (!storage_->hasColumn(col)) {
       errorMessageParts.push_back("Unknown column specified: " + Logging::Escape(col));
     }
@@ -504,13 +504,13 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
 
 void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<EncryptionKeyRequest> request,
                                                               const Ticket2& ticket) {
-  std::unordered_set<std::string> ticketCols{ticket.columns_.begin(), ticket.columns_.end()};
+  std::unordered_set<std::string> ticketCols{ticket.columns.begin(), ticket.columns.end()};
 
-  for (auto const& entry : request->entries_) {
+  for (auto const& entry : request->entries) {
     std::string mode;
-    if (entry.keyBlindMode_ == KeyBlindMode::Blind)
+    if (entry.keyBlindMode == KeyBlindMode::Blind)
       mode = "write";
-    else if (entry.keyBlindMode_ == KeyBlindMode::Unblind)
+    else if (entry.keyBlindMode == KeyBlindMode::Unblind)
       mode = "read";
     else
       throw Error("Unexpected KeyBlindMode");
@@ -521,7 +521,7 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
       throw Error(msg.str());
     }
 
-    auto col = entry.metadata_.getTag();
+    auto col = entry.metadata.getTag();
     if (ticketCols.count(col) == 0) {
       std::ostringstream msg;
       msg << "Access denied: ticket does not grant access to column " << Logging::Escape(col);
@@ -542,21 +542,21 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   ColumnGroupColumnFilter cgcFilter;
   ColumnGroupFilter cgFilter;
 
-  if (!query.columnFilter_.empty()){
-    cgcFilter.columns = std::vector<std::string>{query.columnFilter_};
+  if (!query.columnFilter.empty()){
+    cgcFilter.columns = std::vector<std::string>{query.columnFilter};
   }
-  if (!query.columnGroupFilter_.empty()){
-    cgcFilter.columnGroups = std::vector<std::string>{query.columnGroupFilter_};
-    cgFilter.columnGroups = std::vector<std::string>{query.columnGroupFilter_};
+  if (!query.columnGroupFilter.empty()){
+    cgcFilter.columnGroups = std::vector<std::string>{query.columnGroupFilter};
+    cgFilter.columnGroups = std::vector<std::string>{query.columnGroupFilter};
   }
 
-  auto timestamp = query.at_ ? *query.at_ : TimeNow(); // Not using optional<>.value_or to prevent TimeNow() from being evaluated
+  auto timestamp = query.at ? *query.at : TimeNow(); // Not using optional<>.value_or to prevent TimeNow() from being evaluated
   // All columns in the system have a explicit relation to columnGroup '*', so they will be included here.
   auto foundColumnGroupColumns = storage_->getColumnGroupColumns(timestamp, cgcFilter);
 
   // Keep track of which columns are in which columnGroup. This map will contain all info necessary for further steps.
   std::map<std::string, std::vector<std::string>> columnsByColumnGroup;
-  if(query.columnFilter_.empty()) {
+  if(query.columnFilter.empty()) {
     // If we do not filter on columns, we want to find columnGroups that have no columns assigned to them.
     // These would not show up in foundColumnGroupColumns, so add them explicitly.
     auto columngroups = storage_->getColumnGroups(timestamp, cgFilter);
@@ -570,18 +570,18 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
 
   // Find the cgars
   ColumnGroupAccessRuleFilter cgarFilter {};
-  if(!query.userGroupFilter_.empty()){
-    cgarFilter.userGroups = std::vector<std::string>{query.userGroupFilter_};
+  if(!query.userGroupFilter.empty()){
+    cgarFilter.userGroups = std::vector<std::string>{query.userGroupFilter};
   }
-  if(!query.columnGroupModeFilter_.empty()){
-    cgarFilter.modes = std::vector<std::string>{query.columnGroupModeFilter_};
+  if(!query.columnGroupModeFilter.empty()){
+    cgarFilter.modes = std::vector<std::string>{query.columnGroupModeFilter};
   }
-  if(!query.columnFilter_.empty() || !query.columnGroupFilter_.empty()){
+  if(!query.columnFilter.empty() || !query.columnGroupFilter.empty()){
     cgarFilter.columnGroups = RangeToVector(std::views::keys(columnsByColumnGroup));
   }
   auto cgars = storage_->getColumnGroupAccessRules(timestamp, cgarFilter);
 
-  if(!query.userGroupFilter_.empty() || !query.columnGroupModeFilter_.empty()) {
+  if(!query.userGroupFilter.empty() || !query.columnGroupModeFilter.empty()) {
     // If there were additional cgar filters in place, we need to go back on the found columngroups and columns and apply another narrowing filter, showing only those
     // columngroups that appear in the cgars.
     std::set<std::string> cgsInCgars{};
@@ -590,36 +590,36 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
                   [&cgsInCgars](const auto& entry){ return !cgsInCgars.contains(entry.first);});
   }
   // Fill the result with the columns, columnGroups and cgars
-  result.columnGroups_.reserve(columnsByColumnGroup.size());
+  result.columnGroups.reserve(columnsByColumnGroup.size());
   std::set<std::string> columns{};
   for (auto& [cg, cols] : columnsByColumnGroup){
-    result.columnGroups_.push_back(AmaQRColumnGroup(cg, cols));
+    result.columnGroups.push_back(AmaQRColumnGroup(cg, cols));
     std::copy(cols.begin(), cols.end(), std::inserter(columns, columns.end())); // Add the found values to the columns vector.
   }
-  transform(columns, result.columns_, [](const auto& col) { return AmaQRColumn(col);});
+  transform(columns, result.columns, [](const auto& col) { return AmaQRColumn(col);});
 
-  result.columnGroupAccessRules_.reserve(cgars.size());
-  transform(cgars, result.columnGroupAccessRules_, [](const auto& cgar){ return AmaQRColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);});
+  result.columnGroupAccessRules.reserve(cgars.size());
+  transform(cgars, result.columnGroupAccessRules, [](const auto& cgar){ return AmaQRColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);});
 
   // Participantgroups and pgars
   ParticipantGroupFilter pgFilter;
   ParticipantGroupAccessRuleFilter pgarFilter;
 
-  if(!query.participantGroupFilter_.empty()){
-    pgFilter.participantGroups = std::vector<std::string>{query.participantGroupFilter_};
-    pgarFilter.participantGroups = std::vector<std::string>{query.participantGroupFilter_};
+  if(!query.participantGroupFilter.empty()){
+    pgFilter.participantGroups = std::vector<std::string>{query.participantGroupFilter};
+    pgarFilter.participantGroups = std::vector<std::string>{query.participantGroupFilter};
   }
-  if(!query.participantGroupModeFilter_.empty()){
-    pgarFilter.modes = std::vector<std::string>{query.participantGroupModeFilter_};
+  if(!query.participantGroupModeFilter.empty()){
+    pgarFilter.modes = std::vector<std::string>{query.participantGroupModeFilter};
   }
-  if(!query.userGroupFilter_.empty()){
-    pgarFilter.userGroups = std::vector<std::string>{query.userGroupFilter_};
+  if(!query.userGroupFilter.empty()){
+    pgarFilter.userGroups = std::vector<std::string>{query.userGroupFilter};
   }
 
   std::set<std::string> foundParticipantGroups{};
   auto pgars = storage_->getParticipantGroupAccessRules(timestamp, pgarFilter);
 
-  if(!query.participantGroupModeFilter_.empty() || !query.userGroupFilter_.empty()){
+  if(!query.participantGroupModeFilter.empty() || !query.userGroupFilter.empty()){
     // The pgar filters are narrowing the found participants as well, only show pgs with pgars
     transform(pgars, foundParticipantGroups, [](const auto& pgar) { return pgar.participantGroup;});
   } else{
@@ -629,9 +629,10 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   }
 
   // Fill the result
-  result.participantGroupAccessRules_.reserve(pgars.size());
-  transform(pgars, result.participantGroupAccessRules_, [](const auto& pgar){return AmaQRParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);});
-  result.participantGroups_.assign(foundParticipantGroups.begin(), foundParticipantGroups.end()); // Makes use of implicit string to AmaQRParticipantGroup conversion.
+  result.participantGroupAccessRules.reserve(pgars.size());
+  transform(pgars, result.participantGroupAccessRules, [](const auto& pgar){return AmaQRParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);});
+  result.participantGroups.reserve(foundParticipantGroups.size());
+  transform(foundParticipantGroups, result.participantGroups, [](const std::string& name) { return AmaQRParticipantGroup{ .name = name }; });
 
   return result;
 }

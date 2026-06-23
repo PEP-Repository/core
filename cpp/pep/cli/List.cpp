@@ -72,7 +72,7 @@ protected:
 
     public:
       SubjectData(const pep::EnumerateAndRetrieveResult& ear, bool collectMetadata, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : pp_(ear.localPseudonyms->polymorphic_), collectMetadata_(collectMetadata) {
+        : pp_(ear.localPseudonyms->polymorphic), collectMetadata_(collectMetadata) {
         if (ear.accessGroupPseudonym != nullptr) {
           lp_ = ear.accessGroupPseudonym->text();
           if (globalConfig) {
@@ -96,7 +96,7 @@ protected:
       }
 
       void add(const pep::EnumerateAndRetrieveResult& ear) {
-        assert(pp_ == ear.localPseudonyms->polymorphic_);
+        assert(pp_ == ear.localPseudonyms->polymorphic);
 
         if (ear.dataSet) {
           values_.push_back(pt::ptree::value_type(
@@ -276,9 +276,9 @@ protected:
           ctx->earOpts.ticket = std::make_shared<pep::IndexedTicket2>(
               std::move(ticket));
           if (ctx->parameterValues.has("show-dataless")) {
-            auto pseuds = ctx->earOpts.ticket->openTicketWithoutCheckingSignature()->accessSubjects_;
+            auto pseuds = ctx->earOpts.ticket->openTicketWithoutCheckingSignature()->accessSubjects;
             std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->pseudsToReport, ctx->pseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
-              return std::make_pair(lps.polymorphic_, lps.accessGroup_);
+              return std::make_pair(lps.polymorphic, lps.accessGroup);
               });
           }
           return client->enumerateAndRetrieveData2(ctx->earOpts);

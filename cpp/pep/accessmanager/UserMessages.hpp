@@ -6,134 +6,98 @@
 
 namespace pep {
 
-class CreateUser {
-public:
-  CreateUser() = default;
-  explicit CreateUser(std::string uid) : uid_(std::move(uid)) { };
-  std::string uid_;
+struct CreateUser {
+  std::string uid;
 };
 
-class RemoveUser {
-public:
-  RemoveUser() = default;
-  explicit  RemoveUser(std::string uid) : uid_(std::move(uid)) { };
-  std::string uid_;
+struct RemoveUser {
+  std::string uid;
 };
 
-class AddUserIdentifier {
-public:
-  AddUserIdentifier() = default;
-  AddUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId)
-    : existingUid_(std::move(existingUid)), newUid_(std::move(newUid)), isPrimaryId_(isPrimaryId),isDisplayId_(isDisplayId) { }
-  std::string existingUid_;
-  std::string newUid_;
-  bool isPrimaryId_ = false;
-  bool isDisplayId_ = false;
+struct AddUserIdentifier {
+  std::string existingUid;
+  std::string newUid;
+  bool isPrimaryId = false;
+  bool isDisplayId = false;
 };
 
-class RemoveUserIdentifier {
-public:
-  RemoveUserIdentifier() = default;
-  RemoveUserIdentifier(std::string uid) : uid_(std::move(uid)) { }
-  std::string uid_;
+struct RemoveUserIdentifier {
+  std::string uid;
 };
 
-class CreateUserGroup {
-public:
-  CreateUserGroup() = default;
-  CreateUserGroup(UserGroup userGroup) : userGroup_(std::move(userGroup)) { }
-  UserGroup userGroup_;
+struct CreateUserGroup {
+  UserGroup userGroup;
 };
 
-class ModifyUserGroup {
-public:
-  ModifyUserGroup() = default;
-  ModifyUserGroup(UserGroup userGroup) : userGroup_(std::move(userGroup)) { }
-  UserGroup userGroup_;
+struct ModifyUserGroup {
+  UserGroup userGroup;
 };
 
-class RemoveUserGroup {
-public:
-  RemoveUserGroup() = default;
-  RemoveUserGroup(std::string name) : name_(std::move(name)) { }
-  std::string name_;
+struct RemoveUserGroup {
+  std::string name;
 };
 
-class AddUserToGroup {
-public:
-  AddUserToGroup() = default;
-  AddUserToGroup(std::string uid, std::string group)
-    : uid_(std::move(uid)), group_(std::move(group)) { }
-  std::string uid_;
-  std::string group_;
+struct AddUserToGroup {
+  std::string uid;
+  std::string group;
 };
 
-class RemoveUserFromGroup {
+struct RemoveUserFromGroup {
 public:
-  RemoveUserFromGroup() = default;
-  RemoveUserFromGroup(std::string uid, std::string group, bool blockTokens) : uid_(std::move(uid)), group_(std::move(group)), blockTokens_(blockTokens) { }
-  std::string uid_;
-  std::string group_;
-  bool blockTokens_ = false;
+  std::string uid;
+  std::string group;
+  bool blockTokens = false;
 };
 
-class UserMutationRequest {
-public:
-  std::vector<CreateUser> createUser_;
-  std::vector<RemoveUser> removeUser_;
+struct UserMutationRequest {
+  std::vector<CreateUser> createUser;
+  std::vector<RemoveUser> removeUser;
 
-  std::vector<AddUserIdentifier> addUserIdentifier_;
-  std::vector<RemoveUserIdentifier> removeUserIdentifier_;
-  std::vector<std::string> setPrimaryId_;
-  std::vector<std::string> unsetPrimaryId_;
-  std::vector<std::string> setDisplayId_;
+  std::vector<AddUserIdentifier> addUserIdentifier;
+  std::vector<RemoveUserIdentifier> removeUserIdentifier;
+  std::vector<std::string> setPrimaryId;
+  std::vector<std::string> unsetPrimaryId;
+  std::vector<std::string> setDisplayId;
 
-  std::vector<CreateUserGroup> createUserGroup_;
-  std::vector<RemoveUserGroup> removeUserGroup_;
-  std::vector<ModifyUserGroup> modifyUserGroup_;
+  std::vector<CreateUserGroup> createUserGroup;
+  std::vector<RemoveUserGroup> removeUserGroup;
+  std::vector<ModifyUserGroup> modifyUserGroup;
 
-  std::vector<AddUserToGroup> addUserToGroup_;
-  std::vector<RemoveUserFromGroup> removeUserFromGroup_;
+  std::vector<AddUserToGroup> addUserToGroup;
+  std::vector<RemoveUserFromGroup> removeUserFromGroup;
 };
 
-class UserMutationResponse {
-};
+struct UserMutationResponse {};
 
-class UserQuery {
-public:
+struct UserQuery {
   // Use nullopt for current server time, such that a wrong client time does not influence query
-  std::optional<Timestamp> at_;
-  std::string groupFilter_;
-  std::string userFilter_;
+  std::optional<Timestamp> at;
+  std::string groupFilter;
+  std::string userFilter;
 };
 
-class QRUser {
-public:
-  QRUser() = default;
-  QRUser(std::optional<std::string> displayId, std::optional<std::string>  primaryId, std::vector<std::string> otherUids, std::vector<std::string> groups)
-    : displayId_(std::move(displayId)), primaryId_(std::move(primaryId)), otherUids_(std::move(otherUids)), groups_(std::move(groups)) { }
-
-  std::optional<std::string> displayId_;
-  std::optional<std::string> primaryId_;
-  std::vector<std::string> otherUids_;
-  std::vector<std::string> groups_;
+struct QRUser {
+  std::optional<std::string> displayId;
+  std::optional<std::string> primaryId;
+  std::vector<std::string> otherUids;
+  std::vector<std::string> groups;
 
   [[nodiscard]] auto operator<=>(const QRUser&) const = default;
 
   friend std::ostream& operator<<(std::ostream& out, const QRUser& user) {
-    out << user.displayId_.value_or("[NO DISPLAY ID]") << ":{";
+    out << user.displayId.value_or("[NO DISPLAY ID]") << ":{";
     out << "uids:{";
-    if (user.primaryId_) {
-      out << "*" << *user.primaryId_;
+    if (user.primaryId) {
+      out << "*" << *user.primaryId;
     }
-    for (bool first = !user.primaryId_; const auto& uid : user.otherUids_) {
+    for (bool first = !user.primaryId; const auto& uid : user.otherUids) {
       if (!std::exchange(first, false)) { out << ", "; }
       out << uid;
     }
     out << '}';
 
     out << " groups:{";
-    for (bool first = true; const auto& group : user.groups_) {
+    for (bool first = true; const auto& group : user.groups) {
       if (!std::exchange(first, false)) { out << ", "; }
       out << group;
     }
@@ -143,10 +107,9 @@ public:
   }
 };
 
-class UserQueryResponse {
-public:
-  std::vector<QRUser> users_;
-  std::vector<UserGroup> userGroups_;
+struct UserQueryResponse {
+  std::vector<QRUser> users;
+  std::vector<UserGroup> userGroups;
 };
 
 using SignedUserMutationRequest = Signed<UserMutationRequest>;

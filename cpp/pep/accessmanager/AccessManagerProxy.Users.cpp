@@ -12,73 +12,73 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::requestUserMutation(UserMutation
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::createUser(std::string uid) const {
   UserMutationRequest request;
-  request.createUser_.emplace_back(std::move(uid));
+  request.createUser.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::removeUser(std::string uid) const {
   UserMutationRequest request;
-  request.removeUser_.emplace_back(std::move(uid));
+  request.removeUser.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) const {
   UserMutationRequest request;
-  request.addUserIdentifier_.emplace_back(std::move(existingUid), std::move(newUid), isPrimaryId, isDisplayId);
+  request.addUserIdentifier.emplace_back(std::move(existingUid), std::move(newUid), isPrimaryId, isDisplayId);
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserIdentifier(std::string uid) const {
   UserMutationRequest request;
-  request.removeUserIdentifier_.emplace_back(std::move(uid));
+  request.removeUserIdentifier.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::setUserPrimaryId(std::string uid) const {
   UserMutationRequest request;
-  request.setPrimaryId_.emplace_back(std::move(uid));
+  request.setPrimaryId.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::unsetUserPrimaryId(std::string uid) const {
   UserMutationRequest request;
-  request.unsetPrimaryId_.emplace_back(std::move(uid));
+  request.unsetPrimaryId.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::setUserDisplayId(std::string uid) const {
   UserMutationRequest request;
-  request.setDisplayId_.emplace_back(std::move(uid));
+  request.setDisplayId.emplace_back(std::move(uid));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::createUserGroup(UserGroup userGroup) const {
   UserMutationRequest request;
-  request.createUserGroup_.emplace_back(std::move(userGroup));
+  request.createUserGroup.emplace_back(std::move(userGroup));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::modifyUserGroup(UserGroup userGroup) const {
   UserMutationRequest request;
-  request.modifyUserGroup_.emplace_back(std::move(userGroup));
+  request.modifyUserGroup.emplace_back(std::move(userGroup));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserGroup(std::string name) const {
   UserMutationRequest request;
-  request.removeUserGroup_.emplace_back(std::move(name));
+  request.removeUserGroup.emplace_back(std::move(name));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::addUserToGroup(std::string uid, std::string group) const {
   UserMutationRequest request;
-  request.addUserToGroup_.emplace_back(std::move(uid), std::move(group));
+  request.addUserToGroup.emplace_back(std::move(uid), std::move(group));
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserFromGroup(std::string uid, std::string group, bool blockTokens) const {
   UserMutationRequest request;
-  request.removeUserFromGroup_.emplace_back(std::move(uid), std::move(group), blockTokens);
+  request.removeUserFromGroup.emplace_back(std::move(uid), std::move(group), blockTokens);
   return requestUserMutation(std::move(request));
 }
 

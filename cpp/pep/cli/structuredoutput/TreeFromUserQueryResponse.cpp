@@ -25,11 +25,11 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
   if (printUserGroups) {
     json groups = json::array();
 
-    for (const auto& group : res.userGroups_) {
+    for (const auto& group : res.userGroups) {
       json item = json::object();
-      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.name_);
-      if (group.maxAuthValidity_) {
-        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.maxAuthValidity_));
+      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.name);
+      if (group.maxAuthValidity) {
+        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.maxAuthValidity));
       }
       groups.push_back(std::move(item));
     }
@@ -41,21 +41,21 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
   if (printUsers) {
     json users = json::array();
 
-    for (const auto& user : res.users_) {
+    for (const auto& user : res.users) {
       json item = json::object();
 
-      if (user.displayId_) {
-        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.displayId_);
+      if (user.displayId) {
+        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.displayId);
       }
 
-      if (user.primaryId_) {
-        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.primaryId_);
+      if (user.primaryId) {
+        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.primaryId);
       }
 
-      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.otherUids_);
+      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.otherUids);
 
       if (printUserGroupsForUsers) {
-        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), user.groups_);
+        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), user.groups);
       }
       users.push_back(std::move(item));
     }

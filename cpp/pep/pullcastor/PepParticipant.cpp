@@ -14,7 +14,7 @@ PepParticipant::PepParticipant(const PolymorphicPseudonym& pp)
 }
 
 void PepParticipant::loadCell(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const EnumerateAndRetrieveResult& ear) {
-  assert(pp_ == ear.localPseudonyms->polymorphic_);
+  assert(pp_ == ear.localPseudonyms->polymorphic);
 
   auto column = ear.column;
   auto content = CellContent::Create(client, ticket, ear);
@@ -53,7 +53,7 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
       std::shared_ptr<PepParticipant> participant;
       auto position = participants->find(ear.localPseudonymsIndex);
       if (position == participants->cend()) {
-        participant = PepParticipant::Create(ear.localPseudonyms->polymorphic_);
+        participant = PepParticipant::Create(ear.localPseudonyms->polymorphic);
         participants->emplace(std::make_pair(ear.localPseudonymsIndex, participant));
       }
       else {
