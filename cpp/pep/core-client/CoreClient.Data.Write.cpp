@@ -348,10 +348,11 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   const std::string& column,
   const StoreData2Opts& opts) {
   return deleteData2(
-    { Storage2Entry(
-        std::make_shared<PolymorphicPseudonym>(pp),
-        column
-    ) },
+    { Storage2Entry{
+        .polymorphicPseudonym = std::make_shared<PolymorphicPseudonym>(pp),
+        .column = column,
+        .timestamp{}
+    } },
     opts
   );
 
