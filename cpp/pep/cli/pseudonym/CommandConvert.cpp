@@ -14,12 +14,12 @@ namespace pep::cli {
 
 namespace {
 
-namespace cliParameterNames {
+namespace param {
 
 constexpr auto from = "from";
 constexpr auto to = "to";
 
-} // namespace cliParameterNames
+} // namespace param
 
 enum class IdType {
   PolymorphicPseudonym,
@@ -54,7 +54,6 @@ struct Configuration final {
   IdType to;
 
   static Configuration From(const pep::commandline::NamedValues &values) {
-    namespace param = cliParameterNames;
     return {
       .from = values.get<std::string>(param::from),
       .to = ParseIdTypeFromString(values.get<std::string>(param::to)),
@@ -67,7 +66,6 @@ struct Configuration final {
 commandline::Parameters
 CommandPseudonym::CommandConvert::getSupportedParameters() const {
   using namespace commandline;
-  namespace param = cliParameterNames;
   return ChildCommandOf<CommandPseudonym>::getSupportedParameters() +
          Parameter(param::from, "Pseudonym value to convert")
              .value(Value<std::string>()
