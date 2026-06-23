@@ -8,56 +8,56 @@ namespace pep {
 
 LocalPseudonyms Serializer<LocalPseudonyms>::fromProtocolBuffer(proto::LocalPseudonyms&& source) const {
   LocalPseudonyms result{
-    .accessManager_ = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager()))),
-    .storageFacility_ = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility()))),
-    .polymorphic_ = PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic()))),
+    .accessManager = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager()))),
+    .storageFacility = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility()))),
+    .polymorphic = PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic()))),
   };
 
   if (source.has_access_group()) {
-    result.accessGroup_ = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_access_group())));
+    result.accessGroup = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_access_group())));
   }
 
   return result;
 }
 
 void Serializer<LocalPseudonyms>::moveIntoProtocolBuffer(proto::LocalPseudonyms& dest, LocalPseudonyms value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.accessManager_.getValidElgamalEncryption());
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.storageFacility_.getValidElgamalEncryption());
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic(), value.polymorphic_.getValidElgamalEncryption());
-  if (value.accessGroup_)
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_group(), value.accessGroup_->getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.accessManager.getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.storageFacility.getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic(), value.polymorphic.getValidElgamalEncryption());
+  if (value.accessGroup)
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_group(), value.accessGroup->getValidElgamalEncryption());
 }
 
 Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
   Ticket2 result;
 
-  result.timestamp_ = Serialization::FromProtocolBuffer(
+  result.timestamp = Serialization::FromProtocolBuffer(
     std::move(*source.mutable_timestamp()));
-  result.userGroup_ = std::move(*source.mutable_user_group());
+  result.userGroup = std::move(*source.mutable_user_group());
 
-  result.modes_.reserve(static_cast<size_t>(source.modes().size()));
+  result.modes.reserve(static_cast<size_t>(source.modes().size()));
   for (auto& x : *source.mutable_modes())
-    result.modes_.push_back(std::move(x));
-  result.columns_.reserve(static_cast<size_t>(source.columns().size()));
+    result.modes.push_back(std::move(x));
+  result.columns.reserve(static_cast<size_t>(source.columns().size()));
   for (auto& x : *source.mutable_columns())
-    result.columns_.push_back(std::move(x));
+    result.columns.push_back(std::move(x));
 
-  Serialization::AssignFromRepeatedProtocolBuffer(result.accessSubjects_,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.accessSubjects,
     std::move(*source.mutable_access_subjects()));
 
   return result;
 }
 
 void Serializer<Ticket2>::moveIntoProtocolBuffer(proto::Ticket2& dest, Ticket2 value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp_);
-  *dest.mutable_user_group() = std::move(value.userGroup_);
-  dest.mutable_modes()->Reserve(static_cast<int>(value.modes_.size()));
-  for (auto& x : value.modes_)
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp);
+  *dest.mutable_user_group() = std::move(value.userGroup);
+  dest.mutable_modes()->Reserve(static_cast<int>(value.modes.size()));
+  for (auto& x : value.modes)
     dest.add_modes(std::move(x));
-  dest.mutable_columns()->Reserve(static_cast<int>(value.columns_.size()));
-  for (auto& x : value.columns_)
+  dest.mutable_columns()->Reserve(static_cast<int>(value.columns.size()));
+  for (auto& x : value.columns)
     dest.add_columns(std::move(x));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_access_subjects(), std::move(value.accessSubjects_));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_access_subjects(), std::move(value.accessSubjects));
 }
 
 SignedTicket2 Serializer<SignedTicket2>::fromProtocolBuffer(proto::SignedTicket2&& source) const {
@@ -90,48 +90,48 @@ void Serializer<SignedTicket2>::moveIntoProtocolBuffer(proto::SignedTicket2& des
 
 TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketRequest2&& source) const {
   TicketRequest2 result;
-  result.modes_.reserve(static_cast<size_t>(source.modes().size()));
+  result.modes.reserve(static_cast<size_t>(source.modes().size()));
   for (auto& x : *source.mutable_modes())
-    result.modes_.push_back(std::move(x));
-  result.participantGroups_.reserve(static_cast<size_t>(source.participant_groups().size()));
+    result.modes.push_back(std::move(x));
+  result.participantGroups.reserve(static_cast<size_t>(source.participant_groups().size()));
   for (auto& x : *source.mutable_participant_groups())
-    result.participantGroups_.push_back(std::move(x));
-  result.columnGroups_.reserve(static_cast<size_t>(source.column_groups().size()));
+    result.participantGroups.push_back(std::move(x));
+  result.columnGroups.reserve(static_cast<size_t>(source.column_groups().size()));
   for (auto& x : *source.mutable_column_groups())
-    result.columnGroups_.push_back(std::move(x));
-  result.columns_.reserve(static_cast<size_t>(source.columns().size()));
+    result.columnGroups.push_back(std::move(x));
+  result.columns.reserve(static_cast<size_t>(source.columns().size()));
   for (auto& x : *source.mutable_columns())
-    result.columns_.push_back(std::move(x));
-  result.requestIndexedTicket_ = source.request_indexed_ticket();
-  result.includeUserGroupPseudonyms_ = source.include_user_group_pseudonyms();
+    result.columns.push_back(std::move(x));
+  result.requestIndexedTicket = source.request_indexed_ticket();
+  result.includeUserGroupPseudonyms = source.include_user_group_pseudonyms();
 
   const auto transformToPolymorphicPseudonym = std::views::transform([](proto::ElgamalEncryption& pp) {
     return PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(pp)));
   });
-  result.accessSubjects_ = RangeToVector(
+  result.accessSubjects = RangeToVector(
     *source.mutable_access_subjects() | transformToPolymorphicPseudonym);
   return result;
 }
 
 void Serializer<TicketRequest2>::moveIntoProtocolBuffer(proto::TicketRequest2& dest, TicketRequest2 value) const {
-  dest.mutable_modes()->Reserve(static_cast<int>(value.modes_.size()));
-  for (auto& x : value.modes_)
+  dest.mutable_modes()->Reserve(static_cast<int>(value.modes.size()));
+  for (auto& x : value.modes)
     dest.add_modes(std::move(x));
-  dest.mutable_participant_groups()->Reserve(static_cast<int>(value.participantGroups_.size()));
-  for (auto& x : value.participantGroups_)
+  dest.mutable_participant_groups()->Reserve(static_cast<int>(value.participantGroups.size()));
+  for (auto& x : value.participantGroups)
     dest.add_participant_groups(std::move(x));
-  dest.mutable_column_groups()->Reserve(static_cast<int>(value.columnGroups_.size()));
-  for (auto& x : value.columnGroups_)
+  dest.mutable_column_groups()->Reserve(static_cast<int>(value.columnGroups.size()));
+  for (auto& x : value.columnGroups)
     dest.add_column_groups(std::move(x));
-  dest.mutable_columns()->Reserve(static_cast<int>(value.columns_.size()));
-  for (auto& x : value.columns_)
+  dest.mutable_columns()->Reserve(static_cast<int>(value.columns.size()));
+  for (auto& x : value.columns)
     dest.add_columns(std::move(x));
-  dest.set_request_indexed_ticket(value.requestIndexedTicket_);
-  dest.set_include_user_group_pseudonyms(value.includeUserGroupPseudonyms_);
+  dest.set_request_indexed_ticket(value.requestIndexedTicket);
+  dest.set_include_user_group_pseudonyms(value.includeUserGroupPseudonyms);
 
   Serialization::AssignToRepeatedProtocolBuffer(
     *dest.mutable_access_subjects(),
-    value.accessSubjects_
+    value.accessSubjects
     | std::views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
 }
 

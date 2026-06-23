@@ -55,21 +55,21 @@ private:
 
 public:
   TicketIndices(const Ticket2& ticket, const ElgamalPrivateKey& pseudonymKey) {
-    if (ticket.columns_.size() > std::numeric_limits<Index>::max()) {
+    if (ticket.columns.size() > std::numeric_limits<Index>::max()) {
       throw std::runtime_error("Ticket contains too many columns to map into an IndexList");
     }
-    for (size_t i = 0U; i < ticket.columns_.size(); ++i) {
-      columns_[ticket.columns_[i]] = static_cast<Index>(i);
+    for (size_t i = 0U; i < ticket.columns.size(); ++i) {
+      columns_[ticket.columns[i]] = static_cast<Index>(i);
     }
 
-    if (ticket.accessSubjects_.size() > std::numeric_limits<Index>::max()) {
+    if (ticket.accessSubjects.size() > std::numeric_limits<Index>::max()) {
       throw std::runtime_error("Ticket contains too many subjects to map into an IndexList");
     }
     // TODO keep a decryption cache?  If a ticket with a lot of pseudonyms is
     // reused often (for each file), then we're wasting a lot of time.
     // See issue #592.
-    for (size_t i = 0U; i < ticket.accessSubjects_.size(); ++i) {
-      LocalPseudonym sfPseud = ticket.accessSubjects_[i].storageFacility_.decrypt(pseudonymKey);
+    for (size_t i = 0U; i < ticket.accessSubjects.size(); ++i) {
+      LocalPseudonym sfPseud = ticket.accessSubjects[i].storageFacility.decrypt(pseudonymKey);
       pseudonyms_[sfPseud] = static_cast<Index>(i);
     }
   }
@@ -331,24 +331,24 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   if (request.columns_) {
     includeColumn.reserve(request.columns_->indices_.size());
     for (uint32_t idx : request.columns_->indices_) {
-      includeColumn.push_back(ticket.columns_.at(idx));
+      includeColumn.push_back(ticket.columns.at(idx));
     }
   }
   else {
-    includeColumn.reserve(ticket.columns_.size());
-    for (const auto& column : ticket.columns_) {
+    includeColumn.reserve(ticket.columns.size());
+    for (const auto& column : ticket.columns) {
       includeColumn.push_back(column);
     }
   }
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
-  columnIndex.reserve(ticket.columns_.size());
-  for (uint32_t i = 0; i < ticket.columns_.size(); i++) {
-    columnIndex[ticket.columns_[i]] = i;
+  columnIndex.reserve(ticket.columns.size());
+  for (uint32_t i = 0; i < ticket.columns.size(); i++) {
+    columnIndex[ticket.columns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects_, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
@@ -364,7 +364,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       // enumerateData returns an error if there are no entries, which
       // we will ignore. Other errors are already logged.
       EntryName key(*localPseudonyms[pseud_index], col);
-      auto entry = fileStore_->lookup(key, ticket.timestamp_);
+      auto entry = fileStore_->lookup(key, ticket.timestamp);
       if (!entry) {
         continue;
       }
@@ -692,12 +692,12 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       // Decrypt local pseudonym
       if (pseudonymLut.count(entry.pseudonymIndex_) == 0) {
         pseudonymLut[entry.pseudonymIndex_] = MakeSharedCopy(
-          ticket.accessSubjects_.at(entry.pseudonymIndex_)
-          .storageFacility_.decrypt(pseudonymKey_));
+          ticket.accessSubjects.at(entry.pseudonymIndex_)
+          .storageFacility.decrypt(pseudonymKey_));
       }
       ctx->pseudonyms[i] = pseudonymLut[entry.pseudonymIndex_];
 
-      auto& col = ticket.columns_.at(entry.columnIndex_);
+      auto& col = ticket.columns.at(entry.columnIndex_);
 
       // Modify entry, only creating a new one if we don't require an overwrite
       auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite);
@@ -857,11 +857,11 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   std::transform(request->entries_.cbegin(), request->entries_.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex_; });
 
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects_, &pseudIndices);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, &pseudIndices);
 
   std::vector<std::shared_ptr<FileStore::EntryChange>> changes;
   for (const auto& entry : request->entries_) {
-    auto column = ticket.columns_[entry.columnIndex_];
+    auto column = ticket.columns[entry.columnIndex_];
     assert(localPseudonyms[entry.pseudonymIndex_].has_value());
     EntryName key(*localPseudonyms[entry.pseudonymIndex_], column);
 
@@ -961,7 +961,7 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
   result.reserve(source.size());
   for (size_t i = 0; i < source.size(); ++i) {
     if (includePseudonym[i]) { // Caller wants/needs this pseudonym: decrypt it
-      result.emplace_back(source[i].storageFacility_.decrypt(pseudonymKey_));
+      result.emplace_back(source[i].storageFacility.decrypt(pseudonymKey_));
     }
     else { // Caller doesn't need this pseudonym: don't decrypt
       result.emplace_back(std::nullopt);
@@ -994,22 +994,22 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   if (request.columns_) {
     includeColumn.reserve(request.columns_->indices_.size());
     for (uint32_t idx : request.columns_->indices_)
-      includeColumn.push_back(ticket.columns_.at(idx));
+      includeColumn.push_back(ticket.columns.at(idx));
   }
   else {
-    includeColumn.reserve(ticket.columns_.size());
-    for (const auto& column : ticket.columns_)
+    includeColumn.reserve(ticket.columns.size());
+    for (const auto& column : ticket.columns)
       includeColumn.push_back(column);
   }
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
-  columnIndex.reserve(ticket.columns_.size());
-  for (uint32_t i = 0; i < ticket.columns_.size(); i++) {
-    columnIndex[ticket.columns_[i]] = i;
+  columnIndex.reserve(ticket.columns.size());
+  for (uint32_t i = 0; i < ticket.columns.size(); i++) {
+    columnIndex[ticket.columns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects_, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {

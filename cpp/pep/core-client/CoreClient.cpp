@@ -100,8 +100,8 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       .reduce(
         std::make_shared<std::unordered_map<std::string, PolymorphicPseudonym>>(),
         [this](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> all, const LocalPseudonyms& entry) {
-          auto decrypted = entry.accessGroup_->decrypt(privateKeyPseudonyms_);
-          all->emplace(decrypted.text(), entry.polymorphic_); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
+          auto decrypted = entry.accessGroup->decrypt(privateKeyPseudonyms_);
+          all->emplace(decrypted.text(), entry.polymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
           return all;
         }
       );
@@ -371,7 +371,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
         auto position = allSps->find(ear.data);
         if (position != allSps->cend()) {
           auto index = position->second;
-          (*result)[index] = ear.localPseudonyms->polymorphic_;
+          (*result)[index] = ear.localPseudonyms->polymorphic;
         }
         return result;
       });
@@ -403,7 +403,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(*rootCAs_, getEnrolledGroup()).accessSubjects_);
+    return RxIterate(ticket.getTicket()->open(*rootCAs_, getEnrolledGroup()).accessSubjects);
   });
 
 }
@@ -423,12 +423,12 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket
   }
   assert(ContainsUniqueValues(opts.pps));
   return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
-      .modes_ = opts.modes,
-      .participantGroups_ = opts.participantGroups,
-      .accessSubjects_ = opts.pps,
-      .columnGroups_ = opts.columnGroups,
-      .columns_ = opts.columns,
-      .includeUserGroupPseudonyms_ = opts.includeAccessGroupPseudonyms});
+      .modes = opts.modes,
+      .participantGroups = opts.participantGroups,
+      .accessSubjects = opts.pps,
+      .columnGroups = opts.columnGroups,
+      .columns = opts.columns,
+      .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
 }
 
 

@@ -7,24 +7,24 @@ using namespace std::literals;
 namespace pep {
 
 void LocalPseudonyms::ensurePacked() const {
-  accessManager_.ensurePacked();
-  storageFacility_.ensurePacked();
-  polymorphic_.ensurePacked();
-  if (accessGroup_)
-    accessGroup_->ensurePacked();
+  accessManager.ensurePacked();
+  storageFacility.ensurePacked();
+  polymorphic.ensurePacked();
+  if (accessGroup)
+    accessGroup->ensurePacked();
 }
 
 std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>& lps) {
   std::vector<PolymorphicPseudonym> pps;
   pps.reserve(lps.size());
   for (const auto& p : lps)
-    pps.push_back(p.polymorphic_);
+    pps.push_back(p.polymorphic);
   return pps;
 }
 
 bool Ticket2::hasMode(const std::string& mode) const {
   // Check if the ticket explicitly includes the specified mode
-  if (std::find(modes_.begin(), modes_.end(), mode) != modes_.end()) {
+  if (std::find(modes.begin(), modes.end(), mode) != modes.end()) {
     return true;
   }
   // The "read-meta" mode is implicitly covered if the ticket includes "read" access
@@ -78,7 +78,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
   }
 
   auto ticket = Serialization::FromString<Ticket2>(data_);
-  if (ticket.userGroup_ != userGroup)
+  if (ticket.userGroup != userGroup)
     throw Error("Ticket issued for different user group");
   if (accessMode.has_value()) {
     if (!ticket.hasMode(*accessMode)) {

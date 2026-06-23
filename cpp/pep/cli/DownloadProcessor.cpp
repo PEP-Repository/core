@@ -140,7 +140,7 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shar
       const std::optional<Timestamp>& payloadTimestamp = *t;
 
       ParticipantIdentifier id(
-        entry->localPseudonyms->polymorphic_,
+        entry->localPseudonyms->polymorphic,
         *entry->accessGroupPseudonym);
       auto emplaced = mapped->emplace(
         RecordDescriptor(id, entry->column, entry->metadata.getBlindingTimestamp(), entry->metadata.extra(), payloadTimestamp),

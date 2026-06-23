@@ -5,12 +5,11 @@
 
 namespace pep {
 
-class LocalPseudonyms {
-public:
-  EncryptedLocalPseudonym accessManager_;
-  EncryptedLocalPseudonym storageFacility_;
-  PolymorphicPseudonym polymorphic_;
-  std::optional<EncryptedLocalPseudonym> accessGroup_{};
+struct LocalPseudonyms {
+  EncryptedLocalPseudonym accessManager;
+  EncryptedLocalPseudonym storageFacility;
+  PolymorphicPseudonym polymorphic;
+  std::optional<EncryptedLocalPseudonym> accessGroup{};
 
   // Ensures the underlying CurvePoint's are pre-packed for serialization.
   // See CurvePoint::ensurePacked().
@@ -20,13 +19,12 @@ public:
 /// Utility function to convert a vector of LocalPseudonyms to a vector of PolymorphicPseudonyms
 std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>&);
 
-class Ticket2 {
-public:
-  Timestamp timestamp_{/*zero*/};
-  std::vector<std::string> modes_;
-  std::vector<LocalPseudonyms> accessSubjects_;  ///< identifiers for subjects that will be accessed
-  std::vector<std::string> columns_;
-  std::string userGroup_;
+struct Ticket2 {
+  Timestamp timestamp{/*zero*/};
+  std::vector<std::string> modes;
+  std::vector<LocalPseudonyms> accessSubjects;  ///< identifiers for subjects that will be accessed
+  std::vector<std::string> columns;
+  std::string userGroup;
 
   bool hasMode(const std::string& mode) const;
 };
@@ -70,19 +68,17 @@ public:
     : DeserializableDerivedError<SignedTicket2ValidityPeriodError>(description) { }
 };
 
-class ClientSideTicketRequest2 {
-public:
-  std::vector<std::string> modes_;
-  std::vector<std::string> participantGroups_;
-  std::vector<PolymorphicPseudonym> accessSubjects_;
-  std::vector<std::string> columnGroups_;
-  std::vector<std::string> columns_;
-  bool includeUserGroupPseudonyms_ = false;
+struct ClientSideTicketRequest2 {
+  std::vector<std::string> modes;
+  std::vector<std::string> participantGroups;
+  std::vector<PolymorphicPseudonym> accessSubjects;
+  std::vector<std::string> columnGroups;
+  std::vector<std::string> columns;
+  bool includeUserGroupPseudonyms = false;
 };
 
-class TicketRequest2 : public ClientSideTicketRequest2 {
-public:
-  bool requestIndexedTicket_{};
+struct TicketRequest2 : public ClientSideTicketRequest2 {
+  bool requestIndexedTicket{};
 };
 
 template <>

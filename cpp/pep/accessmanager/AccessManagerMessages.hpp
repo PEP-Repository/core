@@ -18,15 +18,12 @@
 
 namespace pep {
 
-class GlobalConfigurationRequest {
-public:
-  GlobalConfigurationRequest() = default;
-};
+struct GlobalConfigurationRequest {};
 
 /// A \c SignedTicket2 with added mappings from column groups and participant groups to
 /// respectively their columns and participants
 class IndexedTicket2 {
-protected:
+private:
   // Cache unpacked version of ticket.
   // TODO can we do this without a mutex?
   mutable std::shared_ptr<Ticket2> unpackedTicket_;
@@ -77,64 +74,58 @@ enum class KeyBlindMode {
   Unblind = 2
 };
 
-class KeyRequestEntry {
-public:
+struct KeyRequestEntry {
   KeyRequestEntry() = default;
   inline KeyRequestEntry(
     const Metadata& metadata,
     EncryptedKey polymorphEncryptionKey,
     KeyBlindMode keyBlindMode,
     uint32_t pseudonymIndex = 0
-  ) : metadata_(metadata.getBound()),
-    polymorphEncryptionKey_(polymorphEncryptionKey),
-    keyBlindMode_(keyBlindMode),
-    pseudonymIndex_(pseudonymIndex) {}
+  ) : metadata(metadata.getBound()),
+    polymorphEncryptionKey(polymorphEncryptionKey),
+    keyBlindMode(keyBlindMode),
+    pseudonymIndex(pseudonymIndex) {}
 
-  Metadata metadata_;
-  EncryptedKey polymorphEncryptionKey_;
-  KeyBlindMode keyBlindMode_ = KeyBlindMode::Unknown;
-  uint32_t pseudonymIndex_{};
+  Metadata metadata;
+  EncryptedKey polymorphEncryptionKey;
+  KeyBlindMode keyBlindMode = KeyBlindMode::Unknown;
+  uint32_t pseudonymIndex{};
 };
 
-class EncryptionKeyRequest {
-public:
-  std::shared_ptr<SignedTicket2> ticket2_;
-  std::vector<KeyRequestEntry> entries_;
+struct EncryptionKeyRequest {
+  std::shared_ptr<SignedTicket2> ticket2;
+  std::vector<KeyRequestEntry> entries;
 };
 
-class EncryptionKeyResponse {
-public:
-  std::vector<EncryptedKey> keys_;
+struct EncryptionKeyResponse {
+  std::vector<EncryptedKey> keys;
 };
 
-class ColumnAccess {
-public:
-  class GroupProperties {
-  public:
+struct ColumnAccess {
+  struct GroupProperties {
     std::vector<std::string> modes;
     IndexList columns;
     std::strong_ordering operator<=>(const GroupProperties& other) const = default;
   };
+
   std::unordered_map<std::string, GroupProperties> columnGroups;
   std::vector<std::string> columns;
 };
 
-class ColumnAccessRequest {
-public:
+struct ColumnAccessRequest {
   bool includeImplicitlyGranted = false;
   std::vector<std::string> requireModes;
 };
 
 using ColumnAccessResponse = ColumnAccess;
 
-class ParticipantGroupAccess {
-public:
-  using modes = std::vector<std::string>;
-  std::unordered_map<std::string, modes> participantGroups;
+struct ParticipantGroupAccess {
+  using Modes = std::vector<std::string>;
+
+  std::unordered_map<std::string, Modes> participantGroups;
 };
 
-class ParticipantGroupAccessRequest {
-public:
+struct ParticipantGroupAccessRequest {
   bool includeImplicitlyGranted = false;
 };
 
@@ -155,22 +146,13 @@ struct ColumnNameMappingResponse {
 struct MigrateUserDbToAccessManagerRequest {};
 struct MigrateUserDbToAccessManagerResponse {};
 
-class FindUserRequest {
-public:
-  FindUserRequest() = default;
-  FindUserRequest(std::string primaryId, std::vector<std::string> alternativeIds) : primaryId_(std::move(primaryId)), alternativeIds_(std::move(alternativeIds)) { }
-
-  std::string primaryId_;
-  std::vector<std::string> alternativeIds_;
+struct FindUserRequest {
+  std::string primaryId;
+  std::vector<std::string> alternativeIds;
 };
 
-class FindUserResponse {
-public:
-  FindUserResponse() = default;
-  FindUserResponse(std::optional<std::vector<UserGroup>> userGroups) : userGroups_(std::move(userGroups)) { }
-
-  /// nullopt if the user doesn't exist. Otherwise the list of user groups the user is in.
-  std::optional<std::vector<UserGroup>> userGroups_;
+struct FindUserResponse {
+  std::optional<std::vector<UserGroup>> userGroups;
 };
 
 struct StructureMetadataKey {

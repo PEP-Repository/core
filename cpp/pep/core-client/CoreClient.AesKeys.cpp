@@ -49,19 +49,19 @@ CoreClient::unblindAndDecryptKeys(
   baseCtx->reqs.reserve(entries.size() / KEY_REQUEST_BATCH_SIZE + 1);
   for (unsigned offset = 0; offset < entries.size(); offset += KEY_REQUEST_BATCH_SIZE) {
     EncryptionKeyRequest request;
-    request.ticket2_ = ticket;
+    request.ticket2 = ticket;
     for (unsigned i = offset;
          i < std::min(static_cast<unsigned>(entries.size()), offset + KEY_REQUEST_BATCH_SIZE);
          i++) {
       const auto& entry = *entries[i];
-      request.entries_.emplace_back(
+      request.entries.emplace_back(
          entry.metadata,
          entry.polymorphicKey,
          KeyBlindMode::Unblind,
          entry.localPseudonymsIndex
       );
     }
-    baseCtx->reqSizes.push_back(request.entries_.size());
+    baseCtx->reqSizes.push_back(request.entries.size());
     baseCtx->reqs.push_back(std::move(request));
   }
   // We proceed in two steps.  Step one: we send the request to unblind the keys.
@@ -81,9 +81,9 @@ CoreClient::unblindAndDecryptKeys(
           EncryptionKeyResponse resp) {
         if (!ctx->ok)
           return;
-        if (resp.keys_.size() != ctx->reqSizes[req_index]) {
+        if (resp.keys.size() != ctx->reqSizes[req_index]) {
           std::ostringstream ss;
-          ss << "EncryptionKeyResponse contains " << resp.keys_.size()
+          ss << "EncryptionKeyResponse contains " << resp.keys.size()
              << " entries instead of " << ctx->reqSizes[req_index];
           ctx->on_error(std::make_exception_ptr(
                 std::runtime_error(ss.str())));
@@ -93,7 +93,7 @@ CoreClient::unblindAndDecryptKeys(
         for (unsigned i = offset;
             i < std::min(static_cast<unsigned>(ctx->encKeys.size()), offset + KEY_REQUEST_BATCH_SIZE);
             i++)
-          ctx->encKeys[i] = resp.keys_.at(i - offset);
+          ctx->encKeys[i] = resp.keys.at(i - offset);
         action.done();
       }, [ctx](std::exception_ptr ep){
         ctx->on_error(ep);
@@ -130,8 +130,8 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     auto indexInKeyRequest = i % KEY_REQUEST_BATCH_SIZE;
     auto offset = i - indexInKeyRequest; // a multiple of KEY_REQUEST_BATCH_SIZE
     assert(offset % KEY_REQUEST_BATCH_SIZE == 0U);
-    assert(keyRequests[offset].entries_.size() == indexInKeyRequest);
-    keyRequests[offset].entries_.emplace_back(
+    assert(keyRequests[offset].entries.size() == indexInKeyRequest);
+    keyRequests[offset].entries.emplace_back(
       entry.metadata_,
       EncryptedKey(systemPublicKeys_.globalDataEncryptionKey, keys[i].point),
       KeyBlindMode::Blind,
@@ -139,24 +139,24 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     );
   }
   // Give each KeyRequest a (reference to the) ticket
-  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket_)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.ticket2_ = ticket; });
+  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket_)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.ticket2 = ticket; });
 
   return RxIterate(std::move(keyRequests))
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
     auto [offset, keyRequest] = std::move(pair);
-    const size_t count = keyRequest.entries_.size();
+    const size_t count = keyRequest.entries.size();
     return getAccessManagerProxy(true)->requestEncryptionKey(std::move(keyRequest))
       .op(RxGetOne())
       .map([request, offset, count](EncryptionKeyResponse keyResponse) {
-        if (keyResponse.keys_.size() != count) {
+        if (keyResponse.keys.size() != count) {
           std::ostringstream ss;
-          ss << "EncryptionKeyResponse contains " << keyResponse.keys_.size()
+          ss << "EncryptionKeyResponse contains " << keyResponse.keys.size()
             << " entries instead of " << count;
           throw std::runtime_error(ss.str());
         }
 
         for (size_t i = 0; i < count; i++) {
-          request->entries_[i + offset].polymorphicKey_ = keyResponse.keys_[i];
+          request->entries_[i + offset].polymorphicKey_ = keyResponse.keys[i];
         }
 
         return FakeVoid();

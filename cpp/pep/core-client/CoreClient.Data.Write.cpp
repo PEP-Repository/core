@@ -116,7 +116,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     auto signedTicket = std::move(indexedTicket).getTicket();
     ctx->request->ticket_ = *signedTicket;
 
-    const auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects_.size();
+    const auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
@@ -217,7 +217,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     ctx->request->ticket_ = *signedTicket;
     ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms_);
 
-    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects_.size();
+    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
@@ -268,15 +268,15 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
           // Find the enum entry corresponding with this store entry
           auto correspondingColumn = enumEntryIndices->find(storeEntry.columnIndex_);
           if (correspondingColumn == enumEntryIndices->cend()) {
-            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->ticket_.openWithoutCheckingSignature().columns_[storeEntry.columnIndex_]);
+            throw std::runtime_error("Did not receive existing entry for metadata update for column " + ctx->request->ticket_.openWithoutCheckingSignature().columns[storeEntry.columnIndex_]);
           }
           auto correspondingEnumEntry = correspondingColumn->second.find(storeEntry.pseudonymIndex_);
           if (correspondingEnumEntry == correspondingColumn->second.cend()) {
             auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
             std::ostringstream message;
             message << "Did not receive existing entry for metadata update"
-              << " for participant " << ticket.accessSubjects_[storeEntry.pseudonymIndex_].polymorphic_.text()
-              << ", column " << ticket.columns_[storeEntry.columnIndex_];
+              << " for participant " << ticket.accessSubjects[storeEntry.pseudonymIndex_].polymorphic.text()
+              << ", column " << ticket.columns[storeEntry.columnIndex_];
             throw std::runtime_error(message.str());
           }
 
@@ -405,7 +405,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
     auto signedTicket = std::move(indexedTicket).getTicket();
     ctx->request->ticket_ = *signedTicket;
 
-    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects_.size();
+    auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects.size();
     if (accessSubjectCount < requestedPps) {
       std::ostringstream msg;
       msg << "Received ticket for " << accessSubjectCount << " subject(s) but requested access to " << requestedPps;
@@ -418,23 +418,23 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
       auto ticket = ctx->request->ticket_.openWithoutCheckingSignature();
       // TODO: use CreateObservable instead of rxcpp::iterate over a vector<> that we just create for this purpose
       std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms;
-      pseudonyms.reserve(ticket.accessSubjects_.size());
+      pseudonyms.reserve(ticket.accessSubjects.size());
       std::optional<bool> includeAccessGroupPseudonyms;
       std::vector<std::shared_ptr<LocalPseudonym>> agPseuds;
-      for (const auto& p : ticket.accessSubjects_) {
+      for (const auto& p : ticket.accessSubjects) {
         pseudonyms.push_back(std::make_shared<LocalPseudonyms>(p));
         if (includeAccessGroupPseudonyms.has_value()) {
-          if (p.accessGroup_.has_value() != *includeAccessGroupPseudonyms) {
+          if (p.accessGroup.has_value() != *includeAccessGroupPseudonyms) {
             throw std::runtime_error("Inconsistent access group pseudonym presence in ticket");
           }
         }
         else {
-          includeAccessGroupPseudonyms = p.accessGroup_.has_value();
+          includeAccessGroupPseudonyms = p.accessGroup.has_value();
         }
         if (*includeAccessGroupPseudonyms) {
           agPseuds.push_back(
             std::make_shared<LocalPseudonym>(
-              p.accessGroup_->decrypt(privateKeyPseudonyms_)
+              p.accessGroup->decrypt(privateKeyPseudonyms_)
               )
           );
         }
@@ -449,7 +449,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
           DataCellResult{
             .localPseudonyms = pseudonyms[requestEntry.pseudonymIndex_],
             .localPseudonymsIndex = requestEntry.pseudonymIndex_,
-            .column = ticket.columns_[requestEntry.columnIndex_],
+            .column = ticket.columns[requestEntry.columnIndex_],
             .accessGroupPseudonym = includeAccessGroupPseudonyms.value_or(false)
                                        ? agPseuds[requestEntry.pseudonymIndex_]
                                        : nullptr,

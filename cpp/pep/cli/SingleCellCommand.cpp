@@ -79,7 +79,7 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
     destination << '\n'
       << "\t{\n"
       << "\t\t\"timestamp\": " << TicksSinceEpoch<std::chrono::milliseconds>(entry.timestamp) << ",\n"
-      << "\t\t\"pp\": \"" << entry.localPseudonyms->polymorphic_.text() << "\",\n"
+      << "\t\t\"pp\": \"" << entry.localPseudonyms->polymorphic.text() << "\",\n"
       << "\t\t\"column\": \"" << entry.column << "\",\n"
       << "\t\t\"id\": ";
     if (entry.id.has_value()) {

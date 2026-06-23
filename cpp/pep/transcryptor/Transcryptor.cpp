@@ -139,7 +139,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
   auto userVerifiersObs = rxcpp::observable<>::just<std::optional<ReshuffleRekeyVerifiers>>(std::nullopt)
     .as_dynamic();
-  if (userRequest.includeUserGroupPseudonyms_) {
+  if (userRequest.includeUserGroupPseudonyms) {
     if (auto userVerifiers = storage_->getUserVerifiers(userCertificate)) {
       // Use stored verifiers
       userVerifiersObs = rxcpp::observable<>::just(userVerifiers);
@@ -167,10 +167,10 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   };
   auto ctx = MakeSharedCopy(Context{
     .requestNumber = requestNumber,
-    .modes = userRequest.modes_,
-    .includeUserGroupPseudonyms = userRequest.includeUserGroupPseudonyms_,
+    .modes = userRequest.modes,
+    .includeUserGroupPseudonyms = userRequest.includeUserGroupPseudonyms,
     .ticketRequest = std::move(request->request_),
-    .userRecipient = userRequest.includeUserGroupPseudonyms_
+    .userRecipient = userRequest.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(userCertificate)}
       : std::nullopt,
     });
@@ -251,11 +251,11 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       }
 
       // All seems fine: create final encrypted pseudonyms
-      ret.polymorphic_ = entry.polymorphic_;
-      ret.storageFacility_ = pseudonymTranslator.translateStep(
+      ret.polymorphic = entry.polymorphic_;
+      ret.storageFacility = pseudonymTranslator.translateStep(
           entry.storageFacility_,
           RecipientForServer(EnrolledParty::StorageFacility));
-      ret.accessManager_ = pseudonymTranslator.translateStep(
+      ret.accessManager = pseudonymTranslator.translateStep(
           entry.accessManager_,
           RecipientForServer(EnrolledParty::AccessManager));
       localPseudonym = pseudonymTranslator.translateStep(
@@ -264,7 +264,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       ).decrypt(*server->pseudonymKey_);
 
       if (ctx->includeUserGroupPseudonyms) {
-        ret.accessGroup_ = pseudonymTranslator.translateStep(
+        ret.accessGroup = pseudonymTranslator.translateStep(
             *entry.userGroup_,
             *ctx->userRecipient);
       }
@@ -322,13 +322,13 @@ std::string Transcryptor::ComputePseudonymHash(
     const std::vector<LocalPseudonyms>& lps) {
   Sha512 hash;
   for (const auto& lp : lps) {
-    hash.update(lp.accessManager_.text());
-    hash.update(lp.storageFacility_.text());
-    hash.update(lp.polymorphic_.text());
+    hash.update(lp.accessManager.text());
+    hash.update(lp.storageFacility.text());
+    hash.update(lp.polymorphic.text());
 
-    if (lp.accessGroup_) {
+    if (lp.accessGroup) {
       hash.update("y");
-      hash.update(lp.accessGroup_->text());
+      hash.update(lp.accessGroup->text());
     } else {
       hash.update("n");
     }
@@ -346,16 +346,16 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto ticket = request->ticket_.openForLogging(*getRootCAs(), serialized);
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
-  auto hash = ComputePseudonymHash(ticket.accessSubjects_);
+  auto hash = ComputePseudonymHash(ticket.accessSubjects);
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " calculated hash";
 
   storage_->logIssuedTicket(
     request->id_,
     hash,
-    std::move(ticket.columns_),
-    std::move(ticket.modes_),
-    ticket.userGroup_,
-    ticket.timestamp_
+    std::move(ticket.columns),
+    std::move(ticket.modes),
+    ticket.userGroup,
+    ticket.timestamp
   );
 
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " finishing up";
