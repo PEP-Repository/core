@@ -165,7 +165,7 @@ OAuthToken AuthserverBackend::getToken(const std::string& uid, const std::string
 }
 
 OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& group, const std::optional<std::chrono::seconds>& longLivedValidity) const {
-  auto maxValidity = group.maxAuthValidity_;
+  auto maxValidity = group.maxAuthValidity;
 
   std::chrono::seconds validity;
   if (longLivedValidity) {
@@ -179,8 +179,8 @@ OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& 
     validity = *longLivedValidity;
   }
   else {
-    if(group.maxAuthValidity_) {
-      validity = std::min(this->tokenExpiration_, *group.maxAuthValidity_);
+    if(group.maxAuthValidity) {
+      validity = std::min(this->tokenExpiration_, *group.maxAuthValidity);
     }
     else {
       validity = this->tokenExpiration_;
@@ -188,7 +188,7 @@ OAuthToken AuthserverBackend::getToken(const std::string& uid, const UserGroup& 
   }
   auto now = TimeNow<std::chrono::sys_seconds>();
   return OAuthToken::Generate(
-    oauthTokenSecret_, uid, group.name_,
+    oauthTokenSecret_, uid, group.name,
     now,
     now + validity
   );

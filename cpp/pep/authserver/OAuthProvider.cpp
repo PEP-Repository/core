@@ -410,7 +410,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       auto groupQuery = formData.find("user_group");
       if(groupQuery != formData.end()) {
         const auto& selectedGroup = groupQuery->second;
-        auto foundGroup = std::ranges::find_if(*groups, [&selectedGroup](const UserGroup& group){ return group.name_ == selectedGroup; });
+        auto foundGroup = std::ranges::find_if(*groups, [&selectedGroup](const UserGroup& group){ return group.name == selectedGroup; });
         if(foundGroup == groups->end()) {
           PEP_LOG(LogTag, Severity::Warning) << "Trying to login with group '" << selectedGroup << "', but user is not a member of that group.";
           return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "User is not a member of selected group");
@@ -421,7 +421,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
         std::ostringstream body;
         body << BEGIN_GROUP_SELECTION_TEMPLATE;
         std::set<std::string> sortedGroups;
-        std::ranges::transform(*groups, std::inserter(sortedGroups, sortedGroups.begin()), [](const auto& g) {return g.name_;});
+        std::ranges::transform(*groups, std::inserter(sortedGroups, sortedGroups.begin()), [](const auto& g) {return g.name;});
         for(auto& g : sortedGroups) {
           body << "<option>" << g << "</option>";
         }
@@ -432,7 +432,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
 
     std::optional<std::chrono::seconds> validityDuration;
     if (longLivedValidityStr) {
-      auto maxValidity = group.maxAuthValidity_;
+      auto maxValidity = group.maxAuthValidity;
       if(!maxValidity) {
         return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "User is not allowed to request long-lived tokens");
       }
