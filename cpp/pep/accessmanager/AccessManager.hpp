@@ -36,9 +36,6 @@ public:
     */
     void setPseudonymKey(const ElgamalPrivateKey& pseudonymKey);
 
-    const ElgamalPublicKey& getPublicKeyPseudonyms() const;
-    void setPublicKeyPseudonyms(const ElgamalPublicKey& pk);
-
     /*!
     * \return The endpoint of the transcryptor
     */
