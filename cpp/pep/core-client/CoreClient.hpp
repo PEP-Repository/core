@@ -136,7 +136,7 @@ struct StoreMetadata2Entry : public Storage2Entry {
   StoreMetadata2Entry(
     std::shared_ptr<PolymorphicPseudonym> pp,
     std::string column) :
-    Storage2Entry(std::move(pp), std::move(column)) {}
+    Storage2Entry{ .polymorphicPseudonym = std::move(pp), .column = std::move(column), .timestamp{} } {}
 
   // Extra metadata entries. The payload of the MetadataXEntry-s with
   // encrypted=true will be encrypted by the storeData2 or
