@@ -28,8 +28,8 @@ void ScalarMultProof::verify(
     const CurvePoint& pre,
     const CurvePoint& post) const {
   pep::PublicCurveScalar challenge(ComputeChallenge(secretTimesBase, pre, post, cB_, cM_));
-  if ((mS * CurvePoint::Base != challenge * secretTimesBase + cB_)
-      || (mS * pre != challenge * post + cM_))
+  if ((mS_ * CurvePoint::Base != challenge * secretTimesBase + cB_)
+      || (mS_ * pre != challenge * post + cM_))
     throw InvalidProof();
 }
 

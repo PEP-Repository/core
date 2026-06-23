@@ -19,7 +19,7 @@ ScalarMultProof Serializer<ScalarMultProof>::fromProtocolBuffer(proto::ScalarMul
 void Serializer<ScalarMultProof>::moveIntoProtocolBuffer(proto::ScalarMultProof& dest, ScalarMultProof value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_cb(), value.cB_);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_cm(), value.cM_);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_s(), static_cast<const CurveScalar&>(value.mS));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_s(), static_cast<const CurveScalar&>(value.mS_));
 }
 
 ReshuffleRekeyVerifiers Serializer<ReshuffleRekeyVerifiers>::fromProtocolBuffer(proto::ReshuffleRekeyVerifiers&& source) const {

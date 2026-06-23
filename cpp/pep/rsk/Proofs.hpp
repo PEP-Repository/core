@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/serialization/Serializer.hpp>
 
 namespace pep {
 
@@ -25,14 +26,16 @@ class ScalarMultProof {
       const CurvePoint& cb,
       const CurvePoint& cm);
 
- public:
   CurvePoint cB_;
   CurvePoint cM_;
-  PublicCurveScalar mS;
+  PublicCurveScalar mS_;
 
+  friend class Serializer<ScalarMultProof>;
+
+public:
   ScalarMultProof() = default;
   ScalarMultProof(const CurvePoint& cb, const CurvePoint& cm, const PublicCurveScalar& s)
-    : cB_(cb), cM_(cm), mS(s) { }
+    : cB_(cb), cM_(cm), mS_(s) { }
 
   void ensurePacked() const; // See CurvePoint::ensurePacked()
 
