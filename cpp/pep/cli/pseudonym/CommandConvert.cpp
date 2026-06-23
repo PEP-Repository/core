@@ -29,13 +29,10 @@ enum class IdType {
 
 const auto stringToIdType = boost::container::flat_map<std::string, IdType> {
     {"pp", IdType::PolymorphicPseudonym},
-    {"polymorphic", IdType::PolymorphicPseudonym},
     {"polymorphic-pseudonym", IdType::PolymorphicPseudonym},
     {"lp", IdType::LocalPseudonym},
-    {"local", IdType::LocalPseudonym},
     {"local-pseudonym", IdType::LocalPseudonym},
     {"up", IdType::UserPseudonym},
-    {"user", IdType::UserPseudonym},
     {"user-pseudonym", IdType::UserPseudonym}
 };
 
