@@ -118,35 +118,35 @@ const std::string LogTag("StorageFacility");
 
 StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
-  data_stored_bytes(prometheus::BuildCounter()
+  dataStoredBytes(prometheus::BuildCounter()
     .Name("pep_sf_stored_bytes")
     .Help("Total amount of bytes in datapages received by clients to be stored") // by this process (PID), i.e. during this session
     .Register(*registry)
     .Add({})),
-  data_retrieved_bytes(prometheus::BuildCounter()
+  dataRetrievedBytes(prometheus::BuildCounter()
     .Name("pep_sf_retrieved_bytes")
     .Help("Total amount of data in datapages sent to clients")
     .Register(*registry)
     .Add({})),
-  dataRead_request_duration(prometheus::BuildSummary()
+  dataReadRequestDuration(prometheus::BuildSummary()
     .Name("pep_sf_dataRead_request_duration_seconds")
     .Help("Duration of a DataReadRequest2")
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
-  dataStore_request_duration(prometheus::BuildSummary()
+  dataStoreRequestDuration(prometheus::BuildSummary()
     .Name("pep_sf_dataStore_request_duration_seconds")
     .Help("Duration of a DataStoreRequest2")
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
-  dataEnumeration_request_duration(prometheus::BuildSummary()
+  dataEnumerationRequestDuration(prometheus::BuildSummary()
     .Name("pep_sf_dataEnumeration_request_duration_seconds")
     .Help("Duration of a DataEnumerationRequest2")
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
-  dataHistory_request_duration(prometheus::BuildSummary()
+  dataHistoryRequestDuration(prometheus::BuildSummary()
     .Name("pep_sf_dataHistory_request_duration_seconds")
     .Help("Duration of a DataHistoryRequest2")
     .Register(*registry)
@@ -438,7 +438,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
           std::make_shared<std::string>(Serialization::ToString(msg))));
       }
 
-      server->metrics_->dataEnumeration_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->startTime).count()); // in seconds
+      server->metrics_->dataEnumerationRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->startTime).count()); // in seconds
       return RxIterate(std::move(response));
       });
 }
@@ -575,7 +575,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
       if (fileIndex_ >= entries_.size()) {
         if (subscriber_.has_value()) {
           // TODO: postpone duration measurement until all page _contents_ (i.e. inner observables) have been processed
-          metrics_->dataRead_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime_).count()); // in seconds
+          metrics_->dataReadRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime_).count()); // in seconds
           subscriber_->on_completed();
           subscriber_.reset();
         }
@@ -607,7 +607,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
             if (returnedPage->size() >= messaging::MAX_SIZE_OF_MESSAGE) {
               throw std::runtime_error("Data payload page too large to send out");
             }
-            self->metrics_->data_retrieved_bytes.Increment(
+            self->metrics_->dataRetrievedBytes.Increment(
               static_cast<double>(returnedPage->size()));
             return returnedPage;
             }));
@@ -760,7 +760,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             }
             return sfentry->appendPage(rawPage, fs, page.pageNumber).tap(
               [server, rawPage](const std::string& md5hash) {
-                server->metrics_->data_stored_bytes.Increment(static_cast<double>(rawPage->size()));
+                server->metrics_->dataStoredBytes.Increment(static_cast<double>(rawPage->size()));
               });
           })
           .as_dynamic()
@@ -806,7 +806,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
               subscriber.on_next(rxcpp::observable<>::from(
                 MakeSharedCopy(getResponse(time, ctx->ids, hasher->digest()))));
-              server->metrics_->dataStore_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->startTime).count()); // in seconds
+              server->metrics_->dataStoreRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->startTime).count()); // in seconds
               subscriber.on_completed();
             });
       });
@@ -1041,7 +1041,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     }
   }
 
-  metrics_->dataHistory_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
+  metrics_->dataHistoryRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
 
   return rxcpp::observable<>::just(
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());

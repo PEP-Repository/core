@@ -20,12 +20,12 @@ const std::string LogTag = "Key component server";
 
 struct KeyComponentServer::Metrics : public RegisteredMetrics {
   Metrics(std::shared_ptr<prometheus::Registry> registry, const ServerTraits& serverTraits);
-  prometheus::Summary& keyComponent_request_duration;
+  prometheus::Summary& keyComponentRequestDuration;
 };
 
 KeyComponentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry, const ServerTraits& serverTraits) :
   RegisteredMetrics(registry),
-  keyComponent_request_duration(prometheus::BuildSummary()
+  keyComponentRequestDuration(prometheus::BuildSummary()
     .Name("pep_" + serverTraits.metricsId() + "_keyComponent_request_duration_seconds")
     .Help("Duration of a successful keyComponent request")
     .Register(*registry)
@@ -60,7 +60,7 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
     response.dataEncryptionKeyComponent = dataTranslator_->generateKeyComponent(recipient);
   }
 
-  metrics_->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
+  metrics_->keyComponentRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
 
   return messaging::BatchSingleMessage(response);
 }

@@ -88,7 +88,7 @@ private:
 
     std::chrono::steady_clock::time_point startupTime;
 
-    prometheus::Gauge& uncaughtExceptions_count;
+    prometheus::Gauge& uncaughtExceptionsCount;
 
     prometheus::Gauge& diskUsageProportion;
     prometheus::Gauge& diskUsageTotal;

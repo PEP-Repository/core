@@ -38,13 +38,13 @@ const Severity CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY = Severity::Debug;
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
-  transcryptor_request_duration(prometheus::BuildSummary()
+  transcryptorRequestDuration(prometheus::BuildSummary()
   .Name("pep_transcryptor_request_duration_seconds")
     .Help("Duration of a transcryptor request")
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001} }, std::chrono::minutes{ 5 })),
-  transcryptor_log_size(prometheus::BuildGauge()
+  transcryptorLogSize(prometheus::BuildGauge()
   .Name("pep_transcryptor_log_size_bytes")
     .Help("Size of transcryptor database in bytes")
     .Register(*registry)
@@ -299,7 +299,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
         pseudonymHash
       );
       auto result = rxcpp::observable<>::just(std::make_shared<std::string>(Serialization::ToString(std::move(response)))).as_dynamic();
-      server->lpMetrics_->transcryptor_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
+      server->lpMetrics_->transcryptorRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
       PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " returning result to requestor";
       return result;
     });
@@ -425,7 +425,7 @@ std::optional<std::filesystem::path> Transcryptor::getStoragePath() {
 std::shared_ptr<prometheus::Registry>
 Transcryptor::getMetricsRegistry()  {
   // Collect some metrics ad hoc
-  lpMetrics_->transcryptor_log_size.Set(static_cast<double>(
+  lpMetrics_->transcryptorLogSize.Set(static_cast<double>(
         std::filesystem::file_size(storage_->getPath())));
 
   // Collect the base metrics and return the complete registry

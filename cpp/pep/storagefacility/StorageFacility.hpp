@@ -18,13 +18,13 @@ private:
   class Metrics : public RegisteredMetrics {
   public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
-    prometheus::Counter& data_stored_bytes;
-    prometheus::Counter& data_retrieved_bytes;
+    prometheus::Counter& dataStoredBytes;
+    prometheus::Counter& dataRetrievedBytes;
 
-    prometheus::Summary& dataRead_request_duration;
-    prometheus::Summary& dataStore_request_duration;
-    prometheus::Summary& dataEnumeration_request_duration;
-    prometheus::Summary& dataHistory_request_duration;
+    prometheus::Summary& dataReadRequestDuration;
+    prometheus::Summary& dataStoreRequestDuration;
+    prometheus::Summary& dataEnumerationRequestDuration;
+    prometheus::Summary& dataHistoryRequestDuration;
 
     prometheus::Gauge& entriesIncludingHistory;
     prometheus::Gauge& entriesInMetaDir;

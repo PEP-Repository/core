@@ -204,12 +204,12 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     .flat_map([self](const std::vector<StoreData2Entry>& batch) {return self->processBatchToStore(batch); }) // Store the items
     .tap( // Perform housekeeping
       [self, written](size_t count) {
-        self->metrics_->storedEntries_count.Increment(static_cast<double>(count));
+        self->metrics_->storedEntriesCount.Increment(static_cast<double>(count));
         (*written) += count;
       },
-      [self](std::exception_ptr) {self->metrics_->uncaughtExceptions_count.Increment(); },
+      [self](std::exception_ptr) {self->metrics_->uncaughtExceptionsCount.Increment(); },
       [self, read, written, startTime]() {
-        self->metrics_->importDuration_seconds.Set(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count()); // in seconds
+        self->metrics_->importDurationSeconds.Set(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count()); // in seconds
         PEP_PULLCASTOR_LOG(Severity::Info) << "Added/updated " << *written << " of " << *read << " entries";
       }
     );

@@ -15,7 +15,7 @@ namespace pep {
 
 Server::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
-  uncaughtExceptions_count(prometheus::BuildGauge()
+  uncaughtExceptionsCount(prometheus::BuildGauge()
     .Name("pep_uncaughtExceptions_count")
     .Help("Number of uncaught exceptions while dealing with a request")
     .Register(*registry)
@@ -156,7 +156,7 @@ std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
   }
 
   // Collect some metrics ad hoc
-  metrics_->uncaughtExceptions_count.Set(static_cast<double>(getNumberOfUncaughtReadExceptions()));
+  metrics_->uncaughtExceptionsCount.Set(static_cast<double>(getNumberOfUncaughtReadExceptions()));
 
   auto dataLocation = getStoragePath();
 

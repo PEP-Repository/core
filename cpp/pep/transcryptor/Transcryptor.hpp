@@ -19,8 +19,8 @@ class Transcryptor : public KeyComponentServer {
   class Metrics : public RegisteredMetrics {
    public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
-    prometheus::Summary& transcryptor_request_duration;
-    prometheus::Gauge& transcryptor_log_size;
+    prometheus::Summary& transcryptorRequestDuration;
+    prometheus::Gauge& transcryptorLogSize;
   };
 
  public:
