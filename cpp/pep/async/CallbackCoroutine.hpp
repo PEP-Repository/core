@@ -12,31 +12,27 @@ namespace pep {
 
 namespace callback_coroutine_detail {
 
-template <typename T, typename TValue = T>
+template <typename T>
+struct Callback { using type = void(T); };
+template <>
+struct Callback<void> { using type = void(); };
+
+template <typename T>
 class PromiseBase {
-public:
-  using Callback = std::function<void(TValue)>;
-  using ErrorCallback = std::function<void()>; // noexcept
-
-private:
-  Callback callback_;
-  ErrorCallback errorCallback_; // noexcept
-  std::optional<TValue> value_;
-
 protected:
+  std::function<typename Callback<T>::type> callback_;
+  std::function<void()> errorCallback_; // noexcept
+
+  std::optional<std::conditional_t<std::same_as<T, void>, FakeVoid, T>> value_;
+
+public:
   PromiseBase(
-      Callback callback,
-      ErrorCallback errorCallback,
+      decltype(callback_) callback,
+      decltype(errorCallback_) errorCallback,
       const auto& ...)
       : callback_(std::move(callback)),
         errorCallback_(std::move(errorCallback)) {}
 
-  template <typename U = T>
-  void storeValue(U&& value) {
-    this->value_.emplace(std::forward<decltype(value)>(value));
-  }
-
-public:
   // Well-known name
   auto initial_suspend() const noexcept { return std::suspend_never{}; }
   // Well-known name
@@ -44,7 +40,11 @@ public:
     if (value_) {
       try {
         // Execute callback in final_suspend, because in return_void local variables are still alive
-        callback_(std::move(*value_));
+        if constexpr (std::same_as<T, void>) {
+          callback_();
+        } else {
+          callback_(std::move(*value_));
+        }
       } catch (...) {
         errorCallback_();
       }
@@ -72,7 +72,7 @@ public:
     // Well-known name
     template <typename U = T>
     void return_value(U&& value) {
-      this->storeValue(std::forward<decltype(value)>(value));
+      this->value_.emplace(std::forward<decltype(value)>(value));
     }
   };
 };
@@ -81,18 +81,15 @@ template <>
 class CallbackCoroutine<void> {
 public:
   // Well-known name
-  class promise_type : public callback_coroutine_detail::PromiseBase<void, FakeVoid> {
+  class promise_type : public callback_coroutine_detail::PromiseBase<void> {
   public:
-    using Callback = std::function<void()>;
-
-    promise_type(Callback callback, ErrorCallback errorCallback, const auto& ...)
-      : callback_coroutine_detail::PromiseBase<void, FakeVoid>([cb = std::move(callback)](FakeVoid) { cb(); }, std::move(errorCallback)) {}
+    using callback_coroutine_detail::PromiseBase<void>::PromiseBase;
 
     // Well-known name
     CallbackCoroutine get_return_object() const noexcept { return CallbackCoroutine(); }
 
     // Well-known name
-    void return_void() { this->storeValue(FakeVoid()); }
+    void return_void() { value_.emplace(); }
   };
 };
 
