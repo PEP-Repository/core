@@ -9,7 +9,7 @@ PingRequest::PingRequest()
   : id_{ RandomInteger<decltype(id_)>() } {}
 
 void PingResponse::validate(const PingRequest& isReplyTo) const {
-  if (this->id != isReplyTo.id()) {
+  if (id_ != isReplyTo.id()) {
     throw std::runtime_error("Ping response does not match the request");
   }
 }

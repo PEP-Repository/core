@@ -24,10 +24,17 @@ private:
   uint64_t id_;
 };
 
-struct PingResponse {
-  uint64_t id;
-  Timestamp timestamp;
+class PingResponse {
+  friend class Serializer<PingResponse>;
 
+  uint64_t id_;
+  Timestamp timestamp_;
+
+  PingResponse(uint64_t id, Timestamp timestamp) : id_(id), timestamp_(timestamp) {}
+
+public:
+  explicit PingResponse(uint64_t id) : PingResponse(id, TimeNow()) {}
+  Timestamp timestamp() const noexcept { return timestamp_; }
   void validate(const PingRequest& isReplyTo) const;
 };
 

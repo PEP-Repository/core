@@ -36,15 +36,12 @@ void Serializer<PingRequest>::moveIntoProtocolBuffer(proto::PingRequest& dest, P
 }
 
 PingResponse Serializer<PingResponse>::fromProtocolBuffer(proto::PingResponse&& source) const {
-  return PingResponse{
-    .id = source.id(),
-    .timestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp()))
-  };
+  return PingResponse(source.id(), Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())));
 }
 
 void Serializer<PingResponse>::moveIntoProtocolBuffer(proto::PingResponse& dest, PingResponse value) const {
-  dest.set_id(value.id);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp);
+  dest.set_id(value.id_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp_);
 }
 
 VersionResponse Serializer<VersionResponse>::fromProtocolBuffer(proto::VersionResponse&& source) const {
