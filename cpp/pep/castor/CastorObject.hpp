@@ -40,14 +40,14 @@ namespace castor {
 #endif
 
  protected:
-  static const std::string DEFAULT_ID_FIELD;
+  static const std::string DefaultIdField;
   /*!
    * \brief Construct a new CastorObject
    *
    * \param json The %Json response from the Castor API for this object
    * \param idField The name of the field in which the object's ID is stored. Defaults to "id"
    */
-  CastorObject(JsonPtr json, const std::string& idField = DEFAULT_ID_FIELD);
+  CastorObject(JsonPtr json, const std::string& idField = DefaultIdField);
 
   /*!
    * \brief Retrieve a list of objects that are children of a specified parent object.

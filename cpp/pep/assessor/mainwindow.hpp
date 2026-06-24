@@ -31,33 +31,33 @@ class MainWindow;
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
-    static const int statusMessageDuration;
+  static const int StatusMessageDuration;
 
   static QFont* tooltipFont;
-  std::shared_ptr<QTranslator> currentTranslator = nullptr;
-  QString enrollmentToken;
-  QString currentUser;
+  std::shared_ptr<QTranslator> currentTranslator_ = nullptr;
+  QString enrollmentToken_;
+  QString currentUser_;
   std::optional<pep::UserRole> currentPepRole_;
-  std::shared_ptr<pep::Client> pepClient;
-  pep::Configuration config;
-  pep::ConnectionStatus accessManagerConnectionStatus;
-  pep::ConnectionStatus keyServerConnectionStatus;
-  pep::ConnectionStatus storageFacilityConnectionStatus;
-  std::queue<std::pair<QString, pep::Severity>> statusMessages;
-  QTimer* statusTimer;
-  QLabel* statusbarLabel;
-  QPushButton* statusbarCancelButton;
-  QWidget* notConnectedWidget = nullptr;
+  std::shared_ptr<pep::Client> pepClient_;
+  pep::Configuration config_;
+  pep::ConnectionStatus accessManagerConnectionStatus_;
+  pep::ConnectionStatus keyServerConnectionStatus_;
+  pep::ConnectionStatus storageFacilityConnectionStatus_;
+  std::queue<std::pair<QString, pep::Severity>> statusMessages_;
+  QTimer* statusTimer_;
+  QLabel* statusbarLabel_;
+  QPushButton* statusbarCancelButton_;
+  QWidget* notConnectedWidget_ = nullptr;
   std::shared_ptr<pep::StudyContexts> allContexts_;
   Branding branding_;
   unsigned spareStickerCount_;
-  EnrollmentWidget* currentEnrollmentWidget = nullptr;
-  ParticipantSelector* currentSelectorWidget = nullptr;
-  ExportWidget* currentExportWidget = nullptr;
+  EnrollmentWidget* currentEnrollmentWidget_ = nullptr;
+  ParticipantSelector* currentSelectorWidget_ = nullptr;
+  ExportWidget* currentExportWidget_ = nullptr;
   VisitCaptionsByContext visitCaptionsByContext_;
 
 public:
-  QMap<QString, QWidget*> openedParticipants_;
+  QMap<QString, QWidget*> openedParticipants_; // TODO: reduce visibility
 
   explicit MainWindow(std::shared_ptr<pep::Client> incommingIOObject, const Branding& branding, const pep::Configuration& config_tree, unsigned spareStickerCount, const VisitCaptionsByContext& visitCaptionsByContext);
   ~MainWindow() override;

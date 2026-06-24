@@ -39,15 +39,15 @@ rxcpp::observable<TResponse> BatchedRetrieve(
   const std::function<rxcpp::observable<TResponse>(const std::vector<std::string>&)>& retrieveBatch) {
 
   // Degenerate case: all IDs can be retrieved in a single batch
-  if (ids.size() <= CoreClient::DATA_RETRIEVAL_BATCH_SIZE) {
+  if (ids.size() <= CoreClient::DataRetrievalBatchSize) {
     return retrieveBatch(ids);
   }
 
   // Split IDs over batches
   auto batches = std::make_shared<std::vector<std::vector<std::string>>>();
-  batches->reserve(ids.size() / CoreClient::DATA_RETRIEVAL_BATCH_SIZE + 1);
-  for (size_t offset = 0U; offset < ids.size(); offset += CoreClient::DATA_RETRIEVAL_BATCH_SIZE) {
-    size_t batchSize = std::min(CoreClient::DATA_RETRIEVAL_BATCH_SIZE, ids.size() - offset);
+  batches->reserve(ids.size() / CoreClient::DataRetrievalBatchSize + 1);
+  for (size_t offset = 0U; offset < ids.size(); offset += CoreClient::DataRetrievalBatchSize) {
+    size_t batchSize = std::min(CoreClient::DataRetrievalBatchSize, ids.size() - offset);
     auto& batch = batches->emplace_back();
     batch.reserve(batchSize);
     std::copy(ids.cbegin() + static_cast<ptrdiff_t>(offset),
@@ -63,7 +63,7 @@ rxcpp::observable<TResponse> BatchedRetrieve(
   return rxcpp::observable<>::range(ptrdiff_t{0}, static_cast<ptrdiff_t>(batches->size() - 1)) // Iterate over batch(indic)es
     .flat_map([batches, retrieveBatch, updateIndex](ptrdiff_t batchIndex) { // Process each batch individually
       const auto& batch = (*batches)[static_cast<size_t>(batchIndex)];
-      size_t offset = static_cast<size_t>(batchIndex) * CoreClient::DATA_RETRIEVAL_BATCH_SIZE;
+      size_t offset = static_cast<size_t>(batchIndex) * CoreClient::DataRetrievalBatchSize;
       return retrieveBatch(batch) // Retrieve this batch
         .tap([offset, updateIndex](TResponse response) {
           updateIndex(offset, response);

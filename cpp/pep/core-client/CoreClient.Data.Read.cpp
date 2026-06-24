@@ -85,7 +85,7 @@ CoreClient::enumerateDataByIds(std::vector<std::string> ids, std::shared_ptr<Sig
   auto pseudonyms = std::make_shared<TicketPseudonyms>(*ticket, privateKeyPseudonyms_);
 
   return RxIterate(std::move(ids))
-      .buffer(static_cast<int>(DATA_RETRIEVAL_BATCH_SIZE))
+      .buffer(static_cast<int>(DataRetrievalBatchSize))
       .as_dynamic() // Reduce compiler memory usage
       .map([this, ticket, pseudonyms](std::vector<std::string> batch)
         -> rxcpp::observable<std::shared_ptr<EnumerateResult>> {
@@ -114,13 +114,13 @@ CoreClient::getKeys(
   std::shared_ptr<SignedTicket2> ticket) {
 
   return subjects
-      .buffer(static_cast<int>(DATA_RETRIEVAL_BATCH_SIZE))
+      .buffer(static_cast<int>(DataRetrievalBatchSize))
       .as_dynamic() // Reduce compiler memory usage
       .op(RxIndexed<std::uint32_t>())
       .map([this, ticket](std::pair<std::uint32_t, std::vector<std::shared_ptr<EnumerateResult>>> batchSubjects)
         -> rxcpp::observable<FileKey> {
         auto& [batchNum, subjects] = batchSubjects;
-        auto fileOffset = batchNum * DATA_RETRIEVAL_BATCH_SIZE;
+        auto fileOffset = batchNum * DataRetrievalBatchSize;
         auto keys = this->unblindAndDecryptKeys(subjects, ticket) // Get keys
           .op(RxConcatenateVectors());
         return keys

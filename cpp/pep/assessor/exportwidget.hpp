@@ -30,10 +30,10 @@ signals:
   void sendMessage(QString message, pep::Severity severity);
 
 private slots:
-  void on_selectedItemChanged();
-  void on_itemChanged(QListWidgetItem* item);
-  void on_exportButton_clicked();
-  void on_itemActivated(QListWidgetItem* item);
+  void onSelectedItemChanged();
+  void onItemChanged(QListWidgetItem* item);
+  void onExportButtonClicked();
+  void onItemActivated(QListWidgetItem* item);
 
 private:
   std::vector<std::shared_ptr<ExportableItem>> getAllExportableItems(const pep::GlobalConfiguration& configuration, const pep::StudyContext& studyContext);

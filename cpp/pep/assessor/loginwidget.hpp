@@ -17,9 +17,6 @@ class LoginWidget;
 
 class LoginWidget : public QWidget {
   Q_OBJECT
-  std::shared_ptr<pep::OAuthClient> authy;
-  std::filesystem::path exeDirectory;
-  std::optional<std::string> adminAccountSampleFormat;
 
  public:
   explicit LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, const pep::Configuration& projectConfig, const pep::Configuration& config, const std::filesystem::path& exeDirectory);
@@ -41,13 +38,16 @@ public:
 #endif
 
 private slots:
-  void on_loginButton_clicked();
-  void on_userLoggedin(QString token);
-  void on_loginFailure(QString announcement, std::exception_ptr error);
+  void onLoginButtonClicked();
+  void onUserLoggedin(QString token);
+  void onLoginFailure(QString announcement, std::exception_ptr error);
 
 private:
-  void on_updateStarted(std::exception_ptr error);
+  void onUpdateStarted(std::exception_ptr error);
 
 private:
   Ui::LoginWidget* ui_;
+  std::shared_ptr<pep::OAuthClient> authy_;
+  std::filesystem::path exeDirectory_;
+  std::optional<std::string> adminAccountSampleFormat_;
 };

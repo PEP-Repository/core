@@ -77,7 +77,7 @@ class ClientTestApplication : public Application {
       + MakeConfigFileParameters(".", std::nullopt, true);
   }
 
-  template <unsigned MODE>
+  template <unsigned mode>
   class ModeCommand : public commandline::ChildCommandOf<ClientTestApplication> {
   protected:
     virtual rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) = 0;
@@ -87,12 +87,12 @@ class ClientTestApplication : public Application {
     }
 
     ModeCommand(ClientTestApplication& parent, const std::string& description)
-      : commandline::ChildCommandOf<ClientTestApplication>(std::to_string(MODE), description, parent) {
+      : commandline::ChildCommandOf<ClientTestApplication>(std::to_string(mode), description, parent) {
     }
   };
 
-  template <unsigned MODE>
-  class RecordBasedModeCommand : public ModeCommand<MODE> {
+  template <unsigned mode>
+  class RecordBasedModeCommand : public ModeCommand<mode> {
   protected:
     commandline::Parameters getSupportedParameters() const override {
       return commandline::ChildCommandOf<ClientTestApplication>::getSupportedParameters()
@@ -104,7 +104,7 @@ class ClientTestApplication : public Application {
     }
 
     RecordBasedModeCommand(ClientTestApplication& parent, const std::string& description)
-      : ModeCommand<MODE>(parent, description) {
+      : ModeCommand<mode>(parent, description) {
     }
   };
 

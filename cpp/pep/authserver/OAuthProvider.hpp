@@ -19,24 +19,19 @@ class AuthserverBackend;
 
 class OAuthProvider : public std::enable_shared_from_this<OAuthProvider>, public SharedConstructor<OAuthProvider> {
 public:
-  static const std::string RESPONSE_TYPE_CODE;
-  static const std::string GRANT_TYPE_AUTHORIZATION_CODE;
+  static const std::string ResponseTypeCode;
+  static const std::string GrantTypeAuthorizationCode;
 
-// Prevent build failure due to ERROR_ACCESS_DENIED being defined (to a numeric value). See #1051
-#pragma push_macro("ERROR_ACCESS_DENIED")
-#undef ERROR_ACCESS_DENIED
-  static const std::string ERROR_INVALID_REQUEST;
-  static const std::string ERROR_INVALID_CLIENT;
-  static const std::string ERROR_ACCESS_DENIED;
-  static const std::string ERROR_UNAUTHORIZED_CLIENT;
-  static const std::string ERROR_UNSUPPORTED_RESPONSE_TYPE;
-  static const std::string ERROR_UNSUPPORTED_GRANT_TYPE;
-  static const std::string ERROR_INVALID_SCOPE;
-  static const std::string ERROR_SERVER_ERROR;
-  static const std::string ERROR_TEMPORARILY_UNAVAILABLE;
-  static const std::string ERROR_INVALID_GRANT;
-
-#pragma pop_macro("ERROR_ACCESS_DENIED")
+  static const std::string ErrorInvalidRequest;
+  static const std::string ErrorInvalidClient;
+  static const std::string ErrorAccessDenied;
+  static const std::string ErrorUnauthorizedClient;
+  static const std::string ErrorUnsupportedResponseType;
+  static const std::string ErrorUnsupportedGrantType;
+  static const std::string ErrorInvalidScope;
+  static const std::string ErrorServerError;
+  static const std::string ErrorTemporarilyUnavailable;
+  static const std::string ErrorInvalidGrant;
 
   class Parameters {
     public:

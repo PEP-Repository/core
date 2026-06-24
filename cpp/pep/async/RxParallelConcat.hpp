@@ -103,6 +103,10 @@ template <typename T>
 class RxParallelConcatContext
   : public std::enable_shared_from_this<RxParallelConcatContext<T>>
 {
+public:
+  class CachingObservable;
+
+private:
   const size_t maxSubscriptions_;
   const rxcpp::subscriber<T> target_;
 
@@ -110,11 +114,6 @@ class RxParallelConcatContext
   std::shared_ptr<RxParallelConcatContext> keepThisAlive_;
 
   CachingSubscriber<rxcpp::observable<T>> obsCache_;
-
-public:
-  class CachingObservable;
-
-private:
   std::queue<std::unique_ptr<CachingObservable>> caching_;
   std::optional<rxcpp::composite_subscription> head_;
 

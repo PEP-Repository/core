@@ -238,7 +238,7 @@ class ShortPseudonymContextError : public std::runtime_error {
 
 class CoreClient : protected MessageSigner, boost::noncopyable {
  public:
-  static constexpr size_t DATA_RETRIEVAL_BATCH_SIZE{4000};
+  static constexpr size_t DataRetrievalBatchSize{4000};
 
  private:
   std::shared_ptr<boost::asio::io_context> ioContext_;
@@ -506,7 +506,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     std::shared_ptr<SignedTicket2> ticket);
 
   /// Retrieve cell contents.
-  /// \param batchedSubjects Must be split in batches of \c DATA_RETRIEVAL_BATCH_SIZE (usually by \c getKeys)
+  /// \param batchedSubjects Must be split in batches of \c DataRetrievalBatchSize (usually by \c getKeys)
   /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
   /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
   rxcpp::observable<rxcpp::observable<RetrievePage>>
@@ -612,11 +612,11 @@ public:
 };
 
 struct CoreClient::AESKey {
-    CurvePoint point;
-    std::string bytes;
+  CurvePoint point;
+  std::string bytes;
 
-    explicit AESKey(const CurvePoint& point);
-    AESKey() : AESKey(CurvePoint::Random()) {}
+  explicit AESKey(const CurvePoint& point);
+  AESKey() : AESKey(CurvePoint::Random()) {}
 };
 
 class CoreClient::TicketPseudonyms {

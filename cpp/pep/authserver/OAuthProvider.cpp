@@ -33,8 +33,8 @@
 using namespace std::literals;
 using boost::urls::url;
 
-#ifdef ERROR_ACCESS_DENIED
-# undef ERROR_ACCESS_DENIED
+#ifdef ErrorAccessDenied
+# undef ErrorAccessDenied
 #endif
 
 #ifndef ENABLE_OAUTH_TEST_USERS
@@ -56,19 +56,19 @@ const std::string LogTag("OAuthProvider");
 
 }
 
-const std::string OAuthProvider::RESPONSE_TYPE_CODE = "code";
-const std::string OAuthProvider::GRANT_TYPE_AUTHORIZATION_CODE = "authorization_code";
+const std::string OAuthProvider::ResponseTypeCode = "code";
+const std::string OAuthProvider::GrantTypeAuthorizationCode = "authorization_code";
 
-const std::string OAuthProvider::ERROR_INVALID_REQUEST = "invalid_request";
-const std::string OAuthProvider::ERROR_INVALID_CLIENT = "invalid_client";
-const std::string OAuthProvider::ERROR_ACCESS_DENIED = "access_denied";
-const std::string OAuthProvider::ERROR_UNAUTHORIZED_CLIENT = "unauthorized_client";
-const std::string OAuthProvider::ERROR_UNSUPPORTED_RESPONSE_TYPE = "unsupported_response_type";
-const std::string OAuthProvider::ERROR_UNSUPPORTED_GRANT_TYPE = "unsupported_grant_type";
-const std::string OAuthProvider::ERROR_INVALID_SCOPE = "invalid_scope";
-const std::string OAuthProvider::ERROR_SERVER_ERROR = "server_error";
-const std::string OAuthProvider::ERROR_TEMPORARILY_UNAVAILABLE = "temporarily_unavailable";
-const std::string OAuthProvider::ERROR_INVALID_GRANT = "invalid_grant";
+const std::string OAuthProvider::ErrorInvalidRequest = "invalid_request";
+const std::string OAuthProvider::ErrorInvalidClient = "invalid_client";
+const std::string OAuthProvider::ErrorAccessDenied = "access_denied";
+const std::string OAuthProvider::ErrorUnauthorizedClient = "unauthorized_client";
+const std::string OAuthProvider::ErrorUnsupportedResponseType = "unsupported_response_type";
+const std::string OAuthProvider::ErrorUnsupportedGrantType = "unsupported_grant_type";
+const std::string OAuthProvider::ErrorInvalidScope = "invalid_scope";
+const std::string OAuthProvider::ErrorServerError = "server_error";
+const std::string OAuthProvider::ErrorTemporarilyUnavailable = "temporarily_unavailable";
+const std::string OAuthProvider::ErrorInvalidGrant = "invalid_grant";
 
 #include <pep/authserver/GroupSelectionForm.template.inc>
 
@@ -126,7 +126,7 @@ HTTPResponse MakeErrorJsonHttpResponse(const std::string& error, const std::stri
   boost::property_tree::write_json(oss, responseData);
   PEP_LOG(LogTag, pep::Severity::Warning) << "Returning error HTTP response with status 400 Bad Request";
   std::string status = "400 Bad Request";
-  if(error == OAuthProvider::ERROR_SERVER_ERROR) {
+  if(error == OAuthProvider::ErrorServerError) {
     status = "500 Internal Server Error";
   }
   return MakeHttpResponse(status, std::move(oss).str(), "application/json");
@@ -369,7 +369,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
         codeChallengeMethodIt = params.find("code_challenge_method");
     for (auto it : {responseTypeIt, codeChallengeIt, codeChallengeMethodIt}) {
       if (it == params.end()) {
-        return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_INVALID_REQUEST, "response_type, code_challenge, code_challenge_method required"));
+        return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorInvalidRequest, "response_type, code_challenge, code_challenge_method required"));
       }
     }
 
@@ -377,12 +377,12 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     codeChallenge = std::move((*codeChallengeIt).value);
     const std::string& codeChallengeMethod = (*codeChallengeMethodIt).value;
 
-    if(responseType != RESPONSE_TYPE_CODE) {
-      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_UNSUPPORTED_RESPONSE_TYPE, "Only response type 'code' is supported."));
+    if(responseType != ResponseTypeCode) {
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorUnsupportedResponseType, "Only response type 'code' is supported."));
     }
 
     if(codeChallengeMethod != "S256") {
-      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_INVALID_REQUEST, "Only code challenge type 'S256' is supported"));
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorInvalidRequest, "Only code challenge type 'S256' is supported"));
     }
 
     if (auto longLivedValidityIt = params.find("long_lived_validity");
@@ -392,16 +392,16 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Error) << "Unexpected error: " << e.what();
-    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, SERVER_ERROR_DESCRIPTION));
   }
 
   return authserverBackend_->findUserGroupsAndStorePrimaryIdIfMissing(primaryUid, alternativeUids)
       .map([redirectUri, redirectUriString, request, clientId, humanReadableUid, codeChallenge, longLivedValidityStr, self=shared_from_this()](std::optional<std::vector<UserGroup>> groups) {
     if(!groups){
-      return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "Unknown user");
+      return MakeErrorRedirect(redirectUri, ErrorAccessDenied, "Unknown user");
     }
     if(groups->empty()) {
-      return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "The user is not in any user groups");
+      return MakeErrorRedirect(redirectUri, ErrorAccessDenied, "The user is not in any user groups");
     }
 
     UserGroup group = groups->front();
@@ -413,7 +413,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
         auto foundGroup = std::ranges::find_if(*groups, [&selectedGroup](const UserGroup& group){ return group.name == selectedGroup; });
         if(foundGroup == groups->end()) {
           PEP_LOG(LogTag, Severity::Warning) << "Trying to login with group '" << selectedGroup << "', but user is not a member of that group.";
-          return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "User is not a member of selected group");
+          return MakeErrorRedirect(redirectUri, ErrorAccessDenied, "User is not a member of selected group");
         }
         group = *foundGroup;
       }
@@ -434,7 +434,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     if (longLivedValidityStr) {
       auto maxValidity = group.maxAuthValidity;
       if(!maxValidity) {
-        return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "User is not allowed to request long-lived tokens");
+        return MakeErrorRedirect(redirectUri, ErrorAccessDenied, "User is not allowed to request long-lived tokens");
       }
       if(boost::iequals(*longLivedValidityStr, "max")) {
         validityDuration = maxValidity;
@@ -442,7 +442,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       else {
         validityDuration = std::chrono::seconds(boost::lexical_cast<int64_t>(*longLivedValidityStr));
         if(*validityDuration > *maxValidity) {
-          return MakeErrorRedirect(redirectUri, ERROR_ACCESS_DENIED, "User is not allowed to request long-lived tokens for the requested duration");
+          return MakeErrorRedirect(redirectUri, ErrorAccessDenied, "User is not allowed to request long-lived tokens for the requested duration");
         }
       }
     }
@@ -457,10 +457,10 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     try {
       std::rethrow_exception(ep);
     } catch (const Error& e) {
-      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, e.what()));
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, e.what()));
     } catch(const std::exception& e) {
       PEP_LOG(LogTag, Severity::Error) << "Unexpected error: " << e.what();
-      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION));
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, SERVER_ERROR_DESCRIPTION));
     }
   });
 }
@@ -472,7 +472,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
       if(formData.find(p) == formData.end()) {
         std::ostringstream oss;
         oss << p << " required";
-        return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, std::move(oss).str());
+        return MakeErrorJsonHttpResponse(ErrorInvalidRequest, std::move(oss).str());
       }
     }
 
@@ -482,22 +482,22 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     const std::string& code = formData.at("code");
     const std::string& codeVerifier = formData.at("code_verifier");
 
-    if(grantType != GRANT_TYPE_AUTHORIZATION_CODE) {
-      return MakeErrorJsonHttpResponse(ERROR_UNSUPPORTED_GRANT_TYPE);
+    if(grantType != GrantTypeAuthorizationCode) {
+      return MakeErrorJsonHttpResponse(ErrorUnsupportedGrantType);
     }
 
     auto grant = getActiveGrant(code);
     if(!grant) {
-      return MakeErrorJsonHttpResponse(ERROR_INVALID_GRANT, "Code is unknown or expired");
+      return MakeErrorJsonHttpResponse(ErrorInvalidGrant, "Code is unknown or expired");
     }
     if(grant->codeChallenge != EncodeBase64Url(Sha256().digest(codeVerifier))) {
-      return MakeErrorJsonHttpResponse(ERROR_INVALID_GRANT, "Code challenge failed");
+      return MakeErrorJsonHttpResponse(ErrorInvalidGrant, "Code challenge failed");
     }
     if(grant->clientId != clientId) {
-      return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, "client_id does not match the known client_id for this code");
+      return MakeErrorJsonHttpResponse(ErrorInvalidRequest, "client_id does not match the known client_id for this code");
     }
     if(grant->redirectUri != redirectUri) {
-      return MakeErrorJsonHttpResponse(ERROR_INVALID_REQUEST, "redirect_uri does not match the known redirect_uri for this code");
+      return MakeErrorJsonHttpResponse(ErrorInvalidRequest, "redirect_uri does not match the known redirect_uri for this code");
     }
 
     OAuthToken token = authserverBackend_->getToken(grant->humanReadableId, grant->usergroup, grant->validity);
@@ -517,10 +517,10 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     return MakeHttpResponse("200 OK", std::move(responseStream).str(), "application/json", std::move(responseHeaders));
   }
   catch (const Error& err) {
-    return MakeErrorJsonHttpResponse(ERROR_SERVER_ERROR, err.what());
+    return MakeErrorJsonHttpResponse(ErrorServerError, err.what());
   }
   catch(...) {
-    return MakeErrorJsonHttpResponse(ERROR_SERVER_ERROR, SERVER_ERROR_DESCRIPTION);
+    return MakeErrorJsonHttpResponse(ErrorServerError, SERVER_ERROR_DESCRIPTION);
   }
 }
 

@@ -38,7 +38,7 @@ void ClearStackedWidget(QStackedWidget& stacked) {
 }
 
 QFont* MainWindow::tooltipFont = new QFont();
-const int MainWindow::statusMessageDuration = 3000;
+const int MainWindow::StatusMessageDuration = 3000;
 
 /*! \brief Mainwindow holds all widgets within the client and manages data passing between them.
  *
@@ -48,8 +48,8 @@ const int MainWindow::statusMessageDuration = 3000;
  * \param config_tree The boost::property_tree::ptree which contains the working configuration that this client instance should use. This too is passed to the children as needed.
  */
 MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& branding, const pep::Configuration& config_tree, unsigned spareStickerCount, const VisitCaptionsByContext& visitCaptionsByContext)
-  : QMainWindow(nullptr), config(config_tree), branding_(branding), spareStickerCount_(spareStickerCount), visitCaptionsByContext_(visitCaptionsByContext), ui_(new Ui::MainWindow) {
-  pepClient = client;
+  : QMainWindow(nullptr), config_(config_tree), branding_(branding), spareStickerCount_(spareStickerCount), visitCaptionsByContext_(visitCaptionsByContext), ui_(new Ui::MainWindow) {
+  pepClient_ = client;
   ui_->setupUi(this);
   tooltipFont->setPointSize(12);
   //ui_->currentPatient->hide();
@@ -66,17 +66,17 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   }
 
   ui_->statusBar->hide(); // Only show it when there are messages
-  statusTimer = new QTimer(this);
-  statusTimer->setSingleShot(true);
-  connect(statusTimer, &QTimer::timeout, [this]() {
+  statusTimer_ = new QTimer(this);
+  statusTimer_->setSingleShot(true);
+  connect(statusTimer_, &QTimer::timeout, [this]() {
     updateStatusBar(false);
     });
   // There is apparently no way to add these in the .ui_ file instead of here.
-  statusbarCancelButton = new QPushButton(QString::fromWCharArray(L"\u2715"), ui_->statusBar);
-  statusbarLabel = new QLabel(ui_->statusBar);
-  ui_->statusBar->addWidget(statusbarCancelButton);
-  ui_->statusBar->addWidget(statusbarLabel);
-  QObject::connect(statusbarCancelButton, &QPushButton::clicked, this, [this]() {
+  statusbarCancelButton_ = new QPushButton(QString::fromWCharArray(L"\u2715"), ui_->statusBar);
+  statusbarLabel_ = new QLabel(ui_->statusBar);
+  ui_->statusBar->addWidget(statusbarCancelButton_);
+  ui_->statusBar->addWidget(statusbarLabel_);
+  QObject::connect(statusbarCancelButton_, &QPushButton::clicked, this, [this]() {
     updateStatusBar(false);
     });
 
@@ -86,17 +86,17 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
 
   boost::property_tree::ptree keys;
 
-  //Subscribe for network status updates from the pepClient
+  //Subscribe for network status updates from the pepClient_
   client->getAccessManagerProxy()->connectionStatus().observe_on(ObserveOnGui()).subscribe([this](pep::ConnectionStatus accessManagerStatus) {
-    accessManagerConnectionStatus = accessManagerStatus;
+    accessManagerConnectionStatus_ = accessManagerStatus;
   updateConnectionStatus();
     });
   client->getKeyServerProxy()->connectionStatus().observe_on(ObserveOnGui()).subscribe([this](pep::ConnectionStatus keyServerStatus) {
-    keyServerConnectionStatus = keyServerStatus;
+    keyServerConnectionStatus_ = keyServerStatus;
   updateConnectionStatus();
     });
   client->getStorageFacilityProxy()->connectionStatus().observe_on(ObserveOnGui()).subscribe([this](pep::ConnectionStatus storageFacilityStatus) {
-    storageFacilityConnectionStatus = storageFacilityStatus;
+    storageFacilityConnectionStatus_ = storageFacilityStatus;
   updateConnectionStatus();
     });
   client->getRegistrationExpiryObservable().observe_on(ObserveOnGui()).subscribe([this](pep::FakeVoid) {
@@ -181,7 +181,7 @@ void MainWindow::initializeOpenPatientContent(bool setFocus) {
     });
   QObject::connect(selectBySIDorPseudonym, &ParticipantSelector::participantSidSelected, this, &MainWindow::showParticipantData);
   QObject::connect(selectBySIDorPseudonym, &ParticipantSelector::participantShortPseudonymSelected, this, &MainWindow::handleOpenByShortPseudonym);
-  currentSelectorWidget = selectBySIDorPseudonym;
+  currentSelectorWidget_ = selectBySIDorPseudonym;
   currentStackedWidget->addWidget(selectBySIDorPseudonym);
   if (setFocus)
     selectBySIDorPseudonym->doFocus();
@@ -190,7 +190,7 @@ void MainWindow::initializeOpenPatientContent(bool setFocus) {
 
 void MainWindow::openWidget(QStackedWidget* target, const std::function<void(const pep::GlobalConfiguration& config)>& callback) {
   auto processed = std::make_shared<bool>(false);
-  pepClient->getGlobalConfiguration()
+  pepClient_->getGlobalConfiguration()
     .observe_on(ObserveOnGui())
     .subscribe(
       [callback, processed](std::shared_ptr<pep::GlobalConfiguration> configuration) {
@@ -244,9 +244,9 @@ void MainWindow::initializeExportContent() {
   ClearStackedWidget(*currentStackedWidget);
 
   openWidget(currentStackedWidget, [this, currentStackedWidget](const pep::GlobalConfiguration& configuration) {
-    auto widget = new ExportWidget(configuration, getCurrentStudyContext(), *currentPepRole_, this->visitCaptionsByContext_, pepClient, this);
+    auto widget = new ExportWidget(configuration, getCurrentStudyContext(), *currentPepRole_, this->visitCaptionsByContext_, pepClient_, this);
   QObject::connect(widget, &ExportWidget::sendMessage, this, &MainWindow::handleWidgetMessage);
-  currentExportWidget = widget;
+  currentExportWidget_ = widget;
   currentStackedWidget->addWidget(widget);
     });
 }
@@ -272,14 +272,14 @@ void MainWindow::on_participantRegistered() {
 }
 
 void MainWindow::showForToken(QString token) {
-  enrollmentToken = token;
+  enrollmentToken_ = token;
   ui_->user->setText(tr("Not connected"));
   showPatienceWidget(ui_->register_content, tr("Connecting to servers..."));
   showMaximized();
 
-  pepClient->enrollUser(token.toStdString())
+  pepClient_->enrollUser(token.toStdString())
     .flat_map([this](pep::EnrolledPartyKeys result) {
-    return this->pepClient->getGlobalConfiguration()
+    return this->pepClient_->getGlobalConfiguration()
     .map([enrollment = std::make_shared<pep::EnrolledPartyKeys>(result)](std::shared_ptr<pep::GlobalConfiguration> config) {
         return std::make_pair(enrollment, config);
       });
@@ -301,8 +301,8 @@ void MainWindow::showForToken(QString token) {
       std::cout << "user = " << user.toStdString() << std::endl;
       std::cout << "role = " << role.toStdString() << std::endl;
 
-      enrollmentToken.clear();
-      currentUser = user;
+      enrollmentToken_.clear();
+      currentUser_ = user;
       currentPepRole_ = pep::UserRole::GetForOAuthRole(role.toStdString());
 
       allContexts_ = std::make_shared<pep::StudyContexts>(pair.second->getStudyContexts());
@@ -361,7 +361,7 @@ void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
   showPatienceWidget(currentStackedWidget, "Searching...");
 
   updateStatus(tr("Searching for short pseudonym %1").arg(QString::fromStdString(shortPseudonym)), pep::Severity::Info);
-  pepClient->findPPforShortPseudonym(shortPseudonym, getCurrentStudyContext()).subscribe(
+  pepClient_->findPPforShortPseudonym(shortPseudonym, getCurrentStudyContext()).subscribe(
     [this](pep::PolymorphicPseudonym pp) {
       emit announcePP(pp);
     },
@@ -406,7 +406,7 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
   }
 
   openWidget(widgets[0], [this, participantIdentifier, widgets](const pep::GlobalConfiguration& globalConfiguration) {
-    auto selector = new ParticipantWidget(this, pepClient, QString::fromStdString(participantIdentifier), config, globalConfiguration, *allContexts_, branding_, spareStickerCount_, getCurrentStudyContext(), getVisitCaptionsForCurrentStudyContext(), *currentPepRole_);
+    auto selector = new ParticipantWidget(this, pepClient_, QString::fromStdString(participantIdentifier), config_, globalConfiguration, *allContexts_, branding_, spareStickerCount_, getCurrentStudyContext(), getVisitCaptionsForCurrentStudyContext(), *currentPepRole_);
   selector->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   selector->setVisible(false);
   QObject::connect(this, SIGNAL(translation()), selector, SLOT(onTranslation()));
@@ -453,7 +453,7 @@ void MainWindow::selectByPolymorphicPseudonym(pep::PolymorphicPseudonym foundPP)
   pep::EnumerateAndRetrieveData2Opts opts;
   opts.pps = { foundPP };
   opts.columns = { "ParticipantIdentifier" };
-  pepClient->enumerateAndRetrieveData2(opts)
+  pepClient_->enumerateAndRetrieveData2(opts)
     .subscribe([sid](const pep::EnumerateAndRetrieveResult& result) {
     if (!sid->empty()) {
       throw std::runtime_error("Multiple identifiers found for participant");
@@ -492,7 +492,7 @@ void MainWindow::initializeRegisterPatientContent(bool setFocus) {
   else {
     ClearStackedWidget(*currentStackedWidget);
 
-    EnrollmentWidget* enroll = new EnrollmentWidget(pepClient, this, getCurrentStudyContext());
+    EnrollmentWidget* enroll = new EnrollmentWidget(pepClient_, this, getCurrentStudyContext());
     QObject::connect(enroll, &EnrollmentWidget::cancelled, this, [this, currentStackedWidget]() {
       clearActiveWidget(currentStackedWidget);
       });
@@ -503,7 +503,7 @@ void MainWindow::initializeRegisterPatientContent(bool setFocus) {
     QObject::connect(enroll, SIGNAL(enrollFailed(QString, pep::Severity)), this,
       SLOT(updateStatus(QString, pep::Severity)));
     QObject::connect(enroll, &EnrollmentWidget::participantRegistered, this, &MainWindow::on_participantRegistered);
-    currentEnrollmentWidget = enroll;
+    currentEnrollmentWidget_ = enroll;
     currentStackedWidget->addWidget(enroll);
     if (setFocus)
       enroll->doFocus();
@@ -533,11 +533,11 @@ void MainWindow::applyLanguage(QLocale::Language language) {
   }
 
   // Apply the new translator
-  auto current = currentTranslator.get();
+  auto current = currentTranslator_.get();
   if (current != nullptr) {
     QCoreApplication::removeTranslator(current);
   }
-  currentTranslator = newTranslator;
+  currentTranslator_ = newTranslator;
   QCoreApplication::installTranslator(newTranslator.get());
 
   // Ensure QT in its entirety plays along nicely (e.g. translating calendar popups to the correct language)
@@ -560,22 +560,22 @@ void MainWindow::updateConnectionStatus(bool expired /* = false */) {
     return;
 
   // First remove any previous not-connected message, whether or not we are now connected
-  if (notConnectedWidget != nullptr) {
-    closeWidget(notConnectedWidget);
-    notConnectedWidget = nullptr;
+  if (notConnectedWidget_ != nullptr) {
+    closeWidget(notConnectedWidget_);
+    notConnectedWidget_ = nullptr;
   }
 
-  if (expired || !enrollmentToken.isEmpty() // Enrollment expired or initial enrollment failed
-    || !accessManagerConnectionStatus.connected || !keyServerConnectionStatus.connected || !storageFacilityConnectionStatus.connected) { //Check server status
-    notConnectedWidget = new NotConnectedWidget(accessManagerConnectionStatus, keyServerConnectionStatus,
-      storageFacilityConnectionStatus, ui_->root_content);
-    showWidget(ui_->root_content, notConnectedWidget);
+  if (expired || !enrollmentToken_.isEmpty() // Enrollment expired or initial enrollment failed
+    || !accessManagerConnectionStatus_.connected || !keyServerConnectionStatus_.connected || !storageFacilityConnectionStatus_.connected) { //Check server status
+    notConnectedWidget_ = new NotConnectedWidget(accessManagerConnectionStatus_, keyServerConnectionStatus_,
+      storageFacilityConnectionStatus_, ui_->root_content);
+    showWidget(ui_->root_content, notConnectedWidget_);
   }
   initializeTabsIfConnected();
 }
 
 void MainWindow::initializeTabsIfConnected() {
-  if (accessManagerConnectionStatus.connected && keyServerConnectionStatus.connected && storageFacilityConnectionStatus.connected) {
+  if (accessManagerConnectionStatus_.connected && keyServerConnectionStatus_.connected && storageFacilityConnectionStatus_.connected) {
     initializeRegisterPatientContent();
     initializeOpenPatientContent();
     initializeExportContent();
@@ -589,16 +589,16 @@ void MainWindow::initializeTabsIfConnected() {
  */
 
 void MainWindow::loginExpired() {
-  assert(enrollmentToken.isEmpty());
+  assert(enrollmentToken_.isEmpty());
 
-  currentUser.clear();
+  currentUser_.clear();
   currentPepRole_ = std::nullopt;
 
   updateConnectionStatus(true);
 }
 
 void MainWindow::updateStatus(QString message, pep::Severity mode) {
-  statusMessages.emplace(std::make_pair(message, mode));
+  statusMessages_.emplace(std::make_pair(message, mode));
   qDebug() << QStringLiteral("Queueing status message: %1").arg(message);
   updateStatusBar();
 }
@@ -610,18 +610,18 @@ void MainWindow::updateStatus(QString message, pep::Severity mode) {
  * \param manuallyCalled If true and statusTimer is working then this function does nothing. Useful should statusTimer ever fail.
  */
 void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
-  if (manuallyCalled && statusTimer->isActive()) {
+  if (manuallyCalled && statusTimer_->isActive()) {
     return; // Just wait till the timer fires
   }
 
   QStatusBar* bar = ui_->statusBar;
-  if (statusMessages.empty()) {
+  if (statusMessages_.empty()) {
     bar->hide();
-    statusTimer->stop();
+    statusTimer_->stop();
   }
   else {
-    std::pair<QString, pep::Severity> msg = statusMessages.front();
-    statusMessages.pop();
+    std::pair<QString, pep::Severity> msg = statusMessages_.front();
+    statusMessages_.pop();
     switch (msg.second) {
     case pep::Severity::Debug:
     case pep::Severity::Info:
@@ -641,15 +641,15 @@ void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
     // http://lists.qt-project.org/pipermail/interest/2013-October/009482.html
     // Qt doesn't automatically redraw a widget when its CSS class gets updated.
     // This isn't very pretty, but there is no pretty way to deal with this.
-    for (QWidget* widget : std::initializer_list<QWidget*>{ ui_->statusBar, statusbarCancelButton }) {
+    for (QWidget* widget : std::initializer_list<QWidget*>{ ui_->statusBar, statusbarCancelButton_ }) {
       widget->style()->unpolish(widget);
       widget->style()->polish(widget);
       widget->update();
     }
 
-    statusbarLabel->setText(msg.first);
+    statusbarLabel_->setText(msg.first);
     bar->show();
-    statusTimer->start(statusMessageDuration);
+    statusTimer_->start(StatusMessageDuration);
   }
 }
 
@@ -714,24 +714,24 @@ void MainWindow::on_openWidgetClosed() {
 void MainWindow::ensureFocus(int index) {
   switch (index) {
   case 0:
-    if (ui_->open_content->currentWidget() == currentSelectorWidget) {
-      currentSelectorWidget->doFocus();
+    if (ui_->open_content->currentWidget() == currentSelectorWidget_) {
+      currentSelectorWidget_->doFocus();
     }
     else {
       initializeOpenPatientContent(true);
     }
     break;
   case 1:
-    if (ui_->register_content->currentWidget() == currentEnrollmentWidget) {
-      currentEnrollmentWidget->doFocus();
+    if (ui_->register_content->currentWidget() == currentEnrollmentWidget_) {
+      currentEnrollmentWidget_->doFocus();
     }
     else {
       initializeRegisterPatientContent();
     }
     break;
   case 2:
-    if (ui_->export_content->currentWidget() == currentExportWidget) {
-      currentExportWidget->doFocus();
+    if (ui_->export_content->currentWidget() == currentExportWidget_) {
+      currentExportWidget_->doFocus();
     }
     else {
       initializeExportContent();

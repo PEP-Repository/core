@@ -144,11 +144,11 @@ ExportWidget::ExportWidget(const pep::GlobalConfiguration& configuration, const 
   }
 
   if (!multiSelect_) {
-    QObject::connect(ui_->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::on_selectedItemChanged);
-    QObject::connect(ui_->listWidget, &QListWidget::itemActivated, this, &ExportWidget::on_itemActivated);
+    QObject::connect(ui_->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::onSelectedItemChanged);
+    QObject::connect(ui_->listWidget, &QListWidget::itemActivated, this, &ExportWidget::onItemActivated);
   }
   else {
-    QObject::connect(ui_->listWidget, &QListWidget::itemChanged, this, &ExportWidget::on_itemChanged);
+    QObject::connect(ui_->listWidget, &QListWidget::itemChanged, this, &ExportWidget::onItemChanged);
   }
 }
 
@@ -234,11 +234,11 @@ QString ExportWidget::getVisitCaption(const unsigned visitNumber) {
 }
 
 
-void ExportWidget::on_selectedItemChanged() {
+void ExportWidget::onSelectedItemChanged() {
   this->updateSelectionState();
 }
 
-void ExportWidget::on_itemChanged(QListWidgetItem* item) {
+void ExportWidget::onItemChanged(QListWidgetItem* item) {
   this->updateSelectionState();
 }
 
@@ -269,11 +269,11 @@ QList<std::shared_ptr<ExportableItem>> ExportWidget::getSelectedItems() const {
 }
 
 
-void ExportWidget::on_itemActivated(QListWidgetItem* item) {
+void ExportWidget::onItemActivated(QListWidgetItem* item) {
   this->doExport();
 }
 
-void ExportWidget::on_exportButton_clicked() {
+void ExportWidget::onExportButtonClicked() {
   this->doExport();
 }
 
