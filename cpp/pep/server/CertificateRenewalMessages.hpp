@@ -12,7 +12,7 @@ struct CsrResponse {
 
 struct CertificateReplacementRequest {
   X509CertificateChain certificateChain;
-  bool allowChangingSubject;
+  bool allowChangingSubject{};
 };
 
 struct CertificateReplacementResponse {};
