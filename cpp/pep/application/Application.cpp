@@ -26,7 +26,9 @@ namespace pep {
 
 namespace {
 
-static Application* applicationInstance = nullptr;
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static const Application* applicationInstance = nullptr;
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static bool usingConsoleLog = false;
 
 const std::string CONSOLE_REDIRECTION_WARNING = "Note that output cannot be piped or redirected (e.g. to file) in this mode.";
