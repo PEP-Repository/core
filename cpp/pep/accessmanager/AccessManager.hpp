@@ -67,7 +67,6 @@ private:
 
     prometheus::Summary& enckeyRequestDuration;
     prometheus::Summary& ticketRequest2Duration;
-    prometheus::Summary& ticketRequestDuration;
   };
 
 public:

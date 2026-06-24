@@ -161,12 +161,6 @@ AccessManager::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) 
     .Help("Duration of a successful ticket2 request")
     .Register(*registry)
     .Add({}, prometheus::Summary::Quantiles{
-      {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})),
-  ticketRequestDuration(prometheus::BuildSummary()
-    .Name("pep_accessmanager_ticket_request_duration_seconds")
-    .Help("Duration of a successful ticket request")
-    .Register(*registry)
-    .Add({}, prometheus::Summary::Quantiles{
       {0.5, 0.05}, {0.9, 0.01}, {0.99, 0.001}}, std::chrono::minutes{5})) {
 }
 
