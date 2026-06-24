@@ -49,17 +49,17 @@ void FillTranscryptorRequestEntry(
     TranscryptorRequestEntry& entry,
     const PseudonymTranslator& pseudonymTranslator
 ) {
-  std::tie(entry.accessManager_, entry.accessManagerProof_) =
+  std::tie(entry.accessManager, entry.accessManagerProof) =
       pseudonymTranslator.certifiedTranslateStep(
-          entry.polymorphic_,
+          entry.polymorphic,
           RecipientForServer(EnrolledParty::AccessManager));
-  std::tie(entry.storageFacility_, entry.storageFacilityProof_) =
+  std::tie(entry.storageFacility, entry.storageFacilityProof) =
       pseudonymTranslator.certifiedTranslateStep(
-          entry.polymorphic_,
+          entry.polymorphic,
           RecipientForServer(EnrolledParty::StorageFacility));
-  std::tie(entry.transcryptor_, entry.transcryptorProof_) =
+  std::tie(entry.transcryptor, entry.transcryptorProof) =
       pseudonymTranslator.certifiedTranslateStep(
-          entry.polymorphic_,
+          entry.polymorphic,
           RecipientForServer(EnrolledParty::Transcryptor));
   entry.ensurePacked();
 }
@@ -78,9 +78,9 @@ void FillTranscryptorRequestEntry(
     const std::optional<PseudonymTranslator::Recipient>& userRecipient
 ) {
   if (userRecipient) {
-    std::tie(entry.userGroup_.emplace(), entry.userGroupProof_.emplace()) =
+    std::tie(entry.userGroup.emplace(), entry.userGroupProof.emplace()) =
         pseudonymTranslator.certifiedTranslateStep(
-            entry.polymorphic_,
+            entry.polymorphic,
             *userRecipient);
   }
   FillTranscryptorRequestEntry(entry, pseudonymTranslator);
@@ -436,10 +436,10 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     */
                   PEP_LOG(LogTag, Severity::Debug) << "Rekey request has a KeyBlindMode::Unblind entry -> forwarding to transcryptor";
                   RekeyRequest rkReq{
-                    .keys_{},
-                    .clientCertificateChain_ = *clientCertificateChain,
+                    .keys{},
+                    .clientCertificateChain = *clientCertificateChain,
                   };
-                  rkReq.keys_.reserve(dwNumUnblind);
+                  rkReq.keys.reserve(dwNumUnblind);
 
                   // Index of the entry into Rekey{Request,Response}.
                   auto rkIndices = std::make_shared<std::vector<uint32_t>>(request->entries.size());
@@ -449,12 +449,12 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     if (entry.keyBlindMode != KeyBlindMode::Unblind)
                       continue;
                     try {
-                      rkIndices->at(i) = static_cast<uint32_t>(rkReq.keys_.size());
+                      rkIndices->at(i) = static_cast<uint32_t>(rkReq.keys.size());
                     } catch (const std::out_of_range&) {
                       PEP_LOG(LogTag, Severity::Critical) << "Out of bounds read on rekey indices vector during key unblinding";
                       throw;
                     }
-                    rkReq.keys_.push_back(entry.polymorphEncryptionKey);
+                    rkReq.keys.push_back(entry.polymorphEncryptionKey);
                   }
 
                   return server->transcryptorProxy_.requestRekey(std::move(rkReq)).flat_map(
@@ -490,7 +490,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
 
                               EncryptedKey encryptedKey;
                               try {
-                                encryptedKey = transResp->keys_.at((*rkIndices)[i]);
+                                encryptedKey = transResp->keys.at((*rkIndices)[i]);
                               } catch (const std::out_of_range&) {
                                 PEP_LOG(LogTag, Severity::Critical) << "Out of bounds read on keys vector during unblinding-and-rekeying";
                                 throw;
@@ -603,12 +603,12 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
-    .tsReq {.request_ = std::move(*signedRequest) },
+    .tsReq {.request = std::move(*signedRequest) },
     .userRecipient = std::move(userRecipient),
     });
 
   // Prepare transcryptor request
-  ctx->tsReqEntries.entries_.resize(ctx->pps.size());
+  ctx->tsReqEntries.entries.resize(ctx->pps.size());
 
   PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";
 
@@ -621,14 +621,14 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
         ObserveOnAsio(*ctx->server->getIoContext()),
       [ctx](size_t i) {
     const Backend::Pp& pp = ctx->pps[i];
-    TranscryptorRequestEntry& entry = ctx->tsReqEntries.entries_[i];
+    TranscryptorRequestEntry& entry = ctx->tsReqEntries.entries[i];
 
     // Rerandomize old PPs (ie. from the database)
     // To prevent multiple users receiving identical PPs
     if (pp.isClientProvided)
-      entry.polymorphic_ = pp.pp;
+      entry.polymorphic = pp.pp;
     else
-      entry.polymorphic_ = pp.pp.rerandomize();
+      entry.polymorphic = pp.pp.rerandomize();
 
     FillTranscryptorRequestEntry(
         entry,
@@ -638,8 +638,8 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   }).flat_map([ctx](std::vector<size_t> is) {
     // Send request to transcryptor
 
-    auto numEntries = ctx->tsReqEntries.entries_.size();
-    auto tail = RxIterate(std::move(ctx->tsReqEntries.entries_))
+    auto numEntries = ctx->tsReqEntries.entries.size();
+    auto tail = RxIterate(std::move(ctx->tsReqEntries.entries))
       .buffer(static_cast<int>(TS_REQUEST_BATCH_SIZE))
       .as_dynamic() // Reduce compiler memory usage
       .op(RxIndexed<std::uint32_t>())
@@ -657,11 +657,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   }).flat_map([ctx](TranscryptorResponse resp) {
     PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
     // Now we have local pseudonyms for the original PPs.
-    if (resp.entries_.size() != ctx->pps.size()) {
+    if (resp.entries.size() != ctx->pps.size()) {
       throw std::runtime_error("Transcryptor returned wrong number of entries");
     }
 
-    ctx->ticket.accessSubjects = std::move(resp.entries_);
+    ctx->ticket.accessSubjects = std::move(resp.entries);
     if (ctx->ticket.userGroup == UserGroup::DataAdministrator && !ctx->ticket.accessSubjects.empty()) {
       PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx->ticket.userGroup << " unchecked access to " << ctx->ticket.accessSubjects.size() << " participant(s)";
     }
@@ -681,13 +681,13 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), *ctx->server->getSigningIdentity());
 
     LogIssuedTicketRequest logReq;
-    logReq.ticket_ = ctx->signedTicket;
-    logReq.id_ = resp.id_;
+    logReq.ticket = ctx->signedTicket;
+    logReq.id = resp.id;
     PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
     return ctx->server->transcryptorProxy_.requestLogIssuedTicket(std::move(logReq));
   }).map([ctx](LogIssuedTicketResponse resp) {
     PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
-    ctx->signedTicket.addTranscryptorSignature(std::move(resp.signature_));
+    ctx->signedTicket.addTranscryptorSignature(std::move(resp.signature));
 
     std::string response;
     if (!ctx->request.requestIndexedTicket) {
@@ -762,18 +762,18 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     ticketRequest.accessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
     TranscryptorRequest tsRequest{
-      .request_ = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data)
+      .request = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data)
     };
     TranscryptorRequestEntries tsRequestEntries;
-    tsRequestEntries.entries_.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
+    tsRequestEntries.entries.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
     for (size_t i = 0; i < list.size(); i++) {
-      TranscryptorRequestEntry& entry = tsRequestEntries.entries_[i];
-      entry.polymorphic_ = list[i];
+      TranscryptorRequestEntry& entry = tsRequestEntries.entries[i];
+      entry.polymorphic = list[i];
           FillTranscryptorRequestEntry(entry, self->pseudonymTranslator());
     }
     return self->transcryptorProxy_.requestTranscryption(std::move(tsRequest), messaging::MakeSingletonTail(tsRequestEntries))
       .map([server = SharedFrom(*self), participantGroup, performRemove](const TranscryptorResponse& resp) -> FakeVoid {
-        for (const LocalPseudonyms& pseudonyms : resp.entries_) {
+        for (const LocalPseudonyms& pseudonyms : resp.entries) {
           LocalPseudonym localPseudonym = pseudonyms.accessManager.decrypt(server->pseudonymKey_);
           if (performRemove)
             server->backend_->removeParticipantFromGroup(localPseudonym, participantGroup);

@@ -406,7 +406,7 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
   for (const auto& [pp, groups] : groupedPps) {
     pps.emplace_back(pp, false);
     for (const std::string& pg : groups) {
-      participantGroupMap[pg].indices_.push_back(static_cast<uint32_t>(pps.size() - 1));
+      participantGroupMap[pg].indices.push_back(static_cast<uint32_t>(pps.size() - 1));
     }
   }
   if (pps.size() > std::numeric_limits<std::uint32_t>::max())
@@ -494,8 +494,8 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
 
       // Add the columnGroup and column to the map
       auto& entry = columnGroupMap[cgc.columnGroup];
-      if (std::find(entry.indices_.cbegin(), entry.indices_.cend(), index) == entry.indices_.cend()) {
-        entry.indices_.push_back(index);
+      if (std::find(entry.indices.cbegin(), entry.indices.cend(), index) == entry.indices.cend()) {
+        entry.indices.push_back(index);
       }
     }
   }
@@ -707,7 +707,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     if (pos == end) {
       result.columns.push_back(cgc.column);
     }
-    result.columnGroups.at(cgc.columnGroup).columns.indices_.push_back(index);
+    result.columnGroups.at(cgc.columnGroup).columns.indices.push_back(index);
   }
 
   return result;

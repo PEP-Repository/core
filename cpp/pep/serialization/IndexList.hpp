@@ -8,15 +8,12 @@
 #include <ranges>
 
 namespace pep {
-class IndexList {
-public:
-  IndexList() = default;
 
-  explicit IndexList(std::vector<uint32_t> indices) : indices_(std::move(indices)) {}
+struct IndexList {
 
   std::strong_ordering operator<=>(const IndexList& other) const = default;
 
-  std::vector<uint32_t> indices_;
+  std::vector<uint32_t> indices;
 };
 
 // This is a free function such that we can enforce that we don't keep a reference to an rvalue \c IndexList
@@ -34,4 +31,5 @@ auto SafeIndexInto(std::ranges::input_range auto&& indices, std::ranges::random_
         return range[index];
       });
 }
+
 }

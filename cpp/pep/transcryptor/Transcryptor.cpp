@@ -130,7 +130,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   if (!pseudonymKey_)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
 
-  auto certified = request->request_.openAsTranscryptor(*this->getRootCAs());
+  auto certified = request->request.openAsTranscryptor(*this->getRootCAs());
   const auto& userRequest = certified.message;
   auto userCertificate = certified.signatory.certificateChain().leaf();
   auto domain = userCertificate.getOrganizationalUnit().value();
@@ -169,7 +169,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     .requestNumber = requestNumber,
     .modes = userRequest.modes,
     .includeUserGroupPseudonyms = userRequest.includeUserGroupPseudonyms,
-    .ticketRequest = std::move(request->request_),
+    .ticketRequest = std::move(request->request),
     .userRecipient = userRequest.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(userCertificate)}
       : std::nullopt,
@@ -194,7 +194,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     .map([](std::shared_ptr<std::string> serializedEntries) {
     auto deserialized = Serialization::FromString<TranscryptorRequestEntries>(*serializedEntries);
     auto batch = std::make_shared<Batch>();
-    batch->requestEntries = std::move(deserialized.entries_);
+    batch->requestEntries = std::move(deserialized.entries);
     batch->results.responseEntries.resize(batch->requestEntries.size());
     batch->results.localPseudonyms.resize(batch->requestEntries.size());
     return batch;
@@ -211,18 +211,18 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       auto& localPseudonym = batch->results.localPseudonyms[i];
 
       if (ctx->includeUserGroupPseudonyms) {
-        if (!entry.userGroup_)
+        if (!entry.userGroup)
           throw Error("AccessGroup pseudonym missing "
             "even though includeAccessGroupPseudonyms is set");
-        if (!entry.userGroupProof_)
+        if (!entry.userGroupProof)
           throw Error("AccessGroup RskProof missing "
             "even though includeAccessGroupPseudonyms is set");
       }
       else {
-        if (entry.userGroup_)
+        if (entry.userGroup)
           throw Error("AccessGroup pseudonym set even though "
             "includeAccessGroupPseudonyms is not set");
-        if (entry.userGroupProof_)
+        if (entry.userGroupProof)
           throw Error("AccessGroup RskProof set even though "
             "includeAccessGroupPseudonyms is not set");
       }
@@ -231,19 +231,19 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       // Verify that the AM has properly RSKed the pseudonyms.
       try {
         pseudonymTranslator.checkTranslationProof(
-            entry.polymorphic_, entry.accessManager_,
-            entry.accessManagerProof_, server->verifiers_.accessManager);
+            entry.polymorphic, entry.accessManager,
+            entry.accessManagerProof, server->verifiers_.accessManager);
         pseudonymTranslator.checkTranslationProof(
-            entry.polymorphic_, entry.storageFacility_,
-            entry.storageFacilityProof_, server->verifiers_.storageFacility);
+            entry.polymorphic, entry.storageFacility,
+            entry.storageFacilityProof, server->verifiers_.storageFacility);
         pseudonymTranslator.checkTranslationProof(
-            entry.polymorphic_, entry.transcryptor_,
-            entry.transcryptorProof_, server->verifiers_.transcryptor);
+            entry.polymorphic, entry.transcryptor,
+            entry.transcryptorProof, server->verifiers_.transcryptor);
 
         if (ctx->includeUserGroupPseudonyms) {
           pseudonymTranslator.checkTranslationProof(
-              entry.polymorphic_, *entry.userGroup_,
-              *entry.userGroupProof_, *ctx->userVerifiers);
+              entry.polymorphic, *entry.userGroup,
+              *entry.userGroupProof, *ctx->userVerifiers);
         }
       }
       catch (const InvalidProof&) {
@@ -251,21 +251,21 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       }
 
       // All seems fine: create final encrypted pseudonyms
-      ret.polymorphic = entry.polymorphic_;
+      ret.polymorphic = entry.polymorphic;
       ret.storageFacility = pseudonymTranslator.translateStep(
-          entry.storageFacility_,
+          entry.storageFacility,
           RecipientForServer(EnrolledParty::StorageFacility));
       ret.accessManager = pseudonymTranslator.translateStep(
-          entry.accessManager_,
+          entry.accessManager,
           RecipientForServer(EnrolledParty::AccessManager));
       localPseudonym = pseudonymTranslator.translateStep(
-          entry.transcryptor_,
+          entry.transcryptor,
           RecipientForServer(EnrolledParty::Transcryptor)
       ).decrypt(*server->pseudonymKey_);
 
       if (ctx->includeUserGroupPseudonyms) {
         ret.accessGroup = pseudonymTranslator.translateStep(
-            *entry.userGroup_,
+            *entry.userGroup,
             *ctx->userRecipient);
       }
 
@@ -291,8 +291,8 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       auto pseudonymHash = ComputePseudonymHash(results->responseEntries);
 
       TranscryptorResponse response;
-      response.entries_ = std::move(results->responseEntries);
-      response.id_ = server->storage_->logTicketRequest(
+      response.entries = std::move(results->responseEntries);
+      response.id = server->storage_->logTicketRequest(
         results->localPseudonyms,
         ctx->modes,
         std::move(ctx->ticketRequest),
@@ -343,14 +343,14 @@ Transcryptor::handleLogIssuedTicketRequest(
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " received";
 
   std::string serialized;
-  auto ticket = request->ticket_.openForLogging(*getRootCAs(), serialized);
+  auto ticket = request->ticket.openForLogging(*getRootCAs(), serialized);
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
   auto hash = ComputePseudonymHash(ticket.accessSubjects);
   PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " calculated hash";
 
   storage_->logIssuedTicket(
-    request->id_,
+    request->id,
     hash,
     std::move(ticket.columns),
     std::move(ticket.modes),
@@ -373,10 +373,10 @@ Transcryptor::handleLogIssuedTicketRequest(
 }
 
 messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<RekeyRequest> pRequest) {
-  if (!pRequest->clientCertificateChain_.verify(*getRootCAs())) {
+  if (!pRequest->clientCertificateChain.verify(*getRootCAs())) {
     throw Error("Client certificate chain is not valid");
   }
-  const auto party = GetEnrolledParty(pRequest->clientCertificateChain_);
+  const auto party = GetEnrolledParty(pRequest->clientCertificateChain);
   if (!party.has_value()) {
     throw Error("Cannot rekey for this requestor");
   }
@@ -384,9 +384,9 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
     throw std::runtime_error("Requestor does not have data access: " + std::to_string(static_cast<unsigned>(*party)));
   }
 
-  const auto recipient = RekeyRecipientForCertificate(pRequest->clientCertificateChain_.leaf());
+  const auto recipient = RekeyRecipientForCertificate(pRequest->clientCertificateChain.leaf());
 
-  return workerPool_->batched_map<8>(std::move(pRequest->keys_),
+  return workerPool_->batched_map<8>(std::move(pRequest->keys),
           ObserveOnAsio(*getIoContext()),
       [server = SharedFrom(*this), recipient](EncryptedKey entry) {
 
@@ -396,7 +396,7 @@ messaging::MessageBatches Transcryptor::handleRekeyRequest(std::shared_ptr<Rekey
     return retEntry;
   }).map([](std::vector<EncryptedKey> keys){
     RekeyResponse resp;
-    resp.keys_ = std::move(keys);
+    resp.keys = std::move(keys);
     return rxcpp::observable<>::from(std::make_shared<std::string>(Serialization::ToString(std::move(resp)))).as_dynamic();
   });
 }

@@ -99,7 +99,7 @@ private:
                 }
 
                 // Create and/or update entries for columns associated with the group
-                for (auto i : entry.second.columns.indices_) {
+                for (auto i : entry.second.columns.indices) {
                   auto& column = columns[access.columns[i]];
                   column.readable |= modes.readable;
                   column.writable |= modes.writable;

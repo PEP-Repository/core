@@ -5,8 +5,8 @@
 namespace pep {
 
 class DataPayloadPageStreamOrder {
-  decltype(DataPayloadPage::index_) latestFileIndex_ = 0;
-  decltype(DataPayloadPage::pageNumber_) nextPageNumber_ = 0;
+  decltype(DataPayloadPage::index) latestFileIndex_ = 0;
+  decltype(DataPayloadPage::pageNumber) nextPageNumber_ = 0;
 
 public:
   DataPayloadPageStreamOrder() = default;

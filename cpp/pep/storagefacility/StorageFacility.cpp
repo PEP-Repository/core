@@ -47,7 +47,7 @@ constexpr size_t PAYLOAD_PAGES_MAX_CONCURRENCY = 1000; // Prevent excessive memo
 
 class TicketIndices {
 public:
-  using Index = decltype(IndexList::indices_)::value_type;
+  using Index = decltype(IndexList::indices)::value_type;
 
 private:
   std::unordered_map<std::string, Index> columns_;
@@ -318,7 +318,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto certified = signedRequest->open(rootCAs);
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
-  auto ticket = request.ticket_.open(rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(rootCAs, accessGroup, "read-meta");
 
   struct ResponseEntry {
     DataEnumerationEntry2 entry;
@@ -328,9 +328,9 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 
   // Look-up table to check whether to include column
   std::vector<std::string> includeColumn;
-  if (request.columns_) {
-    includeColumn.reserve(request.columns_->indices_.size());
-    for (uint32_t idx : request.columns_->indices_) {
+  if (request.columns) {
+    includeColumn.reserve(request.columns->indices.size());
+    for (uint32_t idx : request.columns->indices) {
       includeColumn.push_back(ticket.columns.at(idx));
     }
   }
@@ -348,7 +348,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
     columnIndex[ticket.columns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms.has_value() ? &request.pseudonyms->indices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
@@ -376,11 +376,11 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
 
       auto& re = responseEntries.emplace_back();
       re.fileStoreEntry = entry;
-      re.entry.metadata_ = this->compileMetadata(col, *entry);
-      re.entry.fileSize_ = entry->content()->payload()->size();
-      re.entry.polymorphicKey_ = content->getPolymorphicKey(); // will be rerandomized later
-      re.entry.columnIndex_ = colIndexIt->second;
-      re.entry.pseudonymIndex_ = static_cast<uint32_t>(pseud_index);
+      re.entry.metadata = this->compileMetadata(col, *entry);
+      re.entry.fileSize = entry->content()->payload()->size();
+      re.entry.polymorphicKey = content->getPolymorphicKey(); // will be rerandomized later
+      re.entry.columnIndex = colIndexIt->second;
+      re.entry.pseudonymIndex = static_cast<uint32_t>(pseud_index);
     }
   }
 
@@ -401,13 +401,13 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   return workerPool_->batched_map<8>(std::move(responseEntries),
     ObserveOnAsio(*getIoContext()),
     [ctx, this](ResponseEntry re) {
-      re.entry.polymorphicKey_ = this->getEgCache().rerandomize(
-        re.entry.polymorphicKey_
+      re.entry.polymorphicKey = this->getEgCache().rerandomize(
+        re.entry.polymorphicKey
       );
-      re.entry.polymorphicKey_.ensurePacked();
+      re.entry.polymorphicKey.ensurePacked();
 
       auto& sfEntry = re.fileStoreEntry;
-      re.entry.id_ = encryptId(sfEntry->getName().string(), sfEntry->getValidFrom());
+      re.entry.id = encryptId(sfEntry->getName().string(), sfEntry->getValidFrom());
 
       return re;
     })
@@ -420,14 +420,14 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       responseMsgs.emplace_back();
       size_t i = 0;
       for (const auto& re : *respEntriesPtr) {
-        responseMsgs.back().entries_.push_back(re.entry);
+        responseMsgs.back().entries.push_back(re.entry);
 
         // We use index_ to lookup the primary key in ids when serving data below.
         // The client should not learn index_, so we clear it.
-        responseMsgs.back().entries_.back().index_ = 0;
+        responseMsgs.back().entries.back().index = 0;
         if (++i == ENUMERATION_RESPONSE_MAX_ENTRIES) {
           i = 0;
-          responseMsgs.back().hasMore_ = true;
+          responseMsgs.back().hasMore = true;
           responseMsgs.emplace_back();
         }
       }
@@ -451,7 +451,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     const auto& request = certified.message;
     auto userGroup = certified.signatory.organizationalUnit();
 
-    auto ticket = request.ticket_.open(
+    auto ticket = request.ticket.open(
       *rootCAs,
       userGroup,
       "read-meta"
@@ -472,9 +472,9 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response = std::make_shared<DataEnumerationResponse2>();
     };
 
-    for (size_t i = 0; i < request.ids_.size(); i++) {
+    for (size_t i = 0; i < request.ids.size(); i++) {
       // TODO execute decryption in WorkerPool
-      auto sfid = server->decryptId(request.ids_[i]);
+      auto sfid = server->decryptId(request.ids[i]);
       auto sfentry = server->fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
@@ -490,19 +490,19 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       std::string column = sfentry->getName().column();
 
       DataEnumerationEntry2 entry;
-      entry.metadata_ = server->compileMetadata(column, *sfentry);
+      entry.metadata = server->compileMetadata(column, *sfentry);
       // TODO execute rerandomization in WorkerPool
-      entry.polymorphicKey_ = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
-      entry.fileSize_ = sfcontent->payload()->size();
-      entry.id_ = request.ids_[i];
-      entry.index_ = static_cast<uint32_t>(i);
-      entry.columnIndex_ = indices.getColumnIndex(column);
-      entry.pseudonymIndex_ = indices.getPseudonymIndex(pseud);
-      response->entries_.push_back(std::move(entry));
+      entry.polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
+      entry.fileSize = sfcontent->payload()->size();
+      entry.id = request.ids[i];
+      entry.index = static_cast<uint32_t>(i);
+      entry.columnIndex = indices.getColumnIndex(column);
+      entry.pseudonymIndex = indices.getPseudonymIndex(pseud);
+      response->entries.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
-      if (response->entries_.size() >= ENUMERATION_RESPONSE_MAX_ENTRIES) {
-        response->hasMore_ = true;
+      if (response->entries.size() >= ENUMERATION_RESPONSE_MAX_ENTRIES) {
+        response->hasMore = true;
         sendResponse();
       }
     }
@@ -522,7 +522,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   const auto& request = certified.message;
   auto userGroup = certified.signatory.organizationalUnit();
 
-  auto ticket = request.ticket_.open(
+  auto ticket = request.ticket.open(
     *rootCAs,
     userGroup,
     "read"
@@ -531,12 +531,12 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   // Create look-up-tables for columns and pseudonyms from ticket
   TicketIndices indices(ticket, pseudonymKey_);
   std::vector<std::shared_ptr<FileStore::Entry>> entries;
-  entries.resize(request.ids_.size());
+  entries.resize(request.ids.size());
 
   // open files
-  for (size_t i = 0; i < request.ids_.size(); i++) {
+  for (size_t i = 0; i < request.ids.size(); i++) {
     // TODO execute decryption in WorkerPool
-    auto sfid = decryptId(request.ids_[i]);
+    auto sfid = decryptId(request.ids[i]);
     auto entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
@@ -599,8 +599,8 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
             PEP_DEFER(self->emitNextPage());
 
             auto page = Serialization::FromString<DataPayloadPage>(*contents);
-            page.index_ = fileIndex;
-            page.pageNumber_ = pageIndex;
+            page.index = fileIndex;
+            page.pageNumber = pageIndex;
 
             auto returnedPage = std::make_shared<std::string>(
               Serialization::ToString(std::move(page)));
@@ -663,7 +663,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     const auto& rootCAs = this->getRootCAs();
     auto certified = signedRequest->open(*rootCAs);
     auto request = MakeSharedCopy(std::move(certified.message));
-    auto ticket = request->ticket_.open(*rootCAs, certified.signatory.organizationalUnit());
+    auto ticket = request->ticket.open(*rootCAs, certified.signatory.organizationalUnit());
 
     if (!ticket.hasMode("write")) {
       throw Error("Ticket is missing \"write\" access mode");
@@ -679,25 +679,25 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     };
     auto ctx = std::make_shared<StreamContext>();
 
-    ctx->entries.resize(request->entries_.size(), nullptr);
-    ctx->pseudonyms.resize(request->entries_.size());
-    ctx->ids.resize(request->entries_.size());
-    ctx->fileSizes.resize(request->entries_.size());
+    ctx->entries.resize(request->entries.size(), nullptr);
+    ctx->pseudonyms.resize(request->entries.size());
+    ctx->ids.resize(request->entries.size());
+    ctx->fileSizes.resize(request->entries.size());
     ctx->startTime = time;
 
     std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> pseudonymLut;
-    for (size_t i = 0; i < request->entries_.size(); i++) {
-      const auto& entry = request->entries_[i];
+    for (size_t i = 0; i < request->entries.size(); i++) {
+      const auto& entry = request->entries[i];
 
       // Decrypt local pseudonym
-      if (pseudonymLut.count(entry.pseudonymIndex_) == 0) {
-        pseudonymLut[entry.pseudonymIndex_] = MakeSharedCopy(
-          ticket.accessSubjects.at(entry.pseudonymIndex_)
+      if (pseudonymLut.count(entry.pseudonymIndex) == 0) {
+        pseudonymLut[entry.pseudonymIndex] = MakeSharedCopy(
+          ticket.accessSubjects.at(entry.pseudonymIndex)
           .storageFacility.decrypt(pseudonymKey_));
       }
-      ctx->pseudonyms[i] = pseudonymLut[entry.pseudonymIndex_];
+      ctx->pseudonyms[i] = pseudonymLut[entry.pseudonymIndex];
 
-      auto& col = ticket.columns.at(entry.columnIndex_);
+      auto& col = ticket.columns.at(entry.columnIndex);
 
       // Modify entry, only creating a new one if we don't require an overwrite
       auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite);
@@ -751,14 +751,14 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             auto page = Serialization::FromString<DataPayloadPage>(*rawPage);
 
             // Note that .at() tests bounds.
-            auto& sfentry = ctx->entries.at(page.index_);
-            auto fs = uint64_t{page.payloadData_.size()};
-            ctx->fileSizes[page.index_] += fs;
+            auto& sfentry = ctx->entries.at(page.index);
+            auto fs = uint64_t{page.payloadData.size()};
+            ctx->fileSizes[page.index] += fs;
 
             if (fs > 100000000) {
               throw Error("Incoming page is too large");
             }
-            return sfentry->appendPage(rawPage, fs, page.pageNumber_).tap(
+            return sfentry->appendPage(rawPage, fs, page.pageNumber).tap(
               [server, rawPage](const std::string& md5hash) {
                 server->metrics_->data_stored_bytes.Increment(static_cast<double>(rawPage->size()));
               });
@@ -816,21 +816,21 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
   std::shared_ptr<SignedDataStoreRequest2> signedRequest,
   messaging::MessageSequence tail) {
   auto getEntryContent = [filestore = fileStore_](const DataStoreEntry2& entry) {
-    auto metadata = filestore->makeMetadataMap(entry.metadata_.extra());
+    auto metadata = filestore->makeMetadataMap(entry.metadata.extra());
     return std::make_unique<EntryContent>(
         std::move(metadata),
         EntryContent::PayloadData(
-          { .polymorphicKey = entry.polymorphicKey_,
-            .blindingTimestamp = entry.metadata_.getBlindingTimestamp(),
-            .scheme = entry.metadata_.getEncryptionScheme()
+          { .polymorphicKey = entry.polymorphicKey,
+            .blindingTimestamp = entry.metadata.getBlindingTimestamp(),
+            .scheme = entry.metadata.getEncryptionScheme()
           },
           nullptr));
   };
 
   auto getResponse = [](Timestamp /* ignored */, const std::vector<std::string>& ids, XxHasher::Hash hash) {
     DataStoreResponse2 resp;
-    resp.ids_ = ids;
-    resp.hash_ = hash;
+    resp.ids = ids;
+    resp.hash = hash;
     return Serialization::ToString(
       std::move(resp));
   };
@@ -845,7 +845,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   auto request = MakeSharedCopy(std::move(certified.message));
   auto userGroup = certified.signatory.organizationalUnit();
 
-  auto ticket = request->ticket_.open(*rootCAs, userGroup);
+  auto ticket = request->ticket.open(*rootCAs, userGroup);
 
   if (!ticket.hasMode("write-meta")) {
     throw Error("Ticket is missing write-meta access mode");
@@ -853,17 +853,17 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   std::vector<uint32_t> pseudIndices;
-  pseudIndices.reserve(request->entries_.size());
-  std::transform(request->entries_.cbegin(), request->entries_.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex_; });
+  pseudIndices.reserve(request->entries.size());
+  std::transform(request->entries.cbegin(), request->entries.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex; });
 
   // Decrypt pseudonyms.
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, &pseudIndices);
 
   std::vector<std::shared_ptr<FileStore::EntryChange>> changes;
-  for (const auto& entry : request->entries_) {
-    auto column = ticket.columns[entry.columnIndex_];
-    assert(localPseudonyms[entry.pseudonymIndex_].has_value());
-    EntryName key(*localPseudonyms[entry.pseudonymIndex_], column);
+  for (const auto& entry : request->entries) {
+    auto column = ticket.columns[entry.columnIndex];
+    assert(localPseudonyms[entry.pseudonymIndex].has_value());
+    EntryName key(*localPseudonyms[entry.pseudonymIndex], column);
 
     auto entryChange = fileStore_->modifyEntry(key, false);
     if (entryChange == nullptr) {
@@ -890,12 +890,12 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     // - the encryption scheme that the client has used to re-blind and re-encrypt the polymorphic key.
     // - the specified metadata "x-"entries.
     auto content = std::make_unique<EntryContent>(
-        fileStore_->makeMetadataMap(entry.metadata_.extra()),
+        fileStore_->makeMetadataMap(entry.metadata.extra()),
         EntryContent::PayloadData{
           {
-            .polymorphicKey = entry.polymorphicKey_,
-            .blindingTimestamp = entry.metadata_.getBlindingTimestamp(),
-            .scheme = entry.metadata_.getEncryptionScheme()
+            .polymorphicKey = entry.polymorphicKey,
+            .blindingTimestamp = entry.metadata.getBlindingTimestamp(),
+            .scheme = entry.metadata.getEncryptionScheme()
           },
           payload},
         *originalPayloadEntryTimestamp);
@@ -909,7 +909,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   for (const auto& change : changes) {
     auto id = this->encryptId(change->getName().string(), time);
     std::move(*change).commit(time);
-    response.ids_.push_back(id);
+    response.ids.push_back(id);
   }
 
   return rxcpp::observable<>::just(rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
@@ -927,14 +927,14 @@ StorageFacility::handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteReques
     assert(ids.size() <= std::numeric_limits<uint32_t>::max());
 
     DataDeleteResponse2 resp{
-      .timestamp_ = timestamp,
-      .entries_{}, // Filled below
+      .timestamp = timestamp,
+      .entries{}, // Filled below
     };
 
-    resp.entries_.indices_.reserve(ids.size());
+    resp.entries.indices.reserve(ids.size());
     for (size_t i = 0U; i < ids.size(); ++i) {
       if (!ids[i].empty()) {
-        resp.entries_.indices_.emplace_back(static_cast<uint32_t>(i));
+        resp.entries.indices.emplace_back(static_cast<uint32_t>(i));
       }
     }
 
@@ -985,15 +985,15 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
-  auto ticket = request.ticket_.open(*rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(*rootCAs, accessGroup, "read-meta");
 
   DataHistoryResponse2 response;
 
   // Look-up table to check whether to include column
   std::vector<std::string> includeColumn;
-  if (request.columns_) {
-    includeColumn.reserve(request.columns_->indices_.size());
-    for (uint32_t idx : request.columns_->indices_)
+  if (request.columns) {
+    includeColumn.reserve(request.columns->indices.size());
+    for (uint32_t idx : request.columns->indices)
       includeColumn.push_back(ticket.columns.at(idx));
   }
   else {
@@ -1009,7 +1009,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     columnIndex[ticket.columns[i]] = i;
   }
   // Decrypt pseudonyms.
-  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms_.has_value() ? &request.pseudonyms_->indices_ : nullptr);
+  auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms.has_value() ? &request.pseudonyms->indices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
@@ -1031,11 +1031,11 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
         assert(entry != nullptr);
 
         Timestamp validFrom = entry->getValidFrom();
-        response.entries_.push_back({
-          .columnIndex_ = colIndexIt->second,
-          .pseudonymIndex_ = static_cast<uint32_t>(pseud_index),
-          .timestamp_ = validFrom,
-          .id_ = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
+        response.entries.push_back({
+          .columnIndex = colIndexIt->second,
+          .pseudonymIndex = static_cast<uint32_t>(pseud_index),
+          .timestamp = validFrom,
+          .id = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
         });
       }
     }

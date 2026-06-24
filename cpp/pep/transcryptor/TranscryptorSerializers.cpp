@@ -12,46 +12,46 @@ RekeyRequest Serializer<RekeyRequest>::fromProtocolBuffer(proto::RekeyRequest&& 
   std::vector<EncryptedKey> keys;
   Serialization::AssignFromRepeatedProtocolBuffer(keys, std::move(*source.mutable_keys()));
   return RekeyRequest{
-    .keys_ = std::move(keys),
-    .clientCertificateChain_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_client_certificate_chain()))
+    .keys = std::move(keys),
+    .clientCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_client_certificate_chain()))
   };
 }
 
 void Serializer<RekeyRequest>::moveIntoProtocolBuffer(proto::RekeyRequest& dest, RekeyRequest value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_client_certificate_chain(), std::move(value.clientCertificateChain_));
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.keys_));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_client_certificate_chain(), std::move(value.clientCertificateChain));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.keys));
 }
 
 RekeyResponse Serializer<RekeyResponse>::fromProtocolBuffer(proto::RekeyResponse&& source) const {
   RekeyResponse result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.keys_, std::move(*source.mutable_keys()));
+  Serialization::AssignFromRepeatedProtocolBuffer(result.keys, std::move(*source.mutable_keys()));
   return result;
 }
 
 void Serializer<RekeyResponse>::moveIntoProtocolBuffer(proto::RekeyResponse& dest, RekeyResponse value) const {
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.keys_));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.keys));
 }
 
 void Serializer<TranscryptorRequestEntries>::moveIntoProtocolBuffer(proto::TranscryptorRequestEntries& dest, TranscryptorRequestEntries value) const {
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(),
-    std::move(value.entries_));
+    std::move(value.entries));
 }
 
 TranscryptorRequestEntries Serializer<TranscryptorRequestEntries>::fromProtocolBuffer(proto::TranscryptorRequestEntries&& source) const {
   TranscryptorRequestEntries result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries,
     std::move(*source.mutable_entries()));
   return result;
 }
 
 void Serializer<TranscryptorRequest>::moveIntoProtocolBuffer(proto::TranscryptorRequest& dest, TranscryptorRequest value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_request(),
-    std::move(value.request_));
+    std::move(value.request));
 }
 
 TranscryptorRequest Serializer<TranscryptorRequest>::fromProtocolBuffer(proto::TranscryptorRequest&& source) const {
   return TranscryptorRequest{
-    .request_ = Serialization::FromProtocolBuffer(std::move(*source.mutable_request())),
+    .request = Serialization::FromProtocolBuffer(std::move(*source.mutable_request())),
   };
 }
 
@@ -78,50 +78,50 @@ TranscryptorRequestEntry Serializer<TranscryptorRequestEntry>::fromProtocolBuffe
 }
 
 void Serializer<TranscryptorRequestEntry>::moveIntoProtocolBuffer(proto::TranscryptorRequestEntry& dest, TranscryptorRequestEntry value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic(), value.polymorphic_.getValidElgamalEncryption());
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.accessManager_.getValidElgamalEncryption());
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.storageFacility_.getValidElgamalEncryption());
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor(), value.transcryptor_.getValidElgamalEncryption());
-  if (value.userGroup_)
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic(), value.polymorphic.getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.accessManager.getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.storageFacility.getValidElgamalEncryption());
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor(), value.transcryptor.getValidElgamalEncryption());
+  if (value.userGroup)
     Serialization::MoveIntoProtocolBuffer(
       *dest.mutable_user_group(),
-      value.userGroup_->getValidElgamalEncryption()
+      value.userGroup->getValidElgamalEncryption()
     );
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager_proof(), value.accessManagerProof_);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility_proof(), value.storageFacilityProof_);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor_proof(), value.transcryptorProof_);
-  if (value.userGroupProof_)
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager_proof(), value.accessManagerProof);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility_proof(), value.storageFacilityProof);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor_proof(), value.transcryptorProof);
+  if (value.userGroupProof)
     Serialization::MoveIntoProtocolBuffer(
       *dest.mutable_user_group_proof(),
-      *value.userGroupProof_
+      *value.userGroupProof
     );
 }
 
 void Serializer<TranscryptorResponse>::moveIntoProtocolBuffer(proto::TranscryptorResponse& dest, TranscryptorResponse value) const {
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries_));
-  *dest.mutable_id() = std::move(value.id_);
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_entries(), std::move(value.entries));
+  *dest.mutable_id() = std::move(value.id);
 }
 
 TranscryptorResponse Serializer<TranscryptorResponse>::fromProtocolBuffer(proto::TranscryptorResponse&& source) const {
   TranscryptorResponse result;
-  Serialization::AssignFromRepeatedProtocolBuffer(result.entries_,
+  Serialization::AssignFromRepeatedProtocolBuffer(result.entries,
     std::move(*source.mutable_entries()));
-  result.id_ = std::move(*source.mutable_id());
+  result.id = std::move(*source.mutable_id());
   return result;
 }
 
 void Serializer<LogIssuedTicketRequest>::moveIntoProtocolBuffer(proto::LogIssuedTicketRequest& dest, LogIssuedTicketRequest value) const {
   Serialization::MoveIntoProtocolBuffer(
     *dest.mutable_ticket(),
-    std::move(value.ticket_)
+    std::move(value.ticket)
   );
-  *dest.mutable_id() = std::move(value.id_);
+  *dest.mutable_id() = std::move(value.id);
 }
 
 LogIssuedTicketRequest Serializer<LogIssuedTicketRequest>::fromProtocolBuffer(proto::LogIssuedTicketRequest&& source) const {
   LogIssuedTicketRequest ret;
-  ret.id_ = std::move(*source.mutable_id());
-  ret.ticket_ = Serialization::FromProtocolBuffer(std::move(
+  ret.id = std::move(*source.mutable_id());
+  ret.ticket = Serialization::FromProtocolBuffer(std::move(
     *source.mutable_ticket()));
   return ret;
 }
@@ -129,7 +129,7 @@ LogIssuedTicketRequest Serializer<LogIssuedTicketRequest>::fromProtocolBuffer(pr
 void Serializer<LogIssuedTicketResponse>::moveIntoProtocolBuffer(proto::LogIssuedTicketResponse& dest, LogIssuedTicketResponse value) const {
   Serialization::MoveIntoProtocolBuffer(
     *dest.mutable_signature(),
-    std::move(value.signature_)
+    std::move(value.signature)
   );
 }
 

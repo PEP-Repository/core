@@ -103,23 +103,23 @@ Server::handleChecksumChainRequest(
   const auto& request = certified.message;
   std::optional<uint64_t> maxCheckpoint;
 
-  if (!request.checkpoint_.empty()) {
-    if (request.checkpoint_.size() != 8)
+  if (!request.checkpoint.empty()) {
+    if (request.checkpoint.size() != 8)
       throw Error("checkpoint field should either be 8 bytes or 0");
-    maxCheckpoint = UnpackUint64BE(request.checkpoint_);
+    maxCheckpoint = UnpackUint64BE(request.checkpoint);
   }
 
   uint64_t checksum{}, checkpoint{};
   computeChecksumChainChecksum(
-    request.name_,
+    request.name,
     maxCheckpoint,
     checksum,
     checkpoint
   );
 
   ChecksumChainResponse resp;
-  resp.xorredChecksums_ = PackUint64BE(checksum);
-  resp.checkpoint_ = PackUint64BE(checkpoint);
+  resp.xorredChecksums = PackUint64BE(checksum);
+  resp.checkpoint = PackUint64BE(checkpoint);
   return messaging::BatchSingleMessage(std::move(resp));
 }
 
@@ -129,7 +129,7 @@ Server::handleChecksumChainNamesRequest(
   auto signatory = signedRequest->validate(*getRootCAs());
   UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
   ChecksumChainNamesResponse resp;
-  resp.names_ = getChecksumChainNames();
+  resp.names = getChecksumChainNames();
   return messaging::BatchSingleMessage(std::move(resp));
 }
 

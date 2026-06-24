@@ -119,27 +119,27 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
   const std::vector<AESKey>& keys) {
   PEP_LOG(LogTag, Severity::Debug) << "encryptAndBlindKeys";
 
-  assert(request->entries_.size() == keys.size());
+  assert(request->entries.size() == keys.size());
 
   // Use multiple KeyRequest instances as needed to keep message size down.
   std::unordered_map<size_t, EncryptionKeyRequest> keyRequests; // Associate each KeyRequest with the corresponding offset in DataEntriesRequest2::entries_
-  keyRequests.reserve(request->entries_.size() / KEY_REQUEST_BATCH_SIZE + 1);
-  for (size_t i = 0U; i < request->entries_.size(); i++) {
-    const auto& entry = request->entries_[i];
+  keyRequests.reserve(request->entries.size() / KEY_REQUEST_BATCH_SIZE + 1);
+  for (size_t i = 0U; i < request->entries.size(); i++) {
+    const auto& entry = request->entries[i];
 
     auto indexInKeyRequest = i % KEY_REQUEST_BATCH_SIZE;
     auto offset = i - indexInKeyRequest; // a multiple of KEY_REQUEST_BATCH_SIZE
     assert(offset % KEY_REQUEST_BATCH_SIZE == 0U);
     assert(keyRequests[offset].entries.size() == indexInKeyRequest);
     keyRequests[offset].entries.emplace_back(
-      entry.metadata_,
+      entry.metadata,
       EncryptedKey(systemPublicKeys_.globalDataEncryptionKey, keys[i].point),
       KeyBlindMode::Blind,
-      entry.pseudonymIndex_
+      entry.pseudonymIndex
     );
   }
   // Give each KeyRequest a (reference to the) ticket
-  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket_)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.ticket2 = ticket; });
+  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.ticket2 = ticket; });
 
   return RxIterate(std::move(keyRequests))
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {
@@ -156,7 +156,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
         }
 
         for (size_t i = 0; i < count; i++) {
-          request->entries_[i + offset].polymorphicKey_ = keyResponse.keys[i];
+          request->entries[i + offset].polymorphicKey = keyResponse.keys[i];
         }
 
         return FakeVoid();

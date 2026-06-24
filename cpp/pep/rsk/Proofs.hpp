@@ -83,19 +83,19 @@ class ReshuffleRekeyVerifiers {
       const CurvePoint& rekeyCommitment,
       const CurvePoint& reshuffleOverRekeyCommitment,
       const ElgamalPublicKey& rekeyedPublicKey)
-  : reshuffleCommitment_(reshuffleCommitment),
-    rekeyCommitment_(rekeyCommitment),
-    reshuffleOverRekeyCommitment_(reshuffleOverRekeyCommitment),
-    rekeyedPublicKey_(rekeyedPublicKey) { }
+  : reshuffleCommitment(reshuffleCommitment),
+    rekeyCommitment(rekeyCommitment),
+    reshuffleOverRekeyCommitment(reshuffleOverRekeyCommitment),
+    rekeyedPublicKey(rekeyedPublicKey) { }
   static ReshuffleRekeyVerifiers Compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
     const ElgamalPublicKey& globalKey);
 
-  CurvePoint reshuffleCommitment_;
-  CurvePoint rekeyCommitment_;
-  CurvePoint reshuffleOverRekeyCommitment_;
-  ElgamalPublicKey rekeyedPublicKey_;
+  CurvePoint reshuffleCommitment;
+  CurvePoint rekeyCommitment;
+  CurvePoint reshuffleOverRekeyCommitment;
+  ElgamalPublicKey rekeyedPublicKey;
 
   [[nodiscard]] auto operator<=>(const ReshuffleRekeyVerifiers& right) const = default;
 
@@ -113,15 +113,15 @@ public:
     const InverseProof& rekeyInverseProof,
     const ScalarMultProof& reshuffleTimesRekeyInverseProof,
     const ScalarMultProof& rekeyTimesPublicKeyProof)
-  : rekeyInversePoint_(rekeyInversePoint),
-    rekeyInverseProof_(rekeyInverseProof),
-    reshuffleTimesRekeyInverseProof_(reshuffleTimesRekeyInverseProof),
-    rekeyTimesPublicKeyProof_(rekeyTimesPublicKeyProof) {}
+  : rekeyInversePoint(rekeyInversePoint),
+    rekeyInverseProof(rekeyInverseProof),
+    reshuffleTimesRekeyInverseProof(reshuffleTimesRekeyInverseProof),
+    rekeyTimesPublicKeyProof(rekeyTimesPublicKeyProof) {}
 
-  CurvePoint rekeyInversePoint_;
-  InverseProof rekeyInverseProof_;
-  ScalarMultProof reshuffleTimesRekeyInverseProof_;
-  ScalarMultProof rekeyTimesPublicKeyProof_;
+  CurvePoint rekeyInversePoint;
+  InverseProof rekeyInverseProof;
+  ScalarMultProof reshuffleTimesRekeyInverseProof;
+  ScalarMultProof rekeyTimesPublicKeyProof;
 
   static ReshuffleRekeyVerifiersWithProof
   ComputeCertified(
@@ -139,11 +139,11 @@ public:
 // an ElgamalEncryption (b, c, publicKey) has been RSKed to (b', c', publicKey')
 class RskProof {
  public:
-  CurvePoint rerandomizePubKey_;
-  CurvePoint rerandomizePoint_;
-  ScalarMultProof rerandomizeTimesPubKeyProof_; // ScalarMultProof for rerandomize * publicKey
-  ScalarMultProof reshuffleOverRekeyTimesBProof_; // ScalarMultProof for (reshuffle/rekey) * b
-  ScalarMultProof reshuffleTimesCProof_; // ScalarMultProof for reshuffle * c
+  CurvePoint rerandomizePubKey;
+  CurvePoint rerandomizePoint;
+  ScalarMultProof rerandomizeTimesPubKeyProof; // ScalarMultProof for rerandomize * publicKey
+  ScalarMultProof reshuffleOverRekeyTimesBProof; // ScalarMultProof for (reshuffle/rekey) * b
+  ScalarMultProof reshuffleTimesCProof; // ScalarMultProof for reshuffle * c
 
   RskProof() = default;
   RskProof(
@@ -152,18 +152,18 @@ class RskProof {
     const ScalarMultProof& rerandomizeTimesPubKeyProof,
     const ScalarMultProof& reshuffleOverRekeyTimesBProof,
     const ScalarMultProof& reshuffleTimesCProof)
-  : rerandomizePubKey_(rerandomizePubKey),
-    rerandomizePoint_(rerandomizePoint),
-    rerandomizeTimesPubKeyProof_(rerandomizeTimesPubKeyProof),
-    reshuffleOverRekeyTimesBProof_(reshuffleOverRekeyTimesBProof),
-    reshuffleTimesCProof_(reshuffleTimesCProof) {}
+  : rerandomizePubKey(rerandomizePubKey),
+    rerandomizePoint(rerandomizePoint),
+    rerandomizeTimesPubKeyProof(rerandomizeTimesPubKeyProof),
+    reshuffleOverRekeyTimesBProof(reshuffleOverRekeyTimesBProof),
+    reshuffleTimesCProof(reshuffleTimesCProof) {}
 
   void ensurePacked() const {
-    rerandomizePubKey_.ensurePacked();
-    rerandomizePoint_.ensurePacked();
-    rerandomizeTimesPubKeyProof_.ensurePacked();
-    reshuffleOverRekeyTimesBProof_.ensurePacked();
-    reshuffleTimesCProof_.ensurePacked();
+    rerandomizePubKey.ensurePacked();
+    rerandomizePoint.ensurePacked();
+    rerandomizeTimesPubKeyProof.ensurePacked();
+    reshuffleOverRekeyTimesBProof.ensurePacked();
+    reshuffleTimesCProof.ensurePacked();
   }
 
   // Constructs a proof that pre is RSKed to post.

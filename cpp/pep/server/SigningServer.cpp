@@ -42,20 +42,20 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
     throw Error("Cannot replace certificate for server, since the server does not have a new private key.");
   }
 
-  if (!request.getCertificateChain().certifiesPrivateKey(*newPrivateKey_)) {
+  if (!request.certificateChain.certifiesPrivateKey(*newPrivateKey_)) {
     throw Error("Cannot replace certificate for server, since the certificate does not match the new private key of the server.");
   }
 
-  if (request.getCertificateChain().leaf().hasTLSServerEKU()) {
+  if (request.certificateChain.leaf().hasTLSServerEKU()) {
     throw Error("Cannot replace certificate for server, since it is a TLS certificate. It must be a PEP certificate.");
   }
 
-  if (!request.allowChangingSubject() && !request.getCertificateChain().leaf().hasSameSubject(identityFiles_->identity()->getCertificateChain().leaf())) {
+  if (!request.allowChangingSubject && !request.certificateChain.leaf().hasSameSubject(identityFiles_->identity()->getCertificateChain().leaf())) {
     throw Error("New certificate has a different subject from the current certificate. Use --allow-changing-subject to force replacing the certificate.");
   }
 
   auto traits = getServerTraits();
-  if (!traits.signingIdentityMatches(request.getCertificateChain())) {
+  if (!traits.signingIdentityMatches(request.certificateChain)) {
     throw Error("Signing identity of the new certificate does not match that of the server");
   }
 
@@ -63,11 +63,11 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
     throw std::runtime_error("New certificate is not a server signing certificate");
   }
 
-  if (!request.getCertificateChain().verify(*getRootCAs())) {
+  if (!request.certificateChain.verify(*getRootCAs())) {
     throw Error("Cannot replace certificate for server, since the new certificate chain cannot be verified.");
   }
 
-  *identityFiles_->identity() = X509Identity(*newPrivateKey_, request.getCertificateChain());
+  *identityFiles_->identity() = X509Identity(*newPrivateKey_, request.certificateChain);
 
   return messaging::BatchSingleMessage(Serialization::ToString(this->sign(CertificateReplacementResponse()))); //Sign with the new certificate, so requestor can check that it is correctly deployed
 }
@@ -78,7 +78,7 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
 
   const auto& request = certified.message;
 
-  if (request.getCertificateChain() != identityFiles_->identity()->getCertificateChain()) {
+  if (request.certificateChain != identityFiles_->identity()->getCertificateChain()) {
     throw Error("Cannot commit replaced certificate for server, since the certificate chain in the request does not match the current certificate chain of the server");
   }
 

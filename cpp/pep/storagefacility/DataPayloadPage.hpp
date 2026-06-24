@@ -21,11 +21,11 @@ class DataPayloadPage {
 
   // TODO Reuse Encrypted<T> instead of duplicating the symmetric crypto
 
-  std::string cryptoNonce_;
-  std::string cryptoMac_;
-  std::string payloadData_;
-  uint64_t pageNumber_ = 0;
-  uint32_t index_ = 0;
+  std::string cryptoNonce;
+  std::string cryptoMac;
+  std::string payloadData;
+  uint64_t pageNumber = 0;
+  uint32_t index = 0;
 
   // Fills the page with the provided plaintext.
   // Note that pageNumber_ should already be set to the right value.,

@@ -1025,21 +1025,21 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
   auto domain = userCertificate.getOrganizationalUnit().value();
   if (auto domainVerifiers = storage_->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
     PEP_LOG(LogTag, Severity::Debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
-    if (domainVerifiers->getReshuffleCommitment() != verifiers.reshuffleCommitment_) {
+    if (domainVerifiers->getReshuffleCommitment() != verifiers.reshuffleCommitment) {
       throw std::runtime_error("Inconsistent reshuffle verifier for pseudonymization domain " + Logging::Escape(domain));
     }
   } else {
     PEP_LOG(LogTag, Severity::Debug) << "Storing domain verifiers for " << Logging::Escape(domain);
-    storage_->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.reshuffleCommitment_));
+    storage_->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.reshuffleCommitment));
   }
 
   auto hash = RangeToVector(CertificateHash(userCertificate));
   if (auto sessionVerifiers = storage_->raw.get_optional<SessionVerifiersRecord>(hash)) {
     PEP_LOG(LogTag, Severity::Debug) << "Found existing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
-    if (sessionVerifiers->getRekeyCommitment() != verifiers.rekeyCommitment_
-      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.reshuffleOverRekeyCommitment_
-      || sessionVerifiers->getRekeyedPublicKey() != verifiers.rekeyedPublicKey_) {
+    if (sessionVerifiers->getRekeyCommitment() != verifiers.rekeyCommitment
+      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.reshuffleOverRekeyCommitment
+      || sessionVerifiers->getRekeyedPublicKey() != verifiers.rekeyedPublicKey) {
       throw std::runtime_error("Inconsistent verifiers for session for " + userCertificate.getCommonName().value());
     }
   } else {
@@ -1049,9 +1049,9 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
       std::move(hash),
       userCertificate.getNotAfter(),
       domain,
-      verifiers.rekeyCommitment_,
-      verifiers.reshuffleOverRekeyCommitment_,
-      verifiers.rekeyedPublicKey_));
+      verifiers.rekeyCommitment,
+      verifiers.reshuffleOverRekeyCommitment,
+      verifiers.rekeyedPublicKey));
   }
 }
 

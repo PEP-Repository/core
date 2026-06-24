@@ -122,12 +122,12 @@ void RskProof::verify(
     const ElgamalEncryption& post,
     const ReshuffleRekeyVerifiers& verifiers) const {
   // Check the provided factors are related by the public key
-  rerandomizeTimesPubKeyProof_.verify(rerandomizePoint_, pre.publicKey, rerandomizePubKey_);
+  rerandomizeTimesPubKeyProof.verify(rerandomizePoint, pre.publicKey, rerandomizePubKey);
 
   // Note: we assume that the factors in ReshuffleRekeyVerifiers are correctly related
-  reshuffleOverRekeyTimesBProof_.verify(verifiers.reshuffleOverRekeyCommitment_, pre.b + rerandomizePoint_, post.b);
-  reshuffleTimesCProof_.verify(verifiers.reshuffleCommitment_, pre.c + rerandomizePubKey_, post.c);
-  if (post.publicKey != verifiers.rekeyedPublicKey_) {
+  reshuffleOverRekeyTimesBProof.verify(verifiers.reshuffleOverRekeyCommitment, pre.b + rerandomizePoint, post.b);
+  reshuffleTimesCProof.verify(verifiers.reshuffleCommitment, pre.c + rerandomizePubKey, post.c);
+  if (post.publicKey != verifiers.rekeyedPublicKey) {
     throw InvalidProof();
   }
 }
@@ -146,20 +146,20 @@ ReshuffleRekeyVerifiers ReshuffleRekeyVerifiers::Compute(
 }
 
 void ReshuffleRekeyVerifiers::ensureThreadSafe() const {
-  reshuffleOverRekeyCommitment_.ensureThreadSafe();
-  reshuffleCommitment_.ensureThreadSafe();
-  rekeyedPublicKey_.ensureThreadSafe();
+  reshuffleOverRekeyCommitment.ensureThreadSafe();
+  reshuffleCommitment.ensureThreadSafe();
+  rekeyedPublicKey.ensureThreadSafe();
 }
 
 void ReshuffleRekeyVerifiersProof::verify(
     const ReshuffleRekeyVerifiers& verifiers,
     const ElgamalPublicKey& globalKey) const {
   // Check rekeyCommitment & rekeyInversePoint are related
-  rekeyInverseProof_.verify(rekeyInversePoint_, verifiers.rekeyCommitment_);
+  rekeyInverseProof.verify(rekeyInversePoint, verifiers.rekeyCommitment);
   // Check log(reshuffleCommitment) * rekeyInversePoint = reshuffleOverRekeyCommitment
-  reshuffleTimesRekeyInverseProof_.verify(verifiers.reshuffleCommitment_, rekeyInversePoint_, verifiers.reshuffleOverRekeyCommitment_);
+  reshuffleTimesRekeyInverseProof.verify(verifiers.reshuffleCommitment, rekeyInversePoint, verifiers.reshuffleOverRekeyCommitment);
   // Check public key
-  rekeyTimesPublicKeyProof_.verify(verifiers.rekeyCommitment_, globalKey, verifiers.rekeyedPublicKey_);
+  rekeyTimesPublicKeyProof.verify(verifiers.rekeyCommitment, globalKey, verifiers.rekeyedPublicKey);
 }
 
 ReshuffleRekeyVerifiersWithProof
@@ -178,9 +178,9 @@ ReshuffleRekeyVerifiersProof::ComputeCertified(
   );
   ReshuffleRekeyVerifiersProof proof(
     rekeyInversePoint,
-    InverseProof::Create(rekeyInversePoint, verifiers.rekeyCommitment_, rekeyInverse),
-    ScalarMultProof::Create(reshuffleCommitment, rekeyInversePoint, verifiers.reshuffleOverRekeyCommitment_, reshuffle),
-    ScalarMultProof::Create(verifiers.rekeyCommitment_, globalKey, verifiers.rekeyedPublicKey_, rekey));
+    InverseProof::Create(rekeyInversePoint, verifiers.rekeyCommitment, rekeyInverse),
+    ScalarMultProof::Create(reshuffleCommitment, rekeyInversePoint, verifiers.reshuffleOverRekeyCommitment, reshuffle),
+    ScalarMultProof::Create(verifiers.rekeyCommitment, globalKey, verifiers.rekeyedPublicKey, rekey));
   return {verifiers, proof};
 }
 

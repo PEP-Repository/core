@@ -345,9 +345,9 @@ TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy) {
 
   ColumnAccess expected{};
   expected.columnGroups[constants.r_cg1].modes.push_back("read");
-  expected.columnGroups[constants.r_cg1].columns.indices_ = {0, 1, 2};
+  expected.columnGroups[constants.r_cg1].columns.indices = {0, 1, 2};
   expected.columnGroups[constants.r_cg2].modes.push_back("read");
-  expected.columnGroups[constants.r_cg2].columns.indices_ = {1};
+  expected.columnGroups[constants.r_cg2].columns.indices = {1};
   expected.columns = {constants.double_col, constants.r_col1, constants.r_col2};
 
   EXPECT_EQ(actual.columns, expected.columns);
@@ -365,10 +365,10 @@ TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy_include_implici
   ColumnAccess expected{};
   expected.columnGroups[constants.r_cg1].modes.push_back("read");
   expected.columnGroups[constants.r_cg1].modes.push_back("read-meta");
-  expected.columnGroups[constants.r_cg1].columns.indices_ = {0, 1, 2};
+  expected.columnGroups[constants.r_cg1].columns.indices = {0, 1, 2};
   expected.columnGroups[constants.r_cg2].modes.push_back("read");
   expected.columnGroups[constants.r_cg2].modes.push_back("read-meta");
-  expected.columnGroups[constants.r_cg2].columns.indices_ = {1};
+  expected.columnGroups[constants.r_cg2].columns.indices = {1};
   expected.columns = {constants.double_col, constants.r_col1, constants.r_col2};
 
   EXPECT_EQ(actual.columns, expected.columns);

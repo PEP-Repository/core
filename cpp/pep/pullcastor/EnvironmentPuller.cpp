@@ -49,7 +49,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
       const ColumnAccess::GroupProperties& properties = group.second;
       if (std::find(properties.modes.cbegin(), properties.modes.cend(), "read") != properties.modes.cend()
         && std::find(properties.modes.cbegin(), properties.modes.cend(), "write") != properties.modes.cend()) {
-        for (const auto index : properties.columns.indices_) {
+        for (const auto index : properties.columns.indices) {
           const auto& column = access.columns[index];
           result.emplace(column);
         }

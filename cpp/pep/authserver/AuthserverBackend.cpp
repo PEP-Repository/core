@@ -135,11 +135,11 @@ rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainR
   // manager goes correctly, we keep the old checksum chains, but instead of
   // calculating them here, we pass them on to the accessmanager.
   //TODO: When the migration has succeeded, this can be removed in a following release.
-  auto checksumMapping = checksumNameMappings.find(request.name_);
+  auto checksumMapping = checksumNameMappings.find(request.name);
   if (checksumMapping == checksumNameMappings.end()) {
-    throw Error("Checksum chain " + request.name_ + " not found");
+    throw Error("Checksum chain " + request.name + " not found");
   }
-  request.name_ = checksumMapping->second;
+  request.name = checksumMapping->second;
   return accessManager_->requestChecksumChain(std::move(request))
     .op(RxGetOne());
 }

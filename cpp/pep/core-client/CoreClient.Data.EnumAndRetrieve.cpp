@@ -122,18 +122,18 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());
           ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms_);
           DataEnumerationRequest2 enumRequest;
-          enumRequest.ticket_ = *ctx->signedTicket;
+          enumRequest.ticket = *ctx->signedTicket;
 
           if (ctx->requestTicketOpts->ticket != nullptr) {
             std::unordered_set<uint32_t> pseudIdxs;
             std::unordered_set<uint32_t> colIdxs;
             for (const auto& cg: ctx->requestTicketOpts->columnGroups) {
-              for (uint32_t i: indexedTicket.getColumnGroupMapping().at(cg).indices_) {
+              for (uint32_t i: indexedTicket.getColumnGroupMapping().at(cg).indices) {
                 colIdxs.insert(i);
               }
             }
             for (const auto& g: ctx->requestTicketOpts->participantGroups) {
-              for (uint32_t i: indexedTicket.getParticipantGroupMapping().at(g).indices_) {
+              for (uint32_t i: indexedTicket.getParticipantGroupMapping().at(g).indices) {
                 pseudIdxs.insert(i);
               }
             }
@@ -163,9 +163,9 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 colIdxs.insert(lut.at(col));
               }
             }
-            enumRequest.pseudonyms_ = IndexList(std::vector<uint32_t>(
+            enumRequest.pseudonyms = IndexList(std::vector<uint32_t>(
               pseudIdxs.begin(), pseudIdxs.end()));
-            enumRequest.columns_ = IndexList(std::vector<uint32_t>(
+            enumRequest.columns = IndexList(std::vector<uint32_t>(
               colIdxs.begin(), colIdxs.end()));
           }
 
@@ -173,19 +173,19 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
             .reduce(
               std::make_shared<std::vector<DataEnumerationEntry2>>(),
               [ctx](std::shared_ptr<std::vector<DataEnumerationEntry2>> entriesWithData, DataEnumerationResponse2 response) {
-                for (auto& entry: response.entries_) {
-                  if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.fileSize_ <= ctx->dataSizeLimit)) {
+                for (auto& entry: response.entries) {
+                  if (ctx->includeData && (ctx->dataSizeLimit == 0U || entry.fileSize <= ctx->dataSizeLimit)) {
                     // This entry will include data: save it for data retrieval
                     entriesWithData->emplace_back(std::move(entry));
                   } else { // This entry won't include data: emit it now
                     EnumerateAndRetrieveResult res;
                     res.dataSet = false;
-                    res.id = entry.id_;
-                    res.metadata = entry.metadata_;
-                    res.column = entry.metadata_.getTag();
-                    res.localPseudonymsIndex = entry.pseudonymIndex_;
-                    res.localPseudonyms = ctx->pseudonyms->getLocalPseudonyms(entry.pseudonymIndex_);
-                    res.accessGroupPseudonym = ctx->pseudonyms->getAccessGroupPseudonym(entry.pseudonymIndex_);
+                    res.id = entry.id;
+                    res.metadata = entry.metadata;
+                    res.column = entry.metadata.getTag();
+                    res.localPseudonymsIndex = entry.pseudonymIndex;
+                    res.localPseudonyms = ctx->pseudonyms->getLocalPseudonyms(entry.pseudonymIndex);
+                    res.accessGroupPseudonym = ctx->pseudonyms->getAccessGroupPseudonym(entry.pseudonymIndex);
                     ctx->subscriber->on_next(std::move(res));
                   }
                 }
@@ -201,7 +201,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
 
               auto entryCount = entries->size();
               auto ids = RangeToVector(*entries
-                | std::ranges::views::transform(std::mem_fn(&DataEnumerationEntry2::id_)));
+                | std::ranges::views::transform(std::mem_fn(&DataEnumerationEntry2::id)));
               // Convert each of SF's DataEnumerationEntry2 to (a shared_ptr to) an EnumerateResult
               auto enumResults = MakeSharedCopy(ConvertDataEnumerationEntries(std::move(*entries), *ctx->pseudonyms));
 
@@ -223,18 +223,18 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 ids,
                 [](size_t offset,
                    std::shared_ptr<DataPayloadPage>& page) {
-                  page->index_ += static_cast<uint32_t>(
+                  page->index += static_cast<uint32_t>(
                     offset);
                 },
                 [this, ticket = ctx->signedTicket](
                   const std::vector<std::string>& ids) {
                   DataReadRequest2 readRequest;
-                  readRequest.ids_ = ids;
-                  readRequest.ticket_ = *ticket;
+                  readRequest.ids = ids;
+                  readRequest.ticket = *ticket;
                   return getStorageFacilityProxy(true)->requestDataRead(std::move(readRequest))
                     .map([](DataPayloadPage page) { return MakeSharedCopy(std::move(page)); });
                 })
-                .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->index_; }))
+                .op(RxGroupToVectors([](std::shared_ptr<DataPayloadPage> page) { return page->index; }))
                 .map([ctx](std::shared_ptr<IndexedPages> pages) {
                   assert(ctx->pages == nullptr);
                   ctx->pages = pages;
@@ -267,7 +267,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                         auto& pages = *ipage->second;
                         std::ostringstream buffer;
                         for (size_t i = 0U; i < pages.size(); ++i) {
-                          assert(pages[i]->pageNumber_ == i);
+                          assert(pages[i]->pageNumber == i);
                           buffer << pages[i]->decrypt(key, res.metadata);
                         }
                         res.data = std::move(buffer).str();

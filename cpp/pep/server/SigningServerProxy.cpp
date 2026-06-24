@@ -57,18 +57,18 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
   .map([rootCAs=rootCertificates_, expectedCommonName=expectedCommonName_](const SignedCsrResponse& signedResponse) {
     ValidateCsrMessage(signedResponse, *rootCAs, expectedCommonName);
     auto response = signedResponse.openWithoutCheckingSignature();
-    if (response.getCsr().getCommonName() != expectedCommonName) {
+    if (response.csr.getCommonName() != expectedCommonName) {
       throw std::runtime_error("Received certificate signing request does not have expected common name");
     }
-    if (!response.getCsr().verifySignature()) {
+    if (!response.csr.verifySignature()) {
       throw std::runtime_error("Received certificate signing request does not have a valid signature");
     }
-    auto extensions= response.getCsr().getExtensions();
+    auto extensions= response.csr.getExtensions();
     if (!extensions.empty()) {
       std::ostringstream message;
       message << "Received certificate signing requests should not contain extensions, but it does. Encountered extensions: ";
       bool first = true;
-      for (auto& extension : response.getCsr().getExtensions()) {
+      for (auto& extension : response.csr.getExtensions()) {
         if (!first) {
           message << ", ";
         }
@@ -77,7 +77,7 @@ rxcpp::observable<X509CertificateSigningRequest> SigningServerProxy::requestCert
       }
       throw std::runtime_error(message.str());
     }
-    return response.getCsr();
+    return response.csr;
   });
 }
 

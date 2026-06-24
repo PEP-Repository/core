@@ -35,7 +35,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     for (const auto& cg : access.columnGroups) {
       const auto& cgAccess = cg.second;
       if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
-        for (auto index : cgAccess.columns.indices_) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
+        for (auto index : cgAccess.columns.indices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
           remaining->erase(access.columns[index]);
         }
       }

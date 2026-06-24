@@ -134,7 +134,7 @@ protected:
         std::cerr << "Skipping inaccessible column group " << group << std::endl;
       }
       else {
-        const auto& indices = position->second.columns.indices_;
+        const auto& indices = position->second.columns.indices;
         columns.reserve(indices.size());
         for (auto i : indices) {
           columns.emplace_back(access->columns[i]);
