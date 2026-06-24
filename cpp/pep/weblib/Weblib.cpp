@@ -261,7 +261,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .columns = RangeToVector(SafeIndexInto(columnGroup.columns.indices_, access.columns)),
+                  .columns = RangeToVector(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
           );
