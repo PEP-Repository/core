@@ -30,6 +30,7 @@ protected:
 
 namespace {
 
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 SingleWorker cleanupWorker;
 
 struct HttpRequestHandlerParamsBasic : HttpRequestHandlerParams {
