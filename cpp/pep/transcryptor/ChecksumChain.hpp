@@ -19,13 +19,13 @@ namespace transcryptor {
  */
 class ChecksumChain : boost::noncopyable {
 protected:
-  static constexpr uint64_t EMPTY_TABLE_CHECKPOINT = 1;
-  static constexpr uint64_t FIRST_RECORD_CHECKPOINT = EMPTY_TABLE_CHECKPOINT + 1U; // Record sequence number 0 (zero) is checkpoint 2
+  static constexpr uint64_t EmptyTableCheckpoint = 1;
+  static constexpr uint64_t FirstRecordCheckpoint = EmptyTableCheckpoint + 1U; // Record sequence number 0 (zero) is checkpoint 2
 
 public:
   struct Result {
     uint64_t checksum = 0;
-    uint64_t checkpoint = EMPTY_TABLE_CHECKPOINT;
+    uint64_t checkpoint = EmptyTableCheckpoint;
   };
 
 private:

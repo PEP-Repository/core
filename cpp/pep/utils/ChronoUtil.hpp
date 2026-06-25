@@ -12,28 +12,31 @@
 
 namespace pep::chrono {
 namespace detail {
-  template<class T>
-  void WriteFilled(std::ostream& ostream, T num, bool hasPreviousOutput) {
-    auto flags = ostream.flags();
-    if(hasPreviousOutput) {
-      auto width = std::max(static_cast<int>(log10(static_cast<double>(num)) + 1), 2);
-      ostream << std::setfill('0') << std::setw(width);
-    }
-    ostream << num;
-    ostream.flags(flags);
-  }
 
-  template<typename DurationType, typename Rep, typename Period>
-  std::chrono::duration<Rep, Period> WriteDurationAs(std::chrono::duration<Rep, Period> in, const std::string& unit, std::ostream& ostream, bool hasPreviousOutput = false) {
-    auto converted = duration_cast<DurationType>(in);
-    if(converted.count() > 0) {
-      WriteFilled(ostream, converted.count(), hasPreviousOutput);
-      ostream << unit;
-    }
-    auto retVal = in - duration_cast<std::chrono::duration<Rep, Period>>(converted);
-    return retVal;
+template<class T>
+void WriteFilled(std::ostream& ostream, T num, bool hasPreviousOutput) {
+  auto flags = ostream.flags();
+  if(hasPreviousOutput) {
+    auto width = std::max(static_cast<int>(log10(static_cast<double>(num)) + 1), 2);
+    ostream << std::setfill('0') << std::setw(width);
   }
+  ostream << num;
+  ostream.flags(flags);
 }
+
+template<typename DurationType, typename Rep, typename Period>
+std::chrono::duration<Rep, Period> WriteDurationAs(std::chrono::duration<Rep, Period> in, const std::string& unit, std::ostream& ostream, bool hasPreviousOutput = false) {
+  auto converted = duration_cast<DurationType>(in);
+  if(converted.count() > 0) {
+    WriteFilled(ostream, converted.count(), hasPreviousOutput);
+    ostream << unit;
+  }
+  auto retVal = in - duration_cast<std::chrono::duration<Rep, Period>>(converted);
+  return retVal;
+}
+
+} // namespace detail
+
 
 template<typename T>
 struct IsDuration

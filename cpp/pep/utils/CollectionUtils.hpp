@@ -134,10 +134,12 @@ template<typename Elem, size_t Extent> requires(Extent != std::dynamic_extent)
 }
 
 namespace detail {
-  template <typename C>
-  concept CanReserve = requires(C c, std::size_t size) {
-      c.reserve({size});
-  };
+
+template <typename C>
+concept CanReserve = requires(C c, std::size_t size) {
+    c.reserve({size});
+};
+
 }
 
 //XXX This should be removed in C++23 with std::ranges::to, std::from_range, assign/insert_range

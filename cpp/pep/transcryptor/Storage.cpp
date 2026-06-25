@@ -580,8 +580,8 @@ protected:
     auto result = partial;
 
     int64_t minSeqNo = -1; // The full chain includes all sequence numbers (0 or higher, i.e. greater than -1)
-    if (partial.checkpoint != EMPTY_TABLE_CHECKPOINT) { // If we have a (previously calculated) partial result...
-      assert(partial.checkpoint > EMPTY_TABLE_CHECKPOINT);
+    if (partial.checkpoint != EmptyTableCheckpoint) { // If we have a (previously calculated) partial result...
+      assert(partial.checkpoint > EmptyTableCheckpoint);
       minSeqNo = CheckpointToSeqNo(partial.checkpoint); // ... only process records (with sequence numbers) that aren't included in the partial result yet
     }
 
