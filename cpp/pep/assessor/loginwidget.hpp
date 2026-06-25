@@ -46,8 +46,8 @@ private:
   void onUpdateStarted(std::exception_ptr error);
 
 private:
-  Ui::LoginWidget* ui_;
   std::shared_ptr<pep::OAuthClient> authy_;
   std::filesystem::path exeDirectory_;
   std::optional<std::string> adminAccountSampleFormat_;
+  Ui::LoginWidget* ui_;
 };
