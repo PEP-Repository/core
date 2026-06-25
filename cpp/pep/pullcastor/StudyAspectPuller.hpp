@@ -29,9 +29,9 @@ protected:
   StudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect);
 
   /*!
-  * \brief Registers the specified TDerived type as the handler for the import of its specified aspect STUDY_TYPE.
-  * \tparam TDerived The derived type that imports the specified STUDY_TYPE.
-  * \return The STUDY_TYPE specified by TDerived.
+  * \brief Registers the specified TDerived type as the handler for the import of its specified aspect StudyType.
+  * \tparam TDerived The derived type that imports the specified StudyType.
+  * \return The StudyType specified by TDerived.
   */
   template <typename TDerived>
   static CastorStudyType RegisterType() {
@@ -43,11 +43,11 @@ protected:
     };
 
     auto& registered = GetCreateFunctions();
-    if (!registered.emplace(std::make_pair(TDerived::STUDY_TYPE, createDerived)).second) {
-      throw std::runtime_error("Duplicate registration for study aspect puller type for Castor study type " + std::to_string(ToUnderlying(TDerived::STUDY_TYPE)));
+    if (!registered.emplace(std::make_pair(TDerived::StudyType, createDerived)).second) {
+      throw std::runtime_error("Duplicate registration for study aspect puller type for Castor study type " + std::to_string(ToUnderlying(TDerived::StudyType)));
     }
 
-    return TDerived::STUDY_TYPE;
+    return TDerived::StudyType;
   }
 
   /*!
@@ -92,7 +92,7 @@ public:
 template <typename TDerived, CastorStudyType TYPE, bool registerDerived = true>
 class TypedStudyAspectPuller : public StudyAspectPuller, public SelfRegistering<TDerived, StudyAspectPuller, registerDerived> {
 public:
-  static constexpr CastorStudyType STUDY_TYPE = TYPE;
+  static constexpr CastorStudyType StudyType = TYPE;
 
 protected:
   inline TypedStudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect)

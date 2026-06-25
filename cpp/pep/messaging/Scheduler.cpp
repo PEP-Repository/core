@@ -96,7 +96,7 @@ Scheduler::Scheduler(boost::asio::io_context& io_context) noexcept
 }
 
 void Scheduler::emplaceOutgoing(const MessageId& messageId, const Flags& flags, std::shared_ptr<std::string> message) {
-  if (message->size() >= MAX_SIZE_OF_MESSAGE) {
+  if (message->size() >= MaxSizeOfMessage) {
     throw std::runtime_error("Message too large to enqueue: " + std::to_string(message->size()) + " bytes");
   }
   auto wasEmpty = outgoing_.empty();
@@ -168,7 +168,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
             std::rethrow_exception(e);
           } catch (const Error& err) {
             serialized = MakeSharedCopy(Serialization::ToString(err));
-            if (serialized->size() >= MAX_SIZE_OF_MESSAGE) {
+            if (serialized->size() >= MaxSizeOfMessage) {
               serialized = MakeSharedCopy(Serialization::ToString(Error{"<Error message too large>"}));
             }
           } catch (...) {

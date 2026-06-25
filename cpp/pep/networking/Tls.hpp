@@ -100,7 +100,7 @@ private:
 public:
   /* \brief Constructor.
    * \param ioContext The I/O context associated with the server.
-   * \param endPoint The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RANDOM_PORT.
+   * \param endPoint The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RandomPort.
    * \param identity Configuration specifying the server's TLS identity.
    */
   ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFiles identity);

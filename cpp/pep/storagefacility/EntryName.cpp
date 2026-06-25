@@ -16,14 +16,14 @@ EntryName::EntryName(std::string participant, bool validateParticipant, std::str
   if (column_.empty()) {
     throw std::runtime_error("Invalid entry column name: may not be empty");
   }
-  auto pos = column_.find(DELIMITER);
+  auto pos = column_.find(Delimiter);
   if (pos != std::string::npos) {
-    throw std::runtime_error(std::string("Invalid entry column name: may not contain entry name delimiter ") + DELIMITER);
+    throw std::runtime_error(std::string("Invalid entry column name: may not contain entry name delimiter ") + Delimiter);
   }
 }
 
 EntryName EntryName::Parse(const std::string& sfId) {
-  auto pos = sfId.find(DELIMITER);
+  auto pos = sfId.find(Delimiter);
   if (pos == std::string::npos) {
     throw std::runtime_error("Invalid file store entry name: does not contain a delimiter");
   }

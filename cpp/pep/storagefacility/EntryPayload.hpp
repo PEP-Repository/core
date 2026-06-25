@@ -57,7 +57,7 @@ public:
 
 /*!
  * \brief An entry payload consisting of a single small page stored on the FileStore (i.e. without using the PageStore).
- * \remark The size limit is determined by the INLINE_PAGE_THRESHOLD constant.
+ * \remark The size limit is determined by the InlinePageThreshold constant.
  */
 class InlinedEntryPayload : public EntryPayload {
 private:

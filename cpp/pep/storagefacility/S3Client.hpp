@@ -36,7 +36,7 @@ public:
   //
   // Returns the Etag (=MD5) of the payload, as computed by the S3 server.
   //
-  // NB. Preventing an object from being overriden (or deleted) seems
+  // NB. Preventing an object from being overridden (or deleted) seems
   // possible only by an extension of S3 called "Amazon S3 Object Lock", 
   // which is not supported by Minio.
   virtual rxcpp::observable<std::string> putObject(

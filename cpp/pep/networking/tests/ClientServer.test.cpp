@@ -27,7 +27,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
   auto protocol = factory.protocol().name();
 
-  auto serverParameters = factory.createServerParameters(context, pep::networking::TcpBasedProtocol::ServerParameters::RANDOM_PORT);
+  auto serverParameters = factory.createServerParameters(context, pep::networking::TcpBasedProtocol::ServerParameters::RandomPort);
   auto server = pep::networking::Server::Create(*serverParameters);
   auto started = pep::MakeSharedCopy(false), stopped = pep::MakeSharedCopy(false);
   auto serverConnectionAttempt = std::make_shared<pep::EventSubscription>();

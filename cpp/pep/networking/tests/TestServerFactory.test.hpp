@@ -11,7 +11,7 @@
 class TestServerFactory {
 protected:
   static pep::EndPoint MakeEndPoint(uint16_t port) {
-    if (port == pep::networking::TcpBasedProtocol::ServerParameters::RANDOM_PORT) {
+    if (port == pep::networking::TcpBasedProtocol::ServerParameters::RandomPort) {
       throw std::runtime_error("Server instance is needed for client parameter port determination");
     }
     return pep::EndPoint("localhost", port);

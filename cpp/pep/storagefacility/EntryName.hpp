@@ -13,7 +13,7 @@ private:
   std::tuple<const std::string&, const std::string&> memberValues() const { return std::tie(this->participant(), this->column()); }
 
 public:
-  static constexpr char DELIMITER = '/'; // Don't change: we need this to (also) serve as a path delimiter on the file system and S3 page store
+  static constexpr char Delimiter = '/'; // Don't change: we need this to (also) serve as a path delimiter on the file system and S3 page store
 
   EntryName(const std::string& participant, const std::string& column) : EntryName(participant, true, column) {}
   EntryName(const LocalPseudonym& pseudonym, const std::string& column) : EntryName(pseudonym.text(), false, column) {}
@@ -22,7 +22,7 @@ public:
   const std::string& column() const noexcept { return column_; }
 
   LocalPseudonym pseudonym() const { return LocalPseudonym::FromText(this->participant()); }
-  std::string string() const { return this->participant() + DELIMITER + this->column(); }
+  std::string string() const { return this->participant() + Delimiter + this->column(); }
 
   bool operator==(const EntryName& rhs) const { return this->memberValues() == rhs.memberValues(); }
   bool operator<(const EntryName& rhs) const { return this->memberValues() < rhs.memberValues(); }

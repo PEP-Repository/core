@@ -118,7 +118,7 @@ public:
    * \param maxSize: The size at which to cut up responses. For testing purposes, this can be set to a lower number. For most purposes it should be left at the default.
    * \return An observable emitting iterated AmaQueryResponses
    */
-  static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MAX_SIZE_OF_MESSAGE); // TODO: move out of AM's (public even!) interface
+  static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MaxSizeOfMessage); // TODO: move out of AM's (public even!) interface
 
 private:
   ElgamalPrivateKey pseudonymKey_;

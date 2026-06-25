@@ -15,7 +15,7 @@ const std::string PAGE_SIZE_KEY = "pagesize";
 const std::string INLINE_PAGE_KEY = "inline-page";
 
 std::string GetPagePath(const EntryName& entry, XXH64_hash_t xxhash) {
-  return entry.string() + EntryName::DELIMITER + std::to_string(xxhash) + ".page";
+  return entry.string() + EntryName::Delimiter + std::to_string(xxhash) + ".page";
 }
 
 }

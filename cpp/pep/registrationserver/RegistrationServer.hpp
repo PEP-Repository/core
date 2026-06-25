@@ -102,8 +102,8 @@ private:
 private:
   class ShortPseudonymCache;
 
-  ::sqlite3* pShadowStorage_ = nullptr;
-  std::shared_ptr<CoreClient> pClient_;
+  ::sqlite3* shadowStorage_ = nullptr;
+  std::shared_ptr<CoreClient> client_;
   AsymmetricKey shadowPublicKey_;
   std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
   std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;

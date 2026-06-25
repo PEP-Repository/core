@@ -465,7 +465,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     // (Lambda that) sends the current response object to the subscriber and assigns a new, empty (followup) response object to the "response" variable
     auto sendResponse = [subscriber, &response]() {
       auto serialized = std::make_shared<std::string>(Serialization::ToString(*response));
-      if (serialized->size() >= messaging::MAX_SIZE_OF_MESSAGE) {
+      if (serialized->size() >= messaging::MaxSizeOfMessage) {
         throw std::runtime_error("Enumeration response too large to send out");
       }
       subscriber.on_next(serialized);
@@ -604,7 +604,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
 
             auto returnedPage = std::make_shared<std::string>(
               Serialization::ToString(std::move(page)));
-            if (returnedPage->size() >= messaging::MAX_SIZE_OF_MESSAGE) {
+            if (returnedPage->size() >= messaging::MaxSizeOfMessage) {
               throw std::runtime_error("Data payload page too large to send out");
             }
             self->metrics_->dataRetrievedBytes.Increment(

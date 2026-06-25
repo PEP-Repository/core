@@ -153,7 +153,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
 
   // make sure we hit the pagestore with our payload:
   auto strPayload = std::make_shared<std::string>();
-  for (size_t i=0; strPayload->size() < INLINE_PAGE_THRESHOLD; i++) {
+  for (size_t i=0; strPayload->size() < InlinePageThreshold; i++) {
     *strPayload += " and " + std::to_string(i);
   }
 

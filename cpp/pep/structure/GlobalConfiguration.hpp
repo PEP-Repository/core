@@ -9,13 +9,12 @@
 
 namespace pep {
 
-class AdditionalStickerDefinition {
- public:
-  uint32_t visit_ = 0;
-  std::string column_;
-  uint32_t stickers_ = 1;
-  bool suppressAdditionalStickers_ = false;
-  std::string studyContext_;
+struct AdditionalStickerDefinition {
+  uint32_t visit = 0;
+  std::string column;
+  uint32_t stickers = 1;
+  bool suppressAdditionalStickers = false;
+  std::string studyContext;
 };
 
 struct DeviceRegistrationDefinition {

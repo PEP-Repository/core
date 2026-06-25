@@ -179,13 +179,13 @@ GlobalConfiguration::GlobalConfiguration(
   }
 
   for (const auto& additional : additionalStickers_) {
-    if (ShortPseudonymColumn::Parse(additional.studyContext_, additional.column_).getVisitNumber() == additional.visit_) {
-      throw std::runtime_error("Use regular instead of additional sticker specification for short pseudonym " + additional.column_);
+    if (ShortPseudonymColumn::Parse(additional.studyContext, additional.column).getVisitNumber() == additional.visit) {
+      throw std::runtime_error("Use regular instead of additional sticker specification for short pseudonym " + additional.column);
     }
-    if (!getShortPseudonym(additional.column_)) {
-      throw std::runtime_error("Cannot specify additional stickers for undefined short pseudonym " + additional.column_);
+    if (!getShortPseudonym(additional.column)) {
+      throw std::runtime_error("Cannot specify additional stickers for undefined short pseudonym " + additional.column);
     }
-    numberOfVisits_[additional.studyContext_] = std::max(getNumberOfVisits(additional.studyContext_), additional.visit_);
+    numberOfVisits_[additional.studyContext] = std::max(getNumberOfVisits(additional.studyContext), additional.visit);
   }
 
   for (const auto& assessor : assessors_) {
@@ -221,10 +221,10 @@ std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(co
   std::copy_if(shortPseudonyms_.cbegin(), shortPseudonyms_.cend(), inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; });
 
   for (const auto& entry : additionalStickers_) {
-    if (entry.studyContext_ == studyContext && entry.visit_ == visitNumber) {
-      auto defined = *getShortPseudonym(entry.column_);
-      result.emplace_back(entry.column_, defined.getPrefix(), defined.getLength(), defined.getCastor(),
-        entry.stickers_, entry.suppressAdditionalStickers_, defined.getConfiguredDescription(),
+    if (entry.studyContext == studyContext && entry.visit == visitNumber) {
+      auto defined = *getShortPseudonym(entry.column);
+      result.emplace_back(entry.column, defined.getPrefix(), defined.getLength(), defined.getCastor(),
+        entry.stickers, entry.suppressAdditionalStickers, defined.getConfiguredDescription(),
         defined.getStudyContext());
     }
   }

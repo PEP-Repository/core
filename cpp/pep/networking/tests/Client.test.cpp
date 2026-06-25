@@ -159,7 +159,7 @@ TEST_F(Client, Reconnects) { // TODO: simplify
 
   boost::asio::io_context ioContext;
 
-  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
+  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RandomPort));
   auto serverConnectionAttempt = std::make_shared<pep::EventSubscription>();
   *serverConnectionAttempt = server->onConnectionAttempt.subscribe([server, serverConnectionAttempt](const pep::networking::Connection::Attempt::Result& result) {
     serverConnectionAttempt->cancel(); // Break circular reference
@@ -215,7 +215,7 @@ void ReadClientLine(std::shared_ptr<pep::networking::Client> client, std::shared
 TEST_F(Client, ReadUntil) {
   boost::asio::io_context ioContext;
 
-  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
+  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RandomPort));
   auto serverConnectionAttempt = std::make_shared<pep::EventSubscription>();
   *serverConnectionAttempt = server->onConnectionAttempt.subscribe([server, serverConnectionAttempt](const pep::networking::Connection::Attempt::Result& result) {
     PEP_ON_FATAL_TEST_FAILURE(serverConnectionAttempt->cancel();  server->shutdown());
@@ -244,7 +244,7 @@ TEST_F(Client, ReadUntil) {
 TEST_F(Client, ReadAll) {
   boost::asio::io_context ioContext;
 
-  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
+  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(ioContext, pep::networking::Tcp::ServerParameters::RandomPort));
   auto serverConnectionAttemptSub = std::make_shared<pep::EventSubscription>();
   *serverConnectionAttemptSub = server->onConnectionAttempt.subscribe([server, serverConnectionAttemptSub](const pep::networking::Connection::Attempt::Result& result) {
     PEP_ON_FATAL_TEST_FAILURE(serverConnectionAttemptSub->cancel();  server->shutdown());

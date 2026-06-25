@@ -49,7 +49,7 @@ const std::string LogTag("StorageFacility");
   * - partitioning (within a host; but also mutliple storage facilities)
   */
 
-const std::string FileStore::Entry::FILE_EXTENSION = ".entry";
+const std::string FileStore::Entry::FileExtension = ".entry";
 
 EntryContent::MetadataEntry FileStore::makeMetadataEntry(std::string key, std::string value) {
   auto pos = metadataValues_.emplace(std::move(key), std::set<std::string>()).first;
@@ -99,7 +99,7 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {
-  if (value.find(EntryName::DELIMITER) != std::string::npos) {
+  if (value.find(EntryName::Delimiter) != std::string::npos) {
     throw std::runtime_error("Cell name may not contain an entry name delimiter");
   }
   return *columnNames_.insert(value).first;
@@ -351,7 +351,7 @@ void FileStore::Entry::save() const {
   }
   outfile.close();
 
-  std::filesystem::rename(tempfile, this->getFilePath(Entry::FILE_EXTENSION));
+  std::filesystem::rename(tempfile, this->getFilePath(Entry::FileExtension));
 }
 
 void FileStore::EntryChange::commit(Timestamp availableFrom) && {
@@ -401,7 +401,7 @@ void FileStore::EntryChange::cancel() && {
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp timestamp) {
-  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FILE_EXTENSION;
+  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FileExtension;
   auto result = TryLoad(cell, cell.path() / filename);
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
@@ -411,12 +411,12 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const std::filesystem::path& path) {
-  if (!std::filesystem::is_regular_file(path) || path.extension().string() != FILE_EXTENSION) {
+  if (!std::filesystem::is_regular_file(path) || path.extension().string() != FileExtension) {
     return nullptr;
   }
 
   auto name = path.filename().string();
-  name = name.substr(0, name.size() - FILE_EXTENSION.size());
+  name = name.substr(0, name.size() - FileExtension.size());
   Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(name)});
 
   std::ifstream infile;
@@ -486,7 +486,7 @@ rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_pt
     assert(pagedPayload_ == nullptr);
     assert(this->content()->payload() == nullptr);
 
-    if (rawPage->size() < INLINE_PAGE_THRESHOLD) {
+    if (rawPage->size() < InlinePageThreshold) {
       auto payload = std::make_shared<InlinedEntryPayload>(*rawPage, payloadSize);
       this->content()->setPayload(payload);
       return rxcpp::observable<>::just(payload->getEtag());

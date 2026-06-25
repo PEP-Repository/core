@@ -110,7 +110,7 @@ public:
     friend class EntryChange;
 
   private:
-    static const std::string FILE_EXTENSION;
+    static const std::string FileExtension;
 
     Timestamp validFrom_;
 

@@ -76,20 +76,20 @@ UserPseudonymFormat Serializer<UserPseudonymFormat>::fromProtocolBuffer(proto::U
 
 
 void Serializer<AdditionalStickerDefinition>::moveIntoProtocolBuffer(proto::AdditionalStickerDefinition& dest, AdditionalStickerDefinition value) const {
-  *dest.mutable_column() = std::move(value.column_);
-  dest.set_visit(value.visit_);
-  dest.set_stickers(value.stickers_);
-  dest.set_suppress_additional_stickers(value.suppressAdditionalStickers_);
-  dest.set_study_context(std::move(value.studyContext_));
+  *dest.mutable_column() = std::move(value.column);
+  dest.set_visit(value.visit);
+  dest.set_stickers(value.stickers);
+  dest.set_suppress_additional_stickers(value.suppressAdditionalStickers);
+  dest.set_study_context(std::move(value.studyContext));
 }
 
 AdditionalStickerDefinition Serializer<AdditionalStickerDefinition>::fromProtocolBuffer(proto::AdditionalStickerDefinition&& source) const {
   AdditionalStickerDefinition result;
-  result.visit_ = source.visit();
-  result.column_ = std::move(*source.mutable_column());
-  result.stickers_ = source.stickers();
-  result.suppressAdditionalStickers_ = source.suppress_additional_stickers();
-  result.studyContext_ = std::move(*source.mutable_study_context());
+  result.visit = source.visit();
+  result.column = std::move(*source.mutable_column());
+  result.stickers = source.stickers();
+  result.suppressAdditionalStickers = source.suppress_additional_stickers();
+  result.studyContext = std::move(*source.mutable_study_context());
   return result;
 }
 

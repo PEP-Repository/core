@@ -6,7 +6,7 @@ namespace pep::messaging {
 
 using MessageLength = uint32_t;
 
-extern const size_t MAX_SIZE_OF_MESSAGE;
+extern const size_t MaxSizeOfMessage;
 
 // Helper struct to send and receive message headers across the network
 #pragma pack(push, 1)

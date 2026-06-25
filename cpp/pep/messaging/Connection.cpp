@@ -37,11 +37,11 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
     auto header = MessageHeader::Decode(messageInHeader_);
     auto length = header.length();
 
-    if (length > MAX_SIZE_OF_MESSAGE) {
+    if (length > MaxSizeOfMessage) {
       PEP_LOG(LogTag, Severity::Warning)
         << "Connection::handleHeaderReceived: "
         << "refusing " << length << "-byte message from " << describe()
-        << " because it's larger than the maximum of " << MAX_SIZE_OF_MESSAGE << " bytes";
+        << " because it's larger than the maximum of " << MaxSizeOfMessage << " bytes";
       return this->handleError(std::make_exception_ptr(boost::system::system_error(boost::asio::error::message_size)));
     }
 
@@ -83,7 +83,7 @@ void Connection::ensureSend() {
 
   PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend outgoing message streamId=" << properties.messageId().streamId() << " (to " << describe() << ")";
 
-  if (messageOutBody_->size() >= MAX_SIZE_OF_MESSAGE) {
+  if (messageOutBody_->size() >= MaxSizeOfMessage) {
     std::ostringstream msg;
     msg << "Message queued to be sent is too large.  ("
       << "Size=" << messageOutBody_->size() << ", Type="
@@ -235,7 +235,7 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
 }
 
 Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler)
-  : messageInBody_(MAX_SIZE_OF_MESSAGE, '\0'), keepAliveTimer_(ioContext), scheduler_(Scheduler::Create(ioContext)), requestor_(Requestor::Create(ioContext, *scheduler_)),
+  : messageInBody_(MaxSizeOfMessage, '\0'), keepAliveTimer_(ioContext), scheduler_(Scheduler::Create(ioContext)), requestor_(Requestor::Create(ioContext, *scheduler_)),
   node_(node), binary_(std::move(binary)), ioContext_(ioContext), requestHandler_(requestHandler) {
   assert(binary_->status() == networking::Transport::ConnectivityStatus::Connected);
   assert(node != nullptr);
@@ -457,7 +457,7 @@ rxcpp::observable<std::string> Connection::sendRequest(std::shared_ptr<std::stri
   assert(message);
   // This is a redundant check, such that the caller will receive an exception
   // with a better stack trace.
-  if (message->size() >= MAX_SIZE_OF_MESSAGE) {
+  if (message->size() >= MaxSizeOfMessage) {
     std::ostringstream msg;
     msg << "Message (" << DescribeMessageMagic(*message)
       << ") to " << describe() << " is too large ("

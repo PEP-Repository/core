@@ -137,11 +137,11 @@ protected:
 public:
   /* \brief When passed to the constructor, specifies that the server will expose itself on a random port.
    */
-  static constexpr uint16_t RANDOM_PORT = 0;
+  static constexpr uint16_t RandomPort = 0;
 
   /* \brief Produces the port on which the server will be exposed.
    * \return The port number for the server.
-   * \remark May produce a sentinel value such as RANDOM_PORT. Invoke ServerComponent::port to determine the actual
+   * \remark May produce a sentinel value such as RandomPort. Invoke ServerComponent::port to determine the actual
    *         (non-sentinel) port number on which a server has been exposed.
    */
   uint16_t port() const noexcept { return port_; }
@@ -232,7 +232,7 @@ class TcpBasedProtocolImplementor<TDerived>::ServerParameters : public TcpBasedP
 public:
   /* \brief Constructor.
    * \param ioContext The I/O context associated with this instance.
-   * \param port The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RANDOM_PORT.
+   * \param port The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RandomPort.
    */
   ServerParameters(boost::asio::io_context& ioContext, uint16_t port) noexcept
     : TcpBasedProtocol::ServerParameters(TDerived::Instance(), ioContext, port) {

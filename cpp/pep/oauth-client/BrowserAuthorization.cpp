@@ -86,13 +86,13 @@ void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context)
 }
 
 rxcpp::observable<AuthorizationResult> pep::BrowserAuthorization(
-  std::shared_ptr<boost::asio::io_context> io_context,
+  std::shared_ptr<boost::asio::io_context> ioContext,
   OAuthClient::GetAuthorizeUriFn getAuthorizeUri
 ) {
   auto authorizeUri = getAuthorizeUri(std::format("http://localhost:{}/", ListenPort), {});
-  return CreateObservable<AuthorizationResult>([io_context, authorizeUri](rxcpp::subscriber<AuthorizationResult> subscriber) {
-    std::shared_ptr<HTTPServer> httpServer = std::make_shared<HTTPServer>(ListenPort, io_context);
-    httpServer->registerHandler("/", true, [io_context, subscriber, httpServer](HTTPRequest localhostRequest, std::string remoteIp) {
+  return CreateObservable<AuthorizationResult>([ioContext, authorizeUri](rxcpp::subscriber<AuthorizationResult> subscriber) {
+    std::shared_ptr<HTTPServer> httpServer = std::make_shared<HTTPServer>(ListenPort, ioContext);
+    httpServer->registerHandler("/", true, [ioContext, subscriber, httpServer](HTTPRequest localhostRequest, std::string remoteIp) {
       std::optional<AuthorizationResult> result;
       std::optional<std::string> failure;
 
@@ -115,13 +115,13 @@ rxcpp::observable<AuthorizationResult> pep::BrowserAuthorization(
       (void)rxcpp::observable<>::just(*result).subscribe(subscriber);
 
       // Only stop after we returned an HTTP response
-      post(*io_context, [httpServer] {
+      post(*ioContext, [httpServer] {
         httpServer->asyncStop();
         });
 
       return HTTPResponse("200 OK", GetStatusHtml(failure));
     }, "GET");
 
-    OpenBrowser(boost::urls::url(authorizeUri), *io_context);
+    OpenBrowser(boost::urls::url(authorizeUri), *ioContext);
   });
 }
