@@ -185,6 +185,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CliApplication::createCh
       CreateCommandAma(*this),
       CreateCommandUser(*this),
       CreateCommandPing(*this),
+      CreateCommandPseudonym(*this),
       CreateCommandValidate(*this),
       CreateCommandVerifiers(*this),
       CreateCommandCastor(*this),

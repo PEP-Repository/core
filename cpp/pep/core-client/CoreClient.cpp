@@ -408,7 +408,8 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 
 }
 
-rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket2Opts& opts) {
+rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
+    const RequestTicket2Opts &opts) {
   PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
