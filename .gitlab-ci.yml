@@ -1380,8 +1380,10 @@ upload-flatpak:
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/flatpak/${CI_COMMIT_SHA}/pep.flatpak"'
 
 retag-pep-docker-images:
-  extends: .upload-base
-  image: docker
+  extends: .dind-small
+  variables:
+    GIT_STRATEGY: none # As these jobs only work on artifacts, we do not need the git repository
+  interruptible: false # We do not want to interrupt jobs that upload things, to prevent partial uploads
   needs:
     - job: pep-services-image-test
       artifacts: false
