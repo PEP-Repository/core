@@ -8,8 +8,6 @@ namespace Ui {
 class ParticipantEditor;
 }
 
-class MainWindow;
-
 class ParticipantEditor : public QWidget {
   Q_OBJECT
 
