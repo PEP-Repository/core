@@ -39,7 +39,7 @@ std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context
 
 }
 
-const std::chrono::seconds AuthenticationStatus::EXPIRY_MARGIN{30};
+const std::chrono::seconds AuthenticationStatus::ExpiryMargin{30};
 const std::string CastorClient::BasePath = "/api/";
 
 bool AuthenticationStatus::authenticated() const {
@@ -47,7 +47,7 @@ bool AuthenticationStatus::authenticated() const {
     return false;
   }
   assert(expires.has_value());
-  return TimeNow() < *expires - EXPIRY_MARGIN;
+  return TimeNow() < *expires - ExpiryMargin;
 }
 
 CastorClient::CastorClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::string clientId, std::string clientSecret, std::optional<std::filesystem::path> caCertFilepath)

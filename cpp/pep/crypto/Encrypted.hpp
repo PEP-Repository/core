@@ -9,18 +9,18 @@ protected:
   std::string baseDecrypt(const std::string& key) const;
 
 public:
-  std::string ciphertext_;
-  std::string iv_;
-  std::string tag_;
+  std::string ciphertext;
+  std::string iv;
+  std::string tag;
 
   EncryptedBase() = default;
   EncryptedBase(
     std::string ciphertext,
     std::string iv,
     std::string tag) :
-    ciphertext_(std::move(ciphertext)),
-    iv_(std::move(iv)),
-    tag_(std::move(tag)) { }
+    ciphertext(std::move(ciphertext)),
+    iv(std::move(iv)),
+    tag(std::move(tag)) { }
   EncryptedBase(
     const std::string& key,
     const std::string& plaintext);

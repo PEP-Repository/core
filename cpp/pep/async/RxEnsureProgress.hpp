@@ -45,7 +45,7 @@ rxcpp::observable<TItem> RxEnsureProgress(boost::asio::io_context& io_context, c
  */
 template <typename TItem, typename SourceOperator>
 rxcpp::observable<TItem> RxEnsureProgress(boost::asio::io_context& io_context, const std::string& description, rxcpp::observable<TItem, SourceOperator> items) {
-  return RxEnsureProgress(io_context, description, ActivityMonitor::DEFAULT_MAX_INACTIVE, items);
+  return RxEnsureProgress(io_context, description, ActivityMonitor::DefaultMaxInactive, items);
 }
 
 /*! \brief Monitors an observable, logging a warning if it shows no activity (for the default-allotted time).
@@ -93,7 +93,7 @@ RxEnsureProgress(boost::asio::io_context& io_context, const std::string& descrip
 template <typename CreateSource>
 rxcpp::observable<typename decltype(std::declval<CreateSource>()(std::declval<std::shared_ptr<ActivityMonitor>>()))::value_type>
 RxEnsureProgress(boost::asio::io_context& io_context, const std::string& description, const CreateSource& createSource) {
-  return RxEnsureProgress(io_context, description, ActivityMonitor::DEFAULT_MAX_INACTIVE, createSource);
+  return RxEnsureProgress(io_context, description, ActivityMonitor::DefaultMaxInactive, createSource);
 }
 
 /// \brief Records that there's activity in an RX pipeline.

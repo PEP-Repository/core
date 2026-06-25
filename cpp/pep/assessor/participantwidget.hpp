@@ -26,7 +26,7 @@ class ParticipantWidget;
 class ParticipantWidget : public QWidget {
   Q_OBJECT
  private:
-  static const QString NO_PARTICIPANT_SID;
+  static const QString NoParticipantSid;
 
   std::shared_ptr<pep::Client> pepClient_;
   Ui::ParticipantWidget* ui_;
@@ -54,7 +54,7 @@ class ParticipantWidget : public QWidget {
   pep::UserRole currentPepRole_;
 
   bool readOnly_ = false;
-  QString participantSID_ = NO_PARTICIPANT_SID;
+  QString participantSID_ = NoParticipantSid;
   QString baseUrl_;
   std::optional<std::filesystem::path> bartenderPath_;
   std::filesystem::path stickerFilePath_;

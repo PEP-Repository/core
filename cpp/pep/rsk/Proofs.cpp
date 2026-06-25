@@ -45,7 +45,7 @@ CurveScalar ScalarMultProof::ComputeChallenge(
     const CurvePoint& cb,
     const CurvePoint& cm) {
   std::string packed;
-  packed.reserve(CurvePoint::PACKEDBYTES * 5);
+  packed.reserve(CurvePoint::PackedBytes * 5);
   packed += secretTimesBase.pack();
   packed += pre.pack();
   packed += post.pack();

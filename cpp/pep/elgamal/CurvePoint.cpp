@@ -108,13 +108,13 @@ CurvePoint CurvePoint::dbl() const {
 
 CurvePoint CurvePoint::mult(const CurveScalar& s) const {
   CurvePoint r(State::GotUnpacked);
-  group_ge_scalarmult(&r.unpacked_, unpack(), &s.inner);
+  group_ge_scalarmult(&r.unpacked_, unpack(), &s.inner_);
   return r;
 }
 
 CurvePoint CurvePoint::mult(const PublicCurveScalar& s) const {
   CurvePoint r(State::GotUnpacked);
-  group_ge_scalarmult_publicinputs(&r.unpacked_, unpack(), &s.inner);
+  group_ge_scalarmult_publicinputs(&r.unpacked_, unpack(), &s.inner_);
   return r;
 }
 
@@ -133,13 +133,13 @@ CurvePoint CurvePoint::Hash(std::string_view s) {
 
 CurvePoint CurvePoint::BaseMult(const CurveScalar& s) {
   CurvePoint r(State::GotUnpacked);
-  group_ge_scalarmult_base(&r.unpacked_, &s.inner);
+  group_ge_scalarmult_base(&r.unpacked_, &s.inner_);
   return r;
 }
 
 CurvePoint CurvePoint::BaseMult(const PublicCurveScalar& s) {
   CurvePoint r(State::GotUnpacked);
-  group_ge_scalarmult_base_publicinputs(&r.unpacked_, &s.inner);
+  group_ge_scalarmult_base_publicinputs(&r.unpacked_, &s.inner_);
   return r;
 }
 
@@ -163,7 +163,7 @@ bool CurvePoint::isZero() const {
 }
 
 size_t CurvePoint::TextLength() {
-  return BoostHexLength(CurvePoint::PACKEDBYTES);
+  return BoostHexLength(CurvePoint::PackedBytes);
 }
 
 std::string CurvePoint::text() const {
@@ -186,13 +186,13 @@ CurvePoint::ScalarMultTable::ScalarMultTable(const CurvePoint& point) { //NOLINT
 
 CurvePoint CurvePoint::ScalarMultTable::mult(const CurveScalar& s) const {
   CurvePoint r(State::GotUnpacked);
-  group_ge_scalarmult_table(&r.unpacked_, &internal_, &s.inner);
+  group_ge_scalarmult_table(&r.unpacked_, &internal_, &s.inner_);
   return r;
 }
 
 CurvePoint CurvePoint::ScalarMultTable::mult(const PublicCurveScalar& s) const {
   CurvePoint r(State::GotUnpacked);
-  group_ge_scalarmult_table_publicinputs(&r.unpacked_, &internal_, &s.inner);
+  group_ge_scalarmult_table_publicinputs(&r.unpacked_, &internal_, &s.inner_);
   return r;
 }
 

@@ -109,7 +109,7 @@ public:
 
   static std::shared_ptr<Client> OpenClient(const Configuration& config,
     std::shared_ptr<boost::asio::io_context> io_context,
-    bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
+    bool persistKeysFile = DefaultPersistKeysFile);
 
 private:
   const AsymmetricKey publicKeyShadowAdministration_;

@@ -67,7 +67,7 @@ auto MakeStorage(const std::filesystem::path& dbFile) {
 
 /// Returns true if the path has no special meaning within Sqlite.
 bool IsPlainPath(const std::filesystem::path& path) {
-  return !path.empty() && path != database::BasicStorage::STORE_IN_MEMORY
+  return !path.empty() && path != database::BasicStorage::StoreInMemory
     && !boost::trim_left_copy(path.string()).starts_with("file:");
 }
 
@@ -87,7 +87,7 @@ SqliteBlocklist::SqliteBlocklist(const std::filesystem::path& dbFile) : data_{st
 
 std::unique_ptr<SqliteBlocklist> SqliteBlocklist::CreateWithMemoryStorage() {
   // std::make_unique does not work here because the constructor is private
-  return std::unique_ptr<SqliteBlocklist>{new SqliteBlocklist{Data::STORE_IN_MEMORY}};
+  return std::unique_ptr<SqliteBlocklist>{new SqliteBlocklist{Data::StoreInMemory}};
 }
 
 std::unique_ptr<SqliteBlocklist> SqliteBlocklist::CreateWithStorageLocation(const std::filesystem::path& dbFile) {

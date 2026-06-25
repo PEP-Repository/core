@@ -20,10 +20,10 @@ namespace pep::database {
 SchemaError::SchemaError(std::string table, Reason reason)
     : logic_error(GenerateSchemaErrorMessage(table, reason)), table(std::move(table)), reason(reason) {}
 
-const char* const BasicStorage::STORE_IN_MEMORY = ":memory:";
+const char* const BasicStorage::StoreInMemory = ":memory:";
 
 BasicStorage::BasicStorage(const std::string& path)
-  : isPersistent(path != STORE_IN_MEMORY) {
+  : isPersistent(path != StoreInMemory) {
 }
 
 }

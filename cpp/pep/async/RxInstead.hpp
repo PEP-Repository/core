@@ -29,7 +29,7 @@ public:
       .ignore_elements()
       .reduce(
         replacement_,
-        [](const T& replacement, const TItem&) {assert(false); return  replacement; } // Should never be called due to .ignore_elements() above
+        [](const T& replacement, const TItem&) {assert(false); return replacement; } // Should never be called due to .ignore_elements() above
       );
   }
 };

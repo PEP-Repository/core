@@ -132,7 +132,7 @@ std::optional<std::filesystem::path> ReadConfiguredBartenderPath(const std::opti
 
 }
 
-const QString ParticipantWidget::NO_PARTICIPANT_SID = QString();
+const QString ParticipantWidget::NoParticipantSid = QString();
 
 ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      std::shared_ptr<pep::Client> client,

@@ -28,11 +28,11 @@ private:
   void handleTimerExpired();
 
 public:
-  static const std::chrono::seconds DEFAULT_MAX_INACTIVE; // 1 minute
+  static const std::chrono::seconds DefaultMaxInactive; // 1 minute
 
   ~ActivityMonitor() noexcept;
 
-  static std::shared_ptr<ActivityMonitor> Create(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(timer_)::duration maxInactive = DEFAULT_MAX_INACTIVE);
+  static std::shared_ptr<ActivityMonitor> Create(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(timer_)::duration maxInactive = DefaultMaxInactive);
 
   void activityOccurred(const std::string& what);
 };

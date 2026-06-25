@@ -37,7 +37,7 @@ struct AuthenticationStatus {
    */
   AuthenticationState state;
 
-  static const std::chrono::seconds EXPIRY_MARGIN;
+  static const std::chrono::seconds ExpiryMargin;
 
   //! The authentication token
   std::string token;

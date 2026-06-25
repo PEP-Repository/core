@@ -432,10 +432,10 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
    */
   PEP_LOG(LogTag, Severity::Info) << "Checking whether the serialization of local pseudonyms is up to date";
   auto selectStarPseudonymRecordCountTotal = implementor_->raw.count<SelectStarPseudonymRecord>();
-  auto selectStarPseudonymRecordCountOldFormat = implementor_->raw.count<SelectStarPseudonymRecord>(where(length(&SelectStarPseudonymRecord::localPseudonym) > CurvePoint::PACKEDBYTES &&
-      length(&SelectStarPseudonymRecord::polymorphicPseudonym) > ElgamalEncryption::PACKEDBYTES));
+  auto selectStarPseudonymRecordCountOldFormat = implementor_->raw.count<SelectStarPseudonymRecord>(where(length(&SelectStarPseudonymRecord::localPseudonym) > CurvePoint::PackedBytes &&
+      length(&SelectStarPseudonymRecord::polymorphicPseudonym) > ElgamalEncryption::PackedBytes));
   auto participantGroupParticipantRecordCountTotal = implementor_->raw.count<ParticipantGroupParticipantRecord>();
-  auto participantGroupParticipantRecordCountOldFormat = implementor_->raw.count<ParticipantGroupParticipantRecord>(where(length(&ParticipantGroupParticipantRecord::localPseudonym) > CurvePoint::PACKEDBYTES));
+  auto participantGroupParticipantRecordCountOldFormat = implementor_->raw.count<ParticipantGroupParticipantRecord>(where(length(&ParticipantGroupParticipantRecord::localPseudonym) > CurvePoint::PackedBytes));
 
   if (selectStarPseudonymRecordCountOldFormat == 0 && participantGroupParticipantRecordCountOldFormat == 0) {
     PEP_LOG(LogTag, Severity::Info) << "everything up to date";

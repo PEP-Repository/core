@@ -18,7 +18,7 @@ namespace pep {
 class CurveScalar {
   friend class CurvePoint;
 public:
-  static constexpr size_t PACKEDBYTES = GROUP_SCALAR_PACKEDBYTES;
+  static constexpr size_t PackedBytes = GROUP_SCALAR_PACKEDBYTES;
 
   CurveScalar();
   explicit CurveScalar(std::string_view packed);
@@ -56,8 +56,8 @@ public:
   // shouldn't depend on the value of a secret scalar
   bool operator==(const CurveScalar& other) const;
 
-protected:
-  group_scalar inner;
+private:
+  group_scalar inner_;
 };
 
 /// A public (not secret) curve scalar.

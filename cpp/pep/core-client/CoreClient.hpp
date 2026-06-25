@@ -524,12 +524,12 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   rxcpp::observable<std::shared_ptr<GlobalConfiguration>> getGlobalConfiguration();
 
-  static constexpr bool DEFAULT_PERSIST_KEYS_FILE = true;
+  static constexpr bool DefaultPersistKeysFile = true;
 
   static std::shared_ptr<CoreClient> OpenClient(
       const Configuration& config,
       std::shared_ptr<boost::asio::io_context> io_context = nullptr,
-      bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
+      bool persistKeysFile = DefaultPersistKeysFile);
 
   using ServerProxies = std::unordered_map<ServerTraits, std::shared_ptr<const ServerProxy>>;
 

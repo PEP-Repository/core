@@ -33,7 +33,7 @@ struct BasicStorage {
   const bool isPersistent;
 
   /// @brief Specify this as the "path" to construct a Storage<> that's non-persistent, i.e. backed by memory
-  static const char* const STORE_IN_MEMORY;
+  static const char* const StoreInMemory;
 
 private:
   template <auto MakeRaw> friend struct Storage;
@@ -70,7 +70,7 @@ struct Storage : public BasicStorage {
   Raw raw;
 
   /// @brief Constructor
-  /// @param path The path to the sqlite database file. Pass STORE_IN_MEMORY to initialize non-persistent storage.
+  /// @param path The path to the sqlite database file. Pass StoreInMemory to initialize non-persistent storage.
   explicit Storage(std::string path)
     : BasicStorage(path), raw(MakeRaw(std::move(path))) {}
 

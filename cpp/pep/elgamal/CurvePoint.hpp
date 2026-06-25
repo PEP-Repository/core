@@ -27,7 +27,7 @@ class CurvePoint {
   static inline constexpr class BaseT {} Base{};
 
   // The number of bytes in the CurvePoint's packed representation
-  static constexpr size_t PACKEDBYTES = GROUP_GE_PACKEDBYTES;
+  static constexpr size_t PackedBytes = GROUP_GE_PACKEDBYTES;
 
   // Ensures this CurvePoint (also) stores a packed representation.
   //
@@ -99,7 +99,7 @@ class CurvePoint {
   // unpack/pack it.  And if we need to pack/unpack twice, we already have
   // the value cached.  See also ensurePacked().
   mutable group_ge unpacked_ = group_ge_neutral;
-  mutable std::array<char, CurvePoint::PACKEDBYTES> packed_{};
+  mutable std::array<char, CurvePoint::PackedBytes> packed_{};
   enum class State { GotPacked, GotUnpacked, GotBoth };
   mutable State state_;
 

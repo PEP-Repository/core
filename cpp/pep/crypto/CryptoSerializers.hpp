@@ -30,9 +30,9 @@ public:
 template <typename T>
 void Serializer<Encrypted<T> >::moveIntoProtocolBuffer(
   EncryptedProtocolBufferType& dest, Encrypted<T> value) const {
-  dest.set_ciphertext(std::move(value.ciphertext_));
-  dest.set_iv(std::move(value.iv_));
-  dest.set_tag(std::move(value.tag_));
+  dest.set_ciphertext(std::move(value.ciphertext));
+  dest.set_iv(std::move(value.iv));
+  dest.set_tag(std::move(value.tag));
 }
 
 template <typename T>
