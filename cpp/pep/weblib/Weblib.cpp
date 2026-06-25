@@ -356,7 +356,7 @@ public:
                     for (std::size_t cellNum{}; cellNum < entries->size(); ++cellNum) {
                       cellDatas.emplace_back((*entries)[cellNum],
                           CreateReadableByteStream((*cellStreams)[cellNum].get_observable(),
-                            messaging::DEFAULT_PAGE_SIZE_RELEASE));
+                            messaging::DefaultPageSizeRelease));
                     }
 
                     pageBatches
